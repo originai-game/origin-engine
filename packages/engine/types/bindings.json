@@ -15282,10 +15282,10 @@
     {
       "id": 89,
       "kind": "fn",
-      "path": "og.input.actionDown",
-      "symbol": "og_input_action_down",
+      "path": "og.input.isActionPressed",
+      "symbol": "og_input_is_action_pressed",
       "module": "input",
-      "name": "actionDown",
+      "name": "isActionPressed",
       "params": [
         {
           "name": "world",
@@ -15304,10 +15304,10 @@
     {
       "id": 90,
       "kind": "fn",
-      "path": "og.input.actionPressed",
-      "symbol": "og_input_action_pressed",
+      "path": "og.input.isActionJustPressed",
+      "symbol": "og_input_is_action_just_pressed",
       "module": "input",
-      "name": "actionPressed",
+      "name": "isActionJustPressed",
       "params": [
         {
           "name": "world",
@@ -15326,10 +15326,10 @@
     {
       "id": 91,
       "kind": "fn",
-      "path": "og.input.actionReleased",
-      "symbol": "og_input_action_released",
+      "path": "og.input.isActionJustReleased",
+      "symbol": "og_input_is_action_just_released",
       "module": "input",
-      "name": "actionReleased",
+      "name": "isActionJustReleased",
       "params": [
         {
           "name": "world",
@@ -15414,10 +15414,10 @@
     {
       "id": 95,
       "kind": "fn",
-      "path": "og.input.setContexts",
-      "symbol": "og_input_set_contexts",
+      "path": "og.input.setActionMaps",
+      "symbol": "og_input_set_action_maps",
       "module": "input",
-      "name": "setContexts",
+      "name": "setActionMaps",
       "params": [
         {
           "name": "world",
@@ -15425,7 +15425,7 @@
           "optional": false
         },
         {
-          "name": "contexts",
+          "name": "actionMaps",
           "type": "List<String>",
           "optional": false
         }
@@ -15436,10 +15436,10 @@
     {
       "id": 96,
       "kind": "fn",
-      "path": "og.input.contexts",
-      "symbol": "og_input_contexts",
+      "path": "og.input.actionMaps",
+      "symbol": "og_input_action_maps",
       "module": "input",
-      "name": "contexts",
+      "name": "actionMaps",
       "params": [
         {
           "name": "world",

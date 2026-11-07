@@ -12,7 +12,7 @@ An action as a controls screen lists it.
 |---|---|---|---|---|---|---|
 | `name` | `string` | `""` | — | — | — | Its name. |
 | `kind` | `ActionKind` | `"button"` | — | — | — | Its kind. |
-| `context` | `string` | `""` | — | — | — | Its context. |
+| `actionMap` | `string` | `""` | — | — | — | Its action map. |
 | `label` | `string` | `""` | — | — | — | Its label (its name when it has none). |
 | `bindings` | `readonly InputBinding[]` | `[]` | — | — | — | Its bindings now: the player's, else the defaults. |
 | `defaults` | `readonly InputBinding[]` | `[]` | — | — | — | Its default bindings. |
@@ -25,7 +25,7 @@ struct ActionInfo {
   doc "An action as a controls screen lists it."
   field name String "Its name."
   field kind ActionKind "Its kind."
-  field context String "Its context."
+  field actionMap String "Its action map."
   field label String "Its label (its name when it has none)."
   field bindings List.InputBinding "Its bindings now: the player's, else the defaults."
   field defaults List.InputBinding "Its default bindings."

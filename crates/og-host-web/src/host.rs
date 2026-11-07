@@ -479,14 +479,14 @@ impl InputApi for WebHost {
     fn og_input_action(&self, world: u32, name: String) -> String {
         rt::og_input_action(world, name)
     }
-    fn og_input_action_down(&self, world: u32, name: String) -> bool {
-        rt::og_input_action_down(world, name)
+    fn og_input_is_action_pressed(&self, world: u32, name: String) -> bool {
+        rt::og_input_is_action_pressed(world, name)
     }
-    fn og_input_action_pressed(&self, world: u32, name: String) -> bool {
-        rt::og_input_action_pressed(world, name)
+    fn og_input_is_action_just_pressed(&self, world: u32, name: String) -> bool {
+        rt::og_input_is_action_just_pressed(world, name)
     }
-    fn og_input_action_released(&self, world: u32, name: String) -> bool {
-        rt::og_input_action_released(world, name)
+    fn og_input_is_action_just_released(&self, world: u32, name: String) -> bool {
+        rt::og_input_is_action_just_released(world, name)
     }
     fn og_input_action_held(&self, world: u32, name: String) -> bool {
         rt::og_input_action_held(world, name)
@@ -497,11 +497,11 @@ impl InputApi for WebHost {
     fn og_input_action_vector(&self, world: u32, name: String) -> String {
         rt::og_input_action_vector(world, name)
     }
-    fn og_input_set_contexts(&self, world: u32, contexts: String) {
-        rt::og_input_set_contexts(world, contexts)
+    fn og_input_set_action_maps(&self, world: u32, contexts: String) {
+        rt::og_input_set_action_maps(world, contexts)
     }
-    fn og_input_contexts(&self, world: u32) -> String {
-        rt::og_input_contexts(world)
+    fn og_input_action_maps(&self, world: u32) -> String {
+        rt::og_input_action_maps(world)
     }
     fn og_input_rebind(&self, world: u32, desc: Option<String>) -> String {
         rt::og_input_rebind(world, desc)

@@ -2,14 +2,14 @@
 
 Module [`input`](../input.md) · [index](../index.md)
 
-<a id="fn-actionDown"></a>
+<a id="fn-isActionPressed"></a>
 
-### `og.input.actionDown`
+### `og.input.isActionPressed`
 
 Whether an action is down this tick (false for an unknown one).
 
 ```ts
-og.input.actionDown(world: World, name: string): boolean
+og.input.isActionPressed(world: World, name: string): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -19,10 +19,10 @@ og.input.actionDown(world: World, name: string): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_input_action_down` · publish builds: kept
+Binding symbol `og_input_is_action_pressed` · publish builds: kept
 
 ```ogt
-fn actionDown {
+fn isActionPressed {
   doc "Whether an action is down this tick (false for an unknown one)."
   param world World "The world."
   param name String "The action."

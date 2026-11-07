@@ -1,0 +1,7 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {"member":"og.input","change":"Action polling now uses Godot names: actionDown→isActionPressed, actionPressed→isActionJustPressed, actionReleased→isActionJustReleased. No aliases remain.","fix":"Use isActionPressed for continuous down state and the Just variants for tick edges; actionHeld still tests holdMs."},
+    {"member":"ActionDesc.actionMap","change":"Renamed context to actionMap in ActionDesc, ActionInfo and BindingConflict; setContexts/contexts become setActionMaps/actionMaps.","fix":"Rename map fields and calls. Action names remain world-global, map priority and W3C control names are unchanged."}
+  ]
+}

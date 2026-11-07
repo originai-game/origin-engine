@@ -281,22 +281,22 @@ pub trait InputApi: Wire {
     fn og_input_actions(&self, world: u32) -> String;
     /// `og.input.action`
     fn og_input_action(&self, world: u32, name: String) -> String;
-    /// `og.input.actionDown`
-    fn og_input_action_down(&self, world: u32, name: String) -> bool;
-    /// `og.input.actionPressed`
-    fn og_input_action_pressed(&self, world: u32, name: String) -> bool;
-    /// `og.input.actionReleased`
-    fn og_input_action_released(&self, world: u32, name: String) -> bool;
+    /// `og.input.isActionPressed`
+    fn og_input_is_action_pressed(&self, world: u32, name: String) -> bool;
+    /// `og.input.isActionJustPressed`
+    fn og_input_is_action_just_pressed(&self, world: u32, name: String) -> bool;
+    /// `og.input.isActionJustReleased`
+    fn og_input_is_action_just_released(&self, world: u32, name: String) -> bool;
     /// `og.input.actionHeld`
     fn og_input_action_held(&self, world: u32, name: String) -> bool;
     /// `og.input.actionValue`
     fn og_input_action_value(&self, world: u32, name: String) -> f64;
     /// `og.input.actionVector`
     fn og_input_action_vector(&self, world: u32, name: String) -> String;
-    /// `og.input.setContexts`
-    fn og_input_set_contexts(&self, world: u32, contexts: String);
-    /// `og.input.contexts`
-    fn og_input_contexts(&self, world: u32) -> String;
+    /// `og.input.setActionMaps`
+    fn og_input_set_action_maps(&self, world: u32, action_maps: String);
+    /// `og.input.actionMaps`
+    fn og_input_action_maps(&self, world: u32) -> String;
     /// `og.input.rebind`
     fn og_input_rebind(&self, world: u32, desc: Option<String>) -> String;
     /// `og.input.conflicts`
@@ -1593,14 +1593,14 @@ pub const SYMBOLS: &[&str] = &[
     "og_input_define_action",
     "og_input_actions",
     "og_input_action",
-    "og_input_action_down",
-    "og_input_action_pressed",
-    "og_input_action_released",
+    "og_input_is_action_pressed",
+    "og_input_is_action_just_pressed",
+    "og_input_is_action_just_released",
     "og_input_action_held",
     "og_input_action_value",
     "og_input_action_vector",
-    "og_input_set_contexts",
-    "og_input_contexts",
+    "og_input_set_action_maps",
+    "og_input_action_maps",
     "og_input_rebind",
     "og_input_conflicts",
     "og_input_reset_bindings",

@@ -6,7 +6,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `og.input.rebind`
 
-Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its context changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes.
+Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its action map changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes.
 
 Also known as: remap, key remapping, rebinding, control settings, Unity PerformInteractiveRebinding, Godot InputMap.action_add_event
 
@@ -25,7 +25,7 @@ Binding symbol `og_input_rebind` · publish builds: kept
 
 ```ogt
 fn rebind {
-  doc "Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its context changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes."
+  doc "Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its action map changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes."
   aliases "remap, key remapping, rebinding, control settings, Unity PerformInteractiveRebinding, Godot InputMap.action_add_event"
   param world World "The world."
   param desc RebindDesc "The action, slot, part, binding and policy."

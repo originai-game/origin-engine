@@ -2,7 +2,7 @@ module input {
   doc "Input as the game sees it: the Input resource for polling, events for edges."
   doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
   doc "Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay."
-  doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is."
+  doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in action maps, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is."
   doc "Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick."
 
   const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
@@ -82,7 +82,7 @@ module input {
     desc true
     field name String "Its name."
     field kind ActionKind "Button, one axis or two."
-    field context String "Its context (og.input.setContexts): `gameplay`, `menu`, `vehicle`, or the game's own." {
+    field actionMap String "Its action map (og.input.setActionMaps): `gameplay`, `menu`, `vehicle`, or the game's own." {
       default "gameplay"
     }
     field label String "What a settings screen and prompts call it (empty: its name)."
@@ -119,7 +119,7 @@ module input {
     doc "An action as a controls screen lists it."
     field name String "Its name."
     field kind ActionKind "Its kind."
-    field context String "Its context."
+    field actionMap String "Its action map."
     field label String "Its label (its name when it has none)."
     field bindings List.InputBinding "Its bindings now: the player's, else the defaults."
     field defaults List.InputBinding "Its default bindings."
@@ -129,11 +129,11 @@ module input {
   }
 
   struct BindingConflict {
-    doc "Another binding a rebinding would share a control with: an action of the same context (or another slot of the same action)."
+    doc "Another binding a rebinding would share a control with: an action of the same action map (or another slot of the same action)."
     field action String "The other action."
     field slot u32 "Its binding's slot."
     field control String "The shared control, as the new binding names it."
-    field context String "The context they share."
+    field actionMap String "The action map they share."
   }
 
   enum ConflictPolicy {
@@ -304,14 +304,14 @@ module input {
     returns Option.ActionState
   }
 
-  fn actionDown {
+  fn isActionPressed {
     doc "Whether an action is down this tick (false for an unknown one)."
     param world World "The world."
     param name String "The action."
     returns bool
   }
 
-  fn actionPressed {
+  fn isActionJustPressed {
     doc "Whether an action went down this tick."
     aliases "button down this frame, GetButtonDown, is_action_just_pressed"
     param world World "The world."
@@ -319,7 +319,7 @@ module input {
     returns bool
   }
 
-  fn actionReleased {
+  fn isActionJustReleased {
     doc "Whether an action went up this tick."
     param world World "The world."
     param name String "The action."
@@ -347,21 +347,21 @@ module input {
     returns Vector2
   }
 
-  fn setContexts {
-    doc "The contexts whose actions are live, first the one whose bindings win a control another context also binds (`[\"vehicle\", \"gameplay\"]`: E exits the car, not interacts). Empty (the default) is every context, none winning. Takes effect from the next tick's actions."
+  fn setActionMaps {
+    doc "The action maps whose actions are live, first the one whose bindings win a control another action map also binds (`[\"vehicle\", \"gameplay\"]`: E exits the car, not interacts). Empty (the default) is every action map, none winning. Takes effect from the next tick's actions."
     param world World "The world."
-    param contexts List.String "The live contexts, by priority."
+    param actionMaps List.String "The live action maps, by priority."
     returns Void
   }
 
-  fn contexts {
-    doc "The live contexts as og.input.setContexts set them (empty: every context)."
+  fn actionMaps {
+    doc "The live action maps as og.input.setActionMaps set them (empty: every action map)."
     param world World "The world."
     returns List.String
   }
 
   fn rebind {
-    doc "Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its context changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes."
+    doc "Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its action map changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes."
     aliases "remap, key remapping, rebinding, control settings, Unity PerformInteractiveRebinding, Godot InputMap.action_add_event"
     param world World "The world."
     param desc RebindDesc "The action, slot, part, binding and policy."

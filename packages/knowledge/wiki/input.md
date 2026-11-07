@@ -8,7 +8,7 @@ The shell collects pointer, keyboard and wheel input on the main thread; the pro
 
 Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay.
 
-Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.
+Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in action maps, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.
 
 Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
 
@@ -21,7 +21,7 @@ module input {
   doc "Input as the game sees it: the Input resource for polling, events for edges."
   doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
   doc "Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay."
-  doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is."
+  doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in action maps, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is."
   doc "Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick."
   # declarations follow, each on its own page
 ```
@@ -41,7 +41,7 @@ module input {
 | [`ActionDesc`](input/type-ActionDesc.md) | desc struct |  | A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. |
 | [`ActionState`](input/type-ActionState.md) | struct |  | An action this tick. |
 | [`ActionInfo`](input/type-ActionInfo.md) | struct |  | An action as a controls screen lists it. |
-| [`BindingConflict`](input/type-BindingConflict.md) | struct |  | Another binding a rebinding would share a control with: an action of the same context (or another slot of the same action). |
+| [`BindingConflict`](input/type-BindingConflict.md) | struct |  | Another binding a rebinding would share a control with: an action of the same action map (or another slot of the same action). |
 | [`ConflictPolicy`](input/type-ConflictPolicy.md) | enum |  | What a rebinding does with a control another action holds. |
 | [`RebindDesc`](input/type-RebindDesc.md) | desc struct |  | A player's rebinding of one slot of an action. |
 | [`RebindAnswer`](input/type-RebindAnswer.md) | struct |  | What a rebinding did. |
@@ -58,14 +58,14 @@ module input {
 | [`og.input.defineAction`](input/fn-defineAction.md) | function | `(world: World, desc?: ActionDesc): Result<void>` | Define (or redefine) a gameplay action. |
 | [`og.input.actions`](input/fn-actions.md) | function | `(world: World): readonly ActionInfo[]` | Every action, in definition order, with its bindings now and its defaults: what a controls screen lists. |
 | [`og.input.action`](input/fn-action.md) | function | `(world: World, name: string): ActionState \| null` | An action this tick: down, the edges, held, its value and vector, and the device that drove it. |
-| [`og.input.actionDown`](input/fn-actionDown.md) | function | `(world: World, name: string): boolean` | Whether an action is down this tick (false for an unknown one). |
-| [`og.input.actionPressed`](input/fn-actionPressed.md) | function | `(world: World, name: string): boolean` | Whether an action went down this tick. |
-| [`og.input.actionReleased`](input/fn-actionReleased.md) | function | `(world: World, name: string): boolean` | Whether an action went up this tick. |
+| [`og.input.isActionPressed`](input/fn-isActionPressed.md) | function | `(world: World, name: string): boolean` | Whether an action is down this tick (false for an unknown one). |
+| [`og.input.isActionJustPressed`](input/fn-isActionJustPressed.md) | function | `(world: World, name: string): boolean` | Whether an action went down this tick. |
+| [`og.input.isActionJustReleased`](input/fn-isActionJustReleased.md) | function | `(world: World, name: string): boolean` | Whether an action went up this tick. |
 | [`og.input.actionHeld`](input/fn-actionHeld.md) | function | `(world: World, name: string): boolean` | Whether an action has been down for its holdMs. |
 | [`og.input.actionValue`](input/fn-actionValue.md) | function | `(world: World, name: string): number` | An action's value: a button's strength (0 to 1), an axis's value, a two-axis value's length. |
 | [`og.input.actionVector`](input/fn-actionVector.md) | function | `(world: World, name: string): Vector2` | A two-axis action's value (x right, y up; each -1 to 1 but the mouse's movement); (value, 0) for the others. |
-| [`og.input.setContexts`](input/fn-setContexts.md) | function | `(world: World, contexts: readonly string[]): void` | The contexts whose actions are live, first the one whose bindings win a control another context also binds (`["vehicle", "gameplay"]`: E exits the car, not interacts). |
-| [`og.input.contexts`](input/fn-contexts.md) | function | `(world: World): readonly string[]` | The live contexts as og.input.setContexts set them (empty: every context). |
+| [`og.input.setActionMaps`](input/fn-setActionMaps.md) | function | `(world: World, actionMaps: readonly string[]): void` | The action maps whose actions are live, first the one whose bindings win a control another action map also binds (`["vehicle", "gameplay"]`: E exits the car, not interacts). |
+| [`og.input.actionMaps`](input/fn-actionMaps.md) | function | `(world: World): readonly string[]` | The live action maps as og.input.setActionMaps set them (empty: every action map). |
 | [`og.input.rebind`](input/fn-rebind.md) | function | `(world: World, desc?: RebindDesc): Result<RebindAnswer>` | Rebind one slot of an action (or one part of a composite) for the player. |
 | [`og.input.conflicts`](input/fn-conflicts.md) | function | `(world: World, desc?: RebindDesc): Result<readonly BindingConflict[]>` | What a rebinding would share a control with, changing nothing. |
 | [`og.input.resetBindings`](input/fn-resetBindings.md) | function | `(world: World, action?: string): Result<void>` | Back to the defaults: one action's bindings and toggle, or (no action) every action's, and the pads' dead zones. |

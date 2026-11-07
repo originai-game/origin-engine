@@ -669,22 +669,22 @@ pub fn og_input_action(env: Env, world: u32, name: String) -> String {
     <Host as InputApi>::og_input_action(&Host, world, name)
 }
 
-#[napi(js_name = "og_input_action_down")]
-pub fn og_input_action_down(env: Env, world: u32, name: String) -> bool {
+#[napi(js_name = "og_input_is_action_pressed")]
+pub fn og_input_is_action_pressed(env: Env, world: u32, name: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_action_down(&Host, world, name)
+    <Host as InputApi>::og_input_is_action_pressed(&Host, world, name)
 }
 
-#[napi(js_name = "og_input_action_pressed")]
-pub fn og_input_action_pressed(env: Env, world: u32, name: String) -> bool {
+#[napi(js_name = "og_input_is_action_just_pressed")]
+pub fn og_input_is_action_just_pressed(env: Env, world: u32, name: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_action_pressed(&Host, world, name)
+    <Host as InputApi>::og_input_is_action_just_pressed(&Host, world, name)
 }
 
-#[napi(js_name = "og_input_action_released")]
-pub fn og_input_action_released(env: Env, world: u32, name: String) -> bool {
+#[napi(js_name = "og_input_is_action_just_released")]
+pub fn og_input_is_action_just_released(env: Env, world: u32, name: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_action_released(&Host, world, name)
+    <Host as InputApi>::og_input_is_action_just_released(&Host, world, name)
 }
 
 #[napi(js_name = "og_input_action_held")]
@@ -705,16 +705,16 @@ pub fn og_input_action_vector(env: Env, world: u32, name: String) -> String {
     <Host as InputApi>::og_input_action_vector(&Host, world, name)
 }
 
-#[napi(js_name = "og_input_set_contexts")]
-pub fn og_input_set_contexts(env: Env, world: u32, contexts: String) {
+#[napi(js_name = "og_input_set_action_maps")]
+pub fn og_input_set_action_maps(env: Env, world: u32, action_maps: String) {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_set_contexts(&Host, world, contexts)
+    <Host as InputApi>::og_input_set_action_maps(&Host, world, action_maps)
 }
 
-#[napi(js_name = "og_input_contexts")]
-pub fn og_input_contexts(env: Env, world: u32) -> String {
+#[napi(js_name = "og_input_action_maps")]
+pub fn og_input_action_maps(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_contexts(&Host, world)
+    <Host as InputApi>::og_input_action_maps(&Host, world)
 }
 
 #[napi(js_name = "og_input_rebind")]

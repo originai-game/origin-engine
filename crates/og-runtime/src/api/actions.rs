@@ -66,15 +66,15 @@ pub fn og_input_action(world: u32, name: String) -> String {
     state_of(world, &name).map_or_else(|| "null".into(), |s| s.to_json().to_string())
 }
 
-pub fn og_input_action_down(world: u32, name: String) -> bool {
+pub fn og_input_is_action_pressed(world: u32, name: String) -> bool {
     state_of(world, &name).is_some_and(|s| s.down)
 }
 
-pub fn og_input_action_pressed(world: u32, name: String) -> bool {
+pub fn og_input_is_action_just_pressed(world: u32, name: String) -> bool {
     state_of(world, &name).is_some_and(|s| s.pressed)
 }
 
-pub fn og_input_action_released(world: u32, name: String) -> bool {
+pub fn og_input_is_action_just_released(world: u32, name: String) -> bool {
     state_of(world, &name).is_some_and(|s| s.released)
 }
 
@@ -91,7 +91,7 @@ pub fn og_input_action_vector(world: u32, name: String) -> String {
     json!({ "x": f64::from(v.x), "y": f64::from(v.y) }).to_string()
 }
 
-pub fn og_input_set_contexts(world: u32, contexts: String) {
+pub fn og_input_set_action_maps(world: u32, contexts: String) {
     let list: Vec<String> = parse(Some(&contexts))
         .ok()
         .and_then(|v| v.as_array().cloned())
@@ -102,7 +102,7 @@ pub fn og_input_set_contexts(world: u32, contexts: String) {
     let _ = on_map(world, |m| m.set_contexts(list));
 }
 
-pub fn og_input_contexts(world: u32) -> String {
+pub fn og_input_action_maps(world: u32) -> String {
     on_map(world, |m| json!(m.contexts()))
         .unwrap_or_else(|_| json!([]))
         .to_string()

@@ -119,6 +119,17 @@ else. `tests/mouselook.rs` holds both, and the ring and JSON round trips.
 
 ## Actions
 
+The TypeScript API uses `ActionDesc.actionMap`, `og.input.setActionMaps`
+and `og.input.actionMaps` for action-map membership and priority. Action
+names remain world-global, not map-local as in Unity. Controls remain W3C
+key codes and the engine's dotted pad and mouse controls.
+
+Polling uses Godot's distinction: `isActionPressed` is down continuously;
+`isActionJustPressed` and `isActionJustReleased` are edges in the current
+fixed tick, not the render frame. A tap between ticks sets both edges.
+`actionHeld` instead means down for `holdMs`. Raw `Input` polling and the
+`ActionState.down/pressed/released` fields keep their existing names.
+
 `ActionMap` (`src/actions.rs`) is what a game reads instead of keys: named
 actions of kind `button`, `axis` (one value) or `axis2` (two, x right and
 y up), each with default bindings over controls (`src/control.rs`): key

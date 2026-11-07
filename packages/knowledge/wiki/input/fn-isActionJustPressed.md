@@ -2,16 +2,16 @@
 
 Module [`input`](../input.md) · [index](../index.md)
 
-<a id="fn-actionPressed"></a>
+<a id="fn-isActionJustPressed"></a>
 
-### `og.input.actionPressed`
+### `og.input.isActionJustPressed`
 
 Whether an action went down this tick.
 
 Also known as: button down this frame, GetButtonDown, is_action_just_pressed
 
 ```ts
-og.input.actionPressed(world: World, name: string): boolean
+og.input.isActionJustPressed(world: World, name: string): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -21,10 +21,10 @@ og.input.actionPressed(world: World, name: string): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_input_action_pressed` · publish builds: kept
+Binding symbol `og_input_is_action_just_pressed` · publish builds: kept
 
 ```ogt
-fn actionPressed {
+fn isActionJustPressed {
   doc "Whether an action went down this tick."
   aliases "button down this frame, GetButtonDown, is_action_just_pressed"
   param world World "The world."

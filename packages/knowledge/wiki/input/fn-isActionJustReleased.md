@@ -2,14 +2,14 @@
 
 Module [`input`](../input.md) · [index](../index.md)
 
-<a id="fn-actionReleased"></a>
+<a id="fn-isActionJustReleased"></a>
 
-### `og.input.actionReleased`
+### `og.input.isActionJustReleased`
 
 Whether an action went up this tick.
 
 ```ts
-og.input.actionReleased(world: World, name: string): boolean
+og.input.isActionJustReleased(world: World, name: string): boolean
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -19,10 +19,10 @@ og.input.actionReleased(world: World, name: string): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_input_action_released` · publish builds: kept
+Binding symbol `og_input_is_action_just_released` · publish builds: kept
 
 ```ogt
-fn actionReleased {
+fn isActionJustReleased {
   doc "Whether an action went up this tick."
   param world World "The world."
   param name String "The action."

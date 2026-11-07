@@ -573,7 +573,7 @@ impl ActionDesc {
                 .collect::<Result<_, _>>()?,
             Some(_) => return Err("bindings is a list".into()),
         };
-        let context = str_of(v, "context")?;
+        let context = str_of(v, "actionMap")?;
         Ok(ActionDesc {
             name: str_of(v, "name")?,
             kind,
@@ -594,7 +594,7 @@ impl ActionDesc {
 
     pub fn to_json(&self) -> Value {
         json!({
-            "name": self.name, "kind": self.kind.name(), "context": self.context,
+            "name": self.name, "kind": self.kind.name(), "actionMap": self.context,
             "label": self.label, "bindings": self.bindings.iter().map(Binding::to_json).collect::<Vec<_>>(),
             "threshold": self.threshold, "deadzone": self.deadzone, "holdMs": self.hold_ms,
             "locked": self.locked, "toggle": self.toggle,
@@ -700,7 +700,7 @@ pub struct Conflict {
 
 impl Conflict {
     pub fn to_json(&self) -> Value {
-        json!({ "action": self.action, "slot": self.slot, "control": self.control, "context": self.context })
+        json!({ "action": self.action, "slot": self.slot, "control": self.control, "actionMap": self.context })
     }
 }
 
@@ -882,7 +882,7 @@ impl CaptureState {
                         action: str_of(c, "action")?,
                         slot: f32_of(c, "slot", 0.0)? as u32,
                         control: str_of(c, "control")?,
-                        context: str_of(c, "context")?,
+                        context: str_of(c, "actionMap")?,
                     })
                 })
                 .collect::<Result<_, String>>()?,
@@ -971,7 +971,7 @@ pub struct ActionInfo {
 impl ActionInfo {
     pub fn to_json(&self) -> Value {
         json!({
-            "name": self.desc.name, "kind": self.desc.kind.name(), "context": self.desc.context,
+            "name": self.desc.name, "kind": self.desc.kind.name(), "actionMap": self.desc.context,
             "label": if self.desc.label.is_empty() { &self.desc.name } else { &self.desc.label },
             "bindings": self.bindings.iter().map(Binding::to_json).collect::<Vec<_>>(),
             "defaults": self.desc.bindings.iter().map(Binding::to_json).collect::<Vec<_>>(),
@@ -2276,7 +2276,7 @@ impl ActionMap {
             })).collect::<Vec<_>>(),
             "pending": self.pending.iter().map(|(k, v)| (k.clone(), list_json(v))).collect::<Map<_, _>>(),
             "pendingToggles": self.pending_toggles.iter().map(|(k, v)| (k.clone(), json!(v))).collect::<Map<_, _>>(),
-            "contexts": self.contexts,
+            "actionMaps": self.contexts,
             "deadzones": self.deadzones.iter().map(|d| json!([d.stick, d.trigger])).collect::<Vec<_>>(),
             "device": self.device.index(),
             "tick": self.tick,
@@ -2326,7 +2326,7 @@ impl ActionMap {
             out.pending_toggles
                 .insert(k.clone(), t.as_bool().unwrap_or(false));
         }
-        out.contexts = v["contexts"]
+        out.contexts = v["actionMaps"]
             .as_array()
             .into_iter()
             .flatten()

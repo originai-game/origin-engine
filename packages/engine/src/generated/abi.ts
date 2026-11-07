@@ -227,22 +227,22 @@ export interface HostAbi<A, V> {
   og_input_actions(world: number): string;
   /** `og.input.action` */
   og_input_action(world: number, name: string): string;
-  /** `og.input.actionDown` */
-  og_input_action_down(world: number, name: string): boolean;
-  /** `og.input.actionPressed` */
-  og_input_action_pressed(world: number, name: string): boolean;
-  /** `og.input.actionReleased` */
-  og_input_action_released(world: number, name: string): boolean;
+  /** `og.input.isActionPressed` */
+  og_input_is_action_pressed(world: number, name: string): boolean;
+  /** `og.input.isActionJustPressed` */
+  og_input_is_action_just_pressed(world: number, name: string): boolean;
+  /** `og.input.isActionJustReleased` */
+  og_input_is_action_just_released(world: number, name: string): boolean;
   /** `og.input.actionHeld` */
   og_input_action_held(world: number, name: string): boolean;
   /** `og.input.actionValue` */
   og_input_action_value(world: number, name: string): number;
   /** `og.input.actionVector` */
   og_input_action_vector(world: number, name: string): string;
-  /** `og.input.setContexts` */
-  og_input_set_contexts(world: number, contexts: string): void;
-  /** `og.input.contexts` */
-  og_input_contexts(world: number): string;
+  /** `og.input.setActionMaps` */
+  og_input_set_action_maps(world: number, action_maps: string): void;
+  /** `og.input.actionMaps` */
+  og_input_action_maps(world: number): string;
   /** `og.input.rebind` */
   og_input_rebind(world: number, desc: string | undefined): string;
   /** `og.input.conflicts` */
@@ -1422,14 +1422,14 @@ export const SYMBOLS: readonly string[] = [
   "og_input_define_action",
   "og_input_actions",
   "og_input_action",
-  "og_input_action_down",
-  "og_input_action_pressed",
-  "og_input_action_released",
+  "og_input_is_action_pressed",
+  "og_input_is_action_just_pressed",
+  "og_input_is_action_just_released",
   "og_input_action_held",
   "og_input_action_value",
   "og_input_action_vector",
-  "og_input_set_contexts",
-  "og_input_contexts",
+  "og_input_set_action_maps",
+  "og_input_action_maps",
   "og_input_rebind",
   "og_input_conflicts",
   "og_input_reset_bindings",

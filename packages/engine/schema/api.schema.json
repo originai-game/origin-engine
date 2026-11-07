@@ -3512,7 +3512,7 @@
     },
     {
       "name": "input",
-      "doc": "Input as the game sees it: the Input resource for polling, events for edges.\nThe shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.\nSeveral pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay.\nGameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.\nMouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.",
+      "doc": "Input as the game sees it: the Input resource for polling, events for edges.\nThe shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.\nSeveral pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay.\nGameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in action maps, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.\nMouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -3636,7 +3636,7 @@
           "publish": true
         },
         {
-          "name": "actionDown",
+          "name": "isActionPressed",
           "doc": "Whether an action is down this tick (false for an unknown one).",
           "params": [
             {
@@ -3656,7 +3656,7 @@
           "publish": true
         },
         {
-          "name": "actionPressed",
+          "name": "isActionJustPressed",
           "doc": "Whether an action went down this tick.",
           "params": [
             {
@@ -3676,7 +3676,7 @@
           "publish": true
         },
         {
-          "name": "actionReleased",
+          "name": "isActionJustReleased",
           "doc": "Whether an action went up this tick.",
           "params": [
             {
@@ -3756,8 +3756,8 @@
           "publish": true
         },
         {
-          "name": "setContexts",
-          "doc": "The contexts whose actions are live, first the one whose bindings win a control another context also binds (`[\"vehicle\", \"gameplay\"]`: E exits the car, not interacts). Empty (the default) is every context, none winning. Takes effect from the next tick's actions.",
+          "name": "setActionMaps",
+          "doc": "The action maps whose actions are live, first the one whose bindings win a control another action map also binds (`[\"vehicle\", \"gameplay\"]`: E exits the car, not interacts). Empty (the default) is every action map, none winning. Takes effect from the next tick's actions.",
           "params": [
             {
               "name": "world",
@@ -3766,18 +3766,18 @@
               "doc": "The world."
             },
             {
-              "name": "contexts",
+              "name": "actionMaps",
               "type": "List<String>",
               "optional": false,
-              "doc": "The live contexts, by priority."
+              "doc": "The live action maps, by priority."
             }
           ],
           "returns": "Void",
           "publish": true
         },
         {
-          "name": "contexts",
-          "doc": "The live contexts as og.input.setContexts set them (empty: every context).",
+          "name": "actionMaps",
+          "doc": "The live action maps as og.input.setActionMaps set them (empty: every action map).",
           "params": [
             {
               "name": "world",
@@ -3791,7 +3791,7 @@
         },
         {
           "name": "rebind",
-          "doc": "Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its context changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes.",
+          "doc": "Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its action map changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes.",
           "params": [
             {
               "name": "world",
@@ -21678,9 +21678,9 @@
           "description": "Button, one axis or two.",
           "default": "button"
         },
-        "context": {
+        "actionMap": {
           "type": "string",
-          "description": "Its context (og.input.setContexts): `gameplay`, `menu`, `vehicle`, or the game's own.",
+          "description": "Its action map (og.input.setActionMaps): `gameplay`, `menu`, `vehicle`, or the game's own.",
           "default": "gameplay"
         },
         "label": {
@@ -21790,9 +21790,9 @@
           "$ref": "#/$defs/ActionKind",
           "description": "Its kind."
         },
-        "context": {
+        "actionMap": {
           "type": "string",
-          "description": "Its context."
+          "description": "Its action map."
         },
         "label": {
           "type": "string",
@@ -21828,7 +21828,7 @@
       "required": [
         "name",
         "kind",
-        "context",
+        "actionMap",
         "label",
         "bindings",
         "defaults",
@@ -21841,7 +21841,7 @@
     "BindingConflict": {
       "x-og-kind": "struct",
       "x-og-module": "input",
-      "description": "Another binding a rebinding would share a control with: an action of the same context (or another slot of the same action).",
+      "description": "Another binding a rebinding would share a control with: an action of the same action map (or another slot of the same action).",
       "type": "object",
       "properties": {
         "action": {
@@ -21858,16 +21858,16 @@
           "type": "string",
           "description": "The shared control, as the new binding names it."
         },
-        "context": {
+        "actionMap": {
           "type": "string",
-          "description": "The context they share."
+          "description": "The action map they share."
         }
       },
       "required": [
         "action",
         "slot",
         "control",
-        "context"
+        "actionMap"
       ],
       "additionalProperties": false
     },

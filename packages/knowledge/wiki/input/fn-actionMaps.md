@@ -2,14 +2,14 @@
 
 Module [`input`](../input.md) · [index](../index.md)
 
-<a id="fn-contexts"></a>
+<a id="fn-actionMaps"></a>
 
-### `og.input.contexts`
+### `og.input.actionMaps`
 
-The live contexts as og.input.setContexts set them (empty: every context).
+The live action maps as og.input.setActionMaps set them (empty: every action map).
 
 ```ts
-og.input.contexts(world: World): readonly string[]
+og.input.actionMaps(world: World): readonly string[]
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -18,11 +18,11 @@ og.input.contexts(world: World): readonly string[]
 
 **Returns** `readonly string[]`.
 
-Binding symbol `og_input_contexts` · publish builds: kept
+Binding symbol `og_input_action_maps` · publish builds: kept
 
 ```ogt
-fn contexts {
-  doc "The live contexts as og.input.setContexts set them (empty: every context)."
+fn actionMaps {
+  doc "The live action maps as og.input.setActionMaps set them (empty: every action map)."
   param world World "The world."
   returns List.String
 }

@@ -14,7 +14,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `name` | `string` | `""` | — | — | — | Its name. |
 | `kind` | `ActionKind` | `"button"` | — | — | — | Button, one axis or two. |
-| `context` | `string` | `"gameplay"` | — | — | — | Its context (og.input.setContexts): `gameplay`, `menu`, `vehicle`, or the game's own. |
+| `actionMap` | `string` | `"gameplay"` | — | — | — | Its action map (og.input.setActionMaps): `gameplay`, `menu`, `vehicle`, or the game's own. |
 | `label` | `string` | `""` | — | — | — | What a settings screen and prompts call it (empty: its name). |
 | `bindings` | `readonly InputBinding[]` | `[]` | — | — | — | The default bindings, in slot order: the player's rebinding replaces a slot, reset brings these back. |
 | `threshold` | `number` | `0.5` | 0.01 … 1 | — | — | Where an analog value presses it (a button; and an axis's down). |
@@ -29,7 +29,7 @@ struct ActionDesc {
   desc true
   field name String "Its name."
   field kind ActionKind "Button, one axis or two."
-  field context String "Its context (og.input.setContexts): `gameplay`, `menu`, `vehicle`, or the game's own." {
+  field actionMap String "Its action map (og.input.setActionMaps): `gameplay`, `menu`, `vehicle`, or the game's own." {
     default "gameplay"
   }
   field label String "What a settings screen and prompts call it (empty: its name)."

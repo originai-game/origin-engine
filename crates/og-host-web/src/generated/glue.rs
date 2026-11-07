@@ -559,18 +559,18 @@ pub fn og_input_action(world: u32, name: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_input_action_down(world: u32, name: String) -> bool {
-    <Host as InputApi>::og_input_action_down(&Host, world, name)
+pub fn og_input_is_action_pressed(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_is_action_pressed(&Host, world, name)
 }
 
 #[wasm_bindgen]
-pub fn og_input_action_pressed(world: u32, name: String) -> bool {
-    <Host as InputApi>::og_input_action_pressed(&Host, world, name)
+pub fn og_input_is_action_just_pressed(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_is_action_just_pressed(&Host, world, name)
 }
 
 #[wasm_bindgen]
-pub fn og_input_action_released(world: u32, name: String) -> bool {
-    <Host as InputApi>::og_input_action_released(&Host, world, name)
+pub fn og_input_is_action_just_released(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_is_action_just_released(&Host, world, name)
 }
 
 #[wasm_bindgen]
@@ -589,13 +589,13 @@ pub fn og_input_action_vector(world: u32, name: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_input_set_contexts(world: u32, contexts: String) {
-    <Host as InputApi>::og_input_set_contexts(&Host, world, contexts)
+pub fn og_input_set_action_maps(world: u32, action_maps: String) {
+    <Host as InputApi>::og_input_set_action_maps(&Host, world, action_maps)
 }
 
 #[wasm_bindgen]
-pub fn og_input_contexts(world: u32) -> String {
-    <Host as InputApi>::og_input_contexts(&Host, world)
+pub fn og_input_action_maps(world: u32) -> String {
+    <Host as InputApi>::og_input_action_maps(&Host, world)
 }
 
 #[wasm_bindgen]

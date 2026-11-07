@@ -3016,7 +3016,7 @@ export interface WfcResult {
 // Input as the game sees it: the Input resource for polling, events for edges.
 // The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.
 // Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay.
-// Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.
+// Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in action maps, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.
 // Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
 
 /** The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4. */
@@ -3187,11 +3187,11 @@ export interface ActionDesc {
    */
   readonly kind?: ActionKind;
   /**
-   * Its context (og.input.setContexts): `gameplay`, `menu`, `vehicle`, or the game's own.
+   * Its action map (og.input.setActionMaps): `gameplay`, `menu`, `vehicle`, or the game's own.
    *
    * @default "gameplay"
    */
-  readonly context?: string;
+  readonly actionMap?: string;
   /**
    * What a settings screen and prompts call it (empty: its name).
    *
@@ -3266,8 +3266,8 @@ export interface ActionInfo {
   readonly name: string;
   /** Its kind. */
   readonly kind: ActionKind;
-  /** Its context. */
-  readonly context: string;
+  /** Its action map. */
+  readonly actionMap: string;
   /** Its label (its name when it has none). */
   readonly label: string;
   /** Its bindings now: the player's, else the defaults. */
@@ -3283,7 +3283,7 @@ export interface ActionInfo {
 }
 
 /**
- * Another binding a rebinding would share a control with: an action of the same context (or another slot of the same action).
+ * Another binding a rebinding would share a control with: an action of the same action map (or another slot of the same action).
  */
 export interface BindingConflict {
   /** The other action. */
@@ -3292,8 +3292,8 @@ export interface BindingConflict {
   readonly slot: number;
   /** The shared control, as the new binding names it. */
   readonly control: string;
-  /** The context they share. */
-  readonly context: string;
+  /** The action map they share. */
+  readonly actionMap: string;
 }
 
 /**
@@ -45048,7 +45048,7 @@ export declare namespace og {
    * Input as the game sees it: the Input resource for polling, events for edges.
    * The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.
    * Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay.
-   * Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.
+   * Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in action maps, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.
    * Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
    */
   namespace input {
@@ -45079,21 +45079,21 @@ export declare namespace og {
      * @param world The world.
      * @param name The action.
      */
-    function actionDown(world: World, name: string): boolean;
+    function isActionPressed(world: World, name: string): boolean;
     /**
      * Whether an action went down this tick.
      *
      * @param world The world.
      * @param name The action.
      */
-    function actionPressed(world: World, name: string): boolean;
+    function isActionJustPressed(world: World, name: string): boolean;
     /**
      * Whether an action went up this tick.
      *
      * @param world The world.
      * @param name The action.
      */
-    function actionReleased(world: World, name: string): boolean;
+    function isActionJustReleased(world: World, name: string): boolean;
     /**
      * Whether an action has been down for its holdMs.
      *
@@ -45116,20 +45116,20 @@ export declare namespace og {
      */
     function actionVector(world: World, name: string): Vector2;
     /**
-     * The contexts whose actions are live, first the one whose bindings win a control another context also binds (`["vehicle", "gameplay"]`: E exits the car, not interacts). Empty (the default) is every context, none winning. Takes effect from the next tick's actions.
+     * The action maps whose actions are live, first the one whose bindings win a control another action map also binds (`["vehicle", "gameplay"]`: E exits the car, not interacts). Empty (the default) is every action map, none winning. Takes effect from the next tick's actions.
      *
      * @param world The world.
-     * @param contexts The live contexts, by priority.
+     * @param actionMaps The live action maps, by priority.
      */
-    function setContexts(world: World, contexts: readonly string[]): void;
+    function setActionMaps(world: World, actionMaps: readonly string[]): void;
     /**
-     * The live contexts as og.input.setContexts set them (empty: every context).
+     * The live action maps as og.input.setActionMaps set them (empty: every action map).
      *
      * @param world The world.
      */
-    function contexts(world: World): readonly string[];
+    function actionMaps(world: World): readonly string[];
     /**
-     * Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its context changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes.
+     * Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its action map changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes.
      *
      * @param world The world.
      * @param desc The action, slot, part, binding and policy.
