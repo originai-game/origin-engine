@@ -43669,6 +43669,14 @@ export interface WalkGoalDesc {
    * @range 0..
    */
   readonly deceleration?: number;
+  /**
+   * How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, so a walk queued after another keeps moving through the first target (braking only to the next walk's speed, less by the corner it turns), and a jump queued after a walk takes off at the speed it arrives with. A large value, such as 1000, starts at full speed in the first tick.
+   *
+   * @default 4
+   * @range 0..
+   * @unit mps2 (metres per second squared)
+   */
+  readonly acceleration?: number;
 }
 
 /**
@@ -50450,7 +50458,7 @@ export declare namespace og {
      */
     function face(world: World, entity: Entity, desc?: FaceGoalDesc): Result<void>;
     /**
-     * Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied.
+     * Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line, gains speed at acceleration up to speed, brakes at deceleration to stop at the target (or to the speed the next queued walk or jump starts at), and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied.
      *
      * @param world The world.
      * @param entity An entity with an og.MotionAgent.

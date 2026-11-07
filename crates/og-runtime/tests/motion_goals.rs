@@ -6,7 +6,8 @@
 //! nothing here can depend on it.
 //!
 //! Ways this could fail: the mover integrates speed wrongly (arrives early or
-//! late); a goal finishes before the walk ends; the queue is not world state
+//! late, starts at full speed, or stops at a target another walk carries
+//! on from); a goal finishes before the walk ends; the queue is not world state
 //! (a restore loses it and the hashes part); walkTo is taken without drive.
 
 use og_runtime::{
@@ -145,10 +146,11 @@ fn a_driven_agent_walks_its_goals_and_restores_mid_walk() {
     assert_eq!(s["goal"], json!("walkTo"));
     assert_eq!(s["pose"], json!("wave"));
     assert_eq!(s["queued"], json!(1));
-    // The agent starts facing +Z and turns at 6 rad/s, so it is a little
-    // short of 1 s at 1.4 m/s; it is past half way and has not overshot.
+    // It gains speed at 4 m/s², so after 1 s it is 1.4²/8 = 0.245 m
+    // through the 0.35 s it took to reach 1.4 m/s and 0.91 m past that: at
+    // about 1.16 m (instant start would be 1.4).
     let (x, z) = position(w, e);
-    assert!(x > 1.2 && x < 1.4, "x {x} after 1 s");
+    assert!(x > 1.1 && x < 1.22, "x {x} after 1 s");
     assert!(z.abs() < 0.2, "z {z}");
     let saved = value(og_world_snapshot(w, None))
         .as_str()
@@ -474,4 +476,98 @@ fn a_controller_jump_predicts_its_landing_on_the_ground_it_reaches() {
         }
         let _ = e;
     }
+}
+
+/// The mover's speed each 60 Hz frame along +X for `frames` frames.
+fn speeds(w: u32, e: f64, frames_n: u32) -> Vec<(f64, f64)> {
+    let mut last = position(w, e).0;
+    (0..frames_n)
+        .map(|_| {
+            frames(w, 1);
+            let x = position(w, e).0;
+            let v = (x - last) * 60.0;
+            last = x;
+            (x, v)
+        })
+        .collect()
+}
+
+fn walk_to(w: u32, e: f64, desc: Value) {
+    value(og_motion_walk_to(w, e, Some(desc.to_string())));
+}
+
+#[test]
+fn a_walk_gains_speed_and_carries_it_into_the_next() {
+    // Straight on: walk to x 2 at 1.4 m/s, then run to x 7 at 3.6 m/s. The
+    // mover starts from rest, keeps 1.4 m/s through x 2 (the slower of the
+    // two walks' speeds) instead of stopping there, gains speed at 4 m/s²
+    // to the run's and brakes to a stop at x 7.
+    let (w, e) = start(true);
+    walk_to(
+        w,
+        e,
+        json!({ "position": { "x": 2, "y": 0, "z": 0 }, "speed": 1.4, "arrivalHeading": std::f64::consts::FRAC_PI_2 }),
+    );
+    walk_to(
+        w,
+        e,
+        json!({ "position": { "x": 7, "y": 0, "z": 0 }, "speed": 3.6 }),
+    );
+    let v = speeds(w, e, 360);
+    // 1/60 s at 4 m/s² is 0.067 m/s: no instant start.
+    assert!(v[0].1 < 0.1, "first frame at {} m/s", v[0].1);
+    // The tick that arrives covers only the rest of the way to x 2; every
+    // other frame through it is at 1.4 m/s.
+    let through: Vec<_> = v.iter().filter(|(x, _)| (1.8..2.2).contains(x)).collect();
+    let slow = through.iter().filter(|(_, s)| *s < 1.35).count();
+    let slowest = through.iter().map(|&&(_, s)| s).fold(f64::MAX, f64::min);
+    assert!(
+        through.len() > 10 && slow <= 1 && slowest > 0.5,
+        "{through:?}: it stopped at the first target"
+    );
+    let peak = v.iter().map(|&(_, s)| s).fold(0.0, f64::max);
+    assert!((peak - 3.6).abs() < 0.05, "peak {peak} m/s");
+    let (x, s) = *v.last().unwrap();
+    assert!(
+        (x - 7.0).abs() < 1e-4 && s.abs() < 1e-6,
+        "ended at x {x}, {s} m/s"
+    );
+
+    // Round a right angle, a walk stops at its target before the next.
+    let (w, e) = start(true);
+    walk_to(
+        w,
+        e,
+        json!({ "position": { "x": 2, "y": 0, "z": 0 }, "speed": 1.4, "arrivalHeading": std::f64::consts::FRAC_PI_2 }),
+    );
+    walk_to(
+        w,
+        e,
+        json!({ "position": { "x": 2, "y": 0, "z": 3 }, "speed": 1.4 }),
+    );
+    let mut slowest = f64::MAX;
+    let mut last = position(w, e);
+    for _ in 0..240 {
+        frames(w, 1);
+        let p = position(w, e);
+        if (p.0 - 2.0).abs() < 0.05 && p.1.abs() < 0.05 {
+            slowest = slowest.min(((p.0 - last.0).powi(2) + (p.1 - last.1).powi(2)).sqrt() * 60.0);
+        }
+        last = p;
+    }
+    assert!(slowest < 0.2, "{slowest} m/s at the corner");
+
+    // A large acceleration keeps the instant start.
+    let (w, e) = start(true);
+    walk_to(
+        w,
+        e,
+        json!({ "position": { "x": 2, "y": 0, "z": 0 }, "speed": 1.4, "acceleration": 1000 }),
+    );
+    let v = speeds(w, e, 2);
+    assert!(
+        (v[0].1 - 1.4).abs() < 1e-3,
+        "{} m/s in the first frame",
+        v[0].1
+    );
 }

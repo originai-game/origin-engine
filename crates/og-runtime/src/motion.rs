@@ -44,6 +44,8 @@ pub(crate) const SYSTEM: &str = "og.motion";
 pub(crate) const AGENT: &str = "og.MotionAgent";
 /// Below this speed a walkTo walks, above it runs (WalkGoalDesc.speed).
 pub(crate) const RUN_SPEED: f32 = 2.5;
+/// A walkTo's acceleration when its desc leaves it at 0, m/s².
+const ACCELERATION: f32 = 4.0;
 /// A walkTo ends within this distance of its target.
 const ARRIVED: f32 = 1e-3;
 /// The gravity of a world without og.Physics, m/s².
@@ -89,6 +91,9 @@ pub(crate) struct Goal {
     pub speed: f32,
     pub arrival_heading: Option<f32>,
     pub deceleration: f32,
+    /// How fast a walk gains speed, m/s² (infinite: at full speed in its
+    /// first tick, as goals saved before MOTION5 did).
+    pub acceleration: f32,
     /// A jump's apex over its takeoff, m (`height`), and the seconds before
     /// takeoff (`prepare`); its `duration` is the recovery after landing,
     /// `speed` its horizontal travel in m (`distance`) along `heading`.
@@ -155,6 +160,10 @@ pub(crate) struct Agent {
     /// what the presenter watches to follow a new goal.
     pub serial: u32,
     pub performance: performance::Performance,
+    /// The mover's speed over the ground, m/s: what the next walk or jump
+    /// starts from. A walk into another walk or a jump keeps it through
+    /// its target; a goal in place stops it.
+    pub speed: f32,
 }
 
 /// The `og.motion` state: agents by entity bits (ordered, so saves are).
@@ -241,6 +250,37 @@ impl Settings {
     }
 }
 
+/// A jump's speed across the ground in the air, m/s: its distance over
+/// its flat flight.
+fn jump_ground_speed(g: &Goal, v0: f32, gravity: f32) -> f32 {
+    if gravity > 0.0 && v0 > 0.0 {
+        g.speed * gravity / (2.0 * v0)
+    } else {
+        0.0
+    }
+}
+
+/// The speed a walk `g` from `at` arrives at its target with: the speed
+/// the next goal starts at. A walk on keeps the slower of the two speeds,
+/// less by the corner it turns (none past a right angle); a jump takes
+/// off at its flight's speed across the ground; anything else stops.
+fn entry_speed(g: &Goal, at: &Vec3, next: Option<&Goal>, gravity: f32) -> f32 {
+    let Some(n) = next else { return 0.0 };
+    match n.kind {
+        Kind::WalkTo => {
+            let a = Vec3::new(g.target.x - at.x, 0.0, g.target.z - at.z).normalize_or_zero();
+            let b = Vec3::new(n.target.x - g.target.x, 0.0, n.target.z - g.target.z)
+                .normalize_or_zero();
+            g.speed.min(n.speed) * a.dot(b).max(0.0)
+        }
+        Kind::Jump => {
+            let v0 = (2.0 * gravity.max(0.0) * n.height).sqrt();
+            g.speed.min(jump_ground_speed(n, v0, gravity.max(0.0)))
+        }
+        _ => 0.0,
+    }
+}
+
 /// Advances `agent` by `dt` seconds: starts the next goal when there is
 /// none, carries the current one out (moving `position` and `heading` when
 /// `drive`), and finishes it by its rule. Fixed math only: the simulation's
@@ -261,6 +301,9 @@ pub(crate) fn advance(
         if goal.kind == Kind::Jump {
             // A jump travels its way, or the way it faces when it starts.
             goal.heading = goal.arrival_heading.unwrap_or(*heading);
+        }
+        if !matches!(goal.kind, Kind::WalkTo | Kind::Jump) {
+            agent.speed = 0.0;
         }
         agent.current = Some(Current {
             goal,
@@ -316,6 +359,14 @@ pub(crate) fn advance(
                 JumpStage::Prepare => {
                     if s.drive {
                         *heading = turn(*heading, g.heading, step);
+                        // A running jump's preparation keeps running: the
+                        // approach speed eases to the flight's across the
+                        // ground, along the jump's heading.
+                        let to = jump_ground_speed(&g, j.v0, j.gravity);
+                        let k = (dt / g.prepare.max(dt)).min(1.0);
+                        agent.speed += (to.min(agent.speed) - agent.speed) * k;
+                        let (sx, cz) = sin_cos(g.heading);
+                        *position += Vec3::new(sx, 0.0, cz) * (agent.speed * dt);
                     }
                     // Takeoff on the tick the preparation ends; the arc
                     // (or the controller's jump) starts with the next.
@@ -363,6 +414,7 @@ pub(crate) fn advance(
                         }
                         j.stage = JumpStage::Landed;
                         j.velocity = 0.0;
+                        agent.speed = 0.0;
                         j.eta = Some(0.0);
                     }
                 }
@@ -375,14 +427,22 @@ pub(crate) fn advance(
             let left = to.length();
             if left > ARRIVED {
                 *heading = turn(*heading, atan2(to.x, to.z), step);
-                // Solve d = v*dt, v² = 2*a*(left-d): braking cannot
-                // overshoot the stopping distance, even on a long tick.
-                let speed = if g.deceleration > 0.0 {
+                // Braking to the speed the next goal starts at: solve
+                // d = v*dt, v² = v_end² + 2*a*(left-d), so braking cannot
+                // overshoot, even on a long tick. Speed is gained at the
+                // goal's acceleration.
+                let end = entry_speed(&g, position, agent.queue.front(), s.gravity);
+                let braked = if g.deceleration > 0.0 {
                     let adt = g.deceleration * dt;
-                    ((adt * adt + 2.0 * g.deceleration * left).sqrt() - adt).min(g.speed)
+                    (adt * adt + end * end + 2.0 * g.deceleration * left).sqrt() - adt
                 } else {
                     g.speed
                 };
+                let speed = braked
+                    .min(g.speed)
+                    .min(agent.speed + g.acceleration * dt)
+                    .max(0.0);
+                agent.speed = speed;
                 let d = (speed * dt).min(left);
                 *position += to * (d / left);
             }
@@ -645,7 +705,7 @@ pub(crate) fn transform_of(t: &Value) -> (Vec3, Quat) {
 struct Block(Arc<Mutex<Goals>>);
 
 fn save(g: &Goals, out: &mut Vec<u8>) {
-    out.extend_from_slice(b"MOTION4\0");
+    out.extend_from_slice(b"MOTION5\0");
     let u32_ = |out: &mut Vec<u8>, v: u32| out.extend_from_slice(&v.to_le_bytes());
     let f32_ = |out: &mut Vec<u8>, v: f32| out.extend_from_slice(&v.to_le_bytes());
     let goal = |out: &mut Vec<u8>, g: &Goal| {
@@ -661,6 +721,7 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
         f32_(out, g.deceleration);
         f32_(out, g.height);
         f32_(out, g.prepare);
+        f32_(out, g.acceleration);
     };
     u32_(out, g.agents.len() as u32);
     for (e, a) in &g.agents {
@@ -668,6 +729,7 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
         for v in [a.completed, a.hold, a.serial, a.queue.len() as u32] {
             u32_(out, v);
         }
+        f32_(out, a.speed);
         for q in &a.queue {
             goal(out, q);
         }
@@ -697,10 +759,13 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
 }
 
 fn load(bytes: &[u8]) -> og_core::Result<Goals> {
-    // MOTION4 adds a jump's ground and landing prediction to MOTION3's
-    // jumps; MOTION3 added jumps to MOTION2's goals; before MOTION2 there
-    // was no tag.
-    let version = if bytes.starts_with(b"MOTION4\0") {
+    // MOTION5 adds a walk's acceleration and the mover's speed (older
+    // goals start at full speed, the mover from rest); MOTION4 added a
+    // jump's ground and landing prediction to MOTION3's jumps; MOTION3
+    // added jumps to MOTION2's goals; before MOTION2 there was no tag.
+    let version = if bytes.starts_with(b"MOTION5\0") {
+        5
+    } else if bytes.starts_with(b"MOTION4\0") {
         4
     } else if bytes.starts_with(b"MOTION3\0") {
         3
@@ -720,7 +785,11 @@ fn load(bytes: &[u8]) -> og_core::Result<Goals> {
             serial: r.u32()?,
             ..Agent::default()
         };
-        for _ in 0..r.u32()? {
+        let queued = r.u32()?;
+        if version >= 5 {
+            a.speed = r.f32()?;
+        }
+        for _ in 0..queued {
             a.queue.push_back(r.goal(version)?);
         }
         if r.u32()? != 0 {
@@ -818,6 +887,7 @@ impl Reader<'_> {
             speed: self.f32()?,
             arrival_heading: None,
             deceleration: 0.0,
+            acceleration: 0.0,
             height: 0.0,
             prepare: 0.0,
         };
@@ -831,6 +901,11 @@ impl Reader<'_> {
             goal.height = self.f32()?;
             goal.prepare = self.f32()?;
         }
+        goal.acceleration = if version >= 5 {
+            self.f32()?
+        } else {
+            f32::INFINITY
+        };
         Ok(goal)
     }
 }
@@ -976,6 +1051,7 @@ pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> String {
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            acceleration: 0.0,
             height: 0.0,
             prepare: 0.0,
         })
@@ -994,6 +1070,7 @@ pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> String 
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            acceleration: 0.0,
             height: 0.0,
             prepare: 0.0,
         })
@@ -1012,6 +1089,7 @@ pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> String {
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            acceleration: 0.0,
             height: 0.0,
             prepare: 0.0,
         })
@@ -1027,11 +1105,16 @@ pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Strin
         }
         let arrival_heading = d["arrivalHeading"].as_f64().map(|h| h as f32);
         let deceleration = number(d, "deceleration", 3.0);
+        let acceleration = number(d, "acceleration", 0.0);
         if arrival_heading.is_some_and(|h| !h.is_finite())
             || !deceleration.is_finite()
             || deceleration < 0.0
+            || !acceleration.is_finite()
+            || acceleration < 0.0
         {
-            return Err("arrivalHeading must be finite and deceleration non-negative".into());
+            return Err(
+                "arrivalHeading must be finite, deceleration and acceleration non-negative".into(),
+            );
         }
         Ok(Goal {
             kind: Kind::WalkTo,
@@ -1045,6 +1128,11 @@ pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Strin
                 3.0
             } else {
                 deceleration
+            },
+            acceleration: if acceleration == 0.0 {
+                ACCELERATION
+            } else {
+                acceleration
             },
             height: 0.0,
             prepare: 0.0,
@@ -1079,6 +1167,7 @@ pub fn og_motion_jump(world: u32, entity: f64, desc: Option<String>) -> String {
             speed: distance,
             arrival_heading: heading,
             deceleration: 0.0,
+            acceleration: 0.0,
             height,
             prepare,
         })
@@ -1092,6 +1181,7 @@ pub fn og_motion_clear(world: u32, entity: f64) -> String {
         agent_of(&eng, e)?;
         if let Some(a) = lock(&shared(world)).agents.get_mut(&e.to_bits()) {
             a.queue.clear();
+            a.speed = 0.0;
             if let Some(c) = a.current.take() {
                 if c.goal.kind != Kind::Face {
                     a.hold = c.goal.pose;
@@ -1236,4 +1326,69 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
         0,
         move |_world, _args| Ok(dump(engine)),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn walk(acceleration: f32) -> Goal {
+        Goal {
+            kind: Kind::WalkTo,
+            pose: 0,
+            target: Vec3::new(2.0, 0.0, 0.0),
+            heading: 0.0,
+            duration: 0.0,
+            speed: 1.4,
+            arrival_heading: None,
+            deceleration: 3.0,
+            acceleration,
+            height: 0.0,
+            prepare: 0.0,
+        }
+    }
+
+    #[test]
+    fn a_motion4_save_restores_with_its_walks_at_full_speed_from_rest() {
+        // MOTION4 by hand: one agent, one queued walk, no current goal.
+        let mut b = b"MOTION4\0".to_vec();
+        let u = |b: &mut Vec<u8>, v: u32| b.extend_from_slice(&v.to_le_bytes());
+        let f = |b: &mut Vec<u8>, v: f32| b.extend_from_slice(&v.to_le_bytes());
+        u(&mut b, 1);
+        b.extend_from_slice(&7u64.to_le_bytes());
+        for v in [0, 0, 0, 1] {
+            u(&mut b, v);
+        }
+        let g = walk(0.0);
+        u(&mut b, g.kind as u32);
+        u(&mut b, g.pose);
+        for v in [2.0, 0.0, 0.0, 0.0, 0.0, 1.4] {
+            f(&mut b, v);
+        }
+        u(&mut b, 0);
+        f(&mut b, 0.0);
+        f(&mut b, 3.0);
+        f(&mut b, 0.0);
+        f(&mut b, 0.0);
+        u(&mut b, 0);
+        let perf = serde_json::to_vec(&performance::Performance::default()).unwrap();
+        u(&mut b, perf.len() as u32);
+        b.extend_from_slice(&perf);
+        let mut goals = load(&b).unwrap();
+        let a = goals.agents.get_mut(&7).unwrap();
+        assert_eq!(a.speed, 0.0);
+        assert_eq!(a.queue[0], walk(f32::INFINITY));
+        // As MOTION4 ran it: at full speed in the first tick.
+        let s = Settings::of(&json!({ "drive": true }));
+        let (mut p, mut h) = (Vec3::ZERO, std::f32::consts::FRAC_PI_2);
+        advance(a, &s, &mut p, &mut h, 1.0 / 60.0);
+        assert!((p.x - 1.4 / 60.0).abs() < 1e-6, "{}", p.x);
+
+        // MOTION5 keeps a walk's acceleration and the mover's speed.
+        a.queue.push_back(walk(ACCELERATION));
+        let mut out = Vec::new();
+        save(&goals, &mut out);
+        assert!(out.starts_with(b"MOTION5\0"));
+        assert_eq!(load(&out).unwrap(), goals);
+    }
 }

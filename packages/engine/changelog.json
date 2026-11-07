@@ -5,6 +5,12 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "og.motion.walkTo (WalkGoalDesc.acceleration)",
+        "change": "A walk gains speed at its new acceleration (0 uses 4 m/s²) instead of starting at full speed in its first tick, and the mover keeps its speed through a target when another walkTo or a jump is queued after it: it brakes only to the next walk's speed (less by the corner, none past a right angle) or to a jump's flight speed, and a jump's preparation keeps moving at the speed it arrives with, so a jump after a walk takes off running. Walks take longer from rest and chained walks arrive sooner, so a game's world steps differently and its world_hash moves. The og.motion state is saved as MOTION5 (each goal's acceleration and the mover's speed); a MOTION4 save restores with its walks at full speed from rest, as it ran.",
+        "fix": "Nothing to edit for the new timing. A game whose logic needs the old instant start passes a large acceleration, such as `acceleration: 1000`; one that needs a stop at a target between two walks queues og.motion.pose or face between them. Re-record golden hashes of games that use walkTo.",
+        "find": ["og.motion.walkTo", "walkTo("]
+      },
+      {
         "member": "UI documents (type screen, type component)",
         "change": "Documents are version 2, the CSS dialect (docs/ui.md §10.4): an element's look and layout are CSS declarations (`width: stretch; max-width: 640px`, `padding: 8px 12px`, `background: var(--panel-raised)`, `font: var(--text-caption)`, `transition: -og-spring(300ms, 0.1)`), interaction states are pseudo-classes (`:hover`, `:active`, `:focus-visible`, `:disabled`), breakpoints `@media phone` and the game's extensions `-og-` properties. A version 1 document no longer loads; the subset is strict, so an unknown property or value is an error that names the form to write.",
         "fix": "Run `og ui migrate assets` (and on any other directory of .ogt documents): it rewrites each version 1 screen and component line for line with its comments, after checking the two read as the same document. Code that writes document text writes the version 2 form.",

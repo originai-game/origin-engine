@@ -1500,6 +1500,7 @@ mod tests {
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            acceleration: 0.0,
             height: 0.5,
             prepare: 0.25,
         };
@@ -1601,6 +1602,7 @@ mod tests {
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            acceleration: 0.0,
             height: 0.0,
             prepare: 0.0,
         };
@@ -1688,6 +1690,7 @@ mod tests {
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            acceleration: 0.0,
             height: 0.0,
             prepare: 0.0,
         };

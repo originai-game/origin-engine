@@ -17,6 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `pose` | `string` | `""` | — | — | — | The pose taken on arrival; empty is `idle`. |
 | `arrivalHeading` | `number` | `0` | — | `rad` | — | Facing after arrival; omitted keeps the travel heading. The goal ends only after this turn completes. |
 | `deceleration` | `number` | `3` | ≥ 0 | — | — | Braking near the target; 0 uses 3 m/s². A CharacterController owns ground height and collision when present; otherwise motion keeps the Transform's height. |
+| `acceleration` | `number` | `4` | ≥ 0 | `mps2` | — | How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, so a walk queued after another keeps moving through the first target (braking only to the next walk's speed, less by the corner it turns), and a jump queued after a walk takes off at the speed it arrives with. A large value, such as 1000, starts at full speed in the first tick. |
 
 ```ogt
 struct WalkGoalDesc {
@@ -38,6 +39,11 @@ struct WalkGoalDesc {
   field deceleration f32 "Braking near the target; 0 uses 3 m/s². A CharacterController owns ground height and collision when present; otherwise motion keeps the Transform's height." {
     default 3
     min 0
+  }
+  field acceleration f32 "How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, so a walk queued after another keeps moving through the first target (braking only to the next walk's speed, less by the corner it turns), and a jump queued after a walk takes off at the speed it arrives with. A large value, such as 1000, starts at full speed in the first tick." {
+    default 4
+    min 0
+    unit mps2
   }
 }
 ```

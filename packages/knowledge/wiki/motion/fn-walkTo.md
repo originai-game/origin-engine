@@ -6,7 +6,7 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 ### `og.motion.walkTo`
 
-Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied.
+Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line, gains speed at acceleration up to speed, brakes at deceleration to stop at the target (or to the speed the next queued walk or jump starts at), and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied.
 
 Also known as: walk to, move to, go to, locomotion goal, natural movement, Unreal MoveTo
 
@@ -26,7 +26,7 @@ Binding symbol `og_motion_walk_to` · publish builds: kept
 
 ```ogt
 fn walkTo {
-  doc "Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied."
+  doc "Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line, gains speed at acceleration up to speed, brakes at deceleration to stop at the target (or to the speed the next queued walk or jump starts at), and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied."
   aliases "walk to, move to, go to, locomotion goal, natural movement, Unreal MoveTo"
   param world World "The world."
   param entity Entity "An entity with an og.MotionAgent."
@@ -35,4 +35,4 @@ fn walkTo {
 }
 ```
 
-<sub>Module `motion` line 271</sub>
+<sub>Module `motion` line 276</sub>
