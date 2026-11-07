@@ -908,7 +908,11 @@ pub(crate) fn cook_primitive(
         .map(|&i| Vec3::from(pos_all[i as usize]).distance(sphere_center))
         .fold(0.0f32, f32::max);
     for (k, (l, error)) in levels.iter().enumerate() {
-        let (ordered, mut cut) = clusterize(&pos_all, l);
+        let (ordered, mut cut) = if opts.clusters {
+            clusterize(&pos_all, l)
+        } else {
+            (Vec::new(), Vec::new())
+        };
         let first = all.len() as u32;
         for c in &mut cut {
             c.index_first += first;
@@ -920,7 +924,8 @@ pub(crate) fn cook_primitive(
         }
         lods.push(LodRow {
             index_first: first,
-            index_count: ordered.len() as u32,
+            // The level's own count: `ordered` is empty without clusters.
+            index_count: l.len() as u32,
             error: *error,
             cluster_first: clusters.len() as u32,
             cluster_count: cut.len() as u32,
@@ -994,8 +999,13 @@ pub(crate) fn cook_primitive(
     let vertices = encode_vertices(&packed, vertex_count, stride)?;
     let index_bytes =
         meshopt::encode_index_buffer(&all, vertex_count).map_err(|e| format!("meshopt: {e}"))?;
-    let cluster_indices = meshopt::encode_index_buffer(&cluster_indices, vertex_count)
-        .map_err(|e| format!("meshopt: {e}"))?;
+    // No stream at all without clusters (`cook { clusters false }`).
+    let cluster_indices = if opts.clusters {
+        meshopt::encode_index_buffer(&cluster_indices, vertex_count)
+            .map_err(|e| format!("meshopt: {e}"))?
+    } else {
+        Vec::new()
+    };
     Ok(Some(CookedPrimitive {
         row: PrimitiveRow {
             material,

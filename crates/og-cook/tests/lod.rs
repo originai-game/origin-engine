@@ -302,3 +302,52 @@ fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
         "the cone culled {culled} cluster views"
     );
 }
+
+/// `cook { clusters false }` (`MeshOptions::clusters`): the blob keeps no
+/// clusters and no cluster stream, it loads, and its primitive has no mesh
+/// clusters (drawn on the per-instance path), with the same simulation mesh.
+///
+/// Ways this could fail: an empty cluster stream the loader still decodes
+/// to the index count (the model refused); the option not reaching the
+/// primitive cook (the same bytes as with clusters); a level's index count
+/// taken from the cluster-order stream, which is empty here (every level
+/// drawn and collided with no triangles).
+#[test]
+fn a_model_cooked_without_clusters_loads_with_none() {
+    let cook = |name: &str, clusters: bool| {
+        let root = project(name, &[("models/ball.glb", &glb(&[sphere(96)], false))]);
+        let options = CookOptions {
+            mesh: og_cook::cook::MeshOptions {
+                clusters,
+                ..Default::default()
+            },
+            ..CookOptions::default()
+        };
+        // Without the shared cache, so each run cooks with this build's code.
+        let report = og_cook::cook::cook_project_with_texture_cache(&root, &options, None).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let (model, _) = bundle.load_model_with_textures("models/ball.glb").unwrap();
+        let bytes = std::fs::metadata(root.join("cooked/models/ball.glb.ogb"))
+            .unwrap()
+            .len();
+        (model, bytes)
+    };
+    let (with, with_bytes) = cook("og-cook-lod-clusters-on", true);
+    let (without, without_bytes) = cook("og-cook-lod-clusters-off", false);
+    let (a, b) = (&with.primitives[0], &without.primitives[0]);
+    assert!(a.mesh_clusters().is_some());
+    assert!(b.mesh_clusters().is_none());
+    assert!(b.clusters.is_empty() && b.cluster_indices.is_empty());
+    assert_eq!(a.indices, b.indices, "the simulation mesh is the same");
+    assert!(b.lods.len() > 1 && b.lods.iter().all(|l| l.count > 0));
+    let (la, lb): (Vec<_>, Vec<_>) = (
+        a.lods.iter().map(|l| (l.first, l.count)).collect(),
+        b.lods.iter().map(|l| (l.first, l.count)).collect(),
+    );
+    assert_eq!(la, lb, "the same levels");
+    assert!(
+        without_bytes < with_bytes,
+        "{without_bytes} >= {with_bytes}"
+    );
+}

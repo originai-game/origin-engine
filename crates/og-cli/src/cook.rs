@@ -199,17 +199,45 @@ pub fn texture_options(root: &Path, web: bool) -> Result<TextureOptions, String>
                         }
                     };
                 }
+                // The models' (`mesh_options`).
+                "clusters" => {}
                 // The publish block's other settings are the export's
                 // (`publish.rs`).
                 _ if *name == "publish" => {}
                 other => {
                     return Err(format!(
-                        "project.ogt:{}: cook has no `{other}`; it takes color_textures",
+                        "project.ogt:{}: cook has no `{other}`; it takes color_textures and clusters",
                         e.line
                     ));
                 }
             }
         }
+    }
+    Ok(o)
+}
+
+/// The mesh options of the project at `root`: project.ogt's `cook {
+/// clusters false }` cooks no meshlet clusters (og-cook's
+/// `MeshOptions::clusters`; true without it). The defaults without a
+/// manifest.
+pub fn mesh_options(root: &Path) -> Result<og_cook::cook::MeshOptions, String> {
+    let mut o = og_cook::cook::MeshOptions::default();
+    let Ok(text) = std::fs::read_to_string(root.join("project.ogt")) else {
+        return Ok(o);
+    };
+    let doc = og_core::ogt::Document::parse(&text).map_err(|e| format!("project.ogt: {e}"))?;
+    let entry = doc
+        .body
+        .get("cook")
+        .and_then(|e| e.block.as_ref())
+        .and_then(|b| b.get("clusters"));
+    if let Some(e) = entry {
+        o.clusters = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+            format!(
+                "project.ogt:{}: cook.clusters takes true (the default: meshlet clusters for frames culled on the GPU) or false (none, a tenth fewer model bytes)",
+                e.line
+            )
+        })?;
     }
     Ok(o)
 }
@@ -227,6 +255,7 @@ pub fn cook_for(root: &Path, threads: usize, web: bool, publish: bool) -> Result
         threads,
         schemas: engine_schemas(),
         texture: texture_options(root, web)?,
+        mesh: mesh_options(root)?,
         publish,
         ..CookOptions::default()
     };
@@ -361,14 +390,15 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
             .filter_map(|c| c.strip_prefix(&assets).ok())
             .map(|c| c.to_string_lossy().replace('\\', "/"))
             .collect();
-        let options = match texture_options(root, false) {
-            Ok(texture) => CookOptions {
+        let options = match (texture_options(root, false), mesh_options(root)) {
+            (Ok(texture), Ok(mesh)) => CookOptions {
                 threads,
                 schemas: engine_schemas(),
                 texture,
+                mesh,
                 ..CookOptions::default()
             },
-            Err(e) => {
+            (Err(e), _) | (_, Err(e)) => {
                 eprintln!("og cook: {e}");
                 continue;
             }
@@ -542,7 +572,7 @@ pub fn run(args: &[&str]) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::texture_options;
+    use super::{mesh_options, texture_options};
 
     fn project(text: &str) -> std::path::PathBuf {
         use std::sync::atomic::{AtomicU32, Ordering};
@@ -555,6 +585,24 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("project.ogt"), text).unwrap();
         dir
+    }
+
+    #[test]
+    fn clusters_false_reaches_the_mesh_options_beside_the_texture_ones() {
+        let head = "type project\nversion 1\n---\nname \"t\"\n";
+        let off = project(&format!(
+            "{head}cook {{\n  color_textures uastc\n  clusters false\n}}\n"
+        ));
+        assert!(!mesh_options(&off).unwrap().clusters);
+        assert!(texture_options(&off, false).unwrap().color_uastc);
+        let on = project(&format!("{head}cook {{\n  color_textures uastc\n}}\n"));
+        assert!(mesh_options(&on).unwrap().clusters);
+        let bad = project(&format!("{head}cook {{\n  clusters some\n}}\n"));
+        let e = mesh_options(&bad).unwrap_err();
+        assert!(e.contains("project.ogt:6") && e.contains("false"), "{e}");
+        for d in [off, on, bad] {
+            let _ = std::fs::remove_dir_all(d);
+        }
     }
 
     #[test]
