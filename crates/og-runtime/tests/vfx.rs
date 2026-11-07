@@ -46,6 +46,17 @@ fn project() -> &'static Path {
              light {\n  at 0.1\n  life 0.2\n  intensity curve 0 10 1 0\n}\n\
              shake {\n  at 0.1\n  trauma 0.2\n}\n",
         );
+        // A pixel effect (type vfx2d): 6 frames at 12 fps, its impact on
+        // frame 3 (0.25 s), played 0.1 s into a composed effect.
+        write(
+            "fx/burst.ogt",
+            "type vfx2d\nversion 1\n---\nimpact 0.25\n\
+             {\"w\": 16, \"h\": 32, \"frames\": 6, \"fps\": 12, \"layers\": [{\"type\": \"flash\", \"r\": 0.8, \"dur\": 1}]}\n",
+        );
+        write(
+            "fx/pixel.ogt",
+            "type vfx\nversion 1\n---\nduration 1\nflipbook \"fx/burst.ogt\" {\n  at 0.1\n  size 2\n}\n",
+        );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -81,9 +92,9 @@ impl Hooks for Game {
     }
 }
 
-/// Per frame: the scene's tick and its particle systems, effect meshes and
-/// lights.
-type Drawn = Rc<RefCell<Vec<(u64, usize, usize, usize)>>>;
+/// Per frame: the scene's tick and its particle systems, effect meshes,
+/// lights and (width, height) of its sprites.
+type Drawn = Rc<RefCell<Vec<(u64, usize, usize, usize, Vec<(f32, f32)>)>>>;
 
 struct Recorder(Drawn, og_render::FrameStats);
 
@@ -100,6 +111,7 @@ impl RenderBackend for Recorder {
             scene.particles.len(),
             scene.effect_meshes.len(),
             scene.lights.len(),
+            scene.sprites.iter().map(|s| (s.size.x, s.size.y)).collect(),
         ));
         // Stats that follow the scene, so the render dump can be checked
         // against the frame that made them.
@@ -230,6 +242,7 @@ fn a_spawned_effect_sends_its_events_draws_its_elements_and_ends() {
     assert_eq!(at(0.2), (1, 1, 1), "the ring and the light after it");
     assert_eq!(at(0.4).1 + at(0.4).2, 0, "the ring and light are over");
     assert_eq!(d.last().map(|f| (f.1, f.2, f.3)), Some((0, 0, 0)));
+    assert!(d.iter().all(|f| f.4.is_empty()), "no sprite: {d:?}");
 
     // A restore to just after the spawn sends the same events again.
     seen.borrow_mut().clear();
@@ -238,4 +251,67 @@ fn a_spawned_effect_sends_its_events_draws_its_elements_and_ends() {
     let again: Vec<(u32, String)> = seen.borrow().iter().map(|s| (s.0, s.1.clone())).collect();
     let first: Vec<(u32, String)> = first.into_iter().map(|s| (s.0, s.1)).collect();
     assert_eq!(first, again, "a restore replays the effect's events");
+}
+
+/// A `flipbook` element plays a pixel effect (type vfx2d) as a sprite from
+/// its time for its clip's length, sized by `size` and the frame's shape,
+/// and its clip's impact reaches the game as the effect's og.VfxEvent.
+///
+/// Ways it could fail: the sprite never drawn, drawn before its time or
+/// left behind after its clip, the impact lost or sent twice, or sent at
+/// the composed effect's start instead of the flipbook's frame.
+#[test]
+fn a_flipbook_element_plays_its_sheet_and_passes_its_impact_on() {
+    let seen = Seen::default();
+    set_hooks(Rc::new(Game(seen.clone())));
+    og_host_begin_bundle();
+    let watch = og_system_define_system(
+        "Watch".into(),
+        json!({ "reads": [{ "kind": "event", "name": "og.VfxEvent" }], "writes": [] }).to_string(),
+        WATCH,
+    );
+    let game = og_game_game(Some(json!({ "seed": 5, "systems": [watch] }).to_string()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let drawn = Drawn::default();
+    set_render_backend(
+        engine,
+        Some(Box::new(Recorder(drawn.clone(), Default::default()))),
+    )
+    .unwrap();
+    ticks(engine, 1);
+    let fx = value(og_load_vfx(engine, "fx/pixel.ogt".into()));
+    let info = value(og_vfx_info(engine, fx.as_f64().unwrap()));
+    assert_eq!(info["elements"], json!(["flipbook"]));
+    let start = og_world_get_tick(engine);
+    value(og_vfx_spawn(
+        engine,
+        Some(json!({ "asset": fx }).to_string()),
+    ));
+    ticks(engine, 80);
+
+    let s = seen.borrow().clone();
+    assert_eq!(s.len(), 1, "one impact: {s:?}");
+    assert_eq!(s[0].1, "impact");
+    // 0.1 s to the flipbook, 0.25 s into its clip: 21 ticks, give or take
+    // the tick the event is read on.
+    assert!((0.32..=0.4).contains(&s[0].2), "impact at {} s", s[0].2);
+    assert!(
+        (21..=24).contains(&(s[0].0 - start)),
+        "read at tick {}",
+        s[0].0 - start
+    );
+
+    let d = drawn.borrow().clone();
+    let sprites = |t: f64| {
+        let tick = start as u64 + (t * 60.0).round() as u64;
+        d.iter()
+            .find(|f| f.0 == tick)
+            .map(|f| f.4.clone())
+            .unwrap_or_else(|| panic!("no frame at {tick}"))
+    };
+    assert!(sprites(0.05).is_empty(), "nothing before 0.1 s");
+    // 2 m tall, its width by the 16 x 32 frame.
+    assert_eq!(sprites(0.3), vec![(1.0, 2.0)]);
+    assert!(sprites(0.75).is_empty(), "gone after its 0.5 s clip");
 }

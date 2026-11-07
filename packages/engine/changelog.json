@@ -511,6 +511,7 @@
       }
     ],
     "added": [
+      {"member": "og.vfx flipbook element", "summary": "A `type vfx` effect may play a pixel effect (`type vfx2d`) or any flipbook sheet with `flipbook \"<id>\"`: a camera-facing og.Sprite with og.Flipbook from its `at`, sized by `size` and the frame's shape, tinted by `color` and the effect's tint, for `life` or its clip's length; the sheet's og.FlipbookEvent events (the impact frame among them) reach the game as the effect's og.VfxEvent of the same name."},
       {
         "member": "IDL aliases",
         "summary": "The IDL takes an `aliases \"...\"` line on functions, records, structs, enums, unions and interfaces: synonyms and other engines' names (Unity, Godot, Unreal, three.js). The wiki prints it as `Also known as:` and `og api find` scores it as a fifth BM25F field; field lengths now average over the entries that have the field. 94 entries carry aliases, and a few one-line docs gained their purpose (defineSystem, og.SensorEntered). On the 160-query evaluation set recall@1 goes from 53 to 62 and recall@5 from 100 to 132; on a 40-query held-out set written before any alias and never tuned against (crates/og-cli/tests/fixtures/api-find-heldout.tsv) recall stays at 9 to 10 @1 and 21 @5: aliases fix the entries they name, not others."

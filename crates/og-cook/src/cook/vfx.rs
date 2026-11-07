@@ -15,7 +15,7 @@ pub(super) fn stamp_inputs(s: &Source, known: &dyn Fn(&str) -> bool) -> String {
         return String::new();
     };
     let r = v.references();
-    [r.emitters, r.effects, r.models, r.sounds]
+    [r.emitters, r.effects, r.models, r.sounds, r.flipbooks]
         .concat()
         .iter()
         .map(|id| format!("{id}={}", known(crate::runtime::asset_id(id))))
@@ -38,6 +38,7 @@ pub(super) fn cook_vfx(
         ("effect material", &r.effects),
         ("model", &r.models),
         ("sound", &r.sounds),
+        ("flipbook", &r.flipbooks),
     ] {
         for id in ids {
             if !known(crate::runtime::asset_id(id)) {

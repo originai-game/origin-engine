@@ -61,6 +61,14 @@ pub(crate) enum Link {
     Effect(Option<EffectMaterialHandle>),
     /// A sound's handle (og.AudioSource.sound).
     Sound(f64),
+    /// A flipbook sheet (og.load.flipbook): its handle, texture, the first
+    /// frame's width over height and the first clip's length.
+    Flipbook {
+        sheet: f64,
+        texture: f64,
+        aspect: f32,
+        clip: f32,
+    },
     None,
 }
 
@@ -151,6 +159,17 @@ fn link(eng: &super::engine::Engine, kind: &VfxKind) -> Result<Link, String> {
         }
         VfxKind::Sound { id, .. } => {
             Link::Sound(super::assets::handle(super::assets::load_sound(eng, id)?) as f64)
+        }
+        VfxKind::Flipbook { id, .. } => {
+            let info = super::feel::load_flipbook(eng, id)?;
+            let w = info["frameWidth"].as_f64().unwrap_or(1.0);
+            let h = info["frameHeight"].as_f64().unwrap_or(1.0).max(1.0);
+            Link::Flipbook {
+                sheet: info["sheet"].as_f64().unwrap_or(0.0),
+                texture: info["texture"].as_f64().unwrap_or(0.0),
+                aspect: (w / h) as f32,
+                clip: info["clips"][0]["duration"].as_f64().unwrap_or(0.0) as f32,
+            }
         }
         VfxKind::Light { .. } | VfxKind::Decal { .. } | VfxKind::Shake { .. } => Link::None,
     })
@@ -324,11 +343,25 @@ struct Records {
     source: (SchemaId, Layout),
     transform: (SchemaId, Layout),
     parent: (SchemaId, Layout),
+    sprite: (SchemaId, Layout),
+    flipbook: (SchemaId, Layout),
+    flip_event: (SchemaId, Layout),
 }
 
 fn layout(world: &World, name: &str, kind: RecordKind) -> og_core::Result<(SchemaId, Layout)> {
     let id = world.id_by_name(name)?;
     Ok((id, Layout::from_schema(world.schema(id)?, kind)))
+}
+
+/// A component the system spawns from a partial value: the IDL's layout,
+/// whose defaults fill the rest (a schema read back has none).
+fn spawned(world: &World, name: &str) -> og_core::Result<(SchemaId, Layout)> {
+    let id = world.id_by_name(name)?;
+    let decl = og_api::host::RECORDS.iter().find(|d| d.schema == name);
+    match decl.and_then(|d| Layout::from_decl(d).ok()) {
+        Some(l) => Ok((id, l)),
+        None => layout(world, name, RecordKind::Component),
+    }
 }
 
 /// Registers og.vfx on a world that names og.Vfx or og.VfxEvent
@@ -346,8 +379,11 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
         vfx: layout(world, COMPONENT, RecordKind::Component)?,
         event,
         source: layout(world, "og.AudioSource", RecordKind::Component)?,
-        transform: layout(world, "og.Transform", RecordKind::Component)?,
-        parent: layout(world, "og.Parent", RecordKind::Component)?,
+        transform: spawned(world, "og.Transform")?,
+        parent: spawned(world, "og.Parent")?,
+        sprite: spawned(world, "og.Sprite")?,
+        flipbook: spawned(world, "og.Flipbook")?,
+        flip_event: layout(world, "og.FlipbookEvent", RecordKind::Event)?,
     };
     let feel = super::engine::engine(engine_id)
         .ok()
@@ -358,13 +394,19 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
     world.add_system(
         SystemDesc {
             name: SYSTEM.into(),
-            reads: names.iter().map(|n| n.to_string()).collect(),
+            reads: names
+                .iter()
+                .map(|n| n.to_string())
+                .chain(["og.FlipbookEvent".to_string()])
+                .collect(),
             writes: vec![
                 COMPONENT.into(),
                 EVENT.into(),
                 "og.AudioSource".into(),
                 "og.Transform".into(),
                 "og.Parent".into(),
+                "og.Sprite".into(),
+                "og.Flipbook".into(),
             ],
             queries: names
                 .iter()
@@ -393,8 +435,41 @@ fn system(
         rows.extend_from_slice(a.entities());
     }
     og_core::sort::sort_by_key(&mut rows, |e| e.index());
+    // Every entity's og.Parent, for the flipbooks an effect spawned.
+    let mut parents: Vec<(Entity, Entity)> = Vec::new();
+    for a in ctx.query(1)? {
+        for &c in a.entities() {
+            let p = r.parent.1.decode(&ctx.get_bytes(c, r.parent.0)?);
+            parents.push((c, Entity::from_bits(p["entity"].as_u64().unwrap_or(0))));
+        }
+    }
+    // The events of an effect's flipbooks (sent last tick by og.flipbook),
+    // passed on as the effect's: a vfx2d's impact is the effect's impact.
+    for ev in ctx.events_bytes(r.flip_event.0)? {
+        let f = r.flip_event.1.decode(&ev);
+        let child = Entity::from_bits(f["entity"].as_u64().unwrap_or(0));
+        let Some(&(_, e)) = parents.iter().find(|(c, _)| *c == child) else {
+            continue;
+        };
+        if !rows.contains(&e) {
+            continue;
+        }
+        let v = r.vfx.1.decode(&ctx.get_bytes(e, r.vfx.0)?);
+        let start = v["startTick"].as_u64().unwrap_or(UNSET);
+        if start == UNSET || tick < start {
+            continue;
+        }
+        // The frame fired last tick, when og.flipbook ran.
+        let at = (tick.saturating_sub(1).max(start) - start) as f64 / f64::from(rate);
+        let value =
+            json!({ "entity": e.to_bits(), "asset": v["asset"], "name": f["name"], "time": at });
+        let b = r.event.1.encode(None, Some(&value)).map_err(invalid)?;
+        ctx.send_bytes(r.event.0, &b)?;
+    }
     let mut ended = Vec::new();
-    for e in rows {
+    // Flipbook sprites despawned this tick (despawns apply after the system).
+    let mut gone: Vec<Entity> = Vec::new();
+    for &e in &rows {
         let bytes = ctx.get_bytes(e, r.vfx.0)?;
         let mut v = r.vfx.1.decode(&bytes);
         let start = v["startTick"].as_u64().unwrap_or(UNSET);
@@ -438,6 +513,23 @@ fn system(
             }
         }
         for (i, el) in fx.elements.iter().enumerate() {
+            // A flipbook's sprite goes when its clip (or its life) is over.
+            if let Link::Flipbook { sheet, clip, .. } = &l.links[i] {
+                let life = if el.life > 0.0 { el.life } else { *clip };
+                if due(el.at + life) {
+                    for &(c, p) in &parents {
+                        if p == e
+                            && !gone.contains(&c)
+                            && ctx.get_bytes(c, r.flipbook.0).is_ok_and(|b| {
+                                r.flipbook.1.decode(&b)["sheet"].as_f64() == Some(*sheet)
+                            })
+                        {
+                            ctx.despawn(c)?;
+                            gone.push(c);
+                        }
+                    }
+                }
+            }
             if !due(el.at) {
                 continue;
             }
@@ -475,6 +567,54 @@ fn system(
                         ),
                     ])?;
                 }
+                (
+                    VfxKind::Flipbook {
+                        size, color, blend, ..
+                    },
+                    Link::Flipbook {
+                        sheet,
+                        texture,
+                        aspect,
+                        ..
+                    },
+                ) => {
+                    let o = el.offset * scale;
+                    let tint = super::fx::color(&v["tint"], Vec3::ONE);
+                    let sprite = json!({
+                        "texture": texture,
+                        "width": size * aspect * scale,
+                        "height": size * scale,
+                        "facing": "camera",
+                        "color": { "r": color[0] * tint.x, "g": color[1] * tint.y, "b": color[2] * tint.z },
+                        "opacity": color[3],
+                        "blend": if *blend == ParticleBlend::Additive { "additive" } else { "alpha" },
+                    });
+                    let at = json!({ "position": { "x": o.x, "y": o.y, "z": o.z } });
+                    ctx.spawn_bytes(vec![
+                        (
+                            r.sprite.0,
+                            r.sprite.1.encode(None, Some(&sprite)).map_err(invalid)?,
+                        ),
+                        (
+                            r.flipbook.0,
+                            r.flipbook
+                                .1
+                                .encode(None, Some(&json!({ "sheet": sheet, "clip": 0 })))
+                                .map_err(invalid)?,
+                        ),
+                        (
+                            r.transform.0,
+                            r.transform.1.encode(None, Some(&at)).map_err(invalid)?,
+                        ),
+                        (
+                            r.parent.0,
+                            r.parent
+                                .1
+                                .encode(None, Some(&json!({ "entity": e.to_bits() })))
+                                .map_err(invalid)?,
+                        ),
+                    ])?;
+                }
                 _ => {}
             }
         }
@@ -488,15 +628,12 @@ fn system(
     if ended.is_empty() {
         return Ok(());
     }
-    // The ended effects and their sounds (children by og.Parent).
-    let mut children = Vec::new();
-    for a in ctx.query(1)? {
-        children.extend_from_slice(a.entities());
-    }
-    for c in children {
-        let p = r.parent.1.decode(&ctx.get_bytes(c, r.parent.0)?);
-        let parent = Entity::from_bits(p["entity"].as_u64().unwrap_or(0));
-        if ended.contains(&parent) && ctx.get_bytes(c, r.source.0).is_ok() {
+    // The ended effects and their sounds and flipbooks (children by og.Parent).
+    for (c, parent) in parents {
+        if ended.contains(&parent)
+            && (ctx.get_bytes(c, r.source.0).is_ok() || ctx.get_bytes(c, r.flipbook.0).is_ok())
+            && !gone.contains(&c)
+        {
             ctx.despawn(c)?;
         }
     }

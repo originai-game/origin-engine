@@ -61,6 +61,11 @@
 //! sound "sfx/boom.wav" {
 //!   at 0.25  volume 0.8  pitch 0.9 1.1   # a pitch picked from the range by the seed
 //! }
+//! flipbook "fx/slash.ogt" {         # a flipbook sheet (a `type vfx2d` pixel effect, or `type flipbook`)
+//!   at 0.1                          # its first clip, once, facing the eye; it ends with the clip
+//!   size 2                          # metres tall (its width by the frame's shape)
+//!   color 1 1 1 1  blend alpha      # alpha (default) | additive
+//! }
 //! ```
 //!
 //! Every element takes `at`, `offset` and `rotate`; those that last take
@@ -69,7 +74,10 @@
 //! (over the element's life, at most 8 keys). Times are seconds from the
 //! effect's start; the tick they land on is `start + round(time × rate)`.
 //! The shared lines (`duration`, `loop`, `event`, `impact`) mean the same in
-//! a `type vfx2d` pixel effect.
+//! a `type vfx2d` pixel effect. Every og.FlipbookEvent a `flipbook`
+//! element's clip fires (a vfx2d's `impact`) is passed on as an
+//! og.VfxEvent of the effect with the same name, so a file whose impact a
+//! pixel effect carries needs no `impact` line of its own.
 
 use crate::effect::{flag, nums, one, value};
 use og_core::ogt::{Document, Entry, Value};
@@ -199,6 +207,14 @@ pub enum VfxKind {
         volume: f32,
         pitch: [f32; 2],
     },
+    /// A flipbook sheet's first clip on a camera-facing sprite.
+    Flipbook {
+        id: String,
+        /// Metres tall; the width follows the frame.
+        size: f32,
+        color: [f32; 4],
+        blend: ParticleBlend,
+    },
 }
 
 impl VfxKind {
@@ -213,6 +229,7 @@ impl VfxKind {
             VfxKind::Flash { .. } => "flash",
             VfxKind::Shake { .. } => "shake",
             VfxKind::Sound { .. } => "sound",
+            VfxKind::Flipbook { .. } => "flipbook",
         }
     }
 }
@@ -225,6 +242,7 @@ pub struct VfxReferences {
     pub effects: Vec<String>,
     pub models: Vec<String>,
     pub sounds: Vec<String>,
+    pub flipbooks: Vec<String>,
 }
 
 impl Vfx {
@@ -250,6 +268,7 @@ impl Vfx {
                     }
                 }
                 VfxKind::Sound { id, .. } => push(&mut r.sounds, id),
+                VfxKind::Flipbook { id, .. } => push(&mut r.flipbooks, id),
                 VfxKind::Light { .. }
                 | VfxKind::Decal { .. }
                 | VfxKind::Flash { .. }
@@ -378,7 +397,7 @@ pub fn parse_vfx(text: &str) -> Result<Vfx, String> {
 
 fn element(e: &Entry) -> Result<VfxElement, String> {
     let line = e.line;
-    let kinds = "emitter, mesh, trail, beam, light, decal, flash, shake, sound";
+    let kinds = "emitter, mesh, trail, beam, light, decal, flash, shake, sound, flipbook";
     let mut el = VfxElement {
         at: 0.0,
         life: 0.0,
@@ -453,6 +472,12 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
                 volume: 1.0,
                 pitch: [1.0, 1.0],
             },
+            "flipbook" => VfxKind::Flipbook {
+                id: id(e, "flipbook")?,
+                size: 1.0,
+                color: [1.0; 4],
+                blend: ParticleBlend::Alpha,
+            },
             other => {
                 return Err(format!(
                     "line {line}: unknown `{other}` (duration, loop, impact, event, or an element: {kinds})"
@@ -489,7 +514,7 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
             }
             ("scale", VfxKind::Mesh { scale, .. }) => *scale = value(k, 0)?,
             ("spin", VfxKind::Mesh { spin, .. }) => *spin = vec3(k)?,
-            ("blend", VfxKind::Mesh { blend, .. }) => {
+            ("blend", VfxKind::Mesh { blend, .. } | VfxKind::Flipbook { blend, .. }) => {
                 *blend = match k.values.first().and_then(Value::as_word) {
                     Some("additive") => ParticleBlend::Additive,
                     Some("alpha") => ParticleBlend::Alpha,
@@ -502,7 +527,8 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
                 | VfxKind::Trail { color, .. }
                 | VfxKind::Beam { color, .. }
                 | VfxKind::Decal { color, .. }
-                | VfxKind::Flash { color, .. },
+                | VfxKind::Flash { color, .. }
+                | VfxKind::Flipbook { color, .. },
             ) => *color = self::color(k)?,
             ("color", VfxKind::Light { color, .. }) => {
                 let [r, g, b, _] = self::color(k)?;
@@ -546,6 +572,7 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
                 }
             }
             ("size", VfxKind::Flash { size, .. }) => *size = value(k, 0)?,
+            ("size", VfxKind::Flipbook { size, .. }) => *size = one(k)?.max(0.0),
             ("trauma", VfxKind::Shake { trauma }) => *trauma = one(k)?.clamp(0.0, 1.0),
             ("volume", VfxKind::Sound { volume, .. }) => *volume = one(k)?.max(0.0),
             ("pitch", VfxKind::Sound { pitch, .. }) => {
@@ -571,7 +598,10 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
         (None, Some(u)) => {
             return Err(format!("line {line}: until {u} is before at {}", el.at));
         }
-        (None, None) if matches!(el.kind, VfxKind::Emitter { .. }) => 0.0,
+        // An emitter runs its own cycle; a flipbook its clip.
+        (None, None) if matches!(el.kind, VfxKind::Emitter { .. } | VfxKind::Flipbook { .. }) => {
+            0.0
+        }
         (None, None) => {
             return Err(format!(
                 "line {line}: a {} needs `life <seconds>` or `until <seconds>`",

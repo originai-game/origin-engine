@@ -18,7 +18,7 @@ pub(crate) fn set_filter(eng: &Engine, texture: usize, nearest: bool) {
     }
 }
 
-fn load_flipbook(eng: &Engine, path: &str) -> Result<Value, String> {
+pub(crate) fn load_flipbook(eng: &Engine, path: &str) -> Result<Value, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     let key = format!("flipbook:{id}");
     if let Some(v) = eng.state.borrow().feel_assets.loaded.get(&key) {

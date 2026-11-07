@@ -15,7 +15,7 @@ A loaded composed effect.
 | `loop` | `boolean` | `false` | — | — | — | Whether it starts over at its end. |
 | `events` | `readonly string[]` | `[]` | — | — | — | Its events' names in time order, `impact` included. |
 | `impact` | `number` | `0` | — | `s` | — | Its impact's time, or -1 without one. |
-| `elements` | `readonly string[]` | `[]` | — | — | — | Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, flash, shake, sound). |
+| `elements` | `readonly string[]` | `[]` | — | — | — | Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, flash, flipbook, shake, sound). |
 
 ```ogt
 struct VfxInfo {
@@ -29,7 +29,7 @@ struct VfxInfo {
   field impact f32 "Its impact's time, or -1 without one." {
     unit s
   }
-  field elements List.String "Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, flash, shake, sound)."
+  field elements List.String "Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, flash, flipbook, shake, sound)."
 }
 ```
 
