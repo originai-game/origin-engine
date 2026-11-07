@@ -1,0 +1,26 @@
+{
+  "added": [
+    {
+      "member": "flipbook cook: key auto ... holes",
+      "summary": "`key auto <tolerance> holes` also keys enclosed pockets of the background colour that the border flood does not reach (the magenta inside a slash arc); `og sprite inspect --holes` measures the same and its report counts texels near the key that are still drawn (`nearKey`)."
+    },
+    {
+      "member": "flipbook cook: source scale",
+      "summary": "A `source` block takes `scale`, multiplied by the sheet's, so a clip drawn larger than the others is brought to their size."
+    },
+    {
+      "member": "flipbook cook: crop each",
+      "summary": "`crop each` cuts every source to its own drawn bounds and shelf-packs the cells into one atlas, each with its own pivot: loose PNGs become one sheet. The cook note reports the packed size and the drawn share."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "flipbook cook: key auto on generated GIFs",
+      "summary": "`key auto` took a quantised flat border (near shades straddling the colour buckets, as a GIF encoder writes them) for a non-flat one and refused the sheet; the border colour is now the mean of the texels near its mode."
+    },
+    {
+      "member": "og.destruction carve2d, fill2d, explode2d, fracture2d in a system",
+      "summary": "They threw \"not available while a system runs\" when called from a system's tick; they now use the running system's context."
+    }
+  ]
+}
