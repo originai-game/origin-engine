@@ -3,8 +3,8 @@
 // package built: lines and choices resolve through og.i18n and re-resolve
 // on a locale switch, the story's events arrive the tick after, a
 // conversation saved mid-line restores to the same line and hash, an edit
-// that renames the node a save stands on warns naming it and falls back
-// to the start, and a world that never loads a story keeps its hash.
+// that removes a saved id refuses to replay commands, and a world that
+// never loads a story keeps its hash.
 // Batch 2: barks read the world (a game component) and keep priority and
 // cooldowns, ambient barkers draw on the story's stream identically per
 // seed, a voiced line plays through og.audio on its own entity and the
@@ -54,9 +54,35 @@ function start(locale = "en"): Engine {
 }
 
 function load(e: Engine): void {
-  must(og.story.load(e.world, "story/smith.ogt"));
+  must(og.story.load(e.world, "story/smith.yarn"));
   must(og.story.load(e.world, "story/rescue.ogt"));
 }
+
+test("Yarn base text survives table loading, locale switching and a live text edit", () => {
+  const e = start();
+  const w = e.world;
+  const source = `// Authored base text without a separate English entry.
+#og-profile:yarn-3.0-og-1
+#og-name:authored
+title: Start
+---
+Hello from Yarn #line:authored.hello
+-> Continue #line:authored.continue
+    <<stop>>
+===`;
+  must(og.story.parse(w, source));
+  const c = must<number>(og.story.start(w, { dialogue: "authored" }));
+  expect(og.story.view(w, c)?.text).toBe("Hello from Yarn");
+  must(og.i18n.load(w, "strings/en.ogt"));
+  expect(og.story.view(w, c)?.text).toBe("Hello from Yarn");
+  og.i18n.setLocale(w, "ja");
+  expect(og.story.view(w, c)?.text).toBe("こんにちは");
+  expect(og.story.view(w, c)?.choices[0]?.text).toBe("続ける");
+  must(og.story.parse(w, source.replace("Hello from Yarn", "Edited Yarn text")));
+  og.i18n.setLocale(w, "en");
+  expect(og.story.view(w, c)?.text).toBe("Edited Yarn text");
+  e.destroy();
+});
 
 test("og.story: lines and choices resolve through og.i18n, re-resolve on a locale switch, and send their events the tick after", () => {
   const e = start();
@@ -130,7 +156,7 @@ test("og.story: lines and choices resolve through og.i18n, re-resolve on a local
   e.destroy();
 });
 
-test("og.story: a conversation saved mid-line restores to the same line and hash; a renamed node warns, names it and falls back", () => {
+test("og.story: a conversation saved mid-line restores to the same line and hash; a removed id refuses to replay", () => {
   const e = start();
   const w = e.world;
   load(e);
@@ -153,15 +179,11 @@ test("og.story: a conversation saved mid-line restores to the same line and hash
   expect(f.hash()).toBe(hash);
   expect((og.story.view(f.world, c) as unknown as View).key).toBe("smith.thanks");
 
-  // The node it stands on, renamed: one warning naming it, back to the start.
-  const edited = smithText().replace("node bought {", "node paid {").replaceAll("goto bought", "goto paid");
+  // Removing an ID must not restart the conversation and replay its commands.
+  const edited = smithText().replace("#line:smith.thanks", "#line:smith.paid");
   must(og.story.parse(f.world, edited));
-  f.takeLog();
-  const v = og.story.view(f.world, c) as unknown as View;
-  expect([v.node, v.key]).toEqual(["greet", "smith.hello"]);
-  const warned = f.takeLog().filter((l) => l.text.includes("og.story"));
-  expect(warned.length).toBe(1);
-  expect(warned[0]!.text).toContain("'bought' is gone from dialogue 'smith' (renamed or removed); it restarts at 'greet'");
+  expect(og.story.advance(f.world, c)).toMatchObject({ ok: false, reason: expect.stringContaining("stable id") });
+  expect(og.story.get(f.world, "gold")).toBe(0);
   e.destroy();
   f.destroy();
 });
@@ -190,7 +212,7 @@ const barks = (w: Engine["world"]) => (og.story.barks(w) as unknown as Bark[]).m
 
 function guards(e: Engine): [Entity, Entity] {
   const w = e.world;
-  must(og.story.load(w, "story/guard.ogt"));
+  must(og.story.load(w, "story/guard.yarn"));
   must(og.story.load(w, "story/watch.ogt"));
   const g = (name: string, hp: number): Entity => {
     const x = must<Entity>(w.spawn({ name }));
@@ -313,6 +335,5 @@ test("og.story voice: a voiced line plays on its own og.AudioSource entity, the 
 });
 
 function smithText(): string {
-  // The cooked fixture's own text (tests/fixtures/story/assets/story/smith.ogt).
-  return readFileSync(join(fixture, "assets", "story", "smith.ogt"), "utf8");
+  return readFileSync(join(fixture, "assets", "story", "smith.yarn"), "utf8");
 }

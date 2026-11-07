@@ -1,5 +1,5 @@
 //! `og i18n extract`: every og.i18n key a project's dialogues and quests
-//! show (`type dialogue`, `type quest`), with the arguments they pass and
+//! show (`.yarn`, `type quest`), with the arguments they pass and
 //! where, checked against each string table (`type strings`): per locale,
 //! the keys it lacks and the messages that take an argument nothing
 //! passes. [`write_base`] adds the keys the base table lacks to it, each
@@ -11,9 +11,11 @@ use std::path::{Path, PathBuf};
 /// A key the stories show.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Key {
+    /// Base-language text extracted from Yarn, when present.
+    pub text: Option<String>,
     /// The argument names passed, across every place it is shown.
     pub args: Vec<String>,
-    /// Where it is shown: `assets/story/smith.ogt:12` (`:0` for a header line).
+    /// Where it is shown: `assets/story/smith.yarn:12` (`:0` for a header line).
     pub sources: Vec<String>,
 }
 
@@ -63,7 +65,7 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     for p in entries {
         if p.is_dir() {
             walk(&p, out);
-        } else if p.extension().is_some_and(|x| x == "ogt") {
+        } else if p.extension().is_some_and(|x| x == "ogt" || x == "yarn") {
             out.push(p);
         }
     }
@@ -89,11 +91,20 @@ pub fn extract(project: &Path) -> Result<Extract, String> {
         let Ok(text) = std::fs::read_to_string(&f) else {
             continue;
         };
-        let Ok(doc) = og_core::ogt::Document::parse(&text) else {
+        let ty = if f.extension().is_some_and(|x| x == "yarn") {
+            og_story::DIALOGUE_TYPE.into()
+        } else if let Ok(doc) = og_core::ogt::Document::parse(&text) {
+            doc.ty
+        } else {
             continue;
         };
-        let keys = match doc.ty.as_str() {
-            t if t == og_story::DIALOGUE_TYPE => og_story::Dialogue::parse(&text).map(|d| d.keys()),
+        let keys = match ty.as_str() {
+            t if t == og_story::DIALOGUE_TYPE => og_story::Dialogue::parse(&text).map(|d| {
+                for (key, text) in &d.strings {
+                    x.keys.entry(key.clone()).or_default().text = Some(text.clone());
+                }
+                d.keys()
+            }),
             t if t == og_story::QUEST_TYPE => og_story::Quest::parse(&text).map(|q| q.keys()),
             t if t == og_i18n::STRINGS_TYPE => {
                 match og_i18n::StringTable::parse(&text) {
@@ -176,7 +187,10 @@ pub fn write_base(project: &Path, x: &Extract) -> Result<(String, usize), String
     text.push_str("# og i18n extract: shown by the dialogues and quests; write each line\n");
     for k in &missing {
         let args: String = x.keys[k].args.iter().map(|a| format!(" {{{a}}}")).collect();
-        let msg = format!("{k}{args}")
+        let msg = x.keys[k]
+            .text
+            .clone()
+            .unwrap_or_else(|| format!("{k}{args}"))
             .replace('\\', "\\\\")
             .replace('"', "\\\"");
         text.push_str(&format!("string \"{k}\" \"{msg}\"\n"));

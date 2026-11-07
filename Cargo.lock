@@ -2947,6 +2947,8 @@ name = "og-story"
 version = "0.7.7"
 dependencies = [
  "og-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

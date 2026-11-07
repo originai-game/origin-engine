@@ -193,15 +193,14 @@ impl BlobKind for Behaviour {
 }
 
 row!(
-    /// The root of a dialogue blob (an `.ogt` of `type dialogue`, G2-8).
-    DialogueMeta, "og.Dialogue", 1 {
-        /// Bytes of the validated dialogue text in `text`.
+    /// The root of a compiled Yarn dialogue blob.
+    DialogueMeta, "og.Dialogue", 2 {
+        /// Bytes of the engine IR in `text`.
         text_bytes: u32,
     }
 );
 
-/// The dialogue blob: `text` holds the dialogue file the cook validated
-/// (og-story's `Dialogue::parse`), parsed again at load.
+/// The dialogue blob: `text` holds engine IR decoded by og-story, not Yarn source.
 pub struct Dialogue;
 impl BlobKind for Dialogue {
     const NAME: &'static str = "og.Dialogue";

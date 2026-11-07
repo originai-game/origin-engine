@@ -10,6 +10,8 @@ description = "Origin Engine dialogue and quests as data: dialogue graphs and qu
 # Pure Rust over og-core; builds for wasm32-unknown-unknown.
 [dependencies]
 og-core = { path = "../og-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [[test]]
 name = "tests"

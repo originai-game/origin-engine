@@ -14,7 +14,7 @@ A loaded dialogue or quest.
 | `name` | `string` | `""` | — | — | — | A dialogue's name or a quest's id: what og.story.start and og.story.startQuest take. |
 | `nodes` | `readonly string[]` | `[]` | — | — | — | A dialogue's nodes, in order (a quest: its stages). |
 | `speakers` | `readonly string[]` | `[]` | — | — | — | A dialogue's speakers (a quest: none). |
-| `variables` | `readonly string[]` | `[]` | — | — | — | The variables it declares (var: the conversation's; global: the story's). |
+| `variables` | `readonly string[]` | `[]` | — | — | — | Declared variables: Yarn declarations are global unless listed in a #og-local file tag. |
 
 ```ogt
 struct StoryAsset {
@@ -23,7 +23,7 @@ struct StoryAsset {
   field name String "A dialogue's name or a quest's id: what og.story.start and og.story.startQuest take."
   field nodes List.String "A dialogue's nodes, in order (a quest: its stages)."
   field speakers List.String "A dialogue's speakers (a quest: none)."
-  field variables List.String "The variables it declares (var: the conversation's; global: the story's)."
+  field variables List.String "Declared variables: Yarn declarations are global unless listed in a #og-local file tag."
 }
 ```
 

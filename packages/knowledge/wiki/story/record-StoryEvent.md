@@ -6,21 +6,21 @@ Module [`story`](../story.md) · [index](../index.md)
 
 ### `og.StoryEvent` (event)
 
-A dialogue's `emit name "arg"`: open the shop, give the sword, play the cutscene. Sent the tick after.
+A Yarn command such as `<<give_sword {$amount}>>`: open the shop, give the sword, play the cutscene. Sent the tick after.
 
 Token `og.StoryEvent`, registered under the schema name `og.StoryEvent`; its value type is `StoryEvent`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `conversation` | `number` | `0` | — | — | — | The conversation that emitted it. |
-| `name` | `string` | `""` | — | — | — | The name written after emit. |
+| `name` | `string` | `""` | — | — | — | The command name. |
 | `arg` | `string` | `""` | — | — | — | Its argument, evaluated and written as text (empty without one). |
 
 ```ogt
 event StoryEvent {
-  doc "A dialogue's `emit name \"arg\"`: open the shop, give the sword, play the cutscene. Sent the tick after."
+  doc "A Yarn command such as `<<give_sword {$amount}>>`: open the shop, give the sword, play the cutscene. Sent the tick after."
   field conversation u32 "The conversation that emitted it."
-  field name String "The name written after emit."
+  field name String "The command name."
   field arg String "Its argument, evaluated and written as text (empty without one)."
 }
 ```

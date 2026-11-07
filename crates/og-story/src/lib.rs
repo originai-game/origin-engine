@@ -1,5 +1,5 @@
-//! Origin Engine dialogue and quests as data (G2-8): dialogue graphs
-//! (`type dialogue`) and quests (`type quest`) declared in `.ogt`, their
+//! Origin Engine stories: Yarn dialogue compiled to engine IR
+//! and quests (`type quest`) declared in `.ogt`, their
 //! expressions, and the story a world keeps. Pure logic over og-core: the
 //! runtime's og.story module mounts it on a world, saves it as a state
 //! block and sends its events. Deterministic: a story draws only from its
@@ -19,6 +19,7 @@ pub mod bark;
 pub mod expr;
 pub mod save;
 pub mod story;
+pub mod yarn;
 
 pub use asset::{
     Bark, Check, Choice, DIALOGUE_TYPE, Dialogue, Line, NARRATOR, Node, Objective, QUEST_TYPE,

@@ -1,5 +1,5 @@
 //! The story's saved form: `OGST`, a version byte, then every field of
-//! [`Story`] but its tick and warnings, little-endian, strings as a `u32`
+//! [`Story`] but its warnings, little-endian, strings as a `u32`
 //! length and UTF-8, maps and sets in key order, so equal stories save
 //! equal bytes (the world hash compares them). Places are saved by id
 //! (dialogue, node, line key, quest, stage, objective), never by index.
@@ -14,8 +14,10 @@ const MAGIC: &[u8; 4] = b"OGST";
 /// The saved form's version.
 /// 2 (G2-8 batch 2) adds each line's voice timing, barks, ambient
 /// barkers and the voices playing; 3 (R10) each line's camera shot and
-/// the solo the story holds. Versions 1 and 2 are still read.
-pub const SAVE_VERSION: u8 = 3;
+/// the solo the story holds. Version 4 replaces offsets with stable
+/// continuation IDs and saves detour stacks. Older versions remain readable
+/// for quest state; their dialogue continuations are not migrated to Yarn.
+pub const SAVE_VERSION: u8 = 4;
 
 struct W<'a>(&'a mut Vec<u8>);
 
@@ -206,6 +208,7 @@ impl Story {
         w.u8(SAVE_VERSION);
         w.u32(self.rng.seed());
         w.u32(self.rng.save());
+        w.u32(self.tick);
         w.u32(self.seq);
         w.u32(self.next_conv);
         w.vars(&self.globals);
@@ -216,7 +219,10 @@ impl Story {
             w.u32(*id);
             w.str(&c.dialogue);
             w.str(&c.node);
-            w.u32(c.pc);
+            w.u32(c.stack.len() as u32);
+            for continuation in &c.stack {
+                w.str(continuation);
+            }
             w.u8(match c.wait {
                 Wait::Line => 0,
                 Wait::Choices => 1,
@@ -232,7 +238,6 @@ impl Story {
             w.u32(c.history.len() as u32);
             for s in &c.history {
                 w.str(&s.node);
-                w.u32(s.step);
                 w.str(&s.speaker);
                 w.str(&s.key);
                 w.args(&s.args);
@@ -342,7 +347,6 @@ impl Story {
             w.u64(*e);
             w.str(&b.dialogue);
             w.str(&b.bark);
-            w.u32(b.line);
             w.str(&b.key);
             w.args(&b.args);
             w.str(&b.speaker);
@@ -400,7 +404,7 @@ impl Story {
         }
     }
 
-    /// A story from its saved form; the tick is 0 and no warning is pending.
+    /// A story from its saved form; no warning is pending.
     pub fn load(bytes: &[u8]) -> Result<Story, String> {
         let rest = bytes
             .strip_prefix(MAGIC)
@@ -417,6 +421,9 @@ impl Story {
         let mut rng = Rng::new(seed);
         rng.restore(state);
         let mut s = Story::new(rng);
+        if v >= 4 {
+            s.tick = r.u32()?;
+        }
         s.seq = r.u32()?;
         s.next_conv = r.u32()?;
         s.globals = r.vars()?;
@@ -426,7 +433,15 @@ impl Story {
             let id = r.u32()?;
             let dialogue = r.str()?;
             let node = r.str()?;
-            let pc = r.u32()?;
+            let mut stack = Vec::new();
+            let pc = if v < 4 {
+                r.u32()?
+            } else {
+                for _ in 0..r.count()? {
+                    stack.push(r.str()?);
+                }
+                0
+            };
             let wait = match r.u8()? {
                 0 => Wait::Line,
                 1 => Wait::Choices,
@@ -443,7 +458,7 @@ impl Story {
             let mut history = Vec::new();
             for _ in 0..r.count()? {
                 let node = r.str()?;
-                let step = r.u32()?;
+                let step = if v < 4 { r.u32()? } else { 0 };
                 let speaker = r.str()?;
                 let key = r.str()?;
                 let args = r.args()?;
@@ -498,6 +513,7 @@ impl Story {
                     history,
                     timer,
                     last_roll,
+                    stack,
                 },
             );
         }
@@ -567,10 +583,14 @@ impl Story {
         if v >= 2 {
             for _ in 0..r.count()? {
                 let e = r.u64()?;
+                let dialogue = r.str()?;
+                let bark = r.str()?;
+                if v < 4 {
+                    r.u32()?;
+                }
                 let said = Said {
-                    dialogue: r.str()?,
-                    bark: r.str()?,
-                    line: r.u32()?,
+                    dialogue,
+                    bark,
                     key: r.str()?,
                     args: r.args()?,
                     speaker: r.str()?,

@@ -281,25 +281,15 @@ fn solo(engine: u32) -> f64 {
     brain(engine)["solo"].as_f64().unwrap_or(0.0)
 }
 
-const TALK: &str = "type dialogue
-version 1
+const TALK: &str = "#og-profile:yarn-3.0-og-1
+#og-name:talk
+title: one
 ---
-name talk
-start one
-speaker smith {
-  name \"npc.smith\"
-}
-node one {
-  shot close
-  say smith \"l.one\"
-  say smith \"l.two\" {
-    shot smith
-  }
-  say smith \"l.three\" {
-    shot none
-  }
-  say smith \"l.four\"
-}
+smith: One #line:l.one #shot:close
+smith: Two #line:l.two #shot:smith
+smith: Three #line:l.three #shot:none
+smith: Four #line:l.four #shot:close
+===
 ";
 
 /// R10 batch 3: a dialogue line's shot is og.CameraBrain's solo while it

@@ -6,7 +6,7 @@ Module [`story`](../story.md) · [index](../index.md)
 
 ### `og.DialogueEnded` (event)
 
-A conversation ended: its dialogue ran out, reached `end`, took a choice without `goto`, or og.story.stop stopped it. Sent the tick after.
+A conversation ended: its top-level Yarn node returned, reached `<<stop>>`, or og.story.stop stopped it. Sent the tick after.
 
 Token `og.DialogueEnded`, registered under the schema name `og.DialogueEnded`; its value type is `DialogueEnded`.
 
@@ -16,7 +16,7 @@ Token `og.DialogueEnded`, registered under the schema name `og.DialogueEnded`; i
 
 ```ogt
 event DialogueEnded {
-  doc "A conversation ended: its dialogue ran out, reached `end`, took a choice without `goto`, or og.story.stop stopped it. Sent the tick after."
+  doc "A conversation ended: its top-level Yarn node returned, reached `<<stop>>`, or og.story.stop stopped it. Sent the tick after."
   field conversation u32 "The conversation."
 }
 ```

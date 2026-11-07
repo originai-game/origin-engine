@@ -122,8 +122,7 @@ pub(super) fn cook_behaviour(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Str
     ))
 }
 
-/// A dialogue or quest (G2-8): validated by og-story's parser and kept as
-/// text, parsed again at load.
+/// Yarn is compiled to engine IR; quests retain their data representation.
 pub(super) fn cook_story(
     s: &Source,
     stamp: u64,
@@ -132,6 +131,16 @@ pub(super) fn cook_story(
     let what = if quest { "quest" } else { "dialogue" };
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| CookError(format!("a {what} is text (UTF-8)")))?;
+    let compiled;
+    let text = if quest {
+        text
+    } else {
+        compiled = og_story::Dialogue::parse(text)
+            .map_err(CookError)?
+            .encode()
+            .map_err(CookError)?;
+        &compiled
+    };
     let (mut w, note) = if quest {
         let q = og_story::Quest::parse(text).map_err(CookError)?;
         let w = BlobWriter::new(
@@ -147,7 +156,11 @@ pub(super) fn cook_story(
         );
         (w, note)
     } else {
-        let d = og_story::Dialogue::parse(text).map_err(CookError)?;
+        let d = og_story::Dialogue::decode(text).map_err(CookError)?;
+        for (key, text) in &d.strings {
+            og_i18n::Message::parse(text)
+                .map_err(|e| CookError(format!("Yarn base string {key}: {e}")))?;
+        }
         let w = BlobWriter::new(
             format::Dialogue::type_hash(),
             format::Dialogue::schema_version(),
@@ -202,12 +215,19 @@ pub(super) fn check_story_keys(
         let Ok(text) = std::str::from_utf8(bytes) else {
             continue;
         };
-        let keys = match og_core::ogt::Document::parse(text).map(|d| d.ty) {
-            Ok(t) if t == og_story::QUEST_TYPE => og_story::Quest::parse(text).map(|q| q.keys()),
-            Ok(_) => og_story::Dialogue::parse(text).map(|d| d.keys()),
-            Err(_) => continue,
+        let result = if rel.ends_with(".yarn") {
+            og_story::Dialogue::parse(text).map(|d| (d.keys(), d.strings))
+        } else {
+            match og_core::ogt::Document::parse(text).map(|d| d.ty) {
+                Ok(t) if t == og_story::QUEST_TYPE => {
+                    og_story::Quest::parse(text).map(|q| (q.keys(), Default::default()))
+                }
+                _ => continue,
+            }
         };
-        let Ok(keys) = keys else { continue };
+        let Ok((keys, authored)) = result else {
+            continue;
+        };
         for (key, args, line) in keys {
             let at = if line > 0 {
                 format!("line {line}: ")
@@ -215,6 +235,7 @@ pub(super) fn check_story_keys(
                 String::new()
             };
             match base.entries.get(&key) {
+                None if authored.contains_key(&key) => {}
                 None => out.push((
                     rel.to_string(),
                     format!(

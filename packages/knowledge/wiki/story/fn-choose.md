@@ -6,7 +6,7 @@ Module [`story`](../story.md) · [index](../index.md)
 
 ### `og.story.choose`
 
-Take a choice: its `set`, `emit` and `quest` steps run, an active check rolls (og.DialogueCheck), and the conversation goes to its `goto` (or `fail` on a missed roll), or ends without one.
+Take a choice: an active check rolls (og.DialogueCheck), then its indented Yarn body runs, or #fail redirects a missed roll. A settled choice is not executed again on restore.
 
 ```ts
 og.story.choose(world: World, conversation: number, index: number): Result<void>
@@ -24,7 +24,7 @@ Binding symbol `og_story_choose` · publish builds: kept
 
 ```ogt
 fn choose {
-  doc "Take a choice: its `set`, `emit` and `quest` steps run, an active check rolls (og.DialogueCheck), and the conversation goes to its `goto` (or `fail` on a missed roll), or ends without one."
+  doc "Take a choice: an active check rolls (og.DialogueCheck), then its indented Yarn body runs, or #fail redirects a missed roll. A settled choice is not executed again on restore."
   param world World "The world."
   param conversation u32 "The conversation."
   param index u32 "ChoiceView.index."

@@ -117,6 +117,8 @@ pub struct Conv {
     /// Ticks left and the timer's length.
     pub timer: Option<(u32, u32)>,
     pub last_roll: Option<Roll>,
+    /// Stable continuation block IDs, not instruction offsets.
+    pub stack: Vec<String>,
 }
 
 /// A quest's state.
@@ -351,6 +353,7 @@ impl Story {
                 history: Vec::new(),
                 timer: None,
                 last_roll: None,
+                stack: Vec::new(),
             },
         );
         self.enter(&d, id, &at);
@@ -438,9 +441,8 @@ impl Story {
         }
         match to {
             Some(t) => {
-                if self.jump(d, id, &t) {
-                    self.run(lib, d, id);
-                }
+                self.jump(d, id, &t);
+                self.run(lib, d, id);
             }
             None => self.end(id),
         }
@@ -500,10 +502,8 @@ impl Story {
         self.settle(lib);
     }
 
-    /// The dialogue of a conversation, after checking that its place in it
-    /// still exists: a node that is gone (renamed or removed) is warned
-    /// about by name and the conversation restarts at the dialogue's start;
-    /// a line that moved within its node is found again by its key.
+    /// Resolve stable continuation and line IDs after loading or editing.
+    /// Missing continuations are errors: restarting could repeat commands.
     pub fn resolve(&mut self, lib: &Library, id: u32) -> Result<Arc<Dialogue>, String> {
         let c = self
             .convs
@@ -519,18 +519,18 @@ impl Story {
             return Ok(d);
         }
         let Some(node) = d.node(&c.node) else {
-            let gone = c.node.clone();
-            self.warn(format!(
-                "conversation {id}: the node '{gone}' is gone from dialogue '{}' (renamed or removed); it restarts at '{}'",
-                d.name, d.start
+            return Err(format!(
+                "conversation {id}: saved continuation '{}' is missing from '{}'; restore its stable id (restarting could repeat commands)",
+                c.node, d.name
             ));
-            let c = self.convs.get_mut(&id).unwrap();
-            c.node = d.start.clone();
-            c.pc = 0;
-            c.timer = None;
-            self.run(lib, &d, id);
-            return Ok(d);
         };
+        for continuation in &c.stack {
+            if d.node(continuation).is_none() {
+                return Err(format!(
+                    "conversation {id}: saved detour continuation '{continuation}' is missing; restore its stable id"
+                ));
+            }
+        }
         let shown_key = c.history.last().map(|s| s.key.clone());
         let fits = |pc: u32| matches!(node.steps.get(pc as usize), Some(Step::Say(l)) if Some(&l.text.key) == shown_key.as_ref());
         match c.wait {
@@ -540,26 +540,18 @@ impl Story {
                 match found {
                     Some(pc) => c.pc = pc,
                     None => {
-                        let node_id = c.node.clone();
-                        c.pc = 0;
-                        self.warn(format!(
-                            "conversation {id}: its line '{}' is gone from '{}.{node_id}'; the node restarts",
-                            shown_key.unwrap_or_default(),
-                            d.name
+                        return Err(format!(
+                            "conversation {id}: saved line '{}' is missing; restore its #line: id",
+                            shown_key.unwrap_or_default()
                         ));
-                        self.run(lib, &d, id);
                     }
                 }
             }
             Wait::Choices if node.choices.is_empty() => {
-                let node_id = c.node.clone();
-                self.warn(format!(
-                    "conversation {id}: '{}.{node_id}' has no choices now; the conversation moves on",
-                    d.name
+                return Err(format!(
+                    "conversation {id}: saved choices at '{}' are missing; restore their stable ids",
+                    c.node
                 ));
-                let len = node.steps.len() as u32;
-                self.convs.get_mut(&id).unwrap().pc = len;
-                self.run(lib, &d, id);
             }
             _ => {}
         }
@@ -580,17 +572,12 @@ impl Story {
         self.seen.insert(format!("{}.{node}", d.name));
     }
 
-    /// Jumps to a node (`end` ends); false when the conversation ended.
-    fn jump(&mut self, d: &Dialogue, id: u32, to: &str) -> bool {
-        if to == "end" {
-            self.end(id);
-            return false;
-        }
+    /// Jumps to a continuation block.
+    fn jump(&mut self, d: &Dialogue, id: u32, to: &str) {
         let c = self.convs.get_mut(&id).unwrap();
         c.node = to.to_string();
         c.pc = 0;
         self.enter(d, id, to);
-        true
     }
 
     /// Runs a conversation from its node and step until it shows a line,
@@ -626,27 +613,52 @@ impl Story {
                 }
                 Step::If(x, t) => {
                     if self.truthy(lib, d, id, x) {
-                        if !self.jump(d, id, t) {
-                            return;
-                        }
+                        self.jump(d, id, t);
                     } else {
                         self.convs.get_mut(&id).unwrap().pc += 1;
                     }
                 }
                 Step::Goto(t) => {
-                    if !self.jump(d, id, t) {
-                        return;
-                    }
+                    self.jump(d, id, t);
                 }
                 Step::End => {
                     self.end(id);
                     return;
                 }
-                Step::Pick(opts) => {
-                    let w: Vec<f64> = opts.iter().map(|o| o.1).collect();
-                    let i = og_core::procgen::weighted(&mut self.rng, &w).unwrap_or(0);
-                    if !self.jump(d, id, &opts[i].0) {
+                Step::Detour(target, continuation) => {
+                    self.convs
+                        .get_mut(&id)
+                        .unwrap()
+                        .stack
+                        .push(continuation.clone());
+                    self.jump(d, id, target);
+                }
+                Step::Return => {
+                    if let Some(target) = self.convs.get_mut(&id).unwrap().stack.pop() {
+                        self.jump(d, id, &target);
+                    } else {
+                        self.end(id);
                         return;
+                    }
+                }
+                Step::Select(options) => {
+                    let mut eligible: Vec<_> = options
+                        .iter()
+                        .filter(|(_, cond, _)| {
+                            cond.as_ref().is_none_or(|x| self.truthy(lib, d, id, x))
+                        })
+                        .collect();
+                    // This profile's saliency prefers matching conditional lines;
+                    // unconditional lines are fallbacks. Ties draw by weight.
+                    if eligible.iter().any(|(_, cond, _)| cond.is_some()) {
+                        eligible.retain(|(_, cond, _)| cond.is_some());
+                    }
+                    if eligible.is_empty() {
+                        self.convs.get_mut(&id).unwrap().pc += 1;
+                    } else {
+                        let weights: Vec<_> = eligible.iter().map(|o| o.2).collect();
+                        let i = og_core::procgen::weighted(&mut self.rng, &weights).unwrap_or(0);
+                        self.jump(d, id, &eligible[i].0);
                     }
                 }
                 s => {

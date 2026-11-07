@@ -1,5 +1,5 @@
 //! Dialogues and quests through the cook (G2-8): a valid one cooks to the
-//! text the runtime parses, a broken one is refused with its line and the
+//! IR the runtime loads, a broken one is refused with its line and the
 //! fix, and a key the base string table lacks, or an argument its message
 //! takes that nothing passes, is warned about.
 
@@ -20,41 +20,52 @@ fn project(name: &str, files: &[(&str, &str)]) -> PathBuf {
     root
 }
 
-const SMITH: &str = "type dialogue\nversion 1\n---\nname smith\nspeaker smith {\n  name \"npc.smith\"\n}\nglobal gold 3\nnode greet {\n  say smith \"smith.hello\"\n  say smith \"smith.price\"\n  choice \"smith.missing\"\n}\n";
+const SMITH: &str = "#og-profile:yarn-3.0-og-1\n#og-name:smith\ntitle: greet\n---\nsmith: Hello. #line:smith.hello\nsmith: Price #line:smith.price\n-> Choose #line:smith.missing\n===\n";
 const QUEST: &str = "type quest\nversion 1\n---\nid rescue\ntitle \"quest.rescue\"\nstage hunt {\n  objective wolves \"quest.wolves\" {\n    target 3\n  }\n}\n";
 const EN: &str = "type strings\nversion 1\n---\nlocale \"en\"\nbase true\nstring \"npc.smith\" \"Brannoc\"\nstring \"smith.hello\" \"Hello.\"\nstring \"smith.price\" \"That's {price} gold.\"\nstring \"quest.rescue\" \"Rescue\"\nstring \"quest.wolves\" \"Wolves {count}/{target}\"\n";
 
 #[test]
 fn dialogues_and_quests_cook_and_their_keys_are_checked_against_the_base_table() {
-    let bad = "type dialogue\nversion 1\n---\nname bad\nnode a {\n  goto nowhere\n}\n";
+    let bad = "#og-profile:yarn-3.0-og-1\n#og-name:bad\ntitle: a\n---\n<<jump nowhere>>\n===\n";
     let root = project(
         "keys",
         &[
-            ("story/smith.ogt", SMITH),
+            ("story/smith.yarn", SMITH),
             ("story/rescue.ogt", QUEST),
-            ("story/bad.ogt", bad),
+            ("story/bad.yarn", bad),
+            (
+                "story/missing.yarn",
+                &bad.replace("<<jump nowhere>>", "Missing id"),
+            ),
             ("strings/en.ogt", EN),
         ],
     );
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     let errors = report.errors();
-    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(errors.len(), 2, "{errors:?}");
     assert!(
-        errors[0].starts_with("assets/story/bad.ogt")
-            && errors[0].contains("line 6")
+        errors[0].starts_with("assets/story/bad.yarn")
+            && errors[0].contains("line 5")
             && errors[0].contains("'nowhere' names no node"),
+        "{errors:?}"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.starts_with("assets/story/missing.yarn")
+                && e.contains("line 5")
+                && e.contains("append #line:unique_id")),
         "{errors:?}"
     );
     let w = &report.warnings;
     assert!(
-        w.iter().any(|w| w.starts_with("assets/story/smith.ogt")
-            && w.contains("line 12")
-            && w.contains("'smith.missing' is not in the base string table")),
-        "{w:?}"
+        !w.iter()
+            .any(|w| w.contains("'smith.missing' is not in the base string table")),
+        "inline Yarn text supplies its base string: {w:?}"
     );
     assert!(
-        w.iter().any(|w| w.starts_with("assets/story/smith.ogt")
-            && w.contains("line 11")
+        w.iter().any(|w| w.starts_with("assets/story/smith.yarn")
+            && w.contains("line 6")
             && w.contains("takes {price}")),
         "{w:?}"
     );
@@ -62,9 +73,15 @@ fn dialogues_and_quests_cook_and_their_keys_are_checked_against_the_base_table()
     assert!(!w.iter().any(|w| w.contains("rescue.ogt")), "{w:?}");
 
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
-    for (id, text) in [("story/smith.ogt", SMITH), ("story/rescue.ogt", QUEST)] {
+    for (id, text) in [("story/smith.yarn", SMITH), ("story/rescue.ogt", QUEST)] {
         let cooked = bundle.story_text(id, &bundle.read(id).unwrap()).unwrap();
-        assert_eq!(cooked, text);
+        if id.ends_with(".yarn") {
+            let ir = og_story::Dialogue::decode(&cooked).unwrap();
+            assert_eq!(ir, og_story::Dialogue::parse(text).unwrap());
+            assert_eq!(ir.strings["smith.missing"], "Choose");
+        } else {
+            assert_eq!(cooked, text);
+        }
     }
     assert!(
         bundle

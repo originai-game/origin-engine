@@ -686,9 +686,18 @@ fn tr(engine: u32, key: &str, args: &Value) -> String {
 // ── loading ─────────────────────────────────────────────────────────────
 
 fn insert(engine_id: u32, text: &str) -> Result<Value, String> {
-    let ty = og_core::ogt::Document::parse(text)
-        .map_err(|e| e.reason().to_string())?
-        .ty;
+    let ty = if text
+        .lines()
+        .map(str::trim)
+        .find(|s| !s.is_empty() && !s.starts_with("//") && !s.starts_with('#'))
+        .is_some_and(|s| s.starts_with("type "))
+    {
+        og_core::ogt::Document::parse(text)
+            .map_err(|e| e.reason().to_string())?
+            .ty
+    } else {
+        og_story::DIALOGUE_TYPE.to_string()
+    };
     // The first load registers og.Story and the events (outside a system).
     let eng = engine(engine_id)?;
     match eng.world() {
@@ -722,11 +731,16 @@ fn insert(engine_id: u32, text: &str) -> Result<Value, String> {
         }
         Ok(info)
     } else if ty == og_story::DIALOGUE_TYPE {
-        let d = Dialogue::parse(text)?;
+        let d = if text.trim_start().starts_with('{') {
+            Dialogue::decode(text)?
+        } else {
+            Dialogue::parse(text)?
+        };
+        super::i18n::story_strings(engine_id, &d.locale, &d.strings)?;
         load_voices(&eng, engine_id, &d);
         let info = json!({
             "kind": "dialogue", "name": d.name,
-            "nodes": d.nodes.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
+            "nodes": d.nodes.iter().filter(|n| n.id == n.title).map(|n| n.id.clone()).collect::<Vec<_>>(),
             "speakers": d.speakers.iter().map(|s| s.id.clone()).collect::<Vec<_>>(),
             "variables": d.vars.iter().map(|v| v.name.clone()).collect::<Vec<_>>(),
         });
@@ -744,7 +758,7 @@ fn insert(engine_id: u32, text: &str) -> Result<Value, String> {
         Ok(info)
     } else {
         Err(format!(
-            "expected 'type dialogue' or 'type quest', found 'type {ty}'"
+            "expected Yarn dialogue or 'type quest', found 'type {ty}'"
         ))
     }
 }
@@ -880,13 +894,17 @@ fn speaker_json(
 
 fn line_json(engine: u32, d: &Dialogue, c: &og_story::Conv, l: &og_story::Shown) -> Value {
     let args = args_json(&l.args);
-    let chosen = l.chosen.as_ref().and_then(|(i, _)| {
-        let choice = d.node(&l.node)?.choices.get(*i as usize)?;
+    let chosen = l.chosen.as_ref().and_then(|(i, id)| {
+        let choice = d
+            .nodes
+            .iter()
+            .flat_map(|n| &n.choices)
+            .find(|c| &c.id == id)?;
         Some(json!({ "index": i, "text": tr(engine, &choice.text.key, &json!({})) }))
     });
     json!({
         "seq": l.seq,
-        "node": l.node,
+        "node": d.node(&l.node).map_or(l.node.as_str(), |n| n.title.as_str()),
         "speaker": speaker_json(engine, d, c, &l.speaker, &l.expression),
         "key": l.key,
         "text": tr(engine, &l.key, &args),
@@ -969,7 +987,7 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
         let args = args_json(&l.args);
         Some(json!({
             "conversation": conversation,
-            "node": c.node,
+            "node": d.node(&c.node).map_or(c.node.as_str(), |n| n.title.as_str()),
             "seq": l.seq,
             "seen": l.seen,
             "key": l.key,

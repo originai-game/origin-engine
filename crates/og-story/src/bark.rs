@@ -1,6 +1,6 @@
 //! Barks: ambient lines an entity says on its own, outside a conversation
 //! (a guard's yawn, a merchant's call, a shout when it spots the player).
-//! A dialogue declares them (`bark <id> { topic ... }`); the game asks for a
+//! A Yarn node declares an `og-topic` header; the game asks for a
 //! topic (og.story.bark) or lets an entity bark every so often
 //! (og.story.ambient). Each request is settled at the og.story system's
 //! next run: of the barks of its topic whose `when` holds (it may read the
@@ -39,8 +39,6 @@ pub struct Ambient {
 pub struct Said {
     pub dialogue: String,
     pub bark: String,
-    /// Its line's index in the bark.
-    pub line: u32,
     pub key: String,
     pub args: Vec<(String, Val)>,
     pub speaker: String,
@@ -246,7 +244,7 @@ impl Story {
             self.bark_once.insert(id);
         }
         let speaker = if b.speaker.is_empty() {
-            crate::NARRATOR.to_string()
+            l.speaker.clone()
         } else {
             b.speaker.clone()
         };
@@ -255,7 +253,6 @@ impl Story {
             Said {
                 dialogue: d.name.clone(),
                 bark: b.id.clone(),
-                line,
                 key: l.text.key.clone(),
                 args,
                 speaker,

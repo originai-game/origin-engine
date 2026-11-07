@@ -14,7 +14,7 @@
 use std::fmt;
 
 /// A story value.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Val {
     Num(f64),
     Bool(bool),
@@ -54,7 +54,7 @@ impl fmt::Display for Val {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Op {
     Add,
     Sub,
@@ -72,7 +72,7 @@ pub enum Op {
 }
 
 /// A story function.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Func {
     /// `seen(node)`.
     Seen(String),
@@ -85,7 +85,7 @@ pub enum Func {
 }
 
 /// A parsed expression.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Expr {
     Lit(Val),
     Var(String),
@@ -137,6 +137,24 @@ fn tokenize(src: &str) -> Result<Vec<Tok>, String> {
             out.push(Tok::Num(n));
             continue;
         }
+        if c == '"' {
+            let start = i;
+            i += 1;
+            while i < b.len() && b[i] != b'"' {
+                if b[i] == b'\\' {
+                    i += 1;
+                }
+                i += 1;
+            }
+            if i >= b.len() {
+                return Err("a double-quoted string is not closed".into());
+            }
+            i += 1;
+            let value = serde_json::from_str(&src[start..i])
+                .map_err(|e| format!("invalid string escape: {e}"))?;
+            out.push(Tok::Str(value));
+            continue;
+        }
         if c == '\'' {
             let start = i + 1;
             i = start;
@@ -164,6 +182,8 @@ fn tokenize(src: &str) -> Result<Vec<Tok>, String> {
             "!=" => Some("!="),
             "<=" => Some("<="),
             ">=" => Some(">="),
+            "&&" => Some("&&"),
+            "||" => Some("||"),
             _ => None,
         };
         if let Some(s) = sym {
@@ -182,8 +202,8 @@ fn tokenize(src: &str) -> Result<Vec<Tok>, String> {
             '(' => "(",
             ')' => ")",
             ',' => ",",
+            '!' => "!",
             '=' => return Err("'=' compares nothing: write '==' to compare".into()),
-            '"' => return Err("strings inside an expression take single quotes: 'text'".into()),
             _ => return Err(format!("'{c}' is not part of an expression")),
         };
         out.push(Tok::Sym(one));
@@ -219,20 +239,20 @@ impl Parser {
     }
     fn or(&mut self) -> Result<Expr, String> {
         let mut l = self.and()?;
-        while self.word("or") {
+        while self.word("or") || self.sym("||") {
             l = Expr::Bin(Op::Or, Box::new(l), Box::new(self.and()?));
         }
         Ok(l)
     }
     fn and(&mut self) -> Result<Expr, String> {
         let mut l = self.not()?;
-        while self.word("and") {
+        while self.word("and") || self.sym("&&") {
             l = Expr::Bin(Op::And, Box::new(l), Box::new(self.not()?));
         }
         Ok(l)
     }
     fn not(&mut self) -> Result<Expr, String> {
-        if self.word("not") {
+        if self.word("not") || self.sym("!") {
             return Ok(Expr::Not(Box::new(self.not()?)));
         }
         self.cmp()
@@ -538,7 +558,7 @@ mod tests {
                 .contains("and / or")
         );
         assert!(Expr::parse("roll(3)").unwrap_err().contains("seen, status"));
-        assert!(Expr::parse("\"x\"").unwrap_err().contains("single quotes"));
+        assert!(Expr::parse("\"x").unwrap_err().contains("not closed"));
         let s = S(BTreeMap::new());
         assert!(
             Expr::parse("gold + 1")

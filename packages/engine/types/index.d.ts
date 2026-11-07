@@ -22052,10 +22052,10 @@ export interface AiDescription {
 
 
 // ── story ───────────────────────────────────────────────────────
-// Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen.
-// og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log.
-// Barks are ambient lines an entity says on its own (a dialogue's `bark` blocks: a topic, lines, a `when` that may read the world, priority, weight, cooldowns per entity and shared, once): og.story.bark asks for one, og.story.ambient every so often, og.story.barks lists those being said. A line's `voice` is played by og.story through og.audio, and DialogueView.voiceLeft says when it ends. A quest objective with `on <Event>` counts each such event the game or the engine sends, filtered by `where` (which reads `event.<field>`), with no game code. `dump_story` writes the whole story: variables, conversations, quests, barks, cooldowns and voices.
-// Everything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork "story"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load.
+// Dialogue uses Yarn Spinner syntax in `.yarn` files, compiled to engine-owned IR by og cook. The declared profile is `#og-profile:yarn-3.0-og-1`; see the yarn guide for supported syntax and extensions. Every line and option requires an explicit stable `#line:` id. Inline base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.
+// og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. DialogueView and QuestView retain their existing shapes. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.
+// Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn.
+// Saves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash.
 
 /**
  * The story's counters (written by og.story; the story itself is a state block). Registered at the first og.story.load.
@@ -22096,7 +22096,7 @@ export interface DialogueShown {
 }
 
 /**
- * A conversation ended: its dialogue ran out, reached `end`, took a choice without `goto`, or og.story.stop stopped it. Sent the tick after.
+ * A conversation ended: its top-level Yarn node returned, reached `<<stop>>`, or og.story.stop stopped it. Sent the tick after.
  *
  * The payload of the `DialogueEnded` event (token `og.DialogueEnded`).
  */
@@ -22152,14 +22152,14 @@ export interface BarkSaid {
 }
 
 /**
- * A dialogue's `emit name "arg"`: open the shop, give the sword, play the cutscene. Sent the tick after.
+ * A Yarn command such as `<<give_sword {$amount}>>`: open the shop, give the sword, play the cutscene. Sent the tick after.
  *
  * The payload of the `StoryEvent` event (token `og.StoryEvent`).
  */
 export interface StoryEvent {
   /** The conversation that emitted it. */
   readonly conversation: number;
-  /** The name written after emit. */
+  /** The command name. */
   readonly name: string;
   /** Its argument, evaluated and written as text (empty without one). */
   readonly arg: string;
@@ -22175,7 +22175,7 @@ export interface StoryAsset {
   readonly nodes: readonly string[];
   /** A dialogue's speakers (a quest: none). */
   readonly speakers: readonly string[];
-  /** The variables it declares (var: the conversation's; global: the story's). */
+  /** Declared variables: Yarn declarations are global unless listed in a #og-local file tag. */
   readonly variables: readonly string[];
 }
 
@@ -22192,7 +22192,7 @@ export interface StartDesc {
    */
   readonly dialogue?: string;
   /**
-   * The node to start at (empty: the dialogue's `start`).
+   * The node to start at (empty: the first non-bark Yarn node).
    *
    * @default ""
    */
@@ -22204,7 +22204,7 @@ export interface StartDesc {
    */
   readonly cast?: unknown;
   /**
-   * Starting values for the dialogue's own `var`s, `{ mood: 2 }`.
+   * Starting values for #og-local variables, `{ mood: 2 }`.
    *
    * @default null
    */
@@ -47321,7 +47321,7 @@ export declare namespace og {
    */
   const DialogueShown: EventType<DialogueShown>;
   /**
-   * A conversation ended: its dialogue ran out, reached `end`, took a choice without `goto`, or og.story.stop stopped it. Sent the tick after.
+   * A conversation ended: its top-level Yarn node returned, reached `<<stop>>`, or og.story.stop stopped it. Sent the tick after.
    */
   const DialogueEnded: EventType<DialogueEnded>;
   /**
@@ -47335,21 +47335,21 @@ export declare namespace og {
    */
   const BarkSaid: EventType<BarkSaid>;
   /**
-   * A dialogue's `emit name "arg"`: open the shop, give the sword, play the cutscene. Sent the tick after.
+   * A Yarn command such as `<<give_sword {$amount}>>`: open the shop, give the sword, play the cutscene. Sent the tick after.
    */
   const StoryEvent: EventType<StoryEvent>;
   /**
-   * Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen.
-   * og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log.
-   * Barks are ambient lines an entity says on its own (a dialogue's `bark` blocks: a topic, lines, a `when` that may read the world, priority, weight, cooldowns per entity and shared, once): og.story.bark asks for one, og.story.ambient every so often, og.story.barks lists those being said. A line's `voice` is played by og.story through og.audio, and DialogueView.voiceLeft says when it ends. A quest objective with `on <Event>` counts each such event the game or the engine sends, filtered by `where` (which reads `event.<field>`), with no game code. `dump_story` writes the whole story: variables, conversations, quests, barks, cooldowns and voices.
-   * Everything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork "story"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load.
+   * Dialogue uses Yarn Spinner syntax in `.yarn` files, compiled to engine-owned IR by og cook. The declared profile is `#og-profile:yarn-3.0-og-1`; see the yarn guide for supported syntax and extensions. Every line and option requires an explicit stable `#line:` id. Inline base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.
+   * og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. DialogueView and QuestView retain their existing shapes. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.
+   * Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn.
+   * Saves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash.
    */
   namespace story {
     /**
-     * A cooked dialogue or quest (an `.ogt` of `type dialogue` or `type quest`, validated by og cook). Loading again replaces it, so a live edit takes effect at the conversation's next step. The first load registers og.Story and the story's events, so call it in setup: inside a system it is refused until one load has run outside one.
+     * A cooked `.yarn` dialogue or `type quest` asset. Loading again replaces it; stable ids preserve the conversation at its next step. The first load registers og.Story and its events, so call it in setup: inside a system it is refused until one load has run outside one.
      *
      * @param world The world.
-     * @param path The asset, such as `story/smith.ogt`.
+     * @param path The asset, such as `story/smith.yarn`.
      * @returns Refused for a path that is not a cooked dialogue or quest.
      */
     function load(world: World, path: string): Result<StoryAsset>;
@@ -47357,7 +47357,7 @@ export declare namespace og {
      * A dialogue or quest from text, now (tests and generated content; assets go through og cook). Registers og.Story as load does.
      *
      * @param world The world.
-     * @param text The `.ogt` text.
+     * @param text Yarn text with its profile and name tags, or a `type quest` .ogt.
      * @returns Refused with the first error's line and the fix.
      */
     function parse(world: World, text: string): Result<StoryAsset>;
@@ -47400,7 +47400,7 @@ export declare namespace og {
      */
     function advance(world: World, conversation: number): Result<void>;
     /**
-     * Take a choice: its `set`, `emit` and `quest` steps run, an active check rolls (og.DialogueCheck), and the conversation goes to its `goto` (or `fail` on a missed roll), or ends without one.
+     * Take a choice: an active check rolls (og.DialogueCheck), then its indented Yarn body runs, or #fail redirects a missed roll. A settled choice is not executed again on restore.
      *
      * @param world The world.
      * @param conversation The conversation.

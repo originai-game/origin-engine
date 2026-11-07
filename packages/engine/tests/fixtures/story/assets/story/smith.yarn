@@ -1,0 +1,33 @@
+#og-profile:yarn-3.0-og-1
+#og-name:smith
+#og-local:mood
+title: greet
+og-speaker: smith|npc.smith|art/smith.png|right
+---
+<<declare $mood = 0>>
+<<declare $gold = 10>>
+<<declare $charm = 3>>
+smith: Steel's not cheap. You've {$gold} gold. #line:smith.hello
+<<set $mood = $mood + 1>>
+-> Buy the sword (10 gold) <<if $gold >= 10>> #line:smith.buy #kind:trade #reason:smith.need_gold #reason-arg:need=10-$gold
+    <<set $gold = $gold - 10>>
+    <<jump bought>>
+-> Haggle #line:smith.haggle #check:active:charm:12 #fail:angry
+    <<jump bought>>
+-> Ask about the old forge #line:smith.secret #check:passive:charm:5 #hide
+    <<jump bought>>
+-> Leave #line:smith.leave #timer:30
+    <<stop>>
+===
+title: bought
+---
+smith: Mind the edge. #line:smith.thanks
+<<quest progress rescue sword>>
+<<give_sword {$mood}>>
+===
+title: angry
+---
+=> smith: Fine. Again, then. #line:smith.calm #weight:1
+    <<jump greet>>
+=> smith: Out of my forge! #line:smith.furious #weight:3
+===

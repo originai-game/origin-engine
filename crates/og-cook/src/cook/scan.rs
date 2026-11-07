@@ -118,6 +118,7 @@ pub(super) fn scan_with(
             e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
             "riv" => Kind::Rive,
+            "yarn" => Kind::Dialogue,
             "cube" => Kind::Lut,
             "tmj" | "ldtk" => Kind::Tilemap,
             "hex" | "gpl" => Kind::Palette,

@@ -1,0 +1,24 @@
+#og-profile:yarn-3.0-og-1
+#og-name:guard
+title: halt
+og-speaker: guard|npc.guard||left
+---
+guard: Halt! Who goes there? #line:guard.halt #voice:vo/guard_halt.wav
+<<halted>>
+===
+title: idle
+og-topic: idle
+og-cooldown: 120
+---
+guard: *yawns* #line:guard.yawn
+guard: Long night. #line:guard.stretch
+===
+title: hurt
+og-topic: idle
+og-when: self.GuardHealth.hp < 30
+og-priority: 5
+og-cooldown: 60
+og-duration: 30
+---
+guard: Only {self.GuardHealth.hp} left in me... #line:guard.hurt
+===

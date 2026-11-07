@@ -181,6 +181,7 @@ pub fn check_tables(tables: &[StringTable]) -> Vec<MissingKey> {
 #[derive(Clone, Debug, Default)]
 pub struct Catalog {
     tables: BTreeMap<String, StringTable>,
+    authored: BTreeMap<String, BTreeMap<String, (String, Message)>>,
     active: Option<String>,
     requested: Vec<String>,
 }
@@ -191,6 +192,39 @@ impl Catalog {
     pub fn insert(&mut self, table: StringTable) {
         self.tables.insert(table.locale.clone(), table);
         self.renegotiate();
+    }
+
+    /// Adds authored base strings without replacing a locale's fonts or translations.
+    pub fn extend_base(
+        &mut self,
+        locale: &str,
+        strings: &BTreeMap<String, String>,
+    ) -> Result<(), String> {
+        let locale = canonical(locale);
+        let entries: BTreeMap<_, _> = strings
+            .iter()
+            .map(|(key, text)| {
+                Message::parse(text)
+                    .map(|message| (key.clone(), (text.clone(), message)))
+                    .map_err(|e| format!("{key}: {e}"))
+            })
+            .collect::<Result<_, _>>()?;
+        self.authored
+            .entry(locale.clone())
+            .or_default()
+            .extend(entries);
+        self.tables
+            .entry(locale.clone())
+            .or_insert_with(|| StringTable {
+                locale: locale.clone(),
+                fallback: None,
+                base: true,
+                direction: direction_of_locale(&locale),
+                fonts: Vec::new(),
+                entries: BTreeMap::new(),
+            });
+        self.renegotiate();
+        Ok(())
     }
 
     pub fn locales(&self) -> Vec<String> {
@@ -248,7 +282,11 @@ impl Catalog {
     /// chain), formatted; `None` when no table has it.
     pub fn t(&self, key: &str, args: &BTreeMap<String, Arg>) -> Option<String> {
         for t in self.chain() {
-            if let Some((_, m)) = t.entries.get(key) {
+            if let Some((_, m)) = t
+                .entries
+                .get(key)
+                .or_else(|| self.authored.get(&t.locale)?.get(key))
+            {
                 return Some(m.format(&t.locale, args));
             }
         }
@@ -257,7 +295,13 @@ impl Catalog {
 
     /// Whether the active locale itself (not a fallback) has `key`.
     pub fn has(&self, key: &str) -> bool {
-        self.active().is_some_and(|t| t.entries.contains_key(key))
+        self.active().is_some_and(|t| {
+            t.entries.contains_key(key)
+                || self
+                    .authored
+                    .get(&t.locale)
+                    .is_some_and(|a| a.contains_key(key))
+        })
     }
 
     /// The active direction (left to right without tables).

@@ -2,6 +2,8 @@ type strings
 version 1
 ---
 locale "ja"
+string "authored.hello" "こんにちは"
+string "authored.continue" "続ける"
 string "npc.smith" "ブラノック"
 string "smith.hello" "鋼は安くない。所持金は{gold}ゴールドだな。"
 string "smith.buy" "剣を買う（10ゴールド）"

@@ -1,72 +1,8 @@
-//! The story assets: dialogues (`type dialogue`) and quests (`type quest`),
-//! parsed and validated so a cooked one always runs. Every error names its
-//! line and the fix. Text is never inline: lines, choices, reasons, names
-//! and titles are og.i18n keys, resolved in the active locale when shown.
-//!
-//! ```text
-//! type dialogue
-//! version 1
-//! ---
-//! name smith
-//! start greet
-//! speaker smith {
-//!   name "npc.smith"
-//!   portrait "art/smith.png"
-//!   side left
-//! }
-//! var mood 0                     # this conversation's own
-//! global gold 10                 # the story's, shared with every dialogue and quest
-//! node greet {
-//!   say smith "smith.hello" {
-//!     arg gold "gold"
-//!     voice "vo/smith_hello"
-//!     shot smith_close           # a virtual camera's name or a cast role
-//!   }
-//!   choice "smith.buy" {
-//!     if "gold >= 10"
-//!     reason "smith.need_gold" {
-//!       arg need "10 - gold"
-//!     }
-//!     kind trade
-//!     set gold "gold - 10"
-//!     goto bought
-//!   }
-//!   choice "smith.haggle" {
-//!     check active charm 12      # d20 + charm against 12
-//!     goto bought
-//!     fail angry
-//!   }
-//!   choice "smith.leave"
-//!   timer 600 smith.leave        # ticks; the choice taken when it runs out
-//! }
-//! node bought {
-//!   shot counter                 # every line of the node, unless one names its own
-//!   say smith "smith.thanks"
-//!   quest progress rescue sword
-//!   emit give_sword
-//! }
-//! node angry {
-//!   pick {
-//!     greet 1
-//!     bought 3
-//!   }
-//! }
-//! ```
-//!
-//! A node runs its steps in order: `say` shows a line and waits for
-//! `advance`; `set`, `emit` and `quest` act at once; `if "cond" node`,
-//! `goto`, `pick` (weighted, on the story's og.Rng stream) and `end` jump.
-//! A node's choices are shown with its last line: when that line is
-//! reached, the steps after it run at once and the line waits for a
-//! choice. A node that runs out of steps without choices ends the
-//! conversation. A choice without `goto` ends it too.
-//!
-//! `shot` names a virtual camera (its entity's name, or a cast role that
-//! the conversation's cast maps to one): a node's covers its lines, a
-//! line's replaces it for that line, and `shot none` shows a line without
-//! one. The runtime makes it og.CameraBrain's solo shot while the line
-//! shows and hands the solo back when the line, the node or the
-//! conversation ends.
+//! Engine-owned story IR compiled from `.yarn` by [`crate::yarn`], and
+//! quests parsed from `type quest` data. Yarn lines carry base text and
+//! explicit stable `#line:` IDs; the runtime resolves them through i18n.
+//! Continuation blocks use semantic IDs, not source positions. The
+//! dialogue box still reads the same lines, speakers, choices and shots.
 //!
 //! ```text
 //! type quest
@@ -108,10 +44,10 @@
 //! the log until it first counts.
 
 use crate::expr::{Expr, Func, Val};
-use og_core::ogt::{Block, Document, Entry, Value as OgtValue};
+use og_core::ogt::{Document, Entry, Value as OgtValue};
 use std::collections::BTreeSet;
 
-/// The `.ogt` type of a dialogue.
+/// The cooked asset kind (legacy `.ogt` sources receive a migration error).
 pub const DIALOGUE_TYPE: &str = "dialogue";
 /// The `.ogt` type of a quest.
 pub const QUEST_TYPE: &str = "quest";
@@ -119,7 +55,7 @@ pub const QUEST_TYPE: &str = "quest";
 pub const NARRATOR: &str = "narrator";
 
 /// A variable a dialogue or quest declares.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct VarDecl {
     pub name: String,
     pub value: Val,
@@ -129,7 +65,7 @@ pub struct VarDecl {
 }
 
 /// A speaker.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Speaker {
     pub id: String,
     /// The i18n key of its name (empty: none).
@@ -143,14 +79,14 @@ pub struct Speaker {
 }
 
 /// An i18n key with its arguments (expressions, evaluated when shown).
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Text {
     pub key: String,
     pub args: Vec<(String, Expr)>,
 }
 
 /// A line.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Line {
     pub speaker: String,
     pub text: Text,
@@ -166,7 +102,7 @@ pub struct Line {
 }
 
 /// A quest operation a dialogue step or choice performs.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum QuestOp {
     Start(String),
     Progress(String, String, Expr),
@@ -176,7 +112,7 @@ pub enum QuestOp {
 }
 
 /// A step of a node.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Step {
     Say(Line),
     Set(String, Expr),
@@ -184,26 +120,20 @@ pub enum Step {
     If(Expr, String),
     Goto(String),
     End,
-    /// `pick { node weight ... }`.
-    Pick(Vec<(String, f64)>),
     /// `emit name ["arg"]`.
     Emit(String, Option<Expr>),
     Quest(QuestOp),
-}
-
-impl Step {
-    fn jumps(&self) -> bool {
-        matches!(
-            self,
-            Step::If(..) | Step::Goto(_) | Step::End | Step::Pick(_)
-        )
-    }
+    /// Calls a Yarn node, returning to the named continuation block.
+    Detour(String, String),
+    Return,
+    /// Eligible line-group candidates: target, condition, weight.
+    Select(Vec<(String, Option<Expr>, f64)>),
 }
 
 /// A check on a choice: `passive` enables it only when the stat reaches
 /// the target; `active` rolls d20 + the stat against the target when it
 /// is chosen, going to the choice's `goto` on a pass and `fail` on a miss.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Check {
     pub active: bool,
     /// The variable read as the stat.
@@ -212,7 +142,7 @@ pub struct Check {
 }
 
 /// A choice.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Choice {
     /// Its id within the node (`id`, else its key): what `visited` and a
     /// node's `timer` name.
@@ -236,9 +166,10 @@ pub struct Choice {
 }
 
 /// A node.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Node {
     pub id: String,
+    pub title: String,
     pub steps: Vec<Step>,
     /// Each step's source line.
     pub lines: Vec<usize>,
@@ -255,7 +186,7 @@ pub struct Node {
 }
 
 /// A parsed dialogue.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Dialogue {
     pub name: String,
     pub start: String,
@@ -263,6 +194,8 @@ pub struct Dialogue {
     pub vars: Vec<VarDecl>,
     pub nodes: Vec<Node>,
     pub barks: Vec<Bark>,
+    pub strings: std::collections::BTreeMap<String, String>,
+    pub locale: String,
 }
 
 /// A bark: an ambient line an entity says on its own (a guard's yawn, a
@@ -270,7 +203,7 @@ pub struct Dialogue {
 /// topic; og.story.ambient asks every so often. The highest `priority` of
 /// the topic whose `when` holds and whose cooldowns are over is said; ties
 /// are drawn by `weight` on the story's stream.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Bark {
     pub id: String,
     pub topic: String,
@@ -454,415 +387,6 @@ fn text_of(e: &Entry, i: usize) -> Result<Text, String> {
     Ok(Text { key, args })
 }
 
-fn no_block(e: &Entry) -> Result<(), String> {
-    if e.block.is_some() {
-        return Err(err(e, format!("'{}' takes no block", e.key)));
-    }
-    Ok(())
-}
-
-fn quest_op(e: &Entry) -> Result<QuestOp, String> {
-    let op = name_at(
-        e,
-        0,
-        "an operation: start, progress, stage, complete or fail",
-    )?;
-    let id = name_at(e, 1, "a quest id")?;
-    Ok(match op.as_str() {
-        "start" => QuestOp::Start(id),
-        "complete" => QuestOp::Complete(id),
-        "fail" => QuestOp::Fail(id),
-        "stage" => QuestOp::Stage(id, name_at(e, 2, "a stage id")?),
-        "progress" => QuestOp::Progress(
-            id,
-            name_at(e, 2, "an objective id")?,
-            if e.values.len() > 3 {
-                expr_at(e, 3)?
-            } else {
-                Expr::Lit(Val::Num(1.0))
-            },
-        ),
-        other => {
-            return Err(err(
-                e,
-                format!(
-                    "'quest {other}' is not a quest operation: start, progress, stage, complete or fail"
-                ),
-            ));
-        }
-    })
-}
-
-/// A step every block may hold (`set`, `emit`, `quest`), or `None`.
-fn action(e: &Entry) -> Result<Option<Step>, String> {
-    Ok(Some(match e.key.as_str() {
-        "set" => Step::Set(name_at(e, 0, "a variable")?, expr_at(e, 1)?),
-        "emit" => Step::Emit(
-            name_at(e, 0, "an event name")?,
-            if e.values.len() > 1 {
-                Some(expr_at(e, 1)?)
-            } else {
-                None
-            },
-        ),
-        "quest" => Step::Quest(quest_op(e)?),
-        _ => return Ok(None),
-    }))
-}
-
-fn choice(e: &Entry) -> Result<Choice, String> {
-    let text = text_of(e, 0)?;
-    let mut c = Choice {
-        id: text.key.clone(),
-        text,
-        cond: None,
-        hide: false,
-        reason: None,
-        kind: String::new(),
-        check: None,
-        steps: Vec::new(),
-        goto: None,
-        fail: None,
-        line: e.line,
-    };
-    let Some(b) = &e.block else { return Ok(c) };
-    for x in &b.entries {
-        if let Some(step) = action(x)? {
-            c.steps.push(step);
-            continue;
-        }
-        match x.key.as_str() {
-            "arg" => {}
-            "id" => c.id = name_at(x, 0, "a word")?,
-            "if" => c.cond = Some(expr_at(x, 0)?),
-            "hide" => c.hide = true,
-            "reason" => c.reason = Some(text_of(x, 0)?),
-            "kind" => c.kind = name_at(x, 0, "a word, such as trade or leave")?,
-            "goto" => c.goto = Some(name_at(x, 0, "a node")?),
-            "fail" => c.fail = Some(name_at(x, 0, "a node")?),
-            "check" => {
-                let active = match name_at(x, 0, "passive or active")?.as_str() {
-                    "active" => true,
-                    "passive" => false,
-                    other => {
-                        return Err(err(
-                            x,
-                            format!(
-                                "a check is passive (a threshold) or active (a d20 roll), not '{other}'"
-                            ),
-                        ));
-                    }
-                };
-                c.check = Some(Check {
-                    active,
-                    stat: name_at(x, 1, "a variable to read as the stat")?,
-                    target: expr_at(x, 2)?,
-                });
-            }
-            other => {
-                return Err(err(
-                    x,
-                    format!(
-                        "'{other}' is not part of a choice: goto, if, hide, reason, kind, id, arg, check, fail, set, emit or quest"
-                    ),
-                ));
-            }
-        }
-    }
-    match (&c.check, &c.fail) {
-        (Some(k), None) if k.active => {
-            return Err(err(
-                e,
-                "an active check needs 'fail <node>', where a missed roll goes",
-            ));
-        }
-        (Some(k), Some(_)) if !k.active => {
-            return Err(err(
-                e,
-                "'fail' is for an active check: a passive check only disables the choice",
-            ));
-        }
-        (None, Some(_)) => {
-            return Err(err(e, "'fail' needs 'check active <stat> <target>'"));
-        }
-        _ => {}
-    }
-    Ok(c)
-}
-
-/// A line: the i18n key at value `i`, with its block's `arg`, `voice`,
-/// `expression` and `shot`.
-fn line_at(x: &Entry, speaker: String, i: usize) -> Result<Line, String> {
-    let text = text_of(x, i)?;
-    let opt = |k: &str| -> Result<String, String> {
-        match x.block.as_ref().and_then(|b| b.get(k)) {
-            Some(v) => name_at(v, 0, "a value"),
-            None => Ok(String::new()),
-        }
-    };
-    if let Some(b) = &x.block
-        && let Some(bad) = b
-            .entries
-            .iter()
-            .find(|v| !matches!(v.key.as_str(), "arg" | "voice" | "expression" | "shot"))
-    {
-        return Err(err(
-            bad,
-            format!(
-                "'{}' is not part of a line: arg, voice, expression or shot",
-                bad.key
-            ),
-        ));
-    }
-    Ok(Line {
-        speaker,
-        text,
-        voice: opt("voice")?,
-        expression: opt("expression")?,
-        shot: opt("shot")?,
-        line: x.line,
-    })
-}
-
-fn ticks_of(x: &Entry, max: u64) -> Result<u32, String> {
-    x.values
-        .first()
-        .and_then(|v| v.as_number())
-        .and_then(|v| v.as_u64().ok())
-        .filter(|t| *t <= max)
-        .map(|t| t as u32)
-        .ok_or_else(|| err(x, format!("'{}' takes ticks, 0 to {max}", x.key)))
-}
-
-fn bark(e: &Entry) -> Result<Bark, String> {
-    let mut b = Bark {
-        id: name_at(e, 0, "an id")?,
-        topic: String::new(),
-        speaker: String::new(),
-        lines: Vec::new(),
-        when: None,
-        priority: 0,
-        weight: 1.0,
-        cooldown: 600,
-        shared: 0,
-        duration: 180,
-        random: false,
-        once: false,
-        steps: Vec::new(),
-        line: e.line,
-    };
-    for x in e
-        .block
-        .as_ref()
-        .map(|b| b.entries.as_slice())
-        .unwrap_or(&[])
-    {
-        if let Some(step) = action(x)? {
-            no_block(x)?;
-            b.steps.push(step);
-            continue;
-        }
-        match x.key.as_str() {
-            "topic" => b.topic = name_at(x, 0, "a word, such as idle or alarm")?,
-            "speaker" => b.speaker = name_at(x, 0, "a speaker")?,
-            "say" => b.lines.push(line_at(x, String::new(), 0)?),
-            "when" => b.when = Some(expr_at(x, 0)?),
-            "priority" => {
-                b.priority = x
-                    .values
-                    .first()
-                    .and_then(|v| v.as_number())
-                    .and_then(|n| n.as_i64().ok())
-                    .filter(|p| (-1000..=1000).contains(p))
-                    .ok_or_else(|| err(x, "'priority' is a whole number, -1000 to 1000"))?
-                    as i32
-            }
-            "weight" => {
-                b.weight = x
-                    .values
-                    .first()
-                    .and_then(|v| v.as_number())
-                    .map(|n| n.as_f64())
-                    .filter(|w| *w > 0.0 && w.is_finite())
-                    .ok_or_else(|| err(x, "'weight' is a number above 0"))?
-            }
-            "cooldown" => b.cooldown = ticks_of(x, 1 << 30)?,
-            "shared" => b.shared = ticks_of(x, 1 << 30)?,
-            "duration" => {
-                b.duration = ticks_of(x, 1 << 30)?;
-                if b.duration == 0 {
-                    return Err(err(x, "'duration' is 1 tick or more"));
-                }
-            }
-            "order" => {
-                b.random = match name_at(x, 0, "cycle or random")?.as_str() {
-                    "cycle" => false,
-                    "random" => true,
-                    other => {
-                        return Err(err(
-                            x,
-                            format!("a bark's order is cycle or random, not '{other}'"),
-                        ));
-                    }
-                }
-            }
-            "once" => b.once = true,
-            other => {
-                return Err(err(
-                    x,
-                    format!(
-                        "'{other}' is not part of a bark: topic, speaker, say, when, priority, weight, cooldown, shared, duration, order, once, set, emit or quest"
-                    ),
-                ));
-            }
-        }
-    }
-    if b.topic.is_empty() {
-        return Err(err(e, format!("the bark '{}' needs a 'topic'", b.id)));
-    }
-    if b.lines.is_empty() {
-        return Err(err(
-            e,
-            format!("the bark '{}' needs a line: say \"<key>\"", b.id),
-        ));
-    }
-    Ok(b)
-}
-
-fn node(e: &Entry) -> Result<Node, String> {
-    let id = name_at(e, 0, "an id")?;
-    let mut n = Node {
-        id,
-        steps: Vec::new(),
-        lines: Vec::new(),
-        choices: Vec::new(),
-        timer: None,
-        choice_line: None,
-        shot: String::new(),
-        line: e.line,
-    };
-    let empty = Block::new();
-    for x in &e.block.as_ref().unwrap_or(&empty).entries {
-        if let Some(step) = action(x)? {
-            no_block(x)?;
-            n.steps.push(step);
-            n.lines.push(x.line);
-            continue;
-        }
-        let step = match x.key.as_str() {
-            "say" => Step::Say(line_at(x, name_at(x, 0, "a speaker")?, 1)?),
-            "if" => Step::If(expr_at(x, 0)?, name_at(x, 1, "a node to go to")?),
-            "goto" => Step::Goto(name_at(x, 0, "a node")?),
-            "end" => Step::End,
-            "pick" => {
-                let mut opts = Vec::new();
-                for o in x
-                    .block
-                    .as_ref()
-                    .map(|b| b.entries.as_slice())
-                    .unwrap_or(&[])
-                {
-                    let w = o
-                        .values
-                        .first()
-                        .and_then(|v| v.as_number())
-                        .map(|n| n.as_f64());
-                    match w {
-                        Some(w) if w > 0.0 && w.is_finite() => opts.push((o.key.clone(), w)),
-                        _ => {
-                            return Err(err(
-                                o,
-                                format!(
-                                    "'{}' needs a weight above 0, such as '{} 2'",
-                                    o.key, o.key
-                                ),
-                            ));
-                        }
-                    }
-                }
-                if opts.is_empty() {
-                    return Err(err(
-                        x,
-                        "'pick' needs nodes with weights: pick { win 1  lose 3 }",
-                    ));
-                }
-                Step::Pick(opts)
-            }
-            "choice" => {
-                n.choices.push(choice(x)?);
-                continue;
-            }
-            "shot" => {
-                no_block(x)?;
-                n.shot = name_at(
-                    x,
-                    0,
-                    "a camera: a virtual camera's entity name or a cast role",
-                )?;
-                continue;
-            }
-            "timer" => {
-                let ticks = x
-                    .values
-                    .first()
-                    .and_then(|v| v.as_number())
-                    .and_then(|v| v.as_u64().ok())
-                    .filter(|t| (1..=u64::from(u32::MAX)).contains(t))
-                    .ok_or_else(|| err(x, "'timer' needs ticks (1 or more) and a choice id"))?;
-                n.timer = Some((
-                    ticks as u32,
-                    name_at(x, 1, "the choice taken when it runs out")?,
-                ));
-                continue;
-            }
-            other => {
-                return Err(err(
-                    x,
-                    format!(
-                        "'{other}' is not a step: say, set, if, goto, end, pick, emit, quest, choice, timer or shot"
-                    ),
-                ));
-            }
-        };
-        if !matches!(step, Step::Say(_) | Step::Pick(_)) {
-            no_block(x)?;
-        }
-        n.steps.push(step);
-        n.lines.push(x.line);
-    }
-    n.choice_line = n.steps.iter().rposition(|s| matches!(s, Step::Say(_)));
-    if !n.choices.is_empty() {
-        let after = n.choice_line.map_or(0, |i| i + 1);
-        if let Some(j) = n.steps[after..].iter().find(|s| s.jumps()) {
-            let _ = j;
-            return Err(format!(
-                "line {}: node '{}' has choices and a jump after its last line: choices end a node, so move the jump into a choice or another node",
-                e.line, n.id
-            ));
-        }
-    }
-    let mut ids = BTreeSet::new();
-    for c in &n.choices {
-        if !ids.insert(c.id.as_str()) {
-            return Err(format!(
-                "line {}: node '{}' has two choices with the id '{}': give one an 'id'",
-                c.line, n.id, c.id
-            ));
-        }
-    }
-    if let Some((_, t)) = &n.timer
-        && !ids.contains(t.as_str())
-    {
-        return Err(format!(
-            "line {}: node '{}' has a timer for the choice '{t}', which it does not have (choices: {})",
-            e.line,
-            n.id,
-            ids.into_iter().collect::<Vec<_>>().join(", ")
-        ));
-    }
-    Ok(n)
-}
-
 fn header(text: &str, ty: &str) -> Result<Document, String> {
     let doc = Document::parse(text).map_err(|e| e.reason().to_string())?;
     if doc.ty != ty {
@@ -917,7 +441,7 @@ fn check_reads(
         .find(|v| !v.contains('.') && !vars.contains(v.as_str()))
     {
         return Err(format!(
-            "line {line}: '{v}' is not declared: add 'var {v} <value>' (this conversation's) or 'global {v} <value>' (the story's)"
+            "line {line}: '{v}' is not declared: in Yarn add <<declare ${v} = value>>; in a quest add global {v} value"
         ));
     }
     let mut calls = Vec::new();
@@ -945,122 +469,14 @@ fn check_reads(
 impl Dialogue {
     /// Parses and validates a dialogue.
     pub fn parse(text: &str) -> Result<Dialogue, String> {
-        let doc = header(text, DIALOGUE_TYPE)?;
-        let mut d = Dialogue {
-            name: String::new(),
-            start: String::new(),
-            speakers: Vec::new(),
-            vars: Vec::new(),
-            nodes: Vec::new(),
-            barks: Vec::new(),
-        };
-        let mut start_line = 0;
-        for e in &doc.body.entries {
-            match e.key.as_str() {
-                "name" => d.name = name_at(e, 0, "a name")?,
-                "start" => {
-                    d.start = name_at(e, 0, "the first node")?;
-                    start_line = e.line;
-                }
-                "speaker" => {
-                    let id = name_at(e, 0, "an id")?;
-                    if id == NARRATOR || d.speaker(&id).is_some() {
-                        return Err(err(e, format!("the speaker '{id}' is already declared")));
-                    }
-                    let mut s = Speaker {
-                        id,
-                        side: "left".into(),
-                        ..Speaker::default()
-                    };
-                    for x in e
-                        .block
-                        .as_ref()
-                        .map(|b| b.entries.as_slice())
-                        .unwrap_or(&[])
-                    {
-                        match x.key.as_str() {
-                            "name" => s.name = key_at(x, 0)?,
-                            "portrait" => s.portrait = name_at(x, 0, "an image path")?,
-                            "expression" => s.expression = name_at(x, 0, "a word")?,
-                            "side" => {
-                                s.side = name_at(x, 0, "left, right or center")?;
-                                if !matches!(s.side.as_str(), "left" | "right" | "center") {
-                                    return Err(err(x, "a side is left, right or center"));
-                                }
-                            }
-                            other => {
-                                return Err(err(
-                                    x,
-                                    format!(
-                                        "'{other}' is not part of a speaker: name, portrait, expression or side"
-                                    ),
-                                ));
-                            }
-                        }
-                    }
-                    d.speakers.push(s);
-                }
-                "var" | "global" => {
-                    let v = var_decl(e, e.key == "global")?;
-                    if d.vars.iter().any(|o| o.name == v.name) {
-                        return Err(err(e, format!("'{}' is declared twice", v.name)));
-                    }
-                    d.vars.push(v);
-                }
-                "bark" => {
-                    let b = bark(e)?;
-                    if d.bark(&b.id).is_some() {
-                        return Err(err(e, format!("the bark '{}' is declared twice", b.id)));
-                    }
-                    d.barks.push(b);
-                }
-                "node" => {
-                    let n = node(e)?;
-                    if d.node(&n.id).is_some() {
-                        return Err(err(e, format!("the node '{}' is declared twice", n.id)));
-                    }
-                    d.nodes.push(n);
-                }
-                other => {
-                    return Err(err(
-                        e,
-                        format!(
-                            "'{other}' is not part of a dialogue: name, start, speaker, var, global, node or bark"
-                        ),
-                    ));
-                }
-            }
-        }
-        if d.name.is_empty() {
-            return Err("a dialogue needs a 'name'".into());
-        }
-        if d.nodes.is_empty() && d.barks.is_empty() {
-            return Err("a dialogue needs a 'node' or a 'bark'".into());
-        }
-        if d.nodes.is_empty() {
-            if !d.start.is_empty() {
-                return Err(format!(
-                    "line {start_line}: 'start {}' names no node",
-                    d.start
-                ));
-            }
-        } else if d.start.is_empty() {
-            d.start = d.nodes[0].id.clone();
-        } else if d.node(&d.start).is_none() {
-            return Err(format!(
-                "line {start_line}: 'start {}' names no node",
-                d.start
-            ));
-        }
-        d.validate()?;
-        Ok(d)
+        crate::yarn::compile(text)
     }
 
-    fn validate(&self) -> Result<(), String> {
+    pub(crate) fn validate(&self) -> Result<(), String> {
         let nodes: BTreeSet<&str> = self.nodes.iter().map(|n| n.id.as_str()).collect();
         let vars: BTreeSet<&str> = self.vars.iter().map(|v| v.name.as_str()).collect();
         let target = |t: &str, line: usize| -> Result<(), String> {
-            if t == "end" || nodes.contains(t) {
+            if nodes.contains(t) {
                 Ok(())
             } else {
                 Err(format!(
@@ -1091,7 +507,7 @@ impl Dialogue {
                     Step::Set(v, x) => {
                         if !vars.contains(v.as_str()) {
                             return Err(format!(
-                                "line {line}: 'set {v}': '{v}' is not declared (var or global)"
+                                "line {line}: 'set {v}': add <<declare ${v} = value>>"
                             ));
                         }
                         check_expr(x, line, &vars, Some(&nodes))?;
@@ -1101,9 +517,17 @@ impl Dialogue {
                         target(t, line)?;
                     }
                     Step::Goto(t) => target(t, line)?,
-                    Step::Pick(o) => {
-                        for (t, _) in o {
+                    Step::Detour(t, next) => {
+                        target(t, line)?;
+                        target(next, line)?;
+                    }
+                    Step::Return => {}
+                    Step::Select(options) => {
+                        for (t, cond, _) in options {
                             target(t, line)?;
+                            if let Some(x) = cond {
+                                check_expr(x, line, &vars, Some(&nodes))?;
+                            }
                         }
                     }
                     Step::Emit(_, Some(x)) => check_expr(x, line, &vars, Some(&nodes))?,

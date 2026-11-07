@@ -28639,7 +28639,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("The name written after emit."),
+                doc: doc!("The command name."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

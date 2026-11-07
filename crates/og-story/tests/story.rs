@@ -7,65 +7,8 @@ use og_story::{Dialogue, Event, Library, Quest, Story, Val, Wait};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-const SMITH: &str = r#"type dialogue
-version 1
----
-name smith
-start greet
-speaker smith {
-  name "npc.smith"
-  portrait "art/smith.png"
-  side right
-}
-var mood 0
-global gold 10
-global charm 3
-node greet {
-  say smith "smith.hello" {
-    arg gold "gold"
-  }
-  set mood "mood + 1"
-  choice "smith.buy" {
-    if "gold >= 10"
-    reason "smith.need_gold" {
-      arg need "10 - gold"
-    }
-    kind trade
-    set gold "gold - 10"
-    goto bought
-  }
-  choice "smith.haggle" {
-    check active charm 12
-    goto bought
-    fail angry
-  }
-  choice "smith.secret" {
-    check passive charm 5
-    hide
-    goto bought
-  }
-  choice "smith.leave"
-  timer 30 smith.leave
-}
-node bought {
-  say smith "smith.thanks"
-  quest progress rescue sword
-  emit give_sword "mood"
-}
-node angry {
-  pick {
-    calm 1
-    furious 1
-  }
-}
-node calm {
-  say smith "smith.calm"
-  goto greet
-}
-node furious {
-  say smith "smith.furious"
-}
-"#;
+const SMITH: &str =
+    include_str!("../../../packages/engine/tests/fixtures/story/assets/story/smith.yarn");
 
 const RESCUE: &str = r#"type quest
 version 1
@@ -116,7 +59,6 @@ fn lines_choices_checks_quests_and_events() {
     let c = s
         .start(&l, "smith", BTreeMap::new(), BTreeMap::new(), None)
         .unwrap();
-    // The greeting is shown with its choices; the steps after it ran.
     assert_eq!(s.convs[&c].wait, Wait::Choices);
     assert_eq!(s.convs[&c].locals["mood"], Val::Num(1.0));
     assert_eq!(
@@ -124,7 +66,7 @@ fn lines_choices_checks_quests_and_events() {
         [("gold".into(), Val::Num(10.0))]
     );
     let d = l.dialogues["smith"].clone();
-    let node = d.node("greet").unwrap();
+    let node = d.node(&s.convs[&c].node).unwrap();
     // buy: enabled (10 gold); secret: charm 3 < 5, hidden; haggle: 12 - 3 needs 9+, 60 %.
     assert_eq!(
         s.choice_state(&l, &d, c, &node.choices[0]),
@@ -143,7 +85,11 @@ fn lines_choices_checks_quests_and_events() {
     assert_eq!(s.get(&l, "gold"), Some(Val::Num(0.0)));
     assert_eq!(line(&s, c), "smith.thanks");
     assert_eq!(s.convs[&c].history[0].chosen, Some((0, "smith.buy".into())));
-    assert!(s.convs[&c].visited.contains("greet/smith.buy"));
+    assert!(
+        s.convs[&c]
+            .visited
+            .contains(&format!("{}/smith.buy", node.id))
+    );
     // The steps after a line run when it is advanced.
     assert!(!s.quest("rescue").unwrap().counts.contains_key("sword"));
     s.advance(&l, c).unwrap();
@@ -189,8 +135,8 @@ fn saves_round_trip_and_survive_edits() {
     // An edit that keeps the ids: a line before the shown one moves it
     // within its node, and the conversation finds it by its key.
     let moved = SMITH.replace(
-        "node bought {\n  say smith \"smith.thanks\"",
-        "node bought {\n  set mood 2\n  say smith \"smith.thanks\"",
+        "smith: Mind the edge.",
+        "Unrelated #line:unrelated\n<<set $mood = 2>>\nsmith: Mind the edge.",
     );
     let l2 = lib(&moved);
     let mut r = Story::load(&a).unwrap();
@@ -199,36 +145,25 @@ fn saves_round_trip_and_survive_edits() {
     assert!(r.warnings.is_empty(), "{:?}", r.warnings);
 }
 
-/// The one breaking edit: renaming the node a save stands on. The story
-/// warns, naming the id, and restarts the conversation at the dialogue's
-/// start instead of landing on whatever node now has that place.
+/// Missing dialogue ids refuse to restart; quest migration stays unchanged.
 #[test]
-fn a_renamed_node_warns_and_falls_back_to_the_start() {
+fn a_removed_line_refuses_to_replay_commands_and_quest_stage_migration_is_unchanged() {
     let l = lib(SMITH);
     let mut s = Story::new(Rng::new(9));
     let c = s
         .start(&l, "smith", BTreeMap::new(), BTreeMap::new(), None)
         .unwrap();
     s.choose(&l, c, 0).unwrap();
-    assert_eq!(s.convs[&c].node, "bought");
+    assert_eq!(line(&s, c), "smith.thanks");
     let mut a = Vec::new();
     s.save(&mut a);
 
-    let renamed = SMITH
-        .replace("node bought {", "node paid {")
-        .replace("goto bought", "goto paid");
+    let renamed = SMITH.replace("#line:smith.thanks", "#line:smith.paid");
     let l2 = lib(&renamed);
     let mut r = Story::load(&a).unwrap();
-    r.resolve(&l2, c).unwrap();
-    assert_eq!(r.warnings.len(), 1, "{:?}", r.warnings);
-    let w = &r.warnings[0];
-    assert!(
-        w.contains("'bought'") && w.contains("renamed or removed") && w.contains("'greet'"),
-        "{w}"
-    );
-    assert_eq!(r.convs[&c].node, "greet");
-    assert_eq!(line(&r, c), "smith.hello");
-    assert_eq!(r.convs[&c].wait, Wait::Choices);
+    let e = r.resolve(&l2, c).unwrap_err();
+    assert!(e.contains("smith.thanks") && e.contains("stable id"), "{e}");
+    assert_eq!(line(&r, c), "smith.thanks");
 
     // A quest stage renamed: warned by name, back to the first stage.
     let mut q = Story::new(Rng::new(1));

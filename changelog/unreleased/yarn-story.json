@@ -1,0 +1,16 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "story.load",
+      "change": "Dialogue authoring now uses the declared yarn-3.0-og-1 Yarn syntax profile. type dialogue .ogt and its cooked schema are removed; story saves now use stable continuation ids and checkpoint detour stacks.",
+      "fix": "Convert dialogue assets to .yarn, declare #og-profile:yarn-3.0-og-1 and #og-name, put base text on lines and options with explicit #line: ids, update load paths and re-cook. Keep node, line, option and pending detour identities for new saves. Old dialogue-format saves are not migrated. Quests and DialogueView/QuestView retain their contracts."
+    }
+  ],
+  "added": [
+    {
+      "member": "story",
+      "summary": "Rust cook-time Yarn compiler, extracted base strings through i18n, conditional weighted line groups on the story RNG fork, and save-safe choices and detours."
+    }
+  ]
+}

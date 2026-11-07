@@ -132,7 +132,7 @@ export function storyRun(build: (w: Api.World) => void): Engine {
   if (!r.ok) throw new Error(r.reason);
   world = r.value.world;
   ok(og.i18n.load(world, "strings/en.ogt"));
-  ok(og.story.load(world, "story/smith.ogt"));
+  ok(og.story.load(world, "story/smith.yarn"));
   ok(og.story.load(world, "story/rescue.ogt"));
   og.ui.previewViewport(world, { width: 1280, height: 720, dpr: 1, coarsePointer: false, breakpoint: "desktop", safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
   r.value.advance(2);

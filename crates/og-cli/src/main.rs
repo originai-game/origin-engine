@@ -140,7 +140,7 @@ commands:
   prefab extract <scene> <entity> <prefab> [--project <dir>]
                       an authored entity becomes a new prefab, its block an instance of it
   i18n extract [project] [--json] [--write] [--check]
-                      every og.i18n key the dialogues and quests show (type dialogue, type
+                      every og.i18n key the dialogues and quests show (.yarn, type
                       quest), with the arguments they pass and where, against each string
                       table: per locale, the keys it lacks and the arguments nothing passes;
                       --write adds the keys the base table lacks to it (assets/strings/en.ogt

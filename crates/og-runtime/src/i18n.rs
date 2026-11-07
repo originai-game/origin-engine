@@ -26,6 +26,14 @@ fn with<T>(engine: u32, f: impl FnOnce(&mut State) -> T) -> T {
     STATES.with(|s| f(s.borrow_mut().entry(engine).or_default()))
 }
 
+pub(crate) fn story_strings(
+    engine: u32,
+    locale: &str,
+    strings: &BTreeMap<String, String>,
+) -> Result<(), String> {
+    with(engine, |s| s.catalog.extend_base(locale, strings))
+}
+
 fn info(engine: u32) -> Value {
     with(engine, |s| {
         let active = s.catalog.active();

@@ -13,18 +13,18 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `dialogue` | `string` | `""` | — | — | — | The dialogue's name (StoryAsset.name). |
-| `node` | `string` | `""` | — | — | — | The node to start at (empty: the dialogue's `start`). |
+| `node` | `string` | `""` | — | — | — | The node to start at (empty: the first non-bark Yarn node). |
 | `cast` | `unknown` | `null` | — | — | — | Speaker ids to the entities playing them, `{ smith: entity }`: SpeakerView.entity (for a speech bubble or a camera). |
-| `vars` | `unknown` | `null` | — | — | — | Starting values for the dialogue's own `var`s, `{ mood: 2 }`. |
+| `vars` | `unknown` | `null` | — | — | — | Starting values for #og-local variables, `{ mood: 2 }`. |
 
 ```ogt
 struct StartDesc {
   doc "A conversation to start."
   desc true
   field dialogue String "The dialogue's name (StoryAsset.name)."
-  field node String "The node to start at (empty: the dialogue's `start`)."
+  field node String "The node to start at (empty: the first non-bark Yarn node)."
   field cast Json "Speaker ids to the entities playing them, `{ smith: entity }`: SpeakerView.entity (for a speech bubble or a camera)."
-  field vars Json "Starting values for the dialogue's own `var`s, `{ mood: 2 }`."
+  field vars Json "Starting values for #og-local variables, `{ mood: 2 }`."
 }
 ```
 
