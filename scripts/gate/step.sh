@@ -40,7 +40,7 @@ case "$1" in
   doc-tests) cargo test --workspace --doc; rc=$? ;;
   bun-quick)
     python3 scripts/test-locks.py && python3 scripts/test-landing.py && scripts/test-gate-guards.sh &&
-      bun test scripts/gate/imports.test.ts scripts/changelog.test.ts scripts/release-dist.test.ts && bun scripts/gate/bun.ts quick
+      bun test scripts/gate/imports.test.ts scripts/changelog.test.ts scripts/release-dist.test.ts scripts/toolchain.test.ts && bun scripts/gate/bun.ts quick
     rc=$? ;;
   browser)
     rc=0
