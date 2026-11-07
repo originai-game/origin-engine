@@ -460,9 +460,16 @@ blob's `foreground.<n>` pages (after the colour pages; the row points at the
 black copy, the white one is half the page to the right). og-render mixes
 the two channel by channel by the text's colour in sRGB, where the cook
 painted them, at the text's alpha: exact for fills, gradients and
-Porter-Duff composites, whose result is affine in the foreground (a
-separable blend of the foreground with itself is approximated). Glyphs
-that do not use it stay on the colour pages, byte for byte.
+Porter-Duff composites, whose result is affine in the foreground. A blend
+can bend it: a separable blend that branches on the foreground (overlay
+with it as the backdrop, hard-light as the source, soft-light, darken,
+lighten, dodge, burn, difference), the foreground multiplied or screened
+by itself, a clamping plus, or a hue, saturation, colour or luminosity
+blend. The cook paints each such glyph again at three text colours (two
+greys and one colour) and warns in the font's note, naming the characters
+and the worst difference from the mix in 8-bit levels; the glyph still
+draws as the mix. Glyphs that do not use it stay on the colour pages, byte
+for byte.
 
 ## Determinism
 

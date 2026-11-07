@@ -834,6 +834,41 @@ fn coverage(edges: &[[f64; 4]], w: usize, h: usize) -> Vec<f32> {
     out
 }
 
+/// The text colours a glyph in the text's colour is painted in once more,
+/// to check the renderer's mix of its black and white paints
+/// (`foreground_mix`) against them: two greys (a piecewise blend such as
+/// overlay or hard-light breaks at 0.5 and is off the mix either side of
+/// it) and a colour with channels apart (the hue, saturation, colour and
+/// luminosity modes mix the channels).
+pub const MIX_PROBES: [[f32; 3]; 3] = [[0.5; 3], [0.25; 3], [0.2, 0.6, 0.9]];
+
+/// How far `probe`, a glyph painted with foreground `fg` (sRGB), is from
+/// what the renderer draws for it at `fg`: its `black` and `white` paints
+/// mixed channel by channel by `fg` in sRGB, at the black one's alpha. In
+/// 8-bit levels, the largest over the pixels, each colour difference
+/// weighted by the pixel's coverage; 0 or 1 (rounding) wherever the paint
+/// is affine in the foreground: fills, gradients, Porter-Duff composites,
+/// and a blend that uses the foreground on one side only and linearly.
+pub fn mix_error(black: &[u8], white: &[u8], probe: &[u8], fg: [f32; 3]) -> u8 {
+    let mut worst = 0.0f32;
+    for ((b, w), p) in black
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(white.as_chunks::<4>().0)
+        .zip(probe.as_chunks::<4>().0)
+    {
+        let mut e = (f32::from(p[3]) - f32::from(b[3])).abs();
+        let cover = f32::from(p[3].max(b[3])) / 255.0;
+        for k in 0..3 {
+            let mix = f32::from(b[k]) + (f32::from(w[k]) - f32::from(b[k])) * fg[k];
+            e = e.max((f32::from(p[k]) - mix).abs() * cover);
+        }
+        worst = worst.max(e);
+    }
+    worst.round().min(255.0) as u8
+}
+
 /// Source `s` composited onto backdrop `b`, both premultiplied.
 fn composite(mode: CompositeMode, s: [f32; 4], b: [f32; 4]) -> [f32; 4] {
     use CompositeMode as M;
@@ -971,6 +1006,101 @@ fn set_sat(c: [f32; 3], s: f32) -> [f32; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The renderer's black and white mix is exact for a glyph whose paint
+    /// is affine in the foreground and off for one routed through a
+    /// piecewise, self-multiplying, clamping or channel-mixing blend;
+    /// `mix_error` tells them apart. Each paint is one pixel per fixed
+    /// colour: the foreground composited onto it (`Source`), it onto the
+    /// foreground (`Backdrop`), or the foreground onto itself (`Both`).
+    #[test]
+    fn the_foreground_mix_is_checked_where_a_blend_bends_it() {
+        use CompositeMode as M;
+        #[derive(Clone, Copy, Debug)]
+        enum Side {
+            Source,
+            Backdrop,
+            Both,
+        }
+        let fixed = [
+            [0.9, 0.2, 0.1, 1.0],
+            [0.3, 0.3, 0.3, 1.0],
+            [0.1, 0.5, 0.8, 0.5],
+        ];
+        let pixels = |mode: M, side: Side, f: [f32; 3]| -> Vec<u8> {
+            let fg = [f[0], f[1], f[2], 1.0];
+            let mut out = Vec::new();
+            for c in fixed {
+                let c = [c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3]];
+                let (s, b) = match side {
+                    Side::Source => (fg, c),
+                    Side::Backdrop => (c, fg),
+                    Side::Both => (fg, fg),
+                };
+                let o = composite(mode, s, b);
+                let a = o[3].max(1e-6);
+                out.extend([o[0] / a, o[1] / a, o[2] / a, o[3]].map(|v| (v * 255.0).round() as u8));
+            }
+            out
+        };
+        let error = |mode: M, side: Side, probes: &[[f32; 3]]| {
+            let (black, white) = (pixels(mode, side, [0.0; 3]), pixels(mode, side, [1.0; 3]));
+            probes
+                .iter()
+                .map(|&f| mix_error(&black, &white, &pixels(mode, side, f), f))
+                .max()
+                .unwrap()
+        };
+        // Mid grey: the label colour the mix is checked at first.
+        let grey = [[0.5f32; 3]];
+        let affine = [
+            (M::SrcOver, Side::Source),
+            (M::SrcOver, Side::Backdrop),
+            (M::DestOver, Side::Source),
+            (M::SrcAtop, Side::Source),
+            (M::Xor, Side::Backdrop),
+            (M::SrcOver, Side::Both),
+            (M::Multiply, Side::Source),
+            (M::Multiply, Side::Backdrop),
+            (M::Screen, Side::Source),
+            (M::Exclusion, Side::Source),
+            // Overlay branches on the backdrop, hard-light on the source:
+            // each is linear in the other operand.
+            (M::Overlay, Side::Source),
+            (M::HardLight, Side::Backdrop),
+        ];
+        for (mode, side) in affine {
+            let e = error(mode, side, &MIX_PROBES);
+            assert!(e <= 1, "{mode:?}, foreground as {side:?}: {e}");
+        }
+        let bent = [
+            (M::Multiply, Side::Both),
+            (M::Screen, Side::Both),
+            (M::Overlay, Side::Backdrop),
+            (M::HardLight, Side::Source),
+            (M::SoftLight, Side::Backdrop),
+            (M::Darken, Side::Source),
+            (M::Lighten, Side::Source),
+            (M::ColorDodge, Side::Backdrop),
+            (M::ColorBurn, Side::Backdrop),
+            (M::Difference, Side::Source),
+            (M::Plus, Side::Source),
+        ];
+        for (mode, side) in bent {
+            let e = error(mode, side, &grey);
+            assert!(e >= 10, "{mode:?}, foreground as {side:?}, mid grey: {e}");
+        }
+        // A grey has no hue or saturation, so on greys these may stay put;
+        // the coloured probe moves them.
+        for mode in [M::HslHue, M::HslSaturation, M::HslColor, M::HslLuminosity] {
+            let e = error(mode, Side::Source, &MIX_PROBES).max(error(
+                mode,
+                Side::Backdrop,
+                &MIX_PROBES,
+            ));
+            assert!(e >= 10, "{mode:?}: {e}");
+        }
+    }
 
     #[test]
     fn a_square_covers_its_pixels_and_half_the_ones_its_edge_halves() {

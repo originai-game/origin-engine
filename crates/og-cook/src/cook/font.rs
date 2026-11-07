@@ -714,6 +714,7 @@ pub fn cook(
         plain: colour,
         black,
         white,
+        bent,
     } = if s.color {
         colour_glyphs(bytes, &face, &mut glyphs, s)?
     } else {
@@ -891,6 +892,26 @@ pub fn cook(
             c.height
         ));
     }
+    if !bent.is_empty() {
+        let name = |k: u32| {
+            if k >= GLYPH_ID_KEYS {
+                format!("glyph {}", k - GLYPH_ID_KEYS)
+            } else {
+                format!("U+{k:04X}")
+            }
+        };
+        let (names, worst): (Vec<String>, Vec<u8>) =
+            bent.iter().map(|&(k, e)| (name(k), e)).unzip();
+        note.push_str(&format!(
+            "; warning: {} blend the text's colour non-linearly (a separable blend that \
+             branches on it, it multiplied or screened by itself, a clamping plus, or a \
+             hue, saturation, colour or luminosity blend): drawn as the mix of their black \
+             and white paints, they are off by up to {} of 255 levels in a text colour \
+             other than black or white",
+            names.join(", "),
+            worst.iter().max().expect("one")
+        ));
+    }
     if s.runtime && !shaping {
         note.push_str(&format!(
             "; the font file ({} bytes) for characters outside the charset, rendered at run time",
@@ -1039,6 +1060,10 @@ struct Colour {
     /// a white one: the renderer mixes the two by the text's colour.
     black: Vec<Glyph>,
     white: Vec<Glyph>,
+    /// The glyphs in the text's colour the renderer's mix of the two is
+    /// off for (`colr::mix_error` over `colr::MIX_PROBES`), by how many
+    /// 8-bit levels at worst.
+    bent: Vec<(u32, u8)>,
 }
 
 /// `font { color true }`: each cooked glyph with a COLR paint drawn in
@@ -1086,6 +1111,17 @@ fn colour_glyphs(
         };
         if image.foreground {
             let white = paint([1.0; 3])?.expect("painted in black");
+            // The renderer mixes the two by the text's colour: exact where
+            // the paint is affine in it; painted at a few colours to find
+            // where a blend bends it.
+            let mut worst = 0;
+            for fg in colr::MIX_PROBES {
+                let probe = paint(fg)?.expect("painted in black");
+                worst = worst.max(colr::mix_error(&image.rgba, &white.rgba, &probe.rgba, fg));
+            }
+            if worst > 2 {
+                out.bent.push((g.codepoint, worst));
+            }
             out.white.push(glyph(white));
             out.black.push(glyph(image));
         } else {
@@ -1585,6 +1621,8 @@ mod tests {
         let (without, _) = cook(&bytes, &settings("\u{F0100}\u{F0600}"), 2, 0).expect("cooks");
         let (with, notes) =
             cook(&bytes, &settings("\u{F0100}\u{F0600}\u{F0B00}"), 2, 0).expect("cooks");
+        // Its gradient is affine in the foreground: the mix is exact.
+        assert!(!notes.note.contains("non-linearly"), "{}", notes.note);
         assert!(
             notes.note.contains("4 colour glyph(s) at 64 px/em")
                 && notes

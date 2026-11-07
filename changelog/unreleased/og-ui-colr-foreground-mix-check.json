@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og cook (font, color true)",
+      "summary": "A colour glyph in the text's colour (COLR palette entry 0xFFFF) is drawn as the mix of its black and white paints by the text's colour, exact where its paint is affine in that colour. The cook paints each such glyph again at mid grey, a darker grey and one colour, and the font's note warns, naming the characters and the worst error in 8-bit levels, where the paint routes the text's colour through a blend that bends the mix: a separable blend branching on it (overlay as backdrop, hard-light as source, soft-light, darken, lighten, dodge, burn, difference), it multiplied or screened by itself, a clamping plus, or a hue, saturation, colour or luminosity blend."
+    }
+  ]
+}
