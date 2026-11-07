@@ -877,11 +877,8 @@ impl ElementDraw {
                     half: (r.width / 2.0, r.height / 2.0),
                 });
             }
-            for shape in player.draw([r.x, r.y, r.width, r.height], opacity) {
-                out.push(DrawCmd::Shape {
-                    shape: Box::new(shape),
-                    clip: at.clip,
-                });
+            for d in player.draw([r.x, r.y, r.width, r.height], opacity) {
+                out.push(rive_cmd(d, at.clip));
             }
             if cut {
                 out.push(DrawCmd::PopClip);
@@ -1028,6 +1025,68 @@ impl ElementDraw {
                     text: Box::new(text),
                     effects: Box::new(fx),
                 };
+            }
+        }
+    }
+}
+
+/// One thing a Rive artboard draws as a draw command, cut to `clip`: a
+/// shape; a text piece (styled when it carries a gradient, a stroke or a
+/// map of its own); a cut to an outline and its end.
+fn rive_cmd(d: crate::rive::Drawn, clip: Rect) -> DrawCmd {
+    use crate::rive::Drawn;
+    match d {
+        Drawn::Shape(shape) => DrawCmd::Shape {
+            shape: Box::new(shape),
+            clip,
+        },
+        Drawn::Clip(path) => {
+            let (lo, hi) = path.bounds().unwrap_or_default();
+            let c = (lo + hi) * 0.5;
+            DrawCmd::PushClip {
+                geometry: og_render::UiGeometry::Path(std::sync::Arc::new(path.map(|q| q - c))),
+                center: (c.x, c.y),
+                half: ((hi.x - lo.x) / 2.0, (hi.y - lo.y) / 2.0),
+            }
+        }
+        Drawn::Unclip => DrawCmd::PopClip,
+        Drawn::Text(t) => {
+            let [bx, by, bw, bh] = t.bounds;
+            let text = DrawCmd::Text {
+                x: t.pen.x,
+                baseline: t.pen.y,
+                size: t.size,
+                text: t.text,
+                color: t.color,
+                font: t.font,
+                bounds: Rect::new(bx, by, bw, bh),
+                clip,
+                tracking: t.tracking,
+                weight: 0.0,
+                glow: None,
+                placements: t.placements,
+            };
+            if t.gradient.is_none() && t.outline.is_none() && t.transform == [1.0, 0.0, 0.0, 1.0] {
+                return text;
+            }
+            let (fill, fill_box) = match t.gradient {
+                Some((g, b)) => (Some(g), b),
+                None => (None, t.bounds),
+            };
+            DrawCmd::StyledText {
+                text: Box::new(text),
+                effects: Box::new(og_render::UiTextEffects {
+                    text: 0,
+                    shadows: Vec::new(),
+                    outline: t.outline.map(|(width, color)| og_render::UiTextOutline {
+                        width,
+                        color,
+                        align: og_render::UiAlign::Center,
+                    }),
+                    fill,
+                    fill_box,
+                    transform: t.transform,
+                }),
             }
         }
     }

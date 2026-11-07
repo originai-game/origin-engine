@@ -12,6 +12,7 @@ never embeds the Rive runtime. What it takes from rive-runtime
 | Which objects take an artboard id (`claimsArtboardSlot`, `readNullObject`) | `file.cpp`, `importers/*` | `riv/convert.rs` |
 | Path construction, rounded corners, the cubic vertices and the parametric shapes | `shapes/path.cpp`, `shapes/cubic_*_vertex.cpp`, `rectangle.cpp`, `ellipse.cpp`, `triangle.cpp`, `polygon.cpp`, `star.cpp` | `crates/og-ui/src/rive/player.rs` (`outline`, `build`, `ideal`) |
 | Keyframe sampling, the cubic ease solver and the value interpolator, colour lerp | `animation/keyed_property.cpp`, `cubic_interpolator_solver.cpp`, `cubic_value_interpolator.cpp`, `shapes/paint/color.cpp` | `player.rs` (`sample`, `solve`, `sample_color`) |
+| Text layout: paragraphs and lines, line spacing from the faces' ascent and descent or the line height, alignment, the box's sizing, vertical alignment and origin, the overflow modes (hidden and clipped lines, the ellipsis, fit, the fit font size search) | `text/text.cpp` (`update`, `computeBoundsInfo`, `buildRenderStyles`, `shouldDrawLine`, `fitFontScale`), `text/line_breaker.cpp` (`ComputeLineSpacing`), `text_engine.cpp` (`buildEllipsisRuns`), `include/rive/text_engine.hpp` | `crates/og-ui/src/rive/text.rs` (shaping and breaks are og-ui's own) |
 
 The pinned major is 7. A new revision is a deliberate update of the
 importer: rerun the generator against it and update this file.

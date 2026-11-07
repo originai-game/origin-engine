@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Rive import: text",
+      "summary": "A .riv's text now converts (docs/ui.md §11.2): runs in their styles' fonts, sizes, line heights, letter spacing and fill and stroke paints; auto, width and fixed sizing; alignment, vertical alignment and origin; wrapping; overflow visible, hidden, clipped, ellipsis, fit and fit font size; and keyed words, fonts, sizes and boxes. Each font a text uses cooks beside the artboard as `<file>.riv#font<n>` with only the characters its runs show (run-time glyphs, more characters and referenced fonts' files by the import settings' `font <name> { … }`), and is bound when og.load.document loads the artboard. Text is laid out as rive-runtime lays it out and shaped and drawn by og-ui's text. Rive features the import does not convert stay cook errors naming the asset and feature."
+    }
+  ]
+}

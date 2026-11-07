@@ -15,8 +15,8 @@ use super::read::{Object, RivFile, is_a, type_name};
 use og_core::glam::Vec2;
 use og_render::{UiBlend, UiCap, UiFillRule};
 use og_ui::rive::{
-    Animation, Artboard, Ease, Fit, Join, Key, Kind, Loop, NestedAnimation, Node, Outline, Prop,
-    Track, Values, Vertex,
+    Animation, Artboard, Ease, Fit, HAlign, Join, Key, Kind, Loop, NO_FONT, NestedAnimation, Node,
+    Outline, Overflow, Prop, Sizing, TextLayout, Track, VAlign, Values, Vertex,
 };
 use std::collections::HashMap;
 
@@ -63,6 +63,13 @@ const IMAGE: u16 = 100;
 const IMAGE_ASSET: u16 = 105;
 const FILE_ASSET_CONTENTS: u16 = 106;
 const FILE_ASSET: u16 = 103;
+const KEYFRAME_ID: u16 = 50;
+const TEXT: u16 = 134;
+const TEXT_VALUE_RUN: u16 = 135;
+const TEXT_STYLE_PAINT: u16 = 137;
+const FONT_ASSET: u16 = 141;
+const KEYFRAME_STRING: u16 = 142;
+const TEXT_STYLE_AXIS: u16 = 144;
 
 /// The objects that are file assets or file-level data the artboards'
 /// converted objects never reference (the ones that are referenced, by an
@@ -87,9 +94,18 @@ pub(crate) fn artboards(file: &RivFile) -> Result<Vec<Artboard>, String> {
 
 /// Artboard `index` of `file` (in file order) converted, with the
 /// artboards it nests; the others are not looked at.
-pub(crate) fn artboard(file: &RivFile, index: usize) -> Result<Artboard, String> {
+pub(crate) fn artboard(
+    file: &RivFile,
+    index: usize,
+    fonts: &HashMap<usize, Vec<u8>>,
+) -> Result<Artboard, String> {
     let groups = group(file)?;
-    let assets = assets(file);
+    let mut assets = assets(file);
+    for (k, a) in assets.iter_mut().enumerate() {
+        if a.bytes.is_none() {
+            a.bytes = fonts.get(&k).map(Vec::as_slice);
+        }
+    }
     if index >= groups.len() {
         return Err(format!(
             "the file has {} artboards, not {}",
@@ -132,6 +148,87 @@ fn assets(file: &RivFile) -> Vec<Asset<'_>> {
         }
     }
     out
+}
+
+/// The file's font assets, by asset index: each one's name in Rive and its
+/// embedded bytes (none: hosted or referenced).
+pub(crate) fn font_assets(file: &RivFile) -> Vec<(usize, String, Option<&[u8]>)> {
+    assets(file)
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| a.obj.ty == FONT_ASSET)
+        .map(|(k, a)| (k, a.obj.string(203).unwrap_or("").to_string(), a.bytes))
+        .collect()
+}
+
+/// The characters each font asset (by index) sets, over every artboard of
+/// the file: every run's words at rest and as keyed, in every font its
+/// style takes at rest or as keyed, and the ellipsis of a text that
+/// ellipsizes. What the fonts' cooks take as their charset.
+pub(crate) fn font_chars(file: &RivFile) -> Result<HashMap<usize, String>, String> {
+    let mut out: HashMap<usize, String> = HashMap::new();
+    for g in group(file)? {
+        // Per slot: a style's fonts, a run's words and style.
+        let mut fonts: HashMap<usize, Vec<usize>> = HashMap::new();
+        let mut words: HashMap<usize, Vec<String>> = HashMap::new();
+        let mut styles: HashMap<usize, usize> = HashMap::new();
+        let mut ellipsis: Vec<usize> = Vec::new();
+        for (slot, o) in g.slots.iter().enumerate() {
+            let Some(o) = o else { continue };
+            match o.ty {
+                TEXT_STYLE_PAINT => {
+                    fonts.entry(slot).or_default().push(o.u(279) as usize);
+                }
+                TEXT_VALUE_RUN => {
+                    words
+                        .entry(slot)
+                        .or_default()
+                        .push(o.string(268).unwrap_or("").to_string());
+                    styles.insert(slot, o.u(272) as usize);
+                }
+                TEXT if o.u(287) == 3 => ellipsis.push(slot),
+                _ => {}
+            }
+        }
+        let (mut object, mut key) = (0usize, 0u16);
+        for o in &g.rest {
+            match o.ty {
+                KEYED_OBJECT => object = o.u(51) as usize,
+                KEYED_PROPERTY => key = o.u(53) as u16,
+                KEYFRAME_STRING if key == 268 => words
+                    .entry(object)
+                    .or_default()
+                    .push(o.string(280).unwrap_or("").to_string()),
+                KEYFRAME_ID if key == 279 => {
+                    fonts.entry(object).or_default().push(o.u(122) as usize)
+                }
+                _ => {}
+            }
+        }
+        for (run, style) in &styles {
+            let parent = g.slots[*run].map_or(0, |o| o.u(5) as usize);
+            let dots = ellipsis.contains(&parent);
+            for f in fonts.get(style).into_iter().flatten() {
+                let set = out.entry(*f).or_default();
+                for w in words.get(run).into_iter().flatten() {
+                    set.push_str(w);
+                }
+                if dots {
+                    set.push('.');
+                }
+            }
+        }
+    }
+    for set in out.values_mut() {
+        let mut c: Vec<char> = set
+            .chars()
+            .filter(|c| !matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
+            .collect();
+        c.sort_unstable();
+        c.dedup();
+        *set = c.into_iter().collect();
+    }
+    Ok(out)
 }
 
 /// The file's embedded images, by asset index, with their bytes.
@@ -479,6 +576,103 @@ fn convert(groups: &[Group], assets: &[Asset], g: usize, depth: u32) -> Result<A
                 nested_anims.push((parent_slot, o));
                 continue;
             }
+            TEXT => {
+                if o.u(23) != 3 {
+                    return Err(format!(
+                        "{}: a text's blend mode is not converted (normal is)",
+                        at(o)
+                    ));
+                }
+                if o.u(1026) != 0 {
+                    return Err(format!(
+                        "{}: vertical trim is not converted (Rive text's trim to cap or x-height)",
+                        at(o)
+                    ));
+                }
+                if o.u(932) != 0 {
+                    return Err(format!(
+                        "{}: runs from a view-model list are not converted (data binding is phase 2 of the Rive import)",
+                        at(o)
+                    ));
+                }
+                v.width = o.f(285);
+                v.height = o.f(286);
+                v.origin = Vec2::new(o.f(366), o.f(367));
+                v.spacing = o.f(371);
+                let enumerated = |key: u16, max: u32, what: &str| -> Result<u32, String> {
+                    let x = o.u(key);
+                    if x > max {
+                        return Err(format!("{}: {what} {x} is not one Rive has", at(o)));
+                    }
+                    Ok(x)
+                };
+                let layout = TextLayout {
+                    sizing: [Sizing::AutoWidth, Sizing::AutoHeight, Sizing::Fixed]
+                        [enumerated(284, 2, "sizing")? as usize],
+                    overflow: [
+                        Overflow::Visible,
+                        Overflow::Hidden,
+                        Overflow::Clipped,
+                        Overflow::Ellipsis,
+                        Overflow::Fit,
+                        Overflow::FitFontSize,
+                    ][enumerated(287, 5, "overflow")? as usize],
+                    align: [HAlign::Left, HAlign::Right, HAlign::Center]
+                        [enumerated(281, 2, "alignment")? as usize],
+                    valign: [VAlign::Top, VAlign::Bottom, VAlign::Middle]
+                        [enumerated(685, 2, "vertical alignment")? as usize],
+                    wrap: enumerated(683, 1, "wrap")? == 0,
+                    break_words: enumerated(446, 2, "word break")? != 1,
+                    baseline: o.u(377) == 1,
+                    fit_from_baseline: o.flag(703),
+                };
+                if o.u(446) == 2 {
+                    return Err(format!(
+                        "{}: word break 'break all' is not converted (normal and break word are)",
+                        at(o)
+                    ));
+                }
+                Kind::Text {
+                    runs: Vec::new(),
+                    layout,
+                }
+            }
+            TEXT_VALUE_RUN => {
+                v.text = string_of(&mut a, o.string(268).unwrap_or(""));
+                // Its style's slot, made a node index below.
+                Kind::TextRun { style: o.u(272) }
+            }
+            TEXT_STYLE_PAINT => {
+                v.font_size = o.f(274);
+                v.line_height = o.f(370);
+                v.letter_spacing = o.f(390);
+                v.font = font_of(&mut a, assets, o.u(279) as usize, &at(o))?;
+                Kind::TextStyle { paints: Vec::new() }
+            }
+            TEXT_STYLE_AXIS => {
+                // A variable font's axis: converted at the face's default
+                // (the font cooks at its defaults).
+                let style = grp.slots.get(parent_slot).copied().flatten();
+                let k = style.map_or(0, |st| st.u(279) as usize);
+                let tag = o.u(289);
+                let want = o.f(288);
+                if let Some(bytes) = assets.get(k).and_then(|x| x.bytes)
+                    && let Ok(face) = ttf_parser::Face::parse(bytes, 0)
+                    && let Some(axis) = face
+                        .tables()
+                        .fvar
+                        .and_then(|f| f.axes.into_iter().find(|ax| ax.tag.0 == tag))
+                    && (axis.def_value - want).abs() > 1e-3
+                {
+                    return Err(format!(
+                        "{}: sets the font's '{}' axis to {want} (its default is {}); a variable font's other instances are not converted",
+                        at(o),
+                        String::from_utf8_lossy(&tag.to_be_bytes()),
+                        axis.def_value
+                    ));
+                }
+                continue;
+            }
             _ => {
                 return Err(format!(
                     "{}: not converted by phase 1 of the Rive import (shapes, paths, paints, gradients, nested artboards and linear animations are)",
@@ -585,6 +779,7 @@ fn convert(groups: &[Group], assets: &[Asset], g: usize, depth: u32) -> Result<A
                 false
             }
             (Kind::Fill { .. } | Kind::Stroke { .. }, Kind::Shape { paints, .. })
+            | (Kind::Fill { .. } | Kind::Stroke { .. }, Kind::TextStyle { paints })
             | (Kind::Fill { .. } | Kind::Stroke { .. }, Kind::Artboard { paints }) => {
                 paints.push(i);
                 false
@@ -600,14 +795,42 @@ fn convert(groups: &[Group], assets: &[Asset], g: usize, depth: u32) -> Result<A
                 stops.push(i);
                 false
             }
-            (Kind::Group | Kind::Shape { .. } | Kind::Nested { .. } | Kind::Image { .. }, k) => {
-                !matches!(k, Kind::Artboard { .. } | Kind::Group | Kind::Shape { .. })
+            (Kind::TextRun { .. }, Kind::Text { runs, .. }) => {
+                runs.push(i);
+                false
             }
+            (Kind::TextStyle { .. }, Kind::Text { .. }) => false,
+            (
+                Kind::Group
+                | Kind::Shape { .. }
+                | Kind::Nested { .. }
+                | Kind::Image { .. }
+                | Kind::Text { .. },
+                k,
+            ) => !matches!(k, Kind::Artboard { .. } | Kind::Group | Kind::Shape { .. }),
             _ => true,
         };
         if bad {
             return Err(format!("{}: not under an object it can belong to", at(o)));
         }
+    }
+    // A run's style: its slot made a node, a style of the same text.
+    for i in 0..a.nodes.len() {
+        let Kind::TextRun { style } = a.nodes[i].kind else {
+            continue;
+        };
+        let node = node_of.get(&(style as usize)).copied();
+        let ok = node.is_some_and(|n| {
+            matches!(a.nodes[n as usize].kind, Kind::TextStyle { .. })
+                && a.nodes[n as usize].parent == a.nodes[i].parent
+        });
+        let Some(n) = node.filter(|_| ok) else {
+            return Err(format!(
+                "{}: its style (object {style}) is not a style of its text",
+                at(objects[i])
+            ));
+        };
+        a.nodes[i].kind = Kind::TextRun { style: n };
     }
     for (parent_slot, o) in nested_anims {
         let n = node_of.get(&parent_slot).copied();
@@ -635,15 +858,15 @@ fn convert(groups: &[Group], assets: &[Asset], g: usize, depth: u32) -> Result<A
         .filter(|&i| {
             match a.nodes[i as usize].kind {
                 Kind::Shape { .. } | Kind::Nested { .. } => true,
-                // A hidden image (drawableFlags' Hidden) is not drawn.
-                Kind::Image { .. } => objects[i as usize].u(129) & 1 == 0,
+                // A hidden image or text (drawableFlags' Hidden) is not drawn.
+                Kind::Image { .. } | Kind::Text { .. } => objects[i as usize].u(129) & 1 == 0,
                 _ => false,
             }
         })
         .collect();
     draws.sort_by_key(|&i| std::cmp::Reverse(slots[i as usize]));
     a.draws = draws;
-    animations(&mut a, grp, &node_of, &interpolators)?;
+    animations(&mut a, grp, assets, &node_of, &interpolators)?;
     for id in nested_ids {
         a.nested
             .push(convert(groups, assets, id as usize, depth + 1)?);
@@ -666,6 +889,47 @@ fn convert(groups: &[Group], assets: &[Asset], g: usize, depth: u32) -> Result<A
     }
     og_ui::rive::check(&a)?;
     Ok(a)
+}
+
+/// The index of `text` in the artboard's words, added once.
+fn string_of(a: &mut Artboard, text: &str) -> u32 {
+    match a.strings.iter().position(|s| s == text) {
+        Some(i) => i as u32,
+        None => {
+            a.strings.push(text.to_string());
+            (a.strings.len() - 1) as u32
+        }
+    }
+}
+
+/// The artboard's font of asset `k` (added once, its id `#font<k>` until
+/// the cook places it), or [`NO_FONT`] when asset `k` is not a font: Rive
+/// draws a style without one as nothing. A font without its bytes is an
+/// error naming it.
+fn font_of(a: &mut Artboard, assets: &[Asset], k: usize, at: &str) -> Result<u32, String> {
+    let Some(asset) = assets.get(k).filter(|x| x.obj.ty == FONT_ASSET) else {
+        return Ok(NO_FONT);
+    };
+    let id = format!("#font{k}");
+    if let Some(i) = a.fonts.iter().position(|f| f.id == id) {
+        return Ok(i as u32);
+    }
+    let name = asset.obj.string(203).unwrap_or("");
+    let Some(bytes) = asset.bytes else {
+        return Err(format!(
+            "{at}: its font '{name}' is not embedded in the file (hosted or referenced); export it embedded, or name its file in the import settings (font \"{name}\" {{ source \"fonts/<file>.ttf\" }})"
+        ));
+    };
+    let face = ttf_parser::Face::parse(bytes, 0)
+        .map_err(|e| format!("{at}: its font '{name}' does not parse: {e}"))?;
+    let em = f32::from(face.units_per_em()).max(1.0);
+    a.fonts.push(og_ui::rive::Font {
+        id,
+        ascent: f32::from(face.ascender()) / em,
+        descent: -f32::from(face.descender()) / em,
+        font: None,
+    });
+    Ok((a.fonts.len() - 1) as u32)
 }
 
 /// The prop a keyed property key sets on a node of `kind`.
@@ -710,6 +974,16 @@ fn prop_of(key: u16, kind: &Kind, linked: bool) -> Option<Vec<Prop>> {
         (34, Kind::Gradient { .. }) => one(Prop::EndX),
         (35, Kind::Gradient { .. }) => one(Prop::EndY),
         (46, Kind::Gradient { .. }) => one(Prop::Opacity),
+        (268, Kind::TextRun { .. }) => one(Prop::Text),
+        (274, Kind::TextStyle { .. }) => one(Prop::FontSize),
+        (279, Kind::TextStyle { .. }) => one(Prop::Font),
+        (370, Kind::TextStyle { .. }) => one(Prop::LineHeight),
+        (390, Kind::TextStyle { .. }) => one(Prop::LetterSpacing),
+        (285, Kind::Text { .. }) => one(Prop::Width),
+        (286, Kind::Text { .. }) => one(Prop::Height),
+        (366, Kind::Text { .. }) => one(Prop::OriginX),
+        (367, Kind::Text { .. }) => one(Prop::OriginY),
+        (371, Kind::Text { .. }) => one(Prop::Spacing),
         _ => None,
     }
 }
@@ -720,6 +994,7 @@ fn prop_of(key: u16, kind: &Kind, linked: bool) -> Option<Vec<Prop>> {
 fn animations(
     a: &mut Artboard,
     grp: &Group,
+    assets: &[Asset],
     node_of: &HashMap<usize, u32>,
     interpolators: &HashMap<usize, &Object>,
 ) -> Result<(), String> {
@@ -843,8 +1118,8 @@ fn animations(
                 }
                 *props = p;
             }
-            KEYFRAME_DOUBLE | KEYFRAME_COLOR => {
-                let (Some((_, props)), Some(anim)) = (&track, a.animations.last_mut()) else {
+            KEYFRAME_DOUBLE | KEYFRAME_COLOR | KEYFRAME_STRING | KEYFRAME_ID => {
+                let (Some((_, props)), false) = (&track, a.animations.is_empty()) else {
                     return Err(format!("{}: outside a keyed property", at()));
                 };
                 let ease = match interpolators.get(&(o.u(69) as usize)) {
@@ -862,22 +1137,47 @@ fn animations(
                     _ if o.u(68) == 0 => Ease::Hold,
                     _ => Ease::Linear,
                 };
+                let props = props.clone();
+                let n = props.len();
+                for q in &props {
+                    let want = match q {
+                        Prop::Color => KEYFRAME_COLOR,
+                        Prop::Text => KEYFRAME_STRING,
+                        Prop::Font => KEYFRAME_ID,
+                        _ => KEYFRAME_DOUBLE,
+                    };
+                    if want != o.ty {
+                        return Err(format!("{}: of the wrong type for its property", at()));
+                    }
+                }
+                // Words and fonts hold until the next key.
+                let (value, ease) = match o.ty {
+                    KEYFRAME_DOUBLE => (o.f(70), ease),
+                    KEYFRAME_STRING => {
+                        (string_of(a, o.string(280).unwrap_or("")) as f32, Ease::Hold)
+                    }
+                    KEYFRAME_ID => {
+                        let f = font_of(a, assets, o.u(122) as usize, &at())?;
+                        if f == NO_FONT {
+                            return Err(format!(
+                                "{}: keys a style's font to asset {}, which is not a font",
+                                at(),
+                                o.u(122)
+                            ));
+                        }
+                        (f as f32, Ease::Hold)
+                    }
+                    _ => (0.0, ease),
+                };
                 let key = Key {
                     seconds: o.u(67) as f32 / fps,
-                    value: if o.ty == KEYFRAME_DOUBLE {
-                        o.f(70)
-                    } else {
-                        0.0
-                    },
+                    value,
                     color: if o.ty == KEYFRAME_COLOR { o.u(88) } else { 0 },
                     ease,
                 };
-                let n = props.len();
+                let anim = a.animations.last_mut().expect("checked above");
                 let len = anim.tracks.len();
                 for t in &mut anim.tracks[len - n..] {
-                    if (t.prop == Prop::Color) != (o.ty == KEYFRAME_COLOR) {
-                        return Err(format!("{}: of the wrong type for its property", at()));
-                    }
                     t.keys.push(key);
                 }
             }

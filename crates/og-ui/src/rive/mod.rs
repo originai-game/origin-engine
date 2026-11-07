@@ -14,9 +14,10 @@
 
 mod codec;
 mod player;
+mod text;
 
 pub use codec::{check, decode, encode};
-pub use player::{Player, RiveElement};
+pub use player::{Drawn, Player, RiveElement, TextDraw};
 
 use og_core::glam::Vec2;
 use og_render::{UiCap, UiFillRule};
@@ -54,6 +55,27 @@ pub struct Artboard {
     pub nested: Vec<Artboard>,
     /// The images its [`Kind::Image`] nodes draw.
     pub images: Vec<Image>,
+    /// The fonts its [`Kind::TextStyle`] nodes set text in.
+    pub fonts: Vec<Font>,
+    /// The words its text runs show, at rest and as keyed
+    /// ([`Values::text`] is an index here).
+    pub strings: Vec<String>,
+}
+
+/// A font an artboard's text is set in: a font the cook made from the
+/// `.riv` (the file's own, or the project font its settings name for a
+/// referenced one), with the face's line metrics as Rive lays lines out.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Font {
+    /// The font's asset id, `<file>.riv#font<n>`.
+    pub id: String,
+    /// Baseline to the face's ascender and descender, em (both positive):
+    /// its horizontal header's, as Rive reads them.
+    pub ascent: f32,
+    pub descent: f32,
+    /// The font once loaded ([`Artboard::bind_fonts`]); not in the blob.
+    /// Text in an unbound font is laid out and drawn as if it had none.
+    pub font: Option<crate::text::UiFont>,
 }
 
 /// An image an artboard draws: a texture cooked from the `.riv`.
@@ -82,6 +104,85 @@ impl Artboard {
             n.bind_images(texture);
         }
     }
+
+    /// Gives every font of this artboard and the ones it nests its loaded
+    /// font, by id (the loader's: `None` leaves its text undrawn).
+    pub fn bind_fonts(&mut self, font: &mut dyn FnMut(&str) -> Option<crate::text::UiFont>) {
+        for f in &mut self.fonts {
+            f.font = font(&f.id);
+        }
+        for n in &mut self.nested {
+            n.bind_fonts(font);
+        }
+    }
+}
+
+/// How a text's box is sized (Rive's `TextSizing`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Sizing {
+    /// As wide and tall as its lines; nothing wraps.
+    #[default]
+    AutoWidth,
+    /// [`Values::width`] wide, as tall as its lines.
+    AutoHeight,
+    /// [`Values::width`] by [`Values::height`].
+    Fixed,
+}
+
+/// What a text does with lines past its box (Rive's `TextOverflow`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Overflow {
+    /// Drawn past it.
+    #[default]
+    Visible,
+    /// Lines that do not fit whole are not drawn.
+    Hidden,
+    /// Lines that do not fit at all are not drawn; the rest is cut to it.
+    Clipped,
+    /// The last line that fits ends in "...".
+    Ellipsis,
+    /// Scaled down to fit.
+    Fit,
+    /// Set at the largest whole font size that fits.
+    FitFontSize,
+}
+
+/// Where a text's lines sit across its box.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HAlign {
+    #[default]
+    Left,
+    Right,
+    Center,
+}
+
+/// Where a text's lines sit down its box.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum VAlign {
+    #[default]
+    Top,
+    Bottom,
+    Middle,
+}
+
+/// The rest of a [`Kind::Text`]'s layout, which no animation keys.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TextLayout {
+    pub sizing: Sizing,
+    pub overflow: Overflow,
+    pub align: HAlign,
+    pub valign: VAlign,
+    /// Whether lines wrap at the box's width ([`Sizing::AutoWidth`]
+    /// never does).
+    pub wrap: bool,
+    /// Whether a word wider than a line is cut where it overflows when it
+    /// is alone on its line (Rive's `breakWord`), or overflows whole
+    /// (`normal`).
+    pub break_words: bool,
+    /// Whether the text's (0, 0) is its first baseline (else its box's top).
+    pub baseline: bool,
+    /// [`Overflow::Fit`] scales about the first baseline (else the top).
+    pub fit_from_baseline: bool,
 }
 
 /// How an artboard's frame is scaled into its box.
@@ -178,6 +279,17 @@ pub enum Kind {
         artboard: u32,
         animations: Vec<NestedAnimation>,
     },
+    /// A text: its runs ([`Kind::TextRun`]) in order, laid out in a box
+    /// [`Values::width`] by [`Values::height`], placed about
+    /// [`Values::origin`] (fractions of the box), its paragraphs
+    /// [`Values::spacing`] apart.
+    Text { runs: Vec<u32>, layout: TextLayout },
+    /// A run of a text: [`Values::text`] in its style ([`Kind::TextStyle`]).
+    TextRun { style: u32 },
+    /// A text's style: [`Values::font`] at [`Values::font_size`],
+    /// [`Values::line_height`] (negative: the font's) and
+    /// [`Values::letter_spacing`], its glyphs drawn by its paints.
+    TextStyle { paints: Vec<u32> },
 }
 
 /// The outline of a [`Kind::Path`], in the path's space.
@@ -264,7 +376,21 @@ pub struct Values {
     pub position: f32,
     pub start: Vec2,
     pub end: Vec2,
+    /// A text style's size (CSS px per em), line height (CSS px; negative:
+    /// the font's ascent and descent) and the space after each glyph.
+    pub font_size: f32,
+    pub line_height: f32,
+    pub letter_spacing: f32,
+    /// A text's space between paragraphs.
+    pub spacing: f32,
+    /// A run's words: an index into [`Artboard::strings`].
+    pub text: u32,
+    /// A style's font: an index into [`Artboard::fonts`] ([`NO_FONT`]: none).
+    pub font: u32,
 }
+
+/// [`Values::font`] of a style with no font: its runs are not drawn.
+pub const NO_FONT: u32 = u32::MAX;
 
 impl Default for Values {
     fn default() -> Values {
@@ -289,6 +415,12 @@ impl Default for Values {
             position: 0.0,
             start: Vec2::ZERO,
             end: Vec2::ZERO,
+            font_size: 12.0,
+            line_height: -1.0,
+            letter_spacing: 0.0,
+            spacing: 0.0,
+            text: 0,
+            font: NO_FONT,
         }
     }
 }
@@ -320,11 +452,19 @@ pub enum Prop {
     StartY,
     EndX,
     EndY,
+    FontSize,
+    LineHeight,
+    LetterSpacing,
+    Spacing,
+    /// A run's words, keyed as indices into [`Artboard::strings`] (held).
+    Text,
+    /// A style's font, keyed as indices into [`Artboard::fonts`] (held).
+    Font,
 }
 
 impl Prop {
     /// Every prop, in codec order.
-    pub const ALL: [Prop; 26] = [
+    pub const ALL: [Prop; 32] = [
         Prop::X,
         Prop::Y,
         Prop::Rotation,
@@ -351,6 +491,12 @@ impl Prop {
         Prop::StartY,
         Prop::EndX,
         Prop::EndY,
+        Prop::FontSize,
+        Prop::LineHeight,
+        Prop::LetterSpacing,
+        Prop::Spacing,
+        Prop::Text,
+        Prop::Font,
     ];
 }
 
@@ -382,6 +528,13 @@ impl Values {
             Prop::StartY => self.start.y = v,
             Prop::EndX => self.end.x = v,
             Prop::EndY => self.end.y = v,
+            Prop::FontSize => self.font_size = v,
+            Prop::LineHeight => self.line_height = v,
+            Prop::LetterSpacing => self.letter_spacing = v,
+            Prop::Spacing => self.spacing = v,
+            // Indices, exact in an f32 below 2^24; NO_FONT saturates back.
+            Prop::Text => self.text = v as u32,
+            Prop::Font => self.font = v as u32,
         }
     }
 }
@@ -413,6 +566,12 @@ impl Values {
             Prop::StartY => self.start.y,
             Prop::EndX => self.end.x,
             Prop::EndY => self.end.y,
+            Prop::FontSize => self.font_size,
+            Prop::LineHeight => self.line_height,
+            Prop::LetterSpacing => self.letter_spacing,
+            Prop::Spacing => self.spacing,
+            Prop::Text => self.text as f32,
+            Prop::Font => self.font as f32,
         }
     }
 }

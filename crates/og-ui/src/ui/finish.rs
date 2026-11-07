@@ -769,7 +769,7 @@ impl Ui {
                         kind: "rive".into(),
                         disabled: false,
                         clipped: shown.width + 0.01 < b.width || shown.height + 0.01 < b.height,
-                        text: String::new(),
+                        text: e.text.clone(),
                         role: String::new(),
                         name: String::new(),
                         value: String::new(),

@@ -3,9 +3,9 @@
 Rive files converted at cook time into og-ui artboards (`docs/ui.md`
 §11.2). Asset-only: no game, no reference frame.
 
-`assets/` holds seven files from rive-runtime's unit tests
-(`tests/unit_tests/assets`, revision `4f864426617a`, MIT, `LICENSE`), all
-format 7.0:
+`assets/` holds nine files from rive-runtime's unit tests
+(`tests/unit_tests/assets`, revision `4f864426617a`, MIT, `LICENSE`), of
+format 7:
 
 | File | What it exercises |
 |---|---|
@@ -16,8 +16,11 @@ format 7.0:
 | `custom_image_name.riv` | an embedded 15×15 PNG image, cooked to its own texture |
 | `hosted_image_file.riv` | an image hosted on Rive's CDN: a cook error naming the asset |
 | `light_switch.riv` | a state machine with a bool input: phase 2, refused with the feature named |
+| `hello_world.riv` | a text of one run, "Hello World!", at 60 px in an embedded font: its font cooks with the run's characters |
+| `text_style_keyed_font.riv` (7.4) | a style's font keyed from Bodoni to a Twemoji subset that has none of the run's "hi": converted with the keyed font, refused by the cook naming the font and the characters |
 
 Tests that read it: og-cook `riv::tests` (`cargo test -p og-cook --lib
 riv::`), og-cook `tests/rive.rs` (the cook with settings), og-tests-cooked
 `ui_rive_draws_its_artboards_where_the_file_puts_them` (the `ui-rive`
-scene on the GPU).
+scene on the GPU) and `ui_rive_text_draws_its_run_in_its_cooked_font`
+(hello_world cooked, played in a document and drawn).

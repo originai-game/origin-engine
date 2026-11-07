@@ -12,6 +12,43 @@ use og_render::{
 };
 use std::sync::Arc;
 
+/// What a playing artboard draws, bottom to top, in screen space.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Drawn {
+    Shape(UiShape),
+    /// A piece of a text in one font and paint.
+    Text(TextDraw),
+    /// Cuts what follows, until its [`Drawn::Unclip`], to this outline.
+    Clip(UiPath),
+    Unclip,
+}
+
+/// A run's piece of a text line in one of its style's paints, for og-ui's
+/// text command (`DrawCmd::Text`, styled when it has a gradient, an outline
+/// or a map).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextDraw {
+    pub font: og_render::FontHandle,
+    pub text: String,
+    /// One per character of `text` (empty: the font's advances and kerning).
+    pub placements: Vec<og_render::GlyphPlacement>,
+    /// The pen at the line's baseline, CSS px.
+    pub pen: Vec2,
+    pub size: f32,
+    /// Em after each glyph.
+    pub tracking: f32,
+    /// The glyphs' map about the pen (`[1, 0, 0, 1]`: none).
+    pub transform: [f32; 4],
+    /// Linear RGBA (clear for a stroke, whose outline draws).
+    pub color: [f32; 4],
+    /// A gradient fill and its box (`[x, y, width, height]`).
+    pub gradient: Option<(UiGradient, [f32; 4])>,
+    /// A stroke: its width, CSS px before `transform`, and colour.
+    pub outline: Option<(f32, [f32; 4])>,
+    /// The piece's line box on screen, `[x, y, width, height]`.
+    pub bounds: [f32; 4],
+}
+
 /// A drawn object of a playing artboard, for dump_ui, describe and pick.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RiveElement {
@@ -23,6 +60,8 @@ pub struct RiveElement {
     pub bounds: [f32; 4],
     /// Its opacity as drawn.
     pub opacity: f32,
+    /// A text's words as drawn (lines apart by line feeds); else empty.
+    pub text: String,
 }
 
 /// One artboard playing. Clone it to fork, compare it to check two runs.
@@ -205,8 +244,8 @@ impl Player {
             .mul(&Affine::translate(a.origin.x * size.x, a.origin.y * size.y))
     }
 
-    /// The shapes it draws in `rect`, bottom to top, at `opacity`.
-    pub fn draw(&self, rect: [f32; 4], opacity: f32) -> Vec<UiShape> {
+    /// What it draws in `rect`, bottom to top, at `opacity`.
+    pub fn draw(&self, rect: [f32; 4], opacity: f32) -> Vec<Drawn> {
         let mut out = Vec::new();
         self.walk(&self.frame(rect), opacity, "", &mut |s, _| {
             if let Some(s) = s {
@@ -234,7 +273,7 @@ impl Player {
         screen: &Affine,
         opacity: f32,
         prefix: &str,
-        emit: &mut dyn FnMut(Option<UiShape>, Option<RiveElement>),
+        emit: &mut dyn FnMut(Option<Drawn>, Option<RiveElement>),
     ) {
         let a = &*self.artboard;
         let pose = self.pose();
@@ -271,7 +310,7 @@ impl Player {
                 .close();
             for &p in paints {
                 for s in paint_path(a, &pose, &frame, p, screen, &Affine::IDENTITY, alpha[0]) {
-                    emit(Some(s), None);
+                    emit(Some(Drawn::Shape(s)), None);
                 }
             }
         }
@@ -320,7 +359,7 @@ impl Player {
                             s.blend = *blend;
                             let (lo, hi) = (s.center - s.half, s.center + s.half);
                             bounds = Some(bounds.map_or((lo, hi), |(a, b)| (a.min(lo), b.max(hi))));
-                            emit(Some(s), None);
+                            emit(Some(Drawn::Shape(s)), None);
                         }
                     }
                     if let Some((lo, hi)) = bounds {
@@ -331,6 +370,7 @@ impl Player {
                                 node: d,
                                 bounds: [lo.x, lo.y, hi.x - lo.x, hi.y - lo.y],
                                 opacity: alpha[d as usize],
+                                text: String::new(),
                             }),
                         );
                     }
@@ -358,7 +398,7 @@ impl Player {
                     let (x, y) = m.apply(lo.x + img.size.x / 2.0, lo.y + img.size.y / 2.0);
                     if let Some(texture) = img.texture {
                         emit(
-                            Some(UiShape {
+                            Some(Drawn::Shape(UiShape {
                                 geometry: UiGeometry::Rect {
                                     radii: [0.0; 4],
                                     corner: og_render::UiCorner::Round,
@@ -379,7 +419,7 @@ impl Player {
                                 blend: UiBlend::Normal,
                                 layer: 0,
                                 clip: None,
-                            }),
+                            })),
                             None,
                         );
                     }
@@ -392,6 +432,7 @@ impl Player {
                             node: d,
                             bounds: [lo.x, lo.y, hi.x - lo.x, hi.y - lo.y],
                             opacity: alpha,
+                            text: String::new(),
                         }),
                     );
                 }
@@ -422,9 +463,25 @@ impl Player {
                             node: d,
                             bounds: [lo.x, lo.y, hi.x - lo.x, hi.y - lo.y],
                             opacity: alpha[d as usize],
+                            text: String::new(),
                         }),
                     );
                     p.walk(&inner, alpha[d as usize], &id, emit);
+                }
+                Kind::Text { .. } => {
+                    let alpha = alpha[d as usize];
+                    if alpha <= 0.0 {
+                        continue;
+                    }
+                    draw_text(
+                        a,
+                        &pose,
+                        d,
+                        &screen.mul(&world[d as usize]),
+                        alpha,
+                        id,
+                        emit,
+                    );
                 }
                 _ => {}
             }
@@ -543,6 +600,162 @@ fn solve(x: f32, x1: f32, x2: f32) -> f32 {
         }
         t
     }
+}
+
+/// Text node `d` drawn through `emit`, `m` its node's map to the screen:
+/// each piece of each line in each paint of its run's style, cut to its
+/// box when it clips, and its element (its box and words).
+fn draw_text(
+    a: &Artboard,
+    pose: &[Values],
+    d: u32,
+    m: &Affine,
+    alpha: f32,
+    id: String,
+    emit: &mut dyn FnMut(Option<Drawn>, Option<RiveElement>),
+) {
+    let Some(laid) = super::text::layout(a, pose, d) else {
+        return;
+    };
+    let to_screen = m.mul(&laid.transform);
+    let map = |p: Vec2| {
+        let (x, y) = to_screen.apply(p.x, p.y);
+        Vec2::new(x, y)
+    };
+    let quad = |r: [f32; 4]| {
+        [
+            Vec2::new(r[0], r[1]),
+            Vec2::new(r[2], r[1]),
+            Vec2::new(r[2], r[3]),
+            Vec2::new(r[0], r[3]),
+        ]
+        .map(map)
+    };
+    let screen_box = |r: [f32; 4]| {
+        let q = quad(r);
+        let lo = q.iter().fold(Vec2::MAX, |m, c| m.min(*c));
+        let hi = q.iter().fold(Vec2::MIN, |m, c| m.max(*c));
+        [lo.x, lo.y, hi.x - lo.x, hi.y - lo.y]
+    };
+    let linear_map = [to_screen.a, to_screen.b, to_screen.c, to_screen.d];
+    let unit = to_screen.determinant().abs().sqrt().max(1e-6);
+    if let Some(c) = laid.clip {
+        let q = quad(c);
+        let mut path = UiPath::new();
+        path.move_to(q[0])
+            .line_to(q[1])
+            .line_to(q[2])
+            .line_to(q[3])
+            .close();
+        emit(Some(Drawn::Clip(path)), None);
+    }
+    for (piece, pen) in &laid.drawn {
+        let r = &laid.runs[piece.run];
+        let Some(font) = r.handle else { continue };
+        let Kind::TextStyle { paints } = &a.nodes[r.style as usize].kind else {
+            continue;
+        };
+        let (text, placements) = super::text::shaped(r, &piece.text);
+        let line_box = screen_box([
+            pen.x,
+            pen.y - r.ascent * r.size,
+            pen.x + piece.width,
+            pen.y + r.descent * r.size,
+        ]);
+        for &p in paints {
+            let (shader, visible, stroke) = match &a.nodes[p as usize].kind {
+                Kind::Fill {
+                    shader, visible, ..
+                } => (*shader, *visible, None),
+                Kind::Stroke {
+                    shader, visible, ..
+                } => (*shader, *visible, Some(pose[p as usize].thickness)),
+                _ => continue,
+            };
+            if !visible {
+                continue;
+            }
+            let v = &pose[shader as usize];
+            let (color, gradient) = match &a.nodes[shader as usize].kind {
+                Kind::Solid => (linear(v.color, alpha), None),
+                Kind::Gradient { radial, stops } => {
+                    // The gradient's ends in the text's space, as fractions
+                    // of the whole text's box on screen.
+                    let fill_box = screen_box(laid.bounds);
+                    let size = Vec2::new(fill_box[2], fill_box[3]).max(Vec2::splat(1e-3));
+                    let lo = Vec2::new(fill_box[0], fill_box[1]);
+                    let frac = |q: Vec2| (map(q) - lo) / size;
+                    let mut st: Vec<UiStop> = stops
+                        .iter()
+                        .map(|s| UiStop {
+                            offset: pose[*s as usize].position,
+                            color: linear(pose[*s as usize].color, alpha * v.opacity),
+                        })
+                        .collect();
+                    st.sort_by(|x, y| x.offset.total_cmp(&y.offset));
+                    let to = if *radial {
+                        Vec2::splat((v.end - v.start).length() * unit) / size
+                    } else {
+                        frac(v.end)
+                    };
+                    (
+                        [1.0; 4],
+                        Some((
+                            UiGradient {
+                                kind: if *radial {
+                                    UiGradientKind::Radial
+                                } else {
+                                    UiGradientKind::Linear
+                                },
+                                from: frac(v.start),
+                                to,
+                                stops: st,
+                                spread: UiSpread::Pad,
+                                dither: true,
+                            },
+                            fill_box,
+                        )),
+                    )
+                }
+                _ => continue,
+            };
+            let (color, outline) = match stroke {
+                // A stroke draws its outline; the glyphs' fill stays clear.
+                Some(t) if t > 0.0 => ([color[0], color[1], color[2], 0.0], Some((t, color))),
+                Some(_) => continue,
+                None => (color, None),
+            };
+            emit(
+                Some(Drawn::Text(TextDraw {
+                    font,
+                    text: text.clone(),
+                    placements: placements.clone(),
+                    pen: map(*pen),
+                    size: r.size,
+                    tracking: r.tracking,
+                    transform: linear_map,
+                    color,
+                    gradient: if outline.is_some() { None } else { gradient },
+                    outline,
+                    bounds: line_box,
+                })),
+                None,
+            );
+        }
+    }
+    if laid.clip.is_some() {
+        emit(Some(Drawn::Unclip), None);
+    }
+    emit(
+        None,
+        Some(RiveElement {
+            id,
+            node: d,
+            bounds: screen_box(laid.bounds),
+            opacity: alpha,
+            text: laid.words,
+        }),
+    );
 }
 
 /// Linear RGBA of a Rive colour, its alpha times `alpha`.

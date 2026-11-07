@@ -82,3 +82,68 @@ fn a_riv_the_import_cannot_convert_fails_naming_what() {
         "{errors}"
     );
 }
+
+/// A text's font cooks beside its artboard, `<file>.riv#font<n>`, with
+/// the characters its runs show and nothing more (no Latin set, no file
+/// for run-time glyphs) unless its settings ask; the artboard names it.
+#[test]
+fn a_riv_text_cooks_its_font_to_the_characters_it_shows() {
+    let font_of = |root: &std::path::Path, bundle: &Bundle, id: &str| {
+        let out = bundle.output(id).unwrap_or_else(|e| panic!("{id}: {e:?}"));
+        let bytes = std::fs::read(root.join("cooked").join(&out.file)).unwrap();
+        bundle.font(id, &bytes).unwrap()
+    };
+    let root = project("text", &["hello_world.riv"]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let out = bundle.output("ui/hello_world.riv#New Artboard").unwrap();
+    let bytes = std::fs::read(root.join("cooked").join(&out.file)).unwrap();
+    let a = og_ui::rive::decode(
+        &bundle
+            .rive_artboard("ui/hello_world.riv#New Artboard", &bytes)
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(a.fonts.len(), 1);
+    assert_eq!(a.fonts[0].id, "ui/hello_world.riv#font0");
+    assert_eq!(a.strings, ["Hello World!"]);
+    let f = font_of(&root, &bundle, "ui/hello_world.riv#font0");
+    let cooked: String = f
+        .glyphs
+        .iter()
+        .filter_map(|g| char::from_u32(g.codepoint))
+        .filter(|c| (*c as u32) < 0xF_0000 && !c.is_whitespace())
+        .collect();
+    assert_eq!(cooked, "!HWdelor");
+    assert!(f.ttf.is_none(), "no run-time glyphs unless asked");
+
+    // Its settings name it by its output (the asset has no name in Rive)
+    // and opt it into run-time glyphs and more characters.
+    std::fs::write(
+        root.join("assets/ui/hello_world.riv.ogt"),
+        "type import\nversion 1\n---\nfont font0 {\n  runtime true\n  chars \"0123\"\n}\n",
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let f = font_of(&root, &bundle, "ui/hello_world.riv#font0");
+    assert!(f.ttf.is_some(), "runtime true ships the file");
+    assert!(f.glyph('0').is_some() && f.glyph('a').is_none());
+}
+
+/// A keyed font that has none of the characters its run shows is an
+/// error naming the font and the characters, not a text drawn as nothing.
+#[test]
+fn a_riv_font_without_its_characters_fails_naming_them() {
+    let root = project("keyed-font", &["text_style_keyed_font.riv"]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = report.errors().join("\n");
+    assert!(
+        errors.contains("text_style_keyed_font.riv")
+            && errors.contains("'Emoji'")
+            && errors.contains("\"hi\""),
+        "{errors}"
+    );
+}

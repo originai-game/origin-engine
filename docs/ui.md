@@ -739,6 +739,12 @@ artboard Chest {
   fit contain              # contain cover fill none scale-down fit-width fit-height
   align center             # where the fit places it
 }
+font Inter {               # a font asset, by its name in Rive or font<n>
+  source "fonts/Inter.ttf" # a referenced (not embedded) font's file
+  runtime true             # text set at run time renders from its outlines
+  chars "0123456789"       # characters beyond those its runs show
+  charset latin            # named sets beyond them
+}
 ```
 
 **Identity.** An artboard's id is its asset path, `#`, and its name:
@@ -782,12 +788,39 @@ colours and the paths' numbers; one-shot, loop, ping-pong, work areas),
 nested artboards with their simple animations, embedded images (each
 cooks to its own texture, `<file>.riv#image<n>`, drawn at its pixel size
 about its origin and bound when the artboard loads), and a state machine
-whose entry plays one animation. Each artboard cooks to an `og.RiveArtboard`
+whose entry plays one animation, and text (below). Each artboard cooks to an `og.RiveArtboard`
 blob; `og_ui::rive::Player` advances it by the tick's step, draws it as UI
-shapes and lists its drawn objects as elements (`Player::elements`). Text,
-hosted (not embedded) images, images with a blend mode other than normal,
-inner and outer strokes, gradient transforms and every other state machine
-are still cook errors.
+shapes and lists its drawn objects as elements (`Player::elements`).
+
+Text: a text's runs, each in its style's font, size, line height and
+letter spacing, filled and stroked by the style's solid or gradient
+paints; its box sized automatically, by width or fixed; left, centre and
+right alignment and top, middle and bottom vertical alignment; the
+origin at the box's top or the first baseline; paragraph spacing;
+wrapping with normal or break-word breaks; overflow visible, hidden,
+clipped, ellipsis, fit and fit font size; and keys of the runs' words,
+the styles' fonts, sizes, line heights and letter spacing and the boxes'
+size, origin and spacing. Its layout is rive-runtime's (`Text::update`
+and `buildRenderStyles`, `GlyphLine`, `OrderedLine`); its words are
+measured, shaped and drawn by og-ui's text, each piece an og-ui text
+command (styled for a gradient, a stroke or a turned or scaled text).
+Each font a text uses cooks beside the artboard as `<file>.riv#font<n>`
+(an embedded one from the file, a referenced one from its settings'
+`source`), loaded with it: its charset is the characters its runs show
+at rest and as keyed (and the ellipsis a text that ellipsizes draws),
+plus its settings' `chars` and `charset`; it ships its file for run-time
+glyphs only with `runtime true`. A character the font lacks is the
+font cook's note and og-ui's missing glyph; a font with none of its
+runs' characters is a cook error naming them. A text's element carries
+its words. A variable font's axes at other than their defaults, font
+features, text modifiers and follow-path, backgrounds, global styles,
+text inputs, vertical trim, break-all word breaks, runs from view-model
+lists, a text's blend mode other than normal and a referenced font the
+settings give no source are cook errors naming the asset and feature.
+
+Hosted (not embedded) images, images with a blend mode other than
+normal, inner and outer strokes, gradient transforms and every other
+state machine are still cook errors.
 
 In documents: a container's `-og-frame: rive("<file>.riv#<Artboard>")`
 (the `rive` prop) plays that artboard in its box over its background.

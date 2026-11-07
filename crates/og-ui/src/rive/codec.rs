@@ -7,7 +7,7 @@ use crate::motion::codec::{R, W};
 use og_render::UiBlend;
 
 /// The codec's version (in the blob after its magic).
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 const MAGIC: &[u8; 4] = b"OGRV";
 
 /// The bytes of `a`.
@@ -182,6 +182,16 @@ fn artboard(w: &mut W, a: &Artboard) {
         w.str(&i.id);
         w.vec2(i.size);
     }
+    w.u32(a.fonts.len() as u32);
+    for f in &a.fonts {
+        w.str(&f.id);
+        w.f32(f.ascent);
+        w.f32(f.descent);
+    }
+    w.u32(a.strings.len() as u32);
+    for t in &a.strings {
+        w.str(t);
+    }
 }
 
 fn kind(w: &mut W, k: &Kind) {
@@ -262,6 +272,26 @@ fn kind(w: &mut W, k: &Kind) {
         Kind::Image { image } => {
             w.u8(11);
             w.u32(*image);
+        }
+        Kind::Text { runs, layout: l } => {
+            w.u8(12);
+            list(w, runs);
+            w.u8(l.sizing as u8);
+            w.u8(l.overflow as u8);
+            w.u8(l.align as u8);
+            w.u8(l.valign as u8);
+            w.u8(u8::from(l.wrap)
+                | u8::from(l.break_words) << 1
+                | u8::from(l.baseline) << 2
+                | u8::from(l.fit_from_baseline) << 3);
+        }
+        Kind::TextRun { style } => {
+            w.u8(13);
+            w.u32(*style);
+        }
+        Kind::TextStyle { paints } => {
+            w.u8(14);
+            list(w, paints);
         }
         Kind::Nested {
             artboard,
@@ -359,6 +389,52 @@ fn rkind(r: &mut R) -> Option<Kind> {
             }
         }
         11 => Kind::Image { image: r.u32()? },
+        12 => {
+            let runs = rlist(r)?;
+            let sizing = match r.u8()? {
+                0 => Sizing::AutoWidth,
+                1 => Sizing::AutoHeight,
+                2 => Sizing::Fixed,
+                _ => return None,
+            };
+            let overflow = match r.u8()? {
+                0 => Overflow::Visible,
+                1 => Overflow::Hidden,
+                2 => Overflow::Clipped,
+                3 => Overflow::Ellipsis,
+                4 => Overflow::Fit,
+                5 => Overflow::FitFontSize,
+                _ => return None,
+            };
+            let align = match r.u8()? {
+                0 => HAlign::Left,
+                1 => HAlign::Right,
+                2 => HAlign::Center,
+                _ => return None,
+            };
+            let valign = match r.u8()? {
+                0 => VAlign::Top,
+                1 => VAlign::Bottom,
+                2 => VAlign::Middle,
+                _ => return None,
+            };
+            let flags = r.u8()?;
+            Kind::Text {
+                runs,
+                layout: TextLayout {
+                    sizing,
+                    overflow,
+                    align,
+                    valign,
+                    wrap: flags & 1 != 0,
+                    break_words: flags & 2 != 0,
+                    baseline: flags & 4 != 0,
+                    fit_from_baseline: flags & 8 != 0,
+                },
+            }
+        }
+        13 => Kind::TextRun { style: r.u32()? },
+        14 => Kind::TextStyle { paints: rlist(r)? },
         _ => return None,
     })
 }
@@ -485,6 +561,25 @@ fn rartboard(r: &mut R, depth: u32) -> Option<Artboard> {
             texture: None,
         });
     }
+    let n = r.u32()? as usize;
+    if n > r.bytes.len() {
+        return None;
+    }
+    for _ in 0..n {
+        a.fonts.push(Font {
+            id: r.str()?,
+            ascent: r.f32()?,
+            descent: r.f32()?,
+            font: None,
+        });
+    }
+    let n = r.u32()? as usize;
+    if n > r.bytes.len() {
+        return None;
+    }
+    for _ in 0..n {
+        a.strings.push(r.str()?);
+    }
     Some(a)
 }
 
@@ -512,6 +607,19 @@ pub fn check(a: &Artboard) -> Result<(), String> {
             } => vertices.clone(),
             Kind::Fill { shader, .. } | Kind::Stroke { shader, .. } => vec![*shader],
             Kind::Gradient { stops, .. } => stops.clone(),
+            Kind::Text { runs, .. } => runs.clone(),
+            Kind::TextRun { style } => {
+                if node.values.text as usize >= a.strings.len() {
+                    return bad("a run's words");
+                }
+                vec![*style]
+            }
+            Kind::TextStyle { paints } => {
+                if node.values.font != NO_FONT && node.values.font as usize >= a.fonts.len() {
+                    return bad("a style's font");
+                }
+                paints.clone()
+            }
             Kind::Image { image } => {
                 if *image as usize >= a.images.len() {
                     return bad("an image");
@@ -554,6 +662,20 @@ pub fn check(a: &Artboard) -> Result<(), String> {
         .any(|t| t.node >= n)
     {
         return bad("an animated node");
+    }
+    // Keyed words and fonts index the artboard's.
+    for t in a.animations.iter().flat_map(|x| &x.tracks) {
+        let limit = match t.prop {
+            Prop::Text => a.strings.len(),
+            Prop::Font => a.fonts.len(),
+            _ => continue,
+        };
+        if t.keys
+            .iter()
+            .any(|k| k.value < 0.0 || k.value as usize >= limit)
+        {
+            return bad("a keyed word or font");
+        }
     }
     a.nested.iter().try_for_each(check)
 }

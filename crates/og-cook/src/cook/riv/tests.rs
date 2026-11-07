@@ -40,7 +40,7 @@ fn a_shape_draws_where_its_transforms_put_it() {
     }
     // Under it, the artboard's background (0xFF313131); the circle's fill
     // has no colour of its own, so Rive's default grey (0xFF747474).
-    let shapes = p.draw([0.0, 0.0, 400.0, 200.0], 1.0);
+    let shapes = drawn_shapes(&p, [0.0, 0.0, 400.0, 200.0], 1.0);
     let solid = |s: &og_render::UiShape| match &s.paint {
         UiPaint::Solid(c) => *c,
         _ => panic!("solid"),
@@ -61,7 +61,7 @@ fn a_shape_draws_where_its_transforms_put_it() {
 fn a_nested_artboard_draws_at_its_node_with_its_opacity() {
     let a = convert("nested_artboard_opacity.riv").expect("converts");
     let p = Player::new(Arc::new(a[0].clone()), None);
-    let shapes = p.draw([0.0, 0.0, 500.0, 500.0], 1.0);
+    let shapes = drawn_shapes(&p, [0.0, 0.0, 500.0, 500.0], 1.0);
     // The nested 250 px artboard's red background at (125, 125), at the
     // container's opacity 0.3275, over the parent's own background.
     let red = shapes
@@ -177,7 +177,7 @@ fn an_image_draws_at_its_pixel_size_about_its_origin() {
     a.bind_images(&mut |id| (id == "#image0").then_some(texture));
     let p = Player::new(Arc::new(a), None);
     // Drawn at its own size: the artboard (500 px) in a 500 px box.
-    let shapes = p.draw([0.0, 0.0, 500.0, 500.0], 0.5);
+    let shapes = drawn_shapes(&p, [0.0, 0.0, 500.0, 500.0], 0.5);
     let img = shapes
         .iter()
         .find(|s| matches!(s.paint, UiPaint::Image(_)))
@@ -190,7 +190,7 @@ fn an_image_draws_at_its_pixel_size_about_its_origin() {
     assert_eq!(img.center, og_core::glam::Vec2::ZERO);
     assert_eq!(img.half, og_core::glam::Vec2::splat(7.5));
     // Drawn at half size the map scales it; its pixels stay its size.
-    let half = p.draw([0.0, 0.0, 250.0, 250.0], 1.0);
+    let half = drawn_shapes(&p, [0.0, 0.0, 250.0, 250.0], 1.0);
     let img = half
         .iter()
         .find(|s| matches!(s.paint, UiPaint::Image(_)))
@@ -204,4 +204,53 @@ fn an_image_draws_at_its_pixel_size_about_its_origin() {
 fn a_hosted_image_is_an_error_naming_it() {
     let e = convert("hosted_image_file.riv").expect_err("hosted");
     assert!(e.contains("one.png") && e.contains("not embedded"), "{e}");
+}
+
+/// The shapes a player draws (its texts and cuts left out).
+fn drawn_shapes(p: &og_ui::rive::Player, rect: [f32; 4], opacity: f32) -> Vec<og_render::UiShape> {
+    p.draw(rect, opacity)
+        .into_iter()
+        .filter_map(|d| match d {
+            og_ui::rive::Drawn::Shape(s) => Some(s),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A text converts as its run, its style and its font; a style's font
+/// keyed by an animation swaps at the key and holds.
+#[test]
+fn a_text_converts_with_its_run_style_and_keyed_font() {
+    let a = convert("hello_world.riv").expect("converts");
+    let text = a[0]
+        .nodes
+        .iter()
+        .find(|n| matches!(n.kind, og_ui::rive::Kind::Text { .. }))
+        .expect("a text");
+    assert_eq!(text.name, "Hello World");
+    assert!((text.values.x - 73.48).abs() < 0.01 && (text.values.y - 175.785).abs() < 0.01);
+    assert_eq!(a[0].strings, ["Hello World!"]);
+    let style = a[0]
+        .nodes
+        .iter()
+        .find(|n| matches!(n.kind, og_ui::rive::Kind::TextStyle { .. }))
+        .expect("a style");
+    assert_eq!((style.values.font_size, style.values.font), (60.0, 0));
+    let a = convert("text_style_keyed_font.riv").expect("converts");
+    assert_eq!(a[0].fonts.len(), 2, "the keyed font is the artboard's too");
+    let mut p = Player::new(Arc::new(a[0].clone()), Some("swap"));
+    let font = |p: &Player| {
+        p.pose()
+            .iter()
+            .zip(&p.artboard.nodes)
+            .find(|(_, n)| matches!(n.kind, og_ui::rive::Kind::TextStyle { .. }))
+            .map(|(v, _)| v.font)
+    };
+    assert_eq!(font(&p), Some(0));
+    for _ in 0..29 {
+        p.advance(1.0 / 60.0);
+    }
+    assert_eq!(font(&p), Some(0), "held until frame 30");
+    p.advance(2.0 / 60.0);
+    assert_eq!(font(&p), Some(1));
 }

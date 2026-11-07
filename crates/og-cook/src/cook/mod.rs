@@ -315,6 +315,8 @@ enum Work<'a> {
     Rive(&'a Source, String),
     /// A `.riv`'s embedded image, by asset index.
     RiveImage(&'a Source, usize),
+    /// A font a `.riv`'s text uses.
+    RiveFont(Box<riv::RivFont>),
     Behaviour(&'a Source),
     Dialogue(&'a Source),
     Quest(&'a Source),
@@ -1341,8 +1343,25 @@ pub fn cook_project_with_texture_cache(
                 let st = stamp(&[b"vector", &hash, svg.as_bytes()]);
                 outs.push((s.rel.clone(), format::Vector::NAME, st, Work::Vector(s)));
             }
-            Kind::Rive => match riv::plan(s) {
-                Ok((names, images)) => {
+            Kind::Rive => match riv::plan(s, &options.font) {
+                Ok((names, images, fonts)) => {
+                    for f in fonts {
+                        // The font cook's version and settings, and the
+                        // file's bytes (a referenced font's own).
+                        let st = stamp(&[
+                            b"rive font 1 font 7",
+                            &hash,
+                            &f.index.to_le_bytes(),
+                            f.settings.describe().as_bytes(),
+                            &hash_bytes(&f.bytes).to_le_bytes(),
+                        ]);
+                        outs.push((
+                            format!("{}#font{}", s.rel, f.index),
+                            format::Font::NAME,
+                            st,
+                            Work::RiveFont(Box::new(f)),
+                        ));
+                    }
                     for n in images {
                         let st = stamp(&[b"rive image", &hash, &n.to_le_bytes()]);
                         outs.push((
@@ -1353,7 +1372,7 @@ pub fn cook_project_with_texture_cache(
                         ));
                     }
                     for name in names {
-                        let st = stamp(&[b"rive 2", &hash, name.as_bytes()]);
+                        let st = stamp(&[b"rive 3", &hash, name.as_bytes()]);
                         outs.push((
                             format!("{}#{name}", s.rel),
                             format::RiveArtboard::NAME,

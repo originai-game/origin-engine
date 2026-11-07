@@ -560,6 +560,7 @@ pub(super) fn run(
         Work::Vector(s) => vector::cook(s, p.stamp),
         Work::Rive(s, name) => riv::cook(s, name, p.stamp),
         Work::RiveImage(s, n) => riv::cook_image(s, *n, &options.texture, p.stamp),
+        Work::RiveFont(f) => riv::cook_font(f, threads, p.stamp),
         Work::UiMaterial(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a UI material is text (UTF-8)".into()))?;
@@ -714,6 +715,11 @@ pub(super) fn read_beside(s: &Source, rel: &str) -> Result<String, String> {
 }
 
 pub(super) fn read_sibling(s: &Source, rel: &str) -> Result<String, String> {
+    String::from_utf8(read_sibling_bytes(s, rel)?).map_err(|_| format!("'{rel}' is not UTF-8 text"))
+}
+
+/// The bytes of the asset at `rel` under `assets/` beside `s`.
+pub(super) fn read_sibling_bytes(s: &Source, rel: &str) -> Result<Vec<u8>, String> {
     let mut root = s.path.clone();
     for _ in s.rel.split('/') {
         root.pop();
@@ -721,5 +727,5 @@ pub(super) fn read_sibling(s: &Source, rel: &str) -> Result<String, String> {
     if rel.split('/').any(|c| c == ".." || c.is_empty()) {
         return Err(format!("'{rel}' is not a path under assets/"));
     }
-    std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{e}"))
+    std::fs::read(root.join(rel)).map_err(|e| format!("{e}"))
 }

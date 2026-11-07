@@ -133,9 +133,12 @@ pub fn rive() -> Result<RenderScene, String> {
             // The artboard cuts its content to its box.
             o.clips.push(*rect);
             let clip = (o.clips.len() - 1) as u32;
-            for mut s in p.draw(*rect, 1.0) {
-                s.clip = Some(clip);
-                o.ui.shapes.push(s);
+            // These artboards have no text: their shapes are all they draw.
+            for d in p.draw(*rect, 1.0) {
+                if let og_ui::rive::Drawn::Shape(mut s) = d {
+                    s.clip = Some(clip);
+                    o.ui.shapes.push(s);
+                }
             }
         }
     }))

@@ -111,7 +111,7 @@ fn shot(uis: &[&Ui], mut scene: RenderScene) -> (RenderScene, RenderDesc) {
 }
 
 /// A cooked font (one page) in the scene, as og-runtime adds it, kerned or not.
-fn add(scene: &mut RenderScene, f: &CookedFont, kern: bool) -> UiFont {
+pub fn add(scene: &mut RenderScene, f: &CookedFont, kern: bool) -> UiFont {
     assert_eq!(f.pages.len(), 1, "{}: one page", f.id);
     let page = &f.pages[0];
     let atlas = scene.add_texture(TextureData {

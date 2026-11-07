@@ -158,6 +158,18 @@ fn read_rive(
                     None
                 }
             });
+            // Its text's fonts too, each as the UI draws with it.
+            artboard.bind_fonts(&mut |font| {
+                let loaded = crate::assets::load_font(eng, font)
+                    .and_then(|i| super::ui_config::ui_font(eng, crate::assets::handle(i) as f64));
+                match loaded {
+                    Ok(f) => Some(f),
+                    Err(e) => {
+                        missing.get_or_insert(format!("{id}: {font}: {e}"));
+                        None
+                    }
+                }
+            });
             if let Some(e) = missing {
                 return Err(e);
             }
