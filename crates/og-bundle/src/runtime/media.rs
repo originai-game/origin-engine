@@ -406,6 +406,9 @@ pub struct CookedFont {
     /// Kerning pairs between cooked characters, sorted by (left, right).
     pub kerning: Vec<KernRow>,
     pub pages: Vec<TextureData>,
+    /// Colour glyph pages (`font { color true }`), sRGB with straight alpha:
+    /// page `pages.len() + i` of a glyph row is `color_pages[i]`.
+    pub color_pages: Vec<TextureData>,
     /// The font file, for a font cooked with a shaped script (og-ui shapes
     /// its words) or with `runtime true` (characters outside the charset
     /// are rendered from it when a text needs them).

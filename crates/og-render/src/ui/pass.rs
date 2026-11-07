@@ -1116,10 +1116,16 @@ impl Renderer {
                 | OverlaySource::Array(_) => {
                     let (pipeline, group) = match run.source {
                         OverlaySource::Sprite(t) => (&*overlay_pipes.sprite, sprite_group(t)),
-                        OverlaySource::Font(f) => (
-                            &*overlay_pipes.msdf,
-                            &self.cache.fonts[f.index()].bind_group,
-                        ),
+                        OverlaySource::Font(f) => {
+                            let font = &self.cache.fonts[f.index()];
+                            // A colour page's glyphs are images.
+                            let pipeline = if font.layout.color {
+                                &*overlay_pipes.sprite
+                            } else {
+                                &*overlay_pipes.msdf
+                            };
+                            (pipeline, &font.bind_group)
+                        }
                         OverlaySource::Glass => (
                             &*overlay_pipes.glass,
                             &self

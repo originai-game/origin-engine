@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "font { color true }",
+      "summary": "COLR colour glyphs (emoji): a font that asks draws its COLR v0 and v1 glyphs in colour (solid, linear, radial and sweep gradients with every extend mode, transforms, clip boxes and glyph clips, all composite modes). The cook paints each cooked character's graph into an sRGB image at `color_px` (default 64 px/em) on colour pages of the font's blob, and og-ui text draws them as sprites beside its distance-field glyphs on both hosts. Only fonts with the setting change; one without colour glyphs, or with `runtime true`, refuses it (docs/design.md, crates/og-cook/README.md §Colour glyphs)."
+    }
+  ]
+}

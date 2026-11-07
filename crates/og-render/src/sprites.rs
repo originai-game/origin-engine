@@ -261,6 +261,8 @@ pub(crate) struct FontLayout {
     pub kerning: HashMap<(char, char), f32>,
     pub line_height: f32,
     pub atlas_size: Vec2,
+    /// A page of colour glyphs ([`MsdfFont::distance_range`] 0).
+    pub color: bool,
 }
 
 impl FontLayout {
@@ -274,6 +276,7 @@ impl FontLayout {
                 .collect(),
             line_height: font.line_height,
             atlas_size,
+            color: font.distance_range == 0.0,
         }
     }
 
@@ -1008,9 +1011,14 @@ pub(crate) fn build<'a>(
                         ar / font.atlas_size.x,
                         ab / font.atlas_size.y,
                     ],
-                    color: text.color,
+                    // A colour page's images keep their colours.
+                    color: if font.color {
+                        [1.0, 1.0, 1.0, text.color[3]]
+                    } else {
+                        text.color
+                    },
                     flash: outline_color,
-                    fx: [outline, 0.0, 0.0],
+                    fx: [if font.color { 0.0 } else { outline }, 0.0, 0.0],
                     ground: NO_GROUND,
                     layer: 0,
                     facing: FACING_NONE,

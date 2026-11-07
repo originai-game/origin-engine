@@ -664,7 +664,10 @@ the logic tests and the probe's CPU description of a frame.
 - Text: MSDF for UI and world text, kerned from the font's GPOS pairs; CJK
   coverage through the platform's subset fonts, and characters outside a
   cooked charset rendered at run time from the font's outlines (`font {
-  runtime true }`). A pixel font (`font { pixel 12 }`, its pixels to the
+  runtime true }`). A font with COLR colour glyphs (emoji) draws them in
+  colour when it asks (`font { color true }`): the cook paints each COLR
+  v0 or v1 glyph into an image on colour pages beside the field, drawn as
+  sprites in the same text. A pixel font (`font { pixel 12 }`, its pixels to the
   em) is cooked as its cells on that grid, sampled at the cells' centres
   and traced into square contours before the field, its advances and
   kerning in whole cells, and og-ui sets it at whole multiples of the grid

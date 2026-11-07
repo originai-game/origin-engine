@@ -53,6 +53,7 @@ impl Renderer {
             RunSource::Sprite(SpriteBlend::Alpha, t) if self.normal_group(scene, t).is_none() => {
                 Some(Source::Sprite)
             }
+            RunSource::Font(f) if self.cache.fonts[f.index()].layout.color => Some(Source::Sprite),
             RunSource::Font(_) => Some(Source::Msdf),
             _ => None,
         }

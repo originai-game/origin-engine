@@ -277,6 +277,8 @@ font {
   px_range 11               # the field's reach in atlas px; it bounds outlines, glows and weight at 0.5 * px_range * size / em_px - 0.5 CSS px (a third of em_px: a 2 px outline at 16 px; default 4)
   page_size 1024            # the last page is cut to the rows it uses
   runtime true              # ship the font file: characters outside the charset render at run time (default false)
+  color true                # COLR v0/v1 colour glyphs drawn in colour onto colour pages (default false; not with runtime)
+  color_px 64               # the colour images' pixels per em, 8..=256 (default 64)
 }
 sound {                     # a .wav, .mp3, .ogg or .flac
   stream true               # cook in chunks: true | false (default: when the QOA file passes 1 MiB)
@@ -430,6 +432,22 @@ add `runtime true` for text they cannot know (a player's name, chat): the
 blob then carries the font file and og-ui renders what the charset left
 out from its outlines into pages of the font's own
 (`crates/og-ui/README.md` §Text).
+
+### Colour glyphs
+
+`color true` draws each cooked character that has a COLR paint (v0
+layers, v1 paint graphs: solid, linear, radial and sweep brushes with pad,
+repeat and reflect, transforms, glyph and box clips, every composite mode)
+into an sRGB image at `color_px` (`src/cook/font/colr.rs`: skrifa walks the
+graph, font-rs's accumulation rasterizer covers each clip). The images are
+shelf-packed onto the blob's `color.<n>` pages, after the field's pages,
+and the glyph rows point at them; the field keeps their advances. og-render
+draws a colour page (`MsdfFont::distance_range` 0) as sprites, untinted but
+for the text's alpha and without glow, outline or shadow, on both hosts.
+Only fonts that ask carry colour pages, and an emoji font is its own asset,
+loaded when a game loads it. A font none of whose cooked characters is
+coloured refuses the setting, as does `runtime true` (run-time glyphs have
+no colour). Palette 0 is used; the text-colour entry (0xFFFF) draws black.
 
 ## Determinism
 

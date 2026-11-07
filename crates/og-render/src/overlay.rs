@@ -498,6 +498,11 @@ pub(crate) fn build<'a>(
             passes.push((4.0, o.color, [inner, outer, 0.0, 0.0], Vec2::ZERO));
         }
         for &(pass, pass_color, effect2, offset) in &passes {
+            // A page of colour glyphs draws its images once, untinted but
+            // for the text's alpha: no shadow, glow, outline or gradient.
+            if layout.color && pass != 0.0 {
+                continue;
+            }
             // The pen in em, y down from the first baseline.
             layout.walk(text, layout.line_height, |ch, g, pen, off| {
                 let Some(g) = g else {
@@ -535,11 +540,19 @@ pub(crate) fn build<'a>(
                             ar / layout.atlas_size.x,
                             ab / layout.atlas_size.y,
                         ],
-                        color: text.color,
+                        color: if layout.color {
+                            [1.0, 1.0, 1.0, text.color[3]]
+                        } else {
+                            text.color
+                        },
                         clip,
-                        effect: [glow_radius, weight, pass, 0.0],
+                        effect: if layout.color {
+                            [0.0; 4]
+                        } else {
+                            [glow_radius, weight, pass, 0.0]
+                        },
                         effect_color: pass_color,
-                        effect2,
+                        effect2: if layout.color { [0.0; 4] } else { effect2 },
                         clip_shape: shape,
                         shear,
                     });

@@ -2670,6 +2670,7 @@ dependencies = [
  "ruzstd",
  "serde",
  "serde_json",
+ "skrifa",
  "symphonia",
  "ttf-parser",
  "ufbx",

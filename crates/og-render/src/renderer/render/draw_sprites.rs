@@ -207,7 +207,8 @@ impl Renderer {
                         .expect("made before the pass"),
                 ),
                 RunSource::Font(f) => (
-                    true,
+                    // A colour page's glyphs are images: the sprite pipeline.
+                    !self.cache.fonts[f.index()].layout.color,
                     SpriteBlend::Alpha,
                     &self.cache.fonts[f.index()].bind_group,
                 ),

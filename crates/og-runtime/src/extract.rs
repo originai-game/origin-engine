@@ -759,12 +759,23 @@ pub(crate) fn add_font(
             })
         })
         .collect();
-    let mut pages = Vec::with_capacity(font.pages.len());
-    for (p, data) in font.pages.iter().enumerate() {
-        let atlas = scene.add_texture(og_render::TextureData {
-            mips: og_render::Mips::None,
-            color_space: og_render::ColorSpace::Linear,
-            ..data.clone()
+    let mut pages = Vec::with_capacity(font.pages.len() + font.color_pages.len());
+    // The distance-field pages, then the colour glyphs' (a plain sRGB
+    // atlas with its mips, drawn as sprites: a distance range of 0).
+    let all = font
+        .pages
+        .iter()
+        .map(|d| (d, false))
+        .chain(font.color_pages.iter().map(|d| (d, true)));
+    for (p, (data, colour)) in all.enumerate() {
+        let atlas = scene.add_texture(if colour {
+            data.clone()
+        } else {
+            og_render::TextureData {
+                mips: og_render::Mips::None,
+                color_space: og_render::ColorSpace::Linear,
+                ..data.clone()
+            }
         });
         let glyphs = font
             .glyphs
@@ -795,7 +806,7 @@ pub(crate) fn add_font(
             .collect();
         pages.push(scene.add_font(og_render::MsdfFont {
             atlas,
-            distance_range: meta.px_range,
+            distance_range: if colour { 0.0 } else { meta.px_range },
             line_height,
             glyphs,
             kerning: kerning.clone(),

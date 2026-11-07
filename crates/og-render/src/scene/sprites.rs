@@ -119,7 +119,10 @@ pub struct Kern {
 #[derive(Clone, Debug, PartialEq)]
 pub struct MsdfFont {
     pub atlas: TextureHandle,
-    /// The distance field's range in atlas pixels (`msdf-atlas-gen -pxrange`).
+    /// The distance field's range in atlas pixels (`msdf-atlas-gen -pxrange`);
+    /// 0 for a page of colour glyphs (COLR, cooked as images): drawn as
+    /// sprites, untinted but for the text's alpha, without glow, outline
+    /// or shadow.
     pub distance_range: f32,
     /// Baseline-to-baseline distance in em.
     pub line_height: f32,

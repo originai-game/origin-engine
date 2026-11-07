@@ -269,6 +269,13 @@ pub struct FontSettings {
     /// and sharp, advances and kerning in whole cells, and og-ui draws the
     /// font at whole multiples of the grid only.
     pub pixel: u32,
+    /// Draw the font's COLR colour glyphs (v0 layers and v1 paint graphs:
+    /// gradients, transforms, clips, composites) in colour: each cooked
+    /// character with a colour paint is an image on the font's colour
+    /// pages instead of a distance field (`color true`; emoji fonts).
+    pub color: bool,
+    /// The colour images' pixels per em (`color_px 64`).
+    pub color_px: f32,
 }
 
 impl Default for FontSettings {
@@ -282,6 +289,8 @@ impl Default for FontSettings {
             runtime: false,
             features: Vec::new(),
             pixel: 0,
+            color: false,
+            color_px: 64.0,
         }
     }
 }
@@ -289,13 +298,18 @@ impl Default for FontSettings {
 impl FontSettings {
     pub(super) fn describe(&self) -> String {
         format!(
-            "charset {} chars {:?} em {} range {} page {} mtsdf ec kern{}",
+            "charset {} chars {:?} em {} range {} page {} mtsdf ec kern{}{}",
             self.charset.join(" "),
             self.chars,
             self.em_px,
             self.px_range,
             self.page_size,
-            if self.runtime { " runtime" } else { "" }
+            if self.runtime { " runtime" } else { "" },
+            if self.color {
+                format!(" color {}", self.color_px)
+            } else {
+                String::new()
+            }
         )
     }
 }
@@ -475,6 +489,20 @@ pub(super) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSetti
                         e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
                             format!("line {}: runtime takes true or false", e.line)
                         })?
+                }
+                "color" => {
+                    f.color = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+                        format!(
+                            "line {}: color takes true (COLR glyphs drawn in colour) or false",
+                            e.line
+                        )
+                    })?
+                }
+                "color_px" => {
+                    f.color_px = e.f32(0).map_err(err)?;
+                    if !(8.0..=256.0).contains(&f.color_px) {
+                        return Err(format!("line {}: color_px takes 8 to 256", e.line));
+                    }
                 }
                 "pixel" => {
                     f.pixel = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32;

@@ -5,7 +5,7 @@
 //! when the charset holds one, the blob also carries the font file (raw
 //! section `ttf`) for og-ui's run-time shaping, and the atlas every glyph the
 //! font's substitutions reach from the charset's (contextual forms,
-//! ligatures), each under the private-use code point U+F0000 + glyph id,
+//! ligatures), each under the private-use code point U+1F000 + glyph id,
 //! which is what og-ui draws a shaped run as.
 
 use super::{CookError, FontSettings};
@@ -13,9 +13,10 @@ use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
 
+mod colr;
 mod overlap;
 
-/// Where a glyph id is drawn from: U+F0000 + id (Supplementary Private Use Area-A).
+/// Where a glyph id is drawn from: U+1F000 + id (Supplementary Private Use Area-A).
 pub const GLYPH_PUA: u32 = 0xF_0000;
 
 /// Shaping needs metrics and layout tables, not raster outlines or hints.
@@ -542,6 +543,13 @@ pub fn cook(
     stamp: u64,
 ) -> Result<(Vec<u8>, FontNotes), CookError> {
     let face = ttf_parser::Face::parse(bytes, 0).map_err(|e| CookError(format!("font: {e}")))?;
+    if s.color && s.runtime {
+        return Err(CookError(
+            "color true and runtime true: run-time glyphs are drawn from outlines, without their colour; \
+             list the colour characters in chars or charset and drop runtime"
+                .into(),
+        ));
+    }
     let mut in_font: Vec<u32> = Vec::new();
     if let Some(cmap) = face.tables().cmap {
         for sub in cmap.subtables {
@@ -698,9 +706,200 @@ pub fn cook(
         glyphs.extend(spaces);
         glyphs.sort_by_key(|g| g.codepoint);
     }
+    // `color true`: the glyphs with a COLR paint come off the distance
+    // field and are drawn in colour on pages of their own.
+    let colour = if s.color {
+        colour_glyphs(bytes, &face, &mut glyphs, s)?
+    } else {
+        Vec::new()
+    };
 
-    // Shelf packing: tallest first, 1-pixel gutters, pages of page_size².
     let page = s.page_size.max(64);
+    let field = shelf(&glyphs, page)?;
+    let (width, height, page_count, last_height) =
+        (field.width, field.height, field.count, field.last);
+    let mut rows = Vec::with_capacity(glyphs.len());
+    for (i, g) in glyphs.iter().enumerate() {
+        let (p, gx, gy) = field.place[i];
+        let [l, b, r, t] = g.plane.unwrap_or([0.0; 4]);
+        rows.push(GlyphRow {
+            codepoint: g.codepoint,
+            page: p,
+            advance: g.advance,
+            plane_left: l,
+            plane_bottom: b,
+            plane_right: r,
+            plane_top: t,
+            atlas_x: if g.plane.is_some() { gx } else { 0 },
+            atlas_y: if g.plane.is_some() { gy } else { 0 },
+            atlas_w: g.width,
+            atlas_h: g.height,
+        });
+    }
+    // A colour glyph's row points past the field's pages, at its image.
+    let colour_pages = if colour.is_empty() {
+        None
+    } else {
+        let pages = shelf(&colour, page)?;
+        for (i, g) in colour.iter().enumerate() {
+            let (p, gx, gy) = pages.place[i];
+            let [l, b, r, t] = g.plane.expect("a colour glyph has ink");
+            let row = rows
+                .iter_mut()
+                .find(|r| r.codepoint == g.codepoint)
+                .expect("a colour glyph is a cooked glyph");
+            *row = GlyphRow {
+                page: page_count + p,
+                plane_left: l,
+                plane_bottom: b,
+                plane_right: r,
+                plane_top: t,
+                atlas_x: gx,
+                atlas_y: gy,
+                atlas_w: g.width,
+                atlas_h: g.height,
+                ..*row
+            };
+        }
+        Some(pages)
+    };
+    let upem = face.units_per_em() as f32;
+    let meta = FontMeta {
+        units_per_em: face.units_per_em() as u32,
+        em_px: s.em_px,
+        px_range: s.px_range,
+        ascender: face.ascender() as f32 / upem,
+        descender: face.descender() as f32 / upem,
+        line_gap: face.line_gap() as f32 / upem,
+        glyph_count: rows.len() as u32,
+        page_count,
+        page_width: width,
+        page_height: height,
+        // Shaped forms are glyphs, not code points of the font's cmap.
+        uncooked_codepoints: in_font.len().saturating_sub(
+            rows.iter()
+                .filter(|r| in_font.binary_search(&r.codepoint).is_ok())
+                .count(),
+        ) as u32,
+    };
+    let mut w = BlobWriter::new(
+        format::Font::type_hash(),
+        format::Font::schema_version(),
+        stamp,
+    );
+    w.table("meta", &[meta], row_hash::<FontMeta>())
+        .table("glyphs", &rows, row_hash::<GlyphRow>())
+        .table("kerning", &kern_rows, row_hash::<KernRow>());
+    for (i, px) in field.pages.iter().enumerate() {
+        let h = (px.len() / (width as usize * 4)) as u32;
+        let ktx = ktx2::write_rgba8_zlib(width, h, px, false, false, format::COOKER_VERSION);
+        w.raw(&format!("atlas.{i}"), ktx, 16);
+    }
+    let mut colour_bytes = 0;
+    if let Some(c) = &colour_pages {
+        // sRGB colour, straight alpha; the runtime makes its mips.
+        for (i, px) in c.pages.iter().enumerate() {
+            let h = (px.len() / (c.width as usize * 4)) as u32;
+            let ktx = ktx2::write_rgba8_zlib(c.width, h, px, true, false, format::COOKER_VERSION);
+            colour_bytes += ktx.len();
+            w.raw(&format!("color.{i}"), ktx, 16);
+        }
+    }
+    if s.runtime || shaping {
+        w.raw("ttf", bytes.to_vec(), 16);
+    } else {
+        w.raw("shaping", shaping_tables(&face), 16);
+    }
+    if s.pixel > 0 {
+        // The grid, as text: og-ui snaps the font's sizes to its multiples.
+        w.raw("pixel", s.pixel.to_string().into_bytes(), 1);
+    }
+    let pages_note = if page_count == 1 {
+        format!("1 page of {width}x{height}")
+    } else {
+        format!("{page_count} pages of {width}x{height}, the last {width}x{last_height}")
+    };
+    let mut note = format!(
+        "{} glyphs of {} in the font, {pages_note}, {} px/em, range {} px",
+        rows.len(),
+        in_font.len(),
+        s.em_px,
+        s.px_range
+    );
+    if !kern_rows.is_empty() {
+        note.push_str(&format!("; {} kerning pair(s)", kern_rows.len()));
+    }
+    if let Some(c) = &colour_pages {
+        note.push_str(&format!(
+            "; {} colour glyph(s) at {} px/em on {} page(s) of {}x{} ({colour_bytes} bytes)",
+            colour.len(),
+            s.color_px,
+            c.count,
+            c.width,
+            c.height
+        ));
+    }
+    if s.runtime && !shaping {
+        note.push_str(&format!(
+            "; the font file ({} bytes) for characters outside the charset, rendered at run time",
+            bytes.len()
+        ));
+    }
+    if shaping {
+        let forms = rows.iter().filter(|r| r.codepoint >= GLYPH_PUA).count();
+        note.push_str(&format!(
+            "; shaped script: {forms} contextual form(s) and the font file ({} bytes) for run-time shaping",
+            bytes.len()
+        ));
+    }
+    if !s.features.is_empty() {
+        note.push_str(&format!(
+            "; OpenType features {}: {featured} glyph(s) by id and the font file for run-time shaping",
+            s.features.join(" ")
+        ));
+    }
+    note.push_str(&figures_note(&face, &wanted, &s.features));
+    if s.pixel > 0 {
+        note.push_str(&format!("; pixel font on a {} px grid", s.pixel));
+        let (off, all) = off_grid(&face, &wanted, s.pixel);
+        if off * 10 > all {
+            note.push_str(&format!(
+                "; warning: {off} of {all} outline points are off the {} px grid \\
+                 (a face drawn on another pitch): its pixels are taken at the cells' centres",
+                s.pixel
+            ));
+        }
+    }
+    if !missing.is_empty() {
+        let list: String = missing
+            .iter()
+            .take(8)
+            .filter_map(|&c| char::from_u32(c))
+            .collect();
+        note.push_str(&format!(
+            "; {} requested character(s) not in the font: {list}",
+            missing.len()
+        ));
+    }
+    Ok((w.finish(), FontNotes { note }))
+}
+
+/// Glyphs placed on atlas pages: each glyph's (page, x, y) and the pages'
+/// pixels.
+struct Shelf {
+    place: Vec<(u32, u32, u32)>,
+    count: u32,
+    width: u32,
+    /// The first page's height (every page's but the last when several).
+    height: u32,
+    /// The last page's height.
+    last: u32,
+    pages: Vec<Vec<u8>>,
+}
+
+/// Shelf packing: tallest first, 1-pixel gutters, pages of `page`² (the
+/// last, often the only one, cut to the rows it uses).
+fn shelf(glyphs: &[Glyph], page: u32) -> Result<Shelf, CookError> {
     let area: u64 = glyphs
         .iter()
         .map(|g| (g.width as u64 + 1) * (g.height as u64 + 1))
@@ -747,21 +946,18 @@ pub fn cook(
         shelf = shelf.max(g.height);
         used_height = used_height.max(y + g.height + 1);
     }
-    let page_count = pg + 1;
-    // Every page but the last is full; the last (the only one, often) is
-    // cut to the rows it uses.
-    let last_height = used_height.div_ceil(4) * 4;
-    let height = if page_count == 1 { last_height } else { page };
-    let mut pages: Vec<Vec<u8>> = (0..page_count)
+    let count = pg + 1;
+    // An empty page (every glyph in colour) keeps one row of 4.
+    let last_height = used_height.div_ceil(4).max(1) * 4;
+    let mut pages: Vec<Vec<u8>> = (0..count)
         .map(|p| {
             let h = if p == pg { last_height } else { page };
             vec![0u8; (width * h * 4) as usize]
         })
         .collect();
-    let mut rows = Vec::with_capacity(glyphs.len());
     for (i, g) in glyphs.iter().enumerate() {
-        let (p, gx, gy) = place[i];
         if g.plane.is_some() {
+            let (p, gx, gy) = place[i];
             let dst = &mut pages[p as usize];
             for row in 0..g.height {
                 let s0 = (row * g.width * 4) as usize;
@@ -770,120 +966,64 @@ pub fn cook(
                     .copy_from_slice(&g.pixels[s0..s0 + (g.width * 4) as usize]);
             }
         }
-        let [l, b, r, t] = g.plane.unwrap_or([0.0; 4]);
-        rows.push(GlyphRow {
+    }
+    Ok(Shelf {
+        place,
+        count,
+        width,
+        height: if count == 1 { last_height } else { page },
+        last: last_height,
+        pages,
+    })
+}
+
+/// `font { color true }`: each cooked glyph with a COLR paint drawn in
+/// colour at `color_px` (colr.rs) and taken off the distance field, which
+/// keeps its advance. A font none of whose cooked glyphs is coloured is
+/// an error: the setting would ship nothing.
+fn colour_glyphs(
+    bytes: &[u8],
+    face: &ttf_parser::Face,
+    glyphs: &mut [Glyph],
+    s: &FontSettings,
+) -> Result<Vec<Glyph>, CookError> {
+    let font = skrifa::FontRef::new(bytes).map_err(|e| CookError(format!("font: {e}")))?;
+    let palette = colr::palette(&font);
+    let mut out = Vec::new();
+    for g in glyphs.iter_mut() {
+        let gid = if (GLYPH_PUA..GLYPH_PUA + 0x1_0000).contains(&g.codepoint) {
+            g.codepoint - GLYPH_PUA
+        } else {
+            match char::from_u32(g.codepoint).and_then(|c| face.glyph_index(c)) {
+                Some(id) => u32::from(id.0),
+                None => continue,
+            }
+        };
+        let image = colr::render(&font, skrifa::GlyphId::new(gid), s.color_px, &palette)
+            .map_err(|e| CookError(format!("U+{:04X}: {e}", g.codepoint)))?;
+        let Some(image) = image else { continue };
+        *g = Glyph {
+            plane: None,
+            width: 0,
+            height: 0,
+            pixels: Vec::new(),
+            ..*g
+        };
+        out.push(Glyph {
             codepoint: g.codepoint,
-            page: p,
             advance: g.advance,
-            plane_left: l,
-            plane_bottom: b,
-            plane_right: r,
-            plane_top: t,
-            atlas_x: if g.plane.is_some() { gx } else { 0 },
-            atlas_y: if g.plane.is_some() { gy } else { 0 },
-            atlas_w: g.width,
-            atlas_h: g.height,
+            plane: Some(image.plane),
+            width: image.width,
+            height: image.height,
+            pixels: image.rgba,
         });
     }
-    let upem = face.units_per_em() as f32;
-    let meta = FontMeta {
-        units_per_em: face.units_per_em() as u32,
-        em_px: s.em_px,
-        px_range: s.px_range,
-        ascender: face.ascender() as f32 / upem,
-        descender: face.descender() as f32 / upem,
-        line_gap: face.line_gap() as f32 / upem,
-        glyph_count: rows.len() as u32,
-        page_count,
-        page_width: width,
-        page_height: height,
-        // Shaped forms are glyphs, not code points of the font's cmap.
-        uncooked_codepoints: in_font.len().saturating_sub(
-            rows.iter()
-                .filter(|r| in_font.binary_search(&r.codepoint).is_ok())
-                .count(),
-        ) as u32,
-    };
-    let mut w = BlobWriter::new(
-        format::Font::type_hash(),
-        format::Font::schema_version(),
-        stamp,
-    );
-    w.table("meta", &[meta], row_hash::<FontMeta>())
-        .table("glyphs", &rows, row_hash::<GlyphRow>())
-        .table("kerning", &kern_rows, row_hash::<KernRow>());
-    for (i, px) in pages.iter().enumerate() {
-        let h = (px.len() / (width as usize * 4)) as u32;
-        let ktx = ktx2::write_rgba8_zlib(width, h, px, false, false, format::COOKER_VERSION);
-        w.raw(&format!("atlas.{i}"), ktx, 16);
-    }
-    if s.runtime || shaping {
-        w.raw("ttf", bytes.to_vec(), 16);
-    } else {
-        w.raw("shaping", shaping_tables(&face), 16);
-    }
-    if s.pixel > 0 {
-        // The grid, as text: og-ui snaps the font's sizes to its multiples.
-        w.raw("pixel", s.pixel.to_string().into_bytes(), 1);
-    }
-    let pages_note = if page_count == 1 {
-        format!("1 page of {width}x{height}")
-    } else {
-        format!("{page_count} pages of {width}x{height}, the last {width}x{last_height}")
-    };
-    let mut note = format!(
-        "{} glyphs of {} in the font, {pages_note}, {} px/em, range {} px",
-        rows.len(),
-        in_font.len(),
-        s.em_px,
-        s.px_range
-    );
-    if !kern_rows.is_empty() {
-        note.push_str(&format!("; {} kerning pair(s)", kern_rows.len()));
-    }
-    if s.runtime && !shaping {
-        note.push_str(&format!(
-            "; the font file ({} bytes) for characters outside the charset, rendered at run time",
-            bytes.len()
+    if out.is_empty() {
+        return Err(CookError(
+            "color true, but no character of the charset has a COLR colour glyph".into(),
         ));
     }
-    if shaping {
-        let forms = rows.iter().filter(|r| r.codepoint >= GLYPH_PUA).count();
-        note.push_str(&format!(
-            "; shaped script: {forms} contextual form(s) and the font file ({} bytes) for run-time shaping",
-            bytes.len()
-        ));
-    }
-    if !s.features.is_empty() {
-        note.push_str(&format!(
-            "; OpenType features {}: {featured} glyph(s) by id and the font file for run-time shaping",
-            s.features.join(" ")
-        ));
-    }
-    note.push_str(&figures_note(&face, &wanted, &s.features));
-    if s.pixel > 0 {
-        note.push_str(&format!("; pixel font on a {} px grid", s.pixel));
-        let (off, all) = off_grid(&face, &wanted, s.pixel);
-        if off * 10 > all {
-            note.push_str(&format!(
-                "; warning: {off} of {all} outline points are off the {} px grid \\
-                 (a face drawn on another pitch): its pixels are taken at the cells' centres",
-                s.pixel
-            ));
-        }
-    }
-    if !missing.is_empty() {
-        let list: String = missing
-            .iter()
-            .take(8)
-            .filter_map(|&c| char::from_u32(c))
-            .collect();
-        note.push_str(&format!(
-            "; {} requested character(s) not in the font: {list}",
-            missing.len()
-        ));
-    }
-    Ok((w.finish(), FontNotes { note }))
+    Ok(out)
 }
 
 /// The warning for a face whose figures are proportional (the typography
@@ -1185,6 +1325,86 @@ mod tests {
                 .unwrap()
                 .raw("pixel")
                 .is_err()
+        );
+    }
+
+    /// `color true`: a COLR v1 glyph cooks as an sRGB image on a colour
+    /// page past the field's, its gradient's colours intact; the same font
+    /// cooked without it ships no colour page; a font without colour
+    /// glyphs refuses it.
+    #[test]
+    fn colour_glyphs_cook_onto_their_own_pages_only_when_asked() {
+        let bytes = std::fs::read(format!(
+            "{}/../../tests/fixtures/ui-text/assets/fonts/test_glyphs-glyf_colr_1.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        // A linear gradient (U+1F100), a sweep (U+1F200), a radial
+        // (U+1F503) and composites (U+1F600).
+        let chars = "\u{1F100}\u{1F200}\u{1F503}\u{1F600}";
+        let settings = |color| FontSettings {
+            charset: Vec::new(),
+            chars: chars.into(),
+            color,
+            ..FontSettings::default()
+        };
+        let (blob, notes) = cook(&bytes, &settings(true), 2, 0).expect("cooks");
+        // The four, and the same glyphs by id for shaped runs.
+        assert!(
+            notes.note.contains("8 colour glyph(s) at 64 px/em"),
+            "{}",
+            notes.note
+        );
+        let b = og_blob::Blob::parse(&blob, "test").unwrap();
+        let meta = b.table::<FontMeta>("meta", row_hash::<FontMeta>()).unwrap()[0];
+        let rows = b
+            .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
+            .unwrap();
+        let (w, h, rgba) = ktx2::decode_rgba8(b.raw("color.0").unwrap(), 0).unwrap();
+        assert!(b.raw_opt("color.1").is_none());
+        for c in chars.chars() {
+            let r = rows.iter().find(|r| r.codepoint == c as u32).unwrap();
+            assert_eq!(r.page, meta.page_count, "{c:?} is on the colour page");
+            assert!(r.atlas_x + r.atlas_w <= w && r.atlas_y + r.atlas_h <= h);
+            // The image is its plane at 64 px/em; every clip box here is
+            // at most an em wide, with 4 px of padding each side.
+            let plane_w = (r.plane_right - r.plane_left) * 64.0;
+            assert!((r.atlas_w as f32 - plane_w).abs() < 0.5, "{c:?}");
+            assert!((40..=72).contains(&r.atlas_w), "{c:?} {}", r.atlas_w);
+        }
+        // The linear gradient of U+1F100 runs red to blue across its box.
+        let r = rows.iter().find(|r| r.codepoint == 0x1F100).unwrap();
+        let px = |fx: f32| {
+            let x = r.atlas_x + (fx * r.atlas_w as f32) as u32;
+            let y = r.atlas_y + r.atlas_h / 2;
+            let i = ((y * w + x) * 4) as usize;
+            [rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]]
+        };
+        let (left, right) = (px(0.2), px(0.8));
+        assert!(left[3] == 255 && right[3] == 255, "{left:?} {right:?}");
+        assert!(
+            left[0] > left[2] + 100 && right[2] > right[0] + 100,
+            "{left:?} {right:?}"
+        );
+        // Without the setting: the distance field alone, as before.
+        let (plain, notes) = cook(&bytes, &settings(false), 2, 0).expect("cooks");
+        let b = og_blob::Blob::parse(&plain, "test").unwrap();
+        assert!(b.raw_opt("color.0").is_none() && !notes.note.contains("colour"));
+        // A font without colour glyphs refuses it.
+        let inter = std::fs::read(format!(
+            "{}/../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let s = FontSettings {
+            color: true,
+            ..FontSettings::default()
+        };
+        let e = cook(&inter, &s, 2, 0).err().expect("refused");
+        assert!(
+            e.0.contains("no character of the charset has a COLR"),
+            "{}",
+            e.0
         );
     }
 }

@@ -157,7 +157,8 @@ Ranked: per-frame cost follows the node count, not the change (the tree is
 rebuilt and compared every tick; find_overlaps, the accessibility tree and
 the probe list run in every build); no perf tests for `docs/ui.md` §15.1's
 budgets; numbers and dates not formatted through og.i18n; no password or
-input-type hint; no variable-height virtualization; no colour emoji; no
+input-type hint; no variable-height virtualization; colour emoji are
+cooked images (`font { color true }`), not run-time glyphs; no
 colour-blind modes; no live regions; no selectable read-only text; no split
 screen; no visual UI debugger; documented but missing: text on a path,
 `dump_ui:motion`, §6.3's layout boundary, §9's per-binding invalidation;

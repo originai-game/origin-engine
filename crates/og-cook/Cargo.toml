@@ -14,7 +14,7 @@ kit-tests = []
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render/bake", "dep:blake3", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx", "dep:libm"]
+cook = ["og-render/bake", "dep:blake3", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx", "dep:libm"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -73,6 +73,9 @@ mikktspace = { version = "0.3.0", default-features = false, features = ["glam"],
 fdsm = { version = "0.8.0", optional = true }
 fdsm-ttf-parser = { version = "0.2.0", optional = true }
 ttf-parser = { version = "0.25.1", optional = true }
+# COLR v0 and v1 paint graphs of `font { color true }` (cook/font/colr.rs),
+# the version og-ui shapes with.
+skrifa = { version = "=0.44.0", default-features = false, features = ["libm"], optional = true }
 write-fonts = { version = "=0.55.0", default-features = false, optional = true }
 hound = { version = "3.5.1", optional = true }
 # Compressed sound sources (MP3, Ogg Vorbis, FLAC) decode to PCM at cook

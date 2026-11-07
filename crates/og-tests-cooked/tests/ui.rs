@@ -225,3 +225,212 @@ fn ui_rive_text_draws_its_run_in_its_cooked_font() {
             .all(|v| (*v as i32 - 0x31).abs() <= 2)
     );
 }
+
+/// COLR colour glyphs (`font { color true }`) drawn through og-ui's text:
+/// the cooked colour page is a font page of its own, its glyphs images in
+/// their gradients' colours, untinted by the label's colour, beside a
+/// plain distance-field glyph of the same font.
+///
+/// Ways this could fail: the colour page goes through the MSDF shader (a
+/// solid-coloured or empty glyph); the label's colour tints the image; the
+/// page's glyphs are drawn on the field page too (a second, wrong glyph);
+/// the gradient is mirrored or its stops misread.
+#[test]
+#[ignore = "requires GPU"]
+fn colour_glyphs_draw_in_their_own_colours() {
+    use og_cook::runtime::Bundle;
+    use og_render::{
+        ColorSpace, Glyph, Mips, MsdfFont, RenderDesc, RenderScene, RenderTarget, Renderer,
+        TextureData,
+    };
+    use og_ui::*;
+    let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-colr");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets/fonts")).unwrap();
+    std::fs::copy(
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/ui-text/assets/fonts/test_glyphs-glyf_colr_1.ttf"),
+        root.join("assets/fonts/colr.ttf"),
+    )
+    .unwrap();
+    // U+1F100: a linear gradient red to blue left to right; U+1F600 (a
+    // composite of two squares). No other glyph of the font has ink
+    // outside its colour paint, so the field page is empty.
+    std::fs::write(
+        root.join("assets/fonts/colr.ttf.ogt"),
+        "type import\nversion 1\n---\nfont {\n  charset\n  chars \"\u{1F100}\u{1F600}\"\n  color true\n}\n",
+    )
+    .unwrap();
+    let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let cooked = root.join("cooked");
+    let bundle = Bundle::open(&cooked).unwrap();
+    let out = bundle.output("fonts/colr.ttf").unwrap();
+    let f = bundle
+        .font(
+            "fonts/colr.ttf",
+            &std::fs::read(cooked.join(&out.file)).unwrap(),
+        )
+        .unwrap();
+    assert_eq!(f.color_pages.len(), 1);
+    // Each page as og-runtime adds it (extract::add_font): the field's,
+    // then the colour page with a distance range of 0.
+    let mut scene = RenderScene::new();
+    let m = &f.meta;
+    let mut handles = Vec::new();
+    let all = f
+        .pages
+        .iter()
+        .map(|p| (p, false))
+        .chain(f.color_pages.iter().map(|p| (p, true)));
+    for (p, (data, colour)) in all.enumerate() {
+        let atlas = scene.add_texture(if colour {
+            data.clone()
+        } else {
+            TextureData {
+                mips: Mips::None,
+                color_space: ColorSpace::Linear,
+                ..data.clone()
+            }
+        });
+        let glyphs = f
+            .glyphs
+            .iter()
+            .filter_map(|g| {
+                let own = g.page as usize == p;
+                Some(Glyph {
+                    codepoint: char::from_u32(g.codepoint)?,
+                    advance: g.advance,
+                    plane_bounds: if own {
+                        [g.plane_left, g.plane_bottom, g.plane_right, g.plane_top]
+                    } else {
+                        [0.0; 4]
+                    },
+                    atlas_bounds: if own {
+                        [
+                            g.atlas_x as f32,
+                            g.atlas_y as f32,
+                            (g.atlas_x + g.atlas_w) as f32,
+                            (g.atlas_y + g.atlas_h) as f32,
+                        ]
+                    } else {
+                        [0.0; 4]
+                    },
+                })
+            })
+            .collect();
+        handles.push(scene.add_font(MsdfFont {
+            atlas,
+            distance_range: if colour { 0.0 } else { m.px_range },
+            line_height: m.ascender - m.descender + m.line_gap,
+            glyphs,
+            kerning: Vec::new(),
+        }));
+    }
+    let font = UiFont::new(handles[0], scene.font(handles[0]).unwrap());
+    let mut ui = Ui::new(UiDesc {
+        fonts: Fonts {
+            body: font.clone(),
+            ..Fonts::default()
+        },
+        ..UiDesc::default()
+    });
+    let vp = Viewport {
+        width: 400.0,
+        height: 200.0,
+        dpr: 1.0,
+        ..Viewport::default()
+    };
+    let size = 128.0;
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), vp);
+        let step = TypeStep {
+            size,
+            line_height: size * 1.25,
+            ..ui.theme().type_ramp.body
+        };
+        ui.label(
+            "Emoji",
+            "\u{1F100}\u{1F600}",
+            LabelDesc {
+                step: Some(step),
+                // A label colour that must not tint the images.
+                color: Some(Srgba::rgb(0, 255, 0)),
+                nowrap: true,
+                ..LabelDesc::default()
+            },
+        );
+        ui.end();
+    }
+    let frame = ui.frame();
+    assert!(
+        frame.missing_glyphs.is_empty(),
+        "{:?}",
+        frame.missing_glyphs
+    );
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
+    frame.emit(&EmitDesc::default(), &mut overlay);
+    // The other pages draw from the same layout (og-runtime's widgets).
+    let more: Vec<_> = overlay
+        .texts
+        .iter()
+        .flat_map(|t| {
+            handles[1..].iter().map(move |&h| og_render::Text {
+                font: h,
+                ..t.clone()
+            })
+        })
+        .collect();
+    overlay.texts.extend(more);
+    scene.overlay = Some(overlay);
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 400,
+        height: 200,
+        ..RenderDesc::default()
+    })
+    .expect("a headless adapter");
+    let stats = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    assert_eq!(stats.missing_glyphs, 0);
+    let image = renderer.read_offscreen().expect("read back");
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
+    std::fs::create_dir_all(&dir).unwrap();
+    image::save_buffer(
+        dir.join("ui-colr.png"),
+        &image.pixels,
+        400,
+        200,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let e = frame
+        .elements
+        .iter()
+        .find(|e| e.id.ends_with("Emoji"))
+        .expect("the text's element");
+    let px = |x: f32, y: f32| {
+        let i = ((y as u32 * 400 + x as u32) * 4) as usize;
+        [image.pixels[i], image.pixels[i + 1], image.pixels[i + 2]]
+    };
+    // U+1F100 fills 0.1..0.9 em across: on some row of its box its fifth
+    // from the left is red and its fifth from the right blue.
+    let advance = font.metrics.measure("\u{1F100}", size);
+    let (lx, rx) = (e.x + size * 0.26, e.x + size * 0.74);
+    let rows = (e.y.max(0.0) as u32..(e.y + e.height).min(200.0) as u32)
+        .filter(|&y| {
+            let (l, r) = (px(lx, y as f32), px(rx, y as f32));
+            l[0] > l[2] + 60 && r[2] > r[0] + 60 && l[1] < 60 && r[1] < 60
+        })
+        .count();
+    println!("advance {advance}, element {e:?}, gradient rows {rows}");
+    // The glyph is 0.7 em tall.
+    assert!(rows as f32 > size * 0.6, "{rows} rows of red to blue");
+    // No green anywhere: the label colour never reaches the images.
+    let green = image
+        .pixels
+        .chunks(4)
+        .filter(|p| p[1] > 150 && p[0] < 100 && p[2] < 100)
+        .count();
+    assert_eq!(green, 0);
+}
