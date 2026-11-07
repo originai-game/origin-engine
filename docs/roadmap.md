@@ -174,6 +174,7 @@ seven components without a test.
 | Crowds at 50k | 24.35 ms a frame | prepass and main pass dominate |
 | Watercolour look | reads as oil | a watercolour primitive (Bousseau, MNPR) |
 | og.motion | the jump's pitch clamped, not fixed at the source; the wave goal idles at 12 s | — |
+| Presentation checkpoints | on the web og.motion poses depend on when GPU batches arrive (natively they are waited for at their due tick); the Presenter draws the tick's pose with no blending between ticks; terrain tiles fade in by frame seconds on the display (captures draw them settled) | tick-stepped and byte-identical on every host |
 | Distant impostors | no own shadow, the view from below, no sway | — |
 | Wasm, determinism and browser tiers of the latest features | measured at wave-end | — |
 | W7 (CPU FFT band for buoyancy), wgpu 31 (unpublished) | deferred | — |
