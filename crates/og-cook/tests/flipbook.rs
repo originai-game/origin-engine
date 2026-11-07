@@ -481,3 +481,56 @@ fn a_source_scale_brings_a_larger_drawing_to_the_others() {
         assert_eq!([f.rect[2], f.rect[3]], [6, 10], "frame {}", f.name);
     }
 }
+
+/// Loose stills of two sizes in one sheet with `crop each`: each keeps a
+/// cell of its own size (its drawn bounds and the padding) with its feet
+/// as the pivot, and the cells do not overlap. Ways this could fail: both
+/// take the union's size (the default `crop all`), a pivot is measured in
+/// the union instead of its own cell, the shelves overlap.
+#[test]
+fn crop_each_packs_loose_stills_in_cells_of_their_own_size() {
+    let still = |w: u32, h: u32, c: [u8; 4]| {
+        let img = image::RgbaImage::from_fn(24, 20, |x, y| {
+            if (2..2 + w).contains(&x) && (20 - h - 2..18).contains(&y) {
+                image::Rgba(c)
+            } else {
+                image::Rgba([0, 0, 0, 0])
+            }
+        });
+        let mut out = Vec::new();
+        img.write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
+            .unwrap();
+        out
+    };
+    let root = project(
+        "crop-each",
+        &[
+            ("props/seed.png", still(4, 4, [200, 0, 0, 255])),
+            ("props/crate.png", still(10, 6, [0, 0, 200, 255])),
+            (
+                "props/props.ogt",
+                b"type flipbook\nversion 1\n---\nsource \"seed.png\"\nsource \"crate.png\"\nalign feet\ncrop each\n"
+                    .to_vec(),
+            ),
+        ],
+    );
+    let sheet = cooked(&root).load_flipbook("props/props.ogt").unwrap();
+    let frame = |clip: &str| {
+        let c = &sheet.clips[sheet.clip(clip).unwrap() as usize];
+        sheet.frames[c.frames[0] as usize].clone()
+    };
+    let (seed, crate_) = (frame("seed"), frame("crate"));
+    assert_eq!([seed.rect[2], seed.rect[3]], [6, 6]);
+    assert_eq!([crate_.rect[2], crate_.rect[3]], [12, 8]);
+    assert_eq!(seed.pivot, [0.5, 1.0 / 6.0]);
+    assert_eq!(crate_.pivot, [0.5, 0.125]);
+    let overlap = |a: [u32; 4], b: [u32; 4]| {
+        a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3]
+    };
+    assert!(
+        !overlap(seed.rect, crate_.rect),
+        "{:?} {:?}",
+        seed.rect,
+        crate_.rect
+    );
+}

@@ -31,6 +31,7 @@
 //! scale 0.25                              # resample before anything else is measured
 //! dedupe true                             # identical frames share one cell (default)
 //! pivot 0.5 0                             # instead of the anchor the alignment found
+//! crop each                               # each source its own cell size (default `all`: one)
 //! filter nearest
 //! ```
 //!
@@ -874,10 +875,13 @@ struct Settings {
     scale: f32,
     dedupe: bool,
     pivot: Option<[f32; 2]>,
+    /// `crop each`: every source cut to its own frames' bounds, the cells
+    /// shelf-packed (loose props and crops of many sizes in one texture).
+    crop_each: bool,
 }
 
-const IMPORT_KEYS: [&str; 7] = [
-    "source", "key", "align", "padding", "scale", "dedupe", "pivot",
+const IMPORT_KEYS: [&str; 8] = [
+    "source", "key", "align", "padding", "scale", "dedupe", "pivot", "crop",
 ];
 
 fn line_err(e: &Entry, what: impl std::fmt::Display) -> String {
@@ -909,6 +913,7 @@ fn settings(doc: &Document) -> Result<Settings, String> {
         scale: 1.0,
         dedupe: true,
         pivot: None,
+        crop_each: false,
     };
     for e in &doc.body.entries {
         match e.key.as_str() {
@@ -965,6 +970,13 @@ fn settings(doc: &Document) -> Result<Settings, String> {
                     .first()
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| line_err(e, "dedupe true|false"))?
+            }
+            "crop" => {
+                s.crop_each = match e.word(0) {
+                    Ok("each") => true,
+                    Ok("all") => false,
+                    _ => return Err(line_err(e, "crop all|each")),
+                }
             }
             "pivot" => {
                 s.pivot = Some([
@@ -1272,18 +1284,51 @@ pub fn build(
             delays.push(*delay);
         }
     }
-    // Cells: one per distinct frame.
+    // Each frame's cell within the crop: the whole crop, or with `crop
+    // each` its source's frames' drawn bounds and the padding.
+    let mut rects: Vec<[u32; 4]> = Vec::new();
+    for c in &clips {
+        let first = rects.len();
+        let mut b = [u32::MAX, u32::MAX, 0u32, 0u32];
+        for f in &frames[first..first + c.frames.len()] {
+            if let Some(sh) = shape(f, fw, fh) {
+                let [a, bb, cc, d] = sh.bounds;
+                b = [b[0].min(a), b[1].min(bb), b[2].max(cc), b[3].max(d)];
+            }
+        }
+        let rect = if set.crop_each && b[0] != u32::MAX {
+            let p = set.padding;
+            let (x0, y0) = (b[0].saturating_sub(p), b[1].saturating_sub(p));
+            let (x1, y1) = ((b[2] + p).min(fw), (b[3] + p).min(fh));
+            [x0, y0, x1 - x0, y1 - y0]
+        } else {
+            [0, 0, fw, fh]
+        };
+        rects.extend(std::iter::repeat_n(rect, c.frames.len()));
+    }
+    let cut = |i: usize| -> Vec<u8> {
+        let [rx, ry, rw, rh] = rects[i];
+        let mut out = Vec::with_capacity((rw * rh * 4) as usize);
+        for y in ry..ry + rh {
+            let at = ((y * fw + rx) * 4) as usize;
+            out.extend_from_slice(&frames[i][at..at + (rw * 4) as usize]);
+        }
+        out
+    };
+    // Cells: one per distinct frame (of one size and the same texels).
+    let images: Vec<Vec<u8>> = (0..frames.len()).map(cut).collect();
     let mut cell_of: Vec<usize> = Vec::new();
     let mut cells: Vec<usize> = Vec::new();
     let mut by_hash: BTreeMap<u64, Vec<usize>> = BTreeMap::new();
-    for (i, f) in frames.iter().enumerate() {
+    for (i, f) in images.iter().enumerate() {
+        let same = |j: usize| images[j] == *f && rects[j][2..] == rects[i][2..];
         let hit = set
             .dedupe
             .then(|| og_core::hash::hash_bytes(f))
             .and_then(|h| {
                 let found = by_hash
                     .get(&h)
-                    .and_then(|cs| cs.iter().copied().find(|&c| frames[cells[c]] == *f));
+                    .and_then(|cs| cs.iter().copied().find(|&c| same(cells[c])));
                 if found.is_none() {
                     by_hash.entry(h).or_default().push(cells.len());
                 }
@@ -1301,28 +1346,63 @@ pub fn build(
     if shared > 0 {
         notes.push(format!("{shared} identical frame(s) share a cell"));
     }
-    // Pack the cells in a grid near a square, one texel apart.
+    // Pack the cells one texel apart: in a grid near a square when they are
+    // one size, else in shelves, tallest first, about as wide as tall.
     const GAP: u32 = 1;
     let n = cells.len() as u32;
-    let mut cols = ((n as f64 * f64::from(fh) / f64::from(fw)).sqrt().ceil() as u32).clamp(1, n);
-    while cols > 1 && cols * (fw + GAP) - GAP > MAX_SIDE {
-        cols -= 1;
-    }
-    let rows = n.div_ceil(cols);
-    let (tw, th) = (cols * (fw + GAP) - GAP, rows * (fh + GAP) - GAP);
+    let size = |c: usize| [rects[cells[c]][2], rects[cells[c]][3]];
+    let mut origin: Vec<(u32, u32)> = vec![(0, 0); cells.len()];
+    let (tw, th) = if set.crop_each {
+        let area: f64 = (0..cells.len())
+            .map(|c| f64::from((size(c)[0] + GAP) * (size(c)[1] + GAP)))
+            .sum();
+        let widest = (0..cells.len()).map(|c| size(c)[0]).max().unwrap_or(1);
+        let limit = (area.sqrt().ceil() as u32).max(widest).min(MAX_SIDE);
+        let mut order: Vec<usize> = (0..cells.len()).collect();
+        order.sort_by_key(|&c| {
+            (
+                std::cmp::Reverse(size(c)[1]),
+                std::cmp::Reverse(size(c)[0]),
+                c,
+            )
+        });
+        let (mut x, mut y, mut shelf, mut tw) = (0u32, 0u32, 0u32, 0u32);
+        for c in order {
+            let [w, h] = size(c);
+            if x > 0 && x + w > limit {
+                (x, y, shelf) = (0, y + shelf + GAP, 0);
+            }
+            origin[c] = (x, y);
+            tw = tw.max(x + w);
+            shelf = shelf.max(h);
+            x += w + GAP;
+        }
+        (tw, y + shelf)
+    } else {
+        let mut cols =
+            ((n as f64 * f64::from(fh) / f64::from(fw)).sqrt().ceil() as u32).clamp(1, n);
+        while cols > 1 && cols * (fw + GAP) - GAP > MAX_SIDE {
+            cols -= 1;
+        }
+        for (c, o) in origin.iter_mut().enumerate() {
+            let c = c as u32;
+            *o = ((c % cols) * (fw + GAP), (c / cols) * (fh + GAP));
+        }
+        let rows = n.div_ceil(cols);
+        (cols * (fw + GAP) - GAP, rows * (fh + GAP) - GAP)
+    };
     if tw > MAX_SIDE || th > MAX_SIDE {
         return Err(format!(
             "{n} frames of {fw}x{fh} need a {tw}x{th} texture, past {MAX_SIDE}; `scale` them down"
         ));
     }
     let mut atlas = image::RgbaImage::new(tw, th);
-    let origin = |c: u32| ((c % cols) * (fw + GAP), (c / cols) * (fh + GAP));
     for (c, &i) in cells.iter().enumerate() {
-        let (ox, oy) = origin(c as u32);
-        for y in 0..fh {
-            let row = &frames[i][(y * fw * 4) as usize..((y + 1) * fw * 4) as usize];
-            for x in 0..fw {
-                let p = &row[(x * 4) as usize..(x * 4 + 4) as usize];
+        let (ox, oy) = origin[c];
+        let [w, h] = size(c);
+        for y in 0..h {
+            for x in 0..w {
+                let p = &images[i][((y * w + x) * 4) as usize..][..4];
                 atlas.put_pixel(ox + x, oy + y, image::Rgba([p[0], p[1], p[2], p[3]]));
             }
         }
@@ -1334,11 +1414,15 @@ pub fn build(
             .write_image(atlas.as_raw(), tw, th, image::ExtendedColorType::Rgba8)
             .map_err(|e| format!("the packed sheet: {e}"))?;
     }
-    // The pivot: the reference anchor in the crop, from the bottom left.
-    let pivot = set.pivot.unwrap_or([
-        (reference[0] - x0 as f32) / fw as f32,
-        (y1 as f32 - reference[1]) / fh as f32,
-    ]);
+    // The pivot: the reference anchor in the frame's cell, from its bottom
+    // left (the crop's, when the cell is the whole crop).
+    let pivot = |r: [u32; 4]| {
+        let (ax, ay) = (reference[0] - x0 as f32, reference[1] - y0 as f32);
+        set.pivot.unwrap_or([
+            (ax - r[0] as f32) / r[2] as f32,
+            ((r[1] + r[3]) as f32 - ay) / r[3] as f32,
+        ])
+    };
     // The canonical text: the sheet's own lines but the import's, the
     // texture, a frame line per source frame, a clip per source.
     let num = |v: f64| Value::Number(og_core::ogt::Number::from_f64(v).expect("finite"));
@@ -1357,14 +1441,14 @@ pub fn build(
         let mut durations = Entry::new("durations");
         for i in 0..c.frames.len() {
             let name = format!("{}_{i}", c.line.clip);
-            let (ox, oy) = origin(cell_of[k] as u32);
+            let (ox, oy) = origin[cell_of[k]];
+            let r = rects[k];
             let mut e = Entry::new("frame").with(Value::String(name.clone()));
-            for v in [ox, oy, fw, fh] {
+            for v in [ox, oy, r[2], r[3]] {
                 e = e.with(num(f64::from(v)));
             }
-            e = e
-                .with(num(f64::from(pivot[0])))
-                .with(num(f64::from(pivot[1])));
+            let pv = pivot(r);
+            e = e.with(num(f64::from(pv[0]))).with(num(f64::from(pv[1])));
             out.body.push(e);
             names = names.with(Value::String(name));
             durations = durations.with(num(f64::from(delays[k])));
@@ -1418,12 +1502,26 @@ pub fn build(
         out.body.push(e.clone());
     }
     let text = out.to_text().map_err(|e| e.reason().to_string())?;
+    let drawn = cells
+        .iter()
+        .map(|&i| {
+            images[i]
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .filter(|p| p[3] >= VISIBLE)
+                .count()
+        })
+        .sum::<usize>();
+    let first = pivot(rects[0]);
     notes.push(format!(
-        "{} frame(s) of {fw}x{fh} in {} cell(s), packed {tw}x{th}, pivot {} {}",
+        "{} frame(s) of {fw}x{fh}{} in {} cell(s), packed {tw}x{th} ({:.1}% of its texels drawn), pivot {} {}",
         frames.len(),
+        if set.crop_each { " cut to their sources' bounds" } else { "" },
         cells.len(),
-        pivot[0],
-        pivot[1]
+        100.0 * drawn as f64 / f64::from(tw * th),
+        first[0],
+        first[1]
     ));
     Ok(Built {
         text,

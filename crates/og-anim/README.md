@@ -722,6 +722,8 @@ padding 1                 # transparent texels around the common crop (default 1
 scale 0.25                # resampled first (a box filter over premultiplied alpha below 1)
 dedupe true               # identical frames share one cell (default)
 pivot 0.5 0               # instead of the anchor the alignment found
+crop each                 # all (default): every frame one size; each: every source cut
+                          # to its own frames' bounds, cells shelf-packed (loose props)
 clip turn {               # clips of the sheet's own, over the frames the sources made
   frames run_0 run_1 idle_0
   fps 8
@@ -740,8 +742,10 @@ anchor (`feet`: the drawn bounds' bottom at the centroid's x; `none`
 keeps the frames' own motion, each source placed by its first frame's
 feet) to the first frame's in whole texels, crops every frame of every
 source to one size (the union of the drawn bounds plus `padding`) with
-the pivot at the anchor, shares identical frames, and packs the cells
-into a texture of its own, `<sheet id>#sheet` (pixel art under `filter
+the pivot at the anchor (with `crop each`, every source's frames to
+their own bounds, each frame's pivot the anchor in its cell, so loose
+stills of many sizes pack tightly: shelves, tallest first), shares
+identical frames, and packs the cells into a texture of its own, `<sheet id>#sheet` (pixel art under `filter
 nearest`). The stored sheet is the canonical text, frames named
 `<clip>_<n>`; the source files are part of the sheet, not assets of
 their own. `og sprite inspect` measures a source or a built sheet.
