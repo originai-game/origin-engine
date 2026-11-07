@@ -68890,13 +68890,18 @@
           "maximum": 4294967295,
           "description": "Its size.",
           "x-og-unit": "bytes"
+        },
+        "presentation": {
+          "type": "string",
+          "description": "The presentation hash at that tick, hex (docs/design.md §2.4): of the presentation checkpoint kept beside the world (each particle system's ticks; the renderer's adapted exposure stays on the GPU), outside the world hash. Equal on one host and backend for the same frames; empty without a renderer."
         }
       },
       "required": [
         "id",
         "tick",
         "hash",
-        "bytes"
+        "bytes",
+        "presentation"
       ],
       "additionalProperties": false
     },

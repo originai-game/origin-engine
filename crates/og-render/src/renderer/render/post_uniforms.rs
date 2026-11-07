@@ -173,7 +173,7 @@ impl Renderer {
             gi: ScreenSpaceGlobalIllumination::rows(
                 gi.as_ref(),
                 if self.persistent.history.is_some() {
-                    self.frame_index
+                    self.phase()
                 } else {
                     0
                 },
@@ -252,7 +252,7 @@ impl Renderer {
                     hh as f32,
                     self.taau as u32 as f32,
                     if self.info.antialias == Antialias::SmaaT2x {
-                        frame::smaa_sample(self.frame_index).1
+                        frame::smaa_sample(self.phase()).1
                     } else {
                         0.0
                     },

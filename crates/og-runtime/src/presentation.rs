@@ -1,0 +1,146 @@
+//! Presentation state stepped by the tick (docs/design.md §2.4): what the
+//! frames draw that depends on the ticks before the drawn one, kept here as
+//! each tick starts, whether or not a frame is drawn, so a frame and a
+//! capture are functions of the world and this state, never of how many
+//! frames were drawn before them.
+//!
+//! Each particle system's ticks ([`og_render::ParticleHistory`]): the
+//! renderer steps a system through the ticks it has not drawn from them
+//! (where its emitter was and whether it emitted on each), not from the
+//! frame's system alone.
+//!
+//! A probe snapshot keeps this state beside the world as a presentation
+//! checkpoint ([`save`], [`restore`]), with the renderer's own (the adapted
+//! auto exposure), outside `world_hash`; [`hash`] is the presentation hash
+//! a snapshot reports, per host and backend.
+//!
+//! Presentation only: nothing here writes the world or its hash.
+
+use super::extract::RenderState;
+use og_core::IdMap;
+use og_ecs::World;
+use std::collections::VecDeque;
+use std::sync::Arc;
+
+/// Checkpoints kept for the probe's snapshots (it keeps 16; sweeps and
+/// `reload` take their own).
+const KEPT: usize = 64;
+
+/// The presentation state a world snapshot was taken with.
+struct Checkpoint {
+    particles: IdMap<u64, Arc<og_render::ParticleHistory>>,
+    /// The renderer's ([`super::RenderBackend::save_state`]).
+    renderer: u64,
+}
+
+/// The checkpoints kept, newest last, by id (0 is none).
+#[derive(Default)]
+pub(crate) struct Checkpoints {
+    next: u64,
+    kept: VecDeque<(u64, Checkpoint)>,
+}
+
+/// The presentation state now, as a checkpoint for a snapshot: its id.
+pub(crate) fn save(rs: &mut RenderState) -> u64 {
+    let renderer = rs.backend.as_mut().map_or(0, |b| b.save_state());
+    let c = &mut rs.checkpoints;
+    c.next += 1;
+    c.kept.push_back((
+        c.next,
+        Checkpoint {
+            particles: rs.particle_history.clone(),
+            renderer,
+        },
+    ));
+    while c.kept.len() > KEPT {
+        c.kept.pop_front();
+    }
+    c.next
+}
+
+/// Brings back checkpoint `id` with the snapshot it was taken with; 0, or
+/// one no longer kept, starts the presentation state afresh. Interpolation
+/// and og.motion's drawn poses start afresh either way: the restored tick's
+/// display frames draw the tick (their blend reads the tick before's
+/// world, which no snapshot holds), and og.motion's model draws from the
+/// restored world.
+pub(crate) fn restore(rs: &mut RenderState, id: u64) {
+    let kept = rs
+        .checkpoints
+        .kept
+        .iter()
+        .find(|(k, _)| *k == id)
+        .map(|(_, c)| (c.particles.clone(), c.renderer));
+    let (particles, renderer) = kept.unwrap_or_default();
+    rs.particle_history = particles;
+    rs.interp.forget();
+    rs.motion.forget();
+    if let Some(b) = rs.backend.as_mut() {
+        b.restore_state(renderer);
+    }
+}
+
+/// The presentation hash: FNV-1a over the state a checkpoint keeps that the
+/// CPU holds (each particle system's ticks, in id order). Equal hashes on
+/// one host and backend mean the same frames from the same world.
+pub(crate) fn hash(rs: &RenderState) -> u64 {
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    let mut put = |bytes: &[u8]| {
+        for &b in bytes {
+            h = (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    };
+    for (id, history) in rs.particle_history.iter() {
+        put(&id.to_le_bytes());
+        for t in history.ticks() {
+            put(&t.tick.to_le_bytes());
+            for v in t.transform.to_cols_array() {
+                put(&v.to_bits().to_le_bytes());
+            }
+            put(&t.start_tick.to_le_bytes());
+            put(&t.stop_tick.unwrap_or(u64::MAX).to_le_bytes());
+            put(&t.time_scale.to_bits().to_le_bytes());
+            put(&t.clock.tick.to_le_bytes());
+            put(&t.clock.time.to_bits().to_le_bytes());
+            put(&t.clock.scale.to_bits().to_le_bytes());
+        }
+    }
+    h
+}
+
+/// As a tick starts, the world the last one left: each particle system as
+/// that tick left it joins its history. Only while a renderer draws: the
+/// particles' tick is the one the systems were extracted for, as a frame
+/// between ticks extracts them.
+pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
+    if rs.backend.is_none() {
+        return;
+    }
+    let tick = world.time().tick;
+    let mut h = std::mem::take(&mut rs.hierarchy);
+    h.refresh(world);
+    // The systems a frame at this tick would draw: og.ParticleSystem and
+    // the composed effects' emitters (the next frame's extraction
+    // rebuilds the lists these fill).
+    super::fx::components(world, rs, &mut h, tick);
+    crate::vfx::extract(world, rs, &mut h, tick);
+    rs.hierarchy = h;
+    // The rate a frame's extraction gives the scene (`extract/frame.rs`).
+    let dt = world.time().dt;
+    let rate = if dt > 0.0 { 1.0 / dt } else { 60.0 };
+    let RenderState {
+        scene,
+        particle_history,
+        ..
+    } = rs;
+    let mut live = og_core::IdMap::new();
+    for sys in &scene.particles {
+        let Some(e) = scene.emitter(sys.emitter) else {
+            continue;
+        };
+        let mut history = particle_history.remove(&sys.id).unwrap_or_default();
+        Arc::make_mut(&mut history).record(e, sys, rate);
+        live.insert(sys.id, history);
+    }
+    *particle_history = live;
+}

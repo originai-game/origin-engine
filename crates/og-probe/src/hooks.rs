@@ -50,10 +50,11 @@ pub trait Capture {
     fn capture_error(&self) -> Option<String> {
         None
     }
-    /// Keeps the renderer's state that follows the world's time (the
-    /// adapted auto exposure) with a snapshot the probe takes (`snapshot`,
-    /// a sweep's start); the answer comes back to
-    /// [`Capture::restore_state`] when that snapshot is restored, so the
+    /// Keeps the presentation state (docs/design.md §2.4: what frames draw
+    /// that follows the ticks, such as the particles' ticks and the adapted
+    /// auto exposure) with a snapshot the probe takes (`snapshot`, a
+    /// sweep's start) as its presentation checkpoint; the answer comes back
+    /// to [`Capture::restore_state`] when that snapshot is restored, so the
     /// frames after it are the snapshot's. 0 keeps nothing.
     fn save_state(&mut self) -> u64 {
         0
@@ -62,6 +63,12 @@ pub trait Capture {
     /// a state no longer kept: the renderer starts that state afresh).
     fn restore_state(&mut self, state: u64) {
         let _ = state;
+    }
+    /// The presentation hash of the state [`Capture::save_state`] keeps, as
+    /// it is now: equal on one host and backend for the same frames
+    /// (`snapshot`'s `presentation`); `None` without one.
+    fn presentation_hash(&self) -> Option<u64> {
+        None
     }
     /// How the renderer last drew an entity, for `dump_entity`'s `render`
     /// (an og.Model's level of detail: `{ "lod": 1 }`); `None` leaves it

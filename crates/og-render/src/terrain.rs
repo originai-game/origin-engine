@@ -1433,6 +1433,10 @@ pub(crate) struct TerrainRenderer {
     layout: wgpu::BindGroupLayout,
     passes: TerrainPasses,
     pub decals: decals::TerrainDecals,
+    /// Draw every resident streamed tile faded in, without stepping the
+    /// fades (a capture, `Renderer::render_capture`: tiles arrive by wall
+    /// time, so a capture draws them settled).
+    pub settled: bool,
     /// The layer-array variant (a terrain whose layers sample texture
     /// arrays, [`Terrain::layer_arrays`]): its group layout, with the
     /// albedo (5) and normal (9) maps as 2D arrays and no other layer

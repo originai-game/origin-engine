@@ -56,20 +56,18 @@ impl Capture for RuntimeCapture {
     fn save_state(&mut self) -> u64 {
         self.render
             .try_borrow_mut()
-            .ok()
-            .and_then(|mut rs| rs.backend.as_mut().map(|b| b.save_state()))
-            .unwrap_or(0)
+            .map_or(0, |mut rs| super::presentation::save(&mut rs))
     }
 
     fn restore_state(&mut self, state: u64) {
         if let Ok(mut rs) = self.render.try_borrow_mut() {
-            // Nothing for a frame to blend from until the next tick.
-            rs.interp.forget();
-            rs.motion.forget();
-            if let Some(b) = rs.backend.as_mut() {
-                b.restore_state(state);
-            }
+            super::presentation::restore(&mut rs, state);
         }
+    }
+
+    fn presentation_hash(&self) -> Option<u64> {
+        let rs = self.render.try_borrow().ok()?;
+        Some(super::presentation::hash(&rs))
     }
 
     fn frame(&mut self) -> Option<og_probe::RawFrame> {
@@ -438,6 +436,10 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     probe.set_before_tick(Box::new(move |world| {
         super::trace::before_tick(id);
         if let Ok(eng) = engine(id) {
+            // The world the last tick left, before this one moves anything.
+            if let Ok(mut rs) = eng.render.try_borrow_mut() {
+                super::presentation::before_tick(&mut rs, world);
+            }
             super::save::before_tick(&eng, world);
             // The world's zero follows its focus (R12), before anything
             // reads a place: cells, the raycast record, interpolation.

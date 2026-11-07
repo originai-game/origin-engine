@@ -204,9 +204,67 @@ cancellable `og dev` checks use the stateless path.
   devices, precisions and runs. It never writes a component the simulation
   reads, is not in a snapshot or `world_hash`, and game code does not
   branch on it; the simulation stays bit-identical on every host.
-- Game state in a JS module is not in the world snapshot, so a restore,
-  a rollback or a capture fork does not bring it back. Outside a publish
-  build the build scans the game's own files (packages/engine/src/node/module-state.ts) and the engine's
+- Presentation checkpoints. A capture is a function of the world, the
+  presentation checkpoint and the interpolation fraction, never of how
+  many frames were drawn before it: drawing every frame from tick 0,
+  drawing only the captured tick, and restoring a mid-run snapshot and
+  going on give the same PNG bytes on one host and backend. The parts:
+  - *Stepped by the tick.* What a frame draws that depends on earlier
+    ticks is kept as each tick starts, drawn or not (og-runtime's
+    `presentation.rs`, the probe's before-tick hook, only while a renderer
+    is attached): each particle system's ticks
+    (`og_render::ParticleHistory`: where its emitter was and whether it
+    emitted), from which the renderer steps the system through the ticks
+    it has not drawn. A frame reads this state and never advances it.
+  - *Checkpointed beside the world.* A probe snapshot keeps the
+    presentation state with it (the particle histories and the
+    renderer's `save_state`, the adapted auto exposure), outside
+    `world_hash`; the snapshot reports a presentation hash of it
+    (`SnapshotInfo.presentation`, per host and backend, since what it
+    holds is float state of one renderer). A restore brings the checkpoint
+    back and drops the interpolation pair and the motion Presenter's
+    shown poses: the first frame after a restore draws the tick.
+  - *Frame history, per effect* (og-render's `Renderer::render_capture`,
+    which every capture goes through). TAA, GI and SSR accumulation, the
+    previous camera (motion vectors), time, wind and sway are reset before
+    a capture and again after it, so neither the frames before a capture
+    nor the capture's own frames reach the display. The jitter, the
+    shadow filters' spiral, SMAA's subsample and the screen-space noise
+    turn with `Renderer::phase()`, the frames since the last capture, so a
+    capture starts every one at phase 0. Then a fixed warm-up of the same
+    scene, the last frame kept: under TAA one cycle of the jitter (8 to 32
+    frames, `frame::jitter_phases`), which a reset history needs to
+    converge a still frame and which keeps the image TAA is tuned for
+    (a reset with one frame would draw it aliased); `CAPTURE_WARMUP` (8)
+    where GI or reflections accumulate without TAA, what their history
+    reaches; one frame otherwise. Auto exposure is not warmed: a capture
+    meters its frame at once (an adaptation over frames would make the
+    capture depend on the warm-up length), and the display's adapted
+    exposure is checkpointed instead, because it follows the world's time.
+  - *Prior art.* GGPO and GGRS's SyncTest (roll back N ticks every tick,
+    play them again and compare the checksums) is run on the world and
+    presentation hashes (`packages/engine/tests/presentation.test.ts`,
+    beside the three-ways capture test). libretro's run-ahead (step the
+    core ahead, show that frame, load the savestate back) works only for
+    cores whose frame is a function of their savestate, with no history
+    hidden outside it; that is the contract here, with the presentation
+    state in its own checkpoint so the world's savestate and hash stay
+    the simulation's alone.
+  - *Not yet tick-stepped.* The motion Presenter (§2.7) keeps per-agent
+    state (phase, playback warp, foot contacts, the drawn root's offset,
+    the planter's legs) that `present()` advances once per drawn frame, by
+    the frame's step in tick time (`(tick + alpha) × dt`, at most 0.25 s),
+    so how many frames are drawn changes it; and its frames arrive from GPU
+    batches decoded within a wall-time budget. A capture does not depend on
+    it only because a restore drops it. Stepping it by the tick needs its
+    checkpoint to hold the frames queued and in flight, or a capture to
+    wait for the batches.
+    Terrain tiles fade in by the frame's seconds; a capture draws every
+    resident tile settled.
+- Game state in a JS module is in neither the world snapshot nor the
+  presentation checkpoint, so a restore, a rollback or a capture fork does
+  not bring it back. Outside a publish build the build scans the game's
+  own files (packages/engine/src/node/module-state.ts) and the engine's
   first log warns of each module-scope `let`/`var` that is written and
   each module-scope container that is mutated, by file, line and name;
   such state belongs in a component or a resource. A scan, not a proof: a

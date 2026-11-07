@@ -39872,6 +39872,10 @@ export interface SnapshotInfo {
    * @unit bytes (bytes)
    */
   readonly bytes: number;
+  /**
+   * The presentation hash at that tick, hex (docs/design.md §2.4): of the presentation checkpoint kept beside the world (each particle system's ticks; the renderer's adapted exposure stays on the GPU), outside the world hash. Equal on one host and backend for the same frames; empty without a renderer.
+   */
+  readonly presentation: string;
 }
 
 /**

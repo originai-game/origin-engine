@@ -378,9 +378,9 @@ pub use particles::{
 pub use particles::{
     Burst, ChildParticles, CollisionTarget, ColorCurve, CpuParticles, Curve, EmitterHandle,
     EmitterShape, MAX_CURVE_KEYS, MAX_SUB_EMITTERS, ParticleAlign, ParticleBlend, ParticleClock,
-    ParticleCollision, ParticleEmitter, ParticleEvent, ParticleEventKind, ParticleNoise,
-    ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, SceneCollider, SheetMode,
-    SimulationSpace, SpriteSheet, SubEmitter, mesh_points,
+    ParticleCollision, ParticleEmitter, ParticleEvent, ParticleEventKind, ParticleHistory,
+    ParticleNoise, ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, ParticleTick,
+    SceneCollider, SheetMode, SimulationSpace, SpriteSheet, SubEmitter, mesh_points,
 };
 pub use points::Points;
 pub use post_custom::{MAX_CUSTOM_POSTS, PostHandle, PostShader, example_crt, post_module_source};
@@ -767,6 +767,9 @@ pub struct Renderer {
     cache: SceneCache,
     /// Frames rendered so far.
     frame_index: u64,
+    /// `frame_index` at the last [`Renderer::render_capture`]: the
+    /// temporal phase ([`Renderer::phase`]) counts from it.
+    phase_base: u64,
     /// Compiled pipelines kept across runs (`pipeline_cache.rs`), when kept.
     pipeline_disk: Option<pipeline_cache::DiskCache>,
     /// Where particles simulate ([`RenderDesc::particles`]).

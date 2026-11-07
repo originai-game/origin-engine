@@ -59,7 +59,9 @@ impl Renderer {
 
     /// The frame's screen-space reflections (ssr.rs): a perspective 3D
     /// camera's only, as an orthographic view reflects nothing it shows.
-    pub(super) fn frame_ssr(scene: &RenderScene) -> Option<ssr::ScreenSpaceReflections> {
+    pub(in crate::renderer) fn frame_ssr(
+        scene: &RenderScene,
+    ) -> Option<ssr::ScreenSpaceReflections> {
         let perspective = matches!(scene.camera.projection, Projection::Perspective { .. });
         scene
             .post

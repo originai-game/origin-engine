@@ -866,11 +866,10 @@ fn refresh(eng: &Engine, world: &World, from: u64, to: u64) {
     }
     eng.state.borrow_mut().restored = Some((from, to));
     super::platform::shift_ticks(eng.id, from, to);
-    if let Ok(mut rs) = eng.render.try_borrow_mut()
-        && let Some(b) = rs.backend.as_mut()
-    {
-        // A cut: the renderer's history (exposure, TAA) starts afresh.
-        b.restore_state(0);
+    if let Ok(mut rs) = eng.render.try_borrow_mut() {
+        // A cut: the presentation state (the renderer's history: exposure,
+        // TAA; the particles' ticks) starts afresh.
+        super::presentation::restore(&mut rs, 0);
     }
     super::engine::invalidate(true);
     super::engine::clear_world_queries();

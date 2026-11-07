@@ -155,6 +155,11 @@ pub struct RenderScene {
     pub interpolation: Option<f32>,
     /// Running particle systems (state is kept by their id).
     pub particles: Vec<ParticleSystem>,
+    /// Each running system's ticks by its id, as each tick ended
+    /// ([`crate::ParticleHistory`]): the ticks a system has not been drawn
+    /// at step as they were. A system absent here steps by the frame's
+    /// system alone.
+    pub particle_history: og_core::IdMap<u64, std::sync::Arc<crate::ParticleHistory>>,
     /// The scene's solid shapes ([`crate::SceneCollider`]): what
     /// CPU-simulated particles with collision bounce off (the CPU path's
     /// stand-in for the depth buffer the compute path reads) and what

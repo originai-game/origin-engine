@@ -2,6 +2,12 @@
 
 use super::*;
 
+/// The frames [`Renderer::render_capture`] draws of one scene where GI or
+/// screen-space reflections accumulate without TAA (under TAA it draws one
+/// cycle of the jitter, 8 to 32 frames): what their history reaches on a
+/// still frame.
+pub const CAPTURE_WARMUP: u64 = 8;
+
 impl Renderer {
     /// Reads the next frame's GPU culling counts back (`culled`,
     /// `occluded`, `triangles`, `shadow_casters` and the triangle counts
@@ -169,6 +175,66 @@ impl Renderer {
         self.taa_history = None;
         self.gi_history = None;
         self.ssr.reset();
+    }
+
+    /// Draws the capture of `scene` into `target`: a pure function of the
+    /// scene (docs/design.md §2.4, presentation), whatever frames were drawn
+    /// before it, so a capture is the same after every frame from tick 0,
+    /// after ticks stepped without frames and after a restore. The frame
+    /// history starts afresh (TAA's and the upscaler's history, the GI and
+    /// reflections' accumulation, the previous frame's camera, time, wind
+    /// and sway, the phase that turns the jitter, the shadow filters'
+    /// spiral and the screen noise: [`Renderer::phase`]), auto exposure meters this
+    /// frame at once, and frames of the same scene are drawn, the last kept:
+    /// under TAA one cycle of its jitter, which converges a still frame;
+    /// [`CAPTURE_WARMUP`] where GI or reflections accumulate without it;
+    /// one otherwise. Afterwards the history
+    /// starts afresh again and the adapted exposure is put back, so the
+    /// frames the display draws next go on from neither.
+    pub fn render_capture(
+        &mut self,
+        scene: &RenderScene,
+        target: &RenderTarget,
+    ) -> Result<FrameStats, RenderError> {
+        let kept = self.save_state();
+        self.forget_frames();
+        self.phase_base = self.frame_index;
+        self.post.forget_exposure();
+        let warmup = if self.info.antialias.temporal() {
+            frame::jitter_phases((self.width, self.height), self.history_size())
+        } else if Self::frame_ssr(scene).is_some()
+            || scene.post.gi.is_some_and(|g| g.intensity > 0.0)
+        {
+            CAPTURE_WARMUP
+        } else {
+            1
+        };
+        self.terrain.settled = true;
+        let mut stats = self.render(scene, target);
+        for _ in 1..warmup {
+            stats = self.render(scene, target);
+        }
+        self.terrain.settled = false;
+        self.forget_frames();
+        self.restore_state(kept);
+        stats
+    }
+
+    /// The frames drawn since the last capture: what turns the TAA jitter,
+    /// the shadow filters' spiral and the screen-space effects' noise from
+    /// frame to frame. `frame_index` itself only grows (readbacks are
+    /// stamped with it).
+    pub(crate) fn phase(&self) -> u64 {
+        self.frame_index - self.phase_base
+    }
+
+    /// Everything a frame carries from the frame before it, forgotten.
+    fn forget_frames(&mut self) {
+        self.reset_history();
+        self.prev_view_proj = None;
+        self.previous_time = None;
+        self.previous_sway.clear();
+        self.previous_wind = None;
     }
 
     /// Keeps the renderer's state that belongs to the world's time (the

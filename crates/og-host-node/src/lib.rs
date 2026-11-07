@@ -678,8 +678,17 @@ impl RenderBackend for OffscreenBackend {
         if size != target {
             self.renderer.resize(size.0, size.1);
         }
+        // The capture is the scene's alone, not the frames drawn before it
+        // (og-render's `render_capture`).
         let image = self
-            .draw(scene)
+            .recreate()
+            .and_then(|()| {
+                self.renderer.request_culling_counts();
+                self.renderer
+                    .render_capture(scene, &og_render::RenderTarget::Offscreen)
+                    .map(|s| self.stats = s)
+                    .map_err(|e| e.to_string())
+            })
             .and_then(|_| self.renderer.read_offscreen().map_err(|e| e.to_string()));
         self.capture_error = image.as_ref().err().cloned();
         if size != target {

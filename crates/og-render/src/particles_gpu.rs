@@ -726,6 +726,7 @@ impl ParticleRenderer {
         let mut colliding: Vec<(std::ops::Range<u32>, (Vec3, Vec3))> = Vec::new();
         for (i, sys) in scene.particles.iter().enumerate() {
             let layers = crate::views::layer_of(&scene.particle_layers, i);
+            let history = scene.particle_history.get(&sys.id).map(|h| &**h);
             let e = scene.emitters().get(sys.emitter.index()).ok_or_else(|| {
                 RenderError::InvalidHandle(format!(
                     "particle system {i}: emitter {}",
@@ -939,7 +940,7 @@ impl ParticleRenderer {
                     None => {
                         out.ticks += state
                             .cpu
-                            .advance(e, sys, tick_rate, points, colliders, &subs, None)
+                            .advance(e, sys, tick_rate, points, colliders, &subs, None, history)
                     }
                 }
                 out.cpu_alive += state.cpu.alive() as u32;
@@ -1051,6 +1052,7 @@ impl ParticleRenderer {
                     g.prev_transform,
                     tick_rate,
                     &mut g.clock,
+                    history,
                 );
                 g.last_tick = Some(sys.tick);
                 g.prev_transform = Some(sys.transform);
@@ -1136,7 +1138,7 @@ impl ParticleRenderer {
                     None => {
                         out.ticks += state
                             .cpu
-                            .advance(e, sys, tick_rate, points, colliders, &subs, None)
+                            .advance(e, sys, tick_rate, points, colliders, &subs, None, history)
                     }
                 }
                 out.cpu_alive += state.cpu.alive() as u32;

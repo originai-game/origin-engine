@@ -14,6 +14,7 @@ A snapshot of the whole world (components, resources, Rng states, pending events
 | `tick` | `number` | `0` | — | — | — | The tick it was taken at. |
 | `hash` | `string` | `""` | — | — | — | The world hash at that tick, hex: equal hashes mean equal worlds. |
 | `bytes` | `number` | `0` | — | `bytes` | — | Its size. |
+| `presentation` | `string` | `""` | — | — | — | The presentation hash at that tick, hex (docs/design.md §2.4): of the presentation checkpoint kept beside the world (each particle system's ticks; the renderer's adapted exposure stays on the GPU), outside the world hash. Equal on one host and backend for the same frames; empty without a renderer. |
 
 ```ogt
 struct SnapshotInfo {
@@ -24,6 +25,7 @@ struct SnapshotInfo {
   field bytes u32 "Its size." {
     unit bytes
   }
+  field presentation String "The presentation hash at that tick, hex (docs/design.md §2.4): of the presentation checkpoint kept beside the world (each particle system's ticks; the renderer's adapted exposure stays on the GPU), outside the world hash. Equal on one host and backend for the same frames; empty without a renderer."
 }
 ```
 

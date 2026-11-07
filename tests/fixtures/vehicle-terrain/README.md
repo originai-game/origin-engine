@@ -18,5 +18,11 @@ What it checks:
   the speed, and one frame matches `references/metal/drive.png`.
 - `scripts/check.sh web-reference` (`web_vehicle_terrain`): the same
   playtest's frame in the browser tiers (`packages/engine/tests/web/reference.ts`).
+- `packages/engine/tests/presentation.test.ts`: the presentation gate
+  (docs/design.md §2.4). The capture at tick 156, mid-slide, has the same
+  PNG bytes, world hash and presentation hash whether every frame is drawn,
+  only the captured tick is, or a snapshot at 140 is restored (after a fork
+  at 60) and the run goes on; and a SyncTest rolls back four ticks and
+  plays them again on every tick from 110 with no mismatch.
 
 Budget: under 10 s warm (measured 4.4 to 5.2 s).

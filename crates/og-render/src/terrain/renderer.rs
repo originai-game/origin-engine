@@ -349,6 +349,7 @@ impl TerrainRenderer {
             layout,
             passes,
             decals,
+            settled: false,
             arrays: None,
             holed: [None, None],
             array_stand_ins: None,
@@ -781,6 +782,7 @@ impl TerrainRenderer {
                 if let Some(st) = s
                     && st.fade < 1.0
                     && parent_in
+                    && !self.settled
                 {
                     // A frame's step, at most a quarter of the fade (a
                     // hitch does not pop a tile in); the last step's
@@ -795,7 +797,8 @@ impl TerrainRenderer {
             let mut table = vec![0.0f32; MAX_TERRAIN_TILES as usize];
             for (s, st) in gpu.slots.iter().enumerate() {
                 if let Some(st) = st {
-                    table[st.tile as usize] = (s as f32 + 1.0) * 256.0 + (st.fade * 255.0).round();
+                    let fade = if self.settled { 1.0 } else { st.fade };
+                    table[st.tile as usize] = (s as f32 + 1.0) * 256.0 + (fade * 255.0).round();
                 }
             }
             if table != gpu.table_cpu {

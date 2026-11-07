@@ -8,10 +8,10 @@ impl Renderer {
     /// ([`frame::jitter_phases`]).
     pub(super) fn taa_jitter(&self) -> Vec2 {
         if self.info.antialias == Antialias::SmaaT2x {
-            return frame::smaa_sample(self.frame_index).0;
+            return frame::smaa_sample(self.phase()).0;
         }
         let phases = frame::jitter_phases((self.width, self.height), self.history_size());
-        frame::halton_jitter(self.frame_index, phases)
+        frame::halton_jitter(self.phase(), phases)
     }
 
     pub(super) fn prepare_frame_camera(

@@ -424,6 +424,10 @@ pub(crate) struct RenderState {
     pub decoded: super::assets::Decoded,
     /// og.motion's model and the palettes it draws (`super::motion::present`).
     pub motion: super::motion::present::Presenter,
+    /// Each particle system's ticks, by its id (`super::presentation`).
+    pub particle_history: IdMap<u64, std::sync::Arc<og_render::ParticleHistory>>,
+    /// The presentation checkpoints kept for probe snapshots (`super::presentation`).
+    pub checkpoints: super::presentation::Checkpoints,
 }
 
 impl RenderState {
@@ -482,6 +486,8 @@ impl RenderState {
             display: Default::default(),
             decoded: Default::default(),
             motion: Default::default(),
+            particle_history: IdMap::new(),
+            checkpoints: Default::default(),
         }
     }
 }

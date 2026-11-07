@@ -97,6 +97,7 @@ impl RenderScene {
             frame_seconds: 1.0 / 60.0,
             interpolation: None,
             particles: Vec::new(),
+            particle_history: Default::default(),
             colliders: Vec::new(),
             debris: Vec::new(),
             hosted_particles: Vec::new(),

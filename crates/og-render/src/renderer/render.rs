@@ -1480,7 +1480,7 @@ impl Renderer {
                 camera.position,
                 cam.view_proj,
                 prev_view_proj,
-                self.frame_index,
+                self.phase(),
                 (
                     self.wind_field.grid(),
                     self.wind_field.lean_cap(),
@@ -2412,7 +2412,7 @@ impl Renderer {
                     // The shadow filters' spiral turns per drawn frame
                     // under TAA (lighting.wgsl shadow_turn).
                     if taa {
-                        1.0 + (self.frame_index % 16) as f32
+                        1.0 + (self.phase() % 16) as f32
                     } else {
                         0.0
                     },
@@ -2832,7 +2832,7 @@ impl Renderer {
                     near: camera.near,
                     far: camera.far,
                 },
-                self.frame_index,
+                self.phase(),
                 gi_history_valid,
             );
         }
@@ -5157,7 +5157,7 @@ impl Renderer {
                         self.graph.view("lindepth"),
                         self.graph.view("gbuffer"),
                         prev,
-                        self.frame_index,
+                        self.phase(),
                     );
                 }
                 post_pass => {

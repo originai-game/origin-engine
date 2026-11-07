@@ -735,11 +735,17 @@ impl Probe {
         let saved = self.save(world);
         let id = format!("s{}", self.next_snapshot);
         self.next_snapshot += 1;
+        let presentation = self
+            .capture
+            .as_ref()
+            .and_then(|c| c.presentation_hash())
+            .map_or_else(String::new, |h| format!("{h:016x}"));
         let info = json!({
             "id": id,
             "tick": saved.tick,
             "hash": format!("{:016x}", saved.hash),
             "bytes": saved.world.len(),
+            "presentation": presentation,
         });
         self.snapshots.push_back((id, saved));
         while self.snapshots.len() > MAX_SNAPSHOTS {

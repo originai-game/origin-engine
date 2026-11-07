@@ -802,6 +802,123 @@ impl ParticleClock {
     }
 }
 
+/// One tick of a particle system as that tick left it: what its spawns and
+/// steps on that tick read ([`ParticleHistory`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParticleTick {
+    pub tick: u64,
+    pub transform: Mat4,
+    pub start_tick: u64,
+    pub stop_tick: Option<u64>,
+    pub time_scale: f32,
+    /// The system's clock as stepping one tick at a time leaves it.
+    pub clock: ParticleClock,
+}
+
+/// A particle system's ticks, as many as its live particles can come from
+/// (one lifetime at its time scale), recorded as each tick ends whether or
+/// not a frame was drawn ([`RenderScene::particle_history`]). The renderer
+/// steps a system through the ticks it has not drawn from these, not from
+/// the frame's system alone, so its particles are a function of the ticks:
+/// the same after a frame on every tick, after ticks stepped without frames
+/// and after a restore that brought the history back (docs/design.md §2.4,
+/// presentation). Presentation state: never the world's.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ParticleHistory {
+    ticks: std::collections::VecDeque<ParticleTick>,
+}
+
+impl ParticleHistory {
+    /// Records `sys` at its tick: its clock follows the tick before's as a
+    /// tick-by-tick step would (re-anchored where the scale changes, from
+    /// the start tick after a gap), and ticks no live particle can come
+    /// from any more are dropped. The same tick again replaces it (a held
+    /// clock).
+    pub fn record(&mut self, e: &ParticleEmitter, sys: &ParticleSystem, tick_rate: f32) {
+        let scale = time_scale(sys);
+        let dt = 1.0 / tick_rate.max(1e-3) as f64;
+        // The same tick again (a held clock), or ticks a rewind took back
+        // (og.net's rollback): recorded again from the tick before.
+        while self.ticks.back().is_some_and(|t| t.tick >= sys.tick) {
+            self.ticks.pop_back();
+        }
+        let clock = match self.ticks.back() {
+            Some(t) if t.tick + 1 == sys.tick => next_clock(t.clock, sys.tick, scale, dt),
+            _ => {
+                self.ticks.clear();
+                ParticleClock {
+                    tick: sys.start_tick,
+                    time: 0.0,
+                    scale,
+                }
+            }
+        };
+        self.ticks.push_back(ParticleTick {
+            tick: sys.tick,
+            transform: sys.transform,
+            start_tick: sys.start_tick,
+            stop_tick: sys.stop_tick,
+            time_scale: scale,
+            clock,
+        });
+        let window = window(e, scale, tick_rate);
+        while self
+            .ticks
+            .front()
+            .is_some_and(|t| t.tick + window <= sys.tick)
+        {
+            self.ticks.pop_front();
+        }
+    }
+
+    /// Tick `tick`'s record.
+    pub fn at(&self, tick: u64) -> Option<&ParticleTick> {
+        let first = self.ticks.front()?.tick;
+        self.ticks
+            .get(usize::try_from(tick.checked_sub(first)?).ok()?)
+            .filter(|t| t.tick == tick)
+    }
+
+    /// The ticks recorded, oldest first.
+    pub fn ticks(&self) -> impl Iterator<Item = &ParticleTick> {
+        self.ticks.iter()
+    }
+}
+
+/// `sys`'s time scale (non-finite as 1, negative as 0).
+fn time_scale(sys: &ParticleSystem) -> f32 {
+    if sys.time_scale.is_finite() {
+        sys.time_scale.max(0.0)
+    } else {
+        1.0
+    }
+}
+
+/// The clock of tick `tick` after `clock` stepped the tick before: the same
+/// clock, or re-anchored at `tick` where the scale changes.
+fn next_clock(clock: ParticleClock, tick: u64, scale: f32, dt: f64) -> ParticleClock {
+    if clock.scale == scale {
+        clock
+    } else {
+        ParticleClock {
+            tick,
+            time: clock.at(tick, dt),
+            scale,
+        }
+    }
+}
+
+/// A lifetime in ticks at `scale` (slowed particles live more ticks),
+/// replayed at most 16 normal lifetimes back.
+fn window(e: &ParticleEmitter, scale: f32, tick_rate: f32) -> u64 {
+    let window = (e.max_lifetime() as f64 * tick_rate as f64).ceil() as u64 + 1;
+    if scale >= 1.0 {
+        window
+    } else {
+        (window as f64 / f64::from(scale.max(1.0 / 16.0))).ceil() as u64
+    }
+}
+
 /// Where particle systems simulate ([`crate::RenderDesc::particles`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ParticleSimulation {
@@ -998,9 +1115,15 @@ pub(crate) fn tick_step(
 
 /// The ticks a system's state must step through to reach `sys.tick`, and
 /// whether it restarts from empty.
-/// Re-anchors `clock` at the system's time scale: from its start on a
-/// reset (as if the scale had always held), else from the first tick not
-/// yet stepped.
+///
+/// With `history` holding the tick before `sys.tick`, every tick before
+/// `sys.tick` steps as recorded (its transform, start, stop, scale and
+/// clock), and `sys.tick` from the clock the tick before left; a restart
+/// replays the window from its first recorded tick. Without, the frame's
+/// system stands for them: `clock` is re-anchored at the system's time
+/// scale, from its start on a reset (as if the scale had always held), else
+/// from the first tick not yet stepped, and a moving emitter spawns along
+/// the path between the frames.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn plan_ticks(
     e: &ParticleEmitter,
@@ -1009,20 +1132,40 @@ pub(crate) fn plan_ticks(
     prev_transform: Option<Mat4>,
     tick_rate: f32,
     clock: &mut ParticleClock,
+    history: Option<&ParticleHistory>,
 ) -> (bool, Vec<TickStep>) {
-    let scale = if sys.time_scale.is_finite() {
-        sys.time_scale.max(0.0)
-    } else {
-        1.0
-    };
-    // A lifetime in ticks at this scale (slowed particles live more ticks),
-    // replayed at most 16 normal lifetimes back.
-    let window = (e.max_lifetime() as f64 * tick_rate as f64).ceil() as u64 + 1;
-    let window = if scale >= 1.0 {
-        window
-    } else {
-        (window as f64 / f64::from(scale.max(1.0 / 16.0))).ceil() as u64
-    };
+    let scale = time_scale(sys);
+    let window = window(e, scale, tick_rate);
+    let dt = 1.0 / tick_rate.max(1e-3) as f64;
+    let before = sys.tick.checked_sub(1);
+    if let Some((h, prev)) = history.zip(before).and_then(|(h, b)| Some((h, h.at(b)?))) {
+        let first = h.ticks.front().map_or(sys.tick, |t| t.tick);
+        let (reset, from) = match last_tick {
+            Some(last) if sys.tick >= last && sys.tick - last <= window && last + 1 >= first => {
+                (false, last + 1)
+            }
+            _ => (true, sys.tick.saturating_sub(window - 1).max(first)),
+        };
+        *clock = next_clock(prev.clock, sys.tick, scale, dt);
+        let now = *clock;
+        let steps = (from..=sys.tick)
+            .map(|t| match h.at(t).filter(|_| t < sys.tick) {
+                Some(r) => {
+                    let at = ParticleSystem {
+                        transform: r.transform,
+                        start_tick: r.start_tick,
+                        stop_tick: r.stop_tick,
+                        time_scale: r.time_scale,
+                        tick: t,
+                        ..*sys
+                    };
+                    tick_step(e, &at, t, tick_rate, r.transform, &r.clock)
+                }
+                None => tick_step(e, sys, t, tick_rate, sys.transform, &now),
+            })
+            .collect();
+        return (reset, steps);
+    }
     let (reset, from) = match last_tick {
         Some(last) if sys.tick >= last && sys.tick - last <= window => (false, last + 1),
         _ => (
@@ -1030,7 +1173,6 @@ pub(crate) fn plan_ticks(
             sys.tick.saturating_sub(window - 1).max(sys.start_tick),
         ),
     };
-    let dt = 1.0 / tick_rate.max(1e-3) as f64;
     if reset {
         *clock = ParticleClock {
             tick: sys.start_tick,
@@ -1734,6 +1876,7 @@ impl CpuParticles {
         colliders: &[SceneCollider],
         subs: &[Option<&ParticleEmitter>],
         mut events: Option<&mut Vec<ParticleEvent>>,
+        history: Option<&ParticleHistory>,
     ) -> u32 {
         let max = e.max_particles;
         if self.slots.len() != max as usize {
@@ -1762,6 +1905,7 @@ impl CpuParticles {
             self.prev_transform,
             tick_rate,
             &mut self.clock,
+            history,
         );
         if reset {
             self.slots.fill(ParticleState::default());
@@ -1963,7 +2107,7 @@ mod tests {
         let points = shape_points(&e.shape, None);
         for t in 0..ticks {
             sys.tick = t;
-            cpu.advance(e, sys, 60.0, &points, &[], &[], None);
+            cpu.advance(e, sys, 60.0, &points, &[], &[], None, None);
         }
         cpu.slots.into_iter().filter(|p| p.alive()).collect()
     }
@@ -2092,6 +2236,7 @@ mod tests {
                 &[],
                 &[],
                 None,
+                None,
             );
         }
         let vx: Vec<f32> = cpu
@@ -2148,7 +2293,7 @@ mod tests {
         let e = fountain();
         for t in ticks {
             sys.tick = t;
-            cpu.advance(&e, sys, 60.0, &[], &[], &[], None);
+            cpu.advance(&e, sys, 60.0, &[], &[], &[], None, None);
         }
     }
 
@@ -2222,7 +2367,16 @@ mod tests {
             let mut events = Vec::new();
             for t in 0..=89 {
                 sys.tick = t;
-                cpu.advance(&e, &sys, 60.0, &[], &[], &[Some(&child)], Some(&mut events));
+                cpu.advance(
+                    &e,
+                    &sys,
+                    60.0,
+                    &[],
+                    &[],
+                    &[Some(&child)],
+                    Some(&mut events),
+                    None,
+                );
             }
             (cpu, events)
         };

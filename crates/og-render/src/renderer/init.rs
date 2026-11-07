@@ -1237,6 +1237,7 @@ impl Renderer {
             glass_targets: None,
             cache: SceneCache::default(),
             frame_index: 0,
+            phase_base: 0,
             pipeline_disk,
             desc_particles: desc.particles,
             desc_culling: desc.culling,

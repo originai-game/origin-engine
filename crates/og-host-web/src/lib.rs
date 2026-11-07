@@ -1367,9 +1367,11 @@ mod canvas {
             // the display draws at (automatic quality, og.render.setDisplay).
             let scale = self.renderer.render_scale();
             self.renderer.set_render_scale(1.0);
+            // The scene's alone, not the frames drawn before it
+            // (og-render's `render_capture`).
             let started = self
                 .renderer
-                .render(scene, &RenderTarget::Offscreen)
+                .render_capture(scene, &RenderTarget::Offscreen)
                 .ok()
                 .and_then(|_| self.renderer.begin_capture().ok());
             self.renderer.set_render_scale(scale);

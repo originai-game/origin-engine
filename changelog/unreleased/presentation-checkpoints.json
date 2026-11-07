@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "SnapshotInfo.presentation",
+      "summary": "A probe snapshot keeps the presentation state beside the world as a presentation checkpoint, outside world_hash: each particle system's per-tick emitter history and the renderer's adapted auto exposure. Its hash is reported as `SnapshotInfo.presentation`, per host and backend. A restore brings the checkpoint back, so the frames after it are the frames the saved run drew (docs/design.md §2.4)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "captures",
+      "summary": "A capture no longer depends on the frames drawn before it: drawing every frame from tick 0, drawing only the captured tick, and restoring a mid-run snapshot and going on give byte-identical PNGs. Particle systems step from each tick's emitter state, kept as the tick starts whether or not a frame is drawn. Every capture resets TAA, GI and SSR history and motion vectors, starts the jitter and shadow spiral at phase 0, meters exposure at once, draws streamed terrain tiles settled, and draws a fixed warm-up (a jitter cycle under TAA, 8 frames for GI or SSR without it), then leaves the display's history as it was. Reference frames taken under TAA move once: they are now the converged frame."
+    }
+  ]
+}

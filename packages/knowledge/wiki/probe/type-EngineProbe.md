@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 647</sub>
+<sub>Module `probe` line 648</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>Module `probe` line 652</sub>
+<sub>Module `probe` line 653</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -83,7 +83,7 @@ fn capture {
 }
 ```
 
-<sub>Module `probe` line 657</sub>
+<sub>Module `probe` line 658</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -113,7 +113,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 670</sub>
+<sub>Module `probe` line 671</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -136,7 +136,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 677</sub>
+<sub>Module `probe` line 678</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -159,7 +159,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 681</sub>
+<sub>Module `probe` line 682</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -187,7 +187,7 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 685</sub>
+<sub>Module `probe` line 686</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -217,7 +217,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 690</sub>
+<sub>Module `probe` line 691</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -245,7 +245,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 697</sub>
+<sub>Module `probe` line 698</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -275,7 +275,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 702</sub>
+<sub>Module `probe` line 703</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -298,7 +298,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 709</sub>
+<sub>Module `probe` line 710</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -321,7 +321,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 713</sub>
+<sub>Module `probe` line 714</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -349,7 +349,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 717</sub>
+<sub>Module `probe` line 718</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -372,7 +372,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 722</sub>
+<sub>Module `probe` line 723</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -402,7 +402,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 726</sub>
+<sub>Module `probe` line 727</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -436,7 +436,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 733</sub>
+<sub>Module `probe` line 734</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -466,4 +466,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 743</sub>
+<sub>Module `probe` line 744</sub>
