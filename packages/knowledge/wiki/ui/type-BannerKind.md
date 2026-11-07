@@ -29,4 +29,4 @@ enum BannerKind {
 }
 ```
 
-<sub>Module `ui` line 5664</sub>
+<sub>Module `ui` line 5672</sub>

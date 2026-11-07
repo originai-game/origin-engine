@@ -97,7 +97,7 @@ pub use motion::{
 };
 pub use particles::{EmitFrom, ParticlesDesc};
 pub use probe::{SharedUi, UiProbe};
-pub use rich::{RichTextDesc, RichTextResponse};
+pub use rich::{RichTextDesc, RichTextResponse, TextSpan, TextSpanStyle, TextSpanValue};
 pub use slot::{Aspect, SlotKind, SlotSpec};
 pub use style::{
     Breakpoint, Contrast, Density, DensityMode, Durations, Palette, READABLE, Radius, Roles,

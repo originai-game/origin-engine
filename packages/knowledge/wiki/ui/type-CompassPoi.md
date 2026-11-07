@@ -38,4 +38,4 @@ struct CompassPoi {
 }
 ```
 
-<sub>Module `ui` line 6251</sub>
+<sub>Module `ui` line 6259</sub>

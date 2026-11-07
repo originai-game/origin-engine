@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "TextSpan / Ui::rich_text_spans",
+      "summary": "Typed Unicode-scalar attribute ranges feed the shared paragraph shaper directly, without markup conversion. Overlapping part declarations inherit independently, colour tokens follow the active style, unknown attributes and zero-length markers remain metadata, and wave, shake and pulse reuse checkpointed tick motion and reduced-motion handling. TextSpan is generated for stores on both hosts; rendering is exposed through the Svelte text spans binding, not a new TypeScript UI builder."
+    }
+  ]
+}

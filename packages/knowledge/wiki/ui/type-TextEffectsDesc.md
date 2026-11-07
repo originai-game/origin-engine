@@ -26,4 +26,4 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>Module `ui` line 7307</sub>
+<sub>Module `ui` line 7315</sub>

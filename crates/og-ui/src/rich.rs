@@ -110,7 +110,12 @@ pub struct RichTextResponse {
     pub link: Option<String>,
     /// The link under the pointer.
     pub hovered: Option<String>,
+    /// Structured attributes, including unknown names and zero-length markers.
+    pub spans: Vec<TextSpan>,
 }
+
+mod spans;
+pub use spans::{TextSpan, TextSpanStyle, TextSpanValue};
 
 /// A unit lines break between: a span's word, space or CJK character.
 struct Unit {
@@ -624,9 +629,19 @@ impl Ui {
                 fx: s.fx,
             });
         }
+        self.rich_runs(id.into(), probe, spans, desc)
+    }
+
+    fn rich_runs(
+        &mut self,
+        id: crate::Id,
+        probe: String,
+        spans: Vec<RichSpan>,
+        desc: RichTextDesc,
+    ) -> RichTextResponse {
         let i = self.leaf(
             "richtext",
-            id.into(),
+            id,
             Element {
                 width: desc.width,
                 ..Element::default()

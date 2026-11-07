@@ -24802,6 +24802,22 @@ export interface RichTextResult {
   readonly hovered: string | null;
 }
 
+/**
+ * A named attribute range in plain text for a store and the Svelte text spans binding. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Names select text::part(name) styles; text is never reinterpreted as markup.
+ */
+export interface TextSpan {
+  /** The style part name, for example emphasis or character. */
+  readonly name: string;
+  /** Start in Unicode scalar values; an astral character counts once. */
+  readonly position: number;
+  /** Number of Unicode scalars. Zero is a metadata marker. */
+  readonly length: number;
+  /**
+   * Typed attribute properties: only string, finite number or boolean, never nested data or null.
+   */
+  readonly properties: Readonly<Record<string, string | number | boolean>>;
+}
+
 
 
 

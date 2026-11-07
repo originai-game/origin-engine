@@ -32,4 +32,4 @@ struct HudEditorDesc {
 }
 ```
 
-<sub>Module `ui` line 1696</sub>
+<sub>Module `ui` line 1704</sub>

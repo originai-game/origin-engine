@@ -27,4 +27,4 @@ enum CardVariant {
 }
 ```
 
-<sub>Module `ui` line 1934</sub>
+<sub>Module `ui` line 1942</sub>

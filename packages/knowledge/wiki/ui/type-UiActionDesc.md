@@ -37,4 +37,4 @@ struct UiActionDesc {
 }
 ```
 
-<sub>Module `ui` line 7952</sub>
+<sub>Module `ui` line 7960</sub>

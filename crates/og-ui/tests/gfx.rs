@@ -22,6 +22,155 @@ fn reference_dir(tier: &str) -> PathBuf {
 
 #[test]
 #[ignore = "requires GPU"]
+fn structured_rich_text_draws_wraps_and_restores_mid_motion() {
+    let vp = Viewport::new(880.0, 480.0);
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let mut ui = ui_with_font(font);
+    let mut theme = *ui.theme();
+    theme.unit_pin = 1.0;
+    ui.set_theme(theme);
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 880,
+        height: 480,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    let text = "Ada: Walk through the silent forest. Keep [b] as literal text, and keep \\paths untouched. The speaker, emphasis and motion are independent ranges in one wrapped paragraph.";
+    let attrs: Vec<TextSpan> = [
+        ("character", 0, 5),
+        ("emphasis", 22, 13),
+        ("motion", 22, 13),
+        ("unknown-game-tag", 40, 8),
+    ]
+    .into_iter()
+    .map(|(name, position, length)| TextSpan {
+        name: name.into(),
+        position,
+        length,
+        properties: Default::default(),
+    })
+    .collect();
+    let build = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), vp);
+        let t = *ui.theme();
+        ui.column(
+            "Review",
+            Element {
+                width: Size::grow(),
+                height: Size::grow(),
+                padding: Insets::all(36.0),
+                gap: 24.0,
+                background: Some(t.palette.backdrop),
+                ..Default::default()
+            },
+            |ui| {
+                ui.label(
+                    "Title",
+                    "Structured dialogue / plain text + spans",
+                    LabelDesc {
+                        step: Some(t.type_ramp.xl),
+                        ..Default::default()
+                    },
+                );
+                ui.label(
+                    "State",
+                    if t.reduced_motion {
+                        "Reduced motion / active-style token changed"
+                    } else {
+                        "Wave + emphasis / restored tick"
+                    },
+                    LabelDesc::default(),
+                );
+                ui.rich_text_spans(
+                    "Dialogue",
+                    text,
+                    &attrs,
+                    RichTextDesc {
+                        width: Size::Fixed(620.0),
+                        step: Some(TypeStep {
+                            size: 26.0,
+                            line_height: 36.0,
+                            ..t.type_ramp.body
+                        }),
+                        ..Default::default()
+                    },
+                    |a| match a.name.as_str() {
+                        "character" => TextSpanStyle {
+                            bold: Some(true),
+                            color: Some(paint::ColorRef::token("highlight")),
+                            ..Default::default()
+                        },
+                        "emphasis" => TextSpanStyle {
+                            bold: Some(true),
+                            color: Some(paint::ColorRef::token("danger")),
+                            ..Default::default()
+                        },
+                        "motion" => TextSpanStyle {
+                            motion: Some(markup::SpanFx::Wave),
+                            ..Default::default()
+                        },
+                        _ => TextSpanStyle::default(),
+                    },
+                );
+                ui.label(
+                    "Legend",
+                    "Speaker prefix retained. Unknown attributes stay in game data.",
+                    LabelDesc::default(),
+                );
+            },
+        );
+        ui.end();
+    };
+    let capture = |ui: &Ui, renderer: &mut Renderer, scene: &mut RenderScene| {
+        let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        scene.overlay = Some(overlay);
+        scene.post.tonemap = Tonemap::None;
+        renderer.render(scene, &RenderTarget::Offscreen).unwrap();
+        renderer.read_offscreen().unwrap()
+    };
+    for _ in 0..13 {
+        build(&mut ui);
+    }
+    let saved = ui.save_state();
+    build(&mut ui);
+    let expected = capture(&ui, &mut renderer, &mut scene);
+    for _ in 0..17 {
+        build(&mut ui);
+    }
+    let changed = capture(&ui, &mut renderer, &mut scene);
+    assert_ne!(
+        expected.pixels, changed.pixels,
+        "wave must move visible glyphs"
+    );
+    ui.restore_state(&saved).unwrap();
+    build(&mut ui);
+    let restored = capture(&ui, &mut renderer, &mut scene);
+    assert_eq!(
+        expected.pixels, restored.pixels,
+        "GPU pixels replay after restoring mid-wave"
+    );
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let path = out_dir().join("structured-rich-text.png");
+    image::save_buffer(&path, &restored.pixels, 880, 480, image::ColorType::Rgba8).unwrap();
+    println!("{}", path.display());
+    theme.reduced_motion = true;
+    theme.palette.danger = Srgba::rgb(64, 218, 182);
+    ui.set_theme(theme);
+    build(&mut ui);
+    let still = capture(&ui, &mut renderer, &mut scene);
+    for _ in 0..13 {
+        build(&mut ui);
+    }
+    assert_eq!(still.pixels, capture(&ui, &mut renderer, &mut scene).pixels);
+    let path = out_dir().join("structured-rich-text-reduced.png");
+    image::save_buffer(&path, &still.pixels, 880, 480, image::ColorType::Rgba8).unwrap();
+    println!("{}", path.display());
+}
+
+#[test]
+#[ignore = "requires GPU"]
 fn css_radius_token_changes_pixels_when_the_active_style_changes() {
     let source = "type screen\nversion 2\n---\nname tokens\nlayer hud\ncolumn Box {\n width: 96px; height: 64px\n translate: 16px 16px\n background: #ffffff; border-radius: var(--radius-lg)\n}\n";
     let mut ui = Ui::new(UiDesc::default());

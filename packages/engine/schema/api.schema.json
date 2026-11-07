@@ -11457,6 +11457,7 @@
         "UiTheme",
         "RichTextDesc",
         "RichTextResult",
+        "TextSpan",
         "Anchor",
         "TransitionKind",
         "Tone",
@@ -48281,6 +48282,58 @@
         "response",
         "link",
         "hovered"
+      ],
+      "additionalProperties": false
+    },
+    "TextSpan": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A named attribute range in plain text for a store and the Svelte text spans binding. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Names select text::part(name) styles; text is never reinterpreted as markup.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The style part name, for example emphasis or character."
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Start in Unicode scalar values; an astral character counts once."
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Number of Unicode scalars. Zero is a metadata marker."
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              }
+            ]
+          },
+          "description": "Typed attribute properties: only string, finite number or boolean, never nested data or null."
+        }
+      },
+      "required": [
+        "name",
+        "position",
+        "length",
+        "properties"
       ],
       "additionalProperties": false
     },

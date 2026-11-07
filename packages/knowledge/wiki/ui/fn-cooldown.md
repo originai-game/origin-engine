@@ -32,4 +32,4 @@ fn cooldown {
 }
 ```
 
-<sub>Module `ui` line 1502</sub>
+<sub>Module `ui` line 1510</sub>

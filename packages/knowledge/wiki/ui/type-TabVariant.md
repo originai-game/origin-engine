@@ -23,4 +23,4 @@ enum TabVariant {
 }
 ```
 
-<sub>Module `ui` line 2246</sub>
+<sub>Module `ui` line 2254</sub>

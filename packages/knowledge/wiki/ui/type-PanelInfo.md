@@ -31,4 +31,4 @@ struct PanelInfo {
 }
 ```
 
-<sub>Module `ui` line 7548</sub>
+<sub>Module `ui` line 7556</sub>

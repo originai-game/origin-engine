@@ -25,4 +25,4 @@ enum BadgeKind {
 }
 ```
 
-<sub>Module `ui` line 5380</sub>
+<sub>Module `ui` line 5388</sub>

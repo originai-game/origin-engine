@@ -79,6 +79,201 @@ fn texts(ui: &Ui) -> Vec<(String, f32, f32, [f32; 4], f32, f32)> {
         .collect()
 }
 
+fn attribute(name: &str, position: u32, length: u32) -> TextSpan {
+    TextSpan {
+        name: name.into(),
+        position,
+        length,
+        properties: Default::default(),
+    }
+}
+
+#[test]
+fn unknown_attributes_do_not_split_visible_motion() {
+    let render = |attributes: &[TextSpan]| {
+        let mut ui = rich_ui();
+        for _ in 0..12 {
+            ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+            let r = ui.rich_text_spans(
+                "Line",
+                "Wonderful",
+                attributes,
+                RichTextDesc::default(),
+                |a| {
+                    if a.name == "wave" {
+                        TextSpanStyle {
+                            motion: Some(markup::SpanFx::Wave),
+                            ..Default::default()
+                        }
+                    } else {
+                        TextSpanStyle::default()
+                    }
+                },
+            );
+            assert_eq!(r.spans, attributes);
+            ui.end();
+        }
+        texts(&ui)
+    };
+    let plain = render(&[attribute("wave", 0, 9)]);
+    let with_metadata = render(&[attribute("wave", 0, 9), attribute("game", 3, 4)]);
+    assert_eq!(
+        with_metadata, plain,
+        "metadata must not restart per-glyph wave phase"
+    );
+}
+
+#[test]
+fn structured_scalars_overlap_and_literal_text_preserve_unknown_metadata() {
+    let mut ui = rich_ui();
+    let text = "Ada: A😀BC [b] \\end";
+    let mut spans = vec![
+        attribute("character", 0, 5),
+        attribute("emphasis", 7, 2),
+        attribute("override", 8, 1),
+        attribute("game-event", 6, 0),
+        attribute("outside", u32::MAX, 2),
+    ];
+    spans[0]
+        .properties
+        .insert("name".into(), TextSpanValue::String("Ada".into()));
+    spans[3]
+        .properties
+        .insert("enabled".into(), TextSpanValue::Bool(true));
+    spans[3]
+        .properties
+        .insert("level".into(), TextSpanValue::Number(2.5));
+    ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+    let r = ui.rich_text_spans("Line", text, &spans, RichTextDesc::default(), |a| {
+        match a.name.as_str() {
+            "character" => TextSpanStyle {
+                color: Some(paint::ColorRef::token("highlight")),
+                ..Default::default()
+            },
+            "emphasis" => TextSpanStyle {
+                bold: Some(true),
+                color: Some(paint::ColorRef::token("danger")),
+                ..Default::default()
+            },
+            "override" => TextSpanStyle {
+                color: Some(paint::ColorRef::token("success")),
+                ..Default::default()
+            },
+            _ => TextSpanStyle::default(),
+        }
+    });
+    ui.end();
+    assert_eq!(
+        r.spans, spans,
+        "including the invalid range and the zero-length game marker"
+    );
+    assert!(ui.frame().elements.iter().any(|e| e.text == text));
+    let drawn = texts(&ui);
+    let b = drawn
+        .iter()
+        .find(|v| v.0 == "B")
+        .expect("scalar 7 is B, not the emoji or C");
+    let c = drawn.iter().find(|v| v.0 == "C").expect("scalar 8 is C");
+    assert!(near(b.3, ui.theme().palette.danger));
+    assert!(near(c.3, ui.theme().palette.success));
+    assert!(
+        b.5 > 0.0 && c.5 > 0.0,
+        "later colour must not clear earlier bold"
+    );
+    assert!(
+        drawn.iter().any(|v| v.0.contains("[b]")),
+        "brackets are never markup"
+    );
+    assert!(
+        drawn.iter().any(|v| v.0.contains("\\end")),
+        "escapes are never parsed again"
+    );
+    assert_eq!(ui.frame().warnings.len(), 1);
+    assert!(ui.frame().warnings[0].contains("outside"));
+    assert_eq!(
+        serde_json::from_str::<Vec<TextSpan>>(&serde_json::to_string(&spans).unwrap()).unwrap(),
+        spans
+    );
+    for invalid in ["null", "[]", "{}"] {
+        let payload =
+            format!(r#"{{"name":"game","position":0,"length":0,"properties":{{"x":{invalid}}}}}"#);
+        assert!(serde_json::from_str::<TextSpan>(&payload).is_err());
+    }
+}
+
+#[test]
+fn structured_wrap_motion_restore_and_style_switch_use_existing_paragraph() {
+    let mut ui = rich_ui();
+    let spans = [attribute("emphasis", 0, 27), attribute("motion", 6, 11)];
+    let draw = |ui: &mut Ui, motion| {
+        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+        ui.rich_text_spans(
+            "Line",
+            "Alpha Bravo Delta Echo Foxtrot",
+            &spans,
+            RichTextDesc {
+                width: Size::Fixed(130.0),
+                ..Default::default()
+            },
+            |a| {
+                if a.name == "emphasis" {
+                    TextSpanStyle {
+                        color: Some(paint::ColorRef::token("danger")),
+                        ..Default::default()
+                    }
+                } else {
+                    TextSpanStyle {
+                        motion: Some(motion),
+                        ..Default::default()
+                    }
+                }
+            },
+        );
+        ui.end();
+    };
+    for fx in [
+        markup::SpanFx::Wave,
+        markup::SpanFx::Shake,
+        markup::SpanFx::Pulse,
+    ] {
+        for _ in 0..12 {
+            draw(&mut ui, fx);
+        }
+        let saved = ui.save_state();
+        draw(&mut ui, fx);
+        let next = texts(&ui);
+        for _ in 0..9 {
+            draw(&mut ui, fx);
+        }
+        assert_ne!(texts(&ui), next, "motion changes by the tick: {fx:?}");
+        ui.restore_state(&saved).unwrap();
+        draw(&mut ui, fx);
+        assert_eq!(
+            texts(&ui),
+            next,
+            "restore mid-motion replays exactly: {fx:?}"
+        );
+    }
+    let mut theme = *ui.theme();
+    theme.reduced_motion = true;
+    theme.palette.danger = Srgba::rgb(23, 211, 187);
+    ui.set_theme(theme);
+    draw(&mut ui, markup::SpanFx::Wave);
+    let still = texts(&ui);
+    for _ in 0..8 {
+        draw(&mut ui, markup::SpanFx::Wave);
+    }
+    assert_eq!(texts(&ui), still, "reduced motion is stationary");
+    assert!(
+        still.iter().any(|v| near(v.3, theme.palette.danger)),
+        "active-style token changes the ink"
+    );
+    assert!(
+        still.iter().map(|v| v.2).fold(f32::NEG_INFINITY, f32::max) > still[0].2 + 10.0,
+        "paragraph wraps"
+    );
+}
+
 #[test]
 fn italic_underline_strike_and_outline_keep_their_span() {
     // Each of the new styles reaches only its own span: a slant and an

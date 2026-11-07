@@ -79,6 +79,7 @@ module ui {
 | [`og.ui.scroll`](ui/fn-scroll.md) | function | `(id: string, desc: ScrollDesc, build: UiBuild): void` | A vertical scroll container built by `build`: openScroll(id, desc), build(), close(). |
 | [`RichTextDesc`](ui/type-RichTextDesc.md) | desc struct |  | How a rich text paragraph draws: its defaults, which its markup's spans override. |
 | [`RichTextResult`](ui/type-RichTextResult.md) | struct |  | What a rich text's links did this tick. |
+| [`TextSpan`](ui/type-TextSpan.md) | struct |  | A named attribute range in plain text for a store and the Svelte text spans binding. |
 | [`og.ui.richText`](ui/fn-richText.md) | function | `(id: string, markup: string, desc?: RichTextDesc): RichTextResult` | A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a … |
 | [`og.ui.label`](ui/fn-label.md) | function | `(id: string, text: string, desc?: LabelDesc): void` | MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. |
 | [`og.ui.button`](ui/fn-button.md) | function | `(id: string, text: string, desc?: ButtonDesc): Response` | A button with a label; `clicked` is a press and a release inside it. |
@@ -736,7 +737,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 6893</sub>
+<sub>Module `ui` line 6901</sub>
 
 ```ogt
 column UiMaterial {
@@ -747,4 +748,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 6900</sub>
+<sub>Module `ui` line 6908</sub>
