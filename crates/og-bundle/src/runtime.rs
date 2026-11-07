@@ -821,6 +821,17 @@ impl Bundle {
         })
     }
 
+    /// The bytes of a Rive artboard blob (decode them with og-ui's
+    /// `rive::decode`, which checks them).
+    pub fn rive_artboard(&self, id: &str, bytes: &[u8]) -> Result<Vec<u8>, LoadError> {
+        let blob = self.blob::<format::RiveArtboard>(id, bytes)?;
+        let meta = one::<format::RiveArtboardMeta>(&blob)?;
+        let raw = blob.raw("artboard")?;
+        raw.get(..meta.bytes as usize)
+            .map(<[u8]>::to_vec)
+            .ok_or_else(|| invalid(&blob, "the Rive artboard is cut short"))
+    }
+
     /// The validated text of a UI style blob (parse it with og-ui's
     /// `parse_style` and load the assets it names from the bundle).
     pub fn style_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {

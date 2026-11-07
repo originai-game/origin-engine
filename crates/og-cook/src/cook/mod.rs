@@ -46,6 +46,7 @@ pub mod prefab;
 pub mod probes;
 mod psd;
 mod rig2d;
+pub mod riv;
 mod scene;
 pub mod sfx;
 mod shader_check;
@@ -128,6 +129,7 @@ enum Kind {
     Post,
     UiMaterial,
     Vector,
+    Rive,
     Behaviour,
     Dialogue,
     Quest,
@@ -169,6 +171,7 @@ impl Kind {
             Kind::Post => "post",
             Kind::UiMaterial => "ui-material",
             Kind::Vector => "vector",
+            Kind::Rive => "rive",
             Kind::Behaviour => "behaviour",
             Kind::Dialogue => "dialogue",
             Kind::Quest => "quest",
@@ -306,6 +309,8 @@ enum Work<'a> {
     Post(&'a Source),
     UiMaterial(&'a Source),
     Vector(&'a Source),
+    /// A `.riv`'s artboard, by name.
+    Rive(&'a Source, String),
     Behaviour(&'a Source),
     Dialogue(&'a Source),
     Quest(&'a Source),
@@ -1328,6 +1333,20 @@ pub fn cook_project_with_texture_cache(
                 let st = stamp(&[b"vector", &hash, svg.as_bytes()]);
                 outs.push((s.rel.clone(), format::Vector::NAME, st, Work::Vector(s)));
             }
+            Kind::Rive => match riv::plan(s) {
+                Ok(names) => {
+                    for name in names {
+                        let st = stamp(&[b"rive", &hash, name.as_bytes()]);
+                        outs.push((
+                            format!("{}#{name}", s.rel),
+                            format::RiveArtboard::NAME,
+                            st,
+                            Work::Rive(s, name),
+                        ));
+                    }
+                }
+                Err(e) => early_errors.push((s.rel.clone(), "rive", e)),
+            },
             Kind::Style => {
                 let text = String::from_utf8_lossy(&s.bytes);
                 let refs: Vec<String> = og_ui::parse_style(&text)

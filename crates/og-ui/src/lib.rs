@@ -47,6 +47,7 @@ pub mod paint_entry;
 mod probe;
 mod recognize;
 mod rich;
+pub mod rive;
 mod scroll;
 pub use scroll::ScrollState;
 pub mod shape;

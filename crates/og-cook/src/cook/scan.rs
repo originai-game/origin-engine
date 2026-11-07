@@ -117,6 +117,7 @@ pub(super) fn scan_with(
             "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" => Kind::Texture,
             e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
+            "riv" => Kind::Rive,
             "cube" => Kind::Lut,
             "tmj" | "ldtk" => Kind::Tilemap,
             "hex" | "gpl" => Kind::Palette,

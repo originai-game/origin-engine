@@ -454,6 +454,25 @@ impl BlobKind for Vector {
     }
 }
 
+row!(
+    /// The root of a Rive artboard blob (`docs/ui.md` §11.2): the bytes of
+    /// the converted artboard in `artboard` (og-ui's `rive::encode`).
+    RiveArtboardMeta, "og.RiveArtboard", 1 {
+        bytes: u32,
+    }
+);
+
+/// A Rive artboard converted at cook time (an artboard of a `.riv`, id
+/// `<file>.riv#<artboard>`): `meta` and the raw `artboard` bytes, which
+/// og-ui's `rive::decode` reads and checks.
+pub struct RiveArtboard;
+impl BlobKind for RiveArtboard {
+    const NAME: &'static str = "og.RiveArtboard";
+    fn schemas() -> Vec<Schema> {
+        vec![RiveArtboardMeta::schema()]
+    }
+}
+
 /// The effect material blob: `text` holds the effect file the cook
 /// validated (`crate::effect`), parsed again at load with the bundle's
 /// textures and shaders.

@@ -758,6 +758,20 @@ of transform, opacity and colour, nested artboards; (2) state machines as
 og-ui state groups, and view models as data binding; (3) path morphing and
 bones.
 
+**Status.** Converted today (og-cook `riv`, og-ui `rive`): artboards and
+their backgrounds, groups, shapes of points paths, rectangles, ellipses,
+triangles, polygons and stars, fills (both rules) and centred strokes of
+solid colours and linear and radial gradients, blend modes normal,
+multiply, screen, overlay, soft light and colour dodge, linear animations
+(hold, linear, cubic ease and cubic value keys of transforms, opacity,
+colours and the paths' numbers; one-shot, loop, ping-pong, work areas),
+nested artboards with their simple animations, and a state machine whose
+entry plays one animation. Each artboard cooks to an `og.RiveArtboard`
+blob; `og_ui::rive::Player` advances it by the tick's step, draws it as UI
+shapes and lists its drawn objects as elements (`Player::elements`). Images,
+text, inner and outer strokes, gradient transforms and every other state
+machine are still cook errors.
+
 ## 12. Styles
 
 ### 12.1 What a style is

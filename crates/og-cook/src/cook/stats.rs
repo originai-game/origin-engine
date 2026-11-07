@@ -830,6 +830,18 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
                 }),
             )
         }
+        "og.RiveArtboard" => {
+            let a = og_ui::rive::decode(&bundle.rive_artboard(id, &bytes()?).map_err(e)?)?;
+            (
+                "rive",
+                json!({
+                    "nodes": a.nodes.len(),
+                    "animations": a.animations.len(),
+                    "nested": a.nested.len(),
+                    "size": [a.size.x, a.size.y],
+                }),
+            )
+        }
         "og.ParticleEmitter" => {
             let text = bundle.emitter_text(id, &bytes()?).map_err(e)?;
             let p = crate::fx::parse_emitter(&text, &mut |_| Ok(None))?;

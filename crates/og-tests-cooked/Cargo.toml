@@ -16,6 +16,8 @@ og-tests = { path = "../og-tests" }
 og-render = { path = "../og-render" }
 og-cook = { path = "../og-cook" }
 og-anim = { path = "../og-anim" }
+# ui-rive plays its converted artboards with og-ui's Rive player.
+og-ui = { path = "../og-ui" }
 glam = { workspace = true }
 # gltf_scenes writes its glTFs' JSON.
 serde_json = "1"
@@ -24,7 +26,6 @@ serde_json = "1"
 # pack_contrast.rs) and og-ui's test support they include by path.
 [dev-dependencies]
 pollster = { workspace = true }
-og-ui = { path = "../og-ui" }
 # tests/support/text_scenes.rs reads the cooked fonts with og-bundle's loaders
 # (og-tests-web includes it by path, without og-cook).
 og-bundle = { path = "../og-bundle" }

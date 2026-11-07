@@ -558,6 +558,7 @@ pub(super) fn run(
         }
         Work::Icons(s) => icons::cook(s, p.stamp),
         Work::Vector(s) => vector::cook(s, p.stamp),
+        Work::Rive(s, name) => riv::cook(s, name, p.stamp),
         Work::UiMaterial(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a UI material is text (UTF-8)".into()))?;

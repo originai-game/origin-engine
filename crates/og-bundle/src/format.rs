@@ -120,6 +120,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Post,
         UiMaterial,
         Vector,
+        RiveArtboard,
         Emitter,
         Effect,
         Vfx,

@@ -58,6 +58,8 @@ mod raycast_bvh;
 mod retarget;
 #[path = "../rig2d.rs"]
 mod rig2d;
+#[path = "../rive.rs"]
+mod rive;
 #[path = "../scene_bool.rs"]
 mod scene_bool;
 #[path = "../scene_list.rs"]

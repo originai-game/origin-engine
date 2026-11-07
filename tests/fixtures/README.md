@@ -19,6 +19,7 @@ gate's evidence directory and runs its smoke test. That check includes
 | [vehicle-terrain](vehicle-terrain/README.md) | og.Vehicle on terrain, HUD, eased camera, particles, decals, engine audio | its `tests/drive.og.ts`; `scripts/check.sh web-reference` | og-physics, og-render, og-ui, og-audio, og-cook, og-runtime, packages/engine, templates/styles/scifi | 4.4–5.2 s |
 | [vfx-hit](vfx-hit/README.md) | composed effects (type vfx): a hit and a heal, their events, one frame | its `tests/hit.og.ts` | og-runtime, og-render, og-cook, og-bundle, packages/engine | 0.9 s |
 | [lockstep-room](lockstep-room/README.md) | two seats submit distinct inputs and share the same world | its `tests/inputs.og.ts`; packages/engine rooms and web-rooms tests | og-net, og-runtime, og-cli, packages/engine | 1.48 s |
+| [rive](rive/README.md) | Rive import: artboards, paths, paints, keyframes, nested artboards, the import settings | og-cook `riv::tests`, `tests/rive.rs`; og-tests-cooked `ui_rive_*` | og-cook, og-ui, og-render | 0.2 s |
 | [pixel-font](pixel-font/README.md) | pixel-font grid diagnostics (asset-only fixture) | og-cook `a_pixel_font_cooks_on_its_grid` | og-cook, templates/styles/cjk | 0.25 s |
 | [cook-assets](cook-assets/README.md) | model, texture and audio loading | cook/runtime loader tests; engine animation/Basis tests | og-cook, og-runtime | owning tests |
 | [ai-nav](ai-nav/README.md) | authored navmesh and guard machine | og-ai tests | og-ai | owning tests |

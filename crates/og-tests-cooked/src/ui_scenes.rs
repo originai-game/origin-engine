@@ -2,6 +2,12 @@
 //!
 //! - `ui-vector` (native: cooked by og-cook): an SVG emblem tessellated and
 //!   drawn at three sizes and turned.
+//! - `ui-rive` (native, `docs/ui.md` §11.2): rive-runtime's test artboards
+//!   (`tests/fixtures/rive`) converted by og-cook and drawn by og-ui's Rive
+//!   player: a circle on its artboard's ground; a nested artboard at its
+//!   container's opacity; two rectangles keyed by a cubic value
+//!   interpolator at four ticks of their animation; a second artboard of
+//!   a file. Each in a 280 px box, fitted by contain.
 
 use og_render::{Overlay, RenderScene, UiShape};
 use og_tests::ui_scenes::overlay_scene;
@@ -64,4 +70,73 @@ pub fn vector() -> Result<RenderScene, String> {
         Some(e) => Err(e),
         None => Ok(scene),
     }
+}
+
+/// The `.riv` fixtures' directory.
+#[cfg(not(target_arch = "wasm32"))]
+fn rive_fixture(name: &str) -> Result<Vec<u8>, String> {
+    let p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/rive/assets")
+        .join(name);
+    std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display()))
+}
+
+/// `ui-rive`. See the module documentation.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn rive() -> Result<RenderScene, String> {
+    use og_ui::rive::Player;
+    use std::sync::Arc;
+    let load = |file: &str, artboard: &str| -> Result<Arc<og_ui::rive::Artboard>, String> {
+        Ok(Arc::new(og_cook::cook::riv::artboard(
+            &rive_fixture(file)?,
+            artboard,
+        )?))
+    };
+    // (artboard, seconds played, box)
+    let mut draws: Vec<(Player, [f32; 4])> = Vec::new();
+    let cell = |col: usize, row: usize| {
+        [
+            40.0 + col as f32 * 300.0,
+            60.0 + row as f32 * 320.0,
+            280.0,
+            280.0,
+        ]
+    };
+    draws.push((
+        Player::new(load("shapetest.riv", "New Artboard")?, None),
+        cell(0, 0),
+    ));
+    draws.push((
+        Player::new(
+            load("nested_artboard_opacity.riv", "Parent Artboard")?,
+            None,
+        ),
+        cell(1, 0),
+    ));
+    draws.push((
+        Player::new(load("two_artboards.riv", "One")?, None),
+        cell(2, 0),
+    ));
+    let cubic = load("cubic_value_test.riv", "New Artboard")?;
+    for (k, frames) in [0.0f32, 9.0, 19.0, 40.0].into_iter().enumerate() {
+        let mut p = Player::new(cubic.clone(), None);
+        // The UI tick's fixed step, 1/60 s.
+        for _ in 0..frames as u32 {
+            p.advance(1.0 / 60.0);
+        }
+        draws.push((p, cell(k, 1)));
+    }
+    Ok(overlay_scene(|_, o| {
+        for (p, rect) in &draws {
+            o.ui.shapes
+                .push(UiShape::rect(*rect, 12.0, [0.03, 0.035, 0.045, 1.0]));
+            // The artboard cuts its content to its box.
+            o.clips.push(*rect);
+            let clip = (o.clips.len() - 1) as u32;
+            for mut s in p.draw(*rect, 1.0) {
+                s.clip = Some(clip);
+                o.ui.shapes.push(s);
+            }
+        }
+    }))
 }

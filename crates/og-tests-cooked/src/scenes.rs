@@ -28,6 +28,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "baked-batches",
     "terrain-generated",
     "ui-vector",
+    "ui-rive",
     "gltf-uv-transform",
     "gltf-punctual-lights",
     "gltf-instancing",
@@ -104,6 +105,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "terrain-generated" => |g, _| {
             g.scene = crate::terrain_scenes::generated_scene()?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "ui-rive" => |g, _| {
+            g.scene = crate::ui_scenes::rive()?;
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]
