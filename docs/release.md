@@ -334,14 +334,14 @@ dependency; sccache serves the rest. The toolchain is the pinned one
 
 - **Mac** (macrunner): the worktree `/Volumes/app/origin-engine-release`
   (branch `release`, tracking origin/main; `git pull` it to the release
-  commit), its own `target/`, and the shared sccache in
-  `/Volumes/app/.sccache`. `pack` takes only that target's lock
+  commit), its own `target/`, and the shared sccache (`docs/ci.md`
+  §The shared compiler cache). `pack` takes only that target's lock
   (`scripts/lock.sh`), so it never waits on a gate in another checkout;
   run it under `nice -n 10`.
 - **Windows** (studio-win): `E:\src\origin-engine` on a Dev Drive (ReFS,
   trusted, Defender performance mode), `D:\DevDrive\dev.vhdx` attached at
-  boot by the SYSTEM task "Attach Dev Drive E". sccache with
-  `SCCACHE_DIR=E:\sccache`. Defender excludes the checkout, `.cargo`,
+  boot by the SYSTEM task "Attach Dev Drive E". The shared sccache, as on
+  the Mac. Defender excludes the checkout, `.cargo`,
   `.rustup`, the sccache and bun caches, and cargo, rustc, link and
   sccache. Git Bash, PowerShell 7, Rust (MSVC) and bun are on the PATH of
   the `win` account the Amp runner runs as; restart the runner after

@@ -292,6 +292,29 @@ installation or authentication. Validate changes with `shellcheck -s bash
 .agents/{setup,resume,environment}`, `time .agents/setup` twice, and the
 tools from a new `bash -lc` shell.
 
+## The shared compiler cache
+
+sccache keeps one cache for orbs, macrunner and studio-win in the OVH
+bucket `origin-engine-sccache` (project originai, region BHS, endpoint
+`https://s3.bhs.io.cloud.ovh.net`). Its S3 user, `origin-engine-sccache-s3`
+(id 947872), reads and writes that bucket only, and objects expire after 30
+days. A cache key includes the compiler binary, so a host reuses what
+another host of its own kind built (another orb, lane or new machine), not
+another platform's objects.
+
+- **Orbs:** `.agents/environment` fetches the key with the OVH API secrets
+  into `/dev/shm` (never the snapshot) and exports the `SCCACHE_*` and
+  `AWS_*` variables. Without those secrets sccache keeps its local disk.
+- **macrunner and studio-win:** sccache's config file names the bucket
+  (`~/Library/Application Support/Mozilla.sccache/config`,
+  `%APPDATA%\Mozilla\sccache\config\config`), so every server uses it,
+  whoever starts it; the key is the `[default]` profile of
+  `~/.aws/credentials`. `sccache --show-stats` names the cache location.
+  After changing either, stop the server only while no `rustc` runs.
+
+Rotate the key from the OVH API (`/cloud/project/<id>/user/947872/s3Credentials`)
+and rewrite the runners' credentials files; orbs fetch the new one.
+
 ## When to run what
 
 - **While writing code**: `cargo check -p <crate>` and that crate's own
