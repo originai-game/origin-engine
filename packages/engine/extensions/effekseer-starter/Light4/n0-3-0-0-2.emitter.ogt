@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 0.3.0.0.2 "上半分glow"
+maxParticles 6
+shape box 5 1 0.001
+spread 0
+rate 0
+burst 0 1 6 0.1167
+duration 0.6
+looping false
+lifetime 0.4167 0.4167
+speed 22.9412 30
+speedOverLife 0 1.0207 0.1719 0.8629 0.3438 1.172 0.5156 1.9573 0.6719 3.0845 0.6875 0.0631 0.7031 0 1 0
+size 0.75 0.75
+colorOverLife {
+  key 0 0 0.2195 0 1
+  key 0.6 0 0.2195 0 1
+  key 1 0 0.2195 0 0
+}
+texture "vfx/effekseer-starter/textures/hisigata0.png"
+blend additive
+effect "vfx/effekseer-starter/Light4/n0-3-0-0-2.effect.ogt"

@@ -1,0 +1,72 @@
+{
+  "name": "Ashen Poof",
+  "prompt": "smoke poof",
+  "w": 48,
+  "h": 48,
+  "frames": 14,
+  "fps": 15,
+  "loop": false,
+  "seed": 3,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "smoke",
+    "alt": "dust",
+    "smoke": "smoke",
+    "spark": "white"
+  },
+  "place": "target",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "puffs",
+      "ramp": "$smoke",
+      "count": 8,
+      "spread": 0.3,
+      "rise": 0.22,
+      "r0": 0.2,
+      "r1": 0.44,
+      "life": [
+        0.6,
+        1
+      ],
+      "emit": 0.1,
+      "gain": 0.8,
+      "decay": 0.45,
+      "flat": 0.8
+    },
+    {
+      "type": "ring",
+      "ramp": "$smoke",
+      "r0": 0.2,
+      "r1": 0.9,
+      "th": 0.1,
+      "t1": 0.5,
+      "gain": 0.7
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "count": 4,
+      "speed": [
+        0.8,
+        1.4
+      ],
+      "drag": 2,
+      "life": [
+        0.35,
+        0.6
+      ],
+      "shape": "star",
+      "size": 2,
+      "t0": 0.1
+    }
+  ]
+}

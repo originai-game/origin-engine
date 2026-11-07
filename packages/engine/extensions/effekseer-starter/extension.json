@@ -1,0 +1,45 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "effekseer-starter",
+  "version": "1.0.0",
+  "description": "A starter set of Effekseer sample effects from nine contributors (fire, explosions, hits, slashes, heals, buffs, level-ups, projectiles, impacts, portals, weather, ambient), converted to type vfx",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "ambient",
+      "buff",
+      "explosion",
+      "fire",
+      "heal",
+      "hit-spark",
+      "level-up",
+      "magic-impact",
+      "magic-projectile",
+      "portal",
+      "slash",
+      "weather"
+    ],
+    "element": [
+      "dark",
+      "earth",
+      "fire",
+      "holy",
+      "ice",
+      "lightning",
+      "nature",
+      "water"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "anime",
+    "combat",
+    "effekseer",
+    "magic",
+    "particles",
+    "starter"
+  ]
+}

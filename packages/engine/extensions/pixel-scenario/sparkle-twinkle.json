@@ -1,0 +1,50 @@
+{
+  "name": "Sacred Sparkle",
+  "prompt": "sparkle twinkle",
+  "w": 32,
+  "h": 32,
+  "frames": 12,
+  "fps": 12,
+  "loop": true,
+  "seed": 2,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "holy",
+    "alt": "gold",
+    "smoke": "white",
+    "spark": "holy"
+  },
+  "place": "target",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "ambient",
+      "count": 6,
+      "spanX": 0.8,
+      "spanY": 0.8,
+      "shape": "star",
+      "size": [
+        3,
+        2
+      ],
+      "life": [
+        0.5,
+        1
+      ],
+      "twinkle": 1,
+      "heat": [
+        1.05,
+        0.6
+      ]
+    }
+  ]
+}

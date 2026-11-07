@@ -1,0 +1,85 @@
+{
+  "name": "Astral Portal",
+  "prompt": "dimensional portal",
+  "w": 64,
+  "h": 64,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 2,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "arcane",
+    "alt": "plasma",
+    "smoke": "dark",
+    "spark": "arcane"
+  },
+  "place": "between",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.75
+  ],
+  "layers": [
+    {
+      "type": "vortex",
+      "ramp": "$main",
+      "r": 0.6,
+      "squash": 1.55,
+      "y": 0,
+      "rIn": 0.28,
+      "arms": 2,
+      "twist": 1.8,
+      "spin": 1,
+      "core": "dark"
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "implode",
+      "count": 12,
+      "implodeR": 0.85,
+      "squash": 1.5,
+      "y": 0,
+      "life": [
+        0.5,
+        1
+      ],
+      "shape": "dot",
+      "heat": [
+        0.6,
+        1.05
+      ],
+      "swirl": 1.2
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "rise",
+      "count": 6,
+      "y": 0.6,
+      "area": 0.6,
+      "areaY": 0.2,
+      "speed": [
+        0.5,
+        1
+      ],
+      "life": [
+        0.4,
+        0.8
+      ],
+      "shape": "star",
+      "size": [
+        2,
+        1
+      ],
+      "heat": [
+        1,
+        0.5
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.5833
+emitter "vfx/effekseer-starter/Sword7/n0.emitter.ogt" {
+  at 0
+  offset 15 0 0
+  rotate 0 0 90
+}
+emitter "vfx/effekseer-starter/Sword7/n1.emitter.ogt" {
+  at 0.0833
+}
+emitter "vfx/effekseer-starter/Sword7/n2.emitter.ogt" {
+  at 0.0833
+}
+mesh ring {
+  at 0.0833
+  rotate -75 0 0
+  inner 0.9801
+  band 0.55
+  colors 1 1 1 0 0.142 0.4368 0.8513 0.1961 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-starter/Sword7/n3-0.effect.ogt"
+  scale curve 0 2.25 0.0781 3.0409 0.1719 3.7854 0.2656 4.3348 0.375 4.7686 0.4688 4.9969 0.5781 5.1374 1 5.25
+  color 50 50 50 1
+  blend additive
+}
+# effekseer: node 0 "斬撃": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0 "斬撃": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "クロス１": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1 "クロス１": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2 "クロス１": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2 "クロス１": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0 "〆リング": ring 50 instances: the first 4 drawn
+# effekseer: node 3.0 "〆リング": a ring whose thickness changes over its life: its middle thickness kept

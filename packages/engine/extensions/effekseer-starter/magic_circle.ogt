@@ -1,0 +1,110 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 16.6833
+mesh ring {
+  at 0
+  inner 0.9
+  band 0.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 16.6667
+  effect "vfx/effekseer-starter/magic_circle/n0.effect.ogt"
+  scale 1
+  spin 0 0 15
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  offset 0 0 -0.1
+  inner 0.6667
+  band 0.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 16.6667
+  effect "vfx/effekseer-starter/magic_circle/n1.effect.ogt"
+  scale 0.75
+  spin 0 0 -15
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.8889
+  band 0.9
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 16.6667
+  effect "vfx/effekseer-starter/magic_circle/n2.effect.ogt"
+  scale 0.9
+  spin 0 0 180
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 0 -0.25
+  inner 0.75
+  band 0.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 16.6667
+  effect "vfx/effekseer-starter/magic_circle/n3.effect.ogt"
+  scale 0.8
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0167
+  offset 0 0 -0.25
+  inner 0.75
+  band 0.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 16.6667
+  effect "vfx/effekseer-starter/magic_circle/n3.effect.ogt"
+  scale 0.8
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  offset 0 0 -0.25
+  inner 0.7949
+  band 0.5
+  colors 0 0 0 1 0 0 0 1 0 0 0 1
+  life 16.6667
+  effect "vfx/effekseer-starter/magic_circle/n4.effect.ogt"
+  scale 0.78
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0167
+  offset 0 0 -0.25
+  inner 0.7949
+  band 0.5
+  colors 0 0 0 1 0 0 0 1 0 0 0 1
+  life 16.6667
+  effect "vfx/effekseer-starter/magic_circle/n4.effect.ogt"
+  scale 0.78
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-starter/magic_circle/n5.emitter.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 16.6667
+  effect "vfx/effekseer-starter/magic_circle/n6-0-0.effect.ogt"
+  scale 0.6
+  spin 0 0 15
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-starter/magic_circle/n6-0-1.emitter.ogt" {
+  at 0
+  offset 0 0 0.1
+}
+# effekseer: node 6.0.0 "Circle Render": ring 16 instances: the first 4 drawn

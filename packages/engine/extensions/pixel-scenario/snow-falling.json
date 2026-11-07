@@ -1,0 +1,49 @@
+{
+  "name": "Glacial Ambient",
+  "prompt": "snow falling",
+  "w": 128,
+  "h": 96,
+  "frames": 24,
+  "fps": 12,
+  "loop": true,
+  "seed": 1,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "ice",
+    "alt": "frost",
+    "smoke": "frost",
+    "spark": "frost"
+  },
+  "place": "screen",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "particles",
+      "ramp": "frost",
+      "mode": "fall",
+      "count": 44,
+      "shape": "dot",
+      "size": [
+        2,
+        1
+      ],
+      "driftX": -0.15,
+      "wiggle": 0.08,
+      "life": [
+        0.85,
+        1
+      ],
+      "heat": [
+        1,
+        0.85
+      ]
+    }
+  ]
+}

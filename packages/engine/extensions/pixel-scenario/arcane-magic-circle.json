@@ -1,0 +1,101 @@
+{
+  "name": "Eldritch Magic Circle",
+  "prompt": "arcane magic circle",
+  "w": 96,
+  "h": 48,
+  "frames": 24,
+  "fps": 12,
+  "loop": true,
+  "seed": 3,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "arcane",
+    "alt": "plasma",
+    "smoke": "dark",
+    "spark": "arcane"
+  },
+  "place": "caster-ground",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.6
+  ],
+  "layers": [
+    {
+      "type": "glyph",
+      "ramp": "$main",
+      "y": 0.2,
+      "r": 1.62,
+      "squash": 0.42,
+      "rings": [
+        1,
+        0.84,
+        0.55
+      ],
+      "star": 6,
+      "step": 2,
+      "ticks": 32,
+      "runes": 10,
+      "spin": 1,
+      "fill": 0.14,
+      "dither": 0.8,
+      "glow": 1,
+      "glowFalloff": 0.5
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "rise",
+      "count": 10,
+      "y": 0.2,
+      "area": 1.4,
+      "areaY": 0.3,
+      "speed": [
+        0.5,
+        1.1
+      ],
+      "life": [
+        0.5,
+        0.9
+      ],
+      "shape": "dot",
+      "heat": [
+        1,
+        0.4
+      ]
+    },
+    {
+      "type": "particles",
+      "mode": "burst",
+      "ramp": "$spark",
+      "count": 4,
+      "x": 0,
+      "y": -0.3,
+      "speed": [
+        0.6,
+        1.4
+      ],
+      "drag": 2,
+      "life": [
+        0.4,
+        0.8
+      ],
+      "shape": "star",
+      "size": [
+        2,
+        1
+      ],
+      "heat": [
+        1.05,
+        0.6
+      ],
+      "twinkle": 2,
+      "emit": 0,
+      "t0": 0.05,
+      "role": "accent"
+    }
+  ]
+}

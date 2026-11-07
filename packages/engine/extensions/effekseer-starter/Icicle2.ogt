@@ -1,0 +1,52 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.1667
+mesh "vfx/effekseer-starter/Icicle2/model-icicle3.glb" {
+  at 0
+  offset 0.7 0 0.5
+  rotate 0 30 0
+  life 0.1667
+  effect "vfx/effekseer-starter/Icicle2/n0-0-0.effect.ogt"
+  scale 0.3333
+  color 1 1 1 0.7529
+  blend alpha
+}
+mesh "vfx/effekseer-starter/Icicle2/model-icicle3.glb" {
+  at 0
+  offset 0.35 -0.125 -0.5
+  life 0.1667
+  effect "vfx/effekseer-starter/Icicle2/n1-0-0.effect.ogt"
+  scale 0.35
+  color 1 1 1 0.7529
+  blend alpha
+}
+mesh "vfx/effekseer-starter/Icicle2/model-icicle1.glb" {
+  at 0
+  offset -0.35 0.25 0.5
+  rotate 0 30 0
+  life 0.1667
+  effect "vfx/effekseer-starter/Icicle2/n2-0-0.effect.ogt"
+  scale 0.2917
+  color 1 1 1 0.7529
+  blend alpha
+}
+mesh "vfx/effekseer-starter/Icicle2/model-icicle3.glb" {
+  at 0
+  offset -0.75 -0.125 0
+  life 0.1667
+  effect "vfx/effekseer-starter/Icicle2/n3-0-0.effect.ogt"
+  scale 0.35
+  color 1 1 1 0.7529
+  blend alpha
+}
+mesh "vfx/effekseer-starter/Icicle2/model-icicle3.glb" {
+  at 0
+  rotate 0 30 0
+  life 0.1667
+  effect "vfx/effekseer-starter/Icicle2/n4-0-0.effect.ogt"
+  scale 0.3333
+  color 1 1 1 0.7529
+  blend alpha
+}

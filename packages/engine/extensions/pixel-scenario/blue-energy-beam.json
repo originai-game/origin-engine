@@ -1,0 +1,100 @@
+{
+  "name": "Aether Beam",
+  "prompt": "blue energy beam",
+  "w": 176,
+  "h": 48,
+  "frames": 16,
+  "fps": 15,
+  "loop": true,
+  "seed": 2,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "hue:255",
+    "alt": "lightning",
+    "smoke": "smoke",
+    "spark": "hue:255"
+  },
+  "place": "from-caster",
+  "depth": "front",
+  "pivot": [
+    0.0750000000000001,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "beam",
+      "ramp": "$main",
+      "x": -3.1166666666666663,
+      "len": 6.6,
+      "th": 0.36,
+      "cap": 0.5,
+      "wob": 0.55,
+      "speed": 3,
+      "gain": 1.05
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "x": -2.8666666666666663,
+      "y": 0,
+      "area": 0.15,
+      "dir": 0,
+      "spread": 16,
+      "speed": [
+        5,
+        8
+      ],
+      "drag": 0,
+      "life": [
+        0.3,
+        0.6
+      ],
+      "count": 18,
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.6
+      ],
+      "emit": 0
+    },
+    {
+      "type": "orb",
+      "ramp": "$main",
+      "x": -3.1166666666666663,
+      "r": 0.42,
+      "pulse": 0.12,
+      "spin": 1
+    },
+    {
+      "type": "particles",
+      "mode": "burst",
+      "ramp": "$spark",
+      "count": 7,
+      "x": 0.4,
+      "y": 0,
+      "speed": [
+        1.6,
+        2.8
+      ],
+      "drag": 2.4,
+      "life": [
+        0.3,
+        0.6
+      ],
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.5
+      ],
+      "emit": 0.3,
+      "t0": 0,
+      "role": "accent"
+    }
+  ]
+}

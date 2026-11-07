@@ -1,0 +1,448 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.0917
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 0 5.55 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-1.emitter.ogt" {
+  at 0
+  offset 0 4.8 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-2.emitter.ogt" {
+  at 0
+  offset 0 5.675 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-3.emitter.ogt" {
+  at 0
+  offset 0 4.55 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-4-0.emitter.ogt" {
+  at 0
+  offset 0 -2.7 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-4-0-0.emitter.ogt" {
+  at 0
+  offset 0 -2.7 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-5.emitter.ogt" {
+  at 0.2833
+  offset 0 5.3 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-6.emitter.ogt" {
+  at 0.2833
+  offset 0 5.3 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-7-0.emitter.ogt" {
+  at 0.25
+  offset 0 -2.7 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-0-0-0-7-0-0.emitter.ogt" {
+  at 0.25
+  offset 0 -2.7 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-0.emitter.ogt" {
+  at 0.0167
+  offset 0 6.45 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-1.emitter.ogt" {
+  at 0.0167
+  offset 0 5.7 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-2.emitter.ogt" {
+  at 0.0167
+  offset 0 6.575 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-3.emitter.ogt" {
+  at 0.0167
+  offset 0 5.45 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-4-0.emitter.ogt" {
+  at 0.0167
+  offset 0 -1.8 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-4-0-0.emitter.ogt" {
+  at 0.0167
+  offset 0 -1.8 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-5.emitter.ogt" {
+  at 0.3
+  offset 0 5.7 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-6.emitter.ogt" {
+  at 0.3
+  offset 0 5.7 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-7-0.emitter.ogt" {
+  at 0.2667
+  offset 0 -1.8 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-1-0-0-7-0-0.emitter.ogt" {
+  at 0.2667
+  offset 0 -1.8 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-0.emitter.ogt" {
+  at 0.0333
+  offset 0 7.35 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-1.emitter.ogt" {
+  at 0.0333
+  offset 0 6.6 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-2.emitter.ogt" {
+  at 0.0333
+  offset 0 7.475 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-3.emitter.ogt" {
+  at 0.0333
+  offset 0 6.35 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-4-0.emitter.ogt" {
+  at 0.0333
+  offset 0 -0.9 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-4-0-0.emitter.ogt" {
+  at 0.0333
+  offset 0 -0.9 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-5.emitter.ogt" {
+  at 0.3167
+  offset 0 6.6 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-6.emitter.ogt" {
+  at 0.3167
+  offset 0 6.6 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-7-0.emitter.ogt" {
+  at 0.2833
+  offset 0 -0.9 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-2-0-0-7-0-0.emitter.ogt" {
+  at 0.2833
+  offset 0 -0.9 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-0.emitter.ogt" {
+  at 0.05
+  offset 0 8.25 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-1.emitter.ogt" {
+  at 0.05
+  offset 0 7.5 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-2.emitter.ogt" {
+  at 0.05
+  offset 0 8.375 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-3.emitter.ogt" {
+  at 0.05
+  offset 0 7.25 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-4-0.emitter.ogt" {
+  at 0.05
+  offset 0 0 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-4-0-0.emitter.ogt" {
+  at 0.05
+  offset 0 0 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-5.emitter.ogt" {
+  at 0.3333
+  offset 0 7.5 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-6.emitter.ogt" {
+  at 0.3333
+  offset 0 7.5 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-7-0.emitter.ogt" {
+  at 0.3
+  offset 0 0 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-3-0-0-7-0-0.emitter.ogt" {
+  at 0.3
+  offset 0 0 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-0.emitter.ogt" {
+  at 0.0667
+  offset 0 9.15 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-1.emitter.ogt" {
+  at 0.0667
+  offset 0 8.4 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-2.emitter.ogt" {
+  at 0.0667
+  offset 0 9.275 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-3.emitter.ogt" {
+  at 0.0667
+  offset 0 8.15 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-4-0.emitter.ogt" {
+  at 0.0667
+  offset 0 0.9 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-4-0-0.emitter.ogt" {
+  at 0.0667
+  offset 0 0.9 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-5.emitter.ogt" {
+  at 0.35
+  offset 0 8.4 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-6.emitter.ogt" {
+  at 0.35
+  offset 0 8.4 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-7-0.emitter.ogt" {
+  at 0.3167
+  offset 0 0.9 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-4-0-0-7-0-0.emitter.ogt" {
+  at 0.3167
+  offset 0 0.9 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-0.emitter.ogt" {
+  at 0.0833
+  offset 0 10.05 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-1.emitter.ogt" {
+  at 0.0833
+  offset 0 9.3 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-2.emitter.ogt" {
+  at 0.0833
+  offset 0 10.175 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-3.emitter.ogt" {
+  at 0.0833
+  offset 0 9.05 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-4-0.emitter.ogt" {
+  at 0.0833
+  offset 0 1.8 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-4-0-0.emitter.ogt" {
+  at 0.0833
+  offset 0 1.8 8
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-5.emitter.ogt" {
+  at 0.3667
+  offset 0 9.3 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-6.emitter.ogt" {
+  at 0.3667
+  offset 0 9.3 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-7-0.emitter.ogt" {
+  at 0.3333
+  offset 0 1.8 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-5-0-0-7-0-0.emitter.ogt" {
+  at 0.3333
+  offset 0 1.8 0.3824
+  rotate 90 0 0
+  move 0 0 -26.4706
+}
+emitter "vfx/effekseer-starter/Light4/n0-6-0-0-0.emitter.ogt" {
+  at 0.1
+  offset 0 10.95 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-6-0-0-1.emitter.ogt" {
+  at 0.1
+  offset 0 10.2 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-6-0-0-2.emitter.ogt" {
+  at 0.1
+  offset 0 11.075 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-starter/Light4/n0-6-0-0-3.emitter.ogt" {
+  at 0.1
+  offset 0 9.95 0
+  rotate 0 0 180
+}
+# effekseer: node 0.0.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.3.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.3.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.3.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.3.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.4.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.4.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.4.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.4.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.4.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.4.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.4.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.4.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.4.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.4.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.5.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.5.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.5.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.5.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.5.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.5.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.5.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.5.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.5.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.5.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.5.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.5.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.5.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.5.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.6.0.0.0 "上半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.6.0.0.1 "下半分": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.6.0.0.1 "下半分": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.6.0.0.2 "上半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.6.0.0.3 "下半分glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.6.0.0.3 "下半分glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.6.0.0.4.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.6.0.0.4.0.0 "Node": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.6.0.0.5 "消滅柱": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.6.0.0.5 "消滅柱": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.6.0.0.6 "柱glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.6.0.0.6 "柱glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.6.0.0.7.0 "粒子": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.6.0.0.7.0.0 "粒子glow": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: more than 64 elements: the last 6 left out

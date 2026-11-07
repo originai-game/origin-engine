@@ -1,0 +1,66 @@
+{
+  "name": "Pulse Charge",
+  "prompt": "charge up energy",
+  "w": 48,
+  "h": 48,
+  "frames": 16,
+  "fps": 15,
+  "loop": true,
+  "seed": 8,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "energy",
+    "alt": "lightning",
+    "smoke": "smoke",
+    "spark": "energy"
+  },
+  "place": "caster-hand",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "ring",
+      "ramp": "$main",
+      "r0": 0.95,
+      "r1": 0.35,
+      "th": 0.06,
+      "thEnd": 0.1,
+      "breakup": 0,
+      "fade": 0,
+      "ease": "inQuad",
+      "gain": 0.7
+    },
+    {
+      "type": "orb",
+      "ramp": "$main",
+      "r": 0.3,
+      "pulse": 0.15,
+      "pulseRate": 2,
+      "spin": 1
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "implode",
+      "count": 18,
+      "implodeR": 1,
+      "life": [
+        0.5,
+        0.9
+      ],
+      "shape": "streak",
+      "size": 1,
+      "heat": [
+        0.6,
+        1.05
+      ],
+      "swirl": 0.8
+    }
+  ]
+}

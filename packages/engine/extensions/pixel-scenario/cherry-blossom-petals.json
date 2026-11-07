@@ -1,0 +1,46 @@
+{
+  "name": "Thorn Ambient",
+  "prompt": "cherry blossom petals",
+  "w": 128,
+  "h": 96,
+  "frames": 24,
+  "fps": 12,
+  "loop": true,
+  "seed": 3,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "nature",
+    "alt": "nature",
+    "smoke": "nature",
+    "spark": "nature"
+  },
+  "place": "screen",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "particles",
+      "ramp": "hue:350",
+      "mode": "fall",
+      "count": 34,
+      "shape": "petal",
+      "size": 2,
+      "driftX": -0.5,
+      "wiggle": 0.1,
+      "life": [
+        0.85,
+        1
+      ],
+      "heat": [
+        1,
+        0.8
+      ]
+    }
+  ]
+}

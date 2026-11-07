@@ -54,6 +54,7 @@
     "knowledge",
     "styles",
     "extensions",
+    "!extensions/*/preview",
     "ui-sheet",
     "motion",
     "motion.json",

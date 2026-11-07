@@ -1,0 +1,93 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.4125
+loop true
+emitter "vfx/effekseer-starter/hozyo4/n0-0.emitter.ogt" {
+  at 0
+  offset 1.5 1.5 1.5
+  rotate -69.8961 -52.0619 69.8961
+}
+emitter "vfx/effekseer-starter/hozyo4/n0-0-0.emitter.ogt" {
+  at 0
+  offset 1.5 1.5 1.5
+  rotate -69.8961 -52.0619 69.8961
+}
+trail {
+  at 0
+  offset 1.5 1.5 1.5
+  life 0.1667
+  effect "vfx/effekseer-starter/hozyo4/n0-0-1.effect.ogt"
+  width 3 0
+  lifetime 0.1667
+  color 1 1 1 1
+}
+emitter "vfx/effekseer-starter/hozyo4/n0-0-2-0.emitter.ogt" {
+  at 0
+  offset 1.5 1.5 1.5
+  move -4.5 -4.5 -4.5
+  until 0.3333
+}
+emitter "vfx/effekseer-starter/hozyo4/n1-0.emitter.ogt" {
+  at 0
+  offset 1.5 1.5 1.5
+  rotate -69.8961 -52.0619 69.8961
+}
+emitter "vfx/effekseer-starter/hozyo4/n1-0-0.emitter.ogt" {
+  at 0
+  offset 1.5 1.5 1.5
+  rotate -69.8961 -52.0619 69.8961
+}
+trail {
+  at 0
+  offset 1.5 1.5 1.5
+  life 0.1667
+  effect "vfx/effekseer-starter/hozyo4/n1-0-1.effect.ogt"
+  width 3 0
+  lifetime 0.1667
+  color 1 1 1 1
+}
+emitter "vfx/effekseer-starter/hozyo4/n1-0-2-0.emitter.ogt" {
+  at 0
+  offset 1.5 1.5 1.5
+  move -4.5 -4.5 -4.5
+  until 0.3333
+}
+emitter "vfx/effekseer-starter/hozyo4/n2.emitter.ogt" {
+  at 0.1667
+}
+emitter "vfx/effekseer-starter/hozyo4/n3.emitter.ogt" {
+  at 0.5
+  offset 0 0 -2
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-starter/hozyo4/n3-0.emitter.ogt" {
+  at 0.5
+  offset 0 0 -2
+  rotate 90 0 0
+}
+mesh quad {
+  at 0.5
+  offset -1.4142 -0.5977 -1.2817
+  rotate 65 0 -45
+  move 3.182 1.3448 2.8839
+  life 0.6667
+  effect "vfx/effekseer-starter/hozyo4/n4-0.effect.ogt"
+  scale 2
+  color 3 3 3 1
+  blend additive
+}
+# effekseer: node 0.0.1 "軌跡": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.1 "軌跡": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 0.0.1 "軌跡": a track of many instances: one trail drawn
+# effekseer: node 0.0.2.0 "追尾粒子": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 1.0.1 "軌跡": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0.1 "軌跡": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 1.0.1 "軌跡": a track of many instances: one trail drawn
+# effekseer: node 1.0.2.0 "追尾粒子": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 3 "上昇ライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3 "上昇ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.0 "glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4.0 "剣": a sprite scaled unevenly: drawn square at its mean

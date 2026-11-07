@@ -1,0 +1,46 @@
+{
+  "name": "Bloom Ambient",
+  "prompt": "falling leaves",
+  "w": 128,
+  "h": 96,
+  "frames": 24,
+  "fps": 12,
+  "loop": true,
+  "seed": 2,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "nature",
+    "alt": "nature",
+    "smoke": "nature",
+    "spark": "nature"
+  },
+  "place": "screen",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "particles",
+      "ramp": "nature",
+      "mode": "fall",
+      "count": 18,
+      "shape": "leaf",
+      "size": 2,
+      "driftX": -0.5,
+      "wiggle": 0.12,
+      "life": [
+        0.85,
+        1
+      ],
+      "heat": [
+        0.95,
+        0.75
+      ]
+    }
+  ]
+}

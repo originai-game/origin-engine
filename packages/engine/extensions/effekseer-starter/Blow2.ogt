@@ -1,0 +1,55 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.5333
+mesh ring {
+  at 0
+  rotate 63.4349 37.7612 -50.7685
+  inner 0.9747
+  band 0.75
+  colors 1 0 0 0 1 0.0367 0.0367 0.3045 1 0 0 0
+  life 0.5333
+  effect "vfx/effekseer-starter/Blow2/n0.effect.ogt"
+  scale curve 0 2.5 0.1406 5.4748 0.2344 7.2536 0.3281 8.6739 0.4219 9.6894 0.5156 10.3254 0.6094 10.6531 1 11
+  color 3 3 3 1
+  blend additive
+}
+mesh quad {
+  at 0
+  offset 0.5 0 -0.866
+  rotate 63.4349 37.7612 -50.7685
+  move 4 0 -6.9282
+  life 0.5
+  effect "vfx/effekseer-starter/Blow2/n1-0.effect.ogt"
+  scale curve 0 4 0.0781 3.3835 0.1562 2.8658 0.2344 2.4335 0.3281 2.0094 0.4688 1.5194 0.8281 0.5755 1 0
+  color 0.047 0.047 0.047 0.7843
+  blend additive
+}
+emitter "vfx/effekseer-starter/Blow2/n2-0.emitter.ogt" {
+  at 0
+  offset 1 0 0
+  rotate 0 0 -90
+}
+mesh ring {
+  at 0
+  rotate 63.4349 37.7612 -50.7685
+  inner 0.7875
+  band 0.75
+  colors 1 0 0 0 1 0.0367 0.0367 0.3045 1 0 0 0
+  life 0.5333
+  effect "vfx/effekseer-starter/Blow2/n3.effect.ogt"
+  scale curve 0 2.5 0.1406 5.4748 0.2344 7.2536 0.3281 8.6739 0.4219 9.6894 0.5156 10.3254 0.6094 10.6531 1 11
+  color 2 2 2 1
+  blend additive
+}
+emitter "vfx/effekseer-starter/Blow2/n4-0-0.emitter.ogt" {
+  at 0
+  offset 2 0 0
+  rotate 0 0 -90
+}
+# effekseer: node 0 "大リング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.0 "ビルボード飛び散り": a random colour per particle: its mean used
+# effekseer: node 3 "大リング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 4.0.0 "衝撃つぶ": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 4.0.0 "衝撃つぶ": a sprite scaled unevenly: drawn square at its mean

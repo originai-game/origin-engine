@@ -1,0 +1,37 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.6
+mesh ring {
+  at 0
+  offset -9 0 0
+  move 50 0 0
+  inner 0
+  band 1
+  colors 0.1275 1 1 0 0.1275 1 1 0.0784 0.1275 1 1 0.5882
+  life 0.5
+  effect "vfx/effekseer-starter/Sword5/n0-0.effect.ogt"
+  scale 0.5477
+  color 5 5 5 1
+  blend additive
+}
+emitter "vfx/effekseer-starter/Sword5/n1-0-0.emitter.ogt" {
+  at 0.0667
+  offset 0.5 0 0
+  rotate -163 0 -90
+}
+mesh ring {
+  at 0.1
+  rotate 107 0 0
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 0.1275 1 1 1 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-starter/Sword5/n2.effect.ogt"
+  scale curve 0 2 0.1094 3.7318 0.2188 5.1914 0.3281 6.4048 0.4531 7.5234 0.5781 8.3929 0.7031 9.0519 1 10
+  color 4 4 4 1
+  blend additive
+}
+# effekseer: node 0.0 "斬撃": ring 5 instances: the first 4 drawn
+# effekseer: node 1.0.0 "冷気": a fixed sprite with many instances: drawn facing the camera

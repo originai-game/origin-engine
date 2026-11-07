@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "pixel-scenario",
+  "version": "1.0.0",
+  "description": "The Pixel VFX Forge library: 42 pixel-art effects (combat, magic, elements, feedback, ambient) as type vfx2d recipes",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "pixel",
+    "dim": "2d",
+    "category": [
+      "ambient",
+      "buff",
+      "explosion",
+      "fire",
+      "heal",
+      "hit-spark",
+      "level-up",
+      "magic-impact",
+      "magic-projectile",
+      "portal",
+      "slash",
+      "smoke",
+      "ui",
+      "weather"
+    ],
+    "element": [
+      "arcane",
+      "dark",
+      "earth",
+      "fire",
+      "holy",
+      "ice",
+      "lightning",
+      "nature",
+      "water",
+      "wind"
+    ]
+  },
+  "keywords": [
+    "2d",
+    "flipbook",
+    "forge",
+    "pixel",
+    "pixel art",
+    "scenario",
+    "sprite"
+  ]
+}

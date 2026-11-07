@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.2.1 "Node"
+maxParticles 9
+shape spline -0.0382 0.4966 5.6782  -0.6415 4.319 3.664  -0.869 5.6114 -0.4966  -0.5875 3.6167 -4.3662  0.0382 -0.4966 -5.6782  0.6415 -4.319 -3.664  0.869 -5.6114 0.4966  0.5875 -3.6167 4.3662 closed
+spread 20.8442
+rate 0
+burst 0 1 7 0.8333
+duration 5.0167
+looping false
+lifetime 5.4667 5.4667
+speed 5.5458 11.5049
+size 8 8
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.1119 1 1 1 1
+  key 0.8985 1 1 1 1
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-starter/textures/particle2.png"
+blend additive

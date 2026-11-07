@@ -1,0 +1,26 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.05
+emitter "vfx/effekseer-starter/MagicDark/n0.emitter.ogt" {
+  at 0
+  offset 0 1.5 0
+}
+mesh quad {
+  at 0
+  rotate -90 0 0
+  life 1.6667
+  effect "vfx/effekseer-starter/MagicDark/n1-0.effect.ogt"
+  scale 3
+  spin 0 0 120
+  color 0.586 0.145 1 1
+  blend additive
+}
+emitter "vfx/effekseer-starter/MagicDark/n2.emitter.ogt" {
+  at 0.0333
+  offset 0 1 0
+}
+# effekseer: node 0 "hitomi": a random colour per particle: its mean used
+# effekseer: node 2 "moya": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2 "moya": subtractive blend: drawn alpha blended

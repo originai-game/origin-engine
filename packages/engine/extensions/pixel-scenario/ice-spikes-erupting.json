@@ -1,0 +1,145 @@
+{
+  "name": "Frozen Spikes",
+  "prompt": "ice spikes erupting",
+  "w": 96,
+  "h": 64,
+  "frames": 18,
+  "fps": 15,
+  "loop": false,
+  "seed": 3,
+  "outline": "outside",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "ice",
+    "alt": "frost",
+    "smoke": "frost",
+    "spark": "frost"
+  },
+  "place": "target-ground",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.94
+  ],
+  "layers": [
+    {
+      "type": "puffs",
+      "ramp": "$smoke",
+      "count": 6,
+      "y": 0.85,
+      "spread": 0.85,
+      "flat": 0.12,
+      "rise": 0.15,
+      "r0": 0.1,
+      "r1": 0.22,
+      "life": [
+        0.5,
+        0.8
+      ],
+      "emit": 0.15,
+      "gain": 0.55
+    },
+    {
+      "type": "spikes",
+      "ramp": "$main",
+      "y": 0.88,
+      "count": 5,
+      "spread": 1.05,
+      "hgt": [
+        0.9,
+        1.5
+      ],
+      "width": [
+        0.15,
+        0.24
+      ],
+      "grow": 0.2,
+      "hold": 0.6
+    },
+    {
+      "type": "particles",
+      "ramp": "$main",
+      "mode": "burst",
+      "y": 0.85,
+      "dir": -90,
+      "spread": 140,
+      "speed": [
+        1,
+        2
+      ],
+      "drag": 0.8,
+      "gravity": 4,
+      "life": [
+        0.35,
+        0.65
+      ],
+      "count": 10,
+      "shape": "chunk",
+      "size": [
+        2,
+        1
+      ],
+      "heat": [
+        0.9,
+        0.6
+      ],
+      "t0": 0.02
+    },
+    {
+      "type": "particles",
+      "mode": "burst",
+      "ramp": "$main",
+      "count": 4,
+      "x": 0,
+      "y": 0.2,
+      "speed": [
+        1.4,
+        2.4
+      ],
+      "drag": 2.6,
+      "life": [
+        0.35,
+        0.7
+      ],
+      "shape": "shard",
+      "size": [
+        3,
+        2
+      ],
+      "heat": [
+        1,
+        0.55
+      ],
+      "t0": 0.2,
+      "role": "accent"
+    },
+    {
+      "type": "particles",
+      "mode": "ambient",
+      "ramp": "$spark",
+      "count": 3,
+      "x": 0,
+      "y": 0.2,
+      "spanX": 0.3733333333333333,
+      "spanY": 0.48,
+      "shape": "star",
+      "size": [
+        2,
+        1
+      ],
+      "life": [
+        0.3,
+        0.6
+      ],
+      "emit": 0.7,
+      "heat": [
+        1,
+        0.7
+      ],
+      "t0": 0.2,
+      "role": "accent"
+    }
+  ]
+}

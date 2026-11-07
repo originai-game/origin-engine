@@ -1,0 +1,100 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.6215
+mesh quad {
+  at 0.05
+  offset 0.25 0 0
+  rotate 0 0 -135
+  life 0.25
+  effect "vfx/effekseer-starter/hit_eff/n0-0.effect.ogt"
+  scale curve 0 0.7 1 2.95
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.0583
+  offset 0.25 0 0
+  rotate 0 0 -45
+  life 0.25
+  effect "vfx/effekseer-starter/hit_eff/n0-0.effect.ogt"
+  scale curve 0 0.7 1 2.95
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.0667
+  offset 0.25 0 0
+  rotate 0 0 45
+  life 0.25
+  effect "vfx/effekseer-starter/hit_eff/n0-0.effect.ogt"
+  scale curve 0 0.7 1 2.95
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.075
+  offset 0.25 0 0
+  rotate 0 0 135
+  life 0.25
+  effect "vfx/effekseer-starter/hit_eff/n0-0.effect.ogt"
+  scale curve 0 0.7 1 2.95
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.0333
+  offset 0.5 0.05 0
+  rotate 0 0 -2
+  life 0.15
+  effect "vfx/effekseer-starter/hit_eff/n0-1.effect.ogt"
+  scale curve 0 0.6325 0.4219 0.9652 1 1.2884
+  color 1 0 0 0.251
+  blend additive
+}
+mesh quad {
+  at 0.0335
+  offset 0.5 0.05 0
+  life 0.15
+  effect "vfx/effekseer-starter/hit_eff/n0-1.effect.ogt"
+  scale curve 0 0.6325 0.4219 0.9652 1 1.2884
+  color 1 0 0 0.251
+  blend additive
+}
+mesh quad {
+  at 0.0337
+  offset 0.5 0.05 0
+  rotate 0 0 2
+  life 0.15
+  effect "vfx/effekseer-starter/hit_eff/n0-1.effect.ogt"
+  scale curve 0 0.6325 0.4219 0.9652 1 1.2884
+  color 1 0 0 0.251
+  blend additive
+}
+emitter "vfx/effekseer-starter/hit_eff/n0-2.emitter.ogt" {
+  at 0.1
+  offset 0 -1 0
+}
+emitter "vfx/effekseer-starter/hit_eff/n0-3.emitter.ogt" {
+  at 0.1167
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0.55
+  colors 1 1 1 0 1 0 0.2195 0.1255 1 1 1 0.3608
+  life 0.2
+  effect "vfx/effekseer-starter/hit_eff/n1.effect.ogt"
+  scale curve 0 1.6 1 8.8
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-starter/hit_eff/n2.emitter.ogt" {
+  at 0.0167
+}
+# effekseer: node 0.1 "Action Lines": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2 "Motion Sparks": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2 "Motion Sparks": a random colour per particle: its mean used
+# effekseer: node 0.2 "Motion Sparks": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2 "Motion Sparks": motion out from a circle: approximated along one direction

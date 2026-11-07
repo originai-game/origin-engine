@@ -1,0 +1,114 @@
+{
+  "name": "Night Aura",
+  "prompt": "dark shadow aura",
+  "w": 96,
+  "h": 112,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 3,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "dark",
+    "alt": "void",
+    "smoke": "shadow",
+    "spark": "dark"
+  },
+  "place": "caster-ground",
+  "depth": "behind",
+  "pivot": [
+    0.5,
+    0.9285714285714286
+  ],
+  "layers": [
+    {
+      "type": "flame",
+      "ramp": "$main",
+      "y": 1,
+      "w": 0.62,
+      "hgt": 2.05,
+      "taper": 0.4,
+      "hollow": 0.8,
+      "flick": 0.4,
+      "freq": 2.8,
+      "speed": 2,
+      "gain": 1.15
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "rise",
+      "count": 14,
+      "x": 0,
+      "y": 0.9,
+      "area": 0.55,
+      "areaY": 0.25,
+      "speed": [
+        1,
+        1.9
+      ],
+      "life": [
+        0.4,
+        0.8
+      ],
+      "size": [
+        2,
+        1
+      ],
+      "heat": [
+        1.05,
+        0.4
+      ],
+      "wiggle": 0.05
+    },
+    {
+      "type": "puffs",
+      "ramp": "$smoke",
+      "count": 5,
+      "x": 0,
+      "y": 0.3,
+      "spread": 0.36,
+      "rise": 0.5,
+      "r0": 0.06,
+      "r1": 0.16,
+      "life": [
+        0.5,
+        0.9
+      ],
+      "emit": 0.5,
+      "gain": 0.75,
+      "decay": 0.4,
+      "t0": 0.15,
+      "blend": "under",
+      "role": "accent"
+    },
+    {
+      "type": "particles",
+      "mode": "rise",
+      "ramp": "$main",
+      "count": 4,
+      "x": 0,
+      "y": 0.3,
+      "area": 0.42,
+      "speed": [
+        0.5,
+        1
+      ],
+      "life": [
+        0.4,
+        0.8
+      ],
+      "emit": 0,
+      "heat": [
+        0.95,
+        0.4
+      ],
+      "wiggle": 0.05,
+      "t0": 0.1,
+      "role": "accent"
+    }
+  ]
+}

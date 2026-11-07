@@ -1,0 +1,54 @@
+{
+  "name": "Flux Shield",
+  "prompt": "hex shield barrier",
+  "w": 64,
+  "h": 64,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 1,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "energy",
+    "alt": "lightning",
+    "smoke": "smoke",
+    "spark": "energy"
+  },
+  "place": "caster",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "bubble",
+      "ramp": "$main",
+      "r": 0.86,
+      "th": 0.06,
+      "hex": 0.42,
+      "fill": 0.15,
+      "shimmer": 1,
+      "dither": 0.9
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "orbit",
+      "count": 5,
+      "orbitR": 0.86,
+      "turns": 1,
+      "life": 1,
+      "shape": "star",
+      "size": 1,
+      "heat": [
+        1,
+        1
+      ],
+      "both": true
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "name": "Static Impact",
+  "prompt": "electric impact hit",
+  "w": 48,
+  "h": 48,
+  "frames": 10,
+  "fps": 18,
+  "loop": false,
+  "seed": 3,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "lightning",
+    "alt": "thunder",
+    "smoke": "smoke",
+    "spark": "lightning"
+  },
+  "place": "target",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "ring",
+      "ramp": "$main",
+      "r0": 0.2,
+      "r1": 0.92,
+      "th": 0.12,
+      "thEnd": 0.03,
+      "breakup": 0.5,
+      "t1": 0.65
+    },
+    {
+      "type": "star",
+      "ramp": "$main",
+      "points": 7,
+      "r": 0.9,
+      "inner": 0.3,
+      "sharp": 1.15,
+      "pop": 0.25,
+      "hollow": 0.92,
+      "jitter": 0.55
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "count": 8,
+      "speed": [
+        2,
+        3.2
+      ],
+      "drag": 3,
+      "life": [
+        0.3,
+        0.6
+      ],
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.55
+      ]
+    },
+    {
+      "type": "flash",
+      "ramp": "$main",
+      "r": 0.36,
+      "dur": 0.15
+    }
+  ]
+}

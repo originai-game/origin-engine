@@ -1,0 +1,19 @@
+type particles
+version 1
+---
+# Effekseer node 0.4 "Twinkle Faster"
+maxParticles 127
+shape point
+spread 180
+rate 60
+duration 1
+looping true
+lifetime 1.6667 1.6667
+speed 8.4853 33.9411
+size 0.75 2
+colorOverLife {
+  key 0 0.047 0.2195 0.5356 1
+  key 1 0.047 0.2195 0.5356 1
+}
+texture "vfx/effekseer-starter/textures/Particle01.png"
+blend additive

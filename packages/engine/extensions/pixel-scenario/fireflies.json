@@ -1,0 +1,51 @@
+{
+  "name": "Mystic Ambient",
+  "prompt": "fireflies",
+  "w": 128,
+  "h": 96,
+  "frames": 24,
+  "fps": 12,
+  "loop": true,
+  "seed": 1,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "arcane",
+    "alt": "plasma",
+    "smoke": "dark",
+    "spark": "arcane"
+  },
+  "place": "screen",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "particles",
+      "ramp": "hue:120",
+      "mode": "ambient",
+      "count": 18,
+      "shape": "star",
+      "size": [
+        2,
+        1
+      ],
+      "wiggle": 0.14,
+      "life": [
+        0.7,
+        1
+      ],
+      "twinkle": 2,
+      "heat": [
+        1.1,
+        0.6
+      ],
+      "glow": 1,
+      "glowFalloff": 0.4
+    }
+  ]
+}

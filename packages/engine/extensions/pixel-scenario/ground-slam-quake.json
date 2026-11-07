@@ -1,0 +1,111 @@
+{
+  "name": "Stone Ground Slam",
+  "prompt": "ground slam quake",
+  "w": 96,
+  "h": 64,
+  "frames": 18,
+  "fps": 15,
+  "loop": false,
+  "seed": 4,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "earth",
+    "alt": "dust",
+    "smoke": "dust",
+    "spark": "earth"
+  },
+  "place": "target-ground",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.86
+  ],
+  "layers": [
+    {
+      "type": "puffs",
+      "ramp": "$smoke",
+      "count": 8,
+      "y": 0.65,
+      "spread": 1,
+      "flat": 0.15,
+      "rise": 0.25,
+      "r0": 0.12,
+      "r1": 0.3,
+      "life": [
+        0.55,
+        0.9
+      ],
+      "emit": 0.15,
+      "gain": 0.6
+    },
+    {
+      "type": "cracks",
+      "ramp": "$main",
+      "y": 0.72,
+      "count": 7,
+      "len": 1.25,
+      "squash": 0.3,
+      "grow": 0.18
+    },
+    {
+      "type": "ring",
+      "ramp": "$main",
+      "y": 0.72,
+      "squash": 0.3,
+      "r0": 0.2,
+      "r1": 1.45,
+      "th": 0.26,
+      "breakup": 0.6
+    },
+    {
+      "type": "ring",
+      "ramp": "$main",
+      "t0": 0.15,
+      "y": 0.72,
+      "squash": 0.3,
+      "r0": 0.1,
+      "r1": 1,
+      "th": 0.14,
+      "gain": 0.8
+    },
+    {
+      "type": "particles",
+      "ramp": "$main",
+      "mode": "burst",
+      "y": 0.68,
+      "dir": -90,
+      "spread": 150,
+      "speed": [
+        1.4,
+        2.6
+      ],
+      "drag": 0.6,
+      "gravity": 5,
+      "life": [
+        0.4,
+        0.75
+      ],
+      "count": 12,
+      "shape": "chunk",
+      "size": [
+        3,
+        2
+      ],
+      "heat": [
+        0.9,
+        0.6
+      ]
+    },
+    {
+      "type": "flash",
+      "ramp": "$main",
+      "y": 0.6,
+      "r": 0.45,
+      "squash": 0.6,
+      "dur": 0.1
+    }
+  ]
+}

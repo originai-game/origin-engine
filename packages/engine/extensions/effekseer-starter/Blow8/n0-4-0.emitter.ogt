@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.4.0 "中心からの光"
+maxParticles 563
+shape box 0.001 0.5 0.001
+spread 0
+rate 600
+duration 0.0833
+looping false
+lifetime 0.1667 0.3333
+speed 6 26
+speedOverLife 0 3.6952 0.25 1.7411 0.375 1.0269 0.5 0.5001 0.625 0.1608 0.75 0.0091 0.875 0.0448 1 0.2582
+size 4 4
+sizeOverLife 0 0.5 0.0781 0.4823 0.1562 0.4399 0.5625 0.1434 0.6875 0.1018 0.9219 0.0838 0.9844 0.044 1 0
+colorOverLife {
+  key 0 0.047 0.047 0.047 1
+  key 1 0.047 0.047 0.047 0
+}
+rotation 90 90
+texture "vfx/effekseer-starter/textures/Line01.png"
+blend additive

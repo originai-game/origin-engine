@@ -1,0 +1,88 @@
+{
+  "name": "Sanguine Claw",
+  "prompt": "feral claw scratch blood",
+  "w": 64,
+  "h": 64,
+  "frames": 12,
+  "fps": 18,
+  "loop": false,
+  "seed": 1,
+  "outline": "outside",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "blood",
+    "alt": "blood",
+    "smoke": "blood",
+    "spark": "blood"
+  },
+  "place": "target",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "streaks",
+      "mode": "claw",
+      "ramp": "$main",
+      "count": 3,
+      "angle": 58,
+      "len": 1.45,
+      "gap": 0.24,
+      "curve": 0.2,
+      "th": 2.4
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "count": 6,
+      "dir": 58,
+      "spread": 80,
+      "speed": [
+        1.2,
+        2
+      ],
+      "drag": 3,
+      "life": [
+        0.3,
+        0.5
+      ],
+      "shape": "streak",
+      "size": 2,
+      "t0": 0.1
+    },
+    {
+      "type": "particles",
+      "mode": "burst",
+      "ramp": "$main",
+      "count": 7,
+      "x": 0,
+      "y": 0,
+      "speed": [
+        1.4,
+        2.8
+      ],
+      "drag": 1,
+      "gravity": 4,
+      "life": [
+        0.35,
+        0.7
+      ],
+      "shape": "dot",
+      "size": [
+        2,
+        1
+      ],
+      "heat": [
+        0.95,
+        0.55
+      ],
+      "t0": 0.1,
+      "role": "accent"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "name": "Aqua Splash",
+  "prompt": "water splash",
+  "w": 64,
+  "h": 64,
+  "frames": 16,
+  "fps": 15,
+  "loop": false,
+  "seed": 1,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "water",
+    "alt": "ice",
+    "smoke": "frost",
+    "spark": "water"
+  },
+  "place": "target-ground",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.89
+  ],
+  "layers": [
+    {
+      "type": "ring",
+      "ramp": "$main",
+      "y": 0.78,
+      "squash": 0.3,
+      "r0": 0.25,
+      "r1": 1,
+      "th": 0.12,
+      "breakup": 0.5,
+      "t1": 0.8
+    },
+    {
+      "type": "burst",
+      "ramp": "$main",
+      "y": 0.55,
+      "squash": 1.25,
+      "r0": 0.06,
+      "r1": 0.36,
+      "grow": 0.3,
+      "erode": 1,
+      "cool": 0.2,
+      "rough": 0.8,
+      "wobble": 0.45,
+      "t1": 0.55
+    },
+    {
+      "type": "particles",
+      "ramp": "$main",
+      "mode": "burst",
+      "y": 0.62,
+      "dir": -90,
+      "spread": 120,
+      "speed": [
+        1.2,
+        2.5
+      ],
+      "drag": 0.3,
+      "gravity": 4.5,
+      "life": [
+        0.55,
+        0.95
+      ],
+      "count": 22,
+      "shape": "dot",
+      "size": [
+        2,
+        1
+      ],
+      "heat": [
+        1,
+        0.75
+      ],
+      "ground": 0.82
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "y": 0.6,
+      "dir": -90,
+      "spread": 60,
+      "speed": [
+        2.2,
+        3
+      ],
+      "drag": 0.2,
+      "gravity": 5,
+      "life": [
+        0.4,
+        0.7
+      ],
+      "count": 6,
+      "shape": "drop",
+      "size": 2,
+      "heat": [
+        1.05,
+        0.8
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 2 "輪っか"
+main "vfx/effekseer-starter/textures/Cloud01.png" rgba {
+  scroll 0 1.4062
+}
+alpha curve 0 0 0.25 1 0.875 1 1 0
+blend additive
+doubleSided true

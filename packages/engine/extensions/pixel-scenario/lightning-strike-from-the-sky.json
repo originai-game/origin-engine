@@ -1,0 +1,123 @@
+{
+  "name": "Storm Strike",
+  "prompt": "lightning strike from the sky",
+  "w": 64,
+  "h": 96,
+  "frames": 16,
+  "fps": 18,
+  "loop": false,
+  "seed": 4,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "lightning",
+    "alt": "wind",
+    "smoke": "smoke",
+    "spark": "wind"
+  },
+  "place": "target-ground",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.9166666666666666
+  ],
+  "layers": [
+    {
+      "type": "puffs",
+      "ramp": "$smoke",
+      "t0": 0.2,
+      "count": 5,
+      "x": 0,
+      "y": 1.2,
+      "spread": 0.45,
+      "flat": 0.25,
+      "rise": 0.25,
+      "r0": 0.12,
+      "r1": 0.28,
+      "life": [
+        0.55,
+        0.8
+      ],
+      "emit": 0.15,
+      "gain": 0.55
+    },
+    {
+      "type": "ring",
+      "ramp": "$main",
+      "t0": 0.04,
+      "t1": 0.65,
+      "y": 1.25,
+      "squash": 0.32,
+      "r0": 0.2,
+      "r1": 0.95,
+      "th": 0.2,
+      "breakup": 0.6
+    },
+    {
+      "type": "burst",
+      "ramp": "$main",
+      "t0": 0.04,
+      "t1": 0.7,
+      "y": 1.12,
+      "squash": 0.75,
+      "r0": 0.08,
+      "r1": 0.42,
+      "grow": 0.4,
+      "erode": 1,
+      "cool": 0.5
+    },
+    {
+      "type": "bolt",
+      "ramp": "$main",
+      "mode": "strike",
+      "x": 0,
+      "y": 1.2,
+      "count": 2,
+      "hold": 1,
+      "jag": 0.32,
+      "depth": 6,
+      "branch": 0.45,
+      "thick": 2,
+      "glow": 1,
+      "glowFalloff": 0.5,
+      "fadeStart": 0.3,
+      "t1": 0.75
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "t0": 0.04,
+      "x": 0,
+      "y": 1.2,
+      "dir": -90,
+      "spread": 130,
+      "speed": [
+        1.6,
+        2.8
+      ],
+      "drag": 1,
+      "gravity": 4,
+      "life": [
+        0.3,
+        0.6
+      ],
+      "count": 12,
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.5
+      ]
+    },
+    {
+      "type": "flash",
+      "ramp": "$main",
+      "y": 1.1,
+      "r": 0.6,
+      "dur": 0.14
+    }
+  ]
+}

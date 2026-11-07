@@ -1,0 +1,15 @@
+{
+  "format": 1,
+  "engine": {
+    "version": "0.8.0",
+    "revision": "fb46256fcc1ad6a02ff2b395e0a5f6d8c49bb1b1"
+  },
+  "device": "Apple M4 Pro GPU (Metal)",
+  "peakFrameMs": {
+    "total": 0.012,
+    "sim": 0.0,
+    "transparent": 0.004
+  },
+  "peakParticles": 0,
+  "draws": 13
+}

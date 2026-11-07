@@ -1,0 +1,88 @@
+{
+  "name": "Lucky Loot",
+  "prompt": "gold coins loot drop",
+  "w": 48,
+  "h": 64,
+  "frames": 24,
+  "fps": 15,
+  "loop": false,
+  "seed": 2,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "gold",
+    "alt": "holy",
+    "smoke": "white",
+    "spark": "gold"
+  },
+  "place": "target-ground",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.9125000000000001
+  ],
+  "layers": [
+    {
+      "type": "rays",
+      "ramp": "$main",
+      "y": 0.9,
+      "count": 10,
+      "r": 0.9,
+      "width": 0.18,
+      "gain": 0.5,
+      "t1": 0.7
+    },
+    {
+      "type": "particles",
+      "ramp": "$main",
+      "mode": "burst",
+      "y": 0.9,
+      "dir": -90,
+      "spread": 70,
+      "speed": [
+        2.6,
+        3.6
+      ],
+      "drag": 0.3,
+      "gravity": 6.5,
+      "life": [
+        0.6,
+        1
+      ],
+      "count": 12,
+      "emit": 0.3,
+      "shape": "coin",
+      "size": 3,
+      "heat": [
+        1,
+        0.9
+      ],
+      "ground": 1.15
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "y": 0.6,
+      "speed": [
+        0.6,
+        1.4
+      ],
+      "drag": 1.6,
+      "life": [
+        0.35,
+        0.7
+      ],
+      "count": 8,
+      "emit": 0.6,
+      "shape": "star",
+      "size": [
+        2,
+        1
+      ],
+      "twinkle": 2
+    }
+  ]
+}

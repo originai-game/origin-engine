@@ -1,0 +1,18 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.3998
+emitter "vfx/effekseer-starter/electric_dust/n0-0.emitter.ogt" {
+  at 0
+}
+trail {
+  at 0
+  life 0.1333
+  effect "vfx/effekseer-starter/electric_dust/n0-0-0.effect.ogt"
+  width 0.25 0.0625
+  lifetime 0.1333
+  color 1 0.3562 0.047 1
+}
+# effekseer: node 0.0 "Node": a random colour per particle: its mean used
+# effekseer: node 0.0.0 "Node": nested generation: 400 instances above its generator folded into one emitter

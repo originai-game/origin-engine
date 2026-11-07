@@ -1,0 +1,75 @@
+{
+  "name": "Blight Cloud",
+  "prompt": "poison gas cloud",
+  "w": 64,
+  "h": 64,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 2,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "poison",
+    "alt": "smoke",
+    "smoke": "poison",
+    "spark": "smoke"
+  },
+  "place": "target",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "puffs",
+      "ramp": "$main",
+      "count": 9,
+      "spread": 0.55,
+      "flat": 0.7,
+      "rise": 0.25,
+      "r0": 0.18,
+      "r1": 0.4,
+      "life": [
+        0.7,
+        1
+      ],
+      "gain": 0.62,
+      "decay": 0.35,
+      "dither": 0.6
+    },
+    {
+      "type": "particles",
+      "mode": "rise",
+      "ramp": "$main",
+      "count": 8,
+      "x": 0,
+      "y": 0.2,
+      "area": 0.42,
+      "shape": "bubble",
+      "size": [
+        1,
+        2
+      ],
+      "speed": [
+        0.4,
+        0.8
+      ],
+      "life": [
+        0.5,
+        0.9
+      ],
+      "emit": 0,
+      "heat": [
+        0.9,
+        0.6
+      ],
+      "wiggle": 0.08,
+      "t0": 0.1,
+      "role": "accent"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "name": "Ember Damage Number",
+  "prompt": "critical hit damage 999",
+  "w": 48,
+  "h": 32,
+  "frames": 16,
+  "fps": 15,
+  "loop": false,
+  "seed": 1,
+  "outline": "outside",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "fire",
+    "alt": "lava",
+    "smoke": "smoke",
+    "spark": "fire"
+  },
+  "place": "target",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "text",
+      "ramp": "$main",
+      "text": "999!",
+      "scale": 2,
+      "y": 0.3,
+      "rise": 0.55
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "y": 0.2,
+      "count": 6,
+      "speed": [
+        1,
+        1.8
+      ],
+      "drag": 2.5,
+      "life": [
+        0.3,
+        0.5
+      ],
+      "shape": "star",
+      "size": 1
+    }
+  ]
+}

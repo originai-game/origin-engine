@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 0.6.0.0.5 "消滅柱"
+maxParticles 5
+shape box 5 1 0.001
+spread 0
+rate 0
+burst 0 1 6 0.1167
+duration 0.6
+looping false
+lifetime 0.2667 0.2667
+speed 6.0662 13.125
+speedOverLife 0 2.2213 0.1875 1.3477 0.4062 0.011 0.5469 1.067 0.6875 2.2658 0.8281 3.6074 1 5.397
+size 10 10
+sizeOverLife 0 0.1 0.0625 0.1368 0.1562 0.1605 0.4062 0.1579 0.8594 0.0786 0.9688 0.0378 1 0
+colorOverLife {
+  key 0 1 1 1 1
+  key 1 1 1 1 1
+}
+texture "vfx/effekseer-starter/textures/Particle02-b223f51c.png"
+blend additive
+effect "vfx/effekseer-starter/Light4/n0-6-0-0-5.effect.ogt"

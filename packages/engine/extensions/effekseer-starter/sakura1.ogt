@@ -1,0 +1,593 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 13.8
+mesh sphere {
+  at 3.3333
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5.8333
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 3.3333
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5.8333
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 3.3333
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5.8333
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 3.3333
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5.8333
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 3.3333
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5.8333
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-0-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-starter/sakura1/n0-0-1.emitter.ogt" {
+  at 3.3333
+  offset 0.0858 -1.0011 3.0001
+  rotate 165.9598 69.6309 173.8528
+}
+mesh sphere {
+  at 2.5
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 3.3333
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 2.5
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 3.3333
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 2.5
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 3.3333
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 2.5
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 3.3333
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 2.5
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 3.3333
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 4.1667
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 5
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-1-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-starter/sakura1/n0-1-1.emitter.ogt" {
+  at 2.5
+  offset -0.1164 -0.2547 -0.0517
+  rotate 177.0608 64.0252 -106.5893
+}
+mesh sphere {
+  at 0
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0.8333
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 1.6667
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 2.5
+  rotate -180 68.9 169.5
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0.8333
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 1.6667
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 2.5
+  rotate 170.0075 -2.7711 176.234
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0.8333
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 1.6667
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 2.5
+  rotate 156.6355 -74.3299 165.9428
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0.8333
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 1.6667
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 2.5
+  rotate -7.3498 -33.1421 4.4938
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-3.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0.8333
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 1.6667
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 2.5
+  rotate -12.8271 38.678 4.8206
+  life 6.6667
+  effect "vfx/effekseer-starter/sakura1/n0-2-0-4.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-starter/sakura1/n0-2-1.emitter.ogt" {
+  at 0
+  offset 0.0858 -1.0011 3.0001
+  rotate 165.9598 69.6309 173.8528
+}
+# effekseer: node 0.0.0.0 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.0.0.0 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.0.0.1 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.0.0.1 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.0.0.2 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.0.0.2 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.0.0.3 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.0.0.3 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.0.0.4 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.0.0.4 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.0.1 "Node": a random colour per particle: its mean used
+# effekseer: node 0.1.0.0 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.1.0.0 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.1.0.1 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.1.0.1 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.1.0.2 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.1.0.2 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.1.0.3 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.1.0.3 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.1.0.4 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.1.0.4 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.1.1 "Node": nested generation: 7 instances above its generator folded into one emitter
+# effekseer: node 0.1.1 "Node": a random colour per particle: its mean used
+# effekseer: node 0.2.0.0 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.2.0.0 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.2.0.1 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.2.0.1 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.2.0.2 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.2.0.2 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.2.0.3 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.2.0.3 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere
+# effekseer: node 0.2.0.4 "Node": model 7 instances: the first 4 drawn
+# effekseer: node 0.2.0.4 "Node": a model that is not an .efkmodel (fbx/14.fbx): drawn as a sphere

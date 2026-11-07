@@ -1,0 +1,37 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.09
+emitter "vfx/effekseer-starter/MagicWater/n0.emitter.ogt" {
+  at 0.4667
+}
+emitter "vfx/effekseer-starter/MagicWater/n1.emitter.ogt" {
+  at 0.0333
+}
+emitter "vfx/effekseer-starter/MagicWater/n2.emitter.ogt" {
+  at 0.4667
+}
+emitter "vfx/effekseer-starter/MagicWater/n3.emitter.ogt" {
+  at 0.2
+}
+emitter "vfx/effekseer-starter/MagicWater/n4.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-starter/MagicWater/n5.emitter.ogt" {
+  at 0.3667
+}
+emitter "vfx/effekseer-starter/MagicWater/n6.emitter.ogt" {
+  at 0.5
+}
+emitter "vfx/effekseer-starter/MagicWater/n7.emitter.ogt" {
+  at 0.4167
+}
+emitter "vfx/effekseer-starter/MagicWater/n8.emitter.ogt" {
+  at 0.4167
+}
+# effekseer: node 4 "Node": a random colour per particle: its mean used
+# effekseer: node 5 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 5 "Node": a random colour per particle: its mean used
+# effekseer: node 9 "水発生": a sound
+# effekseer: node 9.0 "水音": a sound

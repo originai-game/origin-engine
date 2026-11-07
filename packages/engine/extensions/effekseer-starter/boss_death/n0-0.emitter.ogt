@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 0.0 "Light Beams"
+maxParticles 26
+shape spline 0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0 closed
+spread 0
+rate 19.2
+duration 1
+looping true
+lifetime 1 1
+speed 0 0
+size 97.6154 536.8846
+sizeOverLife 0 0 1 0.032
+colorOverLife {
+  key 0 0.047 0.3562 0.6354 1
+  key 0.8333 0.047 0.3562 0.6354 1
+  key 1 0.047 0.3562 0.6354 0
+}
+texture "vfx/effekseer-starter/textures/actionlines.png"
+blend additive

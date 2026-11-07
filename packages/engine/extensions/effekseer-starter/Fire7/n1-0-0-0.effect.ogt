@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 1.0.0.0 "Fire"
+main "vfx/effekseer-starter/textures/Fire6.png" rgba {
+}
+alpha curve 0 0 0.25 1 0.5 1 1 0
+blend additive
+doubleSided true

@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 4.0.0 "衝撃つぶ"
+maxParticles 625
+shape box 0.001 1.5 0.001
+spread 180
+rate 0
+burst 0 500
+duration 0.0167
+looping false
+lifetime 0.1333 0.3667
+speed 2 26
+speedOverLife 0 2.1267 0.25 1.2147 0.375 0.9106 0.5 0.7139 0.625 0.6245 0.75 0.6424 1 0.9911
+size 3 3
+sizeOverLife 0 0.8165 0.0938 0.6235 0.1875 0.4687 0.4062 0.222 0.5938 0.1077 0.9219 0.0692 0.9844 0.0361 1 0
+colorOverLife {
+  key 0 1 0.0399 0.022 0
+  key 0.3281 1 0.0399 0.022 0
+  key 0.3438 1 0.0399 0.022 1
+  key 1 1 0.0399 0.022 1
+}
+texture "vfx/effekseer-starter/textures/Particle01-b96f716d.png"
+blend additive

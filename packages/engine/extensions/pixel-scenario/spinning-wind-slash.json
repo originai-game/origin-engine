@@ -1,0 +1,99 @@
+{
+  "name": "Cyclone Slash",
+  "prompt": "spinning wind slash",
+  "w": 64,
+  "h": 64,
+  "frames": 12,
+  "fps": 18,
+  "loop": false,
+  "seed": 6,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "wind",
+    "alt": "white",
+    "smoke": "white",
+    "spark": "wind"
+  },
+  "place": "target",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.56,
+      "th": 0.1,
+      "a0": -180,
+      "a1": 180,
+      "sweep": 0.4,
+      "trail": 0.6,
+      "squash": 0.85,
+      "angle": -12,
+      "gain": 0.8,
+      "t0": 0.03,
+      "t1": 0.6,
+      "seed": 3
+    },
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.76,
+      "th": 0.24,
+      "a0": -180,
+      "a1": 180,
+      "sweep": 0.4,
+      "trail": 0.7,
+      "squash": 0.85,
+      "angle": -12,
+      "t0": 0,
+      "t1": 0.7
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "count": 5,
+      "x": 0.44995132678057753,
+      "y": 0.4596266658713868,
+      "dir": 140,
+      "spread": 70,
+      "speed": [
+        1.2,
+        2.2
+      ],
+      "drag": 3,
+      "life": [
+        0.3,
+        0.55
+      ],
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.5
+      ],
+      "t0": 0.12,
+      "t1": 0.75
+    },
+    {
+      "type": "streaks",
+      "mode": "flow",
+      "ramp": "$main",
+      "count": 3,
+      "x": 0,
+      "y": 0,
+      "r": 0.6,
+      "squash": 0.55,
+      "turns": 1,
+      "gain": 0.85,
+      "t0": 0.15,
+      "role": "accent"
+    }
+  ]
+}

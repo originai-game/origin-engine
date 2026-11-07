@@ -1,0 +1,158 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.8583
+mesh "vfx/effekseer-starter/meteo1/model-block1.glb" {
+  at 0
+  offset 0 14.1421 14.1421
+  rotate 45 0 0
+  move 0 -28.2843 -28.2843
+  life 0.5
+  effect "vfx/effekseer-starter/meteo1/n0-0-0.effect.ogt"
+  scale 4
+  color 1 0.2195 0.2195 1
+  blend alpha
+}
+trail {
+  at 0
+  offset 0 14.1421 14.1421
+  rotate 45 0 0
+  move 0 -28.2843 -28.2843
+  life 0.3333
+  effect "vfx/effekseer-starter/meteo1/n0-0-1-0.effect.ogt"
+  width 1 1
+  lifetime 0.3333
+  color 0.2195 0.2195 0 0
+  orbit 1.5 5
+}
+mesh ring {
+  at 0
+  offset 0 14.8492 14.8492
+  rotate -45 0 0
+  move 0 -28.2843 -28.2843
+  inner 0.5
+  band 0.5
+  arc 210 120
+  colors 1 1 0 0 1 0.2195 0 0.7529 1 1 0 0
+  life 0.5
+  effect "vfx/effekseer-starter/meteo1/n0-0-2.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 14.8492 14.8492
+  rotate -45 0 -180
+  move 0 -28.2843 -28.2843
+  inner 0.5
+  band 0.5
+  arc 210 120
+  colors 1 1 0 0 1 0.2195 0 0.7529 1 1 0 0
+  life 0.5
+  effect "vfx/effekseer-starter/meteo1/n0-0-3.effect.ogt"
+  scale curve 0 10 1 0
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 14.1421 14.1421
+  rotate 45 0 0
+  move 0 -28.2843 -28.2843
+  inner 0
+  band 0.5
+  colors 1 1 0 0 1 0 0 0.7529 1 0 0.2195 1
+  life 0.6667
+  effect "vfx/effekseer-starter/meteo1/n0-0-4.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+trail {
+  at 0
+  offset 0 14.1421 14.1421
+  rotate 45 0 0
+  move 0 -28.2843 -28.2843
+  life 0.3333
+  effect "vfx/effekseer-starter/meteo1/n0-0-5-0.effect.ogt"
+  width 1 0.25
+  lifetime 0.3333
+  color 1 0.2195 0 0.502
+  orbit 1.5 8.3333
+}
+mesh ring {
+  at 0.1667
+  offset 0 14.1421 14.1421
+  rotate -45 0 0
+  inner 0.25
+  band 0.5
+  colors 1 1 0 0 1 0 0 0.7529 1 0 0 0
+  life 0.1667
+  effect "vfx/effekseer-starter/meteo1/n0-0-6.effect.ogt"
+  scale curve 0 1 1 10
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.3333
+  offset 0 14.1421 14.1421
+  rotate -45 0 0
+  inner 0.25
+  band 0.5
+  colors 1 1 0 0 1 0 0 0.7529 1 0 0 0
+  life 0.1667
+  effect "vfx/effekseer-starter/meteo1/n0-0-7.effect.ogt"
+  scale curve 0 1 1 10
+  color 1 1 1 1
+  blend additive
+}
+mesh "vfx/effekseer-starter/meteo1/model-block2.glb" {
+  at 0.45
+  move 0 18 0
+  life 0.3333
+  effect "vfx/effekseer-starter/meteo1/n1-0.effect.ogt"
+  scale 1
+  color 15 3.2928 0.0339 0.7529
+  blend additive
+}
+mesh ring {
+  at 0.4167
+  inner 0.3333
+  band 0.5
+  colors 1 0 0 0 1 1 0.2195 0.7529 1 0 0 0
+  life 0.25
+  effect "vfx/effekseer-starter/meteo1/n2.effect.ogt"
+  scale curve 0 0 1 11.25
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-starter/meteo1/n3-0.emitter.ogt" {
+  at 0.45
+  offset 0 -0.5 0
+  rotate -180 0 0
+}
+mesh ring {
+  at 0.3333
+  rotate 125.2644 -30 9.7356
+  inner 0.3333
+  band 0.5
+  height -0.0667 0.0667
+  colors 1 0 0 0 0.2195 0.2195 0 0.502 1 0 0 0
+  life 0.1667
+  effect "vfx/effekseer-starter/meteo1/n4.effect.ogt"
+  scale curve 0 15 0.0781 12.6883 0.1562 10.7466 0.2344 9.1258 0.3281 7.5352 0.4688 5.6976 0.8281 2.1581 1 0
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0.1.0 "Node": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0 "Node": a track of many instances: one trail drawn
+# effekseer: node 0.0.4 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.0.6 "Node": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.7 "Node": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0 "Node": model 15 instances: the first 4 drawn
+# effekseer: node 2 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 3.0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.0 "Node": a random colour per particle: its mean used
+# effekseer: node 3.0 "Node": a sprite scaled unevenly: drawn square at its mean

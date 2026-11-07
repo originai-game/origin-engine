@@ -1,0 +1,24 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.15
+emitter "vfx/effekseer-starter/MagicCold/n0.emitter.ogt" {
+  at 0
+  offset 3 8 0
+  rotate 0 0 159.4439
+}
+emitter "vfx/effekseer-starter/MagicCold/n1.emitter.ogt" {
+  at 0
+  offset 3 10 0
+  rotate 0 0 163.3007
+}
+emitter "vfx/effekseer-starter/MagicCold/n4.emitter.ogt" {
+  at 0.8333
+}
+# effekseer: node 0 "yuki": a y-axis billboard: drawn facing the camera
+# effekseer: node 0 "yuki": a random colour per particle: its mean used
+# effekseer: node 1 "yuki2": a y-axis billboard: drawn facing the camera
+# effekseer: node 1 "yuki2": a random colour per particle: its mean used
+# effekseer: node 4 "Node": a random colour per particle: its mean used
+# effekseer: node 4 "Node": a sprite scaled unevenly: drawn square at its mean

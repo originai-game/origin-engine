@@ -1,0 +1,1738 @@
+{
+  "format": 1,
+  "engine": {
+    "version": "0.8.0",
+    "revision": "fb46256fcc1ad6a02ff2b395e0a5f6d8c49bb1b1"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "938e7dbe967da586ef34c8f441f5e9cfa282499a10de89b2b4c78ffd153ddac1",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine; recipes by Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "arcane-magic-circle.json",
+      "sha256": "44b2f587c95f26c279983f3c27f7de99018d9eb9ce1f8e13819fb33fac6b4665",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "arcane-magic-circle.ogt",
+      "sha256": "57280fe09745dbc0072335948a912806103032e9eccf10c59c248788b1efcdcd",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "big-fire-explosion.json",
+      "sha256": "a68c3e37bbbf490b9230320ac711e2a21e8c02297ee9d958d7b51bd126311bb9",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "big-fire-explosion.ogt",
+      "sha256": "6d50b54fc94ef19a0493993c0f35b0fa404feb2cfc6d5ce05d7ed055cc58bf73",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "blue-energy-beam.json",
+      "sha256": "2fef3d10bcb94593dc15a8ee819b09f412cf2e2a103c873d2130df109747c326",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "blue-energy-beam.ogt",
+      "sha256": "f919c9bb2a2425e185dde729a320f2900ff3570917583bb9a41f55dcd757b74d",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "campfire.json",
+      "sha256": "eac559bc81e7075576170cf09285e44cda9683b0d36e4f8e95c44cf3a0124f8e",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "campfire.ogt",
+      "sha256": "9407d738d8ac8adbd6d898b83f079713faa52aee06e5fc00ffb27593ea1b9fc3",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "charge-up-energy.json",
+      "sha256": "4e7c093836066f881fff539ba057440100f47c7fd574b324a62b224f91ae16bc",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "charge-up-energy.ogt",
+      "sha256": "fabe03c1589e80ce72e21d75887ba16d8323c9618200323f538f5e634b84fcb0",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "cherry-blossom-petals.json",
+      "sha256": "a8865f78b404ea5f475919a8c3829a1178a412395741231caefad154c6da2abb",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "cherry-blossom-petals.ogt",
+      "sha256": "a0b97b957ab3087eb46a0bb9048b3af778e21024d4ca4090091b0bcee547b457",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "crescent-sword-slash.json",
+      "sha256": "4dfbbdbcd5e5bb6e783ac07f9f47609638901c65991d82c7945eba58b80671d7",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "crescent-sword-slash.ogt",
+      "sha256": "27117bef58550313ef766a86031837e69e8ed408c3883c00c424bd8ae9a6d03e",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "critical-hit-damage-999.json",
+      "sha256": "cccb72fe5e2d07f0fbdb961cf6baa6765e37f9fc960b1ce03209a32762e69428",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "critical-hit-damage-999.ogt",
+      "sha256": "91a5b13d3bcc914737cf98cdb6352311e699c35e6f3dee0a2445e0df6411ea5f",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "dark-shadow-aura.json",
+      "sha256": "adf69f168fd403b2bb07ac1719e1f537daa1c5d13742a5fe67f164c3f66b4aa0",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "dark-shadow-aura.ogt",
+      "sha256": "aa4e94bd12886e8e37c0f7fc71e22b90419e7f67d42a880baf41a40ee1c3e423",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "dash-speed-lines.json",
+      "sha256": "46f364a641c3d38bd59ebeaa2559328ebe341d4061873c80f9d221c94f9d9200",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "dash-speed-lines.ogt",
+      "sha256": "562dc12e1d73ec50c3731b3f105a870185bbf8badb02501899ba714e8db79764",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "dimensional-portal.json",
+      "sha256": "80ebf2f6d7b14a9b448f375e3de75f4b7cfa820deeef41a8f382b77b806011b0",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "dimensional-portal.ogt",
+      "sha256": "8a36f6589788d0a5679d5a31a215981676447b5aff837386fbbb252599be99a1",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "dragon-fire-breath.json",
+      "sha256": "c3c9257574dccbb297542bd83a04f4bd5c2d55a6621422b81bf9aa4ae91f6196",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "dragon-fire-breath.ogt",
+      "sha256": "5ca209fa10a40bf23c418054bac369fb928a4a7186d692f14098b2246f8a9dcd",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "electric-impact-hit.json",
+      "sha256": "969a3c8b470d4f0f3192fc714807ece2b22eb26cbc953fd0b35432edab655e0d",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "electric-impact-hit.ogt",
+      "sha256": "4df29103c6f52c494b3286a31c065104a5dd9589d1740378388dbb9435c82b5f",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "embers-rising.json",
+      "sha256": "2792898ba3a1230a44083a726e143f3ba5434c8087a254611d20911f4cd6d75a",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "embers-rising.ogt",
+      "sha256": "1624de55d59522834e90aee704397e9cc664c5aa13de45e4734d488e35c0b96a",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "extension.json",
+      "sha256": "e61e1ec1761fa497581c972205260b60d89b501ea32c09a1f880dd2c3df2f265",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "falling-leaves.json",
+      "sha256": "7336eb2fca18e8800ad4d23e1ca717fcf5c6e9c4618423e97b11d976d4adfe0a",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "falling-leaves.ogt",
+      "sha256": "2cda9cacd46f106a33203553bf7e35e2984b1f304cd696fbc054182e0dac0ba9",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "feral-claw-scratch-blood.json",
+      "sha256": "6c71f3bdf396c25e54fff6abf7bf27f9a53054fdd7ad6e067869ea7d5a2fb08e",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "feral-claw-scratch-blood.ogt",
+      "sha256": "c8b8dde1d92d8623bf7e4af94dbb196937041b804243caeb97b3106ba70a6ab0",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "fire-tornado.json",
+      "sha256": "027d69d133938bed602d75e1514fd992a12285420bd3a4c9fdeb722aa905567d",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "fire-tornado.ogt",
+      "sha256": "a094983b516f37a7c2b0b6e82a930c8652a15ab101956b55a441ab7d67559fc0",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "fireball-projectile.json",
+      "sha256": "7c61a146946d752285dcac32a4377f5807a73d04441772b0a8439f45cfb3ac53",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "fireball-projectile.ogt",
+      "sha256": "466204b460fa35505ef700f5d166c02fc9a7f7c564488959224f15b9b4730dcc",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "fireflies.json",
+      "sha256": "e83a22cf5f31fb5d317833dbb42f94f487092d81a8968b06883c1951a366373f",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "fireflies.ogt",
+      "sha256": "8e1310cafdb22e07cc5f58c35495b5a5ef296973199763f758dc0e77979473b5",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "fireworks-celebration.json",
+      "sha256": "7002589d84e9ba74aed1321ca9dbbc27cc792d1dc01e02f063bb93a35785ecf7",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "fireworks-celebration.ogt",
+      "sha256": "54bce290f7fca3779a565965c8a8415bbc1cf6ef4a5e0219595f57b3fedd1c8a",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "frost-nova.json",
+      "sha256": "b6dcdf457c5b90611a0a72972745288c1493f4691c01c0dd5b5f699c16522393",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "frost-nova.ogt",
+      "sha256": "ac6f99823248dc1776258fa42c39afd8c5926e3f2012bdd0ef5772a0ba4a4340",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "gold-coins-loot-drop.json",
+      "sha256": "8f11358be47a6a63b9f3d0196821b8d0959dc9a86e99b2c8c3618bc9a2c636dd",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "gold-coins-loot-drop.ogt",
+      "sha256": "b3e8329688919ed5f7638189e845fa09ad32196aeba72979653c2df285a30fd5",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "ground-slam-quake.json",
+      "sha256": "838ac4296cc1010c73f9f46155e3d21931670c306e29663b3c04547f97fc87f2",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "ground-slam-quake.ogt",
+      "sha256": "1a744b7325eecdb429522cfb57560963ae941dc610375083f0aa8f3fc85bdbe6",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "healing-with-rising-crosses.json",
+      "sha256": "243ab3eb6d38c81e92a1cd52675cdd4988ca842de3de3cb6acd1094f74fee13d",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "healing-with-rising-crosses.ogt",
+      "sha256": "6f598fb6ef4461a8ef83923b9aa497e5f0bb73dbe78512d3a54f3a33b91f73dd",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "hex-shield-barrier.json",
+      "sha256": "dd6a009774d98f83dbe2841ab81236d85f24e42d7fa78d094695c4ee21c0ef25",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "hex-shield-barrier.ogt",
+      "sha256": "007c06a4a43f3363907c9d57e164f196d9a6536fef2fdebd84784d1164dd81b2",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "holy-pillar-of-light.json",
+      "sha256": "3b14d3086a7b77b76f7139c53794de655e08ab312096881497b7c23bfeadce37",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "holy-pillar-of-light.ogt",
+      "sha256": "64c2dcdac8b85f09a2ae3984a70627c5dac98f5c40329fb55a428c3e8547c485",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "ice-spikes-erupting.json",
+      "sha256": "bfc623ea03a619f272fcdf1d8c24b3d48a1d62adc781a517a29d84758925ded0",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "ice-spikes-erupting.ogt",
+      "sha256": "9d967f291f73fc31d4b5f122f5dbc1132843b194b8f88a45d7ef0384c810c748",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "lava-eruption-pillar.json",
+      "sha256": "b8cc99d3636643586fcb055d3ef7b7ff688cb1bb4266d0daa633eb4a15de538b",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "lava-eruption-pillar.ogt",
+      "sha256": "20377a126fc2b530e775d8096c5f7f69ed9c317a9743ba02c2504dc5e647a916",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "level-up.json",
+      "sha256": "8fff1406b39b294ce023fc4e8ea94f74d617ed8a8faca5b93dc0e17383894a3d",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "level-up.ogt",
+      "sha256": "c78272ff40a610711dafdecf65fdb53b8db72479e02d9ad10566eaaac8418969",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "lightning-strike-from-the-sky.json",
+      "sha256": "82cc606c3169ef37a9610b8444c74d68e0918a84bd4a923ad304354896f00674",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "lightning-strike-from-the-sky.ogt",
+      "sha256": "f0e8113e8e2ebb8a408903a9a9eef07ea7589e06c9d8ca7833344ebe67a65bb0",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "meteor-strike.json",
+      "sha256": "d579671d920421b3ba3e9f9a4f9babc33884dcdaa6fe00548e813645a7ff5cfc",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "meteor-strike.ogt",
+      "sha256": "acece4cd05d96477bd4f40af3c0b6a50407b14fdc6b7e0747d44f28e304d2b16",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "plasma-orb.json",
+      "sha256": "a8b4df295f693bf1aab6c7abe29c2c953fae9067568c4ba1795e8103681c1af1",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "plasma-orb.ogt",
+      "sha256": "e3157d845b85449961d5e3afca91f77568feb886070368aa048af177c004bddb",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "poison-gas-cloud.json",
+      "sha256": "bda103fa97933f0eb2488ccfe3eb0e5ac40ab73cbe1b8e221a8a757eb54a4662",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "poison-gas-cloud.ogt",
+      "sha256": "d6994370d4f173f5670249bdf35f43df52ab10f8be06a602081e454a849f53c0",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "purple-black-hole-vortex.json",
+      "sha256": "ac8a863d41b5e65993b31a56e6c885915fdd962d6d4305fd7f92604921cf15ba",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "purple-black-hole-vortex.ogt",
+      "sha256": "2275674cbdce1365178761e7ea70f34b14942b5df7cee908da86521c40e7055a",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "rain.json",
+      "sha256": "830403aa6e369165e681d0ec3a970d244a442fe5801b69e370c115434131a073",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "rain.ogt",
+      "sha256": "5d76122e7a2ae011ad1913c2357a862e8d2110252e6687deb8f24828b1d656e7",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "smoke-poof.json",
+      "sha256": "eb2c9424df01cf4529740287f53e089510799e76efdc94dfdce4986729029325",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "smoke-poof.ogt",
+      "sha256": "000ec6a6906f286e4ce21c0f387238c9a1349277c5e611297d0213c1a79c3cf3",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "snow-falling.json",
+      "sha256": "1172b39b02e1bdad468cf0d4e5c099f70fd859bbc676590774787b440e57aeae",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "snow-falling.ogt",
+      "sha256": "815d7edab55c568b3c2a6ef90c04aa6a5bf8c38128fd724e7b1a194cbfd03e86",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "sparkle-twinkle.json",
+      "sha256": "2b2a6cece465d2e238c56005dc38030d4f1819053a6eddffa5a2431af8f38d48",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "sparkle-twinkle.ogt",
+      "sha256": "f1b163ef54ee0489ebd2007228ff44af297a2c377713af541adc7787b941489a",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "spinning-wind-slash.json",
+      "sha256": "06137b823b3c119fb7bfefc5051a89212dd89c70b72d2dec6458fe409c9c450a",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "spinning-wind-slash.ogt",
+      "sha256": "5d2b8a7da9acc46cdc5e6d18aae48a1d9774de18df932a631cb7c66f77140c86",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "teleport-blink.json",
+      "sha256": "a6bda3d747c46d1335c963c1b54d9b00c1466fcdedacfb9c7da0a70fda5f7821",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "teleport-blink.ogt",
+      "sha256": "7708bc2709f93728220957029108a059ceff0203afa6a1a9abb44d53d7c6e611",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "triple-slash-combo-with-blue-energy.json",
+      "sha256": "c9a630ec525ea2a1e1bbc2ec21bd3458703b59286f0a691ecaccbd12e92b41ef",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "triple-slash-combo-with-blue-energy.ogt",
+      "sha256": "62f95bcb1f25acbd04dfba2db80053761015a8dca2942d3c9f66ef9633a67b86",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    },
+    {
+      "path": "water-splash.json",
+      "sha256": "9bb6f96011e4ab632b3f2a63a05d66ea6f47a9abec53e5b8d765babae74553c9",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip",
+        "file": "scripts/lib/forms.js (LIBRARY)"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "interpret(prompt, seed).recipe from forms.js LIBRARY, written unchanged as JSON"
+    },
+    {
+      "path": "water-splash.ogt",
+      "sha256": "51a93b0b2a041c1d98026fe0604801f4915b04d1e745361f8217bcdcf8067cb3",
+      "licence": "custom",
+      "licenceText": "Pixel VFX Forge by Scenario (https://www.scenario.com/explorations/pixel-vfx-forge/). The sources state no licence; Origin's owner obtained Scenario's permission to use the Forge's code and library recipes directly in Origin Engine and its asset library (recorded in origin-engine third_party/scenario-pixel-vfx/README.md). Credit: Scenario, Pixel VFX Forge",
+      "source": {
+        "url": "https://iieqkinwjorxrzjp.public.blob.vercel-storage.com/explorations/f5284ec0200005bb234c2b9ddafa82cd3ab54b3321dda785ce8cccd17d23cd2c/scenario-pixel-vfx-skill.zip"
+      },
+      "credit": "Scenario, Pixel VFX Forge",
+      "derived": "authored by Origin Engine: a type vfx2d file naming the recipe beside it"
+    }
+  ],
+  "effects": [
+    {
+      "path": "arcane-magic-circle.ogt",
+      "type": "vfx2d",
+      "title": "Eldritch Magic Circle",
+      "loop": true,
+      "durationSeconds": 2.0,
+      "impact": true,
+      "category": "magic-impact",
+      "element": "arcane",
+      "keywords": [
+        "2d",
+        "arcane",
+        "circle",
+        "magic",
+        "pixel"
+      ]
+    },
+    {
+      "path": "big-fire-explosion.ogt",
+      "type": "vfx2d",
+      "title": "Cinder Explosion",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "explosion",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "big",
+        "combat",
+        "explosion",
+        "fire",
+        "pixel"
+      ]
+    },
+    {
+      "path": "blue-energy-beam.ogt",
+      "type": "vfx2d",
+      "title": "Aether Beam",
+      "loop": true,
+      "durationSeconds": 1.067,
+      "impact": true,
+      "category": "magic-projectile",
+      "element": "arcane",
+      "keywords": [
+        "2d",
+        "beam",
+        "blue",
+        "energy",
+        "magic",
+        "pixel"
+      ]
+    },
+    {
+      "path": "campfire.ogt",
+      "type": "vfx2d",
+      "title": "Ember Flame",
+      "loop": true,
+      "durationSeconds": 1.0,
+      "impact": true,
+      "category": "fire",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "campfire",
+        "elements",
+        "pixel"
+      ]
+    },
+    {
+      "path": "charge-up-energy.ogt",
+      "type": "vfx2d",
+      "title": "Pulse Charge",
+      "loop": true,
+      "durationSeconds": 1.067,
+      "impact": true,
+      "category": "buff",
+      "element": "arcane",
+      "keywords": [
+        "2d",
+        "charge",
+        "energy",
+        "magic",
+        "pixel",
+        "up"
+      ]
+    },
+    {
+      "path": "cherry-blossom-petals.ogt",
+      "type": "vfx2d",
+      "title": "Thorn Ambient",
+      "loop": true,
+      "durationSeconds": 2.0,
+      "impact": true,
+      "category": "ambient",
+      "element": "nature",
+      "keywords": [
+        "2d",
+        "ambient",
+        "blossom",
+        "cherry",
+        "petals",
+        "pixel"
+      ]
+    },
+    {
+      "path": "crescent-sword-slash.ogt",
+      "type": "vfx2d",
+      "title": "Razor Slash",
+      "loop": false,
+      "durationSeconds": 0.667,
+      "impact": true,
+      "category": "slash",
+      "keywords": [
+        "2d",
+        "combat",
+        "crescent",
+        "pixel",
+        "slash",
+        "sword"
+      ]
+    },
+    {
+      "path": "critical-hit-damage-999.ogt",
+      "type": "vfx2d",
+      "title": "Ember Damage Number",
+      "loop": false,
+      "durationSeconds": 1.067,
+      "impact": true,
+      "category": "ui",
+      "keywords": [
+        "2d",
+        "999",
+        "combat",
+        "critical",
+        "damage",
+        "hit",
+        "pixel"
+      ]
+    },
+    {
+      "path": "dark-shadow-aura.ogt",
+      "type": "vfx2d",
+      "title": "Night Aura",
+      "loop": true,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "buff",
+      "element": "dark",
+      "keywords": [
+        "2d",
+        "aura",
+        "dark",
+        "magic",
+        "pixel",
+        "shadow"
+      ]
+    },
+    {
+      "path": "dash-speed-lines.ogt",
+      "type": "vfx2d",
+      "title": "Cyclone Dash",
+      "loop": false,
+      "durationSeconds": 0.556,
+      "impact": true,
+      "category": "slash",
+      "element": "wind",
+      "keywords": [
+        "2d",
+        "combat",
+        "dash",
+        "lines",
+        "pixel",
+        "speed"
+      ]
+    },
+    {
+      "path": "dimensional-portal.ogt",
+      "type": "vfx2d",
+      "title": "Astral Portal",
+      "loop": true,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "portal",
+      "element": "arcane",
+      "keywords": [
+        "2d",
+        "dimensional",
+        "magic",
+        "pixel",
+        "portal"
+      ]
+    },
+    {
+      "path": "dragon-fire-breath.ogt",
+      "type": "vfx2d",
+      "title": "Cinder Breath",
+      "loop": true,
+      "durationSeconds": 1.067,
+      "impact": true,
+      "category": "fire",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "breath",
+        "dragon",
+        "elements",
+        "fire",
+        "pixel"
+      ]
+    },
+    {
+      "path": "electric-impact-hit.ogt",
+      "type": "vfx2d",
+      "title": "Static Impact",
+      "loop": false,
+      "durationSeconds": 0.556,
+      "impact": true,
+      "category": "hit-spark",
+      "element": "lightning",
+      "keywords": [
+        "2d",
+        "combat",
+        "electric",
+        "hit",
+        "impact",
+        "pixel"
+      ]
+    },
+    {
+      "path": "embers-rising.ogt",
+      "type": "vfx2d",
+      "title": "Blaze Ambient",
+      "loop": true,
+      "durationSeconds": 2.0,
+      "impact": true,
+      "category": "ambient",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "ambient",
+        "embers",
+        "pixel",
+        "rising"
+      ]
+    },
+    {
+      "path": "falling-leaves.ogt",
+      "type": "vfx2d",
+      "title": "Bloom Ambient",
+      "loop": true,
+      "durationSeconds": 2.0,
+      "impact": true,
+      "category": "ambient",
+      "element": "nature",
+      "keywords": [
+        "2d",
+        "ambient",
+        "falling",
+        "leaves",
+        "pixel"
+      ]
+    },
+    {
+      "path": "feral-claw-scratch-blood.ogt",
+      "type": "vfx2d",
+      "title": "Sanguine Claw",
+      "loop": false,
+      "durationSeconds": 0.667,
+      "impact": true,
+      "category": "slash",
+      "keywords": [
+        "2d",
+        "blood",
+        "claw",
+        "combat",
+        "feral",
+        "pixel",
+        "scratch"
+      ]
+    },
+    {
+      "path": "fire-tornado.ogt",
+      "type": "vfx2d",
+      "title": "Blaze Tornado",
+      "loop": true,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "fire",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "elements",
+        "fire",
+        "pixel",
+        "tornado"
+      ]
+    },
+    {
+      "path": "fireball-projectile.ogt",
+      "type": "vfx2d",
+      "title": "Ember Projectile",
+      "loop": true,
+      "durationSeconds": 0.667,
+      "impact": true,
+      "category": "magic-projectile",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "elements",
+        "fireball",
+        "pixel",
+        "projectile"
+      ]
+    },
+    {
+      "path": "fireflies.ogt",
+      "type": "vfx2d",
+      "title": "Mystic Ambient",
+      "loop": true,
+      "durationSeconds": 2.0,
+      "impact": true,
+      "category": "ambient",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "ambient",
+        "fireflies",
+        "pixel"
+      ]
+    },
+    {
+      "path": "fireworks-celebration.ogt",
+      "type": "vfx2d",
+      "title": "Arcane Fireworks",
+      "loop": false,
+      "durationSeconds": 2.133,
+      "impact": true,
+      "category": "ui",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "celebration",
+        "feedback",
+        "fireworks",
+        "pixel"
+      ]
+    },
+    {
+      "path": "frost-nova.ogt",
+      "type": "vfx2d",
+      "title": "Frost Nova",
+      "loop": false,
+      "durationSeconds": 1.067,
+      "impact": true,
+      "category": "magic-impact",
+      "element": "ice",
+      "keywords": [
+        "2d",
+        "elements",
+        "frost",
+        "nova",
+        "pixel"
+      ]
+    },
+    {
+      "path": "gold-coins-loot-drop.ogt",
+      "type": "vfx2d",
+      "title": "Lucky Loot",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "ui",
+      "keywords": [
+        "2d",
+        "coins",
+        "drop",
+        "feedback",
+        "gold",
+        "loot",
+        "pixel"
+      ]
+    },
+    {
+      "path": "ground-slam-quake.ogt",
+      "type": "vfx2d",
+      "title": "Stone Ground Slam",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "magic-impact",
+      "element": "earth",
+      "keywords": [
+        "2d",
+        "combat",
+        "ground",
+        "pixel",
+        "quake",
+        "slam"
+      ]
+    },
+    {
+      "path": "healing-with-rising-crosses.ogt",
+      "type": "vfx2d",
+      "title": "Bloom Heal",
+      "loop": false,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "heal",
+      "element": "holy",
+      "keywords": [
+        "2d",
+        "crosses",
+        "feedback",
+        "healing",
+        "pixel",
+        "rising",
+        "with"
+      ]
+    },
+    {
+      "path": "hex-shield-barrier.ogt",
+      "type": "vfx2d",
+      "title": "Flux Shield",
+      "loop": true,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "buff",
+      "element": "arcane",
+      "keywords": [
+        "2d",
+        "barrier",
+        "hex",
+        "magic",
+        "pixel",
+        "shield"
+      ]
+    },
+    {
+      "path": "holy-pillar-of-light.ogt",
+      "type": "vfx2d",
+      "title": "Divine Pillar",
+      "loop": false,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "magic-impact",
+      "element": "holy",
+      "keywords": [
+        "2d",
+        "holy",
+        "light",
+        "magic",
+        "of",
+        "pillar",
+        "pixel"
+      ]
+    },
+    {
+      "path": "ice-spikes-erupting.ogt",
+      "type": "vfx2d",
+      "title": "Frozen Spikes",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "magic-impact",
+      "element": "ice",
+      "keywords": [
+        "2d",
+        "elements",
+        "erupting",
+        "ice",
+        "pixel",
+        "spikes"
+      ]
+    },
+    {
+      "path": "lava-eruption-pillar.ogt",
+      "type": "vfx2d",
+      "title": "Volcanic Pillar",
+      "loop": false,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "magic-impact",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "elements",
+        "eruption",
+        "lava",
+        "pillar",
+        "pixel"
+      ]
+    },
+    {
+      "path": "level-up.ogt",
+      "type": "vfx2d",
+      "title": "Gilded Level Up",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "level-up",
+      "keywords": [
+        "2d",
+        "feedback",
+        "level",
+        "pixel",
+        "up"
+      ]
+    },
+    {
+      "path": "lightning-strike-from-the-sky.ogt",
+      "type": "vfx2d",
+      "title": "Storm Strike",
+      "loop": false,
+      "durationSeconds": 0.889,
+      "impact": true,
+      "category": "magic-impact",
+      "element": "lightning",
+      "keywords": [
+        "2d",
+        "elements",
+        "from",
+        "lightning",
+        "pixel",
+        "sky",
+        "strike",
+        "the"
+      ]
+    },
+    {
+      "path": "meteor-strike.ogt",
+      "type": "vfx2d",
+      "title": "Ember Meteor",
+      "loop": false,
+      "durationSeconds": 1.733,
+      "impact": true,
+      "category": "explosion",
+      "element": "fire",
+      "keywords": [
+        "2d",
+        "combat",
+        "meteor",
+        "pixel",
+        "strike"
+      ]
+    },
+    {
+      "path": "plasma-orb.ogt",
+      "type": "vfx2d",
+      "title": "Ion Orb",
+      "loop": true,
+      "durationSeconds": 1.0,
+      "impact": true,
+      "category": "magic-projectile",
+      "element": "lightning",
+      "keywords": [
+        "2d",
+        "magic",
+        "orb",
+        "pixel",
+        "plasma"
+      ]
+    },
+    {
+      "path": "poison-gas-cloud.ogt",
+      "type": "vfx2d",
+      "title": "Blight Cloud",
+      "loop": true,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "smoke",
+      "element": "nature",
+      "keywords": [
+        "2d",
+        "cloud",
+        "elements",
+        "gas",
+        "pixel",
+        "poison"
+      ]
+    },
+    {
+      "path": "purple-black-hole-vortex.ogt",
+      "type": "vfx2d",
+      "title": "Shadow Vortex",
+      "loop": true,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "portal",
+      "element": "dark",
+      "keywords": [
+        "2d",
+        "black",
+        "hole",
+        "magic",
+        "pixel",
+        "purple",
+        "vortex"
+      ]
+    },
+    {
+      "path": "rain.ogt",
+      "type": "vfx2d",
+      "title": "Aqua Ambient",
+      "loop": true,
+      "durationSeconds": 2.0,
+      "impact": true,
+      "category": "weather",
+      "element": "water",
+      "keywords": [
+        "2d",
+        "ambient",
+        "pixel",
+        "rain"
+      ]
+    },
+    {
+      "path": "smoke-poof.ogt",
+      "type": "vfx2d",
+      "title": "Ashen Poof",
+      "loop": false,
+      "durationSeconds": 0.933,
+      "impact": true,
+      "category": "smoke",
+      "keywords": [
+        "2d",
+        "feedback",
+        "pixel",
+        "poof",
+        "smoke"
+      ]
+    },
+    {
+      "path": "snow-falling.ogt",
+      "type": "vfx2d",
+      "title": "Glacial Ambient",
+      "loop": true,
+      "durationSeconds": 2.0,
+      "impact": true,
+      "category": "weather",
+      "element": "ice",
+      "keywords": [
+        "2d",
+        "ambient",
+        "falling",
+        "pixel",
+        "snow"
+      ]
+    },
+    {
+      "path": "sparkle-twinkle.ogt",
+      "type": "vfx2d",
+      "title": "Sacred Sparkle",
+      "loop": true,
+      "durationSeconds": 1.0,
+      "impact": true,
+      "category": "ui",
+      "keywords": [
+        "2d",
+        "feedback",
+        "pixel",
+        "sparkle",
+        "twinkle"
+      ]
+    },
+    {
+      "path": "spinning-wind-slash.ogt",
+      "type": "vfx2d",
+      "title": "Cyclone Slash",
+      "loop": false,
+      "durationSeconds": 0.667,
+      "impact": true,
+      "category": "slash",
+      "element": "wind",
+      "keywords": [
+        "2d",
+        "combat",
+        "pixel",
+        "slash",
+        "spinning",
+        "wind"
+      ]
+    },
+    {
+      "path": "teleport-blink.ogt",
+      "type": "vfx2d",
+      "title": "Mystic Teleport",
+      "loop": false,
+      "durationSeconds": 1.333,
+      "impact": true,
+      "category": "portal",
+      "element": "arcane",
+      "keywords": [
+        "2d",
+        "blink",
+        "magic",
+        "pixel",
+        "teleport"
+      ]
+    },
+    {
+      "path": "triple-slash-combo-with-blue-energy.ogt",
+      "type": "vfx2d",
+      "title": "Flux Slash",
+      "loop": false,
+      "durationSeconds": 1.167,
+      "impact": true,
+      "category": "slash",
+      "element": "arcane",
+      "keywords": [
+        "2d",
+        "blue",
+        "combat",
+        "combo",
+        "energy",
+        "pixel",
+        "slash",
+        "triple",
+        "with"
+      ]
+    },
+    {
+      "path": "water-splash.ogt",
+      "type": "vfx2d",
+      "title": "Aqua Splash",
+      "loop": false,
+      "durationSeconds": 1.067,
+      "impact": true,
+      "category": "magic-impact",
+      "element": "water",
+      "keywords": [
+        "2d",
+        "elements",
+        "pixel",
+        "splash",
+        "water"
+      ]
+    }
+  ]
+}

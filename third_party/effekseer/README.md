@@ -34,3 +34,26 @@ read a few of them, copied unchanged into
 | `iwai-ume.efkefc` | HATO | `HATO01.zip` (HATO-Springhascome/celebration) |
 
 Credit: effects by Effekseer and its contributors, CC0.
+
+## Effect packs
+
+The engine's Effekseer effect packs are converted from the same CC0 sample
+zips by `og vfx import`: the bundled `packages/engine/extensions/effekseer-starter/`
+(a curated set) and the downloadable `packages/vfx-packs/effekseer-<contributor>/`
+(every sample of one contributor). Their textures are the zips' files,
+PNGs losslessly recompressed (decoded pixels unchanged); each file's zip
+entry, licence (`CC0-1.0`) and credit ("Effekseer and <contributor>") are
+in its pack's `assets.json`.
+
+| Contributor | Zip | Source |
+| --- | --- | --- |
+| AndrewFM | `AndrewFM01.zip` | https://effekseer.github.io/en/contributes/AndrewFM01/index.html |
+| Effekseer Project | `Effekseer01.zip` | https://effekseer.github.io/en/contributes/Effekseer01/index.html |
+| HATO | `HATO01.zip` | https://effekseer.github.io/en/contributes/HATO01/index.html |
+| MAGICAL x SPIRAL | `MAGICALxSPIRAL.zip` | https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html |
+| NextSoft | `NextSoft01.zip` | https://effekseer.github.io/en/contributes/NextSoft01/index.html |
+| Pierre | `Pierre01.zip` | https://effekseer.github.io/en/contributes/Pierre01/index.html |
+| Pierre | `Pierre02.zip` | https://effekseer.github.io/en/contributes/Pierre02/index.html |
+| Suzuki | `Suzuki01.zip` | https://effekseer.github.io/en/contributes/Suzuki01/index.html |
+| tktk | `tktk01.zip` | https://effekseer.github.io/en/contributes/tktk01/index.html |
+| tktk | `tktk02.zip` | https://effekseer.github.io/en/contributes/tktk02/index.html |

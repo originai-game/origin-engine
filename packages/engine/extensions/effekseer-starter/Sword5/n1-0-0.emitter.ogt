@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 1.0.0 "冷気"
+maxParticles 1250
+shape box 0.001 0.25 0.001
+spread 0
+rate 29999.998
+duration 0.0333
+looping false
+lifetime 0.0833 0.4167
+speed 13 31
+speedOverLife 0 2.1267 0.25 1.2147 0.375 0.9107 0.5 0.7139 0.625 0.6245 0.75 0.6424 1 0.9911
+size 6 6
+sizeOverLife 0 0.1667 1 1
+colorOverLife {
+  key 0 0.3112 1 1 0.0784
+  key 0.2 0.3112 1 1 0.0863
+  key 1 0.3112 1 1 0
+}
+texture "vfx/effekseer-starter/textures/Fog3001.png"
+blend additive

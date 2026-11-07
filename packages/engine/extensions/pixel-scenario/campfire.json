@@ -1,0 +1,76 @@
+{
+  "name": "Ember Flame",
+  "prompt": "campfire",
+  "w": 32,
+  "h": 48,
+  "frames": 12,
+  "fps": 12,
+  "loop": true,
+  "seed": 1,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "fire",
+    "alt": "lava",
+    "smoke": "smoke",
+    "spark": "fire"
+  },
+  "place": "target-ground",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.9333333333333332
+  ],
+  "layers": [
+    {
+      "type": "puffs",
+      "ramp": "$smoke",
+      "count": 3,
+      "x": 0,
+      "y": -0.6,
+      "spread": 0.2,
+      "rise": 0.8,
+      "r0": 0.08,
+      "r1": 0.22,
+      "life": [
+        0.5,
+        0.9
+      ],
+      "gain": 0.45,
+      "decay": 0.5
+    },
+    {
+      "type": "flame",
+      "ramp": "$main",
+      "y": 1.3,
+      "w": 0.78,
+      "hgt": 2.45,
+      "speed": 2,
+      "flick": 0.4,
+      "rough": 0.8
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "rise",
+      "count": 6,
+      "y": 0.2,
+      "area": 0.4,
+      "speed": [
+        0.8,
+        1.5
+      ],
+      "life": [
+        0.4,
+        0.8
+      ],
+      "heat": [
+        1,
+        0.35
+      ],
+      "wiggle": 0.08
+    }
+  ]
+}

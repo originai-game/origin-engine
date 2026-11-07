@@ -1,0 +1,102 @@
+{
+  "name": "Shadow Vortex",
+  "prompt": "purple black hole vortex",
+  "w": 64,
+  "h": 64,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 4,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "hue:305",
+    "alt": "void",
+    "smoke": "shadow",
+    "spark": "hue:305"
+  },
+  "place": "target",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "vortex",
+      "ramp": "$main",
+      "r": 0.86,
+      "rIn": 0.2,
+      "arms": 3,
+      "twist": 2.4,
+      "spin": 1,
+      "core": "dark"
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "implode",
+      "count": 14,
+      "implodeR": 1,
+      "life": [
+        0.5,
+        1
+      ],
+      "shape": "dot",
+      "size": 1,
+      "heat": [
+        0.6,
+        1.05
+      ],
+      "swirl": 1.4
+    },
+    {
+      "type": "puffs",
+      "ramp": "$smoke",
+      "count": 5,
+      "x": 0,
+      "y": 0,
+      "spread": 0.42,
+      "rise": 0.5,
+      "r0": 0.06,
+      "r1": 0.16,
+      "life": [
+        0.5,
+        0.9
+      ],
+      "emit": 0.5,
+      "gain": 0.75,
+      "decay": 0.4,
+      "t0": 0.15,
+      "blend": "under",
+      "role": "accent"
+    },
+    {
+      "type": "particles",
+      "mode": "rise",
+      "ramp": "$main",
+      "count": 3,
+      "x": 0,
+      "y": 0,
+      "area": 0.48999999999999994,
+      "speed": [
+        0.5,
+        1
+      ],
+      "life": [
+        0.4,
+        0.8
+      ],
+      "emit": 0,
+      "heat": [
+        0.95,
+        0.4
+      ],
+      "wiggle": 0.05,
+      "t0": 0.1,
+      "role": "accent"
+    }
+  ]
+}

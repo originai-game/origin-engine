@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0 "yuki"
+maxParticles 77
+shape box 1.1704 2.5749 2
+spread 43.6593
+rate 0
+burst 0 1 70 0.0167
+duration 1.1667
+looping false
+lifetime 1 1
+speed 7.2801 12.8452
+speedOverLife 0 0.2793 0.25 0.8627 0.5 1.183 0.75 1.2287 1 1.0057
+size 1 1
+colorOverLife {
+  key 0 0.5326 1 1 1
+  key 0.5 0.3562 0.7464 1 0.5
+  key 1 0.2176 0.5326 1 0
+}
+texture "vfx/effekseer-starter/textures/SnowCrystals_M.png"
+blend additive

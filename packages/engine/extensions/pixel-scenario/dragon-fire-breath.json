@@ -1,0 +1,99 @@
+{
+  "name": "Cinder Breath",
+  "prompt": "dragon fire breath",
+  "w": 96,
+  "h": 48,
+  "frames": 16,
+  "fps": 15,
+  "loop": true,
+  "seed": 3,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "fire",
+    "alt": "lava",
+    "smoke": "smoke",
+    "spark": "fire"
+  },
+  "place": "from-caster",
+  "depth": "front",
+  "pivot": [
+    0.1,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "puffs",
+      "ramp": "$smoke",
+      "count": 5,
+      "x": -0.4,
+      "y": -0.1,
+      "spread": 0.1,
+      "rise": 0.4,
+      "r0": 0.08,
+      "r1": 0.25,
+      "life": [
+        0.5,
+        0.9
+      ],
+      "gain": 0.45,
+      "dir": 0,
+      "speed": [
+        1.4,
+        2
+      ],
+      "cone": 20
+    },
+    {
+      "type": "puffs",
+      "ramp": "$main",
+      "count": 36,
+      "x": -1.6,
+      "y": 0,
+      "spread": 0.02,
+      "flat": 0.5,
+      "rise": 0.05,
+      "r0": 0.1,
+      "r1": 0.44,
+      "life": [
+        0.5,
+        0.62
+      ],
+      "gain": 1.08,
+      "decay": 0.45,
+      "dir": 0,
+      "cone": 12,
+      "speed": [
+        2.5,
+        2.75
+      ],
+      "dissolve": 0.5,
+      "freq": 2.6
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "x": -1.55,
+      "dir": 0,
+      "spread": 40,
+      "speed": [
+        2.5,
+        4
+      ],
+      "drag": 0.5,
+      "life": [
+        0.3,
+        0.6
+      ],
+      "count": 10,
+      "shape": "dot",
+      "size": [
+        2,
+        1
+      ]
+    }
+  ]
+}

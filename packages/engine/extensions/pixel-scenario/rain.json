@@ -1,0 +1,46 @@
+{
+  "name": "Aqua Ambient",
+  "prompt": "rain",
+  "w": 128,
+  "h": 96,
+  "frames": 24,
+  "fps": 12,
+  "loop": true,
+  "seed": 1,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "water",
+    "alt": "ice",
+    "smoke": "frost",
+    "spark": "water"
+  },
+  "place": "screen",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "particles",
+      "ramp": "water",
+      "mode": "fall",
+      "count": 46,
+      "shape": "streak",
+      "size": 3,
+      "driftX": -0.25,
+      "life": [
+        0.5,
+        0.7
+      ],
+      "fallScale": 1,
+      "heat": [
+        0.9,
+        0.7
+      ]
+    }
+  ]
+}

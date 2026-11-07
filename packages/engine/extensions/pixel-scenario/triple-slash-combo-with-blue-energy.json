@@ -1,0 +1,282 @@
+{
+  "name": "Flux Slash",
+  "prompt": "triple slash combo with blue energy",
+  "w": 64,
+  "h": 64,
+  "frames": 21,
+  "fps": 18,
+  "loop": false,
+  "seed": 5,
+  "outline": "none",
+  "dither": 0,
+  "palette": null,
+  "cleanup": true,
+  "ramps": {
+    "main": "hue:255",
+    "alt": "lightning",
+    "smoke": "smoke",
+    "spark": "hue:255"
+  },
+  "place": "target",
+  "depth": "front",
+  "pivot": [
+    0.5,
+    0.5
+  ],
+  "layers": [
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.56,
+      "th": 0.1,
+      "a0": -125,
+      "a1": 50,
+      "sweep": 0.32,
+      "trail": 0.8,
+      "squash": 0.85,
+      "angle": -12,
+      "gain": 0.8,
+      "t0": 0.03,
+      "t1": 0.6,
+      "seed": 3
+    },
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.76,
+      "th": 0.24,
+      "a0": -150,
+      "a1": 50,
+      "sweep": 0.3,
+      "trail": 0.95,
+      "squash": 0.85,
+      "angle": -12,
+      "t0": 0,
+      "t1": 0.7
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "count": 5,
+      "x": 0.44995132678057753,
+      "y": 0.4596266658713868,
+      "dir": 140,
+      "spread": 70,
+      "speed": [
+        1.2,
+        2.2
+      ],
+      "drag": 3,
+      "life": [
+        0.3,
+        0.55
+      ],
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.5
+      ],
+      "t0": 0.12,
+      "t1": 0.75
+    },
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.56,
+      "th": 0.1,
+      "a0": -55,
+      "a1": -230,
+      "sweep": 0.32,
+      "trail": 0.8,
+      "squash": 0.85,
+      "angle": 18,
+      "gain": 0.8,
+      "t0": 0.19,
+      "t1": 0.76,
+      "seed": 3
+    },
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.76,
+      "th": 0.24,
+      "a0": -30,
+      "a1": -230,
+      "sweep": 0.3,
+      "trail": 0.95,
+      "squash": 0.85,
+      "angle": 18,
+      "t0": 0.16,
+      "t1": 0.86
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "count": 5,
+      "x": -0.4499513267805776,
+      "y": 0.45962666587138673,
+      "dir": -320,
+      "spread": 70,
+      "speed": [
+        1.2,
+        2.2
+      ],
+      "drag": 3,
+      "life": [
+        0.3,
+        0.55
+      ],
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.5
+      ],
+      "t0": 0.28,
+      "t1": 0.91
+    },
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.56,
+      "th": 0.1,
+      "a0": -175,
+      "a1": 0,
+      "sweep": 0.32,
+      "trail": 0.8,
+      "squash": 0.85,
+      "angle": 75,
+      "gain": 0.8,
+      "t0": 0.35,
+      "t1": 0.9199999999999999,
+      "seed": 3
+    },
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.76,
+      "th": 0.24,
+      "a0": -200,
+      "a1": 0,
+      "sweep": 0.3,
+      "trail": 0.95,
+      "squash": 0.85,
+      "angle": 75,
+      "t0": 0.32,
+      "t1": 1
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "count": 5,
+      "x": 0.7,
+      "y": 0,
+      "dir": 90,
+      "spread": 70,
+      "speed": [
+        1.2,
+        2.2
+      ],
+      "drag": 3,
+      "life": [
+        0.3,
+        0.55
+      ],
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.5
+      ],
+      "t0": 0.44,
+      "t1": 1
+    },
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.56,
+      "th": 0.1,
+      "a0": -5,
+      "a1": -180,
+      "sweep": 0.32,
+      "trail": 0.8,
+      "squash": 0.85,
+      "angle": -60,
+      "gain": 0.8,
+      "t0": 0.51,
+      "t1": 1,
+      "seed": 3
+    },
+    {
+      "type": "slash",
+      "ramp": "$main",
+      "r": 0.76,
+      "th": 0.24,
+      "a0": 20,
+      "a1": -180,
+      "sweep": 0.3,
+      "trail": 0.95,
+      "squash": 0.85,
+      "angle": -60,
+      "t0": 0.48,
+      "t1": 1
+    },
+    {
+      "type": "particles",
+      "ramp": "$spark",
+      "mode": "burst",
+      "count": 5,
+      "x": -0.7,
+      "y": -7.347880794884119e-17,
+      "dir": -270,
+      "spread": 70,
+      "speed": [
+        1.2,
+        2.2
+      ],
+      "drag": 3,
+      "life": [
+        0.3,
+        0.55
+      ],
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.5
+      ],
+      "t0": 0.6,
+      "t1": 1
+    },
+    {
+      "type": "particles",
+      "mode": "burst",
+      "ramp": "$spark",
+      "count": 6,
+      "x": 0,
+      "y": 0,
+      "speed": [
+        1.6,
+        2.8
+      ],
+      "drag": 2.4,
+      "life": [
+        0.3,
+        0.6
+      ],
+      "shape": "streak",
+      "size": 2,
+      "heat": [
+        1,
+        0.5
+      ],
+      "emit": 0.3,
+      "t0": 0.15,
+      "role": "accent"
+    }
+  ]
+}

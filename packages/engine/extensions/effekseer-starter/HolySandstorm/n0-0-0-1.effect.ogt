@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.0.0.1 "Wind_Ring"
+main "vfx/effekseer-starter/textures/Fire_Single-5d682741.png" rgba {
+}
+alpha curve 0 0 0.0588 1 0.1765 1 0.7188 0.4049 0.875 0.1985 1 0
+blend alpha
+doubleSided true

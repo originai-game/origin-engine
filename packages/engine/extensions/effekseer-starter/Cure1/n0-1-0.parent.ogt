@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 0.1 "光メイン左下"
+maxParticles 7
+shape point
+spread 0
+rate 0
+burst 0 5
+duration 0.0167
+looping false
+lifetime 0.5 0.5
+speed 2.8284 2.8284
+size 0
+subEmitter life "vfx/effekseer-starter/Cure1/n0-1-0.emitter.ogt"
