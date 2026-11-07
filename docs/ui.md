@@ -45,11 +45,43 @@ Each layer has one authoring form:
 A document uses core UI elements as tags, `{#if}`, keyed
 `{#each ... (key)}`, `onclick={...}`, `bind:`, `class:`, and a scoped
 `<style>` with the CSS dialect. It reads named stores as `$name`.
-There is no script block, JSX, or runes. The document-format stream owns
-the exact grammar and metadata specification; it is pending review.
-Structure and slot content remain documents, never TypeScript trees.
-Keys identify data items, not row indices. Every visible string must be
-translatable, and parse errors identify file, line, column, and a fix.
+The Svelte parser, cook path, and generic screens are implemented; the old
+screen reader is deleted. The [screens guide](../crates/og-api/guides/screens.md)
+and generated [component catalogue](../crates/og-api/guides/components.md)
+describe the supported syntax. Retained mounting and removal of TypeScript
+builders remain pending (§2.1); the structure-only authoring rule is the
+target contract, not a claim that those builders have already been removed.
+The document contract has these requirements:
+
+- A `.svelte` file has compile-time `<meta>` declarations, one root element,
+  and document-scoped `<style>`. There is no `<template>` wrapper or script.
+  Metadata declares screen or component identity, layer, focus, typed
+  props, actions, and preview fixtures. IDs are unique within the document.
+- Text uses `{expr}` and attributes use `attr={expr}`. Mounted stores use
+  `$name`; props and each-row aliases use plain names. Expressions are
+  read-only. `onclick={action}` dispatches a named mounted action, not an
+  arbitrary call body. `bind:value` writes a writable store or keyed row
+  field in the current tick batch; `value` alone is read-only.
+- Declared input actions also dispatch named markup events independently
+  of clicks. `<meta name="action:confirm" content="Start">` enables
+  `onconfirm={start}`; `onclick` is not a substitute for that binding.
+- Each loop requires stable, nonempty string keys and supports an empty
+  branch. Missing, index-based, empty, and duplicate keys are errors.
+  `selected` and `mark` identify collection keys, never row indices.
+- Capitalized tags resolve document components. Content uses
+  `{#snippet name()}…{/snippet}` and `{@render name?.()}`. Mount content
+  references name a document and snippet, never a TypeScript callback.
+  `<slot>` is rejected with a replacement diagnostic.
+- Visible text uses `t(key, { named: value })` with ICU parameters or
+  static `i18n="key"` with fallback content. Unlocalized visible literals
+  produce cook warnings and publish errors. Object expressions are allowed
+  only for translation parameters and classes. Companion English messages
+  use cooked string tables.
+- Script, JSX, runes, `{@html}`, `{@const}`, `use:`, `transition:`, and
+  `on:click` are unsupported. Motion uses CSS, not template directives.
+  Parse errors identify file, line, column, and a fix.
+
+Structure and snippet content remain documents, never TypeScript trees.
 
 Kits use `@origingame/engine`, `@origingame/engine/ui-extensions`, and the
 public helpers in `@origingame/engine/ui-parts/hud` and
@@ -88,13 +120,90 @@ a scope so they can be checkpointed. Rust owns the graph on both hosts;
 this is an engine implementation, not a browser Svelte runtime.
 Data authoring uses function calls; structure remains in Svelte templates,
 not TypeScript trees or JSX. There are no async primitives, Promises,
-resources, Suspense, or transitions.
+resources, Suspense, or async transitions. CSS motion remains supported.
+
+Gameplay initialization belongs in `og.game({ start(world) { ... } })`.
+UI registration belongs in its separate `ui(world)` callback, which runs
+once after `start` and again after hot-reload restore, never per tick.
+Registration creates named scopes and stores through `og.ui.scope`,
+`writable`, and `derived`. Stable IDs preserve values across hot reload;
+re-registered callbacks replace their bodies, and missing IDs are disposed.
+The `ui` callback may read the world, but gameplay writes fail registration.
+On fresh-process restore, `start` runs, then `ui`, then the engine restores
+named presentation values. Hot-reload registration does not rerun `start`.
+
+The landed store entry is `og.ui.scope(world, id): UiScope`. IDs are
+explicit, stable, and nonempty. Its signatures are:
+
+```ts
+writable<T>(id: string, initial: T): UiWritable<T>;
+readable<T>(id: string, initial: T, start?: UiStart<T>): UiReadable<T>;
+derived<S extends UiStores, T>(id: string, stores: S, compute: UiDerive<S, T>, initial?: T): UiReadable<T>;
+get<T>(store: UiReadable<T>): T;
+collection<T>(id: string, items: readonly T[], desc?: UiCollectionDesc): UiCollection<T>;
+takeErrors(): readonly string[];
+dispose(): Result<void>;
+```
+
+Values must be serializable. `subscribe(run, invalidate?)` returns an
+unsubscribe function. A readable's synchronous `start(set, update)` runs
+for its first subscriber; the returned cleanup runs when its last leaves.
+`get` subscribes and immediately unsubscribes. Derived inputs are an
+explicit store or readonly tuple of stores, and `compute` is synchronous
+and pure. A failed computation preserves the last good value or initial
+fallback; without either it reports an error and yields `undefined`.
+
+Writable `set(value)` and `update(updater)` return `Result<void>`.
+Collections use `desc.key`, defaulting to the `id` field. They expose
+`keys(): readonly string[]` and `row(key): Result<T>`;
+`insert(row, before?)`, `remove(key)`, `move(key, before?)`, and
+`patch(key, fields)` return `Result<void>`. Duplicate keys and key-changing
+patches are refused. Scope errors also remain available through
+`takeErrors`, including in publish builds.
+
+For example, registration creates presentation data without a UI tree:
+
+```ts
+export default og.game({
+	start(world) {
+		// Initialize gameplay here.
+	},
+	ui(world) {
+		const inventory = og.ui.scope(world, "inventory");
+		const gold = inventory.writable("gold", 0);
+		inventory.derived("doubled", gold, value => value * 2);
+	},
+});
+```
+
+If you know Svelte, stores keep its subscription, first/last subscriber,
+and synchronous derivation semantics. Here stores also need stable IDs
+and a world-owned scope, and write operations return error values. No
+Svelte runtime or compiler runs in the game.
+
+Presentation checkpoints live outside `world_hash`. Saves require the
+`og-save:3` envelope; older envelopes are refused with both format versions,
+not converted. UI feedback uses presentation-only sound: it creates no
+gameplay entity or event and is not replayed when a save restores.
+`og.audio.playFeedback` exposes that boundary for one-shot sounds.
+Gameplay effects cross `og.input.intent(world, event, payload)`, which
+records the reflected event name, layout hash, and payload for the next
+tick. `takeIntents` records accepted intents and `replayIntent` validates
+their schema and tick. `og.PauseIntent` uses this same boundary to apply
+simulation time scale; a UI control does not write gameplay state directly.
+
+The retained second head remains pending: incremental scheduling,
+document mounts, keyed `{#each}` connected to the virtualizer, and removal
+of TypeScript tree builders. The following requirements describe that
+target, not additional methods on the landed `UiScope`:
 
 Each screen has one fixed-tick scope with a stable name, named stores and
 keyed collections. Documents mount once with named mount IDs and inputs.
 Template `$name` reads and keyed `{#each}` consume those inputs. Bindings
 are pure, track only the values they read, and replace dependencies when a
 branch changes. Lists bind to keyed collections, not copied viewmodels.
+Content passed at mount consists of serializable document and snippet
+references, never tree-building callbacks.
 
 Named TypeScript callbacks are allowed only for custom drawing and the few
 components a document cannot express, with explicit dependency handles.
@@ -114,11 +223,9 @@ for active subscribers. Errors are values that identify the scope and ID,
 including duplicate keys, cycles, undeclared reads, and reentrant writes.
 Hot reload re-registers callbacks by ID while sources and mounts survive.
 
-This authoring contract is approved. Public signatures remain pending the
-core stream's API landing and confirmation; no proposed call spelling is
-yet frozen here. Incremental scheduling follows the API, and measured
-update costs are reported separately. The current
-[components reference](../crates/og-api/guides/components.md) describes the
+The store signatures above are landed. Mount signatures remain pending
+the retained second head; measured update costs are reported separately.
+The [components reference](../crates/og-api/guides/components.md) describes the
 implemented document dialect; the
 [screens guide](../crates/og-api/guides/screens.md) describes its workflow.
 
@@ -126,6 +233,36 @@ Fixtures contain supplied presentation states, not playable economies,
 combat loops, matchmaking, or rhythm clocks. `og create` writes one empty
 project skeleton with creation constraints. It never installs a genre
 fixture as a gameplay template.
+
+### 2.2 Dialogue text and attribute spans
+
+`DialogueView` receives localized plain text and attribute spans shaped as
+`{ name, position, length, properties }`. Properties contain typed string,
+finite number, or boolean values. Positions and lengths count Unicode
+scalar values, not UTF-16 code units, bytes, or grapheme clusters.
+A `character` span covers the `Speaker: ` prefix, including the colon and
+space. That prefix remains in the delivered text.
+The Yarn 3.2.2 dialogue runtime resolves `nomarkup`, escapes, and CLDR
+select, plural, and ordinal expressions before delivery. UI does not
+parse them again.
+
+UI maps visual attributes such as bold and wave to span styles and motion.
+Core accepts plain text plus structured spans directly. The text stays
+literal and is never re-parsed as markup. When spans overlap, later spans
+in array order override earlier ones only for fields they declare.
+Unknown spans, zero-length spans, and their properties remain unchanged
+in the response. Parts resolve against the active style through selectors
+such as `text::part(name)` and `#Dialogue::part(name)`.
+
+Styled runs share core shaping and line breaking. Span motion is
+checkpointed and restores exactly; reduced motion makes it stationary.
+Core structured text and the template binding
+`<text spans={$spans}>{$body}</text>` with `::part` are implemented.
+Both-host execution verification of this binding remains pending.
+Regression coverage includes overlapping styles and motion, literal
+brackets and escaped text, speaker prefixes, Unicode offsets, wrapping,
+active-style changes, and reduced motion. Kits use this core text path,
+not a private renderer.
 
 ## 3. Style contract
 
@@ -171,6 +308,21 @@ pseudo-class selectors use the same reflected properties. Named
 breakpoints use `@media phone`; safe-area values use the supported CSS
 `env(safe-area-inset-*)` spellings. Svelte `class:` directives select
 states; they do not introduce a second styling language.
+The `style:` directive accepts only bound CSS-token references, not raw
+numbers, colours, or arbitrary expressions. Other styling belongs in
+`<style>`. Title and game-over motion use standard CSS `animation` and
+`transition`, with semantic motion tokens and reduced-motion behaviour.
+Scoped `@keyframes` can emit a style sound at a frame, such as
+`-og-sound: error` for game-over entrance feedback. The event records its
+playback rate; rate-valued fields use `playbackRate`, not `pitch`.
+
+CPU motion, GPU mass elements, and camera timing share `Ease`: GSAP names
+such as `none`, `power1.out`, and `back.out`, plus `cubic-bezier(...)` and
+`steps(...)`. Style tokens retain `EaseRole` indirection. CSS timing
+keywords belong to the CSS parser; shared timing does not make them GSAP
+names. Standard CSS completion remains pending in three heads: cascade
+and selectors, media and container queries, then transitions and animations.
+The supported subset in the component catalogue is not full CSS support.
 
 Core parts keep their existing names and meanings. Each kit documents its
 additional parts with its own API, so packs can dress them without private
@@ -186,6 +338,10 @@ Button glyphs and input prompts follow the active device and switch live:
 keyboard and mouse, Xbox, PlayStation, Switch, generic gamepad, and touch.
 Core input glyphs and UI action prompts own this behaviour; kits do not
 hard-code button letters or assume that every gamepad uses Xbox labels.
+Actions declare `actionMap`, and `og.input.setActionMaps` selects the active
+maps. `isActionPressed` reads held state; `isActionJustPressed` and
+`isActionJustReleased` read tick edges. `actionHeld` retains its `holdMs`
+threshold semantics, and physical controls retain their W3C codes.
 
 Selection uses `selection` and `onSelection`; the main action uses
 `primary` and `onPrimary`; small emphasis uses `accent`. HUD content over
@@ -429,8 +585,8 @@ Core default design tokens come from `packages/design`; they do not impose
 the default appearance on game-authored styles.
 
 Missing core capabilities are tracked in [the roadmap](roadmap.md).
-Border-radius token expressions, variable-height virtualization, and
-localized number/date formatting needed by kits are core prerequisites,
+Variable-height virtualization and localized number/date formatting
+needed by kits are core prerequisites,
 not invitations to private kit workarounds. Per-frame UI cost and its
 performance tests are independent measured work; this document claims no
 unmeasured performance budget has passed. Password fields, colour-blind

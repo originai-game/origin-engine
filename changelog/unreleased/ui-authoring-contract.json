@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI authoring documentation",
+      "summary": "Document the landed named-store API, GameDesc.ui lifecycle, save v3 presentation boundary, recorded intents, Svelte syntax, structured dialogue spans, shared Ease and input vocabulary. Distinguish pending retained mounting, standard CSS completion and both-host spans verification from implemented support."
+    }
+  ]
+}
