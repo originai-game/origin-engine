@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og ui literals",
+      "summary": "Lists the style values a kit or document writes itself instead of taking from the style (colours, corner radii, font families), each with its file, line and the token to use. It reports and exits 0 when it ran; `style-literal-ok` on a line skips it."
+    }
+  ]
+}

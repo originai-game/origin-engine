@@ -208,6 +208,11 @@ commands:
                       a contact sheet per screen and style (a row per breakpoint, a column per
                       locale) and index.json of every cell, or a filmstrip of a motion at the
                       chosen times after the screen settles (default <project>/og-out/ui-preview)
+  ui literals [path...] [--json]
+                      the style values a kit or document writes itself instead of taking from the
+                      style: colours (#rrggbb, { r, g, b }), corner radii and font families, each
+                      with the token to use; facts only, exit 0 when it ran (default: the
+                      project's assets/ui-kits and assets/ui); `style-literal-ok` on a line skips it
   ui eject <screen> [project] [--force] | ui eject --list [project]
                       copy one of the library's screen documents (the engine package's
                       src/ui/screens/, one for every screen type of docs/ui.md Appendix B) into

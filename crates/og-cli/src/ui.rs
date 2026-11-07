@@ -48,10 +48,11 @@ use std::path::Path;
 use std::process::{Command, ExitCode};
 
 pub mod extensions;
+mod literals;
 mod review;
 mod sheet;
 
-const USAGE: &str = "usage: og ui add <kit|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui types [project]\n       og ui eject <screen|kit/document> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui review <kit> [project] [--style <pack>]... [--states a,b] [--grid N] [--out DIR] [--json]\n       og ui sheet <pack|kit> [project] [--out DIR] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui add <kit|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui types [project]\n       og ui literals [path...] [--json]\n       og ui eject <screen|kit/document> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui review <kit> [project] [--style <pack>]... [--states a,b] [--grid N] [--out DIR] [--json]\n       og ui sheet <pack|kit> [project] [--out DIR] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
 /// Options forwarded to ui-run.ts with their value.
 const VALUED: [&str; 10] = [
@@ -79,6 +80,9 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     if let ["list", rest @ ..] = args {
         return extensions::list(rest);
+    }
+    if let ["literals", rest @ ..] = args {
+        return literals::run(rest);
     }
     if let ["slots", rest @ ..] = args {
         return slots(rest);

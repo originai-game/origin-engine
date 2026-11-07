@@ -1500,6 +1500,14 @@ show screens`, says what a game usually wants):
 - the buttons filled with the primary, per layer;
 - the element count and draw commands per frame.
 
+`og ui literals [path...]` lists the style values a kit or document writes
+itself instead of taking from the style: a `#rrggbb` or `{ r, g, b }`
+colour, a corner radius other than 0, a font family that is no font role.
+Each comes with its file, line and the token to use. A kit holds structure
+and behaviour; a value it writes is one no style pack can change. A line
+holding `style-literal-ok` is skipped, for a value that is not the style's.
+Like the check it reports and exits 0 when it ran.
+
 ### 16.6 Review
 
 `og ui review <kit> [--style <pack>]... [--states a,b]` renders what an art
