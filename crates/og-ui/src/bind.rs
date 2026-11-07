@@ -174,6 +174,7 @@ pub fn text(v: &Value) -> String {
 pub enum Expr {
     Lit(Value),
     Path(String),
+    Translate(Box<Expr>, Vec<(String, Expr)>),
     Not(Box<Expr>),
     Neg(Box<Expr>),
     Bin(Op, Box<Expr>, Box<Expr>),
@@ -209,9 +210,9 @@ fn lex(src: &str) -> Result<Vec<Tok>, String> {
     let c: Vec<char> = src.chars().collect();
     let mut i = 0;
     let mut out = Vec::new();
-    const SYMS: [&str; 19] = [
+    const SYMS: [&str; 21] = [
         "&&", "||", "==", "!=", "<=", ">=", "<", ">", "!", "+", "-", "*", "/", "%", "(", ")", "?",
-        ":", ",",
+        ":", ",", "{", "}",
     ];
     while i < c.len() {
         let ch = c[i];
@@ -348,6 +349,50 @@ impl P {
         match t {
             Some(Tok::Num(n)) => Ok(Expr::Lit(Value::from(n))),
             Some(Tok::Str(s)) => Ok(Expr::Lit(Value::String(s))),
+            Some(Tok::Ident(w)) if w == "t" && self.eat("(") => {
+                let key = self.expr()?;
+                let mut args = Vec::new();
+                if self.eat(",") {
+                    if !self.eat("{") {
+                        return Err("t(key, { name: expression }) takes named parameters".into());
+                    }
+                    while !self.eat("}") {
+                        let name = match self.t.get(self.i).cloned() {
+                            Some(Tok::Ident(n) | Tok::Str(n))
+                                if !n.is_empty()
+                                    && n.chars().all(|c| c.is_alphanumeric() || c == '_') =>
+                            {
+                                n
+                            }
+                            _ => return Err("a translation parameter needs a name".into()),
+                        };
+                        self.i += 1;
+                        let value = if self.eat(":") {
+                            self.expr()?
+                        } else {
+                            Expr::Path(name.clone())
+                        };
+                        if args.iter().any(|(n, _)| n == &name) {
+                            return Err(format!(
+                                "translation parameter '{name}' is repeated; keep one value"
+                            ));
+                        }
+                        args.push((name, value));
+                        if self.eat("}") {
+                            break;
+                        }
+                        if !self.eat(",") {
+                            return Err(
+                                "separate translation parameters with ',' and close '}'".into()
+                            );
+                        }
+                    }
+                }
+                if !self.eat(")") {
+                    return Err("close t(key, { name: expression }) with ')'".into());
+                }
+                Ok(Expr::Translate(Box::new(key), args))
+            }
             Some(Tok::Ident(w)) => Ok(match w.as_str() {
                 "true" => Expr::Lit(Value::Bool(true)),
                 "false" => Expr::Lit(Value::Bool(false)),
@@ -378,6 +423,12 @@ impl Expr {
         match self {
             Expr::Lit(_) => {}
             Expr::Path(p) => out.push(p.clone()),
+            Expr::Translate(key, args) => {
+                key.paths(out);
+                for (_, value) in args {
+                    value.paths(out);
+                }
+            }
             Expr::Not(a) | Expr::Neg(a) => a.paths(out),
             Expr::Bin(_, a, b) => {
                 a.paths(out);
@@ -396,6 +447,25 @@ impl Expr {
         match self {
             Expr::Lit(v) => v.clone(),
             Expr::Path(p) => scope.get(p),
+            Expr::Translate(key, params) => {
+                let key = text(&key.eval(scope));
+                let message = scope.env.translate(&key).unwrap_or_else(|| key.clone());
+                let Ok(message) = og_i18n::Message::parse(&message) else {
+                    return Value::String(key);
+                };
+                let args = params
+                    .iter()
+                    .map(|(name, expr)| {
+                        let value = expr.eval(scope);
+                        let arg = match value {
+                            Value::Number(n) => og_i18n::Arg::Num(n.as_f64().unwrap_or(0.0)),
+                            other => og_i18n::Arg::Str(text(&other)),
+                        };
+                        (name.clone(), arg)
+                    })
+                    .collect();
+                Value::String(message.format(scope.env.language(), &args))
+            }
             Expr::Not(a) => Value::Bool(!truthy(&a.eval(scope))),
             Expr::Neg(a) => num(-number(&a.eval(scope)).unwrap_or(f64::NAN)),
             Expr::If(c, a, b) => {
@@ -1171,6 +1241,47 @@ mod tests {
         );
         assert!(Expr::parse("price >").is_err());
         assert!(Expr::parse("price $$ 2").is_err());
+    }
+
+    #[test]
+    fn translations_use_named_expressions_and_locale_plurals() {
+        struct Host;
+        impl Env for Host {
+            fn language(&self) -> &str {
+                "de"
+            }
+            fn translate(&self, key: &str) -> Option<String> {
+                (key == "taps").then(|| "{who}: {count, plural, one {# Schlag} other {# Schläge}} / {offset, number} ms".into())
+            }
+        }
+        let expr = Expr::parse("t('taps', { who: item.name, count: taps + 1, offset })").unwrap();
+        for (taps, expected) in [
+            (0, "Ada: 1 Schlag / 1.234,5 ms"),
+            (2, "Ada: 3 Schläge / 1.234,5 ms"),
+        ] {
+            let vm = json!({"taps": taps, "offset": 1234.5});
+            let scope = Scope {
+                vm: &vm,
+                locals: vec![("item", json!({"name":"Ada"}))],
+                env: &Host,
+            };
+            assert_eq!(expr.eval(&scope), json!(expected));
+        }
+        let mut paths = Vec::new();
+        expr.paths(&mut paths);
+        assert_eq!(paths, ["item.name", "taps", "offset"]);
+        for bad in [
+            "t('x', { n: taps++ })",
+            "t('x', { n: set(1) })",
+            "t('x', { n: 1, n: 2 })",
+            "t('x', { n: { nested: 1 } })",
+            "{ n: 1 }",
+            "t('x', 'fallback')",
+            "t('x', { n: 1 }",
+            "t('x', { n: 1 n: 2 })",
+        ] {
+            assert!(Expr::parse(bad).is_err(), "accepted {bad}");
+        }
     }
 
     #[test]
