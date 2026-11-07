@@ -266,13 +266,9 @@ fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
     .expect("world");
     let mut probe = Probe::new(&mut world).expect("probe");
     let mut ui = ui_with_font(test_font_metrics());
-    let style_id = "styles/fantasy/style.ogt";
-    let style_text = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../templates/styles/fantasy/style.ogt"),
-    )
-    .expect("the fantasy pack");
-    let mut style = parse_style(&style_text).expect("the pack parses");
+    let style_id = "styles/core-test/style.ogt";
+    let style_text = CORE_STYLE;
+    let mut style = parse_style(style_text).expect("core test style");
     style.resolve(style_id, |_| true);
     ui.set_dressings(style.dressings.clone());
     ui.define_document(UiDocument::parse("ui/shop.ogt", SHOP).expect("shop"));

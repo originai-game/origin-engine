@@ -1,0 +1,212 @@
+type style
+version 3
+---
+name "core-test"
+palette {
+  --backdrop: #efe3c8
+  --well: #e1d5bc
+  --panel: #faf5ed
+  --panel-hover: #f1ece5
+  --panel-raised: #fcf9f4
+  --line: #d3ccc4
+  --line-strong: #8e827c
+  --ink: #210f0b
+  --ink-muted: #564844
+  --ink-faint: #645957
+  --ink-inverse: #fefcfa
+  --control: #ebe5dd
+  --control-strong: #dcd5cd
+  --primary: #863d2c
+  --primary-hover: #7b3828
+  --primary-active: #713325
+  --on-primary: #fdfaf9
+  --primary-soft: #863d2c38
+  --highlight: #3a5a43
+  --focus: #4f7d5b
+  --knob: #fefdfb
+  --hud: #faf5edf0
+  --scrim: #787264b3
+  --shadow: #2d150f3d
+  --sheen: #ffffff80
+  --success: #1a5630
+  --warn: #6a4309
+  --danger: #891b18
+  --info: #164881
+  --health: #175721
+  --mana: #0c4591
+  --xp: #5b2183
+  --gold: #624908
+}
+colors {
+  --success: pips 1
+  --warn: pips 2
+  --danger: pips 3
+  --info: pattern waves
+  --common: #919191 pips 1
+  --uncommon: #37a544 pips 2
+  --rare: #2f7fef pips 3
+  --epic: #a335ee pips 4
+  --legendary: #e27200 pips 5
+  --mythic: #e8364f pips 6
+  --team1: #3d7eff
+  --team2: #ff4747
+  --team3: #36a552
+  --team4: #b48b12
+  --team5: #a347ff
+  --team6: #db761b
+  --team7: #19a1a1
+  --team8: #f157a7
+  --physical: #979083
+  --fire: #f26429
+  --ice: #499abe
+  --lightning: #a98f27
+  --poison: #5ea141
+  --holy: #9e9063
+  --shadow: #8a5cf6
+  --arcane: #f24bcd
+  --series1: #4e79a7
+  --series2: #d27c25
+  --series3: #e15759
+  --series4: #649a96
+  --series5: #59a14f
+  --series6: #a98f33
+  --series7: #b07aa1
+  --series8: #c97b83
+}
+space {
+  --space-xxs: 2px
+  --space-xs: 4px
+  --space-sm: 8px
+  --space-md: 12px
+  --space-lg: 16px
+  --space-xl: 24px
+  --space-xxl: 32px
+  --space-xl3: 48px
+}
+size {
+  --size-xs: 16px
+  --size-sm: 24px
+  --size-md: 32px
+  --size-lg: 48px
+  --size-xl: 64px
+  --size-xxl: 96px
+  --size-touch: 44px
+}
+radius {
+  --radius-xs: 6px
+  --radius-sm: 8px
+  --radius-md: 12px
+  --radius-lg: 18px
+  --radius-xl: 24px
+  --radius-pill: 9999px
+}
+stroke {
+  --stroke-hairline: 1px
+  --stroke-thin: 1.5px
+  --stroke-regular: 2px
+  --stroke-thick: 3px
+  --stroke-focus: 2px
+}
+elevation {
+  raised {
+    shadow 0 2 6 0 "#2d150f08"
+    shadow 0 1 2 0 "#2d150f06"
+  }
+  floating {
+    shadow 0 4 12 0 "#2d150f09"
+    shadow 0 1 2 0 "#2d150f06"
+  }
+  overlay {
+    shadow 0 8 24 0 "#2d150f0b"
+    shadow 0 1 2 0 "#2d150f06"
+  }
+  top {
+    shadow 0 14 36 0 "#2d150f0c"
+    shadow 0 1 2 0 "#2d150f06"
+  }
+}
+shape {
+  panel round 12
+  dialog round 14.4
+  card round 9.6
+  tooltip round 6
+  button round 8
+  field round 6.4
+  chip round pill
+  badge round pill
+  tab round 6.4
+  slot round 9
+  bar round pill
+  hud round 8
+  avatar round pill
+}
+motion {
+  enter fade
+  toast fade
+  progress 560
+  shake 4
+  pop 0.05
+  spring ui 320 0.1
+  spring panel 560 0.14
+  spring emphasis 680 0.22
+  spring playful 760 0.28
+  ease standard 0.2 0 0 1
+  ease enter 0.23 1 0.32 1
+  ease exit 0.4 0 1 1
+  ease emphasis 0.34 1.4 0.64 1
+  duration instant 140
+  duration fast 240
+  duration base 380
+  duration slow 560
+  duration spring 680
+  duration bounce 820
+  stagger 80
+  staggerCap 300
+  overshoot 0.06
+}
+sounds {
+  hover none haptic none
+  press none haptic none
+  focus none haptic none
+  select none haptic none
+  confirm none haptic none
+  cancel none haptic none
+  back none haptic none
+  open none haptic none
+  close none haptic none
+  tab none haptic none
+  toggleOn none haptic none
+  toggleOff none haptic none
+  sliderTick none haptic none
+  scrollTick none haptic none
+  typewriter none haptic none
+  counterTick none haptic none
+  notification none haptic none
+  warning none haptic none
+  error none haptic none
+  success none haptic none
+  reward none haptic none
+  revealCommon none haptic none
+  revealUncommon none haptic none
+  revealRare none haptic none
+  revealEpic none haptic none
+  revealLegendary none haptic none
+  revealMythic none haptic none
+}
+fonts {
+}
+typography {
+  display 40 48 0 700 display
+  title 32 40 0 700 display
+  heading 24 30 0 600 body
+  body 16 22 0 400 body
+  label 14 20 0 400 body
+  caption 12 18 0 400 body
+  numeric 24 30 0 400 body
+}
+Button::base {
+  -og-fill: var(--control)
+}
+Button::base.primary {
+  -og-fill: var(--primary)
+}

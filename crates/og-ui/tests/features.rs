@@ -12,6 +12,7 @@
 //!   proportional figures, so a timer changes width as it ticks →
 //!   `tabular_figures_hold_a_width_without_the_feature`
 
+use crate::support::CORE_STYLE;
 use og_render::{Glyph, GlyphKey, MsdfFont, TextureHandle};
 use og_ui::shape::{Features, FontFile};
 use og_ui::*;
@@ -119,12 +120,7 @@ fn a_pixel_font_is_set_at_multiples_of_its_grid() {
 /// stencil for titles, its body face for 14 px eyebrows).
 #[test]
 fn display_text_under_the_styles_display_min_takes_the_body_face() {
-    let pack = std::fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/styles/storybook/style.ogt"
-    ))
-    .expect("the storybook seed");
-    let text = pack.replacen("fonts {\n", "fonts {\n  displayMin 18\n", 1);
+    let text = CORE_STYLE.replacen("fonts {\n", "fonts {\n  displayMin 18\n", 1);
     let file = og_ui::style_file::parse_style(&text).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(file.theme.art.display_min, 18.0);
     let mut narrow = font("Inter-Display.ttf");

@@ -22,10 +22,6 @@
 use crate::support::*;
 use og_ui::*;
 
-#[path = "../../../templates/styles/tests/support.rs"]
-mod pack_support;
-use pack_support::*;
-
 /// A tight field has no inset and its text's line for a height, so a
 /// caller's own box holds the line exactly (the 大观园 page's verse box);
 /// its style's text parts set the text's step and inks per component,
@@ -33,11 +29,7 @@ use pack_support::*;
 /// body step and ink, the placeholder inkFaint, inside a control's inset.
 #[test]
 fn a_tight_field_takes_its_components_text_parts() {
-    let style = std::fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/styles/storybook/style.ogt"
-    ))
-    .unwrap();
+    let style = CORE_STYLE;
     let dress = r##"Poem::text {
   -og-ink: #c0392b
   -og-step: lg

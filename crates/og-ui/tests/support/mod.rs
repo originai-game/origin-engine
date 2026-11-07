@@ -11,6 +11,35 @@ use og_ui::*;
 pub use scenes::*;
 use std::path::{Path, PathBuf};
 
+pub const CORE_STYLE: &str = include_str!("../fixtures/core-style.ogt");
+
+pub fn dressed(dress: &str) -> Ui {
+    let file = parse_style(&format!("{CORE_STYLE}{dress}")).expect("core test style");
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_theme(file.theme(None, [0; 6]));
+    ui.set_dressings(file.dressings.clone());
+    ui
+}
+
+pub fn fills_in(ui: &Ui, rect: Rect) -> Vec<[f32; 4]> {
+    ui.frame()
+        .items
+        .iter()
+        .filter_map(|i| i.cmd.filled())
+        .filter(|(r, _)| {
+            (r.x - rect.x).abs() < 1.0
+                && (r.y - rect.y).abs() < 1.0
+                && (r.width - rect.width).abs() < 1.0
+        })
+        .map(|(_, c)| c)
+        .collect()
+}
+
+pub fn near(a: [f32; 4], b: Srgba) -> bool {
+    let l = b.linear();
+    (0..3).all(|k| (a[k] - l[k]).abs() < 0.01)
+}
+
 fn fonts_dir() -> PathBuf {
     // The MSDF test atlas og-tests commits (Noto Sans SC subset, OFL).
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-tests/assets/fonts")
