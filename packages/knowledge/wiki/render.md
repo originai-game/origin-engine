@@ -594,7 +594,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 2614</sub>
+<sub>Module `render` line 2615</sub>
 
 ```ogt
 column Shader {
@@ -605,7 +605,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 2671</sub>
+<sub>Module `render` line 2672</sub>
 
 ```ogt
 column LineMode {
@@ -616,7 +616,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3464</sub>
+<sub>Module `render` line 3465</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -627,7 +627,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 3674</sub>
+<sub>Module `render` line 3675</sub>
 
 ```ogt
 column RenderTarget {
@@ -638,7 +638,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 3683</sub>
+<sub>Module `render` line 3684</sub>
 
 ```ogt
 column Post {
@@ -649,7 +649,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 3819</sub>
+<sub>Module `render` line 3820</sub>
 
 ## Constants
 
@@ -671,22 +671,22 @@ const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never 
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2567</sub>
+<sub>Module `render` line 2568</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2568</sub>
+<sub>Module `render` line 2569</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>Module `render` line 2569</sub>
+<sub>Module `render` line 2570</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 2606</sub>
+<sub>Module `render` line 2607</sub>

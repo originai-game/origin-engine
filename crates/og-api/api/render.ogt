@@ -2066,6 +2066,7 @@ module render {
 
   component Beam {
     doc "A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter)."
+    aliases "laser beam, laser, LineRenderer, tether, lightning bolt"
     field end Vector3 "The far end, in world space." {
       worldspace world
       unit m

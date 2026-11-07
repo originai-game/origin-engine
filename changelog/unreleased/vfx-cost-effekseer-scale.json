@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "effect-packs guide: a section per category",
+      "summary": "The generated `effect-packs` guide ends with one section per effect category (level up, heal, portal, fire, ...), listing that category's effects in every pack, so `og api find \"level up\"` answers with the level-up effects. og.Beam takes the aliases laser beam, laser, LineRenderer, tether and lightning bolt."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og vfx import: sprite size of unevenly scaled and generated nodes",
+      "summary": "A sprite or mesh whose scale differs per axis is drawn at its axes' mean, not its longest axis, also when that size is constant over its life (the flat curve was taken as 1); and the generator's own scale, and that of the single nodes below it, now reach the drawn node's size and motion, as Effekseer binds them. Converted effects draw at Effekseer's sizes: AndrewFM01's actionLines_radial2 draws its 2000 lines as 0.8 m quads, not 4.5 m ones (GPU cost +109 ms to +7 ms on an M4 Pro), and Pierre02's LossOfBlood goes from +54 ms to +36 ms. 163 of the 285 converted samples and 25 of effekseer-starter's 38 effects change size; their pack files, previews and cost sheets are regenerated. Moves no reference frame."
+    }
+  ]
+}

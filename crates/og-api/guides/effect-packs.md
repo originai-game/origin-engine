@@ -511,3 +511,171 @@ tktk vol.2's Effekseer sample effects (33), converted to type vfx. 33 effects, d
 | `vfx/effekseer-tktk02/Light2.ogt` | Light 2 | magic-impact | holy | 2.6 |
 | `vfx/effekseer-tktk02/Light3.ogt` | Light 3 | magic-impact | holy | loops |
 | `vfx/effekseer-tktk02/Light4.ogt` | Light 4 | magic-impact | holy | 2.777 |
+
+## 13. Ambient effects
+
+Ambient effects (ambient): 12 in `effekseer-hato01`, `effekseer-pierre01`, `effekseer-starter`, `pixel-scenario`.
+
+- effekseer-hato01: `vfx/effekseer-hato01/aoi-chou.ogt` (Aoi Chou), `vfx/effekseer-hato01/iwai-ume.ogt` (Iwai Ume), `vfx/effekseer-hato01/kiroi-chou.ogt` (Kiroi Chou), `vfx/effekseer-hato01/sakura1.ogt` (Sakura 1)
+- effekseer-pierre01: `vfx/effekseer-pierre01/Atmosphere.ogt` (Atmosphere), `vfx/effekseer-pierre01/Background.ogt` (Background)
+- effekseer-starter: `vfx/effekseer-starter/electric_dust.ogt` (Floating Motes), `vfx/effekseer-starter/sakura1.ogt` (Sakura Petals)
+- pixel-scenario: `vfx/pixel-scenario/cherry-blossom-petals.ogt` (Thorn Ambient), `vfx/pixel-scenario/embers-rising.ogt` (Blaze Ambient), `vfx/pixel-scenario/falling-leaves.ogt` (Bloom Ambient), `vfx/pixel-scenario/fireflies.ogt` (Mystic Ambient)
+
+## 14. Basic effects
+
+Basic effects (basic): 11 in `effekseer-effekseer01`.
+
+- effekseer-effekseer01: `vfx/effekseer-effekseer01/Simple_Distortion.ogt` (Simple Distortion), `vfx/effekseer-effekseer01/Simple_GeneratingPosition1.ogt` (Simple Generating Position 1), `vfx/effekseer-effekseer01/Simple_Model_UV.ogt` (Simple Model UV), `vfx/effekseer-effekseer01/Simple_Ribbon_Parent.ogt` (Simple Ribbon Parent), `vfx/effekseer-effekseer01/Simple_Ribbon_Sword.ogt` (Simple Ribbon Sword), `vfx/effekseer-effekseer01/Simple_Ring_Shape1.ogt` (Simple Ring Shape 1), `vfx/effekseer-effekseer01/Simple_Ring_Shape2.ogt` (Simple Ring Shape 2), `vfx/effekseer-effekseer01/Simple_Sprite_BillBoard.ogt` (Simple Sprite Bill Board), `vfx/effekseer-effekseer01/Simple_Sprite_Fixed.ogt` (Simple Sprite Fixed), `vfx/effekseer-effekseer01/Simple_Sprite_FixedYAxis.ogt` (Simple Sprite Fixed YAxis), `vfx/effekseer-effekseer01/Simple_Track1.ogt` (Simple Track 1)
+
+## 15. Beam effects
+
+Beam effects (beam): 5 in `effekseer-andrewfm01`, `effekseer-effekseer01`.
+
+- effekseer-andrewfm01: `vfx/effekseer-andrewfm01/blue_laser.ogt` (Blue Laser)
+- effekseer-effekseer01: `vfx/effekseer-effekseer01/Homing_Laser01.ogt` (Homing Laser 01), `vfx/effekseer-effekseer01/Laser01.ogt` (Laser 01), `vfx/effekseer-effekseer01/Laser02.ogt` (Laser 02), `vfx/effekseer-effekseer01/Laser03.ogt` (Laser 03)
+
+## 16. Buff effects
+
+Buff effects (buff): 14 in `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-suzuki01`, `effekseer-tktk01`, `pixel-scenario`.
+
+- effekseer-nextsoft01: `vfx/effekseer-nextsoft01/PowerUp.ogt` (Power Up)
+- effekseer-pierre01: `vfx/effekseer-pierre01/Herald.ogt` (Herald)
+- effekseer-starter: `vfx/effekseer-starter/PowerUp.ogt` (Power Up), `vfx/effekseer-starter/hozyo2.ogt` (Power Rings), `vfx/effekseer-starter/hozyo4.ogt` (Attack Up)
+- effekseer-suzuki01: `vfx/effekseer-suzuki01/aura.ogt` (Aura)
+- effekseer-tktk01: `vfx/effekseer-tktk01/hozyo1.ogt` (Hozyo 1), `vfx/effekseer-tktk01/hozyo2.ogt` (Hozyo 2), `vfx/effekseer-tktk01/hozyo3.ogt` (Hozyo 3), `vfx/effekseer-tktk01/hozyo4.ogt` (Hozyo 4), `vfx/effekseer-tktk01/hozyo5.ogt` (Hozyo 5)
+- pixel-scenario: `vfx/pixel-scenario/charge-up-energy.ogt` (Pulse Charge), `vfx/pixel-scenario/dark-shadow-aura.ogt` (Night Aura), `vfx/pixel-scenario/hex-shield-barrier.ogt` (Flux Shield)
+
+## 17. Explosion effects
+
+Explosion effects (explosion): 13 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `effekseer-starter`, `pixel-scenario`.
+
+- effekseer-andrewfm01: `vfx/effekseer-andrewfm01/boss_death.ogt` (Boss Death)
+- effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Breakdown.ogt` (Breakdown), `vfx/effekseer-magicalxspiral/IcicleBroken.ogt` (Icicle Broken), `vfx/effekseer-magicalxspiral/StairBroken.ogt` (Stair Broken), `vfx/effekseer-magicalxspiral/StairBroken3.ogt` (Stair Broken 3)
+- effekseer-pierre02: `vfx/effekseer-pierre02/FeatherBomb.ogt` (Feather Bomb)
+- effekseer-starter: `vfx/effekseer-starter/Blow4.ogt` (Bright Explosion), `vfx/effekseer-starter/Breakdown.ogt` (Breakdown Burst), `vfx/effekseer-starter/FeatherBomb.ogt` (Smoke Bomb), `vfx/effekseer-starter/boss_death.ogt` (Boss Death), `vfx/effekseer-starter/meteo1.ogt` (Meteor Strike)
+- pixel-scenario: `vfx/pixel-scenario/big-fire-explosion.ogt` (Cinder Explosion), `vfx/pixel-scenario/meteor-strike.ogt` (Ember Meteor)
+
+## 18. Fire effects
+
+Fire effects (fire): 29 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
+
+- effekseer-andrewfm01: `vfx/effekseer-andrewfm01/fire.ogt` (Fire)
+- effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/FirePot1.ogt` (Fire Pot 1), `vfx/effekseer-magicalxspiral/FirePot2.ogt` (Fire Pot 2), `vfx/effekseer-magicalxspiral/Magic1_fire.ogt` (Magic 1 Fire), `vfx/effekseer-magicalxspiral/Magic2_fire.ogt` (Magic 2 Fire)
+- effekseer-nextsoft01: `vfx/effekseer-nextsoft01/MagicFire1.ogt` (Magic Fire 1), `vfx/effekseer-nextsoft01/MagicFire2.ogt` (Magic Fire 2)
+- effekseer-pierre01: `vfx/effekseer-pierre01/Flame.ogt` (Flame)
+- effekseer-starter: `vfx/effekseer-starter/Fire7.ogt` (Fire Pillar), `vfx/effekseer-starter/MagicFire2.ogt` (Fire Breath)
+- effekseer-tktk01: `vfx/effekseer-tktk01/Fire1.ogt` (Fire 1), `vfx/effekseer-tktk01/Fire2.ogt` (Fire 2), `vfx/effekseer-tktk01/Fire3.ogt` (Fire 3), `vfx/effekseer-tktk01/Fire4.ogt` (Fire 4), `vfx/effekseer-tktk01/Fire5.ogt` (Fire 5), `vfx/effekseer-tktk01/Fire6.ogt` (Fire 6), `vfx/effekseer-tktk01/Fire7.ogt` (Fire 7), `vfx/effekseer-tktk01/Fire8.ogt` (Fire 8)
+- effekseer-tktk02: `vfx/effekseer-tktk02/Fire1.ogt` (Fire 1), `vfx/effekseer-tktk02/Fire2.ogt` (Fire 2), `vfx/effekseer-tktk02/Fire3.ogt` (Fire 3), `vfx/effekseer-tktk02/Fire4.ogt` (Fire 4), `vfx/effekseer-tktk02/Fire5.ogt` (Fire 5), `vfx/effekseer-tktk02/Fire6.ogt` (Fire 6), `vfx/effekseer-tktk02/Fire7.ogt` (Fire 7), `vfx/effekseer-tktk02/Fire8.ogt` (Fire 8)
+- pixel-scenario: `vfx/pixel-scenario/campfire.ogt` (Ember Flame), `vfx/pixel-scenario/dragon-fire-breath.ogt` (Cinder Breath), `vfx/pixel-scenario/fire-tornado.ogt` (Blaze Tornado)
+
+## 19. Heal effects
+
+Heal effects (heal): 17 in `effekseer-nextsoft01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `pixel-scenario`.
+
+- effekseer-nextsoft01: `vfx/effekseer-nextsoft01/HealPotion1.ogt` (Heal Potion 1), `vfx/effekseer-nextsoft01/HealPotion2.ogt` (Heal Potion 2), `vfx/effekseer-nextsoft01/MagicHeal1.ogt` (Magic Heal 1), `vfx/effekseer-nextsoft01/MagicHeal2.ogt` (Magic Heal 2)
+- effekseer-pierre02: `vfx/effekseer-pierre02/Benediction.ogt` (Benediction)
+- effekseer-starter: `vfx/effekseer-starter/Cure1.ogt` (Star Cure), `vfx/effekseer-starter/Cure7.ogt` (Light Cure), `vfx/effekseer-starter/HealPotion2.ogt` (Potion), `vfx/effekseer-starter/MagicHeal2.ogt` (Healing Circle)
+- effekseer-tktk01: `vfx/effekseer-tktk01/Cure1.ogt` (Cure 1), `vfx/effekseer-tktk01/Cure2.ogt` (Cure 2), `vfx/effekseer-tktk01/Cure3.ogt` (Cure 3), `vfx/effekseer-tktk01/Cure4.ogt` (Cure 4), `vfx/effekseer-tktk01/Cure5.ogt` (Cure 5), `vfx/effekseer-tktk01/Cure6.ogt` (Cure 6), `vfx/effekseer-tktk01/Cure7.ogt` (Cure 7)
+- pixel-scenario: `vfx/pixel-scenario/healing-with-rising-crosses.ogt` (Bloom Heal)
+
+## 20. Hit spark effects
+
+Hit spark effects (hit-spark): 27 in `effekseer-andrewfm01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
+
+- effekseer-andrewfm01: `vfx/effekseer-andrewfm01/hit_eff.ogt` (Hit Eff)
+- effekseer-starter: `vfx/effekseer-starter/Attack_Impact.ogt` (Attack Impact), `vfx/effekseer-starter/Blow2.ogt` (Spark Hit), `vfx/effekseer-starter/Blow8.ogt` (Star Hit), `vfx/effekseer-starter/hit_eff.ogt` (Hit Flash)
+- effekseer-tktk01: `vfx/effekseer-tktk01/Blow1.ogt` (Blow 1), `vfx/effekseer-tktk01/Blow10.ogt` (Blow 10), `vfx/effekseer-tktk01/Blow11.ogt` (Blow 11), `vfx/effekseer-tktk01/Blow12.ogt` (Blow 12), `vfx/effekseer-tktk01/Blow13.ogt` (Blow 13), `vfx/effekseer-tktk01/Blow14.ogt` (Blow 14), `vfx/effekseer-tktk01/Blow15.ogt` (Blow 15), `vfx/effekseer-tktk01/Blow2.ogt` (Blow 2), `vfx/effekseer-tktk01/Blow3.ogt` (Blow 3), `vfx/effekseer-tktk01/Blow4.ogt` (Blow 4), `vfx/effekseer-tktk01/Blow5.ogt` (Blow 5), `vfx/effekseer-tktk01/Blow6.ogt` (Blow 6), `vfx/effekseer-tktk01/Blow7.ogt` (Blow 7), `vfx/effekseer-tktk01/Blow8.ogt` (Blow 8), `vfx/effekseer-tktk01/Blow9.ogt` (Blow 9)
+- effekseer-tktk02: `vfx/effekseer-tktk02/Blow1.ogt` (Blow 1), `vfx/effekseer-tktk02/Blow2.ogt` (Blow 2), `vfx/effekseer-tktk02/Blow3.ogt` (Blow 3), `vfx/effekseer-tktk02/Blow4.ogt` (Blow 4), `vfx/effekseer-tktk02/Blow5.ogt` (Blow 5), `vfx/effekseer-tktk02/Blow6.ogt` (Blow 6)
+- pixel-scenario: `vfx/pixel-scenario/electric-impact-hit.ogt` (Static Impact)
+
+## 21. Level up effects
+
+Level up effects (level-up): 3 in `effekseer-starter`, `pixel-scenario`.
+
+- effekseer-starter: `vfx/effekseer-starter/Light4.ogt` (Level Up Arrows), `vfx/effekseer-starter/Thunder1.ogt` (Golden Rise)
+- pixel-scenario: `vfx/pixel-scenario/level-up.ogt` (Gilded Level Up)
+
+## 22. Magic impact effects
+
+Magic impact effects (magic-impact): 109 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
+
+- effekseer-andrewfm01: `vfx/effekseer-andrewfm01/smallTexturesRibbon.ogt` (Small Textures Ribbon), `vfx/effekseer-andrewfm01/smallTexturesSquareWave_orbital.ogt` (Small Textures Square Wave Orbital)
+- effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/A_Gohlem1.ogt` (A Gohlem 1), `vfx/effekseer-magicalxspiral/A_Salamander1.ogt` (A Salamander 1), `vfx/effekseer-magicalxspiral/A_Salamander2.ogt` (A Salamander 2), `vfx/effekseer-magicalxspiral/A_Salamander4.ogt` (A Salamander 4), `vfx/effekseer-magicalxspiral/A_Sylph1.ogt` (A Sylph 1), `vfx/effekseer-magicalxspiral/A_Sylph2.ogt` (A Sylph 2), `vfx/effekseer-magicalxspiral/A_Undine1.ogt` (A Undine 1), `vfx/effekseer-magicalxspiral/A_Undine2.ogt` (A Undine 2), `vfx/effekseer-magicalxspiral/AquaPoint.ogt` (Aqua Point), `vfx/effekseer-magicalxspiral/Attack_Impact.ogt` (Attack Impact), `vfx/effekseer-magicalxspiral/Gohlem1.ogt` (Gohlem 1), `vfx/effekseer-magicalxspiral/Gohlem11.ogt` (Gohlem 11), `vfx/effekseer-magicalxspiral/Gohlem5.ogt` (Gohlem 5), `vfx/effekseer-magicalxspiral/Gohlem7.ogt` (Gohlem 7), `vfx/effekseer-magicalxspiral/Holy1.ogt` (Holy 1), `vfx/effekseer-magicalxspiral/Holy2.ogt` (Holy 2), `vfx/effekseer-magicalxspiral/Impact.ogt` (Impact), `vfx/effekseer-magicalxspiral/Magic1_earth.ogt` (Magic 1 Earth), `vfx/effekseer-magicalxspiral/Magic1_holy.ogt` (Magic 1 Holy), `vfx/effekseer-magicalxspiral/Magic1_water.ogt` (Magic 1 Water), `vfx/effekseer-magicalxspiral/Magic1_wind.ogt` (Magic 1 Wind), `vfx/effekseer-magicalxspiral/Magic2_earth.ogt` (Magic 2 Earth), `vfx/effekseer-magicalxspiral/Magic2_holy.ogt` (Magic 2 Holy), `vfx/effekseer-magicalxspiral/Magic2_water.ogt` (Magic 2 Water), `vfx/effekseer-magicalxspiral/Magic2_wind.ogt` (Magic 2 Wind), `vfx/effekseer-magicalxspiral/Rock1.ogt` (Rock 1), `vfx/effekseer-magicalxspiral/Rock2.ogt` (Rock 2), `vfx/effekseer-magicalxspiral/Salamander1.ogt` (Salamander 1), `vfx/effekseer-magicalxspiral/Salamander11.ogt` (Salamander 11), `vfx/effekseer-magicalxspiral/Salamander12.ogt` (Salamander 12), `vfx/effekseer-magicalxspiral/Salamander14.ogt` (Salamander 14), `vfx/effekseer-magicalxspiral/Salamander15.ogt` (Salamander 15), `vfx/effekseer-magicalxspiral/Salamander2.ogt` (Salamander 2), `vfx/effekseer-magicalxspiral/Salamander3.ogt` (Salamander 3), `vfx/effekseer-magicalxspiral/Salamander4.ogt` (Salamander 4), `vfx/effekseer-magicalxspiral/Salamander5.ogt` (Salamander 5), `vfx/effekseer-magicalxspiral/Salamander6.ogt` (Salamander 6), `vfx/effekseer-magicalxspiral/Salamander7.ogt` (Salamander 7), `vfx/effekseer-magicalxspiral/Sylph1.ogt` (Sylph 1), `vfx/effekseer-magicalxspiral/Sylph10.ogt` (Sylph 10), `vfx/effekseer-magicalxspiral/Sylph11.ogt` (Sylph 11), `vfx/effekseer-magicalxspiral/Sylph13.ogt` (Sylph 13), `vfx/effekseer-magicalxspiral/Sylph15.ogt` (Sylph 15), `vfx/effekseer-magicalxspiral/Sylph2.ogt` (Sylph 2), `vfx/effekseer-magicalxspiral/Sylph3.ogt` (Sylph 3), `vfx/effekseer-magicalxspiral/Sylph4.ogt` (Sylph 4), `vfx/effekseer-magicalxspiral/Sylph5.ogt` (Sylph 5), `vfx/effekseer-magicalxspiral/Sylph6.ogt` (Sylph 6), `vfx/effekseer-magicalxspiral/Sylph7.ogt` (Sylph 7), `vfx/effekseer-magicalxspiral/Sylph8.ogt` (Sylph 8), `vfx/effekseer-magicalxspiral/Thunder1.ogt` (Thunder 1), `vfx/effekseer-magicalxspiral/Thunder2.ogt` (Thunder 2), `vfx/effekseer-magicalxspiral/Thunder3.ogt` (Thunder 3), `vfx/effekseer-magicalxspiral/Topwater1.ogt` (Topwater 1), `vfx/effekseer-magicalxspiral/Undine1.ogt` (Undine 1), `vfx/effekseer-magicalxspiral/Undine11.ogt` (Undine 11), `vfx/effekseer-magicalxspiral/Undine13.ogt` (Undine 13), `vfx/effekseer-magicalxspiral/Undine2.ogt` (Undine 2), `vfx/effekseer-magicalxspiral/Undine3.ogt` (Undine 3), `vfx/effekseer-magicalxspiral/Undine4.ogt` (Undine 4), `vfx/effekseer-magicalxspiral/Undine5.ogt` (Undine 5), `vfx/effekseer-magicalxspiral/Undine6.ogt` (Undine 6), `vfx/effekseer-magicalxspiral/Undine8.ogt` (Undine 8), `vfx/effekseer-magicalxspiral/WHead1.ogt` (WHead 1), `vfx/effekseer-magicalxspiral/WHead2.ogt` (WHead 2), `vfx/effekseer-magicalxspiral/WHead3.ogt` (WHead 3), `vfx/effekseer-magicalxspiral/Water_Impact.ogt` (Water Impact), `vfx/effekseer-magicalxspiral/Wind_Impact.ogt` (Wind Impact), `vfx/effekseer-magicalxspiral/salamander13.ogt` (Salamander 13)
+- effekseer-nextsoft01: `vfx/effekseer-nextsoft01/MagicCold.ogt` (Magic Cold), `vfx/effekseer-nextsoft01/MagicDark.ogt` (Magic Dark), `vfx/effekseer-nextsoft01/MagicLight.ogt` (Magic Light), `vfx/effekseer-nextsoft01/MagicThunder.ogt` (Magic Thunder), `vfx/effekseer-nextsoft01/MagicWater.ogt` (Magic Water)
+- effekseer-pierre01: `vfx/effekseer-pierre01/LightningStrike.ogt` (Lightning Strike), `vfx/effekseer-pierre01/MonsterRoar.ogt` (Monster Roar)
+- effekseer-pierre02: `vfx/effekseer-pierre02/LossOfBlood.ogt` (Loss Of Blood)
+- effekseer-starter: `vfx/effekseer-starter/MagicCold.ogt` (Frost), `vfx/effekseer-starter/MagicDark.ogt` (Dark Curse), `vfx/effekseer-starter/MagicWater.ogt` (Bubble Burst), `vfx/effekseer-starter/Undine4.ogt` (Water Burst)
+- effekseer-tktk01: `vfx/effekseer-tktk01/Dark1.ogt` (Dark 1), `vfx/effekseer-tktk01/Dark2.ogt` (Dark 2), `vfx/effekseer-tktk01/Dark3.ogt` (Dark 3), `vfx/effekseer-tktk01/Light1.ogt` (Light 1), `vfx/effekseer-tktk01/Light2.ogt` (Light 2), `vfx/effekseer-tktk01/Light3.ogt` (Light 3), `vfx/effekseer-tktk01/Light4.ogt` (Light 4), `vfx/effekseer-tktk01/Magic1.ogt` (Magic 1), `vfx/effekseer-tktk01/Magic2.ogt` (Magic 2), `vfx/effekseer-tktk01/Soil1.ogt` (Soil 1), `vfx/effekseer-tktk01/Wind1.ogt` (Wind 1), `vfx/effekseer-tktk01/Wind2.ogt` (Wind 2)
+- effekseer-tktk02: `vfx/effekseer-tktk02/Dark1.ogt` (Dark 1), `vfx/effekseer-tktk02/Dark2.ogt` (Dark 2), `vfx/effekseer-tktk02/Light1.ogt` (Light 1), `vfx/effekseer-tktk02/Light2.ogt` (Light 2), `vfx/effekseer-tktk02/Light3.ogt` (Light 3), `vfx/effekseer-tktk02/Light4.ogt` (Light 4)
+- pixel-scenario: `vfx/pixel-scenario/arcane-magic-circle.ogt` (Eldritch Magic Circle), `vfx/pixel-scenario/frost-nova.ogt` (Frost Nova), `vfx/pixel-scenario/ground-slam-quake.ogt` (Stone Ground Slam), `vfx/pixel-scenario/holy-pillar-of-light.ogt` (Divine Pillar), `vfx/pixel-scenario/ice-spikes-erupting.ogt` (Frozen Spikes), `vfx/pixel-scenario/lava-eruption-pillar.ogt` (Volcanic Pillar), `vfx/pixel-scenario/lightning-strike-from-the-sky.ogt` (Storm Strike), `vfx/pixel-scenario/water-splash.ogt` (Aqua Splash)
+
+## 23. Magic projectile effects
+
+Magic projectile effects (magic-projectile): 36 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
+
+- effekseer-andrewfm01: `vfx/effekseer-andrewfm01/drill.ogt` (Drill)
+- effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Icicle1.ogt` (Icicle 1), `vfx/effekseer-magicalxspiral/Icicle2.ogt` (Icicle 2), `vfx/effekseer-magicalxspiral/Icicle3.ogt` (Icicle 3), `vfx/effekseer-magicalxspiral/IcicleLocus.ogt` (Icicle Locus), `vfx/effekseer-magicalxspiral/Lance3.ogt` (Lance 3), `vfx/effekseer-magicalxspiral/Lance4.ogt` (Lance 4), `vfx/effekseer-magicalxspiral/Lance5.ogt` (Lance 5), `vfx/effekseer-magicalxspiral/meteo1.ogt` (Meteo 1)
+- effekseer-nextsoft01: `vfx/effekseer-nextsoft01/MagicMeteo.ogt` (Magic Meteo), `vfx/effekseer-nextsoft01/Spear1.ogt` (Spear 1), `vfx/effekseer-nextsoft01/Spear2.ogt` (Spear 2)
+- effekseer-pierre01: `vfx/effekseer-pierre01/MissileBoost.ogt` (Missile Boost), `vfx/effekseer-pierre01/PhantasmMeteor.ogt` (Phantasm Meteor), `vfx/effekseer-pierre01/PhantasmMeteor_Single.ogt` (Phantasm Meteor Single), `vfx/effekseer-pierre01/SonicBoom.ogt` (Sonic Boom)
+- effekseer-pierre02: `vfx/effekseer-pierre02/BloodLance.ogt` (Blood Lance), `vfx/effekseer-pierre02/FireBall.ogt` (Fire Ball)
+- effekseer-starter: `vfx/effekseer-starter/FireBall.ogt` (Fireball), `vfx/effekseer-starter/Icicle2.ogt` (Icicles), `vfx/effekseer-starter/Laser03.ogt` (Green Laser), `vfx/effekseer-starter/Spear2.ogt` (Light Spear)
+- effekseer-tktk01: `vfx/effekseer-tktk01/Arrow1.ogt` (Arrow 1), `vfx/effekseer-tktk01/Arrow2.ogt` (Arrow 2)
+- effekseer-tktk02: `vfx/effekseer-tktk02/Gun1.ogt` (Gun 1), `vfx/effekseer-tktk02/Gun2.ogt` (Gun 2), `vfx/effekseer-tktk02/Gun3.ogt` (Gun 3), `vfx/effekseer-tktk02/Gun4.ogt` (Gun 4), `vfx/effekseer-tktk02/Gun5.ogt` (Gun 5), `vfx/effekseer-tktk02/Gun6.ogt` (Gun 6), `vfx/effekseer-tktk02/Gun7.ogt` (Gun 7), `vfx/effekseer-tktk02/Gun8.ogt` (Gun 8), `vfx/effekseer-tktk02/Gun9.ogt` (Gun 9)
+- pixel-scenario: `vfx/pixel-scenario/blue-energy-beam.ogt` (Aether Beam), `vfx/pixel-scenario/fireball-projectile.ogt` (Ember Projectile), `vfx/pixel-scenario/plasma-orb.ogt` (Ion Orb)
+
+## 24. Portal effects
+
+Portal effects (portal): 9 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `effekseer-starter`, `pixel-scenario`.
+
+- effekseer-andrewfm01: `vfx/effekseer-andrewfm01/magic_circle.ogt` (Magic Circle)
+- effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/MagicArea.ogt` (Magic Area)
+- effekseer-pierre02: `vfx/effekseer-pierre02/GateOfCalve.ogt` (Gate Of Calve)
+- effekseer-starter: `vfx/effekseer-starter/Magic2_fire.ogt` (Fire Pentagram), `vfx/effekseer-starter/magic_circle.ogt` (Magic Circle), `vfx/effekseer-starter/smallTexturesSquareWave_orbital.ogt` (Arcane Ring)
+- pixel-scenario: `vfx/pixel-scenario/dimensional-portal.ogt` (Astral Portal), `vfx/pixel-scenario/purple-black-hole-vortex.ogt` (Shadow Vortex), `vfx/pixel-scenario/teleport-blink.ogt` (Mystic Teleport)
+
+## 25. Shield effects
+
+Shield effects (shield): 3 in `effekseer-magicalxspiral`, `effekseer-nextsoft01`.
+
+- effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Gohlem_Shield1.ogt` (Gohlem Shield 1), `vfx/effekseer-magicalxspiral/Gohlem_Shield2.ogt` (Gohlem Shield 2)
+- effekseer-nextsoft01: `vfx/effekseer-nextsoft01/MagicShield.ogt` (Magic Shield)
+
+## 26. Slash effects
+
+Slash effects (slash): 48 in `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-suzuki01`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
+
+- effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Attack1.ogt` (Attack 1), `vfx/effekseer-magicalxspiral/Attack2.ogt` (Attack 2), `vfx/effekseer-magicalxspiral/Attack5.ogt` (Attack 5), `vfx/effekseer-magicalxspiral/Attack6.ogt` (Attack 6)
+- effekseer-nextsoft01: `vfx/effekseer-nextsoft01/MagicSword.ogt` (Magic Sword), `vfx/effekseer-nextsoft01/Sword1.ogt` (Sword 1), `vfx/effekseer-nextsoft01/Sword2.ogt` (Sword 2)
+- effekseer-pierre02: `vfx/effekseer-pierre02/Sword_Ember.ogt` (Sword Ember), `vfx/effekseer-pierre02/Sword_Lightning.ogt` (Sword Lightning), `vfx/effekseer-pierre02/Sword_Moonlight.ogt` (Sword Moonlight), `vfx/effekseer-pierre02/Sword_Sacredlight.ogt` (Sword Sacredlight), `vfx/effekseer-pierre02/Sword_Storm.ogt` (Sword Storm)
+- effekseer-starter: `vfx/effekseer-starter/Claw3.ogt` (Claw), `vfx/effekseer-starter/Sword5.ogt` (Blue Slash), `vfx/effekseer-starter/Sword7.ogt` (Cyan Cross Slash), `vfx/effekseer-starter/Sword8.ogt` (Red Arc Slash)
+- effekseer-suzuki01: `vfx/effekseer-suzuki01/sword.ogt` (Sword)
+- effekseer-tktk01: `vfx/effekseer-tktk01/Sword1.ogt` (Sword 1), `vfx/effekseer-tktk01/Sword10.ogt` (Sword 10), `vfx/effekseer-tktk01/Sword11.ogt` (Sword 11), `vfx/effekseer-tktk01/Sword12.ogt` (Sword 12), `vfx/effekseer-tktk01/Sword13.ogt` (Sword 13), `vfx/effekseer-tktk01/Sword14.ogt` (Sword 14), `vfx/effekseer-tktk01/Sword15.ogt` (Sword 15), `vfx/effekseer-tktk01/Sword16.ogt` (Sword 16), `vfx/effekseer-tktk01/Sword17.ogt` (Sword 17), `vfx/effekseer-tktk01/Sword18.ogt` (Sword 18), `vfx/effekseer-tktk01/Sword19.ogt` (Sword 19), `vfx/effekseer-tktk01/Sword2.ogt` (Sword 2), `vfx/effekseer-tktk01/Sword20.ogt` (Sword 20), `vfx/effekseer-tktk01/Sword21.ogt` (Sword 21), `vfx/effekseer-tktk01/Sword22.ogt` (Sword 22), `vfx/effekseer-tktk01/Sword3.ogt` (Sword 3), `vfx/effekseer-tktk01/Sword4.ogt` (Sword 4), `vfx/effekseer-tktk01/Sword5.ogt` (Sword 5), `vfx/effekseer-tktk01/Sword6.ogt` (Sword 6), `vfx/effekseer-tktk01/Sword7.ogt` (Sword 7), `vfx/effekseer-tktk01/Sword8.ogt` (Sword 8), `vfx/effekseer-tktk01/Sword9.ogt` (Sword 9)
+- effekseer-tktk02: `vfx/effekseer-tktk02/Claw1.ogt` (Claw 1), `vfx/effekseer-tktk02/Claw2.ogt` (Claw 2), `vfx/effekseer-tktk02/Claw3.ogt` (Claw 3), `vfx/effekseer-tktk02/Claw4.ogt` (Claw 4)
+- pixel-scenario: `vfx/pixel-scenario/crescent-sword-slash.ogt` (Razor Slash), `vfx/pixel-scenario/dash-speed-lines.ogt` (Cyclone Dash), `vfx/pixel-scenario/feral-claw-scratch-blood.ogt` (Sanguine Claw), `vfx/pixel-scenario/spinning-wind-slash.ogt` (Cyclone Slash), `vfx/pixel-scenario/triple-slash-combo-with-blue-energy.ogt` (Flux Slash)
+
+## 27. Smoke effects
+
+Smoke effects (smoke): 12 in `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `pixel-scenario`.
+
+- effekseer-andrewfm01: `vfx/effekseer-andrewfm01/electric_dust.ogt` (Electric Dust)
+- effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/foot_smoke1.ogt` (Foot Smoke 1), `vfx/effekseer-magicalxspiral/foot_smoke2.ogt` (Foot Smoke 2), `vfx/effekseer-magicalxspiral/foot_smoke3.ogt` (Foot Smoke 3), `vfx/effekseer-magicalxspiral/foot_smoke4.ogt` (Foot Smoke 4), `vfx/effekseer-magicalxspiral/foot_smoke5.ogt` (Foot Smoke 5), `vfx/effekseer-magicalxspiral/foot_smoke6.ogt` (Foot Smoke 6), `vfx/effekseer-magicalxspiral/foot_smoke7.ogt` (Foot Smoke 7), `vfx/effekseer-magicalxspiral/foot_smoke8.ogt` (Foot Smoke 8)
+- effekseer-pierre02: `vfx/effekseer-pierre02/CosmicMist.ogt` (Cosmic Mist)
+- pixel-scenario: `vfx/pixel-scenario/poison-gas-cloud.ogt` (Blight Cloud), `vfx/pixel-scenario/smoke-poof.ogt` (Ashen Poof)
+
+## 28. Ui effects
+
+Ui effects (ui): 10 in `effekseer-andrewfm01`, `pixel-scenario`.
+
+- effekseer-andrewfm01: `vfx/effekseer-andrewfm01/actionLines_halo.ogt` (Action Lines Halo), `vfx/effekseer-andrewfm01/actionLines_halo2.ogt` (Action Lines Halo 2), `vfx/effekseer-andrewfm01/actionLines_radial.ogt` (Action Lines Radial), `vfx/effekseer-andrewfm01/actionLines_radial2.ogt` (Action Lines Radial 2), `vfx/effekseer-andrewfm01/actionLines_shockwave.ogt` (Action Lines Shockwave), `vfx/effekseer-andrewfm01/actionLines_strip.ogt` (Action Lines Strip)
+- pixel-scenario: `vfx/pixel-scenario/critical-hit-damage-999.ogt` (Ember Damage Number), `vfx/pixel-scenario/fireworks-celebration.ogt` (Arcane Fireworks), `vfx/pixel-scenario/gold-coins-loot-drop.ogt` (Lucky Loot), `vfx/pixel-scenario/sparkle-twinkle.ogt` (Sacred Sparkle)
+
+## 29. Weather effects
+
+Weather effects (weather): 7 in `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-suzuki01`, `pixel-scenario`.
+
+- effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Snowman1.ogt` (Snowman 1)
+- effekseer-nextsoft01: `vfx/effekseer-nextsoft01/MagicTornade.ogt` (Magic Tornade)
+- effekseer-pierre01: `vfx/effekseer-pierre01/HolySandstorm.ogt` (Holy Sandstorm)
+- effekseer-starter: `vfx/effekseer-starter/HolySandstorm.ogt` (Sandstorm)
+- effekseer-suzuki01: `vfx/effekseer-suzuki01/snowstorm11.ogt` (Snowstorm 11)
+- pixel-scenario: `vfx/pixel-scenario/rain.ogt` (Aqua Ambient), `vfx/pixel-scenario/snow-falling.ogt` (Glacial Ambient)

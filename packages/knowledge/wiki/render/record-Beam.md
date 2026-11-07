@@ -8,6 +8,8 @@ Module [`render`](../render.md) · [index](../index.md)
 
 A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
 
+Also known as: laser beam, laser, LineRenderer, tether, lightning bolt
+
 Token `og.Beam`, registered under the schema name `og.Beam`; its value type is `Beam`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -27,6 +29,7 @@ Token `og.Beam`, registered under the schema name `og.Beam`; its value type is `
 ```ogt
 component Beam {
   doc "A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter)."
+  aliases "laser beam, laser, LineRenderer, tether, lightning bolt"
   field end Vector3 "The far end, in world space." {
     worldspace world
     unit m

@@ -6,6 +6,7 @@
 //! the packs' extension.json and assets.json and `og api check` holds equal,
 //! so `og api find fire explosion` answers with the packs that have them.
 
+use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::path::Path;
 
@@ -50,6 +51,11 @@ pub fn markdown(root: &Path) -> String {
 Ready-made effects a game installs with `og vfx add <pack>`: converted Effekseer samples (`type vfx`, 3D) and pixel-art recipes (`type vfx2d`, 2D), each listed with its tags, keywords and effects. A bundled pack ships with the engine; a downloadable one comes with each release and `og vfx add` fetches it. Once installed, an effect spawns as `vfx/<pack>/<effect>` (`og api show vfx`; the `pixel-vfx` guide for `type vfx2d`); the pack format is docs/vfx-packs.md.\n",
     );
     let mut n = 0;
+    // Category -> pack -> (effect path, title): a section per category after
+    // the packs', short enough for its words to rank (a pack's section is a
+    // long table where one category is a few cells of many).
+    let mut by_category: BTreeMap<String, BTreeMap<String, Vec<(String, String)>>> =
+        BTreeMap::new();
     for (dir, how) in ROOTS {
         let mut packs: Vec<_> = std::fs::read_dir(root.join(dir))
             .into_iter()
@@ -93,6 +99,17 @@ Ready-made effects a game installs with `og vfx add <pack>`: converted Effekseer
                 "| Effect | Title | Category | Element | Seconds |\n|---|---|---|---|---|\n",
             );
             for e in &effects {
+                if let Some(c) = e["category"].as_str().filter(|c| !c.is_empty()) {
+                    by_category
+                        .entry(c.to_string())
+                        .or_default()
+                        .entry(name.to_string())
+                        .or_default()
+                        .push((
+                            e["path"].as_str().unwrap_or_default().to_string(),
+                            e["title"].as_str().unwrap_or_default().to_string(),
+                        ));
+                }
                 let secs = if e["loop"] == true {
                     "loops".to_string()
                 } else {
@@ -107,6 +124,31 @@ Ready-made effects a game installs with `og vfx add <pack>`: converted Effekseer
                     e["element"].as_str().unwrap_or_default(),
                 );
             }
+        }
+    }
+    for (category, packs) in &by_category {
+        n += 1;
+        // `level-up` reads as the words a game asks for: level up.
+        let words = category.replace('-', " ");
+        let count: usize = packs.values().map(Vec::len).sum();
+        let mut head = words.clone();
+        head[..1].make_ascii_uppercase();
+        let _ = writeln!(
+            out,
+            "\n## {n}. {head} effects\n\n{head} effects ({category}): {count} in {}.\n",
+            packs
+                .keys()
+                .map(|p| format!("`{p}`"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        for (pack, effects) in packs {
+            let list = effects
+                .iter()
+                .map(|(path, title)| format!("`vfx/{pack}/{path}` ({title})"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let _ = writeln!(out, "- {pack}: {list}");
         }
     }
     out
