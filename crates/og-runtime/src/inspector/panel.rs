@@ -801,6 +801,8 @@ fn glyph(ui: &mut Ui, open: bool) {
             closed: false,
             filled: false,
             curves: false,
+            fill_rule: og_ui::paint::FillRule::EvenOdd,
+            contours: Vec::new(),
             width: 1.75,
             cap: og_ui::paint::Cap::Round,
             join: og_ui::paint::Join::Round,

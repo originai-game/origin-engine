@@ -37247,6 +37247,13 @@ export type LineCap = "butt" | "round" | "square";
 export type LineJoin = "miter" | "round" | "bevel";
 
 /**
+ * Which points a filled path (DrawShape.filled) covers where its contours overlap or cross.
+ * - `"evenOdd"`: Where a ray from the point crosses the outline an odd number of times: every inner contour is a hole.
+ * - `"nonzero"`: Where the outline winds round the point at all: an inner contour is a hole only when it runs the other way (SVG's and Rive's default).
+ */
+export type FillRule = "evenOdd" | "nonzero";
+
+/**
  * An element's outline; its fills, strokes, effects and clip take it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -37354,11 +37361,23 @@ export interface DrawShape {
    */
   readonly closed?: boolean;
   /**
-   * A path is an area: its fills cover the inside of the closed outline through its points (even-odd) instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge).
+   * A path is an area: its fills cover the inside of its closed contours by fillRule, drawn from the curves themselves (Béziers are not flattened), instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge, an icon with a hole).
    *
    * @default false
    */
   readonly filled?: boolean;
+  /**
+   * How a filled path's overlapping contours fill.
+   *
+   * @default "evenOdd"
+   */
+  readonly fillRule?: FillRule;
+  /**
+   * A filled path's contours: how many of points each takes, in order (with curves, each counts its first point and three per Bézier); empty is one contour of every point. An unfilled path ignores it.
+   *
+   * @default []
+   */
+  readonly contours?: readonly number[];
   /**
    * A path's line width.
    *

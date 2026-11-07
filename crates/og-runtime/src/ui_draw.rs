@@ -579,6 +579,19 @@ impl Reader<'_> {
                 closed: v["closed"].as_bool().unwrap_or(false),
                 filled: v["filled"].as_bool().unwrap_or(false),
                 curves: v["curves"].as_bool().unwrap_or(false),
+                fill_rule: match v["fillRule"].as_str() {
+                    Some("nonzero") => FillRule::NonZero,
+                    _ => FillRule::EvenOdd,
+                },
+                contours: v["contours"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|n| n.as_u64())
+                            .map(|n| n as u32)
+                            .collect()
+                    })
+                    .unwrap_or_default(),
                 width: num(v, "width", 2.0).max(0.0),
                 cap: cap(&v["cap"]),
                 join: match v["join"].as_str() {

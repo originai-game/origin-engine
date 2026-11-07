@@ -17,8 +17,9 @@ use crate::style::{Srgba, Theme};
 use og_core::glam::Vec2;
 pub use og_render::{
     TextureHandle, UiAlign as StrokeAlign, UiBlend as Blend, UiBuiltin as Builtin, UiCap as Cap,
-    UiCorner as Corner, UiEdge as Edge, UiFit as Fit, UiGradientKind as GradientKind,
-    UiJoin as Join, UiMaterialHandle, UiSpread as Spread, UiVectorHandle,
+    UiCorner as Corner, UiEdge as Edge, UiFillRule as FillRule, UiFit as Fit,
+    UiGradientKind as GradientKind, UiJoin as Join, UiMaterialHandle, UiSpread as Spread,
+    UiVectorHandle,
 };
 
 /// A colour: a style token (a [`crate::Palette`] name, the IDL's
@@ -375,10 +376,16 @@ pub enum ShapeKind {
     Path {
         points: Vec<[f32; 2]>,
         closed: bool,
-        /// Fills cover the inside of the closed path (even-odd) instead of
-        /// drawing its line, and strokes outline it.
+        /// Fills cover the inside of the closed contours by `fill_rule`,
+        /// drawn from the curves themselves ([`og_render::UiGeometry::Path`]),
+        /// instead of drawing its line, and strokes outline it.
         filled: bool,
         curves: bool,
+        /// A filled path's rule where its contours overlap or cross.
+        fill_rule: FillRule,
+        /// A filled path's contours: how many of `points` each takes, in
+        /// order; empty is one contour of every point.
+        contours: Vec<u32>,
         width: f32,
         cap: Cap,
         join: Join,
@@ -428,12 +435,50 @@ impl ShapeKind {
             },
             ShapeKind::Path {
                 points,
+                filled: true,
+                curves,
+                fill_rule,
+                contours,
+                ..
+            } => {
+                let half = Vec2::from(size) * 0.5;
+                let mut path = og_render::UiPath::new();
+                path.fill_rule = *fill_rule;
+                let mut rest: &[[f32; 2]] = points;
+                let whole = [points.len() as u32];
+                let counts: &[u32] = if contours.is_empty() {
+                    &whole
+                } else {
+                    contours
+                };
+                for &n in counts {
+                    let (c, more) = rest.split_at((n as usize).min(rest.len()));
+                    rest = more;
+                    let c: Vec<Vec2> = c.iter().map(|p| Vec2::from(*p) - half).collect();
+                    let Some(first) = c.first() else { continue };
+                    path.move_to(*first);
+                    if *curves {
+                        for b in c[1..].as_chunks::<3>().0 {
+                            path.cubic_to(b[0], b[1], b[2]);
+                        }
+                    } else {
+                        for p in &c[1..] {
+                            path.line_to(*p);
+                        }
+                    }
+                    path.close();
+                }
+                og_render::UiGeometry::Path(std::sync::Arc::new(path))
+            }
+            ShapeKind::Path {
+                points,
                 closed,
                 filled,
                 curves,
                 width,
                 cap,
                 join,
+                ..
             } => {
                 let half = Vec2::from(size) * 0.5;
                 let p: Vec<Vec2> = points.iter().map(|p| Vec2::from(*p) - half).collect();
@@ -1040,5 +1085,57 @@ mod tests {
             matches!(leave.last(), Some(DrawCmd::EndLayer { opacity, .. }) if *opacity == 0.5),
             "{leave:?}"
         );
+    }
+
+    /// A filled path draws its curves, not a polygon: its contours split
+    /// by `contours`, each closed, with its Béziers kept, and its rule;
+    /// an unfilled one stays a line with joins and caps.
+    #[test]
+    fn a_filled_path_keeps_its_contours_curves_and_rule() {
+        let square = |o: f32, s: f32| [[o, o], [o + s, o], [o + s, o + s], [o, o + s]];
+        let mut points: Vec<[f32; 2]> = square(0.0, 100.0).to_vec();
+        // The inner contour: a start and one Bézier back to it.
+        points.extend([[30.0, 50.0], [30.0, 10.0], [70.0, 10.0], [30.0, 50.0]]);
+        let shape = |filled: bool, curves: bool, contours: Vec<u32>| ShapeKind::Path {
+            points: points.clone(),
+            closed: true,
+            filled,
+            curves,
+            fill_rule: FillRule::NonZero,
+            contours,
+            width: 2.0,
+            cap: Cap::Butt,
+            join: Join::Round,
+        };
+        // Points as lines: two contours of 4 each.
+        let og_render::UiGeometry::Path(p) =
+            shape(true, false, vec![4, 4]).geometry(0.0, [100.0; 2])
+        else {
+            panic!("a filled path is a vector path");
+        };
+        use og_render::UiVerb::*;
+        assert_eq!(
+            p.verbs,
+            [Move, Line, Line, Line, Close, Move, Line, Line, Line, Close]
+        );
+        assert_eq!(p.fill_rule, FillRule::NonZero);
+        // About the box's centre.
+        assert_eq!(p.points[0], Vec2::new(-50.0, -50.0));
+        // With curves, the second contour's three points after its start are one cubic.
+        let mut curved = points.clone();
+        curved.drain(1..4);
+        let mut k = shape(true, true, vec![1, 4]);
+        if let ShapeKind::Path { points, .. } = &mut k {
+            *points = curved;
+        }
+        let og_render::UiGeometry::Path(p) = k.geometry(0.0, [100.0; 2]) else {
+            panic!()
+        };
+        assert_eq!(p.verbs, [Move, Close, Move, Cubic, Close]);
+        // Unfilled: a polyline still.
+        assert!(matches!(
+            shape(false, false, vec![]).geometry(0.0, [100.0; 2]),
+            og_render::UiGeometry::Polyline { .. }
+        ));
     }
 }

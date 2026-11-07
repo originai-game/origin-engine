@@ -27,7 +27,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `points` | `readonly Vector2[]` | `[]` | — | `cssPx` | — | A path's points, CSS px from the element's top left. |
 | `curves` | `boolean` | `false` | — | — | — | A path's points after the first come in threes: a cubic Bézier's two controls and its end. |
 | `closed` | `boolean` | `false` | — | — | — | A path returns to its first point. |
-| `filled` | `boolean` | `false` | — | — | — | A path is an area: its fills cover the inside of the closed outline through its points (even-odd) instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge). |
+| `filled` | `boolean` | `false` | — | — | — | A path is an area: its fills cover the inside of its closed contours by fillRule, drawn from the curves themselves (Béziers are not flattened), instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge, an icon with a hole). |
+| `fillRule` | `FillRule` | `"evenOdd"` | — | — | — | How a filled path's overlapping contours fill. |
+| `contours` | `readonly number[]` | `[]` | — | — | — | A filled path's contours: how many of points each takes, in order (with curves, each counts its first point and three per Bézier); empty is one contour of every point. An unfilled path ignores it. |
 | `width` | `number` | `2` | ≥ 0 | `cssPx` | — | A path's line width. |
 | `join` | `LineJoin` | `"miter"` | — | — | — | Where a path's segments meet. |
 
@@ -78,7 +80,9 @@ struct DrawShape {
   }
   field curves bool "A path's points after the first come in threes: a cubic Bézier's two controls and its end."
   field closed bool "A path returns to its first point."
-  field filled bool "A path is an area: its fills cover the inside of the closed outline through its points (even-odd) instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge)."
+  field filled bool "A path is an area: its fills cover the inside of its closed contours by fillRule, drawn from the curves themselves (Béziers are not flattened), instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge, an icon with a hole)."
+  field fillRule FillRule "How a filled path's overlapping contours fill."
+  field contours List.u32 "A filled path's contours: how many of points each takes, in order (with curves, each counts its first point and three per Bézier); empty is one contour of every point. An unfilled path ignores it."
   field width f32 "A path's line width." {
     default 2
     min 0
@@ -88,4 +92,4 @@ struct DrawShape {
 }
 ```
 
-<sub>Module `ui` line 7069</sub>
+<sub>Module `ui` line 7075</sub>

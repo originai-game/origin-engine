@@ -570,6 +570,8 @@ impl Ui {
                     closed: false,
                     filled: false,
                     curves: false,
+                    fill_rule: crate::paint::FillRule::EvenOdd,
+                    contours: Vec::new(),
                     width: w,
                     cap: crate::paint::Cap::Square,
                     join: crate::paint::Join::Miter(4.0),

@@ -637,6 +637,7 @@ module ui {
 | [`CornerShape`](ui/type-CornerShape.md) | enum |  | How a rect's corners turn. |
 | [`LineCap`](ui/type-LineCap.md) | enum |  | The end of an open line, an arc or a dash. |
 | [`LineJoin`](ui/type-LineJoin.md) | enum |  | Where a line's segments meet. |
+| [`FillRule`](ui/type-FillRule.md) | enum |  | Which points a filled path (DrawShape.filled) covers where its contours overlap or cross. |
 | [`DrawShape`](ui/type-DrawShape.md) | desc struct |  | An element's outline; its fills, strokes, effects and clip take it. |
 | [`GradientType`](ui/type-GradientType.md) | enum |  | How a gradient (Gradient.type) runs over the element's box (fractions: 0,0 top left, 1,1 bottom right). |
 | [`GradientSpread`](ui/type-GradientSpread.md) | enum |  | What a gradient does past its ends. |
