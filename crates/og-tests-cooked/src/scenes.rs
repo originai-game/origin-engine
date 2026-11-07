@@ -143,5 +143,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         other => return og_tests::scenes::build(other),
     };
     scene(&mut g, name)?;
+    // The meshlet path's scenes draw through it whatever their size: it
+    // follows GPU culling, which `Culling::Auto` keeps for frames of
+    // GPU_CULLING_MIN_INSTANCES instances and these have a few hundred.
+    if name.starts_with("meshlet-") {
+        g.desc.culling = og_render::Culling::Gpu;
+    }
     Ok(g)
 }

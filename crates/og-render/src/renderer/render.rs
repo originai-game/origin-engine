@@ -116,23 +116,6 @@ impl Renderer {
         }
         let mut origins = submission.clone();
         self.prepare_full_meshes(scene, &batches);
-        // The meshlet path's cluster pools (meshlet_gpu.rs), once the
-        // scene has a clustered mesh.
-        if scene.meshlets && scene.mesh_clusters_all().iter().any(Option::is_some) {
-            let limits = self.device.limits();
-            let max = limits
-                .max_storage_buffer_binding_size
-                .min(limits.max_buffer_size);
-            self.meshlet
-                .get_or_insert_with(|| {
-                    meshlet_gpu::MeshletGpu::new(
-                        &self.device,
-                        max,
-                        self.wind_field.lean_view.clone(),
-                    )
-                })
-                .sync(&self.device, &self.queue, scene);
-        }
         let mut skinned = self.build_skinned(scene, &probe_boxes)?;
         // The planar water this frame draws: none where the 3D world is
         // not built in (WORLD_3D).
@@ -1072,25 +1055,49 @@ impl Renderer {
                     self.info.shadowed_lights as usize,
                     self.info.point_shadows,
                 ));
-        // The batches the meshlet path draws in the camera pass (under GPU
-        // culling, which it follows; never with stylise's object pass,
-        // which redraws the camera list's instances).
+        // The batches the meshlet path draws in the camera pass. It follows
+        // GPU culling, so it runs in a frame that culls on the GPU anyway:
+        // by its instances (`Culling::Auto` from GPU_CULLING_MIN_INSTANCES,
+        // `Culling::Gpu` always) or for its crowds. Below that a clustered
+        // batch draws as any mesh, culled on the CPU, at the level
+        // og-runtime picked for its model, as the meshlet path draws it.
+        // Never with stylise's object pass, which redraws the camera list's
+        // instances. Its cluster pools (meshlet_gpu.rs) are made by the
+        // first frame that runs it.
+        let meshlet_on = self.indirect
+            && (self.gpu_culls(sorted + skinned_n) || crowd_gpu)
+            && !object_space
+            && scene.meshlets
+            && scene.mesh_clusters_all().iter().any(Option::is_some);
+        if meshlet_on {
+            let limits = self.device.limits();
+            let max = limits
+                .max_storage_buffer_binding_size
+                .min(limits.max_buffer_size);
+            self.meshlet
+                .get_or_insert_with(|| {
+                    meshlet_gpu::MeshletGpu::new(
+                        &self.device,
+                        max,
+                        self.wind_field.lean_view.clone(),
+                    )
+                })
+                .sync(&self.device, &self.queue, scene);
+        }
         let mut meshlet_taken: Vec<u32> = match self.meshlet.as_ref() {
-            Some(m) if self.indirect && self.desc_culling != Culling::Cpu && !object_space => {
-                batches
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, b)| {
-                        meshlet_gpu::takes(
-                            scene,
-                            b,
-                            m.clustered(b.mesh),
-                            self.lightmaps.group(b.mesh).is_some(),
-                        ) && !self.cache.materials[b.material].wire_only
-                    })
-                    .map(|(i, _)| i as u32)
-                    .collect()
-            }
+            Some(m) if meshlet_on => batches
+                .iter()
+                .enumerate()
+                .filter(|(_, b)| {
+                    meshlet_gpu::takes(
+                        scene,
+                        b,
+                        m.clustered(b.mesh),
+                        self.lightmaps.group(b.mesh).is_some(),
+                    ) && !self.cache.materials[b.material].wire_only
+                })
+                .map(|(i, _)| i as u32)
+                .collect(),
             _ => Vec::new(),
         };
         // The work items the dispatch writes, within the device's storage
@@ -1106,25 +1113,23 @@ impl Renderer {
             meshlet_taken.clear();
             meshlet_items = 0;
         }
-        // Clustered batches draw only under GPU culling: they turn it on
-        // under `Culling::Auto` however few the instances.
-        // So do crowds on the GPU path (`crowd_gpu`, checked to fit).
-        let gpu_cull =
-            (self.gpu_culls(sorted + skinned_n) || !meshlet_taken.is_empty() || crowd_gpu)
-                && (!batches.is_empty() || skinned_n > 0 || crowd_gpu)
-                && {
-                    let limits = self.device.limits();
-                    let gc = self.gpu_cull.get_or_insert_with(|| {
-                        cull_gpu::GpuCulling::new(
-                            &self.device,
-                            limits
-                                .max_storage_buffer_binding_size
-                                .min(limits.max_buffer_size),
-                            self.info.indirect_per_draw,
-                        )
-                    });
-                    gc.fits(sorted, skinned_n, max_passes)
-                };
+        // Crowds on the GPU path (`crowd_gpu`, checked to fit) turn GPU
+        // culling on under `Culling::Auto` however few the instances.
+        let gpu_cull = (self.gpu_culls(sorted + skinned_n) || crowd_gpu)
+            && (!batches.is_empty() || skinned_n > 0 || crowd_gpu)
+            && {
+                let limits = self.device.limits();
+                let gc = self.gpu_cull.get_or_insert_with(|| {
+                    cull_gpu::GpuCulling::new(
+                        &self.device,
+                        limits
+                            .max_storage_buffer_binding_size
+                            .min(limits.max_buffer_size),
+                        self.info.indirect_per_draw,
+                    )
+                });
+                gc.fits(sorted, skinned_n, max_passes)
+            };
         if !gpu_cull {
             meshlet_taken.clear();
         }

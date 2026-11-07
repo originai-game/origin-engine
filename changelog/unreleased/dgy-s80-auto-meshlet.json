@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: clustered meshes in a frame culled on the CPU",
+      "summary": "Under the default culling a clustered mesh takes the meshlet path only in a frame that is culled on the GPU anyway (from 16,384 instances, or for GPU crowds). Every cooked model has clusters, so before this one clustered batch turned GPU culling on for a whole frame of any size, the path that costs a small frame more than the CPU culling it replaces. In a smaller frame clustered meshes now draw on the per-instance path, culled on the CPU, at the level og-runtime picks, as Culling::Cpu already drew them. A garden of about 3,000 instances: 10,393 draws -> 4,688 and the native render median 40.6 -> 27.1 ms, with frames byte-identical to the meshlet path's. Culling::Gpu is unchanged."
+    }
+  ]
+}
