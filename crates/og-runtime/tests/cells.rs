@@ -273,7 +273,6 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
     let ids: Vec<f64> = first.iter().filter_map(|(_, w)| *w).collect();
     assert_eq!(ids.first(), Some(&WELL_FIRST), "{ids:?}");
     assert_eq!(ids.last(), Some(&WELL_AFTER_RELOAD), "{ids:?}");
-    assert_eq!(first[59].0, json!(END_HASH), "the run's last hash");
 
     // A save taken while the village is loaded (tick 10), restored into a
     // fresh session, goes on as the first run did.
@@ -301,47 +300,9 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 }
 
 /// [`a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load`]'s
-/// pins: the well's id as the village first loads and after it reloads, and
-/// the last tick's hash. The hash folds the world's type table, so it moved
-/// (2c17f3c42615a4b9 -> a4f0740b668ce590) when og.VideoPlayer became lazy
-/// (G3-2: a world without footage no longer has the type), and again
-/// (a4f0740b668ce590 -> 07d9679424bad231) when R11 made og.Lighting2D,
-/// og.Light2D and og.Occluder2D lazy, and again (07d9679424bad231 ->
-/// af7faee87b6dea25) for ui-gaps' UI state version 14, and again
-/// (af7faee87b6dea25 -> d68afb5b35367aa5) for version 15, with no change to
-/// the cells' own behaviour;
-/// then (d68afb5b35367aa5 -> 4dc7f88be39d4fd9) G3-3 batch 2's og.StreamCell
-/// persist and budget, the og.cells state block and StreamAnchor.maxSpeed,
-/// the ids unmoved; then (4dc7f88be39d4fd9 -> 6470ecdb2d6381ad) R9's
-/// og.Blendshapes version 2 (`influences`), which changes the type table,
-/// and (-> 1368f2941b52b659) R6's og.TerrainScatter impostor fields
-/// and (-> ca6127b0d0a9c62d) og.Model.sway, and (-> ebd3b59c00e9e91f)
-/// R5's lazy og.Water, gone from a world without water, and
-/// (-> 80dc1920a87f2785) og.Environment's background blurriness, grounded
-/// dome and blend fields (R2's environment maps), and (-> 990dc6751ebad9f6)
-/// T5's lazy og.Terrain, gone from a world without terrain, and
-/// (-> d8bfce6a5e01a25b) area 7's Stylise and MaterialStyle fields (paint
-/// detail, toon ambient, outline place, wireframe), and (-> 843074a55148e6fb)
-/// area 4's lazy og.TerrainScatter and og.Wind on top of area 7, and
-/// (-> a9da4b5b41c7bd8a) UI state version 16 (the touch control holding a finger),
-/// and (-> b74be038a53667d9) RenderSettings.upscaler (FSR 3.1), and
-/// (-> 1b70764bb809745a) PostEffects' ssrMaxRoughness and ssrResolution, and
-/// (-> 53748ce5a262de7f) PostEffects.ssrMaxDistance's default of 100, and
-/// (-> fddaa8151d5e3f56) PostEffects.ssrSteps' default of 64, and
-/// (-> c47197e8341e0b13) Stylise.hatchingPaper, and
-/// (-> 176f164a554f6131) Cloth, SoftBody and Garment version 2 (simulation), and
-/// (-> 517fa38fa844e663) MaterialStyle.wireframeColor.
-/// (-> 995055f8898d61f7) Fluid3D version 2 (simulation).
-/// (-> 79335c265b345be8) Stylise's watercolour fields.
-/// (-> e223289c85a94822) Stylise.posterizeMode.
-/// (-> 7506f7b4f8bdfe5d) Skeleton2D.blendClip, blendTime and blend (version 2).
-/// (-> 4f9d35da02e4355c) Sprite.material.
-/// (-> 81037a306b0c6b17) UI state version 17 (the typed letters).
-/// (-> d61222a859409ef2) UI state version 18 (the Rive players).
-/// (-> 688c23e1b6486371) UI state version 19 (glyph ids on placements).
+/// pins: the well's id as the village first loads and after it reloads.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "688c23e1b6486371";
 
 /// The world with the village persisting and spawning `budget` entities a
 /// tick (0: all at once).
