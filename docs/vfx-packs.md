@@ -1,0 +1,82 @@
+# Effect packs for the asset library
+
+Effect content (converted Effekseer samples, the Kenney-based starter sets,
+the Pixel VFX Forge library) lives in the platform's asset library, not in
+this repository (owner, 2026-11-07). The engine owns the formats (`type
+vfx`, `type vfx2d`, `type particles`, `type effect`), the `vfx` extension
+kind, `og vfx add`, and the tool that prepares a pack: `scripts/vfx-pack.py`.
+This is the contract agreed with the platform's importer
+(`origingame` packages/asset-admin, `vfx:import`).
+
+## 1. The pack
+
+One directory, named as the pack, which `og vfx add <dir> [project]`
+copies to `assets/vfx/<name>/` (hidden files skipped, symlinks refused, an
+existing install never replaced). Its effects name their assets as
+`vfx/<name>/<path>`.
+
+`extension.json`: `format` 1, `kind` `"vfx"`, `name` (lowercase letters,
+digits and `-`, unique in the library: `effekseer-<contributor>`,
+`pixel-scenario`), `version` x.y.z, `description`, no `entry` or `types`,
+and the catalog fields:
+
+- `minEngine`: x.y.z, the first release whose cook and runtime read every
+  line in the pack. `og vfx add` refuses a pack for a newer engine
+  (`--any-engine` installs it anyway, for validation on unreleased builds);
+  the platform imports it only once that release is published.
+- `tags`: `{ "style": "stylised" | "realistic" | "pixel", "dim": "2d" | "3d",
+  "category": [...], "element": [...] }`, the union of its effects' values.
+- `keywords`: lowercase words.
+
+## 2. assets.json
+
+Beside `extension.json`, `format` 1:
+
+- `engine`: `{ "version": <minEngine>, "revision": <the main revision it was made with> }`.
+- `files`: every installed file (extension.json, README.md, each `.ogt`,
+  recipe, texture, sheet and model; not assets.json, nothing under
+  `preview/`) with `path`, `sha256`, `licence` (an SPDX id, or `"custom"`
+  with `licenceText`), `source` (`url`, https; `file`, the original name,
+  optional for authored files), `credit` and `derived` (how this file was
+  made from the source). The importer refuses unlisted, missing or changed
+  files.
+- `effects`: one per effect a game spawns (`type vfx` or `vfx2d`, not its
+  emitters or materials): `path`, `type`, `title`, `loop`,
+  `durationSeconds`, `impact` (whether it sends one), `category`,
+  `element`, `keywords`.
+
+The platform computes the pack's content hash (sha256 over the lines
+`<path>\0<sha256>\n` sorted by path).
+
+## 3. preview/
+
+Inside the pack, stored by the library and never installed:
+
+- `preview/<effect>.png`: six 960×540 frames in time order, the impact
+  frame among them, 3 columns × 2 rows (2880×1080).
+- `preview/<effect>.cost.json`: `{ "format": 1, "engine", "device",
+  "peakFrameMs": { "total", "sim", "transparent" }, "peakParticles",
+  "draws" }`. `total` is the 90th percentile of the effect's GPU frame
+  time over an empty frame (from the fifth tick after the spawn: the first
+  frames upload its textures once); `sim` the particle simulation pass;
+  `transparent` the growth of the main pass, which draws blended surfaces,
+  sprites and particles after the opaque scene. `peakParticles` is the most
+  particle slots its systems held (`dump_render`'s `particles.capacity`,
+  plus the live ones on the CPU path); `draws` the most draw calls of a
+  frame.
+- `preview/cover.png`: one 960×540 frame, the search thumbnail.
+
+## 4. Making a pack
+
+```sh
+python3 scripts/vfx-pack.py manifest <pack> --spec <spec.json>   # assets.json, catalog fields
+python3 scripts/vfx-pack.py preview <pack> [--cover <effect.ogt>]  # preview/, timing into assets.json
+```
+
+The spec names the provenance of each file by glob and each effect's
+title, category, element and keywords (the script's docstring has its
+shape). `preview` measures frame times, so it runs under every GPU slot
+(`. scripts/lock.sh; og_gpu_acquire_all <what>`), and needs the native
+addon (`OG_GATE=1 sh packages/engine/scripts/build.sh --native`). It
+installs the pack into a scratch game, measures each effect's length and impact in a headless run,
+then plays them one after another in one `og run` with a trace.
