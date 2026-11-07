@@ -5,21 +5,24 @@ GitHub CI. The rules it rests on are in AGENTS.md §Building and testing: one
 target directory, the dev profile for every native step, tests that never
 run `cargo`.
 
-## Landing without gate starvation
+## Landing: a merge queue
 
-Authors land non-visual heads with `scripts/land.sh`; the art runner uses the
-same command after approving visual heads. Start with a clean, committed
-branch. The command rebases onto fetched main and runs `check.sh quick`.
-It then takes the repository-wide landing lock in the common Git directory,
-separate from the machine gate lock, fetches main again, and pushes.
+Authors land their heads with `scripts/land.sh`. Start with a clean,
+committed branch. The command rebases onto fetched main and runs
+`check.sh quick` outside any landing lock, so several landers' gates
+overlap. It then joins the landing queue: one FIFO lock in the common Git
+directory, separate from the machine gate lock, held through the push.
+Only the lander at the head of the queue moves main.
 
 If main advanced while quick ran, the command compares both sides from the
 tested base. Disjoint file changes reuse the pass only when neither side
 touches common build inputs or generated/drift-checked files. Otherwise it
-rebases, releases the landing lock, and runs quick again; existing per-step
-input records skip unaffected work. No gate runs under the landing lock.
-Push rejection caused by another main advance retries the same comparison;
-other push failures stop. Conflicts confined to the IDL's generated directories
+rebases and runs quick once more at the head of the queue; per-step input
+records skip unaffected work. Main cannot move during that recheck, so a
+landing gates at most twice. Waiting landers queue behind it instead of
+racing it. A push rejected because a writer outside the queue moved main
+stops with a message to run the command again.
+Conflicts confined to the IDL's generated directories
 (`og_idl::OUTPUT_DIRS`, including declarations and wiki) or the generated UI
 theme are regenerated from the rebased sources. Any other conflict stops the
 rebase untouched for the author. Regeneration builds the IDL generator without

@@ -195,9 +195,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   own tests, scoped GPU suites and frames.
 - **Landing.** A head that moves no reference frame and changes no look is
   landed by its author with `scripts/land.sh`, then posted to Slack. The command
-  runs quick and serialises rebase/push separately from the gate lock; disjoint
-  changes without common inputs reuse the passing gate. Overlap or shared
-  inputs rerun quick with its input cache before retrying. Never push main
+  is a merge queue: quick runs first outside it, then a FIFO landing lock is
+  held through rebase, at most one recheck (only for overlap or shared
+  inputs; disjoint changes reuse the pass) and push. Never push main
   directly. A head that moves frames or changes a look goes
   to the art runner, who reviews the look against commercial games and lands
   it with the same command. A failure found later goes back to its branch as

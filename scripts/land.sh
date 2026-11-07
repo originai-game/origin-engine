@@ -40,56 +40,53 @@ sys.exit(0 if not shared and ours.isdisjoint(theirs) else 1)
 PY
 }
 
-# Parse the whole landing loop before rebasing: replay may replace this file.
+# Parse the whole function before rebasing: replay may replace this file.
+# A merge queue: the first gate runs outside the queue, so landers' gates
+# overlap; then one FIFO landing lock is held through the push, so main
+# moves only under it and a lander rechecks at most once.
 land() {
 clean
 git symbolic-ref -q HEAD >/dev/null || { echo 'land: use a branch' >&2; exit 1; }
 git fetch origin main
 base="$(git rev-parse FETCH_HEAD)"
 python3 scripts/rebase-generated.py "$base"
-while :; do
-  head="$(git rev-parse HEAD)"
-  if [ "$head" = "$base" ]; then echo "land: already on origin/main ($head)"; exit 0; fi
-  # Never hold the landing lock while acquiring or running the gate.
-  scripts/check.sh quick
+head="$(git rev-parse HEAD)"
+if [ "$head" = "$base" ]; then echo "land: already on origin/main ($head)"; exit 0; fi
+scripts/check.sh quick
+clean
+[ "$(git rev-parse HEAD)" = "$head" ] || { echo 'land: HEAD changed during gate' >&2; exit 1; }
+
+og_lock_acquire "$(git rev-parse --git-common-dir)/og-landing" "scripts/land.sh ($PWD)"
+git fetch origin main
+main="$(git rev-parse origin/main)"
+if [ "$main" != "$base" ]; then
+  git merge-base --is-ancestor "$base" "$main" || {
+    echo 'land: origin/main was rewritten; inspect before retrying' >&2; exit 1;
+  }
+  reuse=0
+  disjoint "$base" "$head" "$main" && reuse=1
+  python3 scripts/rebase-generated.py "$main"
   clean
-  [ "$(git rev-parse HEAD)" = "$head" ] || { echo 'land: HEAD changed during gate' >&2; exit 1; }
-  while :; do
-    og_lock_acquire "$(git rev-parse --git-common-dir)/og-landing" "scripts/land.sh ($PWD)"
-    git fetch origin main
-    main="$(git rev-parse origin/main)"
-    if [ "$main" != "$base" ]; then
-      git merge-base --is-ancestor "$base" "$main" || {
-        echo 'land: origin/main was rewritten; inspect before retrying' >&2; exit 1;
-      }
-      reuse=0
-      disjoint "$base" "$head" "$main" && reuse=1
-      python3 scripts/rebase-generated.py "$main"
-      clean
-      base="$main"
-      head="$(git rev-parse HEAD)"
-      if [ "$reuse" = 0 ]; then
-        echo 'land: overlapping or shared inputs; rechecking affected quick steps'
-        og_lock_release
-        break
-      fi
-      echo 'land: disjoint changes, reusing passing quick gate'
-    fi
-    if git push origin HEAD:refs/heads/main; then
-      echo "land: pushed $head to origin/main"
-      exit 0
-    fi
-    # A writer not using this command can still race us. Verify whether
-    # main advanced (or accepted a push whose response was lost).
-    git fetch origin main
-    if git merge-base --is-ancestor "$head" origin/main; then
-      echo "land: origin/main contains $head"; exit 0
-    fi
-    [ "$(git rev-parse origin/main)" != "$base" ] || {
-      echo 'land: push failed without main advancing; inspect remote access' >&2; exit 1;
-    }
-    og_lock_release
-  done
-done
+  head="$(git rev-parse HEAD)"
+  if [ "$reuse" = 1 ]; then
+    echo 'land: disjoint changes, reusing passing quick gate'
+  else
+    echo 'land: overlapping or shared inputs; rechecking affected quick steps at the head of the queue'
+    scripts/check.sh quick
+    clean
+    [ "$(git rev-parse HEAD)" = "$head" ] || { echo 'land: HEAD changed during gate' >&2; exit 1; }
+  fi
+fi
+if git push origin HEAD:refs/heads/main; then
+  echo "land: pushed $head to origin/main"
+  exit 0
+fi
+# The push response may be lost; anything else is a writer outside the queue.
+git fetch origin main
+if git merge-base --is-ancestor "$head" origin/main; then
+  echo "land: origin/main contains $head"; exit 0
+fi
+echo 'land: origin/main moved outside scripts/land.sh; run it again' >&2
+exit 1
 }
 land

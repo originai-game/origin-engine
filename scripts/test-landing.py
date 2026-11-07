@@ -22,7 +22,7 @@ class Landing(unittest.TestCase):
         self.remote = self.root / 'remote'
         self.a = self.root / 'a'
         self.b = self.root / 'b'
-        self.run_git(self.root, 'init', '--bare', str(self.remote))
+        self.run_git(self.root, 'init', '--bare', '-b', 'main', str(self.remote))
         self.run_git(self.root, 'init', '-b', 'main', str(self.a))
         self.run_git(self.a, 'config', 'user.email', 'test@example.invalid')
         self.run_git(self.a, 'config', 'user.name', 'Landing Test')
@@ -54,6 +54,8 @@ name="$(basename "$PWD")"
 echo gate >> "$CONTROL/$name.calls"
 touch "$CONTROL/$name.ready"
 while [ ! -f "$CONTROL/$name.go" ]; do sleep 0.05; done
+# An allowance file admits one gate call per line.
+while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt "$(wc -l < "$CONTROL/$name.calls")" ]; do sleep 0.05; done
 [ ! -f "$CONTROL/$name.fail" ]
 ''')
         gate.chmod(0o755)
@@ -62,7 +64,8 @@ while [ ! -f "$CONTROL/$name.go" ]; do sleep 0.05; done
         self.run_git(self.a, 'remote', 'add', 'origin', str(self.remote))
         self.run_git(self.a, 'push', 'origin', 'main')
         self.run_git(self.a, 'worktree', 'add', '-b', 'second', str(self.b))
-        self.env = dict(os.environ, CONTROL=str(self.root), OG_GPU_ROOT=str(self.root / 'gpu'))
+        self.env = dict(os.environ, CONTROL=str(self.root), OG_GPU_ROOT=str(self.root / 'gpu'),
+                        PYTHONDONTWRITEBYTECODE='1')
 
     def commit(self, cwd, subject):
         self.run_git(cwd, 'add', '.')
@@ -123,6 +126,42 @@ while [ ! -f "$CONTROL/$name.go" ]; do sleep 0.05; done
 
     def test_overlapping_file_race(self):
         self.race(overlap=True)
+
+    def calls(self, name):
+        path = self.root / f'{name}.calls'
+        return len(path.read_text().splitlines()) if path.exists() else 0
+
+    def test_queued_landers_recheck_at_most_once(self):
+        # Two shared-input landers recheck after a third lands. Their rechecks
+        # must not race: the loser would recheck again, round after round.
+        c = self.root / 'c'
+        self.run_git(self.a, 'worktree', 'add', '-b', 'third', str(c))
+        (self.a / 'Cargo.toml').write_text('first\n')
+        (self.b / 'scripts/second').write_text('second\n')
+        (c / 'scripts/third').write_text('third\n')
+        for repo, subject in ((self.a, 'first'), (self.b, 'second'), (c, 'third')):
+            self.commit(repo, subject)
+        for name in ('b', 'c'):
+            (self.root / f'{name}.allow').write_text('1\n')
+        jobs = {name: self.start(repo) for name, repo in (('a', self.a), ('b', self.b), ('c', c))}
+        for name in jobs:
+            self.ready(name)
+        (self.root / 'a.go').touch()
+        self.finish(jobs['a'])
+        (self.root / 'b.go').touch()
+        deadline = time.monotonic() + 15
+        while self.calls('b') < 2:
+            self.assertLess(time.monotonic(), deadline, 'b never rechecked')
+            time.sleep(0.05)
+        (self.root / 'c.go').touch()
+        time.sleep(1)  # c's first gate ends while b's recheck is still running
+        for name in ('b', 'c'):
+            (self.root / f'{name}.allow').write_text('1\n' * 9)
+        self.finish(jobs['b'])
+        self.finish(jobs['c'])
+        self.assertEqual((self.calls('b'), self.calls('c')), (2, 2))
+        self.assertEqual(sorted(self.run_git(self.remote, 'log', '-3', '--format=%s').splitlines()),
+                         ['first', 'second', 'third'])
 
     def test_failed_gate_never_pushes(self):
         (self.a / 'first').write_text('first')
