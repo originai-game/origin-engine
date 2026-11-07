@@ -30,7 +30,7 @@ export default playtest({
         t.ok(samples >= 300, `${what}: feet on the ground in at least 300 samples`);
         t.ok(slow <= 0.05 * samples, `${what}: at most 5% of samples on the ground faster than 0.1 m/s`);
         t.ok(fast <= 0.01 * samples, `${what}: at most 1% faster than 0.3 m/s outside a takeoff`);
-        t.ok(a.footing.held.floating <= 0.02 * a.footing.held.frames, `${what}: a held pose holds no foot over 3 cm in 98% of its frames`);
+        t.equal(a.footing.held.floating, 0, `${what}: a held pose never holds a foot over 3 cm`);
       }
     });
   },
