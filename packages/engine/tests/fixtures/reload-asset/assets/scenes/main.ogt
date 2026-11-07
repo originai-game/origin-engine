@@ -1,0 +1,13 @@
+type scene
+version 1
+---
+# The dropship in front of the camera, as the old game template placed it.
+name "Main"
+entity "dropship" {
+  model "models/dropship.glb"
+  Transform {
+    position 0 1.5 0
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}

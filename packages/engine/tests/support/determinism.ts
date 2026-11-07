@@ -22,7 +22,8 @@ try {
   if (!advanced.ok) throw new Error(advanced.reason);
   const output = engine.takeOutputs().find(o => o.file === "digests.json");
   if (!output) throw new Error("development host omitted determinism digests");
-  console.log(output.data);
+  // One JSON line, as the other host probes print (hello-hash.ts).
+  console.log(JSON.stringify(JSON.parse(output.data)));
 } finally {
   engine.destroy();
 }

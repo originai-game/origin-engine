@@ -1,0 +1,17 @@
+type project
+version 1
+---
+# tests/reload-asset.test.ts: og dev on a model edited on disk. The test
+# copies this project with crates/og-tests/assets/dropship.glb as
+# assets/models/dropship.glb (the model is not kept twice).
+name "Reload Asset"
+id "reload-asset"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+scenes {
+  main "scenes/main.ogt"
+}
+scene main

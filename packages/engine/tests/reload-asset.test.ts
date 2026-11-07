@@ -1,11 +1,12 @@
-// M4's edit loop on a model: `og dev` on the scaffolded template, the
-// dropship's glTF edited on disk (its hull's base colour turned red), and the
-// running game shows the edit after the reload with the Model keeping its
-// asset handle. A reload that re-ran only the script would keep drawing the
+// M4's edit loop on a model: `og dev` on tests/fixtures/reload-asset (its
+// scene's dropship, crates/og-tests/assets/dropship.glb copied in), the
+// glTF edited on disk (its hull's base colour turned red), and the running
+// game shows the edit after the reload with the Model keeping its asset
+// handle. A reload that re-ran only the script would keep drawing the
 // model it loaded first. The frames before and after stay in
 // target/evidence/reload-asset/ for inspection.
 import { expect, test } from "bun:test";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decodePng } from "../src/node/png.ts";
@@ -68,8 +69,9 @@ function red(png: string): number {
 test.skipIf(SLOW || gpuUnavailable)("og dev shows a glTF edit after the reload", async () => {
   rmSync(evidence, { recursive: true, force: true });
   mkdirSync(evidence, { recursive: true });
-  const created = Bun.spawnSync(["bun", join(repo, "packages", "create", "bin", "create.ts"), game, "--name", "Reload Game"], { cwd: repo, env });
-  expect(created.exitCode).toBe(0);
+  cpSync(join(pkg, "tests", "fixtures", "reload-asset"), game, { recursive: true });
+  mkdirSync(join(game, "assets", "models"), { recursive: true });
+  copyFileSync(join(repo, "crates", "og-tests", "assets", "dropship.glb"), join(game, "assets", "models", "dropship.glb"));
   const port = String(47_000 + (process.pid % 700));
   const dev = Bun.spawn([ogBin(), "dev", game, "--port", port, "--exit-after", "2", "--json"], { cwd: repo, env, stdout: "pipe", stderr: "pipe" });
   const lines: string[] = [];
@@ -107,8 +109,7 @@ test.skipIf(SLOW || gpuUnavailable)("og dev shows a glTF edit after the reload",
     expect(red(before)).toBe(0);
     // A hull-sized count, not an exact one: only the hull's pixels that
     // read as plain red count (its lit and shaded sides do not), and their
-    // number moves with the template's frame (1,898 since project.ogt's
-    // seed applies, 2,1xx before).
+    // number moves with the fixture's frame.
     expect(red(after)).toBeGreaterThan(1000);
     // Back to grey: the second reload, after which og dev stops.
     swap(glb, RED, GREY);
