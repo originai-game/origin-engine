@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "material shaders' vertex_offset in the prepass",
+      "summary": "The depth prepass runs a material shader's vertex_offset hook for the frame before (the motion vectors' previous position) only in a frame whose motion vectors something reads: TAA or a temporal upscaler, motion blur, screen-space reflections, screen-space GI or a custom post pass. Before, it ran the hook twice per vertex in every frame. Frames do not change. A garden whose wind sways every plant: native GPU prepass 7.1 -> 5.3 ms at the gate."
+    }
+  ]
+}
