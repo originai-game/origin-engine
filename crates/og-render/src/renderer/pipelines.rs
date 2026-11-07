@@ -608,12 +608,14 @@ pub(crate) fn shadow_pipeline(
         (false, true) => &layouts[1],
         (false, false) => &layouts[0],
     };
-    ShadowSet::new(|target| {
+    // A local layer's pair only when a frame draws one (shadow_target.rs).
+    let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
+    ShadowSet::lazy(move |target| {
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("shadow"),
-            layout: Some(layout),
+            layout: Some(&layout),
             vertex: wgpu::VertexState {
-                module,
+                module: &module,
                 entry_point: Some(match (skinned, hooked) {
                     (true, true) => "vs_skinned_hooked",
                     (true, false) => "vs_skinned",
@@ -634,7 +636,7 @@ pub(crate) fn shadow_pipeline(
             depth_stencil: Some(target.depth()),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
-                module,
+                module: &module,
                 entry_point: Some(match (hooked, dissolve) {
                     (true, _) => "fs_hooked",
                     (false, true) => "fs_dissolve",
@@ -648,7 +650,7 @@ pub(crate) fn shadow_pipeline(
                 targets: &[Some(target.color())],
             }),
             multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
+            cache: crate::pipeline_cache::of(&device).as_ref(),
         })
     })
 }

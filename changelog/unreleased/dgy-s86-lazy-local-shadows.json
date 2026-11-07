@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: shadow pipelines",
+      "summary": "A caster's local-light shadow pipelines (a spot's or point light's far and near sides) are made only in a scene with a light that casts a local shadow, inside the frame's pipeline span (asynchronously on the web), instead of beside the sun's for every caster up front. A scene whose local lights cast no shadow compiles one shadow pipeline per caster, not three. A garden whose lanterns cast no shadow: shadow pipelines at load 180 -> 60, all pipelines asked for 404 -> 284. Frames do not change."
+    }
+  ]
+}

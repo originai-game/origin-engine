@@ -1294,13 +1294,19 @@ impl ScatterRenderer {
             return;
         }
         if pass == ScatterPass::Shadow {
-            let set = crate::ShadowSet::new(|t| {
-                if impostor {
-                    self.impostor_pipeline(device, pass, t)
-                } else {
-                    self.mesh_shadow_pipeline(device, side, t)
-                }
-            });
+            let set = if impostor {
+                crate::ShadowSet::new(|t| self.impostor_pipeline(device, pass, t))
+            } else {
+                // A local layer's pair only when a frame draws one (shadow_target.rs).
+                let (device, layout, module) = (
+                    device.clone(),
+                    self.shadow_layout.clone(),
+                    self.shadow_module.clone(),
+                );
+                crate::ShadowSet::lazy(move |t| {
+                    Self::mesh_shadow_pipeline(&device, &layout, &module, side, t)
+                })
+            };
             self.shadow_pipelines.insert(key, set);
             return;
         }
@@ -1387,17 +1393,18 @@ impl ScatterRenderer {
     /// A scattered mesh's shadow pipeline into `target`: as shadow.wgsl's
     /// casters (shadow_target.rs).
     fn mesh_shadow_pipeline(
-        &self,
         device: &wgpu::Device,
+        layout: &wgpu::PipelineLayout,
+        module: &wgpu::ShaderModule,
         side: Side,
         target: crate::ShadowTarget,
     ) -> wgpu::RenderPipeline {
         let buffers = [Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)];
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("scatter shadow"),
-            layout: Some(&self.shadow_layout),
+            layout: Some(layout),
             vertex: wgpu::VertexState {
-                module: &self.shadow_module,
+                module,
                 entry_point: Some("vs_shadow"),
                 compilation_options: Default::default(),
                 buffers: &buffers,
@@ -1409,7 +1416,7 @@ impl ScatterRenderer {
             depth_stencil: Some(target.depth()),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
-                module: &self.shadow_module,
+                module,
                 entry_point: Some("fs_shadow"),
                 compilation_options: wgpu::PipelineCompilationOptions {
                     constants: crate::ShadowTarget::constants(side),

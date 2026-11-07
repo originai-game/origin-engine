@@ -457,10 +457,37 @@ impl Renderer {
             .map(|p| p.get(self.frame_features))
     }
 
-    /// Makes the lit, shadow and prepass pipelines this frame's batches need.
+    /// Makes the lit, shadow and prepass pipelines this frame's batches need,
+    /// with `local_shadows` (a shadowed local light in the scene) the local
+    /// layers' shadow pipelines of every caster too (shadow_target.rs).
     /// Fork s60: asynchronous on the WebGPU tier while the host asks for it.
-    pub(crate) fn ensure_pipelines(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
-        frame_pipelines(|| self.ensure_pipelines_now(batches, skinned, prepass));
+    pub(crate) fn ensure_pipelines(
+        &mut self,
+        batches: &[Batch],
+        skinned: &[Batch],
+        prepass: bool,
+        local_shadows: bool,
+    ) {
+        frame_pipelines(|| {
+            self.ensure_pipelines_now(batches, skinned, prepass);
+            if local_shadows {
+                self.ensure_local_shadow_pipelines();
+            }
+        });
+    }
+
+    /// The local layers' pipelines of every caster's shadow set made so far.
+    fn ensure_local_shadow_pipelines(&self) {
+        let array = self.array_maps.iter().flat_map(|a| a.shadow.values());
+        for set in self
+            .shadow_pipelines
+            .values()
+            .chain(self.cache.hook_shadow_pipelines.values())
+            .chain(self.compact_shadow_pipelines.values())
+            .chain(array)
+        {
+            set.local();
+        }
     }
 
     fn ensure_pipelines_now(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
