@@ -933,8 +933,10 @@ pub trait I18nApi: Wire {
     fn og_i18n_t(&self, world: u32, key: String, args: Option<String>) -> String;
     /// `og.i18n.has`
     fn og_i18n_has(&self, world: u32, key: String) -> bool;
+    /// `og.i18n.formatNumber`
+    fn og_i18n_format_number(&self, world: u32, value: f64, format: Option<String>) -> String;
     /// `og.i18n.formatCompact`
-    fn og_i18n_format_compact(&self, world: u32, value: f64) -> String;
+    fn og_i18n_format_compact(&self, world: u32, value: f64, decimals: Option<u32>) -> String;
     /// `og.i18n.formatCurrency`
     fn og_i18n_format_currency(&self, world: u32, amount: f64, currency: String) -> String;
     /// `og.i18n.formatDate`
@@ -942,7 +944,7 @@ pub trait I18nApi: Wire {
     /// `og.i18n.formatTime`
     fn og_i18n_format_time(&self, world: u32, seconds: f64, format: Option<String>) -> String;
     /// `og.i18n.formatDuration`
-    fn og_i18n_format_duration(&self, world: u32, seconds: f64) -> String;
+    fn og_i18n_format_duration(&self, world: u32, seconds: f64, style: Option<String>) -> String;
 }
 
 /// `ui`: packages/knowledge/wiki/ui.md.
@@ -1889,6 +1891,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_i18n_locale",
     "og_i18n_t",
     "og_i18n_has",
+    "og_i18n_format_number",
     "og_i18n_format_compact",
     "og_i18n_format_currency",
     "og_i18n_format_date",

@@ -9,6 +9,7 @@
 // tick with a pop, counts, a countdown, the tracked one marked).
 
 import type * as Api from "@origingame/engine";
+import { decimalNumber } from "../data/format.ts";
 import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan, stepSize, isolate, drop, minText } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
@@ -330,7 +331,7 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
         fills: [vgrad([[0, token("shadow", 0)], [0.18, token("shadow", 0.45)], [0.82, token("shadow", 0.45)], [1, token("shadow", 0)]], 90)],
         clip: "shape",
       }, () => {
-        const boxW = (p: Api.CompassPoi): number => Math.max(u(48), Math.ceil(`${Math.round(p.distance ?? 0)}${desc.units ?? "m"}`.length * stepSize(ts(10)).size * 0.62) + u(4));
+        const boxW = (p: Api.CompassPoi): number => Math.max(u(48), Math.ceil(`${decimalNumber(Math.round(p.distance ?? 0), 0)}${desc.units ?? "m"}`.length * stepSize(ts(10)).size * 0.62) + u(4));
         // Where each marker sits, then which distances show: a label that
         // would collide with one already placed thins out, objectives and
         // pings first, then the nearest (a strip that names every marker
@@ -373,7 +374,7 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
         const spans: Array<[number, number]> = [];
         for (const q of [...placed].sort((a, b) => rank(a) - rank(b))) {
           if (q.p.distance === null || q.p.distance === undefined) continue;
-          const half = (`${Math.round(q.p.distance)}${desc.units ?? "m"}`.length * stepSize(ts(10)).size * 0.62) / 2 + u(3);
+          const half = (`${decimalNumber(Math.round(q.p.distance), 0)}${desc.units ?? "m"}`.length * stepSize(ts(10)).size * 0.62) / 2 + u(3);
           if (spans.some(([a, b]) => q.x + half > a && q.x - half < b)) continue;
           spans.push([q.x - half, q.x + half]);
           labelled.add(q.p);
@@ -384,7 +385,7 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
           box(keyId(p.key ?? ""), { direction: "column", cross: "center", gap: 0, width: px(bw), part: sel("Compass", "poi", kind, clamped ? "clamped" : null) }, undefined, () => {
             mark("Mark", kind, ink, s, 0, p.icon ?? "", sel("Compass", "mark", kind), "", {}, true);
             if (p.distance !== null && p.distance !== undefined && labelled.has(p)) {
-              const words = `${Math.round(p.distance)}${desc.units ?? "m"}`;
+              const words = `${decimalNumber(Math.round(p.distance), 0)}${desc.units ?? "m"}`;
               // In the strip's faded ends (where a clamped marker holds) the shadow behind it thins to nothing:
               // the distance takes a chip there, as the bearing has, so it reads over a bright sky (2.44:1 bare).
               if (x < width * 0.18 || x > width * 0.82) {
@@ -403,10 +404,10 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
         }, fixed({ start: width / 2 - u(6), top: 0 }));
       });
       box("Bearing", { padding: { left: u(6), right: u(6), top: 0, bottom: 0 }, part: sel("Compass", "bearing"), partClass: "chip" }, chip(3, true), () => {
-        text("Text", String(deg).padStart(3, "0"), { step: ts(12), font: "mono", color: token("ink"), nowrap: true });
+        text("Text", decimalNumber(deg, 0, false).padStart(3, decimalNumber(0, 0, false)), { step: ts(12), font: "mono", color: token("ink"), nowrap: true });
       });
     });
-    apply({ a11y: a11y("status", "Heading", { value: `${deg}°, ${names[Math.round(deg / 45) % 8]}` }) });
+    apply({ a11y: a11y("status", "Heading", { value: `${decimalNumber(deg, 0, false)}°, ${names[Math.round(deg / 45) % 8]}` }) });
   });
 }
 
@@ -451,12 +452,12 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
               text("Timer", countdown(q.timer, false), { step: ts(13), font: "mono", color: q.timer < 10 ? lit(role("danger")) : token("ink"), onScene: true, nowrap: true, outline: 1 });
             }
             if (q.distance !== null && q.distance !== undefined) {
-              text("Distance", `${Math.round(q.distance)}${desc.units ?? "m"}`, { step: ts(12), font: "mono", color: token("inkMuted"), onScene: true, nowrap: true, outline: 1 });
+              text("Distance", `${decimalNumber(Math.round(q.distance), 0)}${desc.units ?? "m"}`, { step: ts(12), font: "mono", color: token("inkMuted"), onScene: true, nowrap: true, outline: 1 });
             }
           };
           // The timer and distance share the title's line only when both fit whole beside it (a measured guess:
           // display letters at 0.6 em, mono at 0.62); else they take their own line rather than crowd or cut it.
-          const metaText = [q.timer != null ? countdown(q.timer, false) : "", q.distance != null ? `${Math.round(q.distance)}${desc.units ?? "m"}` : ""].filter(Boolean);
+          const metaText = [q.timer != null ? countdown(q.timer, false) : "", q.distance != null ? `${decimalNumber(Math.round(q.distance), 0)}${desc.units ?? "m"}` : ""].filter(Boolean);
           const metaW = metaText.reduce((w, m, i) => w + m.length * stepSize(ts(13)).size * 0.62 + (i > 0 ? tk.md : 0), 0);
           const lead = (q.focused ? u(3) + tk.sm : 0) + (q.icon ? u(18) + tk.sm : 0);
           const titleW = (q.title ?? "").length * stepSize(ts(15, true)).size * 0.6;
@@ -538,4 +539,3 @@ function step(id: string, st: Api.ObjectiveStep, tk: ReturnType<typeof frame>["t
 function spring01(v: number): number {
   return kit.animate("progress", clamp01(v), { kind: "token", token: "ui" });
 }
-

@@ -10,7 +10,7 @@ import type * as Api from "@origingame/engine";
 import {
   all, byText, chevron, target, fit, flags, frame, grow, kit, mark, px, role, spring, surface, text, token, xy,
 } from "../containers/base.ts";
-import { formatNumber, groupNumber } from "./format.ts";
+import { decimalNumber, formatNumber, groupNumber } from "./format.ts";
 
 // ── states: empty, loading, error ───────────────────────────────────────
 
@@ -79,7 +79,7 @@ export function dataList(id: string, desc: Api.DataListDesc, build: Api.UiItemBu
         if (resp.clicked) clicked = i;
       }
       kit.closeList();
-      kit.semantics({ role: "listbox", name: desc.label ?? "", value: `${count}` });
+      kit.semantics({ role: "listbox", name: desc.label ?? "", value: decimalNumber(count, 0) });
     }
   } finally {
     kit.close();
@@ -128,7 +128,7 @@ export function dataGrid(id: string, desc: Api.DataGridDesc, build: Api.UiItemBu
         if (resp.clicked) clicked = i;
       }
       kit.closeList();
-      kit.semantics({ role: "grid", name: desc.label ?? "", value: `${count}` });
+      kit.semantics({ role: "grid", name: desc.label ?? "", value: decimalNumber(count, 0) });
     }
   } finally {
     kit.close();

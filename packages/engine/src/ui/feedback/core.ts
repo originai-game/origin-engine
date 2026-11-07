@@ -8,6 +8,7 @@
 import type * as Api from "@origingame/engine";
 import { kit } from "../../ui-kit/bind.ts";
 import { all, fit, frame, grow, pct, px, token, xy, type Tokens } from "../../ui-kit/util.ts";
+import { compactNumber, decimalNumber, localizedDuration } from "../data/format.ts";
 
 export { all, fit, frame, grow, kit, pct, px, token, xy };
 export type { Tokens };
@@ -620,8 +621,8 @@ function sig3(m: number, decimals: number | undefined): number {
 
 /**
  * og.ui.formatNumber: a number in a notation. Exact for the integers a
- * double holds; past 1e308 through `exponent`. Pure arithmetic and
- * toFixed, so every host writes the same text.
+ * double holds; past 1e308 through `exponent`. Ordinary formats use
+ * og.i18n's shared CLDR data; explicit custom notation stays deterministic.
  */
 export function formatNumber(value: number, format: Api.NumberFormatDesc = {}): string {
   const notation = format.notation ?? "grouped";
@@ -632,6 +633,13 @@ export function formatNumber(value: number, format: Api.NumberFormatDesc = {}): 
   if (!Number.isFinite(value)) return `${pre}—${post}`;
   const dec = format.decimals ?? undefined;
   const shift = format.exponent ?? 0;
+  const custom = format.group != null || format.point != null;
+  const scaled = value * 10 ** shift;
+  if (!custom && Number.isFinite(scaled) && (notation === "grouped" || notation === "compact" && Math.abs(scaled) < 1e15)) {
+    const body = notation === "compact" ? compactNumber(scaled, dec) : decimalNumber(scaled, dec ?? 0);
+    const positive = format.sign && scaled > 0 && body !== (notation === "compact" ? compactNumber(0, dec) : decimalNumber(0, dec ?? 0)) ? "+" : "";
+    return `${pre}${positive}${body}${post}`;
+  }
   // The value as a mantissa in [1, 10) and a base-10 exponent.
   let mant = Math.abs(value);
   let exp10 = 0;
@@ -647,14 +655,17 @@ export function formatNumber(value: number, format: Api.NumberFormatDesc = {}): 
       exp10 -= 1;
     }
   }
-  const sci = (m: number, e: number, d: number) => `${fixed(m, d, point)}e${e}`;
+  const numeral = (n: number, d: number, grouping = false) => decimalNumber(value < 0 ? -n : n, d, grouping);
+  const sci = (m: number, e: number, d: number) => custom
+    ? `${fixed(m, d, point)}e${e}`
+    : `${numeral(m, d)}e${decimalNumber(e, 0, false)}`;
   let body: string;
   if (notation === "grouped" || exp10 < 4) {
     if (exp10 >= 21) body = sci(mant, exp10, dec ?? 2);
     else {
       const plain = shift === 0 ? Math.abs(value) : mant * 10 ** exp10;
       const [i, f] = fixed(plain, dec ?? 0, ".").split(".");
-      body = `${group(i ?? "0", sep)}${f !== undefined ? point + f : ""}`;
+      body = custom ? `${group(i ?? "0", sep)}${f !== undefined ? point + f : ""}` : numeral(plain, dec ?? 0, true);
     }
   } else if (notation === "scientific") body = sci(mant, exp10, dec ?? 2);
   else if (notation === "engineering") {
@@ -672,12 +683,12 @@ export function formatNumber(value: number, format: Api.NumberFormatDesc = {}): 
       tm /= 1000;
       d = sig3(tm, dec);
     }
-    if (tier < SHORT.length) body = fixed(tm, d, point) + SHORT[tier]!;
-    else if (notation === "letters") body = fixed(tm, d, point) + letters(tier - SHORT.length);
+    if (tier < SHORT.length) body = (custom ? fixed(tm, d, point) : numeral(tm, d)) + SHORT[tier]!;
+    else if (notation === "letters") body = (custom ? fixed(tm, d, point) : numeral(tm, d)) + letters(tier - SHORT.length);
     else body = sci(mant, exp10, dec ?? 2);
   }
-  const zero = !/[1-9]/.test(body.replace(/e.*$/, ""));
-  const sign = value < 0 && !zero ? "-" : format.sign && value > 0 && !zero ? "+" : "";
+  const zero = value === 0 || (exp10 < 0 && Number(Math.abs(scaled).toFixed(dec ?? 0)) === 0);
+  const sign = custom && value < 0 && !zero ? "-" : format.sign && value > 0 && !zero ? "+" : "";
   return `${pre}${sign}${body}${post}`;
 }
 
@@ -692,21 +703,15 @@ export const keyId = (key: string): string => key.replace(/[/#\s]/g, "-") || "_"
 /** Seconds as a countdown: 1:05, 1:02:05 past an hour, 9.4 under ten seconds with tenths. */
 export function countdown(seconds: number, tenths = true): string {
   const s = Math.max(0, seconds);
-  if (tenths && s < 10) return s.toFixed(1);
-  const total = Math.ceil(s);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const r = total % 60;
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${m}:${String(r).padStart(2, "0")}`;
+  if (tenths && s < 10) return decimalNumber(s, 1, false);
+  return localizedDuration(Math.ceil(s));
 }
 
 /** Seconds as a short label for a cooldown or a buff: 1h, 12m, 45, 4.2 (tenths under ten when asked). */
 export function shortTime(seconds: number, tenths = true): string {
   const s = Math.max(0, seconds);
-  if (s >= 3600) return `${Math.ceil(s / 3600)}h`;
-  if (s >= 60) return `${Math.ceil(s / 60)}m`;
-  if (tenths && s < 10) return s.toFixed(1);
-  return String(Math.ceil(s));
+  if (s >= 60) return localizedDuration(s, true);
+  return decimalNumber(tenths && s < 10 ? s : Math.ceil(s), tenths && s < 10 ? 1 : 0, false);
 }
 
 /**

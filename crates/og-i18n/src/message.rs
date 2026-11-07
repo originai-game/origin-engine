@@ -332,44 +332,10 @@ impl Parser<'_> {
     }
 }
 
-fn group(int: &str, sep: char) -> String {
-    let mut out = String::new();
-    for (k, c) in int.chars().enumerate() {
-        if k > 0 && (int.len() - k).is_multiple_of(3) {
-            out.push(sep);
-        }
-        out.push(c);
-    }
-    out
-}
-
 /// A number as `language` writes it: grouped thousands, up to three
 /// fraction digits.
 pub fn format_number(n: f64, language: &str) -> String {
-    let (thousands, decimal) = match language {
-        "de" | "es" | "it" | "pt" | "nl" | "id" | "tr" | "da" | "el" => ('.', ','),
-        "fr" | "ru" | "pl" | "uk" | "cs" | "sk" | "sv" | "fi" | "nb" | "no" | "bg" => {
-            ('\u{202f}', ',')
-        }
-        _ => (',', '.'),
-    };
-    if !n.is_finite() {
-        return n.to_string();
-    }
-    let neg = n < 0.0;
-    let text = format!("{:.3}", n.abs());
-    let (int, frac) = text.split_once('.').unwrap_or((&text, ""));
-    let frac = frac.trim_end_matches('0');
-    let mut out = String::new();
-    if neg {
-        out.push('-');
-    }
-    out.push_str(&group(int, thousands));
-    if !frac.is_empty() {
-        out.push(decimal);
-        out.push_str(frac);
-    }
-    out
+    crate::format::format_decimal(n, None, true, language)
 }
 
 impl Message {
@@ -432,7 +398,7 @@ impl Message {
                 Part::Text(t) => out.push_str(t),
                 Part::Arg(n) => match args.get(n) {
                     Some(Arg::Str(s)) => out.push_str(s),
-                    Some(Arg::Num(v)) => out.push_str(&format_number(*v, lang)),
+                    Some(Arg::Num(v)) => out.push_str(&format_number(*v, locale)),
                     None => {
                         out.push('{');
                         out.push_str(n);
@@ -441,7 +407,7 @@ impl Message {
                 },
                 Part::Number(n, style) => match args.get(n).and_then(Arg::as_num) {
                     Some(v) => out.push_str(&match style {
-                        NumberStyle::Plain => format_number(v, lang),
+                        NumberStyle::Plain => format_number(v, locale),
                         NumberStyle::Compact => format_compact(v, locale),
                         NumberStyle::Currency(code) => format_currency(v, code, locale),
                     }),
@@ -465,7 +431,7 @@ impl Message {
                 },
                 Part::Hash => {
                     if let Some(v) = hash {
-                        out.push_str(&format_number(v, lang));
+                        out.push_str(&format_number(v, locale));
                     } else {
                         out.push('#');
                     }

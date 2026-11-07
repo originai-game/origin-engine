@@ -5,9 +5,7 @@
 
 import type * as Api from "@origingame/engine";
 import { chevron, clamp, fit, flags, frame, grow, kit, mark, paint, px, role, spring, still, surface, text, token } from "../containers/base.ts";
-
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+import { decimalNumber, localizedDate } from "./format.ts";
 
 const pad2 = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 export const isoDate = (y: number, m: number, d: number): string => `${y}-${pad2(m)}-${pad2(d)}`;
@@ -34,9 +32,14 @@ export function calendar(id: string, desc: Api.CalendarDesc): Api.CalendarResult
   let year = desc.year || today?.y || 2026;
   let month = clamp(desc.month || today?.m || 1, 1, 12);
   const before = year * 12 + month;
-  const months = desc.monthNames && desc.monthNames.length === 12 ? desc.monthNames : MONTHS;
-  const days = desc.weekdayNames && desc.weekdayNames.length === 7 ? desc.weekdayNames : WEEKDAYS;
-  const short = desc.weekdayShort && desc.weekdayShort.length === 7 ? desc.weekdayShort : days.map((d) => d.slice(0, phone ? 1 : 2));
+  const customMonths = desc.monthNames?.length === 12;
+  const customDays = desc.weekdayNames?.length === 7;
+  const months = desc.monthNames?.length === 12 ? desc.monthNames : Array.from({ length: 12 }, (_, m) => localizedDate(Date.UTC(year, m, 1) / 1000, "monthName"));
+  const days = desc.weekdayNames?.length === 7 ? desc.weekdayNames : Array.from({ length: 7 }, (_, d) => localizedDate((3 + d) * 86400, "weekday"));
+  const short = desc.weekdayShort?.length === 7 ? desc.weekdayShort : customDays
+    ? days.map((d) => d.slice(0, phone ? 1 : 2))
+    : Array.from({ length: 7 }, (_, d) => localizedDate((3 + d) * 86400, "weekdayShort"));
+  const heading = () => customMonths ? `${months[month - 1]} ${decimalNumber(year, 0, false)}` : localizedDate(Date.UTC(year, month - 1, 1) / 1000, "monthYear");
   const start = clamp(desc.weekStart ?? 1, 0, 6);
   const min = desc.min ?? "";
   const max = desc.max ?? "";
@@ -71,8 +74,8 @@ export function calendar(id: string, desc: Api.CalendarDesc): Api.CalendarResult
     kit.row("Header", { width: grow(), gap: t.xs, cross: "center" }, () => {
       const prev = surface("Prev", { part: "Calendar.step", cls: "button", flags: ["round"], fill: null, disabled: !canTurn(-1), width: px(44), height: px(44), align: "center", cross: "center", radius: 22, semantics: { role: "button", name: desc.prevLabel || "Previous month" } }, () => chevron("Chevron", "back", 16, role(canTurn(-1) ? "ink" : "inkFaint")));
       if (prev.clicked) turn(-1);
-      text("Month", `${months[month - 1]} ${year}`, { step: "base", heading: true, align: "center", width: grow() });
-      kit.semantics({ role: "heading", name: `${months[month - 1]} ${year}` });
+      text("Month", heading(), { step: "base", heading: true, align: "center", width: grow() });
+      kit.semantics({ role: "heading", name: heading() });
       const next = surface("Next", { part: "Calendar.step", cls: "button", flags: ["round"], fill: null, disabled: !canTurn(1), width: px(44), height: px(44), align: "center", cross: "center", radius: 22, semantics: { role: "button", name: desc.nextLabel || "Next month" } }, () => chevron("Chevron", "forward", 16, role(canTurn(1) ? "ink" : "inkFaint")));
       if (next.clicked) turn(1);
     });
@@ -113,7 +116,10 @@ export function calendar(id: string, desc: Api.CalendarDesc): Api.CalendarResult
           const claimed = ms.some((x) => x.kind === "claimed");
           const wd = (start + k) % 7;
           const filled = isSel || edge;
-          const name = `${days[wd]}, ${months[m - 1]} ${d}, ${y}${isToday ? `, ${desc.todayLabel || "today"}` : ""}${claimed ? `, ${desc.claimedLabel || "claimed"}` : ""}${ms.filter((x) => x.label).map((x) => `, ${x.label}`).join("")}`;
+          const dateName = customMonths || customDays
+            ? `${days[wd]}, ${months[m - 1]} ${decimalNumber(d, 0, false)}, ${decimalNumber(y, 0, false)}`
+            : localizedDate(Date.UTC(y, m - 1, d) / 1000, "full");
+          const name = `${dateName}${isToday ? `, ${desc.todayLabel || "today"}` : ""}${claimed ? `, ${desc.claimedLabel || "claimed"}` : ""}${ms.filter((x) => x.label).map((x) => `, ${x.label}`).join("")}`;
           if (!inMonth && !(desc.showOutside ?? true)) {
             kit.open(kit.idi("Cell", k), { width: grow(), height: px(cell) });
             kit.close();
@@ -138,7 +144,7 @@ export function calendar(id: string, desc: Api.CalendarDesc): Api.CalendarResult
             radius: inRange && !filled ? t.small : cell / 2,
             semantics: { role: "gridcell", name, selected: isSel },
           }, () => {
-            text("Number", `${d}`, { step: "sm", font: "mono", nowrap: true, align: "center", color: filled ? "onPrimary" : !inMonth || blocked ? "inkFaint" : isToday ? "primary" : "ink" });
+            text("Number", decimalNumber(d, 0, false), { step: "sm", font: "mono", nowrap: true, align: "center", color: filled ? "onPrimary" : !inMonth || blocked ? "inkFaint" : isToday ? "primary" : "ink" });
             if (claimed) mark("Claimed", "tick", 12, role(filled ? "onPrimary" : "success"), 2);
             else if (ms.length > 0) {
               kit.row("Marks", { gap: 2, height: px(5), cross: "center" }, () => {
@@ -161,7 +167,7 @@ export function calendar(id: string, desc: Api.CalendarDesc): Api.CalendarResult
       kit.semantics({ role: "row" });
     }
     kit.close();
-    kit.semantics({ role: "grid", name: `${months[month - 1]} ${year}` });
+    kit.semantics({ role: "grid", name: heading() });
     if (dir !== 0 && !still()) {
       kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: 28 * dir * (kit.frameDirection() === "rtl" ? -1 : 1) }], transition: spring("panel") }, exit: { values: [{ prop: "opacity", value: 0 }], transition: { kind: "tween", durationMs: 90, ease: "exit" } } });
     }
@@ -181,4 +187,3 @@ function toneInk(tone: string | undefined): Api.ThemeColor {
 function fitWidth(cell: number, gap: number): Api.Size {
   return { kind: "fit", min: cell * 7 + gap * 6 };
 }
-

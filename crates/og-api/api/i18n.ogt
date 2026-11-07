@@ -9,6 +9,10 @@ module i18n {
     variant short "`11/2/26`."
     variant long "`November 2, 2026`."
     variant full "`Monday, November 2, 2026`."
+    variant monthYear "A calendar heading: `November 2026`, `2026年11月`."
+    variant monthName "The stand-alone month name: `November`."
+    variant weekday "The weekday name: `Monday`."
+    variant weekdayShort "The abbreviated weekday: `Mon`."
   }
 
   enum TimeStyle {
@@ -79,10 +83,30 @@ module i18n {
     returns bool
   }
 
+  struct DecimalFormat {
+    doc "Decimal formatting from the engine's shared CLDR data; no host Intl dependency."
+    desc true
+    field decimals Option.u32 "Exactly this many fractional digits (clamped to 20); null keeps up to three without trailing zeros."
+    field grouping Option.bool "Use the locale's digit grouping; null defaults to true."
+  }
+
+  fn formatNumber {
+    doc "A decimal number using the active locale's grouping, separators, native digits and sign. pseudo/en-XA expands and brackets output; ar-XB also isolates it right-to-left. Pseudo requests remain active for formatting even when translations fall back to a real table."
+    param world World "The world (its active locale)."
+    param value f64 "The number."
+    param format DecimalFormat "Precision and grouping." {
+      optional true
+    }
+    returns String
+  }
+
   fn formatCompact {
     doc "A number written short in the active locale: `1.2K`, `12K`, `1.2M` (en), `1,2 Mio.` (de), `1.2万` (ja). Below the locale's first compact size (de compacts no thousands) the whole number, grouped."
     param world World "The world (its active locale)."
     param value f64 "The number."
+    param decimals u32 "Optional fixed fraction digits, clamped to 20; omitted uses compact precision." {
+      optional true
+    }
     returns String
   }
 
@@ -115,13 +139,21 @@ module i18n {
     returns String
   }
 
+  enum DurationStyle {
+    doc "How a duration is displayed."
+    variant clock "Clock face: `1:02:03`, whole seconds rounded down."
+    variant short "Narrow largest-unit label: `2h`, `3m`, rounded up; under a minute, whole seconds."
+  }
+
   fn formatDuration {
     doc "A length of time as a clock face, `1:02:03` from an hour and `2:05` below, in the locale's digits; whole seconds, rounded down. og.ui's `duration` and `clock` formats are the in-document equivalents."
     param world World "The world (its active locale)."
     param seconds f64 "The length in seconds; negative is written with a minus."
+    param style DurationStyle "Clock face (default) or a narrow cooldown label." {
+      optional true
+    }
     returns String
   }
 }
 
 # ── ui ────────────────────────────────────────────────────────────────────
-

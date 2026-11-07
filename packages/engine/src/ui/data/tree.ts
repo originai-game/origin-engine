@@ -8,6 +8,7 @@ import {
 } from "../containers/base.ts";
 import { edge } from "../containers/panels.ts";
 import { lit, mix, teamColor } from "../feedback/core.ts";
+import { decimalNumber } from "./format.ts";
 
 // ── tree ────────────────────────────────────────────────────────────────
 
@@ -348,7 +349,7 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     kit.row("Bar", { width: grow(), align: "end", padding: xy(t.sm, t.xs), background: token("panel") }, () => {
       kit.row("Zoom", { gap: 2, padding: xy(2, 2), radius: t.control, background: token("panelRaised"), part: "Graph.zoom", partClass: "hud" }, () => {
         const out = surface("Out", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom <= minZ + 1e-3, width: px(target(40)), height: px(target(40)), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomOutLabel || "Zoom out" } }, () => mark("Minus", "minus", 16, role("ink")));
-        text("Level", `${Math.round(live * 100)}%`, { step: "caption", font: "mono", color: "inkMuted", nowrap: true });
+        text("Level", `${decimalNumber(Math.round(live * 100), 0)}%`, { step: "caption", font: "mono", color: "inkMuted", nowrap: true });
         const inn = surface("In", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom >= maxZ - 1e-3, width: px(target(40)), height: px(target(40)), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomInLabel || "Zoom in" } }, () => mark("Plus", "plus", 16, role("ink")));
         if (out.clicked) zoom = clamp(zoom / 1.25, minZ, maxZ);
         if (inn.clicked) zoom = clamp(zoom * 1.25, minZ, maxZ);
@@ -357,7 +358,7 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
   } finally {
     kit.close();
   }
-  kit.semantics({ role: "group", name: desc.label ?? "", value: `${Math.round(zoom * 100)}%` });
+  kit.semantics({ role: "group", name: desc.label ?? "", value: `${decimalNumber(Math.round(zoom * 100), 0)}%` });
   // A node the focus moves to (keys, a pad) is brought into view.
   if (focusedNode >= 0 && focusedNode !== Math.round(kit.memory("~focused", -1))) {
     const p = at(nodes[focusedNode]!);

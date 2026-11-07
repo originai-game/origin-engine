@@ -46,4 +46,4 @@ struct CompassDesc {
 }
 ```
 
-<sub>Module `ui` line 6272</sub>
+<sub>Module `ui` line 6267</sub>

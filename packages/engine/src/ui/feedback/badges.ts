@@ -5,13 +5,14 @@
 // of the ground colour, 99+ past its max, a pop when the count rises.
 
 import type * as Api from "@origingame/engine";
+import { decimalNumber } from "../data/format.ts";
 import { a11y, box, bp, edge, groups, inkOn, kit, lit, pop, role, sel, solid, sound, stroke, text, toneRole, token, xy , ts, stepSize } from "./core.ts";
 
 export function countBadge(id: string, desc: Api.CountBadgeDesc = {}): void {
   const kind: Api.BadgeKind = desc.kind ?? "count";
   const count = desc.count ?? 0;
   const max = desc.max || 99;
-  const label = kind === "count" ? (count > max ? `${max}+` : String(count)) : kind === "label" ? (desc.text ?? "") : "";
+  const label = kind === "count" ? (count > max ? `${decimalNumber(max, 0)}+` : decimalNumber(count, 0)) : kind === "label" ? (desc.text ?? "") : "";
   const parent = kit.openPath();
   // The rise is watched even while hidden, so the first count pops.
   const e = edge(`${id}~count`, count);

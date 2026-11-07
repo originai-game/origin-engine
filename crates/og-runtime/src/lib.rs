@@ -164,7 +164,8 @@ pub use geometry::{
 };
 pub use i18n::{
     og_i18n_format_compact, og_i18n_format_currency, og_i18n_format_date, og_i18n_format_duration,
-    og_i18n_format_time, og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t,
+    og_i18n_format_number, og_i18n_format_time, og_i18n_has, og_i18n_load, og_i18n_locale,
+    og_i18n_set_locale, og_i18n_t,
 };
 pub use invariants::og_assert_record;
 pub use light2d_at::og_render_light2d_at;

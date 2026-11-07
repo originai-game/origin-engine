@@ -11159,7 +11159,9 @@
         "TimeStyle",
         "DateFormat",
         "TimeFormat",
-        "LocaleInfo"
+        "LocaleInfo",
+        "DecimalFormat",
+        "DurationStyle"
       ],
       "consts": [],
       "functions": [
@@ -11265,6 +11267,32 @@
           "publish": true
         },
         {
+          "name": "formatNumber",
+          "doc": "A decimal number using the active locale's grouping, separators, native digits and sign. pseudo/en-XA expands and brackets output; ar-XB also isolates it right-to-left. Pseudo requests remain active for formatting even when translations fall back to a real table.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world (its active locale)."
+            },
+            {
+              "name": "value",
+              "type": "f64",
+              "optional": false,
+              "doc": "The number."
+            },
+            {
+              "name": "format",
+              "type": "DecimalFormat",
+              "optional": true,
+              "doc": "Precision and grouping."
+            }
+          ],
+          "returns": "String",
+          "publish": true
+        },
+        {
           "name": "formatCompact",
           "doc": "A number written short in the active locale: `1.2K`, `12K`, `1.2M` (en), `1,2 Mio.` (de), `1.2万` (ja). Below the locale's first compact size (de compacts no thousands) the whole number, grouped.",
           "params": [
@@ -11279,6 +11307,12 @@
               "type": "f64",
               "optional": false,
               "doc": "The number."
+            },
+            {
+              "name": "decimals",
+              "type": "u32",
+              "optional": true,
+              "doc": "Optional fixed fraction digits, clamped to 20; omitted uses compact precision."
             }
           ],
           "returns": "String",
@@ -11377,6 +11411,12 @@
               "type": "f64",
               "optional": false,
               "doc": "The length in seconds; negative is written with a minus."
+            },
+            {
+              "name": "style",
+              "type": "DurationStyle",
+              "optional": true,
+              "doc": "Clock face (default) or a narrow cooldown label."
             }
           ],
           "returns": "String",
@@ -45875,13 +45915,21 @@
         "medium",
         "short",
         "long",
-        "full"
+        "full",
+        "monthYear",
+        "monthName",
+        "weekday",
+        "weekdayShort"
       ],
       "x-og-variants": {
         "medium": "`Nov 2, 2026`.",
         "short": "`11/2/26`.",
         "long": "`November 2, 2026`.",
-        "full": "`Monday, November 2, 2026`."
+        "full": "`Monday, November 2, 2026`.",
+        "monthYear": "A calendar heading: `November 2026`, `2026年11月`.",
+        "monthName": "The stand-alone month name: `November`.",
+        "weekday": "The weekday name: `Monday`.",
+        "weekdayShort": "The abbreviated weekday: `Mon`."
       }
     },
     "TimeStyle": {
@@ -45981,6 +46029,55 @@
         "fonts"
       ],
       "additionalProperties": false
+    },
+    "DecimalFormat": {
+      "x-og-kind": "desc",
+      "x-og-module": "i18n",
+      "description": "Decimal formatting from the engine's shared CLDR data; no host Intl dependency.",
+      "type": "object",
+      "properties": {
+        "decimals": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Exactly this many fractional digits (clamped to 20); null keeps up to three without trailing zeros.",
+          "default": null
+        },
+        "grouping": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Use the locale's digit grouping; null defaults to true.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "DurationStyle": {
+      "x-og-kind": "enum",
+      "x-og-module": "i18n",
+      "description": "How a duration is displayed.",
+      "type": "string",
+      "enum": [
+        "clock",
+        "short"
+      ],
+      "x-og-variants": {
+        "clock": "Clock face: `1:02:03`, whole seconds rounded down.",
+        "short": "Narrow largest-unit label: `2h`, `3m`, rounded up; under a minute, whole seconds."
+      }
     },
     "Direction": {
       "x-og-kind": "enum",
@@ -61196,7 +61293,7 @@
       ],
       "x-og-variants": {
         "grouped": "Every digit, grouped by thousands (12,840,000).",
-        "compact": "Shortened past 9,999 to three significant digits with K, M, B, T, then scientific (12.8M).",
+        "compact": "CLDR compact notation in the active locale (12K, 1.2万), then scientific beyond 10^15. Explicit separators retain custom K/M/B/T notation.",
         "letters": "Shortened as idle games do: K, M, B, T, then aa, ab, … az, ba … (1.25ab), never running out.",
         "scientific": "Mantissa and exponent past 9,999 (1.28e7).",
         "engineering": "As scientific with the exponent a multiple of three (12.8e6)."
@@ -61224,7 +61321,7 @@
               "type": "null"
             }
           ],
-          "description": "Digits after the point; null is none below 10,000 and three significant digits in the shortened forms.",
+          "description": "Fixed digits after the point; null uses whole grouped numbers, CLDR compact precision, or three significant digits for extended notations.",
           "default": null
         },
         "exponent": {
@@ -61250,14 +61347,28 @@
           "default": ""
         },
         "group": {
-          "type": "string",
-          "description": "The thousands separator.",
-          "default": ","
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Explicit custom thousands separator; null follows the active locale.",
+          "default": null
         },
         "point": {
-          "type": "string",
-          "description": "The decimal point.",
-          "default": "."
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Explicit custom decimal point; null follows the active locale.",
+          "default": null
         }
       },
       "additionalProperties": false

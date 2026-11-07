@@ -823,8 +823,10 @@ export interface HostAbi<A, V> {
   og_i18n_t(world: number, key: string, args: string | undefined): string;
   /** `og.i18n.has` */
   og_i18n_has(world: number, key: string): boolean;
+  /** `og.i18n.formatNumber` */
+  og_i18n_format_number(world: number, value: number, format: string | undefined): string;
   /** `og.i18n.formatCompact` */
-  og_i18n_format_compact(world: number, value: number): string;
+  og_i18n_format_compact(world: number, value: number, decimals: number | undefined): string;
   /** `og.i18n.formatCurrency` */
   og_i18n_format_currency(world: number, amount: number, currency: string): string;
   /** `og.i18n.formatDate` */
@@ -832,7 +834,7 @@ export interface HostAbi<A, V> {
   /** `og.i18n.formatTime` */
   og_i18n_format_time(world: number, seconds: number, format: string | undefined): string;
   /** `og.i18n.formatDuration` */
-  og_i18n_format_duration(world: number, seconds: number): string;
+  og_i18n_format_duration(world: number, seconds: number, style: string | undefined): string;
   /** `og.ui.configure` */
   og_ui_configure(world: number, desc: string | undefined): string;
   /** `og.ui.viewport` */
@@ -1718,6 +1720,7 @@ export const SYMBOLS: readonly string[] = [
   "og_i18n_locale",
   "og_i18n_t",
   "og_i18n_has",
+  "og_i18n_format_number",
   "og_i18n_format_compact",
   "og_i18n_format_currency",
   "og_i18n_format_date",

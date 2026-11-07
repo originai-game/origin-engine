@@ -36,4 +36,4 @@ fn telegraph {
 }
 ```
 
-<sub>Module `ui` line 6737</sub>
+<sub>Module `ui` line 6732</sub>

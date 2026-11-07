@@ -23268,8 +23268,12 @@ export interface RoomMessage {
  * - `"short"`: `11/2/26`.
  * - `"long"`: `November 2, 2026`.
  * - `"full"`: `Monday, November 2, 2026`.
+ * - `"monthYear"`: A calendar heading: `November 2026`, `2026年11月`.
+ * - `"monthName"`: The stand-alone month name: `November`.
+ * - `"weekday"`: The weekday name: `Monday`.
+ * - `"weekdayShort"`: The abbreviated weekday: `Mon`.
  */
-export type DateStyle = "medium" | "short" | "long" | "full";
+export type DateStyle = "medium" | "short" | "long" | "full" | "monthYear" | "monthName" | "weekday" | "weekdayShort";
 
 /**
  * How much of a time of day to write (en shown).
@@ -23337,9 +23341,37 @@ export interface LocaleInfo {
 
 
 
+/**
+ * Decimal formatting from the engine's shared CLDR data; no host Intl dependency.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DecimalFormat {
+  /**
+   * Exactly this many fractional digits (clamped to 20); null keeps up to three without trailing zeros.
+   *
+   * @default null
+   */
+  readonly decimals?: number | null;
+  /**
+   * Use the locale's digit grouping; null defaults to true.
+   *
+   * @default null
+   */
+  readonly grouping?: boolean | null;
+}
 
 
 
+
+
+
+/**
+ * How a duration is displayed.
+ * - `"clock"`: Clock face: `1:02:03`, whole seconds rounded down.
+ * - `"short"`: Narrow largest-unit label: `2h`, `3m`, rounded up; under a minute, whole seconds.
+ */
+export type DurationStyle = "clock" | "short";
 
 
 // ── ui ──────────────────────────────────────────────────────────
@@ -34412,7 +34444,7 @@ export interface SkeletonGroupDesc {
 /**
  * How a number is written.
  * - `"grouped"`: Every digit, grouped by thousands (12,840,000).
- * - `"compact"`: Shortened past 9,999 to three significant digits with K, M, B, T, then scientific (12.8M).
+ * - `"compact"`: CLDR compact notation in the active locale (12K, 1.2万), then scientific beyond 10^15. Explicit separators retain custom K/M/B/T notation.
  * - `"letters"`: Shortened as idle games do: K, M, B, T, then aa, ab, … az, ba … (1.25ab), never running out.
  * - `"scientific"`: Mantissa and exponent past 9,999 (1.28e7).
  * - `"engineering"`: As scientific with the exponent a multiple of three (12.8e6).
@@ -34432,7 +34464,7 @@ export interface NumberFormatDesc {
    */
   readonly notation?: Notation;
   /**
-   * Digits after the point; null is none below 10,000 and three significant digits in the shortened forms.
+   * Fixed digits after the point; null uses whole grouped numbers, CLDR compact precision, or three significant digits for extended notations.
    *
    * @default null
    */
@@ -34462,17 +34494,17 @@ export interface NumberFormatDesc {
    */
   readonly suffix?: string;
   /**
-   * The thousands separator.
+   * Explicit custom thousands separator; null follows the active locale.
    *
-   * @default ","
+   * @default null
    */
-  readonly group?: string;
+  readonly group?: string | null;
   /**
-   * The decimal point.
+   * Explicit custom decimal point; null follows the active locale.
    *
-   * @default "."
+   * @default null
    */
-  readonly point?: string;
+  readonly point?: string | null;
 }
 
 
@@ -47946,12 +47978,21 @@ export declare namespace og {
      */
     function has(world: World, key: string): boolean;
     /**
+     * A decimal number using the active locale's grouping, separators, native digits and sign. pseudo/en-XA expands and brackets output; ar-XB also isolates it right-to-left. Pseudo requests remain active for formatting even when translations fall back to a real table.
+     *
+     * @param world The world (its active locale).
+     * @param value The number.
+     * @param format Precision and grouping.
+     */
+    function formatNumber(world: World, value: number, format?: DecimalFormat): string;
+    /**
      * A number written short in the active locale: `1.2K`, `12K`, `1.2M` (en), `1,2 Mio.` (de), `1.2万` (ja). Below the locale's first compact size (de compacts no thousands) the whole number, grouped.
      *
      * @param world The world (its active locale).
      * @param value The number.
+     * @param decimals Optional fixed fraction digits, clamped to 20; omitted uses compact precision.
      */
-    function formatCompact(world: World, value: number): string;
+    function formatCompact(world: World, value: number, decimals?: number): string;
     /**
      * An amount of money in the active locale: `$1,234.50` (en), `1.234,50 €` (de), `￥1,235` (ja), with the currency's own fraction digits (none for JPY and KRW). A code the subset lacks is written as itself.
      *
@@ -47981,8 +48022,9 @@ export declare namespace og {
      *
      * @param world The world (its active locale).
      * @param seconds The length in seconds; negative is written with a minus.
+     * @param style Clock face (default) or a narrow cooldown label.
      */
-    function formatDuration(world: World, seconds: number): string;
+    function formatDuration(world: World, seconds: number, style?: DurationStyle): string;
   }
   /**
    * The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.

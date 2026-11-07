@@ -2457,10 +2457,16 @@ pub fn og_i18n_has(env: Env, world: u32, key: String) -> bool {
     <Host as I18nApi>::og_i18n_has(&Host, world, key)
 }
 
-#[napi(js_name = "og_i18n_format_compact")]
-pub fn og_i18n_format_compact(env: Env, world: u32, value: f64) -> String {
+#[napi(js_name = "og_i18n_format_number")]
+pub fn og_i18n_format_number(env: Env, world: u32, value: f64, format: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as I18nApi>::og_i18n_format_compact(&Host, world, value)
+    <Host as I18nApi>::og_i18n_format_number(&Host, world, value, format)
+}
+
+#[napi(js_name = "og_i18n_format_compact")]
+pub fn og_i18n_format_compact(env: Env, world: u32, value: f64, decimals: Option<u32>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_format_compact(&Host, world, value, decimals)
 }
 
 #[napi(js_name = "og_i18n_format_currency")]
@@ -2482,9 +2488,9 @@ pub fn og_i18n_format_time(env: Env, world: u32, seconds: f64, format: Option<St
 }
 
 #[napi(js_name = "og_i18n_format_duration")]
-pub fn og_i18n_format_duration(env: Env, world: u32, seconds: f64) -> String {
+pub fn og_i18n_format_duration(env: Env, world: u32, seconds: f64, style: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as I18nApi>::og_i18n_format_duration(&Host, world, seconds)
+    <Host as I18nApi>::og_i18n_format_duration(&Host, world, seconds, style)
 }
 
 #[napi(js_name = "og_ui_configure")]

@@ -9,6 +9,7 @@
 
 import type * as Api from "@origingame/engine";
 import { symbol, type SymbolKind } from "../patterns/core.ts";
+import { decimalNumber } from "../data/format.ts";
 import { chip, TAU, a11y, absolute, box, clamp01, close, easeInOut, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, icon, kindColor, kit, leaf, levelOf, lit, mix, msToTicks, now, open, paintRgba, pct, phase, pulse, px, radial, rarityColor, reduced, role, sel, solid, sound, spring, stroke, text, token, trackDraw, ts, u, vgrad, anchorOf, inner, drop, shapeOf, arc, type Level, type Rgba, apply, type Props, stepSize, WHITE, BLACK } from "./core.ts";
 
 const GHOST_HOLD_MS = 450;
@@ -69,7 +70,7 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
   const h = Math.max(u(desc.thickness || 14), inside ? Math.ceil(stepSize(valueStep).size * 1.3) : 0);
   const radius = style === "pill" ? h / 2 : style === "slanted" ? 1 : Math.min(shapeOf("bar").radius, h / 3);
   const name = desc.name || desc.label || "Health";
-  const valueText = desc.valueText || `${Math.round(value)} / ${Math.round(max)}`;
+  const valueText = desc.valueText || `${decimalNumber(Math.round(value), 0)} / ${decimalNumber(Math.round(max), 0)}`;
   const anchor = anchorOf(desc, null);
   const e = edge(`${id}~level`, ["normal", "low", "critical", "empty"].indexOf(level));
   sound("warning", e.changed && level === "critical" && e.prev < 2);
@@ -284,14 +285,14 @@ export function orbMeter(id: string, desc: Api.OrbMeterDesc = {}): void {
           fills: [vgrad([[0, token("sheen", 0.55)], [1, token("sheen", 0)]])],
         }, absolute({ start: size * 0.2, top: size * 0.09 }, { transform: { rotate: -0.45 } }));
         if (desc.showValue !== false) {
-          text("Value", String(Math.round(value)), { step: ts(size >= 96 ? 20 : 15, true), font: "display", color: token("ink"), onScene: true, nowrap: true, outline: 1.2 },
+          text("Value", decimalNumber(Math.round(value), 0), { step: ts(size >= 96 ? 20 : 15, true), font: "display", color: token("ink"), onScene: true, nowrap: true, outline: 1.2 },
             absolute({ centerX: true, centerY: true }));
         }
       });
       if (desc.label) text("Label", desc.label, { step: ts(12), color: token("ink", 0.9), onScene: true, nowrap: true, outline: 1 });
     });
     apply({
-      a11y: a11y("meter", name, { value: `${Math.round(value)} / ${Math.round(max)}`, valueMin: 0, valueMax: max, valueNow: value }),
+      a11y: a11y("meter", name, { value: `${decimalNumber(Math.round(value), 0)} / ${decimalNumber(Math.round(max), 0)}`, valueMin: 0, valueMax: max, valueNow: value }),
       ...groups({ level: level === "empty" ? "critical" : level }, { level: ["normal", "low", "critical"] }),
     });
   });
@@ -340,9 +341,8 @@ export function radialMeter(id: string, desc: Api.RadialMeterDesc = {}): void {
       }
     }, {
       opacity: 1 - fadeX,
-      a11y: a11y("meter", desc.name ?? "Stamina", { value: `${Math.round((value / wheels) * 100)}%`, valueMin: 0, valueMax: wheels, valueNow: value }),
+      a11y: a11y("meter", desc.name ?? "Stamina", { value: `${decimalNumber(Math.round((value / wheels) * 100), 0)}%`, valueMin: 0, valueMax: wheels, valueNow: value }),
       ...groups({ level }, { level: ["full", "normal", "low", "exhausted"] }),
     });
   });
 }
-

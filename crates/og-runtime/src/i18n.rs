@@ -47,21 +47,14 @@ fn info(engine: u32) -> Value {
     })
 }
 
-/// The active locale's language (its primary subtag, `en` with none): what
-/// UI documents format numbers and plurals by.
+/// The full formatting locale for documents; plural rules derive their
+/// language themselves, while Chinese scripts and pseudo tags must survive.
 pub(crate) fn language(engine: u32) -> String {
-    {
-        let l = tag(engine);
-        let primary = l
-            .split(['-', '_'])
-            .next()
-            .unwrap_or("")
-            .to_ascii_lowercase();
-        if primary.is_empty() {
-            "en".to_string()
-        } else {
-            primary
-        }
+    let locale = tag(engine);
+    if locale.is_empty() {
+        "en".into()
+    } else {
+        locale
     }
 }
 
@@ -69,6 +62,11 @@ pub(crate) fn language(engine: u32) -> String {
 /// og.i18n's format functions write in.
 fn tag(engine: u32) -> String {
     with(engine, |s| {
+        if let Some(requested) = s.catalog.requested()
+            && og_i18n::is_pseudo_locale(requested)
+        {
+            return requested.to_string();
+        }
         s.catalog
             .active()
             .map(|t| t.locale.clone())
@@ -220,8 +218,19 @@ pub(crate) fn retire(engine: u32) {
     STATES.with(|s| s.borrow_mut().remove(&engine));
 }
 
-pub fn og_i18n_format_compact(world: u32, value: f64) -> String {
-    og_i18n::format_compact(value, &tag(world))
+pub fn og_i18n_format_number(world: u32, value: f64, format: Option<String>) -> String {
+    let options = parse(format.as_deref()).unwrap_or(Value::Null);
+    let decimals = options["decimals"].as_u64().map(|n| n.min(20) as u8);
+    let grouping = options["grouping"].as_bool().unwrap_or(true);
+    og_i18n::format_decimal(value, decimals, grouping, &tag(world))
+}
+
+pub fn og_i18n_format_compact(world: u32, value: f64, decimals: Option<u32>) -> String {
+    og_i18n::format::format_compact_with_precision(
+        value,
+        decimals.map(|n| n.min(20) as u8),
+        &tag(world),
+    )
 }
 
 pub fn og_i18n_format_currency(world: u32, amount: f64, currency: String) -> String {
@@ -250,6 +259,10 @@ pub fn og_i18n_format_time(world: u32, seconds: f64, format: Option<String>) -> 
     og_i18n::format_time(seconds, offset, style, &tag(world))
 }
 
-pub fn og_i18n_format_duration(world: u32, seconds: f64) -> String {
-    og_i18n::format_duration(seconds, &tag(world))
+pub fn og_i18n_format_duration(world: u32, seconds: f64, style: Option<String>) -> String {
+    if style.as_deref() == Some("short") {
+        og_i18n::format::format_duration_short(seconds, &tag(world))
+    } else {
+        og_i18n::format_duration(seconds, &tag(world))
+    }
 }

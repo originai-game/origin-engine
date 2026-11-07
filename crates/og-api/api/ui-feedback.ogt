@@ -310,7 +310,7 @@
   enum Notation {
     doc "How a number is written."
     variant grouped "Every digit, grouped by thousands (12,840,000)."
-    variant compact "Shortened past 9,999 to three significant digits with K, M, B, T, then scientific (12.8M)."
+    variant compact "CLDR compact notation in the active locale (12K, 1.2万), then scientific beyond 10^15. Explicit separators retain custom K/M/B/T notation."
     variant letters "Shortened as idle games do: K, M, B, T, then aa, ab, … az, ba … (1.25ab), never running out."
     variant scientific "Mantissa and exponent past 9,999 (1.28e7)."
     variant engineering "As scientific with the exponent a multiple of three (12.8e6)."
@@ -320,17 +320,13 @@
     doc "How og.ui.formatNumber and the counters write a number."
     desc true
     field notation Notation "The notation."
-    field decimals Option.u32 "Digits after the point; null is none below 10,000 and three significant digits in the shortened forms."
+    field decimals Option.u32 "Fixed digits after the point; null uses whole grouped numbers, CLDR compact precision, or three significant digits for extended notations."
     field exponent i32 "The value is value × 10^exponent: numbers past 1e308 (an idle game's 1.5e420 is value 1.5, exponent 420)."
     field sign bool "A + before positive values."
     field prefix String "Text before it ($)."
     field suffix String "Text after it ( XP, %)."
-    field group String "The thousands separator." {
-      default ","
-    }
-    field point String "The decimal point." {
-      default "."
-    }
+    field group Option.String "Explicit custom thousands separator; null follows the active locale."
+    field point Option.String "Explicit custom decimal point; null follows the active locale."
   }
 
   fn formatNumber {
@@ -578,4 +574,3 @@
     param desc SubtitlesDesc "The lines and the settings."
     returns Void
   }
-

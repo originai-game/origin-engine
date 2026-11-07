@@ -9,6 +9,7 @@
 // clamped inside the safe area, mirrored right to left.
 
 import type * as Api from "@origingame/engine";
+import { decimalNumber } from "../data/format.ts";
 import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply, floatFloor, u, textScale, announcing } from "./core.ts";
 
 interface Placed {
@@ -326,9 +327,8 @@ function statRow(id: string, s: Api.TooltipStat, deltas: boolean): void {
           shape: { kind: "polygon", sides: 3, rotation: d > 0 ? 0 : Math.PI },
           fills: [solid(lit(ink))],
         });
-        text("Text", s.deltaText || String(Math.abs(d)), { step: ts(13), font: "mono", nowrap: true, color: lit(ink) });
+        text("Text", s.deltaText || decimalNumber(Math.abs(d)), { step: ts(13), font: "mono", nowrap: true, color: lit(ink) });
       });
     }
   });
 }
-

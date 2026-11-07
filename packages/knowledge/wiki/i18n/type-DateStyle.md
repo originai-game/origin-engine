@@ -16,6 +16,10 @@ A string: one of the variants below. The zero value is `"medium"`.
 | `"short"` | `11/2/26`. |
 | `"long"` | `November 2, 2026`. |
 | `"full"` | `Monday, November 2, 2026`. |
+| `"monthYear"` | A calendar heading: `November 2026`, `2026年11月`. |
+| `"monthName"` | The stand-alone month name: `November`. |
+| `"weekday"` | The weekday name: `Monday`. |
+| `"weekdayShort"` | The abbreviated weekday: `Mon`. |
 
 ```ogt
 enum DateStyle {
@@ -24,6 +28,10 @@ enum DateStyle {
   variant short "`11/2/26`."
   variant long "`November 2, 2026`."
   variant full "`Monday, November 2, 2026`."
+  variant monthYear "A calendar heading: `November 2026`, `2026年11月`."
+  variant monthName "The stand-alone month name: `November`."
+  variant weekday "The weekday name: `Monday`."
+  variant weekdayShort "The abbreviated weekday: `Mon`."
 }
 ```
 

@@ -27,4 +27,4 @@ struct LocaleInfo {
 }
 ```
 
-<sub>Module `i18n` line 34</sub>
+<sub>Module `i18n` line 38</sub>

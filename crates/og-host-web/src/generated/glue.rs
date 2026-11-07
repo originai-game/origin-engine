@@ -2049,8 +2049,13 @@ pub fn og_i18n_has(world: u32, key: String) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn og_i18n_format_compact(world: u32, value: f64) -> String {
-    <Host as I18nApi>::og_i18n_format_compact(&Host, world, value)
+pub fn og_i18n_format_number(world: u32, value: f64, format: Option<String>) -> String {
+    <Host as I18nApi>::og_i18n_format_number(&Host, world, value, format)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_format_compact(world: u32, value: f64, decimals: Option<u32>) -> String {
+    <Host as I18nApi>::og_i18n_format_compact(&Host, world, value, decimals)
 }
 
 #[wasm_bindgen]
@@ -2069,8 +2074,8 @@ pub fn og_i18n_format_time(world: u32, seconds: f64, format: Option<String>) -> 
 }
 
 #[wasm_bindgen]
-pub fn og_i18n_format_duration(world: u32, seconds: f64) -> String {
-    <Host as I18nApi>::og_i18n_format_duration(&Host, world, seconds)
+pub fn og_i18n_format_duration(world: u32, seconds: f64, style: Option<String>) -> String {
+    <Host as I18nApi>::og_i18n_format_duration(&Host, world, seconds, style)
 }
 
 #[wasm_bindgen]

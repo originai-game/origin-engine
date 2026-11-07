@@ -31,8 +31,8 @@ pub mod table;
 pub mod text;
 
 pub use format::{
-    DateStyle, TimeStyle, format_compact, format_currency, format_date, format_duration,
-    format_locales, format_time,
+    DateStyle, TimeStyle, format_compact, format_currency, format_date, format_decimal,
+    format_duration, format_locales, format_time, is_pseudo_locale,
 };
 pub use locale::{Direction, direction_of_locale, negotiate};
 pub use message::{Arg, Message, MessageError};
@@ -264,6 +264,10 @@ mod i18n_contracts {
             "an unknown locale gets the base table"
         );
         assert_eq!(c.requested(), Some("sw"));
+        c.request(&["ar-XB"]);
+        assert_eq!(c.direction(), Direction::Rtl);
+        c.request(&["en-XA"]);
+        assert_eq!(c.direction(), Direction::Ltr);
     }
 
     #[test]

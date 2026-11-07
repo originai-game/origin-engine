@@ -7,6 +7,7 @@
 // sweeping the whole group, not each piece on a clock of its own).
 
 import type * as Api from "@origingame/engine";
+import { decimalNumber } from "../data/format.ts";
 import { TAU, a11y, absolute, arc, bp, box, clamp01, edge, frame, groups, inner, kit, leaf, lit, open, close, pct, phase, px, reduced, role, sel, solid, sound, spring, stroke, text, toneRole, token, vgrad, glow, type Rgba, ts, apply, tsFit } from "./core.ts";
 
 function toneInk(tone: Api.Tone | undefined): Rgba {
@@ -22,7 +23,7 @@ export function progressBar(id: string, desc: Api.ProgressBarDesc = {}): void {
   const ink = toneInk(desc.tone);
   const r = thick / 2;
   const showValue = desc.showValue || !!desc.valueText;
-  const valueText = desc.valueText || `${Math.round(target * 100)}%`;
+  const valueText = desc.valueText || `${decimalNumber(Math.round(target * 100), 0)}%`;
   kit.column(id, { gap: tk.xs, width: desc.width ?? { kind: "grow" } }, () => {
     const v = style === "indeterminate" ? 0 : clamp01(spring("value", target));
     const done = style !== "indeterminate" && target >= 1;
@@ -96,7 +97,7 @@ export function progressBar(id: string, desc: Api.ProgressBarDesc = {}): void {
   apply({
     a11y: a11y("progressbar", desc.label || "Progress", style === "indeterminate"
       ? { busy: true }
-      : { value: desc.valueText || `${Math.round(target * 100)}%`, valueMin: 0, valueMax: 100, valueNow: Math.round(target * 100) }),
+      : { value: valueText, valueMin: 0, valueMax: 100, valueNow: Math.round(target * 100) }),
     ...groups({ progress: target >= 1 ? "done" : "working", mode: style === "indeterminate" ? "indeterminate" : "determinate" }, { progress: ["working", "done"], mode: ["determinate", "indeterminate"] }),
   });
 }
@@ -133,10 +134,10 @@ export function progressRing(id: string, desc: Api.ProgressRingDesc = {}): void 
       shape,
       fills: [solid(lit(ink))],
     }, absolute({ start: 0, top: 0 }, { opacity }));
-    const label = desc.label ?? (spinning ? "" : `${Math.round(target * 100)}%`);
+    const label = desc.label ?? (spinning ? "" : `${decimalNumber(Math.round(target * 100), 0)}%`);
     if (label && size >= 40) text("Label", label, { step: tsFit(size >= 72 ? 18 : 13, size * 0.3), font: "mono", nowrap: true, outline: 0.8 });
   }, {
-    a11y: a11y("progressbar", name, spinning ? { busy: true } : { value: `${Math.round(target * 100)}%`, valueMin: 0, valueMax: 100, valueNow: Math.round(target * 100) }),
+    a11y: a11y("progressbar", name, spinning ? { busy: true } : { value: `${decimalNumber(Math.round(target * 100), 0)}%`, valueMin: 0, valueMax: 100, valueNow: Math.round(target * 100) }),
     ...groups({ mode: spinning ? "indeterminate" : "determinate" }, { mode: ["determinate", "indeterminate"] }),
   });
 }

@@ -247,8 +247,11 @@ impl I18nApi for WebHost {
     fn og_i18n_has(&self, world: u32, key: String) -> bool {
         rt::og_i18n_has(world, key)
     }
-    fn og_i18n_format_compact(&self, world: u32, value: f64) -> String {
-        rt::og_i18n_format_compact(world, value)
+    fn og_i18n_format_number(&self, world: u32, value: f64, format: Option<String>) -> String {
+        rt::og_i18n_format_number(world, value, format)
+    }
+    fn og_i18n_format_compact(&self, world: u32, value: f64, decimals: Option<u32>) -> String {
+        rt::og_i18n_format_compact(world, value, decimals)
     }
     fn og_i18n_format_currency(&self, world: u32, amount: f64, currency: String) -> String {
         rt::og_i18n_format_currency(world, amount, currency)
@@ -259,8 +262,8 @@ impl I18nApi for WebHost {
     fn og_i18n_format_time(&self, world: u32, seconds: f64, format: Option<String>) -> String {
         rt::og_i18n_format_time(world, seconds, format)
     }
-    fn og_i18n_format_duration(&self, world: u32, seconds: f64) -> String {
-        rt::og_i18n_format_duration(world, seconds)
+    fn og_i18n_format_duration(&self, world: u32, seconds: f64, style: Option<String>) -> String {
+        rt::og_i18n_format_duration(world, seconds, style)
     }
 }
 

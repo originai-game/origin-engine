@@ -306,6 +306,12 @@ impl Catalog {
 
     /// The active direction (left to right without tables).
     pub fn direction(&self) -> Direction {
+        if self
+            .requested()
+            .is_some_and(|tag| canonical(tag) == "ar-XB")
+        {
+            return Direction::Rtl;
+        }
         self.active().map_or(Direction::Ltr, |t| t.direction)
     }
 }

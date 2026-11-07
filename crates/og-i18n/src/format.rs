@@ -18,6 +18,8 @@ pub(crate) struct LocaleData {
     pub group: &'static str,
     pub minus: &'static str,
     pub time_separator: &'static str,
+    pub hours: &'static [(&'static str, &'static str)],
+    pub minutes: &'static [(&'static str, &'static str)],
     /// The primary and secondary group sizes (3, 3; Indian 3, 2).
     pub grouping: (u8, u8),
     /// Digits a whole part needs past the primary group before it groups
@@ -32,6 +34,9 @@ pub(crate) struct LocaleData {
     pub symbols: &'static [(&'static str, &'static str)],
     pub months: [&'static str; 12],
     pub months_short: [&'static str; 12],
+    pub months_standalone: [&'static str; 12],
+    pub months_standalone_short: [&'static str; 12],
+    pub month_year: &'static str,
     /// Sunday first.
     pub days: [&'static str; 7],
     pub days_short: [&'static str; 7],
@@ -59,6 +64,10 @@ pub enum DateStyle {
     Long,
     Medium,
     Short,
+    MonthYear,
+    MonthName,
+    Weekday,
+    WeekdayShort,
 }
 
 impl DateStyle {
@@ -69,6 +78,10 @@ impl DateStyle {
             "long" => DateStyle::Long,
             "medium" => DateStyle::Medium,
             "short" => DateStyle::Short,
+            "monthYear" => DateStyle::MonthYear,
+            "monthName" => DateStyle::MonthName,
+            "weekday" => DateStyle::Weekday,
+            "weekdayShort" => DateStyle::WeekdayShort,
             _ => return None,
         })
     }
@@ -164,19 +177,89 @@ fn digits(n: f64, fraction: usize, trim: bool, grouping: (u8, u8), d: &LocaleDat
     out
 }
 
+/// Pseudo locales deliberately expand formatted text for layout testing.
+pub fn is_pseudo_locale(locale: &str) -> bool {
+    matches!(canonical(locale).as_str(), "pseudo" | "en-XA" | "ar-XB")
+}
+
+fn finish(text: String, locale: &str) -> String {
+    if !is_pseudo_locale(locale) {
+        return text;
+    }
+    let padding = "~".repeat((text.chars().count() * 2).div_ceil(5));
+    let text: String = text
+        .chars()
+        .map(|c| match c {
+            'a' => 'à',
+            'e' => 'ë',
+            'i' => 'ï',
+            'o' => 'ô',
+            'u' => 'ü',
+            'A' => 'À',
+            'E' => 'Ë',
+            'I' => 'Ï',
+            'O' => 'Ô',
+            'U' => 'Ü',
+            other => other,
+        })
+        .collect();
+    let text = format!("[{text}{padding}]");
+    if canonical(locale) == "ar-XB" {
+        format!("\u{2067}{text}\u{2069}")
+    } else {
+        text
+    }
+}
+
+/// Decimal digits, grouping and signs from CLDR. With no explicit precision,
+/// keep up to three fraction digits; otherwise keep exactly 0..20 digits.
+pub fn format_decimal(value: f64, decimals: Option<u8>, grouping: bool, locale: &str) -> String {
+    if !value.is_finite() {
+        return finish(value.to_string(), locale);
+    }
+    let d = data(locale);
+    let body = digits(
+        value,
+        decimals.unwrap_or(3).min(20) as usize,
+        decimals.is_none(),
+        if grouping { d.grouping } else { (0, 0) },
+        d,
+    );
+    let nonzero = body.chars().any(|c| c.is_ascii_digit() && c != '0');
+    let sign = if value < 0.0 && nonzero { d.minus } else { "" };
+    finish(native(format!("{sign}{body}"), d), locale)
+}
+
 /// A number written short: "1.2K", "12K", "1.2M" in en, "1,2 Mio." in de,
 /// "1.2万" in ja (CLDR's short compact patterns). Below the first compact
 /// size, or where the locale compacts none (de's thousands), the number in
 /// full; a compact value under 100 keeps two significant digits, a larger
 /// one is whole.
 pub fn format_compact(value: f64, locale: &str) -> String {
+    format_compact_with_precision(value, None, locale)
+}
+
+/// Compact notation with optional fixed fractional digits (0..20).
+pub fn format_compact_with_precision(value: f64, decimals: Option<u8>, locale: &str) -> String {
     let d = data(locale);
     if !value.is_finite() {
-        return value.to_string();
+        return finish(value.to_string(), locale);
     }
     let n = value.abs();
     let round = |x: f64| {
-        if x >= 10.0 {
+        if let Some(decimals) = decimals {
+            let decimals = decimals.min(20);
+            let scale = 10f64.powi(decimals as i32);
+            let scaled = x * scale;
+            (
+                if scaled.is_finite() {
+                    scaled.round() / scale
+                } else {
+                    x
+                },
+                decimals as usize,
+            )
+        } else if x >= 10.0 {
             (x.round(), 0)
         } else {
             ((x * 10.0).round() / 10.0, 1)
@@ -185,7 +268,7 @@ pub fn format_compact(value: f64, locale: &str) -> String {
     // The size class: digits of the whole part less one, once rounding
     // has carried (999,999 is 1M, not 1000K).
     let mut e = if n >= 1.0 {
-        n.round().to_string().len() as i32 - 1
+        (n.round().to_string().len() as i32 - 1).min(14)
     } else {
         0
     };
@@ -203,24 +286,24 @@ pub fn format_compact(value: f64, locale: &str) -> String {
         }
         body = Some(format!(
             "{prefix}{}{suffix}",
-            digits(x, fraction, true, (0, 0), d)
+            digits(x, fraction, decimals.is_none(), (0, 0), d)
         ));
         break;
     }
     let body = body.unwrap_or_else(|| {
-        let (x, fraction) = if n >= 1000.0 {
+        let (x, fraction) = if n >= 1000.0 && decimals.is_none() {
             (n.round(), 0)
         } else {
             round(n)
         };
-        digits(x, fraction, true, d.grouping, d)
+        digits(x, fraction, decimals.is_none(), d.grouping, d)
     });
     let sign = if value < 0.0 && body.chars().any(|c| c.is_ascii_digit() && c != '0') {
         d.minus
     } else {
         ""
     };
-    native(format!("{sign}{body}"), d)
+    finish(native(format!("{sign}{body}"), d), locale)
 }
 
 /// An amount of a currency (an ISO 4217 code) as the locale writes it:
@@ -258,7 +341,7 @@ pub fn format_currency(amount: f64, code: &str, locale: &str) -> String {
     } else {
         format!("{before}{minus}{number}{after}")
     };
-    native(text.replace('¤', symbol), d)
+    finish(native(text.replace('¤', symbol), d), locale)
 }
 
 /// The primary and secondary group sizes of a number pattern
@@ -355,10 +438,15 @@ fn pattern(p: &str, seconds: f64, offset_minutes: i32, d: &LocaleData) -> String
                     out.push_str(&year.to_string());
                 }
             }
-            'M' | 'L' => match n {
+            'M' => match n {
                 1 | 2 => out.push_str(&pad(month, n)),
                 3 => out.push_str(d.months_short[month as usize - 1]),
                 _ => out.push_str(d.months[month as usize - 1]),
+            },
+            'L' => match n {
+                1 | 2 => out.push_str(&pad(month, n)),
+                3 => out.push_str(d.months_standalone_short[month as usize - 1]),
+                _ => out.push_str(d.months_standalone[month as usize - 1]),
             },
             'd' => out.push_str(&pad(day, n)),
             'E' | 'c' | 'e' => {
@@ -387,13 +475,17 @@ fn pattern(p: &str, seconds: f64, offset_minutes: i32, d: &LocaleData) -> String
 /// UTC (a player's time zone, which the game passes in).
 pub fn format_date(seconds: f64, offset_minutes: i32, style: DateStyle, locale: &str) -> String {
     let d = data(locale);
-    let p = d.date[match style {
-        DateStyle::Full => 0,
-        DateStyle::Long => 1,
-        DateStyle::Medium => 2,
-        DateStyle::Short => 3,
-    }];
-    pattern(p, seconds, offset_minutes, d)
+    let p = match style {
+        DateStyle::Full => d.date[0],
+        DateStyle::Long => d.date[1],
+        DateStyle::Medium => d.date[2],
+        DateStyle::Short => d.date[3],
+        DateStyle::MonthYear => d.month_year,
+        DateStyle::MonthName => "LLLL",
+        DateStyle::Weekday => "EEEE",
+        DateStyle::WeekdayShort => "EEE",
+    };
+    finish(pattern(p, seconds, offset_minutes, d), locale)
 }
 
 /// A time of day as the locale writes it ("3:05 PM", "15:05"), as
@@ -404,7 +496,7 @@ pub fn format_time(seconds: f64, offset_minutes: i32, style: TimeStyle, locale: 
         TimeStyle::Medium => 0,
         TimeStyle::Short => 1,
     }];
-    pattern(p, seconds, offset_minutes, d)
+    finish(pattern(p, seconds, offset_minutes, d), locale)
 }
 
 /// A length of time on a clock face: "1:02:03" from an hour, else "2:03",
@@ -424,7 +516,31 @@ pub fn format_duration(seconds: f64, locale: &str) -> String {
         format!("{m}{sep}{sec:02}")
     };
     let sign = if seconds < 0.0 && s > 0 { d.minus } else { "" };
-    native(format!("{sign}{body}"), d)
+    finish(native(format!("{sign}{body}"), d), locale)
+}
+
+/// A cooldown label: rounded up to its largest whole unit, using CLDR's
+/// narrow hour/minute patterns. Under a minute it is a whole second count.
+pub fn format_duration_short(seconds: f64, locale: &str) -> String {
+    let d = data(locale);
+    let magnitude = seconds.abs();
+    let (value, patterns) = if magnitude >= 3600.0 {
+        ((magnitude / 3600.0).ceil(), d.hours)
+    } else if magnitude >= 60.0 {
+        ((magnitude / 60.0).ceil(), d.minutes)
+    } else {
+        return format_decimal(seconds.signum() * magnitude.ceil(), Some(0), false, locale);
+    };
+    let category = crate::plural_category(locale, value).keyword();
+    let pattern = patterns
+        .iter()
+        .find(|(k, _)| *k == category)
+        .or_else(|| patterns.iter().find(|(k, _)| *k == "other"))
+        .expect("CLDR other pattern")
+        .1;
+    let sign = if seconds < 0.0 { d.minus } else { "" };
+    let number = format!("{sign}{}", digits(value, 0, false, (0, 0), d));
+    finish(native(pattern.replace("{0}", &number), d), locale)
 }
 
 #[cfg(test)]
@@ -433,6 +549,60 @@ mod tests {
 
     // Expected strings are CLDR 49's patterns written out by hand (and ICU's
     // output for the same values); epoch seconds are from Python's datetime.
+
+    #[test]
+    fn decimal_and_calendar_formats_share_locale_data() {
+        assert_eq!(
+            format_decimal(1234567.5, Some(2), true, "hi-IN"),
+            "12,34,567.50"
+        );
+        assert_eq!(format_decimal(1234.5, None, true, "bn"), "১,২৩৪.৫");
+        assert_eq!(format_decimal(1234.5, Some(2), false, "de-DE"), "1234,50");
+        assert_eq!(format_decimal(-0.001, Some(2), true, "en"), "0.00");
+        assert_eq!(
+            format_decimal(-1234.5, None, true, "ar"),
+            "\u{200e}-1,234.5"
+        );
+        assert_eq!(format_decimal(1234.0, None, true, "es"), "1234");
+        assert_eq!(format_decimal(12345.0, None, true, "es"), "12.345");
+        let args = [("n".into(), crate::Arg::Num(1234567.5))].into();
+        assert_eq!(
+            crate::Message::parse("{n, number}")
+                .unwrap()
+                .format("hi-IN", &args),
+            "12,34,567.5"
+        );
+        let t = 1_793_631_909.0;
+        assert_eq!(format_date(t, 0, DateStyle::MonthYear, "ja"), "2026年11月");
+        assert_eq!(format_date(t, 0, DateStyle::MonthName, "ru"), "ноябрь");
+        assert_eq!(format_date(t, 0, DateStyle::WeekdayShort, "de"), "Mo.");
+        assert_eq!(
+            format_compact_with_precision(12345.0, Some(2), "ja"),
+            "1.23万"
+        );
+        assert_eq!(format_compact(1e15, "en"), "1000T");
+        assert_eq!(format_duration_short(3601.0, "en"), "2h");
+        assert_eq!(format_duration_short(125.0, "ar"), "3 د");
+    }
+
+    #[test]
+    fn pseudo_formats_expand_numbers_and_temporal_text() {
+        assert_eq!(format_decimal(1234.5, None, true, "en-XA"), "[1,234.5~~~]");
+        assert_eq!(format_compact(1200.0, "pseudo"), "[1.2K~~]");
+        assert_eq!(format_duration(125.0, "en-XA"), "[2:05~~]");
+        assert_eq!(
+            format_date(0.0, 0, DateStyle::Medium, "en-XA"),
+            "[Jàn 1, 1970~~~~~]"
+        );
+        assert_eq!(
+            format_time(0.0, 0, TimeStyle::Medium, "en-XA"),
+            "[12:00:00\u{202f}ÀM~~~~~]"
+        );
+        assert_eq!(
+            format_decimal(12.0, None, true, "ar-XB"),
+            "\u{2067}[12~]\u{2069}"
+        );
+    }
 
     #[test]
     fn compact_follows_each_locales_patterns() {

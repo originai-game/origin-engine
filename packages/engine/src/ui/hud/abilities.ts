@@ -10,6 +10,7 @@
 // the sweep running out.
 
 import type * as Api from "@origingame/engine";
+import { decimalNumber } from "../data/format.ts";
 import { stepSize, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, a11y, arc, inner, type Paint, absolute, anchorOf, box, bp, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit, minText } from "./core.ts";
 
 const DEBUFF_TYPES: Record<string, string> = {
@@ -226,7 +227,7 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
         fills: [solid(lit(mix(role("gold"), WHITE, 0.1), ultReady ? 0.75 + 0.25 * pulse(0.9) : 1))],
         effects: [glow(u(4), lit(role("gold"), 0.6))],
       }, at);
-      if (!ultReady) pill("Ultimate", `${Math.floor(clamp01(ult) * 100)}%`, token("ink"), size, line, ringT);
+      if (!ultReady) pill("Ultimate", `${decimalNumber(Math.floor(clamp01(ult) * 100), 0)}%`, token("ink"), size, line, ringT);
     }
     // The cost: a small figure with a droplet on a dark pill at the bottom, only while the slot could be pressed; red only when it cannot be paid.
     if (desc.cost && ready) {
@@ -250,7 +251,7 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
           fills: [solid(lit(BLACK, 0.78))],
           strokes: [stroke(1, token("lineStrong", 0.9))],
         }, () => {
-          text("Charges", String(charges), { step: badgeStep, font: "display", color: token("ink"), onScene: true, nowrap: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : {}));
+          text("Charges", decimalNumber(charges, 0), { step: badgeStep, font: "display", color: token("ink"), onScene: true, nowrap: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : {}));
         }, absolute({ end: line + 1, bottom: line + 1 }));
       }
     }
@@ -274,7 +275,7 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
     }
     r0 = close({
       transform: { scaleX: s, scaleY: s },
-      a11y: a11y("button", desc.name ?? "", { value: locked ? "Locked" : cooling ? `${Math.ceil(cooldown)}s` : disabled ? "Unavailable" : "Ready" }),
+      a11y: a11y("button", desc.name ?? "", { value: locked ? "Locked" : cooling ? `${decimalNumber(Math.ceil(cooldown), 0)}s` : disabled ? "Unavailable" : "Ready" }),
       ...groups({ ready: readyState, use }, { ready: ["ready", "cooling", "disabled", "locked"], use: ["idle", "active", "unaffordable"] }),
     });
     // The ranks: pips right under the slot, centred.
@@ -507,11 +508,12 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
       // Small in the bottom end corner (as a charge badge is): the art stays the tile's one large thing.
       const sStep = tsFit(10, size * 0.4, true);
       const sFit = shrunk(sStep, Math.max(size * 0.36, minText() * textScale()), stepSize(sStep).line);
-      text("Stacks", String(fx.stacks), { step: sStep, font: "display", color: token("ink"), onScene: true, nowrap: true, outline: 1.2 }, absolute({ end: rim + 1, bottom: 0 }, sFit.transform ? { transform: { ...sFit.transform, x: ((1 - sFit.k) * String(fx.stacks).length * stepSize(sStep).size * 0.3) } } : {}));
+      const stacks = decimalNumber(fx.stacks ?? 0, 0);
+      text("Stacks", stacks, { step: sStep, font: "display", color: token("ink"), onScene: true, nowrap: true, outline: 1.2 }, absolute({ end: rim + 1, bottom: 0 }, sFit.transform ? { transform: { ...sFit.transform, x: ((1 - sFit.k) * stacks.length * stepSize(sStep).size * 0.3) } } : {}));
     }
     res = close({
       opacity: blink,
-      a11y: a11y("image", [fx.name ?? "", (fx.stacks ?? 0) >= 2 ? `${fx.stacks} stacks` : "", lasting ? "" : `${Math.ceil(remaining)} seconds`].filter(Boolean).join(", ")),
+      a11y: a11y("image", [fx.name ?? "", (fx.stacks ?? 0) >= 2 ? `${decimalNumber(fx.stacks ?? 0, 0)} stacks` : "", lasting ? "" : `${decimalNumber(Math.ceil(remaining), 0)} seconds`].filter(Boolean).join(", ")),
       ...groups({ time }, { time: ["lasting", "running", "expiring"] }),
     });
     if (timers && !lasting) {
@@ -521,4 +523,3 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
   });
   return res ?? ({ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response);
 }
-

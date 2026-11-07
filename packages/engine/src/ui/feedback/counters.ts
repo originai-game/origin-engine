@@ -7,6 +7,7 @@
 // and the number pops when it lands.
 
 import type * as Api from "@origingame/engine";
+import { decimalNumber } from "../data/format.ts";
 import { a11y, absolute, box, clamp01, close, easeOut, frame, formatNumber, groups, icon, kit, lit, mix, msToTicks, now, open, pop, px, reduced, role, sel, solid, stepSize, text, token, xy, ts, apply, fitWidth } from "./core.ts";
 
 export { formatNumber };
@@ -133,22 +134,28 @@ function counter(id: string, value: number, desc: Api.NumberCounterDesc, hud: bo
 function digits(id: string, shown: number, format: Api.NumberFormatDesc, step: Api.TypeStepName, font: Api.FontRole, ink: Api.Paint, hud: boolean): void {
   const line = stepSize(step).line;
   const textNow = formatNumber(Math.trunc(shown), { ...format, decimals: 0 });
+  const numerals = Array.from({ length: 10 }, (_, n) => decimalNumber(n, 0, false));
+  if (numerals.some((n) => [...n].length !== 1)) {
+    text(id, textNow, { step, font, color: ink, nowrap: true, outline: 1 });
+    return;
+  }
+  const digitValues = new Map(numerals.map((n, i) => [n, i]));
   const whole = Math.abs(shown);
   // Wheel k (units 0) shows floor(whole / 10^k) mod 10, turning by the
   // fraction the lower wheels carry into it.
   const frac = whole - Math.floor(whole);
-  let k = textNow.replace(/[^0-9]/g, "").length - 1;
+  let k = [...textNow].filter((ch) => digitValues.has(ch)).length - 1;
   kit.row(id, { gap: 0, cross: "center" }, () => {
     let i = 0;
     for (const ch of textNow) {
-      if (ch < "0" || ch > "9") {
+      const d = digitValues.get(ch);
+      if (d === undefined) {
         text(kit.idi("Sep", i++), ch, { step, font, color: ink, nowrap: true, outline: 1 });
         continue;
       }
       const place = 10 ** k;
       const below = Math.floor(whole) % place;
       const carry = below === place - 1 ? frac : 0;
-      const d = Number(ch);
       // The wheel shows through a window the height of a numeral's caps
       // (and its outline), centred on the line: a digit in motion is never
       // seen above the others' tops or below their baseline. The next digit
@@ -159,13 +166,12 @@ function digits(id: string, shown: number, format: Api.NumberFormatDesc, step: A
       box(kit.idi("Digit", i++), { direction: "column", height: px(line), padding: { left: 0, right: 0, top, bottom: 0 }, part: sel("NumberCounter", "digit") }, undefined, () => {
         box("Window", { direction: "column", height: px(win) }, { clip: "shape" }, () => {
           // An invisible numeral gives the window its width.
-          text("W", String(d), { step, font, nowrap: true, outline: 1 }, { opacity: 0, inert: true });
-          text("D", String(d), { step, font, color: ink, nowrap: true, outline: 1 }, absolute({ start: 0, top: -top - carry * win }));
-          text("N", String((d + 1) % 10), { step, font, color: ink, nowrap: true, outline: 1 }, absolute({ start: 0, top: -top + (1 - carry) * win }));
+          text("W", ch, { step, font, nowrap: true, outline: 1 }, { opacity: 0, inert: true });
+          text("D", ch, { step, font, color: ink, nowrap: true, outline: 1 }, absolute({ start: 0, top: -top - carry * win }));
+          text("N", decimalNumber((d + 1) % 10, 0, false), { step, font, color: ink, nowrap: true, outline: 1 }, absolute({ start: 0, top: -top + (1 - carry) * win }));
         });
       });
       k -= 1;
     }
   });
 }
-

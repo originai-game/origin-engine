@@ -1,0 +1,15 @@
+{
+  "added": [
+    {
+      "member": "og.i18n.formatNumber / DecimalFormat",
+      "summary": "Shared CLDR decimal grouping, fraction precision, signs and native digits on both hosts; messages and core data, feedback and HUD components use the same formatter. formatCompact accepts optional fraction precision. DateStyle adds monthYear, monthName, weekday and weekdayShort; DurationStyle adds clock and narrow short cooldown labels. pseudo/en-XA expand formatting, and ar-XB also uses RTL direction and isolation."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "og.ui.formatNumber / NumberFormatDesc",
+      "change": "Default separators and compact units now follow the active locale and CLDR precision, instead of hard-coded English grouping and three significant digits. Calendars use CLDR headings and weekday labels by default.",
+      "fix": "Set decimals for fixed precision, group/point for explicit custom separators, or monthNames/weekdayNames/weekdayShort for game-authored calendar names. Omit these overrides to follow locale switches."
+    }
+  ]
+}

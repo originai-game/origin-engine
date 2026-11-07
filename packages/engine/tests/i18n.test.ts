@@ -91,6 +91,8 @@ test("the kit's zh-CN table is simplified Chinese: every Han character is in GB2
 test("og.i18n: format functions follow the active locale, else the requested one, with moments the game passes in", () => {
   // No table loaded: the host's request (de-DE) decides.
   const de = start("de-DE").world;
+  expect(og.i18n.formatNumber(de, 1234.5, { decimals: 2 })).toBe("1.234,50");
+  expect(og.i18n.formatNumber(de, -0.001, { decimals: 2, grouping: false })).toBe("0,00");
   expect(og.i18n.formatCompact(de, 1234567)).toBe("1,2\u00a0Mio.");
   expect(og.i18n.formatCurrency(de, 1234.5, "EUR")).toBe("1.234,50\u00a0€");
   // 2026-11-02 15:05:09 UTC; Tokyo is 540 minutes ahead.
@@ -99,6 +101,10 @@ test("og.i18n: format functions follow the active locale, else the requested one
   expect(og.i18n.formatDate(de, t, { style: "full" })).toBe("Montag, 2. November 2026");
   expect(og.i18n.formatTime(de, t, { offsetMinutes: 540 })).toBe("00:05");
   expect(og.i18n.formatDuration(de, 3723)).toBe("1:02:03");
+  expect(og.i18n.formatDuration(de, 3723, "short")).toBe("2h");
+  const bn = start("bn").world;
+  expect(og.i18n.formatNumber(bn, 1234567.5, {})).toBe("১২,৩৪,৫৬৭.৫");
+  expect(og.i18n.formatDuration(bn, 125)).toBe("২:০৫");
   // A loaded table's locale wins over the request.
   const w = start("de-DE").world;
   for (const l of ["en", "ja"]) {
@@ -107,8 +113,14 @@ test("og.i18n: format functions follow the active locale, else the requested one
   }
   og.i18n.setLocale(w, "ja-JP");
   expect(og.i18n.formatCompact(w, 12345)).toBe("1.2万");
+  expect(og.i18n.formatCompact(w, 12345, 2)).toBe("1.23万");
+  expect(og.i18n.formatDate(w, t, { style: "monthYear" })).toBe("2026年11月");
   expect(og.i18n.formatCurrency(w, 1234.6, "JPY")).toBe("￥1,235");
   expect(og.i18n.formatDate(w, t, { style: "long" })).toBe("2026年11月2日");
   og.i18n.setLocale(w, "en-US");
   expect(og.i18n.formatTime(w, t, { style: "medium" })).toBe("3:05:09\u202fPM");
+  og.i18n.setLocale(w, "en-XA");
+  // English translations are loaded, but must not erase pseudo formatting.
+  expect(og.i18n.formatNumber(w, 1234.5, {})).toBe("[1,234.5~~~]");
+  expect(og.i18n.formatDuration(w, 125)).toBe("[2:05~~]");
 });

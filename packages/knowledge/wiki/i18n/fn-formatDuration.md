@@ -9,13 +9,14 @@ Module [`i18n`](../i18n.md) · [index](../index.md)
 A length of time as a clock face, `1:02:03` from an hour and `2:05` below, in the locale's digits; whole seconds, rounded down. og.ui's `duration` and `clock` formats are the in-document equivalents.
 
 ```ts
-og.i18n.formatDuration(world: World, seconds: number): string
+og.i18n.formatDuration(world: World, seconds: number, style?: DurationStyle): string
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world (its active locale). |
 | `seconds` | `number` | no | The length in seconds; negative is written with a minus. |
+| `style` | `DurationStyle` | yes | Clock face (default) or a narrow cooldown label. |
 
 **Returns** `string`.
 
@@ -26,8 +27,11 @@ fn formatDuration {
   doc "A length of time as a clock face, `1:02:03` from an hour and `2:05` below, in the locale's digits; whole seconds, rounded down. og.ui's `duration` and `clock` formats are the in-document equivalents."
   param world World "The world (its active locale)."
   param seconds f64 "The length in seconds; negative is written with a minus."
+  param style DurationStyle "Clock face (default) or a narrow cooldown label." {
+    optional true
+  }
   returns String
 }
 ```
 
-<sub>Module `i18n` line 118</sub>
+<sub>Module `i18n` line 148</sub>

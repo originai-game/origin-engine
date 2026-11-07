@@ -1169,7 +1169,7 @@ test("formats: round axis steps, true minus signs, signed deltas", () => {
   expect(niceTicks(0, 0.9, 4).step).toBeCloseTo(0.2, 9);
   expect(formatNumber(-12840, "grouped")).toBe("−12,840");
   expect(formatNumber(0.425, "percent", 1)).toBe("42.5%");
-  expect(formatNumber(12400, "compact")).toBe("12.4K");
+  expect(formatNumber(12400, "compact")).toBe("12K");
   expect(formatDelta(18, "grouped")).toBe("+18");
   expect(formatDelta(-3, "grouped")).toBe("−3");
   expect(formatDelta(0, "grouped")).toBe("±0");
