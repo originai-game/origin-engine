@@ -1,0 +1,57 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.4
+mesh ring {
+  at 0.05
+  inner 0
+  band 0.5
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Wind_Impact/n0.effect.ogt"
+  scale curve 0 1.4 1 1.8
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0.6111
+  band 0.5
+  colors 0.5234 1 0.5356 0 0.5234 1 0.5356 0.3765 0.5234 1 0.5356 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Wind_Impact/n1.effect.ogt"
+  scale curve 0 3.24 1 0
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Wind_Impact/n2.emitter.ogt" {
+  at 0.0833
+}
+emitter "vfx/effekseer-magicalxspiral/Wind_Impact/n3.emitter.ogt" {
+  at 0.05
+}
+emitter "vfx/effekseer-magicalxspiral/Wind_Impact/n4.emitter.ogt" {
+  at 0.0833
+}
+emitter "vfx/effekseer-magicalxspiral/Wind_Impact/n5.emitter.ogt" {
+  at 0.0333
+}
+trail {
+  at 0
+  life 0.2333
+  effect "vfx/effekseer-magicalxspiral/Wind_Impact/n6-0-0-0.effect.ogt"
+  width 0 0
+  lifetime 0.1333
+  color 1 1 1 0
+  orbit 0 15
+}
+# effekseer: node 0 "BG1": subtractive blend: drawn alpha blended
+# effekseer: node 0 "BG1": a camera-facing ring: drawn in its own plane
+# effekseer: node 1 "ShockWave1": a camera-facing ring: drawn in its own plane
+# effekseer: node 2 "Line1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3 "Line2": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4 "Lines": a random colour per particle: its mean used
+# effekseer: node 4 "Lines": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 6.0.0.0 "Node": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 6.0.0.0 "Node": a track of many instances: one trail drawn

@@ -1,0 +1,62 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.3833
+mesh ring {
+  at 0
+  rotate -11.25 0 -180
+  inner 0
+  band 0.5
+  arc 150 240
+  colors 0 1 0 0 0.0478 1 0.0478 0.502 0 1 0 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Sylph1/n0-0.effect.ogt"
+  scale 1
+  spin 0 0 -780
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0167
+  rotate -3.75 0 -180
+  inner 0
+  band 0.5
+  arc 150 240
+  colors 0 1 0 0 0.0478 1 0.0478 0.502 0 1 0 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Sylph1/n0-0.effect.ogt"
+  scale 1
+  spin 0 0 -780
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  rotate 3.75 0 -180
+  inner 0
+  band 0.5
+  arc 150 240
+  colors 0 1 0 0 0.0478 1 0.0478 0.502 0 1 0 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Sylph1/n0-0.effect.ogt"
+  scale 1
+  spin 0 0 -780
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  rotate 11.25 0 -180
+  inner 0
+  band 0.5
+  arc 150 240
+  colors 0 1 0 0 0.0478 1 0.0478 0.502 0 1 0 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Sylph1/n0-0.effect.ogt"
+  scale 1
+  spin 0 0 -780
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0 "Node": ring 6 instances: the first 4 drawn

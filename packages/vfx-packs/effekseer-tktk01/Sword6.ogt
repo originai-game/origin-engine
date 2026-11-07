@@ -1,0 +1,71 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.6817
+emitter "vfx/effekseer-tktk01/Sword6/n0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Sword6/n0-0.parent.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  rotate 0 0 -135
+  inner 0.5
+  band 0.5
+  colors 1 0.0824 0.1511 0 1 0.0824 0.1511 0.1961 1 0.0824 0.1511 0
+  life 0.3167
+  effect "vfx/effekseer-tktk01/Sword6/n1.effect.ogt"
+  scale curve 0 2 0.4531 2.4109 1 2.8284
+  color 7.5 7.5 7.5 1
+  blend additive
+}
+mesh ring {
+  at 0.0033
+  rotate 0 0 -45
+  inner 0.5
+  band 0.5
+  colors 1 0.0824 0.1511 0 1 0.0824 0.1511 0.1961 1 0.0824 0.1511 0
+  life 0.3167
+  effect "vfx/effekseer-tktk01/Sword6/n1.effect.ogt"
+  scale curve 0 2 0.4531 2.4109 1 2.8284
+  color 7.5 7.5 7.5 1
+  blend additive
+}
+mesh ring {
+  at 0.0067
+  rotate 0 0 45
+  inner 0.5
+  band 0.5
+  colors 1 0.0824 0.1511 0 1 0.0824 0.1511 0.1961 1 0.0824 0.1511 0
+  life 0.3167
+  effect "vfx/effekseer-tktk01/Sword6/n1.effect.ogt"
+  scale curve 0 2 0.4531 2.4109 1 2.8284
+  color 7.5 7.5 7.5 1
+  blend additive
+}
+mesh ring {
+  at 0.01
+  rotate 0 0 135
+  inner 0.5
+  band 0.5
+  colors 1 0.0824 0.1511 0 1 0.0824 0.1511 0.1961 1 0.0824 0.1511 0
+  life 0.3167
+  effect "vfx/effekseer-tktk01/Sword6/n1.effect.ogt"
+  scale curve 0 2 0.4531 2.4109 1 2.8284
+  color 7.5 7.5 7.5 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Sword6/n2-0.emitter.ogt" {
+  at 0
+  rotate 0 0 -102.4074
+}
+# effekseer: node 0 "メイン斬撃": a y-axis billboard: drawn facing the camera
+# effekseer: node 0 "メイン斬撃": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0 "メイン斬撃": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0 "メイン斬撃": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "月": ring 30 instances: the first 4 drawn
+# effekseer: node 2.0 "花びら": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0 "花びら": a random colour per particle: its mean used
+# effekseer: node 2.0 "花びら": a sprite scaled unevenly: drawn square at its mean

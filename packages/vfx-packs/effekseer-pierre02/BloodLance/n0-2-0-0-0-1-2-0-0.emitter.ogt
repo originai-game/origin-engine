@@ -1,0 +1,29 @@
+type particles
+version 1
+---
+# Effekseer node 0.2.0.0.0.1.2.0.0 "FireVariation"
+maxParticles 89
+shape box 1.3 0.5 2.3
+spread 20.6627
+rate 0
+burst 0 3 40 0.0267
+duration 1.0567
+looping false
+lifetime 0.5167 0.6833
+speed 4.275 6.8352
+speedOverLife 0 1.3376 0.5156 0.9713 1 0.7377
+size 1.25 1.25
+sizeOverLife 0 0.3578 0.1719 0.4746 0.3906 0.6 1 0.8944
+colorOverLife {
+  key 0 0.2195 0.0055 0.0104 0
+  key 0.0938 0.2195 0.0055 0.0104 0.14
+  key 0.125 0.2195 0.0055 0.0104 0.2033
+  key 0.1667 0.2195 0.0055 0.0104 0.3124
+  key 0.2188 0.2195 0.0055 0.0104 0.4712
+  key 0.2778 0.2195 0.0055 0.0104 0.7052
+  key 1 0.2195 0.0055 0.0104 0
+}
+rotation -6 6
+texture "vfx/effekseer-pierre02/textures/Fire.png"
+blend alpha
+effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-2-0-0.effect.ogt"

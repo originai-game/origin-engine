@@ -1,0 +1,24 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "effekseer-effekseer01",
+  "version": "1.0.0",
+  "description": "Effekseer01's Effekseer sample effects (15), converted to type vfx",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "basic",
+      "beam"
+    ],
+    "element": []
+  },
+  "keywords": [
+    "3d",
+    "anime",
+    "effekseer",
+    "effekseer01",
+    "particles"
+  ]
+}

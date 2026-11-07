@@ -1,0 +1,12 @@
+type effect
+version 1
+---
+# Effekseer node 0.2.0.0.0.0.0.1 "Blood"
+main "vfx/effekseer-pierre02/textures/Fire_Single.png" rgba {
+  tile 0 0
+  offset -0.4375 0
+  scroll 0.2344 -0.1172
+}
+alpha curve 0 1 0.8645 1 1 0
+blend alpha
+doubleSided true

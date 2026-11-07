@@ -1,0 +1,55 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.8333
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  colors 0 0 0 0 1 0 0 1 1 0.2195 0 1
+  life 0.8333
+  effect "vfx/effekseer-magicalxspiral/Salamander14/n0.effect.ogt"
+  scale curve 0 0 1 2
+  spin 0 0 300
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Salamander14/n1-0.emitter.ogt" {
+  at 0.0333
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-magicalxspiral/Salamander14/n2-0.emitter.ogt" {
+  at 0
+  rotate 90 0 0
+}
+trail {
+  at 0
+  rotate 45 0 0
+  life 0.2333
+  effect "vfx/effekseer-magicalxspiral/Salamander14/n3-0-0-0-0.effect.ogt"
+  width 2 2
+  lifetime 0.3333
+  color 1 1 0 0.7529
+  orbit 2 5.8333
+}
+mesh ring {
+  at 0
+  inner 0.6111
+  band 0.5
+  colors 1 0.5356 0.5356 0 1 0.5356 0.5356 0.3765 1 0.5356 0.5356 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Salamander14/n4.effect.ogt"
+  scale curve 0 3.24 1 0
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 1.0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0 "Node": a random colour per particle: its mean used
+# effekseer: node 2.0 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.0.0.0 "Track": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 3.0.0.0.0 "Track": a track of many instances: one trail drawn
+# effekseer: node 4 "ShockWave1": a camera-facing ring: drawn in its own plane

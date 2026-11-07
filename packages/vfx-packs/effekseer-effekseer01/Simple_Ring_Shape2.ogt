@@ -1,0 +1,110 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 7
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 1
+  band 0.02
+  height 0.8 0
+  colors 0.0546 0.0939 1 0 0.5295 0.8913 1 1 1 1 1 0
+  life 1.1667
+  effect "vfx/effekseer-effekseer01/Simple_Ring_Shape2/n0.effect.ogt"
+  scale curve 0 0 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.3333
+  rotate -90 0 0
+  inner 0.6667
+  band 0.02
+  height 0.5333 0
+  colors 0.0546 0.0939 1 0 0.5295 0.8913 1 1 1 1 1 0
+  life 1.1667
+  effect "vfx/effekseer-effekseer01/Simple_Ring_Shape2/n1.effect.ogt"
+  scale curve 0 0 1 4.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 2.6667
+  rotate -90 0 0
+  inner 0.5333
+  band 0.02
+  height 0.5333 0
+  colors 0.0546 0.0939 1 0 0.5295 0.8913 1 1 1 1 1 0
+  life 1.1667
+  effect "vfx/effekseer-effekseer01/Simple_Ring_Shape2/n2.effect.ogt"
+  scale curve 0 0 1 4.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 4
+  rotate -90 0 0
+  inner 1
+  band 0.1
+  height 1 0
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 1.1667
+  effect "vfx/effekseer-effekseer01/Simple_Ring_Shape2/n3.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 5.3333
+  rotate -90 0 0
+  inner 0.8
+  band 0.5
+  height 1.6 0
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1.1667
+  effect "vfx/effekseer-effekseer01/Simple_Ring_Shape2/n4.effect.ogt"
+  scale curve 0 0 1 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 5.5
+  rotate -90 0 0
+  inner 0.8
+  band 0.5
+  height 1.6 0
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1.1667
+  effect "vfx/effekseer-effekseer01/Simple_Ring_Shape2/n4.effect.ogt"
+  scale curve 0 0 1 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 5.6667
+  rotate -90 0 0
+  inner 0.8
+  band 0.5
+  height 1.6 0
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1.1667
+  effect "vfx/effekseer-effekseer01/Simple_Ring_Shape2/n4.effect.ogt"
+  scale curve 0 0 1 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 5.8333
+  rotate -90 0 0
+  inner 0.8
+  band 0.5
+  height 1.6 0
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1.1667
+  effect "vfx/effekseer-effekseer01/Simple_Ring_Shape2/n4.effect.ogt"
+  scale curve 0 0 1 2
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 4 "UVスクロール2": ring 10 instances: the first 4 drawn

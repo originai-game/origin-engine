@@ -1,0 +1,167 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.9983
+mesh ring {
+  at 0
+  offset 0 0 2
+  rotate -90 0 -135
+  inner 0
+  band 0.5
+  colors 1 1 1 0 0.5356 1 1 0.251 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire7/n0-0-0-0.effect.ogt"
+  scale curve 0 0.75 0.4531 1.0224 1 1.25
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0833
+  offset 0 0 2
+  rotate -90 0 -45
+  inner 0
+  band 0.5
+  colors 1 1 1 0 0.5356 1 1 0.251 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire7/n0-0-0-0.effect.ogt"
+  scale curve 0 0.75 0.4531 1.0224 1 1.25
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1667
+  offset 0 0 2
+  rotate -90 0 45
+  inner 0
+  band 0.5
+  colors 1 1 1 0 0.5356 1 1 0.251 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire7/n0-0-0-0.effect.ogt"
+  scale curve 0 0.75 0.4531 1.0224 1 1.25
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.25
+  offset 0 0 2
+  rotate -90 0 135
+  inner 0
+  band 0.5
+  colors 1 1 1 0 0.5356 1 1 0.251 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire7/n0-0-0-0.effect.ogt"
+  scale curve 0 0.75 0.4531 1.0224 1 1.25
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Fire7/n0-0-0-0-0.parent.ogt" {
+  at 0
+  offset 0 0 2
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-tktk02/Fire7/n0-0-1.emitter.ogt" {
+  at 0
+  offset 0 0 2
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk02/Fire7/n0-0-2-0.parent.ogt" {
+  at 0
+  offset 0 0 2
+  rotate -180 0 0
+}
+emitter "vfx/effekseer-tktk02/Fire7/n0-0-2-1.parent.ogt" {
+  at 0
+  offset 0 0 2
+  rotate 90 0 0
+}
+mesh ring {
+  at 0.5
+  rotate -90 0 -135
+  inner 0
+  band 0.5
+  colors 1 1 1 0 0.5356 1 1 0.251 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire7/n1-0-0-0.effect.ogt"
+  scale curve 0 1.5 0.4531 2.0448 1 2.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.5833
+  rotate -90 0 -45
+  inner 0
+  band 0.5
+  colors 1 1 1 0 0.5356 1 1 0.251 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire7/n1-0-0-0.effect.ogt"
+  scale curve 0 1.5 0.4531 2.0448 1 2.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.6667
+  rotate -90 0 45
+  inner 0
+  band 0.5
+  colors 1 1 1 0 0.5356 1 1 0.251 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire7/n1-0-0-0.effect.ogt"
+  scale curve 0 1.5 0.4531 2.0448 1 2.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.75
+  rotate -90 0 135
+  inner 0
+  band 0.5
+  colors 1 1 1 0 0.5356 1 1 0.251 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire7/n1-0-0-0.effect.ogt"
+  scale curve 0 1.5 0.4531 2.0448 1 2.5
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Fire7/n1-0-0-0-0.parent.ogt" {
+  at 0.5
+  rotate -90 0 0
+}
+mesh quad {
+  at 0.5
+  rotate -90 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk02/Fire7/n1-0-1.effect.ogt"
+  scale curve 0 2 0.2188 5.4455 0.4531 8.5377 0.7031 11.2839 1 14
+  color 1 0.147 0.032 0.7503
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Fire7/n1-0-2-0.parent.ogt" {
+  at 0.5
+  rotate -180 0 0
+}
+emitter "vfx/effekseer-tktk02/Fire7/n1-0-2-1.emitter.ogt" {
+  at 0.5
+  rotate -180 0 180
+}
+# effekseer: node 0.0.0.0 "Fire": ring 6 instances: the first 4 drawn
+# effekseer: node 0.0.0.0 "Fire": nested generation: 10 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0 "Distortion": nested generation: 10 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0 "Distortion": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0.0 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.1 "Glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.1 "Glow": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.2.0 "Fog": nested generation: 10 instances above its generator folded into one emitter
+# effekseer: node 0.0.2.0 "Fog": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.2.0 "Fog": a random colour per particle: its mean used
+# effekseer: node 0.0.2.0 "Fog": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 0.0.2.1 "Distortion": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.2.1 "Distortion": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 0.0 "FireNull": motion out from a circle: approximated along one direction
+# effekseer: node 1.0.0.0 "Fire": ring 6 instances: the first 4 drawn
+# effekseer: node 1.0.0.0.0 "Distortion": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0.0.0.0 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 1.0.2.0 "Fog": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0.2.0 "Fog": a random colour per particle: its mean used
+# effekseer: node 1.0.2.0 "Fog": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 1.0.2.1 "Distortion": a fixed sprite with many instances: drawn facing the camera

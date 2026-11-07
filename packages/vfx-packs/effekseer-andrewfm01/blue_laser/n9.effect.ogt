@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 9 "Laser Base"
+main "vfx/effekseer-andrewfm01/textures/Shock_wave_ring001.png" rgba {
+  scroll 0 13.125
+}
+blend additive
+doubleSided true

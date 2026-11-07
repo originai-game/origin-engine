@@ -1,0 +1,7 @@
+type effect
+version 1
+---
+# Effekseer node 2 "Ring(Outer)"
+alpha curve 0 0 0.2 1 0.8 1 1 0
+blend alpha
+doubleSided true

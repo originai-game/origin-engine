@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.2 "Node"
+main "vfx/effekseer-magicalxspiral/textures/icicle.png" rgba {
+}
+alpha curve 0 1 0.8235 1 1 0
+blend alpha
+doubleSided true

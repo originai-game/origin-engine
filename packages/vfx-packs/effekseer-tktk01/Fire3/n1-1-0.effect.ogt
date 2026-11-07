@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 1.1.0 "〆爆風斜め"
+main "vfx/effekseer-tktk01/textures/Flame01.png" rgba {
+}
+blend additive
+doubleSided true

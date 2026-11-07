@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.1 "グロー画像"
+maxParticles 1513
+shape spline 0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0 closed
+spread 51.4979
+rate 2400
+duration 1
+looping true
+lifetime 0.5 0.5
+speed 7.2284 10.2103
+speedOverLife 0 2.1308 0.25 1.3814 0.5 0.8473 0.75 0.5423 1 0.4657
+size 3 3
+sizeOverLife 0 0.3333 0.0781 0.5063 0.1562 0.6401 0.2344 0.7398 0.3281 0.8219 0.4688 0.8868 0.8281 0.93 1 1
+colorOverLife {
+  key 0 0.586 0.3112 0.0278 0.1961
+  key 1 0.586 0.3112 0.0278 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

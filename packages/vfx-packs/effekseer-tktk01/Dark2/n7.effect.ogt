@@ -1,0 +1,6 @@
+type effect
+version 1
+---
+# Effekseer node 7 "魔法陣衝撃立体リング"
+blend additive
+doubleSided true

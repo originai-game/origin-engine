@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.1.0 "炎"
+maxParticles 625
+shape box 4 0.25 0.001
+spread 0
+rate 6000
+duration 0.0833
+looping false
+lifetime 0.0167 0.8333
+speed 0 10.5882
+size 2.5 2.5
+sizeOverLife 0 0.4 1 1
+colorOverLife {
+  key 0 1 0.0104 0.0023 0.1961
+  key 0.5156 1 0.0813 0.0177 0.095
+  key 1 1 0.2195 0.0478 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

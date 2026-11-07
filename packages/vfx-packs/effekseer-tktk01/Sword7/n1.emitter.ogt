@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 1 "クロス１"
+maxParticles 7
+shape point
+spread 0
+rate 0
+burst 0 5
+duration 0.0167
+looping false
+lifetime 0.3333 0.3333
+speed 0 0
+size 20 20
+sizeOverLife 0 0.2121 0.0625 0.2303 0.1562 0.2232 0.5781 0.0741 0.9219 0.0458 0.9844 0.0241 1 0
+colorOverLife {
+  key 0 0.1011 1 1 0.3922
+  key 0.5 0.1011 1 1 0.3922
+  key 1 0.1011 1 1 0
+}
+rotation 70 70
+texture "vfx/effekseer-tktk01/textures/Line01.png"
+blend additive

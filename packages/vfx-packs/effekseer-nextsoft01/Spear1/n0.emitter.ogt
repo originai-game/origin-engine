@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 0 "剣跡"
+maxParticles 4
+shape point
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.3667 0.3667
+speed 6 6
+size 12.65 12.65
+sizeOverLife 0 0 1 0.2515
+colorOverLife {
+  key 0 1 0.1905 0.0415 1
+  key 0.5938 1 0.2289 0.0745 1
+  key 0.75 1 0.2955 0.1462 1
+  key 0.8636 1 0.3885 0.2689 1
+  key 0.9531 1 0.5044 0.4475 0.5132
+  key 0.9688 1 0.5297 0.4896 0.385
+  key 0.9844 1 0.5569 0.5356 0.2174
+  key 1 1 0.586 0.586 0
+}
+rotation 90 90
+texture "vfx/effekseer-nextsoft01/textures/Burst01.png"
+blend additive

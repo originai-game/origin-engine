@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 2 "Node"
+main "vfx/effekseer-magicalxspiral/textures/ShockWave5.png" rgba {
+  scroll 0 0.9375
+}
+alpha curve 0 1 0.8 1 1 0
+blend additive
+doubleSided true

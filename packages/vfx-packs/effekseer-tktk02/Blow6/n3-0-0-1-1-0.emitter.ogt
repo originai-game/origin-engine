@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# Effekseer node 3.0.0.1.1.0 "LineGlow"
+maxParticles 50
+shape point
+spread 0
+rate 600
+duration 0.0667
+looping false
+lifetime 0.5833 0.5833
+speed 0 0
+size 7.5 7.5
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.1429 1 1 1 0.251
+  key 1 1 1 1 0.251
+}
+texture "vfx/effekseer-tktk02/textures/Line01.png"
+blend additive

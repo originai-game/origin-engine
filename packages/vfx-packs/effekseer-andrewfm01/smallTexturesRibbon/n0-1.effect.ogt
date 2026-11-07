@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.1 "Ribbon Outer"
+main "vfx/effekseer-andrewfm01/textures/squareWave03_192.png" rgba {
+}
+blend additive
+doubleSided true

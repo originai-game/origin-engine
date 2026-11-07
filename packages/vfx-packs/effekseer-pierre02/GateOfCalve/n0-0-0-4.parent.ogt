@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 0.0 "GateOfCalve"
+maxParticles 113
+shape box 2 12 0.001
+spread 0
+rate 0
+burst 0 1 90 0.0167
+duration 1.5
+looping false
+lifetime 10 10
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-4.emitter.ogt"

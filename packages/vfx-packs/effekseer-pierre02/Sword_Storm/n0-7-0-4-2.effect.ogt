@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.7.0.4.2 "Wind"
+main "vfx/effekseer-pierre02/textures/Fire_Single.png" rgba {
+}
+alpha curve 0 0 0.1094 0.4246 0.2188 0.7325 0.3281 0.9239 0.4286 1 0.7344 0.4143 1 0
+blend alpha
+doubleSided true

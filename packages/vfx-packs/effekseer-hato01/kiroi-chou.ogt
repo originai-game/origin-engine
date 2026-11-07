@@ -1,0 +1,89 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 33.375
+mesh sphere {
+  at 0
+  move 0 0.2418 0
+  life 6.6667
+  effect "vfx/effekseer-hato01/kiroi-chou/n0-0-0-0-0-0.effect.ogt"
+  scale 1
+  color 0.673 1 0 1
+  blend alpha
+}
+mesh sphere {
+  at 1.675
+  move 0 0.2418 0
+  life 6.6667
+  effect "vfx/effekseer-hato01/kiroi-chou/n0-0-0-0-0-0.effect.ogt"
+  scale 1
+  color 0.673 1 0 1
+  blend alpha
+}
+mesh sphere {
+  at 3.35
+  move 0 0.2418 0
+  life 6.6667
+  effect "vfx/effekseer-hato01/kiroi-chou/n0-0-0-0-0-0.effect.ogt"
+  scale 1
+  color 0.673 1 0 1
+  blend alpha
+}
+mesh sphere {
+  at 5.025
+  move 0 0.2418 0
+  life 6.6667
+  effect "vfx/effekseer-hato01/kiroi-chou/n0-0-0-0-0-0.effect.ogt"
+  scale 1
+  color 0.673 1 0 1
+  blend alpha
+}
+mesh sphere {
+  at 0
+  move 0 0.2418 0
+  life 6.6667
+  effect "vfx/effekseer-hato01/kiroi-chou/n0-0-1-0-0-0.effect.ogt"
+  scale 1
+  color 0.7667 1 0 1
+  blend alpha
+}
+mesh sphere {
+  at 1.675
+  move 0 0.2418 0
+  life 6.6667
+  effect "vfx/effekseer-hato01/kiroi-chou/n0-0-1-0-0-0.effect.ogt"
+  scale 1
+  color 0.7667 1 0 1
+  blend alpha
+}
+mesh sphere {
+  at 3.35
+  move 0 0.2418 0
+  life 6.6667
+  effect "vfx/effekseer-hato01/kiroi-chou/n0-0-1-0-0-0.effect.ogt"
+  scale 1
+  color 0.7667 1 0 1
+  blend alpha
+}
+mesh sphere {
+  at 5.025
+  move 0 0.2418 0
+  life 6.6667
+  effect "vfx/effekseer-hato01/kiroi-chou/n0-0-1-0-0-0.effect.ogt"
+  scale 1
+  color 0.7667 1 0 1
+  blend alpha
+}
+emitter "vfx/effekseer-hato01/kiroi-chou/n0-0-1-0-0-1.parent.ogt" {
+  at 0
+  offset 0 4 0
+  rotate 0 0 180
+}
+# effekseer: node 0.0 "Node": local force fields
+# effekseer: node 0.0.0.0.0.0 "Node": model 6 instances: the first 4 drawn
+# effekseer: node 0.0.0.0.0.0 "Node": a model that is not an .efkmodel (fbx/hane2.fbx): drawn as a sphere
+# effekseer: node 0.0.1.0.0.0 "Node": model 6 instances: the first 4 drawn
+# effekseer: node 0.0.1.0.0.0 "Node": a model that is not an .efkmodel (fbx/hane2.fbx): drawn as a sphere
+# effekseer: node 0.0.1.0.0.1 "Node": a random colour per particle: its mean used
+# effekseer: node 0.0.1.0.0.1 "Node": a child of an instanced parent: its motion drawn up the world's y

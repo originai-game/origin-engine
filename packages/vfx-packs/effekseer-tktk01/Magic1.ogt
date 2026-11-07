@@ -1,0 +1,237 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1
+mesh ring {
+  at 0
+  offset 10.0046 0.0046 0.0046
+  move -39.9986 -0.0144 0
+  inner 0.625
+  band 1
+  colors 0.586 1 1 0 1 1 1 1 0.586 1 1 0
+  life 0.5333
+  effect "vfx/effekseer-tktk01/Magic1/n0-0.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-0-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0292
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-0-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0583
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-0-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0875
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-0-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 10.0046 0.0046 0.0046
+  move -39.9946 0.0054 0.0054
+  inner 0.625
+  band 1
+  colors 0.586 1 1 0 1 1 1 1 0.586 1 1 0
+  life 0.5333
+  effect "vfx/effekseer-tktk01/Magic1/n0-1.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-1-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0292
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-1-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0583
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-1-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0875
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-1-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 10.0046 0.0046 0.0046
+  move -39.9946 0.0054 0.0054
+  inner 0.625
+  band 1
+  colors 0.586 1 1 0 1 1 1 1 0.586 1 1 0
+  life 0.5333
+  effect "vfx/effekseer-tktk01/Magic1/n0-2.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-2-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0292
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-2-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0583
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-2-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0875
+  offset 10.0046 0.0046 0.0046
+  move -40 0 0
+  inner 0.4
+  band 1
+  colors 1 1 1 0 1 1 1 0.1471 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Magic1/n0-2-0.effect.ogt"
+  scale curve 0 2 1 3
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Magic1/n1-0.emitter.ogt" {
+  at 0.5
+  offset -8 0 0
+  rotate 0 0 -90
+}
+mesh ring {
+  at 0.5
+  offset -10 0 0
+  inner 0
+  band 0.25
+  colors 0.0033 0.7445 0.7445 0 0.3587 0.9406 0.9406 0.7843 1 1 1 1
+  life 0.4667
+  effect "vfx/effekseer-tktk01/Magic1/n2.effect.ogt"
+  scale curve 0 1 1 2
+  color 15 15 15 1
+  blend additive
+}
+mesh ring {
+  at 0.5
+  offset -10 0 0
+  inner 0.7719
+  band 0.5
+  colors 1 1 1 0 1 1 1 0.7843 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Magic1/n3.effect.ogt"
+  scale curve 0 4 0.0781 5.0546 0.1719 6.0472 0.2656 6.7797 0.375 7.3582 0.5781 7.8498 1 8
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0.0 "リングの残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0 "リングの残像": ring 29 instances: the first 4 drawn
+# effekseer: node 0.1.0 "リングの残像": ring 29 instances: the first 4 drawn
+# effekseer: node 0.2.0 "リングの残像": ring 29 instances: the first 4 drawn
+# effekseer: node 1.0 "破裂衝撃": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2 "破裂衝撃玉": ring 15 instances: the first 4 drawn
+# effekseer: node 2 "破裂衝撃玉": a camera-facing ring: drawn in its own plane
+# effekseer: node 3 "Node": a ring whose thickness changes over its life: its middle thickness kept

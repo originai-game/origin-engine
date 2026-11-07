@@ -1,0 +1,227 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.4708
+mesh quad {
+  at 0
+  life 1.4167
+  effect "vfx/effekseer-tktk01/Magic2/n0-0.effect.ogt"
+  scale curve 0 5 0.5625 5 0.7656 9.2748 1 9.25
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0
+  offset 0 0.6667 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Magic2/n0-0-0-0.effect.ogt"
+  scale curve 0 0.7454 0.3906 0.7454 0.4688 0.6038 0.5469 0.3841 0.5781 0.2465 0.6094 0 1 0
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0
+  offset 0 -0.5 0
+  rotate 0 0 180
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Magic2/n0-0-1-0.effect.ogt"
+  scale curve 0 0.6455 0.3906 0.6455 0.4062 0.6353 0.4688 0.5229 0.5469 0.3327 0.5781 0.2135 0.6094 0 1 0
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0
+  life 1.4167
+  effect "vfx/effekseer-tktk01/Magic2/n0-0-2.effect.ogt"
+  scale curve 0 4.1667 0.5938 3.3594 0.9375 4.9826 1 5
+  color 1 0.0104 0.2195 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Magic2/n1-0.emitter.ogt" {
+  at 0
+  offset 4 0 4
+  rotate -54.7356 -30 54.7356
+}
+emitter "vfx/effekseer-tktk01/Magic2/n1-0-0.emitter.ogt" {
+  at 0
+  offset 4 0 4
+  rotate -54.7356 -30 54.7356
+}
+emitter "vfx/effekseer-tktk01/Magic2/n2-0.emitter.ogt" {
+  at 0.6667
+  offset 0 0 5
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-tktk01/Magic2/n2-0-0.emitter.ogt" {
+  at 0.6667
+  offset 0 0 5
+  rotate 90 89.972 0
+  move 0 0 -13.5
+}
+mesh ring {
+  at 0.8
+  inner 0.2582
+  band 1
+  colors 1 0.0104 0.2195 0 1 0.0478 0.2195 0 1 0.0478 0.2195 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Magic2/n3-0-0.effect.ogt"
+  scale curve 0 2.1 0.0781 2.6009 0.1719 3.0724 0.2656 3.4204 0.375 3.6951 0.5781 3.9287 1 4
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.8
+  inner 1
+  band 1
+  height 0 1.4455
+  colors 1 0.0104 0.2195 0 1 0.0478 0.2195 0 1 0.0478 0.2195 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Magic2/n3-0-1.effect.ogt"
+  scale curve 0 2.1 0.0781 2.6009 0.1719 3.0724 0.2656 3.4204 0.375 3.6951 0.5781 3.9287 1 4
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.8
+  inner 0.9725
+  band 0.5
+  colors 1 0.0104 0.2195 0 1 1 1 0 1 0.0478 0.2195 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Magic2/n3-0-2.effect.ogt"
+  scale curve 0 2.2 0.0781 2.6745 0.1719 3.1213 0.2656 3.4509 0.375 3.7112 0.5781 3.9324 1 4
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.6333
+  inner 0.2587
+  band 1
+  colors 1 0.0104 0.2195 0 1 0.0478 0.2195 0 1 0.0478 0.2195 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Magic2/n3-1-0.effect.ogt"
+  scale curve 0 2 0.0781 2.5273 0.1719 3.0236 0.2656 3.3899 0.375 3.6791 0.5781 3.9249 1 4
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.6333
+  inner 0.9827
+  band 1
+  height 0 0.9653
+  colors 1 0.0104 0.2195 0 1 0.0478 0.2195 0 1 0.0478 0.2195 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Magic2/n3-1-1.effect.ogt"
+  scale curve 0 2 0.0781 2.5273 0.1719 3.0236 0.2656 3.3899 0.375 3.6791 0.5781 3.9249 1 4
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.6333
+  inner 0.9585
+  band 0.5
+  colors 1 0.0104 0.2195 0 1 1 1 0 1 0.0478 0.2195 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Magic2/n3-1-2.effect.ogt"
+  scale curve 0 2 0.0781 2.5273 0.1719 3.0236 0.2656 3.3899 0.375 3.6791 0.5781 3.9249 1 4
+  color 2 2 2 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Magic2/n3-2-0.emitter.ogt" {
+  at 0.6333
+  offset 0 0 1.125
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Magic2/n3-2-0-0.emitter.ogt" {
+  at 0.6333
+  offset 0 0 1.125
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Magic2/n3-2-0-1.emitter.ogt" {
+  at 0.6333
+  offset 0 0 1.125
+  rotate 90 0 0
+}
+trail {
+  at 0.6333
+  offset 0 0 1.125
+  life 0.0833
+  effect "vfx/effekseer-tktk01/Magic2/n3-2-0-2.effect.ogt"
+  width 0.1 0.025
+  lifetime 0.0833
+  color 1 1 1 0.3922
+}
+trail {
+  at 0.6333
+  offset 0 0 1.125
+  life 0.0833
+  effect "vfx/effekseer-tktk01/Magic2/n3-2-0-3.effect.ogt"
+  width 0.2 0.05
+  lifetime 0.0833
+  color 1 0.0104 0.0478 0.3922
+}
+emitter "vfx/effekseer-tktk01/Magic2/n3-3-0.emitter.ogt" {
+  at 0.8
+  offset 0 0 1.125
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Magic2/n3-3-0-0.emitter.ogt" {
+  at 0.8
+  offset 0 0 1.125
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Magic2/n3-3-0-1.emitter.ogt" {
+  at 0.8
+  offset 0 0 1.125
+  rotate 90 0 0
+}
+trail {
+  at 0.8
+  offset 0 0 1.125
+  life 0.0833
+  effect "vfx/effekseer-tktk01/Magic2/n3-3-0-2.effect.ogt"
+  width 0.1 0.025
+  lifetime 0.0833
+  color 1 1 1 0.3922
+}
+trail {
+  at 0.8
+  offset 0 0 1.125
+  life 0.0833
+  effect "vfx/effekseer-tktk01/Magic2/n3-3-0-3.effect.ogt"
+  width 0.2 0.05
+  lifetime 0.0833
+  color 1 0.0104 0.0478 0.3922
+}
+# effekseer: node 0.0.0.0 "長針": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.1.0 "短針": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0 "針": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0 "針": location over an f-curve: straightened
+# effekseer: node 1.0 "針": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0 "針": motion out from a circle: approximated along one direction
+# effekseer: node 1.0.0 "glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.0 "glow": location over an f-curve: straightened
+# effekseer: node 1.0.0 "glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.0 "glow": motion out from a circle: approximated along one direction
+# effekseer: node 2.0 "〆針": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0 "〆針": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.0 "glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.0 "glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.0 "リング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 3.0.1 "リング柱": a ring whose height changes over its life: its middle height kept
+# effekseer: node 3.1.0 "リング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 3.1.1 "リング柱": a ring whose height changes over its life: its middle height kept
+# effekseer: node 3.1.1 "リング柱": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 3.1.2 "リング外枠": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 3.2.0.0 "gliow": a random colour per particle: its mean used
+# effekseer: node 3.2.0.1 "gliow大": a random colour per particle: its mean used
+# effekseer: node 3.2.0.2 "軌跡": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.2.0.2 "軌跡": nested generation: 500 instances above its generator folded into one emitter
+# effekseer: node 3.2.0.3 "軌跡glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.2.0.3 "軌跡glow": nested generation: 500 instances above its generator folded into one emitter
+# effekseer: node 3.3.0.0 "gliow": a random colour per particle: its mean used
+# effekseer: node 3.3.0.1 "gliow大": a random colour per particle: its mean used
+# effekseer: node 3.3.0.2 "軌跡": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.3.0.2 "軌跡": nested generation: 250 instances above its generator folded into one emitter
+# effekseer: node 3.3.0.3 "軌跡glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.3.0.3 "軌跡glow": nested generation: 250 instances above its generator folded into one emitter

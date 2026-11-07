@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.0 "熱線尻尾"
+maxParticles 4096
+shape box 1.7627 0.001 0.001
+spread 180
+rate 34800
+duration 1
+looping true
+lifetime 0.1667 0.1667
+speed 0.9159 3.6637
+size 0.7051 0.7051
+sizeOverLife 0 0.5 1 1
+colorOverLife {
+  key 0 1 1 1 0.1961
+  key 1 1 1 1 0.0603
+}
+texture "vfx/effekseer-tktk01/textures/Fog3002.png"
+blend additive

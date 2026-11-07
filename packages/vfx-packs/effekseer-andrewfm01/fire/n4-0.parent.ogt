@@ -1,0 +1,16 @@
+type particles
+version 1
+---
+# Effekseer node 4 "Debris"
+maxParticles 7
+shape point
+spread 11.4218
+rate 0
+burst 0 1 5 0.0167
+duration 0.0833
+looping false
+lifetime 0.75 0.75
+speed 21.4243 33.2716
+size 0
+subEmitter life "vfx/effekseer-andrewfm01/fire/n4-0.emitter.ogt"
+gravity 0 -72 0

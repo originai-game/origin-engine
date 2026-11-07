@@ -1,0 +1,168 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.5667
+mesh ring {
+  at 0
+  rotate -90 0 -135
+  inner 0.2
+  band 0.5
+  height 0.6667 -0.2
+  arc 210 120
+  colors 1 1 1 0 0.0023 1 1 0.0627 1 1 1 0.1255
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n0.effect.ogt"
+  scale 1.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0167
+  rotate -90 0 -45
+  inner 0.2
+  band 0.5
+  height 0.6667 -0.2
+  arc 210 120
+  colors 1 1 1 0 0.0023 1 1 0.0627 1 1 1 0.1255
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n0.effect.ogt"
+  scale 1.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  rotate -90 0 45
+  inner 0.2
+  band 0.5
+  height 0.6667 -0.2
+  arc 210 120
+  colors 1 1 1 0 0.0023 1 1 0.0627 1 1 1 0.1255
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n0.effect.ogt"
+  scale 1.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  rotate -90 0 135
+  inner 0.2
+  band 0.5
+  height 0.6667 -0.2
+  arc 210 120
+  colors 1 1 1 0 0.0023 1 1 0.0627 1 1 1 0.1255
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n0.effect.ogt"
+  scale 1.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  offset 0 0.75 0
+  inner 0
+  band 0.8
+  colors 1 1 1 0 0.3587 0.3587 1 0.1255 1 1 1 0.251
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n1.effect.ogt"
+  scale curve 0 0.4 0.0781 0.8315 0.1562 1.194 0.2344 1.4965 0.3281 1.7934 0.4688 2.1365 0.8281 2.7971 1 3.2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 0.75 0
+  inner 0.5714
+  band 0.5
+  colors 1 1 1 0 0.3587 0.7519 1 0.1255 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n2.effect.ogt"
+  scale curve 0 0.35 0.0781 0.8355 0.1562 1.2432 0.2344 1.5836 0.3281 1.9176 0.4688 2.3035 0.8281 3.0468 1 3.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.25
+  offset 0 0.75 0
+  inner 0.5714
+  band 0.5
+  colors 1 1 1 0 0.3587 0.7519 1 0.1255 1 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n3.effect.ogt"
+  scale curve 0 0.35 0.0781 0.8355 0.1562 1.2432 0.2344 1.5836 0.3281 1.9176 0.4688 2.3035 0.8281 3.0468 1 3.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -90 0 -135
+  inner 0.25
+  band 0.5
+  height 0.15 -0.15
+  arc 210 120
+  colors 1 1 1 0 0.0023 1 1 0.0627 1 1 1 0.1255
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n4.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0167
+  rotate -90 0 -45
+  inner 0.25
+  band 0.5
+  height 0.15 -0.15
+  arc 210 120
+  colors 1 1 1 0 0.0023 1 1 0.0627 1 1 1 0.1255
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n4.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  rotate -90 0 45
+  inner 0.25
+  band 0.5
+  height 0.15 -0.15
+  arc 210 120
+  colors 1 1 1 0 0.0023 1 1 0.0627 1 1 1 0.1255
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n4.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  rotate -90 0 135
+  inner 0.25
+  band 0.5
+  height 0.15 -0.15
+  arc 210 120
+  colors 1 1 1 0 0.0023 1 1 0.0627 1 1 1 0.1255
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/A_Undine2/n4.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/A_Undine2/n5.emitter.ogt" {
+  at 0
+  offset 0 0.1 0
+}
+emitter "vfx/effekseer-magicalxspiral/A_Undine2/n6-0-0.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+}
+# effekseer: node 0 "WaterCylinder1": ring 10 instances: the first 4 drawn
+# effekseer: node 1 "Bloom1": a camera-facing ring: drawn in its own plane
+# effekseer: node 1 "Bloom1": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 2 "ShockWave4": a camera-facing ring: drawn in its own plane
+# effekseer: node 3 "ShockWave5": a camera-facing ring: drawn in its own plane
+# effekseer: node 4 "WaterCylinder1": ring 10 instances: the first 4 drawn
+# effekseer: node 6.0.0 "Node": a random colour per particle: its mean used

@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "effekseer-hato01",
+  "version": "1.0.0",
+  "description": "HATO01's Effekseer sample effects (4), converted to type vfx",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "ambient"
+    ],
+    "element": [
+      "nature"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "anime",
+    "effekseer",
+    "hato01",
+    "particles"
+  ]
+}

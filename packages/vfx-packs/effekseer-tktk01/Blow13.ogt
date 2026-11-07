@@ -1,0 +1,176 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.8317
+emitter "vfx/effekseer-tktk01/Blow13/n0-0-0.emitter.ogt" {
+  at 0
+  offset 0 1 0
+}
+emitter "vfx/effekseer-tktk01/Blow13/n0-0-0-0.emitter.ogt" {
+  at 0
+  offset 0 1 0
+}
+emitter "vfx/effekseer-tktk01/Blow13/n0-0-0-1.emitter.ogt" {
+  at 0
+  offset 0 1 0
+}
+mesh ring {
+  at 0
+  move 12 0 0
+  inner 0
+  band 0
+  arc 262.5 15
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.4167
+  effect "vfx/effekseer-tktk01/Blow13/n0-1-0.effect.ogt"
+  scale 1.25
+  spin 0 0 648
+  color 80 80 80 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0
+  arc 262.5 15
+  colors 1 1 1 0 0 0.6354 0.6354 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow13/n0-1-0-0.effect.ogt"
+  scale 2
+  color 80 80 80 1
+  blend additive
+}
+mesh ring {
+  at 0
+  move 9 0 0
+  inner 0
+  band 0
+  arc 266 8
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Blow13/n0-2-0.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  rotate -73.8979 -25.6589 -56.3099
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow13/n0-3-0.effect.ogt"
+  scale curve 0 2 0.0781 2.7876 0.1719 3.5209 0.2656 4.054 0.375 4.4663 0.5625 4.7916 0.875 4.8903 1 5
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -73.8979 -25.6589 -56.3099
+  inner 0.9623
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow13/n0-3-1.effect.ogt"
+  scale curve 0 2 0.0781 2.8138 0.1719 3.5716 0.2656 4.1224 0.375 4.5485 0.5625 4.8846 0.875 4.9866 1 5.1
+  color 3 3 3 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -73.8979 -25.6589 -56.3099
+  inner 0
+  band 1
+  colors 1 1 1 0 1 0.0478 0.0478 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow13/n0-3-2.effect.ogt"
+  scale curve 0 2 0.0781 2.7876 0.1719 3.5209 0.2656 4.054 0.375 4.4663 0.5625 4.7916 0.875 4.8903 1 5
+  color 5 5 5 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -73.8979 -25.6589 -56.3099
+  inner 0.3355
+  band 0
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow13/n0-3-3.effect.ogt"
+  scale curve 0 5 0.0781 7.6252 0.1719 10.0696 0.2656 11.8465 0.375 13.2211 0.5625 14.3053 0.875 14.6343 1 15
+  color 5 5 5 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -73.8979 -25.6589 -56.3099
+  inner 0.4952
+  band 0
+  colors 1 1 1 0 1 0.2195 0.2195 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow13/n0-3-4.effect.ogt"
+  scale curve 0 5 0.0781 6.3126 0.1719 7.5348 0.2656 8.4233 0.375 9.1105 0.5625 9.6526 1 10
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Blow13/n0-3-5.emitter.ogt" {
+  at 0
+  rotate -73.8979 -25.6589 -56.3099
+}
+trail {
+  at 0
+  offset 0.866 -1.7321 -0.5
+  rotate -73.8979 -25.6589 -56.3099
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Blow13/n0-4-0-0.effect.ogt"
+  width 7.5 1.875
+  lifetime 0.3333
+  color 1 1 1 1
+}
+trail {
+  at 0
+  offset 0.866 -1.7321 -0.5
+  rotate -73.8979 -25.6589 -56.3099
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Blow13/n0-4-0-1.effect.ogt"
+  width 15 3.75
+  lifetime 0.3333
+  color 0.047 0.047 0.047 1
+}
+emitter "vfx/effekseer-tktk01/Blow13/n0-4-1-0-0.emitter.ogt" {
+  at 0
+  rotate 49.1066 -48.5904 40.8934
+}
+emitter "vfx/effekseer-tktk01/Blow13/n0-4-1-0-0-0.emitter.ogt" {
+  at 0
+  rotate 49.1066 -48.5904 40.8934
+}
+emitter "vfx/effekseer-tktk01/Blow13/n0-4-1-0-0-1.emitter.ogt" {
+  at 0
+  rotate 49.1066 -48.5904 40.8934
+}
+emitter "vfx/effekseer-tktk01/Blow13/n0-5-0.emitter.ogt" {
+  at 0
+  offset 0 0.9 0
+}
+emitter "vfx/effekseer-tktk01/Blow13/n0-5-0-0.emitter.ogt" {
+  at 0
+  offset 0 0.9 0
+}
+# effekseer: node 0.0.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.1 "glow": a random colour per particle: its mean used
+# effekseer: node 0.1.0 "割れ": ring 80 instances: the first 4 drawn
+# effekseer: node 0.1.0.0 "割れ着色": ring 80 instances: the first 4 drawn
+# effekseer: node 0.2.0 "サブ割れ": ring 100 instances: the first 4 drawn
+# effekseer: node 0.3.2 "リング着色": ring 5 instances: the first 4 drawn
+# effekseer: node 0.3.3 "リング外枠インパクト": ring 5 instances: the first 4 drawn
+# effekseer: node 0.4.0.0 "軌跡": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.4.0.1 "軌跡カラー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.4.1.0.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 0.4.1.0.0.1 "glow大": a random colour per particle: its mean used
+# effekseer: node 0.5.0 "ライン": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.5.0 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.5.0.0 "ライン色付け": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.5.0.0 "ライン色付け": a random colour per particle: its mean used
+# effekseer: node 0.5.0.0 "ライン色付け": a sprite scaled unevenly: drawn square at its mean

@@ -1,0 +1,62 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.425
+mesh ring {
+  at 0
+  inner 0.5
+  band 0.9
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.8333
+  effect "vfx/effekseer-tktk01/Fire4/n0-0.effect.ogt"
+  scale 3
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  rotate 0 0 -180
+  inner 0.5
+  band 0.9
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.8333
+  effect "vfx/effekseer-tktk01/Fire4/n0-1.effect.ogt"
+  scale 3
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 1.125
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.8333
+  effect "vfx/effekseer-tktk01/Fire4/n0-2.effect.ogt"
+  scale 3
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 1.1111
+  band 0
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.8333
+  effect "vfx/effekseer-tktk01/Fire4/n0-3.effect.ogt"
+  scale 3.375
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Fire4/n1-0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Fire4/n2-0.emitter.ogt" {
+  at 0.5
+}
+# effekseer: node 1.0.0.0 "火メイン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0.0.0 "火メイン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.0.0 "火メイン": subtractive blend: drawn alpha blended
+# effekseer: node 2.0 "火メイン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0 "火メイン": a random colour per particle: its mean used
+# effekseer: node 2.0 "火メイン": a sprite scaled unevenly: drawn square at its mean

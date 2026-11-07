@@ -1,0 +1,61 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.2333
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander6/n0.effect.ogt"
+  scale 1.5
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0.5
+  band 0.7
+  colors 1 0.7519 0.3587 0 1 0.7519 0.3587 0.502 1 0.7519 0.3587 0
+  life 0.5
+  effect "vfx/effekseer-magicalxspiral/Salamander6/n1.effect.ogt"
+  scale curve 0 0 1 2.5
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Salamander6/n2.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/Salamander6/n3.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/Salamander6/n4.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/Salamander6/n5.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/Salamander6/n6.emitter.ogt" {
+  at 0
+}
+mesh ring {
+  at 0.25
+  inner 0.5
+  band 0.7
+  colors 1 0.7519 0.3587 0 1 0.7519 0.3587 0.502 1 0.7519 0.3587 0
+  life 0.5
+  effect "vfx/effekseer-magicalxspiral/Salamander6/n7.effect.ogt"
+  scale curve 0 0 1 2.5
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0 "BG1": subtractive blend: drawn alpha blended
+# effekseer: node 0 "BG1": a camera-facing ring: drawn in its own plane
+# effekseer: node 1 "Wave1": a camera-facing ring: drawn in its own plane
+# effekseer: node 2 "LightLines": a random colour per particle: its mean used
+# effekseer: node 2 "LightLines": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 5 "Particle1": a random colour per particle: its mean used
+# effekseer: node 6 "Stars": a random colour per particle: its mean used
+# effekseer: node 7 "Wave2": a camera-facing ring: drawn in its own plane

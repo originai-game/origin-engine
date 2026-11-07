@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.3.0.2 "FireVariation"
+main "vfx/effekseer-pierre02/textures/Fire_Blur.png" rgba {
+  tile 0.5 0.5
+  offset 0 0.5
+}
+blend alpha

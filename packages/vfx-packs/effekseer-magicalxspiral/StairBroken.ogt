@@ -1,0 +1,127 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.6333
+emitter "vfx/effekseer-magicalxspiral/StairBroken/n0-0.emitter.ogt" {
+  at 0.1667
+  rotate 0 -89.9802 0
+}
+emitter "vfx/effekseer-magicalxspiral/StairBroken/n0-1.emitter.ogt" {
+  at 0.1667
+  rotate 0 -89.9802 0
+}
+mesh "vfx/effekseer-magicalxspiral/StairBroken/model-block2.glb" {
+  at 0.1667
+  rotate 0 -89.9802 0
+  life 0.2833
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-2.effect.ogt"
+  scale 1
+  color 0.3587 0.3587 0.3587 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/StairBroken/model-block2.glb" {
+  at 0.1833
+  rotate 0 -89.9802 0
+  life 0.2833
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-2.effect.ogt"
+  scale 1
+  color 0.3587 0.3587 0.3587 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/StairBroken/model-block2.glb" {
+  at 0.2
+  rotate 0 -89.9802 0
+  life 0.2833
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-2.effect.ogt"
+  scale 1
+  color 0.3587 0.3587 0.3587 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/StairBroken/model-block2.glb" {
+  at 0.2167
+  rotate 0 -89.9802 0
+  life 0.2833
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-2.effect.ogt"
+  scale 1
+  color 0.3587 0.3587 0.3587 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/StairBroken/model-block3.glb" {
+  at 0.1667
+  rotate 0 -89.9802 0
+  life 0.2833
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-3.effect.ogt"
+  scale 1
+  color 0.3587 0.3587 0.3587 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/StairBroken/model-block3.glb" {
+  at 0.1833
+  rotate 0 -89.9802 0
+  life 0.2833
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-3.effect.ogt"
+  scale 1
+  color 0.3587 0.3587 0.3587 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/StairBroken/model-block3.glb" {
+  at 0.2
+  rotate 0 -89.9802 0
+  life 0.2833
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-3.effect.ogt"
+  scale 1
+  color 0.3587 0.3587 0.3587 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/StairBroken/model-block3.glb" {
+  at 0.2167
+  rotate 0 -89.9802 0
+  life 0.2833
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-3.effect.ogt"
+  scale 1
+  color 0.3587 0.3587 0.3587 0.8784
+  blend alpha
+}
+mesh ring {
+  at 0.1667
+  rotate 90 0 90
+  inner 0.5
+  band 0.5
+  colors 1 0.5356 0.0478 0 1 0.5356 0.0478 1 1 1 0.0478 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-4.effect.ogt"
+  scale curve 0 0 1 5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.2
+  rotate 90 -45 90
+  inner 0.5
+  band 0.5
+  colors 1 0.5356 0.0478 0 1 0.5356 0.0478 1 1 1 0.0478 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-5.effect.ogt"
+  scale curve 0 0 0.1719 0.7194 0.5312 1.8992 0.6719 2.5117 0.7656 3.0419 0.8438 3.5822 0.9219 4.2294 1 5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.2167
+  rotate -90 -45 -90
+  inner 0.5
+  band 0.5
+  colors 1 0.5356 0.0478 0 1 0.5356 0.0478 1 1 1 0.0478 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/StairBroken/n0-6.effect.ogt"
+  scale curve 0 0 0.1719 0.7194 0.5312 1.8992 0.6719 2.5117 0.7656 3.0419 0.8438 3.5822 0.9219 4.2294 1 5
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.1 "Node": a random colour per particle: its mean used
+# effekseer: node 0.2 "Node": model 10 instances: the first 4 drawn
+# effekseer: node 0.3 "Node": model 10 instances: the first 4 drawn
+# effekseer: node 0.4 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.5 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.6 "Node": a camera-facing ring: drawn in its own plane

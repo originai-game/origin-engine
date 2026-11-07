@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.4 "Lightwave"
+maxParticles 6
+shape point
+spread 0
+rate 0
+burst 0 1 13 0.1
+duration 1.2167
+looping false
+lifetime 0.3333 0.3333
+speed 0 0
+size 3.4 3.4
+sizeOverLife 0 0.7059 1 1
+colorOverLife {
+  key 0 1 0.3587 0.8751 0
+  key 0.25 0.8065 0.3204 0.9055 0.1255
+  key 0.5 0.6354 0.2845 0.9364 0.251
+  key 0.75 0.4863 0.2508 0.9679 0.1255
+  key 1 0.3587 0.2195 1 0
+}
+rotation -360 360
+texture "vfx/effekseer-pierre01/textures/Halo.png"
+blend additive

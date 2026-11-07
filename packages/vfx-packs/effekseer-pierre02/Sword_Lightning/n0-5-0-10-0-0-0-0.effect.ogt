@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.5.0.10.0.0.0.0 "Tracker"
+main "vfx/effekseer-pierre02/textures/Thunder_Thin.png" rgba {
+}
+blend additive
+doubleSided true

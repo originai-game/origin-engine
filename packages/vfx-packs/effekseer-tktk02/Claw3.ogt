@@ -1,0 +1,315 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.7333
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-0-0-0-0.emitter.ogt" {
+  at 0.3
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-0-0-0-0-0-0-0-0.emitter.ogt" {
+  at 0.8
+  offset 0 0.8125 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-0-0-0-0-0-0-0-1.emitter.ogt" {
+  at 0.8
+  offset 0 0.8125 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-0-0-0-0-0-0-0-1-0.emitter.ogt" {
+  at 0.8
+  offset 0 0.8125 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-0-0-0-0-1.emitter.ogt" {
+  at 0.7333
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-0-0-0-0-2.emitter.ogt" {
+  at 0.7333
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-0-0-0-0-3-0-0-0-0.emitter.ogt" {
+  at 0.8
+  offset 0 0.875 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-0-0-0-0-3-0-0-0-1.emitter.ogt" {
+  at 0.8
+  offset 0 0.875 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-0-0-0-0-3-0-0-0-1-0.emitter.ogt" {
+  at 0.8
+  offset 0 0.875 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-1-0-0-0.emitter.ogt" {
+  at 0.0667
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-1-0-0-0-0-0-0-0.emitter.ogt" {
+  at 0.5667
+  offset 0 0.8125 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-1-0-0-0-0-0-0-1.emitter.ogt" {
+  at 0.5667
+  offset 0 0.8125 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-1-0-0-0-0-0-0-1-0.emitter.ogt" {
+  at 0.5667
+  offset 0 0.8125 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-1-0-0-0-1.emitter.ogt" {
+  at 0.5
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-1-0-0-0-2.emitter.ogt" {
+  at 0.5
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-1-0-0-0-3-0-0-0-0.emitter.ogt" {
+  at 0.5667
+  offset 0 0.875 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-1-0-0-0-3-0-0-0-1.emitter.ogt" {
+  at 0.5667
+  offset 0 0.875 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-0-1-0-0-0-3-0-0-0-1-0.emitter.ogt" {
+  at 0.5667
+  offset 0 0.875 0
+  move 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-1-0-0-0-0-0.parent.ogt" {
+  at 0.0667
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-1-0-0-0-0-1-0.parent.ogt" {
+  at 0.0667
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-1-0-1.parent.ogt" {
+  at 0.0667
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-1-0-2-0-0-0.parent.ogt" {
+  at 0.0667
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-1-0-2-0-0-1-0.parent.ogt" {
+  at 0.0667
+}
+trail {
+  at 0.0667
+  move 0 -9 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Claw3/n0-1-0-3-0-0-0-0.effect.ogt"
+  width 1 1
+  lifetime 0.25
+  color 1 1 1 1
+}
+trail {
+  at 0.0667
+  move 0 -9 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Claw3/n0-1-0-3-0-0-0-1.effect.ogt"
+  width 5 5
+  lifetime 0.4167
+  color 0.2195 0.0478 1 0.251
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-2-0-0-0-0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n0-2-0-1.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-0-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 3.7528 2.1667 0
+  rotate 0 0 120
+  move -18.2948 -10.5625 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-0-0-0-0-1.emitter.ogt" {
+  at 0
+  offset 3.7528 2.1667 0
+  rotate 0 0 -60
+  move -18.2948 -10.5625 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-0-0-0-0-1-0.emitter.ogt" {
+  at 0
+  offset 3.7528 2.1667 0
+  rotate 0 0 -60
+  move -18.1254 -10.4647 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-0-1-0-0-0.emitter.ogt" {
+  at 0
+  offset 3.7971 2.4232 0
+  rotate 0 0 120
+  move -15.5885 -9 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-0-1-0-0-1.emitter.ogt" {
+  at 0
+  offset 3.7971 2.4232 0
+  rotate 0 0 -60
+  move -15.5885 -9 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-0-1-0-0-1-0.emitter.ogt" {
+  at 0
+  offset 3.7971 2.4232 0
+  rotate 0 0 -60
+  move -15.4441 -8.9167 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-0-2-0-0-0.emitter.ogt" {
+  at 0
+  offset 3.9971 2.0768 0
+  rotate 0 0 120
+  move -15.5885 -9 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-0-2-0-0-1.emitter.ogt" {
+  at 0
+  offset 3.9971 2.0768 0
+  rotate 0 0 -60
+  move -15.5885 -9 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-0-2-0-0-1-0.emitter.ogt" {
+  at 0
+  offset 3.9971 2.0768 0
+  rotate 0 0 -60
+  move -15.4441 -8.9167 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-1-0-0-0-0.emitter.ogt" {
+  at 0.1
+  offset -3.7528 2.1667 0
+  rotate 0 0 -120
+  move 18.2948 -10.5625 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-1-0-0-0-1.emitter.ogt" {
+  at 0.1
+  offset -3.7528 2.1667 0
+  rotate 0 0 60
+  move 18.2948 -10.5625 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-1-0-0-0-1-0.emitter.ogt" {
+  at 0.1
+  offset -3.7528 2.1667 0
+  rotate 0 0 60
+  move 18.1254 -10.4647 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-1-1-0-0-0.emitter.ogt" {
+  at 0.1
+  offset -3.9971 2.0768 0
+  rotate 0 0 -120
+  move 15.5885 -9 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-1-1-0-0-1.emitter.ogt" {
+  at 0.1
+  offset -3.9971 2.0768 0
+  rotate 0 0 60
+  move 15.5885 -9 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-1-1-0-0-1-0.emitter.ogt" {
+  at 0.1
+  offset -3.9971 2.0768 0
+  rotate 0 0 60
+  move 15.4441 -8.9167 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-1-2-0-0-0.emitter.ogt" {
+  at 0.1
+  offset -3.7971 2.4232 0
+  rotate 0 0 -120
+  move 15.5885 -9 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-1-2-0-0-1.emitter.ogt" {
+  at 0.1
+  offset -3.7971 2.4232 0
+  rotate 0 0 60
+  move 15.5885 -9 0
+}
+emitter "vfx/effekseer-tktk02/Claw3/n1-1-2-0-0-1-0.emitter.ogt" {
+  at 0.1
+  offset -3.7971 2.4232 0
+  rotate 0 0 60
+  move 15.4441 -8.9167 0
+}
+# effekseer: node 0.0.0.0.0.0 "poison": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.0.0.0.0.0.0 "LineMain": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.0.0.0.0.0.1 "LineColor": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.0.0.0.0.0.1.0 "LineGlow": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.0.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.0.0.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.0.0.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.0.0.1 "poison": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.0.0.2 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.0.0.3.0.0.0.0 "LineMain": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.3.0.0.0.1 "LineColor": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.3.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.0.0.3.0.0.0.1.0 "LineGlow": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.3.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.1.0.0.0 "poison": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.1.0.0.0.0.0.0.0 "LineMain": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.1.0.0.0.0.0.0.1 "LineColor": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.1.0.0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.1.0.0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.1.0.0.0.0.0.0.1.0 "LineGlow": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.0.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.1.0.0.0.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.1.0.0.0.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.1.0.0.0.1 "poison": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.1.0.0.0.2 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.1.0.0.0.3.0.0.0.0 "LineMain": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.3.0.0.0.1 "LineColor": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.3.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.1.0.0.0.3.0.0.0.1.0 "LineGlow": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.3.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.1.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
+# effekseer: node 0.1.0.0.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.1.0.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.0.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
+# effekseer: node 0.1.0.1 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 0.1.0.2.0.0.0 "particleMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.2.0.0.0 "particleMain": motion out from a circle: approximated along one direction
+# effekseer: node 0.1.0.2.0.0.1.0 "particleGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1.0.2.0.0.1.0 "particleGlow": a random colour per particle: its mean used
+# effekseer: node 0.1.0.2.0.0.1.0 "particleGlow": motion out from a circle: approximated along one direction
+# effekseer: node 0.1.0.3.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.1.0.3.0.0.0.0 "LineMain": nested generation: 200 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.3.0.0.0.0 "LineMain": a track of many instances: one trail drawn
+# effekseer: node 0.1.0.3.0.0.0.1 "LineColor": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.1.0.3.0.0.0.1 "LineColor": nested generation: 200 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.3.0.0.0.1 "LineColor": a track of many instances: one trail drawn
+# effekseer: node 0.2.0.1 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 1.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 1.0.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.1.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.0.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.1.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 1.0.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.2.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.0.2.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.2.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 1.0.2.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.1.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.1.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.1.0.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 1.1.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.1.1.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.1.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.1.1.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 1.1.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.1.2.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.1.2.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.1.2.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 1.1.2.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean

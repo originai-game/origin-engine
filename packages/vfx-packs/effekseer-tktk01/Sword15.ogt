@@ -1,0 +1,58 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.275
+emitter "vfx/effekseer-tktk01/Sword15/n0-0.emitter.ogt" {
+  at 0
+}
+trail {
+  at 0
+  offset -7 0 0
+  rotate 0 0 -90
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Sword15/n0-0-0.effect.ogt"
+  width 2 0.5
+  lifetime 0.1667
+  color 1 1 1 1
+}
+emitter "vfx/effekseer-tktk01/Sword15/n0-0-1-0.emitter.ogt" {
+  at 0
+  offset -8 0 0
+  rotate 0 0 -90
+  move 30 0 0
+}
+emitter "vfx/effekseer-tktk01/Sword15/n1-0.parent.ogt" {
+  at 0.1
+}
+emitter "vfx/effekseer-tktk01/Sword15/n1-1.emitter.ogt" {
+  at 0.1
+  rotate 0 0 -90
+}
+mesh ring {
+  at 0.1
+  inner 0.6251
+  band 0.5
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword15/n2.effect.ogt"
+  scale curve 0 2 0.0781 2.7909 0.1719 3.5354 0.2656 4.0848 0.375 4.5186 0.4688 4.7469 0.5781 4.8874 1 5
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Sword15/n3.emitter.ogt" {
+  at 0.1
+}
+# effekseer: node 0.0 "ナイフ": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0 "ナイフ": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0 "ナイフ軌跡": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0 "ナイフ軌跡": nested generation: 9 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0 "*衝撃生業用": nested generation: 9 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0 "*衝撃生業用": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.1.0 "*衝撃生業用": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0 "衝撃線": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0 "衝撃線": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0 "衝撃線": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 1.1 "衝撃線": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.1 "衝撃線": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2 "衝撃リング": a ring whose thickness changes over its life: its middle thickness kept

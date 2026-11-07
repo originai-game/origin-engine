@@ -1,0 +1,14 @@
+type particles
+version 1
+---
+# Effekseer node 1.0 "ｉｎｔｅｒｖａｌ1"
+maxParticles 33
+shape spline 0 1.5 0  -1.0607 1.0607 0  -1.5 0 0  -1.0607 -1.0607 0  0 -1.5 0  1.0607 -1.0607 0  1.5 0 0  1.0607 1.0607 0 closed
+spread 0
+rate 15
+duration 1
+looping true
+lifetime 1.6667 1.6667
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-tktk02/Gun4/n1-0-0-0-0-1-0.emitter.ogt"

@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 2.1 "広がりリング外"
+main "vfx/effekseer-tktk01/textures/Aurora.png" rgba {
+}
+alpha curve 0 0 0.2031 0.0337 0.3125 0.1605 0.3594 0.2802 0.4062 0.4534 0.4531 0.6901 0.5 1 1 1
+blend additive
+doubleSided true

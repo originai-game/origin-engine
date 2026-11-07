@@ -1,0 +1,181 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.6667
+mesh ring {
+  at 0
+  offset 0 -1 0
+  rotate 82.5 0 -180
+  move 0 1.2 0
+  inner 0
+  band 0.5
+  height 0.25 -0.25
+  arc 150 240
+  colors 0 1 0 0 0.2195 0.5326 0.2195 0.502 0 1 0 0
+  life 1.5
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n0-0.effect.ogt"
+  scale 2
+  spin 0 0 -780
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0167
+  offset 0 -1 0
+  rotate 87.5 0 -180
+  move 0 1.2 0
+  inner 0
+  band 0.5
+  height 0.25 -0.25
+  arc 150 240
+  colors 0 1 0 0 0.2195 0.5326 0.2195 0.502 0 1 0 0
+  life 1.5
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n0-0.effect.ogt"
+  scale 2
+  spin 0 0 -780
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  offset 0 -1 0
+  rotate 92.5 0 -180
+  move 0 1.2 0
+  inner 0
+  band 0.5
+  height 0.25 -0.25
+  arc 150 240
+  colors 0 1 0 0 0.2195 0.5326 0.2195 0.502 0 1 0 0
+  life 1.5
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n0-0.effect.ogt"
+  scale 2
+  spin 0 0 -780
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset 0 -1 0
+  rotate 97.5 0 -180
+  move 0 1.2 0
+  inner 0
+  band 0.5
+  height 0.25 -0.25
+  arc 150 240
+  colors 0 1 0 0 0.2195 0.5326 0.2195 0.502 0 1 0 0
+  life 1.5
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n0-0.effect.ogt"
+  scale 2
+  spin 0 0 -780
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 -1 0
+  rotate 83.3333 0 -60
+  move 0 1.2 0
+  inner 0
+  band 0.5
+  arc 210 120
+  colors 0 0 0 0 0.5356 0.5356 0.5356 0.502 0 0 0 0
+  life 1.5
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n0-1.effect.ogt"
+  scale 2
+  spin 0 0 480
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0167
+  offset 0 -1 0
+  rotate 90 0 0
+  move 0 1.2 0
+  inner 0
+  band 0.5
+  arc 210 120
+  colors 0 0 0 0 0.5356 0.5356 0.5356 0.502 0 0 0 0
+  life 1.5
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n0-1.effect.ogt"
+  scale 2
+  spin 0 0 480
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  offset 0 -1 0
+  rotate 96.6667 0 60
+  move 0 1.2 0
+  inner 0
+  band 0.5
+  arc 210 120
+  colors 0 0 0 0 0.5356 0.5356 0.5356 0.502 0 0 0 0
+  life 1.5
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n0-1.effect.ogt"
+  scale 2
+  spin 0 0 480
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate 90 0 0
+  inner 1
+  band 0.5
+  height 0.8333 -0.8333
+  colors 0.2195 0.5356 0.2195 0 0.2195 0.5356 0.2195 0.1255 0.2195 0.5356 0.2195 0
+  life 1.6667
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n1-0.effect.ogt"
+  scale 1.2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate 90 0 0
+  inner 1
+  band 0.5
+  height 0.6667 -0.6667
+  colors 0.2195 0.5356 0.2195 0 0.5356 0.5356 0.5356 0.1255 0.2195 0.5356 0.2195 0
+  life 1.6667
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n1-1.effect.ogt"
+  scale 1.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate 90 0 0
+  inner 1
+  band 0.5
+  height 1.1111 -1.1111
+  colors 0.2195 0.5356 0.2195 0 0.2195 0.5356 0.2195 0.1255 0.2195 0.5356 0.2195 0
+  life 1.6667
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n1-2.effect.ogt"
+  scale 0.9
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate 90 0 0
+  inner 1
+  band 0.5
+  height 1.4286 -1.4286
+  colors 0.2195 0.5356 0.2195 0 0.2195 0.5356 0.2195 0.1255 0.2195 0.5356 0.2195 0
+  life 1.6667
+  effect "vfx/effekseer-magicalxspiral/Sylph7/n1-3.effect.ogt"
+  scale 0.7
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Sylph7/n2-0.emitter.ogt" {
+  at 0
+  offset 0 -0.5 0
+}
+# effekseer: node 0.0 "Node": ring 12 instances: the first 4 drawn
+# effekseer: node 2.0 "Node": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 2.0 "Node": a random colour per particle: its mean used
+# effekseer: node 2.0 "Node": a sprite scaled unevenly: drawn square at its mean

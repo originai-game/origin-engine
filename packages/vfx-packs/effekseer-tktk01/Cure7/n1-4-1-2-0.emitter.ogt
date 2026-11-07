@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 1.4.1.2.0 "粒子グロー"
+maxParticles 32
+shape box 0.001 0.25 0.001
+spread 180
+rate 240
+duration 0.1042
+looping false
+lifetime 0.5833 0.5833
+speed 0.5 3.5
+speedOverLife 0 2.4833 0.2031 1.6514 0.3906 1.0794 0.6094 0.6707 0.8438 0.5418 0.8594 0.1941 0.875 0 1 0
+size 1.25 1.25
+colorOverLife {
+  key 0 1 1 0.1275 0.5882
+  key 1 1 1 0.1275 0.5882
+}
+rotation 45 45
+angularVelocity 308.5714 617.1428
+texture "vfx/effekseer-tktk01/textures/Particle01.png"
+blend additive

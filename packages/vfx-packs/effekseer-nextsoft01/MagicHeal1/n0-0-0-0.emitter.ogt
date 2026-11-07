@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.0 "リボンから出るキラキラ"
+maxParticles 32
+shape point
+spread 0
+rate 0
+burst 0 1 25 0.0333
+duration 0.8167
+looping false
+lifetime 0.8333 1.1667
+speed 0 0
+size 0.48 0.72
+sizeOverLife 0 0.8333 1 1
+colorOverLife {
+  key 0 0.3572 1 0.6148 1
+  key 0.5938 0.5903 1 0.7679 0.7851
+  key 0.7344 0.6805 1 0.822 0.7148
+  key 0.8667 0.8074 1 0.895 0.624
+  key 0.9375 0.8998 1 0.9461 0.2638
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-nextsoft01/textures/Particle02.png"
+blend additive

@@ -1,0 +1,39 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "effekseer-magicalxspiral",
+  "version": "1.0.0",
+  "description": "MAGICAL X SPIRAL's Effekseer sample effects (101), converted to type vfx",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "explosion",
+      "fire",
+      "magic-impact",
+      "magic-projectile",
+      "portal",
+      "shield",
+      "slash",
+      "smoke",
+      "weather"
+    ],
+    "element": [
+      "earth",
+      "fire",
+      "holy",
+      "ice",
+      "lightning",
+      "water",
+      "wind"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "anime",
+    "effekseer",
+    "magicalxspiral",
+    "particles"
+  ]
+}

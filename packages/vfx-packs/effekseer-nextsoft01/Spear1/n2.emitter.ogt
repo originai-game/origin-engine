@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 2 "細かい衝撃"
+maxParticles 5
+shape point
+spread 0
+rate 0
+burst 0 1 4 0.0333
+duration 0.1167
+looping false
+lifetime 0.1667 0.1667
+speed 0 0
+size 3.3 3.3
+sizeOverLife 0 0 0.1094 0.0562 1 0.3892
+colorOverLife {
+  key 0 0.8355 0.3587 0.1275 0.7843
+  key 0.1719 0.8582 0.4295 0.1986 0.6715
+  key 0.4688 0.8889 0.5347 0.3201 0.5214
+  key 0.6719 0.9161 0.6369 0.4527 0.3903
+  key 0.7656 0.9337 0.7068 0.5499 0.3071
+  key 0.8594 0.9558 0.7996 0.6855 0.2035
+  key 0.9375 0.9785 0.9001 0.84 0.0983
+  key 1 1 1 1 0
+}
+rotation -180 180
+texture "vfx/effekseer-nextsoft01/textures/Line01.png"
+blend additive

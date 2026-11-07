@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.1.0 "*衝撃生業用"
+maxParticles 360
+shape point
+spread 0
+rate 1080
+duration 0.2667
+looping false
+lifetime 0.3333 0.3333
+speed 0 0
+size 7 7
+sizeOverLife 0 0.1429 0.4062 0.1512 0.6094 0.1784 0.8125 0.2516 1 0.378
+colorOverLife {
+  key 0 0.586 1 1 0.1569
+  key 0.5 0.586 1 1 0.1569
+  key 0.7969 0.586 1 1 0.0976
+  key 1 0.586 1 1 0
+}
+texture "vfx/effekseer-tktk01/textures/Particle01.png"
+blend additive

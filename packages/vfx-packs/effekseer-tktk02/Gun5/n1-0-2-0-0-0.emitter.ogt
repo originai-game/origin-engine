@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 1.0.2.0.0.0 "shield"
+maxParticles 8
+shape spline 0 0.434 0  -0.3069 0.3069 0  -0.434 0 0  -0.3069 -0.3069 0  0 -0.434 0  0.3069 -0.3069 0  0.434 0 0  0.3069 0.3069 0 closed
+spread 0
+rate 0
+burst 0 6
+duration 0.0167
+looping false
+lifetime 0.8333 0.8333
+speed 4 4
+speedOverLife 0 4 0.1875 4 0.2031 1.9 0.2188 1 0.3906 1 0.4062 0.1 0.4219 0 1 0
+size 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.0938 1 1 1 0.7059
+  key 0.1094 1 1 1 0.7761
+  key 0.1875 1 1 1 0.9691
+  key 0.2031 1 1 1 0.9766
+  key 0.2969 1 1 1 0.2744
+  key 0.4062 1 1 1 0
+  key 1 1 1 1 0
+}
+angularVelocity 108 180
+texture "vfx/effekseer-tktk02/textures/shield1.png"
+blend additive

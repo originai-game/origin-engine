@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 1 "もわ"
+maxParticles 8
+shape point
+spread 109.4712
+rate 0
+burst 0 1 6 0.0667
+duration 0.35
+looping false
+lifetime 0.4167 0.4167
+speed 2.16 2.2514
+speedOverLife 0 3.6952 0.25 1.7411 0.375 1.0269 0.5 0.5001 0.625 0.1608 0.75 0.0091 0.875 0.0448 1 0.2582
+size 7.7 7.7
+sizeOverLife 0 0.026 1 0.8218
+colorOverLife {
+  key 0 0.2674 0.3587 1 0.7843
+  key 0.08 0.3392 0.4365 0.9289 0.7425
+  key 0.2344 0.4498 0.5533 0.8386 0.5715
+  key 0.4062 0.5211 0.6274 0.789 0.4225
+  key 1 0.586 0.6941 0.7482 0
+}
+gravity 0 14.4 0
+texture "vfx/effekseer-nextsoft01/textures/Fog001.png"
+blend additive

@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.2.0.0.0.0.0.2.2 "EmberVariation"
+maxParticles 1500
+shape box 0.0717 1.6125 0.0717
+spread 0
+rate 1800
+duration 1
+looping true
+lifetime 0.3 0.9
+speed 0.215 0.645
+size 2.8667 2.8667
+sizeOverLife 0 0.125 0.0469 0.0965 0.0781 0.0266 0.125 0.1348 0.1875 0.2307 0.4219 0.5095 0.6875 0.7599 1 1
+colorOverLife {
+  key 0 0.2195 0.0055 0.0104 0
+  key 0.1667 0.2195 0.0055 0.0104 0.502
+  key 0.4167 0.2195 0.0055 0.0104 0.502
+  key 1 0.2195 0.0055 0.0104 0
+}
+rotation -360 360
+angularVelocity -180 180
+texture "vfx/effekseer-pierre02/textures/Splash.png"
+blend alpha
+effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-2-2.effect.ogt"

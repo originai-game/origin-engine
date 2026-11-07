@@ -1,0 +1,56 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.8667
+emitter "vfx/effekseer-tktk01/Sword20/n0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Sword20/n0-0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Sword20/n0-0-0-1-0.emitter.ogt" {
+  at 0
+  offset 0 -2.5 0
+  move 0 14.4 0
+}
+emitter "vfx/effekseer-tktk01/Sword20/n0-0-0-1-0-0.emitter.ogt" {
+  at 0
+  offset 0 -2.5 0
+  move 0 14.4 0
+}
+emitter "vfx/effekseer-tktk01/Sword20/n0-0-0-1-0-1.emitter.ogt" {
+  at 0
+  offset 0 -2.5 0
+  move 0 14.4 0
+}
+emitter "vfx/effekseer-tktk01/Sword20/n0-0-0-2-0.emitter.ogt" {
+  at 0
+  offset 0 -1.5 0
+  move 0 14.4 0
+}
+emitter "vfx/effekseer-tktk01/Sword20/n0-0-0-2-0-0.emitter.ogt" {
+  at 0
+  offset 0 -1.5 0
+  move 0 14.4 0
+}
+# effekseer: node 0.0.0 "斬撃部分": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0 "斬撃部分": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0 "斬撃部分": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0 "色付け": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0 "色付け": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0 "色付け": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.1.0 "粒子": nested generation: 56 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.1.0.0 "粒子色付け": nested generation: 56 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.1.0.0 "粒子色付け": a random colour per particle: its mean used
+# effekseer: node 0.0.0.1.0.1 "glow": nested generation: 56 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.1.0.1 "glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.1.0.1 "glow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.1.0.1 "glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.2.0 "粒子": nested generation: 56 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.2.0 "粒子": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.2.0 "粒子": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.2.0.0 "粒子色付け": nested generation: 56 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.2.0.0 "粒子色付け": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.2.0.0 "粒子色付け": a random colour per particle: its mean used
+# effekseer: node 0.0.0.2.0.0 "粒子色付け": a sprite scaled unevenly: drawn square at its mean

@@ -1,0 +1,44 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.8333
+mesh ring {
+  at 0
+  rotate -90 0 64
+  inner 1
+  band 0.5
+  height 1.1765 -1.1765
+  colors 1 1 1 0.251 1 1 1 0.251 1 1 1 0.251
+  life 1.8333
+  effect "vfx/effekseer-magicalxspiral/Undine6/n0.effect.ogt"
+  scale 8.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 1
+  band 0.5
+  height 1.1111 -1.1111
+  colors 1 1 1 0.251 1 1 1 0.251 1 1 1 0.251
+  life 1.8333
+  effect "vfx/effekseer-magicalxspiral/Undine6/n1.effect.ogt"
+  scale 9
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 1
+  band 0.5
+  height 1.0526 -1.0526
+  colors 1 1 1 0.251 1 1 1 0.251 1 1 1 0.251
+  life 1.8333
+  effect "vfx/effekseer-magicalxspiral/Undine6/n2.effect.ogt"
+  scale 9.5
+  color 1 1 1 1
+  blend additive
+}

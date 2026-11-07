@@ -1,0 +1,113 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.3167
+emitter "vfx/effekseer-tktk02/Fire2/n0-0-0-0-0.emitter.ogt" {
+  at 0.2667
+  offset 0 0 -0.5
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-tktk02/Fire2/n0-0-0-0-1.emitter.ogt" {
+  at 0.2667
+  offset 0 0 -0.4
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-tktk02/Fire2/n0-0-0-0-2.emitter.ogt" {
+  at 0.2667
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-tktk02/Fire2/n0-1.emitter.ogt" {
+  at 0.335
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-tktk02/Fire2/n0-2-0-0-0.emitter.ogt" {
+  at 0.2667
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Fire2/n0-2-0-0-1.emitter.ogt" {
+  at 0.2667
+  offset 0 0.5 0
+}
+mesh quad {
+  at 0.2667
+  rotate -90 0 0
+  life 0.5833
+  effect "vfx/effekseer-tktk02/Fire2/n0-3.effect.ogt"
+  scale curve 0 1 0.1094 1.8659 0.2188 2.5957 0.3281 3.2024 0.4531 3.7617 0.5781 4.1964 0.7031 4.526 1 5
+  color 1 0.8501 0.0406 1
+  blend additive
+}
+mesh quad {
+  at 0.2667
+  rotate -90 0 0
+  life 0.6667
+  effect "vfx/effekseer-tktk02/Fire2/n0-4.effect.ogt"
+  scale curve 0 1 0.1094 2.9482 0.2188 4.5903 0.3281 5.9555 0.4531 7.2138 0.5781 8.192 0.7031 8.9334 1 10
+  color 1 0.4423 0.0385 1
+  blend additive
+}
+trail {
+  at 0
+  offset -15 2 0
+  move -7.2 -4.8 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Fire2/n1-0-0-0-0-0-0.effect.ogt"
+  width 6 6
+  lifetime 0.25
+  color 1 1 1 1
+  orbit 18 2
+}
+trail {
+  at 0
+  offset -87 2 0
+  move -7.2 -4.8 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire2/n1-0-0-0-0-0-1-0.effect.ogt"
+  width 30 30
+  lifetime 0.3333
+  color 1 1 1 1
+  orbit 90 2
+}
+emitter "vfx/effekseer-tktk02/Fire2/n2-0-0-0-0.emitter.ogt" {
+  at 0.4
+  offset 0 0 -0.5
+  rotate -90 0 0
+}
+mesh quad {
+  at 0.4
+  rotate -90 0 0
+  life 1
+  effect "vfx/effekseer-tktk02/Fire2/n2-1.effect.ogt"
+  scale curve 0 3 0.1094 4.0823 0.2188 4.9946 0.4531 6.4521 0.7031 7.4075 1 8
+  color 1 0.531 0.0254 0.8755
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Fire2/n3-0-0-0-0-0.parent.ogt" {
+  at 0.3333
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-tktk02/Fire2/n3-0-0-0-0-1.parent.ogt" {
+  at 0.3333
+  rotate -90 0 0
+}
+# effekseer: node 0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.2 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.2 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 0.3 "GlowCore": a mesh's colour over its life: its brightest kept, alpha over life kept
+# effekseer: node 0.4 "Glow": a mesh's colour over its life: its brightest kept, alpha over life kept
+# effekseer: node 1.0.0.0.0.0.0 "LineColor": nested generation: 35 instances above its generator folded into one emitter
+# effekseer: node 1.0.0.0.0.0.0 "LineColor": a track of many instances: one trail drawn
+# effekseer: node 1.0.0.0.0.0.1.0 "LineGlow": nested generation: 35 instances above its generator folded into one emitter
+# effekseer: node 1.0.0.0.0.0.1.0 "LineGlow": a track of many instances: one trail drawn
+# effekseer: node 2.0.0.0.0 "Fire": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0.0.0.0 "Fire": a random colour per particle: its mean used
+# effekseer: node 2.1 "Glow": a mesh's colour over its life: its brightest kept, alpha over life kept
+# effekseer: node 3.0.0.0.0.0 "Fire": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.0.0.0.0.0 "Fire": a random colour per particle: its mean used
+# effekseer: node 3.0.0.0.0.1 "Distortion": a fixed sprite with many instances: drawn facing the camera

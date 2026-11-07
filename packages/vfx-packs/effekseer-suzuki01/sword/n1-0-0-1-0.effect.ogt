@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 1.0.0.1.0 "Ring"
+main "vfx/effekseer-suzuki01/textures/fire.png" rgba {
+  scroll 1.7578 0
+}
+alpha curve 0 0 0.0444 1 0.5556 1 1 0
+blend additive
+doubleSided true

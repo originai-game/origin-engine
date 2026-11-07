@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 1.1 "中心"
+main "vfx/effekseer-tktk01/textures/magma.png" rgba {
+}
+blend additive
+doubleSided true

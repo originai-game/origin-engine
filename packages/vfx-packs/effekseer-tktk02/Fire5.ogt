@@ -1,0 +1,222 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.5333
+mesh ring {
+  at 0.2667
+  inner 0.8809
+  band 0.5
+  colors 1 0.0478 0.0104 0 1 0.1813 0.0478 0.2928 1 0.0478 0.0104 0
+  life 0.5
+  effect "vfx/effekseer-tktk02/Fire5/n0-0-0.effect.ogt"
+  scale curve 0 1.75 0.5312 1.587 1 1.5
+  color 10 10 10 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-0-0-0-0.emitter.ogt" {
+  at 0.4
+  offset 0 0.3 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-0-0-0-1.emitter.ogt" {
+  at 0.4
+  offset 0 0.3 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-0-0-0-1-0.emitter.ogt" {
+  at 0.4
+  offset 0 0.3 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-0-0-0-2-0-0-0.emitter.ogt" {
+  at 0.4
+  offset 0 0.3 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-0-0-0-2-0-0-1.emitter.ogt" {
+  at 0.4
+  offset 0 0.3 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-0-0-0-2-0-0-1-0.emitter.ogt" {
+  at 0.4
+  offset 0 0.3 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-1-0-0-0-0-0-0-0.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+  rotate 0 0 180
+  move 0 4 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-1-0-0-0-0-0-0-1.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+  rotate 0 0 180
+  move 0 4 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-1-0-0-0-0-0-0-1-0.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+  rotate 0 0 180
+  move 0 4 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-1-0-0-0-0-0-0-2.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+  rotate 0 0 180
+  move 0 4 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-1-0-0-0-1.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-1-0-0-0-2.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-1-0-0-0-3.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+}
+mesh ring {
+  at 0.4
+  inner 0
+  band 0
+  arc 268.75 2.5
+  colors 1 0.0478 0.0104 0 1 0.8267 0.7201 0.502 1 0.0478 0.0104 0
+  life 0.5
+  effect "vfx/effekseer-tktk02/Fire5/n1-2-0.effect.ogt"
+  scale curve 0 1 0.0781 1.5273 0.1719 2.0236 0.2656 2.3899 0.375 2.6791 0.4688 2.8313 0.5781 2.9249 1 3
+  spin 0 0 20
+  color 200 200 200 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Fire5/n1-3.emitter.ogt" {
+  at 0.5667
+}
+emitter "vfx/effekseer-tktk02/Fire5/n2-0-0-0.emitter.ogt" {
+  at 0.435
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n2-0-0-1.emitter.ogt" {
+  at 0.435
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n2-0-0-1-0.emitter.ogt" {
+  at 0.435
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n3-0-0-0.emitter.ogt" {
+  at 0.235
+  offset 0 3.5 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire5/n3-0-0-1.emitter.ogt" {
+  at 0.235
+  offset 0 3.5 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire5/n3-0-0-1-0.emitter.ogt" {
+  at 0.235
+  offset 0 3.5 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire5/n4.emitter.ogt" {
+  at 0.2683
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-0-0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-0-0-0-1.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-0-0-0-1-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-0-0-0-2-0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-0-0-0-2-0-0-1.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-0-0-0-2-0-0-1-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-1.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-1-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-2-0-0-0.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+  rotate 0 0 180
+  move 0 3.6 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-2-0-0-1.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+  rotate 0 0 180
+  move 0 3.6 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-2-0-0-1-0.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+  rotate 0 0 180
+  move 0 3.6 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-2-0-0-2.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+  rotate 0 0 180
+  move 0 3.6 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-3.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-4.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n5-1-0-0-0-5.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Fire5/n6.emitter.ogt" {
+  at 0.1667
+}
+# effekseer: node 0.0.0 "Node": ring 10 instances: the first 4 drawn
+# effekseer: node 0.0.0 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.0.0 "Node": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 1.0.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 1.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
+# effekseer: node 1.0.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 1.0.0.0.2.0.0.1.0 "particleColor": a random colour per particle: its mean used
+# effekseer: node 1.1.0.0.0.0.0.0.0 "particleMain": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 1.1.0.0.0.0.0.0.1 "particleColor": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 1.1.0.0.0.0.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 1.1.0.0.0.0.0.0.1.0 "particleColor": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 1.1.0.0.0.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
+# effekseer: node 1.1.0.0.0.0.0.0.2 "Distortion": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 1.1.0.0.0.2 "Glow1": a random colour per particle: its mean used
+# effekseer: node 1.1.0.0.0.3 "Glow2": a random colour per particle: its mean used
+# effekseer: node 1.2.0 "Rast": a ring's arc over its life
+# effekseer: node 1.2.0 "Rast": ring 200 instances: the first 4 drawn
+# effekseer: node 2.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 2.0.0.1.0 "particleGlow": a random colour per particle: its mean used
+# effekseer: node 3.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 3.0.0.1.0 "particleGlow": a random colour per particle: its mean used
+# effekseer: node 4 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 5 "ｉｎｔｅｒｖａｌ": motion out from a circle: approximated along one direction
+# effekseer: node 5.0.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 5.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
+# effekseer: node 5.0.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 5.0.0.0.2.0.0.1.0 "particleColor": a random colour per particle: its mean used
+# effekseer: node 5.1.0.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 5.1.0.0.0.1.0 "particleColor": a random colour per particle: its mean used
+# effekseer: node 5.1.0.0.0.2.0.0.0 "particleMain": nested generation: 150 instances above its generator folded into one emitter
+# effekseer: node 5.1.0.0.0.2.0.0.1 "particleColor": nested generation: 150 instances above its generator folded into one emitter
+# effekseer: node 5.1.0.0.0.2.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 5.1.0.0.0.2.0.0.1.0 "particleColor": nested generation: 150 instances above its generator folded into one emitter
+# effekseer: node 5.1.0.0.0.2.0.0.1.0 "particleColor": a random colour per particle: its mean used
+# effekseer: node 5.1.0.0.0.2.0.0.2 "Distortion": nested generation: 150 instances above its generator folded into one emitter
+# effekseer: node 5.1.0.0.0.4 "Glow1": a random colour per particle: its mean used
+# effekseer: node 5.1.0.0.0.5 "Glow2": a random colour per particle: its mean used

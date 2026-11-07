@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# Effekseer node 1.0.0.0.2 "Sword2"
+maxParticles 9
+shape box 3 3 3
+spread 0
+rate 0
+burst 0 1 20 0.05
+duration 0.9667
+looping false
+lifetime 0.3 0.3
+speed 0 0
+size 5 5
+colorOverLife {
+  key 0 1 1 1 1
+  key 1 1 1 1 1
+}
+texture "vfx/effekseer-suzuki01/textures/Sword002.png"
+blend alpha

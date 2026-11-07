@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "effekseer-suzuki01",
+  "version": "1.0.0",
+  "description": "Suzuki01's Effekseer sample effects (3), converted to type vfx",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "buff",
+      "slash",
+      "weather"
+    ],
+    "element": [
+      "ice"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "anime",
+    "effekseer",
+    "particles",
+    "suzuki01"
+  ]
+}

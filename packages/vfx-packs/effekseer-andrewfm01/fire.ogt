@@ -1,0 +1,33 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1
+emitter "vfx/effekseer-andrewfm01/fire/n0.emitter.ogt" {
+  at 0.1333
+}
+emitter "vfx/effekseer-andrewfm01/fire/n1.emitter.ogt" {
+  at 0
+}
+mesh quad {
+  at 0.1
+  rotate 90 0 0
+  life 0.3333
+  effect "vfx/effekseer-andrewfm01/fire/n2.effect.ogt"
+  scale curve 0 1 1 18
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-andrewfm01/fire/n3.emitter.ogt" {
+  at 0.0667
+}
+emitter "vfx/effekseer-andrewfm01/fire/n4.emitter.ogt" {
+  at 0.0667
+}
+emitter "vfx/effekseer-andrewfm01/fire/n4-0.parent.ogt" {
+  at 0.0667
+}
+# effekseer: node 1 "Fire": a y-axis billboard: drawn facing the camera
+# effekseer: node 1 "Fire": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4 "Debris": a y-axis billboard: drawn facing the camera
+# effekseer: node 4.0 "Debris Trail": a random colour per particle: its mean used

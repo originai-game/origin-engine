@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 1.5.1 "Ring"
+main "vfx/effekseer-tktk02/textures/Particle02.png" rgba {
+}
+alpha curve 0 0 0.1719 0.0674 0.25 0.1779 0.2969 0.3279 0.3281 0.4758 0.3594 0.6695 0.4 1 1 1
+blend additive
+doubleSided true

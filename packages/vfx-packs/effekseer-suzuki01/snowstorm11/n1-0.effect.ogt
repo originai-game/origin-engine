@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 1.0 "move_curve"
+main "vfx/effekseer-suzuki01/textures/blue_fire.png" rgba {
+}
+blend additive
+doubleSided true

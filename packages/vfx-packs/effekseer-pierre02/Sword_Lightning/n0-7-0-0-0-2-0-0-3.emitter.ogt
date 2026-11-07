@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.7.0.0.0.2.0.0.3 "CloudShadow_Variation4"
+maxParticles 75
+shape box 9 6 9
+spread 0
+rate 0
+burst 0 1 5 0.0167
+duration 0.0833
+looping false
+lifetime 4.5833 6.0833
+speed 0 0
+size 24 24
+colorOverLife {
+  key 0 0.1166 0.1734 0.2758 0
+  key 0.0375 0.1166 0.1734 0.2758 0.3765
+  key 0.8125 0.1166 0.1734 0.2758 0.3765
+  key 1 0.1166 0.1734 0.2758 0
+}
+rotation -360 360
+angularVelocity -12 12
+texture "vfx/effekseer-pierre02/textures/Smoke.png"
+blend alpha
+effect "vfx/effekseer-pierre02/Sword_Lightning/n0-7-0-0-0-2-0-0-3.effect.ogt"

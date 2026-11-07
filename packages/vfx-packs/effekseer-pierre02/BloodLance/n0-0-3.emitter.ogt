@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.3 "Wave_Light"
+maxParticles 10
+shape point
+spread 0
+rate 2
+duration 1
+looping true
+lifetime 3.4 3.6
+speed 0 0
+size 20 20
+sizeOverLife 0 0.08 0.1562 0.1931 0.3281 0.341 1 1
+colorOverLife {
+  key 0 0.2195 0.0055 0.0104 0
+  key 0.0571 0.2195 0.0055 0.0104 0.3765
+  key 0.9048 0.2195 0.0055 0.0104 0.3765
+  key 1 0.2195 0.0055 0.0104 0
+}
+angularVelocity -6 6
+texture "vfx/effekseer-pierre02/textures/Wind.png"
+blend additive

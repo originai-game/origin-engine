@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.7.0.3 "Burst3"
+main "vfx/effekseer-pierre02/textures/Burst_2.png" rgba {
+}
+alpha curve 0 0 0.1 1 0.2 1 1 0
+blend additive
+doubleSided true

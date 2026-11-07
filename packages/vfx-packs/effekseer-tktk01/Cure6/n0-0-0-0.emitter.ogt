@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.0 "粒の子ノード"
+maxParticles 2633
+shape box 0.5 0.15 0.15
+spread 180
+rate 600
+duration 1
+looping true
+lifetime 0.5833 0.5833
+speed 0.9482 3.7928
+size 1 1
+sizeOverLife 0 1 0.4219 0.9625 0.5312 0.9156 0.625 0.8395 0.7344 0.6949 0.8281 0.5118 0.9219 0.2636 1 0
+colorOverLife {
+  key 0 0.1011 0.7969 0.8355 0.1961
+  key 0.4219 0.1011 0.7969 0.8355 0.1887
+  key 0.625 0.1011 0.7969 0.8355 0.1646
+  key 0.8281 0.1011 0.7969 0.8355 0.1004
+  key 1 0.1011 0.7969 0.8355 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Particle01.png"
+blend additive

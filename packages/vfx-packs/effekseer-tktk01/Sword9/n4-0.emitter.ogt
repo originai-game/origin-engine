@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 4.0 "２段目衝撃"
+maxParticles 94
+shape point
+spread 0
+rate 0
+burst 0 75
+duration 0.0167
+looping false
+lifetime 0.1667 0.5
+speed 0 0
+size 1.25 1.5
+sizeOverLife 0 1 1 0
+colorOverLife {
+  key 0 1 0.3112 0.3112 0
+  key 0.1 1 0.3112 0.3112 1
+  key 1 1 0.3112 0.3112 1
+}
+texture "vfx/effekseer-tktk01/textures/Particle01.png"
+blend additive

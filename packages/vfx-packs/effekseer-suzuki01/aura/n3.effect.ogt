@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 3 "mqoMagma"
+main "vfx/effekseer-suzuki01/textures/magma.png" rgba {
+  tile 1.9531 1.9531
+  scroll 0.3516 0.7031
+}
+blend alpha
+doubleSided true

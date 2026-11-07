@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 2.0 "火メイン"
+maxParticles 875
+shape spline 0 1.875 0  -1.3258 1.3258 0  -1.875 0 0  -1.3258 -1.3258 0  0 -1.875 0  1.3258 -1.3258 0  1.875 0 0  1.3258 1.3258 0 closed
+spread 0
+rate 0
+burst 0 700
+duration 0.0167
+looping false
+lifetime 0.75 0.75
+speed 0 0
+size 5 5
+sizeOverLife 0 0.2 0.5625 0.3005 1 0.3162
+colorOverLife {
+  key 0 0.4368 0.0127 0.4368 0
+  key 0.0667 0.3771 0.0092 0.3209 0.1006
+  key 0.1562 0.3153 0.0061 0.2129 0.1036
+  key 0.25 0.2677 0.004 0.14 0.1061
+  key 0.3594 0.2275 0.0024 0.0873 0.1084
+  key 0.4889 0.194 0.0014 0.0507 0.1105
+  key 0.7344 0.1496 0.0004 0.0156 0.059
+  key 1 0.1011 0 0.0001 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/smoke_tex.png"
+blend additive

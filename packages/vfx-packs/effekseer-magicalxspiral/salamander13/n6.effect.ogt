@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 6 "Node"
+main "vfx/effekseer-magicalxspiral/textures/ShockWave1.png" rgba {
+  tile 20 1
+}
+blend additive
+doubleSided true

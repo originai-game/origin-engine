@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# Effekseer node 0.2 "Motion Sparks"
+maxParticles 38
+shape spline 1.299 -0.75 0  1.373 -0.6041 0  1.4306 -0.4511 0  1.4712 -0.2926 0  1.4943 -0.1307 0  1.4996 0.0327 0  1.4872 0.1958 0  1.457 0.3565 0
+spread 0
+rate 200
+duration 0.15
+looping false
+lifetime 0.25 0.35
+speed 24 24
+size 0.775 2.325
+colorOverLife {
+  key 0 1 0.162 0.047 0.502
+  key 0.4444 1 0.162 0.047 0.502
+  key 1 1 0.162 0.047 0
+}
+texture "vfx/effekseer-andrewfm01/textures/Particle01.png"
+blend additive

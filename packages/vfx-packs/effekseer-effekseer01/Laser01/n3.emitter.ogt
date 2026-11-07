@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 3 "LaserCore2"
+maxParticles 4
+shape point
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 1.3333 1.3333
+speed 0 0
+size 3 3
+colorOverLife {
+  key 0 0.047 1 0.047 1
+  key 0.4219 0.047 1 0.047 0.9625
+  key 0.5312 0.047 1 0.047 0.9156
+  key 0.625 0.047 1 0.047 0.8395
+  key 0.7344 0.047 1 0.047 0.6949
+  key 0.8281 0.047 1 0.047 0.5118
+  key 0.9219 0.047 1 0.047 0.2636
+  key 1 0.047 1 0.047 0
+}
+texture "vfx/effekseer-effekseer01/textures/Particle02.png"
+blend additive

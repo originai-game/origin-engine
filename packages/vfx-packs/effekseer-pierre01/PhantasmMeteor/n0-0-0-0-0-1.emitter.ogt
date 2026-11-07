@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.0.0.1 "Light"
+maxParticles 38
+shape point
+spread 0
+rate 0
+burst 0 3 2 0.3333
+duration 0.35
+looping false
+lifetime 2 2
+speed 0 0
+size 11.25 11.25
+sizeOverLife 0 0.1111 1 1
+colorOverLife {
+  key 0 0.8751 0.7519 1 0
+  key 0.0833 0.8751 0.7519 1 0.502
+  key 0.7917 0.8751 0.7519 1 0.502
+  key 1 0.8751 0.7519 1 0
+}
+rotation -360 360
+texture "vfx/effekseer-pierre01/textures/Particle_Soft.png"
+blend additive

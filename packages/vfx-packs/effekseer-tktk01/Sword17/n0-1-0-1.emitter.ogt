@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.0.1 "glow"
+maxParticles 625
+shape point
+spread 0
+rate 0
+burst 0 500
+duration 0.0167
+looping false
+lifetime 0.6667 0.6667
+speed 2 14
+speedOverLife 0 4.9106 0.2188 1.9764 0.3281 0.9869 0.4219 0.4095 0.5625 0.0123 0.7344 0.2906 0.7656 0 1 0
+size 10 10
+sizeOverLife 0 0 0.5 1 1 0
+colorOverLife {
+  key 0 1 0.0104 0.0478 0.1961
+  key 1 1 0.0104 0.0478 0.1961
+}
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

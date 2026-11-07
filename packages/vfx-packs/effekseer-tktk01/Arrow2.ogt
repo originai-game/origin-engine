@@ -1,0 +1,277 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.0915
+trail {
+  at 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-0.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+}
+mesh quad {
+  at 0
+  offset 5 0 0
+  rotate -180 0 -90
+  move -5.4 0 0
+  life 0.8333
+  effect "vfx/effekseer-tktk01/Arrow2/n0-0-0.effect.ogt"
+  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0
+  offset 5 0 0
+  rotate -180 0 -90
+  move -2.7 0 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-0-0-0.effect.ogt"
+  scale 2
+  color 1 1 0 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-0-1-0.emitter.ogt" {
+  at 0.0833
+  offset 0.25 0 0
+  rotate 90 0 -90
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-0-1-0-0.emitter.ogt" {
+  at 0.0833
+  offset 0.25 0 0
+  rotate 90 0 -90
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-0-1-1.emitter.ogt" {
+  at 0.0833
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-0-1-1-0.emitter.ogt" {
+  at 0.0833
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-0-2.emitter.ogt" {
+  at 0.1167
+  rotate 90 0 0
+}
+trail {
+  at 0.0833
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-1.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+}
+mesh quad {
+  at 0.0833
+  offset 5 0 0
+  rotate -180 0 -90
+  move -6 0 0
+  life 0.75
+  effect "vfx/effekseer-tktk01/Arrow2/n0-1-0.effect.ogt"
+  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.0833
+  offset 5 0 0
+  rotate -180 0 -90
+  move -3 0 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-1-0-0.effect.ogt"
+  scale 2
+  color 0 1 0 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-1-1-0.emitter.ogt" {
+  at 0.1667
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-1-1-0-0.emitter.ogt" {
+  at 0.1667
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-1-1-1.emitter.ogt" {
+  at 0.1667
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-1-1-1-0.emitter.ogt" {
+  at 0.1667
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-1-2.emitter.ogt" {
+  at 0.2
+  rotate 90 0 0
+}
+trail {
+  at 0.1667
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-2.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 0 1 1 1
+}
+mesh quad {
+  at 0.1667
+  offset 5 0 0
+  rotate -180 0 -90
+  move -6.75 0 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-2-0.effect.ogt"
+  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.1667
+  offset 5 0 0
+  rotate -180 0 -90
+  move -3.375 0 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-2-0-0.effect.ogt"
+  scale 2
+  color 0 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-2-1-0.emitter.ogt" {
+  at 0.25
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-2-1-0-0.emitter.ogt" {
+  at 0.25
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-2-1-1.emitter.ogt" {
+  at 0.25
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-2-1-1-0.emitter.ogt" {
+  at 0.25
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-2-2.emitter.ogt" {
+  at 0.2833
+  rotate 90 0 0
+}
+trail {
+  at 0.25
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-3.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 0 0 1 1
+}
+mesh quad {
+  at 0.25
+  offset 5 0 0
+  rotate -180 0 -90
+  move -7.7143 0 0
+  life 0.5833
+  effect "vfx/effekseer-tktk01/Arrow2/n0-3-0.effect.ogt"
+  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.25
+  offset 5 0 0
+  rotate -180 0 -90
+  move -3.8571 0 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-3-0-0.effect.ogt"
+  scale 2
+  color 0 0 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-3-1-0.emitter.ogt" {
+  at 0.3333
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-3-1-0-0.emitter.ogt" {
+  at 0.3333
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-3-1-1.emitter.ogt" {
+  at 0.3333
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-3-1-1-0.emitter.ogt" {
+  at 0.3333
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-3-2.emitter.ogt" {
+  at 0.3667
+  rotate 90 0 0
+}
+trail {
+  at 0.3333
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-4.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+}
+mesh quad {
+  at 0.3333
+  offset 5 0 0
+  rotate -180 0 -90
+  move -9 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Arrow2/n0-4-0.effect.ogt"
+  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.3333
+  offset 5 0 0
+  rotate -180 0 -90
+  move -4.5 0 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Arrow2/n0-4-0-0.effect.ogt"
+  scale 2
+  color 1 0 0.2195 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-4-1-0.emitter.ogt" {
+  at 0.4167
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-4-1-0-0.emitter.ogt" {
+  at 0.4167
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-4-1-1.emitter.ogt" {
+  at 0.4167
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-4-1-1-0.emitter.ogt" {
+  at 0.4167
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Arrow2/n0-4-2.emitter.ogt" {
+  at 0.45
+  rotate 90 0 0
+}
+# effekseer: node 0.0.0 "矢": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0 "矢": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0 "矢": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.3.0 "矢": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.3.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.4.0 "矢": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.1.1 "ライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.4.1.1 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.1.1.0 "glow": a fixed sprite with many instances: drawn facing the camera

@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 4 "Shockwave"
+main "vfx/effekseer-andrewfm01/textures/Shock_wave004.png" rgba {
+}
+alpha curve 0 1 0.4667 1 1 0
+blend additive
+doubleSided true

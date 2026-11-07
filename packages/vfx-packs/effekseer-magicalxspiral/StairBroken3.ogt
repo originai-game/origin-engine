@@ -1,0 +1,8 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.3167
+emitter "vfx/effekseer-magicalxspiral/StairBroken3/n0.emitter.ogt" {
+  at 0
+}

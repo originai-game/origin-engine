@@ -1,0 +1,6 @@
+type effect
+version 1
+---
+# Effekseer node 2.0.1 "外枠"
+blend additive
+doubleSided true

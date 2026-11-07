@@ -1,0 +1,7 @@
+type effect
+version 1
+---
+# Effekseer node 1.5.0 "RingZ"
+alpha curve 0 0 0.3594 0.0728 0.5 0.1779 0.5781 0.2973 0.6562 0.4758 0.7344 0.7258 0.8 1 1 1
+blend additive
+doubleSided true

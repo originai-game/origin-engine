@@ -1,0 +1,19 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.9833
+emitter "vfx/effekseer-nextsoft01/Spear2/n0.emitter.ogt" {
+  at 0
+  offset -1 0.8 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-nextsoft01/Spear2/n1.emitter.ogt" {
+  at 0.0167
+  offset 0 1 0
+  rotate 0 0 -101.3099
+}
+# effekseer: node 0 "剣跡": a y-axis billboard: drawn facing the camera
+# effekseer: node 0 "剣跡": a random colour per particle: its mean used
+# effekseer: node 0 "剣跡": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "グロー": a random colour per particle: its mean used

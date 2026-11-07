@@ -1,0 +1,76 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.6672
+mesh ring {
+  at 0
+  inner 0
+  band 0.99
+  colors 1 1 1 0 1 1 1 1 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_shockwave/n0.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0.8
+  colors 0 0 0 0 0 0 0 1 0 0 0 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_shockwave/n1.effect.ogt"
+  scale 1.8
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  rotate 0 0 -135
+  inner 0
+  band 0.85
+  colors 0 0 0 0 0 0 0 1 0 0 0 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_shockwave/n2.effect.ogt"
+  scale 0.3424
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0002
+  rotate 0 0 -45
+  inner 0
+  band 0.85
+  colors 0 0 0 0 0 0 0 1 0 0 0 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_shockwave/n2.effect.ogt"
+  scale 0.3424
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0003
+  rotate 0 0 45
+  inner 0
+  band 0.85
+  colors 0 0 0 0 0 0 0 1 0 0 0 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_shockwave/n2.effect.ogt"
+  scale 0.3424
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0005
+  rotate 0 0 135
+  inner 0
+  band 0.85
+  colors 0 0 0 0 0 0 0 1 0 0 0 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_shockwave/n2.effect.ogt"
+  scale 0.3424
+  color 1 1 1 1
+  blend alpha
+}
+# effekseer: node 2 "Node": ring 200 instances: the first 4 drawn

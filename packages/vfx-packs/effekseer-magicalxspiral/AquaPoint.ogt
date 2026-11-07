@@ -1,0 +1,58 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.3167
+trail {
+  at 0
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/AquaPoint/n0-0-0-0-0.effect.ogt"
+  width 1 0.25
+  lifetime 0.6667
+  color 0.2195 0.7519 1 0.7529
+  orbit 1 20
+}
+emitter "vfx/effekseer-magicalxspiral/AquaPoint/n0-1-0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/AquaPoint/n0-2.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/AquaPoint/n0-3-0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/AquaPoint/n0-4-0.emitter.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  rotate 0 45 0
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 0.2195 0.5356 1 0.7529 1 1 1 0
+  life 2.1667
+  effect "vfx/effekseer-magicalxspiral/AquaPoint/n0-5.effect.ogt"
+  scale 1
+  spin 0 0 360
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -180 45 -180
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 0.2195 0.5356 1 0.7529 1 1 1 0
+  life 2.1667
+  effect "vfx/effekseer-magicalxspiral/AquaPoint/n0-6.effect.ogt"
+  scale 1
+  spin 0 0 -360
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0.0.0.0 "Node": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.1.0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.0 "Node": a random colour per particle: its mean used
+# effekseer: node 0.4.0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.4.0 "Node": a sprite scaled unevenly: drawn square at its mean

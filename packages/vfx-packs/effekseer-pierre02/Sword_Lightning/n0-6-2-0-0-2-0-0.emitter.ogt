@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 0.6.2.0.0.2.0.0 "SparkLight"
+maxParticles 50
+shape point
+spread 0
+rate 0
+burst 0 8 60 0.0167
+duration 1
+looping false
+lifetime 0.0667 0.0667
+speed 0 0
+size 0.75 1.25
+sizeOverLife 0 1 1 0.6
+colorOverLife {
+  key 0 0.0478 0.1801 1 0
+  key 0.25 0.0478 0.1801 1 0.0376
+  key 0.5 0.0478 0.1801 1 0.0502
+  key 1 0.0478 0.1801 1 0
+}
+texture "vfx/effekseer-pierre02/textures/Particle_Soft.png"
+blend additive

@@ -1,0 +1,15 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.4
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.15
+  effect "vfx/effekseer-effekseer01/Simple_Ribbon_Sword/n0.effect.ogt"
+  width 7 1.75
+  lifetime 0.25
+  color 1 1 1 1
+  orbit 0 -2
+}

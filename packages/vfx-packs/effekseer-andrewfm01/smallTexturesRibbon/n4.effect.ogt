@@ -1,0 +1,7 @@
+type effect
+version 1
+---
+# Effekseer node 4 "Hole"
+alpha curve 0 1 0.8361 1 0.8906 0.5497 0.9219 0.3301 0.9531 0.1542 0.9688 0.0866 1 0
+blend alpha
+doubleSided true

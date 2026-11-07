@@ -1,0 +1,473 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.6
+mesh ring {
+  at 0
+  rotate 0 0 -135
+  inner 0.901
+  band 0.75
+  colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow6/n0-0-0-0.effect.ogt"
+  scale curve 0 2.625 0.4531 2.3661 1 2.25
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.0667
+  rotate 0 0 -45
+  inner 0.901
+  band 0.75
+  colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow6/n0-0-0-0.effect.ogt"
+  scale curve 0 2.625 0.4531 2.3661 1 2.25
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  rotate 0 0 45
+  inner 0.901
+  band 0.75
+  colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow6/n0-0-0-0.effect.ogt"
+  scale curve 0 2.625 0.4531 2.3661 1 2.25
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.2
+  rotate 0 0 135
+  inner 0.901
+  band 0.75
+  colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow6/n0-0-0-0.effect.ogt"
+  scale curve 0 2.625 0.4531 2.3661 1 2.25
+  color 1 1 1 0.75
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-1-0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-1-0-0-1.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-1-0-0-1-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-1-1-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-1-1-1.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-1-1-1-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-2.parent.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  rotate 0 0 -135
+  inner 0.5
+  band 0.05
+  colors 1 0.2845 0.1062 0 1 0.6346 0.4841 1 1 0.2845 0.1062 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Blow6/n0-0-3-0.effect.ogt"
+  scale curve 0 1.5 0.1094 2.4741 0.2188 3.2952 0.3281 3.9777 0.4531 4.6069 0.7031 5.4667 1 6
+  color 1 1 1 0.5
+  blend additive
+}
+mesh ring {
+  at 0.0667
+  rotate 0 0 -45
+  inner 0.5
+  band 0.05
+  colors 1 0.2845 0.1062 0 1 0.6346 0.4841 1 1 0.2845 0.1062 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Blow6/n0-0-3-0.effect.ogt"
+  scale curve 0 1.5 0.1094 2.4741 0.2188 3.2952 0.3281 3.9777 0.4531 4.6069 0.7031 5.4667 1 6
+  color 1 1 1 0.5
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  rotate 0 0 45
+  inner 0.5
+  band 0.05
+  colors 1 0.2845 0.1062 0 1 0.6346 0.4841 1 1 0.2845 0.1062 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Blow6/n0-0-3-0.effect.ogt"
+  scale curve 0 1.5 0.1094 2.4741 0.2188 3.2952 0.3281 3.9777 0.4531 4.6069 0.7031 5.4667 1 6
+  color 1 1 1 0.5
+  blend additive
+}
+mesh ring {
+  at 0.2
+  rotate 0 0 135
+  inner 0.5
+  band 0.05
+  colors 1 0.2845 0.1062 0 1 0.6346 0.4841 1 1 0.2845 0.1062 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Blow6/n0-0-3-0.effect.ogt"
+  scale curve 0 1.5 0.1094 2.4741 0.2188 3.2952 0.3281 3.9777 0.4531 4.6069 0.7031 5.4667 1 6
+  color 1 1 1 0.5
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-4.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-5.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-6-0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-6-0-0-1.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-6-0-0-1-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-7-0.emitter.ogt" {
+  at 0.0667
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-7-1.emitter.ogt" {
+  at 0.0667
+}
+emitter "vfx/effekseer-tktk02/Blow6/n0-0-7-2.emitter.ogt" {
+  at 0.0667
+}
+mesh ring {
+  at 0.7167
+  rotate 0 0 -135
+  inner 0.901
+  band 0.75
+  colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow6/n1-0-0-0.effect.ogt"
+  scale curve 0 1.75 0.4531 1.5774 1 1.5
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.75
+  rotate 0 0 -45
+  inner 0.901
+  band 0.75
+  colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow6/n1-0-0-0.effect.ogt"
+  scale curve 0 1.75 0.4531 1.5774 1 1.5
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.7833
+  rotate 0 0 45
+  inner 0.901
+  band 0.75
+  colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow6/n1-0-0-0.effect.ogt"
+  scale curve 0 1.75 0.4531 1.5774 1 1.5
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.8167
+  rotate 0 0 135
+  inner 0.901
+  band 0.75
+  colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow6/n1-0-0-0.effect.ogt"
+  scale curve 0 1.75 0.4531 1.5774 1 1.5
+  color 1 1 1 0.75
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-1-0-0-0.parent.ogt" {
+  at 0.7167
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-1-0-0-1.parent.ogt" {
+  at 0.7167
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-1-0-0-1-0.parent.ogt" {
+  at 0.7167
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-1-1-0.parent.ogt" {
+  at 0.7167
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-1-1-1.parent.ogt" {
+  at 0.7167
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-1-1-1-0.parent.ogt" {
+  at 0.7167
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-2.parent.ogt" {
+  at 0.7167
+}
+mesh ring {
+  at 0.7167
+  rotate 0 0 -135
+  inner 0.5
+  band 0.05
+  colors 1 0.0619 0.0231 0 1 0.139 0.1062 1 1 0.0619 0.0231 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Blow6/n1-0-3-0.effect.ogt"
+  scale curve 0 1 0.1094 1.6494 0.2188 2.1968 0.3281 2.6518 0.4531 3.0713 0.7031 3.6445 1 4
+  color 1 1 1 0.5
+  blend additive
+}
+mesh ring {
+  at 0.75
+  rotate 0 0 -45
+  inner 0.5
+  band 0.05
+  colors 1 0.0619 0.0231 0 1 0.139 0.1062 1 1 0.0619 0.0231 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Blow6/n1-0-3-0.effect.ogt"
+  scale curve 0 1 0.1094 1.6494 0.2188 2.1968 0.3281 2.6518 0.4531 3.0713 0.7031 3.6445 1 4
+  color 1 1 1 0.5
+  blend additive
+}
+mesh ring {
+  at 0.7833
+  rotate 0 0 45
+  inner 0.5
+  band 0.05
+  colors 1 0.0619 0.0231 0 1 0.139 0.1062 1 1 0.0619 0.0231 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Blow6/n1-0-3-0.effect.ogt"
+  scale curve 0 1 0.1094 1.6494 0.2188 2.1968 0.3281 2.6518 0.4531 3.0713 0.7031 3.6445 1 4
+  color 1 1 1 0.5
+  blend additive
+}
+mesh ring {
+  at 0.8167
+  rotate 0 0 135
+  inner 0.5
+  band 0.05
+  colors 1 0.0619 0.0231 0 1 0.139 0.1062 1 1 0.0619 0.0231 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Blow6/n1-0-3-0.effect.ogt"
+  scale curve 0 1 0.1094 1.6494 0.2188 2.1968 0.3281 2.6518 0.4531 3.0713 0.7031 3.6445 1 4
+  color 1 1 1 0.5
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-4.emitter.ogt" {
+  at 0.7167
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-5.emitter.ogt" {
+  at 0.7167
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-6-0.emitter.ogt" {
+  at 0.7833
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-6-1.emitter.ogt" {
+  at 0.7833
+}
+emitter "vfx/effekseer-tktk02/Blow6/n1-0-6-2.emitter.ogt" {
+  at 0.7833
+}
+mesh ring {
+  at 1.4
+  inner 0.901
+  band 0.75
+  colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow6/n2-0-0-0.effect.ogt"
+  scale curve 0 0 0.4531 0 1 0
+  color 1 1 1 0.75
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-1-0-0-0.emitter.ogt" {
+  at 1.4
+  offset 0 0.625 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-1-0-0-1.emitter.ogt" {
+  at 1.4
+  offset 0 0.875 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-1-0-0-1-0.emitter.ogt" {
+  at 1.4
+  offset 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-1-1-0.emitter.ogt" {
+  at 1.4
+  offset 0 0.25 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-1-1-0-0.emitter.ogt" {
+  at 1.4
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-2.emitter.ogt" {
+  at 1.4
+}
+mesh ring {
+  at 1.4
+  inner 0.5
+  band 0.05
+  colors 1 0.0619 0.0231 0 1 0.139 0.1062 1 1 0.0619 0.0231 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Blow6/n2-0-3-0.effect.ogt"
+  scale curve 0 0 0.1094 0 0.2188 0 0.3281 0 0.4531 0 0.7031 0 1 0
+  color 1 1 1 0.5
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-4.emitter.ogt" {
+  at 1.4
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-5.emitter.ogt" {
+  at 1.4
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-6-0-0-0.emitter.ogt" {
+  at 1.4
+  offset 0 1.25 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-6-0-0-1.emitter.ogt" {
+  at 1.4
+  offset 0 1.25 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-6-0-0-1-0.emitter.ogt" {
+  at 1.4
+  offset 0 1.25 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-7-0.emitter.ogt" {
+  at 1.4667
+  rotate 0 0 90
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-7-1.emitter.ogt" {
+  at 1.4667
+  rotate 0 0 90
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-0-7-2.emitter.ogt" {
+  at 1.4667
+  rotate 0 0 90
+}
+emitter "vfx/effekseer-tktk02/Blow6/n2-1.emitter.ogt" {
+  at 1.4
+}
+emitter "vfx/effekseer-tktk02/Blow6/n3-0-0-0-0-0.emitter.ogt" {
+  at 1.6667
+  offset 0 0.625 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n3-0-0-0-0-1.emitter.ogt" {
+  at 1.6667
+  offset 0 0.875 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n3-0-0-0-0-1-0.emitter.ogt" {
+  at 1.6667
+  offset 0 1.125 0
+}
+emitter "vfx/effekseer-tktk02/Blow6/n3-0-0-1-0.emitter.ogt" {
+  at 1.6667
+}
+# effekseer: node 0.0.0.0 "Ring": ring 10 instances: the first 4 drawn
+# effekseer: node 0.0.0.0 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.0.0.0 "Ring": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.0.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.1.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.1.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.1.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.1.1.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.1.1.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.1.1.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.1.1.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.1.1.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.1.1.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.1.1.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.3.0 "Ring": ring 10 instances: the first 4 drawn
+# effekseer: node 0.0.3.0 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.0.4 "Glow": a random colour per particle: its mean used
+# effekseer: node 0.0.5 "Glow2": a random colour per particle: its mean used
+# effekseer: node 0.0.6.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 0.0.6.0.0.1.0 "particleGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.7.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.7.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.7.2 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.7.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.0.0 "Node": ring 20 instances: the first 4 drawn
+# effekseer: node 1.0.0.0 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 1.0.0.0 "Node": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 1.0.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.1.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.0.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.1.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.1.0.0.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 1.0.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.1.1.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.1.1.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.1.1.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.0.1.1.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.1.1.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.1.1.1.0 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 1.0.1.1.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.3.0 "Ring": ring 20 instances: the first 4 drawn
+# effekseer: node 1.0.3.0 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 1.0.4 "Glow": a random colour per particle: its mean used
+# effekseer: node 1.0.5 "Glow2": a random colour per particle: its mean used
+# effekseer: node 1.0.6.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.0.6.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.6.2 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 1.0.6.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.0.0 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 2.0.0.0 "Ring": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.0.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.1.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 2.0.1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.1.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.1.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.1.1.0 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.1.1.0 "LineColor": a random colour per particle: its mean used
+# effekseer: node 2.0.1.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.1.1.0.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.1.1.0.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.3.0 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 2.0.4 "Glow": a random colour per particle: its mean used
+# effekseer: node 2.0.5 "Glow2": a random colour per particle: its mean used
+# effekseer: node 2.0.6.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 2.0.7.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 2.0.7.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.7.2 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 2.0.7.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 3.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 3.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 3.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.0.0.0.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 3.0.0.0.0.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.0.1.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 3.0.0.1.0 "LineMain": a random colour per particle: its mean used
+# effekseer: node 3.0.0.1.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 3.0.0.1.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 3.0.0.1.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.0.1.1.0 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 3.0.0.1.1.0 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.2.0 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 3.0.3 "Glow": a random colour per particle: its mean used
+# effekseer: node 3.0.4 "Glow2": a random colour per particle: its mean used
+# effekseer: node 3.0.5.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 3.0.6.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.6.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.7.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.7.2 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.1.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.1.0.0.0.0 "LineMain": nested generation: 40 instances above its generator folded into one emitter
+# effekseer: node 3.1.0.0.0.0 "LineMain": a track of many instances: one trail drawn
+# effekseer: node 3.1.0.0.0.1.0 "LineColor": nested generation: 40 instances above its generator folded into one emitter
+# effekseer: node 3.1.0.0.0.1.0 "LineColor": a track of many instances: one trail drawn
+# effekseer: node 3.2.0.0.0 "Ring": ring 20 instances: the first 4 drawn
+# effekseer: node 3.2.0.0.0 "Ring": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: more than 64 elements: the last 18 left out

@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.7.0.0.0.2.0.0.6 "CloudLighting_Variation3"
+main "vfx/effekseer-pierre02/textures/Smoke_Lighting.png" rgba {
+  tile 0.5 0.5
+  offset 0 0.5
+}
+blend additive

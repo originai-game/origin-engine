@@ -1,0 +1,56 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.9
+trail {
+  at 0
+  offset 0 0.75 0
+  rotate 90 25 -90
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/Attack6/n0-0.effect.ogt"
+  width 1.5 0.375
+  lifetime 0.1667
+  color 1 0.4563 0.0707 0.4267
+}
+trail {
+  at 0.0833
+  offset 0 0.75 0
+  rotate 90 25 -90
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/Attack6/n0-1.effect.ogt"
+  width 1.5 0.375
+  lifetime 0.1667
+  color 1 0.4563 0.0707 1
+}
+trail {
+  at 0
+  offset 0 0.75 0
+  rotate 90 20 -90
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/Attack6/n1-0.effect.ogt"
+  width 1.5 0.375
+  lifetime 0.1667
+  color 1 0.4563 0.0707 0.4267
+}
+trail {
+  at 0
+  offset 0 0.75 0
+  rotate 90 30 -90
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/Attack6/n2-0.effect.ogt"
+  width 1.5 0.375
+  lifetime 0.1667
+  color 1 0.4563 0.0707 0.4267
+}
+emitter "vfx/effekseer-magicalxspiral/Attack6/n3-0.emitter.ogt" {
+  at 0.1667
+  offset 0 0.75 0.75
+  rotate 0 -89.9802 0
+}
+emitter "vfx/effekseer-magicalxspiral/Attack6/n3-1.emitter.ogt" {
+  at 0.1667
+  offset 0 0.75 0.75
+  rotate 0 -89.9802 0
+}
+# effekseer: node 3.1 "Node": a random colour per particle: its mean used

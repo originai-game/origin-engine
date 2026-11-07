@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 0.1 "回復中心もや"
+maxParticles 625
+shape sphere 3
+spread 180
+rate 3000
+duration 0.1667
+looping false
+lifetime 0.25 0.5833
+speed 1.0392 4.1569
+size 5 5
+colorOverLife {
+  key 0 0.4205 0.4098 0.8872 0.098
+  key 0.5 0.673 0.4849 0.9096 0.049
+  key 1 0.9914 0.5668 0.9323 0
+}
+rotation -360 360
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

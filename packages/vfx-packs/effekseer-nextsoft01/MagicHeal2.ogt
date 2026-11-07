@@ -1,0 +1,46 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 4
+emitter "vfx/effekseer-nextsoft01/MagicHeal2/n0-0.emitter.ogt" {
+  at 0
+  offset 3 -1 0
+}
+emitter "vfx/effekseer-nextsoft01/MagicHeal2/n0-0-0.emitter.ogt" {
+  at 0
+  offset 3 -1 0
+}
+emitter "vfx/effekseer-nextsoft01/MagicHeal2/n1.emitter.ogt" {
+  at 1
+  offset 0 4 0
+}
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 0.48
+  band 0.5
+  height 0.4 -0.1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 4
+  effect "vfx/effekseer-nextsoft01/MagicHeal2/n2.effect.ogt"
+  scale 5
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0
+  rotate -90 0 0
+  life 4
+  effect "vfx/effekseer-nextsoft01/MagicHeal2/n3.effect.ogt"
+  scale 6
+  spin 0 0 -240
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0 "柱": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0 "柱": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0 "柱": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0 "柱": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "パーティクル": a random colour per particle: its mean used
+# effekseer: node 1 "パーティクル": a sprite scaled unevenly: drawn square at its mean

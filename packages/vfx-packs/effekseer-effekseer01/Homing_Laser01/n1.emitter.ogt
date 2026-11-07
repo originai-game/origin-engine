@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 1 "LaserHead"
+maxParticles 25
+shape point
+spread 54.7356
+rate 0
+burst 0 1 20 0.0667
+duration 1.2833
+looping false
+lifetime 3 3
+speed 103.923 103.923
+size 1 1
+colorOverLife {
+  key 0 1 0.8434 1 1
+  key 0.8333 1 0.8434 1 1
+  key 1 1 0.8434 1 0
+}
+texture "vfx/effekseer-effekseer01/textures/Particle01.png"
+blend additive

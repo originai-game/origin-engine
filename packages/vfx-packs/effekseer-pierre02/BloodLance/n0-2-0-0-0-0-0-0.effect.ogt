@@ -1,0 +1,7 @@
+type effect
+version 1
+---
+# Effekseer node 0.2.0.0.0.0.0.0 "Lance"
+alpha curve 0 0 0.0156 0.4641 0.0312 0.8122 0.0417 1 0.3906 1 0.875 1 1 0
+blend alpha
+doubleSided true

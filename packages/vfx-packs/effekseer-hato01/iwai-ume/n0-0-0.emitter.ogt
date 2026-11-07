@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0 "Node"
+maxParticles 628
+shape box 0.21 0.18 0.33
+spread 180
+rate 0
+burst 0 1 2100 0.0167
+duration 35
+looping false
+lifetime 0.8333 7.5
+speed 0.0379 0.1514
+size 0.3 0.18
+sizeOverLife 0 0.5 1 1
+colorOverLife {
+  key 0 1 0.4098 0.4098 0
+  key 0.0728 1 0.4098 0.4098 1
+  key 0.8276 1 0.4098 0.4098 1
+  key 1 1 0.4098 0.4098 0
+}
+texture "vfx/effekseer-hato01/textures/hana-anime.png"
+sheet 2 2 4 fps 1.5
+blend additive

@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 0.0.0.0 "刃上"
+main "vfx/effekseer-tktk01/textures/Hammer1.png" rgba {
+  tile 4 4
+}
+alpha curve 0 1 0.75 1 0.8594 0.958 0.9062 0.8395 0.9375 0.6685 0.9531 0.5466 0.9844 0.2153 1 0
+blend alpha
+doubleSided true

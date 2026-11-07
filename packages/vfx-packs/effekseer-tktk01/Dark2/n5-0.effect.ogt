@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 5.0 "ライン下降軌跡"
+main "vfx/effekseer-tktk01/textures/Line01.png" rgba {
+}
+blend additive
+doubleSided true

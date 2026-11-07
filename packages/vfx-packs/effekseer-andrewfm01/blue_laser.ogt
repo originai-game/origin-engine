@@ -1,0 +1,131 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 10
+loop true
+mesh ring {
+  at 0
+  inner 0
+  band 1
+  colors 1 1 1 0 0.2195 0 1 0 0 1 1 1
+  life 2
+  effect "vfx/effekseer-andrewfm01/blue_laser/n0.effect.ogt"
+  scale curve 0 2 1 6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.05
+  inner 0
+  band 1
+  colors 1 1 1 0 0 1 1 0 1 1 1 1
+  life 0.1667
+  effect "vfx/effekseer-andrewfm01/blue_laser/n1.effect.ogt"
+  scale curve 0 1 1 12
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-andrewfm01/blue_laser/n2.emitter.ogt" {
+  at 0
+  rotate 0 0 180
+}
+trail {
+  at 0
+  life 0.6667
+  effect "vfx/effekseer-andrewfm01/blue_laser/n3-0.effect.ogt"
+  width 1.1133 0.2783
+  lifetime 0.6667
+  color 0 0.2195 1 1
+}
+mesh quad {
+  at 2.25
+  rotate -180 70 -180
+  life 0.25
+  effect "vfx/effekseer-andrewfm01/blue_laser/n4.effect.ogt"
+  scale curve 0 1 1 46
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 2.3333
+  rotate 70 0 0
+  life 0.25
+  effect "vfx/effekseer-andrewfm01/blue_laser/n5.effect.ogt"
+  scale curve 0 1 1 46
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 2.3333
+  inner 0.7273
+  band 0.5
+  height 0 54.5455
+  colors 1 1 1 1 1 1 1 1 1 1 1 0
+  life 1666.6666
+  effect "vfx/effekseer-andrewfm01/blue_laser/n6.effect.ogt"
+  scale 0.55
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 2.3333
+  inner 0.875
+  band 0.5
+  height 0 37.5
+  colors 0.2932 0.6524 0.9914 1 0 1 1 1 0 0.2195 1 0
+  life 1666.6666
+  effect "vfx/effekseer-andrewfm01/blue_laser/n7.effect.ogt"
+  scale 0.8
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 2.3333
+  inner 1.3333
+  band 0.5
+  height 0 33.3333
+  colors 0 0.2195 1 1 0.0004 0.344 0.9406 1 0 0.1011 0.4704 0
+  life 1666.6666
+  effect "vfx/effekseer-andrewfm01/blue_laser/n8.effect.ogt"
+  scale 0.9
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 2.3333
+  offset 0 0 2
+  inner 0.2143
+  band 0.5
+  height -1.7143 0
+  colors 1 1 1 0 0 1 1 0 0 0.2195 1 1
+  life 1666.6666
+  effect "vfx/effekseer-andrewfm01/blue_laser/n9.effect.ogt"
+  scale 7
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 2.3333
+  offset 0 0 1
+  inner 0.2857
+  band 0.5
+  height -2 0
+  colors 1 1 1 0 0.2195 1 1 0 1 1 1 1
+  life 1666.6666
+  effect "vfx/effekseer-andrewfm01/blue_laser/n10.effect.ogt"
+  scale 3.5
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-andrewfm01/blue_laser/n11.emitter.ogt" {
+  at 2.3333
+}
+# effekseer: node 2 "Energy": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2 "Energy": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2 "Energy": motion out from a circle: approximated along one direction
+# effekseer: node 3 "Attracted Energy": attraction to the target
+# effekseer: node 3.0 "Attacted Energy Trail": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.0 "Attacted Energy Trail": nested generation: 15 instances above its generator folded into one emitter
+# effekseer: node 11 "Sparks": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 11 "Sparks": a sprite scaled unevenly: drawn square at its mean

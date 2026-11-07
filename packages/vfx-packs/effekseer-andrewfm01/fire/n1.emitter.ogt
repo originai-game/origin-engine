@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 1 "Fire"
+maxParticles 13
+shape box 0.5 0.001 0.5
+spread 0
+rate 0
+burst 0 1 10 0.0167
+duration 0.1667
+looping false
+lifetime 0.25 0.4167
+speed 0 0
+size 21.8 21.8
+sizeOverLife 0 0.0459 0.2188 0.0991 0.4531 0.1791 1 0.4284
+colorOverLife {
+  key 0 1 1 1 1
+  key 0.25 1 1 1 1
+  key 0.4844 1 1 1 0.5751
+  key 0.6719 1 1 1 0.2901
+  key 0.8438 1 1 1 0.098
+  key 0.9219 1 1 1 0.0388
+  key 1 1 1 1 0
+}
+rotation -30 30
+angularVelocity -30 30
+texture "vfx/effekseer-andrewfm01/textures/fire_tex.png"
+blend additive

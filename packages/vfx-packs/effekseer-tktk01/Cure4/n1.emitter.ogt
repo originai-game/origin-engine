@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 1 "中心光"
+maxParticles 4
+shape point
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.6667 0.6667
+speed 0 0
+size 6 6
+sizeOverLife 0 0.5 0.1719 0.6571 0.375 0.7845 0.5781 0.8691 1 1
+colorOverLife {
+  key 0 1 1 1 0.6863
+  key 0.5 1 1 1 0.6196
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

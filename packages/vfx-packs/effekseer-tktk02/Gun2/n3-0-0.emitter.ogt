@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Effekseer node 3.0.0 "Ine6"
+maxParticles 8
+shape spline 0 0.865 0  -0.6116 0.6116 0  -0.865 0 0  -0.6116 -0.6116 0  0 -0.865 0  0.6116 -0.6116 0  0.865 0 0  0.6116 0.6116 0 closed
+spread 0
+rate 0
+burst 0 6
+duration 0.0167
+looping false
+lifetime 0.8333 0.8333
+speed 0 0
+size 2 2
+sizeOverLife 0 0 0.1094 0.3867 0.2031 0.5 0.3906 0.5 0.4062 0.5234 0.5 0.875 0.5938 0.9922 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.0938 1 1 1 0.2353
+  key 0.2031 1 1 1 1
+  key 0.3906 1 1 1 1
+  key 0.4062 1 1 1 0.9532
+  key 0.5 1 1 1 0.251
+  key 0.5938 1 1 1 0.0157
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-tktk02/textures/6Ice.png"
+blend additive

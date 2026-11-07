@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.0.1.1.0.4 "EmberVariation"
+maxParticles 210
+shape box 1.6031 1.6031 1.6031
+spread 0
+rate 0
+burst 0 84 2 0.0167
+duration 0.0333
+looping false
+lifetime 0.05 0.65
+speed 4.8094 14.4281
+size 2.0039 2.0039
+sizeOverLife 0 0.4 0.2188 0.5723 0.4531 0.7269 0.7031 0.8642 1 1
+colorOverLife {
+  key 0 0.8751 0.7519 0.5356 0
+  key 0.2857 0.8751 0.7519 0.5356 0.0784
+  key 1 0.8751 0.7519 0.5356 0
+}
+rotation -30 30
+angularVelocity -60 60
+texture "vfx/effekseer-pierre02/textures/Splash.png"
+blend additive
+effect "vfx/effekseer-pierre02/Benediction/n0-1-0-1-1-0-4.effect.ogt"

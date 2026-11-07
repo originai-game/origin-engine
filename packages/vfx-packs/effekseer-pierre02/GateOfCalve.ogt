@@ -1,0 +1,70 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 14.0833
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-0.parent.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-1.parent.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-2.parent.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-3.parent.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-4.parent.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-5-0.emitter.ogt" {
+  at 0
+  offset -25 15 -0.06
+  rotate 90 0 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-6-0.parent.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-6-1.parent.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-7.emitter.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-8.emitter.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+emitter "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-9.emitter.ogt" {
+  at 0
+  offset -25 15 0
+  move 30 0 0
+}
+# effekseer: node 0.0.0.0 "BaseLight": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.1 "BaseLight": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.2 "Wave_Distortion": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.3 "Wave_Light": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.4 "Wave_Light_TEMP": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.5.0 "Calve": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.5.0 "Calve": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.6.0 "Ray": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.9 "Shockwave": a fixed sprite with many instances: drawn facing the camera

@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.2 "Shockwave"
+maxParticles 8
+shape point
+spread 0
+rate 0
+burst 0 1 2 0.0417
+duration 0.0583
+looping false
+lifetime 1.6 1.6
+speed 0 0
+size 11.8125 15.1875
+sizeOverLife 0 0.8 0.3281 0.8995 1 1
+colorOverLife {
+  key 0 1 0.4647 0.0356 0
+  key 0.0625 1 0.4647 0.0356 0.1569
+  key 0.6875 1 0.4647 0.0356 0.1569
+  key 1 1 0.4647 0.0356 0
+}
+texture "vfx/effekseer-pierre02/textures/Shockwave.png"
+blend additive

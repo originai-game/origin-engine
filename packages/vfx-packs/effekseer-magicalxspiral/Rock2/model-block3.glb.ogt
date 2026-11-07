@@ -1,0 +1,5 @@
+type import
+version 1
+---
+# An effect's mesh (og vfx import): no face budget.
+conform effect

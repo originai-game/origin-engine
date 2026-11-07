@@ -1,0 +1,12 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.2333
+emitter "vfx/effekseer-magicalxspiral/foot_smoke2/n0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/foot_smoke2/n1.emitter.ogt" {
+  at 0.1667
+}
+# effekseer: node 1 "Stars": a random colour per particle: its mean used

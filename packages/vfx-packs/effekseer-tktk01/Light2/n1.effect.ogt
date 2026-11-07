@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 1 "柱の足元"
+main "vfx/effekseer-tktk01/textures/Particle02.png" rgba {
+}
+alpha curve 0 1 1 0
+blend additive
+doubleSided true

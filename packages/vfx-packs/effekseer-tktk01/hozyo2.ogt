@@ -1,0 +1,254 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.2167
+mesh ring {
+  at 0.1333
+  offset 0 2.1131 -4.5315
+  rotate 25 0 0
+  inner 0.9665
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n0-0-0-0.effect.ogt"
+  scale 1.15
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  rotate -65 0 0
+  inner 0.5988
+  band 0.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n0-0-0-1.effect.ogt"
+  scale 2.3
+  color 6 6 6 1
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  rotate -65 0 0
+  inner 0.4348
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/hozyo2/n0-0-0-2.effect.ogt"
+  scale 2.3
+  color 6 6 6 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9665
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n1-0-0.effect.ogt"
+  scale 1.15
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9665
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n1-0-1.effect.ogt"
+  scale 1.15
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.4348
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/hozyo2/n1-0-2.effect.ogt"
+  scale 1.15
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9665
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n1-1-0.effect.ogt"
+  scale 2.3
+  color 6 6 6 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9665
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n1-1-1.effect.ogt"
+  scale 2.3
+  color 6 6 6 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.4348
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/hozyo2/n1-1-2.effect.ogt"
+  scale 2.3
+  color 6 6 6 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9665
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n2-0.effect.ogt"
+  scale 2.9133
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9665
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n2-1.effect.ogt"
+  scale 2.9133
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.5988
+  band 0.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n2-2.effect.ogt"
+  scale 2.9133
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.4348
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/hozyo2/n2-3.effect.ogt"
+  scale 2.9133
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9621
+  band 0.5
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/hozyo2/n2-4.effect.ogt"
+  scale 2.9133
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9502
+  band 0.5
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n2-5.effect.ogt"
+  scale 4.94
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.2637
+  band 0.5
+  colors 0.4437 0.0474 0.0474 0 0.5591 0.161 0.161 0.2212 0.7241 0.4123 0.4123 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/hozyo2/n2-6.effect.ogt"
+  scale curve 0 2.9133 0.1094 3.9527 0.2031 4.6803 0.2969 5.2408 0.4062 5.691 0.5 5.9248 0.5938 6.0486 1 6.175
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9868
+  band 0.5
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n2-7.effect.ogt"
+  scale curve 0 3.496 0.1719 3.1978 0.375 3.0068 0.5781 2.9352 1 2.9133
+  spin 0 0 180
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.55
+  inner 0.9868
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/hozyo2/n2-8.effect.ogt"
+  scale curve 0 3.496 0.1719 3.1978 0.375 3.0068 0.5781 2.9352 1 2.9133
+  spin 0 0 -180
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0.0.0 "ヘックスメイン右": a ring's arc over its life
+# effekseer: node 0.0.0.0 "ヘックスメイン右": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0 "ヘックスメイン右": ring 2 instances: the first 4 drawn
+# effekseer: node 0.0.0.0 "ヘックスメイン右": nested generation: 6 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0 "ヘックスメイン右": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.0.0.1 "ヘックス模様": a ring's arc over its life
+# effekseer: node 0.0.0.1 "ヘックス模様": ring 6 instances: the first 4 drawn
+# effekseer: node 0.0.0.1 "ヘックス模様": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.0.0.2 "ヘックスグロー": a ring's arc over its life
+# effekseer: node 0.0.0.2 "ヘックスグロー": ring 6 instances: the first 4 drawn
+# effekseer: node 0.0.0.2 "ヘックスグロー": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 1.0.0 "ヘックスメイン右": a ring's arc over its life
+# effekseer: node 1.0.0 "ヘックスメイン右": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 1.0.1 "ヘックスメイン左": a ring's arc over its life
+# effekseer: node 1.0.1 "ヘックスメイン左": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 1.0.2 "ヘックスグロー": a ring's arc over its life
+# effekseer: node 1.0.2 "ヘックスグロー": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 1.1.0 "ヘックスメイン右": a ring's arc over its life
+# effekseer: node 1.1.0 "ヘックスメイン右": ring 6 instances: the first 4 drawn
+# effekseer: node 1.1.0 "ヘックスメイン右": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 1.1.1 "ヘックスメイン左": a ring's arc over its life
+# effekseer: node 1.1.1 "ヘックスメイン左": ring 6 instances: the first 4 drawn
+# effekseer: node 1.1.1 "ヘックスメイン左": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 1.1.2 "ヘックスグロー": a ring's arc over its life
+# effekseer: node 1.1.2 "ヘックスグロー": ring 6 instances: the first 4 drawn
+# effekseer: node 1.1.2 "ヘックスグロー": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 2.0 "ヘックスメイン右": a ring's arc over its life
+# effekseer: node 2.0 "ヘックスメイン右": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.1 "ヘックスメイン左": a ring's arc over its life
+# effekseer: node 2.1 "ヘックスメイン左": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.2 "ヘックス模様": a ring's arc over its life
+# effekseer: node 2.2 "ヘックス模様": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.3 "ヘックスグロー": a ring's arc over its life
+# effekseer: node 2.3 "ヘックスグロー": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 2.4 "ヘックスメイン余韻": a ring's arc over its life
+# effekseer: node 2.4 "ヘックスメイン余韻": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.5 "ヘックスメイン外枠": a ring's arc over its life
+# effekseer: node 2.5 "ヘックスメイン外枠": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.6 "ヘックスグロー外側": a ring's arc over its life
+# effekseer: node 2.6 "ヘックスグロー外側": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.6 "ヘックスグロー外側": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 2.7 "ヘックス外左": a ring's arc over its life
+# effekseer: node 2.7 "ヘックス外左": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.8 "ヘックス外右": a ring's arc over its life
+# effekseer: node 2.8 "ヘックス外右": a ring whose thickness changes over its life: its middle thickness kept

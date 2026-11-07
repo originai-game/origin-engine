@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 3 "Node"
+main "vfx/effekseer-tktk01/textures/icicle2.png" rgba {
+}
+blend additive
+doubleSided true

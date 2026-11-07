@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "effekseer-nextsoft01",
+  "version": "1.0.0",
+  "description": "NextSoft01's Effekseer sample effects (20), converted to type vfx",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "buff",
+      "fire",
+      "heal",
+      "magic-impact",
+      "magic-projectile",
+      "shield",
+      "slash",
+      "weather"
+    ],
+    "element": [
+      "dark",
+      "fire",
+      "holy",
+      "ice",
+      "lightning",
+      "water",
+      "wind"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "anime",
+    "effekseer",
+    "nextsoft01",
+    "particles"
+  ]
+}

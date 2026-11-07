@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.7.0.2 "Burst2"
+maxParticles 7
+shape point
+spread 0
+rate 0
+burst 0 5
+duration 0.0167
+looping false
+lifetime 0.0667 0.0667
+speed 12 12
+size 11.2 11.2
+sizeOverLife 0 0.7825 1 1
+colorOverLife {
+  key 0 0.2195 1 0.5356 0
+  key 0.125 0.2195 1 0.5356 0.1098
+  key 0.25 0.2195 1 0.5356 0.1882
+  key 0.375 0.2195 1 0.5356 0.2353
+  key 0.5 0.2195 1 0.5356 0.251
+  key 1 0.2195 1 0.5356 0
+}
+texture "vfx/effekseer-pierre02/textures/Burst_1.png"
+blend additive

@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 1.5.0 "粒収縮"
+maxParticles 125
+shape box 0.1541 0.4757 0.001
+spread 1.8468
+rate 1200
+duration 0.0833
+looping false
+lifetime 0.3667 0.5333
+speed 10.6283 12.7414
+speedOverLife 0 2.0637 0.25 1.1969 0.4844 0.7543 0.7344 0.674 0.8594 0.7764 1 1.0021
+size 1 1
+colorOverLife {
+  key 0 0.1275 0 0 1
+  key 0.4815 0.1275 0 0 1
+  key 1 0.1275 0 0 0
+}
+texture "vfx/effekseer-tktk01/textures/Particle01.png"
+blend additive

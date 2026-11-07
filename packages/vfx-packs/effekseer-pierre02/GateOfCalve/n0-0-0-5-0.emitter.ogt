@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.5.0 "Calve"
+maxParticles 113
+shape box 2 0.001 12
+spread 0
+rate 0
+burst 0 1 90 0.0167
+duration 1.5
+looping false
+lifetime 10 10
+speed 0.3525 0.3525
+speedOverLife 0 16.1361 0.0156 18.1869 0.0312 17.9053 0.0469 14.0048 0.0625 5.8349 0.0781 0 1 0
+size 0.4 0.4
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.0667 1 1 1 1
+  key 0.975 1 1 1 1
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-pierre02/textures/Yakiniku.png"
+blend alpha
+effect "vfx/effekseer-pierre02/GateOfCalve/n0-0-0-5-0.effect.ogt"

@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 2.0 "Node"
+maxParticles 13
+shape point
+spread 0
+rate 0
+burst 0 1 10 0.0167
+duration 0.1667
+looping false
+lifetime 16.6667 16.6667
+speed 0 0
+size 6 6
+colorOverLife {
+  key 0 0.0478 0.2195 0.6354 0.502
+  key 1 0.0478 0.2195 0.6354 0.502
+}
+angularVelocity 900 1800
+texture "vfx/effekseer-andrewfm01/textures/Wind01.png"
+blend additive

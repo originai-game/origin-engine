@@ -1,0 +1,217 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.3167
+mesh ring {
+  at 0
+  offset 0 0.75 0
+  inner 0
+  band 0.5
+  colors 1 1 1 0 1 1 1 0.3765 1 1 1 0.3765
+  life 0.8333
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n0.effect.ogt"
+  scale 1.05
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  rotate -90 0 -135
+  inner 0.5
+  band 0.5
+  height 2 -0.3
+  arc 210 120
+  colors 1 1 1 0 1 0.7482 0.7482 0.1255 1 1 1 0.1255
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0167
+  rotate -90 0 -45
+  inner 0.5
+  band 0.5
+  height 2 -0.3
+  arc 210 120
+  colors 1 1 1 0 1 0.7482 0.7482 0.1255 1 1 1 0.1255
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  rotate -90 0 45
+  inner 0.5
+  band 0.5
+  height 2 -0.3
+  arc 210 120
+  colors 1 1 1 0 1 0.7482 0.7482 0.1255 1 1 1 0.1255
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  rotate -90 0 135
+  inner 0.5
+  band 0.5
+  height 2 -0.3
+  arc 210 120
+  colors 1 1 1 0 1 0.7482 0.7482 0.1255 1 1 1 0.1255
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 0.01 0
+  rotate -90 0 0
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 0.5356 0.5356 0.3765 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n2.effect.ogt"
+  scale curve 0 0 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1667
+  offset 0 0.5 0
+  rotate -90 0 0
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 0.5356 0.5356 0.3765 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n3.effect.ogt"
+  scale curve 0 0 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.3333
+  offset 0 1 0
+  rotate -90 0 0
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 0.5356 0.5356 0.3765 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n4.effect.ogt"
+  scale curve 0 0 1 3
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Salamander3/n5.emitter.ogt" {
+  at 0
+  offset 0 0.7 0
+}
+mesh quad {
+  at 0
+  offset 0 1 0
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n6.effect.ogt"
+  scale 2.8284
+  color 1 1 1 0.251
+  blend additive
+}
+mesh quad {
+  at 0
+  offset 0 1 0
+  rotate 0 60 0
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n7.effect.ogt"
+  scale 3.4641
+  color 1 1 1 0.251
+  blend additive
+}
+mesh quad {
+  at 0
+  offset 0 1 0
+  rotate 0 -60 0
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n8.effect.ogt"
+  scale 3.4641
+  color 1 1 1 0.251
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 0.625
+  band 0.3
+  height 3.125 0
+  colors 1 0.2195 0 0 1 1 0 0.502 1 0.2195 0 0.502
+  life 0.8333
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n9.effect.ogt"
+  scale 0.8
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -90 0 -180
+  inner 0.625
+  band 0.3
+  height 3.125 0
+  colors 1 0.2195 0 0 1 0.2195 0 0.502 1 0.2195 0 0.502
+  life 0.8333
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n10.effect.ogt"
+  scale 0.8
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  offset 0 0.75 0
+  inner 0
+  band 0.8
+  colors 1 0.3587 1 0 1 0.3587 0.3587 0.1255 1 0.3587 1 0.251
+  life 0.8333
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n11.effect.ogt"
+  scale curve 0 0.4 0.0781 0.8315 0.1562 1.194 0.2344 1.4965 0.3281 1.7934 0.4688 2.1365 0.8281 2.7971 1 3.2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 0.75 0
+  inner 0.5714
+  band 0.5
+  colors 1 1 1 0 1 0.7519 0.3587 0.1255 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n12.effect.ogt"
+  scale curve 0 0.35 0.0781 0.8355 0.1562 1.2432 0.2344 1.5836 0.3281 1.9176 0.4688 2.3035 0.8281 3.0468 1 3.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.4167
+  offset 0 0.75 0
+  inner 0.5714
+  band 0.5
+  colors 1 1 1 0 1 0.7519 0.3587 0.1255 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Salamander3/n13.effect.ogt"
+  scale curve 0 0.35 0.0781 0.8355 0.1562 1.2432 0.2344 1.5836 0.3281 1.9176 0.4688 2.3035 0.8281 3.0468 1 3.5
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0 "BG1": subtractive blend: drawn alpha blended
+# effekseer: node 0 "BG1": a camera-facing ring: drawn in its own plane
+# effekseer: node 1 "FireCylinder1": ring 20 instances: the first 4 drawn
+# effekseer: node 5 "Particle1": a random colour per particle: its mean used
+# effekseer: node 6 "FirePlate1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 11 "Bloom1": texture not found: Texture/
+# effekseer: node 11 "Bloom1": a camera-facing ring: drawn in its own plane
+# effekseer: node 11 "Bloom1": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 12 "ShockWave4": a camera-facing ring: drawn in its own plane
+# effekseer: node 13 "ShockWave5": a camera-facing ring: drawn in its own plane

@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.0.0.0.0.0 "蹴りブラー"
+main "vfx/effekseer-tktk01/textures/Shock_wave_ring001.png" rgba {
+}
+blend additive
+doubleSided true

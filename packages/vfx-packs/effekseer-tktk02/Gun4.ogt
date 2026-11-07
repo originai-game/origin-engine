@@ -1,0 +1,180 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.7833
+loop true
+emitter "vfx/effekseer-tktk02/Gun4/n0-0-0-0-0-0.parent.ogt" {
+  at 0
+  offset -7.5 3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n0-0-0-0-0-1.parent.ogt" {
+  at 0
+  offset -7.5 3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n0-0-0-0-0-1-0.parent.ogt" {
+  at 0
+  offset -7.5 3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n0-0-0-1.parent.ogt" {
+  at 0
+  offset -7.5 3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n0-0-0-2.emitter.ogt" {
+  at 0
+  offset -7.5 3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n0-0-0-3-0-0-0.parent.ogt" {
+  at 0
+  offset -7.5 3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n0-0-0-3-0-0-1.parent.ogt" {
+  at 0
+  offset -7.5 3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n0-0-0-3-0-0-1-0.parent.ogt" {
+  at 0
+  offset -7.5 3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n0-0-0-4.parent.ogt" {
+  at 0
+  offset -7.5 3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n1-0-0-0-0-0.parent.ogt" {
+  at 0.0333
+  offset 7.5 -3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n1-0-0-0-0-1.parent.ogt" {
+  at 0.0333
+  offset 7.5 -3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n1-0-0-0-0-1-0.parent.ogt" {
+  at 0.0333
+  offset 7.5 -3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n1-0-0-1.parent.ogt" {
+  at 0.0333
+  offset 7.5 -3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n1-0-0-2.emitter.ogt" {
+  at 0.0333
+  offset 7.5 -3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n1-0-0-3-0-0-0.parent.ogt" {
+  at 0.0333
+  offset 7.5 -3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n1-0-0-3-0-0-1.parent.ogt" {
+  at 0.0333
+  offset 7.5 -3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n1-0-0-3-0-0-1-0.parent.ogt" {
+  at 0.0333
+  offset 7.5 -3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n1-0-0-4.parent.ogt" {
+  at 0.0333
+  offset 7.5 -3 0
+  until 0.6667
+}
+emitter "vfx/effekseer-tktk02/Gun4/n2-0-0-0-0-0.parent.ogt" {
+  at 0.7667
+  offset -7 0 0
+}
+emitter "vfx/effekseer-tktk02/Gun4/n2-0-0-0-0-1.parent.ogt" {
+  at 0.7667
+  offset -7 0 0
+}
+emitter "vfx/effekseer-tktk02/Gun4/n2-0-0-0-0-1-0.parent.ogt" {
+  at 0.7667
+  offset -7 0 0
+}
+emitter "vfx/effekseer-tktk02/Gun4/n2-0-0-1.parent.ogt" {
+  at 0.7667
+  offset -7 0 0
+}
+emitter "vfx/effekseer-tktk02/Gun4/n2-0-0-2.emitter.ogt" {
+  at 0.7667
+  offset -7 0 0
+}
+emitter "vfx/effekseer-tktk02/Gun4/n2-0-0-3-0-0-0.parent.ogt" {
+  at 0.7667
+  offset -7 0 0
+}
+emitter "vfx/effekseer-tktk02/Gun4/n2-0-0-3-0-0-1.parent.ogt" {
+  at 0.7667
+  offset -7 0 0
+}
+emitter "vfx/effekseer-tktk02/Gun4/n2-0-0-3-0-0-1-0.parent.ogt" {
+  at 0.7667
+  offset -7 0 0
+}
+emitter "vfx/effekseer-tktk02/Gun4/n2-0-0-4.parent.ogt" {
+  at 0.7667
+  offset -7 0 0
+}
+# effekseer: node 0.0 "ｉｎｔｅｒｖａｌ1": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0 "ｉｎｔｅｒｖａｌ1": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.0.1.0 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.1 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.2 "Glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.2 "Glow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.2 "Glow": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.3.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 0.0.0.3.0.0.1.0 "particleGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.4 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 1.0 "ｉｎｔｅｒｖａｌ1": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0 "ｉｎｔｅｒｖａｌ1": motion out from a circle: approximated along one direction
+# effekseer: node 1.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.0.0.0.1.0 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
+# effekseer: node 1.0.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.0.1 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 1.0.0.2 "Glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0.0.2 "Glow": a random colour per particle: its mean used
+# effekseer: node 1.0.0.2 "Glow": motion out from a circle: approximated along one direction
+# effekseer: node 1.0.0.3.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 1.0.0.3.0.0.1.0 "particleGlow": a random colour per particle: its mean used
+# effekseer: node 1.0.0.4 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 2.0 "ｉｎｔｅｒｖａｌ1": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 2.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0 "ｉｎｔｅｒｖａｌ1": motion out from a circle: approximated along one direction
+# effekseer: node 2.0.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 2.0.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.0.0.0.1.0 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
+# effekseer: node 2.0.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.0.1 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 2.0.0.2 "Glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 2.0.0.2 "Glow": a random colour per particle: its mean used
+# effekseer: node 2.0.0.2 "Glow": motion out from a circle: approximated along one direction
+# effekseer: node 2.0.0.3.0.0.1 "particleColor": a random colour per particle: its mean used
+# effekseer: node 2.0.0.3.0.0.1.0 "particleGlow": a random colour per particle: its mean used
+# effekseer: node 2.0.0.4 "Distortion": motion out from a circle: approximated along one direction

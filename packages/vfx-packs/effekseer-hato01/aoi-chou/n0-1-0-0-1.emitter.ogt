@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.0.0.1 "Node"
+maxParticles 209
+shape point
+spread 24.444
+rate 2.7778
+duration 1
+looping true
+lifetime 8.3333 11.6667
+speed 0.5236 0.6852
+size 1.3 1.3
+colorOverLife {
+  key 0 0.0342 0.047 0.6456 1
+  key 0.2656 0.1132 0.085 0.7315 1
+  key 0.5156 0.2352 0.1322 0.8178 1
+  key 0.7656 0.407 0.191 0.9093 1
+  key 1 0.6154 0.257 1 1
+}
+texture "vfx/effekseer-hato01/textures/particle2.png"
+blend additive

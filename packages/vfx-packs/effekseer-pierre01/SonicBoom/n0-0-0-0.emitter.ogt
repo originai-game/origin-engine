@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.0 "Smoke"
+maxParticles 19
+shape box 1 1 1
+spread 180
+rate 0
+burst 0 1 15 0.0167
+duration 0.25
+looping false
+lifetime 0.8333 0.8333
+speed 0.15 0.6
+size 10 10
+sizeOverLife 0 0.5 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.2188 1 1 1 0.022
+  key 0.64 1 1 1 0.0941
+  key 0.8 1 1 1 0.0941
+  key 1 1 1 1 0
+}
+rotation -360 360
+angularVelocity -300 300
+gravity 0 0 -54
+texture "vfx/effekseer-pierre01/textures/Smoke.png"
+blend additive
+effect "vfx/effekseer-pierre01/SonicBoom/n0-0-0-0.effect.ogt"

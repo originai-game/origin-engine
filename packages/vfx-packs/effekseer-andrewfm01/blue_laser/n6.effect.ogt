@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 6 "Laser"
+main "vfx/effekseer-andrewfm01/textures/aurora01.png" rgba {
+  scroll 0 -3.75
+}
+blend additive
+doubleSided true

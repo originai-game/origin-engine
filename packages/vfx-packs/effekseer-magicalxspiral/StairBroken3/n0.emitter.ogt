@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 0 "Smoke"
+maxParticles 50
+shape box 0.001 0.001 2
+spread 180
+rate 0
+burst 0 1 40 0.0167
+duration 0.6667
+looping false
+lifetime 0.6667 0.6667
+speed 1.591 6.364
+size 1.5 1.5
+colorOverLife {
+  key 0 1 0.7519 0.1166 0
+  key 0.125 1 0.7519 0.1166 0.502
+  key 0.875 1 0.7519 0.1166 0.502
+  key 1 1 0.7519 0.1166 0
+}
+texture "vfx/effekseer-magicalxspiral/textures/smoke_01.png"
+sheet 4 4 16 life 0.8333
+blend additive

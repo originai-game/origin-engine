@@ -1,0 +1,35 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "effekseer-pierre02",
+  "version": "1.0.0",
+  "description": "Pierre vol.2's Effekseer sample effects (12), converted to type vfx",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "explosion",
+      "heal",
+      "magic-impact",
+      "magic-projectile",
+      "portal",
+      "slash",
+      "smoke"
+    ],
+    "element": [
+      "dark",
+      "fire",
+      "holy",
+      "lightning",
+      "wind"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "anime",
+    "effekseer",
+    "particles",
+    "pierre02"
+  ]
+}

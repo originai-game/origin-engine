@@ -1,0 +1,222 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 6.7334
+emitter "vfx/effekseer-pierre01/HolySandstorm/n0-0-0-0.emitter.ogt" {
+  at 1.25
+  offset 1.7412 3 1.0341
+  rotate -90 0 -165
+}
+mesh ring {
+  at 1.25
+  offset 2 3 2
+  rotate -180 -15 -90
+  inner 1
+  band 0.5
+  height 0 0.5536
+  colors 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1
+  life 1.4167
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-0-1.effect.ogt"
+  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 1.2667
+  offset 2 3 2
+  rotate -180 -15 90
+  inner 1
+  band 0.5
+  height 0 0.5536
+  colors 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1
+  life 1.4167
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-0-1.effect.ogt"
+  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 1.2833
+  offset 2 3 2
+  rotate -180 -15 -90
+  inner 1
+  band 0.5
+  height 0 0.5536
+  colors 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1
+  life 1.4167
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-0-1.effect.ogt"
+  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 1.3
+  offset 2 3 2
+  rotate -180 -15 90
+  inner 1
+  band 0.5
+  height 0 0.5536
+  colors 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1
+  life 1.4167
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-0-1.effect.ogt"
+  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-pierre01/HolySandstorm/n0-0-0-2.emitter.ogt" {
+  at 1.25
+  offset 1.7412 3 1.0341
+  rotate 90 0 165
+}
+emitter "vfx/effekseer-pierre01/HolySandstorm/n0-0-0-3.emitter.ogt" {
+  at 1.25
+  offset -4.0544 3 2.587
+  rotate -90 0 -165
+}
+mesh ring {
+  at 0.0333
+  offset 2 3 2
+  rotate -180 -15 -90
+  inner 1
+  band 0.5
+  height 1.5805 0
+  colors 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251
+  life 1.5
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-1-0.effect.ogt"
+  scale curve 0 2.5 0.1094 1.7659 0.2344 1.0455 0.3438 0.519 0.4688 0.036 0.75 0.5881 0.875 0.6598 1 0.605
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 2 3 2
+  rotate -180 -15 90
+  inner 1
+  band 0.5
+  height 1.5805 0
+  colors 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251
+  life 1.5
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-1-0.effect.ogt"
+  scale curve 0 2.5 0.1094 1.7659 0.2344 1.0455 0.3438 0.519 0.4688 0.036 0.75 0.5881 0.875 0.6598 1 0.605
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.1333
+  offset 2 3 2
+  rotate -180 -15 -90
+  inner 1
+  band 0.5
+  height 1.5805 0
+  colors 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251
+  life 1.5
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-1-0.effect.ogt"
+  scale curve 0 2.5 0.1094 1.7659 0.2344 1.0455 0.3438 0.519 0.4688 0.036 0.75 0.5881 0.875 0.6598 1 0.605
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.1833
+  offset 2 3 2
+  rotate -180 -15 90
+  inner 1
+  band 0.5
+  height 1.5805 0
+  colors 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251
+  life 1.5
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-1-0.effect.ogt"
+  scale curve 0 2.5 0.1094 1.7659 0.2344 1.0455 0.3438 0.519 0.4688 0.036 0.75 0.5881 0.875 0.6598 1 0.605
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-pierre01/HolySandstorm/n0-0-1-1.emitter.ogt" {
+  at 0
+  offset 1.6894 3 0.8409
+  rotate -90 0 -165
+}
+mesh ring {
+  at 0
+  offset 2.0026 3 2.0097
+  rotate 180 -15 45
+  move 0.4659 0 1.7387
+  inner 1
+  band 0.5
+  height 0 2
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 1.6667
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-1-2.effect.ogt"
+  scale curve 0 0.02 0.125 0.6197 0.25 1.1725 0.375 1.6784 0.5 2.1375 0.625 2.5497 0.75 2.915 1 3.505
+  spin 0 0 120
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2
+  offset 2.0026 3 2.0097
+  rotate -180 -15 135
+  move 0.4659 0 1.7387
+  inner 1
+  band 0.5
+  height 0 2
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 1.6667
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-1-2.effect.ogt"
+  scale curve 0 0.02 0.125 0.6197 0.25 1.1725 0.375 1.6784 0.5 2.1375 0.625 2.5497 0.75 2.915 1 3.505
+  spin 0 0 120
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.4
+  offset 2.0026 3 2.0097
+  rotate 180 -15 -135
+  move 0.4659 0 1.7387
+  inner 1
+  band 0.5
+  height 0 2
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 1.6667
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-1-2.effect.ogt"
+  scale curve 0 0.02 0.125 0.6197 0.25 1.1725 0.375 1.6784 0.5 2.1375 0.625 2.5497 0.75 2.915 1 3.505
+  spin 0 0 120
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.6
+  offset 2.0026 3 2.0097
+  rotate -180 -15 -45
+  move 0.4659 0 1.7387
+  inner 1
+  band 0.5
+  height 0 2
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 1.6667
+  effect "vfx/effekseer-pierre01/HolySandstorm/n0-0-1-2.effect.ogt"
+  scale curve 0 0.02 0.125 0.6197 0.25 1.1725 0.375 1.6784 0.5 2.1375 0.625 2.5497 0.75 2.915 1 3.505
+  spin 0 0 120
+  color 1 1 1 1
+  blend alpha
+}
+# effekseer: node 0.0.0.0 "Smoke": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0 "Smoke": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.1 "Wind_Ring": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.1 "Wind_Ring": ring 240 instances: the first 4 drawn
+# effekseer: node 0.0.0.1 "Wind_Ring": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.1 "Wind_Ring": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.0.0.2 "Wind_Sprite": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.2 "Wind_Sprite": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.2 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.3 "Particle": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.3 "Particle": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0 "Wind_Ring": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.1.0 "Wind_Ring": ring 15 instances: the first 4 drawn
+# effekseer: node 0.0.1.0 "Wind_Ring": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0 "Wind_Ring": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.0.1.1 "Wind_Sprite": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.1.1 "Wind_Sprite": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.1 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.1.2 "Distortion": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.1.2 "Distortion": ring 10 instances: the first 4 drawn
+# effekseer: node 0.0.1.2 "Distortion": nested generation: 2 instances above its generator folded into one emitter

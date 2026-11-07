@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 4 "Node"
+maxParticles 125
+shape point
+spread 43.3139
+rate 240
+duration 0.4167
+looping false
+lifetime 0.6667 0.6667
+speed 2.4739 4.5299
+speedOverLife 0 3.6952 0.25 1.7411 0.375 1.0269 0.5 0.5001 0.625 0.1608 0.75 0.0091 0.875 0.0448 1 0.2582
+size 4 4
+sizeOverLife 0 0 1 1
+colorOverLife {
+  key 0 0.0478 0.5326 1 1
+  key 0.0781 0.0329 0.4739 1 0.8442
+  key 0.1719 0.0208 0.4181 1 0.6859
+  key 0.2656 0.0131 0.3748 1 0.5549
+  key 0.375 0.0075 0.3362 1 0.431
+  key 0.5781 0.0025 0.2872 1 0.2618
+  key 1 0 0.2195 1 0
+}
+texture "vfx/effekseer-nextsoft01/textures/PolkaDot.png"
+blend additive

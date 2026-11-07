@@ -1,0 +1,223 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.7833
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-0-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 0.0488 145.9998 1
+  rotate 0 0 -0.466
+  move 0 -480 0
+}
+trail {
+  at 0
+  offset 0.0488 145.9998 1
+  rotate 0 0 -90.466
+  move 0 -480 0
+  life 0.2658
+  effect "vfx/effekseer-pierre01/LightningStrike/n0-0-0-0-0-0-1.effect.ogt"
+  width 4 1
+  lifetime 0.6667
+  color 0.945 0.8613 0.995 0.9977
+  orbit 0 10
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-0-0-0-0-2.emitter.ogt" {
+  at 0
+  offset 0.0488 145.9998 1
+  rotate 0 0 -0.466
+  move 0 -480 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-0-0-0-0-2-0.emitter.ogt" {
+  at 0
+  offset 0.0488 145.9998 1
+  rotate 0 0 -0.466
+  move 0 -480 0
+}
+trail {
+  at 0.2
+  offset 0 -8 1
+  rotate 0 0 -90.466
+  move 0 240 0
+  life 0.295
+  effect "vfx/effekseer-pierre01/LightningStrike/n0-0-1-0-0-0-0.effect.ogt"
+  width 2 0.5
+  lifetime 0.4
+  color 0.9364 0.8516 0.9915 0.9961
+  orbit 1 40
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-1-0-0-0-0-0.emitter.ogt" {
+  at 0.2
+  offset 0 -8 2
+  rotate 0 0 -0.466
+  move 0 240 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-1-0-0-0-1.emitter.ogt" {
+  at 0.2
+  offset 0 -8 1
+  rotate 0 0 -0.466
+  move 0 240 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-1-0-0-0-1-0.emitter.ogt" {
+  at 0.2
+  offset 0 -8 1
+  rotate 0 0 -0.466
+  move 0 240 0
+}
+trail {
+  at 0.5
+  offset 0 -8 1
+  rotate 0 0 -90.466
+  move 0 120 0
+  life 0.175
+  effect "vfx/effekseer-pierre01/LightningStrike/n0-0-2-0-0-0-0.effect.ogt"
+  width 1 0.25
+  lifetime 0.075
+  color 0.825 0.7277 0.9453 0.9748
+  orbit 1 40
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-2-0-0-0-0-0.emitter.ogt" {
+  at 0.5
+  offset 0 -8 2
+  rotate 0 0 -0.466
+  move 0 120 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-0.emitter.ogt" {
+  at 0.3167
+  offset 0 1 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-1.emitter.ogt" {
+  at 0.3167
+  offset 0 1 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-2.emitter.ogt" {
+  at 0.3167
+  offset 0 1 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-3.emitter.ogt" {
+  at 0.3167
+  offset 0 1 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-4.emitter.ogt" {
+  at 0.3167
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-5.emitter.ogt" {
+  at 0.4
+  offset 0 16 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-6.emitter.ogt" {
+  at 0.3167
+  offset 0 10 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-7.emitter.ogt" {
+  at 0.35
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-8-0.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+  rotate -88.5679 0 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-8-1.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+  rotate -88.5679 0 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-8-2.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+  rotate -65.0102 28.0604 -42.827
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-8-3.emitter.ogt" {
+  at 0.4
+  offset 0 0.5 0
+  rotate -65.0102 28.0604 -42.827
+}
+trail {
+  at 0.65
+  life 0.9833
+  effect "vfx/effekseer-pierre01/LightningStrike/n0-0-3-9-0.effect.ogt"
+  width 0 0
+  lifetime 0.0583
+  color 1 1 1 1
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-9-0-0.parent.ogt" {
+  at 0.65
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-10.emitter.ogt" {
+  at 0.3167
+  offset 0 16 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-11.emitter.ogt" {
+  at 0.3167
+  offset 0 16 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-12.emitter.ogt" {
+  at 0.3167
+  offset 0 16 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-13.emitter.ogt" {
+  at 0.3167
+  offset 0 16 0
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-14.parent.ogt" {
+  at 0.3167
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-3-15.emitter.ogt" {
+  at 0.3167
+}
+emitter "vfx/effekseer-pierre01/LightningStrike/n0-0-4.emitter.ogt" {
+  at 0.3167
+  offset 0 1 0
+}
+# effekseer: node 0.0.0.0.0.0.0 "Light": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.0.0.0 "Light": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.0 "Light": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.0.0.1 "Tracker": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.0.0.1 "Tracker": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.2 "Particle": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.0.0.2 "Particle": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.2 "Particle": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.0.0.2.0 "Light": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.0.0.2.0 "Light": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.0 "Tracker": nested generation: 9 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.0.0 "Light": nested generation: 9 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.1 "Particle": nested generation: 9 instances above its generator folded into one emitter
+# effekseer: node 0.0.1.0.0.0.1 "Particle": a random colour per particle: its mean used
+# effekseer: node 0.0.1.0.0.0.1.0 "Light": nested generation: 9 instances above its generator folded into one emitter
+# effekseer: node 0.0.2.0.0.0.0 "Tracker": nested generation: 30 instances above its generator folded into one emitter
+# effekseer: node 0.0.2.0.0.0.0.0 "Light": nested generation: 30 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.0 "Debris_Variation1": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.0 "Debris_Variation1": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.1 "Debris_Variation2": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.1 "Debris_Variation2": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.2 "Debris_Variation3": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.2 "Debris_Variation3": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.3 "Debris_Variation4": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.3 "Debris_Variation4": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.5 "Burst1": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.5 "Burst1": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.6 "Burst2": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.6 "Burst2": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.7 "Burst3": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.7 "Burst3": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.7 "Burst3": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.3.8.0 "Smoke_Variation1": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.8.1 "Smoke_Variation2": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.8.2 "Smoke_Variation3": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.8.3 "Smoke_Variation4": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.9.0 "SparkTracker": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.3.9.0 "SparkTracker": nested generation: 40 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.9.0 "SparkTracker": a track of many instances: one trail drawn
+# effekseer: node 0.0.3.9.0.0 "SparkLight": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.10 "Fire_Variation1": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.10 "Fire_Variation1": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.10 "Fire_Variation1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.3.11 "Fire_Variation2": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.11 "Fire_Variation2": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.11 "Fire_Variation2": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.3.12 "Fire_Variation3": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.12 "Fire_Variation3": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.12 "Fire_Variation3": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.3.13 "Fire_Variation4": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0.3.13 "Fire_Variation4": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.13 "Fire_Variation4": a sprite scaled unevenly: drawn square at its mean

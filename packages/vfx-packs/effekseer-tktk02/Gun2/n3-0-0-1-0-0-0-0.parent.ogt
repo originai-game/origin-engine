@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 3.0.0 "Ine6"
+maxParticles 8
+shape spline 0 0.865 0  -0.6116 0.6116 0  -0.865 0 0  -0.6116 -0.6116 0  0 -0.865 0  0.6116 -0.6116 0  0.865 0 0  0.6116 0.6116 0 closed
+spread 0
+rate 0
+burst 0 6
+duration 0.0167
+looping false
+lifetime 0.8333 0.8333
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-tktk02/Gun2/n3-0-0-1-0-0-0-0.emitter.ogt"

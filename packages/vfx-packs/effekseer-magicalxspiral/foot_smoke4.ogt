@@ -1,0 +1,11 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.9
+emitter "vfx/effekseer-magicalxspiral/foot_smoke4/n0.emitter.ogt" {
+  at 0.1667
+  offset 0 0.2 0
+  rotate 0 0 180
+}
+# effekseer: node 0 "Particle1": a random colour per particle: its mean used

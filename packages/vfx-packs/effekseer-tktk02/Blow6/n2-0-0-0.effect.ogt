@@ -1,0 +1,7 @@
+type effect
+version 1
+---
+# Effekseer node 2.0.0.0 "Ring"
+alpha curve 0 0 0.2 0.6667 0.2969 0.8698 0.4 1 1 0
+blend additive
+doubleSided true

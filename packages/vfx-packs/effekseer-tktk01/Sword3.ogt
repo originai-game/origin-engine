@@ -1,0 +1,57 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.0317
+emitter "vfx/effekseer-tktk01/Sword3/n0-0.emitter.ogt" {
+  at 0.0167
+}
+emitter "vfx/effekseer-tktk01/Sword3/n0-1.emitter.ogt" {
+  at 0.0167
+}
+emitter "vfx/effekseer-tktk01/Sword3/n0-2-0.emitter.ogt" {
+  at 0
+  offset 2.5 0 0
+  rotate 0 0 90
+}
+emitter "vfx/effekseer-tktk01/Sword3/n1-0.emitter.ogt" {
+  at 0.3333
+  rotate 0 0 -45
+}
+emitter "vfx/effekseer-tktk01/Sword3/n1-1-0-0.emitter.ogt" {
+  at 0.3333
+  offset 1 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Sword3/n1-2.emitter.ogt" {
+  at 0.3333
+  rotate 0 0 45
+}
+emitter "vfx/effekseer-tktk01/Sword3/n1-3.emitter.ogt" {
+  at 0.3333
+  rotate 0 0 -135
+}
+emitter "vfx/effekseer-tktk01/Sword3/n1-4.emitter.ogt" {
+  at 0.3333
+  rotate 0 0 135
+}
+emitter "vfx/effekseer-tktk01/Sword3/n1-5-0.emitter.ogt" {
+  at 0.3333
+  offset 1 0 0
+  rotate 0 0 -107.9523
+}
+# effekseer: node 0.0 "斬撃１": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0 "斬撃１": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1 "斬撃２": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.1 "斬撃２": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0 "粒収縮": a random colour per particle: its mean used
+# effekseer: node 1.0 "斬撃２右上": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0 "斬撃２右上": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.1.0.0 "粒収縮": a random colour per particle: its mean used
+# effekseer: node 1.2 "斬撃２左上": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.2 "斬撃２左上": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.3 "斬撃２右下": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.3 "斬撃２右下": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.4 "斬撃２左下": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.4 "斬撃２左下": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.5.0 "粒収縮": a random colour per particle: its mean used

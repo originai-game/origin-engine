@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 1.0.0.3 "Glow"
+main "vfx/effekseer-tktk02/textures/Particle02.png" rgba {
+}
+alpha curve 0 0 0.25 0.75 0.375 0.9375 0.5 1 1 0
+blend additive
+doubleSided true

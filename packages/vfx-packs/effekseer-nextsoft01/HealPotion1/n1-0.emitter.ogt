@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 1.0 "キラキラ"
+maxParticles 38
+shape point
+spread 180
+rate 0
+burst 0 1 30 0.0167
+duration 0.5
+looping false
+lifetime 0.5833 0.5833
+speed 0.6364 2.5456
+size 0.3 0.3
+colorOverLife {
+  key 0 0.4936 0.9879 0.6187 1
+  key 0.7143 0.4936 0.9879 0.6187 1
+  key 1 0.4936 0.9879 0.6187 0
+}
+angularVelocity -120 120
+gravity 0 -18 0
+texture "vfx/effekseer-nextsoft01/textures/kirakira.png"
+sheet 2 2 2 fps 20
+blend additive

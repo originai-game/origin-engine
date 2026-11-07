@@ -1,0 +1,60 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.75
+mesh ring {
+  at 0
+  rotate -90 0 -135
+  inner 0.5265
+  band 0
+  height 1.8956 0
+  colors 1 1 1 1 1 0.1275 0.017 1 1 1 1 1
+  life 1
+  effect "vfx/effekseer-nextsoft01/PowerUp/n0.effect.ogt"
+  scale curve 0 2 0.1562 1.7164 0.3281 1.5023 1 1
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.25
+  rotate -90 0 -45
+  inner 0.5265
+  band 0
+  height 1.8956 0
+  colors 1 1 1 1 1 0.1275 0.017 1 1 1 1 1
+  life 1
+  effect "vfx/effekseer-nextsoft01/PowerUp/n0.effect.ogt"
+  scale curve 0 2 0.1562 1.7164 0.3281 1.5023 1 1
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.5
+  rotate -90 0 45
+  inner 0.5265
+  band 0
+  height 1.8956 0
+  colors 1 1 1 1 1 0.1275 0.017 1 1 1 1 1
+  life 1
+  effect "vfx/effekseer-nextsoft01/PowerUp/n0.effect.ogt"
+  scale curve 0 2 0.1562 1.7164 0.3281 1.5023 1 1
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.75
+  rotate -90 0 135
+  inner 0.5265
+  band 0
+  height 1.8956 0
+  colors 1 1 1 1 1 0.1275 0.017 1 1 1 1 1
+  life 1
+  effect "vfx/effekseer-nextsoft01/PowerUp/n0.effect.ogt"
+  scale curve 0 2 0.1562 1.7164 0.3281 1.5023 1 1
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0 "Node": ring 6 instances: the first 4 drawn
+# effekseer: node 0 "Node": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0 "Node": a ring whose thickness changes over its life: its middle thickness kept

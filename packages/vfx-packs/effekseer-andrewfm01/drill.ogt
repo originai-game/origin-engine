@@ -1,0 +1,111 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 10
+loop true
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  height 5.3333 0
+  colors 0.2195 0 1 0 0.2195 0 1 1 0 0.2195 0.5356 1
+  life 16.6667
+  effect "vfx/effekseer-andrewfm01/drill/n0.effect.ogt"
+  scale 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  height 3.2 0
+  colors 0 0.2195 0.5356 0 0 0.2195 0.5356 0.502 0 1 1 1
+  life 16.6667
+  effect "vfx/effekseer-andrewfm01/drill/n1.effect.ogt"
+  scale 2.5
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-andrewfm01/drill/n2-0.emitter.ogt" {
+  at 0
+  offset 0 0 5
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  height 2 -0.0833
+  colors 0 0.2195 0.5356 0 0 0.2195 0.5356 0.502 0 0.2195 1 1
+  life 16.6667
+  effect "vfx/effekseer-andrewfm01/drill/n3.effect.ogt"
+  scale 6
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  height 2 -0.0833
+  colors 0 0 0 0 0 0 0 0.502 1 0.2195 0.0478 1
+  life 16.6667
+  effect "vfx/effekseer-andrewfm01/drill/n4.effect.ogt"
+  scale 6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  height 2 -0.0833
+  colors 0 1 1 0 0.2195 0 1 0.502 1 0.2195 0.0478 1
+  life 16.6667
+  effect "vfx/effekseer-andrewfm01/drill/n5.effect.ogt"
+  scale 6
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-andrewfm01/drill/n6.emitter.ogt" {
+  at 0
+  offset 0 1 0
+}
+emitter "vfx/effekseer-andrewfm01/drill/n7.emitter.ogt" {
+  at 0
+  offset 0 1 0
+}
+mesh ring {
+  at 0
+  inner 0.1333
+  band 0.5
+  height 2 0
+  colors 0.0619 0 0.2888 0 0.482 0.0023 0.7519 0.6745 0 1 1 0
+  life 16.6667
+  effect "vfx/effekseer-andrewfm01/drill/n8.effect.ogt"
+  scale 7.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.1333
+  band 0.5
+  height 2 0
+  colors 0.0478 0 0.2195 0 0.0029 0.1734 0.7372 0.502 1 1 1 0
+  life 16.6667
+  effect "vfx/effekseer-andrewfm01/drill/n9.effect.ogt"
+  scale 7.5
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 2.0 "Node": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 2.0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0 "Node": a random colour per particle: its mean used
+# effekseer: node 4 "Drill": subtractive blend: drawn alpha blended
+# effekseer: node 6 "Sparks": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 6 "Sparks": a random colour per particle: its mean used
+# effekseer: node 6 "Sparks": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 7 "Bright Sparks": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 7 "Bright Sparks": a sprite scaled unevenly: drawn square at its mean

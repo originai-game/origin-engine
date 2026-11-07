@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 5 "Lines"
+maxParticles 8
+shape point
+spread 0
+rate 0
+burst 0 1 15 0.0167
+duration 0.25
+looping false
+lifetime 0.0833 0.0833
+speed 0 0
+size 2 6
+colorOverLife {
+  key 0 0.2195 0.5295 0.9871 0.3765
+  key 0.8 0.2195 0.5295 0.9871 0.3765
+  key 1 0.2195 0.5295 0.9871 0
+}
+rotation -180 180
+angularVelocity -120 120
+texture "vfx/effekseer-magicalxspiral/textures/ShockWave3.png"
+blend additive

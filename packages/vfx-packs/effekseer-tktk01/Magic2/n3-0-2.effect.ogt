@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 3.0.2 "リング外枠"
+main "vfx/effekseer-tktk01/textures/Aurora.png" rgba {
+}
+blend additive
+doubleSided true

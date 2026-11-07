@@ -1,0 +1,18 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.8167
+emitter "vfx/effekseer-effekseer01/Simple_Ribbon_Parent/n0.emitter.ogt" {
+  at 0
+}
+trail {
+  at 0
+  life 0.8333
+  effect "vfx/effekseer-effekseer01/Simple_Ribbon_Parent/n0-0.effect.ogt"
+  width 1 0.25
+  lifetime 0.8333
+  color 1 1 1 1
+  orbit 0 0.8333
+}
+# effekseer: node 0.0 "Node": nested generation: 10 instances above its generator folded into one emitter

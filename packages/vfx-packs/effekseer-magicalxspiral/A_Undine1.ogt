@@ -1,0 +1,66 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.9833
+trail {
+  at 0
+  offset 0 0.75 0
+  rotate 90 89.972 0
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/A_Undine1/n0-0.effect.ogt"
+  width 2.25 0.5625
+  lifetime 0.25
+  color 0 0.0196 1 0.4183
+}
+trail {
+  at 0.0833
+  offset 0 0.75 0
+  rotate 90 89.972 0
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/A_Undine1/n0-1.effect.ogt"
+  width 2.25 0.5625
+  lifetime 0.25
+  color 0.0478 0.2195 1 0.7529
+}
+trail {
+  at 0.0833
+  offset 0 0.75 0
+  rotate 90 89.972 0
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/A_Undine1/n0-2.effect.ogt"
+  width 2.25 0.5625
+  lifetime 0.25
+  color 0.0478 0.2195 1 0.8366
+}
+trail {
+  at 0
+  offset 0 0.75 0
+  rotate 90 75 0
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/A_Undine1/n1-0.effect.ogt"
+  width 2.25 0.5625
+  lifetime 0.25
+  color 0 0.0196 1 0.4183
+}
+trail {
+  at 0
+  offset 0 0.75 0
+  rotate -90 75 -180
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/A_Undine1/n2-0.effect.ogt"
+  width 2.25 0.5625
+  lifetime 0.25
+  color 0 0.0196 1 0.4183
+}
+emitter "vfx/effekseer-magicalxspiral/A_Undine1/n3-0.emitter.ogt" {
+  at 0.1667
+  offset 0 0.75 1.75
+  rotate 0 -89.9802 0
+}
+emitter "vfx/effekseer-magicalxspiral/A_Undine1/n3-1.emitter.ogt" {
+  at 0.1667
+  offset 0 0.75 1.75
+  rotate 0 -89.9802 0
+}
+# effekseer: node 3.1 "Node": a random colour per particle: its mean used

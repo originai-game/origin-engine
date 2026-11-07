@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.1.0.0 "レンズフレアglow"
+main "vfx/effekseer-tktk01/textures/actionlines.png" rgba {
+  tile 1 0.9524
+}
+blend additive

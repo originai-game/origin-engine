@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 2 "衝撃波"
+main "vfx/effekseer-nextsoft01/textures/AuroraRing.png" rgba {
+}
+alpha curve 0 1 0.5 1 0.5781 0.9 0.75 0.8415 0.8281 0.7482 0.875 0.6342 0.9219 0.4602 1 0
+blend additive
+doubleSided true

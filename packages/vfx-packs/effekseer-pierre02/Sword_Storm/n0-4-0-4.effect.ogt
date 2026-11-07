@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.4.0.4 "EmberVariation"
+main "vfx/effekseer-pierre02/textures/Splash.png" rgba {
+  tile 0.5 0.5
+}
+blend alpha

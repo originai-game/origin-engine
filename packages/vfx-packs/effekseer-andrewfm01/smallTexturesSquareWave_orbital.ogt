@@ -1,0 +1,44 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 66.6667
+mesh ring {
+  at 0
+  inner 0.8
+  band 0.5
+  colors 1 0 1 0.0392 1 0 1 0.0392 1 0 0 0.0392
+  life 66.6667
+  effect "vfx/effekseer-andrewfm01/smallTexturesSquareWave_orbital/n0-0-0-0.effect.ogt"
+  scale 2
+  color 10 10 10 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.7143
+  band 0.5
+  colors 1 0.2195 0.0478 0.251 1 0.2195 0.0478 0.251 0.9658 0.6187 0.2508 0.251
+  life 66.6667
+  effect "vfx/effekseer-andrewfm01/smallTexturesSquareWave_orbital/n0-0-0-1.effect.ogt"
+  scale 1.4
+  color 10 10 10 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.125
+  band 0.5
+  colors 1 0 0 1 1 0.2195 0.0478 1 0.9658 0.6187 0.2508 1
+  life 66.6667
+  effect "vfx/effekseer-andrewfm01/smallTexturesSquareWave_orbital/n0-0-0-2.effect.ogt"
+  scale 0.8
+  color 10 10 10 1
+  blend additive
+}
+# effekseer: node 0.0.0.0 "Ring Outer": ring 10 instances: the first 4 drawn
+# effekseer: node 0.0.0.0 "Ring Outer": nested generation: 12 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.1 "Ring Center": ring 10 instances: the first 4 drawn
+# effekseer: node 0.0.0.1 "Ring Center": nested generation: 12 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.2 "Ring Inner": ring 10 instances: the first 4 drawn
+# effekseer: node 0.0.0.2 "Ring Inner": nested generation: 12 instances above its generator folded into one emitter

@@ -1,0 +1,7 @@
+type effect
+version 1
+---
+# Effekseer node 1 "Bloom1"
+alpha curve 0 1 0.6 1 1 0
+blend additive
+doubleSided true

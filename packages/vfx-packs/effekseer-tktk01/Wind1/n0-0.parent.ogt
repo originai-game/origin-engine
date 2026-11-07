@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 0 "風制御用親"
+maxParticles 7
+shape point
+spread 0
+rate 0
+burst 0 1 5 0.2
+duration 0.8167
+looping false
+lifetime 1.6667 1.6667
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-tktk01/Wind1/n0-0.emitter.ogt"

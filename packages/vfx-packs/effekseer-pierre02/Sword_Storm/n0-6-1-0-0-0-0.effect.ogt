@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.6.1.0.0.0.0 "WindTracker"
+main "vfx/effekseer-pierre02/textures/Line5.png" rgba {
+  tile 0.5 0.5
+}
+blend additive
+doubleSided true

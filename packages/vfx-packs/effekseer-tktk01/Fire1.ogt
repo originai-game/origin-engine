@@ -1,0 +1,26 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 4.25
+loop true
+emitter "vfx/effekseer-tktk01/Fire1/n0-0.emitter.ogt" {
+  at 0
+  move 0 0 11.4
+}
+emitter "vfx/effekseer-tktk01/Fire1/n0-0-0-0.parent.ogt" {
+  at 0
+  move 0 0 11.4
+  until 1.6667
+}
+emitter "vfx/effekseer-tktk01/Fire1/n0-0-0-0-0.parent.ogt" {
+  at 0
+  move 0 0 11.4
+}
+emitter "vfx/effekseer-tktk01/Fire1/n0-1.emitter.ogt" {
+  at 0
+  move 0 0 11.4
+}
+# effekseer: node 0.0.0.0 "火尻尾": nested generation: 2 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0 "火尻尾": nested generation: 16 instances above its generator folded into one emitter
+# effekseer: node 0.1 "火メイン": a fixed sprite with many instances: drawn facing the camera

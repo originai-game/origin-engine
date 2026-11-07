@@ -1,0 +1,6 @@
+type effect
+version 1
+---
+# Effekseer node 0.0.0 "Blade"
+blend alpha
+doubleSided true

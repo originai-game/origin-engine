@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 1.0.0 "破裂"
+maxParticles 10
+shape point
+spread 0
+rate 0
+burst 0 1 8 0.0333
+duration 0.25
+looping false
+lifetime 0.3333 0.3333
+speed 0 0
+size 6 6
+sizeOverLife 0 0.1667 0.0781 0.3864 0.1719 0.5932 0.2656 0.7458 0.375 0.8663 0.4688 0.9297 0.5781 0.9687 1 1
+colorOverLife {
+  key 0 0.2195 1 0.2195 1
+  key 1 0.2195 1 0.2195 0
+}
+rotation -60 60
+texture "vfx/effekseer-tktk01/textures/Wind.png"
+blend additive

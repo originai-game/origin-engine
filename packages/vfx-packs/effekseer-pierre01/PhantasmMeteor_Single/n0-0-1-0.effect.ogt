@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.0.1.0 "BackSmoke"
+main "vfx/effekseer-pierre01/textures/Smoke.png" rgba {
+  tile 0.5 0.5
+  offset 0 0.5
+}
+blend alpha

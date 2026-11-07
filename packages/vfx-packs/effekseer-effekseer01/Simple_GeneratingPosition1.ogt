@@ -1,0 +1,10 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.1678
+emitter "vfx/effekseer-effekseer01/Simple_GeneratingPosition1/n0.emitter.ogt" {
+  at 0
+}
+# effekseer: node 0 "Flash": a y-axis billboard: drawn facing the camera
+# effekseer: node 0 "Flash": motion out from a circle: approximated along one direction

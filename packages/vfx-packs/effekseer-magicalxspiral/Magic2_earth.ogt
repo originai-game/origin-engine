@@ -1,0 +1,12 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.4833
+emitter "vfx/effekseer-magicalxspiral/Magic2_earth/n0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/Magic2_earth/n1.emitter.ogt" {
+  at 0
+}
+# effekseer: node 1 "Particle": a random colour per particle: its mean used

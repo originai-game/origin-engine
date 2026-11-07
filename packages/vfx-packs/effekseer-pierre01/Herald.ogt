@@ -1,0 +1,740 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.0833
+emitter "vfx/effekseer-pierre01/Herald/n0-0-0.emitter.ogt" {
+  at 0
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-1.emitter.ogt" {
+  at 0
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-2.emitter.ogt" {
+  at 0
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-3.emitter.ogt" {
+  at 0.0833
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-4.emitter.ogt" {
+  at 0.1667
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-5.emitter.ogt" {
+  at 0.1667
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-6.emitter.ogt" {
+  at 0.2
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-7.emitter.ogt" {
+  at 0.2333
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-8.emitter.ogt" {
+  at 0.2667
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-9.emitter.ogt" {
+  at 0.1667
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-10.emitter.ogt" {
+  at 0.1667
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-11.emitter.ogt" {
+  at 0.1667
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-12.emitter.ogt" {
+  at 0.1667
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-13.emitter.ogt" {
+  at 0.0833
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-14.emitter.ogt" {
+  at 0.1667
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-15.emitter.ogt" {
+  at 0.1667
+  offset 0 4 0
+}
+emitter "vfx/effekseer-pierre01/Herald/n0-0-15-0.emitter.ogt" {
+  at 0.1667
+  offset 0 4 0
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 0.25
+  rotate -9 0.75 180
+  inner 0.97
+  band 0.5
+  height 0 2
+  colors 0.7519 0.7519 1 0 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0.effect.ogt"
+  scale curve 0 0.0071 0.2188 0.1867 0.3281 0.2356 0.4531 0.2583 0.5781 0.2456 0.6875 0.2053 0.9531 0.0047 1 0.059
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 0.25
+  rotate -3 -1.75 0
+  inner 0.97
+  band 0.5
+  height 0 2
+  colors 0.7519 0.7519 1 0 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0.effect.ogt"
+  scale curve 0 0.0071 0.2188 0.1867 0.3281 0.2356 0.4531 0.2583 0.5781 0.2456 0.6875 0.2053 0.9531 0.0047 1 0.059
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 0.25
+  rotate 3 -4.25 -180
+  inner 0.97
+  band 0.5
+  height 0 2
+  colors 0.7519 0.7519 1 0 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0.effect.ogt"
+  scale curve 0 0.0071 0.2188 0.1867 0.3281 0.2356 0.4531 0.2583 0.5781 0.2456 0.6875 0.2053 0.9531 0.0047 1 0.059
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.3583
+  offset 0 4 0.25
+  rotate 9 -6.75 0
+  inner 0.97
+  band 0.5
+  height 0 2
+  colors 0.7519 0.7519 1 0 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0.effect.ogt"
+  scale curve 0 0.0071 0.2188 0.1867 0.3281 0.2356 0.4531 0.2583 0.5781 0.2456 0.6875 0.2053 0.9531 0.0047 1 0.059
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9485
+  band 0.5
+  height 0 2.0619
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0.effect.ogt"
+  scale 0.97
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9485
+  band 0.5
+  height 0 2.0619
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0.effect.ogt"
+  scale 0.97
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9485
+  band 0.5
+  height 0 2.0619
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0.effect.ogt"
+  scale 0.97
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.3583
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9485
+  band 0.5
+  height 0 2.0619
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0.effect.ogt"
+  scale 0.97
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9239
+  band 0.5
+  height 0 2.1739
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0.effect.ogt"
+  scale 0.92
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9239
+  band 0.5
+  height 0 2.1739
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0.effect.ogt"
+  scale 0.92
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9239
+  band 0.5
+  height 0 2.1739
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0.effect.ogt"
+  scale 0.92
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.3583
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9239
+  band 0.5
+  height 0 2.1739
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0.effect.ogt"
+  scale 0.92
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8824
+  band 0.5
+  height 0 2.3529
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0.effect.ogt"
+  scale 0.85
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8824
+  band 0.5
+  height 0 2.3529
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0.effect.ogt"
+  scale 0.85
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8824
+  band 0.5
+  height 0 2.3529
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0.effect.ogt"
+  scale 0.85
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.3583
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8824
+  band 0.5
+  height 0 2.3529
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0.effect.ogt"
+  scale 0.85
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8
+  band 0.5
+  height 0 2.6667
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0.effect.ogt"
+  scale 0.75
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8
+  band 0.5
+  height 0 2.6667
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0.effect.ogt"
+  scale 0.75
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8
+  band 0.5
+  height 0 2.6667
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0.effect.ogt"
+  scale 0.75
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.3583
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8
+  band 0.5
+  height 0 2.6667
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0.effect.ogt"
+  scale 0.75
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.6667
+  band 0.5
+  height 0 3.3333
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0.effect.ogt"
+  scale 0.6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.6667
+  band 0.5
+  height 0 3.3333
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0.effect.ogt"
+  scale 0.6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.6667
+  band 0.5
+  height 0 3.3333
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0.effect.ogt"
+  scale 0.6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.3583
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.6667
+  band 0.5
+  height 0 3.3333
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0.effect.ogt"
+  scale 0.6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0
+  band 0.5
+  height 0 2.5
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0-0.effect.ogt"
+  scale 0.4
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0
+  band 0.5
+  height 0 2.5
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0-0.effect.ogt"
+  scale 0.4
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0
+  band 0.5
+  height 0 2.5
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0-0.effect.ogt"
+  scale 0.4
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.3583
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0
+  band 0.5
+  height 0 2.5
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0-0.effect.ogt"
+  scale 0.4
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 0.25
+  rotate -0.3333 3.3333 -150
+  inner 0.97
+  band 0.5
+  height 0 2
+  colors 0.7519 0.7519 1 0 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0.effect.ogt"
+  scale curve 0 0.005 0.2344 0.1929 0.4531 0.2558 0.5781 0.2431 0.7031 0.1949 0.8281 0.1113 0.9375 0.009 1 0.0616
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 0.25
+  rotate 3 0 90
+  inner 0.97
+  band 0.5
+  height 0 2
+  colors 0.7519 0.7519 1 0 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0.effect.ogt"
+  scale curve 0 0.005 0.2344 0.1929 0.4531 0.2558 0.5781 0.2431 0.7031 0.1949 0.8281 0.1113 0.9375 0.009 1 0.0616
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 0.25
+  rotate 6.3333 -3.3333 -30
+  inner 0.97
+  band 0.5
+  height 0 2
+  colors 0.7519 0.7519 1 0 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0.effect.ogt"
+  scale curve 0 0.005 0.2344 0.1929 0.4531 0.2558 0.5781 0.2431 0.7031 0.1949 0.8281 0.1113 0.9375 0.009 1 0.0616
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9485
+  band 0.5
+  height 0 2.0619
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0.effect.ogt"
+  scale 0.97
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9485
+  band 0.5
+  height 0 2.0619
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0.effect.ogt"
+  scale 0.97
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9485
+  band 0.5
+  height 0 2.0619
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0.effect.ogt"
+  scale 0.97
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9239
+  band 0.5
+  height 0 2.1739
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0.effect.ogt"
+  scale 0.92
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9239
+  band 0.5
+  height 0 2.1739
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0.effect.ogt"
+  scale 0.92
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.9239
+  band 0.5
+  height 0 2.1739
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0.effect.ogt"
+  scale 0.92
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8824
+  band 0.5
+  height 0 2.3529
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0.effect.ogt"
+  scale 0.85
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8824
+  band 0.5
+  height 0 2.3529
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0.effect.ogt"
+  scale 0.85
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8824
+  band 0.5
+  height 0 2.3529
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0.effect.ogt"
+  scale 0.85
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8
+  band 0.5
+  height 0 2.6667
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0.effect.ogt"
+  scale 0.75
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8
+  band 0.5
+  height 0 2.6667
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0.effect.ogt"
+  scale 0.75
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.8
+  band 0.5
+  height 0 2.6667
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0.effect.ogt"
+  scale 0.75
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.6667
+  band 0.5
+  height 0 3.3333
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0-0.effect.ogt"
+  scale 0.6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.175
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.6667
+  band 0.5
+  height 0 3.3333
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0-0.effect.ogt"
+  scale 0.6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2667
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0.6667
+  band 0.5
+  height 0 3.3333
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0-0.effect.ogt"
+  scale 0.6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 4 1.9
+  rotate 0 0 -90
+  inner 0
+  band 0.5
+  height 0 2.5
+  colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
+  life 1.5
+  effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0-0-0.effect.ogt"
+  scale 0.4
+  color 1 1 1 1
+  blend alpha
+}
+# effekseer: node 0.0.2 "Ray": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.3 "DarkEye": subtractive blend: drawn alpha blended
+# effekseer: node 0.0.9 "CosmosSmokeVariation": a random colour per particle: its mean used
+# effekseer: node 0.0.10 "CosmosSmokeVariation": a random colour per particle: its mean used
+# effekseer: node 0.0.11 "CosmosSmokeVariation": a random colour per particle: its mean used
+# effekseer: node 0.0.12 "CosmosSmokeVariation": a random colour per particle: its mean used
+# effekseer: node 0.0.13 "DarkEye": subtractive blend: drawn alpha blended
+# effekseer: node 0.1.6 "DarkEye": subtractive blend: drawn alpha blended
+# effekseer: more than 64 elements: the last 8 left out

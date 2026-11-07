@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 3.2 "グロー"
+maxParticles 4
+shape point
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.4167 0.4167
+speed 0 0
+size 25 25
+sizeOverLife 0 0.2 0.0781 0.4076 0.1562 0.5681 0.2344 0.6878 0.3281 0.7862 0.4688 0.8641 0.8281 0.916 1 1
+colorOverLife {
+  key 0 0.1275 1 1 0.2353
+  key 1 0.1275 1 1 0
+}
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

@@ -1,0 +1,23 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 4.2667
+emitter "vfx/effekseer-effekseer01/Homing_Laser01/n0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-effekseer01/Homing_Laser01/n1.emitter.ogt" {
+  at 0
+  rotate 0 0 180
+}
+trail {
+  at 0
+  life 2.9833
+  effect "vfx/effekseer-effekseer01/Homing_Laser01/n1-0.effect.ogt"
+  width 1 0.25
+  lifetime 0.6667
+  color 0.9828 0.482 0.9574 1
+}
+# effekseer: node 1 "LaserHead": attraction to the target
+# effekseer: node 1.0 "LaserTrack": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0 "LaserTrack": nested generation: 20 instances above its generator folded into one emitter

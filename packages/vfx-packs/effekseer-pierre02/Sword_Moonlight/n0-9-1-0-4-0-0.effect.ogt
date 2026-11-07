@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.9.1.0.4.0.0 "SparkTracker"
+main "vfx/effekseer-pierre02/textures/Particle_Hard.png" rgba {
+}
+blend additive
+doubleSided true

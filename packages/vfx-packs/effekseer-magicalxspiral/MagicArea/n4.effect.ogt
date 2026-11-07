@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 4 "Node"
+main "vfx/effekseer-magicalxspiral/textures/fireline2.png" rgba {
+}
+blend additive
+doubleSided true

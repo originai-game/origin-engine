@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.0 "Sigh"
+maxParticles 9
+shape point
+spread 64.7606
+rate 0
+burst 0 1 18 0.0833
+duration 1.4333
+looping false
+lifetime 0.25 0.75
+speed 5.6285 8.8182
+size 7 7
+sizeOverLife 0 0.5714 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.1667 1 1 1 0.0314
+  key 0.5 1 1 1 0.0314
+  key 1 1 1 1 0
+}
+rotation -360 360
+angularVelocity -180 180
+texture "vfx/effekseer-pierre01/textures/Smoke.png"
+blend alpha
+effect "vfx/effekseer-pierre01/MonsterRoar/n0-1-0.effect.ogt"

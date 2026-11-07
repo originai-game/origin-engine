@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.7.0.0.0.2.0.0.6 "CloudLighting_Variation3"
+maxParticles 45
+shape box 1.5 6 1.5
+spread 0
+rate 0
+burst 0 12 3 0.25
+duration 0.5167
+looping false
+lifetime 2.5 4.5
+speed 0 0
+size 24 24
+colorOverLife {
+  key 0 0.0658 0.0915 0.259 0
+  key 0.1429 0.0658 0.0915 0.259 0.1255
+  key 0.7143 0.0658 0.0915 0.259 0.1255
+  key 1 0.0658 0.0915 0.259 0
+}
+rotation 150 210
+angularVelocity -6 6
+texture "vfx/effekseer-pierre02/textures/Smoke_Lighting.png"
+blend additive
+effect "vfx/effekseer-pierre02/Sword_Lightning/n0-7-0-0-0-2-0-0-6.effect.ogt"

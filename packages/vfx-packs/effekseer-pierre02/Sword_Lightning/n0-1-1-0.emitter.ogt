@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.1.0 "EmberVariation"
+maxParticles 4
+shape box 0.25 1.2 0.25
+spread 54.7356
+rate 2
+duration 1
+looping true
+lifetime 0.1667 0.8333
+speed 2.0785 3.9799
+size 1 1
+sizeOverLife 0 0.3 0.2188 0.501 0.4531 0.6814 0.7031 0.8416 1 1
+colorOverLife {
+  key 0 0.0478 0.2195 1 0
+  key 0.2 0.0478 0.2195 1 0.6255
+  key 0.3 0.0478 0.2195 1 0.6255
+  key 1 0.0478 0.2195 1 0
+}
+rotation -30 30
+angularVelocity -60 60
+gravity -0.2112 -1.2619 -0.6608
+texture "vfx/effekseer-pierre02/textures/Splash.png"
+blend additive
+effect "vfx/effekseer-pierre02/Sword_Lightning/n0-1-1-0.effect.ogt"

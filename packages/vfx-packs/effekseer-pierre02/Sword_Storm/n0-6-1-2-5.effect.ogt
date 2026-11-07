@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.6.1.2.5 "Fire_Variation1"
+main "vfx/effekseer-pierre02/textures/Fire.png" rgba {
+  tile 0.5 0.5
+  offset 0.5 0
+}
+blend additive

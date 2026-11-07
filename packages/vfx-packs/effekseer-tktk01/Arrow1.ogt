@@ -1,0 +1,194 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.4542
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-0-0.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+  orbit 0 1.2
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-0-1.effect.ogt"
+  width 0.5 0.5
+  lifetime 0.1667
+  color 1 0 0 1
+  orbit 0 1.2
+}
+emitter "vfx/effekseer-tktk01/Arrow1/n0-0-2-0.emitter.ogt" {
+  at 0
+  move 0 0 24
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-1-0.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+  orbit 0 1.2
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-1-1.effect.ogt"
+  width 0.5 0.5
+  lifetime 0.1667
+  color 1 0.2195 0.0478 1
+  orbit 0 1.2
+}
+emitter "vfx/effekseer-tktk01/Arrow1/n0-1-2-0.emitter.ogt" {
+  at 0
+  move 0 0 24
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-2-0.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+  orbit 0 1.2
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-2-1.effect.ogt"
+  width 0.5 0.5
+  lifetime 0.1667
+  color 1 1 0 1
+  orbit 0 1.2
+}
+emitter "vfx/effekseer-tktk01/Arrow1/n0-2-2-0.emitter.ogt" {
+  at 0
+  move 0 0 24
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-3-0.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+  orbit 0 1.2
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-3-1.effect.ogt"
+  width 0.5 0.5
+  lifetime 0.1667
+  color 0 1 0 1
+  orbit 0 1.2
+}
+emitter "vfx/effekseer-tktk01/Arrow1/n0-3-2-0.emitter.ogt" {
+  at 0
+  move 0 0 24
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-4-0.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+  orbit 0 1.2
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-4-1.effect.ogt"
+  width 0.5 0.5
+  lifetime 0.1667
+  color 0 1 1 1
+  orbit 0 1.2
+}
+emitter "vfx/effekseer-tktk01/Arrow1/n0-4-2-0.emitter.ogt" {
+  at 0
+  move 0 0 24
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-5-0.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+  orbit 0 1.2
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-5-1.effect.ogt"
+  width 0.5 0.5
+  lifetime 0.1667
+  color 0 0 1 1
+  orbit 0 1.2
+}
+emitter "vfx/effekseer-tktk01/Arrow1/n0-5-2-0.emitter.ogt" {
+  at 0
+  move 0 0 24
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-6-0.effect.ogt"
+  width 0.5 0.125
+  lifetime 0.1667
+  color 1 1 1 1
+  orbit 0 1.2
+}
+trail {
+  at 0
+  rotate 90 0 0
+  life 0.1667
+  effect "vfx/effekseer-tktk01/Arrow1/n0-6-1.effect.ogt"
+  width 0.5 0.5
+  lifetime 0.1667
+  color 0.2195 0 1 1
+  orbit 0 1.2
+}
+emitter "vfx/effekseer-tktk01/Arrow1/n0-6-2-0.emitter.ogt" {
+  at 0
+  move 0 0 24
+}
+# effekseer: node 0.0.0 "矢中心": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.1 "矢中心glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.1 "矢中心glow": a track of many instances: one trail drawn
+# effekseer: node 0.1.0 "矢中心": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.1.1 "矢中心glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.1.1 "矢中心glow": a track of many instances: one trail drawn
+# effekseer: node 0.2.0 "矢中心": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.1 "矢中心glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.1 "矢中心glow": a track of many instances: one trail drawn
+# effekseer: node 0.3.0 "矢中心": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.1 "矢中心glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.1 "矢中心glow": a track of many instances: one trail drawn
+# effekseer: node 0.4.0 "矢中心": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.4.1 "矢中心glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.4.1 "矢中心glow": a track of many instances: one trail drawn
+# effekseer: node 0.5.0 "矢中心": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.5.1 "矢中心glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.5.1 "矢中心glow": a track of many instances: one trail drawn
+# effekseer: node 0.6.0 "矢中心": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.6.1 "矢中心glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.6.1 "矢中心glow": a track of many instances: one trail drawn

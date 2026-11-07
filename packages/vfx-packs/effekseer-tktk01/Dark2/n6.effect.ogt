@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 6 "魔法陣衝撃用グロー"
+main "vfx/effekseer-tktk01/textures/Shock_wave_ring001.png" rgba {
+  tile 8 0.7812
+}
+blend additive
+doubleSided true

@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 3 "上昇ライン"
+maxParticles 75
+shape spline 0 0 -1.5  -1.0607 0 -1.0607  -1.5 0 0  -1.0607 0 1.0607  0 0 1.5  1.0607 0 1.0607  1.5 0 0  1.0607 0 -1.0607 closed
+spread 0
+rate 240
+duration 0.25
+looping false
+lifetime 0.4167 0.5833
+speed 4 12
+speedOverLife 0 3.6952 0.25 1.7411 0.375 1.0269 0.5 0.5001 0.625 0.1608 0.75 0.0091 0.875 0.0448 1 0.2582
+size 2 2
+sizeOverLife 0 1 0.3438 0.6674 0.875 0.2414 0.9688 0.1205 0.9844 0.0853 1 0
+colorOverLife {
+  key 0 1 1 1 1
+  key 1 1 1 1 1
+}
+texture "vfx/effekseer-tktk01/textures/rainnaka.png"
+blend additive

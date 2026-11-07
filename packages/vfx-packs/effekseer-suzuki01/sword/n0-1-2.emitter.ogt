@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.2 "Splash"
+maxParticles 38
+shape point
+spread 81.9505
+rate 300
+duration 0.1
+looping false
+lifetime 0.3333 0.3333
+speed 42.8486 68.6731
+size 0.5 0.5
+sizeOverLife 0 1 1 0
+colorOverLife {
+  key 0 1 0.047 0 1
+  key 1 1 0.047 0 1
+}
+gravity 0 -360 0
+texture "vfx/effekseer-suzuki01/textures/Particle01.png"
+blend additive

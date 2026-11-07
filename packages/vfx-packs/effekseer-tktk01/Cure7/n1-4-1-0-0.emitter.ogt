@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 1.4.1.0.0 "星グロー"
+maxParticles 32
+shape box 0.001 0.25 0.001
+spread 0
+rate 240
+duration 0.1042
+looping false
+lifetime 0.6667 0.6667
+speed 0 3
+speedOverLife 0 2.1308 0.25 1.3814 0.5 0.8473 0.75 0.5423 1 0.4657
+size 1.25 1.25
+sizeOverLife 0 0 0.25 1 0.5 0 1 0
+colorOverLife {
+  key 0 1 1 0.3112 0
+  key 0.25 1 1 0.4368 0.1961
+  key 0.5 1 1 0.586 0
+  key 1 1 1 0.586 0
+}
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

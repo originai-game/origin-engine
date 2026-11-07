@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 4.0 "Node"
+main "vfx/effekseer-magicalxspiral/textures/Hammer1.png" rgba {
+}
+alpha curve 0 0 0.2 1 0.8 1 1 0
+blend alpha
+doubleSided true

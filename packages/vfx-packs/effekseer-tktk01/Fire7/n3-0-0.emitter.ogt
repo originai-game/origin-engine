@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 3.0.0 "火尻尾"
+maxParticles 439
+shape point
+spread 19.4712
+rate 600
+duration 1
+looping true
+lifetime 0.25 0.9167
+speed 12.1218 17.6126
+speedOverLife 0 2.1308 0.25 1.3814 0.5 0.8473 0.75 0.5423 1 0.4657
+size 3.3333 3.3333
+sizeOverLife 0 0.5 1 1
+colorOverLife {
+  key 0 1 0.586 0.0278 0.3922
+  key 0.1094 1 0.4542 0.0215 0.3493
+  key 0.2344 1 0.3256 0.0154 0.3002
+  key 0.3594 1 0.22 0.0104 0.2512
+  key 0.4844 1 0.1365 0.0065 0.2022
+  key 0.6094 1 0.0741 0.0035 0.1532
+  key 0.7344 1 0.0317 0.0015 0.1042
+  key 1 1 0 0 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

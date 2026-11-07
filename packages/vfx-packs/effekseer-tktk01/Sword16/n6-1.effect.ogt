@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 6.1 "刃"
+main "vfx/effekseer-tktk01/textures/ezzi.png" rgba {
+}
+alpha curve 0 1 0.2 1 1 0
+blend alpha
+doubleSided true

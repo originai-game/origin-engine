@@ -1,0 +1,1564 @@
+{
+  "format": 1,
+  "engine": {
+    "version": "0.8.0",
+    "revision": "27b1a1d3b5f7c14d7fc4ed386ad897727e0b7ea3"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "e4a8b9d6b81ef13c10c47a8d6c190880d6d1c3a57028b814c39a49fd421d1847",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "actionLines_halo/n0.emitter.ogt",
+      "sha256": "b93141b2f0b00181587c37654b0f133f15fb3ff86b908412a330be535e68766e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_halo.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_halo/n1.effect.ogt",
+      "sha256": "3bb6b26ebd748451d5fc1ce14aeddf7804b948fd492d40ebc7226f63ab4de732",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_halo.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_halo.ogt",
+      "sha256": "8f540353d551af9a42815069bab2c216846c1b0b6999f0d959184105776c8991",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_halo.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_halo2/n0-0.emitter.ogt",
+      "sha256": "649e50dfae116467c5bf6d02af183d73caf741a522c966260ee7661f754fe4c7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_halo2.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_halo2/n1-0.emitter.ogt",
+      "sha256": "4b5d00b03f5db6da8377d6248fe3c8fe57ae7d86da4bc7234524d038361c747d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_halo2.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_halo2/n2-0.emitter.ogt",
+      "sha256": "2e9acbf14679743cc20de7e852af31dfe433c4fb896c77855a2ba5ef8688a178",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_halo2.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_halo2.ogt",
+      "sha256": "8bd9136e421369b6b5e5bfb5dea97ee294f661ab2069aec940d77bb8880ddffc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_halo2.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial/n0.effect.ogt",
+      "sha256": "d2ba922c37246bea8c661770b561cfeaa1d60c60d1e9768f1ec65f62885b62c6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial/n1.emitter.ogt",
+      "sha256": "216c8c1d3437521cc85b2eac107c1c3bc9fd18df042fbf4e3de60b3a9040b4dc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial/n2.effect.ogt",
+      "sha256": "bde58a8396c9a0703e1bbf86279d139fc9d583b3655b3bc95899025b1b8deade",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial/n3.effect.ogt",
+      "sha256": "84d4568b9f401a26ddb532afee3a0eea5c0d85d14007657aa2f05c527122e628",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial.ogt",
+      "sha256": "25c4e177d3e072aaa32636cd4e96ce412508d10d3f7d9870d0ea494dc0a5e973",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial2/n0.emitter.ogt",
+      "sha256": "8395343526dfe46a2233d082e7af7c3bd85b9913bbe0eb7a6eda48ec06da8fcd",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial2.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial2/n1.emitter.ogt",
+      "sha256": "1754e3f52feb709e00192878fbde100bc780e11f9e0b76837c01e954fc809dce",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial2.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial2/n2.effect.ogt",
+      "sha256": "aaa28b4c794a53d1c140b8f0348d3e8555a42244876300a0790f9455706a0b28",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial2.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial2/n3.effect.ogt",
+      "sha256": "da777171ca54a3f027816a50fb43ca33ebc85d309e61afb017675adf7c5579e0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial2.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_radial2.ogt",
+      "sha256": "36ab2afb0bcd2f5455d34347cb52955b9838cd3c273652a9f5b906cf4e38e5d4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_radial2.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_shockwave/n0.effect.ogt",
+      "sha256": "79a174c7f0e3c761d313b4733d6ffc08081482356c2ab8bb78082c8c6370d5ce",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_shockwave.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_shockwave/n1.effect.ogt",
+      "sha256": "11c5821e5b1944ef0f1110ddfd482e59d6afb99e4ff0f6e497014db46b9d38ab",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_shockwave.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_shockwave/n2.effect.ogt",
+      "sha256": "361f2633a0d1970d6ea2a592f5bdfb2ac8a0597a9cf2f6fa58560de62d5c5d9c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_shockwave.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_shockwave.ogt",
+      "sha256": "fa28f3cfabe73e75f864db97902d7f27679754bbd17ec4f0b4a51f323890c9b8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_shockwave.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_strip/n0.effect.ogt",
+      "sha256": "b39bcd75bd665c44582fee0d1d7fb8150b348bbd7b5934891a95655282b60b67",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_strip.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_strip/n1.effect.ogt",
+      "sha256": "f2be9fc010972a94649e822ce8b6611cff6462e5eaff2e6caf8c8644dcda58be",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_strip.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_strip/n2.effect.ogt",
+      "sha256": "f74de07b757002253fd228aa067a13c50b833a7539188a231aa49881833a5c17",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_strip.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_strip/n3.effect.ogt",
+      "sha256": "52fb31568d137352b3c7c1a821032390bcb255735da74c8f71209d27e80ec754",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_strip.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_strip/n4.effect.ogt",
+      "sha256": "b933ae4b75782573d12405f2b05c349e9e09ebcd8b897240bb1adee97437cd19",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_strip.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "actionLines_strip.ogt",
+      "sha256": "0604fb14136fc29e92796913e8628281348124da0cf5dcdfe02117f1fa2e86f7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/actionLines_strip.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n0.effect.ogt",
+      "sha256": "f4b359b2e671dcf8a643ae3c391e2fee0c92e93ecfa991922bd5d3f00eded690",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n1.effect.ogt",
+      "sha256": "308d89d6cb141fe176006715ce0ef627628462dbbda2dd906c827ffb3836d499",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n10.effect.ogt",
+      "sha256": "a5844f6c014c23fb929843a7b4081bc29c86772070ac4e0199b16c6dc846a50c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n11.emitter.ogt",
+      "sha256": "6f8e67862916704ddb6940d03a0939f20d0c4df9e771bad49fc482ec2a37988c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n2.emitter.ogt",
+      "sha256": "177d0d10f6c56301d1837b116cd483a3296b84d421cee5b5bb13bbdfd94b0f21",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n3-0.effect.ogt",
+      "sha256": "ddd5ae7440f1614fd775a0cebd29eeefa299943ae39670f5af977006c1b71d86",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n4.effect.ogt",
+      "sha256": "58bf3dc2aaeccf30544bd3c1e49e119e1002d2cfb2d361ae98c3410c3ddb6a32",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n5.effect.ogt",
+      "sha256": "25539996fd7e7a4eaf2aba94361ee260b79b2584989871efc232799d9eaa00b5",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n6.effect.ogt",
+      "sha256": "5e709a56c8eaf76938895dbe2e37f7831f70d088aba3999304f81ba16c9ce08c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n7.effect.ogt",
+      "sha256": "b0f76c1614228ba8755da4d266b490de626cd4478e348df668e7762bfad17710",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n8.effect.ogt",
+      "sha256": "82e3c93be0314b3b16f3d3202b22435ff9551d9125e198d4be5864489359aff1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser/n9.effect.ogt",
+      "sha256": "e2aa629c1344e85d9e90ff771f07fd3a12f044bba8f910c48cad31bb99977160",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "blue_laser.ogt",
+      "sha256": "b035e7b37cc64623eb649f33387cac1bb1bf87112f431d03c4523222c0046863",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/blue_laser.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "boss_death/n0-0.emitter.ogt",
+      "sha256": "bf0d7f481459ea85e0eb73f17361d607fdb39c2c787cf1b4d3d1eecf156f6d49",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/boss_death.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "boss_death/n0-1.effect.ogt",
+      "sha256": "a060ee2eb7f961c67908ad63ed50971022f29de3a439d5ea5df7066cbc3032fc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/boss_death.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "boss_death/n0-2.effect.ogt",
+      "sha256": "63dac93f3c1157642fafd728e2ca55f4395bdb5b9dfc4e9716493bb5600dc540",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/boss_death.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "boss_death/n0-3.emitter.ogt",
+      "sha256": "b37d94cb47c2654d6436826f6bcf72673343c1a8181994a4b83254573ee74e96",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/boss_death.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "boss_death/n0-4.emitter.ogt",
+      "sha256": "b416530e5be4cae4ba990d879eaa15ed837bc4a2d791500e006db8a16e8a98d2",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/boss_death.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "boss_death/n0-5-0.effect.ogt",
+      "sha256": "a041a926121eb1583e50db7430abb6ed96b745eb6d5b9e1b52f21c9207c593e9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/boss_death.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "boss_death.ogt",
+      "sha256": "cc7d62980d946b41b34fa73cc19e0e606f31decbe805bb716f280fef5b7831f0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/boss_death.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n0.effect.ogt",
+      "sha256": "7d76bbf60c00e9595f659ccec26261234dae0d1b753bf9a3e21374a39c076a80",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n1.effect.ogt",
+      "sha256": "741759a1daf35062ebc403a9f1f95868c61b814391b77847771072e14d501bcc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n2-0.emitter.ogt",
+      "sha256": "326fa1de076b5428651757d860f04bb8981df9aacf8f145e50da09032fbebba7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n3.effect.ogt",
+      "sha256": "e4d1f2bd2d5e80d2e77f43de7cc3d9a941d29e942a4783090a8bf24d55b2ef5e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n4.effect.ogt",
+      "sha256": "7ca2da66c4044fa65503ef2e5087bb42d1091bb257cdc917f1182dfcfb150db4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n5.effect.ogt",
+      "sha256": "54db520e1b4b0bd18597f7ea73f20a7799ef048a5e93e2da3124f5ac5fe862fd",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n6.emitter.ogt",
+      "sha256": "ee225852eb8cf0f3137f3cd9ac9def54c3b879285d818201811ba46a6a78423a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n7.emitter.ogt",
+      "sha256": "e5c723a0824f279f5e45828f0dd3db554681e5548d4b6b724344798ef96c6103",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n8.effect.ogt",
+      "sha256": "028c2def873bcb7a67fe744fc53460b682a79c9d4ec28ee829e621280f719eae",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill/n9.effect.ogt",
+      "sha256": "339126afecf5d4ad6dfa39191cff7144a552e3d359c68b5660e1536f0a1c089f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "drill.ogt",
+      "sha256": "011df9a41ff320356a0fe746f829565b492af1c577a490c90da28cf31fbe6b34",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/drill.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "electric_dust/n0-0-0.effect.ogt",
+      "sha256": "e9cd8ef1a3191092226acc1aa3cc73da9b51eec417d9da06af6d3c8f4e134110",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/electric_dust.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "electric_dust/n0-0.emitter.ogt",
+      "sha256": "23e5e32eff4576a6572a71badb9ef01278ad03de09e8d77f6ea2f20b5feedc5f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/electric_dust.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "electric_dust.ogt",
+      "sha256": "a600bd2f05db75ec8d17762ecd525d5f405d1989f06d549a4ba6117d5fe797cc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/electric_dust.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "extension.json",
+      "sha256": "fd382a1e7fd1a305e0a05423510e5dcf479883e71b35c64812a126223516e201",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "fire/n0.emitter.ogt",
+      "sha256": "3f78789e2b7401c8bdfbc58cd1da38dd163fc6e723756a4230ea5f41e1cefcb0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/fire.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "fire/n1.emitter.ogt",
+      "sha256": "ff043ffda29df52ca25ee05e8b11dec73917b95065893365eb38b47bc9c089f1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/fire.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "fire/n2.effect.ogt",
+      "sha256": "e6b4349dd14d21d53bcf825ca8aeb04290a5204681c7285a2616ad98fc4791a6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/fire.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "fire/n3.emitter.ogt",
+      "sha256": "219b92d8924b218f8e92046785963b7a15a270f32bbc826ac4894ddd17636d9f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/fire.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "fire/n4-0.emitter.ogt",
+      "sha256": "c3ef545a809cbe91be96cc4ff0b090fadd17b3579b1cf1268c3b9311a1106818",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/fire.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "fire/n4-0.parent.ogt",
+      "sha256": "f327aa2f3362c44c8e0d4615a833778af0cfde72fa54afc2fe63585673c17fe2",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/fire.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "fire/n4.emitter.ogt",
+      "sha256": "17deb98e813796293798d7b363d7b614824dcaf09d101afe8542672b3805a5fa",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/fire.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "fire.ogt",
+      "sha256": "affbdeef9acf754bc4de4af752c084782386e47e9255f464a42044336419ef35",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/fire.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "hit_eff/n0-0.effect.ogt",
+      "sha256": "9821c2f3fb96cbb86178ec82f12ae04731823948ba3cbe58d6cdb602851830a6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/hit_eff.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "hit_eff/n0-1.effect.ogt",
+      "sha256": "9f16b439423dbc1da89d524fb0282120a5d14fb6c6ad5913d2aacde2d3502d9a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/hit_eff.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "hit_eff/n0-2.emitter.ogt",
+      "sha256": "ade6282c160b1d187fd9ad727eee69ec9dd665c4cc508d125309d10985fd6826",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/hit_eff.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "hit_eff/n0-3.emitter.ogt",
+      "sha256": "0c1b626f92870685442436631d5df56bac3acd670c0b4a9bf81abb7383761d3f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/hit_eff.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "hit_eff/n1.effect.ogt",
+      "sha256": "89903ad2841ce2a2d8fd21c049ae3b069b368342c3fc38468b87be1772d3fbb5",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/hit_eff.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "hit_eff/n2.emitter.ogt",
+      "sha256": "948ae93c4f01d09fa6b18fadd2a2b7babfe757eb55e902036875dd647568246d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/hit_eff.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "hit_eff.ogt",
+      "sha256": "79ab23fb14e234bf2c319c0dd7193cd88c5ee32b6fce4ead49249ecff78e83b1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/hit_eff.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "magic_circle/n0.effect.ogt",
+      "sha256": "310c59f58676a1b06d14eab59f101a0bd83ee6e06967e534d061199b358dbfd3",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/magic_circle.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "magic_circle/n1.effect.ogt",
+      "sha256": "5cd4115cf719e40020a06fa069b0426287318c4e5c433345058b73f22204cada",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/magic_circle.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "magic_circle/n2.effect.ogt",
+      "sha256": "fb84ae41a6adb1d4f65241414512e1ce6d23bd0dcce4ba4bd39273a66f7bc0f0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/magic_circle.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "magic_circle/n3.effect.ogt",
+      "sha256": "1ff238b1cd82f69c23b7cb30208fb151e2259860cc9688aec317e34ae160fca6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/magic_circle.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "magic_circle/n4.effect.ogt",
+      "sha256": "21a299790e43ef6fa720e99477fcc6faa2da5b0399ea8332ac534246fc7bc217",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/magic_circle.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "magic_circle/n5.emitter.ogt",
+      "sha256": "9557096a2a31c2a601a5946c91ac1eb03200fb3ebf4259f4781b54190ced969b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/magic_circle.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "magic_circle/n6-0-0.effect.ogt",
+      "sha256": "fecd06757f5c3e32bcf5a8c2733b0ae50c198f06fda45f56af32195f680bb2a7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/magic_circle.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "magic_circle/n6-0-1.emitter.ogt",
+      "sha256": "a0c17d46671ef85e2ccbb66fda3104d13abecd62288833ac216bf46ac43c8d28",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/magic_circle.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "magic_circle.ogt",
+      "sha256": "ee0d5a13c2159e0c6b14e8384697738e96412af70182528bcf000850b7c27251",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/magic_circle.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesRibbon/n0-0.effect.ogt",
+      "sha256": "a489b38fb5db2e5a043186f2910eaa0b6a766fdaa68740ae653afa5273a36bde",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesRibbon.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesRibbon/n0-1.effect.ogt",
+      "sha256": "9308be61393a2a84053fbc1c4b3d5d650ca8fa33fdd31628b442a8c7cd4aa2db",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesRibbon.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesRibbon/n1-0.effect.ogt",
+      "sha256": "6ea1d7f1a5085a509f70356d16433116a79d46610b6f7f143366c8a60a7dc74d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesRibbon.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesRibbon/n2-0.effect.ogt",
+      "sha256": "a61021144e7e491396142dbccc8108700280367bc88f1ba8892ca29327b779c8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesRibbon.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesRibbon/n3-0.effect.ogt",
+      "sha256": "bb4a7521986e80d875926c822d232770bdef3457793f2a953805214ccf76deae",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesRibbon.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesRibbon/n4.effect.ogt",
+      "sha256": "6ecd3bfb5ef66120e12eddac0d5c216282ae16ab3091adf47904b8b7e2bde44e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesRibbon.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesRibbon.ogt",
+      "sha256": "01b045b526a45177da0a2d970f109a083f951dc0d61e0f957289fefed40aa24d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesRibbon.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesSquareWave_orbital/n0-0-0-0.effect.ogt",
+      "sha256": "0469e3ec9ab2a840391aa0b6e4afe44f4a8f6797f1d4a9c141991186545cd854",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesSquareWave_orbital.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesSquareWave_orbital/n0-0-0-1.effect.ogt",
+      "sha256": "5fdf5c731a3b6bcd13b7d968b07854698eb4c0e2ad21fcbcf958b76d48afcd7c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesSquareWave_orbital.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesSquareWave_orbital/n0-0-0-2.effect.ogt",
+      "sha256": "376076df0d96e36ff9be3b3facd9393dfe2554b7fbcc97588933be9b26beee37",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesSquareWave_orbital.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "smallTexturesSquareWave_orbital.ogt",
+      "sha256": "c547798bad5bc3bb4f97d178e38c39a333c400c7d069df74d14969d3f1f1c17e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/smallTexturesSquareWave_orbital.efkproj"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "textures/LaserMain02.png",
+      "sha256": "77b7b9c9286d5c7ab1b37d3a29ca5012332384e7616b157ef7ec6e34893902bc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/LaserMain02.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/Particle01.png",
+      "sha256": "3f7deb5b5be680af5cb2ae8c9092a2cd5f29b03dfb2f675d1c687e90e9232c53",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Particle01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/Shock_wave004.png",
+      "sha256": "f0b5e490aa05bbfd53d504bbf163da9f991871f9cafc7b7d402298cd3bb0a586",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Shock_wave004.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/Shock_wave_ring001.png",
+      "sha256": "2e2c9f53debf302dd5aabfb919a33547cd6b68da23331c81c383e5312e1f306f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Shock_wave_ring001.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/Shock_wave_ring001_long.png",
+      "sha256": "90be95a3a91c649ceb8395dd862de912e80bed555692c270c748d32f0bd1ddb8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Shock_wave_ring001_long.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/Shock_wave_ring002.png",
+      "sha256": "d4caa79ecd20257e70fede01ecf335661a57a15516e2e6b0cec00fbfc2d5ce88",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Shock_wave_ring002.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/Thunder01.png",
+      "sha256": "c16ecec1bd5dc9e18267b17ac70b6e0527851466d05d09e6b919a7887ce17f1d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Thunder01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/Wind01.png",
+      "sha256": "f82cfd6d0470f366370da95bbba3dcba8e8cf2be867f2fcc95a0d702c64a84fe",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Wind01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/actionlines.png",
+      "sha256": "d460c6aadb7f567837977f5d532a93b8bf100f349e534a24a25472e919df4b72",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/actionlines.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/aurora01.png",
+      "sha256": "242eac030abc48aa321fe10643cbb8b63cc16371f03f40b876b31527c9f87795",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/aurora01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/burst02_red.png",
+      "sha256": "3de7bf00cd370150259b263bd6f0581dbaa9002e1735fbf333f4fb257747e5ae",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/burst02_red.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/clockHand.png",
+      "sha256": "8976d47129ccf2bb1b11115c36d94ead5d8364d5dfb62cb1cda4735a1892fc23",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/clockHand.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/double-shockwave.png",
+      "sha256": "ed9e6699f107dd100db5b657502a36ef59fb145d0763f0918080f1e65c381026",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/double-shockwave.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/drillshi.png",
+      "sha256": "54d43003e1f366aa4ebf51a24ed959b891ffb6ae0d7e521b0e969d00b5569248",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/drillshi.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/eggzero.png",
+      "sha256": "5e0dd84e2eae54c1cd2be6191f9978755c0dd91a41a8cd2b5c8966c5e82f36e6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/eggzero.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/fire_tex.png",
+      "sha256": "2ecd447d184682ac144ecf3230c538e844e118acd30e46e5da17677b94740aac",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/fire_tex.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/glow.png",
+      "sha256": "eb9ed25e68e3a2fcf101584fba3d94eaf5313537930878f2915d90a35401b8a8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/glow.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/orb_colored.png",
+      "sha256": "eab4f75181d96b22082f91b31fc8ab2e474c14598c1f11d1af2676a2d5a62a80",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/orb_colored.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/ribbon01_trans.png",
+      "sha256": "105aef42a940951b759ee308624783fe8c9cf48b3b3338a3b00b5aa79b6b8429",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/ribbon01_trans.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/smoke_tex.png",
+      "sha256": "dccff4aa2a5ca47128886c0813405ba4ad38eed6645c2bc34c3170509360f0e4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/smoke_tex.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/squareWave.png",
+      "sha256": "d917ad45f7705283ad637acf6ff5f444b6802f24d973985b5fdc759271f9a3f6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/squareWave.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/squareWave03_192.png",
+      "sha256": "ee1f5b312ceee191722d124879c0cb605c781f83e64907652d25d8e6461679f9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/squareWave03_192.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/squareWave03_384.png",
+      "sha256": "4b21d026f43f611508ad61fee71796312632ded60904824ae82189242f08b7f0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/squareWave03_384.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    },
+    {
+      "path": "textures/starpart_.png",
+      "sha256": "3755d50108f2f85947be344bdb03479225793010704d75dc3d2b98f6ee951309",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/starpart_.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed"
+    }
+  ],
+  "effects": [
+    {
+      "path": "actionLines_halo.ogt",
+      "type": "vfx",
+      "title": "Action Lines Halo",
+      "loop": false,
+      "durationSeconds": 1.673,
+      "impact": false,
+      "category": "ui",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "ui"
+      ]
+    },
+    {
+      "path": "actionLines_halo2.ogt",
+      "type": "vfx",
+      "title": "Action Lines Halo 2",
+      "loop": false,
+      "durationSeconds": 1.683,
+      "impact": false,
+      "category": "ui",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "ui"
+      ]
+    },
+    {
+      "path": "actionLines_radial.ogt",
+      "type": "vfx",
+      "title": "Action Lines Radial",
+      "loop": false,
+      "durationSeconds": 1.673,
+      "impact": false,
+      "category": "ui",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "ui"
+      ]
+    },
+    {
+      "path": "actionLines_radial2.ogt",
+      "type": "vfx",
+      "title": "Action Lines Radial 2",
+      "loop": false,
+      "durationSeconds": 1.7,
+      "impact": false,
+      "category": "ui",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "ui"
+      ]
+    },
+    {
+      "path": "actionLines_shockwave.ogt",
+      "type": "vfx",
+      "title": "Action Lines Shockwave",
+      "loop": false,
+      "durationSeconds": 1.667,
+      "impact": false,
+      "category": "ui",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "ui"
+      ]
+    },
+    {
+      "path": "actionLines_strip.ogt",
+      "type": "vfx",
+      "title": "Action Lines Strip",
+      "loop": false,
+      "durationSeconds": 1.667,
+      "impact": false,
+      "category": "ui",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "ui"
+      ]
+    },
+    {
+      "path": "blue_laser.ogt",
+      "type": "vfx",
+      "title": "Blue Laser",
+      "loop": true,
+      "durationSeconds": 10,
+      "impact": false,
+      "category": "beam",
+      "keywords": [
+        "andrewfm01",
+        "beam",
+        "effekseer"
+      ]
+    },
+    {
+      "path": "boss_death.ogt",
+      "type": "vfx",
+      "title": "Boss Death",
+      "loop": true,
+      "durationSeconds": 7.917,
+      "impact": false,
+      "category": "explosion",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "explosion"
+      ]
+    },
+    {
+      "path": "drill.ogt",
+      "type": "vfx",
+      "title": "Drill",
+      "loop": true,
+      "durationSeconds": 10,
+      "impact": false,
+      "category": "magic-projectile",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "magic-projectile"
+      ]
+    },
+    {
+      "path": "electric_dust.ogt",
+      "type": "vfx",
+      "title": "Electric Dust",
+      "loop": false,
+      "durationSeconds": 3.4,
+      "impact": false,
+      "category": "smoke",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "lightning",
+        "smoke"
+      ],
+      "element": "lightning"
+    },
+    {
+      "path": "fire.ogt",
+      "type": "vfx",
+      "title": "Fire",
+      "loop": false,
+      "durationSeconds": 1,
+      "impact": false,
+      "category": "fire",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "fire"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "hit_eff.ogt",
+      "type": "vfx",
+      "title": "Hit Eff",
+      "loop": false,
+      "durationSeconds": 0.622,
+      "impact": false,
+      "category": "hit-spark",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "hit-spark"
+      ]
+    },
+    {
+      "path": "magic_circle.ogt",
+      "type": "vfx",
+      "title": "Magic Circle",
+      "loop": false,
+      "durationSeconds": 16.683,
+      "impact": false,
+      "category": "portal",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "portal"
+      ]
+    },
+    {
+      "path": "smallTexturesRibbon.ogt",
+      "type": "vfx",
+      "title": "Small Textures Ribbon",
+      "loop": false,
+      "durationSeconds": 1.017,
+      "impact": false,
+      "category": "magic-impact",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "magic-impact"
+      ]
+    },
+    {
+      "path": "smallTexturesSquareWave_orbital.ogt",
+      "type": "vfx",
+      "title": "Small Textures Square Wave Orbital",
+      "loop": false,
+      "durationSeconds": 66.667,
+      "impact": false,
+      "category": "magic-impact",
+      "keywords": [
+        "andrewfm01",
+        "effekseer",
+        "magic-impact"
+      ]
+    }
+  ]
+}

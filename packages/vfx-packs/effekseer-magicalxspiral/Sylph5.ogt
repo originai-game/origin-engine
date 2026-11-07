@@ -1,0 +1,113 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.7
+mesh ring {
+  at 0
+  rotate 0 0 105
+  inner 0.5
+  band 0.8
+  arc 264 12
+  colors 0 1 0 0 0 1 0 0.502 0 1 0 0
+  life 2.5
+  effect "vfx/effekseer-magicalxspiral/Sylph5/n0-0.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0667
+  rotate 0 0 105
+  inner 0.5
+  band 0.8
+  arc 264 12
+  colors 0 1 0 0 0 1 0 0.502 0 1 0 0
+  life 2.5
+  effect "vfx/effekseer-magicalxspiral/Sylph5/n0-0.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.1333
+  rotate 0 0 105
+  inner 0.5
+  band 0.8
+  arc 264 12
+  colors 0 1 0 0 0 1 0 0.502 0 1 0 0
+  life 2.5
+  effect "vfx/effekseer-magicalxspiral/Sylph5/n0-0.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2
+  rotate 0 0 105
+  inner 0.5
+  band 0.8
+  arc 264 12
+  colors 0 1 0 0 0 1 0 0.502 0 1 0 0
+  life 2.5
+  effect "vfx/effekseer-magicalxspiral/Sylph5/n0-0.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  rotate 0 0 105
+  inner 0.5
+  band 0.8
+  arc 264 12
+  colors 0 1 0 0 0 1 0 0.251 0 1 0 0
+  life 2.5
+  effect "vfx/effekseer-magicalxspiral/Sylph5/n0-1.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0667
+  rotate 0 0 105
+  inner 0.5
+  band 0.8
+  arc 264 12
+  colors 0 1 0 0 0 1 0 0.251 0 1 0 0
+  life 2.5
+  effect "vfx/effekseer-magicalxspiral/Sylph5/n0-1.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  rotate 0 0 105
+  inner 0.5
+  band 0.8
+  arc 264 12
+  colors 0 1 0 0 0 1 0 0.251 0 1 0 0
+  life 2.5
+  effect "vfx/effekseer-magicalxspiral/Sylph5/n0-1.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.2
+  rotate 0 0 105
+  inner 0.5
+  band 0.8
+  arc 264 12
+  colors 0 1 0 0 0 1 0 0.251 0 1 0 0
+  life 2.5
+  effect "vfx/effekseer-magicalxspiral/Sylph5/n0-1.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0 "Node": ring 24 instances: the first 4 drawn
+# effekseer: node 0.0 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.1 "Node": ring 24 instances: the first 4 drawn
+# effekseer: node 0.1 "Node": a camera-facing ring: drawn in its own plane

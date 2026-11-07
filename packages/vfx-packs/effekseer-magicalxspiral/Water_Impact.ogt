@@ -1,0 +1,102 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.65
+mesh ring {
+  at 0.05
+  inner 0
+  band 0.5
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Water_Impact/n0.effect.ogt"
+  scale curve 0 1.4 1 1.8
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0.6111
+  band 0.5
+  colors 0.5234 0.5356 1 0 0.5234 0.5356 1 0.3765 0.5234 0.5356 1 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Water_Impact/n1.effect.ogt"
+  scale curve 0 3.24 1 0
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Water_Impact/n2.emitter.ogt" {
+  at 0.0833
+}
+emitter "vfx/effekseer-magicalxspiral/Water_Impact/n3.emitter.ogt" {
+  at 0.05
+}
+mesh ring {
+  at 0.0167
+  inner 0
+  band 0.5
+  arc 180 180
+  colors 0.0478 0.2195 1 0 0.2195 0.2195 1 0.251 1 1 1 0.251
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Water_Impact/n4.effect.ogt"
+  scale 2
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  inner 0
+  band 0.5
+  arc 180 180
+  colors 0.0478 0.2195 1 0 0.2195 0.2195 1 0.251 1 1 1 0.251
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Water_Impact/n4.effect.ogt"
+  scale 2
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.05
+  inner 0
+  band 0.5
+  arc 180 180
+  colors 0.0478 0.2195 1 0 0.2195 0.2195 1 0.251 1 1 1 0.251
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Water_Impact/n4.effect.ogt"
+  scale 2
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.0667
+  inner 0
+  band 0.5
+  arc 180 180
+  colors 0.0478 0.2195 1 0 0.2195 0.2195 1 0.251 1 1 1 0.251
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Water_Impact/n4.effect.ogt"
+  scale 2
+  color 1 1 1 0.75
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Water_Impact/n5.emitter.ogt" {
+  at 0.0833
+}
+emitter "vfx/effekseer-magicalxspiral/Water_Impact/n6.emitter.ogt" {
+  at 0.0333
+}
+emitter "vfx/effekseer-magicalxspiral/Water_Impact/n7-0-0.emitter.ogt" {
+  at 0
+  move 0 6 0
+  accelerate 0 -36 0
+}
+# effekseer: node 0 "BG1": subtractive blend: drawn alpha blended
+# effekseer: node 0 "BG1": a camera-facing ring: drawn in its own plane
+# effekseer: node 1 "ShockWave1": a camera-facing ring: drawn in its own plane
+# effekseer: node 2 "Line1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3 "Line2": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4 "Water": ring 10 instances: the first 4 drawn
+# effekseer: node 4 "Water": a camera-facing ring: drawn in its own plane
+# effekseer: node 5 "Lines": a random colour per particle: its mean used
+# effekseer: node 5 "Lines": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 7.0.0 "Node": a random colour per particle: its mean used

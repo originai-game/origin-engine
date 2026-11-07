@@ -1,0 +1,44 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.6733
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_radial/n0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-andrewfm01/actionLines_radial/n1.emitter.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  inner 0.5
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_radial/n2.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0.6667
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_radial/n3.effect.ogt"
+  scale 1.5
+  color 1 1 1 1
+  blend alpha
+}
+# effekseer: node 1 "Lines": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1 "Lines": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "Lines": motion out from a circle: approximated along one direction

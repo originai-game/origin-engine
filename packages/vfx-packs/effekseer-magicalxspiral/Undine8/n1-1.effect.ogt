@@ -1,0 +1,12 @@
+type effect
+version 1
+---
+# Effekseer node 1.1 "Node"
+main "vfx/effekseer-magicalxspiral/textures/Water.png" rgba {
+  tile 4 1
+  offset 0 0.0625
+  scroll 1.875 0
+}
+alpha curve 0 0 0.1 1 0.9 1 1 0
+blend additive
+doubleSided true

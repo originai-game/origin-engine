@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# Effekseer node 3 "Charge"
+maxParticles 22
+shape point
+spread 180
+rate 120
+duration 0.5
+looping false
+lifetime 0.1333 0.1333
+speed 12.9904 51.9615
+size 9 9
+sizeOverLife 0 0.1111 1 1
+colorOverLife {
+  key 0 0.2195 0.2195 1 1
+  key 1 0.2195 0.2195 1 1
+}
+texture "vfx/effekseer-effekseer01/textures/Particle02.png"
+blend additive

@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 5 "ｉｎｔｅｒｖａｌ"
+maxParticles 4
+shape spline 0 2 0  -1.4142 1.4142 0  -2 0 0  -1.4142 -1.4142 0  0 -2 0  1.4142 -1.4142 0  2 0 0  1.4142 1.4142 0 closed
+spread 0
+rate 0
+burst 0 1 3 0.1
+duration 0.2167
+looping false
+lifetime 1.6667 1.6667
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-tktk02/Fire5/n5-0-0-0-1-0.emitter.ogt"

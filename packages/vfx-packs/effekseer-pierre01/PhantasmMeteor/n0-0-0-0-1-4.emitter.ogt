@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.0.1.4 "Dark"
+maxParticles 169
+shape point
+spread 0
+rate 0
+burst 0 3 9 0.0167
+duration 0.15
+looping false
+lifetime 1.1667 1.1667
+speed 0 0
+size 11.25 11.25
+sizeOverLife 0 0.5556 0.2188 0.6832 0.4531 0.7977 1 1
+colorOverLife {
+  key 0 1 0.7519 0.5356 0
+  key 0.2143 1 0.7519 0.5356 0.1255
+  key 0.5714 1 0.7519 0.5356 0.1255
+  key 1 1 0.7519 0.5356 0
+}
+rotation -360 360
+texture "vfx/effekseer-pierre01/textures/Smoke.png"
+blend alpha
+effect "vfx/effekseer-pierre01/PhantasmMeteor/n0-0-0-0-1-4.effect.ogt"

@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.2 "Wind_Sprite"
+maxParticles 215
+shape box 1.2 1.2 1.2
+spread 0
+rate 0
+burst 0 2 240 0.0167
+duration 4
+looping false
+lifetime 1.3333 1.5
+speed 0.6 1.8
+size 27.5 27.5
+sizeOverLife 0 0.0727 1 1
+colorOverLife {
+  key 0 0.5356 0.4423 0.2195 0
+  key 0.0588 0.5356 0.4423 0.2195 1
+  key 0.1765 0.5356 0.4423 0.2195 1
+  key 1 0.5356 0.4423 0.2195 0
+}
+gravity 13.9762 0 52.16
+texture "vfx/effekseer-pierre01/textures/Wind.png"
+blend alpha

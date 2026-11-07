@@ -1,0 +1,6 @@
+type effect
+version 1
+---
+# Effekseer node 1 "ヘックスメイン右"
+blend additive
+doubleSided true

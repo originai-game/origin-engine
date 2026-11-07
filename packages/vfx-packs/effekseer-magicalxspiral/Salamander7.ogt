@@ -1,0 +1,62 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.7167
+mesh ring {
+  at 0
+  rotate -90 0 -135
+  inner 0.2
+  band 0.5
+  height 2 -0.3
+  arc 210 120
+  colors 1 1 1 0 1 0.7482 0.7482 0.1255 1 1 1 0.1255
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander7/n9.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0167
+  rotate -90 0 -45
+  inner 0.2
+  band 0.5
+  height 2 -0.3
+  arc 210 120
+  colors 1 1 1 0 1 0.7482 0.7482 0.1255 1 1 1 0.1255
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander7/n9.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  rotate -90 0 45
+  inner 0.2
+  band 0.5
+  height 2 -0.3
+  arc 210 120
+  colors 1 1 1 0 1 0.7482 0.7482 0.1255 1 1 1 0.1255
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander7/n9.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  rotate -90 0 135
+  inner 0.2
+  band 0.5
+  height 2 -0.3
+  arc 210 120
+  colors 1 1 1 0 1 0.7482 0.7482 0.1255 1 1 1 0.1255
+  life 0.6667
+  effect "vfx/effekseer-magicalxspiral/Salamander7/n9.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 9 "FireCylinder2": ring 10 instances: the first 4 drawn

@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 5.0 "HalfRing"
+main "vfx/effekseer-magicalxspiral/textures/Fire2.png" rgba {
+}
+alpha curve 0 0 0.04 1 0.8 1 1 0
+blend additive
+doubleSided true

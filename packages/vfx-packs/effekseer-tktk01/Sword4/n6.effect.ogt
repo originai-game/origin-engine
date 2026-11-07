@@ -1,0 +1,7 @@
+type effect
+version 1
+---
+# Effekseer node 6 "〆リング２"
+alpha curve 0 1 0.28 1 1 0
+blend additive
+doubleSided true

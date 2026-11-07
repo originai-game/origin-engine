@@ -1,0 +1,19 @@
+type particles
+version 1
+---
+# Effekseer node 4.0 "最終星"
+maxParticles 92
+shape spline 0 0 6  -4.2426 0 4.2426  -6 0 0  -4.2426 0 -4.2426  0 0 -6  4.2426 0 -4.2426  6 0 0  4.2426 0 4.2426 closed
+spread 0
+rate 240
+duration 0.5
+looping false
+lifetime 0.15 0.45
+speed 9 27
+size 2 3
+colorOverLife {
+  key 0 1 1 1 1
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-tktk01/textures/star.png"
+blend additive

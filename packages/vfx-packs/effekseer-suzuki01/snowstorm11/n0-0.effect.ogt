@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.0 "move_curve"
+main "vfx/effekseer-suzuki01/textures/Burst01_2.png" rgba {
+}
+blend additive
+doubleSided true

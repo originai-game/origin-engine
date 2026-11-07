@@ -1,0 +1,552 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.2
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-0-0-0-0.parent.ogt" {
+  at 0.05
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-0-0-0-1.parent.ogt" {
+  at 0.05
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-1-0-0-0.parent.ogt" {
+  at 0.05
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-1-0-0-1.parent.ogt" {
+  at 0.05
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-1-0-0-1-0.parent.ogt" {
+  at 0.05
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-2-0-0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-2-0-0-0-1-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-2-1.parent.ogt" {
+  at 0
+}
+mesh ring {
+  at 0.0333
+  inner 0.8287
+  band 1
+  colors 1 0.4134 0.147 0 1 0.722 0.4892 0.502 1 0.4134 0.147 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-0-0-0-3.effect.ogt"
+  scale curve 0 1 0.125 1.6733 0.2188 2.1029 0.3125 2.4405 0.4219 2.713 0.5156 2.8528 0.6094 2.9245 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0667
+  inner 0.8287
+  band 1
+  colors 1 0.4134 0.147 0 1 0.722 0.4892 0.502 1 0.4134 0.147 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-0-0-0-3.effect.ogt"
+  scale curve 0 1 0.125 1.6733 0.2188 2.1029 0.3125 2.4405 0.4219 2.713 0.5156 2.8528 0.6094 2.9245 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1
+  inner 0.8287
+  band 1
+  colors 1 0.4134 0.147 0 1 0.722 0.4892 0.502 1 0.4134 0.147 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-0-0-0-3.effect.ogt"
+  scale curve 0 1 0.125 1.6733 0.2188 2.1029 0.3125 2.4405 0.4219 2.713 0.5156 2.8528 0.6094 2.9245 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  inner 0.8287
+  band 1
+  colors 1 0.4134 0.147 0 1 0.722 0.4892 0.502 1 0.4134 0.147 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-0-0-0-3.effect.ogt"
+  scale curve 0 1 0.125 1.6733 0.2188 2.1029 0.3125 2.4405 0.4219 2.713 0.5156 2.8528 0.6094 2.9245 1 3
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-4.emitter.ogt" {
+  at 0.05
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-5-0-0-0.parent.ogt" {
+  at 0.05
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-0-0-0-5-0-0-1.parent.ogt" {
+  at 0.05
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-1-0-0-0-0-0.emitter.ogt" {
+  at 1.1667
+  offset 4.5315 -4.2262 7.8489
+  rotate 28.3001 26.9462 -13.7122
+  move -54.3785 50.7142 -94.1863
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-1-0-0-0-0-1.emitter.ogt" {
+  at 1.1667
+  offset 4.5315 -4.2262 7.8489
+  rotate 28.3001 26.9462 -13.7122
+  move -54.3785 50.7142 -94.1863
+}
+trail {
+  at 1.1667
+  offset 4.5315 -4.2262 7.8489
+  rotate 28.3001 26.9462 -13.7122
+  move -54.3785 50.7142 -94.1863
+  life 0.1667
+  effect "vfx/effekseer-tktk02/Gun7/n0-1-0-0-0-0-2-0.effect.ogt"
+  width 1.3333 1.3333
+  lifetime 0.1667
+  color 1 1 1 1
+}
+trail {
+  at 1.1667
+  offset 4.5315 -4.2262 7.8489
+  rotate 28.3001 26.9462 -13.7122
+  move -54.3785 50.7142 -94.1863
+  life 0.1667
+  effect "vfx/effekseer-tktk02/Gun7/n0-1-0-0-0-0-2-1-0.effect.ogt"
+  width 6.6667 6.6667
+  lifetime 0.1667
+  color 1 1 1 1
+}
+mesh ring {
+  at 1.1833
+  offset 4.5315 -4.2262 7.8489
+  rotate 28.3001 26.9462 -148.7122
+  inner 0
+  band 0.5
+  height 1.6004 0
+  colors 1 0.2618 0.0781 0 1 0.5668 0.283 0.9176 1 0.2618 0.0781 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-1-0-0-0-1.effect.ogt"
+  scale curve 0 3 0.1094 6.247 0.2188 8.9839 0.3281 11.2591 0.4531 13.3564 0.5781 14.9866 0.7031 16.2224 1 18
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.185
+  offset 4.5315 -4.2262 7.8489
+  rotate 28.3001 26.9462 -58.7122
+  inner 0
+  band 0.5
+  height 1.6004 0
+  colors 1 0.2618 0.0781 0 1 0.5668 0.283 0.9176 1 0.2618 0.0781 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-1-0-0-0-1.effect.ogt"
+  scale curve 0 3 0.1094 6.247 0.2188 8.9839 0.3281 11.2591 0.4531 13.3564 0.5781 14.9866 0.7031 16.2224 1 18
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.1867
+  offset 4.5315 -4.2262 7.8489
+  rotate 28.3001 26.9462 31.2878
+  inner 0
+  band 0.5
+  height 1.6004 0
+  colors 1 0.2618 0.0781 0 1 0.5668 0.283 0.9176 1 0.2618 0.0781 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-1-0-0-0-1.effect.ogt"
+  scale curve 0 3 0.1094 6.247 0.2188 8.9839 0.3281 11.2591 0.4531 13.3564 0.5781 14.9866 0.7031 16.2224 1 18
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.1883
+  offset 4.5315 -4.2262 7.8489
+  rotate 28.3001 26.9462 121.2878
+  inner 0
+  band 0.5
+  height 1.6004 0
+  colors 1 0.2618 0.0781 0 1 0.5668 0.283 0.9176 1 0.2618 0.0781 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-1-0-0-0-1.effect.ogt"
+  scale curve 0 3 0.1094 6.247 0.2188 8.9839 0.3281 11.2591 0.4531 13.3564 0.5781 14.9866 0.7031 16.2224 1 18
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-2-0-0-0-0-0.emitter.ogt" {
+  at 1.1667
+  offset -4.5315 -4.2262 7.8489
+  rotate 28.3001 -26.9462 13.7122
+  move 54.3785 50.7142 -94.1863
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-2-0-0-0-0-1.emitter.ogt" {
+  at 1.1667
+  offset -4.5315 -4.2262 7.8489
+  rotate 28.3001 -26.9462 13.7122
+  move 54.3785 50.7142 -94.1863
+}
+trail {
+  at 1.1667
+  offset -4.5315 -4.2262 7.8489
+  rotate 28.3001 -26.9462 13.7122
+  move 54.3785 50.7142 -94.1863
+  life 0.1667
+  effect "vfx/effekseer-tktk02/Gun7/n0-2-0-0-0-0-2-0.effect.ogt"
+  width 1.3333 1.3333
+  lifetime 0.1667
+  color 1 1 1 1
+}
+trail {
+  at 1.1667
+  offset -4.5315 -4.2262 7.8489
+  rotate 28.3001 -26.9462 13.7122
+  move 54.3785 50.7142 -94.1863
+  life 0.1667
+  effect "vfx/effekseer-tktk02/Gun7/n0-2-0-0-0-0-2-1-0.effect.ogt"
+  width 6.6667 6.6667
+  lifetime 0.1667
+  color 1 1 1 1
+}
+mesh ring {
+  at 1.1833
+  offset -4.5315 -4.2262 7.8489
+  rotate 28.3001 -26.9462 -121.2878
+  inner 0
+  band 0.5
+  height 1.6004 0
+  colors 1 0.2618 0.0781 0 1 0.5668 0.283 0.9176 1 0.2618 0.0781 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-2-0-0-0-1.effect.ogt"
+  scale curve 0 3 0.1094 6.247 0.2188 8.9839 0.3281 11.2591 0.4531 13.3564 0.5781 14.9866 0.7031 16.2224 1 18
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.185
+  offset -4.5315 -4.2262 7.8489
+  rotate 28.3001 -26.9462 -31.2878
+  inner 0
+  band 0.5
+  height 1.6004 0
+  colors 1 0.2618 0.0781 0 1 0.5668 0.283 0.9176 1 0.2618 0.0781 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-2-0-0-0-1.effect.ogt"
+  scale curve 0 3 0.1094 6.247 0.2188 8.9839 0.3281 11.2591 0.4531 13.3564 0.5781 14.9866 0.7031 16.2224 1 18
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.1867
+  offset -4.5315 -4.2262 7.8489
+  rotate 28.3001 -26.9462 58.7122
+  inner 0
+  band 0.5
+  height 1.6004 0
+  colors 1 0.2618 0.0781 0 1 0.5668 0.283 0.9176 1 0.2618 0.0781 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-2-0-0-0-1.effect.ogt"
+  scale curve 0 3 0.1094 6.247 0.2188 8.9839 0.3281 11.2591 0.4531 13.3564 0.5781 14.9866 0.7031 16.2224 1 18
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.1883
+  offset -4.5315 -4.2262 7.8489
+  rotate 28.3001 -26.9462 148.7122
+  inner 0
+  band 0.5
+  height 1.6004 0
+  colors 1 0.2618 0.0781 0 1 0.5668 0.283 0.9176 1 0.2618 0.0781 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-2-0-0-0-1.effect.ogt"
+  scale curve 0 3 0.1094 6.247 0.2188 8.9839 0.3281 11.2591 0.4531 13.3564 0.5781 14.9866 0.7031 16.2224 1 18
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-3-0-0-0-0.emitter.ogt" {
+  at 1.3333
+  offset 0 0.5333 0
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-3-0-0-0-1.emitter.ogt" {
+  at 1.3333
+  offset 0 0.5333 0
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-3-0-0-0-1-0.emitter.ogt" {
+  at 1.3333
+  offset 0 0.5333 0
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-3-1.emitter.ogt" {
+  at 1.335
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-3-2.emitter.ogt" {
+  at 1.3333
+}
+trail {
+  at 1.3333
+  offset -0.2667 0.4619 0
+  rotate 0 0 30
+  move 0 -8.192 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-3-0-0-0-0.effect.ogt"
+  width 1.3333 1.3333
+  lifetime 0.25
+  color 1 1 1 1
+}
+trail {
+  at 1.3333
+  offset -0.2667 0.4619 0
+  rotate 0 0 30
+  move -9.2648 7.855 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-3-0-0-0-1-0.effect.ogt"
+  width 5.3333 5.3333
+  lifetime 0.3333
+  color 1 1 1 1
+}
+trail {
+  at 1.3333
+  offset -0.2667 0.4619 0
+  rotate 0 0 30
+  move -9.2648 7.855 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-3-0-0-0-1-1-0.effect.ogt"
+  width 13.3333 13.3333
+  lifetime 0.4167
+  color 1 1 1 1
+}
+emitter "vfx/effekseer-tktk02/Gun7/n0-3-4.emitter.ogt" {
+  at 1.335
+}
+mesh ring {
+  at 1.3333
+  inner 0
+  band 0
+  arc 268 4
+  colors 1 0.2026 0.0556 0 1 0.5906 0.3794 1 1 0.2026 0.0556 0
+  life 0.5833
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-5-0-0.effect.ogt"
+  scale curve 0 2.1333 0.1094 3.1724 0.2188 4.0482 0.3281 4.7762 0.4531 5.4474 0.7031 6.3645 1 6.9333
+  spin 0 0 102.8571
+  color 100 100 100 1
+  blend additive
+}
+mesh ring {
+  at 1.3333
+  inner 0.9833
+  band 0.9375
+  colors 1 0.2195 0.0619 0 1 0.6354 0.4396 1 1 0.2195 0.0619 0
+  life 0.5
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-6-0-0.effect.ogt"
+  scale curve 0 2.1333 0.0781 3.5394 0.1719 4.863 0.2656 5.8396 0.375 6.6109 0.4688 7.0167 0.5781 7.2664 1 7.4667
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.35
+  inner 0.9833
+  band 0.9375
+  colors 1 0.2195 0.0619 0 1 0.6354 0.4396 1 1 0.2195 0.0619 0
+  life 0.5
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-6-0-0.effect.ogt"
+  scale curve 0 2.1333 0.0781 3.5394 0.1719 4.863 0.2656 5.8396 0.375 6.6109 0.4688 7.0167 0.5781 7.2664 1 7.4667
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.3667
+  inner 0.9833
+  band 0.9375
+  colors 1 0.2195 0.0619 0 1 0.6354 0.4396 1 1 0.2195 0.0619 0
+  life 0.5
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-6-0-0.effect.ogt"
+  scale curve 0 2.1333 0.0781 3.5394 0.1719 4.863 0.2656 5.8396 0.375 6.6109 0.4688 7.0167 0.5781 7.2664 1 7.4667
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.3833
+  inner 0.9833
+  band 0.9375
+  colors 1 0.2195 0.0619 0 1 0.6354 0.4396 1 1 0.2195 0.0619 0
+  life 0.5
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-6-0-0.effect.ogt"
+  scale curve 0 2.1333 0.0781 3.5394 0.1719 4.863 0.2656 5.8396 0.375 6.6109 0.4688 7.0167 0.5781 7.2664 1 7.4667
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 1.4667
+  inner 0.9153
+  band 0.5
+  arc 165 210
+  colors 1 0.2195 0.0619 0 1 0.4863 0.2186 1 1 0.2195 0.0619 0
+  life 0.5
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-7-0-0.effect.ogt"
+  scale curve 0 1.5167 0.0938 1.7957 0.2031 2.0563 0.3125 2.26 0.4219 2.4181 0.6719 2.6538 1 2.8
+  spin 0 0 360
+  color 30 30 30 1
+  blend additive
+}
+trail {
+  at 1.3333
+  offset 0.2667 0.4619 0
+  rotate 0 0 -30
+  move 0 -8.192 0
+  life 0.25
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-8-0-0-0-0.effect.ogt"
+  width 1.3333 1.3333
+  lifetime 0.25
+  color 1 1 1 1
+}
+trail {
+  at 1.3333
+  offset 0.2667 0.4619 0
+  rotate 0 0 -30
+  move 9.2648 7.855 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-8-0-0-0-1-0.effect.ogt"
+  width 5.3333 5.3333
+  lifetime 0.3333
+  color 1 1 1 1
+}
+trail {
+  at 1.3333
+  offset 0.2667 0.4619 0
+  rotate 0 0 -30
+  move 9.2648 7.855 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Gun7/n0-3-8-0-0-0-1-1-0.effect.ogt"
+  width 13.3333 13.3333
+  lifetime 0.4167
+  color 1 1 1 1
+}
+trail {
+  at 0.1667
+  move 0.12 0 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Gun7/n1-0-0.effect.ogt"
+  width 1 1
+  lifetime 0.3333
+  color 1 1 1 1
+}
+trail {
+  at 0.1667
+  move 0.12 0 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Gun7/n1-0-1-0.effect.ogt"
+  width 2 2
+  lifetime 0.4167
+  color 1 1 1 1
+}
+trail {
+  at 0.1667
+  move 0.12 0 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Gun7/n1-0-1-1-0.effect.ogt"
+  width 10 10
+  lifetime 0.4167
+  color 1 1 1 1
+}
+# effekseer: node 0.0.0.0.0.0.0.0 "LineMain": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0 "LineNull": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.0.0.0.1 "LineGlow": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.1.0.0.0 "LineMain": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.1 "LineNull": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.1.0.0.0 "LineMain": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.1.0.0.1 "LineColoe": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.1.0.0.1.0 "LineColoe": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.2.0.0.0.0 "LineMain": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.2.0 "ｉｎｔｅｒｖａｌ": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.2.0.0.0.0 "LineMain": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0.2.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0.2.0.0.0.1.0 "LineColor": motion out from a circle: approximated along one direction
+# effekseer: node 0.0 "ｉｎｔｅｒｖａｌ": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.2.1 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0.0.3 "Ring": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.3 "Ring": ring 32 instances: the first 4 drawn
+# effekseer: node 0.0.0.0.3 "Ring": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.0.0.0.4 "Glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.5.0.0.0 "LineMain": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.5 "LineNull": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.5.0.0.1 "LineColoe": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.5.0.0.1 "LineColoe": a random colour per particle: its mean used
+# effekseer: node 0.1.0.0.0.0.0 "shotCore": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.1.0.0.0.0.1 "shotMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.1.0.0.0.0.2.0 "LineMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.1.0.0.0.0.2.0 "LineMain": a track of many instances: one trail drawn
+# effekseer: node 0.1.0.0.0.0.2.1.0 "LineGlow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.1.0.0.0.0.2.1.0 "LineGlow": a track of many instances: one trail drawn
+# effekseer: node 0.1.0.0.0.1 "Wind": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.1.0.0.0.1 "Wind": ring unlimited instances: the first 4 drawn
+# effekseer: node 0.1.0.0.0.1 "Wind": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.2.0.0.0.0.0 "shotCore": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0.0.0.0.1 "shotMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0.0.0.0.2.0 "LineMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0.0.0.0.2.0 "LineMain": a track of many instances: one trail drawn
+# effekseer: node 0.2.0.0.0.0.2.1.0 "LineGlow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0.0.0.0.2.1.0 "LineGlow": a track of many instances: one trail drawn
+# effekseer: node 0.2.0.0.0.1 "Wind": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0.0.0.1 "Wind": ring unlimited instances: the first 4 drawn
+# effekseer: node 0.2.0.0.0.1 "Wind": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.3.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.0.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.0.1 "LineColor": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.0.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.0.1 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.3.0.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.0.0.0.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.0.0.0.1.0 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.0.1.0 "LineColor": a random colour per particle: its mean used
+# effekseer: node 0.3.0.0.0.1.0 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.3.1 "Distortion": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.1 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 0.3.2 "Glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.3.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.3.0.0.0.0 "LineMain": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 0.3.3.0.0.0.0 "LineMain": a track of many instances: one trail drawn
+# effekseer: node 0.3.3.0.0.0.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.3.0.0.0.1.0 "LineColor": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 0.3.3.0.0.0.1.0 "LineColor": a track of many instances: one trail drawn
+# effekseer: node 0.3.3.0.0.0.1.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.3.0.0.0.1.1.0 "LineColor": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 0.3.3.0.0.0.1.1.0 "LineColor": a track of many instances: one trail drawn
+# effekseer: node 0.3.4 "Distortion": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.4 "Distortion": motion out from a circle: approximated along one direction
+# effekseer: node 0.3.5.0.0 "ｌｅｎｓ": a ring's arc over its life
+# effekseer: node 0.3.5.0.0 "ｌｅｎｓ": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.5.0.0 "ｌｅｎｓ": ring 100 instances: the first 4 drawn
+# effekseer: node 0.3.6.0.0 "RIng": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.6.0.0 "RIng": ring 5 instances: the first 4 drawn
+# effekseer: node 0.3.6.0.0 "RIng": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.3.6.0.0 "RIng": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.3.7.0.0 "WindRing": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.7.0.0 "WindRing": ring 30 instances: the first 4 drawn
+# effekseer: node 0.3.7.0.0 "WindRing": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.3.8.0.0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.8.0.0.0.0 "LineMain": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 0.3.8.0.0.0.0 "LineMain": a track of many instances: one trail drawn
+# effekseer: node 0.3.8.0.0.0.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.8.0.0.0.1.0 "LineColor": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 0.3.8.0.0.0.1.0 "LineColor": a track of many instances: one trail drawn
+# effekseer: node 0.3.8.0.0.0.1.1.0 "LineColor": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.3.8.0.0.0.1.1.0 "LineColor": nested generation: 50 instances above its generator folded into one emitter
+# effekseer: node 0.3.8.0.0.0.1.1.0 "LineColor": a track of many instances: one trail drawn
+# effekseer: node 1.0.0 "LineMain": a track of many instances: one trail drawn
+# effekseer: node 1.0.1.0 "LineMain": a track of many instances: one trail drawn
+# effekseer: node 1.0.1.1.0 "LineMain": a track of many instances: one trail drawn

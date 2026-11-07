@@ -1,0 +1,108 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.4167
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-0-0.emitter.ogt" {
+  at 0
+  rotate 73.3008 0 0
+}
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-0-1.emitter.ogt" {
+  at 0
+  rotate 73.3008 0 0
+}
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-0-2.emitter.ogt" {
+  at 0
+  rotate 73.3008 0 0
+}
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-0-3.emitter.ogt" {
+  at 0
+  rotate 73.3008 0 0
+}
+mesh ring {
+  at 0
+  offset 0 0 0.5
+  rotate 0 0 90
+  move 0 0 12
+  inner 1
+  band 0.5
+  height 0.25 -0.25
+  colors 1 1 1 0.0627 1 1 1 0.1569 1 1 1 0.0627
+  life 0.2583
+  effect "vfx/effekseer-pierre01/MonsterRoar/n0-0-4.effect.ogt"
+  scale curve 0 1 1 2.55
+  spin 0 0 900
+  color 1 1 1 0.1333
+  blend additive
+}
+mesh ring {
+  at 0.0417
+  offset 0 0 0.5
+  rotate 0 0 -90
+  move 0 0 12
+  inner 1
+  band 0.5
+  height 0.25 -0.25
+  colors 1 1 1 0.0627 1 1 1 0.1569 1 1 1 0.0627
+  life 0.2583
+  effect "vfx/effekseer-pierre01/MonsterRoar/n0-0-4.effect.ogt"
+  scale curve 0 1 1 2.55
+  spin 0 0 900
+  color 1 1 1 0.1333
+  blend additive
+}
+mesh ring {
+  at 0.0833
+  offset 0 0 0.5
+  rotate 0 0 90
+  move 0 0 12
+  inner 1
+  band 0.5
+  height 0.25 -0.25
+  colors 1 1 1 0.0627 1 1 1 0.1569 1 1 1 0.0627
+  life 0.2583
+  effect "vfx/effekseer-pierre01/MonsterRoar/n0-0-4.effect.ogt"
+  scale curve 0 1 1 2.55
+  spin 0 0 900
+  color 1 1 1 0.1333
+  blend additive
+}
+mesh ring {
+  at 0.125
+  offset 0 0 0.5
+  rotate 0 0 -90
+  move 0 0 12
+  inner 1
+  band 0.5
+  height 0.25 -0.25
+  colors 1 1 1 0.0627 1 1 1 0.1569 1 1 1 0.0627
+  life 0.2583
+  effect "vfx/effekseer-pierre01/MonsterRoar/n0-0-4.effect.ogt"
+  scale curve 0 1 1 2.55
+  spin 0 0 900
+  color 1 1 1 0.1333
+  blend additive
+}
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-0-4-0.emitter.ogt" {
+  at 0
+  offset 0 0 0.6
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-0-5.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-0-6.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-1-0.emitter.ogt" {
+  at 0
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-1-1.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/MonsterRoar/n0-1-2.emitter.ogt" {
+  at 0
+}
+# effekseer: node 0.0.4 "Wind_Ring": ring 11 instances: the first 4 drawn
+# effekseer: node 0.0.4.0 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera

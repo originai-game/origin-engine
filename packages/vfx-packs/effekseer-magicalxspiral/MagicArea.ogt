@@ -1,0 +1,80 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.9167
+mesh quad {
+  at 0
+  rotate 90 0 0
+  life 2.1667
+  effect "vfx/effekseer-magicalxspiral/MagicArea/n0.effect.ogt"
+  scale 1.5
+  color 1 0.0677 1 0.7529
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/MagicArea/n1-0.emitter.ogt" {
+  at 0
+  offset 0 0.2 0
+}
+mesh quad {
+  at 0
+  rotate 90 0 0
+  life 2.1667
+  effect "vfx/effekseer-magicalxspiral/MagicArea/n2.effect.ogt"
+  scale 2
+  color 0.5356 0.0582 1 0.502
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 1
+  band 0.1
+  height 2.8571 0
+  colors 1 1 1 0 0.5356 0.0478 1 0.502 1 1 1 0
+  life 2.1667
+  effect "vfx/effekseer-magicalxspiral/MagicArea/n3.effect.ogt"
+  scale 0.7
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -90 0 120
+  inner 1
+  band 0.1
+  height 2.8571 0
+  colors 1 1 1 0 0.5356 0.0478 1 0.502 1 1 1 0
+  life 2.1667
+  effect "vfx/effekseer-magicalxspiral/MagicArea/n4.effect.ogt"
+  scale 0.7
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 1
+  band 0.5
+  height 6.6667 -0.3333
+  colors 0 1 1 0 0.2195 0.2195 1 0.502 1 0 1 0.502
+  life 2.1667
+  effect "vfx/effekseer-magicalxspiral/MagicArea/n5.effect.ogt"
+  scale 0.6
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/MagicArea/n6-0.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+  rotate -3.4698 -13.609 -14.4504
+}
+emitter "vfx/effekseer-magicalxspiral/MagicArea/n7.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+}
+# effekseer: node 1.0 "Node": a random colour per particle: its mean used
+# effekseer: node 1.0 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 6.0 "Node": a random colour per particle: its mean used
+# effekseer: node 6.0 "Node": motion out from a circle: approximated along one direction
+# effekseer: node 7 "Node": a random colour per particle: its mean used

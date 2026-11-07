@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 7 "Bigger Laser"
+main "vfx/effekseer-andrewfm01/textures/aurora01.png" rgba {
+  scroll 0 -4.6875
+}
+blend additive
+doubleSided true

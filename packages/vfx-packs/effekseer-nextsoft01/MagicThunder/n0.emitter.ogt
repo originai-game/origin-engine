@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 0 "爆発"
+maxParticles 10
+shape point
+spread 180
+rate 0
+burst 0 1 8 0.0167
+duration 0.1333
+looping false
+lifetime 0.3333 0.6667
+speed 0.433 1.7321
+size 0 17.3
+sizeOverLife 0 0.1156 0.2344 0.2126 0.4688 0.3338 0.7344 0.4957 1 0.68
+colorOverLife {
+  key 0 0.0478 0.5326 1 1
+  key 0.0625 0.0282 0.3138 1 0.7863
+  key 0.1406 0.0139 0.155 1 0.5705
+  key 0.25 0.0048 0.0535 1 0.3518
+  key 0.3594 0.0016 0.0177 1 0.2129
+  key 0.5156 0.0004 0.0046 1 0.1153
+  key 0.8594 0.0001 0.0012 1 0.0631
+  key 1 0 0 1 0
+}
+gravity 0 3.6 0
+texture "vfx/effekseer-nextsoft01/textures/Burst01.png"
+blend additive

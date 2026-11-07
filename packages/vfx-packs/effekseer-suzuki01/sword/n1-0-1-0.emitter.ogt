@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 1.0.1.0 "Hit"
+maxParticles 10
+shape box 3 3 3
+spread 0
+rate 0
+burst 0 1 20 0.05
+duration 0.9667
+looping false
+lifetime 0.3333 0.3333
+speed 0 0
+size 21 21
+sizeOverLife 0 0.101 1 0.069
+colorOverLife {
+  key 0 1 1 1 1
+  key 1 1 1 1 1
+}
+texture "vfx/effekseer-suzuki01/textures/Particle01.png"
+blend additive

@@ -1,0 +1,79 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1
+mesh quad {
+  at 0
+  offset 0 1.9667 0
+  life 1
+  effect "vfx/effekseer-magicalxspiral/FirePot1/n0-0.effect.ogt"
+  scale 3.4064
+  color 1 1 1 0.502
+  blend additive
+}
+mesh quad {
+  at 0
+  offset 0 1.9667 0
+  rotate 0 60 0
+  life 1
+  effect "vfx/effekseer-magicalxspiral/FirePot1/n0-1.effect.ogt"
+  scale 3.4064
+  color 1 1 1 0.502
+  blend additive
+}
+mesh quad {
+  at 0
+  offset 0 1.9667 0
+  rotate -180 60 -180
+  life 1
+  effect "vfx/effekseer-magicalxspiral/FirePot1/n0-2.effect.ogt"
+  scale 3.4064
+  color 1 1 1 0.502
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 -0.2 0
+  rotate -90 0 0
+  inner 16
+  band 0.5
+  height 40000 0
+  colors 1 0.2195 0 0 1 0.2195 0 0.502 1 0.2195 0 0
+  life 1
+  effect "vfx/effekseer-magicalxspiral/FirePot1/n1-0.effect.ogt"
+  scale 0
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 -0.25 0
+  rotate -90 0 0
+  inner 0.3
+  band 0.5
+  height 2 0
+  colors 1 0 0 0.7529 1 0.5356 0 0.7529 1 0 1 0.7529
+  life 1
+  effect "vfx/effekseer-magicalxspiral/FirePot1/n2.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 0.2667
+  band 0.5
+  height 0.6667 0
+  colors 1 0.2195 0 0.7529 1 0.2195 0 0.7529 1 0.2195 0 0.7529
+  life 1
+  effect "vfx/effekseer-magicalxspiral/FirePot1/n3.effect.ogt"
+  scale 1.5
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0 "Fire1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1 "Fire2": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2 "Fire3": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0 "Node": a ring whose thickness changes over its life: its middle thickness kept

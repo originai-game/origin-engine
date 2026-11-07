@@ -1,0 +1,7 @@
+type effect
+version 1
+---
+# Effekseer node 4 "Square"
+alpha curve 0 0 0.1429 1 0.8571 1 1 0
+blend alpha
+doubleSided true

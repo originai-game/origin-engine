@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 1.1.0.0.1 "FineColor"
+maxParticles 125
+shape box 0.001 0.0625 0.001
+spread 0
+rate 600
+duration 0.1667
+looping false
+lifetime 0.3333 0.3333
+speed 3.75 7.125
+speedOverLife 0 1.4238 0.5 0.9679 1 0.7016
+size 1.75 2.25
+colorOverLife {
+  key 0 1 0.6354 0.3587 0
+  key 0.25 1 0.5581 0.2845 0.6255
+  key 0.5 1 0.4863 0.2195 0.6255
+  key 1 1 0.3587 0.1166 0
+}
+texture "vfx/effekseer-tktk02/textures/FireFog.png"
+blend additive

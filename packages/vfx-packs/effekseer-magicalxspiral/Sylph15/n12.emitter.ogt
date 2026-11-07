@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 12 "Bloom"
+maxParticles 4
+shape point
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.5833 0.5833
+speed 0 0
+size 8 8
+colorOverLife {
+  key 0 0.2195 0.2195 0 0
+  key 0.1429 0.2195 0.2195 0 0.251
+  key 0.8571 0.2195 0.2195 0 0.251
+  key 1 0.2195 0.2195 0 0
+}
+texture "vfx/effekseer-magicalxspiral/textures/particle.png"
+blend additive

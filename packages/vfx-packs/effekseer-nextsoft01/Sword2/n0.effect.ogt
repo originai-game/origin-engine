@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0 "ken"
+main "vfx/effekseer-nextsoft01/textures/StanBlade.png" rgba {
+}
+blend additive
+doubleSided true

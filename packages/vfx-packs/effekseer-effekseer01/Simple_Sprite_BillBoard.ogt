@@ -1,0 +1,9 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.665
+emitter "vfx/effekseer-effekseer01/Simple_Sprite_BillBoard/n0.emitter.ogt" {
+  at 0
+}
+# effekseer: node 0 "Node": a random colour per particle: its mean used

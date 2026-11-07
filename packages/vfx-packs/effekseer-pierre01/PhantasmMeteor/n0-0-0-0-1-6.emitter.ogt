@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.0.1.6 "FrontSmoke"
+maxParticles 338
+shape box 1.25 0.001 1.25
+spread 180
+rate 1800
+duration 0.03
+looping false
+lifetime 0.0167 1.5
+speed 2.6517 10.6066
+size 8.857 8.857
+sizeOverLife 0 0.1411 0.125 0.3284 0.25 0.4928 0.375 0.6344 0.5 0.7532 0.625 0.8491 0.75 0.9222 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.011 1 1 1 0.0063
+  key 0.1719 1 1 1 0.0822
+  key 0.3297 1 1 1 0.1276
+  key 1 1 1 1 0
+}
+rotation -360 360
+angularVelocity -300 300
+texture "vfx/effekseer-pierre01/textures/Smoke.png"
+blend alpha
+effect "vfx/effekseer-pierre01/PhantasmMeteor/n0-0-0-0-1-6.effect.ogt"

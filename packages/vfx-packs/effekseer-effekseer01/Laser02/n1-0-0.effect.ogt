@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 1.0.0 "Thunder"
+main "vfx/effekseer-effekseer01/textures/Thunder01.png" rgba {
+}
+blend additive
+doubleSided true

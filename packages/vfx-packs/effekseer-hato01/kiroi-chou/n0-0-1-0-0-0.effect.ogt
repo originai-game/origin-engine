@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.0.1.0.0.0 "Node"
+main "vfx/effekseer-hato01/textures/kiroi-hane.png" rgba {
+}
+alpha curve 0 0 0.25 1 0.975 1 1 0
+blend alpha
+doubleSided true

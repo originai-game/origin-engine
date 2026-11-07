@@ -1,0 +1,87 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.0167
+emitter "vfx/effekseer-tktk01/Blow8/n0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow8/n0-1.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow8/n0-2-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow8/n0-2-0-0.parent.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  inner 0.5
+  band 1
+  colors 1 1 1 0 0.047 0.047 0.047 0 1 1 1 0
+  life 0.25
+  effect "vfx/effekseer-tktk01/Blow8/n0-3-0.effect.ogt"
+  scale curve 0 2 0.1406 4.1288 0.2344 5.3825 0.3281 6.3778 0.4219 7.087 0.5156 7.5304 0.6094 7.7586 1 8
+  color 5 5 5 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.8907
+  band 0.5
+  colors 0.9574 0.1275 0.1275 0 1 0.1275 0.1275 0 0.9574 0.1275 0.1275 0
+  life 0.25
+  effect "vfx/effekseer-tktk01/Blow8/n0-3-1.effect.ogt"
+  scale curve 0 4 0.0938 5.2804 0.1875 6.2709 0.2812 7.0031 0.3906 7.5786 0.4844 7.8771 0.5938 8.0553 1 8.2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1167
+  inner 0.8907
+  band 0.5
+  colors 0.9574 0.1275 0.1275 0 1 0.1275 0.1275 0 0.9574 0.1275 0.1275 0
+  life 0.25
+  effect "vfx/effekseer-tktk01/Blow8/n0-3-1.effect.ogt"
+  scale curve 0 4 0.0938 5.2804 0.1875 6.2709 0.2812 7.0031 0.3906 7.5786 0.4844 7.8771 0.5938 8.0553 1 8.2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.2333
+  inner 0.8907
+  band 0.5
+  colors 0.9574 0.1275 0.1275 0 1 0.1275 0.1275 0 0.9574 0.1275 0.1275 0
+  life 0.25
+  effect "vfx/effekseer-tktk01/Blow8/n0-3-1.effect.ogt"
+  scale curve 0 4 0.0938 5.2804 0.1875 6.2709 0.2812 7.0031 0.3906 7.5786 0.4844 7.8771 0.5938 8.0553 1 8.2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.35
+  inner 0.8907
+  band 0.5
+  colors 0.9574 0.1275 0.1275 0 1 0.1275 0.1275 0 0.9574 0.1275 0.1275 0
+  life 0.25
+  effect "vfx/effekseer-tktk01/Blow8/n0-3-1.effect.ogt"
+  scale curve 0 4 0.0938 5.2804 0.1875 6.2709 0.2812 7.0031 0.3906 7.5786 0.4844 7.8771 0.5938 8.0553 1 8.2
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Blow8/n0-4-0.parent.ogt" {
+  at 0
+}
+# effekseer: node 0.2.0 "粒": a random colour per particle: its mean used
+# effekseer: node 0.2.0 "粒": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 0.2.0.0 "粒": a random colour per particle: its mean used
+# effekseer: node 0.2.0.0 "粒": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 0.3.0 "広がりリング": ring 5 instances: the first 4 drawn
+# effekseer: node 0.3.0 "広がりリング": nested generation: 9 instances above its generator folded into one emitter
+# effekseer: node 0.3.1 "広がりリング": ring 9 instances: the first 4 drawn
+# effekseer: node 0.3.1 "広がりリング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.4.0 "中心からの光": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.4.0 "中心からの光": a random colour per particle: its mean used
+# effekseer: node 0.4.0 "中心からの光": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.0 "中心からの光": a child of an instanced parent: its motion drawn up the world's y

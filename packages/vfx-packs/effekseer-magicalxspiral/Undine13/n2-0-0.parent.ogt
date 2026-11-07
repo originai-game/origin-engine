@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 2 "Node"
+maxParticles 14
+shape point
+spread 0
+rate 0
+burst 0 1 35 0.0833
+duration 2.85
+looping false
+lifetime 0.8333 0.8333
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-magicalxspiral/Undine13/n2-0-0.emitter.ogt"

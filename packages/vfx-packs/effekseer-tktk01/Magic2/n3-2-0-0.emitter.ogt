@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 3.2.0.0 "gliow"
+maxParticles 625
+shape box 0.001 0.375 0.001
+spread 0
+rate 0
+burst 0 500
+duration 0.0167
+looping false
+lifetime 1.6667 1.6667
+speed 0.8571 9
+speedOverLife 0 4.0451 0.1719 2.7843 0.25 2.3705 0.3281 2.0663 0.3438 1.8188 0.3594 0 1 0
+size 2 2
+colorOverLife {
+  key 0 1 0.0104 0.0478 0.5882
+  key 1 1 0.0104 0.0478 0.5882
+}
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

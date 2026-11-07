@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.3.12 "Fire_Variation3"
+maxParticles 13
+shape point
+spread 0
+rate 0
+burst 0 5 2 0.0333
+duration 0.05
+looping false
+lifetime 0.25 0.75
+speed 60 60
+size 77 77
+sizeOverLife 0 0.2939 1 0.9935
+colorOverLife {
+  key 0 0.8751 0.7519 1 0
+  key 0.1 0.7564 0.5991 0.9636 0.0427
+  key 0.2812 0.5836 0.3906 0.9061 0.0357
+  key 0.5 0.4303 0.225 0.8487 0.0285
+  key 0.7344 0.3133 0.1168 0.7986 0.0117
+  key 1 0.2195 0.0478 0.7519 0
+}
+rotation -5 5
+texture "vfx/effekseer-pierre01/textures/Fire.png"
+blend additive
+effect "vfx/effekseer-pierre01/LightningStrike/n0-0-3-12.effect.ogt"

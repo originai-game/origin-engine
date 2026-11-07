@@ -1,0 +1,603 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.8333
+loop true
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n0-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.5 0 0
+  rotate -180 0 -180
+  move -48 0 0
+  until 0.3333
+}
+emitter "vfx/effekseer-tktk01/Sword16/n0-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.5 0 0
+  rotate -180 0 -180
+  move -48 0 0
+  until 0.3333
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n1-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n1-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4993 0.0262 0
+  rotate 180 0 177
+  move -47.9342 -2.5121 0
+  until 0.3333
+}
+emitter "vfx/effekseer-tktk01/Sword16/n1-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4993 0.0262 0
+  rotate 180 0 177
+  move -47.9342 -2.5121 0
+  until 0.3333
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n2-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n2-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4993 -0.0262 0
+  rotate -180 0 -177
+  move -47.9342 2.5121 0
+  until 0.3333
+}
+emitter "vfx/effekseer-tktk01/Sword16/n2-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4993 -0.0262 0
+  rotate -180 0 -177
+  move -47.9342 2.5121 0
+  until 0.3333
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n3-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n3-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4973 0.0523 0
+  rotate 180 0 174
+  move -47.7371 -5.0174 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n3-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4973 0.0523 0
+  rotate 180 0 174
+  move -47.7371 -5.0174 0
+  until 0.25
+}
+mesh quad {
+  at 0.25
+  offset -16 0 0
+  rotate -180 0 -142
+  move -16.8 12 0
+  life 0.4167
+  effect "vfx/effekseer-tktk01/Sword16/n3-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n3-1-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.4883 -1.9374 0
+  rotate 180 0 -148
+  move -17.9623 10.1782 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n3-1-0-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.4883 -1.9374 0
+  rotate 180 0 -148
+  move -17.9623 10.1782 0
+  until 0.25
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n4-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n4-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4973 -0.0523 0
+  rotate -180 0 -174
+  move -47.7371 5.0174 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n4-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4973 -0.0523 0
+  rotate -180 0 -174
+  move -47.7371 5.0174 0
+  until 0.25
+}
+mesh quad {
+  at 0.25
+  offset -16 0 0
+  rotate -180 0 139
+  move -16.8 -12 0
+  life 0.4167
+  effect "vfx/effekseer-tktk01/Sword16/n4-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n4-1-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.5028 1.9592 0
+  rotate -180 0 145
+  move -17.9623 -10.1782 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n4-1-0-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.5028 1.9592 0
+  rotate -180 0 145
+  move -17.9623 -10.1782 0
+  until 0.25
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n5-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n5-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4938 0.0782 0
+  rotate 180 0 171
+  move -47.409 -7.5089 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n5-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4938 0.0782 0
+  rotate 180 0 171
+  move -47.409 -7.5089 0
+  until 0.25
+}
+mesh quad {
+  at 0.25
+  offset -16 0 0
+  rotate -180 0 -130
+  move -16.8 16.8 0
+  life 0.4167
+  effect "vfx/effekseer-tktk01/Sword16/n5-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n5-1-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.4257 -2.831 0
+  rotate 180 0 -139
+  move -19.2213 13.9651 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n5-1-0-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.4257 -2.831 0
+  rotate 180 0 -139
+  move -19.2213 13.9651 0
+  until 0.25
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n6-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n6-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4938 -0.0782 0
+  rotate -180 0 -171
+  move -47.409 7.5089 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n6-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4938 -0.0782 0
+  rotate -180 0 -171
+  move -47.409 7.5089 0
+  until 0.25
+}
+mesh quad {
+  at 0.25
+  offset -16 0 0
+  rotate -180 0 130
+  move -16.8 -16.8 0
+  life 0.4167
+  effect "vfx/effekseer-tktk01/Sword16/n6-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n6-1-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.4257 2.831 0
+  rotate -180 0 139
+  move -19.2213 -13.9651 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n6-1-0-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.4257 2.831 0
+  rotate -180 0 139
+  move -19.2213 -13.9651 0
+  until 0.25
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n7-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n7-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4891 0.104 0
+  rotate 180 0 168
+  move -46.9511 -9.9798 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n7-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4891 0.104 0
+  rotate 180 0 168
+  move -46.9511 -9.9798 0
+  until 0.25
+}
+mesh quad {
+  at 0.25
+  offset -16 0 0
+  rotate -180 0 -130
+  move -16.8 24 0
+  life 0.4167
+  effect "vfx/effekseer-tktk01/Sword16/n7-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n7-1-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.2564 -3.6344 0
+  rotate 180 0 -142
+  move -21.4228 19.9826 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n7-1-0-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.2564 -3.6344 0
+  rotate 180 0 -142
+  move -21.4228 19.9826 0
+  until 0.25
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n8-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n8-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4891 -0.104 0
+  rotate -180 0 -168
+  move -46.9511 9.9798 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n8-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.4891 -0.104 0
+  rotate -180 0 -168
+  move -46.9511 9.9798 0
+  until 0.25
+}
+mesh quad {
+  at 0.25
+  offset -16 0 0
+  rotate -180 0 125
+  move -16.8 -24 0
+  life 0.4167
+  effect "vfx/effekseer-tktk01/Sword16/n8-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n8-1-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.2847 3.6676 0
+  rotate -180 0 137
+  move -21.4228 -19.9826 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n8-1-0-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.2847 3.6676 0
+  rotate -180 0 137
+  move -21.4228 -19.9826 0
+  until 0.25
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n9-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n9-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.483 0.1294 0
+  rotate 180 0 165
+  move -46.3644 -12.4233 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n9-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.483 0.1294 0
+  rotate 180 0 165
+  move -46.3644 -12.4233 0
+  until 0.25
+}
+mesh quad {
+  at 0.25
+  offset -16 0 0
+  rotate -180 0 -120
+  move -14.4 28.8 0
+  life 0.4167
+  effect "vfx/effekseer-tktk01/Sword16/n9-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n9-1-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.1013 -4.4947 0
+  rotate 180 0 -135
+  move -21.3633 24.0917 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n9-1-0-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.1013 -4.4947 0
+  rotate 180 0 -135
+  move -21.3633 24.0917 0
+  until 0.25
+}
+mesh quad {
+  at 0
+  rotate -180 0 -180
+  move -48 0 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword16/n10-0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n10-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.483 -0.1294 0
+  rotate -180 0 -165
+  move -46.3644 12.4233 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n10-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 13.483 -0.1294 0
+  rotate -180 0 -165
+  move -46.3644 12.4233 0
+  until 0.25
+}
+mesh quad {
+  at 0.25
+  offset -16 0 0
+  rotate -180 -3 120
+  move -14.4 -28.8 0
+  life 0.4167
+  effect "vfx/effekseer-tktk01/Sword16/n10-1.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-tktk01/Sword16/n10-1-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.1016 4.4947 -0.0131
+  rotate -179.2229 -2.8977 135.0197
+  move -21.3633 -24.0917 0
+  until 0.25
+}
+emitter "vfx/effekseer-tktk01/Sword16/n10-1-0-0-0.emitter.ogt" {
+  at 0.25
+  offset -2.1016 4.4947 -0.0131
+  rotate -179.2229 -2.8977 135.0197
+  move -21.3633 -24.0917 0
+  until 0.25
+}
+# effekseer: node 0.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 1.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 1.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 2.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 2.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 2.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 2.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 3.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 3.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 3.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 3.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 4.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 4.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 4.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 4.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 4.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 4.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 4.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 4.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 4.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 4.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 4.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 4.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 5.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 5.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 5.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 5.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 5.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 5.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 5.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 5.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 5.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 5.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 5.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 5.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 5.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 5.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 6.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 6.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 6.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 6.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 6.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 6.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 6.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 6.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 6.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 6.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 6.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 6.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 6.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 6.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 7.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 7.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 7.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 7.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 7.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 7.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 7.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 7.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 7.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 7.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 7.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 7.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 7.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 7.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 8.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 8.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 8.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 8.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 8.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 8.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 8.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 8.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 8.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 8.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 8.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 8.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 8.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 8.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 9.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 9.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 9.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 9.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 9.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 9.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 9.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 9.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 9.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 9.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 9.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 9.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 9.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 9.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 10.0.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 10.0.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 10.0.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 10.0.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 10.0.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 10.0.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 10.0.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 10.1.0.0 "残像": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 10.1.0.0 "残像": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 10.1.0.0 "残像": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 10.1.0.0.0 "残像グロー": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 10.1.0.0.0 "残像グロー": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 10.1.0.0.0 "残像グロー": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 10.1.0.0.0 "残像グロー": a sprite scaled unevenly: drawn square at its mean

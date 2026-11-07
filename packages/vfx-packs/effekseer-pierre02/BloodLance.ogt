@@ -1,0 +1,368 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 6.5
+loop true
+emitter "vfx/effekseer-pierre02/BloodLance/n0-0-0.emitter.ogt" {
+  at 0
+  offset 0 0.0968 0
+  rotate -90 0 0
+  until 2.5
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-0-1.emitter.ogt" {
+  at 0
+  offset 0 0.0968 0
+  rotate -90 0 0
+  until 2.5
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-0-2.emitter.ogt" {
+  at 0
+  offset 0 0.0984 0
+  rotate -90 0 0
+  until 2.5
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-0-3.emitter.ogt" {
+  at 0
+  offset 0 0.1 0
+  rotate -90 0 0
+  until 2.5
+}
+mesh quad {
+  at 0
+  offset 0 0.1 0
+  rotate -90 0 0
+  life 2.5
+  effect "vfx/effekseer-pierre02/BloodLance/n0-0-4.effect.ogt"
+  scale curve 0 9.6 1 20
+  color 0.2195 0.0055 0.0104 0.3765
+  blend additive
+}
+mesh quad {
+  at 0.5
+  offset 0 0.1 0
+  rotate -90 0 0
+  life 2.5
+  effect "vfx/effekseer-pierre02/BloodLance/n0-0-4.effect.ogt"
+  scale curve 0 9.6 1 20
+  color 0.2195 0.0055 0.0104 0.3765
+  blend additive
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-0-5-0-0.emitter.ogt" {
+  at 0
+  offset 0 0.1 0
+  rotate -90 0 0
+  until 2.5
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-0-5-1.emitter.ogt" {
+  at 0
+  offset 0 0.1 0
+  rotate -90 0 0
+}
+mesh quad {
+  at 0
+  offset 0 0.1 0
+  rotate -90 0 0
+  life 0.35
+  effect "vfx/effekseer-pierre02/BloodLance/n0-0-5-2.effect.ogt"
+  scale curve 0 8 0.6719 17.9879 0.8438 19.8423 1 20.8
+  color 1 0.1166 0.0254 0.3765
+  blend additive
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-0-5-3.emitter.ogt" {
+  at 4.8833
+  offset 0 0.1 0
+  rotate -90 0 0
+}
+mesh quad {
+  at 4.8833
+  offset 0 0.1 0
+  rotate -90 0 0
+  life 0.35
+  effect "vfx/effekseer-pierre02/BloodLance/n0-0-5-4.effect.ogt"
+  scale curve 0 20.8 0.6719 7.0666 0.8438 4.5168 1 3.2
+  color 1 0.1166 0.0254 0.251
+  blend additive
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-1-0.emitter.ogt" {
+  at 0.1
+  offset 0 0.1 0
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-1-1.emitter.ogt" {
+  at 0
+  offset 0 0.1 0
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-1-2.emitter.ogt" {
+  at 0
+  offset 0 0.1 0
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-1-3.emitter.ogt" {
+  at 0
+  offset 0 0.1 0
+}
+mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
+  at 1.65
+  offset 0 0.1 5.2
+  rotate -90 0 0
+  life 2
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-0.effect.ogt"
+  scale 0.2
+  color 0.1495 0.0035 0.0074 1
+  blend alpha
+}
+mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
+  at 1.6767
+  offset 0 0.1 5.2
+  rotate -90 0 0
+  life 2
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-0.effect.ogt"
+  scale 0.2
+  color 0.1495 0.0035 0.0074 1
+  blend alpha
+}
+mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
+  at 1.7033
+  offset 0 0.1 5.2
+  rotate -90 0 0
+  life 2
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-0.effect.ogt"
+  scale 0.2
+  color 0.1495 0.0035 0.0074 1
+  blend alpha
+}
+mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
+  at 1.73
+  offset 0 0.1 5.2
+  rotate -90 0 0
+  life 2
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-0.effect.ogt"
+  scale 0.2
+  color 0.1495 0.0035 0.0074 1
+  blend alpha
+}
+mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
+  at 1.6
+  offset 0 0.1 5.2
+  rotate -90 0 0
+  life 2.5833
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-1.effect.ogt"
+  scale 0.2
+  color 0.2195 0.0055 0.0104 1
+  blend alpha
+}
+mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
+  at 1.6267
+  offset 0 0.1 5.2
+  rotate -90 0 0
+  life 2.5833
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-1.effect.ogt"
+  scale 0.2
+  color 0.2195 0.0055 0.0104 1
+  blend alpha
+}
+mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
+  at 1.6533
+  offset 0 0.1 5.2
+  rotate -90 0 0
+  life 2.5833
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-1.effect.ogt"
+  scale 0.2
+  color 0.2195 0.0055 0.0104 1
+  blend alpha
+}
+mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
+  at 1.68
+  offset 0 0.1 5.2
+  rotate -90 0 0
+  life 2.5833
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-1.effect.ogt"
+  scale 0.2
+  color 0.2195 0.0055 0.0104 1
+  blend alpha
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-2-0.emitter.ogt" {
+  at 1.95
+  offset 0 1.1204 6.4161
+  rotate 50 0 0
+  move 0 3.2139 3.8302
+  until 1.95
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-2-1.emitter.ogt" {
+  at 1.95
+  offset 0 1.1204 6.4161
+  rotate 50 0 0
+  move 0 3.2139 3.8302
+  until 1.95
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-2-2.emitter.ogt" {
+  at 1.95
+  offset 0 1.1204 6.4161
+  rotate 50 0 0
+  move 0 3.2139 3.8302
+  until 1.95
+}
+mesh ring {
+  at 1.75
+  offset 0 0.3577 5.5071
+  rotate 141.5 0 178.5
+  inner 0.5
+  band 0.5
+  height -0.2 0.2
+  colors 0.2195 0.0055 0.0104 0.3765 0.2195 0.0055 0.0104 0.8784 0.2195 0.0055 0.0104 0.0941
+  life 0.45
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-0-0.effect.ogt"
+  scale curve 0 0.5344 0.0781 0.8192 0.1562 1.0792 0.2344 1.3179 0.3281 1.5807 0.4688 1.9384 0.8281 2.7754 1 3.2067
+  spin 0 0 180
+  color 1 1 1 0.6667
+  blend alpha
+}
+mesh ring {
+  at 1.7667
+  offset 0 0.3577 5.5071
+  rotate 138.5 0 -178.5
+  inner 0.5
+  band 0.5
+  height -0.2 0.2
+  colors 0.2195 0.0055 0.0104 0.3765 0.2195 0.0055 0.0104 0.8784 0.2195 0.0055 0.0104 0.0941
+  life 0.45
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-0-0.effect.ogt"
+  scale curve 0 0.5344 0.0781 0.8192 0.1562 1.0792 0.2344 1.3179 0.3281 1.5807 0.4688 1.9384 0.8281 2.7754 1 3.2067
+  spin 0 0 180
+  color 1 1 1 0.6667
+  blend alpha
+}
+mesh ring {
+  at 1.75
+  offset 0 0.3577 5.5071
+  rotate 141.5 0 178.5
+  inner 0.5
+  band 0.5
+  height -0.2 0.2
+  colors 0.2195 0.0055 0.0104 0.3765 0.2195 0.0055 0.0104 0.8784 0.2195 0.0055 0.0104 0.0941
+  life 0.6
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-0-1.effect.ogt"
+  scale curve 0 0.5344 0.0781 0.8192 0.1562 1.0792 0.2344 1.3179 0.3281 1.5807 0.4688 1.9384 0.8281 2.7754 1 3.2067
+  spin 0 0 180
+  color 1 1 1 0.9167
+  blend alpha
+}
+mesh ring {
+  at 1.7667
+  offset 0 0.3577 5.5071
+  rotate 138.5 0 -178.5
+  inner 0.5
+  band 0.5
+  height -0.2 0.2
+  colors 0.2195 0.0055 0.0104 0.3765 0.2195 0.0055 0.0104 0.8784 0.2195 0.0055 0.0104 0.0941
+  life 0.6
+  effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-0-1.effect.ogt"
+  scale curve 0 0.5344 0.0781 0.8192 0.1562 1.0792 0.2344 1.3179 0.3281 1.5807 0.4688 1.9384 0.8281 2.7754 1 3.2067
+  spin 0 0 180
+  color 1 1 1 0.9167
+  blend alpha
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-1-0.emitter.ogt" {
+  at 1.7
+  offset 0 0.1 5.2
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-1-1.emitter.ogt" {
+  at 1.8333
+  offset 0 0.1 5.2
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-1-2.emitter.ogt" {
+  at 1.9667
+  offset 0 0.1 5.2
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-1-3.emitter.ogt" {
+  at 2.1
+  offset 0 0.1 5.2
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-2-0-0.emitter.ogt" {
+  at 1.6833
+  offset 0 0.1 5.2
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-2-0-1.emitter.ogt" {
+  at 1.8333
+  offset 0 0.1 5.2
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-2-0-2.emitter.ogt" {
+  at 1.9833
+  offset 0 0.1 5.2
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-2-0-3.emitter.ogt" {
+  at 2.1333
+  offset 0 0.1 5.2
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-2-0-4.emitter.ogt" {
+  at 2.1
+  offset 0 1.1042 6.3967
+  rotate 50 0 0
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-2-0-5.emitter.ogt" {
+  at 2.2
+  offset 0 1.1042 6.3967
+  rotate 50 0 0
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-3-0-0.parent.ogt" {
+  at 2.0167
+  offset 0 0.1 5.2
+  rotate 50 0 0
+}
+emitter "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-3-0-1.parent.ogt" {
+  at 2.0167
+  offset 0 0.1 5.2
+  rotate 50 0 0
+}
+# effekseer: node 0.0.0 "BaseLight": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.1 "BaseLight": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.2 "Wave_Distortion": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3 "Wave_Light": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.5.0.0 "Ray": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1 "Ray": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.0.0.0.0 "Lance": model 40 instances: the first 4 drawn
+# effekseer: node 0.2.0.0.0.0.0.0 "Lance": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.0.0.1 "Blood": model 40 instances: the first 4 drawn
+# effekseer: node 0.2.0.0.0.0.0.1 "Blood": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.0.0.2.0 "EmberVariation": nested generation: 120 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.0.0.2.0 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.0.0.2.1 "EmberVariation": nested generation: 120 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.0.0.2.1 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.0.0.2.2 "EmberVariation": nested generation: 120 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.0.0.2.2 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.0.0.2.2 "EmberVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.0.1.0.0 "Wind": ring 2 instances: the first 4 drawn
+# effekseer: node 0.2.0.0.0.1.0.0 "Wind": nested generation: 240 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.0.1 "Wind": ring 2 instances: the first 4 drawn
+# effekseer: node 0.2.0.0.0.1.0.1 "Wind": nested generation: 240 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.1.0 "FireVariation": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.1.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.1.1 "FireVariation": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.1.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.1.2 "FireVariation": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.1.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.1.3 "FireVariation": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.1.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.2.0.0 "FireVariation": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.2.0.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.2.0.0 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.0.1.2.0.1 "FireVariation": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.2.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.2.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.0.1.2.0.2 "FireVariation": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.2.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.2.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.0.1.2.0.3 "FireVariation": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.2.0.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.2.0.3 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0.0.1.2.0.4 "EmberVariation": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0.0.0.1.2.0.4 "EmberVariation": nested generation: 120 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.2.0.4 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.2.0.5 "EmberVariation": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0.0.0.1.2.0.5 "EmberVariation": nested generation: 120 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.2.0.5 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.3.0.0 "EmberVariation": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0.0.0.1.3.0.0 "EmberVariation": nested generation: 120 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.3.0.0 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.2.0.0.0.1.3.0.1 "EmberVariation": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0.0.0.1.3.0.1 "EmberVariation": nested generation: 120 instances above its generator folded into one emitter
+# effekseer: node 0.2.0.0.0.1.3.0.1 "EmberVariation": a fixed sprite with many instances: drawn facing the camera

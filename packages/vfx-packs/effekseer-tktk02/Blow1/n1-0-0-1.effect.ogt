@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 1.0.0.1 "LineColor"
+main "vfx/effekseer-tktk02/textures/Blur5.png" rgba {
+}
+blend additive
+doubleSided true

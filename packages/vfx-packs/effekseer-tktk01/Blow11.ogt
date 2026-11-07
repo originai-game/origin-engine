@@ -1,0 +1,122 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.6498
+emitter "vfx/effekseer-tktk01/Blow11/n0-0-0.emitter.ogt" {
+  at 0.0667
+  offset 1 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-0-0-0.emitter.ogt" {
+  at 0.0667
+  offset 1 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-0-0-1.emitter.ogt" {
+  at 0.0667
+  offset 1 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-1-0.emitter.ogt" {
+  at 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-1-0-0.emitter.ogt" {
+  at 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-2.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-2-0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-2-1.emitter.ogt" {
+  at 0
+}
+mesh ring {
+  at 0.0833
+  rotate 104.974 -20.2544 -52.3106
+  inner 0
+  band 1
+  colors 1 1 1 0 1 0.0478 0.0478 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow11/n0-3-0.effect.ogt"
+  scale curve 0 1.25 0.25 3.0143 0.3594 3.6201 0.4531 4.0265 0.5469 4.3319 0.6562 4.5789 1 5
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.0833
+  rotate 104.974 -20.2544 -52.3106
+  inner 0.815
+  band 1
+  colors 1 1 1 0 1 1 1 0.502 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow11/n0-3-1.effect.ogt"
+  scale curve 0 1.25 0.25 3.0143 0.3594 3.6201 0.4531 4.0265 0.5469 4.3319 0.6562 4.5789 1 5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0833
+  rotate 104.974 -20.2544 -52.3106
+  inner 0.815
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow11/n0-3-2.effect.ogt"
+  scale curve 0 1.25 0.25 3.0143 0.3594 3.6201 0.4531 4.0265 0.5469 4.3319 0.6562 4.5789 1 5
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.0833
+  rotate 104.974 -20.2544 -52.3106
+  inner 0.2069
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow11/n0-3-3.effect.ogt"
+  scale curve 0 1.25 0.25 3.0143 0.3594 3.6201 0.4531 4.0265 0.5469 4.3319 0.6562 4.5789 1 5
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-4-0.emitter.ogt" {
+  at 0.0833
+  offset 0 1.5 0
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-4-0-0.emitter.ogt" {
+  at 0.0833
+  offset 0 1.5 0
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-5-0.emitter.ogt" {
+  at 0.0833
+  offset 0 2 0
+}
+emitter "vfx/effekseer-tktk01/Blow11/n0-5-0-0.emitter.ogt" {
+  at 0.0833
+  offset 0 2 0
+}
+# effekseer: node 0.0.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.1 "glow大": a random colour per particle: its mean used
+# effekseer: node 0.1.0 "レンズフレア": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0 "レンズフレア": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.0 "レンズフレア": motion out from a circle: approximated along one direction
+# effekseer: node 0.1.0.0 "レンズフレアglow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0.0 "レンズフレアglow": a random colour per particle: its mean used
+# effekseer: node 0.1.0.0 "レンズフレアglow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.0.0 "レンズフレアglow": motion out from a circle: approximated along one direction
+# effekseer: node 0.3.1 "衝撃リング外枠": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.3.2 "衝撃リング白": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.3.3 "白色リング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.4.0 "広がるライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.4.0 "広がるライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.4.0.0 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.4.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 0.4.0.0 "glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.5.0 "広がるライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.5.0 "広がるライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.5.0.0 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.5.0.0 "glow": a random colour per particle: its mean used

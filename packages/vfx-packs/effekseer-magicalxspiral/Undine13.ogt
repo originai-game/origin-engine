@@ -1,0 +1,27 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.9167
+mesh "vfx/effekseer-magicalxspiral/Undine13/model-sphere.glb" {
+  at 0
+  life 3
+  effect "vfx/effekseer-magicalxspiral/Undine13/n0.effect.ogt"
+  scale 1.5
+  color 0.5356 0.7593 1 0.502
+  blend additive
+}
+mesh "vfx/effekseer-magicalxspiral/Undine13/model-sphere.glb" {
+  at 0
+  life 3
+  effect "vfx/effekseer-magicalxspiral/Undine13/n1.effect.ogt"
+  scale 1.45
+  color 0.2195 0.7519 0.7519 0.251
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Undine13/n2-0-0.parent.ogt" {
+  at 0
+  offset 0 -0.7 0
+}
+# effekseer: node 2.0.0 "Node": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.0 "Node": a random colour per particle: its mean used

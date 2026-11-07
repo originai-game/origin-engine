@@ -1,0 +1,146 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.4
+trail {
+  at 0
+  offset 0 -6 5
+  rotate 90 0 0
+  move 0 0 -10
+  life 0.1667
+  effect "vfx/effekseer-tktk02/Blow3/n0-0-0.effect.ogt"
+  width 3 3
+  lifetime 0.1667
+  color 1 1 1 1
+  orbit 9 1
+}
+trail {
+  at 0
+  offset 0 -6 5
+  rotate 90 0 0
+  move 0 0 -10
+  life 0.1667
+  effect "vfx/effekseer-tktk02/Blow3/n0-0-1.effect.ogt"
+  width 6 6
+  lifetime 0.1667
+  color 0.2195 1 1 1
+  orbit 9 1
+}
+trail {
+  at 0
+  offset 0 -6 5
+  rotate 90 0 0
+  move 0 0 -10
+  life 0.1667
+  effect "vfx/effekseer-tktk02/Blow3/n0-0-2.effect.ogt"
+  width 15 15
+  lifetime 0.1667
+  color 0.0478 0.2195 1 1
+  orbit 9 1
+}
+emitter "vfx/effekseer-tktk02/Blow3/n0-0-3-0-0-0.parent.ogt" {
+  at 0
+  offset 0 3 5
+  move 0 0 -10
+}
+emitter "vfx/effekseer-tktk02/Blow3/n0-0-3-0-0-1.parent.ogt" {
+  at 0
+  offset 0 3 5
+  move 0 0 -10
+}
+emitter "vfx/effekseer-tktk02/Blow3/n1-0-0-0.emitter.ogt" {
+  at 0.4333
+  offset 0 0.75 0
+}
+emitter "vfx/effekseer-tktk02/Blow3/n1-0-0-1.emitter.ogt" {
+  at 0.4333
+  offset 0 0.75 0
+}
+emitter "vfx/effekseer-tktk02/Blow3/n1-1.emitter.ogt" {
+  at 0.4333
+}
+emitter "vfx/effekseer-tktk02/Blow3/n2-0-0-0.emitter.ogt" {
+  at 0.3667
+  offset 0 0.75 0
+}
+emitter "vfx/effekseer-tktk02/Blow3/n2-0-0-1.emitter.ogt" {
+  at 0.3667
+  offset 0 0.75 0
+}
+emitter "vfx/effekseer-tktk02/Blow3/n2-0-0-2.emitter.ogt" {
+  at 0.3667
+  offset 0 0.75 0
+}
+emitter "vfx/effekseer-tktk02/Blow3/n2-1.emitter.ogt" {
+  at 0.3667
+}
+mesh ring {
+  at 0.3667
+  rotate 0 0 -135
+  inner 0.5
+  band 0.375
+  colors 0.269 0.458 1 0 0.458 1 1 0.1757 0.269 0.458 1 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow3/n3.effect.ogt"
+  scale curve 0 0 0.1094 1.2988 0.2188 2.3936 0.3281 3.3036 0.4531 4.1425 0.5781 4.7947 0.7031 5.289 1 6
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.3833
+  rotate 0 0 -45
+  inner 0.5
+  band 0.375
+  colors 0.269 0.458 1 0 0.458 1 1 0.1757 0.269 0.458 1 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow3/n3.effect.ogt"
+  scale curve 0 0 0.1094 1.2988 0.2188 2.3936 0.3281 3.3036 0.4531 4.1425 0.5781 4.7947 0.7031 5.289 1 6
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.4
+  rotate 0 0 45
+  inner 0.5
+  band 0.375
+  colors 0.269 0.458 1 0 0.458 1 1 0.1757 0.269 0.458 1 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow3/n3.effect.ogt"
+  scale curve 0 0 0.1094 1.2988 0.2188 2.3936 0.3281 3.3036 0.4531 4.1425 0.5781 4.7947 0.7031 5.289 1 6
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.4167
+  rotate 0 0 135
+  inner 0.5
+  band 0.375
+  colors 0.269 0.458 1 0 0.458 1 1 0.1757 0.269 0.458 1 0
+  life 0.4167
+  effect "vfx/effekseer-tktk02/Blow3/n3.effect.ogt"
+  scale curve 0 0 0.1094 1.2988 0.2188 2.3936 0.3281 3.3036 0.4531 4.1425 0.5781 4.7947 0.7031 5.289 1 6
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0.0 "LineMain": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0 "LineMain": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 0.0.0 "LineMain": a track of many instances: one trail drawn
+# effekseer: node 0.0.1 "LineColor": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.1 "LineColor": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 0.0.1 "LineColor": a track of many instances: one trail drawn
+# effekseer: node 0.0.2 "LineGlow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.2 "LineGlow": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 0.0.2 "LineGlow": a track of many instances: one trail drawn
+# effekseer: node 0.0.3.0.0.0 "particleMain": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 0.0.3 "particleNull": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.3.0.0.1 "particleGlow": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 1.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.0.0 "LineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.0.1 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.0.1 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0.0.2 "LineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 2.0.0.2 "LineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3 "Ring": ring 10 instances: the first 4 drawn

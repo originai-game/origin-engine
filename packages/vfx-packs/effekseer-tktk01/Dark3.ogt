@@ -1,0 +1,48 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.3333
+emitter "vfx/effekseer-tktk01/Dark3/n0-0-0.emitter.ogt" {
+  at 0
+  offset 0.5 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Dark3/n0-0-0-0.emitter.ogt" {
+  at 0
+  offset 0.5 0 0
+  rotate 0 0 -90
+}
+trail {
+  at 0
+  offset 0.5 0 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Dark3/n0-0-0-1.effect.ogt"
+  width 0.125 0.0312
+  lifetime 1.6667
+  color 1 1 1 0.5882
+}
+trail {
+  at 0
+  offset 0.5 0 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Dark3/n0-0-0-2.effect.ogt"
+  width 0.25 0.0625
+  lifetime 1.6667
+  color 0.2195 0 0.0478 1
+}
+emitter "vfx/effekseer-tktk01/Dark3/n0-0-0-3.emitter.ogt" {
+  at 0
+  offset 0.5 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Dark3/n0-1.emitter.ogt" {
+  at 0
+}
+# effekseer: node 0.0.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.1 "軌跡": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.1 "軌跡": nested generation: 500 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.2 "Glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.2 "Glow": nested generation: 500 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.3 "glow": a random colour per particle: its mean used
+# effekseer: node 0.1 "glow": a random colour per particle: its mean used

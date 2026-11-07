@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# Effekseer node 1.0.0.0.0.0 "Light"
+maxParticles 92
+shape point
+spread 0
+rate 400
+duration 1
+looping true
+lifetime 0.1333 0.1333
+speed 6.4 6.4
+size 4 4
+colorOverLife {
+  key 0 1 0.5732 0.4098 0.1961
+  key 0.625 1 0.5732 0.4098 0.1961
+  key 1 1 0.5732 0.4098 0
+}
+texture "vfx/effekseer-suzuki01/textures/Particle02.png"
+blend additive

@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 2.2 "Node"
+maxParticles 7
+shape sphere 0
+spread 0
+rate 0
+burst 0 1 5 0.0167
+duration 0.0833
+looping false
+lifetime 0.5 0.5
+speed 0 0
+size 5 5
+colorOverLife {
+  key 0 0.7445 0.5356 0 0.3765
+  key 0.4062 0.4901 0.5356 0 0.3765
+  key 0.8333 0.2837 0.5356 0 0.3765
+  key 1 0.2195 0.5356 0 0
+}
+rotation -90 -90
+texture "vfx/effekseer-magicalxspiral/textures/Thunder2.png"
+sheet 2 4 8 fps 20
+blend additive

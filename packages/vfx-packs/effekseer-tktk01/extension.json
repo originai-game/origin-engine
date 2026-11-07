@@ -1,0 +1,35 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "effekseer-tktk01",
+  "version": "1.0.0",
+  "description": "tktk vol.1's Effekseer sample effects (71), converted to type vfx",
+  "minEngine": "0.8.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "buff",
+      "fire",
+      "heal",
+      "hit-spark",
+      "magic-impact",
+      "magic-projectile",
+      "slash"
+    ],
+    "element": [
+      "dark",
+      "earth",
+      "fire",
+      "holy",
+      "wind"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "anime",
+    "effekseer",
+    "particles",
+    "tktk01"
+  ]
+}

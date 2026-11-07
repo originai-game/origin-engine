@@ -1,0 +1,14 @@
+type particles
+version 1
+---
+# Effekseer node 0.6.0 "FireGenerator"
+maxParticles 16
+shape point
+spread 0
+rate 6.6667
+duration 1
+looping true
+lifetime 1.6667 1.6667
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-pierre02/Sword_Ember/n0-6-0-0-2.emitter.ogt"

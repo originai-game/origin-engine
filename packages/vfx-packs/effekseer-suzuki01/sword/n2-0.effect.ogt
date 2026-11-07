@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 2.0 "ring"
+main "vfx/effekseer-suzuki01/textures/Splash01.png" rgba {
+}
+blend additive
+doubleSided true

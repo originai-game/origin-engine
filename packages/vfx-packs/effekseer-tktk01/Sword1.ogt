@@ -1,0 +1,124 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.8005
+trail {
+  at 0
+  offset 5 0 2.5
+  rotate 90 55.5 0
+  life 0.1167
+  effect "vfx/effekseer-tktk01/Sword1/n0-0-0-0.effect.ogt"
+  width 10.5 2.625
+  lifetime 0.3333
+  color 0.9658 0 0.0003 0.3922
+  orbit 7.4041 2.25
+}
+mesh ring {
+  at 0.1333
+  offset -9 0 0
+  rotate -54.7356 30 80.2644
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Sword1/n1.effect.ogt"
+  scale curve 0 6 0.0781 5.0753 0.1562 4.2986 0.2344 3.6503 0.3281 3.0141 0.4688 2.279 0.8281 0.8633 1 0
+  color 25 25 25 1
+  blend additive
+}
+mesh ring {
+  at 0.1335
+  offset -9 0 0
+  rotate -54.7356 -30 -80.2644
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Sword1/n1.effect.ogt"
+  scale curve 0 6 0.0781 5.0753 0.1562 4.2986 0.2344 3.6503 0.3281 3.0141 0.4688 2.279 0.8281 0.8633 1 0
+  color 25 25 25 1
+  blend additive
+}
+mesh ring {
+  at 0.1337
+  offset -9 0 0
+  rotate 54.7356 30 9.7356
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Sword1/n1.effect.ogt"
+  scale curve 0 6 0.0781 5.0753 0.1562 4.2986 0.2344 3.6503 0.3281 3.0141 0.4688 2.279 0.8281 0.8633 1 0
+  color 25 25 25 1
+  blend additive
+}
+mesh ring {
+  at 0.1338
+  offset -9 0 0
+  rotate 54.7356 -30 -9.7356
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Sword1/n1.effect.ogt"
+  scale curve 0 6 0.0781 5.0753 0.1562 4.2986 0.2344 3.6503 0.3281 3.0141 0.4688 2.279 0.8281 0.8633 1 0
+  color 25 25 25 1
+  blend additive
+}
+mesh ring {
+  at 0.3
+  offset -9 0 0
+  rotate -54.7356 30 80.2644
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword1/n2.effect.ogt"
+  scale curve 0 0 0.0781 1.4917 0.1562 2.8543 0.2344 4.1048 0.3281 5.4816 0.4688 7.3555 0.8281 11.7404 1 14
+  color 25 25 25 1
+  blend additive
+}
+mesh ring {
+  at 0.3002
+  offset -9 0 0
+  rotate -54.7356 -30 -80.2644
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword1/n2.effect.ogt"
+  scale curve 0 0 0.0781 1.4917 0.1562 2.8543 0.2344 4.1048 0.3281 5.4816 0.4688 7.3555 0.8281 11.7404 1 14
+  color 25 25 25 1
+  blend additive
+}
+mesh ring {
+  at 0.3003
+  offset -9 0 0
+  rotate 54.7356 30 9.7356
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword1/n2.effect.ogt"
+  scale curve 0 0 0.0781 1.4917 0.1562 2.8543 0.2344 4.1048 0.3281 5.4816 0.4688 7.3555 0.8281 11.7404 1 14
+  color 25 25 25 1
+  blend additive
+}
+mesh ring {
+  at 0.3005
+  offset -9 0 0
+  rotate 54.7356 -30 -9.7356
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword1/n2.effect.ogt"
+  scale curve 0 0 0.0781 1.4917 0.1562 2.8543 0.2344 4.1048 0.3281 5.4816 0.4688 7.3555 0.8281 11.7404 1 14
+  color 25 25 25 1
+  blend additive
+}
+# effekseer: node 0.0.0.0 "剣振り": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0 "剣振り": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 1 "斬撃後の爆風": ring 100 instances: the first 4 drawn
+# effekseer: node 2 "斬撃後の爆風": ring 100 instances: the first 4 drawn

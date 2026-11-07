@@ -1,0 +1,236 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 19.3333
+mesh ring {
+  at 0.0167
+  offset 0 0 10
+  inner 0.6923
+  band 0.5
+  height -2 -1.3846
+  colors 0.2195 0.1166 1 0 0.2845 0.2195 1 0.251 0.2195 0.1166 1 0
+  life 1.5
+  effect "vfx/effekseer-pierre01/Background/n0-0-0.effect.ogt"
+  scale curve 0 8 1 44
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.1833
+  offset 0 0 10
+  inner 0.6923
+  band 0.5
+  height -2 -1.3846
+  colors 0.2195 0.1166 1 0 0.2845 0.2195 1 0.251 0.2195 0.1166 1 0
+  life 1.5
+  effect "vfx/effekseer-pierre01/Background/n0-0-0.effect.ogt"
+  scale curve 0 8 1 44
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.35
+  offset 0 0 10
+  inner 0.6923
+  band 0.5
+  height -2 -1.3846
+  colors 0.2195 0.1166 1 0 0.2845 0.2195 1 0.251 0.2195 0.1166 1 0
+  life 1.5
+  effect "vfx/effekseer-pierre01/Background/n0-0-0.effect.ogt"
+  scale curve 0 8 1 44
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.5167
+  offset 0 0 10
+  inner 0.6923
+  band 0.5
+  height -2 -1.3846
+  colors 0.2195 0.1166 1 0 0.2845 0.2195 1 0.251 0.2195 0.1166 1 0
+  life 1.5
+  effect "vfx/effekseer-pierre01/Background/n0-0-0.effect.ogt"
+  scale curve 0 8 1 44
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  offset 0 0 10
+  inner 0
+  band 0.5
+  height -2 0
+  colors 0.2195 0.3587 0.5356 0 0.3587 0.5356 0.7519 1 0.2195 0.3587 0.5356 1
+  life 0.5
+  effect "vfx/effekseer-pierre01/Background/n0-0-1.effect.ogt"
+  scale curve 0 0 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0833
+  offset 0 0 10
+  inner 0
+  band 0.5
+  height -2 0
+  colors 0.2195 0.3587 0.5356 0 0.3587 0.5356 0.7519 1 0.2195 0.3587 0.5356 1
+  life 0.5
+  effect "vfx/effekseer-pierre01/Background/n0-0-1.effect.ogt"
+  scale curve 0 0 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.1667
+  offset 0 0 10
+  inner 0
+  band 0.5
+  height -2 0
+  colors 0.2195 0.3587 0.5356 0 0.3587 0.5356 0.7519 1 0.2195 0.3587 0.5356 1
+  life 0.5
+  effect "vfx/effekseer-pierre01/Background/n0-0-1.effect.ogt"
+  scale curve 0 0 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.25
+  offset 0 0 10
+  inner 0
+  band 0.5
+  height -2 0
+  colors 0.2195 0.3587 0.5356 0 0.3587 0.5356 0.7519 1 0.2195 0.3587 0.5356 1
+  life 0.5
+  effect "vfx/effekseer-pierre01/Background/n0-0-1.effect.ogt"
+  scale curve 0 0 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.0167
+  offset 0 0 10
+  inner 0.5
+  band 0.5
+  height -2 -1
+  colors 0.0254 0.1166 0.2195 0 0.0254 0.1166 0.2195 1 0.0254 0.1166 0.2195 0
+  life 0.6667
+  effect "vfx/effekseer-pierre01/Background/n0-0-2.effect.ogt"
+  scale curve 0 16 1 48
+  color 1 1 1 0.5312
+  blend additive
+}
+mesh ring {
+  at 0.1833
+  offset 0 0 10
+  inner 0.5
+  band 0.5
+  height -2 -1
+  colors 0.0254 0.1166 0.2195 0 0.0254 0.1166 0.2195 1 0.0254 0.1166 0.2195 0
+  life 0.6667
+  effect "vfx/effekseer-pierre01/Background/n0-0-2.effect.ogt"
+  scale curve 0 16 1 48
+  color 1 1 1 0.5312
+  blend additive
+}
+mesh ring {
+  at 0.35
+  offset 0 0 10
+  inner 0.5
+  band 0.5
+  height -2 -1
+  colors 0.0254 0.1166 0.2195 0 0.0254 0.1166 0.2195 1 0.0254 0.1166 0.2195 0
+  life 0.6667
+  effect "vfx/effekseer-pierre01/Background/n0-0-2.effect.ogt"
+  scale curve 0 16 1 48
+  color 1 1 1 0.5312
+  blend additive
+}
+mesh ring {
+  at 0.5167
+  offset 0 0 10
+  inner 0.5
+  band 0.5
+  height -2 -1
+  colors 0.0254 0.1166 0.2195 0 0.0254 0.1166 0.2195 1 0.0254 0.1166 0.2195 0
+  life 0.6667
+  effect "vfx/effekseer-pierre01/Background/n0-0-2.effect.ogt"
+  scale curve 0 16 1 48
+  color 1 1 1 0.5312
+  blend additive
+}
+mesh ring {
+  at 8
+  offset 0 0 -15
+  rotate 0 0 90
+  inner 0.6894
+  band 0.3
+  height -1.5 -0.8078
+  colors 0.3587 0.6661 1 1 0.3587 0.6661 1 0.7529 0.3587 0.6661 1 0
+  life 7.75
+  effect "vfx/effekseer-pierre01/Background/n0-0-3.effect.ogt"
+  scale 36
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 8.5
+  offset 0 0 -15
+  rotate 0 0 -90
+  inner 0.6894
+  band 0.3
+  height -1.5 -0.8078
+  colors 0.3587 0.6661 1 1 0.3587 0.6661 1 0.7529 0.3587 0.6661 1 0
+  life 7.75
+  effect "vfx/effekseer-pierre01/Background/n0-0-3.effect.ogt"
+  scale 36
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 9
+  offset 0 0 -15
+  rotate 0 0 90
+  inner 0.6894
+  band 0.3
+  height -1.5 -0.8078
+  colors 0.3587 0.6661 1 1 0.3587 0.6661 1 0.7529 0.3587 0.6661 1 0
+  life 7.75
+  effect "vfx/effekseer-pierre01/Background/n0-0-3.effect.ogt"
+  scale 36
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 9.5
+  offset 0 0 -15
+  rotate 0 0 -90
+  inner 0.6894
+  band 0.3
+  height -1.5 -0.8078
+  colors 0.3587 0.6661 1 1 0.3587 0.6661 1 0.7529 0.3587 0.6661 1 0
+  life 7.75
+  effect "vfx/effekseer-pierre01/Background/n0-0-3.effect.ogt"
+  scale 36
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-pierre01/Background/n0-1-0.emitter.ogt" {
+  at 5
+  offset 0 0 5
+}
+emitter "vfx/effekseer-pierre01/Background/n0-1-1.emitter.ogt" {
+  at 10
+  offset 0 0 5
+}
+# effekseer: node 0.0.0 "Expander": ring unlimited instances: the first 4 drawn
+# effekseer: node 0.0.0 "Expander": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.0.0 "Expander": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.0.1 "Top": ring unlimited instances: the first 4 drawn
+# effekseer: node 0.0.1 "Top": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.0.2 "Expander2": ring unlimited instances: the first 4 drawn
+# effekseer: node 0.0.2 "Expander2": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.0.2 "Expander2": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.0.3 "Line": ring 8 instances: the first 4 drawn
+# effekseer: node 0.0.3 "Line": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.0.3 "Line": a ring whose thickness changes over its life: its middle thickness kept

@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 1.0 "斬撃基本２"
+maxParticles 13
+shape point
+spread 0
+rate 0
+burst 0 5 2 0.0167
+duration 0.0333
+looping false
+lifetime 0.5 0.5
+speed 40 40
+speedOverLife 0 3.6895 0.25 1.5124 0.375 0.7867 0.5 0.3172 0.625 0.1037 0.75 0.1464 0.875 0.4452 1 0.9788
+size 6 6
+sizeOverLife 0 0.4082 0.4375 0.3062 0.75 0.2041 0.9375 0.1021 0.9844 0.051 1 0
+colorOverLife {
+  key 0 0.1011 0.7445 0.8277 0.8529
+  key 0.2656 0.1011 0.7445 0.8277 0.6505
+  key 0.7812 0.1011 0.7445 0.8277 0.1805
+  key 1 0.1011 0.7445 0.8277 0
+}
+texture "vfx/effekseer-tktk01/textures/Line01.png"
+blend additive

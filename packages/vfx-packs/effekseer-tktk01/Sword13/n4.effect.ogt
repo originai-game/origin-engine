@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 4 "衝撃リング"
+main "vfx/effekseer-tktk01/textures/icicle2.png" rgba {
+}
+alpha curve 0 0 0.0469 0.0646 0.1094 0.2197 0.1562 0.3719 0.2812 0.8287 0.3333 1 1 1
+blend additive
+doubleSided true

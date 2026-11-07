@@ -1,0 +1,19 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.1 "剣からの炎尻尾"
+maxParticles 4096
+shape box 0.2222 0.2222 0.2222
+spread 26.5254
+rate 30000
+duration 0.2917
+looping false
+lifetime 0.25 0.5833
+speed 10.1333 16.1151
+size 0.8889 0.8889
+colorOverLife {
+  key 0 1 1 1 0.1961
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-tktk01/textures/Fog3002.png"
+blend additive

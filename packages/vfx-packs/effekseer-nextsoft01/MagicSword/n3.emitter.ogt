@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 3 "剣"
+maxParticles 18
+shape point
+spread 0
+rate 100
+duration 0.2
+looping false
+lifetime 0.1333 0.1333
+speed 240 240
+size 2 2
+colorOverLife {
+  key 0 1 0.5326 0.0478 0
+  key 0.1875 1 0.6082 0.096 0.225
+  key 0.3281 1 0.6684 0.1445 0.3337
+  key 0.4688 1 0.7319 0.2039 0.3625
+  key 0.5469 1 0.7684 0.2417 0.3426
+  key 0.625 1 0.806 0.2831 0.3
+  key 0.8125 1 0.9001 0.3972 0.15
+  key 1 1 1 0.5326 0
+}
+texture "vfx/effekseer-nextsoft01/textures/Sword002.png"
+blend additive

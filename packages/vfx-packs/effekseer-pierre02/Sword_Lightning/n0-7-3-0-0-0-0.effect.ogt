@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.7.3.0.0.0.0 "Tracker"
+main "vfx/effekseer-pierre02/textures/Burst_2.png" rgba {
+}
+blend additive
+doubleSided true

@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 4 "mqoCloud2"
+main "vfx/effekseer-suzuki01/textures/aura3_type2.png" rgba {
+  tile 1.9531 1.9531
+  scroll 0.1172 0.4688
+}
+blend additive
+doubleSided true

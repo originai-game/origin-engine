@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 1.4.0 "Color"
+maxParticles 4
+shape point
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.4167 0.4167
+speed 0 0
+size 0 0
+colorOverLife {
+  key 0 1 0.5356 0.2195 0
+  key 0.4 1 0.391 0.1344 0.502
+  key 1 1 0.2195 0.0478 0
+}
+texture "vfx/effekseer-tktk02/textures/Particle02.png"
+blend additive

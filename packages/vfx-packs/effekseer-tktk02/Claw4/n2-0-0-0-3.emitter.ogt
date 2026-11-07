@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 2.0.0.0.3 "Glow"
+maxParticles 4
+shape spline 0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0 closed
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.5 0.5
+speed 0 0
+size 18.75 18.75
+sizeOverLife 0 0.08 0.1094 0.2792 0.2188 0.447 0.3281 0.5866 0.4531 0.7152 0.5781 0.8152 0.7031 0.891 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.3333 1 1 1 0.251
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-tktk02/textures/glowRGB.png"
+blend additive

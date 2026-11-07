@@ -1,0 +1,13 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.9667
+emitter "vfx/effekseer-tktk01/Cure4/n0-0.emitter.ogt" {
+  at 0
+  offset 2 0 0
+  rotate 0 0 90
+}
+emitter "vfx/effekseer-tktk01/Cure4/n1.emitter.ogt" {
+  at 0.3
+}

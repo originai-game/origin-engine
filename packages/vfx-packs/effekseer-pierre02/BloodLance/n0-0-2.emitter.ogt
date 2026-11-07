@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.2 "Wave_Distortion"
+maxParticles 10
+shape point
+spread 0
+rate 2
+duration 1
+looping true
+lifetime 3.3 3.7
+speed 0 0
+size 22.5882 25.4118
+sizeOverLife 0 0.5667 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.0714 1 1 1 0.251
+  key 0.8571 1 1 1 0.251
+  key 1 1 1 1 0
+}
+rotation -360 360
+angularVelocity 60 120
+texture "vfx/effekseer-pierre02/textures/Wind.png"
+blend alpha
+distortion 0.025

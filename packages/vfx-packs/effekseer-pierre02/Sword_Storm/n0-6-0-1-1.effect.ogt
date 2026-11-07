@@ -1,0 +1,11 @@
+type effect
+version 1
+---
+# Effekseer node 0.6.0.1.1 "Wind_RingPolygon"
+main "vfx/effekseer-pierre02/textures/Fire.png" rgba {
+  tile 0.5 0.5
+  offset 0 0.5
+}
+alpha curve 0 0 0.2571 1 0.2857 1 0.7656 0.3915 0.8906 0.2001 1 0
+blend alpha
+doubleSided true

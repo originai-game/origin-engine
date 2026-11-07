@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 3 "Drill"
+main "vfx/effekseer-andrewfm01/textures/drillshi.png" rgba {
+  offset 0.125 0
+  scroll 15.4688 0
+}
+blend additive
+doubleSided true

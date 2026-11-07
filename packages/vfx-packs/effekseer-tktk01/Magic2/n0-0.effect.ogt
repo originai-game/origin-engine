@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.0 "時計リング"
+main "vfx/effekseer-tktk01/textures/circle4.png" rgba {
+}
+alpha curve 0 0 0.0118 1 0.5781 1 0.5938 0.9837 0.9062 0.0573 0.9219 0.0235 1 0.0235
+blend additive
+doubleSided true

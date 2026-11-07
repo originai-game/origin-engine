@@ -1,0 +1,121 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.85
+mesh ring {
+  at 0.2167
+  rotate 100.3141 17.2294 -141.5667
+  inner 1
+  band 0.5
+  height -0.25 0.25
+  colors 0.0104 0.0001 0.0005 0.1882 0.1166 0.0029 0.0055 0.7529 0.0104 0.0001 0.0005 0.1882
+  life 0.5167
+  effect "vfx/effekseer-pierre02/LossOfBlood/n0-0.effect.ogt"
+  scale curve 0 1 1 10
+  spin 0 0 360
+  color 1 1 1 0.9333
+  blend alpha
+}
+mesh ring {
+  at 0.2222
+  rotate 90 0 0
+  inner 1
+  band 0.5
+  height -0.25 0.25
+  colors 0.0104 0.0001 0.0005 0.1882 0.1166 0.0029 0.0055 0.7529 0.0104 0.0001 0.0005 0.1882
+  life 0.5167
+  effect "vfx/effekseer-pierre02/LossOfBlood/n0-0.effect.ogt"
+  scale curve 0 1 1 10
+  spin 0 0 360
+  color 1 1 1 0.9333
+  blend alpha
+}
+mesh ring {
+  at 0.2277
+  rotate 79.6859 17.2294 141.5667
+  inner 1
+  band 0.5
+  height -0.25 0.25
+  colors 0.0104 0.0001 0.0005 0.1882 0.1166 0.0029 0.0055 0.7529 0.0104 0.0001 0.0005 0.1882
+  life 0.5167
+  effect "vfx/effekseer-pierre02/LossOfBlood/n0-0.effect.ogt"
+  scale curve 0 1 1 10
+  spin 0 0 360
+  color 1 1 1 0.9333
+  blend alpha
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-0-0.emitter.ogt" {
+  at 0.35
+  offset 0 0 1
+  rotate 11.5346 0 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-0-1.emitter.ogt" {
+  at 0.4833
+  offset 0 0 1
+  rotate 11.5346 0 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-0-2.emitter.ogt" {
+  at 0.6167
+  offset 0 0 1
+  rotate 11.5346 0 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-0-3.emitter.ogt" {
+  at 0.75
+  offset 0 0 1
+  rotate 11.5346 0 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-1-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-1-0-1.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-1-0-2.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-1-0-3.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-1-0-4.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-1-0-5.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-2-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre02/LossOfBlood/n0-1-2-0-1.parent.ogt" {
+  at 0
+}
+# effekseer: node 0.0 "Wind": ring 3 instances: the first 4 drawn
+# effekseer: node 0.0 "Wind": nested generation: 36 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.0 "FireVariation": nested generation: 72 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0.1 "FireVariation": nested generation: 72 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0.2 "FireVariation": nested generation: 72 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0.3 "FireVariation": nested generation: 72 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.1.0.0 "FireVariation": nested generation: 36 instances above its generator folded into one emitter
+# effekseer: node 0.1.1.0.0 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.1.0.0 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.0.1 "FireVariation": nested generation: 36 instances above its generator folded into one emitter
+# effekseer: node 0.1.1.0.1 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.1.0.1 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.0.2 "FireVariation": nested generation: 36 instances above its generator folded into one emitter
+# effekseer: node 0.1.1.0.2 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.1.0.2 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.0.3 "FireVariation": nested generation: 36 instances above its generator folded into one emitter
+# effekseer: node 0.1.1.0.3 "FireVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.1.0.3 "FireVariation": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.1.1.0.4 "EmberVariation": nested generation: 36 instances above its generator folded into one emitter
+# effekseer: node 0.1.1.0.4 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.1.0.5 "EmberVariation": nested generation: 36 instances above its generator folded into one emitter
+# effekseer: node 0.1.1.0.5 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.2.0.0 "EmberVariation": nested generation: 36 instances above its generator folded into one emitter
+# effekseer: node 0.1.2.0.0 "EmberVariation": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.2.0.1 "EmberVariation": nested generation: 36 instances above its generator folded into one emitter
+# effekseer: node 0.1.2.0.1 "EmberVariation": a fixed sprite with many instances: drawn facing the camera

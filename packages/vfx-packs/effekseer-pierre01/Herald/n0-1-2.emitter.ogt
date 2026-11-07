@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.2 "SplashVariation"
+maxParticles 25
+shape point
+spread 36.0708
+rate 0
+burst 0 1 20 0.0167
+duration 0.3333
+looping false
+lifetime 0.3333 1.3333
+speed 5.1962 11.225
+size 0.5687 1.7062
+sizeOverLife 0 0.8791 0.25 0.9739 0.5 1 0.75 0.9574 1 0.8462
+colorOverLife {
+  key 0 0.7519 0.8751 1 0
+  key 0.2 0.7519 0.8751 1 0.251
+  key 0.3 0.7519 0.8751 1 0.3294
+  key 1 0.7519 0.8751 1 0
+}
+rotation -360 360
+angularVelocity -60 60
+gravity 0 -10.8 0
+texture "vfx/effekseer-pierre01/textures/Splash.png"
+blend alpha
+effect "vfx/effekseer-pierre01/Herald/n0-1-2.effect.ogt"

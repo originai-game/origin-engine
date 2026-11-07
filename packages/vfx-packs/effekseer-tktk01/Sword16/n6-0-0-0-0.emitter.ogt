@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# Effekseer node 6.0.0.0.0 "残像グロー"
+maxParticles 155
+shape point
+spread 0
+rate 240
+duration 1
+looping true
+lifetime 0.5 0.5
+speed 0 0
+size 5 5
+sizeOverLife 0 0.2828 1 0.6325
+colorOverLife {
+  key 0 0.2195 1 1 0.0392
+  key 1 0.2195 1 1 0
+}
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

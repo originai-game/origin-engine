@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.6.1 "Flash"
+maxParticles 394
+shape point
+spread 0
+rate 7.5
+duration 1
+looping true
+lifetime 0.2 0.4667
+speed 0 0
+size 2 2
+sizeOverLife 0 0.2 1 1
+colorOverLife {
+  key 0 1 0.5356 0.2195 0
+  key 0.1875 1 0.5356 0.2195 0.1625
+  key 0.375 1 0.5356 0.2195 0.25
+  key 0.5625 1 0.5356 0.2195 0.2625
+  key 0.75 1 0.5356 0.2195 0.2
+  key 1 1 0.5356 0.2195 0
+}
+rotation -360 360
+texture "vfx/effekseer-pierre02/textures/Particle_Soft.png"
+blend additive

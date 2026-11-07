@@ -1,0 +1,11 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.4
+emitter "vfx/effekseer-magicalxspiral/IcicleLocus/n0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-magicalxspiral/IcicleLocus/n1.emitter.ogt" {
+  at 0
+}

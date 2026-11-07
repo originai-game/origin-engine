@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.5.0.0 "砂煙"
+maxParticles 625
+shape spline 0 0 1.5  -1.0607 0 1.0607  -1.5 0 0  -1.0607 0 -1.0607  0 0 -1.5  1.0607 0 -1.0607  1.5 0 0  1.0607 0 1.0607 closed
+spread 25.2394
+rate 6000
+duration 0.0833
+looping false
+lifetime 0.15 0.75
+speed 7.3703 13.6987
+speedOverLife 0 3.6952 0.25 1.7411 0.375 1.0269 0.5 0.5001 0.625 0.1608 0.75 0.0091 0.875 0.0448 1 0.2582
+size 2 2
+sizeOverLife 0 0.5 1 1
+colorOverLife {
+  key 0 0.7227 0.3112 0.0278 0.3922
+  key 0.2031 0.7227 0.3112 0.0278 0.2477
+  key 0.4219 0.7227 0.3112 0.0278 0.1419
+  key 0.6562 0.7227 0.3112 0.0278 0.069
+  key 1 0.7227 0.3112 0.0278 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

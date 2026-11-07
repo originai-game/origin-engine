@@ -1,0 +1,73 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.8665
+emitter "vfx/effekseer-tktk01/Blow10/n0-0-0.emitter.ogt" {
+  at 0
+  offset 1 0 0
+  rotate 90 0 -90
+}
+emitter "vfx/effekseer-tktk01/Blow10/n0-0-0-0.emitter.ogt" {
+  at 0
+  offset 1 0 0
+  rotate 90 0 -90
+}
+mesh quad {
+  at 0
+  rotate -180 0 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow10/n0-1.effect.ogt"
+  scale curve 0 2 0.0938 4.4196 0.2031 6.7879 0.3125 8.726 0.4219 10.2962 0.6562 12.7121 1 15
+  color 1 0.0478 0.0478 0.1961
+  blend additive
+}
+mesh ring {
+  at 0.0833
+  rotate -180 0 0
+  inner 0.2084
+  band 1
+  colors 1 1 1 0 1 0.0478 0.0478 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow10/n0-2.effect.ogt"
+  scale curve 0 2 0.0781 2.7909 0.1719 3.5354 0.2656 4.0848 0.375 4.5186 0.4688 4.7469 0.5781 4.8874 1 5
+  color 3 3 3 1
+  blend additive
+}
+mesh ring {
+  at 0.0833
+  rotate -180 0 0
+  inner 0.8604
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow10/n0-3.effect.ogt"
+  scale curve 0 2 0.0781 2.7909 0.1719 3.5354 0.2656 4.0848 0.375 4.5186 0.4688 4.7469 0.5781 4.8874 1 5
+  color 4 4 4 1
+  blend additive
+}
+mesh ring {
+  at 0.0833
+  rotate -180 0 0
+  inner 1
+  band 1
+  height 0 -0.8475
+  colors 1 1 1 0 1 0.0478 0.0478 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow10/n0-4.effect.ogt"
+  scale curve 0 2 0.0781 2.7909 0.1719 3.5354 0.2656 4.0848 0.375 4.5186 0.4688 4.7469 0.5781 4.8874 1 5
+  color 3 3 3 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Blow10/n0-5-0-0.emitter.ogt" {
+  at 0.0333
+  rotate 90 0 0
+}
+# effekseer: node 0.0.0 "メインライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0 "メインライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.0 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0 "glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2 "リング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.4 "立体リング": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.5.0.0 "砂煙": a fixed sprite with many instances: drawn facing the camera

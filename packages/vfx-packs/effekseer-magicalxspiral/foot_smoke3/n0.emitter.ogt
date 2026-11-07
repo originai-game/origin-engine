@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 0 "Stars"
+maxParticles 19
+shape point
+spread 98.0495
+rate 0
+burst 0 1 15 0.0167
+duration 0.25
+looping false
+lifetime 0.5 0.5
+speed 1.4283 2.2891
+speedOverLife 0 1.0041 0.25 1.1667 0.5 1.1334 0.75 0.8999 1 0.4746
+size 0.3 0.3
+colorOverLife {
+  key 0 0.7482 0.7482 1 0
+  key 0.0667 0.7482 0.7482 1 0.251
+  key 0.1667 0.7482 0.7482 1 0.251
+  key 0.2969 0.7482 0.7482 1 0.1798
+  key 0.4375 0.7482 0.7482 1 0.1269
+  key 1 0.7482 0.7482 1 0
+}
+rotation -180 180
+texture "vfx/effekseer-magicalxspiral/textures/star.png"
+blend additive

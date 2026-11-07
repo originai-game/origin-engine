@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.2.0.0 "Angle"
+maxParticles 9
+shape sphere 5
+spread 0
+rate 0
+burst 0 7
+duration 0.0167
+looping false
+lifetime 1.6667 1.6667
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-tktk02/Light3/n0-0-0-2-0-0-0-4-0-0-0.emitter.ogt"

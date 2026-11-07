@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Effekseer node 0.2.1.0.6 "SmokeVariation"
+maxParticles 135
+shape box 3.2 3.2 3.2
+spread 180
+rate 0
+burst 0 27 2 0.0833
+duration 0.1
+looping false
+lifetime 0.9167 1.5833
+speed 0.864 1.056
+size 17.16 20.28
+sizeOverLife 0 0.5128 0.25 0.5445 0.5 0.6362 0.75 0.7881 1 1
+colorOverLife {
+  key 0 0.0037 0.0023 0.0017 0
+  key 0.2 0.0037 0.0023 0.0017 0.0471
+  key 0.4 0.0037 0.0023 0.0017 0.0706
+  key 1 0.0037 0.0023 0.0017 0
+}
+rotation -360 360
+angularVelocity -120 120
+gravity 0 8.64 0
+texture "vfx/effekseer-pierre02/textures/Smoke.png"
+blend alpha
+effect "vfx/effekseer-pierre02/FireBall/n0-2-1-0-6.effect.ogt"

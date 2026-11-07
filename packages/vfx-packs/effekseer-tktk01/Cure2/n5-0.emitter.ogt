@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# Effekseer node 5.0 "中心からの光"
+maxParticles 250
+shape point
+spread 0
+rate 6000
+duration 0.0333
+looping false
+lifetime 0.1333 0.4
+speed 45 45
+speedOverLife 0 2.1267 0.25 1.2147 0.375 0.9107 0.5 0.7139 0.625 0.6245 0.75 0.6424 1 0.9911
+size 2 2
+colorOverLife {
+  key 0 1 1 1 0.5882
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-tktk01/textures/star.png"
+blend additive

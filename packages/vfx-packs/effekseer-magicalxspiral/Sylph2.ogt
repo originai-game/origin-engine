@@ -1,0 +1,32 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.575
+trail {
+  at 0
+  rotate 0 0 15
+  life 0.2333
+  effect "vfx/effekseer-magicalxspiral/Sylph2/n0-0-0-0.effect.ogt"
+  width 4 4
+  lifetime 0.0833
+  color 1 1 1 0
+  orbit 4 15
+}
+trail {
+  at 0.0833
+  life 0.2333
+  effect "vfx/effekseer-magicalxspiral/Sylph2/n1-0-0-0.effect.ogt"
+  width 0 0
+  lifetime 0.1667
+  color 1 1 1 0
+  orbit 0 7.5
+}
+emitter "vfx/effekseer-magicalxspiral/Sylph2/n2-0.emitter.ogt" {
+  at 0.1667
+}
+# effekseer: node 0.0.0.0 "Track": nested generation: 16 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0 "Track": a track of many instances: one trail drawn
+# effekseer: node 1.0.0.0 "Track": nested generation: 32 instances above its generator folded into one emitter
+# effekseer: node 1.0.0.0 "Track": a track of many instances: one trail drawn
+# effekseer: node 2.0 "Node": a random colour per particle: its mean used

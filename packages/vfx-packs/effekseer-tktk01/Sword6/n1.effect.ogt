@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 1 "月"
+main "vfx/effekseer-tktk01/textures/aura3_type2.png" rgba {
+}
+alpha curve 0 1 0.6316 1 1 0
+blend additive
+doubleSided true

@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# Effekseer node 11 "Sparks"
+maxParticles 85
+shape sphere 0
+spread 0
+rate 200
+duration 1
+looping true
+lifetime 0.3333 0.3333
+speed 30 90
+size 3 7
+colorOverLife {
+  key 0 1 1 1 1
+  key 0.5 1 1 1 1
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-andrewfm01/textures/orb_colored.png"
+blend additive

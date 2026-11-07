@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 2.0.0 "煙"
+maxParticles 3125
+shape point
+spread 0
+rate 59999.9961
+duration 0.0417
+looping false
+lifetime 0.8333 0.8333
+speed 0 0
+size 1.9288 1.9288
+sizeOverLife 0 0.3322 0.0781 1.0241 0.0938 1.025 0.9844 0.0058 1 0.012
+colorOverLife {
+  key 0 0.7083 0.3838 0.1062 0.3922
+  key 0.2031 0.7083 0.3838 0.1062 0.2477
+  key 0.4219 0.7083 0.3838 0.1062 0.1419
+  key 0.6562 0.7083 0.3838 0.1062 0.069
+  key 1 0.7083 0.3838 0.1062 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Particle01.png"
+blend additive

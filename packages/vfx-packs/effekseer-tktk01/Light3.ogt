@@ -1,0 +1,79 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1
+mesh ring {
+  at 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 1
+  effect "vfx/effekseer-tktk01/Light3/n0-0.effect.ogt"
+  scale curve 0 1 0.0938 1.7445 0.2031 2.4732 0.3125 3.0695 0.4219 3.5527 0.6562 4.296 1 5
+  color 10 10 10 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 1
+  band 1
+  height 0 1.0588
+  colors 1 0.9914 1 0 1 1 1 1 1 1 1 0
+  life 1
+  effect "vfx/effekseer-tktk01/Light3/n0-1.effect.ogt"
+  scale curve 0 1 0.0938 1.7445 0.2031 2.4732 0.3125 3.0695 0.4219 3.5527 0.6562 4.296 1 5
+  color 10 10 10 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 1
+  effect "vfx/effekseer-tktk01/Light3/n0-2.effect.ogt"
+  scale curve 0 1 0.0938 1.7445 0.2031 2.4732 0.3125 3.0695 0.4219 3.5527 0.6562 4.296 1 5
+  color 10 10 10 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.9695
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 1
+  effect "vfx/effekseer-tktk01/Light3/n1-0.effect.ogt"
+  scale curve 0 1 0.0938 1.7445 0.2031 2.4732 0.3125 3.0695 0.4219 3.5527 0.6562 4.296 1 5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.2605
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 1
+  effect "vfx/effekseer-tktk01/Light3/n1-1.effect.ogt"
+  scale curve 0 1 0.0938 1.7445 0.2031 2.4732 0.3125 3.0695 0.4219 3.5527 0.6562 4.296 1 5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.9695
+  band 1
+  height 0 1.0473
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 1
+  effect "vfx/effekseer-tktk01/Light3/n1-2.effect.ogt"
+  scale curve 0 1 0.0938 1.7445 0.2031 2.4732 0.3125 3.0695 0.4219 3.5527 0.6562 4.296 1 5
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 0.0 "地面リングカラー": ring 10 instances: the first 4 drawn
+# effekseer: node 0.1 "地面柱カラー": ring 10 instances: the first 4 drawn
+# effekseer: node 0.1 "地面柱カラー": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.2 "地面リング内側": ring 10 instances: the first 4 drawn
+# effekseer: node 1.1 "地面リング白内側": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 1.2 "リング白柱": a ring whose height changes over its life: its middle height kept

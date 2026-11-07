@@ -1,0 +1,59 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.5833
+mesh ring {
+  at 0
+  offset 0 0.01 0
+  rotate -90 0 0
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 0.5356 1 0.6275 0 0 1 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Holy2/n0.effect.ogt"
+  scale curve 0 0 0.6719 1.2015 0.8438 1.445 1 1.6
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset 0 -0.1 0
+  rotate -90 0 0
+  inner 0.75
+  band 0.5
+  height 0.5 0
+  colors 1 1 1 0 1 0.3587 1 0.6275 0 0 1 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Holy2/n1.effect.ogt"
+  scale curve 0 0 0.6719 1.2015 0.8438 1.445 1 1.6
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1167
+  offset 0 0.01 0
+  rotate -90 0 0
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 0.5356 1 0.6275 0 0 1 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Holy2/n2.effect.ogt"
+  scale curve 0 0 0.6719 1.2015 0.8438 1.445 1 1.6
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1667
+  offset 0 -0.1 0
+  rotate -90 0 0
+  inner 0.75
+  band 0.5
+  height 0.5 0
+  colors 1 1 1 0 1 0.7519 1 0.6275 0 0.0002 1 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Holy2/n3.effect.ogt"
+  scale curve 0 0 0.6719 1.2015 0.8438 1.445 1 1.6
+  color 1 1 1 1
+  blend additive
+}

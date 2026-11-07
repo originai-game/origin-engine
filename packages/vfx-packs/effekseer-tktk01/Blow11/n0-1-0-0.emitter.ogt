@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.0.0 "レンズフレアglow"
+maxParticles 13
+shape spline 0 -5.25 0  3.7123 -3.7123 0  5.25 0 0  3.7123 3.7123 0  0 5.25 0  -3.7123 3.7123 0  -5.25 0 0  -3.7123 -3.7123 0 closed
+spread 0
+rate 0
+burst 0 10
+duration 0.0167
+looping false
+lifetime 0.5 0.5
+speed 5.5 5.5
+speedOverLife 0 2.1308 0.25 1.3814 0.5 0.8473 0.75 0.5423 1 0.4657
+size 3.75 3.75
+sizeOverLife 0 0.8165 0.4219 0.7245 1 0.6667
+colorOverLife {
+  key 0 0.162 0.162 0.162 0
+  key 0.0333 0.162 0.162 0.162 0.502
+  key 1 0.162 0.162 0.162 0.502
+}
+texture "vfx/effekseer-tktk01/textures/actionlines.png"
+blend additive
+effect "vfx/effekseer-tktk01/Blow11/n0-1-0-0.effect.ogt"

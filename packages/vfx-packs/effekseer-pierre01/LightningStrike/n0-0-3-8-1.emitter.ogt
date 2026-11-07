@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.3.8.1 "Smoke_Variation2"
+maxParticles 57
+shape box 2 1.9744 1.0497
+spread 9.8779
+rate 909.0909
+duration 0.0495
+looping false
+lifetime 0.5 1.1667
+speed 6 42.0171
+size 19.55 19.55
+sizeOverLife 0 0.1023 0.5 0.5192 1 1
+colorOverLife {
+  key 0 1 0.9158 0.9574 0
+  key 0.3906 1 0.9158 0.9574 0.0567
+  key 0.6 1 0.9158 0.9574 0.0627
+  key 1 1 0.9158 0.9574 0
+}
+rotation -360 360
+angularVelocity -300 300
+gravity 0 7.2 -4.32
+texture "vfx/effekseer-pierre01/textures/Smoke.png"
+blend alpha
+effect "vfx/effekseer-pierre01/LightningStrike/n0-0-3-8-1.effect.ogt"

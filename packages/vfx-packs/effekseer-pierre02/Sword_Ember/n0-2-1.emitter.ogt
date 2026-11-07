@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.2.1 "Blur"
+maxParticles 17
+shape point
+spread 0
+rate 0
+burst 0 1 13 0.0167
+duration 0.2167
+looping false
+lifetime 0.4167 1.0833
+speed 6 6
+size 9 9
+sizeOverLife 0 0.6667 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.1111 1 1 1 0.0627
+  key 0.2812 1 1 1 0.1284
+  key 0.4444 1 1 1 0.1569
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-pierre02/textures/ExperimentalNoise.png"
+blend alpha
+distortion 0.02

@@ -1,0 +1,92 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.3167
+emitter "vfx/effekseer-nextsoft01/MagicLight/n0.emitter.ogt" {
+  at 0.5
+  offset -1 1 0
+  rotate 0 0 -95.1944
+}
+emitter "vfx/effekseer-nextsoft01/MagicLight/n1.emitter.ogt" {
+  at 0.5
+  offset -1 1 0
+  rotate 0 0 -95.1944
+}
+mesh ring {
+  at 0.4167
+  offset -1.3 1 0
+  rotate 0 89.9802 0
+  move 1.8 0 0
+  inner 1
+  band 0.5
+  height 0.5 0
+  colors 0.2195 1 1 0 0.2176 0.5326 1 1 0.2195 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-nextsoft01/MagicLight/n2.effect.ogt"
+  scale curve 0 0 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.4333
+  offset -1.3 1 0
+  rotate 0 89.9802 0
+  move 1.8 0 0
+  inner 1
+  band 0.5
+  height 0.5 0
+  colors 0.2195 1 1 0 0.2176 0.5326 1 1 0.2195 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-nextsoft01/MagicLight/n2.effect.ogt"
+  scale curve 0 0 1 3
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.4167
+  offset -1 1 0
+  rotate 0 89.9802 0
+  move -3 0 0
+  inner 1
+  band 0.5
+  height 0.5 0
+  colors 0.2195 1 1 0 0.2176 0.5326 1 1 0.2195 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-nextsoft01/MagicLight/n3.effect.ogt"
+  scale curve 0 0 0.6719 0.7803 0.8438 0.9252 1 1
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.4333
+  offset -1 1 0
+  rotate 0 89.9802 0
+  move -3 0 0
+  inner 1
+  band 0.5
+  height 0.5 0
+  colors 0.2195 1 1 0 0.2176 0.5326 1 1 0.2195 1 1 0
+  life 0.1667
+  effect "vfx/effekseer-nextsoft01/MagicLight/n3.effect.ogt"
+  scale curve 0 0 0.6719 0.7803 0.8438 0.9252 1 1
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-nextsoft01/MagicLight/n4.emitter.ogt" {
+  at 0
+  offset -3.8 1 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-nextsoft01/MagicLight/n5.emitter.ogt" {
+  at 0
+  offset -1.5 1 0
+}
+# effekseer: node 0 "ya1": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0 "ya1": a random colour per particle: its mean used
+# effekseer: node 0 "ya1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "ya2": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1 "ya2": a random colour per particle: its mean used
+# effekseer: node 1 "ya2": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4 "maru": a random colour per particle: its mean used
+# effekseer: node 5 "maru2": a random colour per particle: its mean used

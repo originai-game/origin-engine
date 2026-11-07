@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 0.2.1.1.0.4 "EmberVariation"
+maxParticles 135
+shape box 1.9 1.9 1.9
+spread 0
+rate 0
+burst 0 54 2 0.0167
+duration 0.0333
+looping false
+lifetime 0.05 0.65
+speed 5.7 17.1
+size 2.375 2.375
+sizeOverLife 0 0.4 0.2188 0.5723 0.4531 0.7269 0.7031 0.8642 1 1
+colorOverLife {
+  key 0 1 0.1166 0.0104 0
+  key 0.1406 1 0.1166 0.0104 0.1592
+  key 0.2857 1 0.1166 0.0104 0.2689
+  key 1 1 0.1166 0.0104 0
+}
+rotation -30 30
+angularVelocity -60 60
+texture "vfx/effekseer-pierre02/textures/Splash.png"
+blend additive
+effect "vfx/effekseer-pierre02/FireBall/n0-2-1-1-0-4.effect.ogt"

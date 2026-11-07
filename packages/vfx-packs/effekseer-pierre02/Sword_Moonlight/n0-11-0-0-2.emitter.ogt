@@ -1,0 +1,29 @@
+type particles
+version 1
+---
+# Effekseer node 0.11.0.0.2 "CosmosSmoke_White"
+maxParticles 30
+shape box 3.375 3.375 3.375
+spread 0
+rate 0
+burst 0 1 2 0.0667
+duration 0.0833
+looping false
+lifetime 2.0833 2.5833
+speed 0 0
+size 9 9
+sizeOverLife 0 0.5 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.0357 0.9706 0.9779 0.9965 0.1266
+  key 0.2031 0.792 0.8418 0.9741 0.1339
+  key 0.5625 0.3515 0.4807 0.9046 0.1572
+  key 0.6719 0.243 0.3809 0.8812 0.1652
+  key 0.7857 0.1529 0.2906 0.8572 0.1736
+  key 1 0.0478 0.1636 0.8161 0
+}
+rotation -360 360
+angularVelocity -120 120
+texture "vfx/effekseer-pierre02/textures/Smoke.png"
+blend additive
+effect "vfx/effekseer-pierre02/Sword_Moonlight/n0-11-0-0-2.effect.ogt"

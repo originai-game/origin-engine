@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 2 "Node"
+main "vfx/effekseer-magicalxspiral/textures/circle3.png" rgba {
+}
+blend additive
+doubleSided true

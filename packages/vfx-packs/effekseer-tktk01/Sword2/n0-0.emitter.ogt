@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 0.0 "剣線"
+maxParticles 125
+shape box 0.001 1 0.001
+spread 0
+rate 2400
+duration 0.0417
+looping false
+lifetime 0.5 0.5
+speed 32 36
+speedOverLife 0 3.6895 0.25 1.5124 0.375 0.7867 0.5 0.3172 0.625 0.1037 0.75 0.1464 0.875 0.4452 1 0.9788
+size 8 8
+sizeOverLife 0 0.2165 0.1406 0.2887 0.3125 0.3385 1 0.433
+colorOverLife {
+  key 0 1 0.0759 0.0759 0.1137
+  key 0.4375 1 0.0759 0.0759 0
+  key 1 1 0.0759 0.0759 0
+}
+rotation 180 180
+texture "vfx/effekseer-tktk01/textures/Line6.png"
+blend additive

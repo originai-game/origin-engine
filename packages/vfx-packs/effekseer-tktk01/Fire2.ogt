@@ -1,0 +1,27 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.0133
+mesh ring {
+  at 0
+  inner 0
+  band 0
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.75
+  effect "vfx/effekseer-tktk01/Fire2/n0-0.effect.ogt"
+  scale 1
+  color 10 10 10 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Fire2/n1-0-0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Fire2/n2-0-0-0.parent.ogt" {
+  at 0
+}
+# effekseer: node 0.0 "溶岩本体": ring 10 instances: the first 4 drawn
+# effekseer: node 1.0.0.0 "湯気単体": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0.0.0 "湯気単体": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 2.0.0.0 "湯気単体": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0.0.0 "湯気単体": a child of an instanced parent: its motion drawn up the world's y

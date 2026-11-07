@@ -1,0 +1,55 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.6783
+emitter "vfx/effekseer-tktk01/Blow7/n0-0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow7/n0-0-0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow7/n1-0.emitter.ogt" {
+  at 0
+  offset 0.75 0 0
+  rotate 0 0 -90
+}
+trail {
+  at 0
+  offset 0.75 0 0
+  life 0.2
+  effect "vfx/effekseer-tktk01/Blow7/n1-0-0.effect.ogt"
+  width 0.1 0.025
+  lifetime 0.2
+  color 1 1 1 0.3922
+}
+emitter "vfx/effekseer-tktk01/Blow7/n1-0-1.emitter.ogt" {
+  at 0
+  offset 0.75 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Blow7/n1-0-1-0.emitter.ogt" {
+  at 0
+  offset 0.75 0 0
+  rotate 0 0 -90
+}
+trail {
+  at 0
+  offset 0.75 0 0
+  life 0.2
+  effect "vfx/effekseer-tktk01/Blow7/n1-0-2.effect.ogt"
+  width 0.2 0.05
+  lifetime 0.2
+  color 1 0.0104 0.0478 0.3922
+}
+# effekseer: node 0.0 "ライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0 "ライン": motion out from a circle: approximated along one direction
+# effekseer: node 0.0.0 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0 "glow": motion out from a circle: approximated along one direction
+# effekseer: node 1.0.0 "軌跡": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0.0 "軌跡": nested generation: 1000 instances above its generator folded into one emitter
+# effekseer: node 1.0.1 "glow": a random colour per particle: its mean used
+# effekseer: node 1.0.1.0 "glow": a random colour per particle: its mean used
+# effekseer: node 1.0.2 "軌跡": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0.2 "軌跡": nested generation: 1000 instances above its generator folded into one emitter

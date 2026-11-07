@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.3 "Particle"
+maxParticles 19
+shape box 5 1 1
+spread 180
+rate 0
+burst 0 1 15 0.0167
+duration 0.25
+looping false
+lifetime 1 1.3333
+speed 6.7517 27.0067
+size 0.09 0.31
+colorOverLife {
+  key 0 1 1 1 1
+  key 0.4286 1 1 1 1
+  key 1 1 1 1 0
+}
+angularVelocity -1800 1800
+gravity 0 0 -54
+texture "vfx/effekseer-pierre01/textures/Particle_Hard.png"
+blend additive

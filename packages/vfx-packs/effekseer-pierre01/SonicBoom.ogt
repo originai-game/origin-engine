@@ -1,0 +1,197 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.8333
+emitter "vfx/effekseer-pierre01/SonicBoom/n0-0-0-0.emitter.ogt" {
+  at 0.1
+}
+mesh ring {
+  at 0.1
+  rotate 0 0 90
+  inner 1
+  band 0.5
+  height 0 0.5536
+  colors 1 1 1 0.251 1 1 1 0.251 1 1 1 0.251
+  life 1.3333
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-0-1.effect.ogt"
+  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.1167
+  rotate 0 0 -90
+  inner 1
+  band 0.5
+  height 0 0.5536
+  colors 1 1 1 0.251 1 1 1 0.251 1 1 1 0.251
+  life 1.3333
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-0-1.effect.ogt"
+  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.1333
+  rotate 0 0 90
+  inner 1
+  band 0.5
+  height 0 0.5536
+  colors 1 1 1 0.251 1 1 1 0.251 1 1 1 0.251
+  life 1.3333
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-0-1.effect.ogt"
+  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.15
+  rotate 0 0 -90
+  inner 1
+  band 0.5
+  height 0 0.5536
+  colors 1 1 1 0.251 1 1 1 0.251 1 1 1 0.251
+  life 1.3333
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-0-1.effect.ogt"
+  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-pierre01/SonicBoom/n0-0-0-2.emitter.ogt" {
+  at 0.1
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-pierre01/SonicBoom/n0-0-0-3.emitter.ogt" {
+  at 0.1
+  offset 6 0 0
+}
+emitter "vfx/effekseer-pierre01/SonicBoom/n0-0-1.emitter.ogt" {
+  at 0.1
+}
+emitter "vfx/effekseer-pierre01/SonicBoom/n0-0-2.emitter.ogt" {
+  at 0.1
+}
+mesh quad {
+  at 0.1667
+  offset 0 0 -7
+  rotate -90 -89.972 0
+  accelerate 0 0 3.6
+  life 0.3333
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-0.effect.ogt"
+  scale curve 0 24 0.5 22.525 1 20.55
+  color 1 1 1 0.2133
+  blend additive
+}
+mesh quad {
+  at 0.2333
+  offset 0 0 -7
+  rotate -90 89.972 0
+  accelerate 0 0 3.6
+  life 0.3333
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-0.effect.ogt"
+  scale curve 0 24 0.5 22.525 1 20.55
+  color 1 1 1 0.2133
+  blend additive
+}
+mesh quad {
+  at 0.3
+  offset 0 0 -7
+  rotate -90 -89.972 0
+  accelerate 0 0 3.6
+  life 0.3333
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-0.effect.ogt"
+  scale curve 0 24 0.5 22.525 1 20.55
+  color 1 1 1 0.2133
+  blend additive
+}
+mesh quad {
+  at 0.3667
+  offset 0 0 -7
+  rotate -90 89.972 0
+  accelerate 0 0 3.6
+  life 0.3333
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-0.effect.ogt"
+  scale curve 0 24 0.5 22.525 1 20.55
+  color 1 1 1 0.2133
+  blend additive
+}
+mesh quad {
+  at 0.2
+  offset 0 0 -15
+  rotate -90 -60 0
+  life 0.2667
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-1.effect.ogt"
+  scale curve 0 24 1 24.16
+  color 1 1 1 0.138
+  blend additive
+}
+mesh quad {
+  at 0.2333
+  offset 0 0 -15
+  rotate 90 0 180
+  life 0.2667
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-1.effect.ogt"
+  scale curve 0 24 1 24.16
+  color 1 1 1 0.138
+  blend additive
+}
+mesh quad {
+  at 0.2667
+  offset 0 0 -15
+  rotate -90 60 0
+  life 0.2667
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-1.effect.ogt"
+  scale curve 0 24 1 24.16
+  color 1 1 1 0.138
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  offset 0 0 1
+  rotate 0 0 -180
+  inner 0.2665
+  band 0.4
+  height -0.4723 -0.0349
+  colors 1 1 1 0.1255 1 1 1 1 1 1 1 0.1255
+  life 0.3667
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-2.effect.ogt"
+  scale curve 0 1 0.1094 3.1491 0.3906 9.2929 0.5469 12.3356 0.7344 15.398 1 19
+  color 1 1 1 0.9493
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  offset 0 0 -7
+  move 0 0 -24
+  accelerate 0 0 -18
+  inner 0.8
+  band 0.5
+  height 0 2
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-3.effect.ogt"
+  scale curve 0 2 1 11.6
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.3833
+  offset 0 0 -7
+  move 0 0 -24
+  accelerate 0 0 -18
+  inner 0.8
+  band 0.5
+  height 0 2
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1
+  effect "vfx/effekseer-pierre01/SonicBoom/n0-0-3-3.effect.ogt"
+  scale curve 0 2 1 11.6
+  color 1 1 1 1
+  blend alpha
+}
+# effekseer: node 0.0.0.1 "Wind_RingPolygon": ring 15 instances: the first 4 drawn
+# effekseer: node 0.0.0.1 "Wind_RingPolygon": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.0.0.2 "Wind_Sprite": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.3.2 "Shockwave": a ring whose height changes over its life: its middle height kept
+# effekseer: node 0.0.3.2 "Shockwave": a ring whose thickness changes over its life: its middle thickness kept

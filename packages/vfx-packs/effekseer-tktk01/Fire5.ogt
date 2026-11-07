@@ -1,0 +1,82 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.4417
+emitter "vfx/effekseer-tktk01/Fire5/n0-0-0-0.emitter.ogt" {
+  at 0.3333
+  offset 0 1.5556 29.1111
+  rotate -90 89.972 0
+}
+emitter "vfx/effekseer-tktk01/Fire5/n0-0-0-1.emitter.ogt" {
+  at 0.3333
+  offset 0 1.5556 29.1111
+  rotate -90 89.972 0
+}
+mesh ring {
+  at 0.6667
+  offset 0 0 25.7778
+  rotate 54.7356 30 -170.2644
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Fire5/n0-0-0-2.effect.ogt"
+  scale 1.7778
+  color 2.5 2.5 2.5 1
+  blend additive
+}
+mesh ring {
+  at 0.6668
+  offset 0 0 25.7778
+  rotate 125.2644 30 -9.7356
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Fire5/n0-0-0-2.effect.ogt"
+  scale 1.7778
+  color 2.5 2.5 2.5 1
+  blend additive
+}
+mesh ring {
+  at 0.667
+  offset 0 0 25.7778
+  rotate -54.7356 30 -99.7356
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Fire5/n0-0-0-2.effect.ogt"
+  scale 1.7778
+  color 2.5 2.5 2.5 1
+  blend additive
+}
+mesh ring {
+  at 0.6672
+  offset 0 0 25.7778
+  rotate -125.2644 30 -80.2644
+  inner 0.5
+  band 0.5
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk01/Fire5/n0-0-0-2.effect.ogt"
+  scale 1.7778
+  color 2.5 2.5 2.5 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Fire5/n0-0-0-3.emitter.ogt" {
+  at 0.6167
+  offset 0 0 25.7778
+  rotate 90 89.972 0
+}
+# effekseer: node 0.0.0.0 "剣からの炎": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.0 "剣からの炎": nested generation: 25 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.1 "剣からの炎尻尾": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.1 "剣からの炎尻尾": nested generation: 25 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.2 "着弾リング": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.2 "着弾リング": ring 10 instances: the first 4 drawn
+# effekseer: node 0.0.0.2 "着弾リング": nested generation: 25 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.2 "着弾リング": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.0.0.3 "炎上がる": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.3 "炎上がる": nested generation: 25 instances above its generator folded into one emitter

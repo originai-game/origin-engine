@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.1.0.0.0 "poison"
+maxParticles 7
+shape spline 0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0 closed
+spread 0
+rate 0
+burst 0 1 5 0.0333
+duration 0.15
+looping false
+lifetime 0.75 0.75
+speed 3 6
+speedOverLife 0 5.5153 0.2031 2.1086 0.2969 1.0615 0.3906 0.3703 0.5156 0.0025 0.6562 0.3451 0.6875 0 1 0
+size 3.25 3.25
+sizeOverLife 0 0.3077 0.6562 0.3077 0.6719 0.3293 0.7812 0.774 0.8906 0.9243 1 1
+colorOverLife {
+  key 0 1 0.0478 1 0
+  key 0.2222 0.8832 0.0254 1 1
+  key 0.6562 0.6776 0.0036 1 1
+  key 0.6719 0.6708 0.0033 1 0.9884
+  key 0.7656 0.6305 0.0016 1 0.78
+  key 0.7812 0.6239 0.0013 1 0.7314
+  key 0.8906 0.5788 0.0003 1 0.0618
+  key 1 0.5356 0 1 0
+}
+texture "vfx/effekseer-tktk02/textures/Foam001.png"
+blend additive

@@ -1,0 +1,45 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 4.6333
+loop true
+emitter "vfx/effekseer-pierre01/MissileBoost/n0-0-0.emitter.ogt" {
+  at 0
+  offset 0 0 -4
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-pierre01/MissileBoost/n0-1.emitter.ogt" {
+  at 0.0167
+  offset 0 0 -1
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-pierre01/MissileBoost/n0-2.emitter.ogt" {
+  at 0.0167
+  offset 0 0 -1
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-pierre01/MissileBoost/n0-3.emitter.ogt" {
+  at 0.0333
+  offset 0 0 -1
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-pierre01/MissileBoost/n0-4.emitter.ogt" {
+  at 0.05
+  offset 0 0 -1
+  rotate -90 0 0
+}
+emitter "vfx/effekseer-pierre01/MissileBoost/n0-5.emitter.ogt" {
+  at 0
+  offset 0 0.25 0
+}
+emitter "vfx/effekseer-pierre01/MissileBoost/n0-6.emitter.ogt" {
+  at 0
+}
+# effekseer: node 0.0.0 "Burst": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.0.0 "Burst": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1 "SmokeVariation": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.2 "SmokeVariation": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.3 "SmokeVariation": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.4 "SmokeVariation": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.5 "Ray": a sprite scaled unevenly: drawn square at its mean

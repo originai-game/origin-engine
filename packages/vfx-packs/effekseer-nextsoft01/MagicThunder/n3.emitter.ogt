@@ -1,0 +1,28 @@
+type particles
+version 1
+---
+# Effekseer node 3 "雷"
+maxParticles 4
+shape box 0.001 0.2 0.001
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.25 0.25
+speed 0 0
+size 31.5 31.5
+sizeOverLife 0 0.3012 1 0.3729
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.0156 1 1 1 0.2217
+  key 0.0312 1 1 1 0.3916
+  key 0.0469 1 1 1 0.5207
+  key 0.1333 1 1 1 1
+  key 0.7188 1 1 1 0.3879
+  key 0.8594 1 1 1 0.211
+  key 1 1 1 1 0
+}
+gravity 0 -3.6 0
+texture "vfx/effekseer-nextsoft01/textures/Thunder10.png"
+blend alpha

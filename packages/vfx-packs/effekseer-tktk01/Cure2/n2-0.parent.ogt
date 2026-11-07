@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 2 "光の親"
+maxParticles 14
+shape box 7 7 7
+spread 180
+rate 0
+burst 0 1 30 0.0167
+duration 0.5
+looping false
+lifetime 0.0833 0.25
+speed 18.1865 72.7461
+size 0
+subEmitter life "vfx/effekseer-tktk01/Cure2/n2-0.emitter.ogt"

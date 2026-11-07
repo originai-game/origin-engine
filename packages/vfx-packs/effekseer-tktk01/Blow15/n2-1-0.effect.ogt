@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 2.1.0 "地上リングギザ"
+main "vfx/effekseer-tktk01/textures/Shock_wave_ring0011.png" rgba {
+  tile 4 1
+}
+alpha curve 0 1 0.625 1 1 0
+blend additive
+doubleSided true

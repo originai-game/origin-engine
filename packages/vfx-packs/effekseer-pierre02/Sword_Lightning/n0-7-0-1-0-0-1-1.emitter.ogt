@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.7.0.1.0.0.1.1 "Debris_Variation2"
+maxParticles 83
+shape box 2.8 1.4 2.8
+spread 81.9505
+rate 0
+burst 0 66
+duration 0.0167
+looping false
+lifetime 0.6667 1.3333
+speed 29.994 41.7895
+size 0.84 1.96
+colorOverLife {
+  key 0 0.017 0.017 0.017 1
+  key 0.5 0.017 0.017 0.017 1
+  key 1 0.017 0.017 0.017 0
+}
+rotation -360 360
+angularVelocity -300 300
+gravity 10.6725 -16.1064 16.1779
+texture "vfx/effekseer-pierre02/textures/Glass.png"
+blend alpha
+effect "vfx/effekseer-pierre02/Sword_Lightning/n0-7-0-1-0-0-1-1.effect.ogt"

@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.0.0.0 "Sword"
+main "vfx/effekseer-suzuki01/textures/Sword002.png" rgba {
+}
+blend alpha
+doubleSided true

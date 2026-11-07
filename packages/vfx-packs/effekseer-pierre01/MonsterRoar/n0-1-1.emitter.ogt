@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.1 "Shockwave"
+maxParticles 7
+shape point
+spread 0
+rate 0
+burst 0 1 9 0.1667
+duration 1.35
+looping false
+lifetime 0.4167 1.0833
+speed 0 0
+size 12 12
+sizeOverLife 0 0.5 0.3281 0.6419 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.1111 1 1 1 0.0784
+  key 0.5556 1 1 1 0.0784
+  key 1 1 1 1 0
+}
+rotation -360 360
+angularVelocity -12 12
+texture "vfx/effekseer-pierre01/textures/Halo.png"
+blend additive

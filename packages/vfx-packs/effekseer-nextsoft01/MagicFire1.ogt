@@ -1,0 +1,11 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.3292
+emitter "vfx/effekseer-nextsoft01/MagicFire1/n0.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+}
+# effekseer: node 0 "Node": a random colour per particle: its mean used
+# effekseer: node 1 "炎音": a sound

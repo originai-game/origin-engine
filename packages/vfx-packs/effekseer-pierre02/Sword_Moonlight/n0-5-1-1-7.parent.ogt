@@ -1,0 +1,16 @@
+type particles
+version 1
+---
+# Effekseer node 0.5.1.1 "FireEmitterL"
+maxParticles 27
+shape box 0.1049 0.4347 0.001
+spread 25.8947
+rate 0
+burst 0 1 21 0.0417
+duration 0.85
+looping false
+lifetime 0.6667 1.1667
+speed 0.8017 2.1544
+speedOverLife 0 0.4746 0.25 0.8999 0.5 1.1334 0.75 1.1667 1 1.0041
+size 0
+subEmitter life "vfx/effekseer-pierre02/Sword_Moonlight/n0-5-1-1-7.emitter.ogt"

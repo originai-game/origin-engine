@@ -1,0 +1,6 @@
+type effect
+version 1
+---
+# Effekseer node 1.1.1.0 "〆破裂リング"
+blend additive
+doubleSided true

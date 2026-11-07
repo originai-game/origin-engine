@@ -1,0 +1,253 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.9833
+trail {
+  at 0
+  offset 0 0.75 0
+  rotate 90 89.972 0
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n0-0.effect.ogt"
+  width 2.5 0.625
+  lifetime 0.25
+  color 1 1 0.5356 0.4183
+}
+trail {
+  at 0.0833
+  offset 0 0.75 0
+  rotate 90 89.972 0
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n0-1.effect.ogt"
+  width 2.5 0.625
+  lifetime 0.25
+  color 1 1 0 0.8366
+}
+trail {
+  at 0
+  offset 0 0.75 0
+  rotate 90 75 0
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n1-0.effect.ogt"
+  width 2.5 0.625
+  lifetime 0.25
+  color 1 1 0.5356 0.4183
+}
+trail {
+  at 0
+  offset 0 0.75 0
+  rotate -90 75 -180
+  life 0.65
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n2-0.effect.ogt"
+  width 2.5 0.625
+  lifetime 0.25
+  color 1 1 0.5356 0.4183
+}
+emitter "vfx/effekseer-magicalxspiral/Gohlem5/n3-0.emitter.ogt" {
+  at 0.1667
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+}
+emitter "vfx/effekseer-magicalxspiral/Gohlem5/n3-1.emitter.ogt" {
+  at 0.1667
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem5/model-block2.glb" {
+  at 0.1667
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-2.effect.ogt"
+  scale 1.5
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem5/model-block2.glb" {
+  at 0.1833
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-2.effect.ogt"
+  scale 1.5
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem5/model-block2.glb" {
+  at 0.2
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-2.effect.ogt"
+  scale 1.5
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem5/model-block2.glb" {
+  at 0.2167
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-2.effect.ogt"
+  scale 1.5
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem5/model-block3.glb" {
+  at 0.1667
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-3.effect.ogt"
+  scale 1.5
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem5/model-block3.glb" {
+  at 0.1833
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-3.effect.ogt"
+  scale 1.5
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem5/model-block3.glb" {
+  at 0.2
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-3.effect.ogt"
+  scale 1.5
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem5/model-block3.glb" {
+  at 0.2167
+  offset 0 0.25 2
+  rotate 0 -89.9802 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-3.effect.ogt"
+  scale 1.5
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh ring {
+  at 0.1667
+  offset 0 0.25 2
+  rotate 90 0 90
+  inner 0.5
+  band 0.5
+  colors 1 0.5356 0 0 1 0.5356 0 1 1 1 0 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-4.effect.ogt"
+  scale curve 0 0 1 10
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.2167
+  offset 0 0.25 2
+  rotate 90 -45 90
+  inner 0.5
+  band 0.5
+  colors 1 0.5356 0 0 1 0.5356 0 1 1 1 0 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-5.effect.ogt"
+  scale curve 0 0 0.1719 1.4388 0.5312 3.7984 0.6719 5.0235 0.7656 6.0839 0.8438 7.1644 0.9219 8.4589 1 10
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.25
+  offset 0 0.25 2
+  rotate -90 -45 -90
+  inner 0.5
+  band 0.5
+  colors 1 0.5356 0 0 1 0.5356 0 1 1 1 0 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n3-6.effect.ogt"
+  scale curve 0 0 0.1719 1.4388 0.5312 3.7984 0.6719 5.0235 0.7656 6.0839 0.8438 7.1644 0.9219 8.4589 1 10
+  color 1 1 1 1
+  blend additive
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem5/model-Hammer.glb" {
+  at 0
+  offset 0 0 -3
+  rotate 0 -89.9802 0
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n4-0.effect.ogt"
+  scale 4
+  spin 0 0 -240
+  color 1 0.5356 0.2195 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  offset 0 0 2
+  rotate -90 0 0
+  inner 0.6667
+  band 0.2
+  height 4 0
+  colors 1 0 0 0 1 0.2195 0 1 1 1 0 0.4902
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n5-0.effect.ogt"
+  scale 1.5
+  spin 0 0 2400
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 0 2
+  rotate -90 0 90
+  inner 0.6667
+  band 0.2
+  height 4 0
+  colors 1 0 0 0 1 0.2195 0 1 1 1 0 0.4902
+  life 0.4167
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n5-1.effect.ogt"
+  scale 1.5
+  spin 0 0 2400
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 -0.25 2
+  rotate -90 0 0
+  inner 0.6667
+  band 0.5
+  height 1.3333 0
+  arc 210 120
+  colors 1 1 1 0 1 0.2195 0.2195 0.502 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n6-0.effect.ogt"
+  scale 2.25
+  spin 0 0 600
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 -0.25 2
+  rotate -90 0 -180
+  inner 0.6667
+  band 0.5
+  height 1.3333 0
+  arc 210 120
+  colors 1 1 1 0 1 0.2195 0.2195 0.502 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-magicalxspiral/Gohlem5/n6-1.effect.ogt"
+  scale 2.25
+  spin 0 0 600
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 3.1 "Node": a random colour per particle: its mean used
+# effekseer: node 3.2 "Node": model 10 instances: the first 4 drawn
+# effekseer: node 3.3 "Node": model 10 instances: the first 4 drawn
+# effekseer: node 3.4 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 3.5 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 3.6 "Node": a camera-facing ring: drawn in its own plane

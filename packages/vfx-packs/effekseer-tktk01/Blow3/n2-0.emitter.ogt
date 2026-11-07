@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# Effekseer node 2.0 "煙"
+maxParticles 625
+shape point
+spread 0
+rate 6000
+duration 0.0833
+looping false
+lifetime 0.5 0.5
+speed 10 18
+speedOverLife 0 3.6937 0.25 1.6792 0.375 0.9618 0.5 0.4505 0.625 0.1454 0.75 0.0463 0.875 0.1533 1 0.4534
+size 5 5
+sizeOverLife 0 1 0.0781 0.8459 0.1562 0.7164 0.2344 0.6084 0.3281 0.5023 0.4688 0.3798 0.8281 0.1439 1 0
+colorOverLife {
+  key 0 0.8046 0.5732 0.0658 0
+  key 0.3281 0.8046 0.6001 0.0658 0.0431
+  key 1 0.8046 0.7012 0.0658 0.1961
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Fog3001.png"
+blend additive

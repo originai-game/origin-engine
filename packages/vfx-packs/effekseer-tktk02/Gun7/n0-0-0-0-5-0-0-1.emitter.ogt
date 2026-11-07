@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.0.5.0.0.1 "LineColoe"
+maxParticles 1600
+shape box 0.001 0.25 0.001
+spread 0
+rate 0
+burst 0 320
+duration 0.0167
+looping false
+lifetime 0.4167 0.4167
+speed 2.5 11.5
+speedOverLife 0 1.8831 0.5156 0.9131 1 0.3637
+size 2 3
+colorOverLife {
+  key 0 1 0.3587 0.1166 0.251
+  key 0.6 1 0.1961 0.0532 0.251
+  key 1 1 0.1166 0.0254 0
+}
+texture "vfx/effekseer-tktk02/textures/Particle02.png"
+blend additive

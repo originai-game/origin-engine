@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 0 "Flash"
+maxParticles 10
+shape spline 0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0 closed
+spread 0
+rate 0
+burst 0 8
+duration 0.0167
+looping false
+lifetime 0.1667 0.1667
+speed 60 60
+size 9 9
+sizeOverLife 0 0.1111 0.0781 0.3455 0.1719 0.5661 0.2656 0.7288 0.375 0.8574 0.4688 0.925 0.5781 0.9666 1 1
+colorOverLife {
+  key 0 1 0.1275 0.0008 0
+  key 0.0469 1 0.1275 0.0008 0.2234
+  key 0.0938 1 0.1275 0.0008 0.4248
+  key 0.1406 1 0.1275 0.0008 0.6042
+  key 0.2 1 0.1275 0.0008 0.8
+  key 1 1 0.1275 0.0008 0
+}
+texture "vfx/effekseer-effekseer01/textures/Splash01.png"
+blend additive

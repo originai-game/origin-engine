@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Effekseer node 2.1 "Distortion"
+maxParticles 7
+shape spline 0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0 closed
+spread 0
+rate 0
+burst 0 1 5 0.0167
+duration 0.0833
+looping false
+lifetime 0.6667 0.6667
+speed 0 0
+size 25 25
+sizeOverLife 0 0.04 0.0781 0.2931 0.1719 0.5313 0.2656 0.7071 0.375 0.846 0.4688 0.919 0.5781 0.964 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.125 1 1 1 0.251
+  key 0.75 1 1 1 0.251
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-tktk02/textures/Distortion6.png"
+blend additive
+distortion 0.004

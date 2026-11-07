@@ -1,0 +1,7 @@
+type effect
+version 1
+---
+# Effekseer node 0.2.0 "リングの残像"
+alpha curve 0 0 0.0781 0.4602 0.125 0.6342 0.1719 0.7482 0.25 0.8415 0.4219 0.9 0.5 1 1 1
+blend additive
+doubleSided true

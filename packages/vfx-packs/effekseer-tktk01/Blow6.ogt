@@ -1,0 +1,11 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.3667
+emitter "vfx/effekseer-tktk01/Blow6/n0-0-0.parent.ogt" {
+  at 0
+}
+# effekseer: node 0.0.0 "衝撃つぶ": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0 "衝撃つぶ": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0 "衝撃つぶ": a child of an instanced parent: its motion drawn up the world's y

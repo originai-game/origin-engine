@@ -1,0 +1,123 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.9333
+mesh ring {
+  at 0
+  offset 0 -0.8 0
+  rotate 115 -60 7
+  inner 0.892
+  band 1
+  colors 1 1 1 0 1 1 1 0.1667 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword18/n0-0-0.effect.ogt"
+  scale 4
+  spin 0 0 -374
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 -0.8 0
+  rotate 115 -60 7
+  inner 0.6774
+  band 1
+  colors 1 0.147 0.032 0 1 0.147 0.032 0.1667 1 0.147 0.032 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword18/n0-0-0-0.effect.ogt"
+  scale 4
+  color 4 4 4 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Sword18/n0-0-0-1-0.emitter.ogt" {
+  at 0.0333
+  offset 2.3573 -4.7451 -1.2009
+  rotate 115 -60 -83
+}
+mesh ring {
+  at 0.1
+  offset 0 -0.8 0
+  rotate -65 -60 -173
+  inner 0.892
+  band 1
+  colors 1 1 1 0 1 1 1 0.1667 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword18/n0-1-0.effect.ogt"
+  scale 4
+  spin 0 0 -374
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.1
+  offset 0 -0.8 0
+  rotate -65 -60 -173
+  inner 0.6774
+  band 1
+  colors 1 0.147 0.032 0 1 0.147 0.032 0.1667 1 0.147 0.032 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword18/n0-1-0-0.effect.ogt"
+  scale 4
+  color 4 4 4 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Sword18/n0-1-0-1-0.emitter.ogt" {
+  at 0.1333
+  offset -2.3573 -4.7451 -1.2009
+  rotate -65 -60 97
+}
+emitter "vfx/effekseer-tktk01/Sword18/n1-0-0.parent.ogt" {
+  at 0.0667
+  offset 0 0 -1.75
+}
+emitter "vfx/effekseer-tktk01/Sword18/n1-0-0-0.parent.ogt" {
+  at 0.0667
+  offset 0 0 -1.75
+}
+emitter "vfx/effekseer-tktk01/Sword18/n1-0-0-1.parent.ogt" {
+  at 0.0667
+  offset 0 0 -1.75
+}
+emitter "vfx/effekseer-tktk01/Sword18/n1-0-1.parent.ogt" {
+  at 0.0667
+  offset 0 0 -1.75
+}
+emitter "vfx/effekseer-tktk01/Sword18/n1-0-1-0.parent.ogt" {
+  at 0.0667
+  offset 0 0 -1.75
+}
+emitter "vfx/effekseer-tktk01/Sword18/n1-1.emitter.ogt" {
+  at 0.0667
+  offset 0 0 -1.75
+}
+# effekseer: node 0.0.0 "孤斬撃中心": a ring's arc over its life
+# effekseer: node 0.0.0 "孤斬撃中心": ring 2 instances: the first 4 drawn
+# effekseer: node 0.0.0 "孤斬撃中心": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0 "glow": a ring's arc over its life
+# effekseer: node 0.0.0.0 "glow": ring 4 instances: the first 4 drawn
+# effekseer: node 0.0.0.0 "glow": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0 "glow": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.0.0.1.0 "炎": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.1.0 "炎": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.1.0 "炎": a random colour per particle: its mean used
+# effekseer: node 0.1.0 "孤斬撃中心": a ring's arc over its life
+# effekseer: node 0.1.0 "孤斬撃中心": ring 2 instances: the first 4 drawn
+# effekseer: node 0.1.0 "孤斬撃中心": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.0 "glow": a ring's arc over its life
+# effekseer: node 0.1.0.0 "glow": ring 4 instances: the first 4 drawn
+# effekseer: node 0.1.0.0 "glow": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.0 "glow": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.1.0.1.0 "炎": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.1.0.1.0 "炎": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1.0.1.0 "炎": a random colour per particle: its mean used
+# effekseer: node 1.0.0 "粒子": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 1.0.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 1.0.0.0 "glow": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 1.0.0.1 "glow大": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 1.0.1 "ライン": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.1 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.1 "ライン": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 1.0.1.0 "glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0.1.0 "glow": a random colour per particle: its mean used
+# effekseer: node 1.0.1.0 "glow": a child of an instanced parent: its motion drawn up the world's y

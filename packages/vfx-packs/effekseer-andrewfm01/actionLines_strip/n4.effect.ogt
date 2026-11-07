@@ -1,0 +1,6 @@
+type effect
+version 1
+---
+# Effekseer node 4 "Ambient Glow"
+blend alpha
+doubleSided true

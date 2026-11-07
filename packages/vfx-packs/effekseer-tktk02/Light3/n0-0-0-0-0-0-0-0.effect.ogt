@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.0.0.0.0.0.0.0 "ReimsMain"
+main "vfx/effekseer-tktk02/textures/Line01.png" rgba {
+  tile 1 2
+  offset 0 -1
+}
+blend additive

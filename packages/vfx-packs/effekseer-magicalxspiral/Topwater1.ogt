@@ -1,0 +1,37 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.65
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 0.5
+  band 0.5
+  height 0.5 -0.5
+  colors 0.5234 0.5356 1 0 0.5234 0.5356 1 0.3765 0.5234 0.5356 1 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Topwater1/n0.effect.ogt"
+  scale curve 0 0 1 5
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Topwater1/n1-0-0.emitter.ogt" {
+  at 0
+  move 0 6 0
+  accelerate 0 -36 0
+}
+mesh ring {
+  at 0.1667
+  rotate -90 0 0
+  inner 0.5
+  band 0.5
+  height 0.5 -0.5
+  colors 0.5234 0.5356 1 0 0.5234 0.5356 1 0.3765 0.5234 0.5356 1 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Topwater1/n2.effect.ogt"
+  scale curve 0 0 1 5
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 1.0.0 "Node": a random colour per particle: its mean used

@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 2 "Shockwave"
+main "vfx/effekseer-andrewfm01/textures/double-shockwave.png" rgba {
+}
+alpha curve 0 1 0.25 1 0.3438 0.9351 0.4375 0.8186 0.75 0.2791 0.8438 0.1379 0.9219 0.0501 1 0
+blend alpha
+doubleSided true

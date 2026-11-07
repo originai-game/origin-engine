@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0 "Node"
+main "vfx/effekseer-magicalxspiral/textures/shield_color.png" rgba {
+}
+alpha curve 0 0 0.0455 1 0.9091 1 1 0
+blend alpha
+doubleSided true

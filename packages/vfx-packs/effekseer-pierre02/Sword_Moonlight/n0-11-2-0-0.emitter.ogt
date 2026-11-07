@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Effekseer node 0.11.2.0.0 "FireVariation"
+maxParticles 170
+shape point
+spread 0
+rate 0
+burst 0 64 3 0.2667
+duration 0.55
+looping false
+lifetime 0.25 0.35
+speed 6.075 6.075
+size 20.25 20.25
+sizeOverLife 0 0.2357 0.3125 0.4271 1 0.9129
+colorOverLife {
+  key 0 0.0478 0.2845 0.2195 0
+  key 0.0625 0.0478 0.2845 0.2195 0.0739
+  key 0.0938 0.0478 0.2845 0.2195 0.1305
+  key 0.125 0.0478 0.2845 0.2195 0.2123
+  key 0.1667 0.0478 0.2845 0.2195 0.3765
+  key 1 0.0478 0.2845 0.2195 0
+}
+rotation 39 51
+texture "vfx/effekseer-pierre02/textures/Fire_Blur.png"
+blend additive
+effect "vfx/effekseer-pierre02/Sword_Moonlight/n0-11-2-0-0.effect.ogt"

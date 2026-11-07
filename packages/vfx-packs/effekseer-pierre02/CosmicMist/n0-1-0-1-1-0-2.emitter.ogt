@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.0.1.1.0.2 "FireVariation"
+maxParticles 105
+shape box 0.7594 1.2656 0.7594
+spread 18.1561
+rate 0
+burst 0 42
+duration 0.0167
+looping false
+lifetime 0.5167 0.6833
+speed 12.2539 18.7859
+speedOverLife 0 1.3054 0.5156 0.9741 1 0.7628
+size 3.1641 3.1641
+sizeOverLife 0 0.3578 0.1719 0.4746 0.3906 0.6 1 0.8944
+colorOverLife {
+  key 0 0.0478 0.2845 0.2195 0
+  key 0.1667 0.0478 0.2845 0.2195 0.0482
+  key 0.2778 0.0478 0.2845 0.2195 0.1088
+  key 1 0.0478 0.2845 0.2195 0
+}
+rotation -6 6
+texture "vfx/effekseer-pierre02/textures/Fire_Blur.png"
+blend additive
+effect "vfx/effekseer-pierre02/CosmicMist/n0-1-0-1-1-0-2.effect.ogt"

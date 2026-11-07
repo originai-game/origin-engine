@@ -1,0 +1,77 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.2833
+mesh ring {
+  at 0.2833
+  rotate 0 0 50
+  inner 0
+  band 0
+  height 0 2.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1
+  effect "vfx/effekseer-tktk01/Sword11/n0-0.effect.ogt"
+  scale 0.0419
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2833
+  offset -0.0183 -0.012 0.0105
+  rotate 32.7324 -24.4045 57.2676
+  inner 0
+  band 0
+  height 0 2.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1
+  effect "vfx/effekseer-tktk01/Sword11/n0-1.effect.ogt"
+  scale 0.021
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.2833
+  offset 0.0087 0.0201 0.0105
+  rotate -32.7324 24.4045 57.2676
+  inner 0
+  band 0
+  height 0 2.5
+  colors 1 1 1 1 1 1 1 1 1 1 1 1
+  life 1
+  effect "vfx/effekseer-tktk01/Sword11/n0-2.effect.ogt"
+  scale 0.021
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.3333
+  inner 0.1316
+  band 0.5
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.8333
+  effect "vfx/effekseer-tktk01/Sword11/n1.effect.ogt"
+  scale curve 0 2 0.0781 3.5818 0.1719 5.0709 0.2656 6.1696 0.375 7.0373 0.4688 7.4938 0.5781 7.7747 1 8
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Sword11/n2-0-0.emitter.ogt" {
+  at 0.3333
+  rotate 90 0 0
+  move 0 0 7.0588
+}
+trail {
+  at 0.1333
+  offset 6 0 3
+  rotate -180 62 0
+  life 0.1167
+  effect "vfx/effekseer-tktk01/Sword11/n3-0-0-0.effect.ogt"
+  width 5.25 1.3125
+  lifetime 0.3333
+  color 1 1 1 0.3922
+  orbit 3.702 2.25
+}
+# effekseer: node 1 "地面リング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.0.0 "煙": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.0.0.0 "剣振り": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 3.0.0.0 "剣振り": nested generation: 5 instances above its generator folded into one emitter

@@ -1,0 +1,14 @@
+type particles
+version 1
+---
+# Effekseer node 4 "Node"
+maxParticles 188
+shape point
+spread 0
+rate 6000
+duration 0.025
+looping false
+lifetime 0.5833 0.5833
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-tktk01/Blow5/n4-0.emitter.ogt"

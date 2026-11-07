@@ -1,0 +1,107 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.0683
+trail {
+  at 0
+  offset 2.3473 2.3182 5
+  rotate -90 -67 -180
+  move 0 -12 -20
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword17/n0-0-0-0.effect.ogt"
+  width 0.2222 0.0556
+  lifetime 0.5
+  color 1 0.0104 0.2195 0.502
+  orbit 0.6667 1.2556
+}
+emitter "vfx/effekseer-tktk01/Sword17/n0-0-0-1.emitter.ogt" {
+  at 0
+  offset 2.6078 2.9319 5
+  rotate 0 0 -113
+  move 0 -12 -20
+}
+trail {
+  at 0
+  offset 2.3473 2.3182 5
+  rotate -90 -67 -180
+  move 0 -12 -20
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword17/n0-0-0-2.effect.ogt"
+  width 0.2222 0.0556
+  lifetime 0.5
+  color 1 1 1 0.7529
+  orbit 0.6667 1.2556
+}
+emitter "vfx/effekseer-tktk01/Sword17/n0-1-0.emitter.ogt" {
+  at 0.2333
+  offset -8 -1.5 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Sword17/n0-1-0-0.emitter.ogt" {
+  at 0.2333
+  offset -8 -1.5 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Sword17/n0-1-0-1.emitter.ogt" {
+  at 0.2333
+  offset -8 -1.5 0
+  rotate 0 0 -90
+}
+mesh ring {
+  at 0.2167
+  offset -8 -1.5 0
+  rotate 90 0 0
+  inner 0.1745
+  band 1
+  colors 1 1 1 0 1 0.2195 0.5356 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword17/n0-2-0.effect.ogt"
+  scale curve 0 2 0.0781 3.0546 0.1719 4.0472 0.2656 4.7797 0.375 5.3582 0.4688 5.6625 0.5781 5.8498 1 6
+  color 5 5 5 1
+  blend additive
+}
+mesh ring {
+  at 0.2167
+  offset -8 -1.5 0
+  rotate 90 0 0
+  inner 0.6698
+  band 0.5
+  colors 1 1 1 0 1 0.2195 0.5356 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword17/n0-2-1.effect.ogt"
+  scale curve 0 2 0.0781 3.0546 0.1719 4.0472 0.2656 4.7797 0.375 5.3582 0.4688 5.6625 0.5781 5.8498 1 6
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.2167
+  offset -8 -1.5 0
+  rotate 90 0 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Sword17/n0-2-2.effect.ogt"
+  scale curve 0 1 0.0781 5.2182 0.1719 9.189 0.2656 12.1189 0.375 14.4327 0.4688 15.6502 0.5781 16.3993 1 17
+  color 1 0.0104 0.2195 0.3922
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Sword17/n0-3-0-0.emitter.ogt" {
+  at 0.2333
+  offset -8 -1 0
+}
+emitter "vfx/effekseer-tktk01/Sword17/n0-3-0-1.emitter.ogt" {
+  at 0.2333
+  offset -8 -1 0
+}
+# effekseer: node 0.0.0.0 "振り下ろしglow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.1 "glow": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.1 "glow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.1 "glow": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.2 "振り下ろし": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.2.0 "衝撃リングギザギザ": ring 5 instances: the first 4 drawn
+# effekseer: node 0.2.0 "衝撃リングギザギザ": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.2.1 "衝撃リング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 0.2.1 "衝撃リング": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 0.3.0.0 "火の粉": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.3.0.0 "火の粉": a random colour per particle: its mean used
+# effekseer: node 0.3.0.1 "火の粉余韻": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.3.0.1 "火の粉余韻": a random colour per particle: its mean used

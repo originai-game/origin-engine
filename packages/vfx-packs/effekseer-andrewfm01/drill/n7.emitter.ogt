@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 7 "Bright Sparks"
+maxParticles 8
+shape sphere 0
+spread 0
+rate 30
+duration 1
+looping true
+lifetime 0.1667 0.1667
+speed 150 330
+size 16.5 16.5
+sizeOverLife 0 0.1174 0.4062 0.1811 1 0.2462
+colorOverLife {
+  key 0 1 1 1 1
+  key 0.5 1 1 1 1
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-andrewfm01/textures/Particle01.png"
+blend additive

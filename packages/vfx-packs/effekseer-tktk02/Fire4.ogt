@@ -1,0 +1,143 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.5
+loop true
+emitter "vfx/effekseer-tktk02/Fire4/n0-0-0-0-0.emitter.ogt" {
+  at 0
+  offset 0 1 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire4/n0-0-0-0-1.emitter.ogt" {
+  at 0
+  offset 0 1 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire4/n0-0-0-0-2.emitter.ogt" {
+  at 0
+  offset 0 1 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire4/n0-0-0-0-3.emitter.ogt" {
+  at 0
+  offset 0 1 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire4/n0-1.emitter.ogt" {
+  at 0
+  until 1.6667
+}
+emitter "vfx/effekseer-tktk02/Fire4/n0-2.emitter.ogt" {
+  at 0.0667
+}
+emitter "vfx/effekseer-tktk02/Fire4/n0-3-0-0-0.emitter.ogt" {
+  at 0
+  offset 0 1.5 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire4/n0-3-0-0-1.emitter.ogt" {
+  at 0
+  offset 0 1.5 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire4/n0-3-0-0-2.emitter.ogt" {
+  at 0
+  offset 0 1.5 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-0-0-0-0-0.emitter.ogt" {
+  at 0.3333
+  offset 0 0.375 0
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-0-0-0-0-1.emitter.ogt" {
+  at 0.3333
+  offset 0 0.375 0
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-0-0-0-0-2.emitter.ogt" {
+  at 0.3333
+  offset 0 0.375 0
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-0-0-0-0-3.emitter.ogt" {
+  at 0.3333
+  offset 0 0.375 0
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-1-0-0-0.emitter.ogt" {
+  at 0.3333
+  offset 0 0.1875 0
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-1-0-0-1.emitter.ogt" {
+  at 0.3333
+  offset 0 0.1875 0
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-1-0-0-2.emitter.ogt" {
+  at 0.3333
+  offset 0 0.1875 0
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-1-1.emitter.ogt" {
+  at 0.3333
+  until 2
+}
+mesh ring {
+  at 0.3333
+  rotate 0 0 -120
+  inner 0
+  band 0
+  colors 1 1 1 0 1 1 1 0.502 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire4/n1-2.effect.ogt"
+  scale curve 0 0 0.1094 0.4329 0.2188 0.7979 0.3281 1.1012 0.4531 1.3808 0.5781 1.5982 0.7031 1.763 1 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.3667
+  inner 0
+  band 0
+  colors 1 1 1 0 1 1 1 0.502 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire4/n1-2.effect.ogt"
+  scale curve 0 0 0.1094 0.4329 0.2188 0.7979 0.3281 1.1012 0.4531 1.3808 0.5781 1.5982 0.7031 1.763 1 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.4
+  rotate 0 0 120
+  inner 0
+  band 0
+  colors 1 1 1 0 1 1 1 0.502 1 1 1 0
+  life 0.3333
+  effect "vfx/effekseer-tktk02/Fire4/n1-2.effect.ogt"
+  scale curve 0 0 0.1094 0.4329 0.2188 0.7979 0.3281 1.1012 0.4531 1.3808 0.5781 1.5982 0.7031 1.763 1 2
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-3.emitter.ogt" {
+  at 0.3333
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-4-0.emitter.ogt" {
+  at 0.3333
+}
+emitter "vfx/effekseer-tktk02/Fire4/n1-4-1.emitter.ogt" {
+  at 0.3333
+}
+# effekseer: node 0.0.0.0.1 "FineColor": a random colour per particle: its mean used
+# effekseer: node 0.0.0.0.2 "FineMain": a random colour per particle: its mean used
+# effekseer: node 0.3.0.0.0 "FineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.1 "FineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.1 "FineColor": a random colour per particle: its mean used
+# effekseer: node 0.3.0.0.2 "FineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.3.0.0.2 "FineMain": a random colour per particle: its mean used
+# effekseer: node 0.3.0.0.2 "FineMain": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0.0.0.0.1 "FineColor": a random colour per particle: its mean used
+# effekseer: node 1.0.0.0.0.2 "FineMain": a random colour per particle: its mean used
+# effekseer: node 1.1.0.0.0 "FineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.1.0.0.1 "FineColor": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.1.0.0.1 "FineColor": a random colour per particle: its mean used
+# effekseer: node 1.1.0.0.1 "FineColor": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.1.0.0.2 "FineMain": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.1.0.0.2 "FineMain": a random colour per particle: its mean used
+# effekseer: node 1.1.0.0.2 "FineMain": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.2 "Fire": a camera-facing ring: drawn in its own plane
+# effekseer: node 1.3 "Distortion": motion out from a circle: approximated along one direction

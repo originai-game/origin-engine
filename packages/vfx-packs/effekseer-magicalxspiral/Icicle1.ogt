@@ -1,0 +1,19 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.4
+mesh "vfx/effekseer-magicalxspiral/Icicle1/model-icicle3.glb" {
+  at 0
+  rotate 0 30 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Icicle1/n0-0-0.effect.ogt"
+  scale 0.5
+  color 1 1 1 1
+  blend alpha
+}
+emitter "vfx/effekseer-magicalxspiral/Icicle1/n0-1.emitter.ogt" {
+  at 0
+  offset 0 0.75 0
+  rotate 0 30 0
+}

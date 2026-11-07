@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 8 "Wave"
+main "vfx/effekseer-andrewfm01/textures/Shock_wave_ring001_long.png" rgba {
+  scroll 0 2.8125
+}
+blend additive
+doubleSided true

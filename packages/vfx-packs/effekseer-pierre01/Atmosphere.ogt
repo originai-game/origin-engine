@@ -1,0 +1,22 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 6.4167
+loop true
+emitter "vfx/effekseer-pierre01/Atmosphere/n0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/Atmosphere/n0-1.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/Atmosphere/n0-2.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/Atmosphere/n0-3.parent.ogt" {
+  at 0
+}
+# effekseer: node 0.0 "Particle": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 0.1 "Particle": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 0.2 "Particle": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 0.3 "Particle": a child of an instanced parent: its motion drawn up the world's y

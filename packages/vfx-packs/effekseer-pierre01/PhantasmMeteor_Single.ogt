@@ -1,0 +1,159 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.6117
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-1.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-2.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-3.emitter.ogt" {
+  at 0
+}
+trail {
+  at 0.0667
+  offset 3.75 0 0
+  rotate 0 0 -90
+  life 0.8167
+  effect "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-4-0-0.effect.ogt"
+  width 3.75 0.9375
+  lifetime 0.3333
+  color 0.8751 0.7519 1 0.2188
+  orbit 5.3033 2.5
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-5.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-6.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-7.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-8.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-0-9.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-0.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-1.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-2.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-3.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-4.emitter.ogt" {
+  at 2.1667
+}
+mesh ring {
+  at 2.0833
+  rotate 90 0 0
+  inner 1
+  band 0.5
+  height -0.375 0.375
+  colors 0.7519 0.5356 1 0 0.7519 0.5356 1 0.502 0.7519 0.5356 1 0
+  life 0.3333
+  effect "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-5.effect.ogt"
+  scale curve 0 2.5 1 9
+  spin 0 0 720
+  color 1 1 1 0.6
+  blend additive
+}
+mesh ring {
+  at 2.1
+  rotate -90 0 -180
+  inner 1
+  band 0.5
+  height -0.375 0.375
+  colors 0.7519 0.5356 1 0 0.7519 0.5356 1 0.502 0.7519 0.5356 1 0
+  life 0.3333
+  effect "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-5.effect.ogt"
+  scale curve 0 2.5 1 9
+  spin 0 0 720
+  color 1 1 1 0.6
+  blend additive
+}
+mesh ring {
+  at 2.1167
+  rotate 90 0 0
+  inner 1
+  band 0.5
+  height -0.375 0.375
+  colors 0.7519 0.5356 1 0 0.7519 0.5356 1 0.502 0.7519 0.5356 1 0
+  life 0.3333
+  effect "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-5.effect.ogt"
+  scale curve 0 2.5 1 9
+  spin 0 0 720
+  color 1 1 1 0.6
+  blend additive
+}
+mesh ring {
+  at 2.1333
+  rotate -90 0 -180
+  inner 1
+  band 0.5
+  height -0.375 0.375
+  colors 0.7519 0.5356 1 0 0.7519 0.5356 1 0.502 0.7519 0.5356 1 0
+  life 0.3333
+  effect "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-5.effect.ogt"
+  scale curve 0 2.5 1 9
+  spin 0 0 720
+  color 1 1 1 0.6
+  blend additive
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-6.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-7.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-8.emitter.ogt" {
+  at 2.1
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-9.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-10.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-10-0.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-11.emitter.ogt" {
+  at 2.1667
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-12.emitter.ogt" {
+  at 2.0833
+  offset 0 2.5 0
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-13.emitter.ogt" {
+  at 2.0833
+}
+emitter "vfx/effekseer-pierre01/PhantasmMeteor_Single/n0-0-1-14.emitter.ogt" {
+  at 2.0833
+}
+# effekseer: node 0.0.0.3 "Dark": subtractive blend: drawn alpha blended
+# effekseer: node 0.0.0.4.0.0 "WindTracker": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.0.4.0.0 "WindTracker": nested generation: 15 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.5 "CosmosSmoke": a random colour per particle: its mean used
+# effekseer: node 0.0.0.9 "Ray": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.1.1 "Debris": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.1.4 "Dark": subtractive blend: drawn alpha blended
+# effekseer: node 0.0.1.5 "Wind": ring 15 instances: the first 4 drawn
+# effekseer: node 0.0.1.9 "CosmosSmoke_Green": a random colour per particle: its mean used
+# effekseer: node 0.0.1.10 "Stars": a random colour per particle: its mean used
+# effekseer: node 0.0.1.10.0 "Ray": a random colour per particle: its mean used
+# effekseer: node 0.0.1.11 "DarkEye": subtractive blend: drawn alpha blended
+# effekseer: node 0.0.1.12 "Burst": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.1.12 "Burst": a sprite scaled unevenly: drawn square at its mean

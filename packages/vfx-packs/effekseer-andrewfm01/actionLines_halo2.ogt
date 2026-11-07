@@ -1,0 +1,32 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.6832
+emitter "vfx/effekseer-andrewfm01/actionLines_halo2/n0-0.emitter.ogt" {
+  at 0
+  offset 5.375 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-andrewfm01/actionLines_halo2/n1-0.emitter.ogt" {
+  at 0
+  offset 3.5 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-andrewfm01/actionLines_halo2/n2-0.emitter.ogt" {
+  at 0
+  offset 3.625 0 0
+  rotate 0 0 -90
+}
+# effekseer: node 0.0 "Heavy Line Render": nested generation: 8 instances above its generator folded into one emitter
+# effekseer: node 0.0 "Heavy Line Render": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0 "Heavy Line Render": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0 "Heavy Line Render": motion out from a circle: approximated along one direction
+# effekseer: node 1.0 "Light Line Render": nested generation: 15 instances above its generator folded into one emitter
+# effekseer: node 1.0 "Light Line Render": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1.0 "Light Line Render": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1.0 "Light Line Render": motion out from a circle: approximated along one direction
+# effekseer: node 2.0 "Mid Line Render": nested generation: 4 instances above its generator folded into one emitter
+# effekseer: node 2.0 "Mid Line Render": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0 "Mid Line Render": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2.0 "Mid Line Render": motion out from a circle: approximated along one direction

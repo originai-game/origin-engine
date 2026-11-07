@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 2.0 "花びら"
+maxParticles 188
+shape point
+spread 25.1888
+rate 6000
+duration 0.025
+looping false
+lifetime 0.25 0.4833
+speed 2.7437 8.447
+speedOverLife 0 3.6098 0.1406 2.3125 0.25 1.4926 0.375 0.7978 0.4844 0.4136 0.6094 0.2431 0.7812 0.2885 1 0.9798
+size 1 1
+colorOverLife {
+  key 0 0.9574 0.1275 0.3066 1
+  key 0.5455 0.9574 0.1275 0.3066 1
+  key 1 0.9574 0.1275 0.3066 0
+}
+angularVelocity -1963.6364 1963.6364
+texture "vfx/effekseer-tktk01/textures/Particle01.png"
+blend additive

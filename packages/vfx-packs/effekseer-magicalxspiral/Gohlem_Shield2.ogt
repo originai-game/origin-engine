@@ -1,0 +1,14 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.8333
+mesh "vfx/effekseer-magicalxspiral/Gohlem_Shield2/model-gohlem_shield.glb" {
+  at 0
+  rotate 0 89.9802 0
+  life 1.8333
+  effect "vfx/effekseer-magicalxspiral/Gohlem_Shield2/n0.effect.ogt"
+  scale 1
+  color 1 1 1 1
+  blend alpha
+}

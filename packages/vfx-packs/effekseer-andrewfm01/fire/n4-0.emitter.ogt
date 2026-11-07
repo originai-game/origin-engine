@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 4.0 "Debris Trail"
+maxParticles 50
+shape point
+spread 0
+rate 60
+duration 1
+looping true
+lifetime 0.1167 0.1167
+speed 0 0
+size 1 1
+colorOverLife {
+  key 0 0.8751 0.1275 0.006 0.6255
+  key 0.1429 0.8751 0.1275 0.006 0.6255
+  key 0.7188 0.8751 0.1275 0.006 0.1374
+  key 0.8594 0.8751 0.1275 0.006 0.0501
+  key 1 0.8751 0.1275 0.006 0
+}
+texture "vfx/effekseer-andrewfm01/textures/smoke_tex.png"
+blend additive

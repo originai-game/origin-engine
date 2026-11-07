@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Effekseer node 0.0 "isi2"
+maxParticles 127
+shape box 0.1 0.1 0.1
+spread 180
+rate 120
+duration 0.5417
+looping false
+lifetime 0.25 0.25
+speed 0.5196 2.0785
+size 1 1
+sizeOverLife 0 1 1 0.7
+colorOverLife {
+  key 0 0.2195 0.0478 0.0104 1
+  key 0.3333 0.4116 0.0196 0.0043 0.6667
+  key 0.5 0.5326 0.0104 0.0023 0.375
+  key 0.5781 0.5952 0.0072 0.0016 0.267
+  key 0.6719 0.6753 0.0041 0.0009 0.1615
+  key 0.8281 0.8213 0.001 0.0002 0.0443
+  key 0.9062 0.9001 0.0003 0.0001 0.0132
+  key 1 1 0 0 0
+}
+texture "vfx/effekseer-nextsoft01/textures/Crystal002.png"
+blend additive

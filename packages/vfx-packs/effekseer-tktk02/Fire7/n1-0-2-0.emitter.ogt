@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 1.0.2.0 "Fog"
+maxParticles 625
+shape point
+spread 0
+rate 0
+burst 0 1 5 0.0167
+duration 0.0833
+looping false
+lifetime 0.3333 0.6667
+speed 2 8
+speedOverLife 0 1.4238 0.5 0.9679 1 0.7016
+size 3.75 3.75
+sizeOverLife 0 0.1333 0.3125 0.5016 0.5625 0.7486 0.7969 0.918 1 1
+colorOverLife {
+  key 0 1 0.3587 0.0254 0
+  key 0.3333 1 0.2618 0.0104 0.0941
+  key 0.6719 1 0.1801 0.0022 0.0306
+  key 1 1 0.1166 0 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk02/textures/FireFog.png"
+blend additive

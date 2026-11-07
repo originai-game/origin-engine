@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.3.0.0.0 "上半分"
+main "vfx/effekseer-tktk01/textures/hisigata1.png" rgba {
+  tile 1 0.5
+}
+blend additive

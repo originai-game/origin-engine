@@ -1,0 +1,65 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.6667
+mesh ring {
+  at 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_strip/n0.effect.ogt"
+  scale 0.4583
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_strip/n1.effect.ogt"
+  scale 0.4077
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_strip/n2.effect.ogt"
+  scale 0.2958
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_strip/n3.effect.ogt"
+  scale 0.2092
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_strip/n4.effect.ogt"
+  scale 0.4583
+  color 1 1 1 1
+  blend alpha
+}
+# effekseer: node 0 "Ambient Glow": ring 5 instances: the first 4 drawn
+# effekseer: node 1 "Ambient Glow": ring 15 instances: the first 4 drawn
+# effekseer: node 2 "Ambient Glow": ring 30 instances: the first 4 drawn
+# effekseer: node 3 "Ambient Glow": ring 65 instances: the first 4 drawn
+# effekseer: node 4 "Ambient Glow": ring 10 instances: the first 4 drawn

@@ -1,0 +1,92 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.7748
+emitter "vfx/effekseer-tktk01/Blow5/n0.emitter.ogt" {
+  at 0
+}
+mesh quad {
+  at 0
+  rotate 0 0 -90
+  life 1.3333
+  effect "vfx/effekseer-tktk01/Blow5/n1.effect.ogt"
+  scale curve 0 10 0.0781 15.2241 0.1719 20.0247 0.2656 23.4507 0.3594 25.7425 0.5156 27.6949 0.8594 28.7388 1 30
+  color 0.8774 0.6593 0.3313 0.6333
+  blend additive
+}
+mesh quad {
+  at 0.0017
+  rotate 0 0 90
+  life 1.3333
+  effect "vfx/effekseer-tktk01/Blow5/n1.effect.ogt"
+  scale curve 0 10 0.0781 15.2241 0.1719 20.0247 0.2656 23.4507 0.3594 25.7425 0.5156 27.6949 0.8594 28.7388 1 30
+  color 0.8774 0.6593 0.3313 0.6333
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.5
+  band 1
+  colors 1 1 1 0 1 0.2259 0.2275 0.5938 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow5/n2-0.effect.ogt"
+  scale curve 0 1 0.1406 2.0644 0.2344 2.6913 0.3281 3.1889 0.4219 3.5435 0.5156 3.7652 0.6094 3.8793 1 4
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.8907
+  band 0.5
+  colors 0.987 0.6407 0.6407 0 1 0.2465 0.2465 0.5479 0.987 0.6407 0.6407 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow5/n2-1.effect.ogt"
+  scale curve 0 4 0.0938 5.2804 0.1875 6.2709 0.2812 7.0031 0.3906 7.5786 0.4844 7.8771 0.5938 8.0553 1 8.2
+  color 10 10 10 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Blow5/n3-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow5/n4-0.parent.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  rotate 0 0 60
+  inner 0.5
+  band 1
+  colors 1 1 1 0 1 0 0 0.1406 1 1 1 0
+  life 0.8333
+  effect "vfx/effekseer-tktk01/Blow5/n5.effect.ogt"
+  scale curve 0 2 0.1406 4.7028 0.2188 6.0417 0.3125 7.3222 0.3906 8.0892 0.5312 8.8598 0.8594 9.3491 1 10
+  color 5 5 5 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.8907
+  band 0.5
+  colors 0.9654 0.2249 0.2249 0 1 0.1557 0.1557 0.1488 0.9654 0.2249 0.2249 0
+  life 1
+  effect "vfx/effekseer-tktk01/Blow5/n6.effect.ogt"
+  scale curve 0 4 0.0781 5.5937 0.1562 6.8412 0.25 7.9356 0.3438 8.6601 0.5 9.2601 0.8594 9.6664 1 10.25
+  color 1 1 1 1
+  blend additive
+}
+# effekseer: node 1 "グロー画像": a mesh's colour over its life: its brightest kept, alpha over life kept
+# effekseer: node 2.0 "広がりリングギザギザ": ring 2 instances: the first 4 drawn
+# effekseer: node 2.0 "広がりリングギザギザ": nested generation: 10 instances above its generator folded into one emitter
+# effekseer: node 2.1 "広がりリング外": ring 10 instances: the first 4 drawn
+# effekseer: node 2.1 "広がりリング外": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 3.0 "中心からの光": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.0 "中心からの光": a random colour per particle: its mean used
+# effekseer: node 3.0 "中心からの光": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0 "中心からの光": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 4.0 "中心からの光余韻": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 4.0 "中心からの光余韻": a random colour per particle: its mean used
+# effekseer: node 4.0 "中心からの光余韻": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4.0 "中心からの光余韻": a child of an instanced parent: its motion drawn up the world's y
+# effekseer: node 5 "余韻ギザリング": ring 5 instances: the first 4 drawn
+# effekseer: node 6 "広がりリング外": a ring whose thickness changes over its life: its middle thickness kept

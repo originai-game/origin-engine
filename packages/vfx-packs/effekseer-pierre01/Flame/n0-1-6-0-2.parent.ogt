@@ -1,0 +1,14 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.6 "EmberGenerator"
+maxParticles 22
+shape box 5 0.001 5
+spread 0
+rate 600
+duration 0.0283
+looping false
+lifetime 1.6667 1.6667
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-pierre01/Flame/n0-1-6-0-2.emitter.ogt"

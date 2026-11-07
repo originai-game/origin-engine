@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 0.1.4.0.1 "ラインカラー"
+maxParticles 63
+shape point
+spread 0
+rate 600
+duration 0.0833
+looping false
+lifetime 1 1
+speed 2.5 2.5
+speedOverLife 0 3.6952 0.25 1.7411 0.375 1.0269 0.5 0.5001 0.625 0.1608 0.75 0.0091 0.875 0.0448 1 0.2582
+size 8 8
+sizeOverLife 0 0.433 0.0781 0.4177 0.1562 0.381 0.5625 0.1242 0.6875 0.0882 0.9219 0.0726 0.9844 0.0381 1 0
+colorOverLife {
+  key 0 0.047 0.047 0.047 0.502
+  key 1 0.047 0.047 0.047 0
+}
+texture "vfx/effekseer-tktk01/textures/Line01.png"
+blend additive

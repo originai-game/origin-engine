@@ -1,0 +1,186 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.15
+trail {
+  at 0
+  offset 0 20 0
+  move 0 -40 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Lance5/n0-0-0-0.effect.ogt"
+  width 1 1
+  lifetime 0.3333
+  color 0.2195 0.2195 0.2195 0
+  orbit 1.5 5
+}
+mesh ring {
+  at 0
+  offset 0 21 0
+  rotate -90 0 0
+  move 0 -40 0
+  inner 0.5
+  band 0.5
+  arc 210 120
+  colors 1 1 0 0 1 0.2195 0 0.7529 1 1 0 0
+  life 0.5
+  effect "vfx/effekseer-magicalxspiral/Lance5/n0-0-1.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  offset 0 21 0
+  rotate -90 0 -180
+  move 0 -40 0
+  inner 0.5
+  band 0.5
+  arc 210 120
+  colors 1 1 1 0 1 0.5356 0.5356 0.251 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-magicalxspiral/Lance5/n0-0-2.effect.ogt"
+  scale curve 0 10 1 0
+  color 1 1 1 1
+  blend additive
+}
+trail {
+  at 0
+  offset 0 20 0
+  move 0 -40 0
+  life 0.3333
+  effect "vfx/effekseer-magicalxspiral/Lance5/n0-0-3-0.effect.ogt"
+  width 1 0.25
+  lifetime 0.3333
+  color 0.2195 0.2195 0.2195 0.502
+  orbit 1.5 8.3333
+}
+mesh ring {
+  at 0.1667
+  offset 0 20 0
+  rotate -90 0 0
+  inner 0.25
+  band 0.5
+  colors 1 1 1 0 0.2195 0.2195 1 0.7529 0.2195 0.2195 1 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Lance5/n0-0-4.effect.ogt"
+  scale curve 0 1 1 10
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.3333
+  offset 0 20 0
+  rotate -90 0 0
+  inner 0.25
+  band 0.5
+  colors 0.2195 0.2195 0 0 0.2195 0.2195 1 0.7529 0.2195 0.2084 1 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Lance5/n0-0-5.effect.ogt"
+  scale curve 0 1 1 10
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n0-0-6.emitter.ogt" {
+  at 0
+  offset 0 24 0
+  move 0 -40 0
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n0-0-7.emitter.ogt" {
+  at 0
+  offset -1 22.5 0
+  move 0 -40 0
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n0-0-8.emitter.ogt" {
+  at 0
+  offset 1 22.5 0
+  move 0 -40 0
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n0-0-9.emitter.ogt" {
+  at 0
+  offset 0 22.5 1
+  move 0 -40 0
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n0-0-10.emitter.ogt" {
+  at 0
+  offset 0 22.5 -1
+  move 0 -40 0
+}
+mesh ring {
+  at 0.4167
+  inner 0.3333
+  band 0.5
+  colors 0 0 1 0 1 1 1 0.7529 0 0 1 0
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Lance5/n1.effect.ogt"
+  scale curve 0 0 1 11.25
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n2-0.emitter.ogt" {
+  at 0.45
+  offset 0 -0.5 0
+  rotate -180 0 0
+}
+mesh ring {
+  at 0.55
+  inner 0
+  band 0.5
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Lance5/n3-0.effect.ogt"
+  scale curve 0 1.4 1 1.8
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0.5
+  inner 0.6111
+  band 0.5
+  colors 0.5234 0.5356 0.5356 0 0.5234 0.5356 0.5356 0.3765 0.5234 0.5356 0.5356 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Lance5/n3-1.effect.ogt"
+  scale curve 0 3.24 1 0
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n3-2.emitter.ogt" {
+  at 0.5833
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n3-3.emitter.ogt" {
+  at 0.55
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n3-4.emitter.ogt" {
+  at 0.5833
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n3-5.emitter.ogt" {
+  at 0.5333
+}
+emitter "vfx/effekseer-magicalxspiral/Lance5/n3-6-0-0.emitter.ogt" {
+  at 0.5
+}
+# effekseer: node 0.0.0.0 "Node": nested generation: 3 instances above its generator folded into one emitter
+# effekseer: node 0.0.0.0 "Node": a track of many instances: one trail drawn
+# effekseer: node 0.0.4 "Node": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.5 "Node": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0.6 "Node": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.6 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.7 "Node": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.7 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.8 "Node": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.8 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.9 "Node": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.9 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.10 "Node": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0.10 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "Node": a camera-facing ring: drawn in its own plane
+# effekseer: node 2.0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2.0 "Node": a random colour per particle: its mean used
+# effekseer: node 2.0 "Node": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0 "BG1": subtractive blend: drawn alpha blended
+# effekseer: node 3.0 "BG1": a camera-facing ring: drawn in its own plane
+# effekseer: node 3.1 "ShockWave1": a camera-facing ring: drawn in its own plane
+# effekseer: node 3.2 "Line1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.3 "Line2": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.4 "Lines": a random colour per particle: its mean used
+# effekseer: node 3.4 "Lines": a sprite scaled unevenly: drawn square at its mean

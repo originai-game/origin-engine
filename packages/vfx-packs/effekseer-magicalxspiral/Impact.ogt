@@ -1,0 +1,100 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.7
+mesh ring {
+  at 0.05
+  inner 0
+  band 0.5
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Impact/n0.effect.ogt"
+  scale curve 0 1.4 1 1.8
+  color 1 1 1 1
+  blend alpha
+}
+mesh ring {
+  at 0
+  inner 0.6111
+  band 0.5
+  colors 1 0.5356 0.3587 0 1 0.5356 0.3587 0.3765 1 0.5356 0.3587 0
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Impact/n1.effect.ogt"
+  scale curve 0 3.24 1 0
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Impact/n2.emitter.ogt" {
+  at 0.0833
+}
+emitter "vfx/effekseer-magicalxspiral/Impact/n3.emitter.ogt" {
+  at 0.05
+}
+mesh ring {
+  at 0.0167
+  inner 0
+  band 0.5
+  arc 225 90
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Impact/n4.effect.ogt"
+  scale 2
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.0333
+  inner 0
+  band 0.5
+  arc 225 90
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Impact/n4.effect.ogt"
+  scale 2
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.05
+  inner 0
+  band 0.5
+  arc 225 90
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Impact/n4.effect.ogt"
+  scale 2
+  color 1 1 1 0.75
+  blend additive
+}
+mesh ring {
+  at 0.0667
+  inner 0
+  band 0.5
+  arc 225 90
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
+  life 0.1667
+  effect "vfx/effekseer-magicalxspiral/Impact/n4.effect.ogt"
+  scale 2
+  color 1 1 1 0.75
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Impact/n5.emitter.ogt" {
+  at 0.0833
+}
+emitter "vfx/effekseer-magicalxspiral/Impact/n6.emitter.ogt" {
+  at 0.0333
+}
+emitter "vfx/effekseer-magicalxspiral/Impact/n7.emitter.ogt" {
+  at 0
+}
+# effekseer: node 0 "BG1": subtractive blend: drawn alpha blended
+# effekseer: node 0 "BG1": a camera-facing ring: drawn in its own plane
+# effekseer: node 1 "ShockWave1": a camera-facing ring: drawn in its own plane
+# effekseer: node 2 "Line1": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3 "Line2": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4 "Fire1": ring 20 instances: the first 4 drawn
+# effekseer: node 4 "Fire1": a camera-facing ring: drawn in its own plane
+# effekseer: node 5 "Lines": a random colour per particle: its mean used
+# effekseer: node 5 "Lines": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 7 "Particle1": a random colour per particle: its mean used

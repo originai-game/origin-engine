@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# Effekseer node 1.0.0.0 "湯気単体"
+maxParticles 4096
+shape point
+spread 70.5288
+rate 240
+duration 0.05
+looping false
+lifetime 0.25 0.75
+speed 3 11.3578
+size 2 2
+sizeOverLife 0 0.5 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.0312 1 1 1 0.0625
+  key 0.0469 1 1 1 0.0645
+  key 0.2969 1 1 1 0.024
+  key 0.6667 1 1 1 0.0133
+  key 1 1 1 1 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Fog3002.png"
+blend additive

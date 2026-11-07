@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 3.1.0.0 "LineMain"
+main "vfx/effekseer-tktk02/textures/Line01.png" rgba {
+}
+alpha curve 0 0 0.1429 1 0.7143 1 1 0
+blend additive
+doubleSided true

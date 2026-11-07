@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 2 "Ring1"
+main "vfx/effekseer-magicalxspiral/textures/White.png" rgba {
+  tile 512 64
+}
+alpha curve 0 1 0.3333 1 1 0
+blend additive
+doubleSided true

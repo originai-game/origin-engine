@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 2 "Flare"
+main "vfx/effekseer-suzuki01/textures/aura3_type2.png" rgba {
+  scroll 0.293 0.5859
+}
+alpha curve 0 1 0.9 1 1 0
+blend additive
+doubleSided true

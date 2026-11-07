@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 1.0.0.0 "6Ring"
+maxParticles 13
+shape point
+spread 0
+rate 0
+burst 0 1 10 0.0167
+duration 0.1667
+looping false
+lifetime 0.25 0.5833
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-tktk02/Gun5/n1-0-0-0-0.emitter.ogt"

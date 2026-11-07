@@ -1,0 +1,6 @@
+type effect
+version 1
+---
+# Effekseer node 3.0 "割れ部分"
+blend additive
+doubleSided true

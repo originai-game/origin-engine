@@ -1,0 +1,41 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.05
+emitter "vfx/effekseer-nextsoft01/MagicThunder/n0.emitter.ogt" {
+  at 0.1667
+}
+emitter "vfx/effekseer-nextsoft01/MagicThunder/n1.emitter.ogt" {
+  at 0.0167
+  offset 0 10 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-nextsoft01/MagicThunder/n2.emitter.ogt" {
+  at 0.2
+  offset 0 0 -0.5
+}
+emitter "vfx/effekseer-nextsoft01/MagicThunder/n3.emitter.ogt" {
+  at 0.4333
+  offset -0.3 0 0
+}
+emitter "vfx/effekseer-nextsoft01/MagicThunder/n4.emitter.ogt" {
+  at 0.2667
+  offset 0.5 0 0
+}
+emitter "vfx/effekseer-nextsoft01/MagicThunder/n5.emitter.ogt" {
+  at 0.0167
+}
+# effekseer: node 0 "爆発": a y-axis billboard: drawn facing the camera
+# effekseer: node 0 "爆発": a random colour per particle: its mean used
+# effekseer: node 0 "爆発": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "雷": a y-axis billboard: drawn facing the camera
+# effekseer: node 1 "雷": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 2 "雷": a y-axis billboard: drawn facing the camera
+# effekseer: node 2 "雷": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3 "雷": a y-axis billboard: drawn facing the camera
+# effekseer: node 3 "雷": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 4 "爆発": a y-axis billboard: drawn facing the camera
+# effekseer: node 4 "爆発": a random colour per particle: its mean used
+# effekseer: node 4 "爆発": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 5 "パーティクル": a random colour per particle: its mean used

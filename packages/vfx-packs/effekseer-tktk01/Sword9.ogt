@@ -1,0 +1,76 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.8667
+emitter "vfx/effekseer-tktk01/Sword9/n0.emitter.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  offset 0 -1 0
+  rotate 90 0 0
+  inner 1.2122
+  band 0.5
+  colors 1 1 1 0 0.9658 0 0 1 1 1 1 0
+  life 0.25
+  effect "vfx/effekseer-tktk01/Sword9/n1.effect.ogt"
+  scale curve 0 1 0.0938 1.3722 0.2031 1.7366 0.4219 2.2763 0.6562 2.648 1 3
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Sword9/n2.emitter.ogt" {
+  at 0.3333
+  offset 0 7 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-tktk01/Sword9/n3-0.emitter.ogt" {
+  at 0.0333
+}
+emitter "vfx/effekseer-tktk01/Sword9/n4-0.emitter.ogt" {
+  at 0.35
+  offset 0 1 0
+}
+emitter "vfx/effekseer-tktk01/Sword9/n5-0.emitter.ogt" {
+  at 0
+  offset 0.75 -1 0
+  rotate 0 0 -90
+}
+mesh ring {
+  at 0.3667
+  offset 0 1 0
+  rotate 90 -30 90
+  inner 1.25
+  band 0.5
+  colors 1 1 1 0 0.9658 0.1275 0.1275 0.3922 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword9/n6.effect.ogt"
+  scale curve 0 1 0.0938 1.7445 0.2031 2.4732 0.3125 3.0695 0.4219 3.5527 0.6562 4.296 1 5
+  color 5 5 5 1
+  blend additive
+}
+mesh ring {
+  at 0.3667
+  offset 0 1 0
+  rotate -90 -30 -90
+  inner 1.25
+  band 0.5
+  colors 1 1 1 0 0.9658 0.1275 0.1275 0.3922 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword9/n7.effect.ogt"
+  scale curve 0 1 0.0938 1.7445 0.2031 2.4732 0.3125 3.0695 0.4219 3.5527 0.6562 4.296 1 5
+  color 5 5 5 1
+  blend additive
+}
+# effekseer: node 0 "剣線": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0 "剣線": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "始めリング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2 "剣線": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 2 "剣線": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 3.0 "一段目衝撃": a random colour per particle: its mean used
+# effekseer: node 4.0 "２段目衝撃": a random colour per particle: its mean used
+# effekseer: node 5.0 "煙メイン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 6 "始めリング": ring 5 instances: the first 4 drawn
+# effekseer: node 6 "始めリング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 7 "始めリング": ring 5 instances: the first 4 drawn
+# effekseer: node 7 "始めリング": a ring whose thickness changes over its life: its middle thickness kept

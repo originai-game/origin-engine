@@ -1,0 +1,40 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.7
+emitter "vfx/effekseer-andrewfm01/actionLines_radial2/n0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-andrewfm01/actionLines_radial2/n1.emitter.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0.4
+  colors 1 1 1 0 1 1 1 0.251 1 1 1 0.251
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_radial2/n2.effect.ogt"
+  scale 4.5
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0.6255
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_radial2/n3.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+# effekseer: node 0 "Lines": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0 "Lines": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0 "Lines": motion out from a circle: approximated along one direction
+# effekseer: node 1 "Action Lines": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 1 "Action Lines": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 1 "Action Lines": motion out from a circle: approximated along one direction
+# effekseer: node 3 "Glow Balls": ring 16 instances: the first 4 drawn

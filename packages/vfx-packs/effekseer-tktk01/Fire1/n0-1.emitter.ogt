@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 0.1 "火メイン"
+maxParticles 52
+shape spline 0 10 0  -7.0711 7.0711 0  -10 0 0  -7.0711 -7.0711 0  0 -10 0  7.0711 -7.0711 0  10 0 0  7.0711 7.0711 0 closed
+spread 0
+rate 240
+duration 1.4583
+looping false
+lifetime 0.0833 0.25
+speed 0 0
+size 12.5 12.5
+colorOverLife {
+  key 0 0.9323 0.3941 0.0242 1
+  key 1 0.9323 0.3941 0.0242 0
+}
+rotation -360 360
+angularVelocity -21600 21600
+texture "vfx/effekseer-tktk01/textures/star.png"
+blend additive

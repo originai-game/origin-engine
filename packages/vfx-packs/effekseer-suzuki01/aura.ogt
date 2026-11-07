@@ -1,0 +1,147 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 10
+loop true
+mesh ring {
+  at 0
+  rotate -152.5353 64.9755 -160.2199
+  inner 0
+  band 0.5
+  colors 0.122 0.2011 0.7445 0 0 0.0385 0.1801 1 0.017 0.0003 0.586 0
+  life 0.8333
+  effect "vfx/effekseer-suzuki01/aura/n0.effect.ogt"
+  scale curve 0 0.6 1 0.7
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  rotate -144.1244 18.5535 -57.9595
+  inner 0
+  band 0.5
+  colors 0.122 0.2011 0.7445 0 0 0.0385 0.1801 1 0.017 0.0003 0.586 0
+  life 0.8333
+  effect "vfx/effekseer-suzuki01/aura/n0.effect.ogt"
+  scale curve 0 0.6 1 0.7
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1
+  rotate -121.6877 -12.2752 64.004
+  inner 0
+  band 0.5
+  colors 0.122 0.2011 0.7445 0 0 0.0385 0.1801 1 0.017 0.0003 0.586 0
+  life 0.8333
+  effect "vfx/effekseer-suzuki01/aura/n0.effect.ogt"
+  scale curve 0 0.6 1 0.7
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.15
+  rotate -94.353 -10.3837 -157.8957
+  inner 0
+  band 0.5
+  colors 0.122 0.2011 0.7445 0 0 0.0385 0.1801 1 0.017 0.0003 0.586 0
+  life 0.8333
+  effect "vfx/effekseer-suzuki01/aura/n0.effect.ogt"
+  scale curve 0 0.6 1 0.7
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-suzuki01/aura/n1.emitter.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  rotate -152.5353 64.9755 -160.2199
+  inner 0
+  band 0.4
+  colors 0.122 0.2011 0.7445 0 0 0.0385 0.1801 0.3922 0.017 0.0003 0.586 0
+  life 1.3333
+  effect "vfx/effekseer-suzuki01/aura/n2.effect.ogt"
+  scale curve 0 0.7 1 1.98
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  rotate -144.1244 18.5535 -57.9595
+  inner 0
+  band 0.4
+  colors 0.122 0.2011 0.7445 0 0 0.0385 0.1801 0.3922 0.017 0.0003 0.586 0
+  life 1.3333
+  effect "vfx/effekseer-suzuki01/aura/n2.effect.ogt"
+  scale curve 0 0.7 1 1.98
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1
+  rotate -121.6877 -12.2752 64.004
+  inner 0
+  band 0.4
+  colors 0.122 0.2011 0.7445 0 0 0.0385 0.1801 0.3922 0.017 0.0003 0.586 0
+  life 1.3333
+  effect "vfx/effekseer-suzuki01/aura/n2.effect.ogt"
+  scale curve 0 0.7 1 1.98
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.15
+  rotate -94.353 -10.3837 -157.8957
+  inner 0
+  band 0.4
+  colors 0.122 0.2011 0.7445 0 0 0.0385 0.1801 0.3922 0.017 0.0003 0.586 0
+  life 1.3333
+  effect "vfx/effekseer-suzuki01/aura/n2.effect.ogt"
+  scale curve 0 0.7 1 1.98
+  color 1 1 1 1
+  blend additive
+}
+mesh "vfx/effekseer-suzuki01/aura/model-ball2.glb" {
+  at 0
+  rotate 0 0 40
+  life 10
+  effect "vfx/effekseer-suzuki01/aura/n3.effect.ogt"
+  scale 0.007
+  color 1 1 1 1
+  blend alpha
+}
+mesh "vfx/effekseer-suzuki01/aura/model-ball2.glb" {
+  at 0
+  rotate -90 60 90
+  life 10
+  effect "vfx/effekseer-suzuki01/aura/n4.effect.ogt"
+  scale 0.0072
+  color 0.9743 0.9914 0.8355 0.5098
+  blend additive
+}
+mesh "vfx/effekseer-suzuki01/aura/model-ball2.glb" {
+  at 0
+  rotate -30 0 0
+  life 10
+  effect "vfx/effekseer-suzuki01/aura/n5.effect.ogt"
+  scale 0.0072
+  color 1 1 1 0.6275
+  blend additive
+}
+emitter "vfx/effekseer-suzuki01/aura/n6.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-suzuki01/aura/n7.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-suzuki01/aura/n8.emitter.ogt" {
+  at 0
+}
+# effekseer: node 0 "FlareMini": ring unlimited instances: the first 4 drawn
+# effekseer: node 1 "Glow": a random colour per particle: its mean used
+# effekseer: node 2 "Flare": ring unlimited instances: the first 4 drawn
+# effekseer: node 6 "Needle": a y-axis billboard: drawn facing the camera
+# effekseer: node 6 "Needle": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 7 "Needle2": a y-axis billboard: drawn facing the camera

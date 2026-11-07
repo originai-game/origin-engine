@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.0.0.6.0 "Ray"
+maxParticles 507
+shape point
+spread 0
+rate 7.5
+duration 1
+looping true
+lifetime 0.3 0.6333
+speed 0 0
+size 7.12 7.12
+sizeOverLife 0 0.0397 1 0.5854
+colorOverLife {
+  key 0 1 0.7519 0.2195 0
+  key 0.2143 1 0.7519 0.2195 0.502
+  key 0.3571 1 0.7519 0.2195 0.502
+  key 1 1 0.7519 0.2195 0
+}
+texture "vfx/effekseer-pierre02/textures/Star.png"
+blend additive

@@ -1,0 +1,295 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.9079
+emitter "vfx/effekseer-tktk01/Blow15/n0-0-0.emitter.ogt" {
+  at 0.0167
+  offset 0 0 1
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Blow15/n0-0-0-0.emitter.ogt" {
+  at 0.0167
+  offset 0 0 1
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Blow15/n0-0-0-1.emitter.ogt" {
+  at 0.0167
+  offset 0 0 1
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Blow15/n0-1-0.emitter.ogt" {
+  at 0.0167
+  offset 0 0 1
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Blow15/n0-1-0-0.emitter.ogt" {
+  at 0.0167
+  offset 0 0 1
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Blow15/n0-1-0-1.emitter.ogt" {
+  at 0.0167
+  offset 0 0 1
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Blow15/n0-2-0.emitter.ogt" {
+  at 0.0333
+  offset 0 0 2
+  rotate 90 0 0
+}
+emitter "vfx/effekseer-tktk01/Blow15/n0-2-0-0.emitter.ogt" {
+  at 0.0333
+  offset 0 0 2
+  rotate 90 0 0
+}
+mesh ring {
+  at 0.05
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0.502 1 1 1 0
+  life 0.5833
+  effect "vfx/effekseer-tktk01/Blow15/n1-0.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  inner 0.9912
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.5833
+  effect "vfx/effekseer-tktk01/Blow15/n1-1.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  inner 0
+  band 0.6
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5833
+  effect "vfx/effekseer-tktk01/Blow15/n1-2.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.05
+  life 0.5833
+  effect "vfx/effekseer-tktk01/Blow15/n1-3.effect.ogt"
+  scale curve 0 4 0.0781 6.6364 0.1719 9.1181 0.2656 10.9493 0.375 12.3954 0.4688 13.1564 0.5781 13.6246 1 14
+  color 1 0.0478 0.0478 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset -0.25 0 2
+  rotate 0 30 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-0-0.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset -0.25 0 2
+  rotate 0 30 0
+  inner 0.9912
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-0-1.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset -0.25 0 2
+  rotate 0 30 0
+  inner 0
+  band 0.6
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-0-2.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset -0.25 0 2
+  rotate 0 30 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-0-3.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.05
+  offset -0.25 0 2
+  rotate 0 30 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-0-4.effect.ogt"
+  scale curve 0 4 0.0781 6.6364 0.1719 9.1181 0.2656 10.9493 0.375 12.3954 0.4688 13.1564 0.5781 13.6246 1 14
+  color 1 0.0478 0.0478 0.502
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset -0.25 0 2
+  rotate 0 30 0
+  inner 2.0353
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-0-5.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset -0.25 0 2
+  rotate 0 30 0
+  inner 1.5088
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-0-6.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset 0.25 0 2
+  rotate -180 30 -180
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-1-0.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset 0.25 0 2
+  rotate -180 30 -180
+  inner 0.9912
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-1-1.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset 0.25 0 2
+  rotate -180 30 -180
+  inner 0
+  band 0.6
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-1-2.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset 0.25 0 2
+  rotate -180 30 -180
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-1-3.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0.05
+  offset 0.25 0 2
+  rotate -180 30 -180
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-1-4.effect.ogt"
+  scale curve 0 4 0.0781 6.6364 0.1719 9.1181 0.2656 10.9493 0.375 12.3954 0.4688 13.1564 0.5781 13.6246 1 14
+  color 1 0.0478 0.0478 0.502
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset 0.25 0 2
+  rotate -180 30 -180
+  inner 2.0353
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-1-5.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.05
+  offset 0.25 0 2
+  rotate -180 30 -180
+  inner 1.5088
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n2-1-6.effect.ogt"
+  scale curve 0 1 0.0781 1.7909 0.1719 2.5354 0.2656 3.0848 0.375 3.5186 0.4688 3.7469 0.5781 3.8874 1 4
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.0667
+  move 7.5 0 0
+  inner 0
+  band 0
+  arc 265 10
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.6667
+  effect "vfx/effekseer-tktk01/Blow15/n3-0.effect.ogt"
+  scale 2
+  spin 0 0 270
+  color 100 100 100 1
+  blend additive
+}
+# effekseer: node 0.0.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.1 "glow": a random colour per particle: its mean used
+# effekseer: node 0.1.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 0.1.0.1 "glow": a random colour per particle: its mean used
+# effekseer: node 0.2.0 "上に上がるライン": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0 "上に上がるライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0 "glow": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0.0 "glow": a random colour per particle: its mean used
+# effekseer: node 1.1 "外枠": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 1.1 "外枠": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 2.0.1 "外枠": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.0.1 "外枠": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 2.0.5 "地上リングギザ外": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.0.6 "地上リングギザ2外": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.1.1 "外枠": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.1.1 "外枠": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 2.1.5 "地上リングギザ外": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 2.1.6 "地上リングギザ2外": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 3.0 "割れ部分": ring 100 instances: the first 4 drawn

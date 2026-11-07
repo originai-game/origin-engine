@@ -1,0 +1,10 @@
+type effect
+version 1
+---
+# Effekseer node 1.0.0.2 "ghiza_Pillar"
+main "vfx/effekseer-tktk02/textures/Shock_wave_ring0011.png" rgba {
+  tile 2 1
+}
+alpha curve 0 0 0.2 1 0.5333 1 1 0
+blend additive
+doubleSided true

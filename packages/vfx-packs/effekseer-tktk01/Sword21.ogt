@@ -1,0 +1,143 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.3333
+trail {
+  at 0
+  offset 15.7569 -2.7784 0
+  rotate 0 0 80
+  move -35.4531 6.2513 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Sword21/n0-0-0-0.effect.ogt"
+  width 0 0
+  lifetime 1.6667
+  color 1 1 1 1
+}
+trail {
+  at 0
+  offset 15.7569 -2.7784 0
+  rotate 0 0 80
+  move -35.4531 6.2513 0
+  life 1.6667
+  effect "vfx/effekseer-tktk01/Sword21/n0-0-0-1.effect.ogt"
+  width 0 0
+  lifetime 1.6667
+  color 0.047 0.047 0.047 1
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-0-0-2-0.emitter.ogt" {
+  at 0
+  offset 17.2752 -3.0461 0
+  rotate 0 0 -100
+  move -35.4531 6.2513 0
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-0-0-2-0-0.emitter.ogt" {
+  at 0
+  offset 17.2752 -3.0461 0
+  rotate 0 0 -100
+  move -35.4531 6.2513 0
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-0-0-2-0-1.emitter.ogt" {
+  at 0
+  offset 17.2752 -3.0461 0
+  rotate 0 0 -100
+  move -35.4531 6.2513 0
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-0-0-2-1.emitter.ogt" {
+  at 0
+  offset 24.1073 -4.2508 0
+  rotate 0 0 -100
+  move -35.4531 6.2513 0
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-0-0-2-1-0.emitter.ogt" {
+  at 0
+  offset 24.1073 -4.2508 0
+  rotate 0 0 -100
+  move -35.4531 6.2513 0
+}
+mesh ring {
+  at 0.1333
+  rotate 25.5056 67.7313 62.7268
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword21/n0-1-0.effect.ogt"
+  scale curve 0 2 0.0781 3.0546 0.1719 4.0472 0.2656 4.7797 0.375 5.3582 0.4688 5.6625 0.5781 5.8498 1 6
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  rotate 25.5056 67.7313 62.7268
+  inner 0.9827
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword21/n0-1-1.effect.ogt"
+  scale curve 0 2 0.0781 3.0546 0.1719 4.0472 0.2656 4.7797 0.375 5.3582 0.4688 5.6625 0.5781 5.8498 1 6
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  rotate 25.5056 67.7313 62.7268
+  inner 0
+  band 1
+  colors 1 1 1 0 1 0.5356 0.5356 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword21/n0-1-2.effect.ogt"
+  scale curve 0 2 0.0781 3.0546 0.1719 4.0472 0.2656 4.7797 0.375 5.3582 0.4688 5.6625 0.5781 5.8498 1 6
+  color 2 2 2 1
+  blend additive
+}
+mesh ring {
+  at 0.1333
+  rotate 25.5056 67.7313 62.7268
+  inner 0
+  band 0.5
+  colors 0.047 0.0478 0.0478 0 0.047 0.0478 0.0478 0 0.047 0.0478 0.0478 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Sword21/n0-1-3.effect.ogt"
+  scale curve 0 2 0.0781 3.0546 0.1719 4.0472 0.2656 4.7797 0.375 5.3582 0.4688 5.6625 0.5781 5.8498 1 6
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-2-0.emitter.ogt" {
+  at 0.1333
+  offset -1.231 0.2171 0
+  rotate 0 0 80
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-2-0-0.emitter.ogt" {
+  at 0.1333
+  offset -1.231 0.2171 0
+  rotate 0 0 80
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-3-0.emitter.ogt" {
+  at 0.1333
+  offset -1.231 0.2171 0
+  rotate 0 0 80
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-3-0-0.emitter.ogt" {
+  at 0.1333
+  offset -1.231 0.2171 0
+  rotate 0 0 80
+}
+emitter "vfx/effekseer-tktk01/Sword21/n0-3-0-1.emitter.ogt" {
+  at 0.1333
+  offset -1.231 0.2171 0
+  rotate 0 0 80
+}
+# effekseer: node 0.0.0.2.0.0 "粒子色付け": a random colour per particle: its mean used
+# effekseer: node 0.0.0.2.0.1 "glow": a random colour per particle: its mean used
+# effekseer: node 0.0.0.2.1 "ライン": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.2.1 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.0.0.2.1.0 "ラインglow": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.0.0.2.1.0 "ラインglow": a random colour per particle: its mean used
+# effekseer: node 0.1.1 "リング縁": a UV region of a texture whose size is not known (not a PNG)
+# effekseer: node 0.2.0 "ライン": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0 "ライン": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0.2.0.0 "色": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.2.0.0 "色": a random colour per particle: its mean used
+# effekseer: node 0.3.0.0 "色": a random colour per particle: its mean used
+# effekseer: node 0.3.0.1 "glow": a random colour per particle: its mean used

@@ -1,0 +1,93 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.6667
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  arc 212.5 115
+  colors 1 1 1 0 1 0.1166 0.0478 0.7059 1 1 1 0
+  life 1.6667
+  effect "vfx/effekseer-magicalxspiral/Magic1_fire/n0-0.effect.ogt"
+  scale 12
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate 0 0 -180
+  inner 0
+  band 0.5
+  arc 212.5 115
+  colors 1 1 1 0 1 0.1166 0.0478 0.7059 1 1 1 0
+  life 1.6667
+  effect "vfx/effekseer-magicalxspiral/Magic1_fire/n0-1.effect.ogt"
+  scale 12
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0
+  band 0.5
+  arc 180 180
+  colors 1 1 1 0 0.5356 0 0 0.7529 1 1 1 0
+  life 1.6667
+  effect "vfx/effekseer-magicalxspiral/Magic1_fire/n1-0.effect.ogt"
+  scale 12
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0
+  rotate 0 0 -180
+  inner 0
+  band 0.5
+  arc 180 180
+  colors 1 1 1 0 0.5356 0 0 0.7529 1 1 1 0
+  life 1.6667
+  effect "vfx/effekseer-magicalxspiral/Magic1_fire/n1-1.effect.ogt"
+  scale 12
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1667
+  inner 0
+  band 0.5
+  arc 212.5 115
+  colors 1 1 1 0 1 0.1166 0.0478 0.7059 1 1 1 0
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Magic1_fire/n2-0.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+mesh ring {
+  at 0.1667
+  rotate 0 0 -180
+  inner 0
+  band 0.5
+  arc 212.5 115
+  colors 1 1 1 0 1 0.1166 0.0478 0.7059 1 1 1 0
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Magic1_fire/n2-1.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-magicalxspiral/Magic1_fire/n3-0-0.emitter.ogt" {
+  at 0
+  rotate 0 0 -90
+}
+# effekseer: node 0.0 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 0.1 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 1.0 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 1.1 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 2.0 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 2.1 "Ring": a camera-facing ring: drawn in its own plane
+# effekseer: node 3.0.0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 3.0.0 "Node": a random colour per particle: its mean used
+# effekseer: node 3.0.0 "Node": a sprite scaled unevenly: drawn square at its mean

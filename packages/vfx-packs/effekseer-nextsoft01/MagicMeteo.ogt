@@ -1,0 +1,25 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.4167
+emitter "vfx/effekseer-nextsoft01/MagicMeteo/n0.emitter.ogt" {
+  at 0.0167
+  offset 0 12 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-nextsoft01/MagicMeteo/n0-0.parent.ogt" {
+  at 0.0167
+  offset 0 12 0
+  rotate 0 0 180
+}
+emitter "vfx/effekseer-nextsoft01/MagicMeteo/n0-1.parent.ogt" {
+  at 0.0167
+  offset 0 12 0
+  rotate 0 0 180
+}
+# effekseer: node 0 "isi": a random colour per particle: its mean used
+# effekseer: node 0.0 "isi2": a y-axis billboard: drawn facing the camera
+# effekseer: node 0.0 "isi2": a random colour per particle: its mean used
+# effekseer: node 0.1 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0.1 "Node": a random colour per particle: its mean used

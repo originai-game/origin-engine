@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 0.0 "風大"
+maxParticles 125
+shape box 1.5 1.5 1.5
+spread 0
+rate 0
+burst 0 20
+duration 0.0167
+looping false
+lifetime 0.5 0.5
+speed 0 0
+size 45.75 45.75
+sizeOverLife 0 0.0164 1 1
+colorOverLife {
+  key 0 0.4995 1 0.4704 0.6863
+  key 1 0.4704 0.9828 0.68 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Shock_wave004.png"
+blend additive

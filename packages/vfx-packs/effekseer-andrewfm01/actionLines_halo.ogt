@@ -1,0 +1,23 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.6725
+emitter "vfx/effekseer-andrewfm01/actionLines_halo/n0.emitter.ogt" {
+  at 0
+}
+mesh ring {
+  at 0
+  inner 0
+  band 1
+  colors 1 1 1 0 1 1 1 0 1 1 1 1
+  life 1.6667
+  effect "vfx/effekseer-andrewfm01/actionLines_halo/n1.effect.ogt"
+  scale 0.324
+  color 1 1 1 1
+  blend alpha
+}
+# effekseer: node 0 "Lines": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0 "Lines": a sprite scaled unevenly: drawn square at its mean
+# effekseer: node 0 "Lines": motion out from a circle: approximated along one direction
+# effekseer: node 1 "Long Lines": ring 7 instances: the first 4 drawn

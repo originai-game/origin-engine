@@ -1,0 +1,15 @@
+type particles
+version 1
+---
+# Effekseer node 0 "impactAllNull"
+maxParticles 8
+shape point
+spread 0
+rate 0
+burst 0 1 6 0.0667
+duration 0.35
+looping false
+lifetime 1.6667 1.6667
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-tktk02/Dark2/n0-2-0-0-0.emitter.ogt"

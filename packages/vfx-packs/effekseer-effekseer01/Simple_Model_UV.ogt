@@ -1,0 +1,25 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 3.5
+mesh sphere {
+  at 0
+  offset 0 4 0
+  life 3
+  effect "vfx/effekseer-effekseer01/Simple_Model_UV/n0.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+mesh sphere {
+  at 0.5
+  offset 0 4 0
+  life 3
+  effect "vfx/effekseer-effekseer01/Simple_Model_UV/n1.effect.ogt"
+  scale 2
+  color 1 1 1 1
+  blend alpha
+}
+# effekseer: node 0 "Arrow": a model that is not an .efkmodel (Model/Arrow.fbx): drawn as a sphere
+# effekseer: node 1 "Arrow": a model that is not an .efkmodel (Model/Arrow.fbx): drawn as a sphere

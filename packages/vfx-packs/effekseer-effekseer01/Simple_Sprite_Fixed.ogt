@@ -1,0 +1,11 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 1.6333
+emitter "vfx/effekseer-effekseer01/Simple_Sprite_Fixed/n0.emitter.ogt" {
+  at 0
+  rotate 90 0 0
+}
+# effekseer: node 0 "Node": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 0 "Node": a random colour per particle: its mean used

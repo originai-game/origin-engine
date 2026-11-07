@@ -1,0 +1,94 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.9167
+mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-rock1.glb" {
+  at 0.25
+  life 2.6667
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n0.effect.ogt"
+  scale 1.5
+  color 1 1 1 0.502
+  blend additive
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-block2.glb" {
+  at 0
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n1.effect.ogt"
+  scale 0.75
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-block2.glb" {
+  at 0.0167
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n1.effect.ogt"
+  scale 0.75
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-block2.glb" {
+  at 0.0333
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n1.effect.ogt"
+  scale 0.75
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-block2.glb" {
+  at 0.05
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n1.effect.ogt"
+  scale 0.75
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-block3.glb" {
+  at 0
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n2.effect.ogt"
+  scale 0.75
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-block3.glb" {
+  at 0.0167
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n2.effect.ogt"
+  scale 0.75
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-block3.glb" {
+  at 0.0333
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n2.effect.ogt"
+  scale 0.75
+  color 1 1 1 0.8784
+  blend alpha
+}
+mesh "vfx/effekseer-magicalxspiral/Gohlem7/model-block3.glb" {
+  at 0.05
+  life 0.25
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n2.effect.ogt"
+  scale 0.75
+  color 1 1 1 0.8784
+  blend alpha
+}
+trail {
+  at 0
+  life 0.2333
+  effect "vfx/effekseer-magicalxspiral/Gohlem7/n3-0-0-0.effect.ogt"
+  width 4 4
+  lifetime 0.0833
+  color 1 1 1 0
+  orbit 4 15
+}
+emitter "vfx/effekseer-magicalxspiral/Gohlem7/n4-0.emitter.ogt" {
+  at 0.0833
+}
+# effekseer: node 1 "Node": model 10 instances: the first 4 drawn
+# effekseer: node 2 "Node": model 10 instances: the first 4 drawn
+# effekseer: node 3.0.0.0 "Track": nested generation: 16 instances above its generator folded into one emitter
+# effekseer: node 3.0.0.0 "Track": a track of many instances: one trail drawn
+# effekseer: node 4.0 "Node": a random colour per particle: its mean used

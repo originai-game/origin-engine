@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Effekseer node 3 "Flash"
+maxParticles 4
+shape point
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.1667 0.1667
+speed 0 0
+size 18 18
+sizeOverLife 0 0.1667 1 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.1 1 1 1 0.152
+  key 0.2969 1 1 1 0.3476
+  key 0.5 1 1 1 0.4143
+  key 0.6094 1 1 1 0.395
+  key 0.7031 1 1 1 0.3476
+  key 0.9 1 1 1 0.152
+  key 1 1 1 1 0
+}
+texture "vfx/effekseer-andrewfm01/textures/glow.png"
+blend additive

@@ -1,0 +1,13 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 2.9667
+emitter "vfx/effekseer-tktk01/Wind1/n0-0.parent.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Wind1/n1-0.parent.ogt" {
+  at 0
+}
+# effekseer: node 0.0 "風大": a y-axis billboard: drawn facing the camera
+# effekseer: node 1.0 "風小": a y-axis billboard: drawn facing the camera

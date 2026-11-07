@@ -1,0 +1,66 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 8.9167
+trail {
+  at 1.0083
+  offset -39.6217 -18.9738 0
+  rotate 0 0 -15
+  life 1.65
+  effect "vfx/effekseer-suzuki01/snowstorm11/n0-0.effect.ogt"
+  width 0 0.55
+  lifetime 1.6667
+  color 1 1 1 0
+  rise 11.5581
+}
+emitter "vfx/effekseer-suzuki01/snowstorm11/n0-0-0.parent.ogt" {
+  at 1.0083
+  offset -39.6217 -18.9738 0
+  rotate 0 0 -63.969
+}
+emitter "vfx/effekseer-suzuki01/snowstorm11/n0-0-1.parent.ogt" {
+  at 1.0083
+  offset -39.6217 -18.9738 0
+  rotate 0 0 -63.969
+}
+trail {
+  at 1.3417
+  offset -33.9018 -8.7864 0
+  rotate 0 0 -20
+  life 1.65
+  effect "vfx/effekseer-suzuki01/snowstorm11/n1-0.effect.ogt"
+  width 0 0.85
+  lifetime 2
+  color 1 1 1 0
+  rise 10.3047
+}
+emitter "vfx/effekseer-suzuki01/snowstorm11/n1-0-0.parent.ogt" {
+  at 1.3417
+  offset -33.9018 -8.7864 0
+  rotate 0 0 -70.4706
+}
+emitter "vfx/effekseer-suzuki01/snowstorm11/n2.emitter.ogt" {
+  at 0
+  rotate 92.2137 -43.2684 -41.7721
+}
+emitter "vfx/effekseer-suzuki01/snowstorm11/n3-0.emitter.ogt" {
+  at 0
+  offset -100 0 0
+  rotate 0 0 180
+}
+# effekseer: node 0.0 "move_curve": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 0.0 "move_curve": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0 "move_curve": a track of many instances: one trail drawn
+# effekseer: node 0.0 "move_curve": a ribbon or track's sideways motion: only its rise and turn are kept
+# effekseer: node 0.0.0 "random": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 0.0 "move_curve": location over an f-curve: straightened
+# effekseer: node 0.0.1 "random_stop": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 1.0 "move_curve": a moving ancestor: its descendants are placed where it starts
+# effekseer: node 1.0 "move_curve": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 1.0 "move_curve": a track of many instances: one trail drawn
+# effekseer: node 1.0 "move_curve": a ribbon or track's sideways motion: only its rise and turn are kept
+# effekseer: node 1.0.0 "random": nested generation: 5 instances above its generator folded into one emitter
+# effekseer: node 1.0.0 "random": a random colour per particle: its mean used
+# effekseer: node 1.0 "move_curve": location over an f-curve: straightened
+# effekseer: node 3.0 "particle2": a y-axis billboard: drawn facing the camera

@@ -1,0 +1,18 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.8167
+emitter "vfx/effekseer-magicalxspiral/Thunder3/n0.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-magicalxspiral/Thunder3/n1.emitter.ogt" {
+  at 0
+  offset 0 0.5 0
+}
+emitter "vfx/effekseer-magicalxspiral/Thunder3/n2.emitter.ogt" {
+  at 0.0833
+  offset 0 0.5 0
+}
+# effekseer: node 0 "SupportThunder": a sprite scaled unevenly: drawn square at its mean

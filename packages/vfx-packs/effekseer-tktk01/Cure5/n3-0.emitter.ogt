@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 3.0 "星型"
+maxParticles 32
+shape point
+spread 0
+rate 0
+burst 0 1 10 0.0833
+duration 0.7667
+looping false
+lifetime 0.0167 0.6667
+speed 0 0
+size 26.6667 26.6667
+colorOverLife {
+  key 0 1 1 1 0.3922
+  key 1 1 1 1 0
+}
+rotation 45 45
+texture "vfx/effekseer-tktk01/textures/star.png"
+blend additive

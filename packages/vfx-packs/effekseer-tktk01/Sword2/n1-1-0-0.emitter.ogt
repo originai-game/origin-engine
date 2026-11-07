@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Effekseer node 1.1.0.0 "Node"
+maxParticles 4096
+shape point
+spread 180
+rate 18000
+duration 0.3333
+looping false
+lifetime 0.2667 0.2667
+speed 0.3654 1.4614
+size 0.45 0.45
+sizeOverLife 0 0.1667 1 1
+colorOverLife {
+  key 0 1 1 1 0.1961
+  key 0.2344 1 0.613 0.613 0.1501
+  key 0.3594 1 0.448 0.448 0.1256
+  key 0.4844 1 0.3107 0.3107 0.1011
+  key 0.6094 1 0.2003 0.2003 0.0766
+  key 0.7344 1 0.1156 0.1156 0.0521
+  key 0.8594 1 0.0555 0.0555 0.0276
+  key 1 1 0.0152 0.0152 0
+}
+rotation -180 180
+texture "vfx/effekseer-tktk01/textures/Fog3002.png"
+blend additive

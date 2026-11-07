@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Effekseer node 1.3 "Glow1Core"
+maxParticles 4
+shape point
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.6667 0.6667
+speed 0 0
+size 15 15
+sizeOverLife 0 1 0.2188 0.7512 0.4531 0.5278 0.7031 0.3295 1 0.1333
+colorOverLife {
+  key 0 1 0.2195 1 0
+  key 0.0625 0.865 0.1758 1 0.0941
+  key 0.125 0.7515 0.1406 1 0.1882
+  key 0.25 0.576 0.0898 1 0.3765
+  key 0.375 0.453 0.0577 1 0.3765
+  key 0.5 0.3671 0.0377 1 0.3765
+  key 0.7188 0.2756 0.0195 1 0.2118
+  key 1 0.2195 0.0104 1 0
+}
+texture "vfx/effekseer-tktk02/textures/Particle_Soft.png"
+blend additive

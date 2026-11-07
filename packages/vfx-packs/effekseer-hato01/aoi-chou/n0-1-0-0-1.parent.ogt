@@ -1,0 +1,14 @@
+type particles
+version 1
+---
+# Effekseer node 0 "Node"
+maxParticles 8
+shape spline 1 0 0  0.7071 0 -0.7071  0 0 -1  -0.7071 0 -0.7071  -1 0 0  -0.7071 0 0.7071  0 0 1  0.7071 0 0.7071 closed
+spread 92.0249
+rate 0.24
+duration 1
+looping true
+lifetime 13.3333 26.6667
+speed 1.4151 1.4221
+size 0
+subEmitter life "vfx/effekseer-hato01/aoi-chou/n0-1-0-0-1.emitter.ogt"

@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 2 "Energy"
+maxParticles 52
+shape spline 0 -4 0  2.8284 -2.8284 0  4 0 0  2.8284 2.8284 0  0 4 0  -2.8284 2.8284 0  -4 0 0  -2.8284 -2.8284 0 closed
+spread 0
+rate 0
+burst 0 1 70 0.0167
+duration 1.1667
+looping false
+lifetime 0.6667 0.6667
+speed 0.6 0.6
+size 1.25 3.25
+colorOverLife {
+  key 0 1 1 1 1
+  key 0.75 1 1 1 1
+  key 1 1 1 1 0
+}
+gravity 0 -18 0
+texture "vfx/effekseer-andrewfm01/textures/orb_colored.png"
+blend additive

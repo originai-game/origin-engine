@@ -1,0 +1,8 @@
+type effect
+version 1
+---
+# Effekseer node 0.3.0.0.0.1 "LineColor"
+main "vfx/effekseer-tktk02/textures/Line6.png" rgba {
+}
+blend additive
+doubleSided true

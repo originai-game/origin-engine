@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# Effekseer node 5 "衝撃グロー"
+maxParticles 4
+shape point
+spread 0
+rate 0
+burst 0 1
+duration 0.0167
+looping false
+lifetime 0.5 0.5
+speed 0 0
+size 15 15
+sizeOverLife 0 0.0667 0.0938 0.2404 0.2031 0.4104 0.3125 0.5496 0.4219 0.6623 0.6562 0.8357 1 1
+colorOverLife {
+  key 0 0.586 1 1 1
+  key 1 0.586 1 1 0
+}
+texture "vfx/effekseer-tktk01/textures/Particle02.png"
+blend additive

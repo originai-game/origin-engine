@@ -1,0 +1,54 @@
+type vfx
+version 1
+---
+# Converted from Effekseer by og vfx import.
+duration 0.8448
+emitter "vfx/effekseer-tktk01/Blow4/n0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow4/n1.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-tktk01/Blow4/n2-0.emitter.ogt" {
+  at 0
+  offset 1 0 0
+  rotate 0 0 -90
+}
+emitter "vfx/effekseer-tktk01/Blow4/n2-0-0.emitter.ogt" {
+  at 0
+  offset 3 0 0
+  rotate 0 0 -90
+}
+mesh ring {
+  at 0
+  inner 0.5
+  band 1
+  colors 1 1 1 0 1 0.1275 0.1304 0 1 1 1 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow4/n3.effect.ogt"
+  scale curve 0 2 0.1406 4.1288 0.2344 5.3825 0.3281 6.3778 0.4219 7.087 0.5156 7.5304 0.6094 7.7586 1 8
+  color 5 5 5 1
+  blend additive
+}
+mesh ring {
+  at 0
+  inner 0.8907
+  band 0.5
+  colors 0.9574 0.1275 0.1275 0 1 0.1275 0.1275 0 0.9574 0.1275 0.1275 0
+  life 0.5
+  effect "vfx/effekseer-tktk01/Blow4/n4.effect.ogt"
+  scale curve 0 4 0.0938 5.2804 0.1875 6.2709 0.2812 7.0031 0.3906 7.5786 0.4844 7.8771 0.5938 8.0553 1 8.2
+  color 1 1 1 1
+  blend additive
+}
+emitter "vfx/effekseer-tktk01/Blow4/n5-0.emitter.ogt" {
+  at 0
+  rotate 0 0 -90
+}
+# effekseer: node 2.0 "粒": a random colour per particle: its mean used
+# effekseer: node 2.0.0 "粒": a random colour per particle: its mean used
+# effekseer: node 3 "広がりリング": ring 5 instances: the first 4 drawn
+# effekseer: node 4 "広がりリング": a ring whose thickness changes over its life: its middle thickness kept
+# effekseer: node 5.0 "中心からの光": a fixed sprite with many instances: drawn facing the camera
+# effekseer: node 5.0 "中心からの光": a random colour per particle: its mean used
+# effekseer: node 5.0 "中心からの光": a sprite scaled unevenly: drawn square at its mean

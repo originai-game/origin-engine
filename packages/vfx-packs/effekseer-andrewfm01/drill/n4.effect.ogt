@@ -1,0 +1,11 @@
+type effect
+version 1
+---
+# Effekseer node 4 "Drill"
+main "vfx/effekseer-andrewfm01/textures/Shock_wave_ring002.png" rgba {
+  tile 8 10
+  offset 1 0
+  scroll 37.5 0
+}
+blend alpha
+doubleSided true

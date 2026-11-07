@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Effekseer node 3.0.0 "Node"
+maxParticles 17
+shape point
+spread 0
+rate 0
+burst 0 1 20 0.0167
+duration 0.3333
+looping false
+lifetime 0.2 0.2
+speed 15 15
+size 1.5 1.5
+colorOverLife {
+  key 0 1 0.2195 1 0
+  key 0.0833 1 0.2195 1 0.502
+  key 0.6667 1 0.2195 1 0.502
+  key 1 1 0.2195 1 0
+}
+texture "vfx/effekseer-magicalxspiral/textures/Line1.png"
+blend additive
