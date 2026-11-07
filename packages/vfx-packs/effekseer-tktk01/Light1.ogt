@@ -79,7 +79,7 @@ mesh ring {
   colors 0.3489 0.7519 0.9743 0.2353 0.3112 0.7519 0.9743 0.5882 0.3112 0.7519 0.9743 0.2353
   life 0.5
   effect "vfx/effekseer-tktk01/Light1/n0-0-0-2-0.effect.ogt"
-  scale curve 0 2.3333 1 4.6667
+  scale curve 0 1.0889 1 2.1778
   color 1 1 1 1
   blend additive
 }
@@ -92,7 +92,7 @@ mesh ring {
   colors 0.3489 0.7519 0.9743 0.2353 0.3112 0.7519 0.9743 0.5882 0.3112 0.7519 0.9743 0.2353
   life 0.5
   effect "vfx/effekseer-tktk01/Light1/n0-0-0-2-0.effect.ogt"
-  scale curve 0 2.3333 1 4.6667
+  scale curve 0 1.0889 1 2.1778
   color 1 1 1 1
   blend additive
 }
@@ -105,7 +105,7 @@ mesh ring {
   colors 0.3489 0.7519 0.9743 0.2353 0.3112 0.7519 0.9743 0.5882 0.3112 0.7519 0.9743 0.2353
   life 0.5
   effect "vfx/effekseer-tktk01/Light1/n0-0-0-2-0.effect.ogt"
-  scale curve 0 2.3333 1 4.6667
+  scale curve 0 1.0889 1 2.1778
   color 1 1 1 1
   blend additive
 }

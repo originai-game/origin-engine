@@ -83,7 +83,7 @@
     },
     {
       "path": "aoi-chou.ogt",
-      "sha256": "8a9ce5c0855be68646f42f2add3dc7eafbd775305e6a3fc13b49a0152e9461e1",
+      "sha256": "4fd5f89dc435684ea8d246a87eecfe381b96ebffda697e8d8b6847a55b577822",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -104,7 +104,7 @@
     },
     {
       "path": "iwai-ume/n0-0-0.emitter.ogt",
-      "sha256": "ada6235ba0fa1771d09619f4ee0e98b7e0fce0af9b23d6286a3da7626eea5613",
+      "sha256": "c783764e6b6b7b90a7d3573da9ebe46d971dda8e2c5f4d019f05e36aaca56a4f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -203,7 +203,7 @@
     },
     {
       "path": "kiroi-chou.ogt",
-      "sha256": "31072181980d2f76479ca602ee0ed1ae75d7b6cc6152938a23f11ad06eda100a",
+      "sha256": "2e0396e940178fc6a706b4e39cc75604db345da06d2056f08f6ef34bd2b0b9f3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -269,7 +269,7 @@
     },
     {
       "path": "sakura1/n0-0-1.emitter.ogt",
-      "sha256": "808c7704b47b2e0f37f778e96c323bb44d5d8d3c17fb8fd601457000d4a1e2cf",
+      "sha256": "e1bdbe48d79955d2fbce229278a9bb286c8ccfedc9cef6bdc53e5b1e3227de19",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -401,7 +401,7 @@
     },
     {
       "path": "sakura1/n0-2-1.emitter.ogt",
-      "sha256": "bc59e40ee6e948f5c9a29bd54fcd1fb837bc13909273d189d38488de52a7349a",
+      "sha256": "31935e1d5862ecd55f460ee20a872d79ef8ed8866ab508ca57f23f769ea71578",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -412,7 +412,7 @@
     },
     {
       "path": "sakura1.ogt",
-      "sha256": "762522ebd9e2d01aa8020fbd48460c2343c9a8890458aee5376afc5e1287660b",
+      "sha256": "478ea8ef5432a405bba0963c0cfcfd9c325415bedbe7fed94984a488c7f448d3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",

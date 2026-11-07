@@ -276,7 +276,7 @@ mesh ring {
   colors 1 1 0 0 1 0.0478 1 0.502 1 1 0 0
   life 0.5
   effect "vfx/effekseer-magicalxspiral/Salamander11/n12-0.effect.ogt"
-  scale 1.5
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -291,7 +291,7 @@ mesh ring {
   colors 1 1 0 0 1 0.0478 1 0.502 1 1 0 0
   life 0.5
   effect "vfx/effekseer-magicalxspiral/Salamander11/n12-0.effect.ogt"
-  scale 1.5
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -306,7 +306,7 @@ mesh ring {
   colors 1 1 0 0 1 0.0478 1 0.502 1 1 0 0
   life 0.5
   effect "vfx/effekseer-magicalxspiral/Salamander11/n12-0.effect.ogt"
-  scale 1.5
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -321,7 +321,7 @@ mesh ring {
   colors 1 1 0 0 1 1 0 0.502 1 1 0 0
   life 0.5
   effect "vfx/effekseer-magicalxspiral/Salamander11/n12-1.effect.ogt"
-  scale 1.5
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -336,7 +336,7 @@ mesh ring {
   colors 1 1 0 0 1 1 0 0.502 1 1 0 0
   life 0.5
   effect "vfx/effekseer-magicalxspiral/Salamander11/n12-1.effect.ogt"
-  scale 1.5
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -351,7 +351,7 @@ mesh ring {
   colors 1 1 0 0 1 1 0 0.502 1 1 0 0
   life 0.5
   effect "vfx/effekseer-magicalxspiral/Salamander11/n12-1.effect.ogt"
-  scale 1.5
+  scale 1
   color 1 1 1 1
   blend additive
 }

@@ -106,7 +106,7 @@ mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
   rotate -90 0 0
   life 2
   effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-0.effect.ogt"
-  scale 0.2
+  scale 0.1433
   color 0.1495 0.0035 0.0074 1
   blend alpha
 }
@@ -116,7 +116,7 @@ mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
   rotate -90 0 0
   life 2
   effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-0.effect.ogt"
-  scale 0.2
+  scale 0.1433
   color 0.1495 0.0035 0.0074 1
   blend alpha
 }
@@ -126,7 +126,7 @@ mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
   rotate -90 0 0
   life 2
   effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-0.effect.ogt"
-  scale 0.2
+  scale 0.1433
   color 0.1495 0.0035 0.0074 1
   blend alpha
 }
@@ -136,7 +136,7 @@ mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
   rotate -90 0 0
   life 2
   effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-0.effect.ogt"
-  scale 0.2
+  scale 0.1433
   color 0.1495 0.0035 0.0074 1
   blend alpha
 }
@@ -146,7 +146,7 @@ mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
   rotate -90 0 0
   life 2.5833
   effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-1.effect.ogt"
-  scale 0.2
+  scale 0.1433
   color 0.2195 0.0055 0.0104 1
   blend alpha
 }
@@ -156,7 +156,7 @@ mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
   rotate -90 0 0
   life 2.5833
   effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-1.effect.ogt"
-  scale 0.2
+  scale 0.1433
   color 0.2195 0.0055 0.0104 1
   blend alpha
 }
@@ -166,7 +166,7 @@ mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
   rotate -90 0 0
   life 2.5833
   effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-1.effect.ogt"
-  scale 0.2
+  scale 0.1433
   color 0.2195 0.0055 0.0104 1
   blend alpha
 }
@@ -176,7 +176,7 @@ mesh "vfx/effekseer-pierre02/BloodLance/model-ShortLance.glb" {
   rotate -90 0 0
   life 2.5833
   effect "vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-0-0-1.effect.ogt"
-  scale 0.2
+  scale 0.1433
   color 0.2195 0.0055 0.0104 1
   blend alpha
 }

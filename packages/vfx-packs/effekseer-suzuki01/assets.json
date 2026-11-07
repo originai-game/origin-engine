@@ -105,7 +105,7 @@
     },
     {
       "path": "aura/n6.emitter.ogt",
-      "sha256": "a424da815d42a4c1e277263c52afe2c761053ebb12cc9fd3fbff28f15640ec13",
+      "sha256": "330b915636bf6129a467bc6ad1ce67e2708abdf4fc8c324dec6dd933e03f9d07",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -280,7 +280,7 @@
     },
     {
       "path": "sword/n0-0-0-0-0.emitter.ogt",
-      "sha256": "7feaca7b2557ca09e931ec494c7ec7d33f56ad1906306999fae0366d23394f5f",
+      "sha256": "6e5075323d181bdb294dfb9f5787280b4ee78ae3cfccdded64c3f29f6690808a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -302,7 +302,7 @@
     },
     {
       "path": "sword/n0-0-0-2-0.emitter.ogt",
-      "sha256": "46a6853f00069a8a1e59b29741628c0c8c339702b74794b15f80ae7a93f9d33f",
+      "sha256": "67015e02f3881645e8c8c84c6ba376a885c9e99d50afc91db4759b0453f24e68",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -335,7 +335,7 @@
     },
     {
       "path": "sword/n0-1-0.emitter.ogt",
-      "sha256": "ab7f1c8081518b89ab3bd3871db384b6bc655eb363f43182f6d3a0b37b211fcc",
+      "sha256": "dc8b102dd63744cdec9775682aa6d3e02bd2cc7abf7e3d85b56e6f749b95e7a2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -346,7 +346,7 @@
     },
     {
       "path": "sword/n0-1-1.emitter.ogt",
-      "sha256": "2c1d3b3365ecb58670da25800a24dfba4e9c2db849022c558ad367b9051bcf50",
+      "sha256": "9c1b4304d6978e8395f293d1441f9ac2d3909d80408619d0ccbede8856dd34d7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -379,7 +379,7 @@
     },
     {
       "path": "sword/n1-0-0-0-0-0.emitter.ogt",
-      "sha256": "e0bf496833219eb42aa5c6997b36ff774cc48c7ba78a3f78834df80a407c7cf6",
+      "sha256": "665dc561e4aa83b6145ec3fd78da82708960fc629ddd186d2bbb8f3c099e8bd0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -390,7 +390,7 @@
     },
     {
       "path": "sword/n1-0-0-0-0.emitter.ogt",
-      "sha256": "8ace4fa02d504f1da28484edfa4e148e21c7b03bf2b2e6b5f2c7d41a57e728dd",
+      "sha256": "e3a2135ebecf280533b3bcf04cb4f60bc07cdba12578000958c9f30d78735525",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -401,7 +401,7 @@
     },
     {
       "path": "sword/n1-0-0-0-2-0.emitter.ogt",
-      "sha256": "d5bab10bf296d8b48125a2e16b22c298d2c6aec196ecd061da91b39149590425",
+      "sha256": "ce1f56e97a92fa01684f96a932bcf4ef73802a8080d4cd23b704fa24d712f0b2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -412,7 +412,7 @@
     },
     {
       "path": "sword/n1-0-0-0-2.emitter.ogt",
-      "sha256": "4d8dfba6f8d6612e1f913ee37fbbab52d5010c42ef8a34ad66f485ed1e817c04",
+      "sha256": "fc873812d3d861b841029ba319fe319beaa9dd66d286f8f0a95d22b9e14c7839",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -434,7 +434,7 @@
     },
     {
       "path": "sword/n1-0-1-0.emitter.ogt",
-      "sha256": "f540bd2b340af384cb78eb20cf5b85ed44555239b70bb3ceacc7f1829a9fd70e",
+      "sha256": "9874e0e9e3289ac7101baab75fda4980e8fddf6462398df8decd20a839c6568d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",
@@ -445,7 +445,7 @@
     },
     {
       "path": "sword/n1-0-1-1.emitter.ogt",
-      "sha256": "76e91b7051a990fc32e7833e6fed5d846dc60ad67abadedd8305c0ca0ae7e22e",
+      "sha256": "852dee4165effc0484d88d83c2f98ae049c10aebcb50885d28854cff3f10b126",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Suzuki01/index.html",

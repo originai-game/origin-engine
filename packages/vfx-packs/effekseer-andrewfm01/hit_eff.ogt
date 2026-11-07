@@ -49,7 +49,7 @@ mesh quad {
   rotate 0 0 -2
   life 0.15
   effect "vfx/effekseer-andrewfm01/hit_eff/n0-1.effect.ogt"
-  scale curve 0 0.6325 0.4219 0.9652 1 1.2884
+  scale curve 0 0.6325 0.1875 0.7977 0.4219 0.9652 1 1.2884
   color 1 0 0 0.251
   blend additive
 }
@@ -58,7 +58,7 @@ mesh quad {
   offset 0.5 0.05 0
   life 0.15
   effect "vfx/effekseer-andrewfm01/hit_eff/n0-1.effect.ogt"
-  scale curve 0 0.6325 0.4219 0.9652 1 1.2884
+  scale curve 0 0.6325 0.1875 0.7977 0.4219 0.9652 1 1.2884
   color 1 0 0 0.251
   blend additive
 }
@@ -68,7 +68,7 @@ mesh quad {
   rotate 0 0 2
   life 0.15
   effect "vfx/effekseer-andrewfm01/hit_eff/n0-1.effect.ogt"
-  scale curve 0 0.6325 0.4219 0.9652 1 1.2884
+  scale curve 0 0.6325 0.1875 0.7977 0.4219 0.9652 1 1.2884
   color 1 0 0 0.251
   blend additive
 }

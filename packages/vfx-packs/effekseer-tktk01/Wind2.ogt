@@ -26,7 +26,7 @@ mesh ring {
   colors 0 1 0 0 0.2195 1 0.2195 0 0.2195 1 0 0
   life 0.5
   effect "vfx/effekseer-tktk01/Wind2/n1-1-0-0.effect.ogt"
-  scale curve 0 0.55 1 0.5
+  scale curve 0 2.75 1 2.5
   color 5 5 5 1
   blend additive
 }
@@ -44,7 +44,7 @@ mesh ring {
   colors 0 1 0 0 0.2195 1 0.2195 0 0.2195 1 0 0
   life 0.5
   effect "vfx/effekseer-tktk01/Wind2/n1-1-1-0.effect.ogt"
-  scale curve 0 0.55 1 0.5
+  scale curve 0 2.75 1 2.5
   color 5 5 5 1
   blend additive
 }

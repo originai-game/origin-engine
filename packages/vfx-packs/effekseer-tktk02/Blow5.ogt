@@ -239,7 +239,7 @@ mesh ring {
   colors 1 0.2195 0.0478 0 1 0.7134 0.5887 1 1 0.2195 0.0478 0
   life 0.5833
   effect "vfx/effekseer-tktk02/Blow5/n0-3-1-5-0-0-0.effect.ogt"
-  scale curve 0 1.75 0.4531 1.5774 1 1.5
+  scale curve 0 0.875 0.4531 0.7887 1 0.75
   spin 0 0 617.1428
   color 20 20 20 1
   blend additive

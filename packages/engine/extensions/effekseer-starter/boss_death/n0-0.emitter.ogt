@@ -10,8 +10,8 @@ duration 1
 looping true
 lifetime 1 1
 speed 0 0
-size 97.6154 536.8846
-sizeOverLife 0 0 1 0.032
+size 3.1243 17.1839
+sizeOverLife 0 0 0.0156 0.0953 0.0469 0.1669 0.1094 0.2606 0.2188 0.3821 0.5156 0.6398 1 1
 colorOverLife {
   key 0 0.047 0.3562 0.6354 1
   key 0.8333 0.047 0.3562 0.6354 1

@@ -8,7 +8,7 @@ mesh sphere {
   at 0
   life 20
   effect "vfx/effekseer-hato01/aoi-chou/n0-0-0-0-0.effect.ogt"
-  scale 1
+  scale 4.3333
   color 0.0026 0.212 1 1
   blend alpha
 }
@@ -16,7 +16,7 @@ mesh sphere {
   at 4.1667
   life 20
   effect "vfx/effekseer-hato01/aoi-chou/n0-0-0-0-0.effect.ogt"
-  scale 1
+  scale 4.3333
   color 0.0026 0.212 1 1
   blend alpha
 }
@@ -24,7 +24,7 @@ mesh sphere {
   at 8.3333
   life 20
   effect "vfx/effekseer-hato01/aoi-chou/n0-0-0-0-0.effect.ogt"
-  scale 1
+  scale 4.3333
   color 0.0026 0.212 1 1
   blend alpha
 }
@@ -32,7 +32,7 @@ mesh sphere {
   at 12.5
   life 20
   effect "vfx/effekseer-hato01/aoi-chou/n0-0-0-0-0.effect.ogt"
-  scale 1
+  scale 4.3333
   color 0.0026 0.212 1 1
   blend alpha
 }
@@ -40,7 +40,7 @@ mesh sphere {
   at 0
   life 20
   effect "vfx/effekseer-hato01/aoi-chou/n0-1-0-0-0.effect.ogt"
-  scale 1
+  scale 4.3333
   color 0.0026 0.212 1 1
   blend alpha
 }
@@ -48,7 +48,7 @@ mesh sphere {
   at 4.1667
   life 20
   effect "vfx/effekseer-hato01/aoi-chou/n0-1-0-0-0.effect.ogt"
-  scale 1
+  scale 4.3333
   color 0.0026 0.212 1 1
   blend alpha
 }
@@ -56,7 +56,7 @@ mesh sphere {
   at 8.3333
   life 20
   effect "vfx/effekseer-hato01/aoi-chou/n0-1-0-0-0.effect.ogt"
-  scale 1
+  scale 4.3333
   color 0.0026 0.212 1 1
   blend alpha
 }
@@ -64,7 +64,7 @@ mesh sphere {
   at 12.5
   life 20
   effect "vfx/effekseer-hato01/aoi-chou/n0-1-0-0-0.effect.ogt"
-  scale 1
+  scale 4.3333
   color 0.0026 0.212 1 1
   blend alpha
 }

@@ -10,10 +10,10 @@ burst 0 18
 duration 0.0167
 looping false
 lifetime 0.5167 0.6833
-speed 14.5231 22.2648
+speed 45.9898 70.5051
 speedOverLife 0 1.3054 0.5156 0.9741 1 0.7628
-size 3.75 3.75
-sizeOverLife 0 0.3578 0.1719 0.4746 0.3906 0.6 1 0.8944
+size 10.6213 10.6213
+sizeOverLife 0 0.4 0.1719 0.5307 0.3906 0.6708 1 1
 colorOverLife {
   key 0 1 0.1166 0.0104 0
   key 0.1667 1 0.1166 0.0104 0.0482

@@ -9,7 +9,7 @@ trail {
   rotate 90 0 0
   life 0.2667
   effect "vfx/effekseer-nextsoft01/Sword2/n0.effect.ogt"
-  width 3.2 0.8
+  width 2.2627 0.5657
   lifetime 0.25
   color 0.5326 1 1 1
   orbit 0 -2.1111

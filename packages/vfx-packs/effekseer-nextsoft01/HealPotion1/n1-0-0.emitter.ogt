@@ -10,13 +10,13 @@ burst 0 1 30 0.0167
 duration 0.5
 looping false
 lifetime 0.5 0.5
-speed 0.6364 2.5456
-size 2 2
+speed 0.1909 0.7637
+size 0.6 0.6
 colorOverLife {
   key 0 1 1 1 0.2353
   key 0.6667 1 1 1 0.2353
   key 1 1 1 1 0
 }
-gravity 0 -18 0
+gravity 0 -5.4 0
 texture "vfx/effekseer-nextsoft01/textures/t0002.png"
 blend additive

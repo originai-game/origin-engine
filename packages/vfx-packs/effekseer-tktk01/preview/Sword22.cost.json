@@ -6,9 +6,9 @@
   },
   "device": "Apple M4 Pro GPU (Metal)",
   "peakFrameMs": {
-    "total": 7.978,
-    "sim": 0.415,
-    "transparent": 8.525
+    "total": 4.351,
+    "sim": 0.242,
+    "transparent": 3.808
   },
   "peakParticles": 5000,
   "draws": 28

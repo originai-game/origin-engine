@@ -9,7 +9,7 @@ trail {
   move 0 3.6 0
   life 0.8
   effect "vfx/effekseer-nextsoft01/MagicHeal1/n0-0-0.effect.ogt"
-  width 2 0.5
+  width 1.4142 0.3536
   lifetime 1
   color 1 1 1 1
   orbit 1 1.6667
@@ -25,7 +25,7 @@ trail {
   move 0 3.6 0
   life 0.8
   effect "vfx/effekseer-nextsoft01/MagicHeal1/n0-1-0.effect.ogt"
-  width 2 0.5
+  width 1.4142 0.3536
   lifetime 1
   color 1 1 1 1
   orbit 1 1.6667

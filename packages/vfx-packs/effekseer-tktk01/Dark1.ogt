@@ -14,7 +14,7 @@ mesh ring {
   colors 0.6524 0.0303 0.82 1 1 0 0 0.5 1 1 1 0
   life 0.5
   effect "vfx/effekseer-tktk01/Dark1/n1-0.effect.ogt"
-  scale curve 0 2.25 0.1875 4.6248 0.3906 6.5119 0.5781 7.7615 1 10
+  scale curve 0 1.125 0.1875 2.3124 0.3906 3.2559 0.5781 3.8807 1 5
   color 10 10 10 1
   blend additive
 }

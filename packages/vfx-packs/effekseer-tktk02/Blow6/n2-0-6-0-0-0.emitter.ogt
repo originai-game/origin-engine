@@ -9,9 +9,9 @@ rate 1200
 duration 0.0417
 looping false
 lifetime 0.4167 0.4167
-speed 3.75 11.25
+speed 0.9375 2.8125
 speedOverLife 0 2.6617 0.2031 1.7921 0.3906 1.1489 0.5781 0.6756 0.7812 0.3546 0.7969 0.2383 0.8125 0 1 0
-size 2.5 2.5
+size 0.625 0.625
 colorOverLife {
   key 0 1 1 1 0
   key 0.2 1 1 1 1

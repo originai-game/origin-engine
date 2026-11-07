@@ -11,7 +11,7 @@ mesh ring {
   colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Blow6/n0-0-0-0.effect.ogt"
-  scale curve 0 2.625 0.4531 2.3661 1 2.25
+  scale curve 0 0 0.4531 0 1 0
   color 1 1 1 0.75
   blend additive
 }
@@ -23,7 +23,7 @@ mesh ring {
   colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Blow6/n0-0-0-0.effect.ogt"
-  scale curve 0 2.625 0.4531 2.3661 1 2.25
+  scale curve 0 0 0.4531 0 1 0
   color 1 1 1 0.75
   blend additive
 }
@@ -35,7 +35,7 @@ mesh ring {
   colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Blow6/n0-0-0-0.effect.ogt"
-  scale curve 0 2.625 0.4531 2.3661 1 2.25
+  scale curve 0 0 0.4531 0 1 0
   color 1 1 1 0.75
   blend additive
 }
@@ -47,7 +47,7 @@ mesh ring {
   colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Blow6/n0-0-0-0.effect.ogt"
-  scale curve 0 2.625 0.4531 2.3661 1 2.25
+  scale curve 0 0 0.4531 0 1 0
   color 1 1 1 0.75
   blend additive
 }
@@ -80,7 +80,7 @@ mesh ring {
   colors 1 0.2845 0.1062 0 1 0.6346 0.4841 1 1 0.2845 0.1062 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow6/n0-0-3-0.effect.ogt"
-  scale curve 0 1.5 0.1094 2.4741 0.2188 3.2952 0.3281 3.9777 0.4531 4.6069 0.7031 5.4667 1 6
+  scale curve 0 0 0.1094 0 0.2188 0 0.3281 0 0.4531 0 0.7031 0 1 0
   color 1 1 1 0.5
   blend additive
 }
@@ -92,7 +92,7 @@ mesh ring {
   colors 1 0.2845 0.1062 0 1 0.6346 0.4841 1 1 0.2845 0.1062 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow6/n0-0-3-0.effect.ogt"
-  scale curve 0 1.5 0.1094 2.4741 0.2188 3.2952 0.3281 3.9777 0.4531 4.6069 0.7031 5.4667 1 6
+  scale curve 0 0 0.1094 0 0.2188 0 0.3281 0 0.4531 0 0.7031 0 1 0
   color 1 1 1 0.5
   blend additive
 }
@@ -104,7 +104,7 @@ mesh ring {
   colors 1 0.2845 0.1062 0 1 0.6346 0.4841 1 1 0.2845 0.1062 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow6/n0-0-3-0.effect.ogt"
-  scale curve 0 1.5 0.1094 2.4741 0.2188 3.2952 0.3281 3.9777 0.4531 4.6069 0.7031 5.4667 1 6
+  scale curve 0 0 0.1094 0 0.2188 0 0.3281 0 0.4531 0 0.7031 0 1 0
   color 1 1 1 0.5
   blend additive
 }
@@ -116,7 +116,7 @@ mesh ring {
   colors 1 0.2845 0.1062 0 1 0.6346 0.4841 1 1 0.2845 0.1062 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow6/n0-0-3-0.effect.ogt"
-  scale curve 0 1.5 0.1094 2.4741 0.2188 3.2952 0.3281 3.9777 0.4531 4.6069 0.7031 5.4667 1 6
+  scale curve 0 0 0.1094 0 0.2188 0 0.3281 0 0.4531 0 0.7031 0 1 0
   color 1 1 1 0.5
   blend additive
 }
@@ -152,7 +152,7 @@ mesh ring {
   colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Blow6/n1-0-0-0.effect.ogt"
-  scale curve 0 1.75 0.4531 1.5774 1 1.5
+  scale curve 0 0 0.4531 0 1 0
   color 1 1 1 0.75
   blend additive
 }
@@ -164,7 +164,7 @@ mesh ring {
   colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Blow6/n1-0-0-0.effect.ogt"
-  scale curve 0 1.75 0.4531 1.5774 1 1.5
+  scale curve 0 0 0.4531 0 1 0
   color 1 1 1 0.75
   blend additive
 }
@@ -176,7 +176,7 @@ mesh ring {
   colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Blow6/n1-0-0-0.effect.ogt"
-  scale curve 0 1.75 0.4531 1.5774 1 1.5
+  scale curve 0 0 0.4531 0 1 0
   color 1 1 1 0.75
   blend additive
 }
@@ -188,7 +188,7 @@ mesh ring {
   colors 1 0.4259 0.1542 0 1 0.8457 0.7033 1 1 0.4259 0.1542 0
   life 0.4167
   effect "vfx/effekseer-tktk02/Blow6/n1-0-0-0.effect.ogt"
-  scale curve 0 1.75 0.4531 1.5774 1 1.5
+  scale curve 0 0 0.4531 0 1 0
   color 1 1 1 0.75
   blend additive
 }
@@ -221,7 +221,7 @@ mesh ring {
   colors 1 0.0619 0.0231 0 1 0.139 0.1062 1 1 0.0619 0.0231 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow6/n1-0-3-0.effect.ogt"
-  scale curve 0 1 0.1094 1.6494 0.2188 2.1968 0.3281 2.6518 0.4531 3.0713 0.7031 3.6445 1 4
+  scale curve 0 0 0.1094 0 0.2188 0 0.3281 0 0.4531 0 0.7031 0 1 0
   color 1 1 1 0.5
   blend additive
 }
@@ -233,7 +233,7 @@ mesh ring {
   colors 1 0.0619 0.0231 0 1 0.139 0.1062 1 1 0.0619 0.0231 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow6/n1-0-3-0.effect.ogt"
-  scale curve 0 1 0.1094 1.6494 0.2188 2.1968 0.3281 2.6518 0.4531 3.0713 0.7031 3.6445 1 4
+  scale curve 0 0 0.1094 0 0.2188 0 0.3281 0 0.4531 0 0.7031 0 1 0
   color 1 1 1 0.5
   blend additive
 }
@@ -245,7 +245,7 @@ mesh ring {
   colors 1 0.0619 0.0231 0 1 0.139 0.1062 1 1 0.0619 0.0231 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow6/n1-0-3-0.effect.ogt"
-  scale curve 0 1 0.1094 1.6494 0.2188 2.1968 0.3281 2.6518 0.4531 3.0713 0.7031 3.6445 1 4
+  scale curve 0 0 0.1094 0 0.2188 0 0.3281 0 0.4531 0 0.7031 0 1 0
   color 1 1 1 0.5
   blend additive
 }
@@ -257,7 +257,7 @@ mesh ring {
   colors 1 0.0619 0.0231 0 1 0.139 0.1062 1 1 0.0619 0.0231 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow6/n1-0-3-0.effect.ogt"
-  scale curve 0 1 0.1094 1.6494 0.2188 2.1968 0.3281 2.6518 0.4531 3.0713 0.7031 3.6445 1 4
+  scale curve 0 0 0.1094 0 0.2188 0 0.3281 0 0.4531 0 0.7031 0 1 0
   color 1 1 1 0.5
   blend additive
 }

@@ -11,7 +11,7 @@ trail {
   accelerate 0 0 -259.2
   life 0.25
   effect "vfx/effekseer-tktk01/Sword22/n0-0-0-0.effect.ogt"
-  width 5 1.25
+  width 0.7906 0.1976
   lifetime 0.25
   color 1 1 1 0.502
   orbit 6 0.5
@@ -24,7 +24,7 @@ trail {
   accelerate 0 0 -259.2
   life 0.25
   effect "vfx/effekseer-tktk01/Sword22/n0-0-0-1.effect.ogt"
-  width 5 1.25
+  width 2.2361 0.559
   lifetime 0.25
   color 0.047 0.047 0.047 0.251
   orbit 6 0.5
@@ -37,7 +37,7 @@ trail {
   accelerate 0 0 -259.2
   life 0.25
   effect "vfx/effekseer-tktk01/Sword22/n0-0-0-2.effect.ogt"
-  width 5 1.25
+  width 3.5355 0.8839
   lifetime 0.25
   color 0.047 0.047 0.047 0.0627
   orbit 6 0.5
@@ -50,7 +50,7 @@ trail {
   accelerate 0 0 -259.2
   life 0.3333
   effect "vfx/effekseer-tktk01/Sword22/n0-0-1-0.effect.ogt"
-  width 8 2
+  width 2.8284 0.7071
   lifetime 0.3333
   color 0.047 0.047 0.047 1
   orbit 4 0.5

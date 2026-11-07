@@ -24,7 +24,7 @@ mesh ring {
   colors 1 1 1 1 1 1 1 1 1 1 1 0
   life 0.3333
   effect "vfx/effekseer-tktk01/hozyo2/n0-0-0-1.effect.ogt"
-  scale 2.3
+  scale 1.15
   color 6 6 6 1
   blend additive
 }
@@ -36,7 +36,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0 1 1 1 0
   life 0.5
   effect "vfx/effekseer-tktk01/hozyo2/n0-0-0-2.effect.ogt"
-  scale 2.3
+  scale 1.15
   color 6 6 6 1
   blend additive
 }
@@ -80,7 +80,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 1 1 1 1 0
   life 0.3333
   effect "vfx/effekseer-tktk01/hozyo2/n1-1-0.effect.ogt"
-  scale 2.3
+  scale 1.15
   color 6 6 6 1
   blend additive
 }
@@ -91,7 +91,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 1 1 1 1 0
   life 0.3333
   effect "vfx/effekseer-tktk01/hozyo2/n1-1-1.effect.ogt"
-  scale 2.3
+  scale 1.15
   color 6 6 6 1
   blend additive
 }
@@ -102,7 +102,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 0 1 1 1 0
   life 0.5
   effect "vfx/effekseer-tktk01/hozyo2/n1-1-2.effect.ogt"
-  scale 2.3
+  scale 1.15
   color 6 6 6 1
   blend additive
 }

@@ -37,7 +37,7 @@ mesh ring {
   colors 1 1 1 0 0 0.6354 0.6354 0 1 1 1 0
   life 0.5
   effect "vfx/effekseer-tktk01/Blow13/n0-1-0-0.effect.ogt"
-  scale 2
+  scale 1.25
   color 80 80 80 1
   blend additive
 }

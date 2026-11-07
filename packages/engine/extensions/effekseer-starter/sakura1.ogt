@@ -8,7 +8,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-0.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -17,7 +17,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-0.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -26,7 +26,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-0.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -35,7 +35,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-0.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -44,7 +44,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-1.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -53,7 +53,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-1.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -62,7 +62,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-1.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -71,7 +71,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-1.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -80,7 +80,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-2.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -89,7 +89,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-2.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -98,7 +98,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-2.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -107,7 +107,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-2.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -116,7 +116,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-3.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -125,7 +125,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-3.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -134,7 +134,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-3.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -143,7 +143,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-3.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -152,7 +152,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-4.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -161,7 +161,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-4.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -170,7 +170,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-4.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -179,7 +179,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-0-0-4.effect.ogt"
-  scale 1
+  scale 0.08
   color 1 1 1 1
   blend alpha
 }
@@ -193,7 +193,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-0.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -202,7 +202,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-0.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -211,7 +211,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-0.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -220,7 +220,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-0.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -229,7 +229,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-1.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -238,7 +238,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-1.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -247,7 +247,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-1.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -256,7 +256,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-1.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -265,7 +265,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-2.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -274,7 +274,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-2.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -283,7 +283,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-2.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -292,7 +292,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-2.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -301,7 +301,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-3.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -310,7 +310,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-3.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -319,7 +319,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-3.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -328,7 +328,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-3.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -337,7 +337,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-4.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -346,7 +346,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-4.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -355,7 +355,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-4.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -364,7 +364,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-1-0-4.effect.ogt"
-  scale 1
+  scale 0.09
   color 1 1 1 1
   blend alpha
 }
@@ -378,7 +378,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-0.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -387,7 +387,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-0.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -396,7 +396,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-0.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -405,7 +405,7 @@ mesh sphere {
   rotate -180 68.9 169.5
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-0.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -414,7 +414,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-1.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -423,7 +423,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-1.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -432,7 +432,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-1.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -441,7 +441,7 @@ mesh sphere {
   rotate 170.0075 -2.7711 176.234
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-1.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -450,7 +450,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-2.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -459,7 +459,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-2.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -468,7 +468,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-2.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -477,7 +477,7 @@ mesh sphere {
   rotate 156.6355 -74.3299 165.9428
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-2.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -486,7 +486,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-3.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -495,7 +495,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-3.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -504,7 +504,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-3.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -513,7 +513,7 @@ mesh sphere {
   rotate -7.3498 -33.1421 4.4938
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-3.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -522,7 +522,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-4.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -531,7 +531,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-4.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -540,7 +540,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-4.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }
@@ -549,7 +549,7 @@ mesh sphere {
   rotate -12.8271 38.678 4.8206
   life 6.6667
   effect "vfx/effekseer-starter/sakura1/n0-2-0-4.effect.ogt"
-  scale 1
+  scale 0.1
   color 1 1 1 1
   blend alpha
 }

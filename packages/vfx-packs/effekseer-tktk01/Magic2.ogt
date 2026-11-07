@@ -16,7 +16,7 @@ mesh quad {
   offset 0 0.6667 0
   life 1.6667
   effect "vfx/effekseer-tktk01/Magic2/n0-0-0-0.effect.ogt"
-  scale curve 0 0.7454 0.3906 0.7454 0.4688 0.6038 0.5469 0.3841 0.5781 0.2465 0.6094 0 1 0
+  scale curve 0 0.7454 0.3906 0.7454 0.4062 0.7336 0.4688 0.6038 0.5469 0.3841 0.5781 0.2465 0.6094 0 1 0
   color 1 1 1 1
   blend additive
 }

@@ -10,7 +10,7 @@ mesh quad {
   move -30 -30 0
   life 0.3333
   effect "vfx/effekseer-tktk01/Sword12/n0.effect.ogt"
-  scale curve 0 7 0.2656 5.6398 0.8281 2.3516 0.9531 1.2299 0.9844 0.7126 1 0
+  scale curve 0 7 0.2656 5.6398 0.8281 2.3516 0.9062 1.7344 0.9531 1.2299 0.9844 0.7126 1 0
   color 1 1 1 1
   blend additive
 }
@@ -31,7 +31,7 @@ mesh quad {
   move 30 -30 0
   life 0.3333
   effect "vfx/effekseer-tktk01/Sword12/n1.effect.ogt"
-  scale curve 0 7 0.2656 5.6398 0.8281 2.3516 0.9531 1.2299 0.9844 0.7126 1 0
+  scale curve 0 7 0.2656 5.6398 0.8281 2.3516 0.9062 1.7344 0.9531 1.2299 0.9844 0.7126 1 0
   color 1 1 1 1
   blend additive
 }

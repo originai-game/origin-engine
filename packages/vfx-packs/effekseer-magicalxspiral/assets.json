@@ -447,7 +447,7 @@
     },
     {
       "path": "A_Salamander4/n2-0-0.emitter.ogt",
-      "sha256": "639fbe83b8d0ea6d45735142aa769eef0c7878b193574a058b822d8b638a0708",
+      "sha256": "fbb99a142159a9a196003aa26d40a0f6e69b8d6b8c2485111c7db74e43bad8b2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -458,7 +458,7 @@
     },
     {
       "path": "A_Salamander4/n2-0-1.emitter.ogt",
-      "sha256": "353f3352e0500522eaec26259c098cfbbb1cae5869b75592945f8722998321e8",
+      "sha256": "734563ea390cb48d8f1ab0258a06725159bd03738b060597173f8be4921dcae7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -546,7 +546,7 @@
     },
     {
       "path": "A_Salamander4/n9-0.emitter.ogt",
-      "sha256": "2d11e09b222a1e3b30576a2d846194e485a33f9c746291fa3c83522a6aea7014",
+      "sha256": "2b8633fa1283c3cb9fbb84b1305e82fecf34fc18108f61ff1af0aa68bcd99786",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -887,7 +887,7 @@
     },
     {
       "path": "AquaPoint/n0-1-0.emitter.ogt",
-      "sha256": "6f9c229a8dae42078ebb901bd08dea505b4938ed36082d12a7f93e146164b910",
+      "sha256": "0dc9064f9753403227b27b3d2cbc834b2b69023aa55ea682cd3934a5868ee986",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -920,7 +920,7 @@
     },
     {
       "path": "AquaPoint/n0-4-0.emitter.ogt",
-      "sha256": "6d91fcf51e9e7a18f40dd7927374177be55c961dcb0177874772c44e7c6113cc",
+      "sha256": "9e6758a574c30088a93ff5161d2f90cfea6d42cbde299539ae3975ae9957bc7f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -1294,7 +1294,7 @@
     },
     {
       "path": "Attack_Impact/n2.emitter.ogt",
-      "sha256": "cc279127cd847d6f31c85b60a6f80f5e435f26c091de3660702e7e3e194dd55c",
+      "sha256": "fe6a513d76f5456c17b2038d00f2599899e7361f9c33a333e5201529e521b1cd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -1305,7 +1305,7 @@
     },
     {
       "path": "Attack_Impact/n3.emitter.ogt",
-      "sha256": "2d10a35755a65c1ac4d2c3262334d3520fd78835d0ab0cfd1384e361d7847d54",
+      "sha256": "a3926dc7637e3ec15c69038782a2159f33e50cfdfd8b232264ea5d73da564f51",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -1327,7 +1327,7 @@
     },
     {
       "path": "Attack_Impact/n5.emitter.ogt",
-      "sha256": "0899db5b8dab6e588dff320c3215a135dd4a238ef668ccbf5e0e1807504d20c1",
+      "sha256": "78a549eb70c9d93c2302aa8a36e9a27eb8c3cecf5fcf5d41b8dd55c8b31b3fcb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -1415,7 +1415,7 @@
     },
     {
       "path": "Breakdown/n2.emitter.ogt",
-      "sha256": "db584402fea5d2a0ee148fecdff7a62a9fdab10e2c1292d595c226cd2113a15c",
+      "sha256": "728f0489580d7486db1acc4eae4a45f3d670525d9373f93d9304df6ac267870c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -1426,7 +1426,7 @@
     },
     {
       "path": "Breakdown/n3.emitter.ogt",
-      "sha256": "71992062072ff080af9e8b0802ec5508979405f33ec93a6a5b633154ad6dc5af",
+      "sha256": "3be3cfe747efc1e5959eddbe82b81f160474445b5c236017ef706b5449a1576f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -1437,7 +1437,7 @@
     },
     {
       "path": "Breakdown/n4.emitter.ogt",
-      "sha256": "d57c76387fffaaf6778e9ad983b914e1bc7ff1c0c0fbad171eb113cf3008bffe",
+      "sha256": "fe588decafe33494d6e319128fe99bf7a42eaf6c2f279a4100100e386e7527c5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -1866,7 +1866,7 @@
     },
     {
       "path": "Gohlem11/n3-0.emitter.ogt",
-      "sha256": "01d4df7c6687cd9e75b0733865bffa2b3e8e85eb2f4b095cd52f3f27fbfcaf86",
+      "sha256": "f6e04d8c653b4e2c92d0793ffafd2f1c2df70bc3952fc0d8ab0f6c2c05f4e5c7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -2295,7 +2295,7 @@
     },
     {
       "path": "Gohlem_Shield1/n1.emitter.ogt",
-      "sha256": "47e51f05792b380e739fd7a09c2eea6df8baedaaab42dbe3183fddcfdb22f203",
+      "sha256": "d8121467d8e249b2ebe48fdc2525e4a04f739a2b25fc55180d7cbb78500802d5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -2306,7 +2306,7 @@
     },
     {
       "path": "Gohlem_Shield1/n2.emitter.ogt",
-      "sha256": "11bdc21c76fd14791e667d597c9fe6ddc76f36bea5c0b1667a9952bce35f41ce",
+      "sha256": "fb21eb2e896326597a18296f707a9847d4d0f1ea2d233d92352da88e5ec4aae2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -2317,7 +2317,7 @@
     },
     {
       "path": "Gohlem_Shield1/n3.emitter.ogt",
-      "sha256": "80352b7638bc2d78c5de2dc43af5da7328282e3dad859a6a99e4bd30351e1cf9",
+      "sha256": "b37c9c432ad28cac08bdd66a99d1eda3c3234035288738603ed56d0a3abbf1f6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -2977,7 +2977,7 @@
     },
     {
       "path": "Impact/n2.emitter.ogt",
-      "sha256": "2eb0ded635c125e0ba8719e7fc6814ff24c8cadc50678def4183c19b6dcad612",
+      "sha256": "c5164e8f436406fd647ed69edbe5236f70653f58f666da0deec291a828837a93",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -2988,7 +2988,7 @@
     },
     {
       "path": "Impact/n3.emitter.ogt",
-      "sha256": "5c82aae16f69d20ebd4806d17390aede55f648acd1983a71abcdfe9cc6f7902a",
+      "sha256": "8b840f3806db45c97bbd761ff83cbf2e53b0176ee5d620e962ca46c6beb82b24",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3010,7 +3010,7 @@
     },
     {
       "path": "Impact/n5.emitter.ogt",
-      "sha256": "215227636eb0e9b1ac7a141a475da44808a4ff844e9fdded28e7043f6f9fb016",
+      "sha256": "ebd5dbe66f7e8dc7e900395ba5575633bd73555fe81bd4a46f634dae418dbe5e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3186,7 +3186,7 @@
     },
     {
       "path": "Lance4/n0-0-6.emitter.ogt",
-      "sha256": "5f6282a0209bc50a1e7e69268ce08e6e6399bf2a2b452f91deef06eb04671f6b",
+      "sha256": "7c3af3edca36b084bf7e7468f4005dbab76cd717674f6df09e8406b4b046ea95",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3208,7 +3208,7 @@
     },
     {
       "path": "Lance4/n2-0.emitter.ogt",
-      "sha256": "e93f383a5b6fd363ce36ea339e72f951ee1d7d72ab655c1cc86b650844917ae3",
+      "sha256": "e823f4b48172101f09709f2daa83ed6cad614f8fe535bd1cfc8a3ae731757397",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3241,7 +3241,7 @@
     },
     {
       "path": "Lance4/n3-2.emitter.ogt",
-      "sha256": "b773f29c1962750a7d2477a6891d6301ba5777f5bfdef2065fceb2dd3e60a1e7",
+      "sha256": "cd1ad40cc5db4299ab42d784a5d1bb01b08294ae8ab36f7b6b8253b4faadb492",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3252,7 +3252,7 @@
     },
     {
       "path": "Lance4/n3-3.emitter.ogt",
-      "sha256": "1405d6fed3d88c69c127c4d4d72d1eb1f772751011fc6c9228e052a6153706ec",
+      "sha256": "101567f2d9229e417ccead464832a2989c1d1a1b0cd155668c79cccfe23fe029",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3263,7 +3263,7 @@
     },
     {
       "path": "Lance4/n3-4.emitter.ogt",
-      "sha256": "2790ccebf98eb6b87ca5ba3d5836a54c172a8d037c8a1baa31f2284488421785",
+      "sha256": "69c4955940e7f27f57a5dfcb36b783aeabf896b038b0efcb3fa94275a59c96ac",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3329,7 +3329,7 @@
     },
     {
       "path": "Lance5/n0-0-10.emitter.ogt",
-      "sha256": "074dabd813c5ac8ac226873eccd0d707236c7e18ad4322ffa94a3cfcff67f8be",
+      "sha256": "fd3eb2a7ae6be30d7708ab19bb7c38085d3f6a4bac4e77fbe1f6cd2bfca37643",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3384,7 +3384,7 @@
     },
     {
       "path": "Lance5/n0-0-6.emitter.ogt",
-      "sha256": "5f6282a0209bc50a1e7e69268ce08e6e6399bf2a2b452f91deef06eb04671f6b",
+      "sha256": "7c3af3edca36b084bf7e7468f4005dbab76cd717674f6df09e8406b4b046ea95",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3395,7 +3395,7 @@
     },
     {
       "path": "Lance5/n0-0-7.emitter.ogt",
-      "sha256": "e389c69c212582a4086993e800891ed14c5eb403589ffe818b0fe8b00a780ec3",
+      "sha256": "347044901fdeca447aa3d15014d7985f897a5c1fee66e1bdcd660cd3d65e480b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3406,7 +3406,7 @@
     },
     {
       "path": "Lance5/n0-0-8.emitter.ogt",
-      "sha256": "8f9d700010b60223f07c4d3270c9a152ec6d920f9489fbc2d2ad6a7920bb0ece",
+      "sha256": "6010f7323e83d57dca83745c2b72d885cdaa667fc3fd6641f92248b7363992f5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3417,7 +3417,7 @@
     },
     {
       "path": "Lance5/n0-0-9.emitter.ogt",
-      "sha256": "fda38ba2cd56909b387a12c46a3c593c6cfe5f74ca71c58467fc3a748cb4e6f9",
+      "sha256": "4bbe16b0e9831ef810f4a308e1095e772a881be9994214fec9de41f36bd01fcc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3439,7 +3439,7 @@
     },
     {
       "path": "Lance5/n2-0.emitter.ogt",
-      "sha256": "e93f383a5b6fd363ce36ea339e72f951ee1d7d72ab655c1cc86b650844917ae3",
+      "sha256": "e823f4b48172101f09709f2daa83ed6cad614f8fe535bd1cfc8a3ae731757397",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3472,7 +3472,7 @@
     },
     {
       "path": "Lance5/n3-2.emitter.ogt",
-      "sha256": "b773f29c1962750a7d2477a6891d6301ba5777f5bfdef2065fceb2dd3e60a1e7",
+      "sha256": "cd1ad40cc5db4299ab42d784a5d1bb01b08294ae8ab36f7b6b8253b4faadb492",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3483,7 +3483,7 @@
     },
     {
       "path": "Lance5/n3-3.emitter.ogt",
-      "sha256": "1405d6fed3d88c69c127c4d4d72d1eb1f772751011fc6c9228e052a6153706ec",
+      "sha256": "101567f2d9229e417ccead464832a2989c1d1a1b0cd155668c79cccfe23fe029",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3494,7 +3494,7 @@
     },
     {
       "path": "Lance5/n3-4.emitter.ogt",
-      "sha256": "2790ccebf98eb6b87ca5ba3d5836a54c172a8d037c8a1baa31f2284488421785",
+      "sha256": "69c4955940e7f27f57a5dfcb36b783aeabf896b038b0efcb3fa94275a59c96ac",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3604,7 +3604,7 @@
     },
     {
       "path": "Magic1_earth/n3-0-0.emitter.ogt",
-      "sha256": "9feaeb13b14a75c83f590efb2bf0b6470b84eeb981fdeff45e9686708e3e7e43",
+      "sha256": "d8d4e3d9218084e66c16fa8eb472fd522961f06450d06848fdeda02216c22cf4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3692,7 +3692,7 @@
     },
     {
       "path": "Magic1_fire/n3-0-0.emitter.ogt",
-      "sha256": "0a87517f33d740f4ef25e117ab76a45c699b2caf15b68456f29beee8aaafb5b2",
+      "sha256": "aa1be62917acf57f1003eb6c0f2b81eb71f73346361b4cc6330ed8d53176a172",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3780,7 +3780,7 @@
     },
     {
       "path": "Magic1_holy/n3-0-0.emitter.ogt",
-      "sha256": "2158735ccb8f464f7abd9dee3707fc7959ef27cf78f0162d6fd3d51fcf392c5a",
+      "sha256": "a34c1a947e0cc83aeef6d979db79a7e32f159f61fe89099358bb78d69fdb7ed1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3868,7 +3868,7 @@
     },
     {
       "path": "Magic1_water/n3-0-0.emitter.ogt",
-      "sha256": "c8b112d4c18c1c77eb8d797b8f5f3e207993b980bab49222802e55dabc165deb",
+      "sha256": "ed855d46fbe62479635011e68de3d4839f07437eaa549bb2d7b3138fac18ea8a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -3956,7 +3956,7 @@
     },
     {
       "path": "Magic1_wind/n3-0-0.emitter.ogt",
-      "sha256": "2381065004f6610edbfb2dfdc371ac17f3456733fe7523db6df8c97ac3709627",
+      "sha256": "cd6aed3dcdee15aff6e83f5679a98acfc3f4ffc680750789ad830281db8502f0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -4154,7 +4154,7 @@
     },
     {
       "path": "MagicArea/n1-0.emitter.ogt",
-      "sha256": "15bc32f5cbcacfcb51fea03d17331fb79bba3351bfceffd8b6914357e4ed2c5d",
+      "sha256": "b491d0c75573a5f02f92cf7375ea8f41dc080dd4c45be76ff0f0e1d8974378fc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -4582,7 +4582,7 @@
     },
     {
       "path": "Salamander11/n13-0.emitter.ogt",
-      "sha256": "24b7180a50e86381b28d4ae4cdf4ad969262d23beef683e2e5bc8bd4e9648e9e",
+      "sha256": "e4a00d22ef25105bf85427873da014b4a6300a63624d2b43f8223c37cbc43b39",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -4681,7 +4681,7 @@
     },
     {
       "path": "Salamander11.ogt",
-      "sha256": "cf67a1afa4b376f3e480148f1b8254c9681f2812ffd65cfbd173ccec05a12bae",
+      "sha256": "0b3ab1006b4e55519c1008acb2e245d5818fdbb241cb89a22eb71ff4ef8cfd6f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -4747,7 +4747,7 @@
     },
     {
       "path": "Salamander12/n4-0.emitter.ogt",
-      "sha256": "1ac8d425825589fdd56bfdbed2a5dec5f12ecbe1ad8bfede27554c7d3db80c6b",
+      "sha256": "b0966ec76de2afcc0dd1a9c76b6eebd4a66acc92f51d33ee18d580e174fe1374",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -4835,7 +4835,7 @@
     },
     {
       "path": "Salamander14/n1-0.emitter.ogt",
-      "sha256": "57760074c6ad365be87c0815c65eac9a1c07751a2251f6ffdb13f5344080e6e9",
+      "sha256": "5bb1f8c5a183e4f35791df5cb992dfe0da57df9115bdfefbee5086a1b50a0905",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -4846,7 +4846,7 @@
     },
     {
       "path": "Salamander14/n2-0.emitter.ogt",
-      "sha256": "38c73adb50ffba0381b7eda7f1361829cdebc4ac2549e63541b7d1f0ff6c50dd",
+      "sha256": "faba64823ce832f1eaa0a5d82c912a1e59a136d1acac03dcae543286bd65bbfb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -5429,7 +5429,7 @@
     },
     {
       "path": "Salamander6/n2.emitter.ogt",
-      "sha256": "7936795521e425a7892f9a508fea8ee4d7352a10f9163695185ee9faa52534d6",
+      "sha256": "6af169c94842e8948a9f082e9672707a5f7a226bfe077bd7f0d8e19dc069bd84",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -5825,7 +5825,7 @@
     },
     {
       "path": "Sylph11/n4-0.emitter.ogt",
-      "sha256": "c107ead24d9f1a8cd5791a0ae4766594bb54afb5270d774b591929750e434fcd",
+      "sha256": "519f19904b74f73a6a7467576ee090bd174ea9a35a1061f875eeeccb9f9eb030",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -5979,7 +5979,7 @@
     },
     {
       "path": "Sylph15/n2-0.emitter.ogt",
-      "sha256": "3cdd81b869982340471d82e3021d559ee7c40f3ee42e1be8097e10bfa86f98e8",
+      "sha256": "0f328b71a88d70bf2a6affe3b3ca8ffb500c004df9b67b5c8002dd2776feb777",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -5990,7 +5990,7 @@
     },
     {
       "path": "Sylph15/n2-1.emitter.ogt",
-      "sha256": "fe5d41264a506a04ea62e4f56f1aade37879a8e5cf003970e1993f73f81f14d4",
+      "sha256": "896274cb71616613632e4daea40c2e55541c0c9aa534d8e047f5ce26f4fb6598",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -6001,7 +6001,7 @@
     },
     {
       "path": "Sylph15/n2-2.emitter.ogt",
-      "sha256": "e2571d4f2f2dd2dd75dcc8b754b08607896b9eb04a12e19300f42151bf4d5c7e",
+      "sha256": "797d833f873c5f59381614e25dba0fdbb8975104bd11f18d0536fe361b72fc87",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -6375,7 +6375,7 @@
     },
     {
       "path": "Sylph7/n2-0.emitter.ogt",
-      "sha256": "3edd9e646f341cb44bf82e6ba6ddbf065519d39a989bd4bf0f3b5e00975861db",
+      "sha256": "257fdd7e2aa79f2417a291d9a1734654efd886f8731385ee8a6a6cda4adc0043",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -6551,7 +6551,7 @@
     },
     {
       "path": "Thunder2/n11.emitter.ogt",
-      "sha256": "d6b8dcda22189548cffbe19acfe824ef1f5c9f2020ce768371ea4646447b6dd8",
+      "sha256": "484713513358194684f351a39ce6677cbae953ed57a534615d086051251eeb5b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -6606,7 +6606,7 @@
     },
     {
       "path": "Thunder2/n2-0.emitter.ogt",
-      "sha256": "95a7b6714cf01d026b1365e69553d520a0626d6aec5009cefd4d7aff7b3597b4",
+      "sha256": "7dec3f5a9fac1f1e3d0a0efccb36656dd447463a4a532568dd65726de0c8a78e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -6617,7 +6617,7 @@
     },
     {
       "path": "Thunder2/n2-1.emitter.ogt",
-      "sha256": "340f52b3e5d248252e6ae7f3d41cac0aae9cf49f9de12c7a35406fac057801b3",
+      "sha256": "4246bc28daa3191e802abc358d1b0cfe15cf9faac0ed788ac79ea1cdefaf4e78",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -6628,7 +6628,7 @@
     },
     {
       "path": "Thunder2/n2-2.emitter.ogt",
-      "sha256": "a43258a87c9f9225cdbc931649d8225e4ad1be2014fe2c647fcb18eca528ac13",
+      "sha256": "6379ad9f933589cbb59a8bbea23fb91f893af84dd0b661db8716a73a82bdd6f5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -6727,7 +6727,7 @@
     },
     {
       "path": "Thunder3/n0.emitter.ogt",
-      "sha256": "632b4f8de470a50fb2826d275d68a9dde2bda5540871737a72758e517e46f604",
+      "sha256": "7c37dd8ee8a83ec435443778c8a2b2be42f071e9917ba7fa469c5e6d56888d3c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7486,7 +7486,7 @@
     },
     {
       "path": "Undine8/n2-0.emitter.ogt",
-      "sha256": "32bd114ceed581b28fb9d4d4b22fb6f74881d08c6a445b1987704a9643d8b475",
+      "sha256": "4eb3bdb06ce2abb1b4064ea9ade3fc9e46724c72b370e08f40dada3da19148e3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7596,7 +7596,7 @@
     },
     {
       "path": "WHead3/n2.emitter.ogt",
-      "sha256": "e5ec3e87e06c471f071e65387aed8c7c5b478c268952b4615e940af09fd49d0b",
+      "sha256": "4d21b3335d95c8a30cd922e6f9c2c516666c31f66503427cc871bde59bb706b4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7607,7 +7607,7 @@
     },
     {
       "path": "WHead3/n3.emitter.ogt",
-      "sha256": "6ee80281296f0e7e772cb0ec1e3e4b9db67dcade6bd6481251370d54bb4a7f3a",
+      "sha256": "3c55e0358bca1388f0f331a0a63af7716d632a37a68194cebc55a720770cc50f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7629,7 +7629,7 @@
     },
     {
       "path": "WHead3/n5.emitter.ogt",
-      "sha256": "fcf761f7d0e74f683054d236e91900b1edcfcef468ff67da63dcdfef9e519cba",
+      "sha256": "86e952cc9859e7ff8c0ae5b8d0713699feb001df8661d5a2d96bf47e0e8595e7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7706,7 +7706,7 @@
     },
     {
       "path": "Water_Impact/n2.emitter.ogt",
-      "sha256": "7af04c5770d47b49ca26328c1d94d29f013a420922c67fb47dd022032133c40d",
+      "sha256": "b8d9c0c90431adf82f00ce771d13b8a8009a3b250a0e03511790c204ef8de56c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7717,7 +7717,7 @@
     },
     {
       "path": "Water_Impact/n3.emitter.ogt",
-      "sha256": "8003851a4310a38fd89f3f3f3d0f063271805f3a7aab49ae3439dafec15d0510",
+      "sha256": "f161ff43b7cd03c5842c373b7f6886094b66b3e6c6461e84f4f3f34b87dc8546",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7739,7 +7739,7 @@
     },
     {
       "path": "Water_Impact/n5.emitter.ogt",
-      "sha256": "110f14b79a0b12f9804041e3225fa9045d1c58844872812c052920e52cf12832",
+      "sha256": "80c55651e8b4e29b2bf20f986eba5414710519db14d4ecbbd198d3b306af884c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7805,7 +7805,7 @@
     },
     {
       "path": "Wind_Impact/n2.emitter.ogt",
-      "sha256": "b0a418e60602c563aa7cb66faba09cbfc32e28c571f7fe1f6f07a87973367b7f",
+      "sha256": "13396ba50fb3dcd62a0cddb07cc162ff3c08027b0d8a5dba01faa8b73f7b4755",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7816,7 +7816,7 @@
     },
     {
       "path": "Wind_Impact/n3.emitter.ogt",
-      "sha256": "7af315fc80a73867d9fbfea751b0ba2cbc3739893006cfc5bcc5d295515e4e5c",
+      "sha256": "1e1c7dc7f917eaf9ff1a967b7ba224eb14db2ff57599f80ffdbc8bca18ba6779",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7827,7 +7827,7 @@
     },
     {
       "path": "Wind_Impact/n4.emitter.ogt",
-      "sha256": "34ec4fa9a43f3078816ffbfa2c514fc9920e16d4b9e6b2b39af29d87468881d1",
+      "sha256": "cd7506cf54ff744ddfa0c14429b59d5425be0982fa4af628a8a84ca0c8f48a02",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -8244,7 +8244,7 @@
     },
     {
       "path": "meteo1/n3-0.emitter.ogt",
-      "sha256": "01d4df7c6687cd9e75b0733865bffa2b3e8e85eb2f4b095cd52f3f27fbfcaf86",
+      "sha256": "f6e04d8c653b4e2c92d0793ffafd2f1c2df70bc3952fc0d8ab0f6c2c05f4e5c7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",

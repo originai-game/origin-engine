@@ -16,7 +16,7 @@ trail {
   move 0 0 -10
   life 0.25
   effect "vfx/effekseer-tktk01/Fire8/n0-0-1-0.effect.ogt"
-  width 5 1.25
+  width 1.118 0.2795
   lifetime 0.25
   color 1 1 1 0.502
   orbit 6 0.6111
@@ -28,7 +28,7 @@ trail {
   move 0 0 -10
   life 0.25
   effect "vfx/effekseer-tktk01/Fire8/n0-0-1-1.effect.ogt"
-  width 5 1.25
+  width 3.1623 0.7906
   lifetime 0.25
   color 1 0.2195 0.0478 0.251
   orbit 6 0.6111
@@ -52,7 +52,7 @@ trail {
   move 0 0 -10
   life 0.3333
   effect "vfx/effekseer-tktk01/Fire8/n0-0-2-0.effect.ogt"
-  width 8 2
+  width 2.8284 0.7071
   lifetime 0.3333
   color 1 0.2195 0 1
   orbit 4 0.6111

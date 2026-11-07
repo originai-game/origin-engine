@@ -7,7 +7,7 @@ mesh quad {
   at 0
   life 1.25
   effect "vfx/effekseer-tktk01/Sword8/n0-0-0.effect.ogt"
-  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 1 0
+  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 0.9844 0.6586 1 0
   color 2.7968 0.0833 0.0833 1
   blend additive
 }
@@ -16,7 +16,7 @@ mesh quad {
   rotate 0 0 90
   life 1.25
   effect "vfx/effekseer-tktk01/Sword8/n0-0-1.effect.ogt"
-  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 1 0
+  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 0.9844 0.6586 1 0
   color 2.7968 0.0833 0.0833 1
   blend additive
 }
@@ -24,7 +24,7 @@ mesh quad {
   at 0.0667
   life 1.25
   effect "vfx/effekseer-tktk01/Sword8/n1-0-0.effect.ogt"
-  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 1 0
+  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 0.9844 0.6586 1 0
   color 2.7968 0.0833 0.0833 1
   blend additive
 }
@@ -33,7 +33,7 @@ mesh quad {
   rotate 0 0 90
   life 1.25
   effect "vfx/effekseer-tktk01/Sword8/n1-0-1.effect.ogt"
-  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 1 0
+  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 0.9844 0.6586 1 0
   color 2.7968 0.0833 0.0833 1
   blend additive
 }

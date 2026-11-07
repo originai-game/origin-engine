@@ -98,7 +98,7 @@ mesh ring {
   colors 1 1 1 0 1 1 1 1 1 1 1 0
   life 16.6667
   effect "vfx/effekseer-starter/magic_circle/n6-0-0.effect.ogt"
-  scale 0.6
+  scale 0.21
   spin 0 0 15
   color 1 1 1 1
   blend alpha

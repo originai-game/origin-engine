@@ -18,7 +18,7 @@ mesh quad {
   move -5.4 0 0
   life 0.8333
   effect "vfx/effekseer-tktk01/Arrow2/n0-0-0.effect.ogt"
-  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  scale curve 0 1.5811 0.4375 1.1859 0.6094 0.9882 0.75 0.7906 0.8594 0.5929 0.9375 0.3953 0.9844 0.1976 1 0
   color 1 1 1 1
   blend additive
 }
@@ -70,7 +70,7 @@ mesh quad {
   move -6 0 0
   life 0.75
   effect "vfx/effekseer-tktk01/Arrow2/n0-1-0.effect.ogt"
-  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  scale curve 0 1.5811 0.4375 1.1859 0.6094 0.9882 0.75 0.7906 0.8594 0.5929 0.9375 0.3953 0.9844 0.1976 1 0
   color 1 1 1 1
   blend additive
 }
@@ -120,7 +120,7 @@ mesh quad {
   move -6.75 0 0
   life 0.6667
   effect "vfx/effekseer-tktk01/Arrow2/n0-2-0.effect.ogt"
-  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  scale curve 0 1.5811 0.4375 1.1859 0.6094 0.9882 0.75 0.7906 0.8594 0.5929 0.9375 0.3953 0.9844 0.1976 1 0
   color 1 1 1 1
   blend additive
 }
@@ -170,7 +170,7 @@ mesh quad {
   move -7.7143 0 0
   life 0.5833
   effect "vfx/effekseer-tktk01/Arrow2/n0-3-0.effect.ogt"
-  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  scale curve 0 1.5811 0.4375 1.1859 0.6094 0.9882 0.75 0.7906 0.8594 0.5929 0.9375 0.3953 0.9844 0.1976 1 0
   color 1 1 1 1
   blend additive
 }
@@ -220,7 +220,7 @@ mesh quad {
   move -9 0 0
   life 0.5
   effect "vfx/effekseer-tktk01/Arrow2/n0-4-0.effect.ogt"
-  scale curve 0 1.5811 0.4375 1.1859 0.75 0.7906 0.9375 0.3953 0.9844 0.1976 1 0
+  scale curve 0 1.5811 0.4375 1.1859 0.6094 0.9882 0.75 0.7906 0.8594 0.5929 0.9375 0.3953 0.9844 0.1976 1 0
   color 1 1 1 1
   blend additive
 }

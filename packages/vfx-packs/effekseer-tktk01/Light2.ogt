@@ -195,7 +195,7 @@ mesh quad {
   move 0 0 8.8889
   life 0.45
   effect "vfx/effekseer-tktk01/Light2/n0-6.effect.ogt"
-  scale curve 0 2 0.0938 2.7515 0.2344 3.1121 1 3.1623
+  scale curve 0 2 0.0469 2.4677 0.0938 2.7515 0.1562 2.9743 0.2344 3.1121 0.3906 3.1815 1 3.1623
   color 1 1 1 1
   blend additive
 }
@@ -206,7 +206,7 @@ mesh quad {
   move 0 0 8.8889
   life 0.45
   effect "vfx/effekseer-tktk01/Light2/n0-7.effect.ogt"
-  scale curve 0 2.4495 0.0469 3.0223 0.0938 3.3699 0.2344 3.8115 1 3.873
+  scale curve 0 2.4495 0.0469 3.0223 0.0938 3.3699 0.1562 3.6428 0.2344 3.8115 0.3906 3.8965 1 3.873
   color 1 0 0 1
   blend additive
 }

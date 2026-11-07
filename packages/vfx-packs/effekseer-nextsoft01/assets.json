@@ -18,7 +18,7 @@
     },
     {
       "path": "HealPotion1/n1-0-0.emitter.ogt",
-      "sha256": "a4828b13973cadc3f6d3be180d09273d95e3f55e05771124e3413a5efe49d992",
+      "sha256": "cdefd9693431d8eab60b557374e489e01618b15db4ba84fabee57272362ec011",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -73,7 +73,7 @@
     },
     {
       "path": "HealPotion2/n1.emitter.ogt",
-      "sha256": "6211d26b48ad1bdcd50f82d2986f7e8eb80cd7824118a11f93087ed150af66b8",
+      "sha256": "b3784e843c915f06bf6f96b285fbe0c692bb2025a5f48aeeeb5cf3d58a10fae2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -139,7 +139,7 @@
     },
     {
       "path": "MagicCold/n4.emitter.ogt",
-      "sha256": "29e602a98d59b7a8e8b6d4b9ca7301d79198eab1b3cf9958e69a50adc0200173",
+      "sha256": "9bea3c9a7688af8eb5e5a7d38b44675593799c7650fd82a2d5eb472cd75ca1a8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -183,7 +183,7 @@
     },
     {
       "path": "MagicDark/n2.emitter.ogt",
-      "sha256": "1bc16fd5870456b68f1a986d35deb6e9f9cb86640b59c9b8fc625cceb195258a",
+      "sha256": "ace4db088fd7dca64e38684944046605ba147cad92f7386c98f627c66a92423d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -271,7 +271,7 @@
     },
     {
       "path": "MagicHeal1/n0-1-0-0.emitter.ogt",
-      "sha256": "08b8fdfe9cffaddf3611e417494b59549123a77bfc0cc2f8de33341603f3ecda",
+      "sha256": "474105fee3c9506afbb5cc6c3c4b092a21572bec73ee1e80dadddecdda82032b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -293,7 +293,7 @@
     },
     {
       "path": "MagicHeal1.ogt",
-      "sha256": "37fa2674fe045d917fa023c650ac6bad1742ef9028c457056c32a612c50e1e41",
+      "sha256": "668caa15f54178b9003849b63a3c0e87795f2b0f8e32232cdf586146e75a5a3d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -304,7 +304,7 @@
     },
     {
       "path": "MagicHeal2/n0-0-0.emitter.ogt",
-      "sha256": "5722d05dabcc4ed9a57dd2b3fd823c9e48a1603e6ae12aa745be28e259ce0adc",
+      "sha256": "ddf294836ff59b7b0cbfae922df8a2c8d8e823989e17e4b14e9a080e747df92a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -315,7 +315,7 @@
     },
     {
       "path": "MagicHeal2/n0-0.emitter.ogt",
-      "sha256": "02337bf9be567305cba1dc0925e0cfa0eb08916f5c46f61569242d5ef2f026b5",
+      "sha256": "c3817719d3a15b3d9306c3df2b65a95fb7f776ec59c3057cd84577f8df8d5748",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -326,7 +326,7 @@
     },
     {
       "path": "MagicHeal2/n1.emitter.ogt",
-      "sha256": "72cf26ac87d341d26101af9c6e2f1cb316b606e54fa1671a4a3ef6acd05a3b76",
+      "sha256": "74c18fd56408c4ddd76dc9cf31a8cfe6c43f59a4d6ef497297bd178693911563",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -370,7 +370,7 @@
     },
     {
       "path": "MagicLight/n0.emitter.ogt",
-      "sha256": "9e0a0000064dadd644ed6be3cfeee9186f3a1a3aa3e10f564f3148a77da7a448",
+      "sha256": "e65c6a8dc75f948cc823587149feafd76813f8b666fba71582298b533a560752",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -381,7 +381,7 @@
     },
     {
       "path": "MagicLight/n1.emitter.ogt",
-      "sha256": "68ba893c3b285edf1593bdd70ce32178e268d3b3770dbac0ab39b0d179fc3925",
+      "sha256": "6d26bb07ff501be93d2d92dc88c305f781603a8e01a08658be5fd04b77199ade",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -546,7 +546,7 @@
     },
     {
       "path": "MagicSword/n0.emitter.ogt",
-      "sha256": "4e267d1c452014fdcfda30f0beb9647df9bb0cb1fa03764822f957d253d2b405",
+      "sha256": "74b192924687281604ecf3635772aa334a3fa33fc2d54627f44d7ee10104c73f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -557,7 +557,7 @@
     },
     {
       "path": "MagicSword/n1.emitter.ogt",
-      "sha256": "ed22549c84e77cd3c128d85446641feda67a929cb82b03beb1880c94bf6e11d9",
+      "sha256": "3e064ec199f52bff7aee6184559b269094031782bf7b38e1e92127aaf18d4b61",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -612,7 +612,7 @@
     },
     {
       "path": "MagicThunder/n0.emitter.ogt",
-      "sha256": "57badda51bdd91455de10bca89ca03a6bfe2a3e4fe8a935f403b6ef4c65dfe5c",
+      "sha256": "bf5df3871c6855994ba9569b58d50f6800007e44593a07cd2ae59e154bc08ec5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -623,7 +623,7 @@
     },
     {
       "path": "MagicThunder/n1.emitter.ogt",
-      "sha256": "94ee6436b7b2d47d17466b42b3b8a2ce12c88c71da43d634b13873a45c26ed9b",
+      "sha256": "049b308e0ba42cb741baad425dcee133b994a1f735dcbfb7ba8084212c66cb30",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -634,7 +634,7 @@
     },
     {
       "path": "MagicThunder/n2.emitter.ogt",
-      "sha256": "9a8d6523bd84c41999cdbcb05883abc417ae6966d2ef2010eb9c187f4c0eda61",
+      "sha256": "80a2af703c14a852d41d500a9101c234d5bf9e3a5b9d0de516118659f14570e9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -645,7 +645,7 @@
     },
     {
       "path": "MagicThunder/n3.emitter.ogt",
-      "sha256": "cb5693a964241ee257d8e4079dde37297ee256dbe285717e4d407fff4efd1651",
+      "sha256": "9f8cba37f47b17c126015932f379a7b397184aae64b8695a14a1fe2d01679b06",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -656,7 +656,7 @@
     },
     {
       "path": "MagicThunder/n4.emitter.ogt",
-      "sha256": "4579748991cb24293cfd72c9ea00b9ef39913480d507ab9bb2ce9adcba528879",
+      "sha256": "8e42b1b1f781d27117028f1bffc412f117e4d8873110eff99b80825bb868ffa9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -700,7 +700,7 @@
     },
     {
       "path": "MagicTornade.ogt",
-      "sha256": "ef23c60c4a2083c812987dac18141315557f50ef9af9f6f5f95781b893f743a7",
+      "sha256": "68eba07ae18568724620aff1781524dbc2d9d22572558acf04105aac07d32e72",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -853,7 +853,7 @@
     },
     {
       "path": "Spear1/n0.emitter.ogt",
-      "sha256": "9f49c1b34dee66151f76989b4c0a9dada7a96fb542d0013a43e72b7780a60f49",
+      "sha256": "12bf9e925f490440d1bc80db7831ae384812a3f397cf9ac13460ebf3a9c5c67c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -875,7 +875,7 @@
     },
     {
       "path": "Spear1/n2.emitter.ogt",
-      "sha256": "0f0a74f07c456ffcd5f9e1281836b3c1dc23b521bf147df3b7295b1531c85364",
+      "sha256": "3485628965a180da999f39972827cd652799f512b3553ed39f25758b23d9f281",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -897,7 +897,7 @@
     },
     {
       "path": "Spear2/n0.emitter.ogt",
-      "sha256": "930c5aca07d9118a307eff6b4909e54c9d7a0ff6297e1c9a961f15bb0660581b",
+      "sha256": "767ebb328d50d8e9f6b77e1336f3222f23a10e9c8596255526298af6e3e642c2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -930,7 +930,7 @@
     },
     {
       "path": "Sword1/n0.emitter.ogt",
-      "sha256": "dad0cfd985942e9b222e72fc37cb4e291d68457d9f2cf46e0fc2f76b7d983ecc",
+      "sha256": "d3a5274dc25b957218e59a67db911e8ce45a0f60633d0f41d8e86eed7999b037",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -952,7 +952,7 @@
     },
     {
       "path": "Sword1/n2.emitter.ogt",
-      "sha256": "0f0a74f07c456ffcd5f9e1281836b3c1dc23b521bf147df3b7295b1531c85364",
+      "sha256": "3485628965a180da999f39972827cd652799f512b3553ed39f25758b23d9f281",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -996,7 +996,7 @@
     },
     {
       "path": "Sword2/n2.emitter.ogt",
-      "sha256": "f6c03d848cf7f6f154b172f89cd6d317896ee304184e9175b50fcc918fb22f0a",
+      "sha256": "71d34e6139bfccacd60dff05a9be8658dd6fc1c8d2e35c7da735b19bdd95389e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
@@ -1018,7 +1018,7 @@
     },
     {
       "path": "Sword2.ogt",
-      "sha256": "bcf250aead0b2a1a7d6c3476aa18977e434a239f24c80c43236e439c3dce76c5",
+      "sha256": "22a5776f0be309cbe37ecb9198b2d09ef4959fb94d72135d00d20e6fab9b544f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",

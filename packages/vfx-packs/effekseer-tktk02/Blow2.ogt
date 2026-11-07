@@ -115,7 +115,7 @@ mesh ring {
   colors 1 0.1535 0.0334 0 1 0.4248 0.1535 1 1 0.1535 0.0334 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-0.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -126,7 +126,7 @@ mesh ring {
   colors 1 0.1535 0.0334 0 1 0.4248 0.1535 1 1 0.1535 0.0334 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-0.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -137,7 +137,7 @@ mesh ring {
   colors 1 0.1535 0.0334 0 1 0.4248 0.1535 1 1 0.1535 0.0334 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-0.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -148,7 +148,7 @@ mesh ring {
   colors 1 0.1535 0.0334 0 1 0.4248 0.1535 1 1 0.1535 0.0334 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-0.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -159,7 +159,7 @@ mesh ring {
   colors 1 0.1535 0.0334 0 1 0.4248 0.1535 1 1 0.1535 0.0334 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-1.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -170,7 +170,7 @@ mesh ring {
   colors 1 0.1535 0.0334 0 1 0.4248 0.1535 1 1 0.1535 0.0334 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-1.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -181,7 +181,7 @@ mesh ring {
   colors 1 0.1535 0.0334 0 1 0.4248 0.1535 1 1 0.1535 0.0334 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-1.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -192,7 +192,7 @@ mesh ring {
   colors 1 0.1535 0.0334 0 1 0.4248 0.1535 1 1 0.1535 0.0334 0
   life 0.3333
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-1.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -204,7 +204,7 @@ mesh ring {
   colors 1 0.111 0.0241 0 1 0.3482 0.111 0.6005 1 0.111 0.0241 0
   life 0.5
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-2.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -216,7 +216,7 @@ mesh ring {
   colors 1 0.111 0.0241 0 1 0.3482 0.111 0.6005 1 0.111 0.0241 0
   life 0.5
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-2.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -228,7 +228,7 @@ mesh ring {
   colors 1 0.111 0.0241 0 1 0.3482 0.111 0.6005 1 0.111 0.0241 0
   life 0.5
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-2.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }
@@ -240,7 +240,7 @@ mesh ring {
   colors 1 0.111 0.0241 0 1 0.3482 0.111 0.6005 1 0.111 0.0241 0
   life 0.5
   effect "vfx/effekseer-tktk02/Blow2/n1-0-0-2.effect.ogt"
-  scale 2
+  scale 1
   color 1 1 1 1
   blend additive
 }

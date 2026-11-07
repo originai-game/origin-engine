@@ -8,7 +8,7 @@ trail {
   rotate 0 0 35
   life 0.25
   effect "vfx/effekseer-andrewfm01/smallTexturesRibbon/n0-0.effect.ogt"
-  width 7 1.75
+  width 2.6458 0.6614
   lifetime 0.25
   color 0.8592 0.5174 0.122 1
   rise 270
@@ -18,7 +18,7 @@ trail {
   rotate 0 0 35
   life 0.1667
   effect "vfx/effekseer-andrewfm01/smallTexturesRibbon/n0-1.effect.ogt"
-  width 11 2.75
+  width 3.3166 0.8292
   lifetime 0.1667
   color 1 1 1 1
   rise 270
@@ -28,7 +28,7 @@ trail {
   rotate -90 0 70
   life 0.2333
   effect "vfx/effekseer-andrewfm01/smallTexturesRibbon/n1-0.effect.ogt"
-  width 8 2
+  width 2.8284 0.7071
   lifetime 0.2333
   color 1 1 1 1
   rise 270
@@ -38,7 +38,7 @@ trail {
   rotate -60.0945 -2.4976 75.6671
   life 0.2333
   effect "vfx/effekseer-andrewfm01/smallTexturesRibbon/n2-0.effect.ogt"
-  width 5 1.25
+  width 2.2361 0.559
   lifetime 0.2333
   color 1 1 1 1
   rise 270
@@ -49,7 +49,7 @@ trail {
   rotate -21.1728 18.7472 -22.904
   life 0.5
   effect "vfx/effekseer-andrewfm01/smallTexturesRibbon/n3-0.effect.ogt"
-  width 5 1.25
+  width 2.2361 0.559
   lifetime 0.5
   color 0.9914 0.7012 0.2632 1
   rise 210

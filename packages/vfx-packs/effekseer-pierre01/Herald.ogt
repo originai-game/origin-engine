@@ -137,7 +137,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0.effect.ogt"
-  scale 0.97
+  scale 0.0065
   color 1 1 1 1
   blend alpha
 }
@@ -151,7 +151,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0.effect.ogt"
-  scale 0.97
+  scale 0.0065
   color 1 1 1 1
   blend alpha
 }
@@ -165,7 +165,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0.effect.ogt"
-  scale 0.97
+  scale 0.0065
   color 1 1 1 1
   blend alpha
 }
@@ -179,7 +179,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0.effect.ogt"
-  scale 0.97
+  scale 0.0065
   color 1 1 1 1
   blend alpha
 }
@@ -193,7 +193,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0.effect.ogt"
-  scale 0.92
+  scale 0.0061
   color 1 1 1 1
   blend alpha
 }
@@ -207,7 +207,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0.effect.ogt"
-  scale 0.92
+  scale 0.0061
   color 1 1 1 1
   blend alpha
 }
@@ -221,7 +221,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0.effect.ogt"
-  scale 0.92
+  scale 0.0061
   color 1 1 1 1
   blend alpha
 }
@@ -235,7 +235,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0.effect.ogt"
-  scale 0.92
+  scale 0.0061
   color 1 1 1 1
   blend alpha
 }
@@ -249,7 +249,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0.effect.ogt"
-  scale 0.85
+  scale 0.0057
   color 1 1 1 1
   blend alpha
 }
@@ -263,7 +263,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0.effect.ogt"
-  scale 0.85
+  scale 0.0057
   color 1 1 1 1
   blend alpha
 }
@@ -277,7 +277,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0.effect.ogt"
-  scale 0.85
+  scale 0.0057
   color 1 1 1 1
   blend alpha
 }
@@ -291,7 +291,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0.effect.ogt"
-  scale 0.85
+  scale 0.0057
   color 1 1 1 1
   blend alpha
 }
@@ -305,7 +305,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0.effect.ogt"
-  scale 0.75
+  scale 0.005
   color 1 1 1 1
   blend alpha
 }
@@ -319,7 +319,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0.effect.ogt"
-  scale 0.75
+  scale 0.005
   color 1 1 1 1
   blend alpha
 }
@@ -333,7 +333,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0.effect.ogt"
-  scale 0.75
+  scale 0.005
   color 1 1 1 1
   blend alpha
 }
@@ -347,7 +347,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0.effect.ogt"
-  scale 0.75
+  scale 0.005
   color 1 1 1 1
   blend alpha
 }
@@ -361,7 +361,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0.effect.ogt"
-  scale 0.6
+  scale 0.004
   color 1 1 1 1
   blend alpha
 }
@@ -375,7 +375,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0.effect.ogt"
-  scale 0.6
+  scale 0.004
   color 1 1 1 1
   blend alpha
 }
@@ -389,7 +389,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0.effect.ogt"
-  scale 0.6
+  scale 0.004
   color 1 1 1 1
   blend alpha
 }
@@ -403,7 +403,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0.effect.ogt"
-  scale 0.6
+  scale 0.004
   color 1 1 1 1
   blend alpha
 }
@@ -417,7 +417,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0-0.effect.ogt"
-  scale 0.4
+  scale 0.0027
   color 1 1 1 1
   blend alpha
 }
@@ -431,7 +431,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0-0.effect.ogt"
-  scale 0.4
+  scale 0.0027
   color 1 1 1 1
   blend alpha
 }
@@ -445,7 +445,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0-0.effect.ogt"
-  scale 0.4
+  scale 0.0027
   color 1 1 1 1
   blend alpha
 }
@@ -459,7 +459,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-0-0-0-0-0-0-0-0.effect.ogt"
-  scale 0.4
+  scale 0.0027
   color 1 1 1 1
   blend alpha
 }
@@ -515,7 +515,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0.effect.ogt"
-  scale 0.97
+  scale 0.0049
   color 1 1 1 1
   blend alpha
 }
@@ -529,7 +529,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0.effect.ogt"
-  scale 0.97
+  scale 0.0049
   color 1 1 1 1
   blend alpha
 }
@@ -543,7 +543,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0.effect.ogt"
-  scale 0.97
+  scale 0.0049
   color 1 1 1 1
   blend alpha
 }
@@ -557,7 +557,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0.effect.ogt"
-  scale 0.92
+  scale 0.0046
   color 1 1 1 1
   blend alpha
 }
@@ -571,7 +571,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0.effect.ogt"
-  scale 0.92
+  scale 0.0046
   color 1 1 1 1
   blend alpha
 }
@@ -585,7 +585,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0.effect.ogt"
-  scale 0.92
+  scale 0.0046
   color 1 1 1 1
   blend alpha
 }
@@ -599,7 +599,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0.effect.ogt"
-  scale 0.85
+  scale 0.0043
   color 1 1 1 1
   blend alpha
 }
@@ -613,7 +613,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0.effect.ogt"
-  scale 0.85
+  scale 0.0043
   color 1 1 1 1
   blend alpha
 }
@@ -627,7 +627,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0.effect.ogt"
-  scale 0.85
+  scale 0.0043
   color 1 1 1 1
   blend alpha
 }
@@ -641,7 +641,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0.effect.ogt"
-  scale 0.75
+  scale 0.0037
   color 1 1 1 1
   blend alpha
 }
@@ -655,7 +655,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0.effect.ogt"
-  scale 0.75
+  scale 0.0037
   color 1 1 1 1
   blend alpha
 }
@@ -669,7 +669,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0.effect.ogt"
-  scale 0.75
+  scale 0.0037
   color 1 1 1 1
   blend alpha
 }
@@ -683,7 +683,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0-0.effect.ogt"
-  scale 0.6
+  scale 0.003
   color 1 1 1 1
   blend alpha
 }
@@ -697,7 +697,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0-0.effect.ogt"
-  scale 0.6
+  scale 0.003
   color 1 1 1 1
   blend alpha
 }
@@ -711,7 +711,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0-0.effect.ogt"
-  scale 0.6
+  scale 0.003
   color 1 1 1 1
   blend alpha
 }
@@ -725,7 +725,7 @@ mesh ring {
   colors 0.7519 0.7519 1 1 0.7519 0.7519 1 1 0.7519 0.7519 1 1
   life 1.5
   effect "vfx/effekseer-pierre01/Herald/n0-1-1-0-0-0-0-0-0-0.effect.ogt"
-  scale 0.4
+  scale 0.002
   color 1 1 1 1
   blend alpha
 }
