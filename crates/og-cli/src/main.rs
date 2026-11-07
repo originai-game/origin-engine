@@ -149,11 +149,13 @@ commands:
                       write one as an asset `og cook` synthesises (or render it to a WAV),
                       or write the whole library
   sprite inspect <file.gif|.webp|.png|sheet.ogt> [--key auto|off|#rrggbb] [--tolerance T]
-      [--out <frames.png>] [--json]
+      [--holes] [--out <frames.png>] [--json]
                       measure an animated sprite source or a flipbook sheet built from them:
                       frames, delays, each frame's drawn bounds and centroid and their drift,
                       the loop seam against the frame-to-frame steps, the alpha edge fringe
                       (numbers only; a flat border is keyed before measuring unless --key off);
+                      the texels near the key still drawn (pockets the border does not reach;
+                      --holes keys them too, as a sheet's `key ... holes`);
                       --out writes the measured frames side by side (a sheet: its packed texture)
   vfx add <pack|directory> [project]
                       copy an effect pack (`kind vfx`: type vfx and type vfx2d effects,
