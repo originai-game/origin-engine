@@ -722,7 +722,7 @@ pub fn cook(
     };
 
     let page = s.page_size.max(64);
-    let field = shelf(&glyphs, page)?;
+    let field = shelf(&glyphs, page, true)?;
     let (width, height, page_count, last_height) =
         (field.width, field.height, field.count, field.last);
     let mut rows = Vec::with_capacity(glyphs.len());
@@ -749,7 +749,7 @@ pub fn cook(
         if glyphs.is_empty() {
             return Ok(None);
         }
-        let pages = shelf(glyphs, page)?;
+        let pages = shelf(glyphs, page, false)?;
         for (i, g) in glyphs.iter().enumerate() {
             let (p, gx, gy) = pages.place[i];
             let [l, b, r, t] = g.plane.expect("a colour glyph has ink");
@@ -793,7 +793,7 @@ pub fn cook(
     let mut foreground_fields = None;
     let foreground_pages = point(&black, first_foreground)?.map(|b| {
         foreground_fields = Some((b.width, silhouettes(&b)));
-        let w = shelf(&white, page).expect("packs as the black images did");
+        let w = shelf(&white, page, false).expect("packs as the black images did");
         debug_assert_eq!(w.place, b.place);
         let pages = b
             .pages
@@ -1009,18 +1009,39 @@ struct Shelf {
 }
 
 /// Shelf packing: tallest first, 1-pixel gutters, pages of `page`² (the
-/// last, often the only one, cut to the rows it uses).
-fn shelf(glyphs: &[Glyph], page: u32) -> Result<Shelf, CookError> {
+/// last, often the only one, cut to the rows it uses). `share`: a glyph
+/// whose image an earlier glyph already has takes that glyph's place
+/// instead of one of its own, as a charset glyph cooked both by its code
+/// point and by its id (a shaped run draws by id) does.
+fn shelf(glyphs: &[Glyph], page: u32, share: bool) -> Result<Shelf, CookError> {
+    // Each glyph's first glyph with the same image (itself if none).
+    let mut first = std::collections::HashMap::new();
+    let twin: Vec<usize> = glyphs
+        .iter()
+        .enumerate()
+        .map(|(i, g)| {
+            if share && g.plane.is_some() {
+                *first
+                    .entry((g.width, g.height, g.pixels.as_slice()))
+                    .or_insert(i)
+            } else {
+                i
+            }
+        })
+        .collect();
     let area: u64 = glyphs
         .iter()
-        .map(|g| (g.width as u64 + 1) * (g.height as u64 + 1))
+        .zip(&twin)
+        .enumerate()
+        .filter(|&(i, (_, &t))| t == i)
+        .map(|(_, (g, _))| (g.width as u64 + 1) * (g.height as u64 + 1))
         .sum();
     let mut width = 64u32;
     while (width as u64) * (width as u64) < area * 5 / 4 && width < page {
         width *= 2;
     }
     let mut order: Vec<usize> = (0..glyphs.len())
-        .filter(|&i| glyphs[i].plane.is_some())
+        .filter(|&i| glyphs[i].plane.is_some() && twin[i] == i)
         .collect();
     order.sort_by_key(|&i| {
         (
@@ -1057,6 +1078,9 @@ fn shelf(glyphs: &[Glyph], page: u32) -> Result<Shelf, CookError> {
         shelf = shelf.max(g.height);
         used_height = used_height.max(y + g.height + 1);
     }
+    for (i, &t) in twin.iter().enumerate() {
+        place[i] = place[t];
+    }
     let count = pg + 1;
     // An empty page (every glyph in colour) keeps one row of 4.
     let last_height = used_height.div_ceil(4).max(1) * 4;
@@ -1067,7 +1091,7 @@ fn shelf(glyphs: &[Glyph], page: u32) -> Result<Shelf, CookError> {
         })
         .collect();
     for (i, g) in glyphs.iter().enumerate() {
-        if g.plane.is_some() {
+        if g.plane.is_some() && twin[i] == i {
             let (p, gx, gy) = place[i];
             let dst = &mut pages[p as usize];
             for row in 0..g.height {
@@ -1296,6 +1320,43 @@ mod tests {
         // This fixture's calt numeric hyphen in "Level 1-2": a nested
         // lookup, not a lookup directly listed by the feature record.
         assert!(rows.iter().any(|g| g.codepoint == GLYPH_ID_KEYS + 213));
+    }
+
+    /// Every face is shaped, so each charset glyph is cooked by its code
+    /// point and by its id: one image in the atlas, both rows at it.
+    #[test]
+    fn a_glyph_keyed_by_code_point_and_by_id_is_packed_once() {
+        let bytes = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf"
+        ))
+        .unwrap();
+        let face = ttf_parser::Face::parse(&bytes, 0).unwrap();
+        let settings = FontSettings {
+            charset: vec!["ascii".into()],
+            em_px: 16.0,
+            ..Default::default()
+        };
+        let (blob, _) = cook(&bytes, &settings, 2, 0).unwrap();
+        let blob = og_blob::Blob::parse(&blob, "Inter").unwrap();
+        let rows = blob
+            .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
+            .unwrap();
+        let at = |key: u32| {
+            let r = rows.iter().find(|r| r.codepoint == key).expect("cooked");
+            (r.page, r.atlas_x, r.atlas_y, r.atlas_w, r.atlas_h)
+        };
+        for c in ['A', 'g', '7', '&'] {
+            let id = GLYPH_ID_KEYS + u32::from(face.glyph_index(c).unwrap().0);
+            assert_eq!(at(c as u32), at(id), "{c}");
+        }
+        // The rows at one place are of one size.
+        let mut placed = std::collections::HashMap::new();
+        for r in rows.iter().filter(|r| r.atlas_w > 0) {
+            let key = (r.page, r.atlas_x, r.atlas_y);
+            let size = *placed.entry(key).or_insert((r.atlas_w, r.atlas_h));
+            assert_eq!(size, (r.atlas_w, r.atlas_h), "U+{:04X}", r.codepoint);
+        }
     }
 
     /// Subtexel samples of `c`'s field at `em_px` whose position lies in the

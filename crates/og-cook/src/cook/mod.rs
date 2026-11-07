@@ -1767,8 +1767,10 @@ pub fn cook_project_with_texture_cache(
                     // correction; "font 5": every face carries OpenType data
                     // for paragraph layout; "font 6": default substitutions
                     // and referenced contextual lookups; "font 7": layout-only
-                    // tables without runtime outlines. Older fonts re-cook.
-                    let st = stamp(&[b"font 7", f.describe().as_bytes(), &hash]);
+                    // tables without runtime outlines; "font 8": a glyph keyed
+                    // by code point and by id is one image in the atlas.
+                    // Older fonts re-cook.
+                    let st = stamp(&[b"font 8", f.describe().as_bytes(), &hash]);
                     outs.push((s.rel.clone(), format::Font::NAME, st, Work::Font(s, f)));
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "font", e)),
