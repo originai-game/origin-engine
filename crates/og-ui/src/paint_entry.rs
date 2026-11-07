@@ -120,7 +120,9 @@ impl<'a> Cursor<'a> {
     }
     /// `w` names a colour role: the palette's or one the style declares.
     fn is_role(&self, w: &str) -> bool {
-        Palette::NAMES.contains(&w) || self.roles.is_some_and(|r| r.get(w).is_some())
+        Palette::NAMES.contains(&w)
+            || crate::tokens::colour_token_names().iter().any(|n| n == w)
+            || self.roles.is_some_and(|r| r.get(w).is_some())
     }
     fn peek(&self) -> Option<&'a Value> {
         self.p.e.values.get(self.at)

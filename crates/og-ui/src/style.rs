@@ -538,7 +538,49 @@ impl Theme {
     /// A colour role by its name: one of the palette's (the IDL's
     /// ThemeColor), else one the style declares ([`Roles`]).
     pub fn color(&self, name: &str) -> Option<Srgba> {
-        self.palette.get(name).or_else(|| self.roles.get(name))
+        use crate::tokens::{DamageType, Rarity};
+        self.palette
+            .get(name)
+            .or_else(|| self.roles.get(name))
+            .or_else(|| {
+                if let Some(r) = Rarity::from_name(name) {
+                    Some(self.tokens.colors.rarity[r.index()].color)
+                } else if let Some(d) = DamageType::from_name(name) {
+                    Some(self.tokens.colors.damage[d.index()].color)
+                } else if let Some(n) = name
+                    .strip_prefix("team")
+                    .and_then(|n| n.parse::<usize>().ok())
+                {
+                    n.checked_sub(1)
+                        .and_then(|i| self.tokens.colors.team.get(i))
+                        .map(|s| s.color)
+                } else if let Some(n) = name
+                    .strip_prefix("series")
+                    .and_then(|n| n.parse::<usize>().ok())
+                {
+                    n.checked_sub(1)
+                        .and_then(|i| self.tokens.colors.series.get(i))
+                        .copied()
+                } else {
+                    None
+                }
+            })
+    }
+
+    /// A CSS length token, in CSS pixels, from this active style.
+    pub fn length(&self, name: &str) -> Option<f32> {
+        use crate::tokens::{RadiusStep, SizeStep, SpaceStep, StrokeWidth};
+        if let Some(n) = name.strip_prefix("space-") {
+            SpaceStep::from_name(n).map(|s| self.tokens.space[s.index()])
+        } else if let Some(n) = name.strip_prefix("size-") {
+            SizeStep::from_name(n).map(|s| self.tokens.size[s.index()])
+        } else if let Some(n) = name.strip_prefix("radius-") {
+            RadiusStep::from_name(n).map(|s| self.tokens.radius[s.index()])
+        } else if let Some(n) = name.strip_prefix("stroke-") {
+            StrokeWidth::from_name(n).map(|s| self.tokens.stroke[s.index()])
+        } else {
+            None
+        }
     }
 
     /// The high-contrast variant of a scheme: `inkMuted` takes `ink`,

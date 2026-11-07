@@ -158,6 +158,10 @@ fn lit(ui: &Ui, l: &Lit) -> Option<V> {
     Some(match l {
         Lit::Num(n) => V::Num(f64::from(*n)),
         Lit::Nums(n) => V::Nums(n.clone()),
+        Lit::Lengths(ty, vals) => {
+            let vals = super::resolve_lengths(vals, ui.theme()).ok()?;
+            return lit(ui, &super::parse_lit(*ty, &vals).ok()?);
+        }
         Lit::Bool(b) => V::Bool(*b),
         Lit::Str(s) => V::Str(s.clone()),
         Lit::Size(s) => V::Size(*s),
@@ -624,6 +628,11 @@ impl Ui {
                 for v in &s.values {
                     match v {
                         StateValue::Prop(prop, x) => values.push((*prop, *x)),
+                        StateValue::Length(prop, value) => {
+                            if let Some(V::Num(x)) = lit(self, value) {
+                                values.push((*prop, x as f32));
+                            }
+                        }
                         StateValue::Background(c) | StateValue::Ink(c) => {
                             let bg = matches!(v, StateValue::Background(_));
                             if let Some(c) = paint(self, c) {

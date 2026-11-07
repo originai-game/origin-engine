@@ -143,6 +143,117 @@ fn tick(ui: &mut Ui, input: InputFrame) {
     ui.end();
 }
 
+#[test]
+fn length_tokens_follow_the_active_style_in_layout_and_states() {
+    let source = r#"type screen
+version 2
+---
+name "tokens"
+layer hud
+column Root {
+  width: stretch; min-width: var(--size-sm); max-width: var(--size-xl)
+  padding: var(--space-xs) 3px var(--space-md) 7px
+  gap: var(--space-sm)
+  background: var(--panel)
+  border-radius: var(--radius-lg)
+  translate: var(--space-xs) var(--space-sm)
+  button Child {
+    text "Token"
+    height: var(--size-lg)
+    border-radius: var(--radius-sm)
+    :hover {
+      border-radius: var(--radius-xl)
+      translate: var(--space-md) 0
+    }
+  }
+  grid Tracks {
+    grid-template-columns: var(--size-sm) minmax(var(--size-xs), var(--size-lg))
+    grid-template-rows: var(--size-md)
+  }
+}
+"#;
+    let mut symbolic = ui_with_font(test_font_metrics());
+    symbolic.define_document(UiDocument::parse("tokens.ogt", source).unwrap());
+    symbolic.push_screen("tokens", Value::Null).unwrap();
+    for factor in [1.0, 2.0] {
+        let mut theme = Theme {
+            reduced_motion: true,
+            ..Theme::default()
+        };
+        for v in &mut theme.tokens.space {
+            *v *= factor;
+        }
+        for v in &mut theme.tokens.size {
+            *v *= factor;
+        }
+        for v in &mut theme.tokens.radius {
+            *v *= factor;
+        }
+        symbolic.set_theme(theme);
+        let mut literal = source.to_string();
+        for name in [
+            "space-xs",
+            "space-sm",
+            "space-md",
+            "size-xs",
+            "size-sm",
+            "size-md",
+            "size-lg",
+            "size-xl",
+            "radius-sm",
+            "radius-lg",
+            "radius-xl",
+        ] {
+            literal = literal.replace(
+                &format!("var(--{name})"),
+                &format!("{}px", theme.length(name).unwrap()),
+            );
+        }
+        let mut expected = ui_with_font(test_font_metrics());
+        expected.set_theme(theme);
+        expected.define_document(UiDocument::parse("tokens.ogt", &literal).unwrap());
+        expected.push_screen("tokens", Value::Null).unwrap();
+        for _ in 0..3 {
+            tick(&mut symbolic, InputFrame::default());
+            tick(&mut expected, InputFrame::default());
+        }
+        assert_eq!(
+            symbolic.frame().items,
+            expected.frame().items,
+            "style factor {factor}"
+        );
+        let button = expected.frame().element("tokens/Root/Child").unwrap();
+        let (x, y) = (
+            button.x + button.width * 0.5,
+            button.y + button.height * 0.5,
+        );
+        for _ in 0..3 {
+            tick(&mut symbolic, InputFrame::hover(x, y));
+            tick(&mut expected, InputFrame::hover(x, y));
+        }
+        assert_eq!(
+            symbolic.frame().items,
+            expected.frame().items,
+            "hover, style factor {factor}"
+        );
+    }
+    let bad = source.replace("--radius-lg", "--radius-missing");
+    assert!(
+        UiDocument::parse("bad.ogt", &bad)
+            .unwrap_err()
+            .join("\n")
+            .contains("--radius-missing")
+    );
+    let bad = source.replace("--panel", "--missing-colour");
+    let doc = UiDocument::parse("bad.ogt", &bad).unwrap();
+    assert!(
+        doc.validate_tokens(&[Theme::default()])
+            .unwrap_err()
+            .join("\n")
+            .contains("--missing-colour")
+    );
+}
+
 fn key(code: &'static str) -> InputFrame {
     let ui_key = UiKey::ALL.into_iter().find(|k| k.code() == code);
     InputFrame {

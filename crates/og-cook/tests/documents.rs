@@ -52,6 +52,39 @@ fn a_screen_cooks_to_a_document_blob() {
     assert!(doc.node_at("Gold").is_some());
 }
 
+#[test]
+fn css_tokens_survive_cooking_and_unresolved_names_fail() {
+    let source = SCREEN.replace(
+        "column Shop {",
+        "column Shop {\n border-radius: var(--radius-lg)\n background: var(--panel)",
+    );
+    let root = project("tokens", &[("ui/shop.ogt", &source)]);
+    let options = CookOptions::default();
+    let report = cook_project(&root, &options).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let out = bundle.output("ui/shop.ogt").unwrap();
+    let bytes = std::fs::read(root.join("cooked").join(&out.file)).unwrap();
+    let text = bundle.document_text("ui/shop.ogt", &bytes).unwrap();
+    assert!(
+        text.contains("var(--radius-lg)"),
+        "cook must not freeze a style's radius"
+    );
+    for (from, missing) in [
+        ("--radius-lg", "--radius-missing"),
+        ("--panel", "--missing-colour"),
+    ] {
+        std::fs::write(
+            root.join("assets/ui/shop.ogt"),
+            source.replace(from, missing),
+        )
+        .unwrap();
+        let report = cook_project(&root, &options).unwrap();
+        assert!(!report.ok());
+        assert!(format!("{:?}", report.errors()).contains(missing));
+    }
+}
+
 /// An installed kit (docs/ui.md §17.1) cooks with the game: its documents
 /// are the game's assets under `ui-kits/<kit>/`, and its review sheet, a
 /// project of its own, is left out.

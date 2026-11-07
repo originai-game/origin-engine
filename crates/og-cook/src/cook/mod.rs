@@ -888,6 +888,16 @@ pub fn cook_project_with_texture_cache(
     // GPU's memory (og-runtime's add_gltf shares them by these ids).
     let mut planned_textures = std::collections::HashSet::new();
     let mut parsed_refs: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut document_themes = vec![og_ui::Theme::default()];
+    let mut style_tokens_hash = StableHasher::new();
+    for source in sources.iter().filter(|s| s.kind == Kind::Style) {
+        style_tokens_hash.write_str(&source.rel);
+        style_tokens_hash.write(&source.hash.to_le_bytes());
+        if let Ok(style) = og_ui::parse_style(&String::from_utf8_lossy(&source.bytes)) {
+            document_themes.push(style.theme);
+        }
+    }
+    let style_tokens_hash = style_tokens_hash.finish().to_le_bytes();
     for (si, s) in sources.iter().enumerate() {
         if s.error.is_some() {
             continue;
@@ -1442,7 +1452,14 @@ pub fn cook_project_with_texture_cache(
                 }
             }
             Kind::Document => {
-                let st = stamp(&[b"document", &hash]);
+                let text = String::from_utf8_lossy(&s.bytes);
+                if let Err(errors) = og_ui::UiDocument::parse(&s.rel, &text)
+                    .and_then(|doc| doc.validate_tokens(&document_themes))
+                {
+                    early_errors.push((s.rel.clone(), "document", errors.join("\n")));
+                    continue;
+                }
+                let st = stamp(&[b"document tokens", &hash, &style_tokens_hash]);
                 outs.push((s.rel.clone(), format::Document::NAME, st, Work::Document(s)));
             }
             Kind::Tileset => {

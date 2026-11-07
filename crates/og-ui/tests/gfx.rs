@@ -22,6 +22,62 @@ fn reference_dir(tier: &str) -> PathBuf {
 
 #[test]
 #[ignore = "requires GPU"]
+fn css_radius_token_changes_pixels_when_the_active_style_changes() {
+    let source = "type screen\nversion 2\n---\nname tokens\nlayer hud\ncolumn Box {\n width: 96px; height: 64px\n translate: 16px 16px\n background: #ffffff; border-radius: var(--radius-lg)\n}\n";
+    let mut ui = Ui::new(UiDesc::default());
+    ui.define_document(UiDocument::parse("tokens.ogt", source).unwrap());
+    ui.push_screen("tokens", serde_json::Value::Null).unwrap();
+    let vp = Viewport::new(128.0, 96.0);
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 128,
+        height: 96,
+        ..RenderDesc::default()
+    })
+    .expect("a headless adapter");
+    for radius in [0.0, 24.0] {
+        let mut theme = Theme {
+            unit_pin: 1.0,
+            ..Theme::default()
+        };
+        theme.tokens.radius[og_ui::tokens::RadiusStep::Lg.index()] = radius;
+        ui.set_theme(theme);
+        for _ in 0..2 {
+            ui.begin(InputFrame::default(), vp);
+            ui.end();
+        }
+        let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        let mut scene = RenderScene::new();
+        scene.overlay = Some(overlay);
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.post.tonemap = Tonemap::None;
+        renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+        let image = renderer.read_offscreen().unwrap();
+        let red = |x: usize, y: usize| image.pixels[(y * 128 + x) * 4];
+        assert!(red(64, 48) > 240, "the centre stays filled");
+        if radius == 0.0 {
+            assert!(red(17, 17) > 240, "the square corner is filled");
+        } else {
+            assert!(
+                red(17, 17) < 10,
+                "the changed token cuts the rounded corner"
+            );
+        }
+        let path = out_dir().join(format!("css-radius-{radius:.0}.png"));
+        image::save_buffer(
+            &path,
+            &image.pixels,
+            image.width,
+            image.height,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        println!("{}", path.display());
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
 fn sample_screen_matches_its_reference_frame() {
     let (shot, s) = with_test_font(sample_screen_shot);
     let frame = shot.ui.frame();

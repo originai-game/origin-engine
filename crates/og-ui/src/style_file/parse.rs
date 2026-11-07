@@ -83,7 +83,8 @@ fn once<T>(p: &P, slot: &mut Option<T>, v: T) -> Result<(), String> {
 /// `sound <event> "<id>"`, with `hoverSpring` and `pressSpring` as damping
 /// ratio and response ms; its tokens are [`StyleTokens::derive`]d.
 pub fn parse_style(text: &str) -> Result<StyleFile, String> {
-    let doc = super::css::read_style_doc(text)?;
+    let mut doc = super::css::read_style_doc(text)?;
+    super::css::resolve_tokens(&mut doc)?;
     if doc.ty == "skin" {
         return Err(
             "`type skin` is now `type style`: change the first line, replace `base` with `scheme`, and give the palette every role and the radius block small, control, bar and panel".into(),
@@ -919,6 +920,22 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         .tokens
         .typography
         .ramp(crate::Breakpoint::Desktop, 1.0);
+    for dressing in &mut file.dressings {
+        for (_, value) in &mut dressing.draw.appearance {
+            if let crate::doc::Lit::Lengths(ty, values) = value {
+                let resolved = crate::doc::resolve_lengths(values, &theme)?;
+                *value = crate::doc::parse_lit(*ty, &resolved)?;
+            }
+            if let crate::doc::Lit::Paint(crate::doc::Paint::Token(name)) = value
+                && theme.color(name).is_none()
+            {
+                return Err(format!(
+                    "unresolved colour token --{}",
+                    crate::doc::css::kebab(name)
+                ));
+            }
+        }
+    }
     file.theme = theme;
     Ok(file)
 }

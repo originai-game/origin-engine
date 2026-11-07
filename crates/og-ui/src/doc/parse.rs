@@ -127,7 +127,10 @@ impl Ctx {
                         v.values.first().and_then(Value::as_number),
                     ) {
                         (Some(p), Some(n)) => st.values.push(StateValue::Prop(p, n.as_f32())),
-                        (Some(_), None) => self.err(v.line, format!("{k} takes a number")),
+                        (Some(p), None) => match parse_lit(Ty::Num, &v.values) {
+                            Ok(l @ Lit::Lengths(..)) => st.values.push(StateValue::Length(p, l)),
+                            _ => self.err(v.line, format!("{k} takes a number or length token")),
+                        },
                         (None, _) => self.err(
                             v.line,
                             format!(

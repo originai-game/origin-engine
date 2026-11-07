@@ -182,6 +182,8 @@ pub enum Paint {
 pub enum Lit {
     Num(f32),
     Nums(Vec<f32>),
+    /// Validated length expressions, resolved against the active style each build.
+    Lengths(Ty, Vec<Value>),
     Bool(bool),
     Str(String),
     Size(Size),
@@ -231,6 +233,7 @@ pub struct AtQuery {
 #[derive(Clone, Debug, PartialEq)]
 pub enum StateValue {
     Prop(Prop, f32),
+    Length(Prop, Lit),
     Background(Paint),
     Ink(Paint),
 }
@@ -606,6 +609,17 @@ fn parse_track(v: &Value) -> Result<crate::element::Track, String> {
 
 /// A literal of type `ty` from its values.
 pub(crate) fn parse_lit(ty: Ty, vals: &[Value]) -> Result<Lit, String> {
+    if matches!(
+        ty,
+        Ty::Num | Ty::Num2 | Ty::Num4 | Ty::Insets | Ty::Size | Ty::Tracks | Ty::Presence
+    ) && vals
+        .iter()
+        .any(|v| matches!(v, Value::String(s) if s.contains("var(--")))
+    {
+        let resolved = resolve_lengths(vals, &crate::Theme::default())?;
+        parse_lit(ty, &resolved)?;
+        return Ok(Lit::Lengths(ty, vals.to_vec()));
+    }
     let one_name = || -> Result<String, String> {
         match vals {
             [v] => as_name(v).ok_or_else(|| "takes one name".to_string()),
@@ -647,6 +661,38 @@ pub(crate) fn parse_lit(ty: Ty, vals: &[Value]) -> Result<Lit, String> {
         Ty::Tracks => Lit::Tracks(vals.iter().map(parse_track).collect::<Result<_, _>>()?),
         Ty::Names => Lit::Strs(vals.iter().filter_map(as_name).collect()),
     })
+}
+
+/// Substitute lengths before typed parsing, including bounds inside minmax tracks.
+/// The cooked document retains its source expressions, never these numeric values.
+pub(crate) fn resolve_lengths(vals: &[Value], theme: &crate::Theme) -> Result<Vec<Value>, String> {
+    vals.iter()
+        .map(|v| {
+            let Value::String(s) = v else {
+                return Ok(v.clone());
+            };
+            if !s.contains("var(--") {
+                return Ok(v.clone());
+            }
+            let mut text = s.clone();
+            while let Some(start) = text.find("var(--") {
+                let end = text[start..]
+                    .find(')')
+                    .map(|i| start + i)
+                    .ok_or_else(|| format!("unclosed length token in {text}"))?;
+                let name = &text[start + 6..end];
+                let n = theme
+                    .length(name)
+                    .ok_or_else(|| format!("unresolved length token --{name}"))?;
+                text.replace_range(start..=end, &n.to_string());
+            }
+            if s.starts_with("var(--") {
+                css::number(&text)
+            } else {
+                Ok(Value::String(text))
+            }
+        })
+        .collect()
 }
 
 /// A prop's value from its line's values (literal, `bind`, or a template).

@@ -1,6 +1,49 @@
 use super::*;
 
 impl UiDocument {
+    /// Check literal colour references against the styles available to the game.
+    /// Length names are schema-defined and already checked by `parse`.
+    pub fn validate_tokens(&self, themes: &[crate::Theme]) -> Result<(), Vec<String>> {
+        let mut errors = Vec::new();
+        let mut check = |paint: &Paint, line: usize| {
+            if let Paint::Token(name) = paint
+                && !themes.iter().any(|theme| theme.color(name).is_some())
+            {
+                errors.push(format!(
+                    "{}:{line}: unresolved colour token --{}",
+                    self.source,
+                    css::kebab(name)
+                ));
+            }
+        };
+        for node in &self.nodes {
+            for prop in node
+                .props
+                .iter()
+                .chain(node.at.iter().flat_map(|(_, props)| props))
+            {
+                if let PropValue::Lit(Lit::Paint(paint)) = &prop.value {
+                    check(paint, prop.line);
+                }
+            }
+            for value in node
+                .groups
+                .iter()
+                .flat_map(|g| &g.states)
+                .flat_map(|s| &s.values)
+            {
+                if let StateValue::Background(paint) | StateValue::Ink(paint) = value {
+                    check(paint, node.line);
+                }
+            }
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
     /// Parses and validates a document (`source`: its asset id, for errors
     /// and the write-back). Every error has its line and its fix.
     ///

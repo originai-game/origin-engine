@@ -327,6 +327,50 @@ fn v1_style() -> String {
     .replace("  pop 0.12\n", "  pop 0.12\n  pressSpring 0.55 120\n")
 }
 
+#[test]
+fn css_tokens_work_in_paint_lengths_and_aliases_and_reject_cycles() {
+    let base = upgrade_style(&v1_style()).unwrap();
+    let theme = parse_style(&base).unwrap().theme;
+    let extra = "\nToken::base {\n  height: var(--size-sm)\n  translate: var(--space-xs) var(--space-sm)\n  -og-shape: round var(--radius-lg)\n  -og-stroke: var(--stroke-thick) var(--epic) inside\n  -og-effect: drop-shadow var(--space-xs) var(--space-sm) var(--size-sm) 0 var(--shadow)\n  box-shadow: 0 var(--space-xs) 0 0 var(--shadow)\n}\n";
+    let actual = parse_style(&(base.clone() + extra)).unwrap();
+    let mut literal = extra.to_string();
+    for name in [
+        "radius-lg",
+        "stroke-thick",
+        "space-xs",
+        "space-sm",
+        "size-sm",
+    ] {
+        literal = literal.replace(
+            &format!("var(--{name})"),
+            &format!("{}px", theme.length(name).unwrap()),
+        );
+    }
+    let expected = parse_style(&(base.clone() + &literal)).unwrap();
+    assert_eq!(actual.dressings, expected.dressings);
+    let missing = extra.replace("--space-xs", "--space-missing");
+    assert!(
+        parse_style(&(base.clone() + &missing))
+            .unwrap_err()
+            .contains("--space-missing")
+    );
+    let start = base.find("--radius-sm:").unwrap();
+    let end = start + base[start..].find('\n').unwrap();
+    let mut cycle = base.clone();
+    cycle.replace_range(start..end, "--radius-sm: var(--radius-sm)");
+    assert!(
+        parse_style(&cycle)
+            .unwrap_err()
+            .contains("cyclic token --radius-sm")
+    );
+    let mut alias = base;
+    alias.replace_range(start..end, "--radius-sm: var(--space-lg)");
+    assert_eq!(
+        parse_style(&alias).unwrap().theme.length("radius-sm"),
+        theme.length("space-lg")
+    );
+}
+
 /// A dressing's draw lines (docs/ui.md §5, §12.3): stops without an offset
 /// share the space between their neighbours, colours are tokens or
 /// literals, an atlas region is cut in the atlas's texels, a later block of

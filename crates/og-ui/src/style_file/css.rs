@@ -136,7 +136,7 @@ fn value_css(v: &Value, px: bool, role: &dyn Fn(&str) -> bool) -> String {
     match v {
         Value::Number(n) if px && n.text() != "0" => format!("{}px", n.text()),
         Value::Number(n) => n.text().to_string(),
-        Value::String(s) if is_hex(s) => s.clone(),
+        Value::String(s) if is_hex(s) || s.starts_with("var(--") => s.clone(),
         Value::String(s) => quoted(s),
         Value::Word(w) if role(w) => format!("var(--{})", kebab(w)),
         Value::Word(w) => kebab(w),
@@ -400,7 +400,7 @@ fn ogt_values(value: &str) -> Result<Vec<Value>, String> {
             Tok::Ident(s) => Value::Word(camel(s)),
             Tok::Func(f, a) if f == "var" => match a.as_slice() {
                 [v] => match v.as_slice() {
-                    [Tok::Ident(n)] if n.starts_with("--") => Value::Word(camel(&n[2..])),
+                    [Tok::Ident(n)] if n.starts_with("--") => Value::String(format!("var({n})")),
                     _ => return Err("var(--name)".into()),
                 },
                 _ => return Err("var(--name) takes no fallback".into()),
@@ -414,6 +414,78 @@ fn ogt_values(value: &str) -> Result<Vec<Value>, String> {
         });
     }
     Ok(out)
+}
+
+/// Resolve a style's token aliases before parsing its paint geometry. The
+/// source remains symbolic in the cooked blob; selecting a style reparses it.
+/// As in CSS Variables §2.3, a cycle is invalid, including a self-reference.
+pub(super) fn resolve_tokens(doc: &mut Document) -> Result<(), String> {
+    use std::collections::BTreeMap;
+    let mut definitions = BTreeMap::new();
+    for (block, prefix, _) in TOKENS {
+        if let Some(b) = doc.body.get(block).and_then(|e| e.block.as_ref()) {
+            for e in &b.entries {
+                if let Some(v) = e.values.first() {
+                    definitions
+                        .entry(format!("{prefix}{}", kebab(&e.key)))
+                        .or_insert_with(|| v.clone());
+                }
+            }
+        }
+    }
+    fn resolve(
+        v: &Value,
+        definitions: &BTreeMap<String, Value>,
+        stack: &mut Vec<String>,
+    ) -> Result<Value, String> {
+        let Value::String(s) = v else {
+            return Ok(v.clone());
+        };
+        let Some(name) = s.strip_prefix("var(--").and_then(|s| s.strip_suffix(')')) else {
+            return Ok(v.clone());
+        };
+        if stack.iter().any(|n| n == name) {
+            return Err(format!("cyclic token --{name}"));
+        }
+        let value = definitions
+            .get(name)
+            .ok_or_else(|| format!("unresolved token --{name}"))?;
+        stack.push(name.to_owned());
+        let result = resolve(value, definitions, stack);
+        stack.pop();
+        result
+    }
+    fn walk(b: &mut Block, definitions: &BTreeMap<String, Value>) -> Result<(), String> {
+        for e in &mut b.entries {
+            // Appearance uses the same symbolic literals as documents.
+            if e.key == "appearance" {
+                continue;
+            }
+            for (index, v) in e.values.iter_mut().enumerate() {
+                let resolved = resolve(v, definitions, &mut Vec::new())
+                    .map_err(|m| format!("line {}: {m}", e.line))?;
+                let paint = matches!(
+                    e.key.as_str(),
+                    "fill" | "stroke" | "effect" | "mask" | "ink" | "ornamentTint" | "glow"
+                ) || (e.key == "recolour" && index == 1);
+                *v = if paint && matches!(&resolved, Value::String(s) if is_hex(s)) {
+                    match v {
+                        Value::String(s) if s.starts_with("var(--") => {
+                            Value::Word(camel(&s[6..s.len() - 1]))
+                        }
+                        _ => resolved,
+                    }
+                } else {
+                    resolved
+                };
+            }
+            if let Some(b) = &mut e.block {
+                walk(b, definitions)?
+            }
+        }
+        Ok(())
+    }
+    walk(&mut doc.body, &definitions)
 }
 
 /// `Button::base.primary:hover[rarity=epic]` as `Button.base[primary][hover][rarity=epic]`.

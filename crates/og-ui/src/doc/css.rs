@@ -420,6 +420,7 @@ fn px(v: &Value) -> Result<String, String> {
     match v {
         Value::Number(n) if n.text() == "0" => Ok("0".into()),
         Value::Number(n) => Ok(format!("{}px", n.text())),
+        Value::String(s) if s.starts_with("var(--") => Ok(s.clone()),
         other => Err(format!("'{}' is not a length", text_of(other))),
     }
 }
@@ -490,9 +491,11 @@ fn presence_css(vals: &[Value]) -> Result<String, String> {
         .ok_or("a presence: fade, slideUp …")?;
     let mut out = kebab(&kind);
     let mut rest = &vals[1..];
-    if let Some(Value::Number(n)) = rest.first() {
+    if let Some(v) = rest.first()
+        && px(v).is_ok()
+    {
         out.push(' ');
-        out.push_str(&px(&Value::Number(n.clone()))?);
+        out.push_str(&px(v)?);
         rest = &rest[1..];
     }
     if !rest.is_empty() {
@@ -509,8 +512,8 @@ fn track_css(v: &Value) -> Result<String, String> {
             Some(r) => {
                 let (a, b) = r.split_once(':').ok_or("minmax:<min>:<max>")?;
                 let len = |t: &str| {
-                    if t == "0" {
-                        "0".to_string()
+                    if t == "0" || t.starts_with("var(--") {
+                        t.to_string()
                     } else {
                         format!("{t}px")
                     }
@@ -596,8 +599,10 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
             _ => Err("pivot takes two fractions".into()),
         },
         Conv::Size => {
-            if let [Value::Number(n)] = vals {
-                return px(&Value::Number(n.clone()));
+            if let [v] = vals
+                && px(v).is_ok()
+            {
+                return px(v);
             }
             let w = vals.first().map(text_of).unwrap_or_default();
             match w.as_str() {
@@ -893,6 +898,13 @@ fn tokens_in(c: &[char], i: &mut usize, func: bool) -> Result<(Vec<Vec<Tok>>, bo
 
 pub(crate) fn want_len(t: &Tok) -> Result<Value, String> {
     match t {
+        Tok::Func(f, _) if f == "var" => {
+            let name = kebab(&want_var(t, "")?);
+            if crate::Theme::default().length(&name).is_none() {
+                return Err(format!("unresolved length token --{name}"));
+            }
+            Ok(Value::String(format!("var(--{name})")))
+        }
         Tok::Num(n, u)
             if u == "px"
                 || (u.is_empty()
@@ -1059,6 +1071,7 @@ fn transition_vals(t: &[Tok]) -> Result<Vec<Value>, String> {
 
 fn track_vals(t: &Tok) -> Result<Value, String> {
     match t {
+        Tok::Func(f, _) if f == "var" => want_len(t),
         Tok::Num(n, u) if u == "px" => number(n),
         Tok::Num(n, u) if u == "fr" || u == "%" => Ok(Value::String(format!("{n}{u}"))),
         Tok::Ident(a) if a == "auto" => Ok(Value::String("auto".into())),
@@ -1355,7 +1368,10 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     )?;
                     let mut out = vec![Value::Word(camel(kind))];
                     let mut rest = &t[1..];
-                    if let Some(d @ Tok::Num(..)) = rest.first() {
+                    if let Some(d) = rest.first()
+                        && (matches!(d, Tok::Num(..))
+                            || matches!(d, Tok::Func(f, _) if f == "var" && want_len(d).is_ok()))
+                    {
                         out.push(want_len(d)?);
                         rest = &rest[1..];
                     }

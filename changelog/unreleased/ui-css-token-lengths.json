@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui CSS token references",
+      "summary": "Documents accept var(--space-*), var(--size-*), var(--radius-*) and var(--stroke-*) wherever a length is accepted, including border-radius, padding, size bounds, grid tracks, translations and interaction states. References survive cooking and follow the active style when built. Style declarations accept length and colour references, including token aliases; missing references and cycles name the token. Document colour references are checked against the default theme and the game's cooked styles; document cook stamps include those style sources. Rarity, damage, team and series colours can be used as colour tokens."
+    }
+  ]
+}

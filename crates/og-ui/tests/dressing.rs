@@ -141,7 +141,7 @@ Poem::placeholder {
         line.3
     );
     let e = parse_style(&format!(
-        "{style}Poem::frame {{\n  -og-ink: var(--accent)\n}}\n"
+        "{style}Poem::frame {{\n  -og-ink: var(--primary)\n}}\n"
     ))
     .unwrap_err();
     assert!(e.contains("text part"), "{e}");
