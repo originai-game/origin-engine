@@ -32,7 +32,7 @@ import type { PlaytestDesc } from "../playtest.ts";
 import { beginBundle, boundHost, createEngine, type Engine, type GameToken } from "../runtime.ts";
 import type { RunControl, RunOutput } from "./run.ts";
 import { og } from "../index.ts";
-import { cellName, checkFrame, checkLocales, formatText, measureFrame, measureScale, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
+import { cellName, checkFrame, checkLocales, formatText, measureFrame, measureLayout, measureScale, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
 import { BASELINE } from "./ui-baseline.ts";
 
@@ -44,6 +44,7 @@ import { BASELINE } from "./ui-baseline.ts";
  */
 export const BREAKPOINTS: Record<string, { width: number; height: number; dpr: number; safeArea: { left: number; top: number; right: number; bottom: number }; coarsePointer: boolean }> = {
   desktop: { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false },
+  desktopHd: { width: 1920, height: 1080, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false },
   phonePortrait: { width: 390, height: 844, dpr: 2, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true },
   phoneLandscape: { width: 844, height: 390, dpr: 2, safeArea: { left: 47, top: 0, right: 47, bottom: 21 }, coarsePointer: true },
   tablet: { width: 820, height: 1180, dpr: 2, safeArea: { left: 0, top: 24, right: 0, bottom: 20 }, coarsePointer: true },
@@ -132,7 +133,8 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   }
   const cancelled = () => { if (control.signal?.aborted) throw new UiExit(130); };
   cancelled();
-  if (mode !== "check" && mode !== "preview" && mode !== "sheet") fail("usage: bun src/node/ui-run.ts check|preview|sheet --entry <bundle> --root <project> --out <dir> [...]");
+  if (mode !== "check" && mode !== "preview" && mode !== "sheet" && mode !== "review") fail("usage: bun src/node/ui-run.ts check|preview|sheet|review --entry <bundle> --root <project> --out <dir> [...]");
+  const review = mode === "review";
   const entry = opt("--entry"), root = opt("--root"), out = opt("--out");
   if (!entry || !root || !out) fail("--entry, --root and --out are required");
   const outDir = resolve(out!);
@@ -150,19 +152,23 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   if (mode === "sheet" && argv.includes("--baseline")) screens.push(...BASELINE);
   const styles = list("--styles", "");
   const styleCmd = opt("--style-cmd") ?? "style:{style}";
-  const bps = list("--breakpoints", mode === "check" ? "desktop,phonePortrait,phoneLandscape,tablet" : "desktop,phonePortrait,phoneLandscape,tablet");
+  // A review is §12's matrix: every state of every screen, at 1920×1080 and on a phone both ways, 100 % and 150 %, in four locales.
+  const states = review ? list("--states", "") : [];
+  const stateCmd = opt("--state-cmd") ?? "state:{state}";
+  const grid = Number(opt("--grid") ?? 4);
+  const bps = list("--breakpoints", review ? "desktopHd,phonePortrait,phoneLandscape" : "desktop,phonePortrait,phoneLandscape,tablet");
   for (const b of bps) if (!BREAKPOINTS[b]) fail(`--breakpoints: '${b}' is not one of ${Object.keys(BREAKPOINTS).join(", ")}`);
   // The locales: the game's own, pseudo, then a CJK and a right-to-left one the game has strings for.
   const have = existsSync(join(inputRoot, "assets", "strings")) ? readdirSync(join(inputRoot, "assets", "strings")).map((f) => f.replace(/\.ogt$/, "")) : [];
-  const cjk = have.find((l) => /^(ja|zh|ko)/.test(l)) ?? "ja";
+  const cjk = (review ? have.find((l) => /^zh/.test(l)) ?? "zh" : undefined) ?? have.find((l) => /^(ja|zh|ko)/.test(l)) ?? "ja";
   const rtl = have.find((l) => /^(ar|he|fa|ur)/.test(l)) ?? "ar";
-  const locales = list("--locales", `game,pseudo,${cjk},${rtl}`).map((l) => (l === "game" ? "" : l));
+  const locales = list("--locales", review ? `game,${cjk},${rtl},pseudo` : `game,pseudo,${cjk},${rtl}`).map((l) => (l === "game" ? "" : l));
   // The check holds every screen to 200 % text (§15.2) in the game's
   // locale and the pseudo-locale (the longest text: CJK and right to left
   // add no length) unless --scales asks for every cell; a preview draws
   // 100 % unless asked.
-  const scalesGiven = opt("--scales") !== undefined;
-  const scales = list("--scales", mode === "check" ? "100,150" : "100").map(Number);
+  const scalesGiven = review || opt("--scales") !== undefined;
+  const scales = list("--scales", mode === "check" || review ? "100,150" : "100").map(Number);
   const settle = Number(opt("--settle") ?? 0.8);
   const highContrast = argv.includes("--high-contrast");
 
@@ -306,16 +312,16 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   const measures: UiMeasure[] = [];
   const images: Image[] = [];
   const t0 = performance.now();
-  for (const screen of screens) for (const style of styles.length ? styles : [""]) for (const bp of bps) {
+  for (const screen of screens) for (const state of states.length ? states : [""]) for (const style of styles.length ? styles : [""]) for (const bp of bps) {
     let base: UiFrameSnapshot | null = null;
     for (const locale of locales) {
       let unscaled: UiFrameSnapshot | null = null;
       for (const scale of scales) {
         if (scale !== 100 && !scalesGiven && locale !== "" && locale !== "pseudo") continue;
-        const cell: UiCell = { screen: screen.name, breakpoint: bp, locale, style, scale, highContrast };
+        const cell: UiCell = { screen: screen.name, breakpoint: bp, locale, style, scale, highContrast, ...(state ? { state } : {}) };
         const index = cells.length;
         const uiFrame = join("cells", `${index}.uiframe.json`);
-        const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands)];
+        const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands), ...(state ? timed(stateCmd.replaceAll("{state}", state)) : [])];
         const r = await runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale);
         const img = r.images.get("cell") ?? null;
         if (mode === "sheet") {
@@ -333,11 +339,15 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
         let found: UiFinding[] = [];
         if (r.frame) {
           writeFileSync(join(outDir, uiFrame), JSON.stringify(r.frame));
-          if (mode !== "sheet") {
+          if (review) measures.push(...measureFrame(r.frame, cell, { image: img }), ...measureLayout(r.frame, cell, grid));
+          else if (mode !== "sheet") {
             found = checkFrame(r.frame, cell);
             measures.push(...measureFrame(r.frame, cell, { image: img }));
           }
-          if (mode !== "sheet" && scale === 100) {
+          if (review) {
+            if (scale === 100) unscaled = r.frame;
+            else if (unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
+          } else if (mode !== "sheet" && scale === 100) {
             unscaled = r.frame;
             if (locale === "") base = r.frame;
             else if (base) found.push(...checkLocales(base, r.frame, cell));
@@ -369,6 +379,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
     process.stdout.write(argv.includes("--json") ? JSON.stringify({ sheets, cells: cells.length, index: join(outDir, "index.json"), uncheckedCount }) + "\n" : `og ui sheet: ${cells.length} captures; ${join(outDir, "index.json")}\n`);
     return exitCode;
   }
+  if (review) return writeReview();
   const findings = mergeFindings(all);
   const project_ = basename(resolve(root!));
   const rules = RULES.map((r) => (r.kind === "finding" ? { ...r, findings: findings.filter((f) => f.rule === r.id).length } : { ...r, measures: measures.filter((m) => m.measure === r.id).length }));
@@ -395,6 +406,50 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   if (argv.includes("--json")) process.stdout.write(JSON.stringify({ cells: cells.length, findings, measures: measures.length, frames, report: join(outDir, "check.json"), uncheckedCount }) + "\n");
   else process.stdout.write(formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s (${join(outDir, "check.json")})`, measures));
   return exitCode;
+
+  /**
+   * The review's pages and report: a contact sheet per screen, state and
+   * style (a row per device and text scale, a column per locale, each
+   * picture labelled), and every measure as read (review.json), summed up
+   * per measure in review.txt. No verdicts.
+   */
+  function writeReview(): number {
+    const sheets: string[] = [];
+    const device = (bp: string) => `${bp} ${BREAKPOINTS[bp]!.width}×${BREAKPOINTS[bp]!.height}`;
+    for (const screen of screens) for (const state of states.length ? states : [""]) for (const style of styles.length ? styles : [""]) {
+      // A row per device and scale, a column per locale.
+      const order = (c: Cell) => (bps.indexOf(c.breakpoint) * scales.length + scales.indexOf(c.scale)) * locales.length + locales.indexOf(c.locale);
+      const mine = cells.filter((c) => c.screen === screen.name && (c.state ?? "") === state && c.style === style).sort((a, b) => order(a) - order(b));
+      const page = sheet(
+        mine.map((c) => ({ image: images[c.index] ?? null, lines: [`${device(c.breakpoint)} ${c.scale}%`, `${c.locale || "game"} #${c.index}`] })),
+        locales.length,
+        300,
+        `${screen.name} / ${state || "as opened"} / ${style || "default style"}`.slice(0, 120),
+      );
+      const file = `review-${[screen.name, state, style].filter(Boolean).join("-").replace(/[^\w.-]+/g, "_")}.png`;
+      writeFileSync(join(outDir, file), encodePng(page));
+      sheets.push(file);
+    }
+    const summary = new Map<string, number[]>();
+    for (const m of measures) summary.set(m.measure, [...(summary.get(m.measure) ?? []), m.value]);
+    const stats = [...summary].map(([measure, values]) => {
+      const v = [...values].sort((a, b) => a - b);
+      const unit = measures.find((m) => m.measure === measure)!.unit;
+      return { measure, unit, count: v.length, min: v[0]!, median: v[Math.floor(v.length / 2)]!, max: v[v.length - 1]! };
+    });
+    const axes = { screens: screens.map((s) => s.name), states: states.length ? states : ["as opened"], styles, devices: bps.map(device), locales: locales.map((l) => l || "game"), scales, grid };
+    writeFileSync(join(outDir, "review.json"), JSON.stringify({ project: basename(resolve(root!)), axes, sheets, stats, cells: cells.map((c) => ({ index: c.index, cell: cellName(c), screen: c.screen, state: c.state ?? "", style: c.style, breakpoint: c.breakpoint, locale: c.locale || "game", scale: c.scale, viewport: [BREAKPOINTS[c.breakpoint]!.width, BREAKPOINTS[c.breakpoint]!.height], dpr: c.dpr, frame: c.frame, uiFrame: c.uiFrame })), measures }, null, 1) + "\n");
+    const text = [
+      `og ui review: ${cells.length} cell(s) (${axes.screens.length} screen(s) × ${axes.states.length} state(s) × ${Math.max(1, styles.length)} style(s) × ${bps.length} device(s) × ${scales.length} scale(s) × ${locales.length} locale(s)) in ${((performance.now() - t0) / 1000).toFixed(1)} s`,
+      "measure        unit             count       min    median       max",
+      ...stats.map((s) => `${s.measure.padEnd(14)} ${s.unit.padEnd(14)} ${String(s.count).padStart(7)} ${String(s.min).padStart(9)} ${String(s.median).padStart(9)} ${String(s.max).padStart(9)}`),
+      `sheets: ${sheets.join(", ")}`,
+      `every measure: ${join(outDir, "review.json")}`,
+    ].join("\n") + "\n";
+    writeFileSync(join(outDir, "review.txt"), text);
+    process.stdout.write(argv.includes("--json") ? JSON.stringify({ sheets: sheets.map((s) => join(outDir, s)), report: join(outDir, "review.json"), cells: cells.length, measures: measures.length, uncheckedCount }) + "\n" : text);
+    return exitCode;
+  }
 }
 
 /**

@@ -1444,6 +1444,28 @@ show screens`, says what a game usually wants):
 - the buttons filled with the primary, per layer;
 - the element count and draw commands per frame.
 
+### 16.6 Review
+
+`og ui review <kit> [--style <pack>]... [--states a,b]` renders what an art
+review reads, in one pass: every page of the kit's review sheet
+(`sheet/project.ogt`, §17.3; a screen's `style:` step is the style axis)
+× each state fixture (`state:<name>`, which the sheet's script puts the
+page in) × each style (`--style`, else every style the sheet names), at
+1920×1080 and on a phone portrait (390×844) and landscape (844×390), 100 %
+and 150 % text, in the game's locale, Chinese, Arabic and the
+pseudo-locale. It writes a contact sheet per page, state and style
+(`review-<page>-<state>-<style>.png`: a row per device and scale, a column
+per locale, each picture labelled), `review.json` with every cell and
+measure, and `review.txt` with each measure's count, minimum, median and
+maximum. The scratch project lives in the worktree's `.og/review/<kit>`,
+so repeated reviews share one resident host.
+
+It measures and never judges. Beside §16.5's measures: text drawn past
+its box (`overflow`, CSS px), text its clip cuts (`clip`, CSS px²), each
+element's farthest edge from the grid (`grid`, CSS px, `--grid` default
+4) and the gaps between the children of each row and column (`gap`: how
+many distinct gaps, with their values).
+
 ## 17. Extensions
 
 The core owns elements, layout, motion, drawing, documents, style grammar

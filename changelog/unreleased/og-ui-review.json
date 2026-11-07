@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og ui review",
+      "summary": "og ui review <kit> [--style <pack>]... [--states a,b] renders every page of a kit's review sheet × state fixture (state:<name>) × style at 1920×1080 and on a phone portrait and landscape, 100 % and 150 % text, in the game's locale, Chinese, Arabic and the pseudo-locale: labelled contact sheets per page, state and style, review.json with every measure and review.txt with each one's count, minimum, median and maximum. Beside og ui check's measures it reads text drawn past its box (overflow), text its clip cuts (clip), edges off the grid (grid, --grid default 4) and the gaps in each row and column (gap). Measures only, no verdicts (docs/ui.md §16.6)."
+    }
+  ]
+}

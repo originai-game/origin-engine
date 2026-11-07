@@ -111,6 +111,8 @@ export interface UiCell {
   scale: number;
   /** Laid out in high-contrast mode. */
   highContrast: boolean;
+  /** The state fixture it was put in (`og ui review`); absent or "": the screen as it opens. */
+  state?: string;
 }
 
 export interface UiFinding {
@@ -778,6 +780,67 @@ export function measureFrame(frame: UiFrameSnapshot, cell: UiCell, opts: Measure
 }
 
 /**
+ * The layout's numbers, for `og ui review` (docs/ui.md §16.6): what text
+ * draws past its box (`overflow`), what its clip takes (`clip`), how far each
+ * edge is from the `grid` (CSS px), and the gaps between siblings in a row or
+ * column (`gap`). Every value is reported as read, with no threshold: the
+ * reviewer and the style's skill judge them.
+ */
+export function measureLayout(frame: UiFrameSnapshot, cell: UiCell, grid = 4): UiMeasure[] {
+  const f: UiFrameSnapshot = { ...frame, texts: drawnTexts(frame) };
+  const out: UiMeasure[] = [];
+  const where = cellName(cell);
+  const paths = elementPaths(f);
+  const add = (measure: string, m: Omit<UiMeasure, "measure" | "cell">) => out.push({ ...m, measure, cell: where, rect: m.rect && (m.rect.map(r1) as Rect4) });
+  for (const t of f.texts) {
+    if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
+    const i = owner(f, t);
+    const path = i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`;
+    const e = i >= 0 ? f.elements[i]! : undefined;
+    const [x, , w, h] = t.bounds;
+    if (e) {
+      const past = Math.max(0, e.x - x) + Math.max(0, x + w - (e.x + e.width));
+      if (past > 0.05) add("overflow", { paths: [path], rect: t.bounds, value: r1(past), unit: "CSS px", detail: `"${t.text.slice(0, 32)}" ${r1(w)} CSS px wide in a ${r1(e.width)} px box`, prop: `${path}: width, wrap or ellipsis` });
+    }
+    const shown = intersect(t.bounds, t.clip);
+    const cut = w * h - Math.max(0, shown[2]) * Math.max(0, shown[3]);
+    if (cut > 0.05) add("clip", { paths: [path], rect: t.bounds, value: r1(cut), unit: "CSS px²", detail: `"${t.text.slice(0, 32)}": ${r1(w - Math.max(0, shown[2]))} of ${r1(w)} px wide, ${r1(h - Math.max(0, shown[3]))} of ${r1(h)} px high cut${e?.clipped ? " (at a scroll's edge)" : ""}`, prop: `${path}: its box or its container's clip` });
+  }
+  const off = (v: number) => {
+    const m = ((v % grid) + grid) % grid;
+    return Math.min(m, grid - m);
+  };
+  for (const [i, e] of f.elements.entries()) {
+    if (e.width * e.height <= 0) continue;
+    const edges = [e.x, e.y, e.x + e.width, e.y + e.height].map(off);
+    const most = Math.max(...edges);
+    if (most > 0.05) add("grid", { paths: [paths[i]!], rect: rectOf(e), value: r1(most), unit: "CSS px", detail: `left, top, right, bottom ${edges.map(r1).join(", ")} CSS px off the ${grid} px grid`, prop: `${paths[i]!}: its size, padding or gap` });
+  }
+  // Gaps: consecutive children of a row (or a column) along its axis.
+  const children = new Map<string, number[]>();
+  for (const [i, e] of f.elements.entries()) {
+    const p = paths[i]!;
+    const parent = p.slice(0, p.lastIndexOf("/"));
+    if (e.width * e.height > 0 && parent) children.set(parent, [...(children.get(parent) ?? []), i]);
+  }
+  const byPath = new Map(paths.map((p, i) => [p, i]));
+  for (const [parent, kids] of children) {
+    const pe = f.elements[byPath.get(parent) ?? -1];
+    if (!pe || (pe.kind !== "row" && pe.kind !== "column") || kids.length < 2) continue;
+    const row = pe.kind === "row";
+    const sorted = [...kids].sort((a, b) => (row ? f.elements[a]!.x - f.elements[b]!.x : f.elements[a]!.y - f.elements[b]!.y));
+    const gaps: number[] = [];
+    for (let k = 1; k < sorted.length; k++) {
+      const a = f.elements[sorted[k - 1]!]!, b = f.elements[sorted[k]!]!;
+      gaps.push(r1(row ? b.x - (a.x + a.width) : b.y - (a.y + a.height)));
+    }
+    const distinct = [...new Set(gaps)].sort((a, b) => a - b);
+    add("gap", { paths: [parent], rect: rectOf(pe), value: distinct.length, unit: "distinct gaps", detail: `${row ? "row" : "column"} of ${kids.length}: gaps ${gaps.join(", ")} CSS px`, prop: `${parent}: gap, or its children's margins` });
+  }
+  return out;
+}
+
+/**
  * Names and texts left in the game's own language in another locale's
  * frame: a path whose name (or text) with letters is the same in both.
  */
@@ -850,7 +913,7 @@ export function measureScale(baseFrame: UiFrameSnapshot, scaledFrame: UiFrameSna
 }
 
 export function cellName(c: UiCell): string {
-  return [c.screen, c.breakpoint, c.locale || "game locale", c.style || null, c.scale !== 100 ? `${c.scale} %` : null, c.highContrast ? "high contrast" : null].filter(Boolean).join(" ");
+  return [c.screen, c.state || null, c.breakpoint, c.locale || "game locale", c.style || null, c.scale !== 100 ? `${c.scale} %` : null, c.highContrast ? "high contrast" : null].filter(Boolean).join(" ");
 }
 
 /** The same finding in several cells, once: by rule, paths and prop. */

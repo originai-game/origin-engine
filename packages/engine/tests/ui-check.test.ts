@@ -6,7 +6,7 @@
 // for its value, its path and what it leaves out. The rules that wait for
 // later phases are listed as such, never dropped.
 import { expect, test } from "bun:test";
-import { checkFrame, checkLocales, elementPaths, formatText, measureExtremes, measureFrame, measureScale, mergeFindings, neighbour, padFindings, padGraph, pseudo, RULES, screensFromHelp, screensFromPlaytest, type Rect4, type UiCell, type UiElementDump, type UiFrameSnapshot, type UiMeasure } from "../src/node/ui-check.ts";
+import { checkFrame, checkLocales, elementPaths, formatText, measureExtremes, measureFrame, measureLayout, measureScale, mergeFindings, neighbour, padFindings, padGraph, pseudo, RULES, screensFromHelp, screensFromPlaytest, type Rect4, type UiCell, type UiElementDump, type UiFrameSnapshot, type UiMeasure } from "../src/node/ui-check.ts";
 
 const cell: UiCell = { screen: "s", breakpoint: "phonePortrait", locale: "", style: "", scale: 100, highContrast: false };
 
@@ -475,4 +475,24 @@ test("a measure carries its number, unit, cell and box; the extremes are each pa
   const text = formatText([], "", all);
   expect(text).toContain("touch-target (lowest first):");
   expect(text).toContain("30 CSS px  Close");
+});
+
+test("og ui review's layout measures read overflow, clip, grid offsets and gaps as they are, with no threshold", () => {
+  const els = [
+    el("Row", "", "row", "", [0, 100, 200, 40]),
+    el("A", "Row", "panel", "", [0, 100, 40, 40]),
+    el("B", "Row", "panel", "", [48, 100, 40, 40]),
+    el("C", "Row", "panel", "", [94, 100, 40, 40]),
+    el("Name", "", "label", "", [148, 160, 40, 20], { text: "Name" }),
+  ];
+  // "Name" draws 50 px wide in its 40 px box (10 past it), and a clip 30 px wide shows 30 of its 50 px.
+  const f = frame({ elements: els, texts: [{ text: "Name", size: 14, bounds: [148, 160, 50, 20], clip: [0, 150, 178, 40], color: [1, 1, 1, 1] }] });
+  const by = (id: string) => measureLayout(f, cell).filter((m) => m.measure === id).map((m) => [m.paths.join(" × "), m.value, m.detail] as const);
+  expect(by("overflow").map(([p, v]) => [p, v])).toEqual([["Name", 10]]);
+  expect(by("clip").map(([p, v]) => [p, v])).toEqual([["Name", 400]]);
+  // C starts 2 px off the 4 px grid (94), and so does its right edge (134); the rest sit on it.
+  expect(by("grid").map(([p, v]) => [p, v])).toEqual([["Row/C", 2]]);
+  expect(by("gap")).toEqual([["Row", 2, "row of 3: gaps 8, 6 CSS px"]]);
+  // On a 2 px grid nothing is off it.
+  expect(measureLayout(f, cell, 2).filter((m) => m.measure === "grid")).toEqual([]);
 });
