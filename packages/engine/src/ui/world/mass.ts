@@ -67,10 +67,10 @@ export function damageNumbers(id: string, desc: Api.DamageNumbersDesc = {}): voi
   // Pop in past its size, hold, rise and fade (the shared timeline; a crit is the same, larger).
   const keys: Api.MassKey[] = [
     { t: 0, scale: 0.5, alpha: 0, offsetY: 0 },
-    { t: 0.07, scale: 1.3, alpha: 1, offsetY: -6, ease: "out" },
-    { t: 0.18, scale: 1, alpha: 1, offsetY: -10, ease: "back" },
-    { t: 0.7, scale: 1, alpha: 1, offsetY: -34, ease: "out" },
-    { t: 1, scale: 0.9, alpha: 0, offsetY: -48, ease: "in" },
+    { t: 0.07, scale: 1.3, alpha: 1, offsetY: -6, ease: "power1.out" },
+    { t: 0.18, scale: 1, alpha: 1, offsetY: -10, ease: "back.out" },
+    { t: 0.7, scale: 1, alpha: 1, offsetY: -34, ease: "power1.out" },
+    { t: 1, scale: 0.9, alpha: 0, offsetY: -48, ease: "power1.in" },
   ];
   const base = (plus: boolean): Api.MassTemplateDesc => ({
     kind: "number",

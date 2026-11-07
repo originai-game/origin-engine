@@ -1221,7 +1221,7 @@ impl UiApi for WebHost {
     fn og_ui_open_world_panel(&self, id: String, desc: Option<String>) -> String {
         rt::og_ui_open_world_panel(id, desc)
     }
-    fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> u32 {
+    fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> String {
         rt::og_ui_define_mass(name, desc)
     }
     fn og_ui_spawn_mass(&self, template: u32, instances: String) {

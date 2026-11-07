@@ -11980,7 +11980,6 @@
         "WorldPanelDesc",
         "PanelInfo",
         "MassKind",
-        "MassEase",
         "MassSpace",
         "ParticleShape",
         "MassKey",
@@ -16404,7 +16403,7 @@
         },
         {
           "name": "defineMass",
-          "doc": "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle.",
+          "doc": "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. Invalid timing text returns an error naming the text and required syntax; it never falls back to linear.",
           "params": [
             {
               "name": "name",
@@ -16419,7 +16418,7 @@
               "doc": "What it draws and how it moves."
             }
           ],
-          "returns": "u32",
+          "returns": "Result<u32>",
           "publish": true
         },
         {
@@ -67238,26 +67237,6 @@
         "particle": "A particle of particleShape (confetti, sparks)."
       }
     },
-    "MassEase": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "How a mass element's timeline moves into a key.",
-      "type": "string",
-      "enum": [
-        "linear",
-        "out",
-        "in",
-        "back",
-        "step"
-      ],
-      "x-og-variants": {
-        "linear": "Evenly.",
-        "out": "Fast then slow.",
-        "in": "Slow then fast.",
-        "back": "Out, past the key and back (a pop).",
-        "step": "Holds the key before until this one."
-      }
-    },
     "MassSpace": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -67328,9 +67307,9 @@
           "maximum": 1
         },
         "ease": {
-          "$ref": "#/$defs/MassEase",
-          "description": "How it moves into this key.",
-          "default": "linear"
+          "$ref": "#/$defs/Ease",
+          "description": "Shared GSAP names or cubic-bezier()/steps() strings. Non-opcode curves use a deduplicated 4097-sample presentation LUT; step progress is quantized before lookup.",
+          "default": "none"
         }
       },
       "additionalProperties": false

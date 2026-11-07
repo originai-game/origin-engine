@@ -134,7 +134,7 @@ export const widgets = {
     parse(abi().og_ui_open_world_anchor(id, json(desc))),
   openWorldPanel: (id: string, desc?: Api.WorldPanelDesc): Api.PanelInfo =>
     parse(abi().og_ui_open_world_panel(id, json(desc))),
-  defineMass: (name: string, desc?: Api.MassTemplateDesc): number => abi().og_ui_define_mass(name, json(desc)),
+  defineMass: (name: string, desc?: Api.MassTemplateDesc): Api.Result<number> => parse(abi().og_ui_define_mass(name, json(desc))),
   spawnMass: (template: number, instances: Api.MassInstance[]): void =>
     abi().og_ui_spawn_mass(template, JSON.stringify(instances)),
   pushMass: (template: number, instances: Api.MassInstance[]): void =>

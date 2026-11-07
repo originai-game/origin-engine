@@ -43,7 +43,9 @@ export function massTemplate(name: string, key: string, desc: () => Api.MassTemp
   const h = kit.memory(`${name}~mass`, -1);
   const k = kit.memory(`${name}~massKey`, -1);
   if (h >= 0 && k === keyHash) return h;
-  const handle = kit.defineMass(name, desc());
+  const result = kit.defineMass(name, desc());
+  if (!result.ok) throw new Error(result.reason);
+  const handle = result.value;
   kit.remember(`${name}~mass`, handle);
   kit.remember(`${name}~massKey`, keyHash);
   return handle;

@@ -38707,16 +38707,6 @@ export interface PanelInfo {
 export type MassKind = "number" | "text" | "bar" | "icon" | "particle";
 
 /**
- * How a mass element's timeline moves into a key.
- * - `"linear"`: Evenly.
- * - `"out"`: Fast then slow.
- * - `"in"`: Slow then fast.
- * - `"back"`: Out, past the key and back (a pop).
- * - `"step"`: Holds the key before until this one.
- */
-export type MassEase = "linear" | "out" | "in" | "back" | "step";
-
-/**
  * Where a mass element's position is.
  * - `"world"`: A world point, projected by the GPU each frame.
  * - `"screen"`: CSS pixels of the screen.
@@ -38774,11 +38764,11 @@ export interface MassKey {
    */
   readonly alpha?: number;
   /**
-   * How it moves into this key.
+   * Shared GSAP names or cubic-bezier()/steps() strings. Non-opcode curves use a deduplicated 4097-sample presentation LUT; step progress is quantized before lookup.
    *
-   * @default "linear"
+   * @default "none"
    */
-  readonly ease?: MassEase;
+  readonly ease?: Ease;
 }
 
 /**
@@ -49750,12 +49740,12 @@ export declare namespace og {
      */
     function openWorldPanel(id: string, desc?: WorldPanelDesc): PanelInfo;
     /**
-     * Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle.
+     * Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. Invalid timing text returns an error naming the text and required syntax; it never falls back to linear.
      *
      * @param name Its name.
      * @param desc What it draws and how it moves.
      */
-    function defineMass(name: string, desc?: MassTemplateDesc): number;
+    function defineMass(name: string, desc?: MassTemplateDesc): Result<number>;
     /**
      * Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.
      *

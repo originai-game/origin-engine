@@ -24596,7 +24596,7 @@
           "optional": true
         }
       ],
-      "returns": "u32",
+      "returns": "Result<u32>",
       "publish": true
     },
     {

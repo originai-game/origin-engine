@@ -14,7 +14,7 @@ interface UiScope {
   # members follow, each quoted below
 ```
 
-<sub>Module `ui` line 7924</sub>
+<sub>Module `ui` line 7917</sub>
 
 <a id="member-UiScope-id"></a>
 
@@ -32,7 +32,7 @@ prop id String "The stable scope ID." {
 }
 ```
 
-<sub>Module `ui` line 7926</sub>
+<sub>Module `ui` line 7919</sub>
 
 <a id="member-UiScope-writable"></a>
 
@@ -64,7 +64,7 @@ fn writable {
 }
 ```
 
-<sub>Module `ui` line 7929</sub>
+<sub>Module `ui` line 7922</sub>
 
 <a id="member-UiScope-readable"></a>
 
@@ -100,7 +100,7 @@ fn readable {
 }
 ```
 
-<sub>Module `ui` line 7937</sub>
+<sub>Module `ui` line 7930</sub>
 
 <a id="member-UiScope-derived"></a>
 
@@ -139,7 +139,7 @@ fn derived {
 }
 ```
 
-<sub>Module `ui` line 7948</sub>
+<sub>Module `ui` line 7941</sub>
 
 <a id="member-UiScope-get"></a>
 
@@ -169,7 +169,7 @@ fn get {
 }
 ```
 
-<sub>Module `ui` line 7961</sub>
+<sub>Module `ui` line 7954</sub>
 
 <a id="member-UiScope-collection"></a>
 
@@ -205,7 +205,7 @@ fn collection {
 }
 ```
 
-<sub>Module `ui` line 7968</sub>
+<sub>Module `ui` line 7961</sub>
 
 <a id="member-UiScope-takeErrors"></a>
 
@@ -229,7 +229,7 @@ fn takeErrors {
 }
 ```
 
-<sub>Module `ui` line 7979</sub>
+<sub>Module `ui` line 7972</sub>
 
 <a id="member-UiScope-dispose"></a>
 
@@ -253,4 +253,4 @@ fn dispose {
 }
 ```
 
-<sub>Module `ui` line 7984</sub>
+<sub>Module `ui` line 7977</sub>

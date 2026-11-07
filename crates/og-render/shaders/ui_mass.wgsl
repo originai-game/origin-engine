@@ -127,7 +127,32 @@ struct MassOut {
   @location(4) @interpolate(flat) batch: u32,
 };
 
-fn ease(code: f32, k0: f32) -> f32 {
+fn ease_lut(base: u32, k: f32) -> f32 {
+  let info = table(base);
+  if (k <= 0.0) { return info.y; }
+  if (k >= 1.0) { return info.z; }
+  if (info.x == 0.0) {
+    let x = k * 4096.0;
+    let i = min(u32(x), 4095u);
+    return mix(table(base + 1u + i).y, table(base + 2u + i).y, x - f32(i));
+  }
+  // Quantize time first: interpolation can only reconstruct discrete
+  // step ordinates, never ramp between the times on either side of a jump.
+  let product = k * info.x;
+  var ordinal = floor(product);
+  if (product == ordinal && fma(k, info.x, -product) < 0.0) { ordinal -= 1.0; }
+  var lo = 0u;
+  var hi = 4096u;
+  for (var j = 0u; j < 13u; j++) {
+    let mid = (lo + hi) / 2u;
+    if (table(base + 1u + mid).x <= ordinal) { lo = mid; } else { hi = mid; }
+  }
+  let a = table(base + 1u + lo);
+  let b = table(base + 1u + hi);
+  return mix(a.y, b.y, clamp((ordinal - a.x) / max(b.x - a.x, 1.0), 0.0, 1.0));
+}
+
+fn ease(code: f32, k0: f32, lut: f32) -> f32 {
   let k = clamp(k0, 0.0, 1.0);
   let c = u32(code + 0.5);
   if (c == 1u) { return 1.0 - (1.0 - k) * (1.0 - k); }
@@ -136,7 +161,8 @@ fn ease(code: f32, k0: f32) -> f32 {
     let u = k - 1.0;
     return 1.0 + 2.70158 * u * u * u + 1.70158 * u * u;
   }
-  if (c == 4u) { return 0.0; }
+  if (c == 4u) { return select(0.0, 1.0, k >= 1.0); }
+  if (c == 5u) { return ease_lut(u32(lut), k); }
   return k;
 }
 
@@ -152,7 +178,7 @@ fn sample_keys(tp: MassTemplate, t: f32) -> vec4<f32> {
     let a = tp.keys[i - 1u];
     let k = tp.keys[i];
     if (t <= k.x) {
-      let e = ease(k.w, (t - a.x) / max(k.x - a.x, 1e-6));
+      let e = ease(k.w, (t - a.x) / max(k.x - a.x, 1e-6), tp.offsets[i].z);
       let oa = tp.offsets[i - 1u].xy;
       let ob = tp.offsets[i].xy;
       return vec4<f32>(mix(oa, ob, e), mix(a.y, k.y, e), mix(a.z, k.z, e));

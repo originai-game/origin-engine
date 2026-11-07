@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {"member":"og.ui.MassKey.ease","change":"Mass elements use the shared Ease type instead of MassEase.","fix":"Use none, power1.out, power1.in, back.out and steps(1,end) in place of linear, out, in, back and step. Other shared curves are now supported."},
+    {"member":"og.ui.defineMass","change":"Returns Result<number> and reports invalid timing text instead of silently substituting linear.","fix":"Check ok before using value, or use massTemplate for managed templates."}
+  ],
+  "added": [
+    {"member":"og.ui mass timing","summary":"Shared parameterized and named curves on the GPU through deduplicated 4097-sample lookup tables, preserving discontinuous step timing."}
+  ]
+}

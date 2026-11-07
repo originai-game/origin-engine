@@ -17,7 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `offsetY` | `number` | `0` | — | `cssPx` | — | Moves it down (negative rises). |
 | `scale` | `number` | `1` | ≥ 0 | — | — | Its scale. |
 | `alpha` | `number` | `1` | 0 … 1 | — | — | Its opacity. |
-| `ease` | `MassEase` | `"linear"` | — | — | — | How it moves into this key. |
+| `ease` | `Ease` | `"none"` | — | — | — | Shared GSAP names or cubic-bezier()/steps() strings. Non-opcode curves use a deduplicated 4097-sample presentation LUT; step progress is quantized before lookup. |
 
 ```ogt
 struct MassKey {
@@ -43,8 +43,10 @@ struct MassKey {
     min 0
     max 1
   }
-  field ease MassEase "How it moves into this key."
+  field ease Ease "Shared GSAP names or cubic-bezier()/steps() strings. Non-opcode curves use a deduplicated 4097-sample presentation LUT; step progress is quantized before lookup." {
+    default none
+  }
 }
 ```
 
-<sub>Module `ui` line 7599</sub>
+<sub>Module `ui` line 7590</sub>

@@ -3214,7 +3214,7 @@ pub fn og_ui_open_world_panel(env: Env, id: String, desc: Option<String>) -> Str
 }
 
 #[napi(js_name = "og_ui_define_mass")]
-pub fn og_ui_define_mass(env: Env, name: String, desc: Option<String>) -> u32 {
+pub fn og_ui_define_mass(env: Env, name: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_define_mass(&Host, name, desc)
 }

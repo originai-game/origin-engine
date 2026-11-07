@@ -1076,7 +1076,7 @@ export interface HostAbi<A, V> {
   /** `og.ui.openWorldPanel` */
   og_ui_open_world_panel(id: string, desc: string | undefined): string;
   /** `og.ui.defineMass` */
-  og_ui_define_mass(name: string, desc: string | undefined): number;
+  og_ui_define_mass(name: string, desc: string | undefined): string;
   /** `og.ui.spawnMass` */
   og_ui_spawn_mass(template: number, instances: string): void;
   /** `og.ui.pushMass` */

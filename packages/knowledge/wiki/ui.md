@@ -667,13 +667,12 @@ module ui {
 | [`PanelInfo`](ui/type-PanelInfo.md) | struct |  | What the pointer does on a world panel this tick. |
 | [`og.ui.openWorldPanel`](ui/fn-openWorldPanel.md) | function | `(id: string, desc?: WorldPanelDesc): PanelInfo` | Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. |
 | [`MassKind`](ui/type-MassKind.md) | enum |  | What a mass element template draws. |
-| [`MassEase`](ui/type-MassEase.md) | enum |  | How a mass element's timeline moves into a key. |
 | [`MassSpace`](ui/type-MassSpace.md) | enum |  | Where a mass element's position is. |
 | [`ParticleShape`](ui/type-ParticleShape.md) | enum |  | A particle's shape. |
 | [`MassKey`](ui/type-MassKey.md) | desc struct |  | A key of a mass element's timeline, evaluated in the shader. |
 | [`MassTemplateDesc`](ui/type-MassTemplateDesc.md) | desc struct |  | A mass element template (docs/ui.md §1): declared once, then instanced thousands of times a frame with a few values each. |
 | [`MassInstance`](ui/type-MassInstance.md) | desc struct |  | One mass element: a few values; its template does the rest. |
-| [`og.ui.defineMass`](ui/fn-defineMass.md) | function | `(name: string, desc?: MassTemplateDesc): number` | Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. |
+| [`og.ui.defineMass`](ui/fn-defineMass.md) | function | `(name: string, desc?: MassTemplateDesc): Result<number>` | Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. |
 | [`og.ui.spawnMass`](ui/fn-spawnMass.md) | function | `(template: number, instances: readonly MassInstance[]): void` | Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). |
 | [`og.ui.pushMass`](ui/fn-pushMass.md) | function | `(template: number, instances: readonly MassInstance[]): void` | Show instances of a template for this tick only (overhead bars, nameplates, status icons rebuilt every tick with their values). |
 | [`og.ui.massCount`](ui/fn-massCount.md) | function | `(template: number): number` | The live spawned instances of a template. |

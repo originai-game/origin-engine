@@ -2894,6 +2894,7 @@ dependencies = [
  "objc2-metal 0.3.2",
  "og-core",
  "og-lanes",
+ "og-tween",
  "pollster",
  "serde",
  "serde_json",
@@ -2963,6 +2964,7 @@ dependencies = [
  "og-geom",
  "og-render",
  "og-tilemap",
+ "og-tween",
  "pollster",
  "winit",
 ]

@@ -282,3 +282,115 @@ fn ui_world_occludes_and_draws_mass_elements() {
         "confetti still at the centre"
     );
 }
+
+#[test]
+#[ignore = "requires GPU"]
+fn mass_timing_luts_draw_at_the_shared_curves_positions() {
+    use og_core::glam::{Vec2, Vec3};
+    use og_render::{
+        Overlay, RenderDesc, RenderScene, RenderTarget, Renderer, UiMassBatch, UiMassInstance,
+        UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiParticleShape,
+    };
+    use og_tween::{Ease, StepPosition};
+    use std::sync::Arc;
+    let curves = [
+        Ease::Linear,
+        Ease::QuadOut,
+        Ease::CubicBezier([0.17, 0.85, 0.63, 0.08]),
+        Ease::Steps {
+            count: 4,
+            position: StepPosition::JumpStart,
+        },
+    ];
+    let desc = RenderDesc {
+        width: 480,
+        height: 280,
+        ..Default::default()
+    };
+    let mut renderer = Renderer::new_blocking(&desc).unwrap();
+    for tick in [1, 3] {
+        let mut scene = RenderScene::new();
+        scene.environment.background = og_render::Background::Color(Vec3::splat(0.015));
+        let mut overlay = Overlay::new(480.0, 280.0, 0.0);
+        overlay.ui.tick = tick;
+        let mut centers = Vec::new();
+        for (row, ease) in curves.iter().copied().enumerate() {
+            let y = 50.0 + row as f32 * 60.0;
+            let x = 40.0 + 360.0 * ease.apply(tick as f32 / 8.0);
+            centers.push((x.round() as u32, y as u32));
+            for (width, height, at, color, layer) in [
+                (360.0, 4.0, 220.0, [0.1, 0.12, 0.15, 1.0], 0),
+                (2.0, 40.0, x, [1.0, 0.6, 0.1, 1.0], 1),
+            ] {
+                overlay.ui.mass.push(UiMassBatch {
+                    template: Arc::new(UiMassTemplate {
+                        kind: UiMassKind::Particle {
+                            shape: UiParticleShape::Square,
+                        },
+                        size: Vec2::new(width, height),
+                        ..Default::default()
+                    }),
+                    space: UiMassSpace::Screen,
+                    instances: vec![UiMassInstance {
+                        position: [at, y, 0.0],
+                        color,
+                        scale: 1.0,
+                        ..Default::default()
+                    }],
+                    layer,
+                    clip: None,
+                });
+            }
+            overlay.ui.mass.push(UiMassBatch {
+                template: Arc::new(UiMassTemplate {
+                    kind: UiMassKind::Particle {
+                        shape: UiParticleShape::Square,
+                    },
+                    size: Vec2::new(16.0, 24.0),
+                    lifetime: 8,
+                    keys: vec![
+                        UiMassKey::default(),
+                        UiMassKey {
+                            t: 1.0,
+                            offset: Vec2::new(360.0, 0.0),
+                            ease,
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }),
+                space: UiMassSpace::Screen,
+                instances: vec![UiMassInstance {
+                    position: [40.0, y, 0.0],
+                    color: [0.05, 0.85, 1.0, 1.0],
+                    scale: 1.0,
+                    ..Default::default()
+                }],
+                layer: 2,
+                clip: None,
+            });
+        }
+        scene.overlay = Some(overlay);
+        renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+        let image = renderer.read_offscreen().unwrap();
+        for (x, y) in centers {
+            let at = ((y * image.width + x) * 4) as usize;
+            assert!(
+                image.pixels[at + 1] > 200 && image.pixels[at + 2] > 240,
+                "GPU square misses CPU marker at {x},{y}"
+            );
+            let away = ((y * image.width + x + 16) * 4) as usize;
+            assert!(
+                image.pixels[away + 2] < 180,
+                "square has wrong size or offset"
+            );
+        }
+        if let Some(dir) = std::env::var_os("OG_TIMING_FRAMES") {
+            gfx::save_png(
+                &std::path::PathBuf::from(dir).join(format!("mass-timing-{tick}.png")),
+                &image,
+            )
+            .unwrap();
+        }
+    }
+}

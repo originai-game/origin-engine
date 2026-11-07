@@ -12,12 +12,14 @@
 //! age, formats the number and places each glyph (`shaders/ui_mass.wgsl`),
 //! so nothing is laid out per element on the CPU.
 //!
-//! [`UiMassTemplate::sample`] is the timeline on the CPU, the same
-//! arithmetic as the shader's `sample_keys` (`tests` hold them to each
-//! other's values through [`format_number`] and `sample`).
+//! [`UiMassTemplate::sample`] evaluates the shared timing value on the CPU.
+//! The shader uses exact simple opcodes or a deduplicated 4097-sample LUT;
+//! readback tests measure approximation error and preserve step boundaries.
 
 use crate::{FontHandle, TextureHandle};
 use glam::Vec2;
+use og_tween::{Ease, StepPosition};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 /// What each element of a template draws.
@@ -61,46 +63,89 @@ pub enum UiParticleShape {
     Diamond,
 }
 
-/// How an element's timeline moves between keys.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum UiMassEase {
-    #[default]
+/// Private shader opcodes; authors always use the shared timing value.
+#[derive(Clone, Copy)]
+enum EaseOpcode {
     Linear,
-    /// Fast then slow (quadratic).
     Out,
-    /// Slow then fast (quadratic).
     In,
-    /// Out, past the next key and back (a pop).
     Back,
-    /// Holds the key until the next one.
     Step,
+    Lut,
 }
 
-impl UiMassEase {
-    pub(crate) fn code(self) -> f32 {
-        match self {
-            UiMassEase::Linear => 0.0,
-            UiMassEase::Out => 1.0,
-            UiMassEase::In => 2.0,
-            UiMassEase::Back => 3.0,
-            UiMassEase::Step => 4.0,
-        }
+/// Samples per distinct non-opcode curve, plus one metadata texel.
+pub const UI_MASS_EASE_SAMPLES: usize = 4097;
+
+#[derive(Default)]
+pub(crate) struct EaseTables {
+    samples: BTreeMap<[u32; 5], Vec<[f32; 4]>>,
+    offsets: BTreeMap<[u32; 5], u32>,
+}
+
+impl EaseTables {
+    pub(crate) fn begin_frame(&mut self) {
+        self.offsets.clear();
     }
 
-    /// The eased fraction of `k` (0 to 1).
-    pub fn apply(self, k: f32) -> f32 {
-        let k = k.clamp(0.0, 1.0);
-        match self {
-            UiMassEase::Linear => k,
-            UiMassEase::Out => 1.0 - (1.0 - k) * (1.0 - k),
-            UiMassEase::In => k * k,
-            UiMassEase::Back => {
-                let c = 1.70158;
-                let u = k - 1.0;
-                1.0 + (c + 1.0) * u * u * u + c * u * u
-            }
-            UiMassEase::Step => 0.0,
+    pub(crate) fn end_frame(&mut self) {
+        self.samples.retain(|key, _| self.offsets.contains_key(key));
+    }
+
+    fn pack(&mut self, ease: Ease, table: &mut Vec<[f32; 4]>) -> (EaseOpcode, u32) {
+        let opcode = match ease {
+            Ease::Linear => EaseOpcode::Linear,
+            Ease::QuadOut => EaseOpcode::Out,
+            Ease::QuadIn => EaseOpcode::In,
+            Ease::BackOut => EaseOpcode::Back,
+            Ease::Steps {
+                count: 1,
+                position: StepPosition::JumpEnd,
+            } => EaseOpcode::Step,
+            _ => EaseOpcode::Lut,
+        };
+        if !matches!(opcode, EaseOpcode::Lut) {
+            return (opcode, 0);
         }
+        let mut key = [ease.code(), 0, 0, 0, 0];
+        match ease {
+            Ease::CubicBezier(c) => key[1..].copy_from_slice(&c.map(f32::to_bits)),
+            Ease::Steps { count, position } => {
+                key[1] = count;
+                key[2] = position as u32;
+            }
+            _ => {}
+        }
+        let base = *self.offsets.entry(key).or_insert_with(|| {
+            let base = table.len() as u32;
+            let samples = self.samples.entry(key).or_insert_with(|| {
+                let mut samples = Vec::with_capacity(UI_MASS_EASE_SAMPLES + 1);
+                let count = match ease {
+                    Ease::Steps { count, .. } => count,
+                    _ => 0,
+                };
+                samples.push([count as f32, ease.apply(0.0), ease.apply(1.0), 0.0]);
+                for i in 0..UI_MASS_EASE_SAMPLES {
+                    let t = i as f64 / (UI_MASS_EASE_SAMPLES - 1) as f64;
+                    let (x, at) = if count == 0 {
+                        (t as f32, t as f32)
+                    } else {
+                        // The lookup domain is the *integer step ordinal*, not
+                        // time. Interpolating sparse ordinals never softens a jump.
+                        let ordinal = (t * f64::from(count)).floor();
+                        (
+                            ordinal as f32,
+                            ((ordinal + 0.5) / f64::from(count)).min(1.0) as f32,
+                        )
+                    };
+                    samples.push([x, ease.apply(at), 0.0, 0.0]);
+                }
+                samples
+            });
+            table.extend_from_slice(samples);
+            base
+        });
+        (opcode, base)
     }
 }
 
@@ -113,7 +158,7 @@ pub struct UiMassKey {
     pub offset: Vec2,
     pub scale: f32,
     pub alpha: f32,
-    pub ease: UiMassEase,
+    pub ease: Ease,
 }
 
 impl Default for UiMassKey {
@@ -123,7 +168,7 @@ impl Default for UiMassKey {
             offset: Vec2::ZERO,
             scale: 1.0,
             alpha: 1.0,
-            ease: UiMassEase::Linear,
+            ease: Ease::Linear,
         }
     }
 }
@@ -479,6 +524,7 @@ pub(crate) fn template_gpu(
     clip: ([f32; 4], u32),
     font: Option<&crate::sprites::FontLayout>,
     table: &mut Vec<[f32; 4]>,
+    eases: &mut EaseTables,
 ) -> TemplateGpu {
     let t = &*b.template;
     let base = table.len() as u32;
@@ -600,8 +646,9 @@ pub(crate) fn template_gpu(
         };
     }
     for (i, k) in keys.iter().enumerate() {
-        g.keys[i] = [k.t, k.scale, k.alpha, k.ease.code()];
-        g.offsets[i] = [k.offset.x, k.offset.y, 0.0, 0.0];
+        let (opcode, base) = eases.pack(k.ease, table);
+        g.keys[i] = [k.t, k.scale, k.alpha, opcode as u32 as f32];
+        g.offsets[i] = [k.offset.x, k.offset.y, base as f32, 0.0];
     }
     g
 }
@@ -633,7 +680,7 @@ mod tests {
                     t: 1.0,
                     offset: Vec2::new(0.0, -40.0),
                     alpha: 0.0,
-                    ease: UiMassEase::Out,
+                    ease: Ease::QuadOut,
                     ..Default::default()
                 },
                 UiMassKey {
@@ -652,5 +699,199 @@ mod tests {
         assert!((o.y + 30.0).abs() < 1e-4, "{o}");
         assert!((s - 1.25).abs() < 1e-4 && (a - 0.25).abs() < 1e-4);
         assert_eq!(tpl.sample(3.0).2, 0.0);
+    }
+
+    #[test]
+    #[ignore = "requires GPU"]
+    fn shared_mass_curves_match_gpu_readback() {
+        let mut curves = og_tween::EASES.to_vec();
+        curves.push(Ease::CubicBezier([0.17, 0.85, 0.63, 0.08]));
+        for count in [1, 3, 4, 7, 1027, 8195] {
+            for position in [
+                StepPosition::JumpStart,
+                StepPosition::JumpEnd,
+                StepPosition::JumpBoth,
+                StepPosition::JumpNone,
+            ] {
+                let ease = Ease::Steps { count, position };
+                if ease.is_valid() {
+                    curves.push(ease);
+                }
+            }
+        }
+        let mut cache = EaseTables::default();
+        let mut table = Vec::new();
+        let mut texels = Vec::new();
+        let mut inputs = Vec::<[f32; 4]>::new();
+        let mut expected = Vec::new();
+        for (index, &ease) in curves.iter().enumerate() {
+            let template = Arc::new(UiMassTemplate {
+                kind: UiMassKind::Particle {
+                    shape: UiParticleShape::Square,
+                },
+                keys: vec![
+                    UiMassKey::default(),
+                    UiMassKey {
+                        t: 1.0,
+                        offset: Vec2::new(1.0, -3.0),
+                        scale: 2.0,
+                        alpha: 0.0,
+                        ease,
+                    },
+                ],
+                ..Default::default()
+            });
+            let batch = UiMassBatch {
+                template: template.clone(),
+                space: UiMassSpace::Screen,
+                instances: vec![],
+                layer: 0,
+                clip: None,
+            };
+            texels
+                .extend(template_gpu(&batch, ([0.0; 4], 0), None, &mut table, &mut cache).texels());
+            let bytes = table.len();
+            template_gpu(&batch, ([0.0; 4], 0), None, &mut table, &mut cache);
+            assert_eq!(table.len(), bytes, "same curve does not duplicate its LUT");
+            // Prime spacing exercises interpolation, not just LUT knots.
+            let mut times: Vec<_> = (0..=4093).map(|i| i as f32 / 4093.0).collect();
+            if let Ease::Steps { count, .. } = ease {
+                for j in 1..count.min(10) {
+                    let t = j as f32 / count as f32;
+                    times.extend([
+                        f32::from_bits(t.to_bits() - 1),
+                        t,
+                        f32::from_bits(t.to_bits() + 1),
+                    ]);
+                }
+            }
+            for t in times {
+                inputs.push([index as f32, t, 0.0, 0.0]);
+                expected.push(template.sample(t).0.x);
+            }
+        }
+        let base = texels.len();
+        texels.extend(table);
+        let source = include_str!("../../shaders/ui_mass.wgsl");
+        let structure = &source[source.find("struct MassTemplate").unwrap()
+            ..source.find("// The table texture").unwrap()];
+        let template = &source
+            [source.find("fn mass_template").unwrap()..source.find("// One element:").unwrap()];
+        let sampler =
+            &source[source.find("fn ease_lut").unwrap()..source.find("fn hash01").unwrap()];
+        let shader = format!(
+            r#"
+@group(0) @binding(0) var<storage, read> texels: array<vec4<f32>>;
+@group(0) @binding(1) var<storage, read> inputs: array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read_write> outputs: array<vec4<f32>>;
+fn texel(i: u32) -> vec4<f32> {{ return texels[i]; }}
+fn table(i: u32) -> vec4<f32> {{ return texels[{base}u + i]; }}
+{structure}
+{template}
+{sampler}
+@compute @workgroup_size(64) fn test(@builtin(global_invocation_id) id: vec3<u32>) {{
+  if (id.x < arrayLength(&inputs)) {{
+    outputs[id.x] = sample_keys(mass_template(u32(inputs[id.x].x)), inputs[id.x].y);
+  }}
+}}
+"#
+        );
+        let instance = crate::RenderDesc::default().backend.instance();
+        let adapter =
+            pollster::block_on(instance.request_adapter(&Default::default())).expect("GPU adapter");
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&Default::default())).unwrap();
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("mass timing readback"),
+            source: wgpu::ShaderSource::Wgsl(shader.into()),
+        });
+        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: None,
+            layout: None,
+            module: &module,
+            entry_point: Some("test"),
+            compilation_options: Default::default(),
+            cache: None,
+        });
+        let data = crate::buffer_init(
+            &device,
+            &queue,
+            &wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(&texels),
+                usage: wgpu::BufferUsages::STORAGE,
+            },
+        );
+        let queries = crate::buffer_init(
+            &device,
+            &queue,
+            &wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(&inputs),
+                usage: wgpu::BufferUsages::STORAGE,
+            },
+        );
+        let size = (inputs.len() * 16) as u64;
+        let output = device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let entries: Vec<_> = [&data, &queries, &output]
+            .iter()
+            .enumerate()
+            .map(|(binding, b)| wgpu::BindGroupEntry {
+                binding: binding as u32,
+                resource: b.as_entire_binding(),
+            })
+            .collect();
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &pipeline.get_bind_group_layout(0),
+            entries: &entries,
+        });
+        let mut encoder = device.create_command_encoder(&Default::default());
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &group, &[]);
+            pass.dispatch_workgroups((inputs.len() as u32).div_ceil(64), 1, 1);
+        }
+        encoder.copy_buffer_to_buffer(&output, 0, &staging, 0, size);
+        queue.submit([encoder.finish()]);
+        staging.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+        device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+        let mapped = staging.slice(..).get_mapped_range().unwrap();
+        let results: &[[f32; 4]] = bytemuck::cast_slice(&mapped);
+        let mut maxima = vec![0.0f32; curves.len()];
+        for ((input, &expected), actual) in inputs.iter().zip(&expected).zip(results) {
+            let index = input[0] as usize;
+            let error = (actual[0] - expected).abs();
+            maxima[index] = maxima[index].max(error);
+            let tolerance = match curves[index] {
+                Ease::Linear | Ease::QuadIn | Ease::QuadOut | Ease::BackOut => 1e-6,
+                Ease::Steps {
+                    count: 1..=4096, ..
+                } => 1e-6,
+                _ => 0.00025,
+            };
+            assert!(
+                error <= tolerance,
+                "{:?} at {}: GPU {} CPU {expected}, error {error}",
+                curves[index],
+                input[1],
+                actual[0]
+            );
+        }
+        for (curve, error) in curves.iter().zip(maxima) {
+            println!("{curve:?}: max error {error:.9}");
+        }
     }
 }

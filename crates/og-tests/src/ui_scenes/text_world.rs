@@ -144,8 +144,8 @@ pub fn world(
     atlas: impl FnOnce(&mut RenderScene) -> TextureHandle,
 ) -> Result<RenderScene, String> {
     use og_render::{
-        Camera, Material, Projection, UiMassBatch, UiMassEase, UiMassInstance, UiMassKey,
-        UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, shapes,
+        Camera, Material, Projection, UiMassBatch, UiMassInstance, UiMassKey, UiMassKind,
+        UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, shapes,
     };
     use std::sync::Arc;
     let mut scene = RenderScene::new();
@@ -200,13 +200,13 @@ pub fn world(
                 t: 0.15,
                 scale: 1.0,
                 offset: Vec2::new(0.0, -10.0),
-                ease: UiMassEase::Back,
+                ease: og_tween::Ease::BackOut,
                 ..Default::default()
             },
             UiMassKey {
                 t: 0.7,
                 offset: Vec2::new(0.0, -36.0),
-                ease: UiMassEase::Out,
+                ease: og_tween::Ease::QuadOut,
                 ..Default::default()
             },
             UiMassKey {
@@ -386,7 +386,7 @@ pub fn world(
             UiMassKey {
                 t: 1.0,
                 alpha: 0.0,
-                ease: UiMassEase::In,
+                ease: og_tween::Ease::QuadIn,
                 ..Default::default()
             },
         ],

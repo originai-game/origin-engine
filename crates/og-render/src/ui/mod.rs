@@ -41,8 +41,8 @@ pub use glass::{
     GLASS_BLUR_SCALE, UiElevation, UiGlassFallback, UiGlassStyle, UiGlassWeight, ui_scrim,
 };
 pub use mass::{
-    UI_MASS_BATCHES, UI_MASS_KEYS, UI_MASS_QUADS, UiMassBatch, UiMassEase, UiMassInstance,
-    UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, UiParticleShape,
+    UI_MASS_BATCHES, UI_MASS_KEYS, UI_MASS_QUADS, UiMassBatch, UiMassInstance, UiMassKey,
+    UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, UiParticleShape,
     format_number,
 };
 pub use path::{UiFillRule, UiPath, UiVerb};

@@ -448,6 +448,7 @@ impl Renderer {
                     width: self.out_width,
                     height: self.out_height,
                 },
+                &mut self.overlay.mass_eases,
             )?),
             None => None,
         };

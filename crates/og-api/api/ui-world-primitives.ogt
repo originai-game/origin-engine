@@ -194,15 +194,6 @@
     variant particle "A particle of particleShape (confetti, sparks)."
   }
 
-  enum MassEase {
-    doc "How a mass element's timeline moves into a key."
-    variant linear "Evenly."
-    variant out "Fast then slow."
-    variant in "Slow then fast."
-    variant back "Out, past the key and back (a pop)."
-    variant step "Holds the key before until this one."
-  }
-
   enum MassSpace {
     doc "Where a mass element's position is."
     variant world "A world point, projected by the GPU each frame."
@@ -239,7 +230,9 @@
       min 0
       max 1
     }
-    field ease MassEase "How it moves into this key."
+    field ease Ease "Shared GSAP names or cubic-bezier()/steps() strings. Non-opcode curves use a deduplicated 4097-sample presentation LUT; step progress is quantized before lookup." {
+      default none
+    }
   }
 
   struct MassTemplateDesc {
@@ -324,10 +317,10 @@
   }
 
   fn defineMass {
-    doc "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle."
+    doc "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. Invalid timing text returns an error naming the text and required syntax; it never falls back to linear."
     param name String "Its name."
     param desc MassTemplateDesc "What it draws and how it moves."
-    returns u32
+    returns Result.u32
   }
 
   fn spawnMass {

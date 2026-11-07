@@ -2679,7 +2679,7 @@ pub fn og_ui_open_world_panel(id: String, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_define_mass(name: String, desc: Option<String>) -> u32 {
+pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_define_mass(&Host, name, desc)
 }
 

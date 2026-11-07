@@ -38,10 +38,13 @@ impl Hooks for Host {
         if call.kind == 0 && call.id == BUILD {
             let s = &self.0;
             if s.template.get() == u32::MAX {
-                s.template.set(og_ui_define_mass(
+                let result: Value = serde_json::from_str(&og_ui_define_mass(
                     "damage".into(),
                     Some(json!({ "kind": "number", "lifetime": 10 }).to_string()),
-                ));
+                ))
+                .unwrap();
+                assert_eq!(result["ok"], true, "{result}");
+                s.template.set(result["value"].as_u64().unwrap() as u32);
             }
             if s.spawn.replace(false) {
                 let list: Vec<Value> = (0..25)

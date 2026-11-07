@@ -27,6 +27,14 @@
 //! ```
 
 #![recursion_limit = "256"]
+#![cfg_attr(test, feature(custom_test_frameworks, test))]
+#![cfg_attr(test, test_runner(gpu_tests::run))]
+
+#[cfg(test)]
+use wgpu as gpu_wgpu;
+#[cfg(test)]
+#[path = "../../../tests/gpu.rs"]
+mod gpu_tests;
 
 /// A file of `shaders/` as the renderer compiles it: the copy build.rs
 /// wrote with its `//` comments removed (every token and line kept), so
@@ -143,13 +151,13 @@ pub use ui::{
     UI_GRADIENT_STOPS, UI_MASS_KEYS, UI_MASS_QUADS, UI_MATERIAL_PARAMS, UiAlign, UiBlend,
     UiBuiltin, UiCap, UiClip, UiCorner, UiEdge, UiElevation, UiFillRule, UiFit, UiGeometry,
     UiGlass, UiGlassFallback, UiGlassShadow, UiGlassStyle, UiGlassWeight, UiGradient,
-    UiGradientKind, UiImage, UiJoin, UiLayer, UiList, UiMask, UiMassBatch, UiMassEase,
-    UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiMaterial,
-    UiMaterialHandle, UiMaterialShader, UiMode, UiOccluder, UiOcclusion, UiPaint, UiParticleShape,
-    UiPath, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline, UiTextShadow,
-    UiVectorData, UiVectorDraw, UiVectorHandle, UiVectorPaint, UiVectorStroke, UiVectorVertex,
-    UiVerb, example_ui_material, flatten_cubic, flatten_quad, format_number, oklab,
-    oklab_to_linear, ui_material_module_source, ui_scrim,
+    UiGradientKind, UiImage, UiJoin, UiLayer, UiList, UiMask, UiMassBatch, UiMassInstance,
+    UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiMaterial, UiMaterialHandle,
+    UiMaterialShader, UiMode, UiOccluder, UiOcclusion, UiPaint, UiParticleShape, UiPath, UiShape,
+    UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline, UiTextShadow, UiVectorData,
+    UiVectorDraw, UiVectorHandle, UiVectorPaint, UiVectorStroke, UiVectorVertex, UiVerb,
+    example_ui_material, flatten_cubic, flatten_quad, format_number, oklab, oklab_to_linear,
+    ui_material_module_source, ui_scrim,
 };
 mod particles_gpu;
 mod pipeline_cache;

@@ -11,7 +11,7 @@
 use super::*;
 use og_audio::schema::{Parent, Transform};
 use og_render::{
-    UiMassEase, UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOcclusion,
+    UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOcclusion,
     UiParticleShape,
 };
 use og_ui::{
@@ -191,7 +191,11 @@ fn anchor_desc(theme: &Theme, d: &Value) -> WorldAnchorDesc {
     }
 }
 
-fn template(theme: &Theme, eng: Option<&Engine>, d: &Value) -> (UiMassTemplate, UiMassSpace) {
+fn template(
+    theme: &Theme,
+    eng: Option<&Engine>,
+    d: &Value,
+) -> Result<(UiMassTemplate, UiMassSpace), String> {
     let kind = match d["kind"].as_str() {
         Some("text") => UiMassKind::Text {
             strings: d["strings"]
@@ -244,22 +248,20 @@ fn template(theme: &Theme, eng: Option<&Engine>, d: &Value) -> (UiMassTemplate, 
         .as_array()
         .map(|a| {
             a.iter()
-                .map(|k| UiMassKey {
+                .map(|k| Ok(UiMassKey {
                     t: f(k, "t", 0.0).clamp(0.0, 1.0),
                     offset: Vec2::new(f(k, "offsetX", 0.0), f(k, "offsetY", 0.0)),
                     scale: f(k, "scale", 1.0).max(0.0),
                     alpha: f(k, "alpha", 1.0).clamp(0.0, 1.0),
-                    ease: match k["ease"].as_str() {
-                        Some("out") => UiMassEase::Out,
-                        Some("in") => UiMassEase::In,
-                        Some("back") => UiMassEase::Back,
-                        Some("step") => UiMassEase::Step,
-                        _ => UiMassEase::Linear,
+                    ease: match &k["ease"] {
+                        Value::Null => og_tween::Ease::Linear,
+                        Value::String(text) => og_tween::Ease::from_text(text).ok_or_else(|| format!("invalid mass ease '{text}': expected a GSAP name, cubic-bezier(x1,y1,x2,y2) with four finite controls and x in [0,1], or steps(n[,position]) with positive integer n and start/end/jump-start/jump-end/jump-none/jump-both (jump-none requires n > 1)"))?,
+                        value => return Err(format!("mass ease {value} must be a timing string")),
                     },
-                })
-                .collect()
+                }))
+                .collect::<Result<Vec<_>, String>>()
         })
-        .unwrap_or_default();
+        .transpose()?.unwrap_or_default();
     let t = UiMassTemplate {
         kind,
         font,
@@ -288,7 +290,7 @@ fn template(theme: &Theme, eng: Option<&Engine>, d: &Value) -> (UiMassTemplate, 
         Some("screen") => UiMassSpace::Screen,
         _ => UiMassSpace::World,
     };
-    (t, space)
+    Ok((t, space))
 }
 
 fn particle_shape(v: &Value) -> UiParticleShape {
@@ -373,15 +375,17 @@ pub fn og_ui_open_world_panel(id: String, desc: Option<String>) -> String {
         .to_string()
 }
 
-pub fn og_ui_define_mass(name: String, desc: Option<String>) -> u32 {
+pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let eng = ui_engine().and_then(|id| engine(id).ok());
     with_ui("og.ui.defineMass", |ui| {
         let theme = *ui.theme();
-        let (t, space) = template(&theme, eng.as_deref(), &d);
-        ui.define_mass(&name, t, space).0
+        match template(&theme, eng.as_deref(), &d) {
+            Ok((t, space)) => crate::ok(json!(ui.define_mass(&name, t, space).0)),
+            Err(reason) => crate::refuse(reason),
+        }
     })
-    .unwrap_or(u32::MAX)
+    .unwrap_or_else(|| crate::refuse("og.ui.defineMass requires an active UI frame"))
 }
 
 pub fn og_ui_spawn_mass(template: u32, list: String) {

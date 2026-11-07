@@ -217,6 +217,7 @@ pub(crate) struct OverlayTarget {
 /// batch's order). `array_layers(a)`: the layers of an uploaded texture
 /// array (`None`: not uploaded or removed). A sprite drawn from an array
 /// ([`Overlay::sprite_arrays`]) joins its array's run.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build<'a>(
     overlay: &Overlay,
     font: impl Fn(usize) -> Option<&'a FontLayout>,
@@ -225,6 +226,7 @@ pub(crate) fn build<'a>(
     vector: impl Fn(UiVectorHandle) -> Option<&'a UiVectorData>,
     panel_target: impl Fn(crate::TextureHandle) -> Option<crate::TargetTexture>,
     target: OverlayTarget,
+    mass_eases: &mut crate::ui::mass::EaseTables,
 ) -> Result<OverlayFrame, RenderError> {
     let ui = &overlay.ui;
     let arrays = crate::sprites::array_entries(
@@ -383,6 +385,7 @@ pub(crate) fn build<'a>(
     // Mass elements: one run per batch.
     let mut mass_templates = Vec::with_capacity(ui.mass.len());
     let mut mass_table = Vec::new();
+    mass_eases.begin_frame();
     for (k, b) in ui.mass.iter().enumerate() {
         let t = &b.template;
         let font_layout = match (&t.kind, t.font) {
@@ -408,6 +411,7 @@ pub(crate) fn build<'a>(
             clip,
             font_layout,
             &mut mass_table,
+            mass_eases,
         ));
         if !b.instances.is_empty() && k < crate::ui::UI_MASS_BATCHES {
             keyed.push((
@@ -418,6 +422,7 @@ pub(crate) fn build<'a>(
             ));
         }
     }
+    mass_eases.end_frame();
     let glyphs_from = keyed.len();
     let effects: HashMap<u32, &crate::ui::UiTextEffects> =
         ui.text_effects.iter().map(|e| (e.text, e)).collect();
@@ -723,6 +728,7 @@ pub(crate) struct OverlayRenderer {
     pub output_format: wgpu::TextureFormat,
     pub linear_format: Option<wgpu::TextureFormat>,
     pub buffer: wgpu::Buffer,
+    pub mass_eases: crate::ui::mass::EaseTables,
 }
 
 impl OverlayRenderer {
@@ -841,6 +847,7 @@ impl OverlayRenderer {
             output_format,
             linear_format,
             buffer,
+            mass_eases: Default::default(),
         }
     }
 

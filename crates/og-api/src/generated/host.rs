@@ -1190,7 +1190,7 @@ pub trait UiApi: Wire {
     /// `og.ui.openWorldPanel`
     fn og_ui_open_world_panel(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.defineMass`
-    fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> u32;
+    fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> String;
     /// `og.ui.spawnMass`
     fn og_ui_spawn_mass(&self, template: u32, instances: String);
     /// `og.ui.pushMass`

@@ -140,6 +140,18 @@ are not alternative curve names. A style's steps stay stepped in UI motion.
 CSS accepts CSS keywords and timing functions, not GSAP strings. Its
 keywords use the exact standard Béziers, not similarly named GSAP eases.
 
+Mass-element keys also take `Ease`; `defineMass` returns a result and rejects
+invalid timing text. Replace `linear`, `out`, `in`, `back` and `step` with
+`none`, `power1.out`, `power1.in`, `back.out` and `steps(1,end)`.
+Those curves have shader opcodes. Other curves use a deduplicated 4,097-sample
+CPU-baked lookup table. Continuous curves interpolate; steps quantize time
+before lookup so jumps never become ramps. Metal readback's maximum error
+over the tested named curves is 0.000187039, the asymmetric Bézier
+`cubic-bezier(0.17,0.85,0.63,0.08)` is within 0.000000119, and
+`steps(4,start)` matches exactly. These are measured sample-sweep errors,
+not universal bounds for arbitrary Bézier controls. The GPU approximation
+is presentation-only; simulation uses the shared CPU evaluator.
+
 Capture is explicit. `to` without `from` reads the starting field after
 its delay. `from` captures its destination at the call, before the delay;
 `fromTo` requires both endpoints. An explicit start is written on the

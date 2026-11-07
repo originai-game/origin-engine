@@ -6,10 +6,10 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.defineMass`
 
-Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle.
+Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. Invalid timing text returns an error naming the text and required syntax; it never falls back to linear.
 
 ```ts
-og.ui.defineMass(name: string, desc?: MassTemplateDesc): number
+og.ui.defineMass(name: string, desc?: MassTemplateDesc): Result<number>
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -17,17 +17,17 @@ og.ui.defineMass(name: string, desc?: MassTemplateDesc): number
 | `name` | `string` | no | Its name. |
 | `desc` | `MassTemplateDesc` | yes | What it draws and how it moves. |
 
-**Returns** `number`.
+**Returns** `Result<number>`.
 
 Binding symbol `og_ui_define_mass` · publish builds: kept
 
 ```ogt
 fn defineMass {
-  doc "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle."
+  doc "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. Invalid timing text returns an error naming the text and required syntax; it never falls back to linear."
   param name String "Its name."
   param desc MassTemplateDesc "What it draws and how it moves."
-  returns u32
+  returns Result.u32
 }
 ```
 
-<sub>Module `ui` line 7706</sub>
+<sub>Module `ui` line 7699</sub>

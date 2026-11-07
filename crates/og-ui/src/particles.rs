@@ -14,7 +14,7 @@ use crate::ui::Ui;
 use crate::world::{Reader, WorldCmd};
 use og_core::glam::Vec2;
 use og_render::{
-    UiMassBatch, UiMassEase, UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate,
+    UiMassBatch, UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate,
     UiParticleShape,
 };
 use std::sync::Arc;
@@ -281,7 +281,7 @@ fn template(
                 t: 1.0,
                 scale: end_scale,
                 alpha: if fade { 0.0 } else { 1.0 },
-                ease: UiMassEase::In,
+                ease: og_tween::Ease::QuadIn,
                 ..Default::default()
             },
         ],
