@@ -32,6 +32,12 @@ pub(crate) struct FxUniform {
     /// width, w: free for the skinned motion vectors.
     pub decal_info: [f32; 4],
     pub planar: [f32; 4],
+    /// x: 1 when the frame's motion vectors are read (TAA, motion blur,
+    /// the reflections' or screen-space GI's reprojection, a custom post):
+    /// the prepass then moves each vertex by its material shader's
+    /// `vertex_offset` of the frame before too (pbr.wgsl
+    /// `prepass_vertex_from`), 0 when nothing reads them.
+    pub motion: [f32; 4],
 }
 
 /// Width of the facing fade at a decal's cut-off angle, as a cosine step.
@@ -79,6 +85,7 @@ pub(crate) fn fx_uniform(view_proj: Mat4, prev: Mat4, size: (u32, u32)) -> FxUni
         ao: [0.0; 4],
         decal_info: [0.0, 0.0, DECAL_FADE, 0.0],
         planar: [0.0; 4],
+        motion: [1.0, 0.0, 0.0, 0.0],
     }
 }
 

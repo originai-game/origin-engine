@@ -346,6 +346,16 @@ impl Renderer {
         // Custom post passes (post_custom.rs) that compiled; they read the
         // prepass's depth and normals.
         let custom_posts = self.custom_posts.prepare(&self.device, scene);
+        // Whether anything reads the prepass's motion vectors this frame:
+        // TAA (and the temporal upscalers), motion blur, the reflections'
+        // temporal pass (ssr.wgsl `ssr_velocity`), screen-space GI's
+        // reprojection (ssgi.wgsl) and a custom post pass, which binds the
+        // whole prepass target.
+        let motion_read = temporal
+            || motion_blur.is_some()
+            || ssr.is_some()
+            || gi.is_some()
+            || !custom_posts.is_empty();
         let ui_depth = scene.overlay.as_ref().is_some_and(|o| o.ui.needs_depth());
         let prepass = !custom_posts.is_empty()
             || ao_target
@@ -2714,6 +2724,11 @@ impl Renderer {
         }
         let mut fx_uniform =
             fx::fx_uniform(cam.view_proj, prev_view_proj, (self.width, self.height));
+        // The prepass moves vertices by their material shader's offset of
+        // the frame before only for a reader of the motion vectors.
+        if !motion_read {
+            fx_uniform.motion[0] = 0.0;
+        }
         // The decals: their records, and the main view's clusters they reach.
         fx::pack_decals(
             &scene.decals,
