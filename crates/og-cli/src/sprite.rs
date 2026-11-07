@@ -4,7 +4,8 @@
 //! is usable: frame count and delays, each frame's drawn bounds and
 //! centroid and their drift from the first frame, the loop seam (the last
 //! frame's difference from the first beside the frame-to-frame steps) and
-//! the alpha edge fringe. Numbers only; no thresholds (`og-cook`'s
+//! the alpha edge fringe and the texels near the key still drawn (pockets
+//! the border does not reach, `--holes` keys them). Numbers only; no thresholds (`og-cook`'s
 //! `cook::animated` defines each).
 
 use og_cook::cook::animated::{self, Border, Inspection, Key};
@@ -12,7 +13,7 @@ use serde_json::json;
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og sprite inspect <file.gif|.webp|.png|sheet.ogt> [--key auto|off|#rrggbb] [--tolerance T] [--out <frames.png>] [--json]";
+const USAGE: &str = "usage: og sprite inspect <file.gif|.webp|.png|sheet.ogt> [--key auto|off|#rrggbb] [--tolerance T] [--holes] [--out <frames.png>] [--json]";
 
 pub fn run(args: &[&str]) -> ExitCode {
     match go(args) {
@@ -32,11 +33,13 @@ fn go(args: &[&str]) -> Result<(), String> {
     let mut key = None;
     let mut tolerance = 0.1f32;
     let mut as_json = false;
+    let mut holes = false;
     let mut out = None;
     let mut i = 0;
     while i < rest.len() {
         match rest[i] {
             "--json" => as_json = true,
+            "--holes" => holes = true,
             "--key" => {
                 i += 1;
                 key = Some(match rest.get(i).copied() {
@@ -82,9 +85,9 @@ fn go(args: &[&str]) -> Result<(), String> {
                 _ => Key::Off,
             },
         );
-        let report = animated::inspect(&anim, key, tolerance)?;
+        let report = animated::inspect(&anim, key, tolerance, holes)?;
         if let Some(out) = out {
-            strip(&anim, report.keyed, tolerance, out)?;
+            strip(&anim, report.keyed, tolerance, holes, out)?;
         }
         report
     };
@@ -104,6 +107,7 @@ fn strip(
     anim: &animated::Animation,
     keyed: Option<[u8; 3]>,
     tolerance: f32,
+    holes: bool,
     out: &str,
 ) -> Result<(), String> {
     let (w, h) = (anim.width, anim.height);
@@ -111,7 +115,7 @@ fn strip(
     for (i, f) in anim.frames.iter().enumerate() {
         let mut rgba = f.rgba.clone();
         if let Some(k) = keyed {
-            animated::key_frame(&mut rgba, w, h, k, tolerance);
+            animated::key_frame(&mut rgba, w, h, k, tolerance, holes);
         }
         let frame = image::RgbaImage::from_raw(w, h, rgba).expect("a frame's size");
         image::imageops::replace(&mut img, &frame, i64::from(w) * i as i64, 0);
@@ -189,6 +193,9 @@ fn text(name: &str, r: &Inspection, tolerance: f32) -> String {
         s += &format!("; distance to the background {d:.3}");
     }
     s.push('\n');
+    if let Some(n) = r.near_key {
+        s += &format!("  near the key, still drawn: {n} texel(s) within {tolerance} of it\n");
+    }
     s
 }
 
@@ -230,5 +237,6 @@ fn to_json(r: &Inspection, tolerance: f32) -> serde_json::Value {
             "step": n(r.fringe.step),
             "toBackground": r.fringe.to_background.map(n),
         },
+        "nearKey": r.near_key,
     })
 }

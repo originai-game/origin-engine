@@ -714,7 +714,8 @@ source "hero_run.webp" {  # optional settings of this source's clip
   event 3 "step"          # og.FlipbookEvent on the clip's frame 3
   align feet              # this source's alignment (default: the sheet's)
 }
-key auto 0.1              # off (default) | auto | "#rrggbb", and a tolerance 0 to 0.5
+key auto 0.1 holes        # off (default) | auto | "#rrggbb", a tolerance 0 to 0.5, and
+                          # `holes`: the pockets of background the figure encloses too
 align feet                # none (default) | feet | bbox | centroid
 padding 1                 # transparent texels around the common crop (default 1)
 scale 0.25                # resampled first (a box filter over premultiplied alpha below 1)
@@ -729,9 +730,11 @@ clip turn {               # clips of the sheet's own, over the frames the source
 The cook (`og-cook`'s `cook/animated.rs`) decodes and composites every
 frame, keeps the file's delays as the clip's durations (a GIF delay of
 10 ms or less is shown as 100 ms, as browsers do), keys the background
-(`auto`: the first frame's border colour, when one colour covers half
-the border; only the texels the border reaches through near colours, the
-ring beside them unmixed from the background), aligns each frame's
+(`auto`: the first frame's border colour, when one colour, give or take
+the few levels a GIF's palette spreads it over, covers half the border;
+only the texels the border reaches through near colours, and with
+`holes` every texel within the tolerance, the ring beside them unmixed
+from the background), aligns each frame's
 anchor (`feet`: the drawn bounds' bottom at the centroid's x; `none`
 keeps the frames' own motion, each source placed by its first frame's
 feet) to the first frame's in whole texels, crops every frame of every

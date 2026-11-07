@@ -23,7 +23,8 @@
 //!   event 3 "step"                        # a FlipbookEvent on the clip's frame 3
 //!   align feet                            # this source's alignment (default: the sheet's)
 //! }
-//! key auto 0.1                            # off (default), auto or "#rrggbb", and a tolerance
+//! key auto 0.1 holes                      # off (default), auto or "#rrggbb", a tolerance, and
+//!                                         # `holes`: enclosed pockets of the background too
 //! align feet                              # feet, bbox, centroid or none (default)
 //! padding 1                               # transparent texels around the common crop
 //! scale 0.25                              # resample before anything else is measured
@@ -161,9 +162,16 @@ pub enum Border {
     Flat { colour: [u8; 3], share: f32 },
 }
 
+/// How far (the largest channel difference, of 255) a border texel may be
+/// from the background's colour and still be it: a generated GIF's palette
+/// spreads one flat colour over several near ones (#f403f2, #f804f6,
+/// #ef03ec), which also straddle the 5-bit buckets the mode is found in.
+const FLAT_SPREAD: u8 = 12;
+
 /// The border of an RGBA image: transparent when at least half its texels
 /// are, else its most common colour (5 bits a channel, then the exact mean
-/// of the texels in that bucket) and the share of the border it covers.
+/// of the opaque border texels within [`FLAT_SPREAD`] of that bucket's
+/// mean) and the share of the border those texels cover.
 pub fn border(rgba: &[u8], w: u32, h: u32) -> Border {
     let mut texels = Vec::new();
     for x in 0..w {
@@ -189,22 +197,32 @@ pub fn border(rgba: &[u8], w: u32, h: u32) -> Border {
         }
     }
     // The most texels; ties to the lowest bucket (BTreeMap order).
-    let (best, n) = counts.iter().fold(
+    let (best, _) = counts.iter().fold(
         (0u32, 0usize),
         |(b, n), (&k, &c)| if c > n { (k, c) } else { (b, n) },
     );
-    let mut sum = [0u64; 3];
-    for &i in &texels {
-        if rgba[i * 4 + 3] > 0 && bucket(i) == best {
+    let mean = |pick: &dyn Fn(usize) -> bool| {
+        let (mut sum, mut n) = ([0u64; 3], 0u64);
+        for &i in texels.iter().filter(|&&i| rgba[i * 4 + 3] > 0 && pick(i)) {
             for (c, s) in sum.iter_mut().enumerate() {
                 *s += u64::from(rgba[i * 4 + c]);
             }
+            n += 1;
         }
+        let d = n.max(1);
+        (sum.map(|s| ((s + d / 2) / d) as u8), n as usize)
+    };
+    // From the mode's mean to the mean of the texels near it, twice: the
+    // mode may be one end of the spread, the second pass centres it.
+    let (mut colour, mut near_n) = mean(&|i| bucket(i) == best);
+    for _ in 0..2 {
+        let at = colour;
+        (colour, near_n) =
+            mean(&|i| (0..3).all(|c| rgba[i * 4 + c].abs_diff(at[c]) <= FLAT_SPREAD));
     }
-    let n64 = n.max(1) as u64;
     Border::Flat {
-        colour: sum.map(|s| ((s + n64 / 2) / n64) as u8),
-        share: n as f32 / texels.len() as f32,
+        colour,
+        share: near_n as f32 / texels.len() as f32,
     }
 }
 
@@ -245,8 +263,11 @@ fn distance(p: &[u8], k: [u8; 3]) -> f32 {
 /// (the largest channel difference, 0 to 1) that the border reaches
 /// through such texels (so a white eye inside a character on white stays)
 /// lose their alpha, fully within `tolerance` and in a ramp beyond, with
-/// the background's colour taken back out of the ramp's texels.
-pub fn key_frame(rgba: &mut [u8], w: u32, h: u32, colour: [u8; 3], tolerance: f32) {
+/// the background's colour taken back out of the ramp's texels. With
+/// `holes`, every texel within `tolerance` of it reaches too: pockets of
+/// background a figure encloses (between an arm and the body, inside a
+/// slash's arc) go, and a white eye on white goes with them.
+pub fn key_frame(rgba: &mut [u8], w: u32, h: u32, colour: [u8; 3], tolerance: f32, holes: bool) {
     let (w, h) = (w as usize, h as usize);
     let soft = tolerance * 2.0;
     let near =
@@ -255,7 +276,14 @@ pub fn key_frame(rgba: &mut [u8], w: u32, h: u32, colour: [u8; 3], tolerance: f3
     let mut queue = std::collections::VecDeque::new();
     for y in 0..h {
         for x in 0..w {
-            if (x == 0 || y == 0 || x == w - 1 || y == h - 1) && near(rgba, y * w + x) {
+            let seed = if x == 0 || y == 0 || x == w - 1 || y == h - 1 {
+                near(rgba, y * w + x)
+            } else {
+                holes
+                    && rgba[(y * w + x) * 4 + 3] > 0
+                    && distance(&rgba[(y * w + x) * 4..], colour) <= tolerance
+            };
+            if seed {
                 seen[y * w + x] = true;
                 queue.push_back(y * w + x);
             }
@@ -678,6 +706,10 @@ pub struct Inspection {
     pub step_max: f32,
     /// The fringe summed over every frame (step and distance means over all edges).
     pub fringe: Fringe,
+    /// With a key: the texels still drawn within its tolerance of it, over
+    /// every frame (pockets of background the border does not reach, or a
+    /// figure's own colour that close to the key).
+    pub near_key: Option<usize>,
 }
 
 impl Inspection {
@@ -686,8 +718,14 @@ impl Inspection {
     }
 }
 
-/// Measures an animation after keying `key` out of it (at `tolerance`).
-pub fn inspect(anim: &Animation, key: Key, tolerance: f32) -> Result<Inspection, String> {
+/// Measures an animation after keying `key` out of it (at `tolerance`,
+/// with `holes` as [`key_frame`]).
+pub fn inspect(
+    anim: &Animation,
+    key: Key,
+    tolerance: f32,
+    holes: bool,
+) -> Result<Inspection, String> {
     let border0 = border(&anim.frames[0].rgba, anim.width, anim.height);
     let keyed = key_colour(anim, key)?;
     let frames: Vec<Vec<u8>> = anim
@@ -696,12 +734,20 @@ pub fn inspect(anim: &Animation, key: Key, tolerance: f32) -> Result<Inspection,
         .map(|f| {
             let mut rgba = f.rgba.clone();
             if let Some(k) = keyed {
-                key_frame(&mut rgba, anim.width, anim.height, k, tolerance);
+                key_frame(&mut rgba, anim.width, anim.height, k, tolerance, holes);
             }
             rgba
         })
         .collect();
-    Ok(measure(anim, border0, keyed, &frames))
+    let mut report = measure(anim, border0, keyed, &frames);
+    report.near_key = keyed.map(|k| {
+        frames
+            .iter()
+            .flat_map(|f| f.as_chunks::<4>().0)
+            .filter(|p| p[3] > 0 && distance(&p[..], k) <= tolerance)
+            .count()
+    });
+    Ok(report)
 }
 
 fn measure(
@@ -796,6 +842,7 @@ fn measure(
         },
         step_max: steps.iter().copied().fold(0.0, f32::max),
         fringe: total,
+        near_key: None,
     }
 }
 
@@ -818,6 +865,7 @@ struct SourceLine {
 struct Settings {
     key: Key,
     tolerance: f32,
+    holes: bool,
     align: Align,
     padding: u32,
     scale: f32,
@@ -852,6 +900,7 @@ fn settings(doc: &Document) -> Result<Settings, String> {
     let mut s = Settings {
         key: Key::Off,
         tolerance: 0.1,
+        holes: false,
         align: Align::None,
         padding: 1,
         scale: 1.0,
@@ -864,18 +913,22 @@ fn settings(doc: &Document) -> Result<Settings, String> {
                 let v = e
                     .values
                     .first()
-                    .ok_or_else(|| line_err(e, "key off|auto|\"#rrggbb\" [tolerance]"))?;
+                    .ok_or_else(|| line_err(e, "key off|auto|\"#rrggbb\" [tolerance] [holes]"))?;
                 s.key = match (v.as_word(), v.as_str()) {
                     (Some("off"), _) => Key::Off,
                     (Some("auto"), _) => Key::Auto,
                     (_, Some(h)) => Key::Colour(parse_hex(h).ok_or_else(|| {
                         line_err(e, format!("key \"{h}\": a colour is \"#rrggbb\""))
                     })?),
-                    _ => return Err(line_err(e, "key off|auto|\"#rrggbb\" [tolerance]")),
+                    _ => return Err(line_err(e, "key off|auto|\"#rrggbb\" [tolerance] [holes]")),
                 };
-                if e.values.len() > 1 {
+                for (i, v) in e.values.iter().enumerate().skip(1) {
+                    if v.as_word() == Some("holes") {
+                        s.holes = true;
+                        continue;
+                    }
                     s.tolerance = e
-                        .f32(1)
+                        .f32(i)
                         .ok()
                         .filter(|t| (0.0..=0.5).contains(t))
                         .ok_or_else(|| line_err(e, "the key's tolerance is 0 to 0.5"))?;
@@ -1090,8 +1143,12 @@ pub fn build(
         }
         if let Some(k) = keyed {
             what += &format!(
-                ", keyed #{:02x}{:02x}{:02x} at {}",
-                k[0], k[1], k[2], set.tolerance
+                ", keyed #{:02x}{:02x}{:02x} at {}{}",
+                k[0],
+                k[1],
+                k[2],
+                set.tolerance,
+                if set.holes { " with its holes" } else { "" }
             );
         }
         notes.push(what);
@@ -1100,7 +1157,14 @@ pub fn build(
         for f in &anim.frames {
             let mut rgba = f.rgba.clone();
             if let Some(k) = keyed {
-                key_frame(&mut rgba, anim.width, anim.height, k, set.tolerance);
+                key_frame(
+                    &mut rgba,
+                    anim.width,
+                    anim.height,
+                    k,
+                    set.tolerance,
+                    set.holes,
+                );
             }
             let (r, rw, rh) = resample(&rgba, anim.width, anim.height, set.scale);
             (w, h) = (rw, rh);
@@ -1491,10 +1555,94 @@ mod tests {
                 }
             }
         }
-        key_frame(&mut px, 8, 8, [255, 255, 255], 0.1);
+        key_frame(&mut px, 8, 8, [255, 255, 255], 0.1, false);
         assert_eq!(px[3], 0, "the corner is keyed");
         assert_eq!(px[(3 * 8 + 3) * 4 + 3], 255, "the enclosed white stays");
         assert_eq!(px[(2 * 8 + 2) * 4 + 3], 255);
+    }
+
+    /// A generated GIF's magenta, quantised to near colours on both sides
+    /// of a 5-bit bucket boundary (none of them half the border), is one
+    /// flat background, keyed by `key auto`; a figure's colour is not.
+    #[test]
+    fn a_quantised_flat_border_is_one_colour() {
+        let (w, h) = (16u32, 16u32);
+        let shades = [[244u8, 3, 242], [248, 4, 246], [239, 3, 236], [251, 6, 250]];
+        let mut px = Vec::new();
+        for i in 0..w * h {
+            px.extend_from_slice(&shades[i as usize % 4]);
+            px.push(255);
+        }
+        // A figure touches the border on one side: 4 of its 60 texels.
+        for y in 6..10 {
+            let i = (y * w * 4) as usize;
+            px[i..i + 4].copy_from_slice(&[40, 30, 20, 255]);
+        }
+        let Border::Flat { colour, share } = border(&px, w, h) else {
+            panic!("an opaque border is flat or not");
+        };
+        assert!((share - 56.0 / 60.0).abs() < 1e-6, "share {share}");
+        assert!(
+            colour
+                .iter()
+                .zip([245, 4, 243])
+                .all(|(a, b)| a.abs_diff(b) <= 2),
+            "{colour:?}"
+        );
+        let anim = Animation {
+            format: "GIF",
+            width: w,
+            height: h,
+            frames: vec![Frame {
+                rgba: px,
+                delay: 0.1,
+            }],
+            clamped: 0,
+        };
+        assert_eq!(key_colour(&anim, Key::Auto), Ok(Some(colour)));
+    }
+
+    /// A ring on magenta enclosing a pocket of it (inside a slash's arc):
+    /// the border's flood cannot reach the pocket, so it stays drawn and
+    /// inspect counts it; `holes` keys it, the ring stays.
+    #[test]
+    fn holes_key_the_pockets_the_border_does_not_reach() {
+        let (w, h) = (12u32, 12u32);
+        let mut px = Vec::new();
+        for y in 0..h {
+            for x in 0..w {
+                let ring = (3..9).contains(&x)
+                    && (3..9).contains(&y)
+                    && !((4..8).contains(&x) && (4..8).contains(&y));
+                px.extend_from_slice(if ring {
+                    &[200, 200, 210, 255]
+                } else {
+                    &[248, 4, 246, 255]
+                });
+            }
+        }
+        let anim = Animation {
+            format: "GIF",
+            width: w,
+            height: h,
+            frames: vec![Frame {
+                rgba: px,
+                delay: 0.1,
+            }],
+            clamped: 0,
+        };
+        let plain = inspect(&anim, Key::Auto, 0.1, false).unwrap();
+        assert_eq!(plain.near_key, Some(16), "the 4x4 pocket stays");
+        let holes = inspect(&anim, Key::Auto, 0.1, true).unwrap();
+        assert_eq!(holes.near_key, Some(0));
+        let mut rgba = anim.frames[0].rgba.clone();
+        key_frame(&mut rgba, w, h, [248, 4, 246], 0.1, true);
+        assert_eq!(
+            rgba[((5 * w + 5) * 4 + 3) as usize],
+            0,
+            "the pocket is keyed"
+        );
+        assert_eq!(rgba[((3 * w + 5) * 4 + 3) as usize], 255, "the ring stays");
     }
 
     #[test]
@@ -1504,7 +1652,7 @@ mod tests {
         // Distance 0.15 from white at tolerance 0.1: alpha 0.5.
         let v = 255 - (0.15f32 * 255.0).round() as u8;
         px[0..4].copy_from_slice(&[255, v, v, 255]);
-        key_frame(&mut px, 4, 4, [255, 255, 255], 0.1);
+        key_frame(&mut px, 4, 4, [255, 255, 255], 0.1, false);
         assert!((120..=135).contains(&px[3]), "alpha {}", px[3]);
         assert_eq!(px[0], 255);
         assert!(px[1] < 200, "the white taken out: {}", px[1]);
@@ -1531,7 +1679,7 @@ mod tests {
         // Row 2's edge texel a blue stroke.
         let blue = (2 * 10 + 4) * 4;
         px[blue..blue + 4].copy_from_slice(&[0, 0, 220, 255]);
-        key_frame(&mut px, 10, 5, [255, 255, 255], 0.1);
+        key_frame(&mut px, 10, 5, [255, 255, 255], 0.1, false);
         let mixed = &px[(10 + 4) * 4..(10 + 4) * 4 + 4];
         assert!((125..=131).contains(&mixed[3]), "half alpha: {mixed:?}");
         assert!(mixed[0] >= 195 && mixed[1] <= 6, "red again: {mixed:?}");
