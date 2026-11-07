@@ -4,7 +4,7 @@
 //! a browser (the water, and with it whole frames, drew black in Chrome on
 //! Android: E5's water.json,
 //! the former test sample The browser compile in
-//! reference-gfx.ts catches these at a wave's end; these run in the quick
+//! reference-gfx.ts catches these in web-reference; these run in the quick
 //! lane over every module `og_render::shader_sources` gives.
 
 /// WGSL's uniformity analysis (the spec's §15.2) for the derivatives and
@@ -14,7 +14,7 @@
 /// refused whole in Chrome, and every pipeline made from it draws nothing
 /// (the terrain after ebb512c3a's cause; the water's lake glitter after its
 /// per-pixel `below_view` return, black water in every browser). The
-/// browser compile in reference-gfx.ts runs only at a wave's end; this runs
+/// browser compile in reference-gfx.ts runs only in web-reference; this runs
 /// in the quick lane. It follows the spec's rules: per-pixel values are
 /// the stage's inputs, mutable module-scope variables, read-write storage
 /// and what is computed from them; function-scope variables are tracked

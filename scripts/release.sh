@@ -45,8 +45,7 @@
 #
 # pack holds the gate lock through pack.sh (a release build compiles beside
 # nothing) and refuses a dev native/ as pack.sh does. publish is an outward
-# action and runs only by hand, never from a gate or the wave's end
-# (scripts/wave-end.sh's release stage is pack and verify).
+# action and runs only by hand, never from a gate.
 set -u -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"

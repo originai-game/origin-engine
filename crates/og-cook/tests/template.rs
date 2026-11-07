@@ -153,7 +153,7 @@ fn small_template(root: &Path) {
 /// pool's schedule moves from run to run): every file each writes is the
 /// first one-thread cook's bytes, the cook times masked (`differences`).
 /// One run a thread count in the quick and functional lanes; ten under
-/// `--all` (`OG_GATE_ALL`, a wave's end), whose repeats hunt a race that
+/// `--all` (`OG_GATE_ALL`), whose repeats hunt a race that
 /// one schedule may miss (the owner, 2026-11-06: 31 cooks were the gate's
 /// slowest test).
 #[test]

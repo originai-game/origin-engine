@@ -8,7 +8,7 @@ at most and `og.assert` invariants for its behaviour. Budget: under 10 s
 warm per fixture run.
 
 `scripts/check.sh fixtures` runs `og test` in each fixture whose inputs
-changed since it last passed (below); `--all` and wave-end run all of them.
+changed since it last passed (below); `--all` runs all of them.
 It also creates an empty project from `packages/create/template` under the
 gate's evidence directory and runs its smoke test. That check includes
 `packages/create` in its inputs and never builds into the shipped skeleton.

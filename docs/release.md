@@ -282,7 +282,7 @@ scripts/release.sh fetch <run-id>     # that run's tarballs into dist/release/<v
 
 `pack` holds the gate lock (a release build compiles beside nothing) and
 refuses a `native/` that is not release. `publish` is an outward action
-and runs only by hand, never from a gate or the wave's end. It refuses a
+and runs only by hand, never from a gate. It refuses a
 dirty pack, a missing target, an unsigned `SHA256SUMS` or one that does
 not verify with §1's key, archives the install test has not passed on
 this machine and in the container (a dev build excepted), and for the
@@ -374,10 +374,8 @@ with bun (linux-x64, the executor's platform), from the archives in
 8. an MP3 sound cooks and plays; 9. a built-in UI style from `engine/styles/`.
 
 `--core` (a backfilled version) runs 1 to 5 and 7's validate: what every
-version from 0.5.0 has. The install test is also the wave end's `release`
-stage (`scripts/wave-end.sh release`: `pack` and `verify`), so the gate
-never compiles release (AGENTS.md §Building and testing, profiles) and a
-wave ends with a candidate ready.
+version from 0.5.0 has. The gate never compiles release (AGENTS.md
+§Building and testing, profiles); `pack` and `verify` do.
 
 **In an InstaBox machine** (`tests/install/instabox.ts`; `verify
 --instabox`): the same `run.ts`, uploaded into a machine the script
@@ -405,7 +403,7 @@ are in `docs/roadmap.md`; this section keeps the release-side stages.
 
 Done: one version everywhere (`release.sh bump`/`check`, `og`'s pin
 notice and doctor line), the knowledge inside the engine package, the
-release script and the wave-end `release` stage, the install test (host,
+release script, the install test (host,
 container, InstaBox), `og doctor` outside a checkout, and the archive
 channel of §1. The skeleton ships no starter art. Retained test-only assets
 live under `tests/fixtures` and `crates/og-tests/assets`, outside release
@@ -442,9 +440,9 @@ Feature work and its order: `docs/roadmap.md`.
 |---|---|---|---|
 | Crates, packages | fmt, clippy, unit and logic tests, drift, package tests | `scripts/check.sh quick` | every landing |
 | GPU frames | gfx references on `metal`, template and package frames | `scripts/check.sh functional`, `kits` | after a batch of landings |
-| Wasm | build, wasm-opt, size, determinism across hosts | `scripts/check.sh --all` | every wave end |
-| Browser | the WebGPU reference frames, the kit, the a11y mirror | `scripts/check.sh web-reference` | every wave end and before every release |
-| Release | pack, the install test from the archives on darwin-arm64 and linux-x64 | `wave-end.sh release` / `release.sh verify` | every wave end; before every publish |
+| Wasm | build, wasm-opt, size, determinism across hosts | `scripts/check.sh --all` | before every release |
+| Browser | the WebGPU reference frames, the kit, the a11y mirror | `scripts/check.sh web-reference` | before every release |
+| Release | pack, the install test from the archives on darwin-arm64 and linux-x64 | `release.sh pack` / `verify` | before every publish |
 | Windows | native MSVC check, clippy, nextest, DX12 frames against Metal, the install test from the packed tarball | studio-win | on the release commit |
 | InstaBox (development) | the install test inside a machine; the platform's snapshot checker | an InstaBox machine (billed by the minute; one machine, §6 item 6) | after every publish; the checker once per pin move |
 | Platform, local | the local stack, the runner's `tests/og.rs`, the knowledge mount `--check` | the platform's local stack | every pin move |
@@ -462,8 +460,8 @@ release is verified (`verify-production.sh`, the Player telemetry).
 
 ### P. Deferred until the features are complete
 
-Optimisation rows are taken up as the product needs them, measured at a
-wave's end, and never hold a merge or a release. Among them: the platform
+Optimisation rows are taken up as the product needs them, measured
+then, and never hold a merge or a release. Among them: the platform
 serves one content-addressed engine wasm URL shared by every game of a
 version, so a browser downloads the engine once across games. The
 platform's CAS route exists (`server/src/play/serve.ts`); cross-game reuse

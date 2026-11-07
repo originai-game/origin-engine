@@ -53,7 +53,7 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | binaryen (`wasm-opt`) | 133 | `BINARYEN_VERSION` in `scripts/install-tools.sh` (release archive on Linux and macOS) |
 | bun | 1.4.4 | `BUN_VERSION` in `scripts/install-tools.sh`; `tests/install/Dockerfile` and `tests/install/instabox.ts` install the same for the install test |
 | TypeScript, tsgo (`check-conformance`'s comparison and `og check`'s fallback where tsrs has no package; no project or package depends on it) | 7.0.2 | `TSGO_VERSION` in `crates/og-cli/src/check.rs` (`scripts/tsrs-diff.sh` and `.agents/setup` read it) |
-| tsrs (the type checker: `og check`, the check before `og run`/`test`/`build`/`dev`, `packages/engine`'s `typecheck`, og-idl's declaration test) | 0.18.0-ts7.1.0-dev.20260929 (TypeScript 7.1.0-dev.20260930.4) | `TSRS_VERSION` and the five SRIs in `scripts/install-tools.sh`; `packages/engine/package.json` `optionalDependencies` copy it (`check-conformance` holds them equal). It moves only at a wave's end, with a tsrs release, all of these in one commit, after `scripts/tsrs-diff.sh` passes on the new binary |
+| tsrs (the type checker: `og check`, the check before `og run`/`test`/`build`/`dev`, `packages/engine`'s `typecheck`, og-idl's declaration test) | 0.18.0-ts7.1.0-dev.20260929 (TypeScript 7.1.0-dev.20260930.4) | `TSRS_VERSION` and the five SRIs in `scripts/install-tools.sh`; `packages/engine/package.json` `optionalDependencies` copy it (`check-conformance` holds them equal). It moves with a tsrs release, all of these in one commit, after `scripts/tsrs-diff.sh` passes on the new binary |
 | cargo-nextest | 0.9.148 here | not pinned |
 | ShellCheck (CI lints `scripts/*.sh` with it; Ubuntu's 0.9 reports what 0.11 does not) | 0.11.0 | `SHELLCHECK_VERSION` in `scripts/install-tools.sh` (Homebrew's on macOS) |
 | node (`determinism`'s wasm32 runs) | 24 in CI | `.github/actions/provision` |
@@ -242,9 +242,9 @@ split, and the lowest such crate is its cause.
 | `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`), without a second release build. | full |
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton. | full |
 | `browser` | Browser wire, player, export, device, unsupported-device and og.motion tick tests (`test:browser`). | full |
-| `web-reference` | Native and web preparation, then headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3). Compare retained scenes under unchanged tolerances. | wave-end, or explicit |
-| `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | wave-end, or explicit |
-| perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. | wave-end only |
+| `web-reference` | Native and web preparation, then headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3). Compare retained scenes under unchanged tolerances. | explicit |
+| `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | explicit |
+| perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. | explicit |
 
 The gate requires nextest. Missing adapters warn on every host; GPU tests
 are skipped, not passed. Bun tests have a 30-second per-test timeout through
@@ -297,9 +297,9 @@ with `--all`, never deleted to force a step.
 
 Each checkout holds its own target lock. Gates briefly register shared
 admission and then execute concurrently, without a machine-wide CPU lock.
-Exclusive admission closes the entrance and drains active gates for perf
-or wave-end. It is separate from GPU ownership: wave-end never holds GPU
-slots while waiting for a child gate. Rendering steps acquire a FIFO slot;
+Exclusive admission closes the entrance and drains active gates for perf.
+It is separate from GPU ownership: nothing holds GPU slots while waiting
+for a child gate. Rendering steps acquire a FIFO slot;
 single-slot and all-slot requests share the queue. Owners are identified
 by PID and process birth, not command names. Inherited ownership lets a
 child reuse its parent's resources. The versioned implementation in
@@ -351,9 +351,8 @@ on an orb `~/.cache/sccache`.
   landing runs.
 - **After a batch of landings**: `scripts/check.sh full`. This includes
   wasm, shipping size, cross-host determinism and browser contracts.
-- **At a wave's end**: `scripts/wave-end.sh` (§The wave-end run). Never
-  `--all` after every edit; never touch files or delete `target/og-gate/`
-  to force a step.
+- Never `--all` after every edit; never touch files or delete
+  `target/og-gate/` to force a step.
 - **After re-recording a reference frame**: rerun only that frame's lane:
   `scripts/check.sh --only rust-gpu` for og-tests' gfx references (§Re-capturing
   gfx references), `--only bun-test` for a template's playtest frames,
@@ -370,7 +369,7 @@ status; other initialization errors and failed checks still fail.
 Rust GPU tests declare `#[ignore = "requires GPU"]` in an adapter-aware
 `tests/it` binary (`tests/gpu.rs`); discovery enables them when an adapter
 exists. GPU tests that also need explicit perf selection use `requires GPU;
-wave-end perf`. Bun uses `gpuTest` from `packages/engine/tests/support/gpu.ts`,
+perf`. Bun uses `gpuTest` from `packages/engine/tests/support/gpu.ts`,
 or `test.skipIf(gpuUnavailable || otherPrerequisiteMissing)`; never return
 early from a test body to skip. The gate forwards nextest's
 adapter-discovery warnings and does not cache an unchecked GPU run as
@@ -382,30 +381,11 @@ Browser groups use separate ports and profile/output directories; work
 that writes the same project's export stays in one group. A serial/parallel
 pixel difference is a defect, not a reason to raise tolerances.
 
-## The wave-end run
-
-`scripts/wave-end.sh` runs a wave's measurements one after another under
-exclusive admission and its target lock, held across stages. Each
-stage runs even when one before it failed; the exit status is non-zero
-when any did. Logs, the summary and the table go to
-`target/evidence/wave-end/`.
-
-| Stage | What |
-|---|---|
-| `gate` | `scripts/check.sh full --all` |
-| `perf` | `scripts/perf.sh`, ignored cost assertions under the exclusive GPU slot lock |
-| `web` | `scripts/check.sh web-reference` |
-| `conformance` | `scripts/tsrs-diff.sh` |
-| `release` | `scripts/release.sh pack` then `verify` (docs/release.md §3); publish never runs here |
-
-`--stages gate,perf` selects stages in their defined order; `--dry-run`
-prints commands without running them.
-
 The full lane's Bun cross-host tests compare native and wasm math, physics,
 animation and text digests using the development engine modules. Publish
 modules expose no debug digest command; they are compared through world
 snapshots. The lanes tests use real workers and assert parallel execution.
-There is no separate determinism workspace or wave-end determinism stage.
+There is no separate determinism workspace or determinism stage.
 
 ## The lanes wasm
 

@@ -114,9 +114,7 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Lanes of the gate** (`docs/ci.md` §Lanes): `quick` (fmt, clippy, logic
   tests, drift, package tests) is the loop and what a landing runs;
   `full` adds all Rust and Bun tests, retained UI-pack suites, fixtures,
-  wasm builds, shipping-size checks and browser functional tests. Wave-end
-  runs `full --all`, perf, browser references, conformance and release
-  pack/verify. Selection uses dependency inputs; an unclassified change
+  wasm builds, shipping-size checks and browser functional tests. Selection uses dependency inputs; an unclassified change
   runs checks rather than skipping them. Never touch files or delete
   `target/og-gate/` to force a run; use `--all`.
 - **Profiles.** `dev` for everything native in the gate, `release` for what

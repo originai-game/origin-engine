@@ -2,8 +2,7 @@
 # check-conformance: tsrs (og check's checker) held to tsgo, the TypeScript
 # compiler it ports (typescript@TSGO_VERSION, the constant in
 # crates/og-cli/src/check.rs), on the same configs with the same checker
-# count. A wave's end runs it (scripts/wave-end.sh, stage conformance), and
-# a tsrs version move runs it before it lands (docs/ci.md §Toolchain).
+# count. A tsrs version move runs it before it lands (docs/ci.md §Toolchain).
 #
 #   scripts/tsrs-diff.sh [CONFIG...]
 #

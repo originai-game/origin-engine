@@ -214,7 +214,7 @@ wasm_opt_one() {
   local raw="$1" name="$2" input="$1" lock have key cache out=origin-engine threads=() optimise=1
   case "$name" in *-lanes*) out=origin-engine-lanes; threads=(--threads) ;; esac
   # Development loads bindgen's module, not the unused optimised copy.
-  # Keep --all (wave-end) and the size gate's fallback input optimised.
+  # Keep --all and the size gate's fallback input optimised.
   if [ "$name" = og_host_web ] \
       && grep -q '/og_host_web-publish.wasm$' "$OG_WASM_OUT/built.txt"; then
     optimise=0
@@ -351,7 +351,7 @@ step_drift() {
 # tsrs (og check) against tsgo on the engine's configs, every template, the
 # test fixtures and scripts/tsrs-corpus (scripts/tsrs-diff.sh): a diagnostic tsgo
 # reports and tsrs does not fails; every other difference is logged, not
-# failed. In no lane: a wave's end runs it (scripts/wave-end.sh). Reads
+# failed. In no lane; run it explicitly. Reads
 # sources only, never a build output, so it waits for no step.
 step_check_conformance() {
   if skip_unchanged check-conformance "check-conformance" "$(rule_conformance)"; then return $SKIP; fi
@@ -429,7 +429,7 @@ step_fixtures() {
 # The browser tiers in headless Chrome on WebGPU (docs/ci.md §Browser
 # reference tiers; `make web-reference`): the former test sample, og-tests'
 # and og-ui's gfx scenes (crates/og-tests-web), Ember Vale, the
-# vehicle-terrain fixture, the lanes' panic and the accessibility mirror. Run at a wave's end on any host with Chrome.
+# vehicle-terrain fixture, the lanes' panic and the accessibility mirror. Run explicitly on any host with Chrome.
 #
 # Six groups, each with the projects only it cooks and exports (two
 # runs of one project in parallel would cook and export into the same

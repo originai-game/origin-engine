@@ -243,7 +243,7 @@ packages/
   launcher         og, the launcher: install.sh, install.ps1 and the version a game pins (docs/release.md §1)
 templates/         looks/, styles/, locales/, tools/
 tests/             evidence/, install/ (the install test), replay/ (replay goldens)
-scripts/           check.sh (the gate), lane.sh, worktree.sh, release.sh, wave-end.sh, ...
+scripts/           check.sh (the gate), lane.sh, worktree.sh, release.sh, ...
 third_party/       vendored sources (basis-universal, xatlas, ltc, cleanedge, pixelorama)
 docs/              design.md (normative), ui.md, roadmap.md, release.md, ci.md, art.md, ...
 ```
@@ -281,8 +281,7 @@ og doctor           check bun, the engine package, the addon, the wasm, the rend
 
 `scripts/check.sh quick` (fmt, clippy, drift, the logic tests, the knowledge
 and create packages) is the loop while working; `scripts/check.sh` is the full
-path-aware lane, `scripts/check.sh functional` what a merge passes, and
-`scripts/wave-end.sh` the wave's end measurements (`docs/ci.md` §Lanes).
+path-aware lane, and `scripts/check.sh functional` what a merge passes (`docs/ci.md` §Lanes).
 
 Read `AGENTS.md` before changing anything: ownership, contracts and the gate
 discipline. Toolchain versions are in `docs/ci.md` §Toolchain.

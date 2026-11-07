@@ -89,7 +89,7 @@ opt-level = 3
 [profile.wasm.package.og-anim]
 opt-level = 3
 # og.motion's per-frame decode, retargeting and foot plant (the coordinator,
-# 2026-11-02; the wave's end measures its size).
+# 2026-11-02; the size gate measures it).
 [profile.wasm.package.og-motion]
 opt-level = 3
 [profile.wasm.package.og-lanes]

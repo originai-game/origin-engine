@@ -2328,7 +2328,7 @@ passed or unchecked. An invalid revision fails rather than selecting none.
 
 ## 7. Budgets
 
-Gated in CI where `scripts/budgets.txt` holds them, measured at a wave's end
+Gated in CI where `scripts/budgets.txt` holds them, measured by hand
 otherwise. Quality comes first: the engine targets current devices only
 (§8), and no budget is a reason to cut a feature to a reduced tier or hold a
 model or an effect below the quality it needs; a figure a feature moves is

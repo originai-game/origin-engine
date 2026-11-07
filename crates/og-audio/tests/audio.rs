@@ -182,7 +182,7 @@ fn serde_like(fields: &[(&str, String)]) -> String {
 }
 
 #[test]
-#[ignore = "wave-end perf lane"]
+#[ignore = "perf lane"]
 fn perf_one_second_of_a_busy_mix_renders_in_bounded_time() {
     // 32 voices: 16 streamed stereo QOA loops at assorted pitches, 16
     // resident mono loops, half of all spatial; rendered in 128-frame

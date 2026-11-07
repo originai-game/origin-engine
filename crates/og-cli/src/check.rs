@@ -39,7 +39,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 use std::time::Instant;
 
-/// The TypeScript (tsgo) version tsrs is held to at a wave's end
+/// The TypeScript (tsgo) version tsrs is held to
 /// (`scripts/tsrs-diff.sh` reads it here) and the fallback where tsrs has
 /// no package (Windows, Intel macOS).
 pub const TSGO_VERSION: &str = "7.0.2";

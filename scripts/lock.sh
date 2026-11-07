@@ -1,7 +1,6 @@
 # shellcheck shell=sh
 # The gate lock: one scripts/check.sh, or one release build.sh, per target
-# directory at a time (docs/ci.md §Running the gate locally;
-# scripts/wave-end.sh holds it across its stages). Two of them at
+# directory at a time (docs/ci.md §Running the gate locally). Two of them at
 # once only wait on cargo's lock and thrash memory. Sourced by lib.sh and by
 # packages/engine/scripts/build.sh, so it is POSIX sh.
 #
@@ -226,7 +225,7 @@ og_lock_release() {
 # runs; frame-time and perf measurements do, so they take every slot.
 #
 #   og_gpu_acquire WHAT            one slot, held until exit
-#   og_gpu_acquire_all WHAT        every slot (perf, wave-end, the full gate)
+#   og_gpu_acquire_all WHAT        every slot (perf, the full gate)
 #
 # Slots are ~/.cache/og-gate/gpu-slot-N.lock directories, taken lowest first;
 # a slot whose owner pid is gone is stale and taken over. Released by

@@ -11,7 +11,7 @@
 //! The numbers in the former test sample are this
 //! example in the dev profile (og-audio at opt-level 0), so they are
 //! ratios to the base more than real-time costs; the release mixer is
-//! measured at a wave's end.
+//! measured by the perf lane.
 
 use og_audio::schema::panning_model;
 use og_audio::{
