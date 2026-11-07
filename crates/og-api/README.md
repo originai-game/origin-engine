@@ -146,6 +146,12 @@ and diagnostics show the angle-bracket form.
   for), `View.C` (a component's typed column views).
 - A function may declare `generic C AnyComponent` (or another reflection
   bound, or `Fields`) and use `C` in its signature.
+- Documents: a function may declare `generic S ScreenName` (or `C
+  ComponentName`) for a document's name and use `ScreenProps.S` and
+  `ScreenResponse.S` (`ComponentProps.C`, `ComponentResponse.C`) in its
+  signature; TypeScript reads them from the `UiScreens` and `UiComponents`
+  registries that `og ui types` fills per document, and the wire carries
+  the name as a string and the props as JSON.
 - Text in a component or resource field: a text column (`column str`,
   `capacity true`) followed by its capacity in bytes, `field name str.48`
   (shown `str<48>`; 1 to 4096 bytes of UTF-8). The TypeScript value is a

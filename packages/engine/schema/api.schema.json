@@ -16275,26 +16275,38 @@
         {
           "name": "screen",
           "doc": "Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have.",
+          "generics": [
+            {
+              "name": "S",
+              "bound": "ScreenName"
+            }
+          ],
           "params": [
             {
               "name": "name",
-              "type": "String",
+              "type": "S",
               "optional": false,
-              "doc": "The screen's name (its `name` line)."
+              "doc": "The screen's name (its `name` line); a name `og ui types` declared types its viewmodel and events."
             },
             {
               "name": "vm",
-              "type": "Json",
+              "type": "Option<ScreenProps<S>>",
               "optional": true,
               "doc": "Its viewmodel: an object (null keeps the one it has)."
             }
           ],
-          "returns": "UiDocResponse",
+          "returns": "ScreenResponse<S>",
           "publish": true
         },
         {
           "name": "component",
           "doc": "Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "ComponentName"
+            }
+          ],
           "params": [
             {
               "name": "id",
@@ -16304,18 +16316,18 @@
             },
             {
               "name": "name",
-              "type": "String",
+              "type": "C",
               "optional": false,
-              "doc": "The component's name."
+              "doc": "The component's name; a name `og ui types` declared types its props and events."
             },
             {
               "name": "props",
-              "type": "Json",
+              "type": "Option<ComponentProps<C>>",
               "optional": true,
               "doc": "Its props: an object."
             }
           ],
-          "returns": "UiDocResponse",
+          "returns": "ComponentResponse<C>",
           "publish": true
         },
         {
@@ -16335,6 +16347,12 @@
         {
           "name": "push",
           "doc": "Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.",
+          "generics": [
+            {
+              "name": "S",
+              "bound": "ScreenName"
+            }
+          ],
           "params": [
             {
               "name": "world",
@@ -16344,13 +16362,13 @@
             },
             {
               "name": "screen",
-              "type": "String",
+              "type": "S",
               "optional": false,
               "doc": "The screen's name."
             },
             {
               "name": "vm",
-              "type": "Json",
+              "type": "Option<ScreenProps<S>>",
               "optional": true,
               "doc": "Its viewmodel (null: its document's first fixture, else an empty object)."
             }
@@ -16376,6 +16394,12 @@
         {
           "name": "replace",
           "doc": "Replace the active layer with a screen.",
+          "generics": [
+            {
+              "name": "S",
+              "bound": "ScreenName"
+            }
+          ],
           "params": [
             {
               "name": "world",
@@ -16385,13 +16409,13 @@
             },
             {
               "name": "screen",
-              "type": "String",
+              "type": "S",
               "optional": false,
               "doc": "The screen's name."
             },
             {
               "name": "vm",
-              "type": "Json",
+              "type": "Option<ScreenProps<S>>",
               "optional": true,
               "doc": "Its viewmodel."
             }
@@ -16431,6 +16455,12 @@
         {
           "name": "screenVm",
           "doc": "A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack.",
+          "generics": [
+            {
+              "name": "S",
+              "bound": "ScreenName"
+            }
+          ],
           "params": [
             {
               "name": "world",
@@ -16440,12 +16470,12 @@
             },
             {
               "name": "screen",
-              "type": "String",
+              "type": "S",
               "optional": false,
               "doc": "The screen's name."
             }
           ],
-          "returns": "Json",
+          "returns": "Option<ScreenProps<S>>",
           "publish": true
         },
         {

@@ -730,6 +730,11 @@ impl Target {
 
     /// The configuration of a project (see the module doc).
     pub fn of(p: &Project, package: Option<&Path>) -> Result<Target, String> {
+        // Its documents' types first, so a viewmodel is checked against
+        // the documents as they are now (`og ui types`).
+        if p.manifest {
+            crate::ui::write_types(&p.root)?;
+        }
         let root = PathBuf::from(typescript_path(
             &p.root.canonicalize().unwrap_or_else(|_| p.root.clone()),
         ));

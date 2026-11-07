@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.screen, og.ui.push, og.ui.replace, og.ui.screenVm, og.ui.component",
+      "change": "Each screen and component document is typed from its contract: `og ui types` writes `.og/types/ui/<name>.d.ts` (its props, the events it can send, its slots) and og check, run, build and dev write them before they check. These functions take the document's name as a type parameter, so for a declared name the viewmodel or props must match the contract (every prop given, of its type; a list's items as its fixtures show them), og.ui.screenVm answers that type, and the answer's events are narrowed to the ones the document can send. A partial viewmodel, a prop of the wrong type, or a comparison with an event name the document never sends no longer type-checks. A name no document declares stays untyped, as before. The wire is unchanged.",
+      "fix": "Pass the whole viewmodel the document's `props` block declares (or declare the prop `any` there), and compare events only with names the document emits. A game made before this release adds \".og/types/**/*.d.ts\" to its tsconfig's include to get the types.",
+      "find": ["og.ui.screen", "og.ui.push", "og.ui.replace", "og.ui.screenVm", "og.ui.component"]
+    }
+  ]
+}

@@ -208,3 +208,75 @@ fn a_vfx_pack_installs_into_assets_vfx_and_cooks() {
     assert_eq!(code, Some(1), "{out}");
     assert!(out.contains("invalid extension manifest"), "{out}");
 }
+
+/// `og check` types each screen and component from its document (`og ui
+/// types`): a viewmodel against the props, a list's items as its fixtures
+/// show them, the events' names (a used component's included), a
+/// component's props; a name no document has stays untyped; an edit to a
+/// document retypes the next check.
+///
+/// Ways it could fail: the engine's string overload chosen before the
+/// game's documents (nothing caught), a used component's emit missing
+/// (valid code refused), an unknown screen refused, or types written once
+/// and left stale.
+#[test]
+fn og_check_types_viewmodels_and_events_from_the_documents() {
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::create_dir_all(dir.join("assets/ui")).unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let shop = |gold: &str| {
+        format!(
+            "type screen\nversion 2\n---\nname \"shop\"\nback emit closeShop\nprops {{\n  gold {gold} \"Gold.\"\n  items list \"For sale.\"\n}}\n\
+             fixture rich \"{{\\\"gold\\\": 1, \\\"items\\\": [{{\\\"name\\\": \\\"Sword\\\", \\\"price\\\": 40}}, {{\\\"name\\\": \\\"Shield\\\", \\\"price\\\": 30, \\\"sale\\\": true}}]}}\"\n\
+             column Root {{\n  button Buy {{\n    text \"Buy\"\n    on click emit buy\n  }}\n  use Badge Gold {{\n    value 1\n  }}\n}}\n"
+        )
+    };
+    std::fs::write(dir.join("assets/ui/shop.ogt"), shop("number")).unwrap();
+    std::fs::write(
+        dir.join("assets/ui/badge.ogt"),
+        "type component\nversion 2\n---\nname \"Badge\"\nprops {\n  value number \"The number.\"\n}\nrow Root {\n  button Tap {\n    text \"{value}\"\n    on click emit tapped\n  }\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.ts"),
+        r#"import { og } from "@origingame/engine";
+og.ui.screen("shop", { gold: 1, items: [{ name: "a", price: 1 }] });
+og.ui.screen("shop", { gold: "1", items: [] });
+og.ui.screen("shop", { gold: 1, items: [{ name: "a", cost: 1 }] });
+og.ui.screen("elsewhere", { anything: 1 });
+for (const e of og.ui.screen("shop", null).events) {
+  if (e.kind === "emit" && (e.name === "buy" || e.name === "tapped")) {}
+  if (e.kind === "back" && e.name === "closeShop") {}
+  if (e.kind === "emit" && e.name === "buyy") {}
+}
+og.ui.component("b", "Badge", { value: "no" });
+export default og.game({});
+"#,
+    )
+    .unwrap();
+    let errors = || -> Vec<(u64, u64)> {
+        let out = og().args(["check", "--json"]).arg(&dir).output().unwrap();
+        let report: serde_json::Value =
+            serde_json::from_slice(&out.stdout).unwrap_or_else(|e| panic!("{e}: {}", text(&out)));
+        report["diagnostics"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{report}"))
+            .iter()
+            .map(|d| (d["line"].as_u64().unwrap(), d["code"].as_u64().unwrap()))
+            .collect()
+    };
+    // The string gold, the item's unknown field, the misspelt event and
+    // the component's string prop; nothing else.
+    assert_eq!(errors(), [(3, 2322), (4, 2353), (9, 2367), (11, 2322)]);
+    std::fs::write(dir.join("assets/ui/shop.ogt"), shop("string")).unwrap();
+    assert_eq!(
+        errors(),
+        [(2, 2322), (4, 2322), (4, 2353), (9, 2367), (11, 2322)],
+        "gold is a string now: the numbers are the wrong ones"
+    );
+}

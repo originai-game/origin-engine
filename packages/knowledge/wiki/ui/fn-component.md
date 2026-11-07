@@ -9,29 +9,30 @@ Module [`ui`](../ui.md) · [index](../index.md)
 Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props.
 
 ```ts
-og.ui.component(id: string, name: string, props?: unknown): UiDocResponse
+og.ui.component<C extends ComponentName>(id: string, name: C, props?: ComponentProps<C> | null): ComponentResponse<C>
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `id` | `string` | no | The instance's root id. |
-| `name` | `string` | no | The component's name. |
-| `props` | `unknown` | yes | Its props: an object. |
+| `name` | `C` | no | The component's name; a name `og ui types` declared types its props and events. |
+| `props` | `ComponentProps<C> \| null` | yes | Its props: an object. |
 
-**Returns** `UiDocResponse`.
+**Returns** `ComponentResponse<C>`.
 
 Binding symbol `og_ui_component` · publish builds: kept
 
 ```ogt
 fn component {
   doc "Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props."
+  generic C ComponentName
   param id String "The instance's root id."
-  param name String "The component's name."
-  param props Json "Its props: an object." {
+  param name C "The component's name; a name `og ui types` declared types its props and events."
+  param props Option.ComponentProps.C "Its props: an object." {
     optional true
   }
-  returns UiDocResponse
+  returns ComponentResponse.C
 }
 ```
 
-<sub>Module `ui` line 7987</sub>
+<sub>Module `ui` line 7988</sub>

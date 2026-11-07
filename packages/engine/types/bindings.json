@@ -24501,19 +24501,25 @@
       "symbol": "og_ui_screen",
       "module": "ui",
       "name": "screen",
+      "generics": [
+        {
+          "name": "S",
+          "bound": "ScreenName"
+        }
+      ],
       "params": [
         {
           "name": "name",
-          "type": "String",
+          "type": "S",
           "optional": false
         },
         {
           "name": "vm",
-          "type": "Json",
+          "type": "Option<ScreenProps<S>>",
           "optional": true
         }
       ],
-      "returns": "UiDocResponse",
+      "returns": "ScreenResponse<S>",
       "publish": true
     },
     {
@@ -24523,6 +24529,12 @@
       "symbol": "og_ui_component",
       "module": "ui",
       "name": "component",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "ComponentName"
+        }
+      ],
       "params": [
         {
           "name": "id",
@@ -24531,16 +24543,16 @@
         },
         {
           "name": "name",
-          "type": "String",
+          "type": "C",
           "optional": false
         },
         {
           "name": "props",
-          "type": "Json",
+          "type": "Option<ComponentProps<C>>",
           "optional": true
         }
       ],
-      "returns": "UiDocResponse",
+      "returns": "ComponentResponse<C>",
       "publish": true
     },
     {
@@ -24567,6 +24579,12 @@
       "symbol": "og_ui_push",
       "module": "ui",
       "name": "push",
+      "generics": [
+        {
+          "name": "S",
+          "bound": "ScreenName"
+        }
+      ],
       "params": [
         {
           "name": "world",
@@ -24575,12 +24593,12 @@
         },
         {
           "name": "screen",
-          "type": "String",
+          "type": "S",
           "optional": false
         },
         {
           "name": "vm",
-          "type": "Json",
+          "type": "Option<ScreenProps<S>>",
           "optional": true
         }
       ],
@@ -24611,6 +24629,12 @@
       "symbol": "og_ui_replace",
       "module": "ui",
       "name": "replace",
+      "generics": [
+        {
+          "name": "S",
+          "bound": "ScreenName"
+        }
+      ],
       "params": [
         {
           "name": "world",
@@ -24619,12 +24643,12 @@
         },
         {
           "name": "screen",
-          "type": "String",
+          "type": "S",
           "optional": false
         },
         {
           "name": "vm",
-          "type": "Json",
+          "type": "Option<ScreenProps<S>>",
           "optional": true
         }
       ],
@@ -24672,6 +24696,12 @@
       "symbol": "og_ui_screen_vm",
       "module": "ui",
       "name": "screenVm",
+      "generics": [
+        {
+          "name": "S",
+          "bound": "ScreenName"
+        }
+      ],
       "params": [
         {
           "name": "world",
@@ -24680,11 +24710,11 @@
         },
         {
           "name": "screen",
-          "type": "String",
+          "type": "S",
           "optional": false
         }
       ],
-      "returns": "Json",
+      "returns": "Option<ScreenProps<S>>",
       "publish": true
     },
     {

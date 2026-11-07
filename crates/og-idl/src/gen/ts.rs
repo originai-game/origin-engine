@@ -124,6 +124,34 @@ export type Value<T> = T extends { readonly [valueType]: infer V } ? V : never;
 
 /** The typed column views of a component token, as `ArchetypeView.column` returns them. */
 export type View<T> = T extends ComponentType<infer F, any> ? ColumnViews<F> : never;
+
+/**
+ * The game's screen documents by name, each with its viewmodel, events and
+ * slots. Empty here: `og ui types` writes one `.og/types/ui/<name>.d.ts`
+ * per document that adds itself, so `og.ui.screen("shop", vm)` checks `vm`.
+ */
+export interface UiScreens {}
+/** The game's component documents by name, as {@link UiScreens}. */
+export interface UiComponents {}
+/** A screen's name: one the game declares, or any string (untyped). */
+export type ScreenName = (keyof UiScreens & string) | (string & {});
+/** A component's name: one the game declares, or any string (untyped). */
+export type ComponentName = (keyof UiComponents & string) | (string & {});
+/** A declared screen's viewmodel; `unknown` for an undeclared name. */
+export type ScreenProps<S> = S extends keyof UiScreens ? UiScreens[S]["props"] : unknown;
+/** A declared component's props; `unknown` for an undeclared name. */
+export type ComponentProps<C> = C extends keyof UiComponents ? UiComponents[C]["props"] : unknown;
+/** What mounting a declared screen answers, its events narrowed to the ones it can send. */
+export type ScreenResponse<S> = S extends keyof UiScreens
+  ? Omit<UiDocResponse, "events"> & { readonly events: readonly UiScreens[S]["events"][] }
+  : UiDocResponse;
+/** What mounting a declared component answers, its props and events typed. */
+export type ComponentResponse<C> = C extends keyof UiComponents
+  ? Omit<UiDocResponse, "events" | "props"> & {
+      readonly events: readonly UiComponents[C]["events"][];
+      readonly props: UiComponents[C]["props"];
+    }
+  : UiDocResponse;
 "#;
 
 impl<'a> Gen<'a, '_> {
@@ -635,7 +663,8 @@ impl<'a> Gen<'a, '_> {
                 let one = arg(0);
                 format!("[{}]", vec![one; n].join(", "))
             }
-            "ComponentType" | "ResourceType" => format!("{name}<{}>", arg(0)),
+            "ComponentType" | "ResourceType" | "ScreenProps" | "ScreenResponse"
+            | "ComponentProps" | "ComponentResponse" => format!("{name}<{}>", arg(0)),
             other => other.to_string(),
         }
     }

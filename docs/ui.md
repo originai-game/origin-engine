@@ -551,6 +551,19 @@ This is the document-to-widget bridge on both hosts: the slot owns
 placement, the typed call owns widget arguments and interactions. There is
 no untyped widget dispatch API and no executable strings in documents.
 
+Every screen and component is typed from its document. `og ui types`
+(and `og check`, `og run`, `og build` and `og dev` before they check)
+writes `.og/types/ui/<name>.d.ts` per document, which adds it to the
+engine's `UiScreens` or `UiComponents` registry: its props as the contract
+declares them (a list's items and an object's fields as its fixtures show
+them), the events it can send (an `emit` trigger's name, `back emit`'s,
+its elements' ids for clicks and gestures, and those of the components it
+uses) and its slots. `og.ui.screen`, `push`, `replace`, `screenVm` and
+`og.ui.component` take the name as a type parameter, so a declared name
+checks the viewmodel and narrows the answer's events; any other name stays
+untyped. The project template's tsconfig includes `.og/types`; an older
+game adds `".og/types/**/*.d.ts"` to its `include`.
+
 ### 10.3 Why documents
 
 `og dev` applies a changed document in place without reloading the game,

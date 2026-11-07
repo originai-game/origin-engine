@@ -78,10 +78,11 @@ impl Wire {
 pub fn wire(ix: &Index<'_>, f: Option<&Function>, ty: &TypeRef) -> Wire {
     let name = ty.name();
     if let Some(g) = f.and_then(|f| f.generics.iter().find(|g| g.name == name)) {
-        return if g.bound.name() == "Fields" {
-            Wire::Json
-        } else {
-            Wire::Token
+        return match g.bound.name() {
+            "Fields" => Wire::Json,
+            // A document's name, typed against the game's documents.
+            "ScreenName" | "ComponentName" => Wire::Text,
+            _ => Wire::Token,
         };
     }
     match name {

@@ -51,7 +51,7 @@ pub mod extensions;
 mod review;
 mod sheet;
 
-const USAGE: &str = "usage: og ui add <kit|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui eject <screen|kit/document> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui review <kit> [project] [--style <pack>]... [--states a,b] [--grid N] [--out DIR] [--json]\n       og ui sheet <pack|kit> [project] [--out DIR] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui add <kit|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui types [project]\n       og ui eject <screen|kit/document> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui review <kit> [project] [--style <pack>]... [--states a,b] [--grid N] [--out DIR] [--json]\n       og ui sheet <pack|kit> [project] [--out DIR] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
 /// Options forwarded to ui-run.ts with their value.
 const VALUED: [&str; 10] = [
@@ -82,6 +82,33 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     if let ["slots", rest @ ..] = args {
         return slots(rest);
+    }
+    if let ["types", rest @ ..] = args {
+        let project = match rest {
+            [] => ".",
+            [p] if !p.starts_with('-') => p,
+            _ => {
+                eprintln!("og ui types: {USAGE}");
+                return ExitCode::from(2);
+            }
+        };
+        let p = match Project::open(Path::new(project)) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("og ui types: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
+        return match write_types(&p.root) {
+            Ok(n) => {
+                println!("og ui types: {n} document(s) typed in {TYPES_DIR}/");
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("og ui types: {e}");
+                ExitCode::FAILURE
+            }
+        };
     }
     if let ["eject", rest @ ..] = args {
         return eject(rest);
@@ -631,6 +658,72 @@ fn migrate(args: &[&str]) -> ExitCode {
     } else {
         ExitCode::SUCCESS
     }
+}
+
+/// Where `og ui types` writes, under the project: one `<name>.d.ts` per
+/// document, a `/` in its name a `.`.
+pub const TYPES_DIR: &str = ".og/types/ui";
+
+/// Write the `.d.ts` of every screen and component document under the
+/// project's `assets/` (og_ui::doc::types), leaving a file as it is when
+/// it reads the same and removing those whose document is gone. A
+/// document that does not parse is skipped with a note: its errors are the
+/// cook's to report. Answers how many it typed.
+pub fn write_types(root: &Path) -> Result<usize, String> {
+    let assets = root.join("assets");
+    let mut files = Vec::new();
+    collect_ogt(&assets, &mut files);
+    files.sort();
+    let mut docs = Vec::new();
+    for f in &files {
+        let Ok(text) = std::fs::read_to_string(f) else {
+            continue;
+        };
+        let ty = text.lines().next().unwrap_or("");
+        if ty != "type screen" && ty != "type component" {
+            continue;
+        }
+        let id = f
+            .strip_prefix(&assets)
+            .unwrap_or(f)
+            .to_string_lossy()
+            .replace('\\', "/");
+        match og_ui::UiDocument::parse(&id, &text) {
+            Ok(d) => docs.push(d),
+            Err(e) => eprintln!(
+                "og ui types: {id} is not typed: {}",
+                e.first().map(String::as_str).unwrap_or("it does not parse")
+            ),
+        }
+    }
+    let dir = root.join(TYPES_DIR);
+    if docs.is_empty() && !dir.is_dir() {
+        return Ok(0);
+    }
+    std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let components: std::collections::BTreeMap<&str, &og_ui::UiDocument> = docs
+        .iter()
+        .filter(|d| d.kind == og_ui::doc::DocKind::Component)
+        .map(|d| (d.name.as_str(), d))
+        .collect();
+    let lookup = |n: &str| components.get(n).copied();
+    let mut keep = std::collections::BTreeSet::new();
+    for d in &docs {
+        let file = format!("{}.d.ts", d.name.replace('/', "."));
+        let text = og_ui::doc::types::document_dts(d, &lookup);
+        let path = dir.join(&file);
+        if std::fs::read_to_string(&path).ok().as_deref() != Some(text.as_str()) {
+            std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+        }
+        keep.insert(file);
+    }
+    for e in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        if name.ends_with(".d.ts") && !keep.contains(&name) {
+            let _ = std::fs::remove_file(e.path());
+        }
+    }
+    Ok(docs.len())
 }
 
 fn collect_ogt(dir: &Path, out: &mut Vec<std::path::PathBuf>) {

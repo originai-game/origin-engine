@@ -85,21 +85,23 @@
 
   fn screen {
     doc "Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have."
-    param name String "The screen's name (its `name` line)."
-    param vm Json "Its viewmodel: an object (null keeps the one it has)." {
+    generic S ScreenName
+    param name S "The screen's name (its `name` line); a name `og ui types` declared types its viewmodel and events."
+    param vm Option.ScreenProps.S "Its viewmodel: an object (null keeps the one it has)." {
       optional true
     }
-    returns UiDocResponse
+    returns ScreenResponse.S
   }
 
   fn component {
     doc "Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props."
+    generic C ComponentName
     param id String "The instance's root id."
-    param name String "The component's name."
-    param props Json "Its props: an object." {
+    param name C "The component's name; a name `og ui types` declared types its props and events."
+    param props Option.ComponentProps.C "Its props: an object." {
       optional true
     }
-    returns UiDocResponse
+    returns ComponentResponse.C
   }
 
   fn openSlot {
@@ -110,9 +112,10 @@
 
   fn push {
     doc "Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
+    generic S ScreenName
     param world World "The world."
-    param screen String "The screen's name."
-    param vm Json "Its viewmodel (null: its document's first fixture, else an empty object)." {
+    param screen S "The screen's name."
+    param vm Option.ScreenProps.S "Its viewmodel (null: its document's first fixture, else an empty object)." {
       optional true
     }
     returns Result.u32 "The layer's serial. Refused for a name no screen document has."
@@ -126,9 +129,10 @@
 
   fn replace {
     doc "Replace the active layer with a screen."
+    generic S ScreenName
     param world World "The world."
-    param screen String "The screen's name."
-    param vm Json "Its viewmodel." {
+    param screen S "The screen's name."
+    param vm Option.ScreenProps.S "Its viewmodel." {
       optional true
     }
     returns Result.u32 "The new layer's serial."
@@ -148,9 +152,10 @@
 
   fn screenVm {
     doc "A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack."
+    generic S ScreenName
     param world World "The world."
-    param screen String "The screen's name."
-    returns Json
+    param screen S "The screen's name."
+    returns Option.ScreenProps.S
   }
 
   fn docEvents {

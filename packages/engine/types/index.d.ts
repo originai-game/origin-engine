@@ -102,6 +102,34 @@ export type Value<T> = T extends { readonly [valueType]: infer V } ? V : never;
 /** The typed column views of a component token, as `ArchetypeView.column` returns them. */
 export type View<T> = T extends ComponentType<infer F, any> ? ColumnViews<F> : never;
 
+/**
+ * The game's screen documents by name, each with its viewmodel, events and
+ * slots. Empty here: `og ui types` writes one `.og/types/ui/<name>.d.ts`
+ * per document that adds itself, so `og.ui.screen("shop", vm)` checks `vm`.
+ */
+export interface UiScreens {}
+/** The game's component documents by name, as {@link UiScreens}. */
+export interface UiComponents {}
+/** A screen's name: one the game declares, or any string (untyped). */
+export type ScreenName = (keyof UiScreens & string) | (string & {});
+/** A component's name: one the game declares, or any string (untyped). */
+export type ComponentName = (keyof UiComponents & string) | (string & {});
+/** A declared screen's viewmodel; `unknown` for an undeclared name. */
+export type ScreenProps<S> = S extends keyof UiScreens ? UiScreens[S]["props"] : unknown;
+/** A declared component's props; `unknown` for an undeclared name. */
+export type ComponentProps<C> = C extends keyof UiComponents ? UiComponents[C]["props"] : unknown;
+/** What mounting a declared screen answers, its events narrowed to the ones it can send. */
+export type ScreenResponse<S> = S extends keyof UiScreens
+  ? Omit<UiDocResponse, "events"> & { readonly events: readonly UiScreens[S]["events"][] }
+  : UiDocResponse;
+/** What mounting a declared component answers, its props and events typed. */
+export type ComponentResponse<C> = C extends keyof UiComponents
+  ? Omit<UiDocResponse, "events" | "props"> & {
+      readonly events: readonly UiComponents[C]["events"][];
+      readonly props: UiComponents[C]["props"];
+    }
+  : UiDocResponse;
+
 /** Every column kind, from the IDL's `column` declarations. */
 export interface ColumnKinds {
   /** A 32-bit float, the default numeric field. */
@@ -49387,18 +49415,18 @@ export declare namespace og {
     /**
      * Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have.
      *
-     * @param name The screen's name (its `name` line).
+     * @param name The screen's name (its `name` line); a name `og ui types` declared types its viewmodel and events.
      * @param vm Its viewmodel: an object (null keeps the one it has).
      */
-    function screen(name: string, vm?: unknown): UiDocResponse;
+    function screen<S extends ScreenName>(name: S, vm?: ScreenProps<S> | null): ScreenResponse<S>;
     /**
      * Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props.
      *
      * @param id The instance's root id.
-     * @param name The component's name.
+     * @param name The component's name; a name `og ui types` declared types its props and events.
      * @param props Its props: an object.
      */
-    function component(id: string, name: string, props?: unknown): UiDocResponse;
+    function component<C extends ComponentName>(id: string, name: C, props?: ComponentProps<C> | null): ComponentResponse<C>;
     /**
      * Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick.
      *
@@ -49413,7 +49441,7 @@ export declare namespace og {
      * @param vm Its viewmodel (null: its document's first fixture, else an empty object).
      * @returns The layer's serial. Refused for a name no screen document has.
      */
-    function push(world: World, screen: string, vm?: unknown): Result<number>;
+    function push<S extends ScreenName>(world: World, screen: S, vm?: ScreenProps<S> | null): Result<number>;
     /**
      * Pop the active layer; the next active one takes its remembered focus. Answers the popped screen's name (empty: the stack was empty).
      *
@@ -49428,7 +49456,7 @@ export declare namespace og {
      * @param vm Its viewmodel.
      * @returns The new layer's serial.
      */
-    function replace(world: World, screen: string, vm?: unknown): Result<number>;
+    function replace<S extends ScreenName>(world: World, screen: S, vm?: ScreenProps<S> | null): Result<number>;
     /**
      * Empty the layer stack.
      *
@@ -49447,7 +49475,7 @@ export declare namespace og {
      * @param world The world.
      * @param screen The screen's name.
      */
-    function screenVm(world: World, screen: string): unknown;
+    function screenVm<S extends ScreenName>(world: World, screen: S): ScreenProps<S> | null;
     /**
      * Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own.
      *

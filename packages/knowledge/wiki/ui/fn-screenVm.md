@@ -9,25 +9,26 @@ Module [`ui`](../ui.md) · [index](../index.md)
 A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack.
 
 ```ts
-og.ui.screenVm(world: World, screen: string): unknown
+og.ui.screenVm<S extends ScreenName>(world: World, screen: S): ScreenProps<S> | null
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world. |
-| `screen` | `string` | no | The screen's name. |
+| `screen` | `S` | no | The screen's name. |
 
-**Returns** `unknown`.
+**Returns** `ScreenProps<S> | null`.
 
 Binding symbol `og_ui_screen_vm` · publish builds: kept
 
 ```ogt
 fn screenVm {
   doc "A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack."
+  generic S ScreenName
   param world World "The world."
-  param screen String "The screen's name."
-  returns Json
+  param screen S "The screen's name."
+  returns Option.ScreenProps.S
 }
 ```
 
-<sub>Module `ui` line 8041</sub>
+<sub>Module `ui` line 8045</sub>

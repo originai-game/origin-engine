@@ -781,10 +781,19 @@ pub fn run(args: &[&str]) -> ExitCode {
                 }
             }
         }
-        // A source change is checked beside the rebuild; assets are not.
-        if changes
-            .iter()
-            .any(|c| !c.starts_with(p.root.join("assets")))
+        // A document's types follow it (`og ui types`), so code that
+        // mounts it is checked again.
+        let documents = changes.iter().any(|c| {
+            c.starts_with(p.root.join("assets")) && c.extension().is_some_and(|e| e == "ogt")
+        });
+        if documents && let Err(e) = crate::ui::write_types(&p.root) {
+            eprintln!("og dev: {e}");
+        }
+        // A source change is checked beside the rebuild; other assets are not.
+        if (documents
+            || changes
+                .iter()
+                .any(|c| !c.starts_with(p.root.join("assets"))))
             && let Some(c) = &mut checks
         {
             source += 1;

@@ -14,6 +14,7 @@
 pub mod build;
 pub mod css;
 pub mod schema;
+pub mod types;
 
 use crate::bind::{Expr, Format, Template};
 use crate::element::Prop;
