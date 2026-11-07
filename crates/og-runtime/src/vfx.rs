@@ -704,7 +704,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
             if te < 0.0 {
                 continue;
             }
-            let local = m * el.local();
+            let local = m * el.local_at(te);
             let life = el.life.max(1e-4);
             let x = (te / life).clamp(0.0, 1.0);
             let rnd = random(seed, i);

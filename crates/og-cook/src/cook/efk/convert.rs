@@ -300,6 +300,10 @@ struct Place {
     nested: f32,
     /// Frames after which no ancestor is left to spawn it (absolute).
     deadline: Option<f32>,
+    /// How its moving ancestors carry it from its start: per frame and per
+    /// frame squared, in the effect's space.
+    vel: Vec3,
+    acc: Vec3,
 }
 
 fn place(cx: &mut Ctx<'_>, chain: &[&Node]) -> Place {
@@ -316,7 +320,12 @@ fn place(cx: &mut Ctx<'_>, chain: &[&Node]) -> Place {
         generator,
         nested: 1.0,
         deadline: None,
+        vel: Vec3::ZERO,
+        acc: Vec3::ZERO,
     };
+    // Moving single ancestors its place follows: their velocity and
+    // acceleration (in the effect's space) and the frame each was born at.
+    let mut movers: Vec<(Vec3, Vec3, f32)> = Vec::new();
     for (i, a) in chain.iter().enumerate() {
         p.delay += a.generation_offset.c().max(0.0);
         if i < generator {
@@ -335,10 +344,18 @@ fn place(cx: &mut Ctx<'_>, chain: &[&Node]) -> Place {
                 .iter()
                 .any(|l| !l.is_fixed() && l.rate(life).c().abs() > 1e-4)
             {
-                cx.find(
-                    chain[me],
-                    "a moving ancestor: its descendants are placed where it starts",
-                );
+                // One instance that its child always follows: the element
+                // moves as it does (`move`, `accelerate`).
+                if single(a) && child.bind[0] == 2 {
+                    let (v, acc) = translation(a);
+                    let f = p.rot * p.scale;
+                    movers.push((f * v, f * acc, p.delay));
+                } else {
+                    cx.find(
+                        chain[me],
+                        "a moving ancestor: its descendants are placed where it starts",
+                    );
+                }
             }
             if child.bind[0] != 0 && child.bind[0] != 3 {
                 p.offset += p.rot * (loc * p.scale);
@@ -352,7 +369,32 @@ fn place(cx: &mut Ctx<'_>, chain: &[&Node]) -> Place {
             }
         }
     }
+    // Each from where it is when the element starts.
+    for (v, acc, born) in movers {
+        let d = (p.delay - born).max(0.0);
+        p.offset += v * d + acc * (0.5 * d * d);
+        p.vel += v + acc * d;
+        p.acc += acc;
+    }
     p
+}
+
+/// A node's translation per frame and per frame squared (in its parent's
+/// space): its PVA's, or the mean rate of another kind of location.
+fn translation(n: &Node) -> (Vec3, Vec3) {
+    let life = n.life.c().max(1.0);
+    let mut v = Vec3::ZERO;
+    let mut a = Vec3::ZERO;
+    for k in 0..3 {
+        match &n.location[k] {
+            Anim::Pva { v: vk, a: ak, .. } => {
+                v[k] = vk.c();
+                a[k] = ak.c();
+            }
+            l => v[k] = l.rate(life).c(),
+        }
+    }
+    (v, a + n.gravity)
 }
 
 fn spawn_offset(s: &Spawn) -> Vec3 {
@@ -372,6 +414,14 @@ fn element_head(out: &mut String, at: f32, place: &Place) {
     let r = euler_xyz(place.rot);
     if r.length() > 1e-3 {
         let _ = writeln!(out, "  rotate {}", ns(&[r.x, r.y, r.z]));
+    }
+    let v = place.vel * FPS;
+    if v.length() > 1e-3 {
+        let _ = writeln!(out, "  move {}", ns(&[v.x, v.y, v.z]));
+    }
+    let a = place.acc * (FPS * FPS);
+    if a.length() > 1e-3 {
+        let _ = writeln!(out, "  accelerate {}", ns(&[a.x, a.y, a.z]));
     }
 }
 
@@ -827,13 +877,9 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
         }
     }
     let own_life = life * share;
-    if node
-        .location
-        .iter()
-        .any(|l| l.rate(own_life).c().abs() > 1e-3)
-    {
-        cx.find(node, "a moving mesh: drawn where it starts");
-    }
+    // Its own motion: it moves as its location does.
+    let (own_v, own_a) = translation(node);
+    let (own_v, own_a) = (p.rot * (own_v * p.scale), p.rot * (own_a * p.scale));
     let start = at3(&node.location, 0.0, own_life) + spawn_offset(&node.spawn);
     for k in 0..copies {
         let at = (p.delay + k as f32 * sch.interval) / FPS;
@@ -850,6 +896,8 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
         let me = Place {
             offset: p.offset + p.rot * (start * p.scale),
             rot: p.rot * own,
+            vel: p.vel + own_v,
+            acc: p.acc + own_a,
             ..*p
         };
         let mut s = format!("mesh {shape} {{\n");
@@ -1077,6 +1125,8 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
             rot: Quat::IDENTITY,
             nested: rest,
             deadline: None,
+            vel: Vec3::ZERO,
+            acc: Vec3::ZERO,
             ..*p
         };
         // The parent's particles move as it does: only an ancestor between

@@ -11,6 +11,10 @@
     {
       "member": "og.load.emitter",
       "summary": "`subEmitter life \"<emitter id>\" [<inherit velocity>]`: each particle runs the other emitter's own emission (its rate, bursts, duration and looping) from its birth while it lives, born where the particle is at each tick (Unity's Birth sub-emitter, Niagara's particle-spawned emitters). It runs on the CPU path like the other sub-emitters and is deterministic per tick."
+    },
+    {
+      "member": "og.vfx",
+      "summary": "Every vfx element takes `move <x> <y> <z>` (metres per second) and `accelerate <x> <y> <z>`, which carry it from its offset from its start. An emitter spawns along the path, and a mesh, trail or light goes with it."
     }
   ],
   "fixed": [
@@ -29,6 +33,10 @@
     {
       "member": "og vfx import",
       "summary": "An Effekseer node under an ancestor with many instances becomes a parent emitter that draws nothing, whose particles move as that ancestor does and each run the node's emission (`subEmitter life`). Before, the instances were folded into one emitter at one place. The finding stays only for deeper nesting and for meshes and trails."
+    },
+    {
+      "member": "og vfx import",
+      "summary": "An Effekseer element whose single-instance ancestor moves, with its location bound to always follow, moves with it (`move`, `accelerate`) from where the ancestor is when the element starts. A mesh node's own motion is carried the same way. Before, the element was placed where the ancestor started."
     }
   ]
 }

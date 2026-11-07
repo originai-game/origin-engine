@@ -424,3 +424,43 @@ fn a_node_under_an_instanced_parent_is_a_life_sub_emitter() {
     // Room for every parent's children at once: 6 × 10 × 1.25.
     assert_eq!(line(child, "maxParticles"), "maxParticles 75", "{child}");
 }
+
+#[test]
+fn a_moving_ancestor_moves_the_element_it_carries() {
+    // P (one instance) moves up 0.1 a frame and falls 0.01 a frame²,
+    // 30 frames after the start; its sprites, spawned 10 frames into it,
+    // follow it: their emitter starts where P is then and moves on as P
+    // does (no speed left after 10 frames of its fall, 36 m/s² down).
+    let c = run(&project(
+        "<Node><CommonValues><GenerationTimeOffset><Center>30</Center><Max>30</Max><Min>30</Min></GenerationTimeOffset></CommonValues>\
+         <LocationValues><Type>1</Type><PVA>\
+         <Velocity><Y><Center>0.1</Center><Max>0.1</Max><Min>0.1</Min></Y></Velocity>\
+         <Acceleration><Y><Center>-0.01</Center><Max>-0.01</Max><Min>-0.01</Min></Y></Acceleration></PVA></LocationValues>\
+         <DrawingValues><Type>0</Type></DrawingValues><Name>P</Name><Children>\
+         <Node><CommonValues><MaxGeneration><Value>20</Value></MaxGeneration>\
+         <GenerationTimeOffset><Center>10</Center><Max>10</Max><Min>10</Min></GenerationTimeOffset></CommonValues>\
+         <DrawingValues><Type>2</Type></DrawingValues><Name>S</Name><Children /></Node>\
+         </Children></Node>",
+    ));
+    assert!(
+        !c.findings
+            .iter()
+            .any(|f| f.what.starts_with("a moving ancestor")),
+        "{:?}",
+        c.findings
+    );
+    let el = &c.vfx[c.vfx.find("emitter \"").expect("an emitter")..];
+    assert_eq!(line(el, "at"), "at 0.6667", "{}", c.vfx);
+    // 10 frames in: 1 − 0.5 up; then 0.1 − 0.1 = 0 a frame, −0.01 a frame².
+    assert_eq!(line(el, "offset"), "offset 0 0.5 0", "{}", c.vfx);
+    assert!(
+        !el.lines().any(|l| l.trim().starts_with("move")),
+        "{}",
+        c.vfx
+    );
+    assert_eq!(line(el, "accelerate"), "accelerate 0 -36 0", "{}", c.vfx);
+    let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
+    // A second on: 0.5 − 18 m.
+    let y = v.elements[0].local_at(1.0).w_axis.y;
+    assert!((y - (0.5 - 18.0)).abs() < 1e-3, "{y}");
+}

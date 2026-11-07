@@ -16,6 +16,8 @@
 //!   until 0.5                       # stops emitting; its particles live out
 //!   offset 0 0.5 0                  # from the effect's origin, in its space
 //!   rotate 0 90 0                   # degrees
+//!   move 0 2 0                      # metres per second it moves from its offset
+//!   accelerate 0 -1 0               # metres per second squared
 //!   seed 3                          # added to the effect's seed
 //! }
 //! mesh ring {                       # sphere | quad | ring | box | cylinder | "<model id>"
@@ -73,7 +75,9 @@
 //! }
 //! ```
 //!
-//! Every element takes `at`, `offset` and `rotate`; those that last take
+//! Every element takes `at`, `offset`, `rotate`, `move` and `accelerate`
+//! (its offset moves from its start: an emitter spawns along the path, a
+//! mesh, trail or light goes with it); those that last take
 //! `life` (seconds) or `until` (an end time). A value is a number,
 //! `random <min> <max>` (fixed per effect instance) or `curve <t> <v> ...`
 //! (over the element's life, at most 8 keys). Times are seconds from the
@@ -128,16 +132,29 @@ pub struct VfxElement {
     pub offset: glam::Vec3,
     /// Degrees about x, y, z (applied z, y, x: as three.js's Euler XYZ).
     pub rotate: glam::Vec3,
+    /// Metres per second it moves from its offset (`move`), in the
+    /// effect's space, from its start.
+    pub velocity: glam::Vec3,
+    /// Metres per second squared (`accelerate`).
+    pub acceleration: glam::Vec3,
     pub kind: VfxKind,
 }
 
 impl VfxElement {
-    /// Its local transform in the effect's space.
+    /// Its local transform in the effect's space where it starts.
     pub fn local(&self) -> glam::Mat4 {
+        self.local_at(0.0)
+    }
+
+    /// Its local transform `t` seconds after its start: its offset moved
+    /// by its velocity and acceleration (an Effekseer ancestor's motion,
+    /// which its descendants follow).
+    pub fn local_at(&self, t: f32) -> glam::Mat4 {
         let r = self.rotate * (std::f32::consts::PI / 180.0);
+        let t = t.max(0.0);
         glam::Mat4::from_rotation_translation(
             glam::Quat::from_euler(glam::EulerRot::XYZ, r.x, r.y, r.z),
-            self.offset,
+            self.offset + self.velocity * t + self.acceleration * (0.5 * t * t),
         )
     }
 }
@@ -411,6 +428,8 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
         life: 0.0,
         offset: glam::Vec3::ZERO,
         rotate: glam::Vec3::ZERO,
+        velocity: glam::Vec3::ZERO,
+        acceleration: glam::Vec3::ZERO,
         kind: match e.key.as_str() {
             "emitter" => VfxKind::Emitter {
                 id: id(e, "emitter")?,
@@ -507,6 +526,8 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
             ("until", _) => until = Some(time(k)?),
             ("offset", _) => el.offset = vec3(k)?,
             ("rotate", _) => el.rotate = vec3(k)?,
+            ("move", _) => el.velocity = vec3(k)?,
+            ("accelerate", _) => el.acceleration = vec3(k)?,
             ("seed", VfxKind::Emitter { seed, .. }) => {
                 *seed = k
                     .values
@@ -714,6 +735,26 @@ mod tests {
             parse_vfx("type vfx\nversion 1\n---\nloop true\n")
                 .unwrap_err()
                 .contains("duration")
+        );
+    }
+
+    #[test]
+    fn an_element_moves_from_its_offset_by_move_and_accelerate() {
+        let v = parse_vfx(
+            "type vfx\nversion 1\n---\nduration 2\nlight {\n  at 0.5\n  life 1\n  offset 1 0 0\n  move 0 2 0\n  accelerate 0 0 -4\n}\n",
+        )
+        .unwrap();
+        let e = &v.elements[0];
+        assert_eq!(e.velocity, glam::Vec3::new(0.0, 2.0, 0.0));
+        assert_eq!(e.local_at(0.0).w_axis.truncate(), glam::Vec3::X);
+        // Half a second in: 1 up, 0.5 back.
+        assert_eq!(
+            e.local_at(0.5).w_axis.truncate(),
+            glam::Vec3::new(1.0, 1.0, -0.5)
+        );
+        assert!(
+            parse_vfx("type vfx\nversion 1\n---\nduration 1\nlight {\n  life 1\n  move 1 2\n}\n")
+                .is_err()
         );
     }
 }
