@@ -21,7 +21,7 @@ fn the_widget_set_matches_its_reference_frame() {
     let frame = shot.ui.frame();
     assert!(frame.warnings.is_empty(), "{:?}", frame.warnings);
     assert!(
-        frame.element("Difficulty.menu/Option#2").is_some(),
+        frame.element("Difficulty.list/List/Option#2").is_some(),
         "the menu is open"
     );
     assert!(frame.element("Toasts/Toast#1").is_some(), "the toast is up");

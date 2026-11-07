@@ -287,15 +287,6 @@ pub(crate) enum Widget {
     Progress {
         value: f32,
     },
-    Slider {
-        t: f32,
-        active: bool,
-    },
-    Toggle {
-        on: bool,
-        /// Where the knob is on the style's `ui` spring (0 off, 1 on).
-        slide: f32,
-    },
     Field(EditView),
     /// A multi-line text area: its text (the value with any composition),
     /// wrapped at draw time, and its placeholder.

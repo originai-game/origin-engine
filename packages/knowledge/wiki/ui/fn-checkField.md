@@ -8,6 +8,8 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 A checkbox: a box that fills with primary and draws its tick (a dash when mixed) with a pop as it turns on (its selection group), with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Checkbox.box[checked|mixed][invalid][hover|pressed|focused|disabled]`, `Checkbox.mark`, `Checkbox.row[hover|pressed|focused|disabled]` (the whole row). Role checkbox, checked when on (and its value `mixed`). Probe: `<id>`, `<id>/Box`, `<id>/Box/Mark`.
 
+Also known as: checkbox, tick box, Godot CheckBox
+
 ```ts
 og.ui.checkField(id: string, checked: boolean, desc?: CheckFieldDesc): SwitchResult
 ```
@@ -20,12 +22,12 @@ og.ui.checkField(id: string, checked: boolean, desc?: CheckFieldDesc): SwitchRes
 
 **Returns** `SwitchResult`.
 
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+Binding symbol `og_ui_check_field` · publish builds: kept
 
 ```ogt
 fn checkField {
   doc "A checkbox: a box that fills with primary and draws its tick (a dash when mixed) with a pop as it turns on (its selection group), with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Checkbox.box[checked|mixed][invalid][hover|pressed|focused|disabled]`, `Checkbox.mark`, `Checkbox.row[hover|pressed|focused|disabled]` (the whole row). Role checkbox, checked when on (and its value `mixed`). Probe: `<id>`, `<id>/Box`, `<id>/Box/Mark`."
-  host false
+  aliases "checkbox, tick box, Godot CheckBox"
   param id String "Its id."
   param checked bool "Its state from game state."
   param desc CheckFieldDesc "Its label and states."
@@ -33,4 +35,4 @@ fn checkField {
 }
 ```
 
-<sub>Module `ui` line 3789</sub>
+<sub>Module `ui` line 3643</sub>

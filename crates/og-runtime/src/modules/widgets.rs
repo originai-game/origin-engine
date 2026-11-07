@@ -198,32 +198,6 @@ pub fn og_ui_progress(id: String, value: f64, desc: Option<String>) {
     });
 }
 
-pub fn og_ui_slider(id: String, value: f64, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let mut v = value as f32;
-    let r = with_ui("og.ui.slider", |ui| {
-        ui.slider(
-            id.as_str(),
-            &mut v,
-            SliderDesc {
-                min: f(&d, "min", 0.0),
-                max: f(&d, "max", 0.0),
-                step: f(&d, "step", 0.0),
-                width: size(&d["width"]),
-            },
-        )
-    });
-    json!({ "response": response(r.unwrap_or_default()), "value": v }).to_string()
-}
-
-pub fn og_ui_toggle(id: String, on: bool, label: String) -> String {
-    let mut state = on;
-    let r = with_ui("og.ui.toggle", |ui| {
-        ui.toggle(id.as_str(), &mut state, &label)
-    });
-    json!({ "response": response(r.unwrap_or_default()), "on": state }).to_string()
-}
-
 pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let mut text = value;

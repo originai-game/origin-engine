@@ -13,10 +13,17 @@ use crate::layout::{
 use crate::motion::{TransitionKind, fx};
 use crate::style::{READABLE, Srgba};
 use crate::tokens::EaseName;
-use crate::ui::{Anim, Response, Toast, Ui, mix_srgba};
+use crate::ui::{Anim, Response, Toast, Ui};
 use og_core::hash::StableHasher;
 use og_render::TextureHandle;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
+
+pub use controls::{
+    CheckFieldDesc, ChoiceIndexResult, DropdownDesc, DropdownOption, DropdownResult, LabelSide,
+    NumberResult, NumberStepperDesc, RadioGroupDesc, RadioOption, RadioVariant, SegmentItem,
+    SegmentedDesc, SliderMark, SwitchResult, ToggleSwitchDesc, ValueFormat, ValueSliderDesc,
+    ValueSliderResult, kept_options,
+};
 
 // ── descs and answers ───────────────────────────────────────────────────────
 
@@ -147,45 +154,6 @@ pub struct GridDesc {
     pub width: Size,
     pub height: Option<Size>,
     pub padding: Insets,
-}
-
-/// A segmented control of tabs.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct TabsDesc {
-    /// Equal segments across the width.
-    pub fill: bool,
-    pub width: Option<Size>,
-    /// The tab row's accessible name (what a screen reader calls it);
-    /// empty is its id.
-    pub label: String,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct SelectDesc {
-    /// Shown while nothing is selected.
-    pub placeholder: String,
-    pub width: Option<Size>,
-    pub disabled: bool,
-    /// Its accessible name; empty is its id.
-    pub label: String,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct StepperDesc {
-    /// The range; `min == max` (the zero value): unbounded.
-    pub min: f32,
-    pub max: f32,
-    /// 0: 1.
-    pub step: f32,
-    /// Digits after the point.
-    pub decimals: u32,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct RadioDesc {
-    pub horizontal: bool,
-    /// The group's accessible name; empty is its id.
-    pub label: String,
 }
 
 /// Status tones (badges, toasts, map markers).
@@ -503,9 +471,9 @@ fn sin(a: f32) -> f32 {
     a.sin()
 }
 
+mod controls;
 mod hud;
 mod layers;
 mod lists;
 mod presentation;
-mod selection;
 mod touch_dialogue;

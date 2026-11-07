@@ -427,6 +427,9 @@ pub struct Ui {
     /// Open focus scopes this frame, in build order.
     pub(crate) scopes: Vec<usize>,
     pub(crate) icons: IconAtlas,
+    /// Text a control keeps between ticks while it is open (a dropdown's
+    /// filter), by key: names of the frame's UI, dropped when it closes.
+    pub(crate) kept_texts: crate::id::KeyMap<String>,
     /// Pictures rich text draws by name (`[img=…]`).
     pub(crate) images: std::collections::BTreeMap<String, InlineImage>,
     pub(crate) toast_anchor: Anchor,

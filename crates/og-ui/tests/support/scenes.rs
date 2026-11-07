@@ -111,10 +111,21 @@ pub fn sample_screen(ui: &mut Ui, s: &mut Sample) {
                             s.clicks.push(id.to_owned());
                         }
                     }
-                    if ui.toggle("Music", &mut s.music, "Music").clicked {
+                    let music = ui.toggle_switch(
+                        "Music",
+                        s.music,
+                        &ToggleSwitchDesc {
+                            label: "Music".into(),
+                            ..ToggleSwitchDesc::default()
+                        },
+                    );
+                    s.music = music.on;
+                    if music.response.clicked {
                         s.clicks.push("Music".into());
                     }
-                    ui.slider("Volume", &mut s.volume, SliderDesc::default());
+                    s.volume = ui
+                        .value_slider("Volume", s.volume, &ValueSliderDesc::default())
+                        .value;
                     ui.progress("Loading", s.loading, ProgressDesc::default());
                 },
             );
@@ -456,15 +467,21 @@ pub fn kit_screen(ui: &mut Ui, s: &mut Kit) {
                     ..PanelDesc::default()
                 },
                 |ui| {
-                    ui.tabs(
-                        "Tabs",
-                        &["Overview", "Stats", "Gear"],
-                        &mut s.tab,
-                        TabsDesc {
-                            fill: true,
-                            ..TabsDesc::default()
-                        },
-                    );
+                    s.tab = ui
+                        .segmented(
+                            "Tabs",
+                            &SegmentedDesc {
+                                items: ["Overview", "Stats", "Gear"]
+                                    .map(|l| SegmentItem {
+                                        label: l.into(),
+                                        ..SegmentItem::default()
+                                    })
+                                    .to_vec(),
+                                selected: s.tab as i32,
+                                ..SegmentedDesc::default()
+                            },
+                        )
+                        .selected as usize;
                     ui.row(
                         "Pickers",
                         Element {
@@ -473,33 +490,65 @@ pub fn kit_screen(ui: &mut Ui, s: &mut Kit) {
                             ..Element::default()
                         },
                         |ui| {
-                            ui.select(
+                            let pick = ui.dropdown(
                                 "Difficulty",
-                                &["Easy", "Normal", "Hard"],
-                                &mut s.pick,
-                                &SelectDesc::default(),
-                            );
-                            ui.stepper(
-                                "Amount",
-                                &mut s.amount,
-                                StepperDesc {
-                                    min: 0.0,
-                                    max: 9.0,
-                                    ..StepperDesc::default()
+                                &DropdownDesc {
+                                    options: ["Easy", "Normal", "Hard"]
+                                        .map(|l| DropdownOption {
+                                            label: l.into(),
+                                            ..DropdownOption::default()
+                                        })
+                                        .to_vec(),
+                                    selected: s.pick as i32,
+                                    width: Some(Size::Fixed(160.0)),
+                                    ..DropdownDesc::default()
                                 },
                             );
+                            s.pick = pick.selected.max(0) as usize;
+                            s.amount = ui
+                                .number_stepper(
+                                    "Amount",
+                                    s.amount,
+                                    &NumberStepperDesc {
+                                        min: Some(0.0),
+                                        max: Some(9.0),
+                                        ..NumberStepperDesc::default()
+                                    },
+                                )
+                                .value;
                         },
                     );
-                    ui.radio(
-                        "Mode",
-                        &["Solo", "Co-op", "Versus"],
-                        &mut s.mode,
-                        RadioDesc {
-                            horizontal: true,
-                            ..RadioDesc::default()
-                        },
-                    );
-                    ui.checkbox_list("Options", &["Show hints", "Hard mode"], &mut s.checks);
+                    s.mode = ui
+                        .radio_group(
+                            "Mode",
+                            &RadioGroupDesc {
+                                options: ["Solo", "Co-op", "Versus"]
+                                    .map(|l| RadioOption {
+                                        label: l.into(),
+                                        ..RadioOption::default()
+                                    })
+                                    .to_vec(),
+                                selected: s.mode as i32,
+                                row: true,
+                                ..RadioGroupDesc::default()
+                            },
+                        )
+                        .selected
+                        .max(0) as usize;
+                    ui.column("Options", Element::column(), |ui| {
+                        for (k, label) in ["Show hints", "Hard mode"].into_iter().enumerate() {
+                            s.checks[k] = ui
+                                .check_field(
+                                    ui_idi("Option", k as u32),
+                                    s.checks[k],
+                                    &CheckFieldDesc {
+                                        label: label.into(),
+                                        ..CheckFieldDesc::default()
+                                    },
+                                )
+                                .on;
+                        }
+                    });
                     ui.row(
                         "Chips",
                         Element {

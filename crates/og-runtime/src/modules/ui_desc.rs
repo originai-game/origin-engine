@@ -607,10 +607,6 @@ pub(super) fn transition_kind(v: &Value) -> Option<TransitionKind> {
     })
 }
 
-pub(super) fn strings(text: &str) -> Vec<String> {
-    serde_json::from_str::<Vec<String>>(text).unwrap_or_default()
-}
-
 pub(super) fn idx(v: &Value) -> Option<u32> {
     v.as_u64().map(|n| n as u32)
 }

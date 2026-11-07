@@ -27,7 +27,7 @@ const Menu = defineSystem("Menu", { writes: [Run] }, (_q, _time, world) => {
   const run = world.resource(Run);
   if (!run.ok) return;
   if (og.ui.button("Play", "Play", {}).clicked) run.value.presses += 1;
-  const v = og.ui.slider("Volume", run.value.volume, { min: 0, max: 1 });
+  const v = og.ui.valueSlider("Volume", run.value.volume, { min: 0, max: 1 });
   run.value.volume = v.value;
 });
 

@@ -1227,17 +1227,32 @@ impl UiApi for NodeHost {
     fn og_ui_button(&self, id: String, text: String, desc: Option<String>) -> String {
         rt::og_ui_button(id, text, desc)
     }
+    fn og_ui_toggle_switch(&self, id: String, on: bool, desc: Option<String>) -> String {
+        rt::og_ui_toggle_switch(id, on, desc)
+    }
+    fn og_ui_check_field(&self, id: String, checked: bool, desc: Option<String>) -> String {
+        rt::og_ui_check_field(id, checked, desc)
+    }
+    fn og_ui_radio_group(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_radio_group(id, desc)
+    }
+    fn og_ui_value_slider(&self, id: String, value: f64, desc: Option<String>) -> String {
+        rt::og_ui_value_slider(id, value, desc)
+    }
+    fn og_ui_number_stepper(&self, id: String, value: f64, desc: Option<String>) -> String {
+        rt::og_ui_number_stepper(id, value, desc)
+    }
+    fn og_ui_segmented(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_segmented(id, desc)
+    }
+    fn og_ui_dropdown(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_dropdown(id, desc)
+    }
     fn og_ui_image(&self, id: String, desc: Option<String>) {
         rt::og_ui_image(id, desc)
     }
     fn og_ui_progress(&self, id: String, value: f64, desc: Option<String>) {
         rt::og_ui_progress(id, value, desc)
-    }
-    fn og_ui_slider(&self, id: String, value: f64, desc: Option<String>) -> String {
-        rt::og_ui_slider(id, value, desc)
-    }
-    fn og_ui_toggle(&self, id: String, on: bool, label: String) -> String {
-        rt::og_ui_toggle(id, on, label)
     }
     fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String {
         rt::og_ui_text_field(id, value, desc)
@@ -1332,36 +1347,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_dragging(&self, id: String) -> String {
         rt::og_ui_dragging(id)
-    }
-    fn og_ui_tabs(&self, id: String, items: String, selected: u32, desc: Option<String>) -> String {
-        rt::og_ui_tabs(id, items, selected, desc)
-    }
-    fn og_ui_select(
-        &self,
-        id: String,
-        options: String,
-        selected: u32,
-        desc: Option<String>,
-    ) -> String {
-        rt::og_ui_select(id, options, selected, desc)
-    }
-    fn og_ui_stepper(&self, id: String, value: f64, desc: Option<String>) -> String {
-        rt::og_ui_stepper(id, value, desc)
-    }
-    fn og_ui_radio(
-        &self,
-        id: String,
-        options: String,
-        selected: u32,
-        desc: Option<String>,
-    ) -> String {
-        rt::og_ui_radio(id, options, selected, desc)
-    }
-    fn og_ui_checkbox(&self, id: String, on: bool, label: String) -> String {
-        rt::og_ui_checkbox(id, on, label)
-    }
-    fn og_ui_checkbox_list(&self, id: String, labels: String, values: String) -> String {
-        rt::og_ui_checkbox_list(id, labels, values)
     }
     fn og_ui_chip(&self, id: String, text: String, desc: Option<String>) -> String {
         rt::og_ui_chip(id, text, desc)

@@ -152,7 +152,7 @@ fn dump_ui_lists_every_visible_element_with_bounds_and_text() {
     for (path, text) in [
         ("Menu/Title", "Origin"),
         ("Start", "Start"),
-        ("Music", "Music"),
+        ("Music/Text/Label", "Music"),
         ("Search", "Search items"),
         ("Row#0/Name", "Item 0"),
         ("Header/Engine", "原点引擎"),

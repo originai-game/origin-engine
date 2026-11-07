@@ -25,4 +25,4 @@ struct NotificationsResult {
 }
 ```
 
-<sub>Module `ui` line 5487</sub>
+<sub>Module `ui` line 5341</sub>

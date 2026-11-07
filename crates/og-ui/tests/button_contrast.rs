@@ -222,12 +222,19 @@ fn every_tab_label_reads_at_3_to_1_selected_or_not_in_both_themes() {
                     ..PanelDesc::default()
                 },
                 |ui| {
-                    let mut at = 1;
-                    ui.tabs(
+                    ui.segmented(
                         "Tabs",
-                        &["Audio", "Graphics", "Controls"],
-                        &mut at,
-                        TabsDesc::default(),
+                        &SegmentedDesc {
+                            items: ["Audio", "Graphics", "Controls"]
+                                .map(|l| SegmentItem {
+                                    label: l.into(),
+                                    ..SegmentItem::default()
+                                })
+                                .to_vec(),
+                            selected: 1,
+                            width: Some(Size::fit()),
+                            ..SegmentedDesc::default()
+                        },
                     );
                 },
             );

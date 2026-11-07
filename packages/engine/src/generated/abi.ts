@@ -855,10 +855,6 @@ export interface HostAbi<A, V> {
   og_ui_zoom_view(id: string, desc: string | undefined): string;
   /** `og.ui.progress` */
   og_ui_progress(id: string, value: number, desc: string | undefined): void;
-  /** `og.ui.slider` */
-  og_ui_slider(id: string, value: number, desc: string | undefined): string;
-  /** `og.ui.toggle` */
-  og_ui_toggle(id: string, on: boolean, label: string): string;
   /** `og.ui.textField` */
   og_ui_text_field(id: string, value: string, desc: string | undefined): string;
   /** `og.ui.textArea` */
@@ -913,18 +909,6 @@ export interface HostAbi<A, V> {
   og_ui_close_list(): string;
   /** `og.ui.dragging` */
   og_ui_dragging(id: string): string;
-  /** `og.ui.tabs` */
-  og_ui_tabs(id: string, items: string, selected: number, desc: string | undefined): string;
-  /** `og.ui.select` */
-  og_ui_select(id: string, options: string, selected: number, desc: string | undefined): string;
-  /** `og.ui.stepper` */
-  og_ui_stepper(id: string, value: number, desc: string | undefined): string;
-  /** `og.ui.radio` */
-  og_ui_radio(id: string, options: string, selected: number, desc: string | undefined): string;
-  /** `og.ui.checkbox` */
-  og_ui_checkbox(id: string, on: boolean, label: string): string;
-  /** `og.ui.checkboxList` */
-  og_ui_checkbox_list(id: string, labels: string, values: string): string;
   /** `og.ui.chip` */
   og_ui_chip(id: string, text: string, desc: string | undefined): string;
   /** `og.ui.badge` */
@@ -1013,6 +997,20 @@ export interface HostAbi<A, V> {
   og_ui_screen_transition(id: string, screen: string, desc: string | undefined): string;
   /** `og.ui.previewViewport` */
   og_ui_preview_viewport(world: number, viewport: string): void;
+  /** `og.ui.toggleSwitch` */
+  og_ui_toggle_switch(id: string, on: boolean, desc: string | undefined): string;
+  /** `og.ui.checkField` */
+  og_ui_check_field(id: string, checked: boolean, desc: string | undefined): string;
+  /** `og.ui.radioGroup` */
+  og_ui_radio_group(id: string, desc: string | undefined): string;
+  /** `og.ui.valueSlider` */
+  og_ui_value_slider(id: string, value: number, desc: string | undefined): string;
+  /** `og.ui.numberStepper` */
+  og_ui_number_stepper(id: string, value: number, desc: string | undefined): string;
+  /** `og.ui.segmented` */
+  og_ui_segmented(id: string, desc: string | undefined): string;
+  /** `og.ui.dropdown` */
+  og_ui_dropdown(id: string, desc: string | undefined): string;
   /** `og.ui.props` */
   og_ui_props(desc: string | undefined): boolean;
   /** `og.ui.defineTimeline` */
@@ -1732,8 +1730,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_image",
   "og_ui_zoom_view",
   "og_ui_progress",
-  "og_ui_slider",
-  "og_ui_toggle",
   "og_ui_text_field",
   "og_ui_text_area",
   "og_ui_tooltip",
@@ -1761,12 +1757,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_grid_item",
   "og_ui_close_list",
   "og_ui_dragging",
-  "og_ui_tabs",
-  "og_ui_select",
-  "og_ui_stepper",
-  "og_ui_radio",
-  "og_ui_checkbox",
-  "og_ui_checkbox_list",
   "og_ui_chip",
   "og_ui_badge",
   "og_ui_divider",
@@ -1811,6 +1801,13 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_shake",
   "og_ui_screen_transition",
   "og_ui_preview_viewport",
+  "og_ui_toggle_switch",
+  "og_ui_check_field",
+  "og_ui_radio_group",
+  "og_ui_value_slider",
+  "og_ui_number_stepper",
+  "og_ui_segmented",
+  "og_ui_dropdown",
   "og_ui_props",
   "og_ui_define_timeline",
   "og_ui_play",

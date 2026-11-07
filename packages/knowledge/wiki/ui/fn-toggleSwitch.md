@@ -8,6 +8,8 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Toggle.track[on|off][hover|pressed|focused|disabled]`, `Toggle.knob[on]`, `Toggle.row[hover|pressed|focused|disabled]` (the whole row, which takes the press). Role switch, checked when on. Probe: `<id>` (its label as name), `<id>/Track`, `<id>/Track/Knob`.
 
+Also known as: toggle, switch, Unity Toggle, Godot CheckButton
+
 ```ts
 og.ui.toggleSwitch(id: string, on: boolean, desc?: ToggleSwitchDesc): SwitchResult
 ```
@@ -20,12 +22,12 @@ og.ui.toggleSwitch(id: string, on: boolean, desc?: ToggleSwitchDesc): SwitchResu
 
 **Returns** `SwitchResult`.
 
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+Binding symbol `og_ui_toggle_switch` · publish builds: kept
 
 ```ogt
 fn toggleSwitch {
   doc "A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Toggle.track[on|off][hover|pressed|focused|disabled]`, `Toggle.knob[on]`, `Toggle.row[hover|pressed|focused|disabled]` (the whole row, which takes the press). Role switch, checked when on. Probe: `<id>` (its label as name), `<id>/Track`, `<id>/Track/Knob`."
-  host false
+  aliases "toggle, switch, Unity Toggle, Godot CheckButton"
   param id String "Its id."
   param on bool "Its state from game state."
   param desc ToggleSwitchDesc "Its label and states."
@@ -33,4 +35,4 @@ fn toggleSwitch {
 }
 ```
 
-<sub>Module `ui` line 3766</sub>
+<sub>Module `ui` line 3620</sub>

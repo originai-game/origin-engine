@@ -357,17 +357,6 @@ module ui {
     field width Option.Size "Its width; null grows into the free space."
   }
 
-  struct SliderDesc {
-    doc "A slider's range and width."
-    desc true
-    field min f32 "The smallest value; min equal to max (the zero value) means 0 to 1."
-    field max f32 "The largest value."
-    field step f32 "Snap to multiples of step from min; 0 is continuous." {
-      min 0
-    }
-    field width Option.Size "Its width; null grows."
-  }
-
   struct FieldDesc {
     doc "A one-line text field."
     desc true
@@ -413,18 +402,6 @@ module ui {
     field longPress f32 "How far into its long press the held press is, 0 to 1 (0: none): a ring that fills while a touch is held." {
       unit ratio
     }
-  }
-
-  struct SliderResult {
-    doc "A slider's response and its value after this tick's input."
-    field response Response "What happened to it."
-    field value f32 "The value, to keep in game state and pass back next tick."
-  }
-
-  struct ToggleResult {
-    doc "A toggle's response and its state after this tick's input."
-    field response Response "What happened to it."
-    field on bool "The state, to keep in game state and pass back next tick."
   }
 
   struct FieldResult {
@@ -742,22 +719,6 @@ module ui {
     returns Void
   }
 
-  fn slider {
-    doc "A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. Pass back the value it answers next tick."
-    param id String "Its id."
-    param value f32 "The value from game state."
-    param desc SliderDesc "Range, step and width."
-    returns SliderResult
-  }
-
-  fn toggle {
-    doc "A switch with a label; a click flips it. Pass back the state it answers next tick. The probe reads its label."
-    param id String "Its id."
-    param on bool "The state from game state."
-    param label String "The label."
-    returns ToggleResult
-  }
-
   fn textField {
     doc "One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty."
     param id String "Its id."
@@ -1037,61 +998,6 @@ module ui {
     field height Option.Size "Its height; null grows."
     field padding Insets "Space inside."
     field selected Option.u32 "The selected cell, for og.ui.grid."
-  }
-
-  struct TabsDesc {
-    doc "A segmented control of tabs."
-    desc true
-    field fill bool "Equal segments across the width."
-    field width Option.Size "Its width; null fits (grows with fill)."
-    field label String "What a screen reader calls the row of tabs (its accessible name), never drawn; empty is its id. A localised game passes its string table's."
-  }
-
-  struct ChoiceResult {
-    doc "A choice control's response and the chosen index after this tick's input."
-    field response Response "What happened to it; changed when the choice moved."
-    field selected u32 "The chosen index, to keep in game state and pass back next tick."
-  }
-
-  struct SelectDesc {
-    doc "A select: a trigger that opens a menu of options."
-    desc true
-    field placeholder String "Shown while nothing is chosen."
-    field width Option.Size "Its width; null grows from 160."
-    field disabled bool "Neutral and inert."
-    field label String "What a screen reader calls it (its accessible name; the chosen option is its value), never drawn; empty is its id. A localised game passes its string table's."
-  }
-
-  struct StepperDesc {
-    doc "A number stepper's range, step and digits."
-    desc true
-    field min f32 "The smallest value; min equal to max (the zero value) is unbounded."
-    field max f32 "The largest value."
-    field step f32 "How much a press changes it; 0 is 1." {
-      min 0
-    }
-    field decimals u32 "Digits after the point." {
-      max 6
-    }
-  }
-
-  struct StepperResult {
-    doc "A stepper's response and value after this tick's input."
-    field response Response "What happened to it."
-    field value f32 "The value, to keep in game state and pass back next tick."
-  }
-
-  struct RadioDesc {
-    doc "How a radio group lays out, and its name."
-    desc true
-    field horizontal bool "Options in a row (the default is a column)."
-    field label String "What a screen reader calls the group (its accessible name), never drawn; empty is its id. A localised game passes its string table's."
-  }
-
-  struct CheckListResult {
-    doc "A checkbox list's response and values after this tick's input."
-    field response Response "What happened to it; changed when any box flipped."
-    field values List.bool "The values, to keep in game state and pass back next tick."
   }
 
   struct ToastDesc {
@@ -1501,58 +1407,6 @@ module ui {
     param desc GridDesc "Cell count, size, columns and the selected cell."
     param build UiItemBuild "Makes one cell's content."
     returns ListResult
-  }
-
-  fn tabs {
-    doc "A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels."
-    param id String "Its id."
-    param items List.String "The tab labels."
-    param selected u32 "The chosen index from game state."
-    param desc TabsDesc "Fill and width."
-    returns ChoiceResult
-  }
-
-  fn select {
-    doc "A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it."
-    param id String "Its id."
-    param options List.String "The option labels."
-    param selected u32 "The chosen index from game state."
-    param desc SelectDesc "Placeholder, width, disabled."
-    returns ChoiceResult
-  }
-
-  fn stepper {
-    doc "A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused; a screen reader's increment and decrement on the stepper itself (its spinbutton, which the web shell mirrors as an adjustable range) step it too."
-    param id String "Its id."
-    param value f32 "The value from game state."
-    param desc StepperDesc "Range, step and digits."
-    returns StepperResult
-  }
-
-  fn radio {
-    doc "A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label."
-    param id String "Its id."
-    param options List.String "The option labels."
-    param selected u32 "The chosen index from game state."
-    param desc RadioDesc "Row or column."
-    returns ChoiceResult
-  }
-
-  fn checkbox {
-    doc "A checkbox with a label; a press flips it."
-    aliases "toggle, tick box, Unity Toggle, Godot CheckBox"
-    param id String "Its id."
-    param on bool "The state from game state."
-    param label String "The label."
-    returns ToggleResult
-  }
-
-  fn checkboxList {
-    doc "Checkboxes in a column (`Option#i`)."
-    param id String "Its id."
-    param labels List.String "The labels."
-    param values List.bool "The states from game state."
-    returns CheckListResult
   }
 
   fn chip {

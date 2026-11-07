@@ -331,7 +331,7 @@ fn a_resource_edited_in_its_tab_saves_as_its_one_line() {
     step(e, 2);
     commands(e, "0:inspect:on", 3);
     let p = panel(e);
-    click(e, &p, "Inspector/View/Tab#1");
+    click(e, &p, "Inspector/View/Strip/Track/Item#1");
     let p = panel(e);
     click(e, &p, "Inspector/Detail/S:Score");
     let p = panel(e);

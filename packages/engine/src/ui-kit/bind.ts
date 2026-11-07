@@ -82,16 +82,6 @@ export const widgets = {
   dragging: (id: string): number | null => parse(abi().og_ui_dragging(id)),
   list: (id: string, desc: Api.ListDesc, build: Api.UiItemBuild): Api.ListResult => items(id, desc, build, false),
   grid: (id: string, desc: Api.GridDesc, build: Api.UiItemBuild): Api.ListResult => items(id, desc, build, true),
-  tabs: (id: string, items: readonly string[], selected: number, desc?: Api.TabsDesc): Api.ChoiceResult =>
-    parse(abi().og_ui_tabs(id, JSON.stringify(items), selected, json(desc))),
-  select: (id: string, options: readonly string[], selected: number, desc?: Api.SelectDesc): Api.ChoiceResult =>
-    parse(abi().og_ui_select(id, JSON.stringify(options), selected, json(desc))),
-  stepper: (id: string, value: number, desc?: Api.StepperDesc): Api.StepperResult => parse(abi().og_ui_stepper(id, value, json(desc))),
-  radio: (id: string, options: readonly string[], selected: number, desc?: Api.RadioDesc): Api.ChoiceResult =>
-    parse(abi().og_ui_radio(id, JSON.stringify(options), selected, json(desc))),
-  checkbox: (id: string, on: boolean, label: string): Api.ToggleResult => parse(abi().og_ui_checkbox(id, on, label)),
-  checkboxList: (id: string, labels: readonly string[], values: readonly boolean[]): Api.CheckListResult =>
-    parse(abi().og_ui_checkbox_list(id, JSON.stringify(labels), JSON.stringify(values))),
   chip: (id: string, text: string, desc?: Api.ChipDesc): Api.Response => parse(abi().og_ui_chip(id, text, json(desc))),
   badge: (id: string, text: string, tone: Api.Tone): void => abi().og_ui_badge(id, text, tone),
   divider: (id: string, vertical: boolean): void => abi().og_ui_divider(id, vertical),

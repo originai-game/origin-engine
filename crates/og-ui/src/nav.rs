@@ -407,15 +407,22 @@ impl Ui {
                     A11yAct::Decrement => -1,
                     _ => continue,
                 };
-                // A stepper's spinbutton: one of its buttons is in reach.
+                // A stepper's spinbutton: one of its buttons (its children, or
+                // its siblings in the native stepper's frame) is in reach.
                 let spin = self
                     .frame
                     .a11y
                     .nodes
                     .iter()
                     .any(|n| n.path == *path && n.role == "spinbutton");
-                let buttons = [format!("{path}/Inc"), format!("{path}/Dec")]
-                    .map(|p| crate::id::key_of_path(&p));
+                let frame = path.rfind('/').map_or("", |k| &path[..k]);
+                let buttons = [
+                    format!("{path}/Inc"),
+                    format!("{path}/Dec"),
+                    format!("{frame}/Inc"),
+                    format!("{frame}/Dec"),
+                ]
+                .map(|p| crate::id::key_of_path(&p));
                 if spin && self.focusables().iter().any(|h| buttons.contains(&h.key)) {
                     let (k, n) = self.nav.spin;
                     self.nav.spin = (key, if k == key { n + step } else { step });

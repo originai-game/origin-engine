@@ -107,9 +107,14 @@ function pseudoAbi(on: boolean): () => void {
     abi[name] = f(saved[name]!);
   };
   wrap("og_i18n_t", (o) => (...a) => pseudo(String(o(...a))));
-  // (id, text, desc): label, button; (id, on, label): toggle, checkbox.
+  // (id, text, desc): label, button; (id, on, desc): the switch and the check, their desc's label and description.
   for (const name of ["og_ui_label", "og_ui_button"]) wrap(name, (o) => (id, text, ...rest) => o(id, pseudo(String(text)), ...rest));
-  for (const name of ["og_ui_toggle", "og_ui_checkbox"]) wrap(name, (o) => (id, on, text, ...rest) => o(id, on, pseudo(String(text)), ...rest));
+  const labelled = (desc: unknown): unknown => {
+    if (typeof desc !== "string") return desc;
+    const d = JSON.parse(desc) as { label?: string; description?: string };
+    return JSON.stringify({ ...d, ...(d.label ? { label: pseudo(d.label) } : {}), ...(d.description ? { description: pseudo(d.description) } : {}) });
+  };
+  for (const name of ["og_ui_toggle_switch", "og_ui_check_field"]) wrap(name, (o) => (id, on, desc) => o(id, on, labelled(desc)));
   return () => Object.assign(abi, saved);
 }
 

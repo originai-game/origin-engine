@@ -8,6 +8,8 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. The segments share the width they are given, never narrower than their labels: when they do not fit, the track scrolls sideways under a fade at the cut edge. Under a finger each segment is at least 44 px tall. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Strip/Track/Item#i`, `<id>/Strip/Track/Thumb`.
 
+Also known as: tabs, segmented tabs, tab bar
+
 ```ts
 og.ui.segmented(id: string, desc?: SegmentedDesc): ChoiceIndexResult
 ```
@@ -19,16 +21,16 @@ og.ui.segmented(id: string, desc?: SegmentedDesc): ChoiceIndexResult
 
 **Returns** `ChoiceIndexResult`.
 
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+Binding symbol `og_ui_segmented` · publish builds: kept
 
 ```ogt
 fn segmented {
   doc "A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. The segments share the width they are given, never narrower than their labels: when they do not fit, the track scrolls sideways under a fade at the cut edge. Under a finger each segment is at least 44 px tall. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Strip/Track/Item#i`, `<id>/Strip/Track/Thumb`."
-  host false
+  aliases "tabs, segmented tabs, tab bar"
   param id String "Its id."
   param desc SegmentedDesc "Its segments."
   returns ChoiceIndexResult
 }
 ```
 
-<sub>Module `ui` line 4018</sub>
+<sub>Module `ui` line 3872</sub>

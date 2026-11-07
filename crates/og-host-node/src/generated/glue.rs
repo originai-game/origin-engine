@@ -2553,18 +2553,6 @@ pub fn og_ui_progress(env: Env, id: String, value: f64, desc: Option<String>) {
     <Host as UiApi>::og_ui_progress(&Host, id, value, desc)
 }
 
-#[napi(js_name = "og_ui_slider")]
-pub fn og_ui_slider(env: Env, id: String, value: f64, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_slider(&Host, id, value, desc)
-}
-
-#[napi(js_name = "og_ui_toggle")]
-pub fn og_ui_toggle(env: Env, id: String, on: bool, label: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_toggle(&Host, id, on, label)
-}
-
 #[napi(js_name = "og_ui_text_field")]
 pub fn og_ui_text_field(env: Env, id: String, value: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2725,42 +2713,6 @@ pub fn og_ui_close_list(env: Env) -> String {
 pub fn og_ui_dragging(env: Env, id: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_dragging(&Host, id)
-}
-
-#[napi(js_name = "og_ui_tabs")]
-pub fn og_ui_tabs(env: Env, id: String, items: String, selected: u32, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_tabs(&Host, id, items, selected, desc)
-}
-
-#[napi(js_name = "og_ui_select")]
-pub fn og_ui_select(env: Env, id: String, options: String, selected: u32, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_select(&Host, id, options, selected, desc)
-}
-
-#[napi(js_name = "og_ui_stepper")]
-pub fn og_ui_stepper(env: Env, id: String, value: f64, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_stepper(&Host, id, value, desc)
-}
-
-#[napi(js_name = "og_ui_radio")]
-pub fn og_ui_radio(env: Env, id: String, options: String, selected: u32, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_radio(&Host, id, options, selected, desc)
-}
-
-#[napi(js_name = "og_ui_checkbox")]
-pub fn og_ui_checkbox(env: Env, id: String, on: bool, label: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_checkbox(&Host, id, on, label)
-}
-
-#[napi(js_name = "og_ui_checkbox_list")]
-pub fn og_ui_checkbox_list(env: Env, id: String, labels: String, values: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_checkbox_list(&Host, id, labels, values)
 }
 
 #[napi(js_name = "og_ui_chip")]
@@ -3025,6 +2977,48 @@ pub fn og_ui_screen_transition(env: Env, id: String, screen: String, desc: Optio
 pub fn og_ui_preview_viewport(env: Env, world: u32, viewport: String) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
+}
+
+#[napi(js_name = "og_ui_toggle_switch")]
+pub fn og_ui_toggle_switch(env: Env, id: String, on: bool, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_toggle_switch(&Host, id, on, desc)
+}
+
+#[napi(js_name = "og_ui_check_field")]
+pub fn og_ui_check_field(env: Env, id: String, checked: bool, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_check_field(&Host, id, checked, desc)
+}
+
+#[napi(js_name = "og_ui_radio_group")]
+pub fn og_ui_radio_group(env: Env, id: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_radio_group(&Host, id, desc)
+}
+
+#[napi(js_name = "og_ui_value_slider")]
+pub fn og_ui_value_slider(env: Env, id: String, value: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_value_slider(&Host, id, value, desc)
+}
+
+#[napi(js_name = "og_ui_number_stepper")]
+pub fn og_ui_number_stepper(env: Env, id: String, value: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_number_stepper(&Host, id, value, desc)
+}
+
+#[napi(js_name = "og_ui_segmented")]
+pub fn og_ui_segmented(env: Env, id: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_segmented(&Host, id, desc)
+}
+
+#[napi(js_name = "og_ui_dropdown")]
+pub fn og_ui_dropdown(env: Env, id: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_dropdown(&Host, id, desc)
 }
 
 #[napi(js_name = "og_ui_props")]

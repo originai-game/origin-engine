@@ -9,9 +9,9 @@ use og_core::reflect::{FieldSchema, Layout, Schema};
 use og_ecs::{Entity, World};
 use og_probe::Names;
 use og_ui::{
-    Align, ButtonDesc, ButtonVariant, ControlSize, Cross, Direction, Element, FieldDesc,
-    InputFrame, Insets, LabelDesc, ListDesc, PanelDesc, ScrollDesc, SelectDesc, Size, SliderDesc,
-    Srgba, TabsDesc, Ui, UiKey, Viewport,
+    Align, ButtonDesc, ButtonVariant, CheckFieldDesc, ControlSize, Cross, Direction, DropdownDesc,
+    DropdownOption, Element, FieldDesc, InputFrame, Insets, LabelDesc, ListDesc, PanelDesc,
+    ScrollDesc, SegmentItem, SegmentedDesc, Size, Srgba, Ui, UiKey, ValueSliderDesc, Viewport,
 };
 use std::collections::BTreeMap;
 
@@ -166,17 +166,25 @@ pub(super) fn build(ins: &mut Inspector, cx: &Ctx) {
         },
     );
     toolbar(&mut ui, &mut s, cx);
-    let mut tab = s.ins.tab;
-    ui.tabs(
-        "View",
-        &["Entities", "Resources"],
-        &mut tab,
-        TabsDesc {
-            fill: true,
-            label: "Inspector view".into(),
-            ..TabsDesc::default()
-        },
-    );
+    let tab = ui
+        .segmented(
+            "View",
+            &SegmentedDesc {
+                items: ["Entities", "Resources"]
+                    .map(|l| SegmentItem {
+                        label: l.into(),
+                        ..SegmentItem::default()
+                    })
+                    .to_vec(),
+                selected: s.ins.tab as i32,
+                size: ControlSize::Small,
+                width: Some(Size::grow()),
+                label: "Inspector view".into(),
+                ..SegmentedDesc::default()
+            },
+        )
+        .selected
+        .max(0) as usize;
     s.ins.tab = tab;
     let mut filter = s.ins.filter.clone();
     let r = ui.text_field(
@@ -1086,17 +1094,22 @@ fn editors(
                 && max > min
                 && (max - min) <= 1.0e6
             {
-                let mut v = shown[0].parse::<f32>().unwrap_or(min as f32);
-                let r = ui.slider(
+                let r = ui.value_slider(
                     "Slide",
-                    &mut v,
-                    SliderDesc {
+                    shown[0].parse::<f32>().unwrap_or(min as f32),
+                    &ValueSliderDesc {
                         min: min as f32,
                         max: max as f32,
                         step: if int { 1.0 } else { 0.0 },
+                        label: f.name.clone(),
+                        // The value is the text part beside it.
+                        show_value: false,
+                        bubble: false,
                         width: Some(Size::grow()),
+                        ..ValueSliderDesc::default()
                     },
                 );
+                let v = r.value;
                 if let Some(d) = &doc {
                     ui.tooltip(d);
                 }
@@ -1163,8 +1176,15 @@ fn editors(
             }
         }
         Editor::Bool => {
-            let mut on = shown[0] == "true";
-            let r = ui.checkbox("Check", &mut on, "");
+            let r = ui.check_field(
+                "Check",
+                shown[0] == "true",
+                &CheckFieldDesc {
+                    label: f.name.clone(),
+                    ..CheckFieldDesc::default()
+                },
+            );
+            let on = r.on;
             if let Some(d) = &doc {
                 ui.tooltip(d);
             }
@@ -1173,20 +1193,28 @@ fn editors(
             }
         }
         Editor::Enum => {
-            let names: Vec<&str> = f.variants.iter().map(String::as_str).collect();
-            let mut i = names.iter().position(|n| *n == shown[0]).unwrap_or(0);
-            let r = ui.select(
+            let at = f.variants.iter().position(|n| *n == shown[0]).unwrap_or(0);
+            let r = ui.dropdown(
                 "Pick",
-                &names,
-                &mut i,
-                &SelectDesc {
+                &DropdownDesc {
+                    options: f
+                        .variants
+                        .iter()
+                        .map(|n| DropdownOption {
+                            label: n.clone(),
+                            ..DropdownOption::default()
+                        })
+                        .collect(),
+                    selected: at as i32,
                     width: Some(Size::grow()),
-                    label: f.name.clone(),
-                    ..SelectDesc::default()
+                    placeholder: f.name.clone(),
+                    ..DropdownDesc::default()
                 },
             );
             if r.changed
-                && let Some(n) = names.get(i)
+                && let Some(n) = usize::try_from(r.selected)
+                    .ok()
+                    .and_then(|i| f.variants.get(i))
             {
                 tune(s, target, current, n.to_string(), false);
             }

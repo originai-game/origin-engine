@@ -2129,16 +2129,6 @@ pub fn og_ui_progress(id: String, value: f64, desc: Option<String>) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_slider(id: String, value: f64, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_slider(&Host, id, value, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_toggle(id: String, on: bool, label: String) -> String {
-    <Host as UiApi>::og_ui_toggle(&Host, id, on, label)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_text_field(&Host, id, value, desc)
 }
@@ -2271,36 +2261,6 @@ pub fn og_ui_close_list() -> String {
 #[wasm_bindgen]
 pub fn og_ui_dragging(id: String) -> String {
     <Host as UiApi>::og_ui_dragging(&Host, id)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_tabs(id: String, items: String, selected: u32, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_tabs(&Host, id, items, selected, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_select(id: String, options: String, selected: u32, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_select(&Host, id, options, selected, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_stepper(id: String, value: f64, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_stepper(&Host, id, value, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_radio(id: String, options: String, selected: u32, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_radio(&Host, id, options, selected, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_checkbox(id: String, on: bool, label: String) -> String {
-    <Host as UiApi>::og_ui_checkbox(&Host, id, on, label)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_checkbox_list(id: String, labels: String, values: String) -> String {
-    <Host as UiApi>::og_ui_checkbox_list(&Host, id, labels, values)
 }
 
 #[wasm_bindgen]
@@ -2521,6 +2481,41 @@ pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>)
 #[wasm_bindgen]
 pub fn og_ui_preview_viewport(world: u32, viewport: String) {
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_toggle_switch(id: String, on: bool, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_toggle_switch(&Host, id, on, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_check_field(id: String, checked: bool, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_check_field(&Host, id, checked, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_radio_group(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_radio_group(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_value_slider(id: String, value: f64, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_value_slider(&Host, id, value, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_number_stepper(id: String, value: f64, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_number_stepper(&Host, id, value, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_segmented(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_segmented(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_dropdown(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_dropdown(&Host, id, desc)
 }
 
 #[wasm_bindgen]

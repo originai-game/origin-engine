@@ -121,6 +121,7 @@ impl Ui {
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let scroll = self.state.scroll.clone();
         let scroll_x = self.state.scroll_x.clone();
+        let rtl = self.direction == og_i18n::Direction::Rtl;
         let offset = |k: u64| {
             (
                 scroll_x.get(&k).copied().unwrap_or(0.0),
@@ -300,16 +301,23 @@ impl Ui {
                         .nodes
                         .get(self.nodes[f].anchor)
                         .map_or(safe, |n| n.rect);
-                    let x = if float == Float::Popover {
-                        a.x.min(safe.right() - w).max(safe.x)
+                    let popover = float == Float::Popover;
+                    let x = if popover {
+                        // Aligned to the anchor's start in the reading direction.
+                        if rtl { a.right() - w } else { a.x }
                     } else {
-                        (a.x + a.width / 2.0 - w / 2.0)
-                            .min(safe.right() - w)
-                            .max(safe.x)
+                        a.x + a.width / 2.0 - w / 2.0
                     };
+                    let x = x.min(safe.right() - w).max(safe.x);
                     let mut y = a.bottom() + gap;
-                    if y + h > safe.bottom() {
+                    // A popover goes above only where there is more room
+                    // (a tooltip whenever it does not fit), then stays on screen.
+                    let above = a.y - safe.y > safe.bottom() - a.bottom();
+                    if y + h > safe.bottom() && (above || !popover) {
                         y = (a.y - gap - h).max(safe.y);
+                    }
+                    if popover {
+                        y = y.min(safe.bottom() - h).max(safe.y);
                     }
                     (x, y)
                 }

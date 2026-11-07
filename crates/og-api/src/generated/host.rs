@@ -969,10 +969,6 @@ pub trait UiApi: Wire {
     fn og_ui_zoom_view(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.progress`
     fn og_ui_progress(&self, id: String, value: f64, desc: Option<String>);
-    /// `og.ui.slider`
-    fn og_ui_slider(&self, id: String, value: f64, desc: Option<String>) -> String;
-    /// `og.ui.toggle`
-    fn og_ui_toggle(&self, id: String, on: bool, label: String) -> String;
     /// `og.ui.textField`
     fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String;
     /// `og.ui.textArea`
@@ -1027,18 +1023,6 @@ pub trait UiApi: Wire {
     fn og_ui_close_list(&self) -> String;
     /// `og.ui.dragging`
     fn og_ui_dragging(&self, id: String) -> String;
-    /// `og.ui.tabs`
-    fn og_ui_tabs(&self, id: String, items: String, selected: u32, desc: Option<String>) -> String;
-    /// `og.ui.select`
-    fn og_ui_select(&self, id: String, options: String, selected: u32, desc: Option<String>) -> String;
-    /// `og.ui.stepper`
-    fn og_ui_stepper(&self, id: String, value: f64, desc: Option<String>) -> String;
-    /// `og.ui.radio`
-    fn og_ui_radio(&self, id: String, options: String, selected: u32, desc: Option<String>) -> String;
-    /// `og.ui.checkbox`
-    fn og_ui_checkbox(&self, id: String, on: bool, label: String) -> String;
-    /// `og.ui.checkboxList`
-    fn og_ui_checkbox_list(&self, id: String, labels: String, values: String) -> String;
     /// `og.ui.chip`
     fn og_ui_chip(&self, id: String, text: String, desc: Option<String>) -> String;
     /// `og.ui.badge`
@@ -1127,6 +1111,20 @@ pub trait UiApi: Wire {
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String;
     /// `og.ui.previewViewport`
     fn og_ui_preview_viewport(&self, world: u32, viewport: String);
+    /// `og.ui.toggleSwitch`
+    fn og_ui_toggle_switch(&self, id: String, on: bool, desc: Option<String>) -> String;
+    /// `og.ui.checkField`
+    fn og_ui_check_field(&self, id: String, checked: bool, desc: Option<String>) -> String;
+    /// `og.ui.radioGroup`
+    fn og_ui_radio_group(&self, id: String, desc: Option<String>) -> String;
+    /// `og.ui.valueSlider`
+    fn og_ui_value_slider(&self, id: String, value: f64, desc: Option<String>) -> String;
+    /// `og.ui.numberStepper`
+    fn og_ui_number_stepper(&self, id: String, value: f64, desc: Option<String>) -> String;
+    /// `og.ui.segmented`
+    fn og_ui_segmented(&self, id: String, desc: Option<String>) -> String;
+    /// `og.ui.dropdown`
+    fn og_ui_dropdown(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.props`
     fn og_ui_props(&self, desc: Option<String>) -> bool;
     /// `og.ui.defineTimeline`
@@ -1903,8 +1901,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_image",
     "og_ui_zoom_view",
     "og_ui_progress",
-    "og_ui_slider",
-    "og_ui_toggle",
     "og_ui_text_field",
     "og_ui_text_area",
     "og_ui_tooltip",
@@ -1932,12 +1928,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_grid_item",
     "og_ui_close_list",
     "og_ui_dragging",
-    "og_ui_tabs",
-    "og_ui_select",
-    "og_ui_stepper",
-    "og_ui_radio",
-    "og_ui_checkbox",
-    "og_ui_checkbox_list",
     "og_ui_chip",
     "og_ui_badge",
     "og_ui_divider",
@@ -1982,6 +1972,13 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_shake",
     "og_ui_screen_transition",
     "og_ui_preview_viewport",
+    "og_ui_toggle_switch",
+    "og_ui_check_field",
+    "og_ui_radio_group",
+    "og_ui_value_slider",
+    "og_ui_number_stepper",
+    "og_ui_segmented",
+    "og_ui_dropdown",
     "og_ui_props",
     "og_ui_define_timeline",
     "og_ui_play",

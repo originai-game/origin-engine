@@ -11,9 +11,7 @@ import {
   artSlot, btn, eyebrow, flags, frame, glow, grow, kit, lastInteraction, line, pct, pointer, px, rememberRoom, role, safeWidth, shadow, st, surface, symbol,
   text, timerRing, token, u, xy, type Mut,
 } from "./core.ts";
-import { valueSlider } from "../controls/ranges.ts";
-import { segmented, toggleSwitch } from "../controls/choices.ts";
-import { dropdown } from "../controls/pickers.ts";
+import { dropdown, segmented, toggleSwitch, valueSlider } from "../controls/natives.ts";
 import { keyBindingRow } from "../controls/bindings.ts";
 
 /**

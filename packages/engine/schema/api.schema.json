@@ -11377,12 +11377,9 @@
         "ZoomViewDesc",
         "ZoomResult",
         "ProgressDesc",
-        "SliderDesc",
         "FieldDesc",
         "TextAreaDesc",
         "Response",
-        "SliderResult",
-        "ToggleResult",
         "FieldResult",
         "Viewport",
         "UiDesc",
@@ -11413,13 +11410,6 @@
         "ListRange",
         "ListResult",
         "GridDesc",
-        "TabsDesc",
-        "ChoiceResult",
-        "SelectDesc",
-        "StepperDesc",
-        "StepperResult",
-        "RadioDesc",
-        "CheckListResult",
         "ToastDesc",
         "ChipDesc",
         "MeterDesc",
@@ -12182,58 +12172,6 @@
           "publish": true
         },
         {
-          "name": "slider",
-          "doc": "A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. Pass back the value it answers next tick.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "value",
-              "type": "f32",
-              "optional": false,
-              "doc": "The value from game state."
-            },
-            {
-              "name": "desc",
-              "type": "SliderDesc",
-              "optional": true,
-              "doc": "Range, step and width."
-            }
-          ],
-          "returns": "SliderResult",
-          "publish": true
-        },
-        {
-          "name": "toggle",
-          "doc": "A switch with a label; a click flips it. Pass back the state it answers next tick. The probe reads its label.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "on",
-              "type": "bool",
-              "optional": false,
-              "doc": "The state from game state."
-            },
-            {
-              "name": "label",
-              "type": "String",
-              "optional": false,
-              "doc": "The label."
-            }
-          ],
-          "returns": "ToggleResult",
-          "publish": true
-        },
-        {
           "name": "textField",
           "doc": "One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.",
           "params": [
@@ -12804,180 +12742,6 @@
           "returns": "ListResult",
           "publish": true,
           "host": false
-        },
-        {
-          "name": "tabs",
-          "doc": "A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "items",
-              "type": "List<String>",
-              "optional": false,
-              "doc": "The tab labels."
-            },
-            {
-              "name": "selected",
-              "type": "u32",
-              "optional": false,
-              "doc": "The chosen index from game state."
-            },
-            {
-              "name": "desc",
-              "type": "TabsDesc",
-              "optional": true,
-              "doc": "Fill and width."
-            }
-          ],
-          "returns": "ChoiceResult",
-          "publish": true
-        },
-        {
-          "name": "select",
-          "doc": "A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "options",
-              "type": "List<String>",
-              "optional": false,
-              "doc": "The option labels."
-            },
-            {
-              "name": "selected",
-              "type": "u32",
-              "optional": false,
-              "doc": "The chosen index from game state."
-            },
-            {
-              "name": "desc",
-              "type": "SelectDesc",
-              "optional": true,
-              "doc": "Placeholder, width, disabled."
-            }
-          ],
-          "returns": "ChoiceResult",
-          "publish": true
-        },
-        {
-          "name": "stepper",
-          "doc": "A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused; a screen reader's increment and decrement on the stepper itself (its spinbutton, which the web shell mirrors as an adjustable range) step it too.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "value",
-              "type": "f32",
-              "optional": false,
-              "doc": "The value from game state."
-            },
-            {
-              "name": "desc",
-              "type": "StepperDesc",
-              "optional": true,
-              "doc": "Range, step and digits."
-            }
-          ],
-          "returns": "StepperResult",
-          "publish": true
-        },
-        {
-          "name": "radio",
-          "doc": "A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "options",
-              "type": "List<String>",
-              "optional": false,
-              "doc": "The option labels."
-            },
-            {
-              "name": "selected",
-              "type": "u32",
-              "optional": false,
-              "doc": "The chosen index from game state."
-            },
-            {
-              "name": "desc",
-              "type": "RadioDesc",
-              "optional": true,
-              "doc": "Row or column."
-            }
-          ],
-          "returns": "ChoiceResult",
-          "publish": true
-        },
-        {
-          "name": "checkbox",
-          "doc": "A checkbox with a label; a press flips it.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "on",
-              "type": "bool",
-              "optional": false,
-              "doc": "The state from game state."
-            },
-            {
-              "name": "label",
-              "type": "String",
-              "optional": false,
-              "doc": "The label."
-            }
-          ],
-          "returns": "ToggleResult",
-          "publish": true
-        },
-        {
-          "name": "checkboxList",
-          "doc": "Checkboxes in a column (`Option#i`).",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "labels",
-              "type": "List<String>",
-              "optional": false,
-              "doc": "The labels."
-            },
-            {
-              "name": "values",
-              "type": "List<bool>",
-              "optional": false,
-              "doc": "The states from game state."
-            }
-          ],
-          "returns": "CheckListResult",
-          "publish": true
         },
         {
           "name": "chip",
@@ -14780,8 +14544,7 @@
             }
           ],
           "returns": "SwitchResult",
-          "publish": true,
-          "host": false
+          "publish": true
         },
         {
           "name": "checkField",
@@ -14807,8 +14570,7 @@
             }
           ],
           "returns": "SwitchResult",
-          "publish": true,
-          "host": false
+          "publish": true
         },
         {
           "name": "radioGroup",
@@ -14828,12 +14590,11 @@
             }
           ],
           "returns": "ChoiceIndexResult",
-          "publish": true,
-          "host": false
+          "publish": true
         },
         {
           "name": "valueSlider",
-          "doc": "A slider: a track, a fill from min (or from an origin, both ways) and a knob. A press anywhere on the track jumps the knob there and a drag follows (a touch too; the knob grows under a finger), Left and Right step it while it has the focus (a held key or d-pad repeats), with ticks at its steps, labelled marks, a readout and a bubble over the knob while it moves. Plays sliderTick at each step passed (rising in pitch with the value). Parts: `Slider.track[hover|pressed|focused|disabled]`, `Slider.rail`, `Slider.fill`, `Slider.knob[pressed|focused]`, `Slider.core` (the knob's dot while held or focused), `Slider.tick[passed]`, `Slider.bubble`. Role slider with its range. Probe: `<id>`, `<id>/Track`, `<id>/Track/Knob`, `<id>/Head/Value`.",
+          "doc": "A slider: a track, a fill from min (or from an origin, both ways) and a knob. A press anywhere on the track jumps the knob there and a drag follows (a touch too; the knob grows under a finger), Left and Right step it while it has the focus (a held key or d-pad repeats), with ticks at its steps, labelled marks, a readout and a bubble over the knob while it moves. Plays sliderTick at each step passed (rising in pitch with the value). Parts: `Slider.reach[hover|pressed|focused|disabled]` (the 44 px target), `Slider.track` (the bar), `Slider.fill`, `Slider.knob[pressed|focused]`, `Slider.core` (the knob's dot while held or focused), `Slider.tick[passed]`, `Slider.bubble`. Role slider with its range. Probe: `<id>`, `<id>/Track`, `<id>/Track/Knob`, `<id>/Head/Value`.",
           "params": [
             {
               "name": "id",
@@ -14855,8 +14616,7 @@
             }
           ],
           "returns": "ValueSliderResult",
-          "publish": true,
-          "host": false
+          "publish": true
         },
         {
           "name": "rangeSlider",
@@ -14915,8 +14675,7 @@
             }
           ],
           "returns": "NumberResult",
-          "publish": true,
-          "host": false
+          "publish": true
         },
         {
           "name": "cycler",
@@ -14969,12 +14728,11 @@
             }
           ],
           "returns": "ChoiceIndexResult",
-          "publish": true,
-          "host": false
+          "publish": true
         },
         {
           "name": "dropdown",
-          "doc": "A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes the focus at the chosen option, with groups, icons, descriptions, a tick on the chosen and a filter past 10 options. A press, Enter, Space or A opens it and chooses; Back, Escape or a press outside closes it and the focus returns to the trigger. Plays open, select and close. Parts: `Dropdown.trigger[open][invalid][hover|pressed|focused|disabled]`, `Dropdown.list`, `Dropdown.option[selected][hover|focused|disabled]`, `Dropdown.group`. Role combobox (expanded while open) and a listbox of options. Probe: `<id>/Trigger`, `<id>.list/Panel/Content/Option#i`.",
+          "doc": "A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes the focus at the chosen option, with groups, icons, descriptions, a tick on the chosen and a filter past 10 options. A press, Enter, Space or A opens it and chooses; Back, Escape or a press outside closes it and the focus returns to the trigger. Plays open, select and close. Parts: `Dropdown.trigger[open][invalid][hover|pressed|focused|disabled]`, `Dropdown.list`, `Dropdown.option[selected][hover|focused|disabled]`, `Dropdown.group`. Role combobox (expanded while open) and a listbox of options. Probe: `<id>/Trigger`, `<id>.list/List/Option#i`.",
           "params": [
             {
               "name": "id",
@@ -14990,8 +14748,7 @@
             }
           ],
           "returns": "DropdownResult",
-          "publish": true,
-          "host": false
+          "publish": true
         },
         {
           "name": "inputField",
@@ -47287,43 +47044,6 @@
       },
       "additionalProperties": false
     },
-    "SliderDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A slider's range and width.",
-      "type": "object",
-      "properties": {
-        "min": {
-          "type": "number",
-          "description": "The smallest value; min equal to max (the zero value) means 0 to 1.",
-          "default": 0
-        },
-        "max": {
-          "type": "number",
-          "description": "The largest value.",
-          "default": 0
-        },
-        "step": {
-          "type": "number",
-          "description": "Snap to multiples of step from min; 0 is continuous.",
-          "default": 0,
-          "minimum": 0
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null grows.",
-          "default": null
-        }
-      },
-      "additionalProperties": false
-    },
     "FieldDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -47564,48 +47284,6 @@
         "doubleTapped",
         "longPressed",
         "longPress"
-      ],
-      "additionalProperties": false
-    },
-    "SliderResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A slider's response and its value after this tick's input.",
-      "type": "object",
-      "properties": {
-        "response": {
-          "$ref": "#/$defs/Response",
-          "description": "What happened to it."
-        },
-        "value": {
-          "type": "number",
-          "description": "The value, to keep in game state and pass back next tick."
-        }
-      },
-      "required": [
-        "response",
-        "value"
-      ],
-      "additionalProperties": false
-    },
-    "ToggleResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A toggle's response and its state after this tick's input.",
-      "type": "object",
-      "properties": {
-        "response": {
-          "$ref": "#/$defs/Response",
-          "description": "What happened to it."
-        },
-        "on": {
-          "type": "boolean",
-          "description": "The state, to keep in game state and pass back next tick."
-        }
-      },
-      "required": [
-        "response",
-        "on"
       ],
       "additionalProperties": false
     },
@@ -49161,193 +48839,6 @@
           "default": null
         }
       },
-      "additionalProperties": false
-    },
-    "TabsDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A segmented control of tabs.",
-      "type": "object",
-      "properties": {
-        "fill": {
-          "type": "boolean",
-          "description": "Equal segments across the width.",
-          "default": false
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null fits (grows with fill).",
-          "default": null
-        },
-        "label": {
-          "type": "string",
-          "description": "What a screen reader calls the row of tabs (its accessible name), never drawn; empty is its id. A localised game passes its string table's.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "ChoiceResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A choice control's response and the chosen index after this tick's input.",
-      "type": "object",
-      "properties": {
-        "response": {
-          "$ref": "#/$defs/Response",
-          "description": "What happened to it; changed when the choice moved."
-        },
-        "selected": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "The chosen index, to keep in game state and pass back next tick."
-        }
-      },
-      "required": [
-        "response",
-        "selected"
-      ],
-      "additionalProperties": false
-    },
-    "SelectDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A select: a trigger that opens a menu of options.",
-      "type": "object",
-      "properties": {
-        "placeholder": {
-          "type": "string",
-          "description": "Shown while nothing is chosen.",
-          "default": ""
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null grows from 160.",
-          "default": null
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "Neutral and inert.",
-          "default": false
-        },
-        "label": {
-          "type": "string",
-          "description": "What a screen reader calls it (its accessible name; the chosen option is its value), never drawn; empty is its id. A localised game passes its string table's.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "StepperDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A number stepper's range, step and digits.",
-      "type": "object",
-      "properties": {
-        "min": {
-          "type": "number",
-          "description": "The smallest value; min equal to max (the zero value) is unbounded.",
-          "default": 0
-        },
-        "max": {
-          "type": "number",
-          "description": "The largest value.",
-          "default": 0
-        },
-        "step": {
-          "type": "number",
-          "description": "How much a press changes it; 0 is 1.",
-          "default": 0,
-          "minimum": 0
-        },
-        "decimals": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "Digits after the point.",
-          "default": 0,
-          "maximum": 6
-        }
-      },
-      "additionalProperties": false
-    },
-    "StepperResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A stepper's response and value after this tick's input.",
-      "type": "object",
-      "properties": {
-        "response": {
-          "$ref": "#/$defs/Response",
-          "description": "What happened to it."
-        },
-        "value": {
-          "type": "number",
-          "description": "The value, to keep in game state and pass back next tick."
-        }
-      },
-      "required": [
-        "response",
-        "value"
-      ],
-      "additionalProperties": false
-    },
-    "RadioDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "How a radio group lays out, and its name.",
-      "type": "object",
-      "properties": {
-        "horizontal": {
-          "type": "boolean",
-          "description": "Options in a row (the default is a column).",
-          "default": false
-        },
-        "label": {
-          "type": "string",
-          "description": "What a screen reader calls the group (its accessible name), never drawn; empty is its id. A localised game passes its string table's.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "CheckListResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A checkbox list's response and values after this tick's input.",
-      "type": "object",
-      "properties": {
-        "response": {
-          "$ref": "#/$defs/Response",
-          "description": "What happened to it; changed when any box flipped."
-        },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "boolean"
-          },
-          "description": "The values, to keep in game state and pass back next tick."
-        }
-      },
-      "required": [
-        "response",
-        "values"
-      ],
       "additionalProperties": false
     },
     "ToastDesc": {

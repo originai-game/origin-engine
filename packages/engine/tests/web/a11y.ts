@@ -7,7 +7,7 @@
 // - The DOM mirror is og.ui.a11y()'s tree: one element per node, in tree
 //   order, nested under its parent, each at its node's bounds over the
 //   canvas, with its role, name, value and states as ARIA (the settings
-//   dialog, the section tabs with Audio selected, the Master slider at
+//   dialog, the section tabs (a segmented control) with Audio chosen, the Master slider at
 //   100 %, the Mute switch unchecked, the Done button), and Chrome's own
 //   accessibility tree reads them as a screen reader would.
 // - A screen reader's adjust gesture on the Master slider (mirrored as a
@@ -167,8 +167,9 @@ try {
   const find = (role: string, name: string) => dom.find((d) => d.role === role && (d.label === name || d.text === name));
   const dialog = find("dialog", "Settings");
   check(!!dialog && dialog.attrs["aria-modal"] === "true", "the settings dialog: role dialog, named Settings, modal", dialog);
-  const audio = find("tab", "Audio");
-  check(audio?.attrs["aria-selected"] === "true" && find("tab", "Graphics")?.attrs["aria-selected"] === "false", "the section tabs: Audio selected, Graphics not", { audio, graphics: find("tab", "Graphics") });
+  // The section tabs are a segmented control: a radio group of radios.
+  const audio = find("radio", "Audio");
+  check(audio?.attrs["aria-checked"] === "true" && find("radio", "Graphics")?.attrs["aria-checked"] === "false", "the section tabs: Audio chosen, Graphics not", { audio, graphics: find("radio", "Graphics") });
   const master = find("slider", "Master");
   check(!!master && master.attrs["aria-valuetext"] !== undefined && master.attrs["tabindex"] === "-1", "the Master slider: named by its row's label, its value, focusable", master);
   const mute = find("switch", "Mute everything");
@@ -215,7 +216,7 @@ try {
   check(focusedPath === mutePath && (await t.eval<{ focused: string }>("__og_shell__.a11y.tree")).focused === mutePath, "the UI's focus moved to the switch and the DOM focus followed", { focusedPath });
 
   // The Graphics tab, then Done: the toast is announced.
-  const graphics = find("tab", "Graphics")!;
+  const graphics = find("radio", "Graphics")!;
   await t.eval(`document.querySelector('[data-og-path="${graphics.path}"]').click()`);
   await frames(6);
   const graphicsDom = await t.eval<Mirrored[]>(MIRROR);

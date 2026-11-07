@@ -829,6 +829,13 @@ Radio::option {
   -og-stroke: none
   -og-effect: none
 }
+Dropdown::trigger.open {
+  -og-stroke: 2px var(--focus) inside
+}
+Dropdown::option {
+  -og-stroke: none
+  -og-effect: none
+}
 Radio::card {
   -og-stroke: none
 }

@@ -72,7 +72,7 @@ test.skipIf(!process.env.OG_PERF)("perf_ui_ts_dense_menu_300_elements_40_animati
         return (f as (...a: unknown[]) => unknown).apply(target, args);
       };
     },
-  }) as typeof binding.abi });
+  }) as unknown as typeof binding.abi });
   try {
     const sys = defineSystem("UiPerfMenu", {}, () => menu());
     const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken);

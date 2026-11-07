@@ -8,7 +8,7 @@ import { chevron } from "../containers/base.ts";
 import { chart } from "../data/charts.ts";
 import { stepSize } from "../feedback/core.ts";
 import { formatNumber } from "../data/format.ts";
-import { valueSlider } from "../controls/ranges.ts";
+import { valueSlider } from "../controls/natives.ts";
 
 // ── the overlay bar ─────────────────────────────────────────────────────
 

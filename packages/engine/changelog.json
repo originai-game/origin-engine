@@ -502,6 +502,12 @@
           "scores.firstFrame",
           "scores.frameTime"
         ]
+      },
+      {
+        "member": "og.ui.slider, og.ui.toggle, og.ui.tabs, og.ui.select, og.ui.stepper, og.ui.radio, og.ui.checkbox, og.ui.checkboxList",
+        "change": "The controls are one native set in og-ui: the simple og.ui.slider, toggle, tabs, select, stepper, radio, checkbox and checkboxList and their descs and results (SliderDesc, SliderResult, ToggleResult, TabsDesc, ChoiceResult, SelectDesc, StepperDesc, StepperResult, RadioDesc, CheckListResult) are removed. og.ui.valueSlider, toggleSwitch, segmented, dropdown, numberStepper, radioGroup and checkField are now og-ui's native controls (host members), and documents' slider, toggle and tabs elements and the inspector draw them. Their probe paths are the rich controls': a slider's role is on `<id>/Track`, a stepper's on `<id>/Frame/Value`, a dropdown's on `<id>/Trigger`, a segmented control's segments are radios at `<id>/Strip/Track/Item#i`, a dropdown's options are `<id>.list/List/Option#i` (an anchored popover layer), and a switch's label is `<id>/Text/Label`. Their looks are part dressing: `Slider.track` is the bar (as CSS names it) and `Slider.reach` the 44 px target, a checkbox's `Checkbox.box` and a radio's `Radio.ring` are field-class wells, and `Dropdown.trigger[open]` takes the focus rim from the default style.",
+        "fix": "og.ui.slider(id, v, d) → og.ui.valueSlider(id, v, d) (showValue: false for no readout); og.ui.toggle(id, on, label) → og.ui.toggleSwitch(id, on, { label }); og.ui.checkbox(id, on, label) → og.ui.checkField(id, on, { label }); og.ui.tabs(id, items, i, d) → og.ui.segmented(id, { items: items.map((label) => ({ label })), selected: i }); og.ui.select(id, options, i, d) → og.ui.dropdown(id, { options: options.map((label) => ({ label })), selected: i }); og.ui.stepper(id, v, d) → og.ui.numberStepper(id, v, d); og.ui.radio(id, options, i, d) → og.ui.radioGroup(id, { options: options.map((label) => ({ label })), selected: i, row: d.horizontal }); checkboxList → one checkField per row. A probe step that named the old paths names the new ones.",
+        "find": ["og.ui.slider(", "og.ui.toggle(", "og.ui.tabs(", "og.ui.select(", "og.ui.stepper(", "og.ui.radio(", "og.ui.checkbox(", "og.ui.checkboxList(", "SliderDesc", "TabsDesc", "StepperDesc", "ToggleResult", "ChoiceResult"]
       }
     ],
     "added": [

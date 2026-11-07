@@ -17,7 +17,7 @@ function volume(id: string, label: string, value: number): number {
   let out = value;
   og.ui.row(id, { width: { kind: "grow" }, gap: 16, cross: "center" }, () => {
     og.ui.label("Label", label, { width: { kind: "fixed", px: 140 }, nowrap: true });
-    out = og.ui.slider("Slider", value, { step: 0.05 }).value;
+    out = og.ui.valueSlider("Slider", value, { step: 0.05, showValue: false, bubble: false }).value;
     og.ui.label("Value", `${Math.round(value * 100)}%`, { width: { kind: "fixed", px: 48 }, align: "end", nowrap: true });
   });
   return out;
@@ -28,14 +28,14 @@ const Screens = defineSystem("A11yScreens", { writes: [Ui] }, (_q, _t, world: Wo
   if (!ui.ok) return;
   const s = ui.value;
   const settings = og.ui.modal("Settings", s.screen === 1, { title: "Settings", width: { kind: "fixed", px: 600 } }, () => {
-    s.tab = og.ui.tabs("Section", ["Audio", "Graphics"], s.tab, { fill: true, width: { kind: "grow" }, label: "Section" }).selected;
+    s.tab = og.ui.segmented("Section", { items: [{ label: "Audio" }, { label: "Graphics" }], selected: s.tab, width: { kind: "grow" }, label: "Section" }).selected;
     if (s.tab === 0) {
       s.master = volume("Master", "Master", s.master);
       s.music = volume("Music", "Music", s.music);
-      s.muted = og.ui.toggle("Mute", s.muted, "Mute everything").on;
-      s.subtitles = og.ui.toggle("Subtitles", s.subtitles, "Subtitles").on;
+      s.muted = og.ui.toggleSwitch("Mute", s.muted, { label: "Mute everything" }).on;
+      s.subtitles = og.ui.toggleSwitch("Subtitles", s.subtitles, { label: "Subtitles" }).on;
     } else {
-      s.contrast = og.ui.toggle("Contrast", s.contrast, "High contrast").on;
+      s.contrast = og.ui.toggleSwitch("Contrast", s.contrast, { label: "High contrast" }).on;
     }
     og.ui.row("Footer", { width: { kind: "grow" }, align: "end" }, () => {
       if (og.ui.button("Done", "Done", { variant: "primary" }).clicked) {

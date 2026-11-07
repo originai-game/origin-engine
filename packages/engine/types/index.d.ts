@@ -24041,39 +24041,6 @@ export interface ProgressDesc {
 }
 
 /**
- * A slider's range and width.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface SliderDesc {
-  /**
-   * The smallest value; min equal to max (the zero value) means 0 to 1.
-   *
-   * @default 0
-   */
-  readonly min?: number;
-  /**
-   * The largest value.
-   *
-   * @default 0
-   */
-  readonly max?: number;
-  /**
-   * Snap to multiples of step from min; 0 is continuous.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly step?: number;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-}
-
-/**
  * A one-line text field.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -24237,22 +24204,6 @@ export interface Response {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly longPress: number;
-}
-
-/** A slider's response and its value after this tick's input. */
-export interface SliderResult {
-  /** What happened to it. */
-  readonly response: Response;
-  /** The value, to keep in game state and pass back next tick. */
-  readonly value: number;
-}
-
-/** A toggle's response and its state after this tick's input. */
-export interface ToggleResult {
-  /** What happened to it. */
-  readonly response: Response;
-  /** The state, to keep in game state and pass back next tick. */
-  readonly on: boolean;
 }
 
 /** A text field's response and its text after this tick's input. */
@@ -24708,8 +24659,6 @@ export interface RichTextResult {
   /** The link under the pointer. */
   readonly hovered: string | null;
 }
-
-
 
 
 
@@ -25285,142 +25234,6 @@ export interface GridDesc {
 }
 
 /**
- * A segmented control of tabs.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TabsDesc {
-  /**
-   * Equal segments across the width.
-   *
-   * @default false
-   */
-  readonly fill?: boolean;
-  /**
-   * Its width; null fits (grows with fill).
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * What a screen reader calls the row of tabs (its accessible name), never drawn; empty is its id. A localised game passes its string table's.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-}
-
-/** A choice control's response and the chosen index after this tick's input. */
-export interface ChoiceResult {
-  /** What happened to it; changed when the choice moved. */
-  readonly response: Response;
-  /** The chosen index, to keep in game state and pass back next tick. */
-  readonly selected: number;
-}
-
-/**
- * A select: a trigger that opens a menu of options.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface SelectDesc {
-  /**
-   * Shown while nothing is chosen.
-   *
-   * @default ""
-   */
-  readonly placeholder?: string;
-  /**
-   * Its width; null grows from 160.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Neutral and inert.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-  /**
-   * What a screen reader calls it (its accessible name; the chosen option is its value), never drawn; empty is its id. A localised game passes its string table's.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-}
-
-/**
- * A number stepper's range, step and digits.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface StepperDesc {
-  /**
-   * The smallest value; min equal to max (the zero value) is unbounded.
-   *
-   * @default 0
-   */
-  readonly min?: number;
-  /**
-   * The largest value.
-   *
-   * @default 0
-   */
-  readonly max?: number;
-  /**
-   * How much a press changes it; 0 is 1.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly step?: number;
-  /**
-   * Digits after the point.
-   *
-   * @default 0
-   * @range ..6
-   */
-  readonly decimals?: number;
-}
-
-/** A stepper's response and value after this tick's input. */
-export interface StepperResult {
-  /** What happened to it. */
-  readonly response: Response;
-  /** The value, to keep in game state and pass back next tick. */
-  readonly value: number;
-}
-
-/**
- * How a radio group lays out, and its name.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface RadioDesc {
-  /**
-   * Options in a row (the default is a column).
-   *
-   * @default false
-   */
-  readonly horizontal?: boolean;
-  /**
-   * What a screen reader calls the group (its accessible name), never drawn; empty is its id. A localised game passes its string table's.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-}
-
-/** A checkbox list's response and values after this tick's input. */
-export interface CheckListResult {
-  /** What happened to it; changed when any box flipped. */
-  readonly response: Response;
-  /** The values, to keep in game state and pass back next tick. */
-  readonly values: readonly boolean[];
-}
-
-/**
  * A toast's tone and time.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -25983,12 +25796,6 @@ export interface ScrollState {
    */
   readonly contentHeight: number;
 }
-
-
-
-
-
-
 
 
 
@@ -48162,22 +47969,6 @@ export declare namespace og {
      */
     function progress(id: string, value: number, desc?: ProgressDesc): void;
     /**
-     * A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. Pass back the value it answers next tick.
-     *
-     * @param id Its id.
-     * @param value The value from game state.
-     * @param desc Range, step and width.
-     */
-    function slider(id: string, value: number, desc?: SliderDesc): SliderResult;
-    /**
-     * A switch with a label; a click flips it. Pass back the state it answers next tick. The probe reads its label.
-     *
-     * @param id Its id.
-     * @param on The state from game state.
-     * @param label The label.
-     */
-    function toggle(id: string, on: boolean, label: string): ToggleResult;
-    /**
      * One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
      *
      * @param id Its id.
@@ -48380,57 +48171,6 @@ export declare namespace og {
      * @param build Makes one cell's content.
      */
     function grid(id: string, desc: GridDesc, build: UiItemBuild): ListResult;
-    /**
-     * A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels.
-     *
-     * @param id Its id.
-     * @param items The tab labels.
-     * @param selected The chosen index from game state.
-     * @param desc Fill and width.
-     */
-    function tabs(id: string, items: readonly string[], selected: number, desc?: TabsDesc): ChoiceResult;
-    /**
-     * A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it.
-     *
-     * @param id Its id.
-     * @param options The option labels.
-     * @param selected The chosen index from game state.
-     * @param desc Placeholder, width, disabled.
-     */
-    function select(id: string, options: readonly string[], selected: number, desc?: SelectDesc): ChoiceResult;
-    /**
-     * A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused; a screen reader's increment and decrement on the stepper itself (its spinbutton, which the web shell mirrors as an adjustable range) step it too.
-     *
-     * @param id Its id.
-     * @param value The value from game state.
-     * @param desc Range, step and digits.
-     */
-    function stepper(id: string, value: number, desc?: StepperDesc): StepperResult;
-    /**
-     * A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label.
-     *
-     * @param id Its id.
-     * @param options The option labels.
-     * @param selected The chosen index from game state.
-     * @param desc Row or column.
-     */
-    function radio(id: string, options: readonly string[], selected: number, desc?: RadioDesc): ChoiceResult;
-    /**
-     * A checkbox with a label; a press flips it.
-     *
-     * @param id Its id.
-     * @param on The state from game state.
-     * @param label The label.
-     */
-    function checkbox(id: string, on: boolean, label: string): ToggleResult;
-    /**
-     * Checkboxes in a column (`Option#i`).
-     *
-     * @param id Its id.
-     * @param labels The labels.
-     * @param values The states from game state.
-     */
-    function checkboxList(id: string, labels: readonly string[], values: readonly boolean[]): CheckListResult;
     /**
      * A chip: a control-filled tag; selected inverts to ink. For filters and tags.
      *
@@ -49041,7 +48781,7 @@ export declare namespace og {
      */
     function radioGroup(id: string, desc?: RadioGroupDesc): ChoiceIndexResult;
     /**
-     * A slider: a track, a fill from min (or from an origin, both ways) and a knob. A press anywhere on the track jumps the knob there and a drag follows (a touch too; the knob grows under a finger), Left and Right step it while it has the focus (a held key or d-pad repeats), with ticks at its steps, labelled marks, a readout and a bubble over the knob while it moves. Plays sliderTick at each step passed (rising in pitch with the value). Parts: `Slider.track[hover|pressed|focused|disabled]`, `Slider.rail`, `Slider.fill`, `Slider.knob[pressed|focused]`, `Slider.core` (the knob's dot while held or focused), `Slider.tick[passed]`, `Slider.bubble`. Role slider with its range. Probe: `<id>`, `<id>/Track`, `<id>/Track/Knob`, `<id>/Head/Value`.
+     * A slider: a track, a fill from min (or from an origin, both ways) and a knob. A press anywhere on the track jumps the knob there and a drag follows (a touch too; the knob grows under a finger), Left and Right step it while it has the focus (a held key or d-pad repeats), with ticks at its steps, labelled marks, a readout and a bubble over the knob while it moves. Plays sliderTick at each step passed (rising in pitch with the value). Parts: `Slider.reach[hover|pressed|focused|disabled]` (the 44 px target), `Slider.track` (the bar), `Slider.fill`, `Slider.knob[pressed|focused]`, `Slider.core` (the knob's dot while held or focused), `Slider.tick[passed]`, `Slider.bubble`. Role slider with its range. Probe: `<id>`, `<id>/Track`, `<id>/Track/Knob`, `<id>/Head/Value`.
      *
      * @param id Its id.
      * @param value The value from game state.
@@ -49082,7 +48822,7 @@ export declare namespace og {
      */
     function segmented(id: string, desc?: SegmentedDesc): ChoiceIndexResult;
     /**
-     * A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes the focus at the chosen option, with groups, icons, descriptions, a tick on the chosen and a filter past 10 options. A press, Enter, Space or A opens it and chooses; Back, Escape or a press outside closes it and the focus returns to the trigger. Plays open, select and close. Parts: `Dropdown.trigger[open][invalid][hover|pressed|focused|disabled]`, `Dropdown.list`, `Dropdown.option[selected][hover|focused|disabled]`, `Dropdown.group`. Role combobox (expanded while open) and a listbox of options. Probe: `<id>/Trigger`, `<id>.list/Panel/Content/Option#i`.
+     * A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes the focus at the chosen option, with groups, icons, descriptions, a tick on the chosen and a filter past 10 options. A press, Enter, Space or A opens it and chooses; Back, Escape or a press outside closes it and the focus returns to the trigger. Plays open, select and close. Parts: `Dropdown.trigger[open][invalid][hover|pressed|focused|disabled]`, `Dropdown.list`, `Dropdown.option[selected][hover|focused|disabled]`, `Dropdown.group`. Role combobox (expanded while open) and a listbox of options. Probe: `<id>/Trigger`, `<id>.list/List/Option#i`.
      *
      * @param id Its id.
      * @param desc Its options and states.

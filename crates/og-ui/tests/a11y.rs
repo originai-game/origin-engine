@@ -39,6 +39,27 @@ struct Form {
     dialog: bool,
 }
 
+fn segment(label: &str) -> SegmentItem {
+    SegmentItem {
+        label: label.into(),
+        ..SegmentItem::default()
+    }
+}
+
+fn option(label: &str) -> DropdownOption {
+    DropdownOption {
+        label: label.into(),
+        ..DropdownOption::default()
+    }
+}
+
+fn radio(label: &str) -> RadioOption {
+    RadioOption {
+        label: label.into(),
+        ..RadioOption::default()
+    }
+}
+
 fn form(ui: &mut Ui, f: &mut Form) {
     ui.column("Form", Element::column(), |ui| {
         ui.label(
@@ -51,8 +72,26 @@ fn form(ui: &mut Ui, f: &mut Form) {
         );
         ui.label("Note", "Changes save at once.", LabelDesc::default());
         ui.button("Save", "Save", ButtonDesc::default());
-        ui.toggle("Music", &mut f.on, "Music");
-        ui.checkbox("Hints", &mut f.check, "Show hints");
+        f.on = ui
+            .toggle_switch(
+                "Music",
+                f.on,
+                &ToggleSwitchDesc {
+                    label: "Music".into(),
+                    ..ToggleSwitchDesc::default()
+                },
+            )
+            .on;
+        f.check = ui
+            .check_field(
+                "Hints",
+                f.check,
+                &CheckFieldDesc {
+                    label: "Show hints".into(),
+                    ..CheckFieldDesc::default()
+                },
+            )
+            .on;
         ui.row(
             "Gain",
             Element {
@@ -61,20 +100,21 @@ fn form(ui: &mut Ui, f: &mut Form) {
             },
             |ui| {
                 ui.label("Label", "Master", LabelDesc::default());
-                let mut gain = 0.5;
-                ui.slider("Slider", &mut gain, SliderDesc::default());
+                ui.value_slider("Slider", 0.5, &ValueSliderDesc::default());
             },
         );
-        ui.slider(
-            "Volume",
-            &mut f.volume,
-            SliderDesc {
-                min: 0.0,
-                max: 100.0,
-                step: 5.0,
-                ..SliderDesc::default()
-            },
-        );
+        f.volume = ui
+            .value_slider(
+                "Volume",
+                f.volume,
+                &ValueSliderDesc {
+                    min: 0.0,
+                    max: 100.0,
+                    step: 5.0,
+                    ..ValueSliderDesc::default()
+                },
+            )
+            .value;
         ui.text_field(
             "Name",
             &mut f.name,
@@ -112,28 +152,49 @@ fn form(ui: &mut Ui, f: &mut Form) {
                 );
             },
         );
-        ui.tabs("Mode", &["Easy", "Hard"], &mut f.tab, TabsDesc::default());
-        ui.select(
-            "Quality",
-            &["Low", "High"],
-            &mut f.choice,
-            &SelectDesc::default(),
-        );
-        ui.stepper(
-            "Count",
-            &mut f.count,
-            StepperDesc {
-                min: 0.0,
-                max: 9.0,
-                ..StepperDesc::default()
-            },
-        );
-        ui.radio(
-            "Size",
-            &["Small", "Large"],
-            &mut f.radio,
-            RadioDesc::default(),
-        );
+        f.tab = ui
+            .segmented(
+                "Mode",
+                &SegmentedDesc {
+                    items: ["Easy", "Hard"].map(segment).to_vec(),
+                    selected: f.tab as i32,
+                    ..SegmentedDesc::default()
+                },
+            )
+            .selected as usize;
+        f.choice = ui
+            .dropdown(
+                "Quality",
+                &DropdownDesc {
+                    options: ["Low", "High"].map(option).to_vec(),
+                    selected: f.choice as i32,
+                    ..DropdownDesc::default()
+                },
+            )
+            .selected
+            .max(0) as usize;
+        f.count = ui
+            .number_stepper(
+                "Count",
+                f.count,
+                &NumberStepperDesc {
+                    min: Some(0.0),
+                    max: Some(9.0),
+                    ..NumberStepperDesc::default()
+                },
+            )
+            .value;
+        f.radio = ui
+            .radio_group(
+                "Size",
+                &RadioGroupDesc {
+                    options: ["Small", "Large"].map(radio).to_vec(),
+                    selected: f.radio as i32,
+                    ..RadioGroupDesc::default()
+                },
+            )
+            .selected
+            .max(0) as usize;
         ui.progress("Load", 0.4, ProgressDesc::default());
         ui.rich_text(
             "Help",
@@ -208,9 +269,9 @@ fn every_widget_has_a_role_a_name_and_its_state() {
             .states
             .contains(&"checked".to_owned())
     );
-    assert_eq!(has("Form/Volume", "slider", "Volume").value, "35");
+    assert_eq!(has("Form/Volume/Track", "slider", "Volume").value, "35");
     assert_eq!(
-        has("Form/Gain/Slider", "slider", "Master").value,
+        has("Form/Gain/Slider/Track", "slider", "Master").value,
         "0.50",
         "a control without text takes the label before it"
     );
@@ -230,26 +291,29 @@ fn every_widget_has_a_role_a_name_and_its_state() {
     // An area after a field is not labelled by it: its placeholder names it.
     let area = has("Form/Player/Note", "textbox", "A note");
     assert_eq!(area.description, "");
-    has("Form/Mode", "tablist", "Mode");
+    has("Form/Mode", "radiogroup", "Mode");
     assert!(
-        has("Form/Mode/Tab#1", "tab", "Hard")
+        has("Form/Mode/Strip/Track/Item#1", "radio", "Hard")
             .states
-            .contains(&"selected".to_owned())
+            .contains(&"checked".to_owned())
     );
     assert!(
-        !node(&tree, "Form/Mode/Tab#0")
+        !node(&tree, "Form/Mode/Strip/Track/Item#0")
             .states
-            .contains(&"selected".to_owned())
+            .contains(&"checked".to_owned())
     );
-    let q = has("Form/Quality", "combobox", "Quality");
+    let q = has("Form/Quality/Trigger", "combobox", "Quality");
     assert_eq!(q.value, "Low");
     assert!(!q.states.contains(&"expanded".to_owned()));
-    assert_eq!(has("Form/Count", "spinbutton", "Count").value, "3");
-    has("Form/Count/Dec", "button", "Decrease");
-    has("Form/Count/Inc", "button", "Increase");
+    assert_eq!(
+        has("Form/Count/Frame/Value", "spinbutton", "Count").value,
+        "3"
+    );
+    has("Form/Count/Frame/Dec", "button", "Decrease");
+    has("Form/Count/Frame/Inc", "button", "Increase");
     has("Form/Size", "radiogroup", "Size");
     assert!(
-        has("Form/Size/Option#0", "radio", "Small")
+        has("Form/Size/Options/Option#0", "radio", "Small")
             .states
             .contains(&"checked".to_owned())
     );
@@ -268,7 +332,7 @@ fn every_widget_has_a_role_a_name_and_its_state() {
     // and states.
     let e = ui
         .frame()
-        .element("Form/Volume")
+        .element("Form/Volume/Track")
         .expect("the slider element");
     assert_eq!(
         (e.role.as_str(), e.name.as_str(), e.value.as_str()),
@@ -308,7 +372,7 @@ fn native_tree_is_incremental_and_actions_round_trip_on_the_tick() {
     let volume = *volume;
     assert_eq!(slider.min_numeric_value(), Some(0.0));
     assert_eq!(slider.max_numeric_value(), Some(100.0));
-    let source = node(ui.a11y(), "Form/Volume");
+    let source = node(ui.a11y(), "Form/Volume/Track");
     assert_eq!(slider.bounds().unwrap().x0, f64::from(source.x) * 2.0);
     assert_eq!(
         slider.bounds().unwrap().y1,

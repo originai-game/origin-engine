@@ -338,27 +338,44 @@ impl Ui {
                 );
             }
             "slider" => {
-                let mut v = r.num("value").unwrap_or(0.0);
-                resp = self.slider(
+                let v0 = r.num("value").unwrap_or(0.0);
+                let out = self.value_slider(
                     id.as_str(),
-                    &mut v,
-                    crate::ui::SliderDesc {
+                    v0,
+                    &crate::widgets::ValueSliderDesc {
                         min: r.num("min").unwrap_or(0.0),
                         max: r.num("max").unwrap_or(1.0),
                         step: r.num("stepBy").unwrap_or(0.0),
+                        label: text_of(&r, b),
                         width: r.size("width"),
+                        ..crate::widgets::ValueSliderDesc::default()
                     },
                 );
-                if resp.changed {
-                    self.write_back(b, n, "value", json!(v));
+                resp = crate::Response {
+                    changed: out.changed,
+                    ..out.response
+                };
+                if out.changed {
+                    self.write_back(b, n, "value", json!(out.value));
                 }
             }
             "toggle" => {
-                let mut on = r.flag("checked");
-                let text = text_of(&r, b);
-                resp = self.toggle(id.as_str(), &mut on, &text);
-                if resp.changed {
-                    self.write_back(b, n, "checked", json!(on));
+                let on = r.flag("checked");
+                let out = self.toggle_switch(
+                    id.as_str(),
+                    on,
+                    &crate::widgets::ToggleSwitchDesc {
+                        label: text_of(&r, b),
+                        width: r.size("width"),
+                        ..crate::widgets::ToggleSwitchDesc::default()
+                    },
+                );
+                resp = crate::Response {
+                    changed: out.changed,
+                    ..out.response
+                };
+                if out.changed {
+                    self.write_back(b, n, "checked", json!(out.on));
                 }
             }
             "tabs" => {
@@ -373,7 +390,6 @@ impl Ui {
                     .enumerate()
                     .map(|(i, item)| keys.get(i).and_then(|k| b.env.translate(k)).unwrap_or(item))
                     .collect();
-                let items: Vec<&str> = items.iter().map(String::as_str).collect();
                 // With values, `current` holds the selected tab's name (a screen's mode) instead of `selected`'s index.
                 let values = strs("values");
                 let mut selected = if values.is_empty() {
@@ -382,16 +398,34 @@ impl Ui {
                     let now = r.str("current").unwrap_or_default();
                     values.iter().position(|v| v == now).unwrap_or(0)
                 };
-                resp = self.tabs(
+                let fill = r.flag("fill");
+                let out = self.segmented(
                     id.as_str(),
-                    &items,
-                    &mut selected,
-                    crate::widgets::TabsDesc {
-                        fill: r.flag("fill"),
-                        width: r.size("width"),
+                    &crate::widgets::SegmentedDesc {
+                        items: items
+                            .iter()
+                            .map(|l| crate::widgets::SegmentItem {
+                                label: l.clone(),
+                                ..crate::widgets::SegmentItem::default()
+                            })
+                            .collect(),
+                        selected: selected as i32,
+                        equal: fill,
+                        width: Some(r.size("width").unwrap_or(if fill {
+                            Size::grow()
+                        } else {
+                            Size::fit()
+                        })),
                         label: text_of(&r, b),
+                        ..crate::widgets::SegmentedDesc::default()
                     },
                 );
+                selected = usize::try_from(out.selected).unwrap_or(0);
+                resp = crate::Response {
+                    changed: out.changed,
+                    focused: out.focused >= 0,
+                    ..crate::Response::default()
+                };
                 if resp.changed {
                     match values.get(selected) {
                         Some(v) => self.write_back(b, n, "current", json!(v)),

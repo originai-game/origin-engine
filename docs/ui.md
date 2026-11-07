@@ -648,6 +648,16 @@ Generic components are `og.ui`'s; genre components and screens are kits'
   picker, key-binding capture, the on-screen keyboard; the touch controls
   `joystick`, `dpad` and `actionButton`, which take `disabled`, dress as
   discs and keep the finger that went down on them in the UI state.
+  The switch (`toggleSwitch`), the checkbox (`checkField`), the radio
+  group, the segmented control, the slider (`valueSlider`), the number
+  stepper and the dropdown are one native set in og-ui
+  (`crates/og-ui/src/widgets/controls`): TypeScript, documents
+  (`slider`, `toggle` and `tabs` elements) and the inspector call the same
+  control, so it looks and behaves the same everywhere. Their rims and
+  shadows are part dressing (the default style's or a pack's), never a
+  control's own draw, and the dropdown's list is an anchored popover layer
+  (under its trigger, above it where there is more room, kept on screen).
+  The others are composed in TypeScript from og.ui's elements.
 - **Containers and navigation**: panels and cards, scroll (with `fade` and
   `fadeInto`, in documents as in `og.ui.scrollArea`), tabs with bumpers,
   carousel with snap, accordion, split views, sheets (bottom and side,

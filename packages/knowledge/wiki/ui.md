@@ -54,12 +54,9 @@ module ui {
 | [`ZoomViewDesc`](ui/type-ZoomViewDesc.md) | desc struct |  | A zoomable picture (a map, an artwork): what it shows and its zoom limits. |
 | [`ZoomResult`](ui/type-ZoomResult.md) | struct |  | Where a zoom view is. |
 | [`ProgressDesc`](ui/type-ProgressDesc.md) | desc struct |  | A progress bar. |
-| [`SliderDesc`](ui/type-SliderDesc.md) | desc struct |  | A slider's range and width. |
 | [`FieldDesc`](ui/type-FieldDesc.md) | desc struct |  | A one-line text field. |
 | [`TextAreaDesc`](ui/type-TextAreaDesc.md) | desc struct |  | A multi-line text area. |
 | [`Response`](ui/type-Response.md) | struct |  | What happened to an element this tick. |
-| [`SliderResult`](ui/type-SliderResult.md) | struct |  | A slider's response and its value after this tick's input. |
-| [`ToggleResult`](ui/type-ToggleResult.md) | struct |  | A toggle's response and its state after this tick's input. |
 | [`FieldResult`](ui/type-FieldResult.md) | struct |  | A text field's response and its text after this tick's input. |
 | [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit. |
 | [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. |
@@ -88,8 +85,6 @@ module ui {
 | [`og.ui.image`](ui/fn-image.md) | function | `(id: string, desc?: ImageDesc): void` | A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other. |
 | [`og.ui.zoomView`](ui/fn-zoomView.md) | function | `(id: string, desc?: ZoomViewDesc): ZoomResult` | A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans; Tab or a pad focuses it,… |
 | [`og.ui.progress`](ui/fn-progress.md) | function | `(id: string, value: number, desc?: ProgressDesc): void` | A track filled to a fraction. |
-| [`og.ui.slider`](ui/fn-slider.md) | function | `(id: string, value: number, desc?: SliderDesc): SliderResult` | A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. |
-| [`og.ui.toggle`](ui/fn-toggle.md) | function | `(id: string, on: boolean, label: string): ToggleResult` | A switch with a label; a click flips it. |
 | [`og.ui.textField`](ui/fn-textField.md) | function | `(id: string, value: string, desc?: FieldDesc): FieldResult` | One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text … |
 | [`og.ui.textArea`](ui/fn-textArea.md) | function | `(id: string, value: string, desc?: TextAreaDesc): FieldResult` | Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, a triple click selecting the line between its breaks, t… |
 | [`og.ui.tooltip`](ui/fn-tooltip.md) | function | `(text: string): void` | A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. |
@@ -114,13 +109,6 @@ module ui {
 | [`ListRange`](ui/type-ListRange.md) | struct |  | The rows (or cells) to build this tick: first up to, not including, last. |
 | [`ListResult`](ui/type-ListResult.md) | struct |  | What happened in a list or grid this tick. |
 | [`GridDesc`](ui/type-GridDesc.md) | desc struct |  | A virtualised grid of equal cells (inventories, level select), scrolling vertically. |
-| [`TabsDesc`](ui/type-TabsDesc.md) | desc struct |  | A segmented control of tabs. |
-| [`ChoiceResult`](ui/type-ChoiceResult.md) | struct |  | A choice control's response and the chosen index after this tick's input. |
-| [`SelectDesc`](ui/type-SelectDesc.md) | desc struct |  | A select: a trigger that opens a menu of options. |
-| [`StepperDesc`](ui/type-StepperDesc.md) | desc struct |  | A number stepper's range, step and digits. |
-| [`StepperResult`](ui/type-StepperResult.md) | struct |  | A stepper's response and value after this tick's input. |
-| [`RadioDesc`](ui/type-RadioDesc.md) | desc struct |  | How a radio group lays out, and its name. |
-| [`CheckListResult`](ui/type-CheckListResult.md) | struct |  | A checkbox list's response and values after this tick's input. |
 | [`ToastDesc`](ui/type-ToastDesc.md) | desc struct |  | A toast's tone and time. |
 | [`ChipDesc`](ui/type-ChipDesc.md) | desc struct |  | A chip's state. |
 | [`MeterDesc`](ui/type-MeterDesc.md) | desc struct |  | A meter: a track with a fill that animates its changes by the tick. |
@@ -168,12 +156,6 @@ module ui {
 | [`og.ui.dragging`](ui/fn-dragging.md) | function | `(id: string): number \| null` | The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer. |
 | [`og.ui.list`](ui/fn-list.md) | function | `(id: string, desc: ListDesc, build: UiItemBuild): ListResult` | A virtualised list built by `build(index)` for the rows in view. |
 | [`og.ui.grid`](ui/fn-grid.md) | function | `(id: string, desc: GridDesc, build: UiItemBuild): ListResult` | A virtualised grid built by `build(index)` for the cells in view. |
-| [`og.ui.tabs`](ui/fn-tabs.md) | function | `(id: string, items: readonly string[], selected: number, desc?: TabsDesc): ChoiceResult` | A segmented control: a neutral track, the chosen tab on the thumb. |
-| [`og.ui.select`](ui/fn-select.md) | function | `(id: string, options: readonly string[], selected: number, desc?: SelectDesc): ChoiceResult` | A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. |
-| [`og.ui.stepper`](ui/fn-stepper.md) | function | `(id: string, value: number, desc?: StepperDesc): StepperResult` | A number stepper: `Dec`, `Value`, `Inc`. |
-| [`og.ui.radio`](ui/fn-radio.md) | function | `(id: string, options: readonly string[], selected: number, desc?: RadioDesc): ChoiceResult` | A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label. |
-| [`og.ui.checkbox`](ui/fn-checkbox.md) | function | `(id: string, on: boolean, label: string): ToggleResult` | A checkbox with a label; a press flips it. |
-| [`og.ui.checkboxList`](ui/fn-checkboxList.md) | function | `(id: string, labels: readonly string[], values: readonly boolean[]): CheckListResult` | Checkboxes in a column (`Option#i`). |
 | [`og.ui.chip`](ui/fn-chip.md) | function | `(id: string, text: string, desc?: ChipDesc): Response` | A chip: a control-filled tag; selected inverts to ink. |
 | [`og.ui.badge`](ui/fn-badge.md) | function | `(id: string, text: string, tone: Tone): void` | A badge: a small status tag in its tone. |
 | [`og.ui.divider`](ui/fn-divider.md) | function | `(id: string, vertical: boolean): void` | A hairline in the border colour across its parent. |
@@ -752,7 +734,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 7024</sub>
+<sub>Module `ui` line 6878</sub>
 
 ```ogt
 column UiMaterial {
@@ -763,4 +745,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 7031</sub>
+<sub>Module `ui` line 6885</sub>

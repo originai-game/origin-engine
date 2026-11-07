@@ -950,17 +950,6 @@ pub struct ProgressDesc {
     pub width: Option<Size>,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct SliderDesc {
-    /// The range; `min == max` (the zero value) means 0 to 1.
-    pub min: f32,
-    pub max: f32,
-    /// Snap to multiples of `step` from `min` (0: continuous).
-    pub step: f32,
-    /// `None`: grow.
-    pub width: Option<Size>,
-}
-
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct FieldDesc {
     /// Shown, dimmed, while the field is empty.

@@ -42,6 +42,7 @@ impl Ui {
             request_focus: 0,
             scopes: Vec::new(),
             icons: IconAtlas::default(),
+            kept_texts: Default::default(),
             images: Default::default(),
             toast_anchor: Anchor::Bottom,
             hud_max_aspect: HUD_MAX_ASPECT,

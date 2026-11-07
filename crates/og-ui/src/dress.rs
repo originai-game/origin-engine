@@ -972,10 +972,13 @@ pub fn token_strokes(part: &PartRef, theme: &Theme) -> Vec<Stroke> {
         C::Button if part.has("primary") => Vec::new(),
         C::Button if part.has("ghost") => vec![stroke(thin, tok("lineStrong", 1.0))],
         C::Button => vec![stroke(hair, tok("line", 1.0))],
-        // An unchecked box or radio is a well that must be found at 3:1.
+        C::Field if mark_box(part) && part.has("invalid") => vec![stroke(thin, tok("danger", 1.0))],
+        // An unchecked box or radio is a well that must be found at 3:1;
+        // a filled one is its fill alone.
         C::Field | C::Avatar if well_mark(part) => {
             vec![stroke(hair, ColorRef::Literal(well_rim(theme)))]
         }
+        C::Field if mark_box(part) => Vec::new(),
         C::Field if part.has("invalid") => vec![stroke(thin, tok("danger", 1.0))],
         C::Field => vec![stroke(thin, tok("line", 1.0))],
         // One selection grammar (docs/ui.md §15.5): a pack's selected chip,
@@ -1019,9 +1022,20 @@ pub fn accent_ink(theme: &Theme, ground: Srgba) -> Srgba {
         .unwrap_or(p.ink_inverse)
 }
 
-/// Whether a part is a checkbox's or radio's box, unchecked.
+/// Whether a part is a checkbox's box or a radio's ring.
+fn mark_box(part: &PartRef) -> bool {
+    matches!(
+        (part.component, part.part),
+        ("Checkbox", "box") | ("Radio", "box" | "ring")
+    )
+}
+
+/// Whether a part is a checkbox's box or a radio's ring, empty.
 fn well_mark(part: &PartRef) -> bool {
-    matches!(part.component, "Checkbox" | "Radio") && part.part == "box" && !part.has("on")
+    mark_box(part)
+        && !["on", "checked", "mixed", "selected"]
+            .iter()
+            .any(|f| part.has(f))
 }
 
 /// The rim of an unchecked box or radio: `lineStrong`, moved as little as
@@ -1064,6 +1078,7 @@ pub fn token_effects(part: &PartRef, theme: &Theme) -> Vec<Effect> {
         C::Button => out.push(inner(1.0, 0.0, tok("sheen", 0.6))),
         // A selected tile is lifted a step, not recessed.
         C::Slot | C::Chip | C::Tab if selected_grammar(part, theme) => {}
+        C::Field if mark_box(part) && !well_mark(part) => {}
         C::Field | C::Slot => out.push(inner(1.0, 3.0, tok("shadow", 0.3))),
         C::Bar if part.part == "fill" => out.push(inner(1.0, 0.0, tok("sheen", 0.5))),
         C::Bar => out.push(inner(1.0, 2.0, tok("shadow", 0.35))),
