@@ -875,7 +875,8 @@ pub fn charset_words(codepoints: &[u32]) -> (Vec<&'static str>, usize) {
 
 row!(
     /// The root of a font blob: metrics in em units, the atlas pages' size.
-    FontMeta, "og.Font", 1 {
+    /// Version 2: glyphs by id are keyed past Unicode ([`GLYPH_ID_KEYS`]).
+    FontMeta, "og.Font", 2 {
         units_per_em: u32,
         /// Atlas pixels per em.
         em_px: f32,
@@ -896,10 +897,12 @@ row!(
 );
 
 row!(
-    /// One glyph, sorted by code point. Plane bounds are in em relative to
-    /// the pen position (y up); atlas bounds in pixels of page `page`, rows
-    /// top to bottom. A glyph with no outline (space) has empty bounds.
-    GlyphRow, "og.FontGlyph", 1 {
+    /// One glyph, sorted by key. Plane bounds are in em relative to the
+    /// pen position (y up); atlas bounds in pixels of page `page`, rows top
+    /// to bottom. A glyph with no outline (space) has empty bounds.
+    GlyphRow, "og.FontGlyph", 2 {
+        /// A character's code point, or a glyph by id (a shaped form) at
+        /// [`GLYPH_ID_KEYS`] + its id ([`GlyphRow::key`]).
         codepoint: u32,
         page: u32,
         advance: f32,
@@ -907,6 +910,31 @@ row!(
         atlas_x: u32, atlas_y: u32, atlas_w: u32, atlas_h: u32,
     }
 );
+
+/// Where a font blob keys its glyphs by id (shaped forms: ligatures,
+/// joined letters, features' alternates): [`GlyphRow::codepoint`] is this
+/// plus the glyph id, past every Unicode code point, so no character a
+/// font maps (an icon font's private-use ones included) can name one.
+pub const GLYPH_ID_KEYS: u32 = 0x11_0000;
+
+impl GlyphRow {
+    /// The glyph's key: its character, or its glyph id (`None`: neither,
+    /// a row no cook writes).
+    pub fn key(&self) -> Option<og_render::GlyphKey> {
+        match self.codepoint.checked_sub(GLYPH_ID_KEYS) {
+            Some(id) => u16::try_from(id).ok().map(og_render::GlyphKey::Id),
+            None => char::from_u32(self.codepoint).map(og_render::GlyphKey::Char),
+        }
+    }
+
+    /// The row key of glyph `key` ([`GlyphRow::codepoint`]).
+    pub fn code(key: og_render::GlyphKey) -> u32 {
+        match key {
+            og_render::GlyphKey::Char(c) => c as u32,
+            og_render::GlyphKey::Id(id) => GLYPH_ID_KEYS + u32::from(id),
+        }
+    }
+}
 
 row!(
     /// One kerning pair: `adjust` em added to the advance of `left` when

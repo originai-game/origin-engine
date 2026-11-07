@@ -86,7 +86,7 @@ fn add(scene: &mut RenderScene, f: &CookedFont) -> UiFont {
             .iter()
             .filter_map(|g| {
                 Some(Glyph {
-                    codepoint: char::from_u32(g.codepoint)?,
+                    key: g.key()?,
                     advance: g.advance,
                     plane_bounds: [g.plane_left, g.plane_bottom, g.plane_right, g.plane_top],
                     atlas_bounds: [

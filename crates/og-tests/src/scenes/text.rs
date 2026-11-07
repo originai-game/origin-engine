@@ -48,7 +48,7 @@ pub fn load_font(scene: &mut RenderScene) -> Result<og_render::FontHandle, Strin
         // msdf-atlas-gen with -yorigin top: plane bounds left, top, right,
         // bottom with y down; atlas bounds left, top, right, bottom in pixels.
         glyphs.push(Glyph {
-            codepoint,
+            key: codepoint.into(),
             advance: f[1],
             plane_bounds: [f[2], -f[5], f[4], -f[3]],
             atlas_bounds: [f[6], f[7], f[8], f[9]],

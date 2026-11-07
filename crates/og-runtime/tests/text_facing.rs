@@ -97,7 +97,17 @@ impl RenderBackend for Recorder {
                     .rev()
                     .find(|f| f.text == i as u32)
                     .copied();
-                (t.text.clone(), t.position.x, facing)
+                // A glyph drawn by id as U+F0000 + id, to compare alone.
+                let text = t
+                    .text
+                    .chars()
+                    .enumerate()
+                    .map(|(i, c)| match t.placements.get(i).and_then(|p| p.glyph) {
+                        Some(id) => char::from_u32(0xF_0000 + u32::from(id)).expect("an id"),
+                        None => c,
+                    })
+                    .collect();
+                (text, t.position.x, facing)
             })
             .collect();
         seen.fonts = scene.texts.iter().map(|t| t.font).collect();

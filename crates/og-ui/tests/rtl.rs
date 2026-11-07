@@ -42,11 +42,19 @@ fn arabic() -> FontMetrics {
     FontMetrics::fixed(0.5).with_file(Some(file))
 }
 
-/// A line as drawn: its visual glyphs' characters.
+/// A line as drawn: its visual glyphs, as text (a shaped form as the
+/// private-use character U+F0000 + its glyph id, for comparing alone).
 fn visual(m: &FontMetrics, s: &str) -> String {
-    m.visual(s, Direction::Ltr, 0.0)
+    drawn(&m.visual(s, Direction::Ltr, 0.0))
+}
+
+fn drawn(glyphs: &[VisualGlyph]) -> String {
+    glyphs
         .iter()
-        .map(|g| g.ch)
+        .map(|g| match g.glyph {
+            Some(id) => char::from_u32(0xF_0000 + u32::from(id)).expect("a glyph id"),
+            None => g.ch,
+        })
         .collect()
 }
 
@@ -108,12 +116,7 @@ fn paragraphs_order_their_runs_by_the_bidi_algorithm() {
     assert_eq!(ui_rtl("+4.3%"), "+4.3%");
     assert_eq!(ui_rtl("12 שלב"), "בלש 12");
     // The same through the shaping font (parley lays the line out).
-    let shaped = |s: &str| {
-        m.visual(s, Direction::Rtl, 0.0)
-            .iter()
-            .map(|g| g.ch)
-            .collect::<String>()
-    };
+    let shaped = |s: &str| drawn(&m.visual(s, Direction::Rtl, 0.0));
     assert_eq!(shaped("−$98,100"), "−$98,100");
     assert_eq!(shaped("+4.3%"), "+4.3%");
     // Game text isolated (FSI … PDI) inside a right-to-left string keeps its
@@ -152,8 +155,8 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
         std::fs::read(path).expect("the kit's Arabic font"),
     ))
     .expect("a font rustybuzz reads");
-    let glyph = |c: char, advance: f32| Glyph {
-        codepoint: c,
+    let glyph = |key: og_render::GlyphKey, advance: f32| Glyph {
+        key,
         advance,
         plane_bounds: [0.0, -0.2, advance, 0.8],
         atlas_bounds: [0.0, 0.0, 1.0, 1.0],
@@ -162,12 +165,12 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
     // its words alone, without their full stop, and of the space.
     let mut glyphs: Vec<Glyph> = (' '..='~')
         .chain(LINE.chars())
-        .filter_map(|c| file.advance(c).map(|a| glyph(c, a)))
+        .filter_map(|c| file.advance(c).map(|a| glyph(c.into(), a)))
         .collect();
     for word in LINE.split(' ').chain([" "]) {
         let word = word.trim_end_matches('.');
         for g in file.shape(word, true, &|_| true).expect("shaped").iter() {
-            glyphs.push(glyph(g.ch, g.advance));
+            glyphs.push(glyph(g.key(), g.advance));
         }
     }
     let mut scene = RenderScene::new();

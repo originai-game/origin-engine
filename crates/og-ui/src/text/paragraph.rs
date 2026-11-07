@@ -277,9 +277,11 @@ pub(super) fn visual(
                 let file = font.file.as_ref().expect("a cooked font file");
                 let source = text[range.clone()].chars().next().unwrap_or(' ');
                 for g in cluster.glyphs() {
-                    let ch = file.character_for_glyph(g.id, source, &|c| font.in_atlas(c));
+                    let (ch, glyph) =
+                        file.character_for_glyph(g.id, source, &|k| font.in_atlas_key(k));
                     out.push(VisualGlyph {
                         ch,
+                        glyph,
                         advance: g.advance,
                         x: g.x,
                         y: -g.y,
@@ -447,9 +449,11 @@ fn rich_at(
                             let source = text[cr.clone()].chars().next().unwrap_or(' ');
                             let index = indices[cr.start] - indices[range.start];
                             for g in cluster.glyphs() {
+                                let (ch, glyph) = file
+                                    .character_for_glyph(g.id, source, &|k| font.in_atlas_key(k));
                                 glyphs.push(VisualGlyph {
-                                    ch: file
-                                        .character_for_glyph(g.id, source, &|c| font.in_atlas(c)),
+                                    ch,
+                                    glyph,
                                     advance: g.advance / s.step.size,
                                     x: g.x / s.step.size,
                                     y: -g.y / s.step.size,

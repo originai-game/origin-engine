@@ -108,7 +108,7 @@ fn long_kerned_line_measurement_is_not_quadratic() {
             foreground: false,
             line_height: 1.2,
             glyphs: vec![Glyph {
-                codepoint: '漢',
+                key: '漢'.into(),
                 advance: 1.0,
                 plane_bounds: [0.0, 0.0, 1.0, 0.7],
                 atlas_bounds: [0.0, 0.0, 1.0, 1.0],

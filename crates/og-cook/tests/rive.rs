@@ -113,7 +113,7 @@ fn a_riv_text_cooks_its_font_to_the_characters_it_shows() {
         .glyphs
         .iter()
         .filter_map(|g| char::from_u32(g.codepoint))
-        .filter(|c| (*c as u32) < 0xF_0000 && !c.is_whitespace())
+        .filter(|c| !c.is_whitespace())
         .collect();
     assert_eq!(cooked, "!HWdelor");
     assert!(f.ttf.is_none(), "no run-time glyphs unless asked");

@@ -90,10 +90,37 @@ impl Default for Sprite {
     }
 }
 
+/// What a font's glyph is found by: a character (the font's cmap), or a
+/// glyph of the font by its id (a shaped form: a ligature, a joined
+/// Arabic letter, a feature's alternate), which no character names. The
+/// two never meet: a by-id glyph is drawn only where a [`GlyphPlacement`]
+/// asks for it, whatever characters the font maps.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum GlyphKey {
+    Char(char),
+    Id(u16),
+}
+
+impl From<char> for GlyphKey {
+    fn from(c: char) -> GlyphKey {
+        GlyphKey::Char(c)
+    }
+}
+
+impl GlyphKey {
+    /// The character, for a glyph found by one.
+    pub fn char(self) -> Option<char> {
+        match self {
+            GlyphKey::Char(c) => Some(c),
+            GlyphKey::Id(_) => None,
+        }
+    }
+}
+
 /// One glyph of an MSDF atlas (the layout `msdf-atlas-gen` writes).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Glyph {
-    pub codepoint: char,
+    pub key: GlyphKey,
     /// Horizontal advance in em.
     pub advance: f32,
     /// The quad around the glyph relative to the pen on the baseline, in em,
@@ -145,7 +172,7 @@ impl MsdfFont {
         let mut w = 0.0f32;
         let mut prev: Option<char> = None;
         for ch in text.chars() {
-            let Some(g) = self.glyphs.iter().find(|g| g.codepoint == ch) else {
+            let Some(g) = self.glyphs.iter().find(|g| g.key == GlyphKey::Char(ch)) else {
                 prev = None;
                 continue;
             };
@@ -172,6 +199,10 @@ pub struct GlyphPlacement {
     pub advance: f32,
     pub x: f32,
     pub y: f32,
+    /// A shaped form drawn by the font's glyph id ([`GlyphKey::Id`])
+    /// instead of its character's glyph; the character stays in the text
+    /// (the cluster's first). `None`: the character's own glyph.
+    pub glyph: Option<u16>,
 }
 
 /// A run of text drawn with an MSDF font, laid out left to right from the

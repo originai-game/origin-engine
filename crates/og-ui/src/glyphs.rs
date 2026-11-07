@@ -14,7 +14,7 @@
 /// A glyph rendered from outlines: RGBA8 rows top to bottom.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GlyphImage {
-    pub codepoint: char,
+    pub key: og_render::GlyphKey,
     /// Horizontal advance in em.
     pub advance: f32,
     /// The quad around the glyph relative to the pen on the baseline, em,
@@ -107,7 +107,12 @@ impl ttf_parser::OutlineBuilder for Flatten {
 /// Renders `c` from the font file at the cook's geometry: `em_px` atlas
 /// pixels per em, a distance field spanning `px_range` pixels. `None` when
 /// the font has no glyph for it.
-pub fn render_glyph(ttf: &[u8], c: char, em_px: f32, px_range: f32) -> Option<GlyphImage> {
+pub fn render_glyph(
+    ttf: &[u8],
+    c: impl Into<og_render::GlyphKey>,
+    em_px: f32,
+    px_range: f32,
+) -> Option<GlyphImage> {
     render_glyph_on(ttf, c, em_px, px_range, 0)
 }
 
@@ -116,15 +121,17 @@ pub fn render_glyph(ttf: &[u8], c: char, em_px: f32, px_range: f32) -> Option<Gl
 /// whole number of cells, as the cook renders it.
 pub fn render_glyph_on(
     ttf: &[u8],
-    c: char,
+    c: impl Into<og_render::GlyphKey>,
     em_px: f32,
     px_range: f32,
     grid: u32,
 ) -> Option<GlyphImage> {
+    let c = c.into();
     let face = ttf_parser::Face::parse(ttf, 0).ok()?;
-    let gid = match (c as u32).checked_sub(crate::shape::GLYPH_PUA) {
-        Some(id) if id < u32::from(face.number_of_glyphs()) => ttf_parser::GlyphId(id as u16),
-        _ => face.glyph_index(c)?,
+    let gid = match c {
+        og_render::GlyphKey::Id(id) if id < face.number_of_glyphs() => ttf_parser::GlyphId(id),
+        og_render::GlyphKey::Id(_) => return None,
+        og_render::GlyphKey::Char(c) => face.glyph_index(c)?,
     };
     let upem = f32::from(face.units_per_em());
     let mut advance = f32::from(face.glyph_hor_advance(gid).unwrap_or(0)) / upem;
@@ -133,7 +140,7 @@ pub fn render_glyph_on(
         advance = snap_to_grid(advance, grid);
     }
     let blank = GlyphImage {
-        codepoint: c,
+        key: c,
         advance,
         plane: [0.0; 4],
         width: 0,
@@ -220,7 +227,7 @@ pub fn render_glyph_on(
     let left = (bbox[0] * scale - pad) / em_px;
     let bottom = (bbox[1] * scale - pad) / em_px;
     Some(GlyphImage {
-        codepoint: c,
+        key: c,
         advance,
         plane: [
             left,

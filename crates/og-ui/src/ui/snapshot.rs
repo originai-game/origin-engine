@@ -349,8 +349,10 @@ impl Ui {
     /// layouts (a game gives its saved layouts back with
     /// [`Ui::set_hud_layout`]), and the state of version 15 with no touch
     /// control holding a finger (a held stick takes its finger again on
-    /// the next frame), the state of version 16 with no typeahead, and the
-    /// state of version 17 with no Rive players.
+    /// the next frame), the state of version 16 with no typeahead, the
+    /// state of version 17 with no Rive players, and the state of version
+    /// 18 with its frozen texts' shaped forms (U+F0000 + glyph id) as
+    /// glyph ids.
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -373,7 +375,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11..=17 => {
+            11..=18 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -398,7 +400,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 17"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 18"
             ))),
         }
     }
@@ -675,6 +677,7 @@ impl Reader<'_> {
         let mut r = crate::motion::codec::R {
             bytes: self.bytes,
             at: self.at,
+            legacy_glyphs: version < 19,
         };
         s.motion = r.motion()?;
         self.at = r.at;
@@ -1023,6 +1026,11 @@ mod tests {
         let mut v17 = cut_before_docs(&saved, V18);
         v17[..4].copy_from_slice(&17u32.to_le_bytes());
         assert_eq!(Ui::upgrade_state(&v17).expect("version 17 upgrades"), saved);
+        // Version 18 (no frozen text here: the same bytes) upgrades too.
+        let mut v18 = saved.clone();
+        v18[..4].copy_from_slice(&18u32.to_le_bytes());
+        assert!(Ui::default().restore_state(&v18).is_err());
+        assert_eq!(Ui::upgrade_state(&v18).expect("version 18 upgrades"), saved);
     }
 
     /// The virtual cursor and every player's HUD layout, the edit mode, a

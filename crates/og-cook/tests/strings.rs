@@ -136,7 +136,7 @@ fn an_arabic_font_carries_its_joined_forms_and_its_file() {
     let forms = font
         .glyphs
         .iter()
-        .filter(|g| g.codepoint >= 0xF_0000)
+        .filter(|g| g.codepoint >= og_bundle::format::GLYPH_ID_KEYS)
         .count();
     assert!(
         letters >= 20,

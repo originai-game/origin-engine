@@ -9,7 +9,7 @@
 //! learns its bounds. Pages are added as they fill.
 
 use super::extract::RenderState;
-use og_render::{ColorSpace, FontHandle, Glyph, Mips, TextureData, TextureHandle};
+use og_render::{ColorSpace, FontHandle, Glyph, GlyphKey, Mips, TextureData, TextureHandle};
 use og_ui::shape::FontFile;
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -25,8 +25,8 @@ pub(crate) struct RuntimeFont {
     /// A pixel font's grid (0: an outline font): its glyphs are rendered
     /// as their cells, as the cook renders them.
     pub pixel: u32,
-    /// Characters handled (rendered, or not in the font either).
-    done: BTreeSet<char>,
+    /// Glyphs handled (rendered, or not in the font either).
+    done: BTreeSet<GlyphKey>,
     /// The page being filled.
     page: Option<Page>,
 }
@@ -66,14 +66,19 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
             continue;
         };
         let rf = rs.runtime_fonts.get_mut(&render).expect("listed");
-        let mut want: BTreeSet<char> = og_core::sort::set(rf.file.take_wanted());
+        let mut want: BTreeSet<GlyphKey> = og_core::sort::set(rf.file.take_wanted());
         for t in rs.texts.iter().filter(|t| t.font == render) {
-            want.extend(t.text.chars());
+            want.extend(t.text.chars().map(GlyphKey::Char));
         }
-        let has = |c: char| first.glyphs.iter().any(|g| g.codepoint == c);
-        let want: Vec<char> = want
+        let has = |k: GlyphKey| first.glyphs.iter().any(|g| g.key == k);
+        let want: Vec<GlyphKey> = want
             .into_iter()
-            .filter(|&c| !c.is_whitespace() && !c.is_control() && !rf.done.contains(&c) && !has(c))
+            .filter(|&k| {
+                !k.char()
+                    .is_some_and(|c| c.is_whitespace() || c.is_control())
+                    && !rf.done.contains(&k)
+                    && !has(k)
+            })
             .collect();
         if want.is_empty() {
             continue;
@@ -93,7 +98,7 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
             if img.width == 0 {
                 added.push((
                     Glyph {
-                        codepoint: c,
+                        key: c,
                         advance: img.advance,
                         plane_bounds: [0.0; 4],
                         atlas_bounds: [0.0; 4],
@@ -178,7 +183,7 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
             touched.insert(page.font.index() as u32);
             added.push((
                 Glyph {
-                    codepoint: c,
+                    key: c,
                     advance: img.advance,
                     plane_bounds: img.plane,
                     atlas_bounds: [
@@ -209,10 +214,10 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
                 continue;
             };
             for (g, owner) in &added {
-                if font.glyphs.iter().any(|h| h.codepoint == g.codepoint) {
+                if font.glyphs.iter().any(|h| h.key == g.key) {
                     // A page created in this batch already lists it by advance.
                     if *owner == Some(p)
-                        && let Some(h) = font.glyphs.iter_mut().find(|h| h.codepoint == g.codepoint)
+                        && let Some(h) = font.glyphs.iter_mut().find(|h| h.key == g.key)
                     {
                         *h = *g;
                     }
@@ -275,7 +280,7 @@ pub(crate) fn lacking(
         if c.is_whitespace() || c.is_control() || !rs.glyphs_judged.insert((first, c)) {
             continue;
         }
-        if !font.glyphs.iter().any(|g| g.codepoint == c)
+        if !font.glyphs.iter().any(|g| g.key == GlyphKey::Char(c))
             && !file.as_ref().is_some_and(|f| f.covers(c))
         {
             lacks.push(c);
@@ -351,7 +356,11 @@ fn note(
         String::new()
     };
     let cps: Vec<u32> = rs.scene.font(handle).map_or(Vec::new(), |f| {
-        f.glyphs.iter().map(|g| g.codepoint as u32).collect()
+        f.glyphs
+            .iter()
+            .filter_map(|g| g.key.char())
+            .map(|c| c as u32)
+            .collect()
     });
     let (words, extra) = og_bundle::format::charset_words(&cps);
     let holds = match (words.is_empty(), extra) {
@@ -467,11 +476,7 @@ mod tests {
                         m[1] > 127
                     })
                 });
-                assert!(
-                    inked,
-                    "{:?} U+{:04X} is blank on its page",
-                    g.codepoint, g.codepoint as u32
-                );
+                assert!(inked, "{:?} is blank on its page", g.key);
                 checked += 1;
             }
         }

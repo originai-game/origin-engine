@@ -303,7 +303,7 @@ pub fn add_font(scene: &mut RenderScene, files: &FontFiles) -> UiFont {
             .collect();
         // -yorigin top: plane bounds left, top, right, bottom with y down.
         glyphs.push(Glyph {
-            codepoint: char::from_u32(f[0] as u32).expect("codepoint"),
+            key: char::from_u32(f[0] as u32).expect("codepoint").into(),
             advance: f[1],
             plane_bounds: [f[2], -f[5], f[4], -f[3]],
             atlas_bounds: [f[6], f[7], f[8], f[9]],

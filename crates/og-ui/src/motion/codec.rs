@@ -248,6 +248,8 @@ impl W<'_> {
                     self.f32(p.advance);
                     self.f32(p.x);
                     self.f32(p.y);
+                    // A shaped form's glyph id + 1; 0: the character's own.
+                    self.u32(p.glyph.map_or(0, |g| u32::from(g) + 1));
                 }
             }
             // The UI pass's commands (crate::draw_codec).
@@ -411,7 +413,13 @@ pub(crate) fn prop_index(p: Prop) -> u8 {
 pub(crate) struct R<'a> {
     pub bytes: &'a [u8],
     pub at: usize,
+    /// A UI state before version 19: a placement has no glyph id, and a
+    /// shaped form is its text's character U+F0000 + glyph id.
+    pub legacy_glyphs: bool,
 }
+
+/// Where a state before version 19 kept a shaped form: U+F0000 + glyph id.
+const LEGACY_GLYPHS: u32 = 0xF_0000;
 
 impl R<'_> {
     fn take<const N: usize>(&mut self) -> Option<[u8; N]> {
@@ -601,7 +609,7 @@ impl R<'_> {
                 let x = self.f32()?;
                 let baseline = self.f32()?;
                 let size = self.f32()?;
-                let text = self.str()?;
+                let mut text = self.str()?;
                 let color = self.color4()?;
                 let font = FontHandle::from_bits(self.u32()?);
                 let bounds = self.rect()?;
@@ -614,11 +622,35 @@ impl R<'_> {
                 };
                 let mut placements = Vec::new();
                 for _ in 0..self.u32()? {
+                    let (advance, x, y) = (self.f32()?, self.f32()?, self.f32()?);
+                    let glyph = match self.legacy_glyphs {
+                        true => None,
+                        false => match self.u32()? {
+                            0 => None,
+                            g => Some(u16::try_from(g - 1).ok()?),
+                        },
+                    };
                     placements.push(GlyphPlacement {
-                        advance: self.f32()?,
-                        x: self.f32()?,
-                        y: self.f32()?,
+                        advance,
+                        x,
+                        y,
+                        glyph,
                     });
+                }
+                if self.legacy_glyphs {
+                    // Its shaped forms by their ids: the character drawn
+                    // in their place is not known, U+FFFD stands for it.
+                    text = text
+                        .chars()
+                        .zip(0..)
+                        .map(|(c, i)| match (c as u32).checked_sub(LEGACY_GLYPHS) {
+                            Some(id) if id <= 0xFFFF && i < placements.len() => {
+                                placements[i].glyph = Some(id as u16);
+                                char::REPLACEMENT_CHARACTER
+                            }
+                            _ => c,
+                        })
+                        .collect();
                 }
                 DrawCmd::Text {
                     x,
@@ -800,5 +832,64 @@ impl R<'_> {
             });
         }
         Some(m)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A frozen text line keeps its shaped forms by glyph id through the
+    /// codec; one saved before version 19, whose forms were its text's
+    /// characters U+F0000 + id and whose placements had no id, reads them
+    /// as the same glyph ids, its other characters as they were.
+    #[test]
+    fn shaped_forms_read_as_glyph_ids_now_and_from_before_19() {
+        let text = |text: &str, glyphs: [Option<u16>; 3]| DrawCmd::Text {
+            x: 1.0,
+            baseline: 2.0,
+            size: 16.0,
+            text: text.into(),
+            color: [1.0; 4],
+            font: FontHandle::from_bits(3),
+            bounds: Rect::default(),
+            clip: Rect::default(),
+            tracking: 0.0,
+            weight: 0.0,
+            glow: None,
+            placements: glyphs
+                .iter()
+                .map(|&glyph| GlyphPlacement {
+                    advance: 0.5,
+                    glyph,
+                    ..GlyphPlacement::default()
+                })
+                .collect(),
+        };
+        let read = |bytes: &[u8], legacy_glyphs| {
+            R {
+                bytes,
+                at: 0,
+                legacy_glyphs,
+            }
+            .cmd()
+        };
+        let now = text("a\u{F0105}b", [None, Some(0x7), None]);
+        let mut bytes = Vec::new();
+        W(&mut bytes).cmd(&now);
+        assert_eq!(read(&bytes, false), Some(now));
+        // Before 19: 12 bytes a placement (no id) at the command's end.
+        let old = text("a\u{F0105}b", [None; 3]);
+        let mut bytes = Vec::new();
+        W(&mut bytes).cmd(&old);
+        let end = bytes.len() - 3 * 16;
+        let mut legacy = bytes[..end].to_vec();
+        for p in bytes[end..].chunks(16) {
+            legacy.extend_from_slice(&p[..12]);
+        }
+        assert_eq!(
+            read(&legacy, true),
+            Some(text("a\u{FFFD}b", [None, Some(0x105), None]))
+        );
     }
 }

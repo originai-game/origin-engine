@@ -4,10 +4,10 @@
 //! A font cooked with a shaped script (Arabic, Devanagari and og-i18n's
 //! other `needs_shaping` scripts) carries its font file and every glyph its
 //! substitutions reach from the charset (contextual forms, ligatures,
-//! conjuncts) under U+F0000 + glyph id. A run of such a script is shaped
-//! with HarfRust in its direction and drawn as those private-use
-//! characters, placed where HarfRust puts them (marks over their bases,
-//! a right-to-left run already in visual order).
+//! conjuncts) by glyph id ([`GlyphKey::Id`]). A run of such a script is
+//! shaped with HarfRust in its direction and drawn as those glyphs, placed
+//! where HarfRust puts them (marks over their bases, a right-to-left run
+//! already in visual order).
 //!
 //! A font cooked with `runtime true` carries its file too: a character
 //! outside the charset is measured from the file's metrics and recorded,
@@ -23,8 +23,7 @@ use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 
-/// Where shaped glyphs are drawn from: U+F0000 + glyph id (og-cook's font cook).
-pub const GLYPH_PUA: u32 = 0xF_0000;
+pub use og_render::GlyphKey;
 
 /// The OpenType features a type step turns on (docs/ui.md §15.5.4): small
 /// caps, capitals to small caps, tabular and lining figures, case-sensitive
@@ -100,14 +99,24 @@ impl Features {
 /// One shaped glyph, in em.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Shaped {
-    /// U+F0000 + glyph id.
+    /// The character it draws: the glyph's own (its cmap's), or for a
+    /// shaped form (`glyph`) the first of its cluster.
     pub ch: char,
+    /// A shaped form, drawn by the font's glyph id instead of `ch`'s glyph.
+    pub glyph: Option<u16>,
     pub advance: f32,
     /// The glyph's offset from the pen (y up).
     pub x: f32,
     pub y: f32,
     /// The byte offset in the run of the first character it draws.
     pub cluster: u32,
+}
+
+impl Shaped {
+    /// The glyph it draws: its form by id, else its character's.
+    pub fn key(&self) -> GlyphKey {
+        self.glyph.map_or(GlyphKey::Char(self.ch), GlyphKey::Id)
+    }
 }
 
 /// A shaped run in visual order, or `None` when the font cannot shape it
@@ -123,10 +132,10 @@ pub struct FontFile {
     shaper: harfrust::ShaperData,
     #[cfg(feature = "shaping")]
     shaped: Mutex<HashMap<(String, bool, u8), ShapedRun>>,
-    /// Characters outside the atlas: their advance in em (`None`: not in the font).
-    extra: Mutex<BTreeMap<char, Option<f32>>>,
-    /// Characters outside the atlas laid out since the host last took them.
-    wanted: Mutex<BTreeSet<char>>,
+    /// Glyphs outside the atlas: their advance in em (`None`: not in the font).
+    extra: Mutex<BTreeMap<GlyphKey, Option<f32>>>,
+    /// Glyphs outside the atlas laid out since the host last took them.
+    wanted: Mutex<BTreeSet<GlyphKey>>,
 }
 
 impl std::fmt::Debug for FontFile {
@@ -195,7 +204,7 @@ impl FontFile {
     /// stop or a digit inside an Arabic run, or the mirror of a bracket) is
     /// drawn as that character when `has` it: the cook keeps such glyphs
     /// under their code points, not as shaped forms.
-    pub fn shape(&self, run: &str, rtl: bool, has: &dyn Fn(char) -> bool) -> ShapedRun {
+    pub fn shape(&self, run: &str, rtl: bool, has: &dyn Fn(GlyphKey) -> bool) -> ShapedRun {
         self.shape_with(run, rtl, Features::NONE, has)
     }
 
@@ -205,7 +214,7 @@ impl FontFile {
         run: &str,
         rtl: bool,
         features: Features,
-        has: &dyn Fn(char) -> bool,
+        has: &dyn Fn(GlyphKey) -> bool,
     ) -> ShapedRun {
         #[cfg(feature = "shaping")]
         {
@@ -235,7 +244,7 @@ impl FontFile {
         run: &str,
         rtl: bool,
         features: Features,
-        has: &dyn Fn(char) -> bool,
+        has: &dyn Fn(GlyphKey) -> bool,
     ) -> Option<Vec<Shaped>> {
         let face = skrifa::FontRef::new(&self.ttf).ok()?;
         let mut buf = harfrust::UnicodeBuffer::new();
@@ -259,16 +268,21 @@ impl FontFile {
         let em = self.units_per_em;
         let mut glyphs = Vec::with_capacity(out.len());
         for (g, p) in out.glyph_infos().iter().zip(out.glyph_positions()) {
-            let mut ch = char::from_u32(GLYPH_PUA + g.glyph_id)?;
-            if !has(ch) {
+            let c = run.get(g.cluster as usize..)?.chars().next()?;
+            let id = u16::try_from(g.glyph_id).ok()?;
+            let (ch, glyph) = if has(GlyphKey::Id(id)) {
+                (c, Some(id))
+            } else {
                 // The character's own glyph, kept under its code point.
-                let c = run.get(g.cluster as usize..)?.chars().next()?;
-                ch = [c, crate::text::mirror(c)].into_iter().find(|&c| {
-                    face.charmap().map(c).map(|i| i.to_u32()) == Some(g.glyph_id) && has(c)
+                let own = [c, crate::text::mirror(c)].into_iter().find(|&c| {
+                    face.charmap().map(c).map(|i| i.to_u32()) == Some(g.glyph_id)
+                        && has(GlyphKey::Char(c))
                 })?;
-            }
+                (own, None)
+            };
             glyphs.push(Shaped {
                 ch,
+                glyph,
                 advance: p.x_advance as f32 / em,
                 x: p.x_offset as f32 / em,
                 y: p.y_offset as f32 / em,
@@ -282,59 +296,68 @@ impl FontFile {
     /// metrics, recorded for the host to render; `None` when the font does
     /// not have it either.
     pub fn advance(&self, c: char) -> Option<f32> {
+        self.advance_of(GlyphKey::Char(c))
+    }
+
+    /// [`FontFile::advance`] of a glyph by its key (a shaped form by id).
+    pub fn advance_of(&self, key: GlyphKey) -> Option<f32> {
         if !self.runtime {
             return None;
         }
-        let a = self.lookup(c);
+        let a = self.lookup(key);
         if a.is_some()
-            && !c.is_whitespace()
+            && !key.char().is_some_and(char::is_whitespace)
             && let Ok(mut w) = self.wanted.lock()
         {
-            w.insert(c);
+            w.insert(key);
         }
         a
     }
 
     /// Whether the font file has `c` (without recording it).
     pub fn covers(&self, c: char) -> bool {
-        self.runtime && self.lookup(c).is_some()
+        self.runtime && self.lookup(GlyphKey::Char(c)).is_some()
     }
 
     /// Keep an atlas character when it names this glyph; otherwise request
-    /// the glyph by the cook's private-use id, including new ligatures.
+    /// the glyph by its id, including new ligatures: the character drawn
+    /// and the glyph id it is drawn as (`None`: its own glyph).
     #[cfg(feature = "shaping")]
     pub(crate) fn character_for_glyph(
         &self,
         id: u32,
         source: char,
-        has: &dyn Fn(char) -> bool,
-    ) -> char {
+        has: &dyn Fn(GlyphKey) -> bool,
+    ) -> (char, Option<u16>) {
         let face = skrifa::FontRef::new(&self.ttf).expect("validated font");
         if let Some(c) = [source, crate::text::mirror(source)]
             .into_iter()
             .find(|&c| {
-                face.charmap().map(c).is_some_and(|g| g.to_u32() == id) && (has(c) || !self.runtime)
+                face.charmap().map(c).is_some_and(|g| g.to_u32() == id)
+                    && (has(GlyphKey::Char(c)) || !self.runtime)
             })
         {
-            return c;
+            return (c, None);
         }
+        let Ok(id) = u16::try_from(id) else {
+            return (source, None);
+        };
         if id == 0 && !self.runtime {
-            return source;
+            return (source, None);
         }
-        let c = char::from_u32(GLYPH_PUA + id).expect("OpenType glyph id");
-        if !has(c) {
-            self.advance(c);
+        if !has(GlyphKey::Id(id)) {
+            self.advance_of(GlyphKey::Id(id));
         }
-        c
+        (source, Some(id))
     }
 
-    fn lookup(&self, c: char) -> Option<f32> {
+    fn lookup(&self, key: GlyphKey) -> Option<f32> {
         let mut extra = self.extra.lock().ok()?;
-        *extra.entry(c).or_insert_with(|| {
+        *extra.entry(key).or_insert_with(|| {
             let face = skrifa::FontRef::new(&self.ttf).ok()?;
-            let g = match (c as u32).checked_sub(GLYPH_PUA) {
-                Some(id) if id <= u16::MAX as u32 => skrifa::GlyphId::new(id),
-                _ => face.charmap().map(c)?,
+            let g = match key {
+                GlyphKey::Id(id) => skrifa::GlyphId::new(u32::from(id)),
+                GlyphKey::Char(c) => face.charmap().map(c)?,
             };
             Some(
                 face.glyph_metrics(Size::unscaled(), LocationRef::default())
@@ -345,9 +368,9 @@ impl FontFile {
         })
     }
 
-    /// The characters outside the atlas laid out since the last call, in
-    /// code point order: what the host renders before drawing the frame.
-    pub fn take_wanted(&self) -> Vec<char> {
+    /// The glyphs outside the atlas laid out since the last call, in key
+    /// order: what the host renders before drawing the frame.
+    pub fn take_wanted(&self) -> Vec<GlyphKey> {
         self.wanted
             .lock()
             .map(|mut w| std::mem::take(&mut *w).into_iter().collect())

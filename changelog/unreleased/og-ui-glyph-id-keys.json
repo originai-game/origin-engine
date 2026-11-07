@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "og.Font (cooked font blobs)",
+      "change": "A font's shaped forms (ligatures, joined letters, OpenType features' alternates) are keyed by glyph id past Unicode (0x110000 + id) instead of as the private-use characters U+F0000 + id, which collided with fonts that map characters there (icon fonts): such a character drew another glyph or failed to cook. The font blob is version 2; one cooked by an earlier engine is refused when it loads. A saved UI state of the previous version upgrades, its frozen texts' shaped forms read as glyph ids.",
+      "fix": "Cook the project again (`og cook`). Every font recooks with the same charset, glyphs, pages and run-time mode; only the keys of its shaped forms move."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "font import (.ttf, .otf)",
+      "summary": "A font that maps characters in Supplementary Private Use Area-A (U+F0000 to U+FFFFD, as icon fonts and the COLR test fonts do) cooks and draws them as its own glyphs, beside its shaped forms."
+    }
+  ]
+}

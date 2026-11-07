@@ -6,8 +6,8 @@ use crate::RenderError;
 use crate::effects::SpriteBlend;
 use crate::scene::SpriteFacing;
 use crate::scene::{
-    FontHandle, Glyph, MsdfFont, RenderScene, Sprite, Text, TextureArrayHandle, TextureHandle,
-    TileLayer,
+    FontHandle, Glyph, GlyphKey, MsdfFont, RenderScene, Sprite, Text, TextureArrayHandle,
+    TextureHandle, TileLayer,
 };
 use glam::{Vec2, Vec3};
 use std::collections::HashMap;
@@ -255,9 +255,9 @@ pub(crate) struct SpriteRun {
     pub tone_mapped: bool,
 }
 
-/// The glyph table of one font, by codepoint, and its kerning pairs.
+/// The glyph table of one font, by key, and its kerning pairs.
 pub(crate) struct FontLayout {
-    pub glyphs: HashMap<char, Glyph>,
+    pub glyphs: HashMap<GlyphKey, Glyph>,
     pub kerning: HashMap<(char, char), f32>,
     pub line_height: f32,
     pub atlas_size: Vec2,
@@ -270,7 +270,7 @@ pub(crate) struct FontLayout {
 impl FontLayout {
     pub fn new(font: &MsdfFont, atlas_size: Vec2) -> FontLayout {
         FontLayout {
-            glyphs: font.glyphs.iter().map(|g| (g.codepoint, *g)).collect(),
+            glyphs: font.glyphs.iter().map(|g| (g.key, *g)).collect(),
             kerning: font
                 .kerning
                 .iter()
@@ -306,13 +306,13 @@ impl FontLayout {
                 prev = None;
                 continue;
             }
-            let g = self.glyphs.get(&ch);
             if let Some(p) = text.placements.get(i) {
-                f(ch, g, pen, Vec2::new(p.x, p.y));
+                let key = p.glyph.map_or(GlyphKey::Char(ch), GlyphKey::Id);
+                f(ch, self.glyphs.get(&key), pen, Vec2::new(p.x, p.y));
                 pen.x += p.advance;
                 continue;
             }
-            let Some(g) = g else {
+            let Some(g) = self.glyphs.get(&GlyphKey::Char(ch)) else {
                 f(ch, None, pen, Vec2::ZERO);
                 prev = None;
                 continue;

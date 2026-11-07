@@ -42,7 +42,7 @@ use crate::support;
 
 use og_i18n::Direction;
 use og_render::RenderScene;
-use og_ui::shape::{FontFile, GLYPH_PUA};
+use og_ui::shape::FontFile;
 use og_ui::*;
 use std::sync::Arc;
 use support::*;
@@ -428,7 +428,7 @@ fn an_arabic_run_is_shaped_with_its_own_font() {
         "the Latin, the digit and the spaces in the role's face"
     );
     assert!(
-        arabic.len() >= 4 && arabic.iter().all(|g| g.ch as u32 >= GLYPH_PUA && g.rtl),
+        arabic.len() >= 4 && arabic.iter().all(|g| g.glyph.is_some() && g.rtl),
         "the Arabic run is shaped by the Arabic file: {arabic:?}"
     );
     // Visual order: the Latin first, then the Arabic run (its first letter last).
@@ -439,12 +439,12 @@ fn an_arabic_run_is_shaped_with_its_own_font() {
         "مـ drawn at the right"
     );
     // The same shaping as the Arabic file alone gives the word.
-    let alone: Vec<char> = f
+    let alone: Vec<_> = f
         .arabic
         .metrics
         .visual("مرحبا", Direction::Ltr, 0.0)
         .iter()
-        .map(|g| g.ch)
+        .map(|g| g.key())
         .collect();
-    assert_eq!(arabic.iter().map(|g| g.ch).collect::<Vec<_>>(), alone);
+    assert_eq!(arabic.iter().map(|g| g.key()).collect::<Vec<_>>(), alone);
 }

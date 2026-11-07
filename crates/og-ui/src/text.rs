@@ -15,7 +15,7 @@
 
 use crate::shape::{Features, FontFile};
 use og_i18n::Direction;
-use og_render::{FontHandle, GlyphPlacement, MsdfFont};
+use og_render::{FontHandle, GlyphKey, GlyphPlacement, MsdfFont};
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -26,7 +26,7 @@ pub(crate) mod paragraph;
 #[derive(Clone, Debug, PartialEq)]
 pub struct FontMetrics {
     /// (codepoint, advance) sorted by codepoint.
-    advances: Vec<(char, f32)>,
+    advances: Vec<(GlyphKey, f32)>,
     /// Every character's advance when the table is empty (`fixed`).
     fixed: Option<f32>,
     /// Kerning pairs (`left << 32 | right`, em), sorted.
@@ -60,8 +60,11 @@ pub struct FontMetrics {
 /// One glyph of a line as drawn, left to right.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VisualGlyph {
-    /// The character drawn (U+F0000 + glyph id for a shaped glyph).
+    /// The character drawn (for a shaped form, the first of its cluster).
     pub ch: char,
+    /// A shaped form, drawn by the font's glyph id instead of `ch`'s glyph
+    /// (og-render's `GlyphPlacement::glyph`).
+    pub glyph: Option<u16>,
     /// The pen's advance after it, em (kerning and tracking included).
     pub advance: f32,
     /// The glyph's offset from the pen, em (y up).
@@ -74,6 +77,13 @@ pub struct VisualGlyph {
     /// The font that draws it: 0 the font laid out with, `k` the `k`-th of
     /// a mixed text's other fonts ([`UiFont::handle_of`]).
     pub font: u8,
+}
+
+impl VisualGlyph {
+    /// The glyph it draws: its form by id, else its character's.
+    pub fn key(&self) -> GlyphKey {
+        self.glyph.map_or(GlyphKey::Char(self.ch), GlyphKey::Id)
+    }
 }
 
 fn kern_key(a: char, b: char) -> u64 {
@@ -110,11 +120,8 @@ impl FontMetrics {
     /// real ascender and descender: pass them with
     /// [`FontMetrics::with_extents`]).
     pub fn from_msdf(font: &MsdfFont) -> FontMetrics {
-        let mut advances: Vec<(char, f32)> = font
-            .glyphs
-            .iter()
-            .map(|g| (g.codepoint, g.advance))
-            .collect();
+        let mut advances: Vec<(GlyphKey, f32)> =
+            font.glyphs.iter().map(|g| (g.key, g.advance)).collect();
         og_core::sort::sort_by_key(&mut advances, |(c, _)| *c);
         advances.dedup_by_key(|(c, _)| *c);
         let mut kerning: Vec<(u64, f32)> = font
@@ -128,7 +135,7 @@ impl FontMetrics {
         for g in font
             .glyphs
             .iter()
-            .filter(|g| g.codepoint.is_ascii_graphic())
+            .filter(|g| g.key.char().is_some_and(|c| c.is_ascii_graphic()))
         {
             top = top.max(g.plane_bounds[3]);
             bottom = bottom.min(g.plane_bounds[1]);
@@ -218,7 +225,8 @@ impl FontMetrics {
         self
     }
 
-    fn atlas_advance(&self, c: char) -> Option<f32> {
+    fn atlas_advance(&self, c: impl Into<GlyphKey>) -> Option<f32> {
+        let c = c.into();
         self.advances
             .binary_search_by_key(&c, |(k, _)| *k)
             .ok()
@@ -270,7 +278,13 @@ impl FontMetrics {
 
     /// Whether the cooked atlas itself has `c`.
     pub fn in_atlas(&self, c: char) -> bool {
-        self.fixed.is_some() || self.atlas_advance(c).is_some()
+        self.in_atlas_key(GlyphKey::Char(c))
+    }
+
+    /// Whether the cooked atlas has the glyph `key` (a character's, or a
+    /// shaped form's by id).
+    pub fn in_atlas_key(&self, key: GlyphKey) -> bool {
+        self.fixed.is_some() || self.atlas_advance(key).is_some()
     }
 
     /// Whether a text is laid out per run, each run with the first of this
@@ -561,7 +575,7 @@ impl FontMetrics {
         let shaped = self
             .file
             .as_ref()
-            .and_then(|f| f.shape_with(digits, false, features, &|c| self.in_atlas(c)));
+            .and_then(|f| f.shape_with(digits, false, features, &|k| self.in_atlas_key(k)));
         let adv: Vec<f32> = match shaped {
             Some(g) if g.len() == 10 => g.iter().map(|g| g.advance).collect(),
             _ => digits
@@ -601,10 +615,10 @@ impl FontMetrics {
             let Some(&c) = g.index.checked_sub(first).and_then(|k| chars.get(k)) else {
                 continue;
             };
-            if !c.is_ascii_digit() || (g.ch != c && (g.ch as u32) < crate::shape::GLYPH_PUA) {
+            if !c.is_ascii_digit() || (g.ch != c && g.glyph.is_none()) {
                 continue;
             }
-            let own = if g.ch == c {
+            let own = if g.glyph.is_none() {
                 self.own_advance(c)
             } else {
                 g.advance - track
@@ -625,10 +639,10 @@ impl FontMetrics {
     ) -> Vec<VisualGlyph> {
         let script = text.chars().any(og_i18n::needs_shaping);
         // A glyph the atlas has, or a character the file renders at run time.
-        let has = |c: char| {
-            self.in_atlas(c)
-                || ((c as u32) < crate::shape::GLYPH_PUA
-                    && self.file.as_ref().is_some_and(|f| f.advance(c).is_some()))
+        let has = |k: GlyphKey| {
+            self.in_atlas_key(k)
+                || k.char()
+                    .is_some_and(|c| self.file.as_ref().is_some_and(|f| f.advance(c).is_some()))
         };
         if (script || !features.is_empty())
             && let Some(file) = &self.file
@@ -641,6 +655,7 @@ impl FontMetrics {
                 .iter()
                 .map(|g| VisualGlyph {
                     ch: g.ch,
+                    glyph: g.glyph,
                     advance: g.advance + track,
                     x: g.x,
                     y: g.y,
@@ -676,6 +691,7 @@ impl FontMetrics {
         let mut out: Vec<VisualGlyph> = Vec::with_capacity(n);
         let glyph = |k: usize, c: char| VisualGlyph {
             ch: c,
+            glyph: None,
             advance: if self.own_has(c) {
                 self.own_advance(c) + tracking
             } else {
@@ -784,6 +800,7 @@ impl FontMetrics {
                     advance: g.advance,
                     x: g.x,
                     y: g.y,
+                    glyph: g.glyph,
                 })
                 .collect(),
         )

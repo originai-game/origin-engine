@@ -12,13 +12,13 @@
 //!   proportional figures, so a timer changes width as it ticks →
 //!   `tabular_figures_hold_a_width_without_the_feature`
 
-use og_render::{Glyph, MsdfFont, TextureHandle};
-use og_ui::shape::{Features, FontFile, GLYPH_PUA};
+use og_render::{Glyph, GlyphKey, MsdfFont, TextureHandle};
+use og_ui::shape::{Features, FontFile};
 use og_ui::*;
 use std::sync::Arc;
 
 /// A kit font as the cook makes it with `features`: its printable ASCII by
-/// code point and every glyph by id (U+F0000 + id), advances from `hmtx`.
+/// code point and every glyph by id, advances from `hmtx`.
 pub(crate) fn font(file: &str) -> UiFont {
     font_at(&format!("tests/fixtures/ui-text/assets/fonts/{file}"))
 }
@@ -30,22 +30,20 @@ fn font_at(path: &str) -> UiFont {
     let face = ttf_parser::Face::parse(&bytes, 0).expect("a font ttf-parser reads");
     let em = f32::from(face.units_per_em());
     let advance = |g: ttf_parser::GlyphId| f32::from(face.glyph_hor_advance(g).unwrap_or(0)) / em;
-    let glyph = |codepoint: char, advance: f32| Glyph {
-        codepoint,
+    let glyph = |key: GlyphKey, advance: f32| Glyph {
+        key,
         advance,
         plane_bounds: [0.0, 0.0, advance, 0.7],
         atlas_bounds: [0.0, 0.0, 1.0, 1.0],
     };
     let mut glyphs: Vec<Glyph> = (0x20u8..0x7f)
         .map(char::from)
-        .filter_map(|c| Some(glyph(c, advance(face.glyph_index(c)?))))
+        .filter_map(|c| Some(glyph(c.into(), advance(face.glyph_index(c)?))))
         .collect();
-    glyphs.extend((0..face.number_of_glyphs()).filter_map(|g| {
-        Some(glyph(
-            char::from_u32(GLYPH_PUA + u32::from(g))?,
-            advance(ttf_parser::GlyphId(g)),
-        ))
-    }));
+    glyphs.extend(
+        (0..face.number_of_glyphs())
+            .map(|g| glyph(GlyphKey::Id(g), advance(ttf_parser::GlyphId(g)))),
+    );
     let msdf = MsdfFont {
         atlas: TextureHandle::from_slot(1).expect("a handle"),
         distance_range: 4.0,

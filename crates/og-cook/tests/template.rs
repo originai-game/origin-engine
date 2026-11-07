@@ -414,7 +414,7 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     for g in f
         .glyphs
         .iter()
-        .filter(|g| g.atlas_w > 0 && g.codepoint < 0xF_0000)
+        .filter(|g| g.atlas_w > 0 && g.codepoint < og_bundle::format::GLYPH_ID_KEYS)
     {
         let page = &f.pages[g.page as usize];
         let px = |x: u32, y: u32| &page.rgba[((y * page.width + x) * 4) as usize..][..4];

@@ -171,7 +171,7 @@ fn a_version_12_state_upgrades_and_restores() {
     // before the layer stack.
     let u32_at =
         |b: &[u8], at: usize| u32::from_le_bytes(b[at..at + 4].try_into().unwrap()) as usize;
-    assert_eq!(u32_at(&now, 0), 18);
+    assert_eq!(u32_at(&now, 0), 19);
     let scrolls = u32_at(&now, 44);
     let hits_at = 48 + scrolls * 12;
     let hits = u32_at(&now, hits_at);

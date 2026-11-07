@@ -5,8 +5,9 @@
 //! when the charset holds one, the blob also carries the font file (raw
 //! section `ttf`) for og-ui's run-time shaping, and the atlas every glyph the
 //! font's substitutions reach from the charset's (contextual forms,
-//! ligatures), each under the private-use code point U+1F000 + glyph id,
-//! which is what og-ui draws a shaped run as.
+//! ligatures), each keyed by its glyph id (`GLYPH_ID_KEYS` + id, past
+//! Unicode, so no character of the font can alias one), which is what og-ui
+//! draws a shaped run as.
 
 use super::{CookError, FontSettings};
 use crate::format::{self, *};
@@ -16,8 +17,9 @@ use og_blob::BlobWriter;
 mod colr;
 mod overlap;
 
-/// Where a glyph id is drawn from: U+1F000 + id (Supplementary Private Use Area-A).
-pub const GLYPH_PUA: u32 = 0xF_0000;
+/// Where a glyph by id (a shaped form) is keyed in the blob: 0x110000 + id,
+/// past every Unicode code point (og_bundle::format::GLYPH_ID_KEYS).
+use og_bundle::format::GLYPH_ID_KEYS;
 
 /// Shaping needs metrics and layout tables, not raster outlines or hints.
 /// FontBuilder writes the SFNT directory and checksums; glyph IDs stay intact.
@@ -327,9 +329,9 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
     use fdsm::bezier::scanline::FillRule;
     use fdsm::shape::Shape;
     use fdsm::transform::Transform;
-    // A private-use code point past GLYPH_PUA is a glyph id (a shaped form).
-    let gid = if (GLYPH_PUA..GLYPH_PUA + 0x1_0000).contains(&cp) {
-        ttf_parser::GlyphId((cp - GLYPH_PUA) as u16)
+    // A key past GLYPH_ID_KEYS is a glyph id (a shaped form).
+    let gid = if (GLYPH_ID_KEYS..GLYPH_ID_KEYS + 0x1_0000).contains(&cp) {
+        ttf_parser::GlyphId((cp - GLYPH_ID_KEYS) as u16)
     } else {
         face.glyph_index(char::from_u32(cp)?)?
     };
@@ -608,7 +610,7 @@ pub fn cook(
             start.extend(face.glyph_index(c));
         }
         let forms = substitution_closure(&face, &start);
-        wanted.extend(forms.into_iter().map(|g| GLYPH_PUA + u32::from(g)));
+        wanted.extend(forms.into_iter().map(|g| GLYPH_ID_KEYS + u32::from(g)));
         wanted.sort_unstable();
         wanted.dedup();
     } else if s.pixel == 0 {
@@ -623,7 +625,7 @@ pub fn cook(
         wanted.extend(
             closure_of(&face, &shaped, Some(&lookups))
                 .into_iter()
-                .map(|g| GLYPH_PUA + u32::from(g)),
+                .map(|g| GLYPH_ID_KEYS + u32::from(g)),
         );
         wanted.sort_unstable();
         wanted.dedup();
@@ -637,7 +639,7 @@ pub fn cook(
         let lookups = feature_lookups(&face, &s.features);
         let start: Vec<ttf_parser::GlyphId> = wanted
             .iter()
-            .filter(|&&cp| cp < GLYPH_PUA)
+            .filter(|&&cp| cp < GLYPH_ID_KEYS)
             .filter_map(|&cp| face.glyph_index(char::from_u32(cp)?))
             .collect();
         let before = wanted.len();
@@ -645,7 +647,7 @@ pub fn cook(
         wanted.extend(
             closure_of(&face, &start, Some(&lookups))
                 .into_iter()
-                .map(|g| GLYPH_PUA + u32::from(g)),
+                .map(|g| GLYPH_ID_KEYS + u32::from(g)),
         );
         wanted.sort_unstable();
         wanted.dedup();
@@ -655,7 +657,7 @@ pub fn cook(
     // Kerning between the cooked characters (shaped forms kern in the shaper).
     let kern_glyphs: Vec<(u32, ttf_parser::GlyphId)> = wanted
         .iter()
-        .filter(|&&cp| cp < GLYPH_PUA)
+        .filter(|&&cp| cp < GLYPH_ID_KEYS)
         .filter_map(|&cp| Some((cp, face.glyph_index(char::from_u32(cp)?)?)))
         .collect();
     let upem_f = f32::from(face.units_per_em());
@@ -896,7 +898,7 @@ pub fn cook(
         ));
     }
     if shaping {
-        let forms = rows.iter().filter(|r| r.codepoint >= GLYPH_PUA).count();
+        let forms = rows.iter().filter(|r| r.codepoint >= GLYPH_ID_KEYS).count();
         note.push_str(&format!(
             "; shaped script: {forms} contextual form(s) and the font file ({} bytes) for run-time shaping",
             bytes.len()
@@ -1053,8 +1055,8 @@ fn colour_glyphs(
     let palette = colr::palette(&font);
     let mut out = Colour::default();
     for g in glyphs.iter_mut() {
-        let gid = if (GLYPH_PUA..GLYPH_PUA + 0x1_0000).contains(&g.codepoint) {
-            g.codepoint - GLYPH_PUA
+        let gid = if (GLYPH_ID_KEYS..GLYPH_ID_KEYS + 0x1_0000).contains(&g.codepoint) {
+            g.codepoint - GLYPH_ID_KEYS
         } else {
             match char::from_u32(g.codepoint).and_then(|c| face.glyph_index(c)) {
                 Some(id) => u32::from(id.0),
@@ -1182,14 +1184,17 @@ mod tests {
         let (with, ships) = cooked(&["smcp"]);
         assert!(ships, "the file ships for run-time shaping");
         assert!(
-            with.contains(&(GLYPH_PUA + u32::from(small_a[0]))),
+            with.contains(&(GLYPH_ID_KEYS + u32::from(small_a[0]))),
             "a.sc by id"
         );
-        assert!(with.contains(&(GLYPH_PUA + u32::from(a.0))), "a by id too");
+        assert!(
+            with.contains(&(GLYPH_ID_KEYS + u32::from(a.0))),
+            "a by id too"
+        );
         let (without, ships) = cooked(&[]);
         assert!(ships);
-        assert!(!without.contains(&(GLYPH_PUA + u32::from(small_a[0]))));
-        assert!(without.contains(&(GLYPH_PUA + u32::from(a.0))));
+        assert!(!without.contains(&(GLYPH_ID_KEYS + u32::from(small_a[0]))));
+        assert!(without.contains(&(GLYPH_ID_KEYS + u32::from(a.0))));
     }
 
     #[test]
@@ -1216,7 +1221,7 @@ mod tests {
             .unwrap();
         // This fixture's calt numeric hyphen in "Level 1-2": a nested
         // lookup, not a lookup directly listed by the feature record.
-        assert!(rows.iter().any(|g| g.codepoint == GLYPH_PUA + 213));
+        assert!(rows.iter().any(|g| g.codepoint == GLYPH_ID_KEYS + 213));
     }
 
     /// Subtexel samples of `c`'s field at `em_px` whose position lies in the
@@ -1418,9 +1423,9 @@ mod tests {
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap();
-        // A linear gradient (U+1F100), a sweep (U+1F200), a radial
-        // (U+1F503) and composites (U+1F600).
-        let chars = "\u{1F100}\u{1F200}\u{1F503}\u{1F600}";
+        // A linear gradient (U+F0100), a sweep (U+F0200), a radial
+        // (U+F0503) and composites (U+F0600).
+        let chars = "\u{F0100}\u{F0200}\u{F0503}\u{F0600}";
         let settings = |color| FontSettings {
             charset: Vec::new(),
             chars: chars.into(),
@@ -1441,6 +1446,26 @@ mod tests {
             .unwrap();
         let (w, h, rgba) = ktx2::decode_rgba8(b.raw("color.0").unwrap(), 0).unwrap();
         assert!(b.raw_opt("color.1").is_none());
+        // Its characters sit in Supplementary Private Use Area-A, as an
+        // icon font's do, and each has a by-id twin past Unicode for shaped
+        // runs: the same glyph under its own key, never the character's.
+        let face = ttf_parser::Face::parse(&bytes, 0).unwrap();
+        for c in chars.chars() {
+            let id = face.glyph_index(c).unwrap().0;
+            let by_id = rows
+                .iter()
+                .find(|r| r.codepoint == GLYPH_ID_KEYS + u32::from(id))
+                .unwrap_or_else(|| panic!("{c:?}'s glyph {id} by id"));
+            let r = rows.iter().find(|r| r.codepoint == c as u32).unwrap();
+            assert_eq!((by_id.atlas_w, by_id.atlas_h), (r.atlas_w, r.atlas_h));
+            assert_eq!(by_id.key(), Some(og_render::GlyphKey::Id(id)));
+            assert_eq!(r.key(), Some(og_render::GlyphKey::Char(c)));
+        }
+        assert!(
+            rows.iter().all(|r| r.codepoint >= GLYPH_ID_KEYS
+                || chars.contains(char::from_u32(r.codepoint).unwrap())),
+            "no row but the characters and the glyphs by id"
+        );
         for c in chars.chars() {
             let r = rows.iter().find(|r| r.codepoint == c as u32).unwrap();
             assert_eq!(r.page, meta.page_count, "{c:?} is on the colour page");
@@ -1451,8 +1476,8 @@ mod tests {
             assert!((r.atlas_w as f32 - plane_w).abs() < 0.5, "{c:?}");
             assert!((40..=72).contains(&r.atlas_w), "{c:?} {}", r.atlas_w);
         }
-        // The linear gradient of U+1F100 runs red to blue across its box.
-        let r = rows.iter().find(|r| r.codepoint == 0x1F100).unwrap();
+        // The linear gradient of U+F0100 runs red to blue across its box.
+        let r = rows.iter().find(|r| r.codepoint == 0xF0100).unwrap();
         let px = |fx: f32| {
             let x = r.atlas_x + (fx * r.atlas_w as f32) as u32;
             let y = r.atlas_y + r.atlas_h / 2;
@@ -1504,11 +1529,11 @@ mod tests {
             color: true,
             ..FontSettings::default()
         };
-        // U+1FB00: a linear gradient across 0.1..0.9 em, orange (palette
+        // U+F0B00: a linear gradient across 0.1..0.9 em, orange (palette
         // entry 1) at both ends and the foreground at the middle.
-        let (without, _) = cook(&bytes, &settings("\u{1F100}\u{1F600}"), 2, 0).expect("cooks");
+        let (without, _) = cook(&bytes, &settings("\u{F0100}\u{F0600}"), 2, 0).expect("cooks");
         let (with, notes) =
-            cook(&bytes, &settings("\u{1F100}\u{1F600}\u{1FB00}"), 2, 0).expect("cooks");
+            cook(&bytes, &settings("\u{F0100}\u{F0600}\u{F0B00}"), 2, 0).expect("cooks");
         assert!(
             notes.note.contains("4 colour glyph(s) at 64 px/em")
                 && notes
@@ -1527,7 +1552,7 @@ mod tests {
         let rows = b
             .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
             .unwrap();
-        let r = rows.iter().find(|r| r.codepoint == 0x1FB00).unwrap();
+        let r = rows.iter().find(|r| r.codepoint == 0xF0B00).unwrap();
         assert_eq!(r.page, meta.page_count + 1, "past the colour page");
         let (w, h, rgba) = ktx2::decode_rgba8(b.raw("foreground.0").unwrap(), 0).unwrap();
         assert!(r.atlas_x + r.atlas_w <= w / 2 && r.atlas_y + r.atlas_h <= h);

@@ -899,6 +899,7 @@ mod tests {
         let mut r = R {
             bytes: &bytes,
             at: 0,
+            legacy_glyphs: false,
         };
         for c in &cmds {
             assert_eq!(r.cmd().as_ref(), Some(c));
@@ -933,6 +934,7 @@ mod tests {
             let back = rgeometry(&mut R {
                 bytes: &bytes,
                 at: 0,
+                legacy_glyphs: false,
             });
             assert_eq!(back, Some(g));
         }
@@ -957,7 +959,13 @@ mod tests {
         let g = UiGeometry::Path(std::sync::Arc::new(path));
         let mut bytes = Vec::new();
         geometry(&mut W(&mut bytes), &g);
-        let read = |b: &[u8]| rgeometry(&mut R { bytes: b, at: 0 });
+        let read = |b: &[u8]| {
+            rgeometry(&mut R {
+                bytes: b,
+                at: 0,
+                legacy_glyphs: false,
+            })
+        };
         assert_eq!(read(&bytes), Some(g));
         assert_eq!(read(&bytes[..bytes.len() - 4]), None);
     }

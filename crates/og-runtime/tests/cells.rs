@@ -338,9 +338,10 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// (-> 4f9d35da02e4355c) Sprite.material.
 /// (-> 81037a306b0c6b17) UI state version 17 (the typed letters).
 /// (-> d61222a859409ef2) UI state version 18 (the Rive players).
+/// (-> 688c23e1b6486371) UI state version 19 (glyph ids on placements).
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "d61222a859409ef2";
+const END_HASH: &str = "688c23e1b6486371";
 
 /// The world with the village persisting and spawning `budget` entities a
 /// tick (0: all at once).

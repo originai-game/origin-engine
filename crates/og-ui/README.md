@@ -970,9 +970,11 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   over each whole line at the UI's direction (pieces reorder, and so do
   runs inside one span). Each run is shaped whole by rustybuzz in its
   direction when it holds a shaped script and the font ships its file
-  (`shape::FontFile`): glyph ids map into the atlas as U+F0000 + id (the
-  cook renders every form the font's substitutions reach), and the glyphs'
-  advances and offsets go to og-render as `Text::placements` (Devanagari's
+  (`shape::FontFile`): a shaped form is drawn by its glyph id
+  (`GlyphKey::Id`, a key no character shares, so an icon font's
+  private-use characters never alias one; the cook renders every form the
+  font's substitutions reach), and the glyphs' ids, advances and offsets
+  go to og-render as `Text::placements` (Devanagari's
   conjuncts and pre-base signs, marks on their bases, Arabic joining); an
   unshaped right-to-left run (Hebrew) is reversed with its brackets
   mirrored. Shaping is og-ui's `shaping` feature (rustybuzz; on by default

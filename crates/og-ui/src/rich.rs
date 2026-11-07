@@ -925,7 +925,7 @@ impl Ui {
                 // right to left or is shaped): each glyph in its own face,
                 // moved by the effect; a shaped run's joined glyphs move as
                 // one (their joins would break apart).
-                let shaped = |g: &crate::text::VisualGlyph| g.ch as u32 >= crate::shape::GLYPH_PUA;
+                let shaped = |g: &crate::text::VisualGlyph| g.glyph.is_some();
                 let mut x = r.x;
                 for (g, run) in glyphs
                     .chunk_by(|a, b| a.font == b.font && shaped(a) && shaped(b))

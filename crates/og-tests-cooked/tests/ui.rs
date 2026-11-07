@@ -289,7 +289,7 @@ fn colr_font(
             .filter_map(|g| {
                 let own = g.page as usize == p;
                 Some(Glyph {
-                    codepoint: char::from_u32(g.codepoint)?,
+                    key: g.key()?,
                     advance: g.advance,
                     plane_bounds: if own {
                         [g.plane_left, g.plane_bottom, g.plane_right, g.plane_top]
@@ -329,6 +329,7 @@ fn colr_label(
     handles: &[og_render::FontHandle],
     text: &str,
     color: og_ui::Srgba,
+    by_id: Option<&dyn Fn(char) -> (u16, f32)>,
 ) -> (Vec<u8>, [f32; 4]) {
     use og_render::{RenderDesc, RenderTarget, Renderer};
     use og_ui::*;
@@ -374,6 +375,24 @@ fn colr_label(
     );
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     frame.emit(&EmitDesc::default(), &mut overlay);
+    // Each character drawn as its glyph by id instead (a shaped run's
+    // form): placed where the label put it, the text's tracking included.
+    if let Some(by_id) = by_id {
+        for t in &mut overlay.texts {
+            t.placements = t
+                .text
+                .chars()
+                .map(|c| {
+                    let (id, advance) = by_id(c);
+                    og_render::GlyphPlacement {
+                        advance: advance + t.tracking,
+                        glyph: Some(id),
+                        ..Default::default()
+                    }
+                })
+                .collect();
+        }
+    }
     let more: Vec<_> = overlay
         .texts
         .iter()
@@ -417,19 +436,43 @@ fn colr_label(
 #[test]
 #[ignore = "requires GPU"]
 fn colour_glyphs_draw_in_their_own_colours() {
-    // U+1F100: a linear gradient red to blue left to right; U+1F600 (a
+    // U+F0100: a linear gradient red to blue left to right; U+F0600 (a
     // composite of two squares). No other glyph of the font has ink
     // outside its colour paint, so the field page is empty.
-    let (scene, handles, f) = colr_font("og-colr", "\u{1F100}\u{1F600}");
+    let (scene, handles, f) = colr_font("og-colr", "\u{F0100}\u{F0600}");
     assert_eq!(f.color_pages.len(), 1);
     assert!(f.foreground_pages.is_empty());
+    // The font's characters sit at U+F0100 and up, in the private-use
+    // plane an icon font maps: the same characters drawn by their glyph
+    // ids (a shaped run's keys, outside Unicode) draw the same images. A
+    // character's twin by id is the by-id row with its plane.
+    let by_id = |c: char| {
+        let own = f.glyphs.iter().find(|g| g.codepoint == c as u32).unwrap();
+        let plane = |g: &og_bundle::format::GlyphRow| {
+            [g.plane_left, g.plane_bottom, g.plane_right, g.plane_top]
+        };
+        let twin = f
+            .glyphs
+            .iter()
+            .find(|g| matches!(g.key(), Some(og_render::GlyphKey::Id(_))) && plane(g) == plane(own))
+            .expect("cooked by id too");
+        let Some(og_render::GlyphKey::Id(id)) = twin.key() else {
+            unreachable!()
+        };
+        (id, twin.advance)
+    };
+    let label = "\u{F0100}\u{F0600}";
     // A label colour that must not tint the images.
-    let (pixels, [ex, ey, _, eh]) = colr_label(
-        scene,
-        &handles,
-        "\u{1F100}\u{1F600}",
-        og_ui::Srgba::rgb(0, 255, 0),
-    );
+    let green = og_ui::Srgba::rgb(0, 255, 0);
+    let (again, again_handles, _) = colr_font("og-colr-ids", label);
+    let (ids, _) = colr_label(again, &again_handles, label, green, Some(&by_id));
+    let (pixels, [ex, ey, _, eh]) = colr_label(scene, &handles, label, green, None);
+    let differ = pixels
+        .iter()
+        .zip(&ids)
+        .filter(|(a, b)| a.abs_diff(**b) > 1)
+        .count();
+    assert_eq!(differ, 0, "the glyphs by id draw as their characters");
     let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
     std::fs::create_dir_all(&dir).unwrap();
     image::save_buffer(
@@ -445,7 +488,7 @@ fn colour_glyphs_draw_in_their_own_colours() {
         let i = ((y as u32 * 400 + x as u32) * 4) as usize;
         [pixels[i], pixels[i + 1], pixels[i + 2]]
     };
-    // U+1F100 fills 0.1..0.9 em across: on some row of its box its fifth
+    // U+F0100 fills 0.1..0.9 em across: on some row of its box its fifth
     // from the left is red and its fifth from the right blue.
     let (lx, rx) = (ex + size * 0.26, ex + size * 0.74);
     let rows = (ey.max(0.0) as u32..(ey + eh).min(200.0) as u32)
@@ -477,9 +520,9 @@ fn colour_glyphs_draw_in_their_own_colours() {
 #[test]
 #[ignore = "requires GPU"]
 fn foreground_glyphs_draw_in_the_label_colour() {
-    // U+1FB00: a linear gradient across 0.1..0.9 em, orange at both ends
-    // and the foreground at its middle; U+1FB06: the foreground, solid.
-    let text = "\u{1FB00}\u{1FB06}";
+    // U+F0B00: a linear gradient across 0.1..0.9 em, orange at both ends
+    // and the foreground at its middle; U+F0B06: the foreground, solid.
+    let text = "\u{F0B00}\u{F0B06}";
     let size = 128.0;
     for (name, label) in [("green", [0u8, 200, 60]), ("magenta", [220, 40, 200])] {
         let (scene, handles, f) = colr_font("og-colr-fg", text);
@@ -489,6 +532,7 @@ fn foreground_glyphs_draw_in_the_label_colour() {
             &handles,
             text,
             og_ui::Srgba::rgb(label[0], label[1], label[2]),
+            None,
         );
         let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
         std::fs::create_dir_all(&dir).unwrap();

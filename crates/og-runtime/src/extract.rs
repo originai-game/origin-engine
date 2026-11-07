@@ -784,10 +784,10 @@ pub(crate) fn add_font(
             .glyphs
             .iter()
             .filter_map(|g| {
-                let codepoint = char::from_u32(g.codepoint)?;
+                let key = g.key()?;
                 let own = g.page as usize == p;
                 Some(og_render::Glyph {
-                    codepoint,
+                    key,
                     advance: g.advance,
                     plane_bounds: if own {
                         [g.plane_left, g.plane_bottom, g.plane_right, g.plane_top]

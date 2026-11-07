@@ -25,7 +25,11 @@ pub fn decode(bytes: &[u8]) -> Result<Artboard, String> {
     if bytes.get(..4) != Some(MAGIC.as_slice()) {
         return Err("not a Rive artboard (no OGRV magic)".into());
     }
-    let mut r = R { bytes, at: 4 };
+    let mut r = R {
+        bytes,
+        at: 4,
+        legacy_glyphs: false,
+    };
     let v = r.u32().ok_or("the artboard is cut short")?;
     if v != VERSION {
         return Err(format!(

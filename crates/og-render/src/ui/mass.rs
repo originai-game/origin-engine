@@ -455,7 +455,7 @@ const FLAG_DRAG: u32 = 128;
 /// A glyph's three table entries: its uv, its plane bounds moved by `pen`
 /// (em), its advance.
 fn glyph_entries(font: &crate::sprites::FontLayout, ch: char, pen: f32, out: &mut Vec<[f32; 4]>) {
-    match font.glyphs.get(&ch) {
+    match font.glyphs.get(&crate::GlyphKey::Char(ch)) {
         Some(g) => {
             let [al, at, ar, ab] = g.atlas_bounds;
             let size = font.atlas_size.max(Vec2::ONE);
@@ -537,7 +537,10 @@ pub(crate) fn template_gpu(
                     match font {
                         Some(f) => {
                             glyph_entries(f, ch, pen, table);
-                            pen += f.glyphs.get(&ch).map_or(0.0, |g| g.advance);
+                            pen += f
+                                .glyphs
+                                .get(&crate::GlyphKey::Char(ch))
+                                .map_or(0.0, |g| g.advance);
                         }
                         None => table.extend([[0.0; 4]; 3]),
                     }

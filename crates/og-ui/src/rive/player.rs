@@ -153,7 +153,11 @@ impl Player {
     /// Puts back what [`Player::save`] wrote, onto a player of the same
     /// artboard; refused (and left as it was) when the bytes do not fit it.
     pub fn restore(&mut self, bytes: &[u8]) -> Result<(), String> {
-        let mut r = R { bytes, at: 0 };
+        let mut r = R {
+            bytes,
+            at: 0,
+            legacy_glyphs: false,
+        };
         let mut next = self.clone();
         if next.read(&mut r).is_none() || r.at != bytes.len() {
             return Err(format!(
