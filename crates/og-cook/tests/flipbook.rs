@@ -453,3 +453,31 @@ fn animated_sources_cook_into_a_packed_sheet() {
         report.errors()
     );
 }
+
+/// A source drawn twice the size of the others: `scale 0.5` in its block
+/// brings its figure to theirs, so one crop holds both. Ways this could
+/// fail: the source's scale is ignored (the crop grows to the big figure),
+/// or it replaces the sheet's instead of multiplying it.
+#[test]
+fn a_source_scale_brings_a_larger_drawing_to_the_others() {
+    let white = [255, 255, 255, 255];
+    let small = figure(4, 8, [200, 0, 0], white);
+    let big = image::imageops::resize(&small, 48, 40, image::imageops::FilterType::Nearest);
+    let root = project(
+        "source-scale",
+        &[
+            ("sprites/run.gif", gif(&[(small, 100)])),
+            ("sprites/idle.gif", gif(&[(big, 100)])),
+            (
+                "sprites/hero.ogt",
+                b"type flipbook\nversion 1\n---\nsource \"run.gif\"\nsource \"idle.gif\" {\n  scale 0.5\n}\nkey auto\nalign feet\nscale 1\n"
+                    .to_vec(),
+            ),
+        ],
+    );
+    let sheet = cooked(&root).load_flipbook("sprites/hero.ogt").unwrap();
+    assert_eq!(sheet.frames.len(), 2);
+    for f in &sheet.frames {
+        assert_eq!([f.rect[2], f.rect[3]], [6, 10], "frame {}", f.name);
+    }
+}

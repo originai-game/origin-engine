@@ -22,6 +22,7 @@
 //!   fps 12                                # every frame 1/12 s instead of the file's delays
 //!   event 3 "step"                        # a FlipbookEvent on the clip's frame 3
 //!   align feet                            # this source's alignment (default: the sheet's)
+//!   scale 0.9                             # times the sheet's scale: a source drawn larger
 //! }
 //! key auto 0.1 holes                      # off (default), auto or "#rrggbb", a tolerance, and
 //!                                         # `holes`: enclosed pockets of the background too
@@ -858,6 +859,8 @@ struct SourceLine {
     fps: Option<f32>,
     events: Vec<(u32, String)>,
     align: Option<Align>,
+    /// Times the sheet's `scale`.
+    scale: f32,
 }
 
 /// The sheet-wide import settings.
@@ -1009,6 +1012,7 @@ fn source_lines(
             fps: None,
             events: Vec::new(),
             align: None,
+            scale: 1.0,
         };
         for b in e.block.iter().flat_map(|b| &b.entries) {
             match b.key.as_str() {
@@ -1053,11 +1057,18 @@ fn source_lines(
                             .ok_or_else(|| line_err(b, "align feet|bbox|centroid|none"))?,
                     )
                 }
+                "scale" => {
+                    line.scale = b
+                        .f32(0)
+                        .ok()
+                        .filter(|v| *v > 0.0 && *v <= 8.0)
+                        .ok_or_else(|| line_err(b, "scale is above 0, at most 8"))?
+                }
                 k => {
                     return Err(line_err(
                         b,
                         format!(
-                            "unknown key `{k}` in a source block (clip, mode, fps, event, align)"
+                            "unknown key `{k}` in a source block (clip, mode, fps, event, align, scale)"
                         ),
                     ));
                 }
@@ -1166,7 +1177,7 @@ pub fn build(
                     set.holes,
                 );
             }
-            let (r, rw, rh) = resample(&rgba, anim.width, anim.height, set.scale);
+            let (r, rw, rh) = resample(&rgba, anim.width, anim.height, set.scale * line.scale);
             (w, h) = (rw, rh);
             let delay = line.fps.map_or(f.delay, |fps| 1.0 / fps);
             frames.push((r, delay));
