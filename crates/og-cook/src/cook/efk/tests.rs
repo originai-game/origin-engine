@@ -464,3 +464,30 @@ fn a_moving_ancestor_moves_the_element_it_carries() {
     let y = v.elements[0].local_at(1.0).w_axis.y;
     assert!((y - (0.5 - 18.0)).abs() < 1e-3, "{y}");
 }
+
+#[test]
+fn a_node_out_on_an_arm_of_an_instanced_parent_stays_folded() {
+    // S sits 2 out along x from each of P's turned instances (a blade's
+    // tip): a sub-emitter's particles are born at their parent's point,
+    // so it stays one emitter, said as a finding.
+    let c = run(&project(
+        "<Node><CommonValues><MaxGeneration><Value>4</Value></MaxGeneration></CommonValues>\
+         <DrawingValues><Type>0</Type></DrawingValues><Name>P</Name><Children>\
+         <Node><CommonValues><MaxGeneration><Value>10</Value></MaxGeneration></CommonValues>\
+         <LocationValues><Fixed><Location><X>2</X></Location></Fixed></LocationValues>\
+         <DrawingValues><Type>2</Type></DrawingValues><Name>S</Name><Children /></Node>\
+         </Children></Node>",
+    ));
+    assert!(
+        !c.files.iter().any(|f| f.id.ends_with(".parent.ogt")),
+        "{}",
+        c.vfx
+    );
+    assert!(
+        c.findings
+            .iter()
+            .any(|f| f.what.starts_with("nested generation: 4 instances")),
+        "{:?}",
+        c.findings
+    );
+}

@@ -1113,7 +1113,19 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
     // One instanced ancestor above the generator: it is a parent emitter
     // whose particles each run this node's emission (`subEmitter life`),
     // where Effekseer spawns this node per instance of it.
-    let outer = (0..p.generator).rev().find(|&i| !single(chain[i]));
+    // Only when it spawns where each instance is: an arm out from the
+    // instance (a blade's tip) turns with the instance, which a
+    // sub-emitter's particles, born at their parent's point, cannot.
+    let outer = (0..p.generator)
+        .rev()
+        .find(|&i| !single(chain[i]))
+        .filter(|&a| {
+            let arm: Vec3 = chain[a + 1..=p.generator]
+                .iter()
+                .map(|n| at3(&n.location, 0.0, n.life.c()) + spawn_offset(&n.spawn))
+                .sum();
+            arm.length() * p.scale < 1e-3
+        });
     if let Some(a) = outer {
         let rest = p.nested / count(chain[a]).map_or(8.0, |c| c as f32);
         if rest > 1.0 {
