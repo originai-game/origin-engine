@@ -219,8 +219,15 @@ fn check(
             message: format!("{} is not finite", number(x)),
         });
     }
-    let below = |x: f64| f.min.is_some_and(|m| x < m);
-    let above = |x: f64| f.max.is_some_and(|m| x > m);
+    // An f32 field holds the f32 nearest to what was written, so its bounds
+    // are compared at that precision: a field set to its declared minimum
+    // 0.01 holds 0.0099999998 and is in range.
+    let at = |m: f64| match f.ty.scalar() {
+        Scalar::F32 => f64::from(m as f32),
+        _ => m,
+    };
+    let below = |x: f64| f.min.is_some_and(|m| x < at(m));
+    let above = |x: f64| f.max.is_some_and(|m| x > at(m));
     let &x = scratch.0.iter().find(|&&x| below(x) || above(x))?;
     Some(Broken {
         rule: "in range",
