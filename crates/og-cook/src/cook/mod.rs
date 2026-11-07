@@ -487,10 +487,10 @@ pub fn cook_project_with_texture_cache(
     let mut model_texts: BTreeMap<String, String> = BTreeMap::new();
     let mut reused_fractures = BTreeSet::new();
     for s in sources.iter_mut() {
-        // A model that says it is a character (`conform character`), read
-        // from its text or import settings before a text becomes a glb.
-        let character = if s.kind == Kind::Model {
-            match conform::character(s) {
+        // What a model says it is (`conform character`, `conform effect`),
+        // read from its text or import settings before a text becomes a glb.
+        let role = if s.kind == Kind::Model {
+            match conform::model_role(s) {
                 Ok(c) => c,
                 Err(e) => {
                     s.error = Some(e);
@@ -498,7 +498,7 @@ pub fn cook_project_with_texture_cache(
                 }
             }
         } else {
-            false
+            conform::ModelRole::Prop
         };
         // A MagicaVoxel file is a model: meshed into a glTF binary here (its
         // import settings' `model { voxScale voxOrigin }` applied), so the
@@ -595,7 +595,7 @@ pub fn cook_project_with_texture_cache(
             let dir = s.path.parent().unwrap_or(Path::new("."));
             match model::load(&s.bytes, dir) {
                 Ok(mut g) => {
-                    g.character = character;
+                    g.role = role;
                     if let Some((read, notes)) = imported {
                         g.external.extend(read);
                         g.warnings.extend(notes);
@@ -830,7 +830,7 @@ pub fn cook_project_with_texture_cache(
                 continue;
             }
             let (budget, _) = c.budget(g);
-            let character = g.character;
+            let role = g.role;
             let written = conform::mesh::drawn_triangles(g);
             let rebuilt = model_text::to_glb_within(text, budget).and_then(|(glb, detail)| {
                 if detail >= 1.0 {
@@ -838,7 +838,7 @@ pub fn cook_project_with_texture_cache(
                 }
                 let dir = s.path.parent().unwrap_or(Path::new("."));
                 let mut g = model::load(&glb, dir)?;
-                g.character = character;
+                g.role = role;
                 g.segments = Some((detail, written));
                 Ok(Some((glb, g)))
             });
@@ -932,6 +932,10 @@ pub fn cook_project_with_texture_cache(
                         } else {
                             String::new()
                         };
+                        // An effect's mesh is held to no face budget.
+                        if !d.is_empty() && g.role == conform::ModelRole::Effect {
+                            d.push_str(" role effect");
+                        }
                         // Its colour textures' kind is in the blob.
                         if c.filter == conform::mesh::Filter::Nearest {
                             d.push_str(" textures nearest");

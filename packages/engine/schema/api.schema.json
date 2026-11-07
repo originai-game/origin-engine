@@ -73787,7 +73787,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget.",
+          "description": "The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget. An effect's mesh (`conform effect` in its import settings, as og vfx import writes) has none.",
           "default": 0,
           "minimum": 0
         },

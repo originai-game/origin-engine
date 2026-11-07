@@ -24,7 +24,8 @@
 //!    face budget the edge doubles (at most four times). Skinned or morphed
 //!    primitives are not voxelised (a voxel has no source vertex to skin).
 //! 2. **Decimate** to the budget (`propFaces`, or `characterFaces` for a
-//!    model with a skin or that says `conform character`), counted over
+//!    model with a skin or that says `conform character`; none for an
+//!    effect's mesh, `conform effect`), counted over
 //!    the model's drawn triangles (each primitive times the nodes that
 //!    draw it), never destroying it. A `type model` past it was built
 //!    again at fewer segments first (`model_text::to_glb_within`), so
@@ -423,12 +424,16 @@ impl Conform {
     }
 
     /// The face budget of a model: a character's when it has a skin or
-    /// says it is one (`conform character`).
+    /// says it is one (`conform character`), none (0) for an effect's mesh
+    /// (`conform effect`), else a prop's.
     pub(in crate::cook) fn budget(&self, src: &GltfSource) -> (u32, &'static str) {
-        if src.character || src.doc.skins().next().is_some() {
-            (self.character_faces, "characterFaces")
-        } else {
-            (self.prop_faces, "propFaces")
+        match src.role {
+            super::ModelRole::Effect => (0, "propFaces"),
+            super::ModelRole::Character => (self.character_faces, "characterFaces"),
+            super::ModelRole::Prop if src.doc.skins().next().is_some() => {
+                (self.character_faces, "characterFaces")
+            }
+            super::ModelRole::Prop => (self.prop_faces, "propFaces"),
         }
     }
 }

@@ -104,28 +104,46 @@ pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, Strin
     Ok(out)
 }
 
-/// The models of the project at `root` that say they are characters
-/// ([`character`]), by asset id: what the cook holds to
-/// `ArtShape.characterFaces` besides the skinned ones, read from the
-/// project's sources as the cook reads them, for `og style check`.
-pub fn characters(root: &Path) -> Result<BTreeSet<String>, String> {
+/// What a model is to the art contract's face budgets (docs/art.md
+/// §2.3), as it says (`conform character`, `conform effect`): a prop
+/// unless it says otherwise (or has a skin, which makes it a character).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ModelRole {
+    /// Held to `ArtShape.propFaces`.
+    #[default]
+    Prop,
+    /// Held to `ArtShape.characterFaces`, as a skinned model is: a hero
+    /// built of generators, or a rigid figure, has no skin to tell the cook.
+    Character,
+    /// An effect's mesh (a `type vfx` mesh element's, an emitter's `render
+    /// mesh`): drawn through its effect material, not a prop, so no face
+    /// budget holds or simplifies it. `og vfx import` says it of every mesh
+    /// it writes.
+    Effect,
+}
+
+/// The models of the project at `root` that say what they are
+/// ([`model_role`]), by asset id: what the cook holds to
+/// `ArtShape.characterFaces` besides the skinned ones, and the effect
+/// meshes no face budget holds, read from the project's sources as the
+/// cook reads them, for `og style check`.
+pub fn model_roles(root: &Path) -> Result<BTreeMap<String, ModelRole>, String> {
     let sources = super::scan(&root.join("assets")).map_err(|e| e.0)?.sources;
-    let mut out = BTreeSet::new();
+    let mut out = BTreeMap::new();
     for s in sources.iter().filter(|s| s.kind == super::Kind::Model) {
-        if character(s).map_err(|e| format!("assets/{}: {e}", s.rel))? {
-            out.insert(s.rel.clone());
+        let role = model_role(s).map_err(|e| format!("assets/{}: {e}", s.rel))?;
+        if role != ModelRole::Prop {
+            out.insert(s.rel.clone(), role);
         }
     }
     Ok(out)
 }
 
-/// Whether a model says it is a character: `conform character` at the top
-/// of its `type model` text or of its import settings (a glTF's, a
-/// `.vox`'s). A character is held to `ArtShape.characterFaces` as a
-/// skinned model is (docs/art.md §2.3): a hero built of generators, or a
-/// rigid figure, has no skin to tell the cook. `conform off` is also
-/// read here; another word is an error.
-pub(super) fn character(s: &super::Source) -> Result<bool, String> {
+/// What a model says it is ([`ModelRole`]): `conform character` or
+/// `conform effect` at the top of its `type model` text or of its import
+/// settings (a glTF's, a `.vox`'s). `conform off` is also read here;
+/// another word is an error.
+pub(super) fn model_role(s: &super::Source) -> Result<ModelRole, String> {
     let text;
     let body = if s.rel.ends_with(".ogt") {
         text = Document::parse(&String::from_utf8_lossy(&s.bytes)).map_err(|e| e.to_string())?;
@@ -133,11 +151,16 @@ pub(super) fn character(s: &super::Source) -> Result<bool, String> {
     } else {
         match &s.settings {
             Some((_, d)) => &d.body,
-            None => return Ok(false),
+            None => return Ok(ModelRole::Prop),
         }
     };
-    Ok(AssetConform::of(body, &["character"])?
-        .is_some_and(|c| c.role.as_deref() == Some("character")))
+    Ok(
+        match AssetConform::of(body, &["character", "effect"])?.and_then(|c| c.role) {
+            Some(r) if r == "character" => ModelRole::Character,
+            Some(r) if r == "effect" => ModelRole::Effect,
+            _ => ModelRole::Prop,
+        },
+    )
 }
 
 /// project.ogt's `conform { off "sprites/raw/*" "ui/logo.png" }`: the

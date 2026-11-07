@@ -692,19 +692,19 @@ pub fn judge_texture(
 }
 
 /// Judges a model's numbers.
-pub fn judge_model(c: &Contract, id: &str, m: &ModelMeasures, character: bool) -> Asset {
+pub fn judge_model(c: &Contract, id: &str, m: &ModelMeasures, role: ModelRole) -> Asset {
     let mut a = Asset {
         id: id.to_string(),
         role: Role::Model,
         off: None,
-        measures: json!({ "faces": m.faces, "character": character }),
+        measures: json!({ "faces": m.faces, "character": role == ModelRole::Character }),
         checks: Vec::new(),
         notes: Vec::new(),
     };
-    let (budget, name) = if character {
-        (c.character_faces, "ArtShape.characterFaces")
-    } else {
-        (c.prop_faces, "ArtShape.propFaces")
+    let (budget, name) = match role {
+        ModelRole::Character => (c.character_faces, "ArtShape.characterFaces"),
+        ModelRole::Prop => (c.prop_faces, "ArtShape.propFaces"),
+        ModelRole::Effect => (0, ""),
     };
     if budget > 0 {
         a.checks.push(Check::new(

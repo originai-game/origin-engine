@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ArtShape.propFaces",
+      "summary": "A model that says `conform effect` (an effect's mesh, in its import settings or `type model` text) is held to no face budget: the cook neither simplifies it nor warns of it, and og style check skips its faces. og vfx import writes it beside every mesh it makes, and an Effekseer project in assets/ gives its meshes the same."
+    }
+  ]
+}

@@ -31,6 +31,12 @@ pub const EXTENSIONS: [&str; 2] = ["efkproj", "efkefc"];
 /// The comment a finding is carried in through the generated text.
 const FINDING: &str = "# effekseer: ";
 
+/// The import settings of every mesh the conversion writes: an effect's
+/// mesh, which no face budget of the art contract holds or simplifies
+/// (`conform::ModelRole::Effect`). `og vfx import` writes them beside the
+/// mesh as `<mesh>.ogt`; in the cook they attach to it.
+pub const MESH_SETTINGS: &str = "type import\nversion 1\n---\n# An effect's mesh (og vfx import): no face budget.\nconform effect\n";
+
 /// Whether `rel` is an Effekseer project.
 pub fn handles(rel: &str) -> bool {
     EXTENSIONS.contains(&super::ext(rel).as_str())
@@ -118,8 +124,11 @@ pub(super) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                     OutKind::Effect => Kind::Effect,
                     OutKind::Model => Kind::Model,
                 },
+                settings: (f.kind == OutKind::Model).then(|| {
+                    let d = og_core::ogt::Document::parse(MESH_SETTINGS).expect("settings parse");
+                    (MESH_SETTINGS.to_string(), d)
+                }),
                 bytes: f.bytes,
-                settings: None,
                 hash: 0,
                 gltf: None,
                 error: None,
@@ -177,7 +186,8 @@ pub struct Imported {
 
 /// `og vfx import`: converts `file` and writes into `out` the effect as
 /// `<stem>.ogt` and beside it `<stem>/`: its emitters, effect materials and
-/// meshes, and copies of the textures it names. Asset ids are relative to
+/// meshes (each with its import settings, [`MESH_SETTINGS`]), and copies
+/// of the textures it names. Asset ids are relative to
 /// `root` (the game's `assets/`), by default the nearest `assets` folder
 /// holding `out`, else `out` itself.
 pub fn import(file: &Path, out: &Path, root: Option<&Path>) -> Result<Imported, String> {
@@ -239,6 +249,12 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>) -> Result<Imported, 
     for f in &c.files {
         let rel = f.id.strip_prefix(&prefix).unwrap_or(&f.id);
         written.push(write(out.join(rel), &f.bytes)?);
+        if f.kind == OutKind::Model {
+            written.push(write(
+                out.join(format!("{rel}.ogt")),
+                MESH_SETTINGS.as_bytes(),
+            )?);
+        }
     }
     for (p, _) in &c.textures {
         let b = read(p).ok_or_else(|| format!("{}: unreadable", dir.join(p).display()))?;

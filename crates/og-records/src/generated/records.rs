@@ -32080,7 +32080,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget."),
+                doc: doc!("The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget. An effect's mesh (`conform effect` in its import settings, as og vfx import writes) has none."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

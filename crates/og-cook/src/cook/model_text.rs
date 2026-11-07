@@ -1333,17 +1333,17 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
             // (`fracture.rs`).
             "fracture" if e.block.is_some() => {}
             // `conform off`: the art contract leaves it as made;
-            // `conform character`: it is held to ArtShape.characterFaces
-            // (cook/conform).
+            // `conform character`: it is held to ArtShape.characterFaces;
+            // `conform effect`: an effect's mesh, no face budget (cook/conform).
             "conform"
                 if e.block.is_none()
                     && matches!(
                         e.values.as_slice(),
-                        [v] if matches!(v.as_word(), Some("off" | "character"))
+                        [v] if matches!(v.as_word(), Some("off" | "character" | "effect"))
                     ) => {}
             k => {
                 return Err(format!(
-                    "line {}: '{k}' is not part of a model (material, pivot, part, conform off, conform character)",
+                    "line {}: '{k}' is not part of a model (material, pivot, part, conform off, conform character, conform effect)",
                     e.line
                 ));
             }

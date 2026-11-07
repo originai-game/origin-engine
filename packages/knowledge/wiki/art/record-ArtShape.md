@@ -12,7 +12,7 @@ Token `og.ArtShape`, registered under the schema name `og.ArtShape`; its value t
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `propFaces` | `number` | `0` | ≥ 0 | — | — | The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget. |
+| `propFaces` | `number` | `0` | ≥ 0 | — | — | The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget. An effect's mesh (`conform effect` in its import settings, as og vfx import writes) has none. |
 | `characterFaces` | `number` | `0` | ≥ 0 | — | — | The most triangles one character may have; 0 is no budget. |
 | `normals` | `ArtNormals` | `"any"` | — | — | — | How models are shaded across their faces: any (no constraint), smooth, flat, or angle (split past normalAngle). |
 | `normalAngle` | `number` | `30` | 0 … 180 | `deg` | — | With normals angle: the angle between two faces past which their edge is shaded hard. |
@@ -23,7 +23,7 @@ Token `og.ArtShape`, registered under the schema name `og.ArtShape`; its value t
 ```ogt
 resource ArtShape {
   doc "The style's shape language for 3D models: triangle budgets, how faces are shaded, bevelled edges, a voxel grid and the smallest feature a silhouette keeps. Every field is no constraint at its zero value (normalAngle matters only with normals angle)."
-  field propFaces u32 "The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget." {
+  field propFaces u32 "The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget. An effect's mesh (`conform effect` in its import settings, as og vfx import writes) has none." {
     min 0
   }
   field characterFaces u32 "The most triangles one character may have; 0 is no budget." {

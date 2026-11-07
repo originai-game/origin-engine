@@ -154,7 +154,7 @@ module art {
 
   resource ArtShape {
     doc "The style's shape language for 3D models: triangle budgets, how faces are shaded, bevelled edges, a voxel grid and the smallest feature a silhouette keeps. Every field is no constraint at its zero value (normalAngle matters only with normals angle)."
-    field propFaces u32 "The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget." {
+    field propFaces u32 "The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget. An effect's mesh (`conform effect` in its import settings, as og vfx import writes) has none." {
       min 0
     }
     field characterFaces u32 "The most triangles one character may have; 0 is no budget." {

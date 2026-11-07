@@ -182,7 +182,11 @@ report says what it changed per asset. Deterministic, as the rest of the
 cook (same input, same bytes), and cached by the look's hash with the
 asset's. An asset opts out with `conform off` in its `.ogt` (or a
 `conform` block in `project.ogt` naming paths); every opt-out is listed
-by `og cook --report` and `og style check`.
+by `og cook --report` and `og style check`. A model says what it is to the
+face budgets with `conform character` (held to `characterFaces`, as a
+skinned one is) or `conform effect` (an effect's mesh, drawn through its
+effect material: no face budget holds or simplifies it; `og vfx import`
+writes it in the import settings of every mesh it makes).
 
 | Asset | Conformed by | What it does |
 |---|---|---|

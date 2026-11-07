@@ -20,8 +20,8 @@
 //!   `ArtTexels.maxSize`, `filter` and `mips`;
 //! - **models**: the triangles drawn (each primitive times the nodes that
 //!   draw it) against `ArtShape.propFaces` (`characterFaces` for a model
-//!   with a skin or one that says `conform character`, as the cook holds
-//!   it), the flat-normal share (corners on their face's normal;
+//!   with a skin or one that says `conform character`, none for one that
+//!   says `conform effect`, as the cook holds it), the flat-normal share (corners on their face's normal;
 //!   judged when `normals flat`), the texel density (texels per metre over
 //!   the model's surface, area-weighted, against `ArtTexels.density` within
 //!   a factor of two) and, where untextured, the colours of its faces.
@@ -67,7 +67,7 @@
 //! build, and `og doctor --project` has one line of it.
 
 use crate::compare::{delta_e00, lab};
-use og_cook::cook::conform::TextureRole;
+use og_cook::cook::conform::{ModelRole, TextureRole};
 use og_cook::format::{codec, kind};
 use og_cook::look::LookFile;
 use og_cook::runtime::{Bundle, CookedModel, MANIFEST};
@@ -493,7 +493,7 @@ pub fn measure(
         .as_deref()
         == Some("2d");
     let roles = og_cook::cook::conform::texture_roles(root)?;
-    let characters = og_cook::cook::conform::characters(root)?;
+    let model_roles = og_cook::cook::conform::model_roles(root)?;
     let fixed = fixed_layouts(root, &bundle);
     let tiles = tile_cells(&bundle);
     let mut assets = Vec::new();
@@ -572,20 +572,24 @@ pub fn measure(
             Some((t.meta.width, t.meta.height))
         };
         let measures = measure_model(&m, &size);
-        let character = characters.contains(&asset.source)
-            || asset
-                .outputs
-                .iter()
-                .filter(|x| x.ty == "og.Animation")
-                .any(|x| {
-                    bundle
-                        .load_animation(&x.id)
-                        .is_ok_and(|a| !a.skin_streams.is_empty())
-                });
+        let said = model_roles.get(&asset.source).copied().unwrap_or_default();
+        let skinned = asset
+            .outputs
+            .iter()
+            .filter(|x| x.ty == "og.Animation")
+            .any(|x| {
+                bundle
+                    .load_animation(&x.id)
+                    .is_ok_and(|a| !a.skin_streams.is_empty())
+            });
+        let role = match said {
+            ModelRole::Prop if skinned => ModelRole::Character,
+            r => r,
+        };
         if let Some([median, ..]) = measures.density {
             medians.push(median);
         }
-        let mut a = judge_model(&c, &o.id, &measures, character);
+        let mut a = judge_model(&c, &o.id, &measures, role);
         a.off = off_of(&o.id);
         assets.push(a);
     }
@@ -1776,7 +1780,7 @@ mod tests {
                 prop_faces: budget,
                 ..contract()
             };
-            judge_model(&c, "m.glb", &m, false)
+            judge_model(&c, "m.glb", &m, ModelRole::Prop)
                 .checks
                 .iter()
                 .find(|k| k.name == "faces")
@@ -1785,7 +1789,7 @@ mod tests {
         };
         assert!(!ok(200));
         assert!(ok(500));
-        let normals = judge_model(&contract(), "m.glb", &m, false);
+        let normals = judge_model(&contract(), "m.glb", &m, ModelRole::Prop);
         assert!(
             !normals
                 .checks
@@ -1800,8 +1804,11 @@ mod tests {
             character_faces: 500,
             ..contract()
         };
-        let a = judge_model(&c, "m.glb", &m, true);
+        let a = judge_model(&c, "m.glb", &m, ModelRole::Character);
         assert!(a.checks.iter().find(|k| k.name == "faces").unwrap().ok);
+        // An effect's mesh is held to no face budget.
+        let a = judge_model(&c, "m.glb", &m, ModelRole::Effect);
+        assert!(a.checks.iter().all(|k| k.name != "faces"));
         assert_eq!(
             measure_model(&model(10, 1, 0), &|_| None).flat_share,
             Some(1.0)
