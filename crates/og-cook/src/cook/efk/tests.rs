@@ -264,3 +264,80 @@ fn a_ribbon_under_a_turning_parent_orbits_about_its_axis() {
         c.vfx
     );
 }
+
+#[test]
+fn effects_imported_into_one_folder_share_their_textures() {
+    // a/ and b/ each name `Texture/p.png`, two different files; c/ names
+    // a's under another folder. Imported into one folder: a's copy once
+    // (c shares it), b's beside it under its content's hash; importing
+    // again changes nothing.
+    let root = std::env::temp_dir().join(format!("og-efk-shared-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let sprite = |tex: &str| {
+        project(&format!(
+            "<Node><RendererCommonValues><ColorTexture>{tex}</ColorTexture></RendererCommonValues>\
+             <DrawingValues><Type>2</Type></DrawingValues><Name>S</Name><Children /></Node>"
+        ))
+    };
+    for (dir, tex, bytes) in [
+        ("a", "Texture/p.png", png(8, 8)),
+        ("b", "Texture/p.png", png(16, 16)),
+        ("c", "Other/p.png", png(8, 8)),
+    ] {
+        let d = root.join("src").join(dir);
+        std::fs::create_dir_all(d.join(tex).parent().unwrap()).unwrap();
+        std::fs::write(d.join(tex), bytes).unwrap();
+        std::fs::write(d.join(format!("{dir}.efkproj")), sprite(tex)).unwrap();
+    }
+    let out = root.join("assets/fx");
+    let import_all = || {
+        for dir in ["a", "b", "c"] {
+            let f = root.join("src").join(dir).join(format!("{dir}.efkproj"));
+            import(&f, &out, Some(&root.join("assets"))).unwrap();
+        }
+    };
+    import_all();
+    let mut h = og_core::hash::StableHasher::new();
+    h.write(&png(16, 16));
+    let b_name = format!("p-{:08x}.png", h.finish() as u32);
+    let mut pngs: Vec<String> = std::fs::read_dir(out.join("textures"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    pngs.sort();
+    let mut want = vec!["p.png".to_string(), b_name.clone()];
+    want.sort();
+    assert_eq!(pngs, want);
+    assert_eq!(
+        std::fs::read(out.join("textures/p.png")).unwrap(),
+        png(8, 8)
+    );
+    for (dir, tex) in [("a", "p.png"), ("b", b_name.as_str()), ("c", "p.png")] {
+        let e = std::fs::read_to_string(out.join(dir).join("n0.emitter.ogt")).unwrap();
+        assert_eq!(
+            line(&e, "texture"),
+            format!("texture \"fx/textures/{tex}\""),
+            "{dir}"
+        );
+        assert!(!out.join(dir).join("Texture").exists());
+    }
+    let snapshot = |dir: &Path| -> BTreeMap<PathBuf, Vec<u8>> {
+        let mut m = BTreeMap::new();
+        let mut stack = vec![dir.to_path_buf()];
+        while let Some(d) = stack.pop() {
+            for e in std::fs::read_dir(&d).unwrap() {
+                let p = e.unwrap().path();
+                if p.is_dir() {
+                    stack.push(p);
+                } else {
+                    m.insert(p.clone(), std::fs::read(&p).unwrap());
+                }
+            }
+        }
+        m
+    };
+    let before = snapshot(&out);
+    import_all();
+    assert_eq!(snapshot(&out), before);
+    let _ = std::fs::remove_dir_all(&root);
+}

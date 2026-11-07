@@ -1,8 +1,9 @@
 //! `og vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>]`:
 //! an Effekseer effect converted to the engine's own effect as text to edit
 //! (og-cook's `efk`): `<out-dir>/<name>.ogt` (`type vfx`) and `<name>/`
-//! beside it (emitters, effect materials, meshes, the textures it names),
-//! with what did not convert listed.
+//! beside it (emitters, effect materials, meshes), the textures it names in
+//! `<out-dir>/textures/`, shared by every effect imported there, with what
+//! did not convert listed.
 
 use std::path::Path;
 use std::process::ExitCode;

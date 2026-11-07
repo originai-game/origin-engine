@@ -4,5 +4,11 @@
       "member": "ArtShape.propFaces",
       "summary": "A model that says `conform effect` (an effect's mesh, in its import settings or `type model` text) is held to no face budget: the cook neither simplifies it nor warns of it, and og style check skips its faces. og vfx import writes it beside every mesh it makes, and an Effekseer project in assets/ gives its meshes the same."
     }
+  ],
+  "fixed": [
+    {
+      "member": "og vfx import",
+      "summary": "Effects imported into one folder share their textures: each file is copied once into <out-dir>/textures/ (a different file of the same name under its name with its content's hash), not once per effect; importing again changes nothing."
+    }
   ]
 }

@@ -163,8 +163,9 @@ commands:
                       assets/vfx/<pack>/ to use and change; `og ui list` names the bundled packs
   vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>]
                       convert an Effekseer effect to the engine's own as text to edit:
-                      <out-dir>/<name>.ogt (type vfx) and <name>/ (emitters, effect materials,
-                      meshes, copies of its textures; asset ids from --root, default the
+                      <out-dir>/<name>.ogt (type vfx), <name>/ (emitters, effect materials,
+                      meshes) and <out-dir>/textures/ (copies of its textures, shared by the
+                      effects imported there; asset ids from --root, default the
                       nearest assets/ above <out-dir>), listing what did not convert; an
                       Effekseer file in assets/ is converted the same way by og cook
   style list          the built-in UI styles' slugs, each with its signature

@@ -22,11 +22,15 @@ mod xml;
 pub use convert::{Conversion, Finding, Links, Out, OutKind};
 
 use super::{Kind, Source, normalise_rel};
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 /// The extensions of Effekseer's project files.
 pub const EXTENSIONS: [&str; 2] = ["efkproj", "efkefc"];
+
+/// The folder of `og vfx import`'s output its effects' textures share.
+const TEXTURES: &str = "textures/";
 
 /// The comment a finding is carried in through the generated text.
 const FINDING: &str = "# effekseer: ";
@@ -187,7 +191,10 @@ pub struct Imported {
 /// `og vfx import`: converts `file` and writes into `out` the effect as
 /// `<stem>.ogt` and beside it `<stem>/`: its emitters, effect materials and
 /// meshes (each with its import settings, [`MESH_SETTINGS`]), and copies
-/// of the textures it names. Asset ids are relative to
+/// of the textures it names in `textures/`, which every effect imported
+/// into `out` shares: one copy per file, by name, a different file of the
+/// same name under its name with its content's hash (so importing again,
+/// or importing more effects, is idempotent). Asset ids are relative to
 /// `root` (the game's `assets/`), by default the nearest `assets` folder
 /// holding `out`, else `out` itself.
 pub fn import(file: &Path, out: &Path, root: Option<&Path>) -> Result<Imported, String> {
@@ -218,15 +225,42 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>) -> Result<Imported, 
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "effect".into());
     let dir = file.parent().unwrap_or(Path::new("."));
-    // A texture's copy: its path as the project names it, `..` left out.
-    let local = |p: &str| {
+    let read = |p: &str| std::fs::read(dir.join(p)).ok();
+    // A texture's copy, shared by every effect imported into `out`:
+    // `textures/<file name>`, else, when a different file holds that
+    // name, the name with its content's hash.
+    let shared: RefCell<BTreeMap<String, (String, Vec<u8>)>> = RefCell::default();
+    let local = |p: &str| -> String {
+        if let Some((rel, _)) = shared.borrow().get(p) {
+            return rel.clone();
+        }
+        let bytes = read(p).unwrap_or_default();
         let n = normalise_rel(p);
-        let n = n.trim_start_matches("../");
-        format!("{stem}/{}", n.replace("../", ""))
+        let name = n.rsplit('/').next().unwrap_or(&n);
+        let free = |rel: &str| {
+            shared
+                .borrow()
+                .values()
+                .all(|(r, b)| r != rel || *b == bytes)
+                && std::fs::read(out.join(rel)).map_or(true, |b| b == bytes)
+        };
+        let mut rel = format!("{TEXTURES}{name}");
+        if !free(&rel) {
+            let mut h = og_core::hash::StableHasher::new();
+            h.write(&bytes);
+            let hash = format!("{:08x}", h.finish() as u32);
+            rel = match name.rsplit_once('.') {
+                Some((s, e)) => format!("{TEXTURES}{s}-{hash}.{e}"),
+                None => format!("{TEXTURES}{name}-{hash}"),
+            };
+        }
+        shared
+            .borrow_mut()
+            .insert(p.to_string(), (rel.clone(), bytes));
+        rel
     };
     let own = |leaf: &str| format!("{prefix}{stem}/{leaf}");
     let asset = |p: &str| format!("{prefix}{}", local(p));
-    let read = |p: &str| std::fs::read(dir.join(p)).ok();
     let c = convert(
         &bytes,
         &Links {
@@ -257,8 +291,17 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>) -> Result<Imported, 
         }
     }
     for (p, _) in &c.textures {
-        let b = read(p).ok_or_else(|| format!("{}: unreadable", dir.join(p).display()))?;
-        written.push(write(out.join(local(p)), &b)?);
+        let (rel, b) = shared.borrow().get(p).cloned().unwrap_or_default();
+        if rel.is_empty() || b.is_empty() {
+            return Err(format!("{}: unreadable", dir.join(p).display()));
+        }
+        let path = out.join(&rel);
+        // A copy already there is left as it is.
+        if std::fs::read(&path).is_ok_and(|on| on == b) {
+            written.push(path);
+        } else {
+            written.push(write(path, &b)?);
+        }
     }
     Ok(Imported {
         written,
