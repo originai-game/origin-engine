@@ -277,3 +277,57 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
     let (volumes, gi) = seen.borrow().clone();
     assert_eq!((volumes.len(), gi), (1, false));
 }
+
+/// A renderer that keeps the specular of the last frame it was handed.
+struct SpecularRecorder(Rc<Cell<Option<og_render::Specular>>>);
+
+impl RenderBackend for SpecularRecorder {
+    fn tier(&self) -> String {
+        "test".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (64, 64)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        self.0.set(Some(scene.specular));
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {
+        None
+    }
+}
+
+/// RenderSettings.specular reaches the renderer: the engine's until a game
+/// asks for three.js's, then three.js's until it asks back. Ways this could
+/// fail: the field read under another name or with the variants out of
+/// order (three drawn as the engine's, or every game drawn as three.js's),
+/// or a later write not seen.
+#[test]
+fn render_settings_specular_reaches_the_renderer() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some("{}".into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let seen = Rc::new(Cell::new(None));
+    set_render_backend(engine, Some(Box::new(SpecularRecorder(seen.clone())))).unwrap();
+    let drawn = || {
+        let a = answer(og_engine_frame(engine, 1000.0 / 60.0));
+        assert_eq!(a["ok"], json!(true), "{a}");
+        seen.get().expect("the renderer was handed a frame")
+    };
+    assert_eq!(drawn(), og_render::Specular::Engine);
+    for (model, want) in [
+        ("three", og_render::Specular::Three),
+        ("engine", og_render::Specular::Engine),
+    ] {
+        let a = answer(og_engine_write_resource(
+            engine,
+            "og.RenderSettings".into(),
+            json!({ "specular": model }).to_string(),
+        ));
+        assert_eq!(a["ok"], json!(true), "{model}: {a}");
+        assert_eq!(drawn(), want, "{model}");
+    }
+}

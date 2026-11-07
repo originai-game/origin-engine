@@ -200,7 +200,7 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
   } else {
     let d = d_ggx(n_dot_h, s.roughness * s.roughness);
     let g = g_smith(n_dot_v, n_dot_l, s.roughness);
-    spec = (d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4);
+    spec = select((d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4), d * v_ggx_correlated(n_dot_v, n_dot_l, s.roughness * s.roughness) * f, three_specular());
   }
   var o: Shade;
   o.diffuse = (vec3<f32>(1.0) - f) * (1.0 - s.metallic) * s.albedo / PI * n_dot_l + leaf_transmission(s, n, v, l);
@@ -219,7 +219,7 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
     let ac = s.coat_roughness * s.coat_roughness;
     let fc = f_schlick(h_dot_v, vec3<f32>(0.04)).x * s.coat;
     let dc = d_ggx(max(dot(nc, h), 0.0), ac);
-    let vc = 0.25 / max(h_dot_v * h_dot_v, 1e-4);
+    let vc = select(0.25 / max(h_dot_v * h_dot_v, 1e-4), v_ggx_correlated(max(dot(nc, v), 1e-4), c_dot_l, ac), three_specular());
     o.diffuse *= 1.0 - fc;
     o.specular = o.specular * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l);
   }
@@ -393,6 +393,9 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     decal_emissive = d.emissive;
     decal_normal = d.normal;
   }
+  // three.js's geometryRoughness with RenderSettings.specular three (lighting.wgsl three_roughness).
+  let turn = normal_turn(n_vertex);
+  s.roughness = three_roughness(s.roughness, turn);
   // The dielectric reflectance from the index of refraction.
   let ior = physical.transmission.z;
   let f0 = ior_to_f0(ior, 1.0);
@@ -420,7 +423,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   s = weathered.s;
   n = weathered.n;
   s.coat = material.coat.x * coat_maps.r;
-  s.coat_roughness = clamp(material.coat.y * coat_maps.g, 0.04, 1.0);
+  s.coat_roughness = three_roughness(clamp(material.coat.y * coat_maps.g, 0.04, 1.0), turn);
   s.coat_normal = n_vertex * face;
   s.translucency = material.coat.z;
   if (physical.coat.z > 0.5 && framed) {
@@ -515,7 +518,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // Screen-space reflections over it (ssr.rs; frame.wgsl ssr_reflected),
   // not a blended surface's: it lies over the one they were traced for.
   if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
+  let lut = ibl_dfg(textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg, n_dot_v, s.roughness);
   let env_brdf = f0_ibl * lut.x + lut.y;  // Karis split sum (pbr_fs.wgsl)
   let ao_sample = maps.b;
   var ibl_scale = material.flags.z * keep;
@@ -542,7 +545,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
     let rc = reflect(-v, s.coat_normal);
     let coat_env = reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y);
-    let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
+    let coat_lut = ibl_dfg(textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg, c_dot_v, s.coat_roughness);
     coat_keep = 1.0 - fc;
     coat_ibl = coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
   }

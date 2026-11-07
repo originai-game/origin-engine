@@ -126,6 +126,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::review::apply(&mut scene.camera, rs.review.as_ref(), size, framed);
 
     // Settings: environment, sky, bloom, exposure, tone mapping.
+    scene.specular = settings.as_ref().map_or(og_render::Specular::Engine, |s| {
+        super::specular(&s["specular"])
+    });
     if let Some(s) = &settings {
         // RenderSettings.exposure scales every camera's, as three.js
         // toneMappingExposure does the whole frame's.

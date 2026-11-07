@@ -115,7 +115,7 @@ fn fs_crowd_card(in: CardOut) -> CardLit {
   let irradiance = ambient_light(n, world) * frame.params.x + hemi_irradiance(n);
   let r = reflect(-v, n);
   let prefiltered = reflected_light(r, world, surface.roughness * frame.params.y) * frame.params.x;
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, surface.roughness)).rg;
+  let lut = ibl_dfg(textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, surface.roughness)).rg, n_dot_v, surface.roughness);
   color += (kd_ibl * irradiance * surface.albedo + prefiltered * (surface.f0 * lut.x + lut.y)) * material.flags.z;  // Karis split sum (pbr_fs.wgsl)
   if (in.look.y > 0.0) { color = mix(color, card_rgb(in.look.z), in.look.y); }
   o.color = vec4<f32>(apply_fog(color, world), select(1.0, coverage, a2c));

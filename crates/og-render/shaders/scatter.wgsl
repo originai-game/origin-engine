@@ -118,6 +118,8 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   var s: Surface;
   s.metallic = clamp(material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b, 0.0, 1.0);
   s.roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g, 0.04, 1.0);
+  // three.js's geometryRoughness with RenderSettings.specular three (lighting.wgsl three_roughness).
+  s.roughness = three_roughness(s.roughness, normal_turn(normalize(in.normal)));
   s.albedo = base.rgb;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   var n = normalize(in.normal);
@@ -163,7 +165,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   // unless blended: then it lies over the surface they were traced for.
   var prefiltered = reflected_light(r, in.world, s.roughness * frame.params.y) * frame.params.x;
   if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world, in.clip.xy); }
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
+  let lut = ibl_dfg(textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg, n_dot_v, s.roughness);
   let dbg_direct = color;  // the direct light, for the debug views below (fork s68)
   var ibl_scale = material.flags.z * ssao_scale;
   if (material.flags.y >= 0.0) {

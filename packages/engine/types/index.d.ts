@@ -141,6 +141,8 @@ export interface ColumnKinds {
   Upscaler: { readonly array: Uint32Array; readonly stride: 1; readonly value: Upscaler };
   /** A ToneMapping field: the variant's index. */
   ToneMapping: { readonly array: Uint32Array; readonly stride: 1; readonly value: ToneMapping };
+  /** A SpecularModel field: the variant's index. */
+  SpecularModel: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpecularModel };
   /** An AoResolutionSetting field: the variant's index. */
   AoResolutionSetting: { readonly array: Uint32Array; readonly stride: 1; readonly value: AoResolutionSetting };
   /** A QualityPreset field: the variant's index. */
@@ -6685,6 +6687,22 @@ export type ToneMapping = "aces" | "agx" | "none" | "neutral";
 export declare function ToneMapping(value?: ToneMapping, options?: FieldOptions): FieldSpec<"ToneMapping">;
 
 /**
+ * Which specular the lit surfaces draw (RenderSettings.specular), as og-render's Specular.
+ * - `"engine"`: The engine's: GGX with the uncorrelated Schlick-Smith visibility (k = (r + 1)² / 8) and the image-based light's split sum from the integrated BRDF LUT. The default.
+ * - `"three"`: three.js's MeshStandardMaterial and MeshPhysicalMaterial, for a game tuned under three.js: the height-correlated Smith visibility (V_GGX_SmithCorrelated) on the direct light and the clear coat, DFGApprox's analytic split sum in place of the LUT (the clear coat's too), and geometryRoughness, a roughness of at least 0.0525 plus how fast the mesh's normal turns across the pixel, on meshes, scattered copies and custom lit materials (terrain, grass, crowd cards and impostors keep their roughness: their normals are a heightmap's, a dome's or a bake's). At grazing view (a thin card, a strand seen edge-on) about twice the engine's direct highlight, and less of the sky on rough surfaces seen edge-on.
+ */
+export type SpecularModel = "engine" | "three";
+
+/**
+ * A SpecularModel field: the variant's index.
+ *
+ * A `SpecularModel` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function SpecularModel(value?: SpecularModel, options?: FieldOptions): FieldSpec<"SpecularModel">;
+
+/**
  * A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). A settings page (og.ui.settingsTree) offers the three.
  * - `"medium"`: The full frame: every quality field at its default.
  * - `"low"`: The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections, ambient occlusion or global illumination, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps.
@@ -6939,6 +6957,10 @@ export interface RenderSettings {
    * @tunable
    */
   snapDistance: number;
+  /**
+   * The lit surfaces' specular: engine (the default) or three, three.js's, for a game whose look was tuned under three.js (SpecularModel has what each draws). Off by default, so every frame is the engine's unless a game or its look asks: a look's `RenderSettings { specular three }`.
+   */
+  specular: SpecularModel;
 }
 
 /**
@@ -45216,7 +45238,7 @@ export declare namespace og {
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32">; readonly specular: FieldSpec<"SpecularModel"> }, RenderSettings>;
   /**
    * How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
    */
