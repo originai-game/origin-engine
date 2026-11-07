@@ -579,6 +579,27 @@ pub enum Tonemap {
     Neutral,
 }
 
+/// Which specular the lit shaders draw ([`RenderScene::specular`](crate::RenderScene::specular)).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Specular {
+    /// The engine's: GGX with Schlick-Smith's uncorrelated visibility
+    /// (k = (r + 1)² / 8), the image-based light's split sum from the
+    /// integrated BRDF LUT, the roughness as the material gives it.
+    #[default]
+    Engine,
+    /// three.js's MeshStandardMaterial and MeshPhysicalMaterial, for a game
+    /// tuned under it: the height-correlated Smith visibility
+    /// (V_GGX_SmithCorrelated) on the direct light and the clear coat,
+    /// DFGApprox's analytic split sum in place of the LUT (the coat's too),
+    /// and geometryRoughness: where a surface has a mesh's normal (the
+    /// standard and physical shaders, scattered copies, custom lit
+    /// materials) its roughness is at least 0.0525 plus how fast that normal
+    /// turns across the pixel. At grazing view about twice the engine's
+    /// direct highlight, and less image-based light on rough surfaces seen
+    /// edge-on.
+    Three,
+}
+
 /// Bloom: light above a threshold bleeds into its surroundings.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bloom {

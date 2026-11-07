@@ -127,6 +127,9 @@ pub struct RenderScene {
     /// (sky, ground linear RGB; intensity 0: off). Unlike light baked into
     /// the environment map it adds no reflection.
     pub hemisphere: ([f32; 3], [f32; 3], f32),
+    /// The lit shaders' specular: the engine's ([`Specular::Engine`], the
+    /// default) or three.js's.
+    pub specular: Specular,
     pub post: PostEffects,
     /// Stylisation after (and, for depth bands, with) the post stack: off
     /// by default ([`crate::Stylise`]).

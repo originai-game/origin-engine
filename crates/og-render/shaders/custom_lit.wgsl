@@ -79,7 +79,8 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   var s: Surface;
   s.albedo = out.color.rgb;
   s.metallic = clamp(out.metallic, 0.0, 1.0);
-  s.roughness = clamp(out.roughness, 0.04, 1.0);
+  // three.js's geometryRoughness with RenderSettings.specular three, from the mesh's normal (lighting.wgsl three_roughness).
+  s.roughness = three_roughness(clamp(out.roughness, 0.04, 1.0), normal_turn(normalize(in.normal)));
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   s.coat = 0.0;
   s.coat_roughness = 1.0;
@@ -104,7 +105,7 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   // unless blended: then it lies over the surface they were traced for.
   var prefiltered = reflected_light(reflect(-v, n), in.world, s.roughness * frame.params.y) * frame.params.x;
   if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world, in.clip.xy); }
-  let lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness), 0.0).rg;
+  let lut = ibl_dfg(textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness), 0.0).rg, n_dot_v, s.roughness);
   color += (kd_ibl * irradiance * s.albedo * frame.params.x + prefiltered * (s.f0 * lut.x + lut.y)) * material.flags.z;  // Karis split sum (pbr_fs.wgsl)
   color += out.emissive;
   return vec4<f32>(apply_fog(color, in.world), alpha);

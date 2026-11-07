@@ -223,6 +223,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     decal_emissive = d.emissive;
     decal_normal = d.normal;
   }
+  // three.js's geometryRoughness with RenderSettings.specular three (lighting.wgsl three_roughness).
+  let turn = normal_turn(n_vertex);
+  s.roughness = three_roughness(s.roughness, turn);
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   let normal_uv = material_uv(UV_NORMAL, uv);
   var normal_sample: vec4<f32>;
@@ -327,7 +330,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   s = weathered.s;
   n = weathered.n;
   s.coat = material.coat.x;
-  s.coat_roughness = clamp(material.coat.y, 0.04, 1.0);
+  s.coat_roughness = three_roughness(clamp(material.coat.y, 0.04, 1.0), turn);
   s.coat_normal = n_vertex * face;
   s.translucency = material.coat.z;
 
@@ -415,7 +418,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // Screen-space reflections over it (ssr.rs), in the opaque main pass.
   // (Not a blended surface's: it lies over the one they were traced for.)
   if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
+  let lut = ibl_dfg(textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg, n_dot_v, s.roughness);
   // Split sum as Karis (and three.js): F0 scales the LUT, whose bias term already holds the Fresnel rise at grazing
   // angles; f_ibl * lut.x counted it twice (rough leaves seen edge-on reflected 3-4x the sky).
   var specular_ibl = prefiltered * (s.f0 * lut.x + lut.y);
@@ -472,7 +475,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
     let rc = reflect(-v, s.coat_normal);
     let coat_env = reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y);
-    let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
+    let coat_lut = ibl_dfg(textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg, c_dot_v, s.coat_roughness);
     ibl = ibl * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
   }
   let dbg_direct = color;

@@ -45,6 +45,7 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 | `upscaler` | `Upscaler` | `"taau"` | — | — | — | Under TAA, the temporal resolve that takes the frame from the render scale (DisplaySettings.renderScale, automatic quality's) to the output: taau (the default, the low and medium presets) or fsr3 (the high preset). Automatic quality keeps it while it lowers the render scale and draws taau once its preset steps cap the quality at medium or low. A device that draws only some (RenderCapabilities.upscalers) draws taau for one it lacks. Switching starts the history again at the next frame. |
 | `interpolate` | `boolean` | `true` | — | — | — | Draw what moves between the last two ticks. A display frame that falls between ticks (a 60 Hz tick on a 120 or 144 Hz screen) draws every entity's world transform and og.Camera's position and rotation blended from the tick before the last to the last, by the time past the last tick over the tick's length (positions and scales lerped, rotations slerped), so camera pans, cars and bullets glide instead of judder; skinned models blend their joints too (each joint's translation and scale lerped, rotation slerped, blendshape weights lerped; root motion and every pose the simulation reads stay at the tick), UI anchored to an entity (og.ui.openWorldAnchor) stays on its drawn place, and object motion blur moves from the frame drawn before, never across a snap or a camera cut. Immediate-mode draws (og.render.sprite, og.render.text, og.debug.line and og.debug.text, placed by a system on its tick) and shader time stay at the tick. The frame then shows the world up to one tick late. A frame on a tick boundary (a host that steps whole ticks: og run without --realtime, og render, og test) draws the last tick exactly, as do the probe's screenshots and captures, so reference frames are the ticks'. Presentation only: the simulation, world_hash, snapshots, replays, lockstep, the probe and dump_* read the ticks, never the blend. og.Interpolation opts an entity out; og.render.snap, the probe's teleport and snapDistance keep a teleport from gliding. |
 | `snapDistance` | `number` | `10` | ≥ 0 | `m` | tunable | An entity or og.Camera that moved further than this between the last two ticks is drawn at the last tick, not blended: a teleport or a respawn this far needs no og.render.snap. 0 never snaps by distance. |
+| `specular` | `SpecularModel` | `"engine"` | — | — | — | The lit surfaces' specular: engine (the default) or three, three.js's, for a game whose look was tuned under three.js (SpecularModel has what each draws). Off by default, so every frame is the engine's unless a game or its look asks: a look's `RenderSettings { specular three }`. |
 
 ```ogt
 resource RenderSettings {
@@ -170,7 +171,8 @@ resource RenderSettings {
     unit m
     tunable true
   }
+  field specular SpecularModel "The lit surfaces' specular: engine (the default) or three, three.js's, for a game whose look was tuned under three.js (SpecularModel has what each draws). Off by default, so every frame is the engine's unless a game or its look asks: a look's `RenderSettings { specular three }`."
 }
 ```
 
-<sub>Module `render` line 573</sub>
+<sub>Module `render` line 586</sub>

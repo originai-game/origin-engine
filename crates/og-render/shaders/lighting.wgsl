@@ -19,6 +19,45 @@ fn g_smith(n_dot_v: f32, n_dot_l: f32, roughness: f32) -> f32 {
   return gv * gl;
 }
 
+// RenderSettings.specular three (frame.shading.x, RenderScene::specular): the specular three.js draws, for a game
+// tuned under it. Every use below keeps the engine's own term as it was and selects three.js's in its place.
+fn three_specular() -> bool {
+  return frame.shading.x > 0.5;
+}
+
+// The height-correlated Smith visibility G / (4 n.l n.v) for roughness squared `a` (Heitz 2014; three.js
+// V_GGX_SmithCorrelated, Filament): at grazing view (a thin card, a strand seen edge-on) about twice the highlight of
+// g_smith's uncorrelated Schlick k = (r + 1)² / 8.
+fn v_ggx_correlated(n_dot_v: f32, n_dot_l: f32, a: f32) -> f32 {
+  let a2 = a * a;
+  let gv = n_dot_l * sqrt(a2 + (1.0 - a2) * n_dot_v * n_dot_v);
+  let gl = n_dot_v * sqrt(a2 + (1.0 - a2) * n_dot_l * n_dot_l);
+  return 0.5 / max(gv + gl, 1e-6);
+}
+
+// The split sum's scale and bias for F0: `lut`, the integrated BRDF LUT read at (n_dot_v, roughness), or with
+// three_specular three.js's DFGApprox (Karis's analytic fit), whose bias at rough grazing angles is a fraction of the
+// LUT's (rough leaf cards edge-on mirror less sky).
+fn ibl_dfg(lut: vec2<f32>, n_dot_v: f32, roughness: f32) -> vec2<f32> {
+  let r = roughness * vec4<f32>(-1.0, -0.0275, -0.572, 0.022) + vec4<f32>(1.0, 0.0425, 1.04, -0.04);
+  let a004 = min(r.x * r.x, exp2(-9.28 * n_dot_v)) * r.x + r.y;
+  return select(lut, vec2<f32>(-1.04, 1.04) * a004 + r.zw, three_specular());
+}
+
+// three.js's geometryRoughness (lights_physical_fragment): with three_specular a roughness of at least 0.0525 plus
+// `turn`, how fast the mesh's own normal turns across the pixel (the largest component of
+// max(|dpdx(n)|, |dpdy(n)|), taken by the fragment shader), at most 1; `roughness` as it is otherwise.
+fn three_roughness(roughness: f32, turn: f32) -> f32 {
+  return select(roughness, min(max(roughness, 0.0525) + turn, 1.0), three_specular());
+}
+
+// What three_roughness takes: the largest change of normal `n` across the pixel. Call it from a fragment shader in
+// uniform control flow.
+fn normal_turn(n: vec3<f32>) -> f32 {
+  let d = max(abs(dpdx(n)), abs(dpdy(n)));
+  return max(max(d.x, d.y), d.z);
+}
+
 fn f_schlick(cos_theta: f32, f0: vec3<f32>) -> vec3<f32> {
   return f0 + (1.0 - f0) * pow(saturate(1.0 - cos_theta), 5.0);
 }
@@ -561,18 +600,19 @@ fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
   let d = d_ggx(n_dot_h, a);
   let g = g_smith(n_dot_v, n_dot_l, s.roughness);
   let f = f_schlick(h_dot_v, s.f0);
-  let spec = (d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4);
+  let spec = select((d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4), d * v_ggx_correlated(n_dot_v, n_dot_l, a) * f, three_specular());
   let kd = (vec3<f32>(1.0) - f) * (1.0 - s.metallic);
   let base = (kd * s.albedo / PI + spec) * n_dot_l + leaf_transmission(s, n, v, l);
   if (s.coat <= 0.0) { return base; }
   // The coat (Filament's clear coat): GGX with a fixed 4 % reflectance and
-  // Kelemen's visibility; what it reflects never reaches the base.
+  // Kelemen's visibility (three.js's height-correlated one with
+  // three_specular); what it reflects never reaches the base.
   let nc = s.coat_normal;
   let c_dot_l = max(dot(nc, l), 0.0);
   let ac = s.coat_roughness * s.coat_roughness;
   let fc = f_schlick(h_dot_v, vec3<f32>(0.04)).x * s.coat;
   let dc = d_ggx(max(dot(nc, h), 0.0), ac);
-  let vc = 0.25 / max(h_dot_v * h_dot_v, 1e-4);
+  let vc = select(0.25 / max(h_dot_v * h_dot_v, 1e-4), v_ggx_correlated(max(dot(nc, v), 1e-4), c_dot_l, ac), three_specular());
   return base * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l);
 }
 

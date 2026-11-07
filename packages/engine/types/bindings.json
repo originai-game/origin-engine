@@ -111,6 +111,12 @@
       "value": "ToneMapping"
     },
     {
+      "name": "SpecularModel",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "SpecularModel"
+    },
+    {
       "name": "AoResolutionSetting",
       "array": "Uint32Array",
       "stride": 1,
@@ -9408,6 +9414,11 @@
           "column": "f32",
           "default": 10,
           "tunable": true
+        },
+        {
+          "name": "specular",
+          "column": "SpecularModel",
+          "default": "engine"
         }
       ]
     },

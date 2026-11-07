@@ -42,6 +42,7 @@ impl RenderScene {
             instances: Vec::new(),
             camera: Camera::default(),
             hemisphere: ([0.0; 3], [0.0; 3], 0.0),
+            specular: Specular::Engine,
             light: DirectionalLight::default(),
             lights: Vec::new(),
             environment: Environment::default(),

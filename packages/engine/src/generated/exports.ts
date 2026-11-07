@@ -32,6 +32,7 @@ export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry"
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;
 export const Upscaler = ((value = "taau" as Api.Upscaler, options) => spec("Upscaler", value, options)) as typeof Api.Upscaler;
 export const ToneMapping = ((value = "aces" as Api.ToneMapping, options) => spec("ToneMapping", value, options)) as typeof Api.ToneMapping;
+export const SpecularModel = ((value = "engine" as Api.SpecularModel, options) => spec("SpecularModel", value, options)) as typeof Api.SpecularModel;
 export const AoResolutionSetting = ((value = "postEffects" as Api.AoResolutionSetting, options) => spec("AoResolutionSetting", value, options)) as typeof Api.AoResolutionSetting;
 export const QualityPreset = ((value = "none" as Api.QualityPreset, options) => spec("QualityPreset", value, options)) as typeof Api.QualityPreset;
 export const Texture = ((value = 0 as Api.Texture, options) => spec("Texture", value, options)) as typeof Api.Texture;
