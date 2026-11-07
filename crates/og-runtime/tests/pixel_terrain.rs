@@ -234,3 +234,100 @@ fn a_carve_sequence_replays_and_restores_to_the_same_hash() {
     };
     assert_ne!(hash(c), end, "the carves are world state");
 }
+
+/// A game whose system carves and blows up the terrain from inside the
+/// tick (a hit frame does), as the docs promise: the calls queue for
+/// og.destruction2d after the game's systems. `declared` is whether the
+/// system names og.PixelTerrain among its reads.
+struct Carver {
+    terrain: std::cell::Cell<f64>,
+    answers: std::cell::RefCell<Vec<String>>,
+}
+
+impl Hooks for Carver {
+    fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+        if call.kind == 0 && call.id == 1 && self.answers.borrow().is_empty() {
+            let at = |x: f32, y: f32| json!({ "point": { "x": x, "y": y, "z": 0 }, "radius": 1 });
+            let mut a = self.answers.borrow_mut();
+            a.push(og_destruction_carve2d(
+                call.engine,
+                self.terrain.get(),
+                Some(at(4.0, 4.0).to_string()),
+            ));
+            a.push(og_destruction_explode2d(
+                call.engine,
+                Some(at(11.0, 4.0).to_string()),
+            ));
+        }
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        Fetch::Failed(format!("{path}: no assets in this test"))
+    }
+}
+
+/// Ways this could fail: carve2d or explode2d read the world to check the
+/// terrain or the system and are refused while a system runs ("not
+/// available while a system runs"), so no game system can carve on a hit;
+/// a system that did not declare og.PixelTerrain reads it anyway.
+#[test]
+fn a_system_carves_and_blows_up_the_terrain_in_its_tick() {
+    for declared in [true, false] {
+        let hooks = Rc::new(Carver {
+            terrain: std::cell::Cell::new(0.0),
+            answers: std::cell::RefCell::new(Vec::new()),
+        });
+        set_hooks(hooks.clone());
+        og_host_begin_bundle();
+        let reads = if declared {
+            json!([{ "kind": "component", "name": "og.PixelTerrain" }])
+        } else {
+            json!([])
+        };
+        let system = og_runtime::og_system_define_system(
+            "Hit".into(),
+            json!({ "reads": reads }).to_string(),
+            1,
+        );
+        let game = og_game_game(Some(json!({ "seed": 7, "systems": [system] }).to_string()));
+        let e = value(og_engine_create(
+            game,
+            json!({ "profile": "2d" }).to_string(),
+        ))
+        .as_u64()
+        .unwrap() as u32;
+        let terrain = value(og_world_spawn(e, Some("{}".into())))
+            .as_f64()
+            .unwrap();
+        let fields = json!({ "width": 64, "height": 32, "cellSize": 0.25, "chunk": 16, "seed": 3 });
+        value(og_world_insert(
+            e,
+            terrain,
+            "og.PixelTerrain".into(),
+            Some(fields.to_string()),
+        ));
+        hooks.terrain.set(terrain);
+        frame(e);
+        frame(e);
+        let answers = hooks.answers.borrow().clone();
+        assert_eq!(answers.len(), 2);
+        if declared {
+            for a in &answers {
+                value(a.clone());
+            }
+            assert_eq!(
+                cell(e, terrain, 4.0, 3.9),
+                0,
+                "the carve applied in the tick"
+            );
+            assert_eq!(cell(e, terrain, 11.0, 3.9), 0, "the blast too");
+        } else {
+            assert!(
+                answers[0].contains("declare og.PixelTerrain"),
+                "{}",
+                answers[0]
+            );
+            assert_eq!(cell(e, terrain, 4.0, 3.9), 1);
+        }
+    }
+}

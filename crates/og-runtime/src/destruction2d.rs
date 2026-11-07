@@ -28,7 +28,7 @@
 //! neither the system nor the block, so its saves and hash are unchanged.
 
 use super::codec::{Layout, RecordKind};
-use super::engine::{Engine, engine, queued_structural};
+use super::engine::{Engine, engine, queued_structural, running};
 use super::extract::{Hierarchy, RenderState};
 use super::{ok, ok_void, parse, refuse};
 use glam::{DVec2, Quat, Vec2, Vec3};
@@ -1439,8 +1439,28 @@ fn wire_void(r: Result<(), String>) -> String {
     }
 }
 
-/// Whether `e` is alive with record `name`.
+/// Whether `e` is alive with record `name`: between ticks from the world, inside a
+/// system through its context, which reads only what the system declared
+/// (the calls are queued for og.destruction2d after the game's systems, so
+/// a system may make them: a hit frame carves, a blast in the tick).
 fn has(eng: &Engine, name: &str, e: Entity) -> Result<bool, String> {
+    if let Some(f) = running(eng.id) {
+        // SAFETY: the frame is published while its system runs.
+        let ctx = unsafe { f.ctx() };
+        if !ctx.is_alive(e) {
+            return Err(format!("entity {} is not alive", e.to_bits()));
+        }
+        let Ok(id) = ctx.id_by_name(name) else {
+            return Ok(false);
+        };
+        return match ctx.get_bytes(e, id) {
+            Ok(_) => Ok(true),
+            Err(err) if err.kind() == ErrorKind::Access => Err(format!(
+                "{err}: inside a system, declare {name} among its reads"
+            )),
+            Err(_) => Ok(false),
+        };
+    }
     let w = eng.world()?;
     if !w.is_alive(e) {
         return Err(format!("entity {} is not alive", e.to_bits()));
@@ -1528,8 +1548,15 @@ pub fn og_destruction_explode2d(world: u32, desc: Option<String>) -> String {
             cells: uint(&d, "pieceCells", 24).max(4),
             speed: size(&d, "speed", 8.0)?,
         };
-        // A world with no pixel terrain has nothing to blow up.
-        if eng.world()?.systems().contains(&SYSTEM) {
+        // A world with no pixel terrain (its records, registered with
+        // og.destruction2d, unknown) has nothing to blow up. Inside a
+        // system the system's context answers, as the world cannot.
+        let registered = match running(eng.id) {
+            // SAFETY: the frame is published while its system runs.
+            Some(f) => unsafe { f.ctx() }.id_by_name(TERRAIN).is_ok(),
+            None => eng.world()?.systems().contains(&SYSTEM),
+        };
+        if registered {
             queue(world, op);
         }
         Ok(())
