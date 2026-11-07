@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {"member":"Ease fields","change":"Ease columns store a canonical 20-byte tag and parameter payload, not a named-only u32 enum index. Camera blendEase, soloEase and blendCurve accept the full shared timing vocabulary.","fix":"Use Ease strings for every field; rebuild cooked scenes and start new recordings/snapshots containing Ease columns. Raw Uint32Array views have stride 5."}
+  ],
+  "added": [
+    {"member":"Ease reflection","summary":"Bezier controls and step count/position survive ECS hashes, snapshots, scene cook/save, probe edits and both hosts. The shared parser/evaluator now lives in og-core and remains exported by og-tween."}
+  ]
+}

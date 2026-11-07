@@ -29,7 +29,7 @@ module tween {
 | [`Tween`](tween/type-Tween.md) | handle |  | A running tween or group. |
 | [`Tween()`](#column-Tween) | column kind |  | A Tween handle field. |
 | [`Ease`](tween/type-Ease.md) | enum |  | An easing curve from the start (0) to the end (1). |
-| [`Ease()`](#column-Ease) | column kind |  | An Ease field: the variant's index. |
+| [`Ease()`](#column-Ease) | column kind |  | A shared timing value: a tag and four payload words (20 bytes), hashed and snapshotted with its record. |
 | [`TweenDesc`](tween/type-TweenDesc.md) | desc struct |  | One tween of one field. |
 | [`TweenFromDesc`](tween/type-TweenFromDesc.md) | desc struct |  | Tween from an explicit value to the field captured when og.tween.from is called, before any delay. |
 | [`TweenGroupDesc`](tween/type-TweenGroupDesc.md) | desc struct |  | How a sequence or parallel group runs. |
@@ -54,7 +54,7 @@ Each is a factory, `Tween(value?, options?)`, that makes one field of a componen
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
 | <a id="column-Tween"></a>`Tween` | `Tween` | `Uint32Array` | 2 | A Tween handle field. |
-| <a id="column-Ease"></a>`Ease` | `Ease` | `Uint32Array` | 1 | An Ease field: the variant's index. |
+| <a id="column-Ease"></a>`Ease` | `Ease` | `Uint32Array` | 5 | A shared timing value: a tag and four payload words (20 bytes), hashed and snapshotted with its record. Accepts every named or parameterized Ease string. Raw views contain the canonical tag/payload, not string indices. |
 
 ```ogt
 column Tween {
@@ -69,9 +69,9 @@ column Tween {
 
 ```ogt
 column Ease {
-  doc "An Ease field: the variant's index."
+  doc "A shared timing value: a tag and four payload words (20 bytes), hashed and snapshotted with its record. Accepts every named or parameterized Ease string. Raw views contain the canonical tag/payload, not string indices."
   array Uint32Array
-  stride 1
+  stride 5
   value Ease
 }
 ```

@@ -569,6 +569,11 @@ pub fn field_json(f: &FieldSchema, b: &[u8]) -> Value {
             Value::Array((0..b.len() / 4).map(|i| num(f32_at(b, i))).collect())
         }
         FieldType::Bool => json!(b[0] != 0),
+        FieldType::Ease => json!(
+            og_core::ease::Ease::from_bytes(b)
+                .expect("validated ease")
+                .to_text()
+        ),
         FieldType::Enum => {
             let i = u32::from_le_bytes(b[..4].try_into().expect("4 bytes")) as usize;
             match f.variants.get(i) {

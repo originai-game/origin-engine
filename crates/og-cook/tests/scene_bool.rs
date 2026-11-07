@@ -9,6 +9,66 @@ use og_cook::runtime::Bundle;
 use og_core::reflect::{FieldSchema, FieldType, Schema};
 
 #[test]
+fn scene_timing_payloads_cook_losslessly_and_reject_invalid_text() {
+    let root = std::env::temp_dir().join(format!("og-cook-scene-ease-{}", std::process::id()));
+    std::fs::create_dir_all(root.join("assets/scenes")).unwrap();
+    let path = root.join("assets/scenes/shot.ogt");
+    let options = CookOptions {
+        threads: 1,
+        schemas: vec![Schema {
+            name: "Shot".into(),
+            version: 1,
+            doc: String::new(),
+            fields: vec![FieldSchema::new("ease", FieldType::Ease)],
+        }],
+        ..CookOptions::default()
+    };
+    use og_core::ease::{Ease, StepPosition};
+    for (text, expected) in [
+        (
+            "cubic-bezier(.17,.85,.63,.08)",
+            Some(Ease::CubicBezier([0.17, 0.85, 0.63, 0.08])),
+        ),
+        (
+            "steps(4,jump-start)",
+            Some(Ease::Steps {
+                count: 4,
+                position: StepPosition::JumpStart,
+            }),
+        ),
+        ("steps(0)", None),
+        ("cubic-bezier(2,0,0,1)", None),
+    ] {
+        std::fs::write(&path, format!("type scene\nversion 1\n---\nentity \"shot\" {{\n Shot {{\n ease \"{text}\"\n }}\n}}\n")).unwrap();
+        let result = cook_project(&root, &options);
+        if let Some(ease) = expected {
+            result.unwrap();
+            let scene = Bundle::open(&root.join("cooked"))
+                .unwrap()
+                .load_scene("scenes/shot.ogt")
+                .unwrap();
+            let row = scene
+                .components
+                .iter()
+                .find(|c| c.name == "Shot")
+                .unwrap()
+                .get(0)
+                .unwrap();
+            assert_eq!(og_core::ease::Ease::from_bytes(row), Some(ease));
+        } else {
+            let report = result.unwrap();
+            assert!(report.assets.iter().any(|asset| {
+                asset
+                    .error
+                    .as_ref()
+                    .is_some_and(|error| error.contains(text))
+            }));
+        }
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn bool_and_enum_fields_pack_to_the_schema_layout() {
     let root = std::env::temp_dir().join(format!("og-cook-scene-bool-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);

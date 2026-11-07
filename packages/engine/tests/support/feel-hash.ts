@@ -139,4 +139,43 @@ must(og.time.setScale(gw, 0.9988));
 must(goldenEngine.advance(1));
 curveSamples.push(targets.map((entity) => must(gw.get(entity, og.Transform)).position.x));
 goldenEngine.destroy();
-console.log(JSON.stringify({ host: which, hitStop, checkpoints, tally: summary, end: end.hash, replayed, curveSamples }));
+
+const cameraSamples = [];
+for (const ease of ["cubic-bezier(0,1,0,1)", "steps(4,jump-start)"] as const) {
+  const cameraEngine = must(createEngine(og.game({}) as unknown as GameToken));
+  const world = cameraEngine.world;
+  const first = must(world.spawn({ position: { x: -2, y: 0, z: 0 } }));
+  const next = must(world.spawn({ position: { x: 11, y: 0, z: 0 } }));
+  must(world.insert(first, og.VirtualCamera, { priority: 1, blendTime: 1 }));
+  must(world.insert(next, og.VirtualCamera, { priority: 0, blendTime: 1, blendEase: ease }));
+  must(cameraEngine.advance(1));
+  const brain = must(world.resource(og.CameraBrain));
+  // Exercise the resource setter as well as the component codec. Packed
+  // writes either side must not overwrite the timing payload with stale bytes.
+  brain.blendTime = 2;
+  brain.soloEase = ease;
+  brain.blendTime = 1;
+  const readback = brain.soloEase;
+  const beforeInvalid = cameraEngine.hash();
+  const bad = world.set(next, og.VirtualCamera, JSON.parse('{"blendEase":"steps(0)"}'));
+  if (bad.ok || !bad.reason.includes("steps(0)")) throw new Error("invalid camera timing accepted");
+  if (cameraEngine.hash() !== beforeInvalid) throw new Error("refused timing changed world");
+  must(world.set(next, og.VirtualCamera, { priority: 2 }));
+  must(cameraEngine.advance(18));
+  const progress = brain.blend;
+  const x = must(world.resource(og.Camera)).position.x;
+  const snap = cameraEngine.probe.snapshot() as { id: string };
+  const hash = cameraEngine.hash();
+  must(world.set(next, og.VirtualCamera, { blendEase: "none" }));
+  if (cameraEngine.hash() === hash) throw new Error("timing payload absent from world hash");
+  if (!cameraEngine.probe.restore(snap.id)) throw new Error("camera restore refused");
+  if (cameraEngine.hash() !== hash) throw new Error("camera payload restore changed hash");
+  must(cameraEngine.advance(9));
+  const continued = cameraEngine.hash();
+  if (!cameraEngine.probe.restore(snap.id)) throw new Error("camera replay restore refused");
+  must(cameraEngine.advance(9));
+  if (cameraEngine.hash() !== continued) throw new Error("camera blend did not replay");
+  cameraSamples.push({ ease, readback, progress, x, hash, continued, stored: must(world.get(next, og.VirtualCamera)).blendEase, active: brain.blendCurve });
+  cameraEngine.destroy();
+}
+console.log(JSON.stringify({ host: which, hitStop, checkpoints, tally: summary, end: end.hash, replayed, curveSamples, cameraSamples }));

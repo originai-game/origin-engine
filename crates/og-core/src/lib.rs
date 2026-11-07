@@ -28,6 +28,7 @@ compile_error!(
 extern crate self as og_core;
 
 pub mod alloc;
+pub mod ease;
 pub mod error;
 pub mod handle;
 pub mod hash;

@@ -13,8 +13,9 @@ function timing(w: World, entity: Entity): void {
   og.tween.to(w, { entity, ease: "steps(4,jump-start)" });
   // @ts-expect-error a misspelled named curve is not a timing function
   og.tween.to(w, { entity, ease: "power2.ot" });
-  // @ts-expect-error until camera curve payloads migrate, its enum column stores names only
   w.insert(entity, og.VirtualCamera, { blendEase: "cubic-bezier(0,1,0,1)" });
+  const brain = w.resource(og.CameraBrain);
+  if (brain.ok) brain.value.soloEase = "steps(4,jump-start)";
 }
 void timing;
 

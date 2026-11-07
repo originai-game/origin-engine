@@ -20,6 +20,7 @@
 //! | `mat4` | 64 | `Mat4` (column-major) | a `Float32Array` of stride 16 |
 //! | `bool` | 1: `0` or `1` | `bool`, or [`Bool8`] for column views | a `Uint8Array` |
 //! | `enum` | 4: a `u32` index into the field's `variants` | `u32` with `#[reflect(variants = [..])]` | a `Uint32Array` |
+//! | `ease` | 20: tag + four payload words | [`crate::ease::Ease`] | a `Uint32Array` of stride 5; text crosses the shared timing codec |
 //! | `strN` (`str32`, `str64`, ...) | N, the capacity: 1 to [`STR_MAX_CAPACITY`] | [`Str<N>`] ([`Str64`] [`Str256`]) | a `Uint8Array` of stride N |
 //! | `S[N]` (`u64[8]`, `f32[4]`) | (N + 1) × the element's: 1 to [`LIST_MAX_CAPACITY`] | [`List<T, N>`] | the element's typed array, of stride (N + 1) × the element's |
 //!
@@ -166,6 +167,8 @@ pub enum FieldType {
     Mat4,
     /// A `u32` index into [`FieldSchema::variants`].
     Enum,
+    /// Canonical timing tag and four payload words (20 bytes).
+    Ease,
     /// UTF-8 text of at most this many bytes (1 to [`STR_MAX_CAPACITY`]),
     /// zero-padded: `str32` is `Str(32)`.
     Str(u16),
@@ -186,7 +189,7 @@ impl<'de> Deserialize<'de> for FieldType {
         let name = String::deserialize(d)?;
         FieldType::parse(&name).ok_or_else(|| {
             serde::de::Error::custom(format!(
-                "unknown field type '{name}': f32, f64, i32, u32, i64, u64, vec2, vec3, vec4, quat, bool, mat4, enum, strN (N bytes, 1 to {STR_MAX_CAPACITY}) or a list S[N] of f32, f64, i32, u32, i64 or u64 (N elements, 1 to {LIST_MAX_CAPACITY})"
+                "unknown field type '{name}': f32, f64, i32, u32, i64, u64, vec2, vec3, vec4, quat, bool, mat4, enum, ease, strN (N bytes, 1 to {STR_MAX_CAPACITY}) or a list S[N] of f32, f64, i32, u32, i64 or u64 (N elements, 1 to {LIST_MAX_CAPACITY})"
             ))
         })
     }
@@ -205,7 +208,7 @@ impl FieldType {
             FieldType::Quat | FieldType::Mat4 => Scalar::F32,
             FieldType::F64 => Scalar::F64,
             FieldType::I32 => Scalar::I32,
-            FieldType::U32 | FieldType::Enum => Scalar::U32,
+            FieldType::U32 | FieldType::Enum | FieldType::Ease => Scalar::U32,
             FieldType::I64 => Scalar::I64,
             FieldType::U64 => Scalar::U64,
             FieldType::Bool => Scalar::Bool,
@@ -223,6 +226,7 @@ impl FieldType {
             FieldType::Vec3 => 3,
             FieldType::Vec4 | FieldType::Quat => 4,
             FieldType::Mat4 => 16,
+            FieldType::Ease => 5,
             FieldType::Str(capacity) => capacity as usize,
             FieldType::List(_, capacity) => capacity as usize + 1,
             _ => 1,
@@ -302,7 +306,11 @@ impl FieldType {
     pub const fn is_checked(self) -> bool {
         matches!(
             self,
-            FieldType::Bool | FieldType::Enum | FieldType::Str(_) | FieldType::List(..)
+            FieldType::Bool
+                | FieldType::Enum
+                | FieldType::Ease
+                | FieldType::Str(_)
+                | FieldType::List(..)
         )
     }
 
@@ -328,6 +336,7 @@ impl FieldType {
             FieldType::Bool => "bool",
             FieldType::Mat4 => "mat4",
             FieldType::Enum => "enum",
+            FieldType::Ease => "ease",
             FieldType::Str(64) => "str64",
             FieldType::Str(256) => "str256",
             FieldType::Str(capacity) => return format!("str{capacity}").into(),
@@ -375,6 +384,7 @@ impl FieldType {
             "bool" => FieldType::Bool,
             "mat4" => FieldType::Mat4,
             "enum" => FieldType::Enum,
+            "ease" => FieldType::Ease,
             other => {
                 let digits = other.strip_prefix("str")?;
                 // One spelling per type: no sign, no leading zero.
@@ -599,6 +609,22 @@ impl<T: FieldValue + Send + Sync> ReflectField for T {
 }
 
 impl sealed::SealedField for bool {}
+
+impl sealed::SealedField for crate::ease::Ease {}
+
+impl ReflectField for crate::ease::Ease {
+    const TYPE: FieldType = FieldType::Ease;
+
+    fn write_packed(&self, out: &mut dyn FnMut(&[u8])) {
+        out(&self.to_bytes());
+    }
+
+    fn read_packed(input: &mut dyn FnMut(&mut [u8])) -> Self {
+        let mut bytes = [0; 20];
+        input(&mut bytes);
+        Self::from_bytes(&bytes).expect("validated reflected ease")
+    }
+}
 
 impl ReflectField for bool {
     const TYPE: FieldType = FieldType::Bool;
@@ -924,6 +950,11 @@ impl FieldSchema {
             ));
         }
         match self.ty {
+            FieldType::Ease => crate::ease::Ease::from_bytes(bytes)
+                .map(|_| ())
+                .ok_or_else(|| {
+                    "invalid ease tag, controls, step count/position or noncanonical payload".into()
+                }),
             FieldType::Bool if bytes[0] > 1 => Err(format!("bool byte {}, not 0 or 1", bytes[0])),
             FieldType::Enum => {
                 let i = u32::from_le_bytes(bytes.try_into().expect("4 bytes")) as usize;
@@ -1208,6 +1239,25 @@ impl Schema {
                     f.ty.name()
                 ));
             }
+            if f.ty == FieldType::Ease {
+                if f.min.is_some() || f.max.is_some() || f.tunable {
+                    return err(format!(
+                        "ease field '{at}' takes a timing value, not a numeric range or Tune slider"
+                    ));
+                }
+                if let Some(default) = &f.default {
+                    if default
+                        .iter()
+                        .any(|v| v.fract() != 0.0 || !(0.0..=u32::MAX as f64).contains(v))
+                    {
+                        return err(format!(
+                            "ease field '{at}' defaults must be canonical payload words"
+                        ));
+                    }
+                    f.check_value(&f.default_bytes())
+                        .map_err(|e| Error::new(ErrorKind::Schema, format!("field '{at}': {e}")))?;
+                }
+            }
             if let Some(capacity) = f.ty.capacity() {
                 if !(1..=STR_MAX_CAPACITY).contains(&capacity) {
                     return err(format!(
@@ -1491,6 +1541,9 @@ impl Layout {
             ));
         }
         let mut bad = None;
+        if self.types.contains(&FieldType::Ease) {
+            T::schema().check_packed(bytes)?;
+        }
         let value = T::read_fields(&mut |i, buf| match self.ranges.get(i) {
             Some(r) if r.len() == buf.len() => buf.copy_from_slice(&bytes[r.clone()]),
             _ => bad = Some(i),

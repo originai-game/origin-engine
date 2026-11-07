@@ -1,6 +1,7 @@
 //! CSS Easing Level 1 evaluation; no host math or adaptive solver.
 use super::Ease;
 
+#[repr(u32)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StepPosition {
     JumpStart,

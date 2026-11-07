@@ -952,6 +952,14 @@ function recordHandle(world: WorldImpl, r: RecordCopy): object {
     };
     let lastValue: unknown;
     const get = (): unknown => {
+      // Parameterized timing is serialized by the shared Rust parser/codec.
+      // abi() flushes pending packed writes before reading the same record.
+      if (field().kind === "ease") {
+        if (!checkAccess("read", name)) return lastValue;
+        const answer = parse<Result<Record<string, unknown>>>(abi().og_world_resource(id, name));
+        if (!answer.ok) throw new Error(`${name}: ${answer.reason}`);
+        return (lastValue = answer.value[key]);
+      }
       if (r.at !== engineCalls && !r.dirty) {
         // Undeclared in a publish build: the engine refuses and logs it once;
         // the handle answers what it last read and the game keeps running.
@@ -969,7 +977,7 @@ function recordHandle(world: WorldImpl, r: RecordCopy): object {
     const set = (value: unknown): void => {
       // Undeclared in a publish build: the engine refuses and logs it once; the game keeps running.
       if (!checkAccess("write", name)) return void abi().og_engine_write_resource(id, name, JSON.stringify({ [key]: value }));
-      if (!refresh(r)) {
+      if (field().kind === "ease" || !refresh(r)) {
         const answer = parse<Result<void>>(abi().og_engine_write_resource(id, name, JSON.stringify({ [key]: value })));
         if (!answer.ok) throw new Error(`${name}.${key}: ${answer.reason}`);
         return;

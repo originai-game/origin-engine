@@ -478,7 +478,7 @@ pub(super) fn set_solo(
     let mut v = l.decode(&bytes);
     v["solo"] = json!(solo);
     v["soloBlend"] = json!(blend);
-    v["soloEase"] = json!(ease.name());
+    v["soloEase"] = json!(ease.to_text());
     let out = l.encode(Some(&bytes), Some(&v)).map_err(invalid)?;
     if out != bytes {
         ctx.set_resource_bytes(id, &out)?;
@@ -702,7 +702,7 @@ fn field_json(f: &super::super::codec::FieldLayout, v: &og_timeline::FieldValue)
     Some(match (v, f.kind) {
         (V::Word(w), Kind::Bool) => json!(w == "true"),
         (V::Numbers(n), Kind::Bool) => json!(n.first().is_some_and(|x| *x != 0.0)),
-        (V::Word(w), Kind::Enum) => json!(w),
+        (V::Word(w), Kind::Enum | Kind::Ease) => json!(w),
         (V::Numbers(n), _) if !lanes.is_empty() => {
             let mut m = serde_json::Map::new();
             for (k, x) in lanes.iter().zip(n) {

@@ -647,20 +647,9 @@ impl<'a> Gen<'a, '_> {
         self.line(&format!("{indent} */"));
     }
 
-    /// Numeric enum columns store fixed variant indices, never text payloads.
     fn column_ty(&self, ty: &TypeRef) -> String {
         if let Some((element, _)) = self.ix.list(ty) {
             return format!("readonly {}[]", paren(&self.column_ty(element)));
-        }
-        if let Some(TypeDecl::Enum(e)) = self.ix.decl(ty.name())
-            && !e.patterns.is_empty()
-        {
-            return e
-                .variants
-                .iter()
-                .map(|v| format!("\"{}\"", v.name))
-                .collect::<Vec<_>>()
-                .join(" | ");
         }
         self.ty(ty, &[])
     }

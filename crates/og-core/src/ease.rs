@@ -5,13 +5,14 @@
 //! (no Penner 1.525 multiplier). No GSAP source is incorporated here.
 //! og-core's deterministic pow/sin keep evaluations identical across hosts.
 
-use og_core::math;
+use crate::math;
 
 mod css;
 pub use css::StepPosition;
 
 /// An easing curve from 0 at t = 0 to 1 at t = 1 (back and elastic leave
 /// the range in between).
+#[repr(C, u32)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Ease {
     #[default]
@@ -125,6 +126,59 @@ fn bounce_out(t: f32) -> f32 {
 }
 
 impl Ease {
+    /// Canonical reflected layout: a u32 tag followed by four u32 lanes.
+    /// Bezier lanes hold f32 bits; steps hold count and position then zeros.
+    /// Unused lanes and negative zero are normalized for hashing.
+    pub fn to_bytes(self) -> [u8; 20] {
+        let mut words = [self.code(), 0, 0, 0, 0];
+        match self {
+            Self::CubicBezier(p) => {
+                words[1..].copy_from_slice(&p.map(|x| if x == 0.0 { 0 } else { x.to_bits() }));
+            }
+            Self::Steps { count, position } => {
+                words[1] = count;
+                words[2] = position as u32;
+            }
+            _ => {}
+        }
+        let mut bytes = [0; 20];
+        for (word, out) in words.into_iter().zip(bytes.as_chunks_mut::<4>().0) {
+            out.copy_from_slice(&word.to_le_bytes());
+        }
+        bytes
+    }
+
+    /// Validate the full reflected payload, including unused lanes.
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        let bytes: &[u8; 20] = bytes.try_into().ok()?;
+        let words: [u32; 5] = std::array::from_fn(|i| {
+            u32::from_le_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap())
+        });
+        let ease = match words[0] {
+            22 => Self::CubicBezier([words[1], words[2], words[3], words[4]].map(f32::from_bits)),
+            23 => Self::Steps {
+                count: words[1],
+                position: match words[2] {
+                    0 => StepPosition::JumpStart,
+                    1 => StepPosition::JumpEnd,
+                    2 => StepPosition::JumpNone,
+                    3 => StepPosition::JumpBoth,
+                    _ => return None,
+                },
+            },
+            tag => Self::from_code(tag)?,
+        };
+        (ease.is_valid() && ease.to_bytes() == *bytes).then_some(ease)
+    }
+
+    /// Boundary parsing with an actionable error; all timing syntax uses
+    /// the same parser as tween and timeline text.
+    pub fn parse_text(text: &str) -> Result<Self, String> {
+        Self::from_text(text).ok_or_else(|| format!(
+            "invalid ease '{text}': expected a GSAP name, cubic-bezier(x1,y1,x2,y2) with four finite controls and x1/x2 in [0,1], or steps(n[,position]) with positive integer n and start/end/jump-start/jump-end/jump-none/jump-both (jump-none requires n > 1)"
+        ))
+    }
+
     /// The wire tag. Tags 22 and 23 require a parameter payload.
     pub fn code(self) -> u32 {
         match self {

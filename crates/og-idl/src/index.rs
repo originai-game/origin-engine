@@ -262,6 +262,10 @@ impl<'a> Index<'a> {
     /// references.
     pub fn flat(&self, ty: &TypeRef) -> Option<Vec<&'static str>> {
         let name = ty.name();
+        // Ease is a core reflected value with a tag and parameter payload.
+        if name == "Ease" {
+            return Some(vec!["u32"; og_core::FieldType::Ease.lanes()]);
+        }
         for scalar in ["f32", "f64", "u32", "i32", "bool"] {
             if name == scalar {
                 return Some(vec![scalar]);

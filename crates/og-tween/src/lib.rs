@@ -15,11 +15,10 @@
 //! of a component the entity lost, ends without an event.
 
 mod codec;
-mod ease;
 pub mod presets;
 mod spring;
 
-pub use ease::{EASE_NAMES, EASES, Ease, StepPosition};
+pub use og_core::ease::{EASE_NAMES, EASES, Ease, StepPosition};
 pub use spring::{Spring, SpringState};
 
 use og_core::IdMap;

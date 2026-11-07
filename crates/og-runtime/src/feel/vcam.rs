@@ -96,8 +96,8 @@ fn jq(q: Quat) -> Value {
 
 fn ease_of(v: &Value) -> Ease {
     v.as_str()
-        .and_then(Ease::from_name)
-        .unwrap_or(Ease::CubicInOut)
+        .and_then(Ease::from_text)
+        .expect("validated reflected timing value")
 }
 
 fn entity(v: &Value) -> Option<Entity> {
@@ -383,7 +383,7 @@ pub(crate) fn brain(
         }
         blend = if blends { 0.0 } else { 1.0 };
         brain["blendDuration"] = json!(if blends { duration } else { 0.0 });
-        brain["blendCurve"] = json!(curve.name());
+        brain["blendCurve"] = json!(curve.to_text());
         if let (Some(cl), Ok(cid)) = (&l.cut, ctx.id_by_name(CUT)) {
             let ev = json!({
                 "from": prev.map_or(0, Entity::to_bits),

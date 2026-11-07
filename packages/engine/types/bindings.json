@@ -413,7 +413,7 @@
     {
       "name": "Ease",
       "array": "Uint32Array",
-      "stride": 1,
+      "stride": 5,
       "value": "Ease"
     },
     {

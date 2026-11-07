@@ -13,7 +13,7 @@ for family, gsap in [("quad", "power1"), ("cubic", "power2"), ("quart", "power3"
 
 paths = [
     "crates/og-api/api/tween.ogt", "crates/og-api/api/camera.ogt",
-    "crates/og-tween/src/ease.rs", "crates/og-tween/src/lib.rs",
+    "crates/og-core/src/ease.rs", "crates/og-tween/src/lib.rs",
     "crates/og-tween/README.md", "crates/og-timeline/src/model.rs",
     "crates/og-timeline/src/model/text.rs", "crates/og-timeline/src/eval.rs",
     "crates/og-cook/tests/timeline.rs", "crates/og-runtime/tests/timeline.rs",
@@ -34,7 +34,7 @@ for name in paths:
             text = text.replace('ease: "linear"', 'ease: "none"')
             text = text.replace('"ease": "linear"', '"ease": "none"')
             text = re.sub(r"(ease\s+)linear\b", r"\g<1>none", text)
-            if name in ["crates/og-api/api/tween.ogt", "crates/og-tween/src/ease.rs"]:
+            if name in ["crates/og-api/api/tween.ogt", "crates/og-core/src/ease.rs"]:
                 text = text.replace('"linear"', '"none"').replace('variant linear ', 'variant none ')
     if name in ["crates/og-api/api/tween.ogt", "packages/engine/tests/support/feel-hash.ts"]:
         text = re.sub(r"\bloops\b", "repeat", text).replace("Loops,", "Repeat,")

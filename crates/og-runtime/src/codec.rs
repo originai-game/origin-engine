@@ -32,6 +32,8 @@ pub enum Kind {
     Str,
     /// An enum: a u32 index into the field's variants.
     Enum,
+    /// Shared timing tag and parameter payload.
+    Ease,
 }
 
 impl Kind {
@@ -76,6 +78,7 @@ impl Kind {
             // Depth S8: render targets and custom post passes.
             "RenderTarget" | "Post" => Kind::Asset,
             "String" | "str" => Kind::Str,
+            "Ease" => Kind::Ease,
             _ => return None,
         })
     }
@@ -141,6 +144,7 @@ impl Kind {
             Kind::Bool => FieldType::Bool,
             Kind::Matrix4 => FieldType::Mat4,
             Kind::Enum => FieldType::Enum,
+            Kind::Ease => FieldType::Ease,
             Kind::Str if !viewed => FieldType::Str(256),
             Kind::Str => {
                 return Err("a string field declares its capacity in bytes: str(32)".into());
@@ -172,6 +176,7 @@ impl Kind {
             FieldType::Bool => Kind::Bool,
             FieldType::Mat4 => Kind::Matrix4,
             FieldType::Enum => Kind::Enum,
+            FieldType::Ease => Kind::Ease,
             FieldType::Str(_) => Kind::Str,
         }
     }
@@ -274,6 +279,7 @@ impl Layout {
             let kind_name = f["kind"].as_str().unwrap_or_default();
             let variants = enum_variants(kind_name);
             let k = match variants {
+                _ if kind_name == "Ease" => Kind::Ease,
                 Some(_) => Kind::Enum,
                 None => Kind::parse(kind_name).ok_or_else(|| {
                     format!("'{schema}.{name}': `{kind_name}` is not a column kind; use a column factory such as f32() or Vector3()")
@@ -361,7 +367,9 @@ impl Layout {
         };
         let mut fields = Vec::new();
         for f in decl.fields {
-            let k = if f.variants.is_empty() {
+            let k = if f.column == "Ease" {
+                Kind::Ease
+            } else if f.variants.is_empty() {
                 Kind::parse(f.column).ok_or_else(|| {
                     format!(
                         "'{}.{}' has type {}, which og-core cannot store yet",
@@ -458,7 +466,9 @@ impl Layout {
                     s.min = f.min;
                     s.max = f.max;
                     s.tunable = f.tunable;
-                    s.variants = f.variants.clone();
+                    if f.kind != Kind::Ease {
+                        s.variants = f.variants.clone();
+                    }
                     s.worldspace = f.worldspace.clone();
                     s.default = default_lanes(f);
                     s
@@ -813,6 +823,9 @@ impl Rec for Row<'_> {
         let (f, b) = self.field(key)?;
         match f.kind {
             Kind::Str => Some(std::borrow::Cow::Borrowed(og_core::unpack_str(b))),
+            Kind::Ease => Some(std::borrow::Cow::Owned(
+                og_core::ease::Ease::from_bytes(b)?.to_text(),
+            )),
             Kind::Enum => {
                 let i = u32::from_le_bytes(b[..4].try_into().expect("4 bytes")) as usize;
                 f.variants
@@ -948,6 +961,13 @@ fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), Str
     }
     match f.kind {
         Kind::F32 | Kind::F64 | Kind::U32 | Kind::I32 => encode_number(f.kind, v, out)?,
+        Kind::Ease => {
+            let text = v.as_str().unwrap_or("none");
+            if !v.is_null() && !v.is_string() {
+                return Err(format!("ease {v} must be a timing string"));
+            }
+            out.extend_from_slice(&og_core::ease::Ease::parse_text(text)?.to_bytes());
+        }
         Kind::Bool => {
             let b = match v {
                 Value::Null => false,
@@ -1021,6 +1041,7 @@ fn decode_field(f: &FieldLayout, b: &[u8]) -> Value {
         Kind::I32 => json!(i32::from_le_bytes(b[..4].try_into().expect("4 bytes"))),
         Kind::Bool => json!(b.iter().any(|x| *x != 0)),
         Kind::Str => json!(og_core::unpack_str(b)),
+        Kind::Ease => json!(og_core::ease::Ease::from_bytes(b).map(|ease| ease.to_text())),
         Kind::Enum => {
             let i = u32::from_le_bytes(b[..4].try_into().expect("4 bytes")) as usize;
             f.variants.get(i).map_or_else(|| json!(i), |n| json!(n))

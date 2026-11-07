@@ -46,6 +46,11 @@ pub(crate) fn field_json(ty: FieldType, bytes: &[u8]) -> Value {
         }
         FieldType::Bool => Value::Bool(bytes[0] != 0),
         FieldType::Enum => Value::from(u32::from_le_bytes(word(bytes, 0))),
+        FieldType::Ease => Value::from(
+            og_core::ease::Ease::from_bytes(bytes)
+                .expect("validated ease")
+                .to_text(),
+        ),
         FieldType::Str(_) => Value::from(og_core::unpack_str(bytes)),
         // The elements up to its length: `[]` and `[0]` differ.
         FieldType::List(element, _) => Value::Array(
@@ -145,6 +150,12 @@ fn lane(
 pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, String> {
     let lanes = field.ty.lanes();
     match field.ty {
+        FieldType::Ease => {
+            let text = value
+                .as_str()
+                .ok_or_else(|| format!("ease {value} must be a timing string"))?;
+            return Ok(og_core::ease::Ease::parse_text(text)?.to_bytes().to_vec());
+        }
         FieldType::Bool => {
             return match value.as_bool().or_else(|| {
                 value
@@ -230,6 +241,9 @@ pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, 
 /// a list takes a JSON array (`[3,5]`, `[]`) or its numbers by commas
 /// (`3,5`; nothing is `[]`); every other field takes [`text_json`].
 pub(crate) fn command_value(field: &FieldSchema, text: &str) -> Result<Value, String> {
+    if field.ty == FieldType::Ease {
+        return Ok(serde_json::from_str(text).unwrap_or_else(|_| Value::String(text.into())));
+    }
     // An enum takes its variant's name bare (`set:music.og.AudioSource.bus=music`) or its index.
     if field.ty == FieldType::Enum && !field.variants.is_empty() {
         let t = text.trim();

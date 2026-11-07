@@ -54,7 +54,7 @@ pub fn editor(ty: FieldType, kind: Option<Kind>) -> Editor {
         FieldType::Quat => Editor::Euler,
         FieldType::Bool => Editor::Bool,
         FieldType::Enum => Editor::Enum,
-        FieldType::Str(_) => Editor::Text,
+        FieldType::Str(_) | FieldType::Ease => Editor::Text,
         FieldType::Mat4 | FieldType::List(..) => Editor::ReadOnly,
     }
 }
@@ -80,7 +80,7 @@ pub fn lanes(ty: FieldType, b: &[u8]) -> Vec<f64> {
                 .map(|i| f64::from(f32::from_le_bytes(word(b, 4 * i))))
                 .collect()
         }
-        FieldType::Str(_) | FieldType::List(..) => Vec::new(),
+        FieldType::Str(_) | FieldType::Ease | FieldType::List(..) => Vec::new(),
     }
 }
 
@@ -186,6 +186,11 @@ pub fn parts(
             }
             vec![s]
         }
+        Editor::Text if field.ty == FieldType::Ease => vec![
+            og_core::ease::Ease::from_bytes(bytes)
+                .expect("validated ease")
+                .to_text(),
+        ],
         Editor::Text => vec![og_core::unpack_str(bytes).to_string()],
         Editor::Entity => {
             let bits = match bytes.len() {

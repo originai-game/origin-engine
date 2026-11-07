@@ -71,6 +71,7 @@ fn field_value(layout: &Layout, bytes: &[u8], field: &str) -> Option<FieldValue>
         Kind::I32 => FieldValue::Lanes(vec![i32::from_le_bytes(b[..4].try_into().ok()?) as f64]),
         Kind::Bool => FieldValue::Bool(b.iter().any(|x| *x != 0)),
         Kind::Str => FieldValue::Text(og_core::unpack_str(b).to_string()),
+        Kind::Ease => FieldValue::Text(og_core::ease::Ease::from_bytes(b)?.to_text()),
         Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => return None,
     })
 }

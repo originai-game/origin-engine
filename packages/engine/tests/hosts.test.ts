@@ -108,6 +108,7 @@ test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel 
       end: string;
       replayed: string;
       curveSamples: number[][];
+      cameraSamples: { ease: string; readback: string; progress: number; x: number; hash: string; continued: string; stored: string; active: string }[];
     };
   };
   const [node, web, again] = [run("node"), run("web"), run("node")];
@@ -115,6 +116,16 @@ test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel 
   expect(web.checkpoints).toEqual(node.checkpoints);
   expect(again.checkpoints).toEqual(node.checkpoints);
   expect(web.curveSamples).toEqual(node.curveSamples);
+  expect(web.cameraSamples).toEqual(node.cameraSamples);
+  expect(node.cameraSamples).toHaveLength(2);
+  for (const sample of node.cameraSamples) {
+    const expected = sample.ease.startsWith("cubic")
+      ? 1 - (1 - Math.cbrt(sample.progress)) ** 3
+      : Math.min(1, (Math.floor(sample.progress * 4) + 1) / 4);
+    expect(sample.x).toBeCloseTo(-2 + 13 * expected, 5);
+    expect(sample.readback).toBe(sample.stored);
+    expect(sample.active).toBe(sample.stored);
+  }
   // Independent evaluations of the GSAP 3.15.0 formula, at tick/60.
   const goldens = [
     [0, 0, 0, 0],

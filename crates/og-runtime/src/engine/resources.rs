@@ -122,6 +122,7 @@ fn kind_name(f: &super::codec::FieldLayout) -> &'static str {
         Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => "handle",
         Kind::Str => "str",
         Kind::Enum => "enum",
+        Kind::Ease => "ease",
     }
 }
 

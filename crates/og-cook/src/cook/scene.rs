@@ -160,6 +160,23 @@ fn pack(schema: &Schema, row: &Pending, out: &mut Vec<u8>) -> Result<(), CookErr
     }
     for fs in &schema.fields {
         let given = row.fields.iter().find(|(n, ..)| n == &fs.name);
+        if fs.ty == FieldType::Ease {
+            match given {
+                Some((_, Given::Text(text), line)) => {
+                    let ease = og_core::ease::Ease::parse_text(text)
+                        .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?;
+                    out.extend_from_slice(&ease.to_bytes());
+                }
+                Some((_, _, line)) => {
+                    return Err(CookError(format!(
+                        "line {line}: {comp}.{} requires one quoted timing string",
+                        fs.name
+                    )));
+                }
+                None => out.extend_from_slice(&fs.default_bytes()),
+            }
+            continue;
+        }
         if let Some((element, capacity)) = fs.ty.list_of() {
             let values: &[f64] = match given {
                 Some((_, Given::Lanes(v), _)) => v,

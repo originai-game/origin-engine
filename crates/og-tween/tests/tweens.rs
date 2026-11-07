@@ -15,6 +15,60 @@ use og_ecs::{Entity, World, WorldDesc};
 use og_tween::*;
 
 #[test]
+fn reflected_timing_payloads_hash_restore_and_refuse_invalid_words() {
+    #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+    struct Shot {
+        ease: Ease,
+        marker: u32,
+    }
+    let mut world = World::new(&WorldDesc::default()).unwrap();
+    world.register::<Shot>().unwrap();
+    let shot = Shot {
+        ease: Ease::CubicBezier([0.17, 0.85, 0.63, 0.08]),
+        marker: 37,
+    };
+    let entity = world.spawn((shot,)).unwrap();
+    let saved = world.snapshot();
+    let hash = world.world_hash();
+    world
+        .insert(
+            entity,
+            Shot {
+                ease: Ease::Steps {
+                    count: 4,
+                    position: StepPosition::JumpStart,
+                },
+                ..shot
+            },
+        )
+        .unwrap();
+    assert_ne!(world.world_hash(), hash);
+    world.restore(&saved).unwrap();
+    assert_eq!(world.get::<Shot>(entity).unwrap(), shot);
+    assert_eq!(world.world_hash(), hash);
+    let schema = Shot::schema();
+    let layout = og_core::Layout::of(&schema);
+    let bytes = layout.encode(&shot).unwrap();
+    assert_eq!(bytes.len(), 24);
+    for (word, value) in [(0, 99), (1, 2.0f32.to_bits()), (2, f32::NAN.to_bits())] {
+        let mut invalid = bytes.clone();
+        invalid[word * 4..word * 4 + 4].copy_from_slice(&u32::to_le_bytes(value));
+        assert!(schema.check_packed(&invalid).is_err());
+        assert!(layout.decode::<Shot>(&invalid).is_err());
+    }
+    let mut invalid = Ease::Steps {
+        count: 4,
+        position: StepPosition::JumpEnd,
+    }
+    .to_bytes();
+    invalid[4..8].fill(0);
+    assert!(Ease::from_bytes(&invalid).is_none());
+    let mut invalid = Ease::Linear.to_bytes();
+    invalid[16] = 1;
+    assert!(Ease::from_bytes(&invalid).is_none());
+}
+
+#[test]
 fn css_curves_invert_x_preserve_overshoot_and_step_boundaries() {
     let curve = Ease::from_css("cubic-bezier(.125, -.5, .75, 1.5)").unwrap();
     // Exact Bernstein values at parameters 1/4 and 3/4; treating input as

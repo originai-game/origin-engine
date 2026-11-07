@@ -41,9 +41,9 @@ module tween {
   }
 
   column Ease {
-    doc "An Ease field: the variant's index."
+    doc "A shared timing value: a tag and four payload words (20 bytes), hashed and snapshotted with its record. Accepts every named or parameterized Ease string. Raw views contain the canonical tag/payload, not string indices."
     array Uint32Array
-    stride 1
+    stride 5
     value Ease
   }
 
