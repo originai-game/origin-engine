@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# quick: landing checks. full: all functional checks, including wasm and browsers.
+# quick: landing checks. full: functional checks with bindgen-only wasm and browsers.
 # --all ignores previous passing input snapshots. --only STEP adds prerequisites.
 set -eu -o pipefail
 . "$(dirname "$0")/lib.sh"

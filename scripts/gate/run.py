@@ -13,12 +13,11 @@ NEEDS = {
     'fmt': (), 'clippy': ('fmt',), 'rust-build': ('clippy',),
     'rust-cpu': ('rust-build',), 'rust-gpu': ('rust-build',),
     'drift': ('rust-build',), 'bun-quick': (),
-    'wasm-build': (), 'wasm-opt': ('wasm-build',),
-    'size-gate': ('wasm-opt',),
-    'bun-test': ('rust-cpu', 'rust-gpu', 'wasm-opt', 'bun-quick'),
+    'wasm-build': (), 'wasm-bindgen': ('wasm-build',),
+    'bun-test': ('rust-cpu', 'rust-gpu', 'wasm-bindgen', 'bun-quick'),
     'fixtures': ('bun-test',), 'doc-tests': ('rust-cpu',),
     'browser': ('fixtures',),
-    'web-reference': ('wasm-opt', 'rust-build'),
+    'web-reference': ('wasm-bindgen', 'rust-build'),
     'check-conformance': (),
 }
 
@@ -36,7 +35,7 @@ def stop_group(proc, sig):
 
 
 QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'bun-quick')
-FULL = QUICK + ('wasm-build', 'wasm-opt', 'size-gate', 'bun-test', 'fixtures', 'doc-tests', 'browser')
+FULL = QUICK + ('wasm-build', 'wasm-bindgen', 'bun-test', 'fixtures', 'doc-tests', 'browser')
 
 
 def main():

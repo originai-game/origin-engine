@@ -5,7 +5,7 @@
 #   scripts/size-gate.sh [file.wasm ...]
 #
 # With no arguments it measures every file listed in target/og-wasm/opt.txt,
-# which scripts/check.sh's wasm-opt step writes. The budget is per download:
+# which scripts/release-wasm.sh writes. The budget is per download:
 # a page downloads one engine module, never two, so each measured file (the
 # 3D and 2D publish variants and the 3D and 2D lanes variants:
 # docs/web-export.md §Variants and §Lanes) is held to it, and the figure
