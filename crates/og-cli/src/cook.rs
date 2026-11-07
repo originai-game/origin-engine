@@ -27,6 +27,9 @@
 //! ship UASTC natively and a quarter of the bytes on the web
 //! ([`texture_options`]). Switching between the two re-encodes only the
 //! colour textures, and the shared texture cache keeps both encodings.
+//! `cook { mips webgl }` makes every texture's mips as a WebGL
+//! `generateMipmap` does (three.js' textures) instead of with the encoder's
+//! own filter, for a game tuned under three.js; off by default.
 
 use crate::project::Project;
 use og_cook::cook::TextureOptions;
@@ -168,7 +171,8 @@ fn default_lanes(f: &og_api::host::FieldDecl, lanes: usize) -> Option<Vec<f64>> 
 /// The texture options of the project at `root`: project.ogt's `cook {
 /// color_textures uastc|etc1s }` (etc1s without it), which `publish {
 /// color_textures ... }` overrides for the web export (`web`: `og build`,
-/// `og run --device`). The defaults without a manifest.
+/// `og run --device`), and `cook { mips encoder|webgl }` for every cook
+/// (encoder without it). The defaults without a manifest.
 pub fn texture_options(root: &Path, web: bool) -> Result<TextureOptions, String> {
     let mut o = TextureOptions::default();
     let Ok(text) = std::fs::read_to_string(root.join("project.ogt")) else {
@@ -202,9 +206,26 @@ pub fn texture_options(root: &Path, web: bool) -> Result<TextureOptions, String>
                 // The publish block's other settings are the export's
                 // (`publish.rs`).
                 _ if *name == "publish" => {}
+                "mips" => {
+                    let v = e
+                        .values
+                        .first()
+                        .and_then(|v| v.as_word().or_else(|| v.as_str()));
+                    o.webgl_mips = match v {
+                        Some("webgl") => true,
+                        Some("encoder") => false,
+                        _ => {
+                            return Err(format!(
+                                "project.ogt:{}: cook.mips is `{}`; use encoder (the default, basisu's filter) or webgl (a WebGL generateMipmap's, as three.js textures get)",
+                                e.line,
+                                v.unwrap_or("")
+                            ));
+                        }
+                    };
+                }
                 other => {
                     return Err(format!(
-                        "project.ogt:{}: cook has no `{other}`; it takes color_textures",
+                        "project.ogt:{}: cook has no `{other}`; it takes color_textures and mips",
                         e.line
                     ));
                 }
@@ -575,7 +596,17 @@ mod tests {
         let bad = project(&format!("{head}cook {{\n  color_textures astc\n}}\n"));
         let e = texture_options(&bad, false).unwrap_err();
         assert!(e.contains("project.ogt:6") && e.contains("etc1s"), "{e}");
-        for d in [both, cook_only, publish_only, bad] {
+        // `mips webgl` is the cook block's, for both cooks; off without it.
+        assert!(!texture_options(&both, false).unwrap().webgl_mips);
+        let webgl = project(&format!(
+            "{head}cook {{\n  mips webgl\n}}\npublish {{\n  probe player\n}}\n"
+        ));
+        assert!(texture_options(&webgl, false).unwrap().webgl_mips);
+        assert!(texture_options(&webgl, true).unwrap().webgl_mips);
+        let bad_mips = project(&format!("{head}cook {{\n  mips kaiser\n}}\n"));
+        let e = texture_options(&bad_mips, false).unwrap_err();
+        assert!(e.contains("project.ogt:6") && e.contains("webgl"), "{e}");
+        for d in [both, cook_only, publish_only, bad, webgl, bad_mips] {
             let _ = std::fs::remove_dir_all(d);
         }
     }

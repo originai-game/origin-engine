@@ -5,8 +5,8 @@
 //! engine version), `entry`, `profile` (`2d`/`3d`), `tick`, `seed`, a
 //! `scenes { name "path" }` block, `scene`, `look "looks/<id>.ogt"` (the
 //! look whose art contract the cook reads, og-cook's `look::project_look`),
-//! `cook { color_textures uastc }`
-//! (etc1s or uastc colour textures, `cook.rs`), `budgets { }` (og-cook's
+//! `cook { color_textures uastc; mips webgl }`
+//! (etc1s or uastc colour textures, the encoder's or WebGL's mips, `cook.rs`), `budgets { }` (og-cook's
 //! `stats::Budgets`) and `publish { probe player; out "dist"; color_textures
 //! etc1s }`; `og` reads `entry` and `publish.out` here, `publish` in
 //! `publish.rs`, `cook` and `publish.color_textures` in `cook.rs`, and hands the whole text to the engine (CreateOptions.project:

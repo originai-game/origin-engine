@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "project.ogt cook { mips webgl }",
+      "summary": "Every texture's mips are made as a WebGL generateMipmap makes them (the 2 x 2 mean on even sizes, the centre taps of a linear blit on odd ones, clamped at the edges, sRGB colour averaged in linear light) instead of with basisu's own filter, which wraps round the edges. For a game tuned under three.js: a cut-out card keeps the alpha three.js gives its smallest levels (a 1024 x 384 bamboo spray kept a quarter of it). `mips encoder` is the default and leaves every cooked byte as it was; turning it on re-cooks the textures. It needs the basis-universal encoder (og-cook's `basis` feature, the default); the toktx fallback refuses it."
+    }
+  ]
+}

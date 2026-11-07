@@ -235,6 +235,104 @@ fn dilate_transparent(img: &Image) -> Option<Image> {
     })
 }
 
+/// The mip chain a WebGL `generateMipmap` gives (`cook { mips webgl }`, three.js' textures): each level half the
+/// one before, rounded down to at least 1, each texel the level before sampled bilinearly at its centre: the plain
+/// mean of the 2 × 2 texels under it where a size is even; where it is odd the taps nearest the centre, as the
+/// driver's linear blit does (NVIDIA: a 1024 × 384 map's 8 × 3 level halves to 4 × 1 from its middle row, not the
+/// mean of all three). Clamped at the edges, never wrapping round them; colour in linear light for an sRGB map,
+/// alpha (and linear data) as stored. Levels 1 to 1 × 1.
+#[cfg_attr(not(feature = "basis"), allow(dead_code))]
+fn webgl_mips(img: &Image, srgb: bool) -> Vec<Image> {
+    let to_lin: Vec<f32> = (0..256)
+        .map(|v| {
+            let c = v as f32 / 255.0;
+            if !srgb {
+                c
+            } else if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        })
+        .collect();
+    let to_byte = |c: f32| -> u8 {
+        let c = c.clamp(0.0, 1.0);
+        let e = if !srgb {
+            c
+        } else if c <= 0.0031308 {
+            c * 12.92
+        } else {
+            1.055 * c.powf(1.0 / 2.4) - 0.055
+        };
+        (e * 255.0).round() as u8
+    };
+    // Per axis: for each target texel, the two source texels round its
+    // centre and their bilinear weights (clamped at the edge).
+    let spans = |n: usize, m: usize| -> Vec<[(usize, f32); 2]> {
+        (0..m)
+            .map(|i| {
+                let x = ((i as f32 + 0.5) * n as f32 / m as f32 - 0.5).max(0.0);
+                let j = (x.floor() as usize).min(n - 1);
+                let f = x - j as f32;
+                [(j, 1.0 - f), ((j + 1).min(n - 1), f)]
+            })
+            .collect()
+    };
+    let mut out = Vec::new();
+    let (mut w, mut h) = (img.width as usize, img.height as usize);
+    // The level before: colour in linear light, alpha as stored.
+    let mut px: Vec<[f32; 4]> = img
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| {
+            [
+                to_lin[p[0] as usize],
+                to_lin[p[1] as usize],
+                to_lin[p[2] as usize],
+                p[3] as f32 / 255.0,
+            ]
+        })
+        .collect();
+    while w > 1 || h > 1 {
+        let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
+        let (sx, sy) = (spans(w, nw), spans(h, nh));
+        let mut next = vec![[0.0f32; 4]; nw * nh];
+        for (y, ry) in sy.iter().enumerate() {
+            for (x, rx) in sx.iter().enumerate() {
+                let acc = &mut next[y * nw + x];
+                for &(j, wy) in ry {
+                    for &(i, wx) in rx {
+                        let p = px[j * w + i];
+                        for c in 0..4 {
+                            acc[c] += p[c] * wx * wy;
+                        }
+                    }
+                }
+            }
+        }
+        let rgba = next
+            .iter()
+            .flat_map(|p| {
+                [
+                    to_byte(p[0]),
+                    to_byte(p[1]),
+                    to_byte(p[2]),
+                    (p[3].clamp(0.0, 1.0) * 255.0).round() as u8,
+                ]
+            })
+            .collect();
+        out.push(Image {
+            width: nw as u32,
+            height: nh as u32,
+            rgba,
+        });
+        (w, h, px) = (nw, nh, next);
+    }
+    out
+}
+
 fn has_alpha(img: &Image) -> bool {
     img.rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 255)
 }
@@ -266,11 +364,21 @@ fn encode_basisu(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, 
     if k == kind::NORMAL {
         params.tune_for_normal_maps();
     }
-    params.set_generate_mipmaps(opts.mipmaps);
-    params.set_mipmap_smallest_dimension(1);
     params
         .source_image_mut(0)
         .init(&img.rgba, img.width, img.height, 4);
+    if opts.mipmaps && opts.webgl_mips {
+        // The levels a WebGL generateMipmap gives, handed to basisu whole.
+        params.set_generate_mipmaps(false);
+        for (i, l) in webgl_mips(img, k == kind::COLOR).iter().enumerate() {
+            params
+                .source_mipmap_image_mut(0, i as u32)
+                .init(&l.rgba, l.width, l.height, 4);
+        }
+    } else {
+        params.set_generate_mipmaps(opts.mipmaps);
+        params.set_mipmap_smallest_dimension(1);
+    }
     // One thread per texture: the cook parallelises across assets, and a
     // single-threaded encode is bit-for-bit reproducible.
     let mut c = Compressor::new(1);
@@ -284,6 +392,12 @@ fn encode_basisu(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, 
 }
 
 fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, String> {
+    if opts.mipmaps && opts.webgl_mips {
+        return Err(
+            "`cook { mips webgl }` needs the basis-universal encoder (og-cook's `basis` feature); toktx makes its own mips"
+                .into(),
+        );
+    }
     toktx_version().map_err(|e| e.0)?;
     // One directory per encode: two textures of one size cook at once.
     static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -490,5 +604,84 @@ mod tests {
             rgba: vec![9, 9, 9, 255],
         };
         assert!(dilate_transparent(&opaque).is_none());
+    }
+
+    fn alpha_image(width: u32, height: u32, alpha: &[u8]) -> Image {
+        Image {
+            width,
+            height,
+            rgba: alpha.iter().flat_map(|&a| [255, 255, 255, a]).collect(),
+        }
+    }
+
+    #[test]
+    fn webgl_mips_halve_to_one_texel_as_generate_mipmap_does() {
+        // 4 x 2, alpha 1 0 1 1 / 0 0 1 1: level 1 (2 x 1) is the 2 x 2
+        // means 0.25 and 1, level 2 (1 x 1) their mean 0.625.
+        let m = webgl_mips(
+            &alpha_image(4, 2, &[255, 0, 255, 255, 0, 0, 255, 255]),
+            true,
+        );
+        let sizes: Vec<_> = m.iter().map(|l| (l.width, l.height)).collect();
+        assert_eq!(sizes, [(2, 1), (1, 1)]);
+        assert_eq!((m[0].rgba[3], m[0].rgba[7], m[1].rgba[3]), (64, 255, 159));
+        assert_eq!(&m[1].rgba[0..3], &[255, 255, 255]);
+        // Colour averages in linear light on an sRGB map (black and white:
+        // linear 0.5, sRGB 188), as stored on linear data (128).
+        let bw = Image {
+            width: 2,
+            height: 1,
+            rgba: vec![0, 0, 0, 255, 255, 255, 255, 255],
+        };
+        assert_eq!(webgl_mips(&bw, true)[0].rgba[0], 188);
+        assert_eq!(webgl_mips(&bw, false)[0].rgba[0], 128);
+        // Odd sizes take the taps nearest the centre, clamped, never
+        // wrapping: 3 -> 1 is the middle texel; 5 -> 2 samples at 0.75 and
+        // 3.25 (0.25 a0 + 0.75 a1, 0.75 a3 + 0.25 a4).
+        assert_eq!(
+            webgl_mips(&alpha_image(3, 1, &[0, 200, 255]), false)[0].rgba[3],
+            200
+        );
+        let five = &webgl_mips(&alpha_image(5, 1, &[0, 100, 200, 40, 0]), false)[0];
+        assert_eq!((five.width, five.rgba[3], five.rgba[7]), (2, 75, 30));
+    }
+
+    /// `mips webgl` reaches the encoded chain: a cut-out card 8 x 3 whose
+    /// middle row alone is opaque keeps that row whole at its 4 x 1 level
+    /// (the linear blit's centre taps), down to 1 x 1, as three.js shows it.
+    #[cfg(feature = "basis")]
+    #[test]
+    fn mips_webgl_reach_the_encoded_levels() {
+        use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat};
+        let mut alpha = [0u8; 24];
+        alpha[8..16].fill(255);
+        let opts = TextureOptions {
+            color_uastc: true,
+            webgl_mips: true,
+            ..TextureOptions::default()
+        };
+        let basis = encode_basisu(&alpha_image(8, 3, &alpha), kind::COLOR, &opts).unwrap();
+        let mut t = Transcoder::new();
+        t.prepare_transcoding(&basis).unwrap();
+        assert_eq!(t.image_level_count(&basis, 0), 4, "8x3, 4x1, 2x1, 1x1");
+        for level_index in 1..4 {
+            let rgba = t
+                .transcode_image_level(
+                    &basis,
+                    TranscoderTextureFormat::RGBA32,
+                    TranscodeParameters {
+                        image_index: 0,
+                        level_index,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+            let alphas: Vec<u8> = rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect();
+            assert!(
+                alphas.iter().all(|&a| a >= 250),
+                "level {level_index}: {alphas:?}"
+            );
+        }
+        t.end_transcoding();
     }
 }
