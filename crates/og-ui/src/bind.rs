@@ -64,6 +64,13 @@ pub trait Env {
         let _ = root;
         None
     }
+    /// Resolve a field without materializing its containing store or collection.
+    /// Hosts without retained sources keep the root-based lookup contract.
+    fn lookup_path(&self, path: &str) -> Option<Value> {
+        let (root, rest) = path.split_once('.').unwrap_or((path, ""));
+        let value = self.lookup(root)?;
+        get_path(&value, rest).map(|value| value.into_owned())
+    }
     /// The full locale tag formats and plurals follow, including script and region.
     fn language(&self) -> &str {
         "en"
@@ -628,9 +635,9 @@ impl Scope<'_> {
             return v.into_owned();
         }
         if self.vm.get(root).is_none()
-            && let Some(r) = self.env.lookup(root)
+            && let Some(value) = self.env.lookup_path(path)
         {
-            return get_path(&r, rest).map_or(Value::Null, |c| c.into_owned());
+            return value;
         }
         Value::Null
     }

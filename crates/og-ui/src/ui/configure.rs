@@ -438,7 +438,10 @@ impl Ui {
     /// The active BCP-47 locale for style-driven display casing. It never
     /// rewrites source strings, input fields or their selections.
     pub fn set_locale(&mut self, locale: &str) {
-        self.locale = locale.into();
+        if self.locale != locale {
+            self.locale = locale.into();
+            self.reactive.graph.locale_changed();
+        }
     }
 
     /// The control sizes in effect for the current viewport.

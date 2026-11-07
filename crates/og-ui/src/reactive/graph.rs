@@ -4,6 +4,14 @@
 use super::{CollectionEdit, SourceId};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// Mounted identity includes the keyed row in the core node key. Selector
+/// inputs cannot alias another mount or another row using the same template.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct MountedNode {
+    pub mount: SourceId,
+    pub key: u64,
+}
+
 /// Collection order, rows and fields are separate subscriptions. A row patch
 /// must not wake the list or a binding that reads another row.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -12,12 +20,16 @@ pub enum Dependency {
     Keys(SourceId),
     Row(SourceId, String),
     Field(SourceId, String, String),
+    Interaction(MountedNode, crate::bind::InteractionState),
+    Locale,
 }
 
 impl Dependency {
-    fn source(&self) -> &SourceId {
+    fn source(&self) -> Option<&SourceId> {
         match self {
-            Self::Value(id) | Self::Keys(id) | Self::Row(id, _) | Self::Field(id, _, _) => id,
+            Self::Value(id) | Self::Keys(id) | Self::Row(id, _) | Self::Field(id, _, _) => Some(id),
+            Self::Interaction(node, _) => Some(&node.mount),
+            Self::Locale => None,
         }
     }
 }
@@ -52,6 +64,9 @@ struct Evaluation {
 pub struct Graph {
     nodes: BTreeMap<SourceId, Node>,
     observers: BTreeMap<Dependency, BTreeSet<SourceId>>,
+    binding_reads: BTreeMap<u64, BTreeSet<Dependency>>,
+    binding_observers: BTreeMap<Dependency, BTreeSet<u64>>,
+    pending_bindings: BTreeSet<u64>,
     active: Vec<Evaluation>,
     batch_depth: usize,
     pending_memos: BTreeSet<SourceId>,
@@ -156,6 +171,15 @@ impl Graph {
                         Dependency::Field(source, row, _) if source == id && row == key)
                     })
                     .map(|(dependency, _)| dependency.clone())
+                    .chain(
+                        self.binding_observers
+                            .range(Dependency::Field(id.clone(), key.clone(), String::new())..)
+                            .take_while(|(dependency, _)| {
+                                matches!(dependency,
+                                Dependency::Field(source, row, _) if source == id && row == key)
+                            })
+                            .map(|(dependency, _)| dependency.clone()),
+                    )
                     .collect();
                 for field in fields {
                     self.notify(&field);
@@ -176,6 +200,56 @@ impl Graph {
         for observer in observers {
             self.dirty(&observer);
         }
+        if let Some(bindings) = self.binding_observers.get(dependency) {
+            self.pending_bindings.extend(bindings);
+        }
+    }
+
+    /// Internal selector inputs are not writable or addressable game stores.
+    pub fn interaction_changed(
+        &mut self,
+        node: &MountedNode,
+        state: crate::bind::InteractionState,
+    ) {
+        self.notify(&Dependency::Interaction(node.clone(), state));
+    }
+
+    pub fn locale_changed(&mut self) {
+        self.notify(&Dependency::Locale);
+    }
+
+    /// Native document bindings share source invalidation with JS computations,
+    /// but are drained by the renderer only after the store graph settles.
+    pub fn bind(&mut self, binding: u64, reads: BTreeSet<Dependency>) {
+        self.unbind(binding);
+        for dependency in &reads {
+            self.binding_observers
+                .entry(dependency.clone())
+                .or_default()
+                .insert(binding);
+        }
+        self.binding_reads.insert(binding, reads);
+    }
+
+    pub fn unbind(&mut self, binding: u64) {
+        if let Some(reads) = self.binding_reads.remove(&binding) {
+            for dependency in reads {
+                if let Some(observers) = self.binding_observers.get_mut(&dependency) {
+                    observers.remove(&binding);
+                    if observers.is_empty() {
+                        self.binding_observers.remove(&dependency);
+                    }
+                }
+            }
+        }
+        self.pending_bindings.remove(&binding);
+    }
+
+    pub fn take_bindings(&mut self) -> BTreeSet<u64> {
+        if self.batch_depth != 0 || self.next().is_some() || !self.active.is_empty() {
+            return BTreeSet::new();
+        }
+        std::mem::take(&mut self.pending_bindings)
     }
 
     /// Register a getter read in the innermost computation. The host first
@@ -185,7 +259,9 @@ impl Graph {
     }
 
     pub fn read_dependency(&mut self, dependency: Dependency) -> Result<(), String> {
-        let id = dependency.source();
+        let Some(id) = dependency.source() else {
+            return Err("host dependencies are subscribed by native document bindings".into());
+        };
         if !self.nodes.contains_key(id) {
             return Err(id.error("source is not registered"));
         }
@@ -236,7 +312,9 @@ impl Graph {
             .get(id)
             .ok_or_else(|| id.error("source is not registered"))?;
         for dependency in &node.reads {
-            if let Some(next) = self.needed(dependency.source(), visiting)? {
+            if let Some(source) = dependency.source()
+                && let Some(next) = self.needed(source, visiting)?
+            {
                 return Ok(Some(next));
             }
         }
@@ -346,6 +424,7 @@ impl Graph {
     pub fn invalidate_all(&mut self) {
         self.active.clear();
         self.batch_depth = 0;
+        self.pending_bindings.extend(self.binding_reads.keys());
         let derived: Vec<_> = self
             .nodes
             .iter()
@@ -424,7 +503,8 @@ impl Graph {
         let dependencies: Vec<_> = self
             .observers
             .keys()
-            .filter(|dependency| dependency.source() == id)
+            .chain(self.binding_observers.keys())
+            .filter(|dependency| dependency.source() == Some(id))
             .cloned()
             .collect();
         for dependency in dependencies {
@@ -457,7 +537,8 @@ impl Graph {
         let removed: Vec<_> = self
             .observers
             .keys()
-            .filter(|d| d.source().scope == scope)
+            .chain(self.binding_observers.keys())
+            .filter(|d| d.source().is_some_and(|source| source.scope == scope))
             .cloned()
             .collect();
         for dependency in &removed {
@@ -465,12 +546,18 @@ impl Graph {
         }
         self.nodes.retain(|id, _| id.scope != scope);
         for node in self.nodes.values_mut() {
-            node.reads
-                .retain(|dependency| dependency.source().scope != scope);
+            node.reads.retain(|dependency| {
+                dependency
+                    .source()
+                    .is_none_or(|source| source.scope != scope)
+            });
         }
         self.observers.retain(|dependency, observers| {
             observers.retain(|id| id.scope != scope);
-            dependency.source().scope != scope && !observers.is_empty()
+            dependency
+                .source()
+                .is_none_or(|source| source.scope != scope)
+                && !observers.is_empty()
         });
         self.pending_memos.retain(|id| id.scope != scope);
         self.pending_effects.retain(|id| id.scope != scope);
@@ -553,5 +640,56 @@ mod tests {
         assert_eq!(g.next(), None);
         g.changed(&id("b")).unwrap();
         assert_eq!(g.next(), Some(id("choice")));
+    }
+
+    #[test]
+    fn document_bindings_follow_fields_and_replace_branch_dependencies() {
+        let mut g = Graph::default();
+        for source in ["rows", "a", "b"] {
+            g.register(id(source), Computation::Input).unwrap();
+        }
+        let field = |key: &str, name: &str| Dependency::Field(id("rows"), key.into(), name.into());
+        g.bind(1, BTreeSet::from([Dependency::Keys(id("rows"))]));
+        g.bind(2, BTreeSet::from([field("left", "label")]));
+        g.bind(3, BTreeSet::from([field("right", "label")]));
+        g.bind(4, BTreeSet::from([field("left", "price")]));
+        assert!(g.take_bindings().is_empty());
+        g.collection_changed(
+            &id("rows"),
+            &CollectionEdit::Patch {
+                key: "left".into(),
+                fields: vec!["label".into()],
+            },
+        )
+        .unwrap();
+        assert_eq!(g.take_bindings(), BTreeSet::from([2]));
+        g.collection_changed(
+            &id("rows"),
+            &CollectionEdit::Move {
+                key: "left".into(),
+                before: Some("right".into()),
+            },
+        )
+        .unwrap();
+        assert_eq!(g.take_bindings(), BTreeSet::from([1]));
+        g.collection_changed(&id("rows"), &CollectionEdit::Remove { key: "left".into() })
+            .unwrap();
+        assert_eq!(g.take_bindings(), BTreeSet::from([1, 2, 4]));
+        g.bind(2, BTreeSet::from([Dependency::Value(id("a"))]));
+        g.changed(&id("a")).unwrap();
+        assert_eq!(g.take_bindings(), BTreeSet::from([2]));
+        g.bind(2, BTreeSet::from([Dependency::Value(id("b"))]));
+        g.changed(&id("a")).unwrap();
+        assert!(g.take_bindings().is_empty());
+        g.begin_batch();
+        g.changed(&id("b")).unwrap();
+        assert!(g.take_bindings().is_empty());
+        g.end_batch().unwrap();
+        assert_eq!(g.take_bindings(), BTreeSet::from([2]));
+        g.unbind(2);
+        g.changed(&id("b")).unwrap();
+        assert!(g.take_bindings().is_empty());
+        g.forget(&id("rows")).unwrap();
+        assert_eq!(g.take_bindings(), BTreeSet::from([1, 3, 4]));
     }
 }

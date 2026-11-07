@@ -120,12 +120,25 @@ struct Registration {
 pub struct Session {
     pub sources: Sources,
     defaults: Sources,
-    graph: Graph,
+    pub(crate) graph: Graph,
     computed: BTreeMap<SourceId, Option<Value>>,
     registration: Option<Registration>,
 }
 
 impl Session {
+    /// Borrow a scalar store or settled memo; collections are read by key.
+    pub fn read_value(&self, source: &SourceId) -> Result<&Value, String> {
+        if self.graph.evaluation_needed(source)?.is_some() {
+            return Err(source.error("store callback must settle before document evaluation"));
+        }
+        if let Some(value) = self.computed.get(source) {
+            return value
+                .as_ref()
+                .ok_or_else(|| source.error("memo has no successful value"));
+        }
+        self.sources.read(source)
+    }
+
     pub(crate) fn save(&self) -> Value {
         json!({
             "sources": self.sources.save(),

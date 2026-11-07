@@ -1,6 +1,7 @@
 //! Named presentation sources. Registration is idempotent across TS reloads;
 //! writes are explicit, so consumers never need to compare whole viewmodels.
 
+pub mod bindings;
 pub mod graph;
 pub mod session;
 pub mod wire;
