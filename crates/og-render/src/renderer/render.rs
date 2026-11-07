@@ -792,14 +792,18 @@ impl Renderer {
                 .frame_mode(&self.device, &self.queue, self.width, self.height)
         });
         if let Some(mode) = oit_frame {
-            self.ensure_oit_pipelines(
-                mode,
-                &batches,
-                &skinned_batches,
-                &oit_billboards,
-                oit_particles,
-                oit_strips,
-            );
+            // Fork s60: drawn by the main pass and the resolve, as the
+            // materials' lit pipelines are.
+            frame_pipelines(|| {
+                self.ensure_oit_pipelines(
+                    mode,
+                    &batches,
+                    &skinned_batches,
+                    &oit_billboards,
+                    oit_particles,
+                    oit_strips,
+                )
+            });
         }
         for run in sprite_frame
             .runs
