@@ -1074,12 +1074,32 @@
       {
         "member": "Rive import (.riv, og_ui::rive)",
         "summary": "A `.riv` under assets/ (format 7) is converted at cook time, never by the Rive runtime: each artboard its `<file>.riv.ogt` import settings choose (role, name, fit, align, state-machine) cooks to an og.RiveArtboard blob, id `<file>.riv#<Artboard>` (docs/ui.md §11.2). Phase 1 converts artboards, groups, shapes (points paths, rectangles, ellipses, triangles, polygons, stars), fills by both rules, centred strokes, solid, linear and radial paints, six blend modes, linear animations (hold, linear, cubic and value keys; loop, ping-pong, work areas), nested artboards and a state machine whose entry plays one animation. Luau, images, text and other state machines are cook errors that name the feature and object. og_ui::rive::Player plays one on the tick, draws it as UI paths, lists its objects as elements and saves and restores its state."
+      },
+      {
+        "member": "flipbook cook: key auto ... holes",
+        "summary": "`key auto <tolerance> holes` also keys enclosed pockets of the background colour that the border flood does not reach (the magenta inside a slash arc); `og sprite inspect --holes` measures the same and its report counts texels near the key that are still drawn (`nearKey`)."
+      },
+      {
+        "member": "flipbook cook: source scale",
+        "summary": "A `source` block takes `scale`, multiplied by the sheet's, so a clip drawn larger than the others is brought to their size."
+      },
+      {
+        "member": "flipbook cook: crop each",
+        "summary": "`crop each` cuts every source to its own drawn bounds and shelf-packs the cells into one atlas, each with its own pivot: loose PNGs become one sheet. The cook note reports the packed size and the drawn share."
       }
     ],
     "fixed": [
       {
         "member": "og.ui.toggleSwitch, og.ui.dropdown",
         "summary": "A switch whose knob all but vanishes into the track it is on (contrast under 1.5:1, the neutral default style's white on white) turns the inverse ink while on, so the knob and its tick read. A dropdown's rows are inset a step beyond the focus ring's reach, so a focused end row's ring keeps the list's ground round it and no longer stands for the list's edge."
+      },
+      {
+        "member": "flipbook cook: key auto on generated GIFs",
+        "summary": "`key auto` took a quantised flat border (near shades straddling the colour buckets, as a GIF encoder writes them) for a non-flat one and refused the sheet; the border colour is now the mean of the texels near its mode."
+      },
+      {
+        "member": "og.destruction carve2d, fill2d, explode2d, fracture2d in a system",
+        "summary": "They threw \"not available while a system runs\" when called from a system's tick; they now use the running system's context."
       },
       {
         "member": "og.CharacterController snapDistance",
