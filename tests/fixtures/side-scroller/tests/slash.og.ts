@@ -11,8 +11,8 @@ export default playtest({
   commands: [
     "0.3:run",
     "1.5:attack",
-    "2.0:screenshot:slash.png",
-    "2.0:expect:frame:references/metal/slash.png:rmse:<=3",
+    "1.9:screenshot:slash.png",
+    "1.9:expect:frame:references/metal/slash.png:rmse:<=3",
     "2.6:expect:state:hits==1",
     "2.6:expect:state:detached>=1",
     "2.6:expect:state:steps>=2",

@@ -127,6 +127,62 @@ def walls():
         f.write("\n".join(lines) + "\n")
 
 
+GROUND_W, GROUND_H = 512, 96  # the floor's body, in texels (repeats along x)
+
+
+def ground():
+    """The floor's body under its lit strip, as Hollow Knight's floors: rough
+    stones packed in dark earth (Voronoi cells, larger with depth), each lit
+    along its top edge, fading into the dark below. Wraps along x."""
+    rnd = random.Random(23)
+    img = Image.new("RGBA", (GROUND_W, GROUND_H), (0, 0, 0, 0))
+    px = img.load()
+    seeds = []
+    for _ in range(260):
+        y = GROUND_H * rnd.random() ** 1.3
+        seeds.append((rnd.uniform(0, GROUND_W), y, rnd.uniform(0.75, 1.2),
+                      rgb(rnd.choice(["#2c3043", "#272a3a", "#33354b", "#2e2c3a", "#2a3140"]))))
+
+    def cell(x, y):
+        best, second, k = 1e9, 1e9, 0
+        for i, (sx, sy, _, _) in enumerate(seeds):
+            dx = abs(x - sx)
+            dx = min(dx, GROUND_W - dx)
+            d = dx * dx + (y - sy) * (y - sy) * 1.8  # flatter stones
+            if d < best:
+                best, second, k = d, best, i
+            elif d < second:
+                second = d
+        return k, math.sqrt(second) - math.sqrt(best)
+
+    cells = [[cell(x + 0.5, y + 0.5) for x in range(GROUND_W)] for y in range(GROUND_H)]
+    edge = noise1(5, GROUND_W, [32, 8])
+    for y in range(GROUND_H):
+        fade = 0.3 + 0.7 * (1 - y / GROUND_H) ** 1.4
+        for x in range(GROUND_W):
+            if y < int(edge[x] * 4):  # the ragged top
+                continue
+            k, gap = cells[y][x]
+            _, _, shade, c = seeds[k]
+            if gap < 1.6:
+                c, shade = (9, 9, 14), 1.0  # earth between the stones
+            elif y == 0 or cells[y - 1][x][0] != k or cells[y - 1][x][1] < 1.6:
+                c = tuple(min(255, int(v * 1.6 + 16)) for v in c)  # its lit top
+            elif y + 1 < GROUND_H and cells[y + 1][x][1] < 1.6:
+                c = tuple(int(v * 0.6) for v in c)  # its underside
+            px[x, y] = tuple(int(v * shade * fade) for v in c) + (255,)
+    # A few roots hanging through it.
+    for _ in range(9):
+        x = rnd.randrange(GROUND_W)
+        for y in range(3, rnd.randint(18, 40)):
+            x = (x + rnd.choice((-1, 0, 0, 1))) % GROUND_W
+            f = (1 - y / GROUND_H) ** 1.5
+            px[x, y] = (int(64 * f), int(46 * f), int(34 * f), 255)
+    save(img, "bg", "ground.png")
+    with open(os.path.join(ASSETS, "bg", "ground.png.ogt"), "w") as f:
+        f.write("type import\nversion 1\n---\ntexture {\n  kind pixel\n}\n")
+
+
 def draw(w, h, fn):
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     px = img.load()
@@ -264,6 +320,7 @@ def moon():
 
 def main():
     walls()
+    ground()
     props = (("pillar", pillar()), ("torch", torch()), ("flame", flame()),
              ("tufts_a", tufts(1)), ("tufts_b", tufts(2)), ("mushroom", mushroom()),
              ("sword", sword()), ("chain", chain()), ("moon", moon()))

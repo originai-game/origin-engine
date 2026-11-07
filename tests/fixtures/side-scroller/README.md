@@ -15,33 +15,40 @@ front of it apart. It exercises the 2D stack together on the real engine:
   state. The attack clip's `hit` event (frame 3) is the blow.
 - **Pixel terrain.** The floor, the roof and the mound are one
   og.PixelTerrain built with fill2d (rock over bedrock); the hit calls
-  og.destruction.explode2d from the system, throwing og.PixelPiece debris.
+  og.destruction.explode2d from the system where the blade bites the
+  mound, throwing og.PixelPiece debris. Under the floor's lit strip a
+  generated stone body (`assets/bg/ground.png`) fades into the dark.
 - **2D light.** og.Lighting2D with two torches and a moon spot (og.Light2D,
   `castShadows`, `sourceRadius`), glowing flames and mushrooms.
 - **Camera and parallax.** og.Follow2D (clamped) follows the knight; the
   cave's two far walls are one tilemap (`assets/bg/cave.ogt`) of two layers
   at parallax 0.3 and 0.6, the far one unlit.
+- **Pixel effects.** `vfx2d()` in `src/main.ts` plays a `type vfx2d`
+  recipe once as a sprite and flipbook (`assets/fx/`): `hit` (a steel star,
+  shards and a broken ring) where the blade bites, `dust` at the heel on
+  each run step; `Drive` despawns each when its clip is finished.
+- **Sharp pixels.** `render: { antialias: "msaa4" }`. The default tier is
+  TAA, whose jitter and history blend soften nearest-sampled pixel art:
+  in this frame it cut the mean luma gradient to 0.52–0.66 of the
+  untreated frame (the knight 0.66, the ground 0.52), more under the
+  follow camera's shake.
 - **Loose PNGs packed.** The props (`assets/props/*.png`) are the still
   sources of one sheet, `props.ogt`, with `crop each`.
 
-`art.py` generates the walls, their tileset and map, the props, their sheet
-and `src/art.ts` (each prop's cell size); rerun it to change them. The GIFs
+`art.py` generates the walls, their tileset and map, the floor's body, the
+props, their sheet and `src/art.ts` (each prop's cell size); rerun it to change them. The GIFs
 are copied from the generated character set.
-
-**vfx2d.** `vfx2d()` in `src/main.ts` is where the pixel effects go once
-`type vfx2d` lands: `slash` on the hit frame at the blade's tip, `dust` on
-each run step. Today it draws nothing; adding an effect is the commented
-`og.vfx.spawn` line and an `assets/fx/<name>.ogt`.
 
 What it checks (`og test tests/fixtures/side-scroller`, `tests/slash.og.ts`):
 the graph reaches the attack state (`the knight slashes`) and returns to
 idle (`state==0`), the run fires step events, the hit fires once and the
 blast cuts loose at least one piece (`the mound breaks into pieces`,
-`detached>=1`; 22 today); the frame at 2.0 s, the debris in the air beside
-the torch, matches `references/metal/slash.png` (rmse ≤ 3).
+`detached>=1`; 25 today); the frame at 1.9 s, two ticks of the blade's
+crescent after the hit with the mound's pieces lifting in its spark's
+light, matches `references/metal/slash.png` (rmse ≤ 3).
 
-Budget: under 10 s warm. Measured 1.8 s of run, 4.5 s with its cook and
-check.
+Budget: under 10 s warm. Measured 2.4 s of run (2.6 s with its check); a
+cold cook is 5.7 s with the debug `og`, most of it the two vfx2d recipes.
 
 ## Measured
 

@@ -5,8 +5,8 @@
 // follows the knight and the cave's far walls scroll by parallax.
 //
 //   og run tests/fixtures/side-scroller --size 960x540 --commands "0.3:run;1.5:attack;3:quit"
-import { og, defineResource, defineSystem, u32, f32 } from "@origingame/engine";
-import type { FlipbookInfo, World } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, u32, f32 } from "@origingame/engine";
+import type { Entity, FlipbookInfo, World } from "@origingame/engine";
 import { PROPS } from "./art.ts";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
@@ -22,8 +22,14 @@ const CELL = 2 * PX;
 const CAVE = { x: -20, y: -11, w: 720, h: 330 };
 /** The floor the knight runs on (world y), and where the rock mound stands. */
 const FLOOR = -4.5;
-const MOUND = { x: 6.2, y: FLOOR + 0.55 };
+const MOUND = { x: 1.5, y: FLOOR + 0.55 };
 const RUN_SPEED = 4.2;
+/** How far ahead of the knight's feet its slash bites. */
+const BLADE = 1.7;
+/** The light layer only the floor's body is in (og.LightMask2D). */
+const BODY = 2;
+/** The hit spark's light at its first frame. */
+const HIT_LIGHT = 2.2;
 
 /** The knight's states by the sheet's clip names (a GraphDesc.sprite graph). */
 const KNIGHT = `type animgraph
@@ -71,13 +77,23 @@ const Play = defineResource("Play", {
   hits: u32(),
 });
 
+/** A pixel effect playing once; `Drive` despawns it when its clip is done. */
+const Fx = defineComponent("Fx", { name: u32() });
+
 /**
- * Where a vfx2d effect goes once `type vfx2d` lands (og.vfx.spawn of a
- * cooked `fx/<name>.ogt`): `slash` on the attack's hit frame, `dust` on each
- * footstep. Until then it marks the spot with nothing drawn.
+ * A pixel effect (`assets/fx/<name>.ogt`, `type vfx2d`: a Forge recipe the
+ * cook renders into a flipbook) played once at `at`, one texel a screen
+ * pixel as the knight's: `hit` where the blade bites the rock, `dust` at
+ * the heel on each run step.
  */
-function vfx2d(_world: World, _name: "slash" | "dust", _at: { x: number; y: number }): void {
-  // og.vfx.spawn(world, { asset: must(og.load.vfx(world, `fx/${name}.ogt`)), position: { ...at, z: 0 } });
+function vfx2d(world: World, name: "hit" | "dust", at: { x: number; y: number }): void {
+  const fx = must(og.load.flipbook(world, `fx/${name}.ogt`));
+  const e = must(world.spawn({ position: { x: at.x, y: at.y, z: 0 } }));
+  must(world.insert(e, og.Sprite, { width: fx.frameWidth * PX, height: fx.frameHeight * PX, layer: name === "hit" ? 12 : 11, glow: name === "hit" ? 0.3 : 0 }));
+  must(world.insert(e, og.Flipbook, { sheet: fx.sheet, clip: 0 }));
+  must(world.insert(e, Fx, { name: name === "hit" ? 1 : 0 }));
+  // The blade's spark lights what it throws, fading with its clip (Fade).
+  if (name === "hit") must(world.insert(e, og.Light2D, { color: { r: 0.75, g: 0.85, b: 1 }, intensity: HIT_LIGHT, radius: 4, falloff: 1.4, castShadows: false }));
 }
 
 /** A prop of the packed sheet (props/props.ogt), standing on its feet at `at`, one texel two screen pixels. */
@@ -120,6 +136,17 @@ function build(world: World): void {
   fill(MOUND.x, MOUND.y - 0.2, 1.1);
   fill(MOUND.x + 0.8, MOUND.y - 0.5, 0.8);
 
+  // The floor's body under its lit strip: packed stones fading into the dark,
+  // over the terrain's solid cells (the blasts stay above it). The floor's
+  // edge shadows it from the torches, so a faint cool fill of its own light
+  // layer (BODY) keeps its stones legible, as Hollow Knight's floors are.
+  const body = must(og.load.texture(world, "bg/ground.png"));
+  for (const x of [-24, -8, 8, 24]) {
+    const e = must(world.spawn({ name: `ground@${x}`, position: { x, y: FLOOR - 0.45, z: 0 } }));
+    must(world.insert(e, og.Sprite, { texture: body, width: 512 * CELL, height: 96 * CELL, anchor: { x: 0.5, y: 1 }, layer: 6 }));
+    must(world.insert(e, og.LightMask2D, { layers: 1 | BODY }));
+  }
+
   // The far walls, scrolling slower than the cave (a tilemap of two parallax layers).
   const walls = must(og.load.tilemap(world, "bg/cave.ogt"));
   const back = must(world.spawn({ name: "walls", position: { x: -16, y: 6.2, z: 0 } }));
@@ -132,7 +159,7 @@ function build(world: World): void {
   prop(world, props, "pillar", { x: 14.5, y: FLOOR }, 4);
   prop(world, props, "chain", { x: -1.2, y: 4.1 }, 4);
   prop(world, props, "chain", { x: 9.8, y: 3.4 }, 4);
-  prop(world, props, "sword", { x: 0.6, y: FLOOR - 0.15 }, 6);
+  prop(world, props, "sword", { x: 4.6, y: FLOOR - 0.15 }, 7);
   for (const [x, k] of [[-10, "a"], [-5.5, "b"], [-1, "a"], [3, "b"], [8, "a"], [12.5, "b"]] as const) prop(world, props, `tufts_${k}`, { x, y: FLOOR - 0.06 }, 11);
   prop(world, props, "mushroom", { x: -4.2, y: FLOOR - 0.06 }, 11, { glow: 0.6 });
   prop(world, props, "mushroom", { x: 11.2, y: FLOOR - 0.06 }, 11, { glow: 0.6, flipX: true });
@@ -150,6 +177,8 @@ function build(world: World): void {
     must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.55, b: 0.22 }, intensity: 1.8, radius: 7, falloff: 1.6, sourceRadius: 0.3, castShadows: true }));
     return e;
   };
+  const floorFill = must(world.spawn({ name: "floorFill", position: { x: 0, y: 0, z: 0 } }));
+  must(world.insert(floorFill, og.Light2D, { kind: "global", color: { r: 0.55, g: 0.6, b: 0.8 }, intensity: 0.6, layers: BODY }));
   torch(-3, FLOOR + 2.3);
   torch(8.4, FLOOR + 2.3);
   const moon = must(world.spawn({ name: "moon", position: { x: 2, y: 8, z: 0 } }));
@@ -168,7 +197,7 @@ function build(world: World): void {
 }
 
 /** Moves the knight by the graph's speed and counts what the run reaches. */
-const Drive = defineSystem("Drive", { reads: [og.FlipbookEvent, og.PixelDetached], writes: [Play, og.AnimationGraph, og.Transform] }, (_q, time, world) => {
+const Drive = defineSystem("Drive", { reads: [og.FlipbookEvent, og.PixelDetached], writes: [Play, og.AnimationGraph, og.Transform, og.Flipbook, og.Sprite, og.Light2D, Fx] }, (_q, time, world) => {
   const play = must(world.resource(Play));
   const knight = world.find("knight");
   if (knight === null) return;
@@ -183,16 +212,16 @@ const Drive = defineSystem("Drive", { reads: [og.FlipbookEvent, og.PixelDetached
     if (e.entity !== knight) continue;
     if (e.name === "step") {
       play.steps += 1;
-      vfx2d(world, "dust", { x: t.position.x, y: t.position.y });
+      vfx2d(world, "dust", { x: t.position.x - 0.3, y: t.position.y });
     }
     if (e.name === "hit") {
       play.hits += 1;
-      const tip = { x: t.position.x + 1.6, y: t.position.y + 1.1 };
-      vfx2d(world, "slash", tip);
-      // The slash carries into the rock: a blast at the mound throws it.
-      const cave = world.find("cave");
-      if (cave !== null) must(og.destruction.explode2d(world, { point: { x: MOUND.x - 0.4, y: MOUND.y, z: 0 }, radius: 0.9, debris: 0.6, pieceCells: 30, speed: 9 }));
-      must(og.camera.shake(world, 0.35));
+      // The blade's reach, where it bites the mound's face: a spark, and a
+      // blast there throwing the rock it breaks.
+      const bite = { x: t.position.x + BLADE, y: FLOOR + 0.7 };
+      vfx2d(world, "hit", { x: bite.x - 0.8, y: bite.y + 0.3 });
+      must(og.destruction.explode2d(world, { point: { x: bite.x + 0.3, y: bite.y - 0.1, z: 0 }, radius: 0.7, debris: 0.9, pieceCells: 36, speed: 20 }));
+      must(og.camera.shake(world, 0.3));
     }
   }
   for (const d of world.events(og.PixelDetached)) {
@@ -201,12 +230,35 @@ const Drive = defineSystem("Drive", { reads: [og.FlipbookEvent, og.PixelDetached
   }
 });
 
+/** Fades the light of each pixel effect that has one over its clip's first 0.4 s. */
+const FadeLight = defineSystem("FadeLight", { reads: [Fx, og.Flipbook], writes: [og.Light2D] }, (q) => {
+  for (const a of q.archetypes()) {
+    const time = a.column(og.Flipbook).time;
+    const light = a.column(og.Light2D).intensity;
+    for (let i = 0; i < a.count; i++) light[i] = HIT_LIGHT * Math.max(0, 1 - time[i]! / 0.4);
+  }
+});
+
+/** Despawns each pixel effect whose clip is finished. */
+const Fade = defineSystem("Fade", { reads: [Fx, og.Flipbook], after: ["FadeLight"] }, (q, _t, world) => {
+  const done: Entity[] = [];
+  for (const a of q.archetypes()) {
+    const finished = a.column(og.Flipbook).finished;
+    for (let i = 0; i < a.count; i++) if (finished[i]) done.push(a.entity(i));
+  }
+  for (const e of done) must(world.despawn(e));
+});
+
 export default og.game({
   tick: 60,
   seed: 1,
   resources: [Play],
-  systems: [...og.systems.cameras, Drive],
+  systems: [...og.systems.cameras, Drive, FadeLight, Fade],
   start: build,
+  // Pixel art samples nearest and must stay on its texels: TAA (the default
+  // tier) jitters and blends history, softening every sprite by a third and
+  // more under the follow camera's shake. MSAA keeps sprites sharp.
+  render: { antialias: "msaa4" },
   commands: {
     run: (world) => { must(world.resource(Play)).speed = RUN_SPEED; },
     stop: (world) => { must(world.resource(Play)).speed = 0; },

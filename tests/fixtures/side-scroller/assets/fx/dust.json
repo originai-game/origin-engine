@@ -1,0 +1,9 @@
+{
+  "name": "Step dust",
+  "w": 40, "h": 24, "frames": 8, "fps": 15, "seed": 2,
+  "ramps": { "main": "dust", "alt": "dust", "smoke": "dust", "spark": "white" },
+  "pivot": [0.5, 0.9],
+  "layers": [
+    { "type": "puffs", "ramp": "$smoke", "count": 4, "x": 0, "y": 0.7, "spread": 0.5, "flat": 0.6, "rise": 0.3, "r0": 0.12, "r1": 0.3, "life": [0.5, 0.9], "emit": 0.1, "dir": -90, "gain": 0.45, "dissolve": 0.6 }
+  ]
+}
