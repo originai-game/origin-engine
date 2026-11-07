@@ -100,6 +100,8 @@ mod textures;
 mod tilemap;
 #[path = "../timeline.rs"]
 mod timeline;
+#[path = "../vfx2d.rs"]
+mod vfx2d;
 #[path = "../video_stream.rs"]
 mod video_stream;
 #[path = "../vox.rs"]

@@ -131,6 +131,7 @@ pub(super) fn scan_with(
                         og_ui::style_file::STYLE_TYPE,
                         og_ui::doc::SCREEN_TYPE,
                         og_ui::doc::COMPONENT_TYPE,
+                        vfx2d::VFX2D_TYPE,
                     ]
                     .contains(&h.ty.as_str())
                 });
@@ -168,6 +169,8 @@ pub(super) fn scan_with(
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
+                    // A pixel effect becomes a sheet (`vfx2d::expand`).
+                    Ok(doc) if doc.ty == vfx2d::VFX2D_TYPE => Kind::Flipbook,
                     Ok(doc) if doc.ty == og_anim::RIG2D_TYPE => Kind::Rig2d,
                     Ok(doc) if doc.ty == crate::shader::SHADER_TYPE => Kind::Shader,
                     Ok(doc) if doc.ty == crate::shader::POST_TYPE => Kind::Post,
@@ -195,7 +198,7 @@ pub(super) fn scan_with(
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, model, particles, style, icons, tileset, tilemap, flipbook, rig2d, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, model, particles, style, icons, tileset, tilemap, flipbook, vfx2d, rig2d, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));

@@ -2633,6 +2633,7 @@ dependencies = [
  "hound",
  "image",
  "image_dds",
+ "libm",
  "meshopt",
  "mikktspace",
  "miniz_oxide 0.8.9",

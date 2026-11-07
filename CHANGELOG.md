@@ -15,6 +15,15 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Pixel-art effects from recipes.** An `.ogt` of `type vfx2d` is a
+  Pixel VFX Forge recipe, Scenario's JSON unchanged (inline, or
+  `recipe "slash.json"`), with `duration`, `loop`, `event` and `impact`
+  lines that mean what they mean in a `type vfx`. The cook renders it
+  with the Forge's renderer ported to Rust, byte for byte the frames the
+  Forge draws and the same on every host, into an ordinary flipbook
+  sheet: the texture `<id>#sheet` (pixel art), one clip with the recipe's
+  fps and loop, and a FlipbookEvent `impact` on the impact frame.
+  `og api show pixel-vfx` documents the recipe and its 22 layer types.
 - **Module-scope state warnings.** Outside a publish build, the engine's
   first log warns of each module-scope `let`/`var` a game writes and each
   module-scope container it mutates, by file, line and name: that state

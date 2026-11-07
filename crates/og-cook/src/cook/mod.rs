@@ -64,6 +64,7 @@ pub mod ts_refs;
 pub mod ui_screens;
 pub mod vector;
 mod vfx;
+pub mod vfx2d;
 pub mod video;
 pub mod vox;
 
@@ -470,7 +471,9 @@ pub fn cook_project_with_texture_cache(
         mut early_errors,
     } = scan::scan_with(&assets_dir, &|path| cook_index.read(path))?;
     let mut consumed: BTreeSet<String> = BTreeSet::new();
-    // Flipbooks of animated sources become ordinary sheets (`animated.rs`).
+    // Pixel effects and flipbooks of animated sources become ordinary
+    // sheets (`vfx2d.rs`, `animated.rs`).
+    vfx2d::expand(&mut sources, &mut consumed);
     animated::expand(&mut sources, &mut consumed);
     // The `type model` texts, built again under the art contract's face
     // budget once the look is read (below).

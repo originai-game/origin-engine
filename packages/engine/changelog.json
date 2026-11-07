@@ -552,6 +552,10 @@
         "summary": "Composed effects: an `.ogt` of `type vfx` is one effect as a timeline of emitter, mesh, trail, beam, light, decal, flash, shake and sound elements, each with `at`, `offset`, `rotate` and `life` or `until`, with `duration`, `loop`, `event <s> \"<name>\"` and `impact <s>` lines shared with `type vfx2d`. og.vfx.spawn plays one in a call, at a position or following a parent, with a scale, a tint and a seed; og.Vfx is the component it adds. The engine's og.vfx system sends og.VfxEvent on the tick each event lands (the impact is named `impact`), adds shakes, plays sounds and despawns ended effects; the visuals are expanded by the renderer from (asset, seed, startTick, tick) alone, so replays and restores draw the same. `og cook` refuses a vfx that names an asset not in the project."
       },
       {
+        "member": "type vfx2d",
+        "summary": "Pixel-art 2D effects: an `.ogt` of `type vfx2d` is a Pixel VFX Forge recipe (Scenario's JSON, its 22 layer types keyed by their own `type`, unchanged), inline or named with `recipe \"<file>.json\"`, with the `duration`, `loop`, `event <s> \"<name>\"` and `impact <s>` lines of `type vfx`. The cook renders it with the Forge's renderer ported to Rust (the Forge's frames byte for byte, the same on every host) into an ordinary flipbook sheet: its texture `<id>#sheet` (pixel art), one clip named after the file with the recipe's fps and loop, and an og.FlipbookEvent `impact` on the impact frame (the `impact` line, the recipe's, or the frame with the largest jump in coverage). An effect pack (`kind vfx`) may ship them: `og vfx add` installs the recipe files with their `.ogt` files. `og api show pixel-vfx` has the format and the 22 layer types."
+      },
+      {
         "member": "og vfx add, extension kind vfx",
         "summary": "An effect pack is an extension of `kind vfx` (no code): `og vfx add <name|directory> [project]` installs an editable copy into assets/vfx/<name>/, where its effects name their emitters and materials as `vfx/<name>/<file>`; `og ui list` names installed and bundled packs."
       },
