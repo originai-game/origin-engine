@@ -10,11 +10,13 @@ function must<T>(result: Result<T>): T {
 const Duel = defineResource("Duel", {
   sum0: f32(), sum1: f32(),
   droppedAt: u32(), drops: u32(), rejoinedAt: u32(), rejoins: u32(),
+  // The scripted bot's switch (`bot:<n>`), world state so a restore or a rollback keeps it.
+  bot: u32(),
 });
-let bot = false;
 
-const Submit = defineSystem("Submit", { reads: [og.Lockstep] }, (_q, time, world) => {
+const Submit = defineSystem("Submit", { reads: [og.Lockstep, Duel] }, (_q, time, world) => {
   const lock = must(world.resource(og.Lockstep));
+  const bot = must(world.resource(Duel)).bot !== 0;
   const seat = lock.localPlayer;
   const phase = (time.tick + seat * 17) % 50;
   const input = !bot || time.tick < 60
@@ -67,7 +69,7 @@ export default og.game({
   systems: [Submit, Apply, Seats],
   start,
   commands: {
-    bot: (_world, args) => { bot = Number(args[0]) > 0; },
+    bot: (world, args) => { must(world.resource(Duel)).bot = Number(args[0]) > 0 ? 1 : 0; },
     rollback: (world, args) => {
       const lock = must(world.resource(og.Lockstep));
       lock.mode = "rollback";

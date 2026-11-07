@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "module-scope state warnings",
+      "summary": "Outside a publish build, the engine's first log warns of each module-scope `let`/`var` a game's own files write and each module-scope container they mutate, by file, line and name (`src/main.ts:2: module-scope let 'ticks' is written; ...`): that state is outside the world snapshot, so a restore, a rollback or a capture fork does not bring it back. Keep it in a component or a resource. A run report that expects no warnings sees them."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "tests/fixtures/lockstep-room",
+      "summary": "The fixture's scripted-bot switch (`bot:<n>`) is a field of its Duel resource instead of a module variable, so a restore or a rollback keeps it, as the module-scope state warning asks of games. The fixture's world hashes move (Duel has one more field); no test pins them, and peers still match."
+    }
+  ]
+}
