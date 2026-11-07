@@ -21,7 +21,10 @@
 //! - `text-mixed-runs` ([`mixed_runs_ui`]): labels mixing Latin (the
 //!   display face as the body) with Japanese, Arabic (shaped), Hebrew and
 //!   Devanagari, each run in its own face, one wrapping; rich text; a
-//!   focused field with a mixed name.
+//!   focused field with a mixed name;
+//! - `text-colr`: COLR v1 colour glyphs (gradients, a composite) on the
+//!   font's colour page, and glyphs in the text's colour (palette entry
+//!   0xFFFF) on its foreground page, under a green and a magenta label.
 
 use super::scenes::mixed_runs_ui;
 use og_bundle::runtime::{Bundle, CookedFont};
@@ -37,17 +40,24 @@ use std::sync::Arc;
 /// The fonts the frames draw with, in the order the scenes take them: the
 /// files of tests/fixtures/ui-text/assets/fonts, each cooked with its settings
 /// `tests/text-fonts/assets/fonts/<file>.ogt`.
-pub const FONTS: [&str; 6] = [
+pub const FONTS: [&str; 7] = [
     "Inter-Display.ttf",
     "NotoSansSC-Regular-subset.ttf",
     "NotoSansArabic-subset.ttf",
     "NotoSansHebrew-subset.ttf",
     "NotoSansDevanagari-subset.ttf",
     "NotoSansJP-subset.otf",
+    "test_glyphs-glyf_colr_1.ttf",
 ];
 
 /// The cooked-font reference frames.
-pub const TEXT_SCENES: [&str; 4] = ["text-bidi", "text-kerning", "text-edit", "text-mixed-runs"];
+pub const TEXT_SCENES: [&str; 5] = [
+    "text-bidi",
+    "text-kerning",
+    "text-edit",
+    "text-mixed-runs",
+    "text-colr",
+];
 
 /// The cooked [`FONTS`] of a bundle (the cook's manifest), each blob's
 /// bytes given by `read` (its file under `cooked/`).
@@ -81,6 +91,7 @@ pub fn text_scene(name: &str, fonts: &[CookedFont]) -> Result<(RenderScene, Rend
         "text-kerning" => kerning_scene(fonts),
         "text-edit" => edit_scene(fonts),
         "text-mixed-runs" => mixed_runs_scene(fonts),
+        "text-colr" => colr_scene(fonts),
         _ => {
             return Err(format!(
                 "no cooked-font text frame {name} (there are {})",
@@ -244,6 +255,123 @@ fn band(ui: &mut Ui, top: f32, f: impl FnOnce(&mut Ui)) {
         },
         f,
     );
+}
+
+/// A colour font's pages in the scene as og-runtime adds them
+/// (extract::add_font): the field's, then the colour pages (a distance
+/// range of 0), then those in the text's colour; the first page's handle
+/// lays the text out, every page draws it.
+fn add_pages(scene: &mut RenderScene, f: &CookedFont) -> Vec<og_render::FontHandle> {
+    let m = &f.meta;
+    let all = f
+        .pages
+        .iter()
+        .map(|p| (p, false, false))
+        .chain(f.color_pages.iter().map(|p| (p, true, false)))
+        .chain(f.foreground_pages.iter().map(|p| (p, true, true)));
+    let mut handles = Vec::new();
+    for (p, (data, colour, foreground)) in all.enumerate() {
+        let atlas = scene.add_texture(if colour {
+            data.clone()
+        } else {
+            TextureData {
+                mips: Mips::None,
+                color_space: ColorSpace::Linear,
+                ..data.clone()
+            }
+        });
+        let glyphs = f
+            .glyphs
+            .iter()
+            .filter_map(|g| {
+                let own = g.page as usize == p;
+                let bounds = |b: [f32; 4]| if own { b } else { [0.0; 4] };
+                Some(Glyph {
+                    key: g.key()?,
+                    advance: g.advance,
+                    plane_bounds: bounds([
+                        g.plane_left,
+                        g.plane_bottom,
+                        g.plane_right,
+                        g.plane_top,
+                    ]),
+                    atlas_bounds: bounds([
+                        g.atlas_x as f32,
+                        g.atlas_y as f32,
+                        (g.atlas_x + g.atlas_w) as f32,
+                        (g.atlas_y + g.atlas_h) as f32,
+                    ]),
+                })
+            })
+            .collect();
+        handles.push(scene.add_font(MsdfFont {
+            atlas,
+            distance_range: if colour { 0.0 } else { m.px_range },
+            foreground,
+            line_height: m.ascender - m.descender + m.line_gap,
+            glyphs,
+            kerning: Vec::new(),
+        }));
+    }
+    handles
+}
+
+fn colr_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene, fonts);
+    let pages = add_pages(&mut scene, &fonts[6]);
+    let colr = UiFont::new(pages[0], scene.font(pages[0]).expect("the field page"));
+    let mut ui = ui_of(&f, &colr, &f.body);
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), vp());
+        panel(&mut ui, |ui| {
+            let t = *ui.theme();
+            ui.label(
+                "Caption",
+                "COLR v1: gradients, a composite, the text's colour",
+                LabelDesc::default(),
+            );
+            // A linear and a radial gradient, a composite, then a gradient
+            // through the text's colour and the text's colour alone.
+            for (id, color) in [
+                ("Green", Srgba::rgb(0, 200, 60)),
+                ("Magenta", Srgba::rgb(220, 40, 200)),
+            ] {
+                ui.label(
+                    id,
+                    "\u{F0100}\u{F0503}\u{F0600} \u{F0B00}\u{F0B06}",
+                    LabelDesc {
+                        step: Some(TypeStep {
+                            size: 64.0,
+                            line_height: 80.0,
+                            ..t.type_ramp.body
+                        }),
+                        font: FontRole::Display,
+                        color: Some(color),
+                        nowrap: true,
+                        ..LabelDesc::default()
+                    },
+                );
+            }
+        });
+        ui.end();
+    }
+    let (mut scene, desc) = shot(&[&ui], scene);
+    // The colour font's other pages draw each of its texts too.
+    let overlay = scene.overlay.as_mut().expect("the frame's overlay");
+    let more: Vec<og_render::Text> = overlay
+        .texts
+        .iter()
+        .filter(|t| t.font == pages[0])
+        .flat_map(|t| {
+            pages[1..].iter().map(move |&h| og_render::Text {
+                font: h,
+                ..t.clone()
+            })
+        })
+        .collect();
+    overlay.texts.extend(more);
+    (scene, desc)
 }
 
 fn bidi_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {

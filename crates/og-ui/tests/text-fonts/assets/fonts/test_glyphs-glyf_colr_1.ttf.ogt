@@ -1,0 +1,8 @@
+type import
+version 1
+---
+font {
+  charset
+  chars " 󰄀󰔃󰘀󰬀󰬆"
+  color true
+}
