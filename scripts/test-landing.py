@@ -26,6 +26,7 @@ class Landing(unittest.TestCase):
         self.run_git(self.root, 'init', '-b', 'main', str(self.a))
         self.run_git(self.a, 'config', 'user.email', 'test@example.invalid')
         self.run_git(self.a, 'config', 'user.name', 'Landing Test')
+        (self.a / '.gitignore').write_text('/.og/tmp/\n')
         (self.a / 'scripts').mkdir()
         for name in ('land.sh', 'lock.sh'):
             shutil.copyfile(ROOT / name, self.a / 'scripts' / name)

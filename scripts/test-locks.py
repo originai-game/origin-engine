@@ -190,5 +190,76 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
                         p.unlink()
 
 
+class GateTemp(unittest.TestCase):
+    def test_term_removes_only_owned_scratch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sentinel = root / '.og/tmp/other-run'
+            sentinel.mkdir(parents=True)
+            job = subprocess.Popen(['sh', '-eu', '-c', '''
+. "$LOCK"
+og_temp_prepare "$ROOT"
+echo "$TMPDIR"
+while :; do sleep 0.1; done
+'''], env=dict(os.environ, LOCK=str(LOCK), ROOT=str(root),
+              OG_GPU_ROOT=str(root / 'gpu')), stdout=subprocess.PIPE, text=True)
+            try:
+                path = Path(job.stdout.readline().strip())
+                self.assertTrue(path.is_dir())
+                job.terminate()
+                self.assertEqual(job.wait(timeout=5), 143)
+                self.assertFalse(path.exists())
+                self.assertTrue(sentinel.is_dir())
+            finally:
+                if job.poll() is None:
+                    job.kill()
+                    job.wait()
+                job.stdout.close()
+
+    def test_private_checkout_temp_and_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'checkout with spaces'
+            root.mkdir()
+            env = dict(os.environ, LOCK=str(LOCK), ROOT=str(root),
+                       GATE=str(Path(directory) / 'gate'),
+                       OG_GPU_ROOT=str(root / 'gpu'), TMPDIR='/nonexistent-system-temp')
+            result = subprocess.run(['sh', '-eu', '-c', '''
+. "$LOCK"
+og_temp_prepare "$ROOT"
+echo "$TMPDIR"
+test "$TMP" = "$TMPDIR" && test "$TEMP" = "$TMPDIR"
+touch "$TMPDIR/parent"
+sh -eu -c '. "$LOCK"; og_temp_prepare "$ROOT"; echo "$TMPDIR"; touch "$TMPDIR/child"'
+test -f "$TMPDIR/parent"
+og_lock_acquire "$GATE" test
+exit 17
+'''], env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 17, result.stderr)
+            parent, child = map(Path, result.stdout.splitlines())
+            self.assertEqual(parent.parent, root / '.og/tmp')
+            self.assertEqual(child.parent, parent.parent)
+            self.assertNotEqual(parent, child)
+            self.assertFalse(parent.exists())
+            self.assertFalse(child.exists())
+            self.assertFalse((Path(directory) / 'gate/og-gate.lock').exists())
+
+    def test_temp_space_boundary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for available, expected in ((2097151, 1), (2097152, 0)):
+                result = subprocess.run(['sh', '-eu', '-c', '''
+. "$LOCK"
+df() { printf 'Filesystem blocks used available capacity mount\nvolume 9999999 0 %s 0%% /\n' "$AVAILABLE"; }
+og_temp_prepare "$ROOT"
+'''], env=dict(os.environ, LOCK=str(LOCK), ROOT=str(root),
+              OG_GPU_ROOT=str(root / 'gpu'), AVAILABLE=str(available)),
+                    capture_output=True, text=True)
+                self.assertEqual(result.returncode, expected, result.stderr)
+                if expected:
+                    self.assertIn('at least 2 GiB required', result.stderr)
+                    self.assertIn(str(root / '.og/tmp'), result.stderr)
+                self.assertEqual(list((root / '.og/tmp').iterdir()), [])
+
+
 if __name__ == '__main__':
     unittest.main()

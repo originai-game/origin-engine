@@ -6,6 +6,7 @@ set -eu -o pipefail
 cd "$OG_ROOT"
 case "${1:-}" in --help|-h|--list) exec python3 scripts/gate/run.py "$@" ;; esac
 
+og_temp_prepare "$OG_ROOT"
 # Admission is shared, not a machine-wide work lock. Only this checkout's
 # outputs are exclusive. GPU ownership is acquired by rendering children.
 og_admission_acquire shared "gate $* ($PWD)"

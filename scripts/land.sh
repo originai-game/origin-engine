@@ -46,6 +46,7 @@ PY
 # moves only under it and a lander rechecks at most once.
 land() {
 clean
+og_temp_prepare "$PWD"
 git symbolic-ref -q HEAD >/dev/null || { echo 'land: use a branch' >&2; exit 1; }
 git fetch origin main
 base="$(git rev-parse FETCH_HEAD)"

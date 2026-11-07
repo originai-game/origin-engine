@@ -8,9 +8,9 @@
 // Firefox is an error, never a skip. Headless Firefox has no WebGPU adapter
 // (157 on Windows), so a WebGPU run opens a window.
 
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { testTempDir } from "../support/temp";
 
 declare module "node:fs" {
   export function mkdtempSync(prefix: string): string;
@@ -63,44 +63,52 @@ export class Firefox {
 
   /** `headless` false opens a window (WebGPU needs one). */
   static async launch(o: { firefox?: string; headless?: boolean } = {}): Promise<Firefox> {
+    const firefox = o.firefox ?? firefoxPath();
     // og-cdp-: the prefix every harness browser's profile has, for the same clean-up.
-    const profile = mkdtempSync(join(tmpdir(), "og-cdp-firefox-"));
-    writeFileSync(
-      join(profile, "user.js"),
-      [
-        ["browser.shell.checkDefaultBrowser", false],
-        ["browser.aboutwelcome.enabled", false],
-        ["datareporting.policy.dataSubmissionEnabled", false],
-        ["app.update.disabledForTesting", true],
-      ]
-        .map(([k, v]) => `user_pref(${JSON.stringify(k)}, ${JSON.stringify(v)});`)
-        .join("\n"),
-    );
-    const proc = Bun.spawn(
-      [o.firefox ?? firefoxPath(), ...(o.headless === false ? [] : ["--headless"]), "--no-remote", "--profile", profile, "--remote-debugging-port=0", "about:blank"],
-      { stdout: "ignore", stderr: "ignore" },
-    );
-    // Firefox writes the BiDi server's address into the profile once it listens.
-    const info = join(profile, "WebDriverBiDiServer.json");
-    const t0 = performance.now();
-    let url = "";
-    while (!url) {
-      if (performance.now() - t0 > 30_000) throw new Error("Firefox did not open its WebDriver BiDi port in 30 s");
-      await new Promise((r) => setTimeout(r, 50));
-      try {
-        const j = JSON.parse(readFileSync(info, "utf8")) as { ws_host: string; ws_port: number };
-        url = `ws://${j.ws_host}:${j.ws_port}/session`;
-      } catch {}
+    const profile = testTempDir("og-cdp-firefox-");
+    let proc: ReturnType<typeof Bun.spawn> | undefined;
+    try {
+      writeFileSync(
+        join(profile, "user.js"),
+        [
+          ["browser.shell.checkDefaultBrowser", false],
+          ["browser.aboutwelcome.enabled", false],
+          ["datareporting.policy.dataSubmissionEnabled", false],
+          ["app.update.disabledForTesting", true],
+        ]
+          .map(([k, v]) => `user_pref(${JSON.stringify(k)}, ${JSON.stringify(v)});`)
+          .join("\n"),
+      );
+      proc = Bun.spawn(
+        [firefox, ...(o.headless === false ? [] : ["--headless"]), "--no-remote", "--profile", profile, "--remote-debugging-port=0", "about:blank"],
+        { stdout: "ignore", stderr: "ignore" },
+      );
+      // Firefox writes the BiDi server's address into the profile once it listens.
+      const info = join(profile, "WebDriverBiDiServer.json");
+      const t0 = performance.now();
+      let url = "";
+      while (!url) {
+        if (performance.now() - t0 > 30_000) throw new Error("Firefox did not open its WebDriver BiDi port in 30 s");
+        await new Promise((r) => setTimeout(r, 50));
+        try {
+          const j = JSON.parse(readFileSync(info, "utf8")) as { ws_host: string; ws_port: number };
+          url = `ws://${j.ws_host}:${j.ws_port}/session`;
+        } catch {}
+      }
+      const ws = new WebSocket(url);
+      await new Promise<void>((resolve, reject) => {
+        ws.addEventListener("open", () => resolve());
+        ws.addEventListener("error", () => reject(new Error("cannot connect to Firefox's WebDriver BiDi socket")));
+      });
+      const browser = new Firefox(ws, proc, profile);
+      await browser.send("session.new", { capabilities: {} });
+      await browser.send("session.subscribe", { events: ["log.entryAdded"] });
+      return browser;
+    } catch (error) {
+      if (proc) { proc.kill(); await proc.exited; }
+      rmSync(profile, { recursive: true, force: true });
+      throw error;
     }
-    const ws = new WebSocket(url);
-    await new Promise<void>((resolve, reject) => {
-      ws.addEventListener("open", () => resolve());
-      ws.addEventListener("error", () => reject(new Error("cannot connect to Firefox's WebDriver BiDi socket")));
-    });
-    const browser = new Firefox(ws, proc, profile);
-    await browser.send("session.new", { capabilities: {} });
-    await browser.send("session.subscribe", { events: ["log.entryAdded"] });
-    return browser;
   }
 
   send<T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}): Promise<T> {

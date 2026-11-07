@@ -57,6 +57,9 @@ pub mod strings_extract;
 mod style_recolour;
 mod terrain;
 mod terrain_generate;
+#[cfg(test)]
+#[path = "../../../../tests/temp.rs"]
+mod test_dir;
 mod texture;
 pub mod texture_array;
 pub mod tilemap;

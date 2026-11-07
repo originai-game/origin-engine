@@ -303,6 +303,23 @@ The path-aware state is `<target>/og-gate/` (the green trees).
 `<target>/og-wasm-cache/` retains compressed-size results. Never delete
 either to force a step; `--all` bypasses passing-input snapshots.
 
+`check.sh` and `land.sh` set `TMPDIR`, `TMP` and `TEMP` to a private
+`<checkout>/.og/tmp/run.*` directory before builds or API regeneration.
+This ignored scratch area stays on the checkout's volume, not macOS's
+system volume. Each invocation requires at least 2 GiB free there and
+removes only its own directory on exit, including failure and interruption
+after its children drain. Nested gates own separate directories. A forced
+kill or machine crash can leave scratch behind: check processes and open
+files before removing it; never sweep another gate's live directory.
+
+Standalone browser harnesses also create their profiles in `.og/tmp/`
+and remove them on close or launch failure. The Rust test scratch guard
+(`tests/temp.rs`) uses the gate's run directory when inherited, otherwise
+the checkout's `.og/tmp/`; look, autorig, prefab and CLI test projects
+remove their files on return or panic. Under the gate, its outer cleanup
+also covers children terminated by a signal (Rust destructors do not run
+on process termination).
+
 Bindgen outputs stay in each checkout's `target/og-wasm/`. There is no
 machine-wide wasm-output store or post-bindgen optimization pass. sccache
 still shares compiled dependencies between lanes (§The compiler cache).

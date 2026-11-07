@@ -2,7 +2,7 @@ use super::*;
 
 /// A fresh project whose one look names the UI style `ui`, optionally with a
 /// Chinese string table.
-fn look_project(ui: &str, chinese: bool) -> PathBuf {
+fn look_project(ui: &str, chinese: bool) -> TempDir {
     let dir = scratch_root();
     std::fs::create_dir_all(dir.join("assets/looks")).unwrap();
     std::fs::create_dir_all(dir.join("src")).unwrap();

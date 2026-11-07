@@ -16,10 +16,31 @@
 # is taken over. The owner exports
 # OG_LOCK_OWNER, so a build.sh the gate runs does not wait on its own gate.
 
+# Each invocation owns a private scratch directory, even when nested under
+# land.sh. Never inherit the caller's system-volume TMPDIR for gate work.
+og_temp_prepare() {
+  og_temp_root="$1/.og/tmp"
+  mkdir -p "$og_temp_root" || return 1
+  og_temp_free="$(LC_ALL=C df -Pk "$og_temp_root" | awk 'NR == 2 { print $4 }')"
+  case "$og_temp_free" in
+    ''|*[!0-9]*) echo "gate: cannot determine free space for $og_temp_root" >&2; return 1 ;;
+  esac
+  if [ "$og_temp_free" -lt 2097152 ]; then
+    echo "gate: temp volume at $og_temp_root has $og_temp_free KiB free; at least 2 GiB required. Free space on that volume before retrying." >&2
+    return 1
+  fi
+  og_temp_dir="$(mktemp -d "$og_temp_root/run.XXXXXX")" || return 1
+  TMPDIR="$og_temp_dir" TMP="$og_temp_dir" TEMP="$og_temp_dir"
+  export TMPDIR TMP TEMP
+  trap 'og_lock_release' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+}
+
 og_gpu_root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
 og_gpu_impl() {
   cat <<'OG_GPU_IMPL'
-og_gpu_lock_version=6
+og_gpu_lock_version=7
 
 # Process birth, not command text, identifies an owner after PID reuse.
 # Keep the human-readable owner file compatible with older lanes.
@@ -215,6 +236,11 @@ og_lock_release() {
     [ "${og_lock_holder%% *}" = "$$" ] && rm -rf "$og_lock_held"
   done
   og_lock_dirs=""
+  # Not exported: children must not delete a parent's scratch directory.
+  if [ -n "${og_temp_dir:-}" ]; then
+    rm -rf "$og_temp_dir"
+    og_temp_dir=""
+  fi
   return 0
 }
 

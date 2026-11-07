@@ -7,7 +7,10 @@
 use og_cook::cook::{CookOptions, Report, cook_project};
 use og_cook::runtime::{Bundle, SceneDesc};
 use og_core::reflect::{FieldSchema, FieldType, Schema};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[path = "../../../tests/temp.rs"]
+mod temp;
+use temp::TempDir;
 
 fn schemas() -> Vec<Schema> {
     let schema = |name: &str, fields: Vec<FieldSchema>| Schema {
@@ -36,9 +39,8 @@ fn schemas() -> Vec<Schema> {
 }
 
 /// A fresh project directory named for the test.
-fn project(name: &str) -> PathBuf {
-    let root = std::env::temp_dir().join(format!("og-cook-prefab-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&root);
+fn project(name: &str) -> TempDir {
+    let root = TempDir::new(&format!("og-cook-prefab-{name}"));
     std::fs::create_dir_all(root.join("assets/scenes")).unwrap();
     std::fs::create_dir_all(root.join("assets/prefabs")).unwrap();
     root

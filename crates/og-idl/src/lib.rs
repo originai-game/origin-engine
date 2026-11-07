@@ -341,10 +341,11 @@ pub fn check(root: &Path) -> Result<Vec<Drift>, ReadError> {
     let api = read(&root.join(IDL_PATH))?;
     let files = generate(&api);
     let scratch = scratch_dir();
-    write(&scratch, &files).map_err(|e| ReadError::Io(scratch.clone(), e))?;
-    let drift = compare(&scratch, root, &files);
+    let drift = write(&scratch, &files)
+        .map(|_| compare(&scratch, root, &files))
+        .map_err(|e| ReadError::Io(scratch.clone(), e));
     let _ = std::fs::remove_dir_all(&scratch);
-    Ok(drift)
+    drift
 }
 
 fn compare(fresh: &Path, root: &Path, files: &[Generated]) -> Vec<Drift> {

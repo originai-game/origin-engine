@@ -14,9 +14,9 @@
 // and hover media queries as a desktop's mouse (MOUSE below) unless opened
 // with `touch`.
 
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { testTempDir } from "../support/temp";
 
 declare module "node:fs" {
   export function mkdtempSync(prefix: string): string;
@@ -120,42 +120,49 @@ export class Browser {
 
   /** `webgpu` false leaves out the switches that turn WebGPU on (unsupported.ts turns it off). */
   static async launch(o: { chrome?: string; width?: number; height?: number; flags?: string[]; webgpu?: boolean } = {}): Promise<Browser> {
-    // os.tmpdir(): TMPDIR else /tmp on Unix, %TEMP% on Windows (where "/tmp" is \tmp on the current drive).
-    const profile = mkdtempSync(join(tmpdir(), "og-cdp-"));
-    const proc = Bun.spawn(
-      [
-        o.chrome ?? chromePath(),
-        "--headless=new", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`,
-        // References are English: the host's UI language must not pick the locale.
-        "--lang=en-US", "--accept-lang=en-US",
-        `--window-size=${o.width ?? 1280},${o.height ?? 720}`, "--hide-scrollbars",
-        ...(process.platform === "darwin" ? ["--use-angle=metal"] : []),
-        ...(o.webgpu === false ? [] : ["--enable-unsafe-webgpu", "--enable-features=WebGPU"]),
-        "--ignore-gpu-blocklist", "--disable-gpu-vsync",
-        "--autoplay-policy=user-gesture-required", "--remote-debugging-port=0",
-        ...(o.flags ?? []),
-        "about:blank",
-      ],
-      { stdout: "ignore", stderr: "ignore" },
-    );
-    const portFile = join(profile, "DevToolsActivePort");
-    const t0 = performance.now();
-    let lines: string[] = [];
-    while (lines.length < 2) {
-      if (performance.now() - t0 > 20_000) throw new Error("Chrome did not open its DevTools port in 20 s");
-      await new Promise((r) => setTimeout(r, 50));
-      // Not written yet, or still open in Chrome (EBUSY on Windows): try again.
-      try {
-        lines = readFileSync(portFile, "utf8").trim().split("\n");
-      } catch {}
+    const chrome = o.chrome ?? chromePath();
+    const profile = testTempDir("og-cdp-");
+    let proc: ReturnType<typeof Bun.spawn> | undefined;
+    try {
+      proc = Bun.spawn(
+        [
+          chrome,
+          "--headless=new", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`,
+          // References are English: the host's UI language must not pick the locale.
+          "--lang=en-US", "--accept-lang=en-US",
+          `--window-size=${o.width ?? 1280},${o.height ?? 720}`, "--hide-scrollbars",
+          ...(process.platform === "darwin" ? ["--use-angle=metal"] : []),
+          ...(o.webgpu === false ? [] : ["--enable-unsafe-webgpu", "--enable-features=WebGPU"]),
+          "--ignore-gpu-blocklist", "--disable-gpu-vsync",
+          "--autoplay-policy=user-gesture-required", "--remote-debugging-port=0",
+          ...(o.flags ?? []),
+          "about:blank",
+        ],
+        { stdout: "ignore", stderr: "ignore" },
+      );
+      const portFile = join(profile, "DevToolsActivePort");
+      const t0 = performance.now();
+      let lines: string[] = [];
+      while (lines.length < 2) {
+        if (performance.now() - t0 > 20_000) throw new Error("Chrome did not open its DevTools port in 20 s");
+        await new Promise((r) => setTimeout(r, 50));
+        // Not written yet, or still open in Chrome (EBUSY on Windows): try again.
+        try {
+          lines = readFileSync(portFile, "utf8").trim().split("\n");
+        } catch {}
+      }
+      const [port, path] = lines;
+      const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`);
+      await new Promise<void>((resolve, reject) => {
+        ws.addEventListener("open", () => resolve());
+        ws.addEventListener("error", () => reject(new Error("cannot connect to Chrome's DevTools socket")));
+      });
+      return new Browser(ws, proc, profile);
+    } catch (error) {
+      if (proc) { proc.kill(); await proc.exited; }
+      rmSync(profile, { recursive: true, force: true });
+      throw error;
     }
-    const [port, path] = lines;
-    const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`);
-    await new Promise<void>((resolve, reject) => {
-      ws.addEventListener("open", () => resolve());
-      ws.addEventListener("error", () => reject(new Error("cannot connect to Chrome's DevTools socket")));
-    });
-    return new Browser(ws, proc, profile);
   }
 
   /**

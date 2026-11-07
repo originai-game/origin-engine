@@ -31,7 +31,7 @@ fn figure(edit: impl Fn(&mut Vec<Out>)) -> Vec<u8> {
 }
 
 fn read_psd(bytes: &[u8]) -> Result<parts::Art, String> {
-    let dir = std::env::temp_dir().join(format!("og-autorig-{}", std::process::id()));
+    let dir = super::super::test_dir::TempDir::new("og-autorig");
     std::fs::create_dir_all(dir.join("chars")).unwrap();
     let name = format!("chars/{:016x}.psd", super::super::hash_bytes(bytes));
     std::fs::write(dir.join(&name), bytes).unwrap();

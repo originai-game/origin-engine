@@ -1,5 +1,5 @@
+use super::super::test_dir::TempDir;
 use super::*;
-use std::path::PathBuf;
 
 fn source(root: &Path, rel: &str) -> Source {
     Source {
@@ -18,13 +18,8 @@ fn source(root: &Path, rel: &str) -> Source {
     }
 }
 
-fn project(files: &[(&str, &str)]) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!(
-        "og-look-{}-{}",
-        std::process::id(),
-        super::super::hash_bytes(format!("{files:?}").as_bytes())
-    ));
-    let _ = std::fs::remove_dir_all(&dir);
+fn project(files: &[(&str, &str)]) -> TempDir {
+    let dir = TempDir::new("og-look");
     for (rel, text) in files {
         let p = dir.join(rel);
         std::fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -35,6 +30,27 @@ fn project(files: &[(&str, &str)]) -> PathBuf {
 
 const HEAD: &str = "type look\nversion 1\n---\n";
 const PRESET: &str = "type look\nversion 1\n---\nname \"Cel\"\nantialias msaa4\nMaterialStyle {\n  toon true\n  outlineWidth 2\n}\nPostEffects {\n  vignette true\n}\n";
+
+#[test]
+fn look_runs_remove_scratch_on_success_error_and_unwind() {
+    for body in [HEAD, "not a look"] {
+        let path;
+        {
+            let root = project(&[("looks/main.ogt", body)]);
+            path = root.to_path_buf();
+            assert_eq!(cook(&root, "looks/main.ogt", &[]).is_ok(), body == HEAD);
+        }
+        assert!(!path.exists(), "leaked {}", path.display());
+    }
+    let mut path = None;
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let root = project(&[("looks/main.ogt", HEAD)]);
+        path = Some(root.to_path_buf());
+        panic!("test failure");
+    }));
+    assert!(result.is_err());
+    assert!(!path.unwrap().exists());
+}
 
 fn cook(root: &Path, rel: &str, known: &[&str]) -> Result<LookFile, String> {
     let s = source(root, rel);

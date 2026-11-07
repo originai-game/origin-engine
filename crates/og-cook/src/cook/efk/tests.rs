@@ -315,8 +315,7 @@ fn effects_imported_into_one_folder_share_their_textures() {
     // a's under another folder. Imported into one folder: a's copy once
     // (c shares it), b's beside it under its content's hash; importing
     // again changes nothing.
-    let root = std::env::temp_dir().join(format!("og-efk-shared-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&root);
+    let root = super::super::test_dir::TempDir::new("og-efk-shared");
     let sprite = |tex: &str| {
         project(&format!(
             "<Node><RendererCommonValues><ColorTexture>{tex}</ColorTexture></RendererCommonValues>\
@@ -383,7 +382,6 @@ fn effects_imported_into_one_folder_share_their_textures() {
     let before = snapshot(&out);
     import_all();
     assert_eq!(snapshot(&out), before);
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
@@ -392,8 +390,7 @@ fn texture_names_that_differ_in_case_are_one_file() {
     // as `STAR.png`: on a case-insensitive file system these are one path,
     // so b shares a's copy under a's name and c takes its hash, and every
     // id names a file as it is spelt on disk.
-    let root = std::env::temp_dir().join(format!("og-efk-case-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&root);
+    let root = super::super::test_dir::TempDir::new("og-efk-case");
     for (dir, tex, bytes) in [
         ("a", "star.png", png(8, 8)),
         ("b", "Star.png", png(8, 8)),
@@ -435,7 +432,6 @@ fn texture_names_that_differ_in_case_are_one_file() {
             "{dir}"
         );
     }
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]

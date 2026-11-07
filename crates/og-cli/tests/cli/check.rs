@@ -1,7 +1,7 @@
 use super::*;
 
 /// A project with a tsconfig.json of its own, in a scratch root.
-fn check_project() -> (PathBuf, PathBuf) {
+fn check_project() -> (TempDir, PathBuf) {
     let dir = scratch_root();
     let game = dir.join("game");
     std::fs::create_dir_all(game.join("src")).unwrap();
