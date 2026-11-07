@@ -284,6 +284,12 @@ pub(crate) struct Cascade {
     /// Where it starts to fade into the next cascade (view depth; equal to
     /// `split_far` without blending).
     pub blend_start: f32,
+    /// A fixed shadow box ([`fit_box`]): three.js's shadow camera, whose
+    /// `depth_bias` is the game's (`DirectionalLight::shadow_bias`), not a
+    /// texel, so every receiver is compared towards the light by it, as
+    /// three.js compares, and none past its own depth (lighting.wgsl
+    /// `shadow_closed`, a quarter of a cascade's one-texel bias).
+    pub fixed_box: bool,
 }
 
 /// The camera's projection with its near and far planes moved to `n` and `f`.
@@ -402,6 +408,7 @@ pub(crate) fn fit_box(
         depth_bias: texel.max(bias) / depth_range,
         split_far: 1.0e7,
         blend_start: 1.0e7,
+        fixed_box: true,
     }]
 }
 
@@ -499,6 +506,7 @@ pub(crate) fn fit_cascades(
             depth_bias: texel / depth_range,
             split_far: splits[i + 1],
             blend_start: splits[i + 1] - (splits[i + 1] - splits[i]) * blend,
+            fixed_box: false,
         });
     }
     cascades
@@ -923,6 +931,35 @@ mod tests {
             assert_eq!(c.last().unwrap().split_far, 150.0);
         }
         assert_eq!(fit(CASCADES + 3).len(), CASCADES);
+        assert!(four.iter().all(|c| !c.fixed_box));
+    }
+
+    /// A fixed shadow box is one cascade whose depth bias is the game's
+    /// (three.js's shadow.bias over its depth range), not a texel: it is
+    /// marked, so lighting.wgsl compares every receiver towards the light by
+    /// it instead of a closed one a quarter of it past its own depth.
+    #[test]
+    fn a_fixed_box_keeps_the_games_bias_and_is_marked() {
+        let to_light = Vec3::new(-0.2, 0.95, 0.24).normalize();
+        let fit = |bias| {
+            fit_box(
+                to_light,
+                (Vec3::ZERO, 300.0),
+                Vec3::new(6.0, 0.0, 74.0),
+                22.0,
+                4096,
+                bias,
+                0.05,
+                Vec3::ZERO,
+            )
+        };
+        let (b, texel_only) = (fit(0.18), fit(0.0));
+        assert_eq!(b.len(), 1);
+        assert!(b[0].fixed_box);
+        // 0.18 m against the 44 m / 4096 texel the bias falls back to.
+        let texel = 2.0 * 22.0 / 4096.0;
+        let ratio = b[0].depth_bias / texel_only[0].depth_bias;
+        assert!((ratio - 0.18 / texel).abs() < 0.01 * ratio, "{ratio}");
     }
 
     /// The phases follow the area a scene pixel covers in the output, so

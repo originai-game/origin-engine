@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "DirectionalLight.shadowBox",
+      "summary": "Under a fixed shadow box every receiver is compared towards the light by the game's shadowBias again, as three.js compares and as the field says. Since the closed-receiver rule (a closed, single-sided receiver compared a quarter of the depth bias past its own depth), a box's closed receivers were compared a quarter of shadowBias past themselves instead, so a ground under a 0.18 m bias shadowed itself at noon. Frames move only in games that set shadowBox; the cascades keep the closed-receiver rule."
+    }
+  ]
+}

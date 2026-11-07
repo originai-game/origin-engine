@@ -2469,7 +2469,9 @@ impl Renderer {
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
             uniform.cascade_view_proj[i] = c.view_proj.to_cols_array_2d();
-            uniform.cascade_bias[i] = [c.normal_offset, c.depth_bias, c.split_far, c.blend_start];
+            // w < 0: a fixed shadow box (one cascade: w, the blend start, is unread).
+            let blend = if c.fixed_box { -1.0 } else { c.blend_start };
+            uniform.cascade_bias[i] = [c.normal_offset, c.depth_bias, c.split_far, blend];
             shadow_slots[i] = ShadowPassUniform {
                 view_proj: c.view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
