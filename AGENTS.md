@@ -23,7 +23,7 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   probe contract, engine pin, `knowledge/`) and `originai-game/origingame`
   (everything else).
 - Public contracts; changing one is a break (a minor version with a
-  `changelog.json` breaking entry):
+  breaking entry in its changelog fragment):
   - `packages/knowledge/scripts/mount.ts`: `installed`, `mount`, `summary`.
   - `packages/knowledge/scripts/lib.ts`: `payload(roots: Roots): PayloadFile[]`,
     `defaultRoots(pkg?: string): Roots`, `PayloadFile { path; source; bytes;
@@ -201,8 +201,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - A file split moves code verbatim (only `mod`, `use` and visibility edits)
   and is reviewed with `git diff --color-moved`.
 - Reports carry their numbers and frame paths; evidence is committed only when
-  a test reads it. Breaking changes get a `changelog.json` entry, and every
-  change a game sees goes under its `unreleased` in the same commit;
-  `CHANGELOG.md` is written at release by whoever cuts it, never in a merge
-  (`docs/release.md` §3). Platform asks are drafted in the report and
+  a test reads it. Every change a game sees, and every break with its fix,
+  is recorded in the same commit as one new fragment in
+  `changelog/unreleased/` (`scripts/changelog.ts`); a merge never edits
+  `packages/engine/changelog.json`, which `release.sh fold` and `bump`
+  build from the fragments (`docs/release.md` §3). Platform asks are drafted in the report and
   collected by the coordinator for the release.

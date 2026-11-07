@@ -6,10 +6,14 @@
 # serves. Nothing goes to npm any more (the owner, 2026-11-05).
 #
 #   scripts/release.sh check                    every occurrence of the version equals packages/engine's
-#   scripts/release.sh bump <version>           the golden replays (scripts/replay-gate.ts), then write the version everywhere (scripts/release-bump.ts), Cargo.lock through cargo update
+#   scripts/release.sh bump <version>           the golden replays (scripts/replay-gate.ts), then write the version everywhere (scripts/release-bump.ts,
+#                                               which folds changelog/unreleased/ into changelog.json first), Cargo.lock through cargo update
+#   scripts/release.sh fold                     fold changelog/unreleased/'s fragments into changelog.json's unreleased (scripts/changelog.ts);
+#                                               run it at any time between releases, and commit the result
 #   scripts/release.sh pack [<version>]         the checkout's version (no argument): OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64
 #                                               (the engine with its knowledge/, this machine's platform package and linux-x64's), then
-#                                               create-game and design, as npm-shaped tarballs in dist/release/<version>/, then `archive`.
+#                                               create-game and design, as npm-shaped tarballs in dist/release/<version>/ with NOTES.md
+#                                               (the release notes, from changelog.json), then `archive`.
 #                                               Run on the Mac (docs/release.md §3); studio-win adds win32-x64's tarball (`build.sh --native`,
 #                                               `pack.sh --native`, copied into dist/release/<version>/), then `archive` again.
 #                                               `pack <version>` (a version npm carries: every one from 0.5.0, and 0.7.8-dev.17): its
@@ -69,11 +73,7 @@ cmd_bump() {
   local v="${1:?scripts/release.sh bump <version>}"
   bun scripts/release-bump.ts "$v" || return 1
   cargo update --workspace --offline -q || { og_err "release: cargo update --workspace failed (Cargo.lock)"; return 1; }
-  if ! grep -q "^## $v" CHANGELOG.md; then
-    og_err "release: CHANGELOG.md has no \"## $v\" heading; write it now from changelog.json's unreleased, the IDL diff since the last tag and git log (docs/release.md §3)"
-    return 1
-  fi
-  og_say "release: bumped to $v; Cargo.lock updated"
+  og_say "release: bumped to $v (changelog/unreleased/ folded into changelog.json); Cargo.lock updated"
 }
 
 cmd_pack() {
@@ -89,6 +89,7 @@ cmd_pack() {
   v="$(checkout_version)"; out="$(out_dir "$v")"
   cmd_check || return 1
   rm -rf "$out"; mkdir -p "$out"
+  bun scripts/changelog.ts notes "$v" > "$out/NOTES.md" || { og_err "release: changelog.json has no $v entry for the release notes; run scripts/release.sh bump $v"; return 1; }
   og_say "release: packing $v into ${out#"$OG_ROOT"/}/"
   (cd packages/engine && sh scripts/pack.sh --linux-x64) || { og_err "release: packages/engine/scripts/pack.sh failed"; return 1; }
   cp packages/engine/dist/pack/*.tgz "$out/" || return 1
@@ -224,6 +225,7 @@ case "$verb" in
   check) cmd_check ;;
   dev) cmd_dev "$@" ;;
   bump) cmd_bump "$@" ;;
+  fold) bun scripts/changelog.ts fold ;;
   pack) cmd_pack "$@" ;;
   archive) cmd_archive "$@" ;;
   sign) cmd_sign "$@" ;;

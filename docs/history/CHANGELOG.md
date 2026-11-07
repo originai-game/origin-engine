@@ -1,19 +1,11 @@
-# Changelog
+# Changelog history (frozen)
 
-One version across `@origingame/engine` (the knowledge inside it as
-`knowledge/`), `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64`
-(`@origingame/engine-win32-x64` from F7) and `@origingame/create-game`
-(docs/release.md §3). Before 1.0.0 a minor bump (0.x.0) is a break: an
-IDL member removed or renamed, a type, default or saved value whose
-meaning changed, behaviour a game relied on changed; a game may need
-edits to upgrade, and the section says which. A patch bump (0.x.y) is
-everything compatible: new members that are off by default (an existing
-game draws and runs as before), variants appended to an enum, fixes,
-frames and speed. Either way every IDL member added, changed or removed
-is one line here. This file is written at release by whoever cuts it,
-from `packages/engine/changelog.json`'s `unreleased`, the IDL diff since
-the last tag and `git log`; a merge records its change in
-`changelog.json` and leaves this file alone (docs/release.md §3).
+The prose changelog up to 0.7.7 and the merges after it, as it stood when
+`packages/engine/changelog.json` became the engine's one changelog
+(2026-11-07). Nothing edits this file. Merges record their change as a
+fragment in `changelog/unreleased/`, and each release's notes are generated
+from `changelog.json` (docs/release.md §3). The `Unreleased` section below
+is prose for entries `changelog.json`'s `unreleased` already holds.
 
 ## Unreleased
 

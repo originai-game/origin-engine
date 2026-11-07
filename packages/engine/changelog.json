@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "about": "Machine-readable changelog of @origingame/engine (docs/release.md §3). kind: patch (0.x.y, compatible) or minor (0.x.0, has breaks). simulation: changed when a game's world can step differently (the golden replays' hashes moved, scripts/replay-gate.ts), else unchanged; versions before 0.6.1 were not measured and say changed. breaking: what a game may have to edit, each with the fix; find lists the identifiers og upgrade searches the game's sources for, codemod a mechanical rewrite it applies. CHANGELOG.md has the prose.",
+  "about": "Machine-readable changelog of @origingame/engine (docs/release.md §3). kind: patch (0.x.y, compatible) or minor (0.x.0, has breaks). simulation: changed when a game's world can step differently (the golden replays' hashes moved, scripts/replay-gate.ts), else unchanged; versions before 0.6.1 were not measured and say changed. breaking: what a game may have to edit, each with the fix; find lists the identifiers og upgrade searches the game's sources for, codemod a mechanical rewrite it applies. Merges record changes as fragments in changelog/unreleased/, folded in by scripts/release.sh fold and bump; release notes are generated from this file.",
   "unreleased": {
     "simulation": "changed",
     "breaking": [

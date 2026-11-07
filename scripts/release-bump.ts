@@ -2,8 +2,8 @@
 // checked equal everywhere (docs/release.md §3).
 //
 //   bun scripts/release-bump.ts <version>   write it
-//   bun scripts/release-bump.ts --dev <n>   write the dev build <next patch>-dev.<n> (0.7.8-dev.3 after 0.7.7), changelog.json
-//                                           untouched; the release workflow's dev run does this in its checkout, never committed
+//   bun scripts/release-bump.ts --dev <n>   write the dev build <next patch>-dev.<n> (0.7.8-dev.3 after 0.7.7), the fragments
+//                                           folded into unreleased; the release workflow's dev run does this in its checkout, never committed
 //   bun scripts/release-bump.ts --check     exit 1 naming every occurrence that differs from packages/engine's
 //   bun scripts/release-bump.ts --print     print the current version
 //
@@ -16,8 +16,9 @@
 // crates' Cargo.toml (og --version prints og-cli's). Cargo.lock
 // follows through `cargo update --workspace --offline`, run by release.sh.
 //
-// packages/engine/changelog.json (the machine-readable changelog the
-// platform reads): a bump moves its `unreleased` entry into `versions` as
+// packages/engine/changelog.json (the one changelog, which the platform
+// reads): a bump first folds changelog/unreleased/'s fragments into
+// `unreleased` (scripts/changelog.ts), then moves `unreleased` into `versions` as
 // the new version, dated today (UTC), its kind from the numbers (patch in
 // the same minor, minor otherwise), and refuses a patch that carries a
 // break; --check requires an entry for the current version.
@@ -81,22 +82,7 @@ function sites(): Site[] {
   return s;
 }
 
-const CHANGELOG = "packages/engine/changelog.json";
-
-interface ChangeEntry {
-  version?: string;
-  date?: string;
-  kind?: "patch" | "minor";
-  simulation: "unchanged" | "changed";
-  breaking: unknown[];
-  added: unknown[];
-  fixed: unknown[];
-}
-interface Changelog {
-  schema: number;
-  unreleased: ChangeEntry;
-  versions: ChangeEntry[];
-}
+import { type Changelog, type Entry as ChangeEntry, CHANGELOG, check as checkFragments, FRAGMENTS, type Fragment, fold, foldInto, fragmentNames, readLog, writeLog } from "./changelog.ts";
 
 const minorOf = (v: string) => v.split(".").slice(0, 2).join(".");
 const DEV = /-dev\.\d+$/;
@@ -107,34 +93,32 @@ function devVersion(now: string, n: string): string {
   return `${major}.${minor}.${patch! + 1}-dev.${n}`;
 }
 
-/** Problems with changelog.json for `version` (an entry, well formed); empty when fine. */
+/** Problems with the changelog for `version` (an entry, well formed, its fragments too); empty when fine. */
 function changelogProblems(log: Changelog, version: string): string[] {
   const out: string[] = [];
-  const entry = log.versions.find((e) => e.version === version);
   // A dev build (`--dev`) carries unreleased: it has no entry of its own.
-  if (!entry && !DEV.test(version)) out.push(`${CHANGELOG}: no entry for ${version}`);
-  for (const e of [log.unreleased, ...log.versions]) {
-    const name = e.version ?? "unreleased";
-    if (e.simulation !== "unchanged" && e.simulation !== "changed") out.push(`${CHANGELOG} ${name}: simulation is "unchanged" or "changed"`);
-    if (e.version !== undefined && e.kind !== "patch" && e.kind !== "minor") out.push(`${CHANGELOG} ${name}: kind is "patch" or "minor"`);
-    if (e.kind === "patch" && e.breaking.length > 0) out.push(`${CHANGELOG} ${name}: a patch has no breaking entries`);
-  }
+  if (!log.versions.some((e) => e.version === version) && !DEV.test(version)) out.push(`${CHANGELOG}: no entry for ${version}`);
+  out.push(...checkFragments());
   return out;
 }
 
 /** Moves the unreleased entry into versions as `target`. */
 function releaseChangelog(now: string, target: string): string | null {
-  const log = JSON.parse(read(CHANGELOG)) as Changelog;
-  if (log.versions.some((e) => e.version === target)) return null;
+  const problems = checkFragments();
+  if (problems.length) return `the changelog fragments do not fold:\n${problems.map((p) => `  ${p}`).join("\n")}`;
+  if (readLog().versions.some((e) => e.version === target)) return null;
   const kind = minorOf(now) === minorOf(target) ? "patch" : "minor";
-  const u = log.unreleased;
+  // Decided on what the fold will give, before it writes or deletes anything.
+  const u = foldInto(readLog().unreleased, fragmentNames().map((n) => JSON.parse(read(join(FRAGMENTS, n))) as Fragment));
   if (kind === "patch" && u.breaking.length > 0) {
     return `${CHANGELOG}: unreleased has ${u.breaking.length} breaking entr${u.breaking.length === 1 ? "y" : "ies"}; ${target} is a patch of ${now}: release a minor (0.x.0) instead (docs/release.md §3)`;
   }
+  fold();
+  const log = readLog();
   const entry: ChangeEntry = { version: target, date: new Date().toISOString().slice(0, 10), kind, ...u };
   log.versions.unshift(entry);
   log.unreleased = { simulation: "unchanged", breaking: [], added: [], fixed: [] };
-  writeFileSync(join(ROOT, CHANGELOG), `${JSON.stringify(log, null, 2)}\n`);
+  writeLog(log);
   return null;
 }
 
@@ -152,6 +136,14 @@ function main(args: string[]): number {
     return 2;
   }
   const target = check ? now : dev ? devVersion(now, want!) : want!;
+  if (dev) {
+    // The dev package ships changelog.json with what the merges recorded since the release.
+    const folded = fold();
+    if (folded.problems.length) {
+      process.stderr.write(`release-bump: the changelog fragments do not fold:\n${folded.problems.map((p) => `  ${p}`).join("\n")}\n`);
+      return 1;
+    }
+  }
   if (!check && !dev) {
     const refused = releaseChangelog(now, target);
     if (refused) {
@@ -176,7 +168,7 @@ function main(args: string[]): number {
     }
   }
   if (check) {
-    wrong.push(...changelogProblems(JSON.parse(read(CHANGELOG)) as Changelog, now));
+    wrong.push(...changelogProblems(readLog(), now));
     if (wrong.length) {
       process.stderr.write(`release-bump --check: ${wrong.length} occurrence(s) differ from packages/engine's ${now}:\n${wrong.map((w) => `  ${w}`).join("\n")}\n`);
       return 1;

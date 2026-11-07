@@ -140,13 +140,13 @@ the engine's version.
 number everything else. A minor bump (`0.x.0`) is a release with a break:
 an IDL member removed or renamed, a field's type or default changed, a
 saved value or enum index whose meaning changed, or behaviour a game
-relied on changed, so a game may need edits to upgrade and `CHANGELOG.md`
+relied on changed, so a game may need edits to upgrade and the changelog
 says which. A patch bump (`0.x.y`) is everything compatible: new members
 off by default (a game that does not set them draws and runs exactly as
 before, which the reference frames hold), variants appended to an enum,
-fixes, frames and speed. Either way `CHANGELOG.md` has one line per IDL
-member added, changed or removed, written at release (below), not at the
-merges; a compatible but large release may still take a minor when the
+fixes, frames and speed. Either way the changelog has one entry per IDL
+member added, changed or removed, recorded by the merge that changes it
+(below); a compatible but large release may still take a minor when the
 owner names it. Every occurrence of the version is written by
 `scripts/release.sh bump` and held equal by `packages/knowledge`'s test
 (`scripts/release.sh check`): the four `package.json`
@@ -163,34 +163,41 @@ not older: no mismatch (`og doctor` says ok, the others say nothing).
 `og doctor --json` reports it as `pin: {pinned, installed, compatible}`
 (null outside a project).
 
-**`changelog.json`** (in the engine package, schema 1) is the machine
-contract the platform builds its "new engine version" card from, and the
-source of `og upgrade`'s codemods: `{schema, about, unreleased, versions:
+**`changelog.json`** (in the engine package, schema 1) is the engine's one
+changelog: the machine contract the platform builds its "new engine
+version" card from, the source of `og upgrade`'s codemods and of each
+release's notes. Its shape is `{schema, about, unreleased, versions:
 [{version, date, kind: "patch"|"minor", simulation: "unchanged"|"changed",
 breaking: [{member, change, fix, find?: [identifier], codemod?: {from,
-to}}], added: [{member, summary}], fixed: [string]}]}`, newest first. It is written per merge:
-each merge that adds, changes or removes an IDL member, breaks something
-a game relied on, or fixes something a game sees adds its entry under
-`unreleased` in the same commit; `release.sh bump`
-moves `unreleased` into `versions` as the new version, dated, its `kind`
-from the numbers, and refuses a patch whose `unreleased` has a breaking
-entry. `simulation` says whether a game's ticks may differ from the
-version before (the replay gate below holds a patch's `unchanged`); the
-versions before 0.6.1 were never measured and say `changed`.
+to}}], added: [{member, summary}], fixed: [{member, summary} | string]}]}`,
+newest first.
 
-**`CHANGELOG.md`** is the prose for readers, written once per release by
-whoever cuts it; a merge never edits it (concurrent landings conflicted on
-one Unreleased list). Before `release.sh bump <version>`, the release
-writer replaces `## Unreleased` with `## <version>`: one line per IDL
-member added, changed or removed, each break with its fix, and the fixes a
-game sees. The sources are `changelog.json`'s `unreleased` (the breaks,
-additions, fixes and `simulation` the merges recorded), the IDL diff since
-the last tag (`git diff v<last> -- crates/og-api/api/
-packages/engine/types/index.d.ts`, each member read with `og api show
-<member>`), and `git log v<last>..` for what neither names. Lines left
-under `## Unreleased` from before this rule are folded in the same way.
-`release.sh bump` refuses a version whose `## <version>` heading is
-missing.
+**Merges only record.** A merge never edits `changelog.json` (one shared
+file conflicted on almost every concurrent landing). A merge that adds,
+changes or removes an IDL member, breaks something a game relied on, or
+fixes something a game sees adds one new file in the same commit:
+`changelog/unreleased/<branch>-<topic>.json`, with any of `simulation:
+"changed"`, `breaking`, `added` and `fixed` in the shapes above
+(`scripts/changelog.ts` has the details). Its own name keeps two branches
+from ever touching the same lines. The quick gate shape-checks every
+fragment and `changelog.json` (`scripts/changelog.test.ts`).
+
+**Folded periodically.** `scripts/release.sh fold` folds every fragment into
+`unreleased` in name order (a `changed` simulation wins, the lists append)
+and deletes them, refusing and writing nothing when one is malformed; the
+coordinator runs it between releases and commits the result. `release.sh
+bump` folds first, then moves `unreleased` into `versions` as the new
+version, dated, its `kind` from the numbers, and refuses a patch whose
+`unreleased` has a breaking entry; a dev build (`release-bump.ts --dev`)
+folds in its own checkout, so its package carries what the merges recorded.
+`simulation` says whether a game's ticks may differ from the version before
+(the replay gate below holds a patch's `unchanged`); the versions before
+0.6.1 were never measured and say `changed`.
+
+**Release notes** are generated, never written by hand: `release.sh pack`
+writes `dist/release/<version>/NOTES.md` from the version's entry (`bun
+scripts/changelog.ts notes <version>`; with no version, the notes so far).
+The prose changelog up to 0.7.7 is frozen in `docs/history/CHANGELOG.md`.
 
 **`og upgrade [project] [--to <v>] [--dry-run] [--json]`** moves a game to
 the installed engine (or `--to`, a version in its changelog): it rewrites
@@ -238,8 +245,9 @@ purpose still sets `simulation: "changed"` in the same merge.
 
 ```sh
 scripts/release.sh check              # every occurrence of the version equals packages/engine's
-scripts/release.sh bump <version>     # every occurrence of the version, changelog.json's unreleased; checks CHANGELOG.md's heading
-scripts/release.sh pack               # on the Mac: OG_RELEASE=1 pack.sh --linux-x64, create-game, design as tarballs (build intermediates), then archive
+scripts/release.sh fold               # changelog/unreleased/'s fragments into changelog.json's unreleased (any time; commit it)
+scripts/release.sh bump <version>     # fold, then every occurrence of the version and changelog.json's unreleased into versions
+scripts/release.sh pack               # on the Mac: OG_RELEASE=1 pack.sh --linux-x64, create-game, design as tarballs (build intermediates), NOTES.md, then archive
 # on studio-win, Git Bash, the same commit: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native && sh packages/engine/scripts/pack.sh --native
 #   then copy packages/engine/dist/pack/origingame-engine-win32-x64-<v>.tgz into the Mac's dist/release/<v>/
 scripts/release.sh archive            # scripts/release-dist.ts: an archive per target, manifest.json, a release's install.sh/install.ps1, SHA256SUMS, signed when OG_ENGINE_MINISIGN_KEY is set
