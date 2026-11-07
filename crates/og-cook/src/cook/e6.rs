@@ -127,6 +127,7 @@ pub(super) fn cook_story(
     s: &Source,
     stamp: u64,
     quest: bool,
+    functions: Option<&std::collections::BTreeMap<String, og_story::yarn::types::Function>>,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let what = if quest { "quest" } else { "dialogue" };
     let text = std::str::from_utf8(&s.bytes)
@@ -135,10 +136,11 @@ pub(super) fn cook_story(
     let text = if quest {
         text
     } else {
-        compiled = og_story::Dialogue::parse(text)
-            .map_err(CookError)?
-            .encode()
-            .map_err(CookError)?;
+        compiled =
+            og_story::yarn::compile_with_functions(text, functions.cloned().unwrap_or_default())
+                .map_err(CookError)?
+                .encode()
+                .map_err(CookError)?;
         &compiled
     };
     let (mut w, note) = if quest {
@@ -202,6 +204,7 @@ pub(super) fn cook_story(
 pub(super) fn check_story_keys(
     tables: &[(&str, &[u8])],
     stories: &[(&str, &[u8])],
+    functions: &std::collections::BTreeMap<String, og_story::yarn::types::Function>,
 ) -> Vec<(String, String)> {
     let parsed: Vec<og_i18n::StringTable> = tables
         .iter()
@@ -216,7 +219,8 @@ pub(super) fn check_story_keys(
             continue;
         };
         let result = if rel.ends_with(".yarn") {
-            og_story::Dialogue::parse(text).map(|d| (d.keys(), d.strings))
+            og_story::yarn::compile_with_functions(text, functions.clone())
+                .map(|d| (d.keys(), d.strings))
         } else {
             match og_core::ogt::Document::parse(text).map(|d| d.ty) {
                 Ok(t) if t == og_story::QUEST_TYPE => {

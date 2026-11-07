@@ -16,6 +16,7 @@ A line of a conversation's backlog.
 | `key` | `string` | `""` | — | — | — | Its i18n key. |
 | `args` | `unknown` | `null` | — | — | — | Its arguments. |
 | `text` | `string` | `""` | — | — | — | The line, resolved in the active locale. |
+| `spans` | `readonly TextSpan[]` | `[]` | — | — | — | Localized Yarn attributes in Unicode scalar offsets. |
 | `voice` | `string` | `""` | — | — | — | Its voice clip (empty: none). |
 | `seen` | `boolean` | `false` | — | — | — | It had been read before it was shown. |
 | `chosen` | `ChosenView \| null` | `null` | — | — | — | The choice made on it, if any. |
@@ -29,10 +30,11 @@ struct StoryLine {
   field key String "Its i18n key."
   field args Json "Its arguments."
   field text String "The line, resolved in the active locale."
+  field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets."
   field voice String "Its voice clip (empty: none)."
   field seen bool "It had been read before it was shown."
   field chosen Option.ChosenView "The choice made on it, if any."
 }
 ```
 
-<sub>Module `story` line 154</sub>
+<sub>Module `story` line 173</sub>

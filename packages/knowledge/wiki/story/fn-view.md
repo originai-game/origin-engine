@@ -6,7 +6,7 @@ Module [`story`](../story.md) · [index](../index.md)
 
 ### `og.story.view`
 
-What a conversation shows now, resolved in the active locale.
+The current dialogue line and choices, with text and markup spans resolved in the active locale.
 
 Also known as: dialogue line, conversation, dialog box, Yarn Spinner, Ink, line and choices
 
@@ -25,7 +25,7 @@ Binding symbol `og_story_view` · publish builds: kept
 
 ```ogt
 fn view {
-  doc "What a conversation shows now, resolved in the active locale."
+  doc "The current dialogue line and choices, with text and markup spans resolved in the active locale."
   aliases "dialogue line, conversation, dialog box, Yarn Spinner, Ink, line and choices"
   param world World "The world."
   param conversation u32 "The conversation."
@@ -33,4 +33,4 @@ fn view {
 }
 ```
 
-<sub>Module `story` line 280</sub>
+<sub>Module `story` line 301</sub>

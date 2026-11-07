@@ -5,13 +5,15 @@ version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine dialogue and quests as data: dialogue graphs and quests from .ogt (lines as og.i18n keys, choices with conditions and checks, variables, weighted picks), validated at cook, and the story state a world saves: variables, conversations, quests, read lines, deterministic on og.Rng."
+description = "Origin Engine Yarn Spinner 3.2.2 compiler and story runtime: localized dialogue, typed expressions, saliency, quests, bark scheduling and stable-id saves on the deterministic story RNG fork."
 
 # Pure Rust over og-core; builds for wasm32-unknown-unknown.
 [dependencies]
 og-core = { path = "../og-core" }
+og-i18n = { path = "../og-i18n" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+unicode-normalization = "0.1"
 
 [[test]]
 name = "tests"

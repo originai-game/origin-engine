@@ -691,6 +691,8 @@ export interface HostAbi<A, V> {
   og_ai_noise(world: number, desc: string | undefined): string;
   /** `og.ai.describe` */
   og_ai_describe(world: number, entity: number): string;
+  /** `og.story.setSaliency` */
+  og_story_set_saliency(world: number, strategy: string): string;
   /** `og.story.load` */
   og_story_load(world: number, path: string): string;
   /** `og.story.parse` */
@@ -1665,6 +1667,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ai_finish",
   "og_ai_noise",
   "og_ai_describe",
+  "og_story_set_saliency",
   "og_story_load",
   "og_story_parse",
   "og_story_start",

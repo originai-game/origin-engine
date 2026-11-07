@@ -13,6 +13,7 @@ A choice the node offers (hidden ones are left out).
 | `index` | `number` | `0` | — | — | — | What og.story.choose takes: its place among the node's choices, hidden ones counted. |
 | `id` | `string` | `""` | — | — | — | Its id within the node. |
 | `text` | `string` | `""` | — | — | — | Its text, resolved in the active locale. |
+| `spans` | `readonly TextSpan[]` | `[]` | — | — | — | Yarn attributes on the plain text, in Unicode scalar offsets; unknown attributes are preserved. |
 | `key` | `string` | `""` | — | — | — | Its i18n key. |
 | `args` | `unknown` | `null` | — | — | — | The arguments its text was resolved with. |
 | `enabled` | `boolean` | `false` | — | — | — | Whether it can be chosen now (its `if` holds and a passive check passes). |
@@ -29,6 +30,7 @@ struct ChoiceView {
   field index u32 "What og.story.choose takes: its place among the node's choices, hidden ones counted."
   field id String "Its id within the node."
   field text String "Its text, resolved in the active locale."
+  field spans List.TextSpan "Yarn attributes on the plain text, in Unicode scalar offsets; unknown attributes are preserved."
   field key String "Its i18n key."
   field args Json "The arguments its text was resolved with."
   field enabled bool "Whether it can be chosen now (its `if` holds and a passive check passes)."
@@ -41,4 +43,4 @@ struct ChoiceView {
 }
 ```
 
-<sub>Module `story` line 97</sub>
+<sub>Module `story` line 113</sub>

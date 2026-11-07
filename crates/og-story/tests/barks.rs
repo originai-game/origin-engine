@@ -7,7 +7,7 @@ use og_story::{Dialogue, Event, Library, Quest, Story, Val};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-const GUARD: &str = r#"#og-profile:yarn-3.0-og-1
+const GUARD: &str = r#"#og-profile:yarn-spinner-3.2.2
 #og-name:guard
 title: yawn
 og-topic: idle
@@ -152,7 +152,7 @@ fn barks_pick_by_priority_and_condition_and_keep_their_cooldowns() {
 fn voices_time_their_lines_and_saves_keep_barks() {
     let mut l = lib();
     let d = Dialogue::parse(
-        "#og-profile:yarn-3.0-og-1\n#og-name:vo\ntitle: a\n---\nVoice #line:vo.a #voice:vo/a.wav\n===\n",
+        "#og-profile:yarn-spinner-3.2.2\n#og-name:vo\ntitle: a\n---\nVoice #line:vo.a #voice:vo/a.wav\n===\n",
     )
     .unwrap();
     l.dialogues.insert("vo".into(), Arc::new(d));
@@ -205,6 +205,8 @@ fn voices_time_their_lines_and_saves_keep_barks() {
     v1.save(&mut bytes);
     // Version 4 added the story tick after the RNG seed and state.
     bytes.drain(13..17);
+    // Version 5: empty visits, once flags, saliency policy and empty view counts.
+    bytes.truncate(bytes.len() - 13);
     // The eight empty version-2 sections and version 3's empty camera.
     let cut = bytes.len() - 8 * 4 - 1;
     let mut old = bytes[..cut].to_vec();

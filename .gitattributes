@@ -13,3 +13,5 @@
 # Weight bundles and their test fixtures (og-motion): binary.
 *.safetensors binary
 *.jpg binary
+# Preserve the released Yarn conformance corpus byte-for-byte, including CRLF.
+third_party/yarn-spinner/upstream/** -text

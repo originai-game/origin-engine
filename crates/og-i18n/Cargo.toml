@@ -17,3 +17,5 @@ unicode-segmentation = "1.13.3"
 # and Lithuanian context rules; the same compiled data on both hosts.
 icu_casemap = "2.3"
 icu_locale_core = "2.3"
+icu_plurals = "2.3"
+fixed_decimal = "0.7"

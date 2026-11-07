@@ -12,13 +12,15 @@ The choice made while a line was shown.
 |---|---|---|---|---|---|---|
 | `index` | `number` | `0` | — | — | — | Its ChoiceView.index. |
 | `text` | `string` | `""` | — | — | — | Its text, resolved in the active locale. |
+| `spans` | `readonly TextSpan[]` | `[]` | — | — | — | Localized Yarn attributes in Unicode scalar offsets. |
 
 ```ogt
 struct ChosenView {
   doc "The choice made while a line was shown."
   field index u32 "Its ChoiceView.index."
   field text String "Its text, resolved in the active locale."
+  field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets."
 }
 ```
 
-<sub>Module `story` line 148</sub>
+<sub>Module `story` line 166</sub>

@@ -16,7 +16,7 @@ og.story.choose(world: World, conversation: number, index: number): Result<void>
 |---|---|---|---|
 | `world` | `World` | no | The world. |
 | `conversation` | `number` | no | The conversation. |
-| `index` | `number` | no | ChoiceView.index. |
+| `index` | `number` | no | ChoiceView.index, or 4294967295 for Yarn NoOptionSelected: continue past the option group without selecting an option. |
 
 **Returns** `Result<void>`: Refused for a hidden or disabled choice, a conversation showing a line, or an unknown one.
 
@@ -27,9 +27,9 @@ fn choose {
   doc "Take a choice: an active check rolls (og.DialogueCheck), then its indented Yarn body runs, or #fail redirects a missed roll. A settled choice is not executed again on restore."
   param world World "The world."
   param conversation u32 "The conversation."
-  param index u32 "ChoiceView.index."
+  param index u32 "ChoiceView.index, or 4294967295 for Yarn NoOptionSelected: continue past the option group without selecting an option."
   returns Result.Void "Refused for a hidden or disabled choice, a conversation showing a line, or an unknown one."
 }
 ```
 
-<sub>Module `story` line 308</sub>
+<sub>Module `story` line 329</sub>

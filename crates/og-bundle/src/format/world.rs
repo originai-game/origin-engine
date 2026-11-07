@@ -194,7 +194,7 @@ impl BlobKind for Behaviour {
 
 row!(
     /// The root of a compiled Yarn dialogue blob.
-    DialogueMeta, "og.Dialogue", 2 {
+    DialogueMeta, "og.Dialogue", 3 {
         /// Bytes of the engine IR in `text`.
         text_bytes: u32,
     }

@@ -20,13 +20,14 @@ fn project(name: &str, files: &[(&str, &str)]) -> PathBuf {
     root
 }
 
-const SMITH: &str = "#og-profile:yarn-3.0-og-1\n#og-name:smith\ntitle: greet\n---\nsmith: Hello. #line:smith.hello\nsmith: Price #line:smith.price\n-> Choose #line:smith.missing\n===\n";
+const SMITH: &str = "#og-profile:yarn-spinner-3.2.2\n#og-name:smith\ntitle: greet\n---\nsmith: Hello. #line:smith.hello\nsmith: Price #line:smith.price\n-> Choose #line:smith.missing\n===\n";
 const QUEST: &str = "type quest\nversion 1\n---\nid rescue\ntitle \"quest.rescue\"\nstage hunt {\n  objective wolves \"quest.wolves\" {\n    target 3\n  }\n}\n";
 const EN: &str = "type strings\nversion 1\n---\nlocale \"en\"\nbase true\nstring \"npc.smith\" \"Brannoc\"\nstring \"smith.hello\" \"Hello.\"\nstring \"smith.price\" \"That's {price} gold.\"\nstring \"quest.rescue\" \"Rescue\"\nstring \"quest.wolves\" \"Wolves {count}/{target}\"\n";
 
 #[test]
 fn dialogues_and_quests_cook_and_their_keys_are_checked_against_the_base_table() {
-    let bad = "#og-profile:yarn-3.0-og-1\n#og-name:bad\ntitle: a\n---\n<<jump nowhere>>\n===\n";
+    let bad =
+        "#og-profile:yarn-spinner-3.2.2\n#og-name:bad\ntitle: a\n---\n<<jump nowhere>>\n===\n";
     let root = project(
         "keys",
         &[
@@ -88,5 +89,76 @@ fn dialogues_and_quests_cook_and_their_keys_are_checked_against_the_base_table()
             .story_text("strings/en.ogt", &bundle.read("strings/en.ogt").unwrap())
             .is_err(),
         "a string table is not a story"
+    );
+}
+
+#[test]
+fn registered_yarn_functions_typecheck_extract_and_recook_when_the_body_changes() {
+    let source = SMITH.replace("smith: Hello.", "smith: {score(3, 4)}");
+    let root = project("functions", &[("story/smith.yarn", &source)]);
+    let config = "type project\nversion 1\n---\nstoryFunctions {\n function score number {\n  param amount number\n  param scale number\n  body \"$amount * $scale\"\n }\n}\n";
+    for (body, expected) in [
+        (config.to_owned(), 12.0),
+        (config.replace(" * ", " + "), 7.0),
+    ] {
+        std::fs::write(root.join("project.ogt"), body).unwrap();
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let extracted = og_cook::cook::strings_extract::extract(&root).unwrap();
+        assert!(extracted.errors.is_empty(), "{:?}", extracted.errors);
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let text = bundle
+            .story_text(
+                "story/smith.yarn",
+                &bundle.read("story/smith.yarn").unwrap(),
+            )
+            .unwrap();
+        let dialogue = og_story::Dialogue::decode(&text).unwrap();
+        let lib = og_story::Library {
+            dialogues: std::collections::BTreeMap::from([(
+                "smith".into(),
+                std::sync::Arc::new(dialogue),
+            )]),
+            ..Default::default()
+        };
+        let mut story = og_story::Story::new(og_core::Rng::new(1).fork("story"));
+        let id = story
+            .start(&lib, "smith", Default::default(), Default::default(), None)
+            .unwrap();
+        assert_eq!(
+            story.convs[&id].history[0].args[0].1,
+            og_story::Val::Num(expected)
+        );
+    }
+    std::fs::write(
+        root.join("assets/story/smith.yarn"),
+        source.replace("score(3, 4)", "score(true, 4)"),
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(
+        report
+            .errors()
+            .iter()
+            .any(|error| error.contains("expected Number, found Bool")),
+        "{:?}",
+        report.errors()
+    );
+    assert!(
+        !og_cook::cook::strings_extract::extract(&root)
+            .unwrap()
+            .errors
+            .is_empty()
+    );
+    std::fs::write(
+        root.join("project.ogt"),
+        config.replace("$amount * $scale", "random()"),
+    )
+    .unwrap();
+    assert!(
+        cook_project(&root, &CookOptions::default())
+            .unwrap_err()
+            .to_string()
+            .contains("pure function cannot call stateful 'random'")
     );
 }

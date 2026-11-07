@@ -793,6 +793,8 @@ pub trait AiApi: Wire {
 
 /// `story`: packages/knowledge/wiki/story.md.
 pub trait StoryApi: Wire {
+    /// `og.story.setSaliency`
+    fn og_story_set_saliency(&self, world: u32, strategy: String) -> String;
     /// `og.story.load`
     fn og_story_load(&self, world: u32, path: String) -> String;
     /// `og.story.parse`
@@ -1836,6 +1838,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ai_finish",
     "og_ai_noise",
     "og_ai_describe",
+    "og_story_set_saliency",
     "og_story_load",
     "og_story_parse",
     "og_story_start",

@@ -9825,10 +9825,11 @@
     },
     {
       "name": "story",
-      "doc": "Dialogue uses Yarn Spinner syntax in `.yarn` files, compiled to engine-owned IR by og cook. The declared profile is `#og-profile:yarn-3.0-og-1`; see the yarn guide for supported syntax and extensions. Every line and option requires an explicit stable `#line:` id. Inline base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.\nog.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. DialogueView and QuestView retain their existing shapes. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.\nBarks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn.\nSaves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash.",
+      "doc": "Dialogue uses released Yarn Spinner 3.2.2 in `.yarn` files, compiled to engine-owned IR by og cook. Declare `#og-profile:yarn-spinner-3.2.2`; see the yarn guide for the language and engine extensions. Every line and option requires an explicit stable `#line:` id. Base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.\nog.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. Dialogue text retains its Speaker: prefix and carries typed TextSpan attributes in Unicode scalar offsets. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.\nBarks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn.\nSaves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash.",
       "place": "namespace",
       "publish": true,
       "types": [
+        "StorySaliency",
         "Story",
         "DialogueShown",
         "DialogueEnded",
@@ -9857,6 +9858,27 @@
       ],
       "consts": [],
       "functions": [
+        {
+          "name": "setSaliency",
+          "doc": "Select this world's Yarn content strategy after loading its story. The strategy and view counts are saved with the story.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "strategy",
+              "type": "StorySaliency",
+              "optional": false,
+              "doc": "The selection strategy."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused before a story is loaded or for an unknown strategy.",
+          "publish": true
+        },
         {
           "name": "load",
           "doc": "A cooked `.yarn` dialogue or `type quest` asset. Loading again replaces it; stable ids preserve the conversation at its next step. The first load registers og.Story and its events, so call it in setup: inside a system it is refused until one load has run outside one.",
@@ -9922,7 +9944,7 @@
         },
         {
           "name": "view",
-          "doc": "What a conversation shows now, resolved in the active locale.",
+          "doc": "The current dialogue line and choices, with text and markup spans resolved in the active locale.",
           "params": [
             {
               "name": "world",
@@ -10017,7 +10039,7 @@
               "name": "index",
               "type": "u32",
               "optional": false,
-              "doc": "ChoiceView.index."
+              "doc": "ChoiceView.index, or 4294967295 for Yarn NoOptionSelected: continue past the option group without selecting an option."
             }
           ],
           "returns": "Result<Void>",
@@ -44401,6 +44423,26 @@
       ],
       "additionalProperties": false
     },
+    "StorySaliency": {
+      "x-og-kind": "enum",
+      "x-og-module": "story",
+      "description": "How Yarn node and line groups choose eligible content. All random draws use the checkpointed story RNG fork.",
+      "type": "string",
+      "enum": [
+        "first",
+        "best",
+        "bestLeastRecentlyViewed",
+        "randomBestLeastRecentlyViewed",
+        "conditionalFirstWeighted"
+      ],
+      "x-og-variants": {
+        "first": "First eligible content in source order.",
+        "best": "Most specific eligible condition, with source order breaking ties.",
+        "bestLeastRecentlyViewed": "Least viewed eligible content, then most specific, with source order breaking ties.",
+        "randomBestLeastRecentlyViewed": "Least viewed, then most specific, with random ties.",
+        "conditionalFirstWeighted": "Prefer conditional content over fallback content; draw ties by #weight (the engine default)."
+      }
+    },
     "Story": {
       "x-og-kind": "resource",
       "x-og-module": "story",
@@ -44763,6 +44805,13 @@
           "type": "string",
           "description": "Its text, resolved in the active locale."
         },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TextSpan"
+          },
+          "description": "Yarn attributes on the plain text, in Unicode scalar offsets; unknown attributes are preserved."
+        },
         "key": {
           "type": "string",
           "description": "Its i18n key."
@@ -44809,6 +44858,7 @@
         "index",
         "id",
         "text",
+        "spans",
         "key",
         "args",
         "enabled",
@@ -44923,6 +44973,13 @@
           "type": "string",
           "description": "The line, resolved in the active locale."
         },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TextSpan"
+          },
+          "description": "Localized Yarn attributes in Unicode scalar offsets. The character span covers the full Speaker: prefix, including its whitespace."
+        },
         "voice": {
           "type": "string",
           "description": "Its voice clip's asset path (empty: none). og.story plays it on its own entity (an og.AudioSource on the sfx bus) from the tick after the line is shown, and stops it when the line moves on."
@@ -44989,6 +45046,7 @@
         "key",
         "args",
         "text",
+        "spans",
         "voice",
         "voiceTicks",
         "voiceLeft",
@@ -45016,11 +45074,19 @@
         "text": {
           "type": "string",
           "description": "Its text, resolved in the active locale."
+        },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TextSpan"
+          },
+          "description": "Localized Yarn attributes in Unicode scalar offsets."
         }
       },
       "required": [
         "index",
-        "text"
+        "text",
+        "spans"
       ],
       "additionalProperties": false
     },
@@ -45055,6 +45121,13 @@
           "type": "string",
           "description": "The line, resolved in the active locale."
         },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TextSpan"
+          },
+          "description": "Localized Yarn attributes in Unicode scalar offsets."
+        },
         "voice": {
           "type": "string",
           "description": "Its voice clip (empty: none)."
@@ -45082,6 +45155,7 @@
         "key",
         "args",
         "text",
+        "spans",
         "voice",
         "seen",
         "chosen"
@@ -45185,6 +45259,13 @@
           "type": "string",
           "description": "The line, resolved in the active locale."
         },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TextSpan"
+          },
+          "description": "Localized Yarn attributes in Unicode scalar offsets."
+        },
         "speaker": {
           "$ref": "#/$defs/SpeakerView",
           "description": "The bark's speaker (entity: who says it)."
@@ -45220,6 +45301,7 @@
         "key",
         "args",
         "text",
+        "spans",
         "speaker",
         "voice",
         "voiceLeft",

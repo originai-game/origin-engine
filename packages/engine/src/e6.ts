@@ -49,6 +49,7 @@ export const ai = Object.freeze({
 
 /** og.story (G2-8): dialogues and quests as data; the story is world state. */
 export const story = Object.freeze({
+  setSaliency: (world: W, strategy: string) => parse(abi().og_story_set_saliency(world.id, strategy)),
   load: (world: W, path: string) => parse(abi().og_story_load(world.id, path)),
   parse: (world: W, text: string) => parse(abi().og_story_parse(world.id, text)),
   start: (world: W, desc?: unknown) => parse(abi().og_story_start(world.id, json(desc))),

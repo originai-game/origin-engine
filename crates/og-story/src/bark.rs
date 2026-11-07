@@ -186,12 +186,15 @@ impl Story {
                 let holds = b.when.as_ref().is_none_or(|x| {
                     let scope = ConvScope {
                         story: self,
+                        rng: std::cell::Cell::new(self.rng),
                         lib,
                         dialogue: Some(&d.name),
                         locals: None,
                         world: Some((read, Some(r.entity))),
                     };
-                    x.eval(&scope).is_ok_and(|v| v.truthy())
+                    let holds = x.eval(&scope).is_ok_and(|v| v.truthy());
+                    self.rng = scope.rng.get();
+                    holds
                 });
                 if holds {
                     found.push((d.clone(), i));
@@ -226,16 +229,20 @@ impl Story {
         let args = {
             let scope = ConvScope {
                 story: self,
+                rng: std::cell::Cell::new(self.rng),
                 lib,
                 dialogue: Some(&d.name),
                 locals: None,
                 world: Some((read, Some(r.entity))),
             };
-            l.text
+            let args = l
+                .text
                 .args
                 .iter()
                 .map(|(k, x)| (k.clone(), x.eval(&scope).unwrap_or(Val::Num(0.0))))
-                .collect()
+                .collect();
+            self.rng = scope.rng.get();
+            args
         };
         self.seq = self.seq.wrapping_add(1);
         self.bark_last.insert(id.clone(), tick);

@@ -17,6 +17,7 @@ What a conversation shows now: the line in full (the dialogue box paces its own 
 | `key` | `string` | `""` | — | — | — | The line's i18n key. |
 | `args` | `unknown` | `null` | — | — | — | The arguments it was resolved with (evaluated when it was shown). |
 | `text` | `string` | `""` | — | — | — | The line, resolved in the active locale. |
+| `spans` | `readonly TextSpan[]` | `[]` | — | — | — | Localized Yarn attributes in Unicode scalar offsets. The character span covers the full Speaker: prefix, including its whitespace. |
 | `voice` | `string` | `""` | — | — | — | Its voice clip's asset path (empty: none). og.story plays it on its own entity (an og.AudioSource on the sfx bus) from the tick after the line is shown, and stops it when the line moves on. |
 | `voiceTicks` | `number` | `0` | — | — | — | The voice's length in ticks (0: no voice, or one that did not load). |
 | `voiceLeft` | `number` | `0` | — | — | — | Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance). |
@@ -37,6 +38,7 @@ struct DialogueView {
   field key String "The line's i18n key."
   field args Json "The arguments it was resolved with (evaluated when it was shown)."
   field text String "The line, resolved in the active locale."
+  field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets. The character span covers the full Speaker: prefix, including its whitespace."
   field voice String "Its voice clip's asset path (empty: none). og.story plays it on its own entity (an og.AudioSource on the sfx bus) from the tick after the line is shown, and stops it when the line moves on."
   field voiceTicks u32 "The voice's length in ticks (0: no voice, or one that did not load)."
   field voiceLeft u32 "Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance)."
@@ -49,4 +51,4 @@ struct DialogueView {
 }
 ```
 
-<sub>Module `story` line 128</sub>
+<sub>Module `story` line 145</sub>

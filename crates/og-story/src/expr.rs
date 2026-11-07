@@ -69,6 +69,7 @@ pub enum Op {
     Ge,
     And,
     Or,
+    Xor,
 }
 
 /// A story function.
@@ -89,14 +90,24 @@ pub enum Func {
 pub enum Expr {
     Lit(Val),
     Var(String),
+    /// Whether the stable identity has already consumed its Yarn once content.
+    Once(String),
     Not(Box<Expr>),
     Neg(Box<Expr>),
     Bin(Op, Box<Expr>, Box<Expr>),
     Call(Func),
+    Invoke(String, Vec<Expr>),
+    Member(String, String),
+    EnumValue(String, Val),
+    /// Yarn uses single-precision numbers and eager boolean operands.
+    Yarn(Box<Expr>),
 }
 
 /// What an expression reads while it is evaluated.
 pub trait Scope {
+    fn once(&self, _id: &str) -> bool {
+        false
+    }
     /// A variable's value; `None` for one the story does not have.
     fn var(&self, name: &str) -> Option<Val>;
     /// `seen(node)`: the node, as written.
@@ -107,6 +118,10 @@ pub trait Scope {
     fn quest_stage(&self, quest: &str) -> String;
     /// `count(quest, objective)`.
     fn quest_count(&self, quest: &str, objective: &str) -> f64;
+    fn invoke(&self, name: &str, args: &[Val]) -> Result<Val, String> {
+        crate::yarn::functions::pure(name, args)?
+            .ok_or_else(|| format!("function '{name}' is not registered"))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -390,12 +405,21 @@ impl Expr {
     pub fn vars(&self, out: &mut Vec<String>) {
         match self {
             Expr::Var(v) => out.push(v.clone()),
-            Expr::Not(e) | Expr::Neg(e) => e.vars(out),
+            Expr::Not(e) | Expr::Neg(e) | Expr::Yarn(e) => e.vars(out),
             Expr::Bin(_, a, b) => {
                 a.vars(out);
                 b.vars(out);
             }
-            Expr::Lit(_) | Expr::Call(_) => {}
+            Expr::Invoke(_, args) => {
+                for arg in args {
+                    arg.vars(out);
+                }
+            }
+            Expr::Once(_)
+            | Expr::Lit(_)
+            | Expr::Call(_)
+            | Expr::Member(..)
+            | Expr::EnumValue(..) => {}
         }
     }
 
@@ -403,39 +427,90 @@ impl Expr {
     pub fn calls<'a>(&'a self, out: &mut Vec<&'a Func>) {
         match self {
             Expr::Call(f) => out.push(f),
-            Expr::Not(e) | Expr::Neg(e) => e.calls(out),
+            Expr::Not(e) | Expr::Neg(e) | Expr::Yarn(e) => e.calls(out),
             Expr::Bin(_, a, b) => {
                 a.calls(out);
                 b.calls(out);
             }
-            Expr::Lit(_) | Expr::Var(_) => {}
+            Expr::Invoke(_, args) => {
+                for arg in args {
+                    arg.calls(out);
+                }
+            }
+            Expr::Once(_)
+            | Expr::Lit(_)
+            | Expr::Var(_)
+            | Expr::Member(..)
+            | Expr::EnumValue(..) => {}
         }
     }
 
     /// Its value in `scope`.
     pub fn eval(&self, scope: &dyn Scope) -> Result<Val, String> {
+        self.eval_in(scope, false)
+    }
+
+    fn eval_in(&self, scope: &dyn Scope, yarn: bool) -> Result<Val, String> {
         Ok(match self {
-            Expr::Lit(v) => v.clone(),
+            Expr::Once(id) => Val::Bool(scope.once(id)),
+            Expr::Lit(v) | Expr::EnumValue(_, v) => v.clone(),
+            Expr::Yarn(e) => e.eval_in(scope, true)?,
+            Expr::Member(ty, member) => {
+                return Err(format!("unresolved enum member {ty}.{member}"));
+            }
+            Expr::Invoke(name, args) => {
+                let args = args
+                    .iter()
+                    .map(|a| a.eval_in(scope, yarn))
+                    .collect::<Result<Vec<_>, _>>()?;
+                scope.invoke(name, &args)?
+            }
             Expr::Var(n) => scope
                 .var(n)
                 .ok_or_else(|| format!("the story has no variable '{n}'"))?,
-            Expr::Not(e) => Val::Bool(!e.eval(scope)?.truthy()),
-            Expr::Neg(e) => Val::Num(-num(&e.eval(scope)?, "-")?),
+            Expr::Not(e) => Val::Bool(!e.eval_in(scope, yarn)?.truthy()),
+            Expr::Neg(e) => Val::Num(-num(&e.eval_in(scope, yarn)?, "-")?),
             Expr::Call(f) => match f {
                 Func::Seen(n) => Val::Bool(scope.seen(n)),
                 Func::Status(q) => Val::Str(scope.quest_status(q).to_string()),
                 Func::Stage(q) => Val::Str(scope.quest_stage(q)),
                 Func::Count(q, o) => Val::Num(scope.quest_count(q, o)),
             },
-            Expr::Bin(Op::And, a, b) => {
+            Expr::Bin(Op::And, a, b) if !yarn => {
                 Val::Bool(a.eval(scope)?.truthy() && b.eval(scope)?.truthy())
             }
-            Expr::Bin(Op::Or, a, b) => {
+            Expr::Bin(Op::Or, a, b) if !yarn => {
                 Val::Bool(a.eval(scope)?.truthy() || b.eval(scope)?.truthy())
             }
+            Expr::Bin(op @ (Op::And | Op::Or | Op::Xor), a, b) => {
+                let (a, b) = (
+                    a.eval_in(scope, yarn)?.truthy(),
+                    b.eval_in(scope, yarn)?.truthy(),
+                );
+                Val::Bool(match op {
+                    Op::And => a && b,
+                    Op::Or => a || b,
+                    _ => a ^ b,
+                })
+            }
             Expr::Bin(op, a, b) => {
-                let (a, b) = (a.eval(scope)?, b.eval(scope)?);
-                binary(*op, a, b)?
+                let (a, b) = (a.eval_in(scope, yarn)?, b.eval_in(scope, yarn)?);
+                match (&a, &b) {
+                    (Val::Num(x), Val::Num(y))
+                        if yarn
+                            && matches!(op, Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Rem) =>
+                    {
+                        let (x, y) = (*x as f32, *y as f32);
+                        Val::Num(f64::from(match op {
+                            Op::Add => x + y,
+                            Op::Sub => x - y,
+                            Op::Mul => x * y,
+                            Op::Div => x / y,
+                            _ => x % y,
+                        }))
+                    }
+                    _ => binary(*op, a, b)?,
+                }
             }
         })
     }
@@ -470,7 +545,7 @@ fn binary(op: Op, a: Val, b: Val) -> Result<Val, String> {
         Op::Le => "<=",
         Op::Gt => ">",
         Op::Ge => ">=",
-        Op::And | Op::Or => unreachable!("evaluated lazily"),
+        Op::And | Op::Or | Op::Xor => unreachable!("evaluated by eval"),
     };
     Ok(match op {
         Op::Eq => Val::Bool(a == b),

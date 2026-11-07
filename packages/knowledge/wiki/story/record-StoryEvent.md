@@ -25,4 +25,4 @@ event StoryEvent {
 }
 ```
 
-<sub>Module `story` line 54</sub>
+<sub>Module `story` line 70</sub>

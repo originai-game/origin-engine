@@ -6,7 +6,8 @@
 
 use crate::bark::{Ambient, Request, Said};
 use crate::expr::Val;
-use crate::story::{Conv, Event, QuestState, Roll, Shown, Story, Wait};
+use crate::story::{ChoiceValues, Conv, Event, QuestState, Roll, Shown, Story, Wait};
+use crate::yarn::saliency::Saliency;
 use og_core::Rng;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -17,7 +18,11 @@ const MAGIC: &[u8; 4] = b"OGST";
 /// the solo the story holds. Version 4 replaces offsets with stable
 /// continuation IDs and saves detour stacks. Older versions remain readable
 /// for quest state; their dialogue continuations are not migrated to Yarn.
-pub const SAVE_VERSION: u8 = 4;
+/// Version 5 records source-node exits separately from IR-block traversal.
+/// Version 6 checkpoints offered option values, including random arguments.
+/// Version 7 retains the chosen option's arguments in dialogue history.
+/// Version 8 checkpoints option reason arguments and check targets.
+pub const SAVE_VERSION: u8 = 8;
 
 struct W<'a>(&'a mut Vec<u8>);
 
@@ -223,12 +228,32 @@ impl Story {
             for continuation in &c.stack {
                 w.str(continuation);
             }
+            w.u32(c.active_nodes.len() as u32);
+            for frame in &c.active_nodes {
+                w.u32(frame.len() as u32);
+                for node in frame {
+                    w.str(node);
+                }
+            }
             w.u8(match c.wait {
                 Wait::Line => 0,
                 Wait::Choices => 1,
                 Wait::Ended => 2,
             });
             w.vars(&c.locals);
+            w.u32(c.choice_values.len() as u32);
+            for (id, value) in &c.choice_values {
+                w.str(id);
+                w.u8(u8::from(value.visible));
+                w.u8(u8::from(value.enabled));
+                w.f64(value.chance);
+                w.args(&value.args);
+                w.args(&value.reason_args);
+                w.u8(u8::from(value.target.is_some()));
+                if let Some(target) = value.target {
+                    w.f64(target);
+                }
+            }
             w.u32(c.cast.len() as u32);
             for (k, e) in &c.cast {
                 w.str(k);
@@ -256,6 +281,7 @@ impl Story {
                 w.u32(s.voice_ticks);
                 w.opt_u32(s.voice_start);
                 w.str(&s.shot);
+                w.args(&s.chosen_args);
             }
             match c.timer {
                 Some((l, t)) => {
@@ -402,6 +428,24 @@ impl Story {
             }
             None => w.u8(0),
         }
+        w.u32(self.visits.len() as u32);
+        for (node, count) in &self.visits {
+            w.str(node);
+            w.u32(*count);
+        }
+        w.set(&self.once);
+        w.u8(match self.saliency {
+            Saliency::First => 0,
+            Saliency::Best => 1,
+            Saliency::BestLeastRecentlyViewed => 2,
+            Saliency::RandomBestLeastRecentlyViewed => 3,
+            Saliency::ConditionalFirstWeighted => 4,
+        });
+        w.u32(self.content_views.len() as u32);
+        for (key, count) in &self.content_views {
+            w.str(key);
+            w.u32(*count);
+        }
     }
 
     /// A story from its saved form; no warning is pending.
@@ -442,6 +486,16 @@ impl Story {
                 }
                 0
             };
+            let mut active_nodes = Vec::new();
+            if v >= 5 {
+                for _ in 0..r.count()? {
+                    let mut frame = Vec::new();
+                    for _ in 0..r.count()? {
+                        frame.push(r.str()?);
+                    }
+                    active_nodes.push(frame);
+                }
+            }
             let wait = match r.u8()? {
                 0 => Wait::Line,
                 1 => Wait::Choices,
@@ -449,6 +503,26 @@ impl Story {
                 w => return Err(format!("the story's saved state has a wait of kind {w}")),
             };
             let locals = r.vars()?;
+            let mut choice_values = BTreeMap::new();
+            if v >= 6 {
+                for _ in 0..r.count()? {
+                    choice_values.insert(
+                        r.str()?,
+                        ChoiceValues {
+                            visible: r.bool()?,
+                            enabled: r.bool()?,
+                            chance: r.f64()?,
+                            args: r.args()?,
+                            reason_args: if v >= 8 { r.args()? } else { Vec::new() },
+                            target: if v >= 8 && r.bool()? {
+                                Some(r.f64()?)
+                            } else {
+                                None
+                            },
+                        },
+                    );
+                }
+            }
             let mut cast = BTreeMap::new();
             for _ in 0..r.count()? {
                 let k = r.str()?;
@@ -478,6 +552,7 @@ impl Story {
                     (0, None)
                 };
                 let shot = if v >= 3 { r.str()? } else { String::new() };
+                let chosen_args = if v >= 7 { r.args()? } else { Vec::new() };
                 history.push(Shown {
                     node,
                     step,
@@ -489,6 +564,7 @@ impl Story {
                     seq,
                     seen,
                     chosen,
+                    chosen_args,
                     voice_ticks,
                     voice_start,
                     shot,
@@ -508,12 +584,14 @@ impl Story {
                     pc,
                     wait,
                     locals,
+                    choice_values,
                     cast,
                     visited,
                     history,
                     timer,
                     last_roll,
                     stack,
+                    active_nodes,
                 },
             );
         }
@@ -648,6 +726,25 @@ impl Story {
         }
         if v >= 3 && r.bool()? {
             s.camera = Some((r.u64()?, r.u64()?));
+        }
+        if v >= 5 {
+            for _ in 0..r.count()? {
+                let node = r.str()?;
+                s.visits.insert(node, r.u32()?);
+            }
+            s.once = r.set()?;
+            s.saliency = match r.u8()? {
+                0 => Saliency::First,
+                1 => Saliency::Best,
+                2 => Saliency::BestLeastRecentlyViewed,
+                3 => Saliency::RandomBestLeastRecentlyViewed,
+                4 => Saliency::ConditionalFirstWeighted,
+                _ => return Err("invalid saved saliency policy".into()),
+            };
+            for _ in 0..r.count()? {
+                let key = r.str()?;
+                s.content_views.insert(key, r.u32()?);
+            }
         }
         if r.at != r.b.len() {
             return Err("the story's saved state has bytes past its end".into());

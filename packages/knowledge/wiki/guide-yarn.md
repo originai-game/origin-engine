@@ -9,14 +9,15 @@ engine-owned IR. The runtime, saves, quests, and UI views remain engine-owned.
 <a id="guide-yarn-1"></a>
 ### `yarn §1` Declare the profile and stable ids
 
-Every file declares `#og-profile:yarn-3.0-og-1` and a unique `#og-name`.
-This is a bounded Yarn Spinner 3.0 syntax profile, not the upstream runtime.
+Every file declares `#og-profile:yarn-spinner-3.2.2` and a unique `#og-name`.
+The language is pinned to released Yarn Spinner **v3.2.2**, not development
+main. The Rust compiler and runtime implement that language inside the engine.
 Every spoken line, narrator line, option, and line-group member requires an
 explicit `#line:` id. Keep these ids when editing or moving text. A missing
 or duplicate id is a cook error with its source line and the fix.
 
 ```yarn
-#og-profile:yarn-3.0-og-1
+#og-profile:yarn-spinner-3.2.2
 #og-name:smith
 #og-locale:en
 title: Start
@@ -46,15 +47,29 @@ for branches. `<<jump Node>>` transfers control. `<<detour Node>>` saves a
 return continuation; reaching the node's end or `<<return>>` resumes it.
 `<<stop>>` ends the conversation. Without a detour caller, returning ends it.
 
-Declare number, boolean, and string defaults with `<<declare $name = value>>`.
-Declarations are global. Add `#og-local:name` before the first node for a
-conversation-local variable. Assignment accepts `=` or `to`. Expressions
-support arithmetic, comparisons, parentheses, `and`, `or`, `not`, `&&`,
-`||`, and `!`. Engine functions `seen`, `status`, `stage`, and `count` remain
-available. World reads are limited to bark conditions and bark arguments.
+Declarations accept `as number`, `as string`, `as bool`, or an enum type.
+A nonconstant declaration defines a smart variable, evaluated on each read;
+smart variables cannot be assigned and their dependency graph must be acyclic.
+Use `<<enum Mode>>`, `<<case Open>>`, and `<<endenum>>` for enums, with optional
+constant string or numeric raw values. Refer to `Mode.Open`, or `.Open` where
+its type is unambiguous.
 
-Other commands emit `og.StoryEvent` once, with the command name and one
-argument: a raw text tail or a single `{expression}`. The game handles the
+Declarations are global. Add `#og-local:name` before the first node for a
+conversation-local variable. Assignment accepts `=`, `to`, `+=`, `-=`, `*=`,
+`/=`, and `%=`. Expressions support Yarn's arithmetic, comparisons, boolean
+operators and aliases, and function calls. Numbers follow Yarn's single-precision
+semantics on both hosts. Engine functions `seen`, `status`, `stage`, and `count`
+remain available. World reads are limited to bark conditions and arguments.
+
+Dynamic transfers use `<<jump {$destination}>>` and `<<detour {$destination}>>`.
+Use `<<once>>` or `<<once if expression>>` blocks with `<<endonce>>`, and
+`<<once>>` or `<<once if expression>>` conditions on lines and options.
+Optional `<<else>>` content runs after a once block has been consumed.
+`<<call function(...)>>` remains supported because it exists in v3.2.2.
+
+Other commands emit `og.StoryEvent` once, with the command name and its
+formatted argument text. Any number of `{expression}` substitutions can appear
+between literal fragments. The game handles the
 event on the next tick. The reserved `quest` command accepts `start`,
 `complete`, `fail`, `stage`, and `progress`; it calls the engine quest runtime.
 
@@ -77,16 +92,37 @@ possibly repeating a command or reward.
 Instruction identities derive from the owning node or option and the
 command text. Changing a pending detour command changes its return identity.
 Keep that command and its owning node or option while saves may stand on it.
-Identical commands in the same scope are rejected; put repeated commands in
-distinct named nodes. This profile does not migrate old dialogue-format saves.
+Repeated identical commands are allowed in one node. Their occurrence within
+that scope disambiguates their instruction ids. Inserting unrelated lines does
+not change those ids. Changing command text or inserting another identical
+command before a saved return point can change its identity. This version does
+not migrate old `type dialogue` saves.
+
+Offered option conditions and arguments are evaluated once and checkpointed.
+Reading a view or restoring cannot draw another random number or settle the
+same choice again. History retains the selected option's evaluated arguments.
 
 <a id="guide-yarn-3"></a>
 ### `yarn §3` Select lines and schedule barks
 
-Use `=>` for a line group. Matching conditional members take precedence over
-unconditional fallback members. Ties draw by positive `#weight` (default 1)
-from `og.Rng`'s `story` fork. This conditional-first policy is the profile's
-saliency rule, not Yarn's pluggable saliency strategies.
+Use `=>` for a line group. Repeat a `title:` with `when:` headers to form a
+node group. Each member can have a stable `subtitle:`. Multiple `when:` headers
+are alternatives. `when: always`, `when: once`, and `when: once if expression`
+are supported. Keep subtitles stable when editing group members used by saves.
+
+Select a strategy with `og.story.setSaliency(world, strategy)`:
+
+- `first`: first eligible member.
+- `best`: highest condition complexity, then source order.
+- `bestLeastRecentlyViewed`: lowest view count, then highest complexity,
+  then source order.
+- `randomBestLeastRecentlyViewed`: lowest view count, then highest complexity,
+  then a random tie break.
+- `conditionalFirstWeighted` (engine default): conditional members before
+  unconditional fallbacks, then positive `#weight` values, defaulting to 1.
+
+The first four implement upstream's built-in strategies. Every random choice
+uses `og.Rng`'s `story` fork. The strategy, view counts, and RNG are saved.
 
 ```yarn
 => Smith: A loyal customer. <<if $gold > 100>> #line:smith.rich #weight:3
@@ -132,19 +168,75 @@ group may carry the positive timeout; that option is the default choice.
 
 Quests remain `.ogt` files of `type quest`. Objectives retain reflected
 `on Event` and `where "event.field == 'value'"` filters, progression, rewards,
-and saves. DialogueView and QuestView do not change. No UI migration is needed.
+and saves. QuestView does not change. Dialogue views retain their existing
+fields and add typed markup spans.
 
 <a id="guide-yarn-5"></a>
-### `yarn §5` Stay within the declared profile
+### `yarn §5` Deliver localized text and spans
 
-Unsupported features fail cooking instead of silently becoming executable
-dialogue: node groups, dynamic jump or detour targets, smart variables,
-typed declarations, enums, once blocks, markup, legacy `[[options]]`,
-compound assignments, custom expression functions, and mixed command
-interpolation. Full-line `//` comments are supported. Node `tags` are
-metadata only. Unknown headers, line tags, or version profiles are errors.
+Dialogue, choices, selected choices, history, and barks carry plain `text` and
+`spans`. Each root API `TextSpan` has `name`, `position`, `length`, and
+`properties: Readonly<Record<string, string | number | boolean>>`.
+Positions and lengths count **Unicode scalar values**, including the complete
+`Speaker: ` prefix. They are not UTF-16 offsets. The character span covers that
+prefix and stores the character's name in `properties.name`.
+
+The engine resolves `[nomarkup]`, escapes, `[select]`, `[plural]`, and `[ordinal]`
+after localization. Plural and ordinal selection uses og.i18n's CLDR rules.
+Unknown attributes and typed properties are preserved. UI consumers receive
+the spans directly, never markup to parse again. A UI document binds
+`<text spans={$spans}>{$body}</text>`; its styles decide how attributes such as
+`bold` or `wave` look. This compiler does not implement visual effects.
+
+<a id="guide-yarn-6"></a>
+### `yarn §6` Call built-in and registered functions
+
+The built-ins are `visited`, `visited_count`, `has_any_content`, `random`,
+`random_range`, `random_range_float`, `dice`, `min`, `max`, `round`,
+`round_places`, `floor`, `ceil`, `inc`, `dec`, `decimal`, `int`, `number`,
+`string`, `bool`, `format`, and `format_invariant`.
+
+Visit counts increase when source nodes exit, not at each generated instruction.
+Literal `visited("Node")` and `visited_count("Node")` references enable tracking.
+Set the Yarn `tracking:` header to `always` for dynamic references, or `never`
+to suppress tracking.
+For compatibility, v3.2.2's `random_range_float` draws an integer displacement
+and adds the floating minimum. Numeric `format` uses invariant .NET-compatible
+standard and custom numeric formats. It does not depend on the host locale.
+
+Register pure typed functions in `project.ogt` before cooking:
+
+```text
+storyFunctions {
+	function scaled number {
+		param value number
+		param factor number
+		body "$value * $factor + 2"
+	}
+}
+```
+
+Then use `{scaled(3, 7)}` in Yarn. The cook type-checks calls and stores checked
+expression bodies in the IR. Parameters and return values use `number`,
+`string`, or `bool`. Functions may call other pure functions, but cannot read
+story variables, RNG, quests, clocks, or host callbacks. Recursive calls fail
+cooking. The Rust registration entry is `yarn::compile_with_functions`.
+
+<a id="guide-yarn-7"></a>
+### `yarn §7` Upgrade the declared release
+
+The conformance inputs and MIT license are under `third_party/yarn-spinner/`.
+All 83 upstream `.yarn` files and 33 `.testplan` files come from v3.2.2.
+The harness adds mandatory engine line ids only in memory, checks runtime
+output and saved-state hashes on native and wasm, and restores at suspensions.
+Markup expectations are converted from upstream UTF-16 to engine scalar offsets.
+
+Legacy Yarn 1 `[[option|destination]]` links are not part of the released
+[v3.2.2 grammar](https://github.com/YarnSpinnerTool/YarnSpinner/blob/v3.2.2/YarnSpinner.Compiler/Grammars/YarnSpinnerParser.g4).
+Use `->` options and `<<jump>>`. No v3.2.2 feature is excluded because a later
+development version removes it. Unknown engine profile versions fail cooking;
+arbitrary Yarn headers and hashtags remain metadata.
 
 Replace old `type dialogue` sources with `.yarn`; keep their localization
 keys as `#line:` ids and move the base text into the script. Re-cook all
-dialogue assets. The compiler's upstream syntax references and MIT license
-are recorded under `third_party/yarn-spinner/`.
+dialogue assets after changing the profile or registered functions.

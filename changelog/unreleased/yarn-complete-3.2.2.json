@@ -1,0 +1,16 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "story.load",
+      "change": "Replace the bounded Yarn profile with released Yarn Spinner 3.2.2, including typed expressions, smart variables, enums, once content, dynamic transfers, node groups, saliency strategies, pure registered functions and localized markup. Dialogue text now retains the Speaker: prefix and carries typed scalar-offset spans. Cooked dialogue schema is 3 and story saves checkpoint offered and selected option values.",
+      "fix": "Declare #og-profile:yarn-spinner-3.2.2 and re-cook all .yarn assets. Keep explicit #line: ids and stable node/subtitle/continuation identities. Consume text and spans together without parsing markup or adding a second speaker prefix. Register pure typed functions in project.ogt before cooking. Quests remain engine data."
+    }
+  ],
+  "added": [
+    {
+      "member": "story.setSaliency",
+      "summary": "Select Yarn's first, best, best-least-viewed or random-best-least-viewed strategy, or the engine's conditional-first weighted strategy. Strategy, view counts and all random draws use checkpointed story state."
+    }
+  ]
+}

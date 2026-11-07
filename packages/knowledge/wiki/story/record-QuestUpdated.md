@@ -23,4 +23,4 @@ event QuestUpdated {
 }
 ```
 
-<sub>Module `story` line 40</sub>
+<sub>Module `story` line 56</sub>

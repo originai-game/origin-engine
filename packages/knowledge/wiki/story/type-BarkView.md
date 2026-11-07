@@ -17,6 +17,7 @@ A bark being said.
 | `key` | `string` | `""` | — | — | — | The line's i18n key. |
 | `args` | `unknown` | `null` | — | — | — | The arguments it was resolved with (evaluated when it was said, world reads included). |
 | `text` | `string` | `""` | — | — | — | The line, resolved in the active locale. |
+| `spans` | `readonly TextSpan[]` | `[]` | — | — | — | Localized Yarn attributes in Unicode scalar offsets. |
 | `speaker` | `SpeakerView` | `{ id: "", name: "", entity: 0, portrait: "", expression: "", side: "" }` | — | — | — | The bark's speaker (entity: who says it). |
 | `voice` | `string` | `""` | — | — | — | Its voice clip (empty: none), played as a conversation's. |
 | `voiceLeft` | `number` | `0` | — | — | — | Ticks of its voice still to play. |
@@ -33,6 +34,7 @@ struct BarkView {
   field key String "The line's i18n key."
   field args Json "The arguments it was resolved with (evaluated when it was said, world reads included)."
   field text String "The line, resolved in the active locale."
+  field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets."
   field speaker SpeakerView "The bark's speaker (entity: who says it)."
   field voice String "Its voice clip (empty: none), played as a conversation's."
   field voiceLeft u32 "Ticks of its voice still to play."
@@ -41,4 +43,4 @@ struct BarkView {
 }
 ```
 
-<sub>Module `story` line 187</sub>
+<sub>Module `story` line 207</sub>

@@ -74,6 +74,7 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
 /// Reads every `.ogt` under `<project>/assets`: the keys of its dialogues
 /// and quests, and each string table checked against them.
 pub fn extract(project: &Path) -> Result<Extract, String> {
+    let functions = super::story_functions::read(project)?;
     let assets = project.join("assets");
     if !assets.is_dir() {
         return Err(format!("{}: no assets/ directory", project.display()));
@@ -99,12 +100,14 @@ pub fn extract(project: &Path) -> Result<Extract, String> {
             continue;
         };
         let keys = match ty.as_str() {
-            t if t == og_story::DIALOGUE_TYPE => og_story::Dialogue::parse(&text).map(|d| {
-                for (key, text) in &d.strings {
-                    x.keys.entry(key.clone()).or_default().text = Some(text.clone());
-                }
-                d.keys()
-            }),
+            t if t == og_story::DIALOGUE_TYPE => {
+                og_story::yarn::compile_with_functions(&text, functions.clone()).map(|d| {
+                    for (key, text) in &d.strings {
+                        x.keys.entry(key.clone()).or_default().text = Some(text.clone());
+                    }
+                    d.keys()
+                })
+            }
             t if t == og_story::QUEST_TYPE => og_story::Quest::parse(&text).map(|q| q.keys()),
             t if t == og_i18n::STRINGS_TYPE => {
                 match og_i18n::StringTable::parse(&text) {

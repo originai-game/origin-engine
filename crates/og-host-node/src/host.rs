@@ -368,6 +368,9 @@ impl RngApi for NodeHost {
 }
 
 impl StoryApi for NodeHost {
+    fn og_story_set_saliency(&self, world: u32, strategy: String) -> String {
+        rt::og_story_set_saliency(world, strategy)
+    }
     fn og_story_bark(&self, world: u32, desc: Option<String>) -> String {
         rt::og_story_bark(world, desc)
     }

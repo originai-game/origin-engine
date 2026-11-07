@@ -2,9 +2,9 @@
 
 # The `story` module
 
-Dialogue uses Yarn Spinner syntax in `.yarn` files, compiled to engine-owned IR by og cook. The declared profile is `#og-profile:yarn-3.0-og-1`; see the yarn guide for supported syntax and extensions. Every line and option requires an explicit stable `#line:` id. Inline base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.
+Dialogue uses released Yarn Spinner 3.2.2 in `.yarn` files, compiled to engine-owned IR by og cook. Declare `#og-profile:yarn-spinner-3.2.2`; see the yarn guide for the language and engine extensions. Every line and option requires an explicit stable `#line:` id. Base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.
 
-og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. DialogueView and QuestView retain their existing shapes. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.
+og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. Dialogue text retains its Speaker: prefix and carries typed TextSpan attributes in Unicode scalar offsets. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.
 
 Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn.
 
@@ -16,8 +16,8 @@ Saves checkpoint stable continuation, node, line and option ids, detour stacks, 
 
 ```ogt
 module story {
-  doc "Dialogue uses Yarn Spinner syntax in `.yarn` files, compiled to engine-owned IR by og cook. The declared profile is `#og-profile:yarn-3.0-og-1`; see the yarn guide for supported syntax and extensions. Every line and option requires an explicit stable `#line:` id. Inline base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards."
-  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. DialogueView and QuestView retain their existing shapes. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log."
+  doc "Dialogue uses released Yarn Spinner 3.2.2 in `.yarn` files, compiled to engine-owned IR by og cook. Declare `#og-profile:yarn-spinner-3.2.2`; see the yarn guide for the language and engine extensions. Every line and option requires an explicit stable `#line:` id. Base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards."
+  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. Dialogue text retains its Speaker: prefix and carries typed TextSpan attributes in Unicode scalar offsets. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log."
   doc "Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn."
   doc "Saves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash."
   # declarations follow, each on its own page
@@ -29,6 +29,8 @@ module story {
 
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
+| [`StorySaliency`](story/type-StorySaliency.md) | enum |  | How Yarn node and line groups choose eligible content. |
+| [`og.story.setSaliency`](story/fn-setSaliency.md) | function | `(world: World, strategy: StorySaliency): Result<void>` | Select this world's Yarn content strategy after loading its story. |
 | [`og.Story`](story/record-Story.md) | resource |  | The story's counters (written by og.story; the story itself is a state block). |
 | [`og.DialogueShown`](story/record-DialogueShown.md) | event |  | A conversation shows a new line (start the voice, reset the reveal). |
 | [`og.DialogueEnded`](story/record-DialogueEnded.md) | event |  | A conversation ended: its top-level Yarn node returned, reached `<<stop>>`, or og.story.stop stopped it. |
@@ -57,7 +59,7 @@ module story {
 | [`og.story.load`](story/fn-load.md) | function | `(world: World, path: string): Result<StoryAsset>` | A cooked `.yarn` dialogue or `type quest` asset. |
 | [`og.story.parse`](story/fn-parse.md) | function | `(world: World, text: string): Result<StoryAsset>` | A dialogue or quest from text, now (tests and generated content; assets go through og cook). |
 | [`og.story.start`](story/fn-start.md) | function | `(world: World, desc?: StartDesc): Result<number>` | Start a conversation: it runs to its first line (or its choices) now, and og.DialogueShown is sent the next tick. |
-| [`og.story.view`](story/fn-view.md) | function | `(world: World, conversation: number): DialogueView \| null` | What a conversation shows now, resolved in the active locale. |
+| [`og.story.view`](story/fn-view.md) | function | `(world: World, conversation: number): DialogueView \| null` | The current dialogue line and choices, with text and markup spans resolved in the active locale. |
 | [`og.story.history`](story/fn-history.md) | function | `(world: World, conversation: number): readonly StoryLine[]` | A conversation's lines so far, oldest first, with the choice made on each (a VN backlog). |
 | [`og.story.conversations`](story/fn-conversations.md) | function | `(world: World): readonly number[]` | The conversations that exist (started and not stopped), oldest first. |
 | [`og.story.advance`](story/fn-advance.md) | function | `(world: World, conversation: number): Result<void>` | Move a conversation past its line: it runs to the next line, its choices or its end. |

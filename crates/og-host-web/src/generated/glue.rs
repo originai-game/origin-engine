@@ -1719,6 +1719,11 @@ pub fn og_ai_describe(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_story_set_saliency(world: u32, strategy: String) -> String {
+    <Host as StoryApi>::og_story_set_saliency(&Host, world, strategy)
+}
+
+#[wasm_bindgen]
 pub fn og_story_load(world: u32, path: String) -> String {
     <Host as StoryApi>::og_story_load(&Host, world, path)
 }

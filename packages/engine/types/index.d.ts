@@ -22153,10 +22153,21 @@ export interface AiDescription {
 
 
 // ── story ───────────────────────────────────────────────────────
-// Dialogue uses Yarn Spinner syntax in `.yarn` files, compiled to engine-owned IR by og cook. The declared profile is `#og-profile:yarn-3.0-og-1`; see the yarn guide for supported syntax and extensions. Every line and option requires an explicit stable `#line:` id. Inline base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.
-// og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. DialogueView and QuestView retain their existing shapes. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.
+// Dialogue uses released Yarn Spinner 3.2.2 in `.yarn` files, compiled to engine-owned IR by og cook. Declare `#og-profile:yarn-spinner-3.2.2`; see the yarn guide for the language and engine extensions. Every line and option requires an explicit stable `#line:` id. Base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.
+// og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. Dialogue text retains its Speaker: prefix and carries typed TextSpan attributes in Unicode scalar offsets. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.
 // Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn.
 // Saves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash.
+
+/**
+ * How Yarn node and line groups choose eligible content. All random draws use the checkpointed story RNG fork.
+ * - `"first"`: First eligible content in source order.
+ * - `"best"`: Most specific eligible condition, with source order breaking ties.
+ * - `"bestLeastRecentlyViewed"`: Least viewed eligible content, then most specific, with source order breaking ties.
+ * - `"randomBestLeastRecentlyViewed"`: Least viewed, then most specific, with random ties.
+ * - `"conditionalFirstWeighted"`: Prefer conditional content over fallback content; draw ties by #weight (the engine default).
+ */
+export type StorySaliency = "first" | "best" | "bestLeastRecentlyViewed" | "randomBestLeastRecentlyViewed" | "conditionalFirstWeighted";
+
 
 /**
  * The story's counters (written by og.story; the story itself is a state block). Registered at the first og.story.load.
@@ -22350,6 +22361,10 @@ export interface ChoiceView {
   readonly id: string;
   /** Its text, resolved in the active locale. */
   readonly text: string;
+  /**
+   * Yarn attributes on the plain text, in Unicode scalar offsets; unknown attributes are preserved.
+   */
+  readonly spans: readonly TextSpan[];
   /** Its i18n key. */
   readonly key: string;
   /** The arguments its text was resolved with. */
@@ -22415,6 +22430,10 @@ export interface DialogueView {
   /** The line, resolved in the active locale. */
   readonly text: string;
   /**
+   * Localized Yarn attributes in Unicode scalar offsets. The character span covers the full Speaker: prefix, including its whitespace.
+   */
+  readonly spans: readonly TextSpan[];
+  /**
    * Its voice clip's asset path (empty: none). og.story plays it on its own entity (an og.AudioSource on the sfx bus) from the tick after the line is shown, and stops it when the line moves on.
    */
   readonly voice: string;
@@ -22446,6 +22465,8 @@ export interface ChosenView {
   readonly index: number;
   /** Its text, resolved in the active locale. */
   readonly text: string;
+  /** Localized Yarn attributes in Unicode scalar offsets. */
+  readonly spans: readonly TextSpan[];
 }
 
 /** A line of a conversation's backlog. */
@@ -22462,6 +22483,8 @@ export interface StoryLine {
   readonly args: unknown;
   /** The line, resolved in the active locale. */
   readonly text: string;
+  /** Localized Yarn attributes in Unicode scalar offsets. */
+  readonly spans: readonly TextSpan[];
   /** Its voice clip (empty: none). */
   readonly voice: string;
   /** It had been read before it was shown. */
@@ -22550,6 +22573,8 @@ export interface BarkView {
   readonly args: unknown;
   /** The line, resolved in the active locale. */
   readonly text: string;
+  /** Localized Yarn attributes in Unicode scalar offsets. */
+  readonly spans: readonly TextSpan[];
   /** The bark's speaker (entity: who says it). */
   readonly speaker: SpeakerView;
   /** Its voice clip (empty: none), played as a conversation's. */
@@ -47572,12 +47597,20 @@ export declare namespace og {
    */
   const StoryEvent: EventType<StoryEvent>;
   /**
-   * Dialogue uses Yarn Spinner syntax in `.yarn` files, compiled to engine-owned IR by og cook. The declared profile is `#og-profile:yarn-3.0-og-1`; see the yarn guide for supported syntax and extensions. Every line and option requires an explicit stable `#line:` id. Inline base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.
-   * og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. DialogueView and QuestView retain their existing shapes. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.
+   * Dialogue uses released Yarn Spinner 3.2.2 in `.yarn` files, compiled to engine-owned IR by og cook. Declare `#og-profile:yarn-spinner-3.2.2`; see the yarn guide for the language and engine extensions. Every line and option requires an explicit stable `#line:` id. Base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.
+   * og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. Dialogue text retains its Speaker: prefix and carries typed TextSpan attributes in Unicode scalar offsets. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.
    * Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn.
    * Saves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash.
    */
   namespace story {
+    /**
+     * Select this world's Yarn content strategy after loading its story. The strategy and view counts are saved with the story.
+     *
+     * @param world The world.
+     * @param strategy The selection strategy.
+     * @returns Refused before a story is loaded or for an unknown strategy.
+     */
+    function setSaliency(world: World, strategy: StorySaliency): Result<void>;
     /**
      * A cooked `.yarn` dialogue or `type quest` asset. Loading again replaces it; stable ids preserve the conversation at its next step. The first load registers og.Story and its events, so call it in setup: inside a system it is refused until one load has run outside one.
      *
@@ -47603,7 +47636,7 @@ export declare namespace og {
      */
     function start(world: World, desc?: StartDesc): Result<number>;
     /**
-     * What a conversation shows now, resolved in the active locale.
+     * The current dialogue line and choices, with text and markup spans resolved in the active locale.
      *
      * @param world The world.
      * @param conversation The conversation.
@@ -47637,7 +47670,7 @@ export declare namespace og {
      *
      * @param world The world.
      * @param conversation The conversation.
-     * @param index ChoiceView.index.
+     * @param index ChoiceView.index, or 4294967295 for Yarn NoOptionSelected: continue past the option group without selecting an option.
      * @returns Refused for a hidden or disabled choice, a conversation showing a line, or an unknown one.
      */
     function choose(world: World, conversation: number, index: number): Result<void>;

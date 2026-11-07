@@ -62,7 +62,7 @@ test("Yarn base text survives table loading, locale switching and a live text ed
   const e = start();
   const w = e.world;
   const source = `// Authored base text without a separate English entry.
-#og-profile:yarn-3.0-og-1
+#og-profile:yarn-spinner-3.2.2
 #og-name:authored
 title: Start
 ---
@@ -81,6 +81,36 @@ Hello from Yarn #line:authored.hello
   must(og.story.parse(w, source.replace("Hello from Yarn", "Edited Yarn text")));
   og.i18n.setLocale(w, "en");
   expect(og.story.view(w, c)?.text).toBe("Edited Yarn text");
+  e.destroy();
+});
+
+test("Yarn saliency is selectable and views expose scalar typed spans", () => {
+  const e = start();
+  must(og.story.parse(e.world, `#og-profile:yarn-spinner-3.2.2
+#og-name:saliency
+title: Start
+when: always
+subtitle: fallback
+---
+Fallback #line:saliency.fallback
+===
+title: Start
+when: true and true
+subtitle: specific
+---
+Mae: 😀 [wave speed=2 active=true]hello[/wave] #line:saliency.specific
+===`));
+  must(og.story.setSaliency(e.world, "first"));
+  const first = must<number>(og.story.start(e.world, { dialogue: "saliency" }));
+  expect(og.story.view(e.world, first)?.key).toBe("saliency.fallback");
+  must(og.story.setSaliency(e.world, "best"));
+  const best = must<number>(og.story.start(e.world, { dialogue: "saliency" }));
+  const view = og.story.view(e.world, best);
+  expect(view?.text).toBe("Mae: 😀 hello");
+  expect(view?.spans).toEqual([
+    { name: "character", position: 0, length: 5, properties: { name: "Mae" } },
+    { name: "wave", position: 7, length: 5, properties: { speed: 2, active: true } },
+  ]);
   e.destroy();
 });
 
@@ -128,9 +158,9 @@ test("og.story: lines and choices resolve through og.i18n, re-resolve on a local
   e.advance(1);
   expect(w.events(og.StoryEvent).map((x) => [x.name, x.arg])).toEqual([["give_sword", "1"]]);
   expect(w.events(og.DialogueEnded).map((x) => x.conversation)).toEqual([c]);
-  const back = og.story.history(w, c) as unknown as { key: string; chosen: { index: number; text: string } | null }[];
+  const back = og.story.history(w, c);
   expect(back.map((l) => [l.key, l.chosen])).toEqual([
-    ["smith.hello", { index: 0, text: "Buy the sword (10 gold)" }],
+    ["smith.hello", { index: 0, text: "Buy the sword (10 gold)", spans: [] }],
     ["smith.thanks", null],
   ]);
 

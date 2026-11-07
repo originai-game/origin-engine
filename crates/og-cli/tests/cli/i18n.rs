@@ -96,7 +96,7 @@ fn i18n_extract_finds_story_keys_and_missing_translations() {
     assert_eq!(out.status.code(), Some(0), "{t}");
     let en = std::fs::read_to_string(dir.join("assets/strings/en.ogt")).unwrap();
     assert!(
-        en.contains("string \"smith.hello\" \"Steel's not cheap. You've {gold} gold.\""),
+        en.contains("string \"smith.hello\" \"smith: Steel''s not cheap. You''ve {gold} gold.\""),
         "{en}"
     );
     let _ = std::fs::remove_dir_all(&dir);

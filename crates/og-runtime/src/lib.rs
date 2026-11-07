@@ -264,8 +264,8 @@ pub use story::{
     og_story_complete_quest, og_story_conversations, og_story_fail_quest, og_story_get,
     og_story_history, og_story_load, og_story_mark, og_story_mark_seen, og_story_parse,
     og_story_progress, og_story_quest, og_story_quests, og_story_reset, og_story_set,
-    og_story_set_stage, og_story_start, og_story_start_quest, og_story_stop, og_story_track,
-    og_story_view,
+    og_story_set_saliency, og_story_set_stage, og_story_start, og_story_start_quest, og_story_stop,
+    og_story_track, og_story_view,
 };
 pub use stream::{
     og_stream_budget, og_stream_release, og_stream_request, og_stream_set_budget, og_stream_status,

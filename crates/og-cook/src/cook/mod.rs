@@ -52,6 +52,7 @@ mod scene;
 pub mod sfx;
 mod shader_check;
 pub mod stats;
+mod story_functions;
 mod stream;
 pub mod strings_extract;
 mod style_recolour;
@@ -321,7 +322,10 @@ enum Work<'a> {
     /// A font a `.riv`'s text uses.
     RiveFont(Box<riv::RivFont>),
     Behaviour(&'a Source),
-    Dialogue(&'a Source),
+    Dialogue(
+        &'a Source,
+        &'a BTreeMap<String, og_story::yarn::types::Function>,
+    ),
     Quest(&'a Source),
     NavMesh(&'a Source),
     Strings(&'a Source),
@@ -453,6 +457,9 @@ pub fn cook_project_with_texture_cache(
         report.elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
         return Ok(report);
     }
+    let story_functions = story_functions::read(root).map_err(CookError)?;
+    let story_functions_stamp =
+        serde_json::to_vec(&story_functions).map_err(|e| CookError(e.to_string()))?;
     let assets_dir = root.join("assets");
     let cooked_dir = root.join("cooked");
     let threads = if options.threads == 0 {
@@ -1563,8 +1570,13 @@ pub fn cook_project_with_texture_cache(
                 ));
             }
             Kind::Dialogue => {
-                let st = stamp(&[b"dialogue", &hash]);
-                outs.push((s.rel.clone(), format::Dialogue::NAME, st, Work::Dialogue(s)));
+                let st = stamp(&[b"dialogue", &hash, &story_functions_stamp]);
+                outs.push((
+                    s.rel.clone(),
+                    format::Dialogue::NAME,
+                    st,
+                    Work::Dialogue(s, &story_functions),
+                ));
             }
             Kind::Quest => {
                 let st = stamp(&[b"quest", &hash]);
@@ -2262,7 +2274,7 @@ pub fn cook_project_with_texture_cache(
         .filter(|s| matches!(s.kind, Kind::Dialogue | Kind::Quest))
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
-    for (rel, what) in e6::check_story_keys(&tables, &stories) {
+    for (rel, what) in e6::check_story_keys(&tables, &stories, &story_functions) {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             r.notes.push(what);

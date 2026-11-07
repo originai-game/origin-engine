@@ -281,7 +281,7 @@ fn solo(engine: u32) -> f64 {
     brain(engine)["solo"].as_f64().unwrap_or(0.0)
 }
 
-const TALK: &str = "#og-profile:yarn-3.0-og-1
+const TALK: &str = "#og-profile:yarn-spinner-3.2.2
 #og-name:talk
 title: one
 ---

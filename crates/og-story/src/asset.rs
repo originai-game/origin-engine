@@ -116,15 +116,21 @@ pub enum QuestOp {
 pub enum Step {
     Say(Line),
     Set(String, Expr),
+    Call(Expr),
+    Command(Expr),
+    MarkOnce(String),
     /// `if "cond" node`.
     If(Expr, String),
     Goto(String),
+    /// Yarn jump exits the complete detour stack; Goto only links IR blocks.
+    Jump(Expr),
     End,
     /// `emit name ["arg"]`.
     Emit(String, Option<Expr>),
     Quest(QuestOp),
     /// Calls a Yarn node, returning to the named continuation block.
     Detour(String, String),
+    DynamicDetour(Expr, String),
     Return,
     /// Eligible line-group candidates: target, condition, weight.
     Select(Vec<(String, Option<Expr>, f64)>),
@@ -179,6 +185,9 @@ pub struct Node {
     /// The step of the line its choices are shown with (its last `say`);
     /// `None` without one (they show with the line before).
     pub choice_line: Option<usize>,
+    /// Continuation when the host selects Yarn's NoOptionSelected (-1).
+    #[serde(default)]
+    pub choice_fallback: Option<String>,
     /// `shot <camera>`: the shot its lines are shown in unless a line
     /// names its own (empty: none).
     pub shot: String,
@@ -190,8 +199,23 @@ pub struct Node {
 pub struct Dialogue {
     pub name: String,
     pub start: String,
+    #[serde(default)]
+    pub file_tags: Vec<String>,
+    #[serde(default)]
+    pub headers: std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
     pub speakers: Vec<Speaker>,
     pub vars: Vec<VarDecl>,
+    /// Read-only expressions evaluated when a Yarn variable is read.
+    #[serde(default)]
+    pub smart: std::collections::BTreeMap<String, Expr>,
+    #[serde(default)]
+    pub functions: std::collections::BTreeMap<String, crate::yarn::types::Function>,
+    #[serde(default)]
+    pub group_members: std::collections::BTreeMap<String, String>,
+    #[serde(default)]
+    pub saliency_scores: std::collections::BTreeMap<String, u32>,
+    #[serde(default)]
+    pub untracked: BTreeSet<String>,
     pub nodes: Vec<Node>,
     pub barks: Vec<Bark>,
     pub strings: std::collections::BTreeMap<String, String>,
@@ -474,7 +498,12 @@ impl Dialogue {
 
     pub(crate) fn validate(&self) -> Result<(), String> {
         let nodes: BTreeSet<&str> = self.nodes.iter().map(|n| n.id.as_str()).collect();
-        let vars: BTreeSet<&str> = self.vars.iter().map(|v| v.name.as_str()).collect();
+        let vars: BTreeSet<&str> = self
+            .vars
+            .iter()
+            .map(|v| v.name.as_str())
+            .chain(self.smart.keys().map(String::as_str))
+            .collect();
         let target = |t: &str, line: usize| -> Result<(), String> {
             if nodes.contains(t) {
                 Ok(())
@@ -521,6 +550,16 @@ impl Dialogue {
                         target(t, line)?;
                         target(next, line)?;
                     }
+                    Step::Jump(x) => {
+                        check_expr(x, line, &vars, Some(&nodes))?;
+                        if let Expr::Lit(Val::Str(name)) = x {
+                            target(name, line)?;
+                        }
+                    }
+                    Step::DynamicDetour(x, next) => {
+                        check_expr(x, line, &vars, Some(&nodes))?;
+                        target(next, line)?;
+                    }
                     Step::Return => {}
                     Step::Select(options) => {
                         for (t, cond, _) in options {
@@ -530,17 +569,22 @@ impl Dialogue {
                             }
                         }
                     }
-                    Step::Emit(_, Some(x)) => check_expr(x, line, &vars, Some(&nodes))?,
+                    Step::Command(x) | Step::Call(x) | Step::Emit(_, Some(x)) => {
+                        check_expr(x, line, &vars, Some(&nodes))?
+                    }
                     Step::Quest(QuestOp::Progress(_, _, x)) => {
                         check_expr(x, line, &vars, Some(&nodes))?
                     }
-                    Step::Emit(_, None) | Step::End | Step::Quest(_) => {}
+                    Step::MarkOnce(_) | Step::Emit(_, None) | Step::End | Step::Quest(_) => {}
                 }
             }
             Ok(())
         };
         for n in &self.nodes {
             steps(&n.steps, &n.lines, n.line)?;
+            if let Some(fallback) = &n.choice_fallback {
+                target(fallback, n.line)?;
+            }
             for c in &n.choices {
                 text(&c.text, c.line)?;
                 if let Some(r) = &c.reason {

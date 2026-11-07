@@ -1,8 +1,24 @@
 module story {
-  doc "Dialogue uses Yarn Spinner syntax in `.yarn` files, compiled to engine-owned IR by og cook. The declared profile is `#og-profile:yarn-3.0-og-1`; see the yarn guide for supported syntax and extensions. Every line and option requires an explicit stable `#line:` id. Inline base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards."
-  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. DialogueView and QuestView retain their existing shapes. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log."
+  doc "Dialogue uses released Yarn Spinner 3.2.2 in `.yarn` files, compiled to engine-owned IR by og cook. Declare `#og-profile:yarn-spinner-3.2.2`; see the yarn guide for the language and engine extensions. Every line and option requires an explicit stable `#line:` id. Base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards."
+  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. Dialogue text retains its Speaker: prefix and carries typed TextSpan attributes in Unicode scalar offsets. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log."
   doc "Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn."
   doc "Saves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash."
+
+  enum StorySaliency {
+    doc "How Yarn node and line groups choose eligible content. All random draws use the checkpointed story RNG fork."
+    variant first "First eligible content in source order."
+    variant best "Most specific eligible condition, with source order breaking ties."
+    variant bestLeastRecentlyViewed "Least viewed eligible content, then most specific, with source order breaking ties."
+    variant randomBestLeastRecentlyViewed "Least viewed, then most specific, with random ties."
+    variant conditionalFirstWeighted "Prefer conditional content over fallback content; draw ties by #weight (the engine default)."
+  }
+
+  fn setSaliency {
+    doc "Select this world's Yarn content strategy after loading its story. The strategy and view counts are saved with the story."
+    param world World "The world."
+    param strategy StorySaliency "The selection strategy."
+    returns Result.Void "Refused before a story is loaded or for an unknown strategy."
+  }
 
   resource Story {
     doc "The story's counters (written by og.story; the story itself is a state block). Registered at the first og.story.load."
@@ -99,6 +115,7 @@ module story {
     field index u32 "What og.story.choose takes: its place among the node's choices, hidden ones counted."
     field id String "Its id within the node."
     field text String "Its text, resolved in the active locale."
+    field spans List.TextSpan "Yarn attributes on the plain text, in Unicode scalar offsets; unknown attributes are preserved."
     field key String "Its i18n key."
     field args Json "The arguments its text was resolved with."
     field enabled bool "Whether it can be chosen now (its `if` holds and a passive check passes)."
@@ -134,6 +151,7 @@ module story {
     field key String "The line's i18n key."
     field args Json "The arguments it was resolved with (evaluated when it was shown)."
     field text String "The line, resolved in the active locale."
+    field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets. The character span covers the full Speaker: prefix, including its whitespace."
     field voice String "Its voice clip's asset path (empty: none). og.story plays it on its own entity (an og.AudioSource on the sfx bus) from the tick after the line is shown, and stops it when the line moves on."
     field voiceTicks u32 "The voice's length in ticks (0: no voice, or one that did not load)."
     field voiceLeft u32 "Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance)."
@@ -149,6 +167,7 @@ module story {
     doc "The choice made while a line was shown."
     field index u32 "Its ChoiceView.index."
     field text String "Its text, resolved in the active locale."
+    field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets."
   }
 
   struct StoryLine {
@@ -159,6 +178,7 @@ module story {
     field key String "Its i18n key."
     field args Json "Its arguments."
     field text String "The line, resolved in the active locale."
+    field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets."
     field voice String "Its voice clip (empty: none)."
     field seen bool "It had been read before it was shown."
     field chosen Option.ChosenView "The choice made on it, if any."
@@ -193,6 +213,7 @@ module story {
     field key String "The line's i18n key."
     field args Json "The arguments it was resolved with (evaluated when it was said, world reads included)."
     field text String "The line, resolved in the active locale."
+    field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets."
     field speaker SpeakerView "The bark's speaker (entity: who says it)."
     field voice String "Its voice clip (empty: none), played as a conversation's."
     field voiceLeft u32 "Ticks of its voice still to play."
@@ -278,7 +299,7 @@ module story {
   }
 
   fn view {
-    doc "What a conversation shows now, resolved in the active locale."
+    doc "The current dialogue line and choices, with text and markup spans resolved in the active locale."
     aliases "dialogue line, conversation, dialog box, Yarn Spinner, Ink, line and choices"
     param world World "The world."
     param conversation u32 "The conversation."
@@ -309,7 +330,7 @@ module story {
     doc "Take a choice: an active check rolls (og.DialogueCheck), then its indented Yarn body runs, or #fail redirects a missed roll. A settled choice is not executed again on restore."
     param world World "The world."
     param conversation u32 "The conversation."
-    param index u32 "ChoiceView.index."
+    param index u32 "ChoiceView.index, or 4294967295 for Yarn NoOptionSelected: continue past the option group without selecting an option."
     returns Result.Void "Refused for a hidden or disabled choice, a conversation showing a line, or an unknown one."
   }
 

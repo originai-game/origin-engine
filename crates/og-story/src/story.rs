@@ -3,13 +3,14 @@
 //! story's random stream. All of it is saved ([`Story::save`]) and
 //! restored ([`Story::load`]); a save names nodes, lines, quests, stages
 //! and objectives by their ids, so it survives every edit of a dialogue or
-//! quest that keeps those ids. An id that is gone is warned about, naming
-//! it, and the story falls back (a conversation to its dialogue's start, a
-//! quest to its first stage) rather than landing somewhere else.
+//! quest that keeps those ids. A missing dialogue continuation is an error,
+//! never a restart that might repeat a command or reward.
 
 use crate::asset::{Choice, Dialogue, Node, Quest, QuestOp, Step};
 use crate::expr::{Expr, Scope, Val};
+use crate::yarn::saliency::{Saliency, complexity};
 use og_core::Rng;
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -71,6 +72,8 @@ pub struct Shown {
     pub seen: bool,
     /// The choice made while it was shown: its index and id.
     pub chosen: Option<(u32, String)>,
+    /// The selected option's arguments as offered, never reevaluated in history.
+    pub chosen_args: Vec<(String, Val)>,
     /// Its voice clip's length in ticks (Library::voice_ticks; 0: unknown
     /// or none).
     pub voice_ticks: u32,
@@ -99,6 +102,17 @@ pub struct Roll {
     pub passed: bool,
 }
 
+/// Values evaluated once when an option is offered, not on every UI read.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ChoiceValues {
+    pub visible: bool,
+    pub enabled: bool,
+    pub chance: f64,
+    pub args: Vec<(String, Val)>,
+    pub reason_args: Vec<(String, Val)>,
+    pub target: Option<f64>,
+}
+
 /// A conversation.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Conv {
@@ -119,6 +133,10 @@ pub struct Conv {
     pub last_roll: Option<Roll>,
     /// Stable continuation block IDs, not instruction offsets.
     pub stack: Vec<String>,
+    /// Tracked source nodes per call frame, outermost first. A node-group frame
+    /// holds both the group and its selected member; both exit together.
+    pub active_nodes: Vec<Vec<String>>,
+    pub choice_values: BTreeMap<String, ChoiceValues>,
 }
 
 /// A quest's state.
@@ -178,6 +196,10 @@ pub struct Story {
     pub globals: BTreeMap<String, Val>,
     /// Nodes entered, as `dialogue.node`.
     pub seen: BTreeSet<String>,
+    pub visits: BTreeMap<String, u32>,
+    pub once: BTreeSet<String>,
+    pub saliency: Saliency,
+    pub content_views: BTreeMap<String, u32>,
     /// Lines read, as `dialogue.node.key`; kept by [`Story::reset`].
     pub read: BTreeSet<String>,
     pub seq: u32,
@@ -220,6 +242,10 @@ impl Story {
         Story {
             globals: BTreeMap::new(),
             seen: BTreeSet::new(),
+            visits: BTreeMap::new(),
+            once: BTreeSet::new(),
+            saliency: Saliency::default(),
+            content_views: BTreeMap::new(),
             read: BTreeSet::new(),
             seq: 0,
             rng,
@@ -260,6 +286,9 @@ impl Story {
     pub fn reset(&mut self) {
         self.globals.clear();
         self.seen.clear();
+        self.visits.clear();
+        self.once.clear();
+        self.content_views.clear();
         self.convs.clear();
         self.quests.clear();
         self.events.clear();
@@ -277,8 +306,11 @@ impl Story {
         }
     }
 
-    /// A story variable (set, else its declared default).
-    pub fn get(&self, lib: &Library, name: &str) -> Option<Val> {
+    /// A story variable, evaluating a smart variable when it is read.
+    pub fn get(&mut self, lib: &Library, name: &str) -> Option<Val> {
+        if let Some(d) = lib.dialogues.values().find(|d| d.smart.contains_key(name)) {
+            return Some(self.value(lib, d, 0, &d.smart[name]));
+        }
         self.globals
             .get(name)
             .cloned()
@@ -287,6 +319,10 @@ impl Story {
 
     /// Sets a story variable; the quests settle.
     pub fn set(&mut self, lib: &Library, name: &str, v: Val) {
+        if lib.dialogues.values().any(|d| d.smart.contains_key(name)) {
+            self.warn(format!("cannot assign to smart variable ${name}"));
+            return;
+        }
         self.globals.insert(name.to_string(), v);
         self.settle(lib);
     }
@@ -354,6 +390,12 @@ impl Story {
                 timer: None,
                 last_roll: None,
                 stack: Vec::new(),
+                choice_values: BTreeMap::new(),
+                active_nodes: vec![if d.untracked.contains(&at) {
+                    Vec::new()
+                } else {
+                    vec![at.clone()]
+                }],
             },
         );
         self.enter(&d, id, &at);
@@ -389,6 +431,17 @@ impl Story {
             });
         }
         let node = d.node(&c.node).expect("resolved");
+        if index == u32::MAX {
+            let next = node
+                .choice_fallback
+                .as_ref()
+                .ok_or("this choice group has no fallthrough")?;
+            self.convs.get_mut(&id).unwrap().timer = None;
+            self.jump(&d, id, next);
+            self.run(lib, &d, id);
+            self.settle(lib);
+            return Ok(());
+        }
         let Some(choice) = node.choices.get(index as usize) else {
             return Err(format!(
                 "the node has {} choices; there is no choice {index}",
@@ -412,6 +465,10 @@ impl Story {
         c.timer = None;
         if let Some(last) = c.history.last_mut() {
             last.chosen = Some((index, choice.id.clone()));
+            last.chosen_args = c
+                .choice_values
+                .get(&choice.id)
+                .map_or_else(Vec::new, |v| v.args.clone());
         }
         for s in &choice.steps {
             self.act(lib, d, id, s);
@@ -421,7 +478,11 @@ impl Story {
             && k.active
         {
             let stat = self.number(lib, d, id, &Expr::Var(k.stat.clone()));
-            let target = self.number(lib, d, id, &k.target);
+            let target = self.convs[&id]
+                .choice_values
+                .get(&choice.id)
+                .and_then(|v| v.target)
+                .unwrap_or_else(|| self.number(lib, d, id, &k.target));
             let roll = self.rng.integer(1, 20) as u32;
             let passed = f64::from(roll) + stat >= target;
             let r = Roll {
@@ -450,10 +511,7 @@ impl Story {
 
     /// Ends and forgets a conversation.
     pub fn stop(&mut self, id: u32) -> bool {
-        let live = self.convs.get(&id).is_some_and(|c| c.wait != Wait::Ended);
-        if live {
-            self.events.push(Event::Ended { conv: id });
-        }
+        self.end(id);
         self.convs.remove(&id).is_some()
     }
 
@@ -558,7 +616,27 @@ impl Story {
         Ok(d)
     }
 
+    fn exit_node(&mut self, id: u32) {
+        let c = self.convs.get_mut(&id).unwrap();
+        if let Some(nodes) = c.active_nodes.pop() {
+            for node in nodes {
+                let count = self
+                    .visits
+                    .entry(format!("{}.{node}", c.dialogue))
+                    .or_default();
+                *count = count.saturating_add(1);
+            }
+        }
+    }
+
     fn end(&mut self, id: u32) {
+        while self
+            .convs
+            .get(&id)
+            .is_some_and(|c| !c.active_nodes.is_empty())
+        {
+            self.exit_node(id);
+        }
         if let Some(c) = self.convs.get_mut(&id)
             && c.wait != Wait::Ended
         {
@@ -594,7 +672,7 @@ impl Story {
                 if node.choices.is_empty() {
                     self.end(id);
                 } else {
-                    self.wait_choices(node, id);
+                    self.wait_choices(lib, d, node, id);
                 }
                 return;
             };
@@ -605,7 +683,7 @@ impl Story {
                         for s in &node.steps[pc + 1..] {
                             self.act(lib, d, id, s);
                         }
-                        self.wait_choices(node, id);
+                        self.wait_choices(lib, d, node, id);
                     } else {
                         self.convs.get_mut(&id).unwrap().wait = Wait::Line;
                     }
@@ -621,11 +699,51 @@ impl Story {
                 Step::Goto(t) => {
                     self.jump(d, id, t);
                 }
+                Step::Jump(expr) | Step::DynamicDetour(expr, _) => {
+                    let target = self.value(lib, d, id, expr);
+                    let Val::Str(target) = target else {
+                        self.warn("Yarn destination must evaluate to a string".into());
+                        self.end(id);
+                        return;
+                    };
+                    if !d.node(&target).is_some_and(|n| n.id == n.title) {
+                        self.warn(format!("Yarn destination '{target}' names no source node"));
+                        self.end(id);
+                        return;
+                    }
+                    if let Step::DynamicDetour(_, continuation) = step {
+                        self.convs
+                            .get_mut(&id)
+                            .unwrap()
+                            .stack
+                            .push(continuation.clone());
+                    } else {
+                        while !self.convs[&id].active_nodes.is_empty() {
+                            self.exit_node(id);
+                        }
+                        self.convs.get_mut(&id).unwrap().stack.clear();
+                    }
+                    self.convs.get_mut(&id).unwrap().active_nodes.push(
+                        if d.untracked.contains(&target) {
+                            Vec::new()
+                        } else {
+                            vec![target.clone()]
+                        },
+                    );
+                    self.jump(d, id, &target);
+                }
                 Step::End => {
                     self.end(id);
                     return;
                 }
                 Step::Detour(target, continuation) => {
+                    self.convs.get_mut(&id).unwrap().active_nodes.push(
+                        if d.untracked.contains(target) {
+                            Vec::new()
+                        } else {
+                            vec![target.clone()]
+                        },
+                    );
                     self.convs
                         .get_mut(&id)
                         .unwrap()
@@ -634,6 +752,7 @@ impl Story {
                     self.jump(d, id, target);
                 }
                 Step::Return => {
+                    self.exit_node(id);
                     if let Some(target) = self.convs.get_mut(&id).unwrap().stack.pop() {
                         self.jump(d, id, &target);
                     } else {
@@ -648,17 +767,71 @@ impl Story {
                             cond.as_ref().is_none_or(|x| self.truthy(lib, d, id, x))
                         })
                         .collect();
-                    // This profile's saliency prefers matching conditional lines;
-                    // unconditional lines are fallbacks. Ties draw by weight.
-                    if eligible.iter().any(|(_, cond, _)| cond.is_some()) {
-                        eligible.retain(|(_, cond, _)| cond.is_some());
+                    let track_views = matches!(
+                        self.saliency,
+                        Saliency::BestLeastRecentlyViewed | Saliency::RandomBestLeastRecentlyViewed
+                    );
+                    if track_views {
+                        let count = |target: &str| {
+                            self.content_views
+                                .get(&format!("{}.{target}", d.name))
+                                .copied()
+                                .unwrap_or(0)
+                        };
+                        let least = eligible.iter().map(|o| count(&o.0)).min().unwrap_or(0);
+                        eligible.retain(|o| count(&o.0) == least);
+                    }
+                    let score = |o: &&(String, Option<Expr>, f64)| {
+                        d.saliency_scores
+                            .get(&o.0)
+                            .copied()
+                            .unwrap_or_else(|| o.1.as_ref().map_or(0, complexity))
+                    };
+                    match self.saliency {
+                        Saliency::First => {}
+                        Saliency::ConditionalFirstWeighted => {
+                            if eligible.iter().any(|o| score(o) > 0) {
+                                eligible.retain(|o| score(o) > 0);
+                            }
+                        }
+                        _ => {
+                            let best = eligible.iter().map(score).max().unwrap_or(0);
+                            eligible.retain(|o| score(o) == best);
+                        }
                     }
                     if eligible.is_empty() {
                         self.convs.get_mut(&id).unwrap().pc += 1;
                     } else {
-                        let weights: Vec<_> = eligible.iter().map(|o| o.2).collect();
-                        let i = og_core::procgen::weighted(&mut self.rng, &weights).unwrap_or(0);
-                        self.jump(d, id, &eligible[i].0);
+                        let i = match self.saliency {
+                            Saliency::ConditionalFirstWeighted => {
+                                let weights: Vec<_> = eligible.iter().map(|o| o.2).collect();
+                                og_core::procgen::weighted(&mut self.rng, &weights).unwrap_or(0)
+                            }
+                            Saliency::RandomBestLeastRecentlyViewed if eligible.len() > 1 => {
+                                self.rng.integer(0, eligible.len() as i64 - 1) as usize
+                            }
+                            _ => 0,
+                        };
+                        if track_views {
+                            let count = self
+                                .content_views
+                                .entry(format!("{}.{}", d.name, eligible[i].0))
+                                .or_default();
+                            *count = count.saturating_add(1);
+                        }
+                        let target = &eligible[i].0;
+                        if d.group_members.get(target) == Some(&node.id)
+                            && !d.untracked.contains(target)
+                        {
+                            self.convs
+                                .get_mut(&id)
+                                .unwrap()
+                                .active_nodes
+                                .last_mut()
+                                .unwrap()
+                                .push(target.clone());
+                        }
+                        self.jump(d, id, target);
                     }
                 }
                 s => {
@@ -676,8 +849,46 @@ impl Story {
         self.end(id);
     }
 
-    fn wait_choices(&mut self, node: &Node, id: u32) {
+    fn wait_choices(&mut self, lib: &Library, d: &Dialogue, node: &Node, id: u32) {
+        let mut values = BTreeMap::new();
+        for choice in &node.choices {
+            let scope = self.scope(lib, d, id);
+            let (visible, enabled, chance, target) = Self::choice_state_in(&scope, choice);
+            let args = choice
+                .text
+                .args
+                .iter()
+                .map(|(key, expr)| expr.eval(&scope).map(|value| (key.clone(), value)))
+                .collect::<Result<Vec<_>, _>>();
+            let reason_args = choice
+                .reason
+                .iter()
+                .flat_map(|reason| &reason.args)
+                .map(|(key, expr)| expr.eval(&scope).map(|value| (key.clone(), value)))
+                .collect::<Result<Vec<_>, _>>();
+            self.rng = scope.rng.get();
+            let args = args.unwrap_or_else(|error| {
+                self.warn(format!("dialogue '{}': {error}", d.name));
+                Vec::new()
+            });
+            let reason_args = reason_args.unwrap_or_else(|error| {
+                self.warn(format!("dialogue '{}': {error}", d.name));
+                Vec::new()
+            });
+            values.insert(
+                choice.id.clone(),
+                ChoiceValues {
+                    visible,
+                    enabled,
+                    chance,
+                    args,
+                    reason_args,
+                    target,
+                },
+            );
+        }
         let c = self.convs.get_mut(&id).unwrap();
+        c.choice_values = values;
         c.wait = Wait::Choices;
         c.pc = node.steps.len() as u32;
         c.timer = node.timer.as_ref().map(|(t, _)| (*t, *t));
@@ -712,6 +923,7 @@ impl Story {
             seq: self.seq,
             seen,
             chosen: None,
+            chosen_args: Vec::new(),
             voice_ticks: lib.voice_ticks.get(&l.voice).copied().unwrap_or(0),
             voice_start: None,
         };
@@ -726,6 +938,22 @@ impl Story {
 
     pub(crate) fn act(&mut self, lib: &Library, d: &Arc<Dialogue>, id: u32, s: &Step) {
         match s {
+            Step::MarkOnce(key) => {
+                self.once.insert(format!("{}.{key}", d.name));
+            }
+            Step::Call(expr) => {
+                self.value(lib, d, id, expr);
+            }
+            Step::Command(expr) => {
+                let value = self.value(lib, d, id, expr);
+                let command = crate::yarn::functions::string(&value);
+                let (name, arg) = command.split_once(' ').unwrap_or((&command, ""));
+                self.events.push(Event::Emit {
+                    conv: id,
+                    name: name.into(),
+                    arg: arg.into(),
+                });
+            }
             Step::Set(name, x) => {
                 let v = self.value(lib, d, id, x);
                 match self.convs.get_mut(&id).and_then(|c| c.locals.get_mut(name)) {
@@ -766,6 +994,7 @@ impl Story {
     fn scope<'a>(&'a self, lib: &'a Library, d: &'a Dialogue, id: u32) -> ConvScope<'a> {
         ConvScope {
             story: self,
+            rng: Cell::new(self.rng),
             lib,
             dialogue: Some(&d.name),
             locals: self.convs.get(&id).map(|c| &c.locals),
@@ -774,7 +1003,9 @@ impl Story {
     }
 
     fn value(&mut self, lib: &Library, d: &Dialogue, id: u32, x: &Expr) -> Val {
-        let r = x.eval(&self.scope(lib, d, id));
+        let scope = self.scope(lib, d, id);
+        let r = x.eval(&scope);
+        self.rng = scope.rng.get();
         match r {
             Ok(v) => v,
             Err(e) => {
@@ -805,21 +1036,41 @@ impl Story {
         id: u32,
         choice: &Choice,
     ) -> (bool, bool, f64) {
+        if let Some(values) = self
+            .convs
+            .get(&id)
+            .and_then(|c| c.choice_values.get(&choice.id))
+        {
+            return (values.visible, values.enabled, values.chance);
+        }
         let scope = self.scope(lib, d, id);
+        let (visible, enabled, chance, _) = Self::choice_state_in(&scope, choice);
+        (visible, enabled, chance)
+    }
+
+    pub fn choice_args(&self, id: u32, choice: &Choice) -> Vec<(String, Val)> {
+        self.convs
+            .get(&id)
+            .and_then(|c| c.choice_values.get(&choice.id))
+            .map_or_else(Vec::new, |v| v.args.clone())
+    }
+
+    fn choice_state_in(scope: &dyn Scope, choice: &Choice) -> (bool, bool, f64, Option<f64>) {
         let cond = choice
             .cond
             .as_ref()
-            .is_none_or(|x| x.eval(&scope).is_ok_and(|v| v.truthy()));
-        let num = |x: &Expr| match x.eval(&scope) {
+            .is_none_or(|x| x.eval(scope).is_ok_and(|v| v.truthy()));
+        let num = |x: &Expr| match x.eval(scope) {
             Ok(Val::Num(n)) => n,
             Ok(Val::Bool(b)) => f64::from(u8::from(b)),
             _ => 0.0,
         };
+        let target = choice.check.as_ref().map(|k| num(&k.target));
         let (pass, chance) = match &choice.check {
             None => (true, 1.0),
             Some(k) => {
                 let stat = num(&Expr::Var(k.stat.clone()));
-                let target = num(&k.target);
+                let target = target.expect("check target evaluated");
                 if k.active {
                     // d20 + stat >= target: the rolls from target - stat up.
                     (true, ((21.0 - (target - stat)) / 20.0).clamp(0.0, 1.0))
@@ -830,7 +1081,7 @@ impl Story {
             }
         };
         let enabled = cond && pass;
-        (enabled || !choice.hide, enabled, chance)
+        (enabled || !choice.hide, enabled, chance, target)
     }
 
     /// An expression's value in a conversation (`d` and `id`) or the story's
@@ -838,6 +1089,7 @@ impl Story {
     pub fn eval(&self, lib: &Library, d: Option<&Dialogue>, id: u32, x: &Expr) -> Option<Val> {
         let scope = ConvScope {
             story: self,
+            rng: Cell::new(self.rng),
             lib,
             dialogue: d.map(|d| d.name.as_str()),
             locals: self.convs.get(&id).map(|c| &c.locals),
@@ -856,6 +1108,7 @@ impl Story {
     ) -> Vec<(String, Val)> {
         let scope = ConvScope {
             story: self,
+            rng: Cell::new(self.rng),
             lib,
             dialogue: d.map(|d| d.name.as_str()),
             locals: self.convs.get(&id).map(|c| &c.locals),
@@ -944,6 +1197,7 @@ impl Story {
             {
                 let scope = ConvScope {
                     story: self,
+                    rng: Cell::new(self.rng),
                     lib,
                     dialogue: None,
                     locals: None,
@@ -1088,6 +1342,7 @@ impl Story {
                 }
                 let scope = ConvScope {
                     story: self,
+                    rng: Cell::new(self.rng),
                     lib,
                     dialogue: None,
                     locals: None,
@@ -1169,6 +1424,7 @@ fn finish(q: &mut QuestState, def: &Quest, status: &'static str, tick: u32) {
 /// What an expression reads: a conversation's variables, then the story's.
 pub(crate) struct ConvScope<'a> {
     pub story: &'a Story,
+    pub rng: Cell<Rng>,
     pub lib: &'a Library,
     pub dialogue: Option<&'a str>,
     pub locals: Option<&'a BTreeMap<String, Val>>,
@@ -1183,6 +1439,84 @@ pub(crate) struct ConvScope<'a> {
 pub type Read<'a> = &'a dyn Fn(Option<u64>, &str) -> Option<Val>;
 
 impl Scope for ConvScope<'_> {
+    fn once(&self, id: &str) -> bool {
+        self.dialogue
+            .is_some_and(|d| self.story.once.contains(&format!("{d}.{id}")))
+    }
+    fn invoke(&self, name: &str, args: &[Val]) -> Result<Val, String> {
+        if matches!(
+            name,
+            "random" | "random_range" | "random_range_float" | "dice"
+        ) {
+            let mut rng = self.rng.get();
+            let value = match (name, args) {
+                ("random", []) => rng.next_f64() as f32,
+                ("random_range" | "random_range_float", [Val::Num(min), Val::Num(max)]) => {
+                    // Both functions in the 3.2.2 release use an integer draw
+                    // plus the original floating minimum (Dialogue.cs).
+                    let (min, max) = (*min as f32, *max as f32);
+                    let width = i64::from(max as i32) - i64::from(min as i32);
+                    if width < 0 {
+                        return Err("random range maximum precedes minimum".into());
+                    }
+                    rng.integer(0, width) as f32 + min
+                }
+                ("dice", [Val::Num(sides)]) if *sides >= 1.0 => {
+                    rng.integer(1, *sides as i64) as f32
+                }
+                _ => return Err(format!("invalid arguments to {name}")),
+            };
+            self.rng.set(rng);
+            return Ok(Val::Num(f64::from(value)));
+        }
+        if name == "has_any_content" {
+            let [Val::Str(node)] = args else {
+                return Err("has_any_content needs a node name".into());
+            };
+            let d = self
+                .dialogue
+                .and_then(|name| self.lib.dialogues.get(name))
+                .ok_or("no dialogue for has_any_content")?;
+            let node = d
+                .node(node)
+                .ok_or("has_any_content target does not exist")?;
+            if let Some(Step::Select(candidates)) = node.steps.first() {
+                for (_, condition, _) in candidates {
+                    if condition
+                        .as_ref()
+                        .map(|e| e.eval(self))
+                        .transpose()?
+                        .is_none_or(|v| v.truthy())
+                    {
+                        return Ok(Val::Bool(true));
+                    }
+                }
+                return Ok(Val::Bool(false));
+            }
+            return Ok(Val::Bool(true));
+        }
+        if matches!(name, "visited" | "visited_count") {
+            let [Val::Str(node)] = args else {
+                return Err(format!("{name} needs a node name"));
+            };
+            let count = self
+                .dialogue
+                .and_then(|d| self.story.visits.get(&format!("{d}.{node}")))
+                .copied()
+                .unwrap_or(0);
+            return Ok(if name == "visited" {
+                Val::Bool(count > 0)
+            } else {
+                Val::Num(f64::from(count))
+            });
+        }
+        if let Some(d) = self.dialogue.and_then(|name| self.lib.dialogues.get(name)) {
+            return crate::yarn::functions::invoke(&d.functions, name, args);
+        }
+        crate::yarn::functions::pure(name, args)?
+            .ok_or_else(|| format!("function '{name}' is not registered"))
+    }
+
     fn var(&self, name: &str) -> Option<Val> {
         if name.contains('.') {
             let (read, me) = self.world?;
@@ -1191,9 +1525,17 @@ impl Scope for ConvScope<'_> {
                 None => read(None, name),
             };
         }
+        if let Some(expr) = self
+            .dialogue
+            .and_then(|d| self.lib.dialogues.get(d))
+            .and_then(|d| d.smart.get(name))
+        {
+            return expr.eval(self).ok();
+        }
         self.locals
             .and_then(|l| l.get(name).cloned())
-            .or_else(|| self.story.get(self.lib, name))
+            .or_else(|| self.story.globals.get(name).cloned())
+            .or_else(|| self.lib.default_of(name))
     }
     fn seen(&self, node: &str) -> bool {
         if node.contains('.') {

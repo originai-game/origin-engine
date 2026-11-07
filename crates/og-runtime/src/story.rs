@@ -683,6 +683,60 @@ fn tr(engine: u32, key: &str, args: &Value) -> String {
     super::i18n::og_i18n_t(engine, key.to_string(), Some(args.to_string()))
 }
 
+/// Localize first: both the display text and its scalar ranges belong to the
+/// active locale, never to the source-language string saved in a conversation.
+fn rich_line(engine_id: u32, key: &str, args: &Value) -> (String, Vec<og_ui::TextSpan>) {
+    use og_story::yarn::markup::{Property, parse};
+    let formatted_args = Value::Object(
+        args.as_object()
+            .into_iter()
+            .flatten()
+            .map(|(key, value)| {
+                let value = val_of(value).map_or_else(
+                    || value.clone(),
+                    |value| Value::String(og_story::yarn::functions::string(&value)),
+                );
+                (key.clone(), value)
+            })
+            .collect(),
+    );
+    let text = tr(engine_id, key, &formatted_args);
+    let markup = match parse(&text, &super::i18n::language(engine_id)) {
+        Ok(markup) => markup,
+        Err(error) => {
+            if let Ok(eng) = engine(engine_id) {
+                log(
+                    &eng,
+                    vec![format!("invalid localized markup in {key}: {error}")],
+                );
+            }
+            return (text, Vec::new());
+        }
+    };
+    let spans = markup
+        .spans
+        .into_iter()
+        .map(|span| og_ui::TextSpan {
+            name: span.name,
+            position: span.position,
+            length: span.length,
+            properties: span
+                .properties
+                .into_iter()
+                .map(|(name, value)| {
+                    let value = match value {
+                        Property::String(value) => og_ui::TextSpanValue::String(value),
+                        Property::Number(value) => og_ui::TextSpanValue::Number(value),
+                        Property::Bool(value) => og_ui::TextSpanValue::Bool(value),
+                    };
+                    (name, value)
+                })
+                .collect(),
+        })
+        .collect();
+    (markup.text, spans)
+}
+
 // ── loading ─────────────────────────────────────────────────────────────
 
 fn insert(engine_id: u32, text: &str) -> Result<Value, String> {
@@ -894,20 +948,23 @@ fn speaker_json(
 
 fn line_json(engine: u32, d: &Dialogue, c: &og_story::Conv, l: &og_story::Shown) -> Value {
     let args = args_json(&l.args);
+    let (text, spans) = rich_line(engine, &l.key, &args);
     let chosen = l.chosen.as_ref().and_then(|(i, id)| {
         let choice = d
             .nodes
             .iter()
             .flat_map(|n| &n.choices)
             .find(|c| &c.id == id)?;
-        Some(json!({ "index": i, "text": tr(engine, &choice.text.key, &json!({})) }))
+        let (text, spans) = rich_line(engine, &choice.text.key, &args_json(&l.chosen_args));
+        Some(json!({ "index": i, "text": text, "spans": spans }))
     });
     json!({
         "seq": l.seq,
         "node": d.node(&l.node).map_or(l.node.as_str(), |n| n.title.as_str()),
         "speaker": speaker_json(engine, d, c, &l.speaker, &l.expression),
         "key": l.key,
-        "text": tr(engine, &l.key, &args),
+        "text": text,
+        "spans": spans,
         "args": args,
         "voice": l.voice,
         "seen": l.seen,
@@ -930,28 +987,36 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
                 if !visible {
                     continue;
                 }
-                let args = args_json(&s.args(lib, Some(&d), conversation, &ch.text.args));
+                let args = args_json(&s.choice_args(conversation, ch));
+                let values = c.choice_values.get(&ch.id);
                 let (reason_key, reason_args) = match &ch.reason {
                     Some(r) => (
                         r.key.clone(),
-                        args_json(&s.args(lib, Some(&d), conversation, &r.args)),
+                        values.map_or_else(
+                            || args_json(&s.args(lib, Some(&d), conversation, &r.args)),
+                            |v| args_json(&v.reason_args),
+                        ),
                     ),
                     None => (String::new(), json!({})),
                 };
                 let check = ch.check.as_ref().map(|k| {
-                    let target = match s.eval(lib, Some(&d), conversation, &k.target) {
-                        Some(Val::Num(n)) => n,
-                        _ => 0.0,
-                    };
+                    let target = values.and_then(|v| v.target).unwrap_or_else(|| {
+                        match s.eval(lib, Some(&d), conversation, &k.target) {
+                            Some(Val::Num(n)) => n,
+                            _ => 0.0,
+                        }
+                    });
                     json!({
                         "stat": k.stat, "target": target, "chance": chance,
                         "kind": if k.active { "active" } else { "passive" },
                     })
                 });
+                let (text, spans) = rich_line(world, &ch.text.key, &args);
                 choices.push(json!({
                     "index": i,
                     "id": ch.id,
-                    "text": tr(world, &ch.text.key, &args),
+                    "text": text,
+                    "spans": spans,
                     "key": ch.text.key,
                     "args": args,
                     "enabled": enabled,
@@ -980,11 +1045,13 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
             seq: 0,
             seen: false,
             chosen: None,
+            chosen_args: Vec::new(),
             voice_ticks: 0,
             voice_start: None,
         };
         let l = last.unwrap_or(&empty);
         let args = args_json(&l.args);
+        let (text, spans) = rich_line(world, &l.key, &args);
         Some(json!({
             "conversation": conversation,
             "node": d.node(&c.node).map_or(c.node.as_str(), |n| n.title.as_str()),
@@ -992,7 +1059,8 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
             "seen": l.seen,
             "key": l.key,
             "args": args,
-            "text": tr(world, &l.key, &args),
+            "text": text,
+            "spans": spans,
             "voice": l.voice,
             "voiceTicks": if l.voice.is_empty() { 0 } else { l.voice_ticks },
             "voiceLeft": if c.wait == Wait::Ended { 0 } else { l.voice_left(s.tick) },
@@ -1099,6 +1167,7 @@ fn bark_json(engine: u32, lib: &Library, s: &Story, e: u64, b: &og_story::Said) 
     let args = args_json(&b.args);
     let d = lib.dialogues.get(&b.dialogue);
     let sp = d.and_then(|d| d.speaker(&b.speaker));
+    let (text, spans) = rich_line(engine, &b.key, &args);
     json!({
         "entity": e,
         "dialogue": b.dialogue,
@@ -1106,7 +1175,8 @@ fn bark_json(engine: u32, lib: &Library, s: &Story, e: u64, b: &og_story::Said) 
         "seq": b.seq,
         "key": b.key,
         "args": args,
-        "text": tr(engine, &b.key, &args),
+        "text": text,
+        "spans": spans,
         "speaker": {
             "id": b.speaker,
             "name": sp.map_or(String::new(), |x| tr(engine, &x.name, &json!({}))),
@@ -1199,6 +1269,21 @@ pub(crate) fn dump(engine_id: u32) -> Value {
 }
 
 // ── variables ───────────────────────────────────────────────────────────
+
+pub fn og_story_set_saliency(world: u32, strategy: String) -> String {
+    use og_story::yarn::saliency::Saliency;
+    wire_void((|| {
+        let strategy = match strategy.as_str() {
+            "first" => Saliency::First,
+            "best" => Saliency::Best,
+            "bestLeastRecentlyViewed" => Saliency::BestLeastRecentlyViewed,
+            "randomBestLeastRecentlyViewed" => Saliency::RandomBestLeastRecentlyViewed,
+            "conditionalFirstWeighted" => Saliency::ConditionalFirstWeighted,
+            _ => return Err(format!("unknown Yarn saliency strategy '{strategy}'")),
+        };
+        story(world, |_, s| s.saliency = strategy)
+    })())
+}
 
 pub fn og_story_get(world: u32, name: String) -> String {
     story(world, |lib, s| s.get(lib, &name))

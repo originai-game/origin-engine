@@ -2061,6 +2061,12 @@ pub fn og_ai_describe(env: Env, world: u32, entity: f64) -> String {
     <Host as AiApi>::og_ai_describe(&Host, world, entity)
 }
 
+#[napi(js_name = "og_story_set_saliency")]
+pub fn og_story_set_saliency(env: Env, world: u32, strategy: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_set_saliency(&Host, world, strategy)
+}
+
 #[napi(js_name = "og_story_load")]
 pub fn og_story_load(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
