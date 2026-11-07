@@ -15,6 +15,11 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Module-scope state warnings.** Outside a publish build, the engine's
+  first log warns of each module-scope `let`/`var` a game writes and each
+  module-scope container it mutates, by file, line and name: that state
+  is outside the world snapshot, so a restore, rollback or capture fork
+  does not bring it back. Run reports that expect no warnings see them.
 - **2D destructible pixel terrain.** og.PixelTerrain is ground of cells
   (Worms, Noita): og.destruction.carve2d digs, fill2d builds (ground or
   bedrock), explode2d blows a hole and throws the ring round it as Voronoi

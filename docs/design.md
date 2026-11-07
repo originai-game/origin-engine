@@ -204,6 +204,14 @@ cancellable `og dev` checks use the stateless path.
   devices, precisions and runs. It never writes a component the simulation
   reads, is not in a snapshot or `world_hash`, and game code does not
   branch on it; the simulation stays bit-identical on every host.
+- Game state in a JS module is not in the world snapshot, so a restore,
+  a rollback or a capture fork does not bring it back. Outside a publish
+  build the build scans the game's own files (packages/engine/src/node/module-state.ts) and the engine's
+  first log warns of each module-scope `let`/`var` that is written and
+  each module-scope container that is mutated, by file, line and name;
+  such state belongs in a component or a resource. A scan, not a proof: a
+  local shadowing a module name is reported as it, and state a closure
+  keeps inside a function is not seen.
 
 ### 2.5 Scenes and assets
 
