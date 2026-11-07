@@ -59,8 +59,8 @@ held poses (the `motion-feet` fixture holds the engine to it):
 
 | Measure | Skating looks like | Hold it to |
 |---|---|---|
-| samples faster than 0.1 m/s | a foot creeping | under 5% (the engine shows 0.5–2%) |
-| samples faster than 0.3 m/s outside a takeoff | a foot gliding | under 1% |
+| samples faster than 0.1 m/s | a foot creeping | under 5% (the engine shows 0.2–0.5%) |
+| samples faster than 0.3 m/s outside a takeoff | a foot gliding | none |
 | floating frames of a held pose | a foot hovering | none |
 
 The engine gets there without the model's help: a walk or run is played
@@ -70,9 +70,11 @@ Transform, a foot is planted where the pose shows it low and slow (in a
 held pose wherever it is under 0.35 m) and put down on the ground, a
 planted foot left behind, let go or out of the leg's reach steps (lifted
 7 cm on its arc, one foot at a time), a swing over the ground is lifted
-clear of it, and the hips lower for a planted foot out of reach. A
-generated jump that lands and takes off again unasked is cut at its
-landing's lowest point and the model starts again from there. Queue walks with a speed for each gait:
+clear of it (a stepping foot too, however it comes to move across), and
+the hips lower for a planted foot out of reach. A generated jump that
+lands and takes off again unasked is cut at its landing's lowest point
+and the model starts again from there. Queue walks with a speed for each
+gait:
 a walkTo gains speed at its `acceleration` and carries it into the next
 walk or jump, so the generated stride has a start and a run to follow.
 

@@ -186,6 +186,8 @@ struct Plant {
     last: GVec3,
     /// Where the generated ankle was the frame before, in the world.
     was: Option<GVec3>,
+    /// Where the ankle was drawn the frame before, in the world.
+    drawn: Option<GVec3>,
     /// The way the knee bends off the hip-to-ankle line, in the world: the
     /// generated knee's, held while the generated leg is straight.
     bend: Option<GVec3>,
@@ -204,6 +206,7 @@ impl Plant {
         step: 0.0,
         last: GVec3::ZERO,
         was: None,
+        drawn: None,
         bend: None,
     };
 }
@@ -387,6 +390,7 @@ impl Planter {
                 }
             }
             let was = plant.was.replace(generated);
+            let drawn = plant.drawn.replace(generated);
             let target = if !in_step {
                 if !down {
                     // A swing skimming the ground is lifted clear of it.
@@ -435,9 +439,20 @@ impl Planter {
                     }
                     to
                 } else {
-                    stepped(plant.last, to, plant.released / plant.step, floor, scale)
+                    // Its arc is drawn toward a target that may itself be
+                    // moving (the generated ankle, until the step aims):
+                    // however it comes to move across as fast as a swing,
+                    // it is held as clear of the ground as a swing.
+                    let mut at = stepped(plant.last, to, plant.released / plant.step, floor, scale);
+                    if let (Some(f), Some(drawn)) = (floor, drawn) {
+                        let speed =
+                            GVec3::new(at.x - drawn.x, 0.0, at.z - drawn.z).length() / (dt * scale);
+                        at.y = at.y.max(f + clearance(speed, scale));
+                    }
+                    at
                 }
             };
+            plant.drawn = Some(target);
             let foot = model[ankle].rotation;
             let target = soft_reach(
                 a,
@@ -476,15 +491,21 @@ fn stepped(from: GVec3, to: GVec3, k: f32, ground: Option<f32>, scale: f32) -> G
     at
 }
 
+/// How far over the ground a foot moving across at `speed` (m/s, over the
+/// character's scale) is held: none up to [`SWING_SPEED`], [`SWING_LIFT`]
+/// from twice it, eased between.
+fn clearance(speed: f32, scale: f32) -> f32 {
+    SWING_LIFT * scale * ((speed - SWING_SPEED) / SWING_SPEED).clamp(0.0, 1.0)
+}
+
 /// A swinging ankle at `generated` (at `was` `dt` s before) over the
 /// ground at `floor`: moving across faster than [`SWING_SPEED`] it is
 /// lifted to at least [`SWING_LIFT`] over it, eased in up to twice that
 /// speed, so a fast swing never skims the ground.
 fn swing_clear(generated: GVec3, was: GVec3, floor: f32, dt: f32, scale: f32) -> GVec3 {
     let speed = GVec3::new(generated.x - was.x, 0.0, generated.z - was.z).length() / (dt * scale);
-    let k = ((speed - SWING_SPEED) / SWING_SPEED).clamp(0.0, 1.0);
-    let clear = floor + SWING_LIFT * scale * k;
-    if k <= 0.0 || generated.y >= clear {
+    let clear = floor + clearance(speed, scale);
+    if clear <= floor || generated.y >= clear {
         return generated;
     }
     GVec3::new(generated.x, clear, generated.z)
