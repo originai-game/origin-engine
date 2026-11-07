@@ -146,19 +146,29 @@ impl Ui {
         }
     }
 
-    /// The element's content and selection markers, without focus rings.
+    /// The element's background, then (after `between`, what its draw
+    /// paints over the background: `docs/ui.md` §5) its content and
+    /// selection markers, without focus rings. Returns how many commands
+    /// the background took.
     pub(super) fn node_commands(
         &self,
         i: usize,
         cmds: &mut Vec<DrawCmd>,
         snap: &dyn Fn(f32) -> f32,
-    ) {
+    ) -> usize {
+        let start = cmds.len();
+        self.background_commands(i, cmds);
+        let background = cmds.len() - start;
+        self.content_commands(i, cmds, snap);
+        background
+    }
+
+    /// The element's background (its fill or dressed atlas frame).
+    fn background_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = &self.theme;
-        let p = &t.palette;
         let n = &self.nodes[i];
         let rect = n.rect;
         let clip = n.clip;
-        let dpr = self.viewport.dpr();
         let alpha = n.alpha;
         let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
             rect,
@@ -224,6 +234,26 @@ impl Ui {
                 }
             }
         }
+    }
+
+    /// The element's content and selection markers (after its background).
+    fn content_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>, snap: &dyn Fn(f32) -> f32) {
+        let t = &self.theme;
+        let p = &t.palette;
+        let n = &self.nodes[i];
+        let rect = n.rect;
+        let clip = n.clip;
+        let dpr = self.viewport.dpr();
+        let alpha = n.alpha;
+        let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
+        let ornament_tint = part.and_then(|p| {
+            self.dress
+                .resolve(&p)
+                .draw
+                .ornament_tint
+                .as_ref()
+                .map(|c| c.resolve(t))
+        });
         if self.kinds[i].0 == "divider"
             && let Some(o) = t.art.divider.filter(|_| t.art.atlas.is_some())
         {

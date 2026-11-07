@@ -232,8 +232,9 @@ pub(crate) struct LayoutCache {
     /// This frame keeps nothing (`epoch` or `sig` changed).
     pub fresh: bool,
     /// Each element's own draw commands last frame, by key, reused while
-    /// everything it draws from is unchanged.
-    pub cmds: crate::id::KeyMap<Vec<crate::DrawCmd>>,
+    /// everything it draws from is unchanged, with how many of them are
+    /// its background (its draw paints between those and the rest).
+    pub cmds: crate::id::KeyMap<(usize, Vec<crate::DrawCmd>)>,
 }
 
 /// Everything an element's own commands are made from is as last frame

@@ -153,7 +153,7 @@ impl Ui {
         // Elements whose commands and ancestors' fills are as last frame
         // (docs/ui.md §6.3): their commands are last frame's.
         let mut same = vec![false; self.nodes.len()];
-        let mut next = crate::id::KeyMap::<Vec<DrawCmd>>::with_capacity_and_hasher(
+        let mut next = crate::id::KeyMap::<(usize, Vec<DrawCmd>)>::with_capacity_and_hasher(
             order.len(),
             Default::default(),
         );
@@ -186,20 +186,20 @@ impl Ui {
             if let Some(m) = self.world_marks(n.key) {
                 cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
             }
-            if let Some(d) = &draw {
-                cmds.extend(d.enter(&theme, &placed(n)).into_iter().map(|c| (c, world)));
-                // One order for game and style draws: ground, rim,
-                // content, then children and raised badges; a selected or
-                // focused part's rim (its mark) after its children
-                // (`marked`), so the item's art never covers it.
+            // One order for game and style draws, over the element's
+            // background (`set_draw`): ground, rim, content, then children
+            // and raised badges; a selected or focused part's rim (its
+            // mark) after its children (`marked`), so the item's art never
+            // covers it.
+            let over_background = |ui: &Self| -> Vec<(DrawCmd, Affine)> {
+                let Some(d) = &draw else { return Vec::new() };
+                let n = &ui.nodes[i];
+                let mut out = d.enter(&theme, &placed(n));
                 if !marked(n) {
-                    cmds.extend(
-                        d.strokes(&theme, &placed(n))
-                            .into_iter()
-                            .map(|c| (c, world)),
-                    );
+                    out.extend(d.strokes(&theme, &placed(n)));
                 }
-            }
+                out.into_iter().map(|c| (c, world)).collect()
+            };
             let twin = self.kept.twin.get(i).copied().unwrap_or(NONE);
             // Rich text draws from the tick (its moving spans), focus and
             // the hot link as well: it is always made again.
@@ -212,19 +212,20 @@ impl Ui {
                 && !game_draw;
             if i != 0 || n.el.background.is_some() {
                 let mut local = Vec::new();
+                let mut background = 0;
                 if same[i]
-                    && let Some(c) = self.kept.cmds.get(&n.key)
+                    && let Some((b, c)) = self.kept.cmds.get(&n.key)
                 {
-                    local = c.clone();
+                    (background, local) = (*b, c.clone());
                     self.stats.kept_commands += 1;
                 } else if world.is_identity() {
-                    self.node_commands(i, &mut local, &snap);
+                    background = self.node_commands(i, &mut local, &snap);
                 } else if let Some(inv) = world.invert() {
                     // Drawn in its layout box: its screen clip taken there.
                     let screen_clip = n.clip;
                     self.nodes[i].clip = inv.map_rect(&screen_clip);
                     self.drawing = world;
-                    self.node_commands(i, &mut local, &snap);
+                    background = self.node_commands(i, &mut local, &snap);
                     self.drawing = Affine::IDENTITY;
                     self.nodes[i].clip = screen_clip;
                 }
@@ -235,8 +236,13 @@ impl Ui {
                     };
                     d.style_text(&theme, &mut local, grid);
                 }
-                next.insert(self.nodes[i].key, local.clone());
-                cmds.extend(local.into_iter().map(|c| (c, world)));
+                next.insert(self.nodes[i].key, (background, local.clone()));
+                let mut local = local.into_iter().map(|c| (c, world));
+                cmds.extend(local.by_ref().take(background));
+                cmds.extend(over_background(self));
+                cmds.extend(local);
+            } else {
+                cmds.extend(over_background(self));
             }
             let mut ring = Vec::new();
             if world.is_identity() {

@@ -320,3 +320,60 @@ fn a_disabled_touch_controls_opacity_is_authored_by_its_state_dressing() {
         );
     }
 }
+
+/// A game's draw (`set_draw`) paints over its element's background: a rim
+/// stroked on an element with a background draws after the background
+/// quad, so the background never covers it (it showed only at the corners
+/// the radius left uncovered).
+#[test]
+fn a_draw_strokes_over_its_elements_background() {
+    let vp = Viewport::new(400.0, 200.0);
+    let mut ui = Ui::new(UiDesc::default());
+    // Twice: the second frame reuses the background's kept commands.
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), vp);
+        ui.open(
+            "Rimmed",
+            Element {
+                width: Size::Fixed(120.0),
+                height: Size::Fixed(60.0),
+                background: Some(Srgba::rgb(20, 40, 200)),
+                radius: 12.0,
+                ..Element::default()
+            },
+        );
+        ui.set_draw(og_ui::paint::ElementDraw {
+            strokes: vec![og_ui::paint::Stroke {
+                width: 3.0,
+                align: og_ui::paint::StrokeAlign::Inside,
+                dash: [0.0; 2],
+                dash_offset: 0.0,
+                dash_cap: og_ui::paint::Cap::Butt,
+                paint: og_ui::paint::Paint::Solid(Srgba::rgb(255, 255, 255).into()),
+            }],
+            ..Default::default()
+        });
+        ui.close();
+        ui.end();
+        // Painter order: level, then emission.
+        let items = &ui.frame().items;
+        let order = |want: &dyn Fn(&DrawCmd) -> bool| {
+            items
+                .iter()
+                .enumerate()
+                .find(|(_, it)| want(&it.cmd))
+                .map(|(k, it)| (it.level, k))
+        };
+        let background =
+            order(&|c| matches!(c, DrawCmd::Quad { .. })).expect("the background quad");
+        let rim = order(&|c| {
+            matches!(c, DrawCmd::Shape { shape, .. }
+                if matches!(shape.mode, og_render::UiMode::Stroke(_)))
+        })
+        .expect("the rim");
+        assert!(
+            rim > background,
+            "rim {rim:?} under background {background:?}"
+        );
+    }
+}
