@@ -196,8 +196,9 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   // How the receiver's light-space depth changes per texel along it (an
   // open receiver's; a closed one is compared a quarter texel past its
   // depth instead, as shadow_closed says).
-  let slope = select(bias.y * min(tan_l, 4.0), 0.0, shadow_closed);
-  let reference = select(ref_depth, ref_depth + 1.25 * bias.y, shadow_closed);
+  let closed = shadow_closed && bias.w >= 0.0;
+  let slope = select(bias.y * min(tan_l, 4.0), 0.0, closed);
+  let reference = select(ref_depth, ref_depth + 1.25 * bias.y, closed);
   let turn = shadow_turn(uv * size);
   let search = clamp(softness * ref_depth * depth_range / texel, 1.0, PCSS_MAX_TEXELS);
   var blockers = 0.0;
@@ -279,10 +280,11 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
   if (!wide) { return pcf(cascade_map, uv, c, sp.z - bias.y, vec2<f32>(0.0)); }
   // A closed receiver: a quarter texel past its own depth, flat. Else
   // along the receiver plane, a texel along each tangent (orthographic:
-  // exact). One tent filter for both (one copy of its code).
+  // exact). A fixed box (bias.w < 0) always compares towards the light
+  // by the game's bias. One tent filter for both (one copy of its code).
   var depth = sp.z + 0.25 * bias.y;
   var slope = vec2<f32>(0.0);
-  if (!shadow_closed) {
+  if (!shadow_closed || bias.w < 0.0) {
     let t = plane_tangents(n);
     let sb = frame.cascade_view_proj[c] * vec4<f32>(offset + t[0] * bias.x, 1.0);
     let sc = frame.cascade_view_proj[c] * vec4<f32>(offset + t[1] * bias.x, 1.0);

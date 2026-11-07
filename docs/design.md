@@ -1361,7 +1361,11 @@ draw, each off by default. Lighting: `Environment.hemiSky/hemiGround/
 hemiIntensity` is HemisphereLight (diffuse-only, darkened by AO);
 `DirectionalLight.shadowBox` replaces the cascades with one fixed box around
 a focus ahead of and below the camera (`shadowFocus`, `shadowFocusDrop`),
-with three.js' `bias` and `normalBias` (`shadowBias`, `shadowNormalBias`).
+with three.js' `bias` and `normalBias` (`shadowBias`, `shadowNormalBias`):
+every receiver there is compared towards the light by `shadowBias`, as
+three.js compares, closed ones too. The cascades' closed-receiver rule
+(a quarter of the depth bias past the receiver's own depth) is skipped
+there, because that bias is the game's (`cascade_bias.w < 0` marks the box).
 Post: `PostEffects.aoMethod screen` is depth-only screen-space AO,
 `aoRadiusScale` grows the AO radius with distance, `aoDirect` lets AO darken
 direct and emitted light (above 0 also water surfaces), `sharpen` is a CAS
