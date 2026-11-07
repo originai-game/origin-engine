@@ -69,8 +69,9 @@ Video work still uses its existing encoder path and incremental stamps.
 
 `OG_COOK_CACHE` selects another directory; `off` disables the shared store.
 The older `OG_TEXTURE_CACHE` variable remains a fallback. The default size cap
-is 10 GiB. `OG_COOK_CACHE_MAX_BYTES` changes it. Cooks trim the store after
-work; `og cache gc [--max-bytes N] [--json]` also trims it on demand.
+is 10 GiB. `OG_COOK_CACHE_MAX_BYTES` changes it. A cook trims the store after
+its work at most once an hour, so the store can pass its cap by an hour's
+cooks; `og cache gc [--max-bytes N] [--json]` trims it on demand.
 Eviction removes disposable cache files, never source assets or cooked outputs.
 Missing or corrupt cache content causes a recook.
 

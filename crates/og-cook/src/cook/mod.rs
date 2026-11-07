@@ -2417,7 +2417,7 @@ pub fn cook_project_with_texture_cache(
     });
     cook_index.save(&report, bounded);
     if let Some(path) = texture_cache {
-        let _ = cache::Store::new(path.to_owned()).gc(cache::max_bytes());
+        let _ = cache::Store::new(path.to_owned()).gc_if_due(cache::max_bytes());
     }
     Ok(report)
 }

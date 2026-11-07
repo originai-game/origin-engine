@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook (shared cook cache)",
+      "summary": "A cook trims ~/.cache/origingame/cook-v1 at most once an hour instead of after every cook. The trim reads every cached action, so each cook paid for the size of the whole store: about 5 s at 116k actions, even for a project of one scene. The store can now pass its cap (OG_COOK_CACHE_MAX_BYTES) by an hour's cooks; `og cache gc` still trims it on demand."
+    }
+  ]
+}

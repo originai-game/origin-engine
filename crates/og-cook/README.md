@@ -56,7 +56,9 @@ not its pathname. Video work keeps its existing encoder path.
 `OG_COOK_CACHE=/path/to/cache og cook` selects an isolated store;
 `OG_COOK_CACHE=off` (or an empty value) disables it. `OG_TEXTURE_CACHE` is a
 fallback for existing callers. `OG_COOK_CACHE_MAX_BYTES` sets the size cap
-(default 10 GiB). `og cache gc [--max-bytes N] [--json]` trims the store.
+(default 10 GiB). A cook trims the store at most once an hour (`gc.stamp`
+in the store records the last pass); `og cache gc [--max-bytes N] [--json]`
+trims it on demand.
 Rust callers can use `cook::cook_project_with_texture_cache(root, options,
 Some(path))`, or `None` to disable caching without reading or changing the
 environment. This entry point retains its historical name but selects the whole

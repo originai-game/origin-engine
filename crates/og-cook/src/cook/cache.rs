@@ -6,6 +6,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 pub const DEFAULT_MAX_BYTES: u64 = 10 * 1024 * 1024 * 1024;
 
+/// How often a cook trims the store ([`Store::gc_if_due`]).
+pub const GC_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
+
 pub fn default_path() -> Option<PathBuf> {
     if let Some(path) =
         std::env::var_os("OG_COOK_CACHE").or_else(|| std::env::var_os("OG_TEXTURE_CACHE"))
@@ -104,6 +107,27 @@ impl Store {
             &self.root.join("ac").join(key),
             &serde_json::to_vec(&entry).map_err(std::io::Error::other)?,
         )
+    }
+
+    /// [`Store::gc`] after a cook, at most once per [`GC_INTERVAL`] per store.
+    /// A pass reads every action, so its cost grows with the store (about
+    /// 5 s at 116k actions on macrunner); running it after every cook made
+    /// each cook pay that. Between passes the store may pass its cap by what
+    /// the interval's cooks write. `gc.stamp`'s modification time records the
+    /// last pass; processes racing past a stale stamp may each run one.
+    pub fn gc_if_due(&self, cap: u64) -> std::io::Result<Option<GcReport>> {
+        let stamp = self.root.join("gc.stamp");
+        let due = std::fs::metadata(&stamp)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.elapsed().ok())
+            .is_none_or(|age| age >= GC_INTERVAL);
+        if !due {
+            return Ok(None);
+        }
+        std::fs::create_dir_all(&self.root)?;
+        std::fs::write(&stamp, b"")?;
+        self.gc(cap).map(Some)
     }
 
     /// Evict oldest actions, then unreferenced contents, until at or below cap.
