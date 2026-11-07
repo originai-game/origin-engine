@@ -26,7 +26,7 @@ fn with<T>(engine: u32, f: impl FnOnce(&mut State) -> T) -> T {
     STATES.with(|s| f(s.borrow_mut().entry(engine).or_default()))
 }
 
-pub(crate) fn story_strings(
+pub(crate) fn base_strings(
     engine: u32,
     locale: &str,
     strings: &BTreeMap<String, String>,

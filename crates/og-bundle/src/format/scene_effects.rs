@@ -329,9 +329,8 @@ impl BlobKind for Style {
 }
 
 row!(
-    /// The root of a UI document blob (an `.ogt` of `type screen` or
-    /// `type component`).
-    DocumentMeta, "og.UiDocument", 1 {
+    /// The root of a scriptless Svelte UI document blob (`.svelte`).
+    DocumentMeta, "og.UiDocument", 2 {
         /// Bytes of the validated document text in `text`.
         text_bytes: u32,
     }

@@ -418,21 +418,20 @@ pub(super) fn run(
             let slots = doc
                 .nodes
                 .iter()
-                .filter(|n| matches!(n.kind, og_ui::doc::NodeKind::Element("slot" | "art")))
+                .filter(|n| matches!(n.kind, og_ui::doc::NodeKind::Render { .. }))
                 .count();
-            Ok((
-                w.finish(),
-                vec![format!(
-                    "{} '{}', {} element(s), {} timeline(s), {slots} slot(s)",
-                    match doc.kind {
-                        og_ui::doc::DocKind::Screen => "screen",
-                        og_ui::doc::DocKind::Component => "component",
-                    },
-                    doc.name,
-                    doc.nodes.len(),
-                    doc.timelines.len()
-                )],
-            ))
+            let mut notes = doc.warnings.clone();
+            notes.push(format!(
+                "{} '{}', {} node(s), {} timeline(s), {slots} content render(s)",
+                match doc.kind {
+                    og_ui::doc::DocKind::Screen => "screen",
+                    og_ui::doc::DocKind::Component => "component",
+                },
+                doc.name,
+                doc.nodes.len(),
+                doc.timelines.len()
+            ));
+            Ok((w.finish(), notes))
         }
         Work::Style(s) => {
             let text = std::str::from_utf8(&s.bytes)

@@ -172,14 +172,12 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
     let mut documents = Vec::new();
     for file in all
         .iter()
-        .filter(|f| f.extension().is_some_and(|e| e == "ogt"))
+        .filter(|f| f.extension().is_some_and(|e| e == "svelte"))
     {
         let text = std::fs::read_to_string(directory.join(file)).map_err(|e| e.to_string())?;
-        if og_core::ogt::Document::parse_header(&text)
-            .is_ok_and(|d| matches!(d.ty.as_str(), "screen" | "component"))
-        {
-            documents.push(file.to_string_lossy().replace('\\', "/"));
-        }
+        let id = file.to_string_lossy().replace('\\', "/");
+        og_ui::UiDocument::parse(&id, &text).map_err(|e| e.join("\n"))?;
+        documents.push(id);
     }
     Ok(Extension {
         manifest,
@@ -421,7 +419,7 @@ pub fn list(args: &[&str]) -> ExitCode {
                     println!("  {}", e.directory.join(p).display());
                 }
                 for doc in e.documents {
-                    println!("  {}/{}", m.name, doc.trim_end_matches(".ogt"));
+                    println!("  {}/{}", m.name, doc.trim_end_matches(".svelte"));
                 }
             }
         }
@@ -439,7 +437,7 @@ pub fn eject(name: &str, project: &Path, force: bool) -> Result<PathBuf, String>
         .into_iter()
         .find(|e| e.manifest.kind == "kit" && e.manifest.name == kit)
         .ok_or_else(|| format!("unknown kit `{kit}`"))?;
-    let file = format!("{}.ogt", doc.trim_end_matches(".ogt"));
+    let file = format!("{}.svelte", doc.trim_end_matches(".svelte"));
     if !extension.documents.contains(&file) {
         return Err(format!("unknown document `{name}` (og ui list names them)"));
     }

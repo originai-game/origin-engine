@@ -790,7 +790,7 @@ fn insert(engine_id: u32, text: &str) -> Result<Value, String> {
         } else {
             Dialogue::parse(text)?
         };
-        super::i18n::story_strings(engine_id, &d.locale, &d.strings)?;
+        super::i18n::base_strings(engine_id, &d.locale, &d.strings)?;
         load_voices(&eng, engine_id, &d);
         let info = json!({
             "kind": "dialogue", "name": d.name,

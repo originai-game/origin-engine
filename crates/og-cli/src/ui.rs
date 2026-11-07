@@ -18,17 +18,15 @@
 //! them as one array, what the art pipeline reads.
 //!
 //! `og ui migrate <file|dir>... [--check]` (docs/ui.md §3.2, §3)
-//! rewrites every version 1 screen and component document under the paths
-//! as version 2 (CSS declarations in place of style props) and every
-//! version 2 style as version 3 (selector blocks, custom properties), line
+//! rewrites every version 2 style as version 3 (selector blocks, custom properties), line
 //! for line with its comments, after checking the two read the same;
 //! `--check` writes nothing and exits 1 when one still needs it.
 //!
 //! `og ui eject <screen> [project] [--force]` (docs/ui.md §2) copies one
 //! of the library's screen documents (the engine package's
-//! `src/ui/screens/<screen>.ogt`, one or more for every screen type of
-//! docs/ui.md §2) into the game's `assets/ui/<screen>.ogt`, where
-//! `og.load.document(world, "ui/<screen>.ogt")` loads it and the game edits
+//! `src/ui/screens/<screen>.svelte`, one or more for every screen type of
+//! docs/ui.md §2) into the game's `assets/ui/<screen>.svelte`, where
+//! `og.load.document(world, "ui/<screen>.svelte")` loads it and the game edits
 //! it as its own file. It refuses to overwrite one already there without
 //! `--force`; an unknown name exits 1 with the closest names. `og ui eject
 //! --list [project]` prints every screen with its Appendix B row, read from
@@ -300,7 +298,7 @@ fn slots(args: &[&str]) -> ExitCode {
     };
     let assets = p.root.join("assets");
     let mut files = Vec::new();
-    collect_ogt(&assets, &mut files);
+    collect_files(&assets, "svelte", &mut files);
     files.sort();
     let mut rows = Vec::new();
     let mut wrong = 0;
@@ -308,10 +306,6 @@ fn slots(args: &[&str]) -> ExitCode {
         let Ok(text) = std::fs::read_to_string(f) else {
             continue;
         };
-        let ty = text.lines().next().unwrap_or("");
-        if ty != "type screen" && ty != "type component" {
-            continue;
-        }
         let id = f
             .strip_prefix(&assets)
             .unwrap_or(f)
@@ -498,7 +492,7 @@ fn closest<'a>(name: &str, screens: &'a [LibScreen]) -> Vec<&'a str> {
 }
 
 /// Copies the library's `name` from `dir` into `project`'s
-/// `assets/ui/<name>.ogt`; answers the path written.
+/// `assets/ui/<name>.svelte`, with its declared strings; answers the path written.
 fn eject_from(
     dir: &Path,
     name: &str,
@@ -523,17 +517,34 @@ fn eject_from(
             project.display()
         ));
     }
-    let source = dir.join(format!("{name}.ogt"));
-    let bytes = std::fs::read(&source).map_err(|e| format!("{}: {e}", source.display()))?;
-    let target = project.join("assets/ui").join(format!("{name}.ogt"));
-    if target.exists() && !force {
-        return Err(format!(
-            "assets/ui/{name}.ogt already exists; nothing written (--force overwrites it)"
+    let id = format!("{name}.svelte");
+    let source = dir.join(&id);
+    let text =
+        std::fs::read_to_string(&source).map_err(|e| format!("{}: {e}", source.display()))?;
+    let document = og_ui::UiDocument::parse(&id, &text).map_err(|e| e.join("\n"))?;
+    let destination = project.join("assets/ui");
+    let target = destination.join(&id);
+    let mut files = vec![(target.clone(), text.into_bytes())];
+    for strings in &document.strings {
+        let source = dir.join(strings);
+        files.push((
+            destination.join(strings),
+            std::fs::read(&source).map_err(|e| format!("{}: {e}", source.display()))?,
         ));
     }
-    let parent = target.parent().expect("assets/ui");
-    std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
-    std::fs::write(&target, bytes).map_err(|e| format!("{}: {e}", target.display()))?;
+    for (path, _) in &files {
+        if path.exists() && !force {
+            return Err(format!(
+                "{} already exists; nothing written (--force overwrites it)",
+                path.display()
+            ));
+        }
+    }
+    for (path, bytes) in files {
+        std::fs::create_dir_all(path.parent().expect("assets/ui"))
+            .map_err(|e| format!("{}: {e}", path.display()))?;
+        std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
     Ok(target)
 }
 
@@ -596,8 +607,8 @@ fn eject(args: &[&str]) -> ExitCode {
     match eject_from(&dir, name, project, force) {
         Ok(_) => {
             println!(
-                "og ui eject: the library's '{name}' into assets/ui/{name}.ogt\n\
-                 load it once with og.load.document(world, \"ui/{name}.ogt\") and push it with og.ui.push(world, \"{name}\", vm);\n\
+                "og ui eject: the library's '{name}' into assets/ui/{name}.svelte\n\
+                 load it once with og.load.document(world, \"ui/{name}.svelte\") and mount its named stores;\n\
                  its header names the viewmodel's props, its events and what fills each slot.\n\
                  preview it with og run --commands \"0.5:ui:push:{name}:default\", and add screen \"{name}\" \"<commands>\" to project.ogt's ui block so og ui check covers it"
             );
@@ -622,7 +633,7 @@ fn migrate(args: &[&str]) -> ExitCode {
     for p in &paths {
         let p = Path::new(p);
         if p.is_dir() {
-            collect_ogt(p, &mut files);
+            collect_files(p, "ogt", &mut files);
         } else {
             files.push(p.to_path_buf());
         }
@@ -635,23 +646,14 @@ fn migrate(args: &[&str]) -> ExitCode {
             failed = true;
             continue;
         };
-        // Version 1 screens and components, version 2 styles (`og style
-        // upgrade` writes a version 1 style as version 3); everything else
-        // is left.
         let Ok(head) = og_core::ogt::Document::parse_header(&text) else {
             continue;
         };
-        let ui = matches!(head.ty.as_str(), "screen" | "component");
-        let style = head.ty == "style";
-        if !(ui && head.version == 1 || style && head.version == 2) {
+        if head.ty != "style" || head.version != 2 {
             continue;
         }
         let source = f.display().to_string();
-        let migrated = if style {
-            og_ui::migrate_style(&text).map_err(|e| vec![format!("{source}: {e}")])
-        } else {
-            og_ui::UiDocument::migrate(&source, &text)
-        };
+        let migrated = og_ui::migrate_style(&text).map_err(|e| vec![format!("{source}: {e}")]);
         match migrated {
             Ok(_) if check => {
                 println!("og ui migrate: {source} needs migrating");
@@ -691,17 +693,13 @@ pub const TYPES_DIR: &str = ".og/types/ui";
 pub fn write_types(root: &Path) -> Result<usize, String> {
     let assets = root.join("assets");
     let mut files = Vec::new();
-    collect_ogt(&assets, &mut files);
+    collect_files(&assets, "svelte", &mut files);
     files.sort();
     let mut docs = Vec::new();
     for f in &files {
         let Ok(text) = std::fs::read_to_string(f) else {
             continue;
         };
-        let ty = text.lines().next().unwrap_or("");
-        if ty != "type screen" && ty != "type component" {
-            continue;
-        }
         let id = f
             .strip_prefix(&assets)
             .unwrap_or(f)
@@ -745,15 +743,15 @@ pub fn write_types(root: &Path) -> Result<usize, String> {
     Ok(docs.len())
 }
 
-fn collect_ogt(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+fn collect_files(dir: &Path, extension: &str, out: &mut Vec<std::path::PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
     for e in entries.flatten() {
         let p = e.path();
         if p.is_dir() {
-            collect_ogt(&p, out);
-        } else if p.extension().is_some_and(|x| x == "ogt") {
+            collect_files(&p, extension, out);
+        } else if p.extension().is_some_and(|x| x == extension) {
             out.push(p);
         }
     }
@@ -798,9 +796,12 @@ mod tests {
         }"#,
         )
         .unwrap();
-        std::fs::write(source.join("README.md"), "Edit pages/results.ogt").unwrap();
-        let document = "type screen\nversion 2\n---\nname results\ncolumn root {\n  label title {\n    text \"Race results\"\n  }\n}\n";
-        std::fs::write(source.join("pages/results.ogt"), document).unwrap();
+        std::fs::write(source.join("README.md"), "Edit pages/results.svelte").unwrap();
+        let document = "<meta name='screen' content='results'><meta name='strings' content='./results.en.ogt'><column id='Root'><text>{t('title')}</text></column>";
+        let strings =
+            "type strings\nversion 1\n---\nlocale \"en\"\nstring \"title\" \"Race results\"\n";
+        std::fs::write(source.join("pages/results.svelte"), document).unwrap();
+        std::fs::write(source.join("pages/results.en.ogt"), strings).unwrap();
         assert_eq!(
             extensions::add(&[source.to_str().unwrap(), dir.to_str().unwrap()], "kit"),
             std::process::ExitCode::SUCCESS
@@ -811,17 +812,25 @@ mod tests {
             .find(|e| e.manifest.name == "test-racing")
             .unwrap();
         assert!(kit.installed);
-        assert_eq!(kit.documents, ["pages/results.ogt"]);
+        assert_eq!(kit.documents, ["pages/results.svelte"]);
         assert_eq!(
-            std::fs::read_to_string(kit.directory.join("pages/results.ogt")).unwrap(),
+            std::fs::read_to_string(kit.directory.join("pages/results.svelte")).unwrap(),
             document
         );
         let target = extensions::eject("test-racing/pages/results", &dir, false).unwrap();
         assert_eq!(std::fs::read_to_string(&target).unwrap(), document);
+        assert_eq!(
+            std::fs::read_to_string(target.with_extension("en.ogt")).unwrap(),
+            strings
+        );
         crate::cook::cook(&dir, 0, false).unwrap();
         let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
-        assert!(bundle.read("ui-kits/test-racing/pages/results.ogt").is_ok());
-        assert!(bundle.read("ui/test-racing/pages/results.ogt").is_ok());
+        assert!(
+            bundle
+                .read("ui-kits/test-racing/pages/results.svelte")
+                .is_ok()
+        );
+        assert!(bundle.read("ui/test-racing/pages/results.svelte").is_ok());
         std::fs::write(&target, "game edit").unwrap();
         assert!(extensions::eject("test-racing/pages/results", &dir, false).is_err());
         assert!(extensions::eject("test-racing/../../escape", &dir, false).is_err());
@@ -846,10 +855,14 @@ mod tests {
     fn eject_copies_the_library_document_into_assets_ui() {
         let dir = game("copies");
         let got = eject_from(&library(), "pause", &dir, false).unwrap();
-        assert_eq!(got, dir.join("assets/ui/pause.ogt"));
+        assert_eq!(got, dir.join("assets/ui/pause.svelte"));
         assert_eq!(
             std::fs::read(&got).unwrap(),
-            std::fs::read(library().join("pause.ogt")).unwrap()
+            std::fs::read(library().join("pause.svelte")).unwrap()
+        );
+        assert_eq!(
+            std::fs::read(dir.join("assets/ui/pause.en.ogt")).unwrap(),
+            std::fs::read(library().join("pause.en.ogt")).unwrap()
         );
         std::fs::remove_dir_all(&dir).unwrap();
     }
@@ -857,7 +870,7 @@ mod tests {
     #[test]
     fn eject_refuses_to_overwrite_without_force() {
         let dir = game("refuses");
-        let target = dir.join("assets/ui/pause.ogt");
+        let target = dir.join("assets/ui/pause.svelte");
         std::fs::create_dir_all(target.parent().unwrap()).unwrap();
         std::fs::write(&target, "the game's own").unwrap();
         let e = eject_from(&library(), "pause", &dir, false).unwrap_err();
@@ -866,7 +879,18 @@ mod tests {
         eject_from(&library(), "pause", &dir, true).unwrap();
         assert_eq!(
             std::fs::read(&target).unwrap(),
-            std::fs::read(library().join("pause.ogt")).unwrap()
+            std::fs::read(library().join("pause.svelte")).unwrap()
+        );
+        std::fs::remove_file(&target).unwrap();
+        std::fs::write(dir.join("assets/ui/pause.en.ogt"), "edited messages").unwrap();
+        assert!(eject_from(&library(), "pause", &dir, false).is_err());
+        assert!(
+            !target.exists(),
+            "a companion collision must not partially eject a screen"
+        );
+        assert_eq!(
+            std::fs::read_to_string(dir.join("assets/ui/pause.en.ogt")).unwrap(),
+            "edited messages"
         );
         std::fs::remove_dir_all(&dir).unwrap();
     }
@@ -878,7 +902,7 @@ mod tests {
             .unwrap()
             .filter_map(|e| {
                 let f = e.unwrap().file_name().into_string().unwrap();
-                f.strip_suffix(".ogt").map(str::to_string)
+                f.strip_suffix(".svelte").map(str::to_string)
             })
             .collect();
         files.sort();

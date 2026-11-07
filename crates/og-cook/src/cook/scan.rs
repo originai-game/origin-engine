@@ -123,6 +123,7 @@ pub(super) fn scan_with(
             "tmj" | "ldtk" => Kind::Tilemap,
             "hex" | "gpl" => Kind::Palette,
             "efkproj" | "efkefc" => Kind::Vfx,
+            "svelte" => Kind::Document,
             "ogt" => {
                 let text = String::from_utf8(read(rel, path)?)
                     .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;
@@ -166,7 +167,8 @@ pub(super) fn scan_with(
                         if doc.ty == og_ui::doc::SCREEN_TYPE
                             || doc.ty == og_ui::doc::COMPONENT_TYPE =>
                     {
-                        Kind::Document
+                        early_errors.push((rel.clone(), "document", "UI documents use scriptless .svelte markup; replace the old screen/component dialect".into()));
+                        continue;
                     }
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,

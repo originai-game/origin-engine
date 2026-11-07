@@ -1463,13 +1463,33 @@ pub fn cook_project_with_texture_cache(
             }
             Kind::Document => {
                 let text = String::from_utf8_lossy(&s.bytes);
-                if let Err(errors) = og_ui::UiDocument::parse(&s.rel, &text)
-                    .and_then(|doc| doc.validate_tokens(&document_themes))
-                {
+                let mut dependencies = Vec::new();
+                if let Err(errors) = og_ui::UiDocument::parse(&s.rel, &text).and_then(|doc| {
+                    doc.validate_tokens(&document_themes)?;
+                    for id in &doc.strings {
+                        let table = sources.iter().find(|source| source.rel == *id && source.kind == Kind::Strings)
+                            .ok_or_else(|| vec![format!("{}: missing string table {id}; add the table named by <meta name=\"strings\">", s.rel)])?;
+                        let text = std::str::from_utf8(&table.bytes).map_err(|_| vec![format!("{id}: string tables must be UTF-8")])?;
+                        og_i18n::StringTable::parse(text).map_err(|error| vec![format!("{id}: {error}")])?;
+                        dependencies.push(format!("{id}={:016x}", table.hash));
+                    }
+                    if options.publish && !doc.warnings.is_empty() {
+                        Err(doc.warnings)
+                    } else {
+                        Ok(())
+                    }
+                }) {
                     early_errors.push((s.rel.clone(), "document", errors.join("\n")));
                     continue;
                 }
-                let st = stamp(&[b"document tokens", &hash, &style_tokens_hash]);
+                let dependencies = dependencies.join("\n");
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &dependencies);
+                let st = stamp(&[
+                    b"svelte document 1",
+                    &hash,
+                    &style_tokens_hash,
+                    dependencies.as_bytes(),
+                ]);
                 outs.push((s.rel.clone(), format::Document::NAME, st, Work::Document(s)));
             }
             Kind::Tileset => {
