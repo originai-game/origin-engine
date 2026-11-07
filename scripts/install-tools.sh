@@ -27,7 +27,7 @@ set -eu -o pipefail
 
 BINARYEN_VERSION="${BINARYEN_VERSION:-133}"
 BUN_VERSION="${BUN_VERSION:-1.4.4}"
-SCCACHE_VERSION="${SCCACHE_VERSION:-0.14.0}"
+SCCACHE_VERSION="${SCCACHE_VERSION:-0.19.0}"
 SHELLCHECK_VERSION="${SHELLCHECK_VERSION:-0.11.0}"
 TSRS_VERSION="${TSRS_VERSION:-0.18.0-ts7.1.0-dev.20260929}"
 TSRS_REPORTS="7.1.0-dev.20260930.4"
@@ -51,9 +51,11 @@ fi
 
 # sccache, before anything cargo builds here: .cargo/config.toml makes it
 # the rustc wrapper (RUSTC_WRAPPER= turns it off, as CI does).
-if command -v sccache >/dev/null; then
+if command -v sccache >/dev/null && [ "$(sccache --version | awk '{print $2}')" = "$SCCACHE_VERSION" ]; then
   og_say "sccache: present ($(sccache --version))"
 else
+  # A running server keeps the old executable and protocol after replacement.
+  if command -v sccache >/dev/null; then sccache --stop-server >/dev/null 2>&1 || true; fi
   og_say "sccache $SCCACHE_VERSION: installing"
   case "$os-$arch" in
     Linux-x86_64)   triple=x86_64-unknown-linux-musl ;;
