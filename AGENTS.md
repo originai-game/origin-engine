@@ -128,13 +128,19 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   declared in `.config/nextest.toml`.
 - **A missing GPU is a warning:** the test counts as skipped or unchecked,
   never as passed. Tests are not split across machines.
-- **Metal on macrunner is the reference platform.** Windows (DX12, Chrome,
-  Edge, Firefox) compatibility runs on studio-win; Safari and Android wait.
-  The web is WebGPU only. Nothing runs on lavapipe; no `references/vulkan-cpu/`.
+- **One reference set, any real GPU.** Reference frames are recorded on
+  Metal on macrunner, so a frame never flip-flops between hosts; another
+  tier records its own only where it differs by design. Every real GPU backend is judged against them: on its own backend
+  under the scene's tight tolerance, on another (DX12, Vulkan, WebGPU in
+  Chrome) under the cross-platform tolerance (`og_tests::compare::tolerance_for`,
+  docs/ci.md §Reference frames). studio-win (DX12, Chrome, Edge, Firefox) is
+  a second gate host; Safari and Android wait. The web is WebGPU only.
+  Nothing runs on lavapipe; no `references/vulkan-cpu/`.
 - Generated `.d.ts` and wiki are drift-checked; never hand-edit them.
 - A test is kept only when it fails on a plausible regression; a re-recorded
   frame is one the change must move, and is named in the report.
-- There is no GitHub CI; the gate is `scripts/check.sh` on macrunner.
+- There is no GitHub CI; the gate is `scripts/check.sh` on macrunner or
+  studio-win (Git Bash).
 
 ## Pitfalls
 

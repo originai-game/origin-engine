@@ -67,43 +67,29 @@ pub fn record_reference(own: &Path, width: u32, height: u32, pixels: &[u8]) {
     std::fs::write(own, og_render::png_best(&image)).expect("record reference");
 }
 
-/// og-tests' rule: a pixel is an outlier when a channel differs by more than
-/// 32/255; the frame fails above 0.5 % outliers or an RGB RMSE above 0.01.
-pub fn compare(actual: &[u8], reference: &[u8]) -> Result<(f64, f64), String> {
-    if actual.len() != reference.len() {
-        return Err(format!("size {} vs {}", actual.len(), reference.len()));
-    }
-    let mut sum = 0.0f64;
-    let mut outliers = 0usize;
-    let pixels = actual.len() / 4;
-    for (a, r) in actual
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(reference.as_chunks::<4>().0.iter())
-    {
-        let mut out = false;
-        for c in 0..3 {
-            let d = (f64::from(a[c]) - f64::from(r[c])) / 255.0;
-            sum += d * d;
-            out |= a[c].abs_diff(r[c]) > 32;
-        }
-        outliers += usize::from(out);
-    }
-    let rmse = (sum / (pixels * 3) as f64).sqrt();
-    let fraction = outliers as f64 / pixels as f64;
-    let mut failures = Vec::new();
-    if rmse > 0.01 {
-        failures.push(format!("RMSE {rmse:.5} > 0.01"));
-    }
-    if fraction > 0.005 {
-        failures.push(format!("{:.3}% outlier pixels > 0.5%", fraction * 100.0));
-    }
-    if failures.is_empty() {
-        Ok((rmse, fraction))
-    } else {
-        Err(failures.join("; "))
-    }
+/// `actual` (rendered by `info`'s adapter) against the frame read from
+/// `reference`, under og-tests' rule (`og_tests::compare::tolerance_for`):
+/// the default tolerance against its own tier's reference, the
+/// cross-platform one against another tier's. Answers the RMSE and the
+/// outliers' share, or what was exceeded.
+pub fn compare(
+    actual: &[u8],
+    expected: &[u8],
+    info: &og_render::RenderInfo,
+    reference: &Path,
+) -> Result<(f64, f64), String> {
+    use og_tests::compare::{Tolerance, tolerance_for};
+    let tolerance = tolerance_for(
+        Tolerance::default(),
+        Tolerance::CROSS_PLATFORM,
+        &info.backend_tier(),
+        info.software(),
+        reference,
+    );
+    // One row of pixels: the comparison reads them in order, whatever the shape.
+    let c = og_tests::compare::compare(actual, expected, (actual.len() / 4) as u32, 1, &tolerance)?;
+    c.check(&tolerance)?;
+    Ok((c.rmse, c.outlier_fraction()))
 }
 
 /// Where tests write what they produce: `$CARGO_TARGET_TMPDIR/og-ui`.

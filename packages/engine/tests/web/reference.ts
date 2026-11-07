@@ -6,8 +6,10 @@
 // with the former test sample (`webgpu`) when
 // that frame is committed there, else with `metal` (a tier with no
 // directory is judged against metal throughout), under og-tests' rule
-// (crates/og-tests/src/compare.rs): a channel off by more than 32/255 is an
-// outlier; fail above 0.5 % outliers or an RGB RMSE above 0.01.
+// (crates/og-tests/src/compare.rs `tolerance_for`, png.ts `toleranceFor`):
+// a channel off by more than 32/255 is an outlier; against this tier's own
+// frame fail above 0.5 % outliers or an RGB RMSE above 0.01, against another
+// tier's above the cross-platform tolerance.
 //
 // The page (reference.page.ts) starts the export's game.js with no gate and
 // no clock; the harness drives it as `og run --commands` drives the native
@@ -77,7 +79,7 @@ import { Firefox, firefoxPath } from "./bidi.ts";
 import { Safari, safariDriverPath } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
-import { compareFrames as compare, decodePng, TOLERANCE, type Image } from "../support/png.ts";
+import { compareFrames as compare, CROSS_TOLERANCE, decodePng, TOLERANCE, toleranceFor, type Image } from "../support/png.ts";
 import { encodePngBest } from "../../src/node/png.ts";
 
 declare const Bun: {
@@ -210,7 +212,7 @@ const referenceOf = (file: string) =>
     : tier !== "webgpu" && existsSync(join(refsRoot, "webgpu", file))
       ? join(refsRoot, "webgpu", file)
       : join(metal, file);
-const result: Record<string, unknown> = { tier, size: `${WIDTH}x${HEIGHT}`, tolerance: TOLERANCE, script: SCRIPT, stations: {} as Record<string, unknown> };
+const result: Record<string, unknown> = { tier, size: `${WIDTH}x${HEIGHT}`, tolerance: TOLERANCE, crossTolerance: CROSS_TOLERANCE, script: SCRIPT, stations: {} as Record<string, unknown> };
 if (browser instanceof Browser && browser.device) result["device"] = browser.device;
 if (SHEET) result["sheet"] = { ...SHEET, against: referenceOf(SHEET.name).slice(repo.length + 1) };
 const sheetRef = SHEET && !record && existsSync(referenceOf(SHEET.name)) ? decodePng(new Uint8Array(readFileSync(referenceOf(SHEET.name)))) : undefined;
@@ -315,14 +317,15 @@ try {
       if (!sheetRef) throw new Error(`no sheet at ${referenceOf(SHEET.name)}; record it with --record`);
       const want: Image = { width: c.width, height: c.height, rgba: new Uint8Array(c.width * c.height * 4) };
       blit(sheetRef, want, i, SHEET.cols, false);
-      const d = compare(c, want);
-      const ok = d.outliers <= TOLERANCE.outliers && d.rmse <= TOLERANCE.rmse;
+      const limit = toleranceFor(tier, referenceOf(SHEET.name));
+      const d = compare(c, want, limit);
+      const ok = d.ok;
       Object.assign(row, { cell: i, outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), ok });
       if (!ok) {
         failures++;
         writeFileSync(join(dir, `${s.name}.diff.rgba`), d.diff);
       }
-      console.log(`${ok ? "ok  " : "FAIL"} ${s.name} (${tier}, tick ${shot.tick}): cell ${i} of ${SHEET.name}: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01) against ${referenceOf(SHEET.name).slice(repo.length + 1)}`);
+      console.log(`${ok ? "ok  " : "FAIL"} ${s.name} (${tier}, tick ${shot.tick}): cell ${i} of ${SHEET.name}: ${(d.outliers * 100).toFixed(3)} % outliers (≤ ${limit.outliers * 100} %), RMSE ${d.rmse.toFixed(5)} (≤ ${limit.rmse}) against ${referenceOf(SHEET.name).slice(repo.length + 1)}`);
       continue;
     }
     if (record) {
@@ -338,15 +341,16 @@ try {
       console.log(`FAIL ${s.name} (${tier}): ${row["error"]}`);
       continue;
     }
-    const d = compare(decodePng(bytes), decodePng(new Uint8Array(readFileSync(against))));
-    const ok = d.outliers <= TOLERANCE.outliers && d.rmse <= TOLERANCE.rmse;
+    const limit = toleranceFor(tier, against);
+    const d = compare(decodePng(bytes), decodePng(new Uint8Array(readFileSync(against))), limit);
+    const ok = d.ok;
     Object.assign(row, { outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), ok });
     if (!ok) {
       failures++;
       // magick -size 1280x720 -depth 8 rgba:<station>.diff.rgba diff.png
       writeFileSync(join(dir, `${s.name}.diff.rgba`), d.diff);
     }
-    console.log(`${ok ? "ok  " : "FAIL"} ${s.name} (${tier}, tick ${shot.tick}): ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01) against ${against.slice(repo.length + 1)}`);
+    console.log(`${ok ? "ok  " : "FAIL"} ${s.name} (${tier}, tick ${shot.tick}): ${(d.outliers * 100).toFixed(3)} % outliers (≤ ${limit.outliers * 100} %), RMSE ${d.rmse.toFixed(5)} (≤ ${limit.rmse}) against ${against.slice(repo.length + 1)}`);
   }
   if (SHEET && record) {
     const cw = cells[0]!.width;

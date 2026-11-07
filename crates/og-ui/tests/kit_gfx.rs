@@ -74,14 +74,14 @@ fn the_widget_set_matches_its_reference_frame() {
     );
     assert_eq!(stats.missing_glyphs, 0);
 
-    matches_reference("widget-set.png", &tier, &actual, &image);
+    matches_reference("widget-set.png", renderer.info(), &actual, &image);
 }
 
 /// `image` against `references/<tier>/<name>` (the metal one where the tier
 /// has none); `OG_UI_CAPTURE=1` records it. `actual` is where it was saved.
 fn matches_reference(
     name: &str,
-    tier: &str,
+    info: &og_render::RenderInfo,
     actual: &std::path::Path,
     image: &og_render::RgbaImage,
 ) {
@@ -90,6 +90,7 @@ fn matches_reference(
             .join("references")
             .join(tier)
     };
+    let tier = &info.backend_tier();
     let own = dir(tier).join(name);
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
         record_reference(&own, image.width, image.height, &image.pixels);
@@ -110,7 +111,7 @@ fn matches_reference(
         (expected.width(), expected.height()),
         (image.width, image.height)
     );
-    match compare(&image.pixels, expected.as_raw()) {
+    match compare(&image.pixels, expected.as_raw(), info, &reference) {
         Ok((rmse, outliers)) => println!(
             "{tier}: RMSE {rmse:.5}, outliers {:.3}% against {}",
             outliers * 100.0,
@@ -214,7 +215,7 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
             .render(&shot.scene, &RenderTarget::Offscreen)
             .expect("render");
         let image = renderer.read_offscreen().expect("read back");
-        (image, out, base, knob, arcs, renderer.info().backend_tier())
+        (image, out, base, knob, arcs, renderer.info().clone())
     };
     let (_, still, base, knob, arcs, _) = render(None);
     let (bx, by) = base.center();
@@ -227,7 +228,8 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
     assert!(arcs.is_empty(), "at rest no rim is lit");
 
     // Pushed 100 CSS px up and right: past the 64 px rim, so full.
-    let (held, out, _, knob, arcs, tier) = render(Some(Vec2::new(100.0, -100.0)));
+    let (held, out, _, knob, arcs, info) = render(Some(Vec2::new(100.0, -100.0)));
+    let tier = info.backend_tier();
     let full = (out.x * out.x + out.y * out.y).sqrt();
     assert!(out.active && out.x > 0.6 && out.y < -0.6, "{out:?}");
     assert!((full - 1.0).abs() < 1e-3, "clamped to the rim: {full}");
@@ -261,5 +263,5 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
         image::ColorType::Rgba8,
     )
     .expect("write frame");
-    matches_reference("stick-held.png", &tier, &actual, &held);
+    matches_reference("stick-held.png", &info, &actual, &held);
 }

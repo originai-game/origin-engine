@@ -43,6 +43,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         desc: base_desc(),
         scene: RenderScene::new(),
         tolerance: Tolerance::default(),
+        cross_tolerance: Tolerance::CROSS_PLATFORM,
         frames: 1,
         update: None,
         render_scale: 1.0,

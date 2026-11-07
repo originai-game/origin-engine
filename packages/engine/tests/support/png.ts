@@ -19,35 +19,49 @@ export function decodeCapture(frame: unknown): Image {
   return decodePng(Uint8Array.from(atob(f.png), (c) => c.charCodeAt(0)));
 }
 
-/** og-tests' rule (crates/og-tests/src/compare.rs `Tolerance::default`): a channel off by more than 32/255 is an outlier; fail above 0.5 % outliers or an RGB RMSE above 0.01. */
-export const TOLERANCE = { channel: 32, outliers: 0.005, rmse: 0.01 } as const;
+/** og-tests' rule (crates/og-tests/src/compare.rs `Tolerance::default`): a channel off by more than 32/255 is an outlier; fail above 0.5 % outliers or an RGB RMSE above 0.01; no bias limit (1). */
+export const TOLERANCE = { channel: 32, outliers: 0.005, rmse: 0.01, bias: 1 } as const;
+
+/** Its cross-platform twin (`Tolerance::CROSS_PLATFORM`): what a frame may differ by from a reference another backend recorded: a wider RMSE, and no channel's mean off by more than 0.008. */
+export const CROSS_TOLERANCE = { channel: 32, outliers: 0.005, rmse: 0.016, bias: 0.008 } as const;
+
+export type Tolerance = { readonly channel: number; readonly outliers: number; readonly rmse: number; readonly bias: number };
+
+/** `tolerance_for` (compare.rs): TOLERANCE against a reference recorded on `tier` (its directory, references/<tier>/), CROSS_TOLERANCE against another tier's. */
+export function toleranceFor(tier: string, reference: string): Tolerance {
+  return reference.split(/[\\/]/).at(-2) === tier ? TOLERANCE : CROSS_TOLERANCE;
+}
 
 /**
- * Two frames under og-tests' rule: the outliers' share (0 to 1), the RGB
- * RMSE, whether they match, and a difference image (raw RGBA, differences
+ * Two frames under `limit` (og-tests' default; `toleranceFor` picks it by the reference): the outliers' share (0 to 1), the RGB
+ * RMSE, the largest mean signed difference of a channel (bias, 0 to 1), whether they match, and a difference image (raw RGBA, differences
  * ×4, outliers red). Frames of different sizes never match.
  */
-export function compareFrames(a: Image, b: Image): { outliers: number; rmse: number; ok: boolean; diff: Uint8Array } {
-  if (a.width !== b.width || a.height !== b.height) return { outliers: 1, rmse: 1, ok: false, diff: new Uint8Array(0) };
+export function compareFrames(a: Image, b: Image, limit: Tolerance = TOLERANCE): { outliers: number; rmse: number; bias: number; ok: boolean; diff: Uint8Array } {
+  if (a.width !== b.width || a.height !== b.height) return { outliers: 1, rmse: 1, bias: 1, ok: false, diff: new Uint8Array(0) };
   const n = a.width * a.height;
   const diff = new Uint8Array(n * 4);
   let outliers = 0;
   let sum = 0;
+  const signed = [0, 0, 0];
   for (let p = 0; p < n; p++) {
     let max = 0;
     for (let k = 0; k < 3; k++) {
-      const d = Math.abs(a.rgba[p * 4 + k]! - b.rgba[p * 4 + k]!);
+      const s = a.rgba[p * 4 + k]! - b.rgba[p * 4 + k]!;
+      signed[k]! += s;
+      const d = Math.abs(s);
       max = Math.max(max, d);
       sum += (d / 255) ** 2;
       diff[p * 4 + k] = Math.min(255, d * 4);
     }
     diff[p * 4 + 3] = 255;
-    if (max > TOLERANCE.channel) {
+    if (max > limit.channel) {
       outliers++;
       diff.set([255, 0, 0, 255], p * 4);
     }
   }
   const share = outliers / n;
   const rmse = Math.sqrt(sum / (n * 3));
-  return { outliers: share, rmse, ok: share <= TOLERANCE.outliers && rmse <= TOLERANCE.rmse, diff };
+  const bias = Math.max(...signed.map((s) => Math.abs(s) / 255 / n));
+  return { outliers: share, rmse, bias, ok: share <= limit.outliers && rmse <= limit.rmse && bias <= limit.bias, diff };
 }

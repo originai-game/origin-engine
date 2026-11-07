@@ -249,7 +249,12 @@ pub type Update = fn(&mut RenderScene, u32);
 pub struct GfxScene {
     pub desc: RenderDesc,
     pub scene: RenderScene,
+    /// Against a reference recorded on its own backend tier.
     pub tolerance: Tolerance,
+    /// Against another tier's reference (`compare::tolerance_for`): widens
+    /// [`Self::tolerance`]; `Tolerance::CROSS_PLATFORM` unless the scene's
+    /// spread across backends is wider by nature, with the reason beside it.
+    pub cross_tolerance: Tolerance,
     /// Frames rendered before the capture (TAA needs its history).
     pub frames: u32,
     pub update: Option<Update>,
@@ -329,6 +334,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         desc: base_desc(),
         scene: RenderScene::new(),
         tolerance: Tolerance::default(),
+        cross_tolerance: Tolerance::CROSS_PLATFORM,
         frames: 1,
         update: None,
         render_scale: 1.0,
@@ -392,6 +398,17 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.desc.antialias = Antialias::Taa;
             g.frames = crate::visual_scenes::GARMENT_TICKS;
             g.update = Some(crate::visual_scenes::next_tick);
+            // The cloth is chaotic over its 120 ticks: each shader compiler
+            // (Metal, DXC, NVIDIA's SPIR-V) rounds it its own way, so it hangs
+            // differently on every backend, though identically run to run on
+            // one (RMSE 0.0337 / 1.57 % outliers on DX12, 0.0324 / 1.55 % on
+            // Vulkan, against Metal; 2026-11-08, RTX 5060).
+            g.cross_tolerance = Tolerance {
+                channel: 32,
+                max_outlier_fraction: 0.024,
+                rmse: 0.051,
+                ..Tolerance::CROSS_PLATFORM
+            };
             Ok(())
         },
         // Compute particles meeting the scene's colliders: a grinder's
@@ -612,6 +629,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // plain textured sprite; one draw per array and blend.
         "sprites-array" => |g, _| {
             g.scene = sprite_array_scene();
+            // Nearest texels whose edges fall on pixel centres: each backend
+            // breaks the tie its own way (references/dx12, vulkan); WebGPU on
+            // D3D12 against Metal's frame: RMSE 0.0205, 0.136 % outliers.
+            g.cross_tolerance = Tolerance {
+                rmse: 0.031,
+                ..Tolerance::CROSS_PLATFORM
+            };
             Ok(())
         },
         // Pixel figures standing in a 3D set, each with a drop shadow on
@@ -1142,6 +1166,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "stylise-print" => |g, _| {
             g.scene = crate::stylise_scenes::print_scene();
+            // Its hatching thresholds turn one level of rounding into a whole
+            // ink line: RMSE 0.0164, 0.414 % outliers on Vulkan (0.0105 /
+            // 0.11 % on DX12) against Metal.
+            g.cross_tolerance = Tolerance {
+                channel: 32,
+                max_outlier_fraction: 0.007,
+                rmse: 0.025,
+                ..Tolerance::CROSS_PLATFORM
+            };
             Ok(())
         },
         "stylise-halftone" => |g, _| {
@@ -1234,6 +1267,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // a window's sky layer opting out (hollowbell FINDINGS #9).
         "tilemap-lit" => |g, _| {
             g.scene = fx::tilemap_lit_scene();
+            // Nearest texels on pixel centres, as sprites-array: WebGPU on
+            // D3D12 against Metal's frame: RMSE 0.0306, 2.78 % outliers.
+            g.cross_tolerance = Tolerance {
+                channel: 32,
+                max_outlier_fraction: 0.042,
+                rmse: 0.046,
+                ..Tolerance::CROSS_PLATFORM
+            };
             Ok(())
         },
         "sprites-untonemapped" => |g, _| {

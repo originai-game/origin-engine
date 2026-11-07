@@ -4,9 +4,10 @@
 // draws it (`og_tests::gfx::render_built`: its frames, its update before
 // each, the offscreen target read back), and compared with
 // crates/og-tests/references/<tier>/ (`webgpu`) when that frame
-// is committed, else with `metal`, under the scene's own tolerance
-// (crates/og-tests/src/compare.rs: a channel off by more than 32/255 is an
-// outlier; by default fail above 0.5 % outliers or an RGB RMSE above 0.01).
+// is committed, else with `metal`, under crates/og-tests/src/compare.rs's rule
+// (`tolerance_for`): the scene's tolerance against its own tier's frame, its
+// cross-platform one against another tier's (`Tolerance::CROSS_PLATFORM`
+// unless the scene names its own; a channel off by more than 32/255 is an outlier).
 // Every frame is also compared with its metal reference, reported and kept
 // in the JSON whether or not it is the frame the run is judged against.
 // og-ui's reference scenes ride along as `og-ui/<name>` (sample-screen,
@@ -55,7 +56,7 @@
 // wasm-bindgen at the Cargo.lock version and the wasm32 target.
 
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { androidOf, Browser, chromePath } from "./cdp.ts";
 import { Firefox, firefoxPath } from "./bidi.ts";
@@ -63,6 +64,7 @@ import { Safari, safariDriverPath } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { cookTextFonts } from "./text-fonts.ts";
 import { decodePng, encodePng, encodePngBest, type Image } from "../../src/node/png.ts";
+import { compareFrames as compare, TOLERANCE, type Tolerance as Limit } from "../support/png.ts";
 import { createRequire } from "node:module";
 
 const { cpus, loadavg } = createRequire(import.meta.url)("node:os") as { cpus(): { model: string }[]; loadavg(): number[] };
@@ -163,29 +165,10 @@ const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
 
-type Opened = { tier: string; adapter: string; antialias: string; frames: number; width: number; height: number; tolerance: { channel: number; outliers: number; rmse: number } };
+type Opened = { tier: string; adapter: string; software: boolean; antialias: string; frames: number; width: number; height: number; tolerance: Limit; cross: Limit };
+/** og_tests::compare::tolerance_for: the scene's tolerance against its own tier's reference (or on a software adapter), its cross-platform one against another tier's. */
+const limitFor = (o: Opened, reference: string): Limit => (basename(dirname(reference)) === o.tier || o.software ? o.tolerance : o.cross);
 
-function compare(a: Image, b: Image, channel: number): { outliers: number; rmse: number; diff: Uint8Array } {
-  const n = a.width * a.height;
-  const diff = new Uint8Array(n * 4);
-  let outliers = 0;
-  let sum = 0;
-  for (let p = 0; p < n; p++) {
-    let max = 0;
-    for (let k = 0; k < 3; k++) {
-      const d = Math.abs(a.rgba[p * 4 + k]! - b.rgba[p * 4 + k]!);
-      max = Math.max(max, d);
-      sum += (d / 255) ** 2;
-      diff[p * 4 + k] = Math.min(255, d * 4);
-    }
-    diff[p * 4 + 3] = 255;
-    if (max > channel) {
-      outliers++;
-      diff.set([255, 0, 0, 255], p * 4);
-    }
-  }
-  return { outliers: outliers / n, rmse: Math.sqrt(sum / (n * 3)), diff };
-}
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const result: Record<string, unknown> = { tier, buildMs, scenes: {} as Record<string, unknown> };
@@ -313,8 +296,8 @@ try {
         writeFileSync(join(dir, `${scene}.bisect-${spec.replace(/[^a-z0-9]+/gi, "_") || "none"}-${cpu ? "cpu" : "gpu"}.png`), encodePng(img));
         if (!cpu) console.log(`     ${scene} [${row}] GPU culling: ${JSON.stringify(shot.stats)}`);
       }
-      const d = compare(frames[0]!, frames[1]!, 32);
-      const same = d.outliers <= 0.005 && d.rmse <= 0.01;
+      const d = compare(frames[0]!, frames[1]!, TOLERANCE);
+      const same = d.ok;
       (result["bisect"] as Record<string, unknown> | undefined) ?? (result["bisect"] = {});
       (result["bisect"] as Record<string, unknown>)[`${scene} [${row}]`] = { outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), gpuMs: ms[0], cpuMs: ms[1], same };
       console.log(`${same ? "same" : "DIFF"} ${scene} [${row}]: GPU against CPU culling ${(d.outliers * 100).toFixed(3)} % outliers, RMSE ${d.rmse.toFixed(5)}; ${ms[0]} ms against ${ms[1]} ms`);
@@ -377,8 +360,9 @@ try {
       const where = referencesOf(scene);
       const metal = join(where.root, "metal", `${where.name}.png`);
       if (existsSync(metal)) {
-        const m = compare(img, decodePng(new Uint8Array(readFileSync(metal))), o.tolerance.channel);
-        row["metal"] = { outliers: +(m.outliers * 100).toFixed(3), rmse: +m.rmse.toFixed(5), ok: m.outliers <= o.tolerance.outliers && m.rmse <= o.tolerance.rmse };
+        const ml = limitFor(o, metal);
+        const m = compare(img, decodePng(new Uint8Array(readFileSync(metal))), ml);
+        row["metal"] = { outliers: +(m.outliers * 100).toFixed(3), rmse: +m.rmse.toFixed(5), bias: +m.bias.toFixed(5), ok: m.ok };
       }
       if (!all.includes(scene) || (timed > 0 && !retained.includes(scene))) {
         console.log(`--   ${scene} (${tier}): timed only (no retained reference)`);
@@ -393,15 +377,16 @@ try {
         const browsers = join(where.root, "webgpu", `${where.name}.png`);
         const against = existsSync(own) ? own : tier !== "webgpu" && existsSync(browsers) ? browsers : metal;
         if (!existsSync(against)) throw new Error(`no reference at ${own} or ${metal}; record one with --record --scene ${scene}`);
-        const d = compare(img, decodePng(new Uint8Array(readFileSync(against))), o.tolerance.channel);
-        const ok = d.outliers <= o.tolerance.outliers && d.rmse <= o.tolerance.rmse;
-        Object.assign(row, { against: against.slice(repo.length + 1), outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), ok });
+        const limit = limitFor(o, against);
+        const d = compare(img, decodePng(new Uint8Array(readFileSync(against))), limit);
+        const ok = d.ok;
+        Object.assign(row, { against: against.slice(repo.length + 1), outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), bias: +d.bias.toFixed(5), ok });
         if (!ok) {
           failures++;
           writeFileSync(join(dir, `${scene}.diff.png`), encodePng({ width: img.width, height: img.height, rgba: d.diff }));
         }
         console.log(
-          `${ok ? "ok  " : "FAIL"} ${scene} (${tier}): ${(d.outliers * 100).toFixed(3)} % outliers (≤ ${(o.tolerance.outliers * 100).toFixed(1)} %), RMSE ${d.rmse.toFixed(5)} (≤ ${o.tolerance.rmse}) against ${against.slice(repo.length + 1)}` +
+          `${ok ? "ok  " : "FAIL"} ${scene} (${tier}): ${(d.outliers * 100).toFixed(3)} % outliers (≤ ${(limit.outliers * 100).toFixed(1)} %), RMSE ${d.rmse.toFixed(5)} (≤ ${limit.rmse}), bias ${d.bias.toFixed(5)} (≤ ${limit.bias}) against ${against.slice(repo.length + 1)}` +
             (against !== metal && row["metal"] ? `; metal: RMSE ${(row["metal"] as { rmse: number }).rmse}` : ""),
         );
       }

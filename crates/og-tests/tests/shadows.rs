@@ -415,6 +415,7 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
             channel: 1,
             max_outlier_fraction: 0.0,
             rmse: 0.001,
+            ..Tolerance::default()
         };
         for (name, other) in [("still", &still), ("fresh", &fresh)] {
             let diff = compare(

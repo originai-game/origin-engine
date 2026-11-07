@@ -90,7 +90,12 @@ fn check(name: &str, (scene, desc): (RenderScene, RenderDesc)) -> og_render::Fra
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
         .to_rgba8();
-    match compare(&image.pixels, expected.as_raw()) {
+    match compare(
+        &image.pixels,
+        expected.as_raw(),
+        renderer.info(),
+        &reference,
+    ) {
         Ok((rmse, outliers)) => println!(
             "{name} {tier}: RMSE {rmse:.5}, outliers {:.3}%",
             outliers * 100.0

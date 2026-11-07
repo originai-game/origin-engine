@@ -1,7 +1,7 @@
 # The local gate
 
-The gate is one script, `scripts/check.sh`, run on macrunner; there is no
-GitHub CI. The rules it rests on are in AGENTS.md §Building and testing: one
+The gate is one script, `scripts/check.sh`, run on macrunner or on
+studio-win under Git Bash; there is no GitHub CI. The rules it rests on are in AGENTS.md §Building and testing: one
 target directory, the dev profile for every native step, tests that never
 run `cargo`.
 
@@ -73,7 +73,7 @@ artifact messages, not guessed executable paths.
 |---|---|---|---|
 | arm64 macOS | LLVM, `-Zthreads=4` | platform linker | verified on macrunner |
 | x86_64 Linux | LLVM, `-Zthreads=4` | mold | unverified |
-| x86_64-pc-windows-msvc (studio-win) | LLVM, `-Zthreads=4` | rust-lld (lld-link), not link.exe | **unverified on studio-win** |
+| x86_64-pc-windows-msvc (studio-win) | LLVM, `-Zthreads=4` | rust-lld (lld-link), not link.exe | verified on studio-win (RTX 5060, DX12 and Vulkan) |
 
 wgpu and naga stay on 30.0.1 until 31 is on crates.io; the move is kept
 only if every committed reference frame passes without re-recording.
@@ -91,7 +91,8 @@ images binary even with `core.autocrlf=true`.
 Windows selects DX12 and statically links DXC, so the installed engine
 needs no compiler DLL; game authors need the Microsoft Visual C++ x64
 redistributable (MSVCP140/VCRUNTIME140), not Visual Studio or Rust. The
-reference harness falls back to Metal's frames. `crates/og-tests/references/dx12/`
+reference harness falls back to Metal's frames under the cross-platform
+tolerance (§Reference frames). `crates/og-tests/references/dx12/`
 and `vulkan/` (`OG_GFX_BACKEND=vulkan`) hold a frame only where that
 backend legitimately differs from Metal (nearest-sampled texels whose edges
 fall on pixel centres; NVIDIA's Vulkan anisotropic filter), with the reason
@@ -100,6 +101,48 @@ the pinned tsgo through Bun, since tsrs has no Windows package. The
 Windows release package is built with `OG_RELEASE=1 sh
 packages/engine/scripts/build.sh --native && sh
 packages/engine/scripts/pack.sh --native` (docs/release.md §3).
+
+To run the gate on studio-win, also put on Git Bash's PATH: Python 3.12
+with numpy and Pillow, reachable as `python3` (a `python3.exe` copy of
+`python.exe`); cargo-nextest; and Bun. Point `CHROME` at Chrome for
+Testing (`chrome-win64/chrome.exe`). The scripts set `PYTHONUTF8=1` and
+take `C:/` paths as absolute. `scripts/lock.sh` identifies a holder by its
+start time from `ps -o lstart`, or from `/proc/<pid>/stat` where MSYS's
+`ps` has no `lstart`. Native GPU steps use DX12 on the NVIDIA driver
+(`OG_GFX_BACKEND=vulkan` for Vulkan), never WARP. web-reference's motion
+groups need the pinned og.motion weights (§The model bucket: the
+`OG_SHOWCASE_S3_*` credentials or a local copy with the pinned sha256).
+
+## Reference frames
+
+One reference set serves every real GPU backend. New frames are recorded
+on `metal` (macrunner) only, so a frame never flip-flops between hosts'
+renderings (§Re-capturing gfx references); `references/<tier>/` holds a
+frame for another backend only where it differs by design (§Windows x64
+prerequisites). A frame is judged against its own tier's reference when
+one is committed, else Metal's, under one rule,
+`og_tests::compare::tolerance_for` (png.ts `toleranceFor` and
+reference-gfx.ts `limitFor` in the browser):
+
+- against a reference recorded on the frame's own backend, or on a
+  software adapter, the scene's `tolerance` (by default a channel off by
+  more than 32/255 is an outlier; fail above 0.5 % outliers or an RGB RMSE
+  above 0.01), so the recording platform keeps catching subtle regressions;
+- against another backend's reference, that widened by the scene's
+  `cross_tolerance`, `Tolerance::CROSS_PLATFORM` by default: RMSE 0.016, and
+  no RGB channel's mean signed difference above 0.008, which is what keeps a
+  dimmer light or a colour shift from hiding inside the wider RMSE.
+
+`CROSS_PLATFORM` is set from the measured spread with a margin (2026-11-08,
+RTX 5060 on DX12, Vulkan and Chrome 150 on D3D12, against Metal): RMSE at
+most 0.0102, outliers at most 0.08 %, channel bias at most 0.0057, almost
+all of it rasterisation and threshold ties along edges.
+`og-tests` `the_cross_platform_tolerance_still_catches_small_regressions`
+proves that it still fails a 10 % dimmer sun, a lost shadow, text moved by
+3 px and a wrong text colour. A scene whose spread is wider by nature
+names its own `cross_tolerance` in `scenes.rs` with the measurement beside
+it (visual-garment, stylise-print, sprites-array, tilemap-lit); never widen
+one to absorb a defect.
 
 ## Linux renderer prerequisites
 
@@ -511,9 +554,9 @@ frame: a frame with no file under `references/<tier>/` is judged against
 `references/metal/`, and a frame on neither fails the run ("no reference
 at …; record one with --record"), never passes. A tier gets its own
 reference only for a difference it makes by design, never to absorb a
-defect. The default tolerance is og-tests' (`crates/og-tests/src/compare.rs`):
-a channel off by more than 32/255 is an outlier; fail above 0.5 % outliers
-or an RGB RMSE above 0.01. `--record` writes the tier's references.
+defect. Tolerances follow §Reference frames: the tight one against the
+tier's own frame, the cross-platform one against `metal`'s. `--record`
+writes the tier's references.
 
 `web-reference` runs four groups (`WEB_GROUPS` in `scripts/gate/commands.sh`):
 - **ui**: the accessibility mirror (§The accessibility mirror in the
@@ -539,7 +582,7 @@ compiles them to a wasm-bindgen module (glTF and font assets embedded with
 on WebGPU, draws its frames as the native harness does
 (`og_tests::gfx::render_built`) and reads the target back. Each frame is
 compared with `crates/og-tests/references/webgpu/`, else `metal`, under
-the scene's own tolerance, and every frame's figures against `metal` are
+§Reference frames' rule, and every frame's figures against `metal` are
 kept in the report. It builds in `target/wasm-gfx`, so the gate's
 og-render artifacts stay put.
 
@@ -652,11 +695,13 @@ git diff --stat tests/                       # see which frames moved
 ```
 
 A scene with no reference on the adapter's tier is compared with
-`references/metal/` and the test says so (`gfx <scene>: no <tier>
-reference …; comparing with metal's`); a scene on neither fails. Commit
-the new references with the change and describe what each moved frame now
-shows (AGENTS.md §Building and testing). Capture on the tier the reference belongs
-to; a frame from another tier never replaces a Metal reference.
+`references/metal/` under the cross-platform tolerance (§Reference frames)
+and the test says so (`gfx <scene>: no <tier> reference …; comparing with
+metal's`); a scene on neither fails. Commit the new references with the
+change and describe what each moved frame now shows (AGENTS.md §Building
+and testing). Record on macrunner (Metal); a frame from another tier never
+replaces a Metal reference. A change that moves a frame can be checked on
+studio-win first, but its references are re-recorded on macrunner.
 
 ## When the size gate fails
 

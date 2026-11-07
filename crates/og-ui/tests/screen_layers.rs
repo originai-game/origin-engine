@@ -165,7 +165,12 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
         .to_rgba8();
-    if let Err(e) = compare(&image.pixels, expected.as_raw()) {
+    if let Err(e) = compare(
+        &image.pixels,
+        expected.as_raw(),
+        renderer.info(),
+        &reference,
+    ) {
         panic!(
             "{} differs from {}: {e}",
             actual.display(),

@@ -86,7 +86,12 @@ fn sample_screen_matches_its_reference_frame() {
         (expected.width(), expected.height()),
         (image.width, image.height)
     );
-    match compare(&image.pixels, expected.as_raw()) {
+    match compare(
+        &image.pixels,
+        expected.as_raw(),
+        renderer.info(),
+        &reference,
+    ) {
         Ok((rmse, outliers)) => println!(
             "{tier}: RMSE {rmse:.5}, outliers {:.3}% against {}",
             outliers * 100.0,
@@ -219,11 +224,12 @@ fn a_text_glow_is_a_halo_from_the_distance_field() {
         let stats = renderer
             .render(&scene, &RenderTarget::Offscreen)
             .expect("render");
-        let tier = renderer.info().backend_tier();
-        (renderer.read_offscreen().expect("read back"), stats, tier)
+        let info = renderer.info().clone();
+        (renderer.read_offscreen().expect("read back"), stats, info)
     };
     let (plain, plain_stats, _) = render(false);
-    let (glow, glow_stats, tier) = render(true);
+    let (glow, glow_stats, info) = render(true);
+    let tier = info.backend_tier();
     assert_eq!(
         glow_stats.overlay_glyphs,
         2 * plain_stats.overlay_glyphs,
@@ -304,7 +310,7 @@ fn a_text_glow_is_a_halo_from_the_distance_field() {
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
         .to_rgba8();
-    if let Err(e) = compare(&glow.pixels, expected.as_raw()) {
+    if let Err(e) = compare(&glow.pixels, expected.as_raw(), &info, &reference) {
         panic!(
             "{} differs from {}: {e}",
             out.display(),
@@ -684,10 +690,11 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
     assert!(stats.draw_calls > 0);
     // The reference frame.
     let (h, w) = (desc.height, desc.width);
-    let tier = Renderer::new_blocking(&RenderDesc::default())
+    let info = Renderer::new_blocking(&RenderDesc::default())
         .expect("a headless adapter")
         .info()
-        .backend_tier();
+        .clone();
+    let tier = info.backend_tier();
     let out = out_dir().join(format!("glass-{tier}.png"));
     image::save_buffer(&out, &glass, w, h, image::ColorType::Rgba8).expect("write frame");
     let own = reference_dir(&tier).join("glass.png");
@@ -702,7 +709,7 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
         .to_rgba8();
-    if let Err(e) = compare(&glass, expected.as_raw()) {
+    if let Err(e) = compare(&glass, expected.as_raw(), &info, &reference) {
         panic!(
             "{} differs from {}: {e}",
             out.display(),
@@ -896,7 +903,12 @@ fn text_fields_match_their_reference_frame() {
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
         .to_rgba8();
-    match compare(&image.pixels, expected.as_raw()) {
+    match compare(
+        &image.pixels,
+        expected.as_raw(),
+        renderer.info(),
+        &reference,
+    ) {
         Ok((rmse, outliers)) => println!(
             "text-fields-2 {tier}: RMSE {rmse:.5}, outliers {:.3}%",
             outliers * 100.0

@@ -134,6 +134,7 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
             channel: 2,
             max_outlier_fraction: 0.0001,
             rmse: 0.002,
+            ..Tolerance::default()
         };
         let diff = compare(&gpu.pixels, &cpu.pixels, cpu.width, cpu.height, &tolerance)
             .expect("same size");

@@ -5,7 +5,7 @@
 //! `OG_GFX_CAPTURE=1` (re)records every reference instead of comparing;
 //! `OG_GFX_CAPTURE=scene-a,scene-b` records only those scenes.
 
-use crate::compare::{Comparison, compare};
+use crate::compare::{Comparison, compare, tolerance_for};
 use crate::scenes::{self, GfxScene};
 use og_render::{FrameStats, RenderInfo, RenderTarget, Renderer, RgbaImage};
 use std::path::{Path, PathBuf};
@@ -210,14 +210,21 @@ pub fn check_built(scene: &str, built: &mut GfxScene, out_dir: &Path) -> Result<
             expected.width, expected.height, rendered.image.width, rendered.image.height
         ));
     }
+    let tolerance = tolerance_for(
+        built.tolerance,
+        built.cross_tolerance,
+        &tier,
+        rendered.info.software(),
+        &reference,
+    );
     let comparison = compare(
         &rendered.image.pixels,
         &expected.pixels,
         expected.width,
         expected.height,
-        &built.tolerance,
+        &tolerance,
     )?;
-    let verdict = comparison.check(&built.tolerance);
+    let verdict = comparison.check(&tolerance);
     let diff = RgbaImage {
         width: expected.width,
         height: expected.height,

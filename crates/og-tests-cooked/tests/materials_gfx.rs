@@ -472,7 +472,12 @@ fn the_materials_frame_matches_its_reference() {
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
         .to_rgba8();
-    match compare(&image.pixels, expected.as_raw()) {
+    match compare(
+        &image.pixels,
+        expected.as_raw(),
+        renderer.info(),
+        &reference,
+    ) {
         Ok((rmse, outliers)) => println!(
             "materials {tier}: RMSE {rmse:.5}, outliers {:.3}%",
             outliers * 100.0

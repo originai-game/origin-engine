@@ -3042,6 +3042,7 @@ dependencies = [
  "og-input",
  "og-probe",
  "og-render",
+ "og-tests",
  "og-tween",
  "parley",
  "parley_engine",

@@ -135,6 +135,7 @@ mod web {
             desc,
             scene,
             tolerance: Tolerance::default(),
+            cross_tolerance: Tolerance::CROSS_PLATFORM,
             frames: 1,
             update: None,
             render_scale: 1.0,
@@ -266,11 +267,16 @@ mod web {
             }));
         renderer.set_render_scale(built.render_scale);
         let info = renderer.info();
+        // `tolerance` against this tier's own reference, `cross` against
+        // another tier's (og_tests::compare::tolerance_for, which a software
+        // adapter never gets).
         let t = &built.tolerance;
+        let c = built.tolerance.widened(built.cross_tolerance);
         let json = format!(
-            "{{\"tier\":{:?},\"adapter\":{:?},\"antialias\":\"{:?}\",\"frames\":{},\"width\":{},\"height\":{},\"tolerance\":{{\"channel\":{},\"outliers\":{},\"rmse\":{}}}}}",
+            "{{\"tier\":{:?},\"adapter\":{:?},\"software\":{},\"antialias\":\"{:?}\",\"frames\":{},\"width\":{},\"height\":{},\"tolerance\":{{\"channel\":{},\"outliers\":{},\"rmse\":{},\"bias\":{}}},\"cross\":{{\"channel\":{},\"outliers\":{},\"rmse\":{},\"bias\":{}}}}}",
             info.backend_tier(),
             info.adapter,
+            info.software(),
             info.antialias,
             built.frames.max(1),
             built.desc.width,
@@ -278,6 +284,11 @@ mod web {
             t.channel,
             t.max_outlier_fraction,
             t.rmse,
+            t.max_bias,
+            c.channel,
+            c.max_outlier_fraction,
+            c.rmse,
+            c.max_bias,
         );
         OPEN.with(|o| {
             *o.borrow_mut() = Some(Open {

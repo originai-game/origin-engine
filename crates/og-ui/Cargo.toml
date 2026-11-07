@@ -47,6 +47,8 @@ accesskit = { version = "=0.25.2", features = ["serde"] }
 
 [dev-dependencies]
 image = { workspace = true }
+# The reference-frame rule (og_tests::compare::tolerance_for).
+og-tests = { path = "../og-tests" }
 pollster = { workspace = true }
 
 [[test]]

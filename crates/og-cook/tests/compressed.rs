@@ -202,6 +202,7 @@ const COMPRESSED: Tolerance = Tolerance {
     channel: 32,
     max_outlier_fraction: 0.005,
     rmse: 0.012,
+    max_bias: 1.0,
 };
 
 #[test]
