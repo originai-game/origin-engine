@@ -47,6 +47,7 @@ mod test;
 mod trace;
 mod ui;
 mod upgrade;
+mod vfx_import;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -158,6 +159,12 @@ commands:
                       copy an effect pack (`kind vfx`: type vfx and type vfx2d effects,
                       emitters, effect materials and their textures) into the game's
                       assets/vfx/<pack>/ to use and change; `og ui list` names the bundled packs
+  vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>]
+                      convert an Effekseer effect to the engine's own as text to edit:
+                      <out-dir>/<name>.ogt (type vfx) and <name>/ (emitters, effect materials,
+                      meshes, copies of its textures; asset ids from --root, default the
+                      nearest assets/ above <out-dir>), listing what did not convert; an
+                      Effekseer file in assets/ is converted the same way by og cook
   style list          the built-in UI styles' slugs, each with its signature
   style eject <slug> [<name>] [--project <dir>] [--force]
                       write the built-in style <slug> (style.ogt, atlas, icons, fonts and their
@@ -334,6 +341,7 @@ fn main() -> ExitCode {
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),
         ["vfx", "add", rest @ ..] => ui::extensions::add(rest, "vfx"),
+        ["vfx", "import", rest @ ..] => vfx_import::run(rest),
         ["frame", rest @ ..] => frame::run(rest),
         [] => {
             eprint!("{USAGE}");
