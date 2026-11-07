@@ -713,6 +713,7 @@ source "hero_run.webp" {  # optional settings of this source's clip
   fps 12                  # instead of the file's frame delays
   event 3 "step"          # og.FlipbookEvent on the clip's frame 3
   align feet              # this source's alignment (default: the sheet's)
+  scale 0.9               # times the sheet's scale: a source drawn larger than the others
 }
 key auto 0.1 holes        # off (default) | auto | "#rrggbb", a tolerance 0 to 0.5, and
                           # `holes`: the pockets of background the figure encloses too
