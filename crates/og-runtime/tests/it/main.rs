@@ -1,3 +1,5 @@
+#[path = "../antialias_default.rs"]
+mod antialias_default;
 #[path = "../ao_resolution.rs"]
 mod ao_resolution;
 #[path = "../armed_emitters.rs"]

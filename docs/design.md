@@ -622,8 +622,10 @@ the logic tests and the probe's CPU description of a frame.
 - Post: bloom, tonemap (ACES, AgX or Khronos PBR Neutral), colour grading
   LUT (a photo editor's adjustments baked into it on the CPU), lens
   distortion, zoom, spin and directional screen blurs, SSAO (GTAO),
-  antialiasing: TAA by default (optional Catmull-Rom history and
-  sharpening), 4× MSAA or FXAA as choices, FXAA where the HDR target cannot
+  antialiasing: TAA by default in a 3D project (optional Catmull-Rom
+  history and sharpening), 4× MSAA by default in a 2D one (TAA's jitter
+  and history blend soften nearest-sampled pixel art), 4× MSAA, TAA or
+  FXAA as choices, FXAA where the HDR target cannot
   be multisampled. TAA reprojects along the prepass's motion vectors where
   something moved besides the camera (instances with
   `previous_transforms`, skinned meshes with `previous_joint_palettes`,

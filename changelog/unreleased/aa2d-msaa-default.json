@@ -1,0 +1,18 @@
+{
+  "breaking": [
+    {
+      "member": "render.RenderOptions.antialias (tier)",
+      "change": "Look change, moves frames: in a 2D project (project.ogt's `profile \"2d\"`) the default antialias, `tier` or left out, now resolves to 4x MSAA instead of TAA, whose jitter and bilinear history blend softened nearest-sampled pixel art (a sprite kept about 0.7 of its edge contrast). A 3D project still resolves to TAA; a game that names a method keeps it.",
+      "fix": "To keep TAA in a 2D game, set `render: { antialias: \"taa\" }` in GameDesc (or `antialias taa` in its look).",
+      "find": [
+        "antialias"
+      ]
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.Sprite and og.Tilemap under MSAA",
+      "summary": "Moves frames: under 4x MSAA a sprite's or tile's uv is interpolated at a covered sample (centroid) instead of the pixel centre, so an edge pixel no longer reads the next cell of its atlas; a tilemap's rows had a faint seam in the colour of the neighbouring tile (top-down's path tiles). One sample per pixel draws as before."
+    }
+  ]
+}

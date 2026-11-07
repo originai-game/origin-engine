@@ -926,15 +926,16 @@ pub fn render_options(id: u32) -> Value {
 
 /// `base` with the game's RenderOptions applied (GameDesc.render):
 /// antialias, shadowMapSize, pointShadows, taaHistory, taaSharpen,
-/// planarReflections, transparency and transparencyLayers. Both
-/// hosts create their renderer from it, so the options mean the same on
-/// each.
+/// planarReflections, transparency and transparencyLayers; antialias left
+/// out (or tier) is 4x MSAA in a 2D project (options.profile). Both hosts
+/// create their renderer from it, so the options mean the same on each.
 pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
     let options = render_options(id);
     let mut desc = base;
     desc.hdr = options["hdr"].as_bool().unwrap_or(false);
     desc.paper_white_nits = options["paperWhiteNits"].as_f64().unwrap_or(0.0) as f32;
     desc.peak_nits = options["peakNits"].as_f64().unwrap_or(0.0) as f32;
+    let profile = engine(id).map_or(og_physics::PROFILE_3D, |e| e.state.borrow().profile);
     desc.antialias = match options["antialias"].as_str().unwrap_or("tier") {
         "off" => og_render::Antialias::Off,
         "msaa4" => og_render::Antialias::Msaa4,
@@ -942,6 +943,9 @@ pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDes
         "fxaa" => og_render::Antialias::Fxaa,
         "smaa" => og_render::Antialias::Smaa,
         "smaaT2x" => og_render::Antialias::SmaaT2x,
+        // A 2D project's default is 4x MSAA: TAA's jitter and history
+        // blend soften nearest-sampled pixel art.
+        _ if profile == og_physics::PROFILE_2D => og_render::Antialias::Msaa4,
         _ => og_render::Antialias::Tier,
     };
     if let Some(size) = options["shadowMapSize"].as_u64() {

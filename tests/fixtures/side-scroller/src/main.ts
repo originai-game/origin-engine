@@ -255,10 +255,6 @@ export default og.game({
   resources: [Play],
   systems: [...og.systems.cameras, Drive, FadeLight, Fade],
   start: build,
-  // Pixel art samples nearest and must stay on its texels: TAA (the default
-  // tier) jitters and blends history, softening every sprite by a third and
-  // more under the follow camera's shake. MSAA keeps sprites sharp.
-  render: { antialias: "msaa4" },
   commands: {
     run: (world) => { must(world.resource(Play)).speed = RUN_SPEED; },
     stop: (world) => { must(world.resource(Play)).speed = 0; },

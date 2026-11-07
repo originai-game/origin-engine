@@ -100,7 +100,11 @@ struct SpriteIn {
 
 struct SpriteOut {
   @builtin(position) clip: vec4<f32>,
-  @location(0) uv: vec2<f32>,
+  // Centroid: under MSAA a quad's edge pixel is shaded at its centre even
+  // where that lies outside the quad, and the uv extrapolated there reads
+  // the next cell of the atlas (a tilemap's rows seamed by the neighbouring
+  // tile). At a covered sample it stays in the region; one sample is the centre.
+  @location(0) @interpolate(perspective, centroid) uv: vec2<f32>,
   @location(1) color: vec4<f32>,
   @location(2) flash: vec4<f32>,
   @location(3) fx: vec3<f32>,

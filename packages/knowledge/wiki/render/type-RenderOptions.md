@@ -12,7 +12,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing method. |
+| `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing method; left out, tier (4x MSAA in a 2D project, TAA in a 3D one). |
 | `hdr` | `boolean` | `false` | — | — | — | Request extended-range HDR surface output. Opt-in; not yet accepted on a real HDR display (acceptance belongs to the compatibility phase). False keeps SDR and its tone operator. Unsupported surfaces fall back to SDR; capabilities.hdrSupported reports the float extended-sRGB surface path, capabilities.hdr reports the resolved mode. Headless renderers remain SDR. HDR uses the LPM display mapper and linear UI composition, with the surface transfer applied last. |
 | `paperWhiteNits` | `number` | `0` | — | — | — | HDR reference white; 0 means 203 nits. Clamped to 80..1000. On Apple EDR and web, absolute display nits are unavailable: white follows OS SDR white and peakNits/paperWhiteNits sets relative headroom. On DXGI/Vulkan scRGB this sets absolute paper white. Read once at renderer creation. |
 | `peakNits` | `number` | `0` | — | — | — | HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits. A display can limit actual output below this target. Read once at renderer creation. |
@@ -29,7 +29,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct RenderOptions {
   doc "How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer."
   desc true
-  field antialias Antialias "The antialiasing method."
+  field antialias Antialias "The antialiasing method; left out, tier (4x MSAA in a 2D project, TAA in a 3D one)."
   field hdr bool "Request extended-range HDR surface output. Opt-in; not yet accepted on a real HDR display (acceptance belongs to the compatibility phase). False keeps SDR and its tone operator. Unsupported surfaces fall back to SDR; capabilities.hdrSupported reports the float extended-sRGB surface path, capabilities.hdr reports the resolved mode. Headless renderers remain SDR. HDR uses the LPM display mapper and linear UI composition, with the surface transfer applied last."
   field paperWhiteNits f32 "HDR reference white; 0 means 203 nits. Clamped to 80..1000. On Apple EDR and web, absolute display nits are unavailable: white follows OS SDR white and peakNits/paperWhiteNits sets relative headroom. On DXGI/Vulkan scRGB this sets absolute paper white. Read once at renderer creation."
   field peakNits f32 "HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits. A display can limit actual output below this target. Read once at renderer creation."
