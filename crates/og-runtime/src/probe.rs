@@ -56,6 +56,10 @@ impl Capture for RuntimeCapture {
     }
 
     fn save_state(&mut self) -> u64 {
+        // og.motion at the saved tick, as a frame there draws it.
+        if let Ok(eng) = engine(self.engine) {
+            super::motion::present::step(&eng);
+        }
         self.render
             .try_borrow_mut()
             .map_or(0, |mut rs| super::presentation::save(&mut rs))
@@ -68,6 +72,11 @@ impl Capture for RuntimeCapture {
     }
 
     fn presentation_hash(&self) -> Option<u64> {
+        // None while og.motion's step at this tick waits for the GPU (the
+        // web): ask again.
+        if !engine(self.engine).is_ok_and(|eng| super::motion::present::step(&eng)) {
+            return None;
+        }
         let rs = self.render.try_borrow().ok()?;
         Some(super::presentation::hash(&rs))
     }
@@ -112,9 +121,10 @@ impl Capture for RuntimeCapture {
 
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
         // og.motion at the captured tick, as a display frame there steps it
-        // (once a tick: a frame drawn at this tick already did).
-        if let Ok(eng) = engine(self.engine) {
-            super::motion::present::step(&eng);
+        // (once a tick: a frame drawn at this tick already did); no frame
+        // while it waits for the GPU (the web), so the probe asks again.
+        if !engine(self.engine).is_ok_and(|eng| super::motion::present::step(&eng)) {
+            return None;
         }
         let mut rs = self.render.try_borrow_mut().ok()?;
         // Captured frames show every wanted terrain tile, whatever the decode timing.
@@ -428,7 +438,10 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     // A tick that would load a cell whose sub-scene's pack has not landed
     // is held (G3-3); then og.net's lockstep holds it until every player's
     // input for it is in. A rollback's rewind moves the clock back, so the
-    // cells the re-simulated tick loads are asked after again.
+    // cells the re-simulated tick loads are asked after again. Last,
+    // og.motion steps with the world the tick before left, and holds the
+    // tick while a GPU batch it takes has not landed (the web, which cannot
+    // wait for one; a native host waits in place).
     probe.set_gate(Box::new(move |world| {
         if !super::stream::cell_groups::gate(id, world) {
             return false;
@@ -437,7 +450,10 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         if !super::net::gate(id, world) {
             return false;
         }
-        world.time().tick == tick || super::stream::cell_groups::gate(id, world)
+        if world.time().tick != tick && !super::stream::cell_groups::gate(id, world) {
+            return false;
+        }
+        engine(id).map_or(true, |eng| super::motion::present::step(&eng))
     }));
     // og.WorldRestored, the tick after a restore.
     probe.set_before_tick(Box::new(move |world| {

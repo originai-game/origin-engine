@@ -12,8 +12,12 @@
 //             --restore-at, the snapshot of --rollback ticks back restored
 //             and those ticks played again; the world and presentation
 //             hashes they reach must be the first pass's
+//   ticks     a display frame on every tick, and each tick's world and
+//             presentation hash (`ticks`, from tick 1), then `dump_motion`
+//             (`motion`): what the web's run of the same project must reach
+//             (tests/web/motion-ticks.ts)
 //
-//   bun tests/support/presentation-capture.ts --project <dir> --mode every|capture|restore|synctest
+//   bun tests/support/presentation-capture.ts --project <dir> --mode every|capture|restore|synctest|ticks
 //       --ticks N [--restore-at A] [--fork-at R] [--rollback K] [--size WxH]
 //       [--inputs "tick:action[:args];..."] [--out <file.png>]
 //
@@ -149,7 +153,20 @@ else if (mode === "restore") {
     }
   }
   extra = { checked, mismatches };
-} else throw new Error(`--mode is every, capture, restore or synctest, not ${mode}`);
+} else if (mode === "ticks") {
+  const each: Array<{ tick: number; hash: string; presentation: string }> = [];
+  while (tick() < ticks) {
+    stepTo(tick() + 1, true);
+    const { tick: t, hash, presentation } = probe.snapshot() as Snap;
+    each.push({ tick: t, hash, presentation });
+  }
+  // og.motion's schedule at the end (dump_motion): the batches' ticks, each agent's frames.
+  probe.commands("0:dump_motion:motion.json");
+  const f = engine.frame(0);
+  if (!f.ok) throw new Error(f.reason);
+  const dump = engine.takeOutputs().find((o) => o.action === "dump_motion");
+  extra = { ticks: each, motion: dump ? JSON.parse(dump.data) : null };
+} else throw new Error(`--mode is every, capture, restore, synctest or ticks, not ${mode}`);
 const frame = shot();
 if (out) writeFileSync(out, frame.png);
 const presentation = (probe.snapshot() as Snap).presentation;

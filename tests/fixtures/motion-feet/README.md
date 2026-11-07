@@ -14,5 +14,12 @@ What it checks:
   renderer and the motion model (`packages/engine/motion/model.safetensors`,
   `bun packages/engine/scripts/motion-model.ts ensure`); without a renderer
   the check is unchecked.
+- `packages/engine/tests/web/motion-ticks.ts` (the `browser` lane): the
+  course's first 420 ticks in headless Chrome on WebGPU, once as the GPU
+  answers and once with every og.motion readback 600 ms late, give the
+  same world and presentation hash on every tick, and the native host's
+  world hashes and og.motion schedule (`dump_motion`'s `taken` and frame
+  counts). `packages/engine/tests/presentation.test.ts` runs the course
+  twice natively, once under load.
 
 Budget: under 10 s warm (measured 5–7 s on Metal at 640x360, with its cook).

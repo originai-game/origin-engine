@@ -1372,6 +1372,8 @@ export function startWorker(game: GameToken): void {
       return answered;
     },
     command: (e, [action, args]) => e.command(String(action), (args as string[]) ?? []),
+    /** The files the command channel wrote since the last call (a script's `dump_*`, as `og run --commands` writes them). */
+    outputs: (e) => e.takeOutputs(),
     hash: (e) => e.hash(),
     /** What the engine holds (ProbeMemory: the wasm linear memory, the counted heap, the world, streaming, audio), in every build. */
     memory: (e) => JSON.parse(glueRef?.og_web_memory?.(e.id) ?? "null"),

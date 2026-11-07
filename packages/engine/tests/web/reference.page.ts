@@ -13,7 +13,8 @@ try {
   const canvas = document.querySelector("canvas")!;
   const shell = await Shell.start({
     canvas,
-    worker: new Worker(at("game.js"), { type: "module" }),
+    // ?worker=: another module of the export that imports game.js (motion-ticks.ts's).
+    worker: new Worker(at(params.get("worker") ?? "game.js"), { type: "module" }),
     glue: at("origin-engine.js"),
     wasm: at("origin-engine_bg.wasm"),
     root: at("").replace(/\/$/, ""),

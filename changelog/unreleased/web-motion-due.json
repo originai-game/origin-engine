@@ -1,0 +1,18 @@
+{
+  "fixed": [
+    {
+      "member": "og.motion",
+      "summary": "On the web, og.motion's poses no longer depend on when the GPU's readbacks arrive: each batch is taken at its due tick, as natively, and a tick whose step needs a batch that is not back is held until it is (the engine Worker goes on drawing and the page on taking input). The web's jump clip keeps one frame past the drawn one, as natively, instead of a measured latency's worth."
+    },
+    {
+      "member": "probe",
+      "summary": "A snapshot steps og.motion to its tick first, as a capture does, so its presentation hash is the tick's whether or not a frame was drawn; on the web its `presentation` is empty, and a capture is null, while that step waits for the GPU (ask again)."
+    }
+  ],
+  "added": [
+    {
+      "member": "dump_motion",
+      "summary": "`model.taken`: the tick each of the last 256 batches was taken at, and the tick it was due at."
+    }
+  ]
+}

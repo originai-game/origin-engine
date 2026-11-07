@@ -26,7 +26,7 @@ gate's evidence directory and runs its smoke test. That check includes
 | [cook-assets](cook-assets/README.md) | model, texture and audio loading | cook/runtime loader tests; engine animation/Basis tests | og-cook, og-runtime | owning tests |
 | [ai-nav](ai-nav/README.md) | authored navmesh and guard machine | og-ai tests | og-ai | owning tests |
 | [motion](motion/README.md) | animation compression and retargeting | cook retarget; runtime motion/LOD | og-cook, og-runtime | owning tests |
-| [motion-feet](motion-feet/README.md) | og.motion's drawn feet: planted, stepped, never sliding, over walks, a run, jumps, a turn and held poses | its `tests/feet.og.ts` | og-motion, og-runtime, og-anim, og-render, packages/engine | 5–7 s with its cook |
+| [motion-feet](motion-feet/README.md) | og.motion's drawn feet: planted, stepped, never sliding, over walks, a run, jumps, a turn and held poses; its poses at fixed ticks on the web | its `tests/feet.og.ts`; `packages/engine/tests/presentation.test.ts`; `packages/engine/tests/web/motion-ticks.ts` | og-motion, og-runtime, og-anim, og-render, packages/engine | 5–7 s with its cook |
 | [baked-light](baked-light/README.md) | baked-scene binding | runtime baked_scenes | og-runtime | owning tests |
 | [texture-arrays](texture-arrays/README.md) | material arrays and streaming | runtime arrays/release; cook stream | og-cook, og-runtime | owning tests |
 | [sprite-2d](sprite-2d/README.md) | sprite arrays and 2D web export | runtime sprite arrays/release; web export | og-runtime, packages/engine | owning tests |

@@ -252,13 +252,33 @@ cancellable `og dev` checks use the stateless path.
     the simulation's alone.
   - *og.motion.* The motion Presenter (§2.7) steps once a tick by the
     tick's dt (its phase, playback warp, foot contacts, the drawn root's
-    offset, the planter's legs), whether or not a frame is drawn. Its
-    model batches are taken a fixed `BATCH_SECONDS` after they start,
-    waited for natively, and decoded whole; the model's load is waited
-    for when an agent first needs it; nothing skips frames to catch up a
-    wall clock. Its checkpoint keeps every agent as drawn, the model's
-    queued frames and the outstanding batch's inputs, which a restore
-    runs again (the batch then on the GPU is dropped). A display frame
+    offset, the planter's legs), whether or not a frame is drawn, and
+    its poses are a function of the tick state on every host. Its model
+    batches are taken a fixed `BATCH_SECONDS` after they start and
+    decoded whole; an agent with no frame left takes the batch
+    outstanding at once; the model's load is waited for when an agent
+    first needs it; nothing skips frames to catch up a wall clock. A
+    native host waits for the GPU in place. The web, whose Worker cannot
+    wait for a readback, steps og.motion in the probe's tick gate (the
+    hold a missing cell pack or lockstep input puts on a tick): a
+    step that needs a batch not yet back stops where a native host would
+    wait, the gate holds the next tick while the Worker goes on drawing
+    and the main thread taking input, and a later frame submits the
+    batch's remaining slices at once and goes on from there. The tick's
+    snapshot answers no presentation hash, and a capture no frame,
+    until it has. On motion-feet's course in headless Chrome (Metal) a
+    hold lasts 19 ms at the median and 56 ms at most, 68 of 802 ticks,
+    all where an agent ran dry (`packages/engine/tests/web/motion-ticks.ts`,
+    which runs it with every readback 600 ms late and gets the same hash
+    on every tick). Its checkpoint keeps every agent as drawn, the
+    model's queued frames, the outstanding batch's inputs, which a
+    restore runs again (the batch then on the GPU is dropped), and where
+    a held step stopped. The model's GPU arithmetic is the backend
+    compiler's: wgpu's Metal shaders and Chrome's differ in the last bits
+    of the first batch's floats (its token choices agree), so poses and
+    the presentation hash are equal per host and backend, and across
+    hosts the schedule is (each batch taken at its due tick, the frames
+    each agent shows). A display frame
     between ticks blends each agent's palette from the tick before's at
     alpha, as og-anim's (translation and scale lerped, rotation slerped);
     captures and the probe draw the tick, and the blend steps nothing.

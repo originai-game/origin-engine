@@ -1,8 +1,9 @@
 //! og.motion's presentation: the motion model on the renderer's GPU, and
 //! each agent's generated pose drawn in place of og.anim's joint palette.
 //!
-//! Once a tick ([`step`], from the probe's before-tick hook and before a
-//! frame is drawn; at most once per tick), with a renderer attached:
+//! Once a tick ([`step`], from the probe's tick gate before the next tick,
+//! before a frame is drawn and before a capture or snapshot; at most once
+//! per tick), with a renderer attached:
 //!
 //! 1. **The weights.** As soon as the open bundle declares the model (its
 //!    manifest's `motion` entry, a game that uses og.motion) and a
@@ -10,9 +11,9 @@
 //!    and its two networks put on the renderer's device
 //!    ([`RenderBackend::compute`]): natively on a thread of its own, on
 //!    the web from a fetch that lands at a later frame. Once an agent
-//!    needs it a native host waits for the load, so the tick the model
-//!    starts at is the agent's. Until then, or when that fails, og.anim's
-//!    pose is drawn.
+//!    needs it the tick waits for the load, so the tick the model starts
+//!    at is the agent's. Until then, or when that fails, og.anim's pose is
+//!    drawn.
 //! 2. **Goals for the model.** An agent whose generated frames run short
 //!    of its `lookahead` (or of two batches' [`BATCH_SECONDS`]) gets the
 //!    next model goal: where the simulation's goals will have it at the
@@ -22,10 +23,12 @@
 //! 3. **One batch for every agent** runs at a time: it is submitted in
 //!    slices of about [`FRAME_BUDGET_MS`] of GPU time, one a tick, and its
 //!    frames are taken [`BATCH_SECONDS`] after it started, at a fixed tick
-//!    (waited for then, natively), all its characters decoded at once.
-//!    A native host also waits for it when an agent has nothing left to
-//!    show. Nothing drawn depends on the wall clock or the GPU's speed:
-//!    two runs draw the same poses, and a presentation checkpoint
+//!    (waited for then), all its characters decoded at once; an agent with
+//!    nothing left to show waits for it too. A native host waits in place;
+//!    the web cannot, so the step stops there ([`Presenter`]'s `held`), the
+//!    probe's gate holds the next tick, and a later call goes on once the
+//!    readback has landed. Nothing drawn depends on the wall clock or the
+//!    GPU's speed: two runs draw the same poses, and a presentation checkpoint
 //!    ([`Presenter::checkpoint`]) keeps the agents, the queued frames and
 //!    the outstanding batch, run again on a restore.
 //! 4. **The pose.** Each agent plays its frames on the tick's clock,
@@ -338,9 +341,6 @@ struct Landing {
     /// One character's motion, reused.
     motion: Vec<f32>,
     started: f64,
-    /// Waited for (a starved agent on a native host): its latency is not
-    /// the sliced one.
-    forced: bool,
     due: u64,
 }
 
@@ -366,9 +366,6 @@ struct Ready {
     clearance: f32,
     /// The device's rate as the last batch measured it, GFLOP/s.
     rate: f64,
-    /// A sliced batch's latency, start to decoded, as the last one not
-    /// waited for measured (ms; 500 before one has).
-    latency: f64,
     failure: Option<String>,
     startup: Startup,
 }
@@ -393,8 +390,11 @@ struct Startup {
 enum Model {
     #[default]
     Unloaded,
-    /// Waiting: for the file, or for a renderer to run on.
+    /// Waiting: for the bundle, or for a renderer to run on.
     Waiting(String),
+    /// Being read and uploaded (natively on its thread, on the web from the
+    /// host's fetch): what a tick with an agent waits for.
+    Loading(String),
     Failed(String),
     Ready(Box<Ready>),
 }
@@ -577,6 +577,16 @@ impl Shown {
     }
 }
 
+/// A tick's step stopped where a native host waits for the GPU: at agent
+/// `agent` of the tick's agents, its batch waited for `tries` times
+/// before, with the tick's `elapsed` seconds.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Held {
+    agent: usize,
+    tries: usize,
+    elapsed: f32,
+}
+
 /// og.motion's presentation state (in `RenderState`, never the world).
 #[derive(Default)]
 pub(crate) struct Presenter {
@@ -600,9 +610,16 @@ pub(crate) struct Presenter {
     clock: Option<f64>,
     /// The last tick stepped ([`step`] runs once a tick).
     stepped: Option<u64>,
+    /// Where [`Presenter::stepped`]'s step stopped for a batch that has not
+    /// landed (the web, which cannot wait for the GPU): the next tick is
+    /// held until it has, and the step goes on from here.
+    held: Option<Held>,
     model_bytes: u64,
     batches: u64,
     last_batch: (usize, f64),
+    /// The last [`TAKEN`] batches decoded: the tick each was taken at, and
+    /// the tick it was due at (`dump_motion`'s `taken`).
+    taken: VecDeque<(u64, u64)>,
     errors: Vec<String>,
 }
 
@@ -615,6 +632,7 @@ impl Presenter {
         self.generated.clear();
         self.clock = None;
         self.stepped = None;
+        self.held = None;
     }
 
     /// The palette `entity` is drawn with on a frame at `alpha` (the
@@ -624,7 +642,12 @@ impl Presenter {
     /// tick drew the agent with as many joints. Captures, the probe and a
     /// frame on a tick boundary draw the tick; nothing here is stepped.
     pub(crate) fn drawn(&self, entity: u64, alpha: Option<f32>) -> Option<Vec<Mat4>> {
-        let now = self.palettes.get(&entity)?;
+        let now = match self.palettes.get(&entity) {
+            Some(now) => now,
+            // A step held for the GPU has not posed this agent yet.
+            None if self.held.is_some() => return self.previous.as_ref()?.1.get(&entity).cloned(),
+            None => return None,
+        };
         let before = alpha
             .zip(self.previous.as_ref())
             .and_then(|(a, (tick, p))| {
@@ -656,6 +679,7 @@ impl Presenter {
             generated: self.generated.clone(),
             clock: self.clock,
             stepped: self.stepped,
+            held: self.held,
             motion: ready.map(|r| r.motion.clone()),
             outstanding: ready.and_then(|r| outstanding(r)),
         }
@@ -689,6 +713,7 @@ impl Presenter {
         self.generated = c.generated.clone();
         self.clock = c.clock;
         self.stepped = c.stepped;
+        self.held = c.held;
     }
 
     /// FNV-1a over what [`Presenter::checkpoint`] keeps (part of the
@@ -697,7 +722,7 @@ impl Presenter {
     pub(crate) fn hash(&self) -> u64 {
         use std::fmt::Write;
         let mut text = String::new();
-        let _ = write!(text, "{:?}|{:?}|", self.clock, self.stepped);
+        let _ = write!(text, "{:?}|{:?}|{:?}|", self.clock, self.stepped, self.held);
         for (e, s) in &self.agents {
             let _ = write!(
                 text,
@@ -760,6 +785,7 @@ pub(crate) struct MotionCheckpoint {
     generated: BTreeSet<u64>,
     clock: Option<f64>,
     stepped: Option<u64>,
+    held: Option<Held>,
     motion: Option<Motion>,
     outstanding: Option<(Batch, u64)>,
 }
@@ -845,7 +871,6 @@ fn ready(parts: Parts) -> Model {
         flight: None,
         landing: None,
         queued: None,
-        latency: 500.0,
         failure: None,
         startup,
         statics: Arc::new(parts.statics),
@@ -888,7 +913,7 @@ fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>, wa
                 r.map_or_else(Model::Failed, ready)
             }
             Err(std::sync::mpsc::TryRecvError::Empty) => {
-                Model::Waiting("loading: the weights are being read and uploaded".into())
+                Model::Loading("loading: the weights are being read and uploaded".into())
             }
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                 p.loading = None;
@@ -925,7 +950,7 @@ fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>, wa
             return Model::Failed(format!("the model's loading thread: {e}"));
         }
         p.loading = Some(rx);
-        Model::Waiting("loading: the weights are being read and uploaded".into())
+        Model::Loading("loading: the weights are being read and uploaded".into())
     }
     #[cfg(target_arch = "wasm32")]
     {
@@ -933,7 +958,7 @@ fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>, wa
         let bytes = match hooks().map(|h| h.read_asset(&path)) {
             Some(crate::assets::Fetch::Ready(b)) => b,
             Some(crate::assets::Fetch::Pending) => {
-                return Model::Waiting(format!("loading {path}"));
+                return Model::Loading(format!("loading {path}"));
             }
             Some(crate::assets::Fetch::Failed(e)) => return Model::Failed(format!("{path}: {e}")),
             None => return Model::Failed("no host is installed to read assets".into()),
@@ -1104,22 +1129,41 @@ fn token_counts(seconds: f32) -> Vec<usize> {
     (lo..=(n + TOKEN_SLACK).clamp(MIN_TOKENS, MAX_TOKENS)).collect()
 }
 
-/// Polls the batch in flight once; `block` waits for it (native only).
+/// Whether a poll's future asked to be polled again (a slice's turn ended).
+#[derive(Default)]
+struct Woken(std::sync::atomic::AtomicBool);
+
+impl std::task::Wake for Woken {
+    fn wake(self: Arc<Self>) {
+        self.wake_by_ref();
+    }
+    fn wake_by_ref(self: &Arc<Self>) {
+        self.0.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// Polls the batch in flight once; `block` runs it to its readback and
+/// waits for that (native only: the web answers false until it lands).
 fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
     let Some(flight) = r.flight.as_mut() else {
         return false;
     };
-    let mut cx = Context::from_waker(Waker::noop());
+    let woken = Arc::new(Woken::default());
+    let waker = Waker::from(woken.clone());
+    let mut cx = Context::from_waker(&waker);
     // Each poll submits the batch's next slice or polls its readback;
-    // blocking (native) runs every slice left and waits for the GPU.
+    // blocking runs every slice left at once (a slice's turn wakes it) and,
+    // natively, waits for the GPU.
     let (gpu, result) = loop {
         let start = now_ms();
+        woken.0.store(false, std::sync::atomic::Ordering::Relaxed);
         let polled = flight.future.as_mut().poll(&mut cx);
         if r.startup.first_inference_wall_ms.is_none() {
             r.startup.first_inference_poll_ms += now_ms() - start;
         }
         match polled {
             Poll::Ready(done) => break done,
+            Poll::Pending if block && woken.0.load(std::sync::atomic::Ordering::Relaxed) => {}
             Poll::Pending if block && cfg!(not(target_arch = "wasm32")) => {
                 #[cfg(not(target_arch = "wasm32"))]
                 let _ = r.device.poll(wgpu::PollType::wait_indefinitely());
@@ -1148,7 +1192,6 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
                 next: 0,
                 motion: vec![0.0; FRAMES * MOTION_FEATURES],
                 started: flight.started,
-                forced: block,
                 due: flight.due,
             });
         }
@@ -1162,9 +1205,44 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
     true
 }
 
+/// How many batches `dump_motion`'s `taken` lists.
+const TAKEN: usize = 256;
+
+/// The batches decoded, the last one's characters and wall time, and the
+/// last [`TAKEN`] batches' ticks taken and due ([`Presenter`]'s).
+type Stats = (u64, (usize, f64), VecDeque<(u64, u64)>);
+
+/// The tick the outstanding batch (in flight, landed or queued after a
+/// restore; [`outstanding`]) is due at.
+fn due_of(r: &Ready) -> Option<u64> {
+    r.flight
+        .as_ref()
+        .filter(|f| !f.stale)
+        .map(|f| f.due)
+        .or_else(|| r.landing.as_ref().map(|l| l.due))
+        .or_else(|| r.queued.as_ref().map(|q| q.1))
+}
+
+/// Runs the outstanding batch until it has landed, a restore's queued one
+/// started once a stale flight has given the GPU back. Natively it waits;
+/// on the web, false while the GPU's readback has not landed.
+fn settle(r: &mut Ready, errors: &mut Vec<String>) -> bool {
+    loop {
+        if r.flight.is_some() {
+            if !poll_flight(r, true, errors) {
+                return false;
+            }
+        } else if r.queued.is_some() && r.landing.is_none() && r.gpu.is_some() {
+            start_flight(r, 0);
+        } else {
+            return true;
+        }
+    }
+}
+
 /// Decodes the landed batch's characters into their frames, all of them:
 /// how many are decoded never depends on the time it takes.
-fn decode(r: &mut Ready, stats: &mut (u64, (usize, f64))) {
+fn decode(r: &mut Ready, stats: &mut Stats, tick: u64) {
     let Some(l) = r.landing.as_mut() else {
         return;
     };
@@ -1183,13 +1261,13 @@ fn decode(r: &mut Ready, stats: &mut (u64, (usize, f64))) {
             .accept_character(&l.batch, i, l.student.counts[i], &l.motion);
         l.next += 1;
     }
-    // Wall time, a diagnostic (and the web's frames kept across a jump).
-    let latency = now_ms() - l.started;
-    if !l.forced {
-        r.latency = latency;
-    }
+    // Wall time, a diagnostic.
     stats.0 += 1;
-    stats.1 = (n, latency);
+    stats.1 = (n, now_ms() - l.started);
+    if stats.2.len() == TAKEN {
+        stats.2.pop_front();
+    }
+    stats.2.push_back((tick, l.due));
     r.landing = None;
 }
 
@@ -1249,13 +1327,7 @@ const MIN_FLIGHT: f32 = 0.4;
 /// the simulation's moment of the jump, reached at most [`CATCH_UP`] times
 /// the clip's rate. Until the clip has jumped it plays at its own rate. When
 /// the goal ends, the frames past the drawn one play on from `pending`.
-fn jump_clip(
-    motion: &mut Motion,
-    s: &mut Shown,
-    agent: Option<&super::Agent>,
-    elapsed: f32,
-    keep: usize,
-) {
+fn jump_clip(motion: &mut Motion, s: &mut Shown, agent: Option<&super::Agent>, elapsed: f32) {
     let Some(c) = agent
         .and_then(|a| a.current)
         .filter(|c| c.goal.kind == Kind::Jump)
@@ -1288,14 +1360,14 @@ fn jump_clip(
     }
     // Frames generated toward other goals past the jump's start (a walk
     // the model took longer over) never jump: unless a jump was asked for,
-    // the clip keeps `keep` frames past the drawn one and the model starts
+    // the clip keeps a frame past the drawn one and the model starts
     // again from them, so the next request is the jump.
     let asked = s
         .issued
         .iter()
         .any(|g| g.pose == JUMP && g.id >= clip.frames[0].tag);
     if started && !asked {
-        let k = (clip.drawn.floor() as usize + 1 + keep).min(clip.frames.len() - 1);
+        let k = (clip.drawn.floor() as usize + 2).min(clip.frames.len() - 1);
         clip.frames.truncate(k + 1);
         let recent = std::array::from_fn(|i| clip.frames[(k + i).saturating_sub(3)].pose);
         motion.restart(s.character, recent);
@@ -1663,17 +1735,23 @@ fn fallback(
     }
 }
 
-/// Before a frame is drawn: generated motion, then authored performance.
-pub(crate) fn step(eng: &Engine) {
+/// og.motion at the world's tick, once a tick: from the probe's tick gate
+/// (before the next tick), before a frame is drawn and before a capture;
+/// generated motion, then authored performance. False while the step waits
+/// for a batch that has not landed, which only the web leaves unfinished (a
+/// native host waits in place): the gate holds the next tick, and a later
+/// call goes on from where the step stopped, so every host draws the same
+/// poses at the same ticks.
+pub(crate) fn step(eng: &Engine) -> bool {
     let (tick, dt) = match eng.world() {
         Ok(w) => (w.time().tick, w.time().dt),
-        Err(_) => return,
+        Err(_) => return true,
     };
     {
         let rs = eng.render.borrow();
         // Once a tick, with a renderer to run the model on.
-        if rs.backend.is_none() || rs.motion.stepped == Some(tick) {
-            return;
+        if rs.backend.is_none() || (rs.motion.stepped == Some(tick) && rs.motion.held.is_none()) {
+            return true;
         }
     }
     let agents = seen(eng);
@@ -1689,49 +1767,188 @@ pub(crate) fn step(eng: &Engine) {
     let mut rs = eng.render.borrow_mut();
     let rs = &mut *rs;
     let p = &mut rs.motion;
-    // The tick before's palettes, which display frames until the next tick
-    // blend from.
-    p.previous = p.stepped.map(|t| (t, std::mem::take(&mut p.palettes)));
-    p.stepped = Some(tick);
-    p.generated.clear();
-    // The model loads as soon as the bundle declares it (a game that uses
-    // og.motion), before any agent needs it.
-    if agents.is_empty() && !p.wanted && !declares(eng) {
-        p.agents.clear();
-        return;
-    }
-    if matches!(p.model, Model::Unloaded | Model::Waiting(_)) {
-        p.model = load(p, eng, rs.backend.as_deref(), false);
-        // An agent waits for the weights natively: the tick the model
-        // starts at is then the agent's, never the load's wall time.
-        if !agents.is_empty() && matches!(p.model, Model::Waiting(_)) {
-            p.model = load(p, eng, rs.backend.as_deref(), true);
+    // A held step goes on where it stopped; anything else is the tick's
+    // first call.
+    let resume = p.held.take().filter(|_| p.stepped == Some(tick));
+    let elapsed = match resume {
+        Some(h) => h.elapsed,
+        None => {
+            // What the tick waits for comes first, before anything of it
+            // changes. An agent waits for the weights: the tick the model
+            // starts at is then the agent's, never the load's wall time.
+            let loadable =
+                |m: &Model| matches!(m, Model::Unloaded | Model::Waiting(_) | Model::Loading(_));
+            let loaded = !agents.is_empty() && loadable(&p.model);
+            if loaded {
+                p.model = load(p, eng, rs.backend.as_deref(), false);
+                if matches!(p.model, Model::Loading(_)) {
+                    if cfg!(target_arch = "wasm32") {
+                        return false;
+                    }
+                    p.model = load(p, eng, rs.backend.as_deref(), true);
+                }
+            }
+            // The batch runs a slice a tick; its frames are taken at its
+            // tick, however soon it landed, and waited for then.
+            if !agents.is_empty()
+                && let Model::Ready(r) = &mut p.model
+            {
+                poll_flight(r, false, &mut p.errors);
+                if r.landing.is_none()
+                    && due_of(r).is_some_and(|d| tick >= d)
+                    && !settle(r, &mut p.errors)
+                {
+                    return false;
+                }
+            }
+            // The tick before's palettes, which display frames until the
+            // next tick blend from.
+            p.previous = p.stepped.map(|t| (t, std::mem::take(&mut p.palettes)));
+            p.stepped = Some(tick);
+            p.generated.clear();
+            // The model loads as soon as the bundle declares it (a game
+            // that uses og.motion), before any agent needs it.
+            if agents.is_empty() && !p.wanted && !declares(eng) {
+                p.agents.clear();
+                return true;
+            }
+            if !loaded && loadable(&p.model) {
+                p.model = load(p, eng, rs.backend.as_deref(), false);
+            }
+            if agents.is_empty() {
+                p.agents.clear();
+                return true;
+            }
+            let elapsed = p.clock.map_or(0.0, |c| (now - c).clamp(0.0, 0.25)) as f32;
+            p.clock = Some(now);
+            elapsed
         }
-    }
-    if agents.is_empty() {
-        p.agents.clear();
-        return;
-    }
-    let elapsed = p.clock.map_or(0.0, |c| (now - c).clamp(0.0, 0.25)) as f32;
-    p.clock = Some(now);
+    };
     let Model::Ready(r) = &mut p.model else {
         fallback(eng, p, &agents, &goals, sys.as_ref());
-        return;
+        return true;
     };
-    let mut stats = (p.batches, p.last_batch);
-    // The batch runs a slice a tick; its frames are taken at its tick
-    // (waited for then, natively), however soon it landed.
-    poll_flight(r, false, &mut p.errors);
-    if r.flight.as_ref().is_some_and(|f| tick >= f.due) {
-        poll_flight(r, true, &mut p.errors);
+    let mut stats = (p.batches, p.last_batch, std::mem::take(&mut p.taken));
+    if resume.is_none() {
+        step_goals(
+            eng,
+            &mut p.agents,
+            r,
+            &agents,
+            &goals,
+            sys.as_ref(),
+            (elapsed, now, tick, due),
+            &mut stats,
+            &mut p.errors,
+        );
     }
+    let first = resume.map_or(0, |h| h.agent);
+    for (k, a) in agents.iter().enumerate().skip(first) {
+        let s = p.agents.get_mut(&a.entity).expect("added above");
+        // Resumed: this agent's clock has moved and its frames were taken;
+        // the step stopped at its wait.
+        let mut waiting = resume.filter(|h| h.agent == k).map(|h| h.tries);
+        let mut tries = waiting.unwrap_or(0);
+        if waiting.is_none() {
+            // Frames played faster or slower than the model's rate are due
+            // that much sooner or later: the goals' clocks move with them.
+            let warp = s.warp_for(elapsed);
+            for g in &mut s.issued {
+                g.start += f64::from((1.0 - warp) * elapsed);
+            }
+            s.phase += elapsed * RATE * warp;
+            if s.prev.is_none() {
+                s.phase = 0.0;
+            }
+        }
+        while tries < 3 {
+            if waiting.take().is_none() {
+                while s.clip.is_none() && (s.next.is_none() || s.phase >= 1.0) {
+                    let Some(f) = s.pending.pop_front().or_else(|| r.motion.pop(s.character))
+                    else {
+                        break;
+                    };
+                    if s.prev.is_none() {
+                        s.prev = Some(f);
+                    } else if s.next.is_none() {
+                        s.next = Some(f);
+                    } else {
+                        s.prev = s.next;
+                        s.next = Some(f);
+                        s.phase -= 1.0;
+                    }
+                }
+                let starved = s.prev.is_none() || (s.next.is_none() || s.phase >= 1.0);
+                // The generated motion is drawn, never a gap: an agent that
+                // ran out waits for the batch outstanding. Until its first
+                // frames land it is drawn as og.anim poses it: the fallback
+                // covers the model's start, as its load.
+                if !(starved && due_of(r).is_some() && s.prev.is_some()) {
+                    break;
+                }
+            }
+            if !settle(r, &mut p.errors) {
+                p.held = Some(Held {
+                    agent: k,
+                    tries,
+                    elapsed,
+                });
+                (p.batches, p.last_batch, p.taken) = stats;
+                return false;
+            }
+            decode(r, &mut stats, tick);
+            start_flight(r, due);
+            tries += 1;
+        }
+        if let Some(prev) = s.prev {
+            // Goals before the drawn frame's are done with (ids ascend).
+            while s.issued.front().is_some_and(|g| g.id < prev.tag) {
+                s.issued.pop_front();
+            }
+        }
+        jump_clip(&mut r.motion, s, goals.agents.get(&a.entity), elapsed);
+        s.count_wait();
+        if s.next.is_none() || s.phase >= 1.0 {
+            s.phase = s.phase.min(1.0);
+        }
+        if let Some(sys) = sys.as_ref()
+            && let Some(m) = palette(r, a, s, &goals, sys, elapsed)
+        {
+            s.shown += 1;
+            p.palettes.insert(a.entity, m);
+            p.generated.insert(a.entity);
+            if r.startup.first_palette_delay_ms.is_none() {
+                r.startup.first_palette_delay_ms =
+                    r.startup.inference_finished_at.map(|at| now_ms() - at);
+            }
+        }
+    }
+    start_flight(r, due);
+    (p.batches, p.last_batch, p.taken) = stats;
+    fallback(eng, p, &agents, &goals, sys.as_ref());
+    true
+}
+
+/// A tick's first call ([`step`]): the batch due now decoded, every agent
+/// added or kept, the model's goals asked for, the next batch started.
+#[allow(clippy::too_many_arguments)]
+fn step_goals(
+    eng: &Engine,
+    shown: &mut BTreeMap<u64, Shown>,
+    r: &mut Ready,
+    agents: &[Seen],
+    goals: &Goals,
+    sys: Option<&og_anim::AnimationSystem>,
+    (elapsed, now, tick, due): (f32, f64, u64, u64),
+    stats: &mut Stats,
+    errors: &mut Vec<String>,
+) {
     if r.landing.as_ref().is_some_and(|l| tick >= l.due) {
-        decode(r, &mut stats);
+        decode(r, stats, tick);
     }
-    p.agents
-        .retain(|e, _| agents.iter().any(|a| a.entity == *e));
-    for a in &agents {
-        let s = p.agents.entry(a.entity).or_insert_with(|| {
+    shown.retain(|e, _| agents.iter().any(|a| a.entity == *e));
+    for a in agents {
+        let s = shown.entry(a.entity).or_insert_with(|| {
             let idle = r.library.frames(0);
             let placed = Goal::placed(idle, [a.position.x, a.position.z], heading_of(a.rotation));
             let mut recent = [placed.targets[0]; 4];
@@ -1776,12 +1993,12 @@ pub(crate) fn step(eng: &Engine) {
             s.skeleton = a.skeleton;
             s.rig = a.settings.rig;
             s.failure = None;
-            s.target = sys.as_ref().and_then(|sys| {
+            s.target = sys.and_then(|sys| {
                 match crate::anim::humanoid_of(eng, sys, a.skeleton, a.settings.rig, "agent") {
                     Ok(target) => Some(target),
                     Err(error) => {
                         s.failure = Some(error.clone());
-                        p.errors.push(format!("agent {}: {error}", a.entity));
+                        errors.push(format!("agent {}: {error}", a.entity));
                         None
                     }
                 }
@@ -1815,7 +2032,7 @@ pub(crate) fn step(eng: &Engine) {
             || (r.motion.goals(s.character) == 0 && s.ahead(&r.motion) < lookahead.max(1))
         {
             let queued = s.ahead(&r.motion) as f32 / (RATE * s.warp);
-            let (at, h, pose, seconds) = predict(&goals, a, s, queued);
+            let (at, h, pose, seconds) = predict(goals, a, s, queued);
             let mut goal = Goal::placed(r.library.frames(pose), [at.x, at.z], h);
             // A walk or run keeps time by its distance; forced short, the
             // model crawled into a run. A pose (jump, crouch, wave) has no
@@ -1842,86 +2059,13 @@ pub(crate) fn step(eng: &Engine) {
         }
     }
     start_flight(r, due);
-    for a in &agents {
-        let s = p.agents.get_mut(&a.entity).expect("added above");
-        // Frames played faster or slower than the model's rate are due
-        // that much sooner or later: the goals' clocks move with them.
-        let warp = s.warp_for(elapsed);
-        for g in &mut s.issued {
-            g.start += f64::from((1.0 - warp) * elapsed);
-        }
-        s.phase += elapsed * RATE * warp;
-        if s.prev.is_none() {
-            s.phase = 0.0;
-        }
-        for _ in 0..3 {
-            while s.clip.is_none() && (s.next.is_none() || s.phase >= 1.0) {
-                let Some(f) = s.pending.pop_front().or_else(|| r.motion.pop(s.character)) else {
-                    break;
-                };
-                if s.prev.is_none() {
-                    s.prev = Some(f);
-                } else if s.next.is_none() {
-                    s.next = Some(f);
-                } else {
-                    s.prev = s.next;
-                    s.next = Some(f);
-                    s.phase -= 1.0;
-                }
-            }
-            let starved = s.prev.is_none() || (s.next.is_none() || s.phase >= 1.0);
-            // A native host draws the generated motion, never a gap: it
-            // waits for the batch in flight when the agent ran out.
-            // Until its first frames land an agent is drawn as og.anim
-            // poses it: the fallback covers the model's start, as its load.
-            let pending = r.flight.is_some() || r.landing.is_some();
-            if !(starved && cfg!(not(target_arch = "wasm32")) && pending && s.prev.is_some()) {
-                break;
-            }
-            poll_flight(r, true, &mut p.errors);
-            decode(r, &mut stats);
-            start_flight(r, due);
-        }
-        if let Some(prev) = s.prev {
-            // Goals before the drawn frame's are done with (ids ascend).
-            while s.issued.front().is_some_and(|g| g.id < prev.tag) {
-                s.issued.pop_front();
-            }
-        }
-        // Frames kept past the drawn one when a jump restarts the model: what
-        // covers a batch's latency (a native host waits for it instead).
-        let keep = if cfg!(target_arch = "wasm32") {
-            (r.latency / 1000.0 * f64::from(RATE)).ceil() as usize
-        } else {
-            1
-        };
-        jump_clip(&mut r.motion, s, goals.agents.get(&a.entity), elapsed, keep);
-        s.count_wait();
-        if s.next.is_none() || s.phase >= 1.0 {
-            s.phase = s.phase.min(1.0);
-        }
-        if let Some(sys) = sys.as_ref()
-            && let Some(m) = palette(r, a, s, &goals, sys, elapsed)
-        {
-            s.shown += 1;
-            p.palettes.insert(a.entity, m);
-            p.generated.insert(a.entity);
-            if r.startup.first_palette_delay_ms.is_none() {
-                r.startup.first_palette_delay_ms =
-                    r.startup.inference_finished_at.map(|at| now_ms() - at);
-            }
-        }
-    }
-    start_flight(r, due);
-    (p.batches, p.last_batch) = stats;
-    fallback(eng, p, &agents, &goals, sys.as_ref());
 }
 
 impl Presenter {
     fn presentation(&self, entity: u64) -> Value {
         let (state, reason) = match &self.model {
             Model::Unloaded => ("loading", "the model is read at the next frame"),
-            Model::Waiting(why) => ("loading", why.as_str()),
+            Model::Waiting(why) | Model::Loading(why) => ("loading", why.as_str()),
             Model::Failed(why) => ("failed", why.as_str()),
             Model::Ready(r) => {
                 let failure = self.agents.get(&entity).and_then(|s| s.failure.as_ref());
@@ -1953,7 +2097,7 @@ pub(crate) fn capabilities(eng: &Engine) -> Value {
             "none",
             "loading: the model is read at the next frame".into(),
         ),
-        Model::Waiting(why) => ("none", why.clone()),
+        Model::Waiting(why) | Model::Loading(why) => ("none", why.clone()),
         Model::Failed(why) => ("none", why.clone()),
     };
     json!({ "backend": backend, "reason": reason, "modelBytes": p.model_bytes as f64 })
@@ -1966,7 +2110,7 @@ pub(crate) fn dump(eng: &Engine) -> Value {
     let (state, reason) = match &p.model {
         Model::Ready(_) => ("gpu", String::new()),
         Model::Unloaded => ("unloaded", String::new()),
-        Model::Waiting(w) => ("waiting", w.clone()),
+        Model::Waiting(w) | Model::Loading(w) => ("waiting", w.clone()),
         Model::Failed(f) => ("failed", f.clone()),
     };
     let ready = match &p.model {
@@ -2027,6 +2171,8 @@ pub(crate) fn dump(eng: &Engine) -> Value {
         "poses": POSES,
         "inFlight": ready.is_some_and(|r| r.flight.is_some()),
         "batches": p.batches,
+        // [taken, due] ticks of the last batches: equal on every host.
+        "taken": p.taken,
         "lastBatch": { "characters": p.last_batch.0, "ms": p.last_batch.1 },
         "frameBudgetMs": FRAME_BUDGET_MS,
         "startup": ready.map(|r| &r.startup),
@@ -2171,29 +2317,23 @@ mod tests {
         let drawn = |s: &Shown| s.prev.unwrap().index as f32 + s.phase;
         // At the apex: halfway through the clip's flight.
         at(&mut agent, Some(jump(JumpStage::Air, 0.0, 0.0)));
-        jump_clip(&mut motion, &mut s, Some(&agent), 1.0, 1);
+        jump_clip(&mut motion, &mut s, Some(&agent), 1.0);
         assert_eq!(drawn(&s), 10.0);
         // Falling past the takeoff height: held before the clip's
         // touchdown until the simulation lands.
         at(&mut agent, Some(jump(JumpStage::Air, -2.0 * v0, 0.0)));
-        jump_clip(&mut motion, &mut s, Some(&agent), 1.0, 1);
+        jump_clip(&mut motion, &mut s, Some(&agent), 1.0);
         assert_eq!(drawn(&s), 14.0);
         // Landed: the touchdown frame, reached at no more than CATCH_UP
         // times the clip's rate.
         at(&mut agent, Some(jump(JumpStage::Landed, 0.0, 0.0)));
-        jump_clip(
-            &mut motion,
-            &mut s,
-            Some(&agent),
-            0.25 / (CATCH_UP * RATE),
-            1,
-        );
+        jump_clip(&mut motion, &mut s, Some(&agent), 0.25 / (CATCH_UP * RATE));
         assert_eq!(drawn(&s), 14.25);
-        jump_clip(&mut motion, &mut s, Some(&agent), 1.0, 1);
+        jump_clip(&mut motion, &mut s, Some(&agent), 1.0);
         assert_eq!(drawn(&s), 15.0);
         // The goal over: the frames after the drawn one play on.
         at(&mut agent, None);
-        jump_clip(&mut motion, &mut s, Some(&agent), 1.0, 1);
+        jump_clip(&mut motion, &mut s, Some(&agent), 1.0);
         assert!(s.clip.is_none());
         assert_eq!((s.prev.unwrap().index, s.next.unwrap().index), (15, 16));
         assert_eq!(
@@ -2215,7 +2355,7 @@ mod tests {
         s.next = Some(frame(1));
         s.pending.extend((2..20).map(frame));
         at(&mut agent, Some(jump(JumpStage::Prepare, 0.0, 0.0)));
-        jump_clip(&mut motion, &mut s, Some(&agent), 0.0, 1);
+        jump_clip(&mut motion, &mut s, Some(&agent), 0.0);
         let clip = s.clip.as_ref().unwrap();
         assert_eq!(
             clip.frames.iter().map(|f| f.index).collect::<Vec<_>>(),

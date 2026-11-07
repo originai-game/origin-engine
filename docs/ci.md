@@ -118,7 +118,7 @@ caches. Neither lane partitions tests across machines.
 | Lane | Checks |
 |---|---|
 | `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside og-tests, generated API drift, non-engine package tests |
-| `full` | quick plus og-tests, doctests, opt-in kit Rust targets, engine and extension Bun tests, wasm variants, shipping-size checks, fixtures, browser wire/player/export/unsupported tests |
+| `full` | quick plus og-tests, doctests, opt-in kit Rust targets, engine and extension Bun tests, wasm variants, shipping-size checks, fixtures, browser wire/player/export/unsupported/motion-tick tests |
 
 `scripts/check.sh` owns admission and checkout ownership.
 `scripts/gate/run.py` schedules the dependency DAG. `step.sh` acquires GPU
@@ -198,7 +198,7 @@ split, and the lowest such crate is its cause.
 | `size-gate` | Brotli-11 bytes of each optimized module in `opt.txt`, checked against `wasm_core_brotli_bytes`. | full |
 | `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`), without a second release build. | full |
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton. | full |
-| `browser` | Browser wire, player, export and unsupported-device tests. | full |
+| `browser` | Browser wire, player, export, device, unsupported-device and og.motion tick tests (`test:browser`). | full |
 | `web-reference` | Native and web preparation, then headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3). Compare retained scenes under unchanged tolerances. | wave-end, or explicit |
 | `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | wave-end, or explicit |
 | perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. | wave-end only |
