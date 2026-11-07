@@ -560,6 +560,10 @@
         "summary": "An effect pack is an extension of `kind vfx` (no code): `og vfx add <name|directory> [project]` installs an editable copy into assets/vfx/<name>/, where its effects name their emitters and materials as `vfx/<name>/<file>`; `og ui list` names installed and bundled packs."
       },
       {
+        "member": "og vfx add: minEngine, tags, keywords, preview/",
+        "summary": "A vfx pack's extension.json may carry `minEngine` (x.y.z), `tags` ({style: stylised|realistic|pixel, dim: 2d|3d, category: [...], element: [...]}) and lowercase `keywords`, the asset library's catalog fields. `og vfx add` refuses a pack whose minEngine is newer than the engine (`--any-engine` installs it anyway) and leaves the pack's `preview/` (review sheets, clips, cost files) out of the game."
+      },
+      {
         "member": "og.load.emitter speedOverLife, spinOverLife, rateOverTime, attractor, field, shape spline, inheritVelocity",
         "summary": "Emitter expressiveness: curves over life for the speed (`speedOverLife`, against the velocity) and the angular velocity (`spinOverLife`, the rotation its integral), a curve over each cycle for the rate (`rateOverTime`); up to four attractors (`attractor <x> <y> <z> <strength> [<radius>]`, negative pushes); a vector field, curl noise (`field curl`) or a grid the cook bakes from a texture (`field \"<texture>\" <strength> <size>`); emission along a Catmull-Rom spline (`shape spline ... [closed]`); and a share of the emitter's own velocity (`inheritVelocity`). Compute and the CPU path agree on all of them. Emitters without them simulate as before."
       },

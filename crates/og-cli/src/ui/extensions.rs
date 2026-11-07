@@ -18,6 +18,48 @@ pub struct Manifest {
     pub skill: Option<String>,
     pub entry: Option<String>,
     pub types: Option<String>,
+    /// A vfx pack's catalog fields (the asset library reads them; the engine
+    /// checks their shape): the lowest engine release it needs (x.y.z), its
+    /// tags and its lowercase search words.
+    #[serde(rename = "minEngine", default, skip_serializing_if = "Option::is_none")]
+    pub min_engine: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<VfxTags>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keywords: Option<Vec<String>>,
+}
+
+/// A vfx pack's tags: its style and dimension, and the union of its
+/// effects' categories and elements.
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct VfxTags {
+    pub style: String,
+    pub dim: String,
+    #[serde(default)]
+    pub category: Vec<String>,
+    #[serde(default)]
+    pub element: Vec<String>,
+}
+
+/// A pack's previews (sheets, clips, cost files): stored with the pack,
+/// never installed into a game.
+const PREVIEW_DIR: &str = "preview";
+
+fn semver(v: &str) -> bool {
+    v.split('.').count() == 3
+        && v.split('.')
+            .all(|s| !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit()))
+}
+
+/// Whether x.y.z version `a` is newer than `b`.
+fn newer(a: &str, b: &str) -> bool {
+    let parts = |v: &str| -> Vec<u64> { v.split('.').map(|p| p.parse().unwrap_or(0)).collect() };
+    parts(a) > parts(b)
+}
+
+fn lower_word(w: &str) -> bool {
+    !w.trim().is_empty() && !w.chars().any(|c| c.is_uppercase())
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -91,14 +133,20 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
             .name
             .bytes()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
-        || m.version.split('.').count() != 3
-        || !m
-            .version
-            .split('.')
-            .all(|s| !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit()))
+        || !semver(&m.version)
         || m.description.trim().is_empty()
         || m.entry.is_some() != m.types.is_some()
         || (m.kind != "kit" && m.entry.is_some())
+        || (m.kind != "vfx" && (m.min_engine.is_some() || m.tags.is_some() || m.keywords.is_some()))
+        || m.min_engine.as_deref().is_some_and(|v| !semver(v))
+        || m.tags.as_ref().is_some_and(|t| {
+            !matches!(t.style.as_str(), "stylised" | "realistic" | "pixel")
+                || !matches!(t.dim.as_str(), "2d" | "3d")
+                || !t.category.iter().chain(&t.element).all(|w| lower_word(w))
+        })
+        || m.keywords
+            .as_ref()
+            .is_some_and(|k| !k.iter().all(|w| lower_word(w)))
     {
         return Err(format!(
             "{}: invalid extension manifest (docs/ui.md §17.1)",
@@ -205,7 +253,10 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
             target.display()
         ));
     }
-    let all = files(&extension.directory)?;
+    let all: Vec<PathBuf> = files(&extension.directory)?
+        .into_iter()
+        .filter(|f| extension.manifest.kind != "vfx" || !f.starts_with(PREVIEW_DIR))
+        .collect();
     std::fs::create_dir_all(target.parent().unwrap()).map_err(|e| e.to_string())?;
     // Stage next to the destination: a failed copy cannot leave an installed half-kit.
     let staging = target.with_file_name(format!(
@@ -231,10 +282,22 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
 
 pub fn add(args: &[&str], kind: &str) -> ExitCode {
     let result = (|| {
-        let (name, project) = match args {
-            [name] => (*name, Path::new(".")),
-            [name, project] => (*name, Path::new(project)),
-            _ => return Err("usage: og ui|style|vfx add <name|directory> [project]".into()),
+        // `--any-engine` installs a pack whose minEngine is newer than this
+        // engine: validating a pack on an unreleased build.
+        let any_engine = args.contains(&"--any-engine");
+        let args: Vec<&str> = args
+            .iter()
+            .copied()
+            .filter(|a| *a != "--any-engine")
+            .collect();
+        let (name, project) = match args[..] {
+            [name] => (name, Path::new(".")),
+            [name, project] => (name, Path::new(project)),
+            _ => {
+                return Err(
+                    "usage: og ui|style|vfx add <name|directory> [project] [--any-engine]".into(),
+                );
+            }
         };
         let extension = if Path::new(name).join("extension.json").is_file() {
             read(Path::new(name), false)?
@@ -248,6 +311,16 @@ pub fn add(args: &[&str], kind: &str) -> ExitCode {
         };
         if extension.manifest.kind != kind {
             return Err(format!("`{name}` is not a {kind}"));
+        }
+        if let Some(min) = extension.manifest.min_engine.as_deref()
+            && !any_engine
+            && newer(min, env!("CARGO_PKG_VERSION"))
+        {
+            return Err(format!(
+                "`{}` needs engine {min} or newer; this is {} (--any-engine installs it anyway)",
+                extension.manifest.name,
+                env!("CARGO_PKG_VERSION")
+            ));
         }
         let target = install(&extension, project)?;
         println!(

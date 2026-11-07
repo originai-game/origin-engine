@@ -129,7 +129,13 @@ fn a_vfx_pack_installs_into_assets_vfx_and_cooks() {
             "{{\"format\":1,\"kind\":\"vfx\",\"name\":\"hits\",\"version\":\"1.0.0\",\"description\":\"Hit effects\"{extra}}}"
         )
     };
-    std::fs::write(pack.join("extension.json"), manifest("")).unwrap();
+    std::fs::write(
+        pack.join("extension.json"),
+        manifest(",\"minEngine\":\"0.1.0\",\"keywords\":[\"spark\"],\"tags\":{\"style\":\"stylised\",\"dim\":\"3d\",\"category\":[\"hit-spark\"],\"element\":[]}"),
+    )
+    .unwrap();
+    std::fs::create_dir_all(pack.join("preview")).unwrap();
+    std::fs::write(pack.join("preview/hit.png"), b"not installed").unwrap();
     std::fs::write(
         pack.join("sparks.ogt"),
         "type particles\nversion 1\n---\nrate 10\n",
@@ -152,6 +158,27 @@ fn a_vfx_pack_installs_into_assets_vfx_and_cooks() {
     let (code, out) = add();
     assert_eq!(code, Some(0), "{out}");
     assert!(project.join("assets/vfx/hits/hit.ogt").is_file(), "{out}");
+    assert!(!project.join("assets/vfx/hits/preview").exists(), "{out}");
+    std::fs::remove_dir_all(project.join("assets/vfx")).unwrap();
+    // A pack for an engine newer than this one installs only on request.
+    std::fs::write(
+        pack.join("extension.json"),
+        manifest(",\"minEngine\":\"99.0.0\""),
+    )
+    .unwrap();
+    let (code, out) = add();
+    assert_eq!(code, Some(1), "{out}");
+    assert!(out.contains("needs engine 99.0.0"), "{out}");
+    assert!(!project.join("assets/vfx/hits").exists(), "{out}");
+    let out = og()
+        .args(["vfx", "add"])
+        .arg(&pack)
+        .arg(&project)
+        .arg("--any-engine")
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    std::fs::write(pack.join("extension.json"), manifest(",\"minEngine\":\"0.1.0\",\"keywords\":[\"spark\"],\"tags\":{\"style\":\"stylised\",\"dim\":\"3d\",\"category\":[\"hit-spark\"],\"element\":[]}")).unwrap();
     let (code, out) = add();
     assert_eq!(code, Some(1), "{out}");
     assert!(out.contains("already exists"), "{out}");
@@ -159,6 +186,17 @@ fn a_vfx_pack_installs_into_assets_vfx_and_cooks() {
     let out = og().arg("cook").current_dir(&project).output().unwrap();
     assert!(out.status.success(), "{}", text(&out));
 
+    std::fs::remove_dir_all(project.join("assets/vfx")).unwrap();
+    for bad in [
+        ",\"minEngine\":\"unreleased\"",
+        ",\"keywords\":[\"Spark\"]",
+        ",\"tags\":{\"style\":\"anime\",\"dim\":\"3d\"}",
+    ] {
+        std::fs::write(pack.join("extension.json"), manifest(bad)).unwrap();
+        let (code, out) = add();
+        assert_eq!(code, Some(1), "{bad}: {out}");
+        assert!(out.contains("invalid extension manifest"), "{bad}: {out}");
+    }
     std::fs::write(
         pack.join("extension.json"),
         manifest(",\"entry\":\"index.ts\",\"types\":\"index.d.ts\""),
@@ -166,7 +204,6 @@ fn a_vfx_pack_installs_into_assets_vfx_and_cooks() {
     .unwrap();
     std::fs::write(pack.join("index.ts"), "").unwrap();
     std::fs::write(pack.join("index.d.ts"), "").unwrap();
-    std::fs::remove_dir_all(project.join("assets/vfx")).unwrap();
     let (code, out) = add();
     assert_eq!(code, Some(1), "{out}");
     assert!(out.contains("invalid extension manifest"), "{out}");
