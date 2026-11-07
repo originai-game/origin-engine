@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::element::Affine;
+use crate::motion::codec::{R, W};
 use crate::style::Srgba;
 use og_render::{
     UiBlend, UiGeometry, UiGradient, UiGradientKind, UiJoin, UiMode, UiPaint, UiPath, UiShape,
@@ -99,6 +100,60 @@ impl Player {
         for (_, p) in &mut self.nested {
             p.advance(dt);
         }
+    }
+
+    /// The bytes of what it changes as it plays (its animations' times and
+    /// directions, its nested players'), for og-ui's saved state: the
+    /// artboard is an asset and is not in them.
+    pub fn save(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        self.write(&mut W(&mut out));
+        out
+    }
+
+    /// Puts back what [`Player::save`] wrote, onto a player of the same
+    /// artboard; refused (and left as it was) when the bytes do not fit it.
+    pub fn restore(&mut self, bytes: &[u8]) -> Result<(), String> {
+        let mut r = R { bytes, at: 0 };
+        let mut next = self.clone();
+        if next.read(&mut r).is_none() || r.at != bytes.len() {
+            return Err(format!(
+                "the saved state of Rive artboard '{}' does not fit it",
+                self.artboard.name
+            ));
+        }
+        *self = next;
+        Ok(())
+    }
+
+    fn write(&self, w: &mut W) {
+        w.u32(self.playing.len() as u32);
+        for (i, t, dir) in &self.playing {
+            w.u32(*i);
+            w.f32(*t);
+            w.f32(*dir);
+        }
+        // The nested players are the artboard's nested nodes, in order.
+        for (_, p) in &self.nested {
+            p.write(w);
+        }
+    }
+
+    fn read(&mut self, r: &mut R) -> Option<()> {
+        let n = r.u32()? as usize;
+        if n > self.artboard.animations.len() {
+            return None;
+        }
+        self.playing = (0..n)
+            .map(|_| {
+                let (i, t, dir) = (r.u32()?, r.f32()?, r.f32()?);
+                ((i as usize) < self.artboard.animations.len()).then_some((i, t, dir))
+            })
+            .collect::<Option<_>>()?;
+        for (_, p) in &mut self.nested {
+            p.read(r)?;
+        }
+        Some(())
     }
 
     /// Every node's values at the current times.
@@ -858,6 +913,92 @@ mod tests {
         assert!((sample(&k, 0.5).unwrap() - 50.0).abs() < 0.05);
         let q = sample(&k, 0.25).unwrap();
         assert!(q < 20.0 && q > 5.0, "{q}");
+    }
+
+    /// A ping-ponging animation on a nested artboard inside a looping one:
+    /// saved mid-way, restored onto a fresh player and run on, it matches
+    /// the run that was never interrupted, bit for bit.
+    #[test]
+    fn a_restored_player_runs_on_as_the_unbroken_one() {
+        let anim = |looping, tracks| Animation {
+            name: "a".into(),
+            fps: 60,
+            duration: 60,
+            speed: 1.0,
+            looping,
+            work: None,
+            tracks,
+        };
+        let x_track = |node| Track {
+            node,
+            prop: Prop::X,
+            keys: vec![key(0.0, 0.0, Ease::Linear), key(1.0, 100.0, Ease::Linear)],
+        };
+        let node = |kind, parent| Node {
+            name: "n".into(),
+            parent,
+            kind,
+            values: Values::default(),
+        };
+        let inner = Artboard {
+            name: "inner".into(),
+            nodes: vec![
+                node(Kind::Artboard { paints: vec![] }, 0),
+                node(Kind::Group, 0),
+            ],
+            animations: vec![anim(Loop::PingPong, vec![x_track(1)])],
+            ..Artboard::default()
+        };
+        let outer = Arc::new(Artboard {
+            name: "outer".into(),
+            nodes: vec![
+                node(Kind::Artboard { paints: vec![] }, 0),
+                node(Kind::Group, 0),
+                node(
+                    Kind::Nested {
+                        artboard: 0,
+                        animations: vec![NestedAnimation {
+                            animation: 0,
+                            speed: 1.0,
+                            playing: true,
+                        }],
+                    },
+                    0,
+                ),
+            ],
+            animations: vec![anim(Loop::Loop, vec![x_track(1)])],
+            play: Some(0),
+            nested: vec![inner],
+            ..Artboard::default()
+        });
+        let step = 1.0 / 60.0;
+        let mut whole = Player::new(outer.clone(), None);
+        // 77 ticks: past the outer loop's end and the inner one's turn.
+        for _ in 0..77 {
+            whole.advance(step);
+        }
+        let saved = whole.save();
+        for _ in 0..50 {
+            whole.advance(step);
+        }
+        let mut restored = Player::new(outer.clone(), None);
+        restored.restore(&saved).expect("fits");
+        // Saved while the inner ping-pong was on its way back.
+        assert!(
+            restored.nested[0].1.playing[0].2 < 0.0,
+            "the inner one runs back"
+        );
+        for _ in 0..50 {
+            restored.advance(step);
+        }
+        assert_eq!(restored, whole);
+        assert_eq!(restored.pose(), whole.pose());
+        // Bytes of another artboard's player do not fit.
+        assert!(
+            Player::new(Arc::new(Artboard::default()), None)
+                .restore(&saved)
+                .is_err()
+        );
     }
 
     #[test]
