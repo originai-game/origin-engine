@@ -61,9 +61,7 @@ export const widgets = {
   scrollState: (path: string): Api.ScrollState | null => parse(abi().og_ui_scroll_state(path)),
   divider: (id: string, vertical: boolean): void => abi().og_ui_divider(id, vertical),
   spacer: (id: string, size: Api.Size | null): void => abi().og_ui_spacer(id, JSON.stringify(size ?? null)),
-  spinner: (id: string, size: number): void => abi().og_ui_spinner(id, size),
   icon: (id: string, name: string, desc?: Api.IconDesc): void => abi().og_ui_icon(id, name, json(desc)),
-  zoomView: (id: string, desc?: Api.ZoomViewDesc): Api.ZoomResult => parse(abi().og_ui_zoom_view(id, json(desc))),
   toast: (world: Api.World, text: string, desc?: Api.ToastDesc): number => abi().og_ui_toast(worldId(world), text, json(desc)),
   dismissToast: (world: Api.World, toastId: number): void => abi().og_ui_dismiss_toast(worldId(world), toastId),
   navigate: (world: Api.World, intent: Api.NavIntent): void => abi().og_ui_navigate(worldId(world), intent),
@@ -93,8 +91,6 @@ export const widgets = {
     abi().og_ui_spawn_mass(template, JSON.stringify(instances)),
   massCount: (template: number): number => abi().og_ui_mass_count(template),
   meta: (id: string, desc?: Api.MetaDesc): void => abi().og_ui_meta(id, json(desc)),
-  sceneViewport: (id: string, desc?: Api.SceneViewportDesc): Api.SceneViewportInfo =>
-    parse(abi().og_ui_scene_viewport(id, json(desc))),
   screenTransition: (id: string, screen: string, desc?: Api.ScreenTransitionDesc): Api.ScreenTransitionResult =>
     parse(abi().og_ui_screen_transition(id, screen, json(desc))),
   previewViewport: (world: Api.World, viewport: Api.Viewport | null): void =>

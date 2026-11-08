@@ -178,9 +178,7 @@ pub use i18n::{
 pub use invariants::og_assert_record;
 pub use light2d_at::og_render_light2d_at;
 pub use memory::memory_report;
-pub use modules::ui_world::{
-    og_ui_define_mass, og_ui_mass_count, og_ui_meta, og_ui_scene_viewport, og_ui_spawn_mass,
-};
+pub use modules::ui_world::{og_ui_define_mass, og_ui_mass_count, og_ui_meta, og_ui_spawn_mass};
 pub use modules::{
     THEME_COLORS, TYPE_STEPS, og_load_document, og_load_style, og_physics_overlap,
     og_physics_project_point, og_physics_raycast, og_physics_raycast_all, og_physics_set_mesh,
@@ -200,9 +198,8 @@ pub use modules::{
     og_ui_screen_vm, og_ui_scroll_into_view, og_ui_scroll_state, og_ui_seconds, og_ui_seek,
     og_ui_semantics, og_ui_set_device, og_ui_set_focus, og_ui_set_haptics, og_ui_set_hud_edit,
     og_ui_set_hud_layout, og_ui_set_hud_player, og_ui_set_navigation, og_ui_set_players,
-    og_ui_set_prop, og_ui_set_virtual_cursor, og_ui_spacer, og_ui_spinner, og_ui_stop, og_ui_theme,
-    og_ui_tick, og_ui_toast, og_ui_viewport, og_ui_virtual_cursor, og_ui_visual_state,
-    og_ui_zoom_view, set_viewport,
+    og_ui_set_prop, og_ui_set_virtual_cursor, og_ui_spacer, og_ui_stop, og_ui_theme, og_ui_tick,
+    og_ui_toast, og_ui_viewport, og_ui_virtual_cursor, og_ui_visual_state, set_viewport,
 };
 pub use motion::{
     og_motion_capabilities, og_motion_clear, og_motion_face, og_motion_jump, og_motion_look_at,

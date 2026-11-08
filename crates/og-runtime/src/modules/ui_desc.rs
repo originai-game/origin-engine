@@ -679,13 +679,6 @@ pub(crate) fn texture_of(v: &Value) -> Option<og_render::TextureHandle> {
     super::assets::index_of(t).and_then(|i| rs.textures.get(i).copied())
 }
 
-pub(super) fn uv_of(v: &Value) -> Option<[f32; 4]> {
-    v.as_array().filter(|a| a.len() == 4).map(|a| {
-        let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
-        [n(0), n(1), n(2), n(3)]
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use og_ui::tokens::ElementClass;

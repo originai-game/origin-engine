@@ -1174,7 +1174,7 @@ the modal layer). Containers and navigation: `card`,
 breadcrumbs and radial menu are component documents in
 `packages/engine/src/ui/components`, `og ui eject <name>`). Data: `dataList`, `dataGrid`, `table` (sorted
 and filtered once per change of its rows, only the rows in view built),
-`tree`, `nodeGraph`, `chart` (line, area, bar, radar, pie, donut over
+`tree`, `chart` (line, area, bar, radar, pie, donut over
 `DrawShape.filled` paths and arcs), `keyValueRows`, `statCompare`,
 `calendar`. Each draws named parts a style dresses (`Card.frame`,
 `Card.media`, `Dialog.tone`,

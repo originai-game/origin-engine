@@ -866,16 +866,19 @@ Its own props, beside every element's:
 | `action` | `name` | The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it. |
 
 <a id="guide-components-39"></a>
-### `components §39` `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene
+### `components §39` `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one (`camera-controls` orbits, zooms and flings it within `min-camera-orbit` and `max-camera-orbit`), its pointer events carrying the ray into its scene
 
-A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene. A leaf; text-bearing controls accept text content: `<viewport id="Preview" src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w} onpointermove={orbit} />`.
+A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one (`camera-controls` orbits, zooms and flings it within `min-camera-orbit` and `max-camera-orbit`), its pointer events carrying the ray into its scene. A leaf; text-bearing controls accept text content: `<viewport id="Preview" src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w} onpointermove={orbit} />`.
 
 Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
 | `viewport-src` | `number` | The render target its camera draws into (`src={$target}`, the target's colour texture handle). |
-| `camera-orbit` | `text` | `<model-viewer>`'s camera-orbit: yaw, pitch from straight up, and distance from its target (`30deg 75deg 3m`; default `0deg 75deg 3m`), for its pointer events' rays. |
+| `camera-orbit` | `text` | `<model-viewer>`'s camera-orbit: yaw, pitch from straight up, and distance from its target (`30deg 75deg 3m`; default `0deg 75deg 3m`), for its pointer events' rays. With `camera-controls`, `bind:cameraOrbit={$orbit}` reads the orbit back as the player turns it (draw the scene from it). Two-way only with an explicit bind: attribute. |
+| `camera-controls` | `bool` | `<model-viewer>`'s camera-controls: a drag orbits the camera (a fling keeps it turning, slowing to rest; still under reduced motion), the wheel and a two-finger pinch zoom it, and with the focus (Tab, a pad) Left and Right turn it 15° and Up and Down tilt it 10°, within `min-camera-orbit` and `max-camera-orbit`. The orbit is UI state; a new authored `camera-orbit` takes over. |
+| `min-camera-orbit` | `text` | `<model-viewer>`'s min-camera-orbit: the least yaw, pitch and distance camera-controls reach, each a value or `auto` (`auto 40deg 1.5m`; default `auto 22.5deg auto`). |
+| `max-camera-orbit` | `text` | `<model-viewer>`'s max-camera-orbit: the most yaw, pitch and distance (`auto 100deg 6m`; default `auto 157.5deg auto`). |
 | `camera-target` | `text` | `<model-viewer>`'s camera-target: the point it orbits (`0m 1m 0m`, the default). |
 | `field-of-view` | `text` | `<model-viewer>`'s field-of-view, vertical (`50deg`, the default). |
 | `client-width` | `number` | Svelte's `bind:clientWidth`: its laid-out width, CSS px, written when it changes (size its render target by it times the pixel ratio). Two-way only with an explicit bind: attribute. |

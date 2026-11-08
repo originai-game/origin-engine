@@ -411,6 +411,10 @@ pub enum When {
     PointerMove,
     PointerUp,
     Wheel,
+    /// Two touches pinching over it (`onpinch`): its event carries the
+    /// scale since they went down (Safari's `GestureEvent.scale`) and
+    /// their centre in its box.
+    Pinch,
     /// A press held for its `data-hold` ms (`onhold`).
     Hold,
     /// A secondary press or long press asks for its menu (`oncontextmenu`).
@@ -434,6 +438,7 @@ impl When {
         ("pointermove", When::PointerMove),
         ("pointerup", When::PointerUp),
         ("wheel", When::Wheel),
+        ("pinch", When::Pinch),
         ("hold", When::Hold),
         ("contextmenu", When::ContextMenu),
         ("revealed", When::Revealed),

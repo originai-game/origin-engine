@@ -1417,12 +1417,16 @@ held element while a press is down, and an up goes to the element the press
 went down on (pointer capture). Each event fires at the element the input is
 at and bubbles up the mounted tree to the nearest element that handles it.
 These events come from one pass over the held element, the one under the
-pointer and a drop's target, so they cost nothing as the tree grows. An
+pointer and a drop's target, so they cost nothing as the tree grows.
+`onpinch` fires while two touches spread or close, at the element they went
+down on, with `scale` (their spread over their spread when they went down,
+as Safari's `GestureEvent.scale`) and `x`, `y` their centre in its box; no
+web standard has a pinch event. An
 element with a pointer handler can be under the pointer, so like any
 hovered control it is written again each tick while hovered.
 
 `<viewport>` shows a camera's render target in the layout, sized by CSS like
-an image. It is the native scene viewport (`og.ui.sceneViewport`). `src={$target}`
+an image (og-ui's `Ui::scene_viewport`). `src={$target}`
 names the target's colour texture. The camera is written as
 `<model-viewer>` writes one: `camera-orbit="30deg 75deg 3m"` (yaw, pitch
 from straight up, distance), `camera-target="0m 1m 0m"` and
@@ -1431,6 +1435,14 @@ from straight up, distance), `camera-target="0m 1m 0m"` and
 sizes the target by them times the pixel ratio. Its pointer events
 (`onpointerdown`, `onpointermove`, `onwheel`) also carry `ray`, `{ origin,
 direction }` into its scene through the pointer, for picking and orbiting.
+`camera-controls` makes it orbit itself, as `<model-viewer>`'s does: a drag
+turns and tilts the camera and a fling keeps it turning, slowing to rest
+(still under reduced motion); the wheel and a two-finger pinch zoom it; with
+the focus, Left and Right turn it 15° and Up and Down tilt it 10°. It stays
+within `min-camera-orbit` and `max-camera-orbit` (`auto 22.5deg auto` and
+`auto 157.5deg auto` by default, `auto` unbounded), and
+`bind:cameraOrbit={$orbit}` reads the orbit back for the game to draw the
+scene from. The orbit is UI state; a new authored orbit takes over.
 `viewport` is not an HTML element. It is named for what it shows, and its
 camera attributes reuse `<model-viewer>`'s names rather than `-og-` ones,
 because that component is the web's established vocabulary for a 3D view.

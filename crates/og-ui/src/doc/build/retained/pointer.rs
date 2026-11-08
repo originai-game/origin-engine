@@ -15,6 +15,9 @@ pub(super) struct PointerMemory {
     /// as captured pointers do).
     pressed: u64,
     pointer: [f32; 2],
+    /// Two touches pinching: the element they went down on, their spread
+    /// then, and the scale last sent.
+    pinch: Option<(u64, f32, f32)>,
 }
 
 impl RetainedHost {
@@ -51,13 +54,27 @@ impl RetainedHost {
 
     /// Fires `when` at `key`: its handler's `emit` event, the point in the
     /// handler's box and `extra` its value.
-    #[allow(clippy::too_many_arguments)]
     fn dispatch(
         &self,
         ui: &Ui,
         env: &dyn Env,
         key: u64,
         when: When,
+        extra: serde_json::Map<String, Value>,
+        events: &mut Vec<DocEvent>,
+    ) {
+        self.dispatch_at(ui, env, key, when, ui.input.pointer, extra, events);
+    }
+
+    /// [`Self::dispatch`] with the point at `p` (screen CSS px).
+    #[allow(clippy::too_many_arguments)]
+    fn dispatch_at(
+        &self,
+        ui: &Ui,
+        env: &dyn Env,
+        key: u64,
+        when: When,
+        p: og_core::glam::Vec2,
         mut extra: serde_json::Map<String, Value>,
         events: &mut Vec<DocEvent>,
     ) {
@@ -74,7 +91,6 @@ impl RetainedHost {
             return;
         };
         let rect = hit.local;
-        let p = ui.input.pointer;
         let (lx, ly) = hit.inv.apply(p.x, p.y);
         let (x, y) = (lx - rect.x, ly - rect.y);
         extra.insert("x".into(), json!(x));
@@ -173,6 +189,21 @@ impl RetainedHost {
             m.insert("deltaX".into(), json!(input.wheel.x));
             m.insert("deltaY".into(), json!(input.wheel.y));
             self.dispatch(ui, env, hot, When::Wheel, m, events);
+        }
+        // A pinch: at the element the touches went down on, each tick
+        // their spread changes, its scale since they went down.
+        match super::super::gestures::two_touches(input, |_, _| true) {
+            Some((centre, spread)) => {
+                let (key, start, last) = self.pointer.pinch.unwrap_or((hot, spread, 1.0));
+                let scale = spread / start;
+                if (scale - last).abs() > 1e-4 {
+                    let mut m = none();
+                    m.insert("scale".into(), json!(scale));
+                    self.dispatch_at(ui, env, key, When::Pinch, centre, m, events);
+                }
+                self.pointer.pinch = Some((key, start, scale));
+            }
+            None => self.pointer.pinch = None,
         }
         self.pointer.pointer = [input.pointer.x, input.pointer.y];
     }

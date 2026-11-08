@@ -30,7 +30,7 @@ pub use ui_desc::{
 };
 use ui_desc::{
     align, cross, customize, element, f, frame_part, insets, opt_f, paint, rect_json, response,
-    size, size_or, tone, transition_kind, ui_rect, uv_of,
+    size, size_or, tone, transition_kind, ui_rect,
 };
 pub(crate) use ui_desc::{anchor_of, step, texture_of, ui_engine, with_ui};
 mod widgets;
@@ -38,7 +38,7 @@ use widgets::desc_of;
 pub(crate) use widgets::emit;
 pub use widgets::{
     og_ui_close, og_ui_image, og_ui_label, og_ui_open, og_ui_open_scroll, og_ui_rich_text,
-    og_ui_screen_transition, og_ui_zoom_view,
+    og_ui_screen_transition,
 };
 mod game_widgets;
 use crate::{art, assets, extract, ui_draw};
@@ -50,8 +50,8 @@ pub use game_widgets::{
     og_ui_hud_select, og_ui_hud_step, og_ui_icon, og_ui_memory, og_ui_navigate, og_ui_open_anchor,
     og_ui_open_modal, og_ui_preview_viewport, og_ui_remember, og_ui_scroll_state,
     og_ui_set_haptics, og_ui_set_hud_edit, og_ui_set_hud_layout, og_ui_set_hud_player,
-    og_ui_set_navigation, og_ui_set_players, og_ui_set_virtual_cursor, og_ui_spacer, og_ui_spinner,
-    og_ui_tick, og_ui_toast, og_ui_virtual_cursor,
+    og_ui_set_navigation, og_ui_set_players, og_ui_set_virtual_cursor, og_ui_spacer, og_ui_tick,
+    og_ui_toast, og_ui_virtual_cursor,
 };
 
 pub(crate) mod docs;

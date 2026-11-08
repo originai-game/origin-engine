@@ -2721,12 +2721,6 @@ pub fn og_ui_image(env: Env, id: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_image(&Host, id, desc)
 }
 
-#[napi(js_name = "og_ui_zoom_view")]
-pub fn og_ui_zoom_view(env: Env, id: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_zoom_view(&Host, id, desc)
-}
-
 #[napi(js_name = "og_ui_frame_pointer")]
 pub fn og_ui_frame_pointer(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2827,12 +2821,6 @@ pub fn og_ui_divider(env: Env, id: String, vertical: bool) {
 pub fn og_ui_spacer(env: Env, id: String, size: String) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_spacer(&Host, id, size)
-}
-
-#[napi(js_name = "og_ui_spinner")]
-pub fn og_ui_spinner(env: Env, id: String, size: f64) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_spinner(&Host, id, size)
 }
 
 #[napi(js_name = "og_ui_icon")]
@@ -3133,12 +3121,6 @@ pub fn og_ui_mass_count(env: Env, template: u32) -> u32 {
 pub fn og_ui_meta(env: Env, id: String, desc: Option<String>) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_meta(&Host, id, desc)
-}
-
-#[napi(js_name = "og_ui_scene_viewport")]
-pub fn og_ui_scene_viewport(env: Env, id: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_scene_viewport(&Host, id, desc)
 }
 
 #[napi(js_name = "og_ui_push")]

@@ -28,7 +28,7 @@ pub const KINDS: &[KindSpec] = &[
     KindSpec {
         name: "viewport",
         container: false,
-        doc: "A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit=\"30deg 75deg 3m\" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene.",
+        doc: "A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit=\"30deg 75deg 3m\" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one (`camera-controls` orbits, zooms and flings it within `min-camera-orbit` and `max-camera-orbit`), its pointer events carrying the ray into its scene.",
     },
     KindSpec {
         name: "svg",
@@ -431,8 +431,29 @@ pub const PROPS: &[PropSpec] = &[
         name: "cameraOrbit",
         ty: Ty::Text,
         on: On::Kinds(&["viewport"]),
+        two_way: true,
+        doc: "`<model-viewer>`'s camera-orbit: yaw, pitch from straight up, and distance from its target (`30deg 75deg 3m`; default `0deg 75deg 3m`), for its pointer events' rays. With `camera-controls`, `bind:cameraOrbit={$orbit}` reads the orbit back as the player turns it (draw the scene from it).",
+    },
+    PropSpec {
+        name: "cameraControls",
+        ty: Ty::Bool,
+        on: On::Kinds(&["viewport"]),
         two_way: false,
-        doc: "`<model-viewer>`'s camera-orbit: yaw, pitch from straight up, and distance from its target (`30deg 75deg 3m`; default `0deg 75deg 3m`), for its pointer events' rays.",
+        doc: "`<model-viewer>`'s camera-controls: a drag orbits the camera (a fling keeps it turning, slowing to rest; still under reduced motion), the wheel and a two-finger pinch zoom it, and with the focus (Tab, a pad) Left and Right turn it 15° and Up and Down tilt it 10°, within `min-camera-orbit` and `max-camera-orbit`. The orbit is UI state; a new authored `camera-orbit` takes over.",
+    },
+    PropSpec {
+        name: "minCameraOrbit",
+        ty: Ty::Text,
+        on: On::Kinds(&["viewport"]),
+        two_way: false,
+        doc: "`<model-viewer>`'s min-camera-orbit: the least yaw, pitch and distance camera-controls reach, each a value or `auto` (`auto 40deg 1.5m`; default `auto 22.5deg auto`).",
+    },
+    PropSpec {
+        name: "maxCameraOrbit",
+        ty: Ty::Text,
+        on: On::Kinds(&["viewport"]),
+        two_way: false,
+        doc: "`<model-viewer>`'s max-camera-orbit: the most yaw, pitch and distance (`auto 100deg 6m`; default `auto 157.5deg auto`).",
     },
     PropSpec {
         name: "cameraTarget",

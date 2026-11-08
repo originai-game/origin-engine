@@ -285,6 +285,12 @@ local styles and `og style new` remain available.
   a burst, a level-up flourish or fireworks. Flash damage with `#Hurt {
   -og-meta: vignette #a00; opacity: var(--hit); }`.
   drawn flat on the ground in perspective, inert.
+- Turn a model on a turntable with `<viewport src={$target} camera-controls
+  camera-orbit="30deg 75deg 3m" max-camera-orbit="auto 100deg 6m"
+  bind:cameraOrbit={$orbit}>`: a drag orbits it and a fling keeps it
+  turning, the wheel and a pinch zoom it, the arrows turn it once focused.
+  Any element takes `onpinch={zoom}` (its event has `scale` and the centre
+  `x`, `y`); the `node-graph` component zooms by it.
 - A carousel snaps with `scroll-snap-type: x mandatory` on its box and
   `scroll-snap-align: center` on each card. A bottom sheet is
   `<dialog modal bind:open={$bag}>` with `-og-sheet-detents: 40% 90%`.
@@ -385,7 +391,9 @@ actions and a `fixture:default`, so `og ui preview` shows it at once.
   chosen with the right stick or the pointer: SVG wedges, the aim from its
   events), `split-view` (two panes and a dragged
   divider), `carousel` (`scroll-snap-type`), `breadcrumbs`
-  (`<nav><ol>` with `aria-current`), `chart` (bars and a line).
+  (`<nav><ol>` with `aria-current`), `chart` (bars and a line),
+  `node-graph` (a skill tree or run map: nodes over SVG links, zoomed and
+  panned from its wheel, pinch and pointer events).
 - Buttons: `hero-button` (the main call to action with its keycap),
   `action-button` (a touch button feeding an og-input action through
   `data-og-touch`), `hold-button` (hold to confirm, filling as it is held),

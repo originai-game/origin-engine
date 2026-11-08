@@ -1326,9 +1326,6 @@ impl UiApi for NodeHost {
     fn og_ui_meta(&self, id: String, desc: Option<String>) {
         rt::og_ui_meta(id, desc)
     }
-    fn og_ui_scene_viewport(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_scene_viewport(id, desc)
-    }
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>) {
         rt::og_ui_open_scroll(id, desc)
     }
@@ -1396,14 +1393,8 @@ impl UiApi for NodeHost {
     fn og_ui_spacer(&self, id: String, size: String) {
         rt::og_ui_spacer(id, size)
     }
-    fn og_ui_spinner(&self, id: String, size: f64) {
-        rt::og_ui_spinner(id, size)
-    }
     fn og_ui_icon(&self, id: String, name: String, desc: Option<String>) {
         rt::og_ui_icon(id, name, desc)
-    }
-    fn og_ui_zoom_view(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_zoom_view(id, desc)
     }
     fn og_ui_toast(&self, world: u32, text: String, desc: Option<String>) -> u32 {
         rt::og_ui_toast(world, text, desc)

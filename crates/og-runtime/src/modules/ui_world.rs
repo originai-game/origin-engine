@@ -14,7 +14,7 @@ use og_render::{
     UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOcclusion,
     UiParticleShape,
 };
-use og_ui::{MetaDesc, MetaKind, ViewportDesc, WorldOcclusion, WorldView};
+use og_ui::{MetaDesc, MetaKind, WorldOcclusion};
 
 /// What the UI's end reads to place world-space UI.
 pub(crate) struct Feed {
@@ -302,56 +302,4 @@ pub fn og_ui_meta(id: String, desc: Option<String>) {
             },
         )
     });
-}
-
-pub fn og_ui_scene_viewport(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let texture = texture_of(&d["texture"]);
-    let r = with_ui("og.ui.sceneViewport", |ui| {
-        let theme = *ui.theme();
-        let fov = f(&d, "fov", 50.0);
-        let width = size_or(&d["width"], Size::Fixed(320.0));
-        let height = size_or(&d["height"], Size::Fixed(320.0));
-        // Its camera for rays: the aspect is the element's as laid out.
-        let aspect = {
-            let last = ui.element(id.as_str());
-            last.map_or(1.0, |e| e.width / e.height.max(1.0))
-        };
-        let view = (fov > 0.0).then(|| {
-            WorldView::look_at(
-                vec3(&d["cameraPosition"], Vec3::new(0.0, 1.0, 3.0)),
-                vec3(&d["cameraTarget"], Vec3::new(0.0, 1.0, 0.0)),
-                Vec3::Y,
-                fov,
-                aspect,
-                0.05,
-                500.0,
-            )
-        });
-        ui.scene_viewport(
-            id.as_str(),
-            ViewportDesc {
-                texture,
-                width,
-                height,
-                aspect: f(&d, "aspect", 0.0).max(0.0),
-                view,
-                background: paint(&theme, &d["background"]),
-                radius: f(&d, "radius", 0.0),
-                label: d["label"].as_str().unwrap_or_default().to_owned(),
-            },
-        )
-    })
-    .unwrap_or_default();
-    let vec2_json = |v: Vec2| json!({ "x": v.x, "y": v.y });
-    let v3j = |v: Vec3| json!({ "x": v.x, "y": v.y, "z": v.z });
-    json!({
-        "width": r.rect.width, "height": r.rect.height,
-        "pixelWidth": r.pixels.0, "pixelHeight": r.pixels.1,
-        "hovered": r.hovered, "pressed": r.pressed, "clicked": r.clicked,
-        "drag": vec2_json(r.drag), "wheel": vec2_json(r.wheel),
-        "at": r.at.map(vec2_json),
-        "ray": r.ray.map(|(o, dir)| json!({ "origin": v3j(o), "direction": v3j(dir) })),
-    })
-    .to_string()
 }

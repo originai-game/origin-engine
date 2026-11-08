@@ -1025,8 +1025,6 @@ pub trait UiApi: Wire {
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>);
     /// `og.ui.image`
     fn og_ui_image(&self, id: String, desc: Option<String>);
-    /// `og.ui.zoomView`
-    fn og_ui_zoom_view(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.framePointer`
     fn og_ui_frame_pointer(&self) -> String;
     /// `og.ui.frameCursor`
@@ -1061,8 +1059,6 @@ pub trait UiApi: Wire {
     fn og_ui_divider(&self, id: String, vertical: bool);
     /// `og.ui.spacer`
     fn og_ui_spacer(&self, id: String, size: String);
-    /// `og.ui.spinner`
-    fn og_ui_spinner(&self, id: String, size: f64);
     /// `og.ui.icon`
     fn og_ui_icon(&self, id: String, name: String, desc: Option<String>);
     /// `og.ui.toast`
@@ -1163,8 +1159,6 @@ pub trait UiApi: Wire {
     fn og_ui_mass_count(&self, template: u32) -> u32;
     /// `og.ui.meta`
     fn og_ui_meta(&self, id: String, desc: Option<String>);
-    /// `og.ui.sceneViewport`
-    fn og_ui_scene_viewport(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.push`
     fn og_ui_push(&self, world: u32, screen: String, vm: Option<String>) -> String;
     /// `og.ui.pop`
@@ -1910,7 +1904,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_rich_text",
     "og_ui_label",
     "og_ui_image",
-    "og_ui_zoom_view",
     "og_ui_frame_pointer",
     "og_ui_frame_cursor",
     "og_ui_frame_viewport",
@@ -1928,7 +1921,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_scroll_state",
     "og_ui_divider",
     "og_ui_spacer",
-    "og_ui_spinner",
     "og_ui_icon",
     "og_ui_toast",
     "og_ui_dismiss_toast",
@@ -1979,7 +1971,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_spawn_mass",
     "og_ui_mass_count",
     "og_ui_meta",
-    "og_ui_scene_viewport",
     "og_ui_push",
     "og_ui_pop",
     "og_ui_replace",

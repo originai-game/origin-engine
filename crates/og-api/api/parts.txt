@@ -28,7 +28,6 @@ ui-core.ogt
 ui-containers.ogt
 ui-data.ogt
 ui-containers-functions.ogt
-ui-data-functions.ogt
 ui-core-foundations.ogt
 ui-core-motion.ogt
 ui-feedback.ogt

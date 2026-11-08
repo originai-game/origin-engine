@@ -78,12 +78,30 @@ impl Ui {
     }
 }
 
+/// The first two touches held (og.Pointers) that went down where `inside`
+/// holds (screen CSS px): their centre and spread, the way a pinch reads
+/// them.
+pub(crate) fn two_touches(
+    input: &crate::InputFrame,
+    inside: impl Fn(f32, f32) -> bool,
+) -> Option<(og_core::glam::Vec2, f32)> {
+    let pts = &input.pointers;
+    let mut held = (0..og_input::MAX_POINTERS as u32)
+        .filter(|&id| pts.down(id))
+        .filter(|&id| {
+            let s = pts.start(id);
+            inside(s.x, s.y)
+        });
+    let (a, b) = (pts.position(held.next()?), pts.position(held.next()?));
+    Some(((a + b) / 2.0, a.distance(b).max(1.0)))
+}
+
 /// The element's drag and drop props from its attributes and handlers.
 pub(super) fn props(n: &DocNode, r: &Resolved, p: &mut Props) {
     p.pointer = n.triggers.iter().any(|t| {
         matches!(
             t.when,
-            When::PointerDown | When::PointerMove | When::PointerUp | When::Wheel
+            When::PointerDown | When::PointerMove | When::PointerUp | When::Wheel | When::Pinch
         )
     });
     if r.flag("draggable") {

@@ -118,29 +118,6 @@ pub fn og_ui_image(id: String, desc: Option<String>) {
     });
 }
 
-pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let texture = texture_of(&d["texture"]);
-    let r = with_ui("og.ui.zoomView", |ui| {
-        let t = *ui.theme();
-        ui.zoom_view(
-            id.as_str(),
-            &og_ui::ZoomViewDesc {
-                texture,
-                uv: uv_of(&d["uv"]),
-                tint: paint(&t, &d["tint"]),
-                width: size_or(&d["width"], Size::fit()),
-                height: size_or(&d["height"], Size::fit()),
-                aspect: f(&d, "aspect", 0.0).max(0.0),
-                min_zoom: f(&d, "minZoom", 0.0),
-                max_zoom: f(&d, "maxZoom", 0.0),
-            },
-        )
-    });
-    let (zoom, x, y) = r.map_or((1.0, 0.5, 0.5), |r| (r.zoom, r.center.x, r.center.y));
-    json!({ "zoom": zoom, "centerX": x, "centerY": y }).to_string()
-}
-
 pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let texture = d["texture"].as_f64().and_then(|h| {

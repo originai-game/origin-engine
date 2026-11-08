@@ -85,10 +85,6 @@ pub fn og_ui_spacer(id: String, s: String) {
     with_ui("og.ui.spacer", |ui| ui.spacer(id.as_str(), size(&v)));
 }
 
-pub fn og_ui_spinner(id: String, s: f64) {
-    with_ui("og.ui.spinner", |ui| ui.spinner(id.as_str(), s as f32));
-}
-
 pub fn og_ui_icon(id: String, name: String, desc: Option<String>) {
     let d = desc_of(desc);
     with_ui("og.ui.icon", |ui| {

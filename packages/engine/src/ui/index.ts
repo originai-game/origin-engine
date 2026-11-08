@@ -4,7 +4,6 @@
 // `host false` function written here over public og.ui calls only.
 
 import { contextMenu, menu, popover, sheet } from "./containers/layers.ts";
-import { nodeGraph } from "./data/tree.ts";
 import { foundations } from "./foundations/index.ts";
 
 export const components = Object.freeze({
@@ -12,6 +11,5 @@ export const components = Object.freeze({
   menu,
   contextMenu,
   sheet,
-  nodeGraph,
   ...foundations,
 });

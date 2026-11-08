@@ -33,6 +33,7 @@ test cooks every one from its fixture at desktop and phone sizes.
 | Navigation (minimap, compass) | `minimap`, `minimap-view`, `compass` |
 | Menus and layout (radial menu, split view, carousel, breadcrumbs) | `radial-menu`, `split-view`, `carousel`, `breadcrumbs` |
 | Charts and map overlays | `chart`, `overlay-bar` |
+| Skill trees and run maps | `node-graph` |
 | Data views (inventories, level selects) | `data-grid` |
 | Buttons and badges (hero button, touch action, hold to confirm, action bar, ribbon) | `hero-button`, `action-button`, `hold-button`, `action-hints`, `ribbon` |
 | World tags over units and items | `nameplate`, `waypoint`, `loot-label`, `speech-bubble`, `interaction-prompt` |

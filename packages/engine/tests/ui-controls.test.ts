@@ -54,19 +54,10 @@ function focusOn(engine: Engine, end: string): void {
 
 // ── foundations ─────────────────────────────────────────────────────────
 
-test("foundations: an effect layer shows what it holds; a view frame turns by a key and drops its hint", () => {
-  // Wrong: an effect layer that hides its content, or a view frame that ignores its keys.
-  let yaw = 0;
+test("foundations: an effect layer shows what it holds", () => {
+  // Wrong: an effect layer that hides its content.
   const engine = run(() => {
     og.ui.effectLayer("Shine", { material: "shine", sweep: true } as never, () => og.ui.label("Inner", "Legendary", {}));
-    yaw = og.ui.viewFrame("Preview", { yaw, label: "Character preview", hint: "Drag to turn", height: { kind: "fixed", px: 160 } as never }).yaw;
   });
   expect(find(engine, (e) => e.text === "Legendary")).toBeDefined();
-  // The viewport turns by a key step once focused, and its hint goes away.
-  expect(find(engine, (e) => e.text === "Drag to turn")).toBeDefined();
-  focusOn(engine, "Preview");
-  key(engine, "ArrowRight");
-  expect(yaw).toBe(15);
-  engine.advance(4);
-  expect(find(engine, (e) => e.text === "Drag to turn") === undefined).toBeTrue();
 });

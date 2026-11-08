@@ -32,4 +32,4 @@ struct NavLinks {
 }
 ```
 
-<sub>Module `ui` line 2076</sub>
+<sub>Module `ui` line 1881</sub>

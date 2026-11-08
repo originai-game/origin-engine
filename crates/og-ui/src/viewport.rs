@@ -32,6 +32,9 @@ pub struct ViewportDesc {
     pub radius: f32,
     /// What the probe and the accessibility tree call it.
     pub label: String,
+    /// It takes the focus, and Left and Right (Up and Down) step it
+    /// ([`ViewportResponse::adjust`]): `<model-viewer>`'s camera-controls.
+    pub controls: bool,
 }
 
 impl Default for ViewportDesc {
@@ -45,6 +48,7 @@ impl Default for ViewportDesc {
             background: None,
             radius: 0.0,
             label: String::new(),
+            controls: false,
         }
     }
 }
@@ -69,6 +73,9 @@ pub struct ViewportResponse {
     pub at: Option<Vec2>,
     /// The ray into its scene through the pointer (origin, unit direction).
     pub ray: Option<(Vec3, Vec3)>,
+    /// With `controls`, focused: Left and Right (-1, 1), Up and Down.
+    pub adjust: i32,
+    pub adjust_y: i32,
 }
 
 impl Ui {
@@ -82,6 +89,13 @@ impl Ui {
                 height: desc.height,
                 aspect: desc.aspect.max(0.0),
                 interactive: true,
+                focusable: desc.controls,
+                adjustable: desc.controls,
+                arrows: if desc.controls {
+                    crate::ARROW_LEFT | crate::ARROW_RIGHT | crate::ARROW_UP | crate::ARROW_DOWN
+                } else {
+                    0
+                },
                 background: desc.background,
                 radius: desc.radius,
                 ..Element::default()
@@ -102,6 +116,8 @@ impl Ui {
             hovered: r.hovered,
             pressed: r.pressed,
             clicked: r.clicked,
+            adjust: r.adjust,
+            adjust_y: r.adjust_y,
             ..ViewportResponse::default()
         };
         let Some(hit) = self.hit(key) else {

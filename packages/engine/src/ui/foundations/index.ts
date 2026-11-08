@@ -1,11 +1,9 @@
-// The foundations (docs/ui.md §2): viewport and layer, merged into og.ui
+// The foundations (docs/ui.md §2): the effect layer, merged into og.ui
 // by the package entry. Each is declared in
 // crates/og-api/api/ui.ogt (module `ui`, `host false`).
 
 import { effectLayer } from "./effects.ts";
-import { viewFrame } from "./media.ts";
 
 export const foundations = Object.freeze({
-  viewFrame,
   effectLayer,
 });

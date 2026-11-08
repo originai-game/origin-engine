@@ -24626,75 +24626,6 @@ export interface ImageDesc {
 }
 
 /**
- * A zoomable picture (a map, an artwork): what it shows and its zoom limits.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ZoomViewDesc {
-  /**
-   * The picture; null draws a solid rectangle of the tint.
-   *
-   * @default null
-   */
-  readonly texture?: Texture | null;
-  /**
-   * The picture's region, [u0, v0, u1, v1] with v down; null is the whole texture.
-   *
-   * @default null
-   */
-  readonly uv?: [number, number, number, number] | null;
-  /**
-   * Multiplies the texture; null is white.
-   *
-   * @default null
-   */
-  readonly tint?: Paint | null;
-  /**
-   * Its width; null fits.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height; null fits.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Width over height (0: none), as ImageDesc.aspect.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly aspect?: number;
-  /**
-   * The least zoom; 0 is 1 (the whole picture).
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly minZoom?: number;
-  /**
-   * The most zoom; 0 is 4.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly maxZoom?: number;
-}
-
-/** Where a zoom view is. */
-export interface ZoomResult {
-  /** Its zoom: 1 shows the whole picture, 2 half of it each way. */
-  readonly zoom: number;
-  /** The middle of what it shows, as a fraction of the picture's width (0.5 at rest). */
-  readonly centerX: number;
-  /** The middle of what it shows, as a fraction of the picture's height (0.5 at rest). */
-  readonly centerY: number;
-}
-
-/**
  * What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick.
  */
 export interface Response {
@@ -25273,7 +25204,6 @@ export interface TextSpan {
 
 
 
-
 /**
  * A point of the safe area an anchored group sits at.
  * - `"topLeft"`: The top left corner.
@@ -25794,7 +25724,6 @@ export interface ScrollState {
    */
   readonly contentHeight: number;
 }
-
 
 
 
@@ -26458,369 +26387,8 @@ export interface DataStateDesc {
   readonly loadingLabel?: string;
 }
 
-/**
- * A graph node's state, shown by its ring and a mark as well as its colour.
- * - `"available"`: Can be taken (the default).
- * - `"locked"`: Not yet: faint, with a lock's bar.
- * - `"active"`: In progress: the primary ink and a glow.
- * - `"done"`: Taken: a tick; links from it are solid.
- * - `"current"`: Where the player is: the highlight ink and a dot.
- */
-export type GraphNodeState = "available" | "locked" | "active" | "done" | "current";
-
-/**
- * A graph node's outline.
- * - `"circle"`: A circle (the default).
- * - `"square"`: A rounded square.
- * - `"hex"`: A hexagon.
- * - `"diamond"`: A diamond.
- * - `"triangle"`: A triangle, point up.
- */
-export type GraphNodeShape = "circle" | "square" | "hex" | "diamond" | "triangle";
-
-/**
- * A node of a graph, at a position in the graph's own units.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface GraphNode {
-  /**
-   * Its id; links name it.
-   *
-   * @default ""
-   */
-  readonly id?: string;
-  /**
-   * Across, in graph units (CSS px at zoom 1).
-   *
-   * @default 0
-   */
-  readonly x?: number;
-  /**
-   * Down.
-   *
-   * @default 0
-   */
-  readonly y?: number;
-  /**
-   * Its name, under it.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-  /**
-   * Its icon; empty shows the label's first letters.
-   *
-   * @default ""
-   */
-  readonly icon?: string;
-  /**
-   * Its state.
-   *
-   * @default "available"
-   */
-  readonly state?: GraphNodeState;
-  /**
-   * Its outline.
-   *
-   * @default "circle"
-   */
-  readonly shape?: GraphNodeShape;
-  /**
-   * A selector flag a style dresses (`boss`, `shop`).
-   *
-   * @default ""
-   */
-  readonly kind?: string;
-  /**
-   * Shown but not pressable.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-  /**
-   * Its side on a map: 0 the player's (ink, so it differs from danger in every style, a gold primary too), 1 an enemy's (danger), more the style's team colours; the node is filled in that colour, its ring still its state's. Null is no side (the state's ink alone). Pair a side with a shape (triangle, diamond) so sides are not told by colour alone.
-   *
-   * @default null
-   */
-  readonly team?: number | null;
-}
-
-/**
- * A link between two nodes.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface GraphLink {
-  /**
-   * The node it starts at.
-   *
-   * @default ""
-   */
-  readonly from?: string;
-  /**
-   * The node it ends at.
-   *
-   * @default ""
-   */
-  readonly to?: string;
-  /**
-   * Drawn solid in the primary ink (a path taken).
-   *
-   * @default false
-   */
-  readonly active?: boolean;
-}
-
-/**
- * A pan-and-zoom graph of nodes and links: skill and tech trees, run maps, flowcharts.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface NodeGraphDesc {
-  /**
-   * The nodes.
-   *
-   * @default []
-   */
-  readonly nodes?: readonly GraphNode[];
-  /**
-   * The links, under the nodes.
-   *
-   * @default []
-   */
-  readonly links?: readonly GraphLink[];
-  /**
-   * Its zoom (keep NodeGraphResult.zoom).
-   *
-   * @default 1
-   */
-  readonly zoom?: number;
-  /**
-   * The least zoom.
-   *
-   * @default 0.5
-   */
-  readonly minZoom?: number;
-  /**
-   * The greatest zoom.
-   *
-   * @default 2
-   */
-  readonly maxZoom?: number;
-  /**
-   * A node's size at zoom 1; null is 56 (52 on a phone).
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly nodeSize?: number | null;
-  /**
-   * Links bend as a run map's paths.
-   *
-   * @default true
-   */
-  readonly curved?: boolean;
-  /**
-   * Names under the nodes; without them no room is kept under a node for one, so the fit fills the window.
-   *
-   * @default true
-   */
-  readonly labels?: boolean;
-  /**
-   * The selected node's id: ringed in the focus ink.
-   *
-   * @default ""
-   */
-  readonly selected?: string;
-  /**
-   * Zoom in's accessible name.
-   *
-   * @default ""
-   */
-  readonly zoomInLabel?: string;
-  /**
-   * Zoom out's accessible name.
-   *
-   * @default ""
-   */
-  readonly zoomOutLabel?: string;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height; null is 420 (360 on a phone).
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * A texture tiled over the field's ground (star dust, a grid: light marks on transparent), 256 px a tile, tinted in the ink at 6 % so it reads as a field and never competes with the nodes; under the links, panning with them. Null is the plain ground.
-   *
-   * @default null
-   */
-  readonly ground?: Texture | null;
-  /**
-   * What a screen reader calls it.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-}
-
-/** What a graph answered this tick. */
-export interface NodeGraphResult {
-  /** The node pressed. */
-  readonly chosen: string | null;
-  /** The zoom after this tick: keep it. */
-  readonly zoom: number;
-  /** The zoom changed this tick. */
-  readonly changed: boolean;
-}
 
 
-
-
-
-
-/**
- * A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ViewFrameDesc {
-  /**
-   * The render target's colour; null shows the placeholder (loading).
-   *
-   * @default null
-   */
-  readonly texture?: Texture | null;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height; null follows the aspect.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Width over height; 0 is 1.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly aspect?: number;
-  /**
-   * The turn shown, from game state (keep ViewFrameResult.yaw).
-   *
-   * @default 0
-   * @unit deg (degrees)
-   */
-  readonly yaw?: number;
-  /**
-   * The tilt shown.
-   *
-   * @default 0
-   * @unit deg (degrees)
-   */
-  readonly pitch?: number;
-  /**
-   * The zoom shown.
-   *
-   * @default 1
-   */
-  readonly zoom?: number;
-  /**
-   * The least zoom.
-   *
-   * @default 0.6
-   */
-  readonly minZoom?: number;
-  /**
-   * The most zoom.
-   *
-   * @default 2.5
-   */
-  readonly maxZoom?: number;
-  /**
-   * The least tilt.
-   *
-   * @default -30
-   * @unit deg (degrees)
-   */
-  readonly minPitch?: number;
-  /**
-   * The most tilt.
-   *
-   * @default 60
-   * @unit deg (degrees)
-   */
-  readonly maxPitch?: number;
-  /**
-   * A drag turns and tilts it, the wheel zooms, Left and Right turn it while it has the focus.
-   *
-   * @default true
-   */
-  readonly orbit?: boolean;
-  /**
-   * Its camera's position, for the pointer ray.
-   *
-   * @default { x: 0, y: 0, z: 0 }
-   */
-  readonly cameraPosition?: Vector3;
-  /**
-   * What its camera looks at.
-   *
-   * @default { x: 0, y: 0, z: 0 }
-   */
-  readonly cameraTarget?: Vector3;
-  /**
-   * Its camera's vertical field of view; 0 gives no ray.
-   *
-   * @default 50
-   * @unit deg (degrees)
-   */
-  readonly fov?: number;
-  /**
-   * What a screen reader calls it (`Character preview`).
-   *
-   * @default ""
-   */
-  readonly label?: string;
-  /**
-   * A line over its bottom while it has not been turned (`Drag to rotate`); empty for none.
-   *
-   * @default ""
-   */
-  readonly hint?: string;
-}
-
-/** A view frame's turn, tilt and zoom after this tick's input, and its viewport's answer. */
-export interface ViewFrameResult {
-  /**
-   * The turn, to keep and pass back.
-   *
-   * @unit deg (degrees)
-   */
-  readonly yaw: number;
-  /**
-   * The tilt.
-   *
-   * @unit deg (degrees)
-   */
-  readonly pitch: number;
-  /** The zoom. */
-  readonly zoom: number;
-  /** The viewport's answer: its pixel size for the target, the ray, the pointer. */
-  readonly view: SceneViewportInfo;
-}
 
 
 /**
@@ -30366,117 +29934,6 @@ export interface MetaDesc {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly pulseDepth?: number;
-}
-
-
-/**
- * The viewport element (docs/ui.md §3.3): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface SceneViewportDesc {
-  /**
-   * The target's colour (RenderTargetInfo.texture).
-   *
-   * @default null
-   */
-  readonly texture?: Texture | null;
-  /**
-   * Its width; null is 320 CSS px.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height; null is 320 CSS px.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Width over height; 0 is free.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly aspect?: number;
-  /**
-   * Its camera's position, for rays.
-   *
-   * @default { x: 0, y: 0, z: 0 }
-   */
-  readonly cameraPosition?: Vector3;
-  /**
-   * What its camera looks at, for rays.
-   *
-   * @default { x: 0, y: 0, z: 0 }
-   */
-  readonly cameraTarget?: Vector3;
-  /**
-   * Its camera's vertical field of view; 0 gives no ray.
-   *
-   * @default 50
-   * @range 0..
-   * @unit deg (degrees)
-   */
-  readonly fov?: number;
-  /**
-   * Drawn under the view.
-   *
-   * @default null
-   */
-  readonly background?: Paint | null;
-  /**
-   * Corner radius.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly radius?: number;
-  /**
-   * What the probe and the accessibility tree call it.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-}
-
-/** What the pointer does in a viewport this tick. */
-export interface SceneViewportInfo {
-  /**
-   * Its laid-out width, last tick.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly width: number;
-  /**
-   * Its laid-out height, last tick.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly height: number;
-  /** The target width that fills it at the device's pixel ratio. */
-  readonly pixelWidth: number;
-  /** The target height that fills it. */
-  readonly pixelHeight: number;
-  /** The pointer is over it. */
-  readonly hovered: boolean;
-  /** A press that started in it is held. */
-  readonly pressed: boolean;
-  /** Pressed and released in it. */
-  readonly clicked: boolean;
-  /**
-   * The pointer's move while held this tick (orbit, turn).
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly drag: Vector2;
-  /** The wheel over it (zoom). */
-  readonly wheel: Vector2;
-  /** The pointer in it, fractions of its box from the top left. */
-  readonly at: Vector2 | null;
-  /** The ray into its scene through the pointer. */
-  readonly ray: Ray | null;
 }
 
 
@@ -39554,13 +39011,6 @@ export declare namespace og {
      */
     function image(id: string, desc?: ImageDesc): void;
     /**
-     * A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans; Tab or a pad focuses it, and then + (= and the keypad's) and - zoom it about its centre, 0 fits it again and the arrows pan it a tenth of its size. It stays on its picture and within its zoom limits; its zoom and centre are UI state (snapshots carry them). Two fingers over a scroll container scroll it the same way, and fling it as they lift. The probe reads its zoom as its value.
-     *
-     * @param id Its id.
-     * @param desc The picture, its size and zoom limits.
-     */
-    function zoomView(id: string, desc?: ZoomViewDesc): ZoomResult;
-    /**
      * The id of the index-th of several siblings of one name: `idi("Slot", 3)` is `Slot#3`.
      *
      * @param name The name.
@@ -39665,13 +39115,6 @@ export declare namespace og {
      * @param size Its size along both axes; null grows into the free space.
      */
     function spacer(id: string, size: Size | null): void;
-    /**
-     * A loading spinner: eight dots around a circle, the bright one turning by the tick.
-     *
-     * @param id Its id.
-     * @param size Its diameter in CSS px; 0 is the small control height.
-     */
-    function spinner(id: string, size: number): void;
     /**
      * An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. Rich text takes the same icons inline with `[icon=name]`. The probe reads the name.
      *
@@ -39863,22 +39306,6 @@ export declare namespace og {
      */
     function sheet(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult;
     /**
-     * A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts.
-     * Each node is a circle, rounded square, hexagon, diamond or triangle; a node with a team (a sector map's allied and hostile systems) is filled in its side's colour, a sided node with no icon showing no letters (its shape and colour mark it). Its state shows by its ring and a mark.
-     * Parts: Graph.frame (its ground's texture on <id>/Window/View/Canvas), Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out.
-     *
-     * @param id Its id.
-     * @param desc Nodes, links and the zoom.
-     */
-    function nodeGraph(id: string, desc?: NodeGraphDesc): NodeGraphResult;
-    /**
-     * A viewport in a frame (docs/ui.md §3.3, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers; a target of another shape covers the frame, cropped, never squashed. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/Picture/View`, `<id>/Box/HintRow/Hint`.
-     *
-     * @param id Its id.
-     * @param desc The target, its camera and its turn.
-     */
-    function viewFrame(id: string, desc?: ViewFrameDesc): ViewFrameResult;
-    /**
      * A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.
      *
      * @param id Its id.
@@ -40050,13 +39477,6 @@ export declare namespace og {
      * @param desc What it draws.
      */
     function meta(id: string, desc?: MetaDesc): void;
-    /**
-     * A viewport: a camera's render target shown in the layout, its drag, wheel and pointer ray handed back so a menu can orbit, pick and rotate.
-     *
-     * @param id Its id.
-     * @param desc What it shows and its camera.
-     */
-    function sceneViewport(id: string, desc?: SceneViewportDesc): SceneViewportInfo;
     /**
      * The entry to named svelte/store-compatible presentation data and retained document mounts. Rust owns values, the dependency graph and mounted elements. No Svelte compiler, runes, TS elements or asynchronous primitives. See docs/ui.md for a worked example and If you know Svelte.
      *

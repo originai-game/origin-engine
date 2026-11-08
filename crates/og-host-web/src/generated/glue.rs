@@ -2269,11 +2269,6 @@ pub fn og_ui_image(id: String, desc: Option<String>) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_zoom_view(&Host, id, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_frame_pointer() -> String {
     <Host as UiApi>::og_ui_frame_pointer(&Host)
 }
@@ -2356,11 +2351,6 @@ pub fn og_ui_divider(id: String, vertical: bool) {
 #[wasm_bindgen]
 pub fn og_ui_spacer(id: String, size: String) {
     <Host as UiApi>::og_ui_spacer(&Host, id, size)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_spinner(id: String, size: f64) {
-    <Host as UiApi>::og_ui_spinner(&Host, id, size)
 }
 
 #[wasm_bindgen]
@@ -2611,11 +2601,6 @@ pub fn og_ui_mass_count(template: u32) -> u32 {
 #[wasm_bindgen]
 pub fn og_ui_meta(id: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_meta(&Host, id, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_scene_viewport(id: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_scene_viewport(&Host, id, desc)
 }
 
 #[wasm_bindgen]

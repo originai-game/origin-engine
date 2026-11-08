@@ -911,8 +911,6 @@ export interface HostAbi<A, V> {
   og_ui_label(id: string, text: string, desc: string | undefined): void;
   /** `og.ui.image` */
   og_ui_image(id: string, desc: string | undefined): void;
-  /** `og.ui.zoomView` */
-  og_ui_zoom_view(id: string, desc: string | undefined): string;
   /** `og.ui.framePointer` */
   og_ui_frame_pointer(): string;
   /** `og.ui.frameCursor` */
@@ -947,8 +945,6 @@ export interface HostAbi<A, V> {
   og_ui_divider(id: string, vertical: boolean): void;
   /** `og.ui.spacer` */
   og_ui_spacer(id: string, size: string): void;
-  /** `og.ui.spinner` */
-  og_ui_spinner(id: string, size: number): void;
   /** `og.ui.icon` */
   og_ui_icon(id: string, name: string, desc: string | undefined): void;
   /** `og.ui.toast` */
@@ -1049,8 +1045,6 @@ export interface HostAbi<A, V> {
   og_ui_mass_count(template: number): number;
   /** `og.ui.meta` */
   og_ui_meta(id: string, desc: string | undefined): void;
-  /** `og.ui.sceneViewport` */
-  og_ui_scene_viewport(id: string, desc: string | undefined): string;
   /** `og.ui.push` */
   og_ui_push(world: number, screen: string, vm: string | undefined): string;
   /** `og.ui.pop` */
@@ -1739,7 +1733,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_rich_text",
   "og_ui_label",
   "og_ui_image",
-  "og_ui_zoom_view",
   "og_ui_frame_pointer",
   "og_ui_frame_cursor",
   "og_ui_frame_viewport",
@@ -1757,7 +1750,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_scroll_state",
   "og_ui_divider",
   "og_ui_spacer",
-  "og_ui_spinner",
   "og_ui_icon",
   "og_ui_toast",
   "og_ui_dismiss_toast",
@@ -1808,7 +1800,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_spawn_mass",
   "og_ui_mass_count",
   "og_ui_meta",
-  "og_ui_scene_viewport",
   "og_ui_push",
   "og_ui_pop",
   "og_ui_replace",

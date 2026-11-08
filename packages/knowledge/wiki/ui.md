@@ -49,8 +49,6 @@ module ui {
 | [`ScrollAxes`](ui/type-ScrollAxes.md) | enum |  | Which ways a scroll container scrolls. |
 | [`ScrollDesc`](ui/type-ScrollDesc.md) | desc struct |  | A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); … |
 | [`ImageDesc`](ui/type-ImageDesc.md) | desc struct |  | A texture region, or a solid rectangle without a texture. |
-| [`ZoomViewDesc`](ui/type-ZoomViewDesc.md) | desc struct |  | A zoomable picture (a map, an artwork): what it shows and its zoom limits. |
-| [`ZoomResult`](ui/type-ZoomResult.md) | struct |  | Where a zoom view is. |
 | [`Response`](ui/type-Response.md) | struct |  | What happened to an element this tick. |
 | [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit. |
 | [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. |
@@ -74,7 +72,6 @@ module ui {
 | [`og.ui.richText`](ui/fn-richText.md) | function | `(id: string, markup: string, desc?: RichTextDesc): RichTextResult` | A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a … |
 | [`og.ui.label`](ui/fn-label.md) | function | `(id: string, text: string, desc?: LabelDesc): void` | MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. |
 | [`og.ui.image`](ui/fn-image.md) | function | `(id: string, desc?: ImageDesc): void` | A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other. |
-| [`og.ui.zoomView`](ui/fn-zoomView.md) | function | `(id: string, desc?: ZoomViewDesc): ZoomResult` | A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans; Tab or a pad focuses it,… |
 | [`og.ui.idi`](ui/fn-idi.md) | function | `(name: string, index: number): string` | The id of the index-th of several siblings of one name: `idi("Slot", 3)` is `Slot#3`. |
 | [`Anchor`](ui/type-Anchor.md) | enum |  | A point of the safe area an anchored group sits at. |
 | [`TransitionKind`](ui/type-TransitionKind.md) | enum |  | How a transition moves its content in and out. |
@@ -113,7 +110,6 @@ module ui {
 | [`og.ui.scrollState`](ui/fn-scrollState.md) | function | `(path: string): ScrollState \| null` | A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scro… |
 | [`og.ui.divider`](ui/fn-divider.md) | function | `(id: string, vertical: boolean): void` | A hairline in the border colour across its parent. |
 | [`og.ui.spacer`](ui/fn-spacer.md) | function | `(id: string, size: Size \| null): void` | Empty space. |
-| [`og.ui.spinner`](ui/fn-spinner.md) | function | `(id: string, size: number): void` | A loading spinner: eight dots around a circle, the bright one turning by the tick. |
 | [`og.ui.icon`](ui/fn-icon.md) | function | `(id: string, name: string, desc?: IconDesc): void` | An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. |
 | [`og.ui.toast`](ui/fn-toast.md) | function | `(world: World, text: string, desc?: ToastDesc): number` | Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. |
 | [`og.ui.dismissToast`](ui/fn-dismissToast.md) | function | `(world: World, toastId: number): void` | Start a toast's exit. |
@@ -162,20 +158,10 @@ module ui {
 | [`SheetDesc`](ui/type-SheetDesc.md) | desc struct |  | A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it. |
 | [`SheetResult`](ui/type-SheetResult.md) | struct |  | What a sheet answered this tick. |
 | [`DataStateDesc`](ui/type-DataStateDesc.md) | desc struct |  | What a data view shows instead of its rows: loading, an error, or nothing. |
-| [`GraphNodeState`](ui/type-GraphNodeState.md) | enum |  | A graph node's state, shown by its ring and a mark as well as its colour. |
-| [`GraphNodeShape`](ui/type-GraphNodeShape.md) | enum |  | A graph node's outline. |
-| [`GraphNode`](ui/type-GraphNode.md) | desc struct |  | A node of a graph, at a position in the graph's own units. |
-| [`GraphLink`](ui/type-GraphLink.md) | desc struct |  | A link between two nodes. |
-| [`NodeGraphDesc`](ui/type-NodeGraphDesc.md) | desc struct |  | A pan-and-zoom graph of nodes and links: skill and tech trees, run maps, flowcharts. |
-| [`NodeGraphResult`](ui/type-NodeGraphResult.md) | struct |  | What a graph answered this tick. |
 | [`og.ui.popover`](ui/fn-popover.md) | function | `(id: string, open: boolean, desc: PopoverDesc, build: UiBuild): PopoverResult` | A popover beside an element with an arrow at it; Back or a press outside dismisses it. |
 | [`og.ui.menu`](ui/fn-menu.md) | function | `(id: string, open: boolean, desc?: MenuDesc): MenuChoice` | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. |
 | [`og.ui.contextMenu`](ui/fn-contextMenu.md) | function | `(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice` | A menu at a point: where a right press or a long press happened. |
 | [`og.ui.sheet`](ui/fn-sheet.md) | function | `(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult` | A sheet sliding in from the bottom (resting at detents, dragged) or a side. |
-| [`og.ui.nodeGraph`](ui/fn-nodeGraph.md) | function | `(id: string, desc?: NodeGraphDesc): NodeGraphResult` | A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts. |
-| [`ViewFrameDesc`](ui/type-ViewFrameDesc.md) | desc struct |  | A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad. |
-| [`ViewFrameResult`](ui/type-ViewFrameResult.md) | struct |  | A view frame's turn, tilt and zoom after this tick's input, and its viewport's answer. |
-| [`og.ui.viewFrame`](ui/fn-viewFrame.md) | function | `(id: string, desc?: ViewFrameDesc): ViewFrameResult` | A viewport in a frame (docs/ui.md §3.3, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with … |
 | [`EffectLayerDesc`](ui/type-EffectLayerDesc.md) | desc struct |  | A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`. |
 | [`og.ui.effectLayer`](ui/fn-effectLayer.md) | function | `(id: string, desc: EffectLayerDesc, build: UiBuild): void` | A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hi… |
 | [`UiProp`](ui/type-UiProp.md) | enum |  | An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. |
@@ -332,9 +318,6 @@ module ui {
 | [`MetaKind`](ui/type-MetaKind.md) | enum |  | What a meta layer draws over the scene. |
 | [`MetaDesc`](ui/type-MetaDesc.md) | desc struct |  | A meta layer (docs/ui.md §1): full screen, over the scene and under the screen's elements, never taking input. |
 | [`og.ui.meta`](ui/fn-meta.md) | function | `(id: string, desc?: MetaDesc): void` | A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame. |
-| [`SceneViewportDesc`](ui/type-SceneViewportDesc.md) | desc struct |  | The viewport element (docs/ui.md §3.3): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). |
-| [`SceneViewportInfo`](ui/type-SceneViewportInfo.md) | struct |  | What the pointer does in a viewport this tick. |
-| [`og.ui.sceneViewport`](ui/fn-sceneViewport.md) | function | `(id: string, desc?: SceneViewportDesc): SceneViewportInfo` | A viewport: a camera's render target shown in the layout, its drag, wheel and pointer ray handed back so a menu can orbit, pick and rotate. |
 | [`UiSource`](ui/type-UiSource.md) | interface |  | A store's stable checkpoint identity. |
 | [`UiCollectionDesc`](ui/type-UiCollectionDesc.md) | struct |  | A keyed collection's identity rule. |
 | [`UiScope`](ui/type-UiScope.md) | interface |  | Named presentation stores for one world, following the svelte/store contract. |
@@ -386,7 +369,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 2728</sub>
+<sub>Module `ui` line 2533</sub>
 
 ```ogt
 column UiMaterial {
@@ -397,4 +380,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 2735</sub>
+<sub>Module `ui` line 2540</sub>

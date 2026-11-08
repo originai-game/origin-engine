@@ -1543,8 +1543,12 @@ impl RetainedHost {
         } else {
             self.rive.remove(identity);
         }
-        let volatile =
-            owned.moved || matches!(e.document.nodes[e.index].kind, NodeKind::Element("slot"));
+        // A slot, and a viewport whose camera-controls turn it by the tick.
+        let node = &e.document.nodes[e.index];
+        let volatile = owned.moved
+            || matches!(node.kind, NodeKind::Element("slot"))
+            || (node.kind == NodeKind::Element("viewport")
+                && node.props.iter().any(|p| p.name() == "cameraControls"));
         if volatile {
             self.volatile.insert(identity.clone());
         } else {
