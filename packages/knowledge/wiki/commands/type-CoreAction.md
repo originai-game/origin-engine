@@ -21,6 +21,7 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"scroll"` | `scroll:dx,dy`: scroll at the pointer. |
 | `"touch"` | `touch:<id>:<down\|move\|up>:<x,y \| ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere. |
 | `"gamepad"` | `gamepad:<a+b+...\|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it. |
+| `"intent"` | `intent:<Event>[:<fields as JSON>]`: send a gameplay intent through og.input.intent's recorded input path for the next tick, its fields from the JSON object and the rest at their defaults (`intent:Buy:{"item":3}`). |
 | `"key_down"` | `key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl). |
 | `"key_up"` | `key_up:[Mod+]<Key>`: release a key, then the modifiers named before it. |
 | `"type"` | `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. The text runs to the `;` exactly, a trailing space included; after it a text field takes typed text only, so a bare key_down types nothing. |
@@ -61,6 +62,7 @@ enum CoreAction {
   variant scroll "`scroll:dx,dy`: scroll at the pointer."
   variant touch "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere."
   variant gamepad "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it."
+  variant intent "`intent:<Event>[:<fields as JSON>]`: send a gameplay intent through og.input.intent's recorded input path for the next tick, its fields from the JSON object and the rest at their defaults (`intent:Buy:{\"item\":3}`)."
   variant key_down "`key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl)."
   variant key_up "`key_up:[Mod+]<Key>`: release a key, then the modifiers named before it."
   variant type "`type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. The text runs to the `;` exactly, a trailing space included; after it a text field takes typed text only, so a bare key_down types nothing."

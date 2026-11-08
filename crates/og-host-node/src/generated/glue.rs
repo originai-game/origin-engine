@@ -3616,6 +3616,13 @@ pub fn og_engine_probe_assertion_events(env: Env, engine_probe: u32) -> String {
 }
 
 #[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_observe")]
+pub fn og_engine_probe_observe(env: Env, engine_probe: u32, records: Option<String>, types: Option<bool>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_observe(&Host, engine_probe, records, types)
+}
+
+#[cfg(not(feature = "publish"))]
 #[napi(js_name = "og_engine_probe_save_scene")]
 pub fn og_engine_probe_save_scene(env: Env, engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String {
     let _env = crate::EnvScope::enter(&env);

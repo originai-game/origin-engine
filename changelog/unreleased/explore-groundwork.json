@@ -1,0 +1,22 @@
+{
+  "added": [
+    {
+      "member": "commands.CoreAction.intent",
+      "summary": "The command channel's `intent:<Event>[:<fields JSON>]` sends a gameplay intent through og.input.intent's recorded input path for the next tick, its fields from the JSON and the rest at their defaults: a script (a playtest, og explore's repro) plays what a UI button sends."
+    },
+    {
+      "member": "EngineProbe.observe",
+      "summary": "probe.observe(records?, types?) reads the game's resources and components (by default every record the game declared; at most 256 entities a component, named ones by name) as plain values, with their reflected field types on request: one cheap read of the state, for a tool that abstracts it (og explore's cells)."
+    },
+    {
+      "member": "GameDesc.explore",
+      "summary": "GameDesc.explore (ExploreDesc: cells, ignore, actions, intents) tells `og explore` what a cell reads and which inputs it presses; the engine and the world never read it."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "commands",
+      "summary": "A command step written at a tick's time (`t/rate` seconds) lands at the tick's start, `at` 0, instead of carrying the division's float error as its time within the tick, so a script scheduled from tick 0 and the same steps sent tick by tick hash the same world."
+    }
+  ]
+}

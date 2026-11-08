@@ -326,6 +326,54 @@ impl Probe {
                     Err("the input layer refused the gamepad state".into())
                 }
             }
+            "intent" => {
+                let usage = "intent:<Event>[:<fields as JSON>]";
+                let name = arg(0, usage)?.trim();
+                let id = world.id_by_name(name).map_err(|_| {
+                    format!("no event type '{name}' is registered; write `{usage}`")
+                })?;
+                let schema = world.schema(id).map_err(|e| e.reason().to_owned())?.clone();
+                let text = args.get(1..).map(|a| a.join(":")).unwrap_or_default();
+                let fields: serde_json::Map<String, Value> = if text.trim().is_empty() {
+                    serde_json::Map::new()
+                } else {
+                    match serde_json::from_str(&text) {
+                        Ok(Value::Object(m)) => m,
+                        _ => {
+                            return Err(format!(
+                                "'{text}' is not a JSON object of {name}'s fields; write `{usage}`"
+                            ));
+                        }
+                    }
+                };
+                if let Some(k) = fields
+                    .keys()
+                    .find(|k| !schema.fields.iter().any(|f| &f.name == *k))
+                {
+                    return Err(format!("{name} has no field '{k}'"));
+                }
+                // The event's packed bytes: each field named, the others their defaults.
+                let mut payload = Vec::new();
+                for f in &schema.fields {
+                    match fields.get(&f.name) {
+                        Some(v) => payload.extend(
+                            crate::value::json_field(f, v)
+                                .map_err(|e| format!("{name}.{}: {e}", f.name))?,
+                        ),
+                        None => payload.extend(f.default_bytes()),
+                    }
+                }
+                let event = InjectedInput::Intent {
+                    name: name.to_owned(),
+                    layout_hash: schema.layout_hash(),
+                    payload,
+                };
+                if self.deliver(world, &event) {
+                    Ok(())
+                } else {
+                    Err(format!("the input layer refused intent '{name}'"))
+                }
+            }
             "key_down" | "key_up" => {
                 let (modifiers, held, key) = key_chord(arg(0, "key_down:[Mod+]<Key>")?)?;
                 let down = step.action == "key_down";

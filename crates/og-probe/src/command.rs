@@ -259,6 +259,11 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
         "Set a pad's whole state (og.Gamepad; pad 0 unless `@1` to `@3` follows the buttons): the standard buttons held, joined by `+` (`-` none), the stick axes (y down) and the triggers; `gamepad:off` disconnects it (`gamepad:off@2` pad 2).",
     ),
     (
+        "intent",
+        "intent:<Event>[:<fields as JSON>]",
+        "Send a gameplay intent (og.input.intent's recorded input path) for the next tick: the event's fields as a JSON object, the ones left out at their defaults.",
+    ),
+    (
         "key_down",
         "key_down:[Mod+]<Key>",
         "Hold a key by its KeyboardEvent.code, such as `KeyW` or `Space`, with the modifiers named before it held too (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, `Ctrl+Shift+KeyZ`; Shift, Ctrl, Alt or Option, Meta or Cmd).",

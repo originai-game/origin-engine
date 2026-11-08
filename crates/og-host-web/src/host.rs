@@ -1751,6 +1751,14 @@ impl ProbeApi for WebHost {
     fn og_engine_probe_assertions(&self, engine_probe: u32, take: Option<bool>) -> String {
         rt::og_engine_probe_assertions(engine_probe, take)
     }
+    fn og_engine_probe_observe(
+        &self,
+        engine_probe: u32,
+        records: Option<String>,
+        types: Option<bool>,
+    ) -> String {
+        rt::og_engine_probe_observe(engine_probe, records, types)
+    }
     fn og_engine_probe_assertion_events(&self, engine_probe: u32) -> String {
         rt::og_engine_probe_assertion_events(engine_probe)
     }

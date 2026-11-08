@@ -319,6 +319,12 @@ export interface GameToken {
 
 const gameHandles = new WeakMap<object, number>();
 const gameLooks = new WeakMap<object, string>();
+const gameExplore = new WeakMap<object, Readonly<Record<string, unknown>>>();
+
+/** GameDesc.explore of a game token, for `og explore` (never the engine's). */
+export function declaredGameExplore(game: object): Readonly<Record<string, unknown>> {
+  return gameExplore.get(game) ?? {};
+}
 
 /** Tooling reads declarations without creating a world or running GameDesc.start. */
 export function declaredGameLook(game: object): string {
@@ -344,6 +350,7 @@ export interface GameDescIn {
   readonly ui?: Function | null;
   readonly render?: Readonly<Record<string, unknown>>;
   readonly look?: string;
+  readonly explore?: Readonly<Record<string, unknown>>;
   readonly saveVersion?: number;
   readonly migrations?: readonly SaveMigrationIn[];
 }
@@ -372,6 +379,7 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
   const ui = desc.ui ? callback(desc.ui) : null;
   const token = Object.freeze({ tick: desc.tick ?? 60, systems: Object.freeze(list) });
   gameLooks.set(token, desc.look ?? "");
+  gameExplore.set(token, desc.explore ?? {});
   const migrations = [...(desc.migrations ?? [])];
   gameMigrations.set(token, migrations);
   // Built when the host takes it, so the systems' host handles are known.
@@ -1843,6 +1851,7 @@ function makeProbe(id: number) {
     expectations: () => parse(a().og_engine_probe_expectations(id)),
     assertions: (take?: boolean) => parse(a().og_engine_probe_assertions(id, take)),
     assertionEvents: () => parse(a().og_engine_probe_assertion_events(id)),
+    observe: (records?: readonly string[] | null, types?: boolean) => parse(a().og_engine_probe_observe(id, json(records ?? undefined), types)),
     saveScene: (write?: boolean, spawned?: boolean) => parse(a().og_engine_probe_save_scene(id, write, spawned)),
     pickUi: (x: number, y: number) => parse(a().og_engine_probe_pick_ui(id, x, y)),
   });

@@ -253,6 +253,31 @@ pub fn og_engine_probe_assertions(probe: u32, take: Option<bool>) -> String {
     .to_string()
 }
 
+pub fn og_engine_probe_observe(probe: u32, records: Option<String>, types: Option<bool>) -> String {
+    let records = parse(records.as_deref())
+        .ok()
+        .filter(|v| v.as_array().is_some_and(|a| !a.is_empty()));
+    let mut out = member(
+        probe,
+        "observe",
+        json!({ "records": records, "types": types.unwrap_or(false) }),
+    );
+    // Each record's kind, from the layouts the game declared.
+    if let (Some(types), Ok(eng)) = (out["types"].as_object_mut(), crate::engine::engine(probe)) {
+        let st = eng.state.borrow();
+        for (name, t) in types.iter_mut() {
+            if let Some(l) = st.layouts.get(name) {
+                t["kind"] = json!(match l.kind {
+                    crate::codec::RecordKind::Component => "component",
+                    crate::codec::RecordKind::Resource => "resource",
+                    crate::codec::RecordKind::Event => "event",
+                });
+            }
+        }
+    }
+    out.to_string()
+}
+
 pub fn og_engine_probe_assertion_events(probe: u32) -> String {
     member(probe, "assertion_events", json!({})).to_string()
 }

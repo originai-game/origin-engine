@@ -735,6 +735,16 @@ module probe {
       doc "The assertions' stream since the last call: each site's first firing, each each-bucket's first holding and each site's first violation, with its tick, in the order they happened (at most 4,096 between calls; more are counted in dropped). A tool that steps a run reads it after each advance and stops at the first violation, instead of reading the whole report."
       returns AssertEvents
     }
+    fn observe {
+      doc "The game's reflected state as values: each of its resources' fields, and each of its components' fields on up to 256 entities by probe id (`{ tick, resources: { Score: { value } }, components: { Health: { hero: { hp } } } }`). Records names which (engine records too, `og.Transform`); empty is every record the game declared. What a search of the game's states abstracts its cells from (og explore)."
+      param records Option.List.String "The records to read; null or empty: the game's own." {
+        optional true
+      }
+      param types bool "Also answer `types`: each of those records' kind (component, resource or event) and fields with their type, min, max and variants, the events among them." {
+        default false
+      }
+      returns Json
+    }
     fn saveScene {
       doc "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned."
       param write bool "Replace each scene's source file." {

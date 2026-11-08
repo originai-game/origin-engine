@@ -1323,6 +1323,8 @@ pub trait ProbeApi: Wire {
     fn og_engine_probe_assertions(&self, engine_probe: u32, take: Option<bool>) -> String;
     /// `EngineProbe.assertionEvents`
     fn og_engine_probe_assertion_events(&self, engine_probe: u32) -> String;
+    /// `EngineProbe.observe`
+    fn og_engine_probe_observe(&self, engine_probe: u32, records: Option<String>, types: Option<bool>) -> String;
     /// `EngineProbe.saveScene`
     fn og_engine_probe_save_scene(&self, engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String;
     /// `EngineProbe.pickUi`
@@ -2095,6 +2097,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_engine_probe_expectations",
     "og_engine_probe_assertions",
     "og_engine_probe_assertion_events",
+    "og_engine_probe_observe",
     "og_engine_probe_save_scene",
     "og_engine_probe_pick_ui",
     "og_terrain_load",

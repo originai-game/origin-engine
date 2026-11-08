@@ -42,6 +42,8 @@ pub const MAX_SWEEP_VALUES: usize = 64;
 pub const MAX_CAPTURE_EDGE: u32 = 4096;
 /// Snapshots kept by `snapshot`; the oldest is dropped beyond this.
 pub const MAX_SNAPSHOTS: usize = 16;
+/// The most entities `observe` reads of one component.
+pub const OBSERVE_ROWS: usize = 256;
 /// The most calls a `screenshot` or `sweep` value waits for a frame that
 /// lands on a later call (the web's readback) before it gives up.
 const MAX_CAPTURE_POLLS: u32 = 120;
@@ -83,6 +85,7 @@ pub const MEMBERS: &[&str] = &[
     "save_scene",
     "assertions",
     "assertion_events",
+    "observe",
     "pick_ui",
 ];
 
@@ -956,7 +959,10 @@ impl Probe {
             let exact = step.at * rate;
             let tick = now + exact.round() as u64;
             // Where in its tick the step falls: an input action's events carry it.
-            let within = (exact - exact.round()) as f32;
+            // A step written at a tick's time (`t/rate` in decimal) is at its
+            // start: the float error of the division is not a time within it.
+            let off = exact - exact.round();
+            let within = if off.abs() < 1e-6 { 0.0 } else { off as f32 };
             if !self.knows(&step.action) {
                 report.warnings.push(format!(
                     "{}s: unknown action '{}'; it is skipped unless registered before tick {tick} (`help` lists the actions)",

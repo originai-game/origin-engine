@@ -427,6 +427,40 @@ fn assertionEvents {
 
 <sub>Module `probe` line 734</sub>
 
+<a id="member-EngineProbe-observe"></a>
+
+#### `EngineProbe.observe`
+
+The game's reflected state as values: each of its resources' fields, and each of its components' fields on up to 256 entities by probe id (`{ tick, resources: { Score: { value } }, components: { Health: { hero: { hp } } } }`). Records names which (engine records too, `og.Transform`); empty is every record the game declared. What a search of the game's states abstracts its cells from (og explore).
+
+```ts
+EngineProbe.observe(records?: readonly string[] | null, types?: boolean): unknown
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `records` | `readonly string[] \| null` | yes | The records to read; null or empty: the game's own. |
+| `types` | `boolean` | yes | Also answer `types`: each of those records' kind (component, resource or event) and fields with their type, min, max and variants, the events among them. Default `false`. |
+
+**Returns** `unknown`.
+
+Binding symbol `og_engine_probe_observe` · publish builds: dropped
+
+```ogt
+fn observe {
+  doc "The game's reflected state as values: each of its resources' fields, and each of its components' fields on up to 256 entities by probe id (`{ tick, resources: { Score: { value } }, components: { Health: { hero: { hp } } } }`). Records names which (engine records too, `og.Transform`); empty is every record the game declared. What a search of the game's states abstracts its cells from (og explore)."
+  param records Option.List.String "The records to read; null or empty: the game's own." {
+    optional true
+  }
+  param types bool "Also answer `types`: each of those records' kind (component, resource or event) and fields with their type, min, max and variants, the events among them." {
+    default false
+  }
+  returns Json
+}
+```
+
+<sub>Module `probe` line 738</sub>
+
 <a id="member-EngineProbe-saveScene"></a>
 
 #### `EngineProbe.saveScene`
@@ -459,7 +493,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 738</sub>
+<sub>Module `probe` line 748</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -489,4 +523,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 748</sub>
+<sub>Module `probe` line 758</sub>

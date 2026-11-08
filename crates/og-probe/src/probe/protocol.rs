@@ -733,6 +733,81 @@ impl Probe {
         }))
     }
 
+    /// `observe`: the game's reflected state as values, by record: each
+    /// resource's fields, and each component's fields on up to
+    /// [`OBSERVE_ROWS`] entities by probe id. `records` names the records
+    /// (engine ones too); none is every record the game declared (a name
+    /// without the `og.` prefix). Events hold no state and are left out.
+    pub fn observe(&self, world: &World, records: Option<&[String]>, with_types: bool) -> Value {
+        let mut resources = Map::new();
+        let mut components = Map::new();
+        let mut types = Map::new();
+        for i in 0..world.type_count() {
+            let id = og_ecs::SchemaId::from_index(i as u32);
+            let Ok(schema) = world.schema(id) else {
+                continue;
+            };
+            let wanted = match records {
+                Some(r) => r.contains(&schema.name),
+                None => !schema.name.starts_with("og."),
+            };
+            if !wanted {
+                continue;
+            }
+            if with_types {
+                let fields: Vec<Value> = schema
+                    .fields
+                    .iter()
+                    .map(|f| {
+                        json!({ "name": f.name, "type": f.ty.name(), "min": f.min, "max": f.max, "variants": f.variants })
+                    })
+                    .collect();
+                types.insert(schema.name.clone(), json!({ "fields": fields }));
+            }
+            if world.has_resource_id(id) {
+                if let Some(v) = resource_json(world, &schema.name) {
+                    resources.insert(schema.name.clone(), v);
+                }
+                continue;
+            }
+            let sizes: Vec<usize> = schema.fields.iter().map(|f| f.ty.size()).collect();
+            let mut rows = Map::new();
+            world.scan_component(id, None, None, None, |entities, cols, _| {
+                for (row, &e) in entities.iter().enumerate() {
+                    if rows.len() >= OBSERVE_ROWS {
+                        return;
+                    }
+                    let mut bytes = Vec::new();
+                    for (k, size) in sizes.iter().enumerate() {
+                        bytes.extend_from_slice(&cols[k][row * size..(row + 1) * size]);
+                    }
+                    rows.insert(
+                        self.names.id_of(world, e),
+                        Value::Object(value::component_json(schema, &bytes)),
+                    );
+                }
+            });
+            if !rows.is_empty() {
+                components.insert(schema.name.clone(), Value::Object(rows));
+            }
+        }
+        // A record's kind: a resource is present, a component has rows; the
+        // host names the others (`Probe::observe`'s caller knows its layouts).
+        for (name, t) in types.iter_mut() {
+            if resources.contains_key(name) {
+                t["kind"] = json!("resource");
+            } else if components.contains_key(name) {
+                t["kind"] = json!("component");
+            }
+        }
+        let mut out =
+            json!({ "tick": world.time().tick, "resources": resources, "components": components });
+        if with_types {
+            out["types"] = Value::Object(types);
+        }
+        out
+    }
+
     /// `snapshot`: the whole world, kept in this process.
     pub fn snapshot(&mut self, world: &World) -> Value {
         let saved = self.save(world);

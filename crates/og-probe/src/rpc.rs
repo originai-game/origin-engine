@@ -364,6 +364,18 @@ impl Probe {
                 if take { a.take() } else { a.report() }
             }
             #[cfg(not(feature = "publish"))]
+            "observe" => {
+                let records: Option<Vec<String>> =
+                    p.get("records").and_then(Value::as_array).map(|a| {
+                        a.iter()
+                            .filter_map(Value::as_str)
+                            .map(str::to_owned)
+                            .collect()
+                    });
+                let types = p.get("types").and_then(Value::as_bool).unwrap_or(false);
+                self.observe(world, records.as_deref(), types)
+            }
+            #[cfg(not(feature = "publish"))]
             "assertion_events" => self.assertions.borrow_mut().take_events(),
             #[cfg(not(feature = "publish"))]
             "save_scene" => {

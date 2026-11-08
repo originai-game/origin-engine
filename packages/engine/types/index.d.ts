@@ -2321,11 +2321,69 @@ export interface GameDesc {
    */
   readonly migrations?: readonly SaveMigration[];
   /**
+   * How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from every button action and none of the intents. Read by the tool only; the engine and the world never see it.
+   *
+   * @default {}
+   */
+  readonly explore?: ExploreDesc;
+  /**
    * A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Left out or empty, project.ogt's `look "looks/<name>.ogt"` (the look whose art contract the cook reads) is applied when it has one, else none; the two naming different looks is refused (one value in two places).
    *
    * @default ""
    */
   readonly look?: string;
+}
+
+/**
+ * `og explore`'s view of a game (GameDesc.explore): the state its archive of cells abstracts and the inputs it perturbs from them. Every field is optional.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ExploreDesc {
+  /**
+   * The fields a cell reads, as `Record.field` or a whole `Record` (a resource or a component): what tells two states apart. Empty: every field of the game's own resources and components. A named entity's fields count by its name, unnamed entities as their number and each field's set of values. Numbers are bucketed (an integer up to 16 by value, a number within -1..1 in eighths, others by power of two, NaN and the infinities apart), bools, strings and enums by value. The time is a cell's too, in 64 slices of the search's horizon, unless `ignore` names `@tick`.
+   *
+   * @default []
+   */
+  readonly cells?: readonly string[];
+  /**
+   * Fields left out of cells (`Record.field` or `Record`): timers, counters and caches that make every state look new; `@tick` for a game whose state does not depend on when things happen.
+   *
+   * @default []
+   */
+  readonly ignore?: readonly string[];
+  /**
+   * The actions it presses, by name. Empty: every button action the game defines (og.input.actions), each by its first key or pad binding.
+   *
+   * @default []
+   */
+  readonly actions?: readonly string[];
+  /**
+   * The intents it sends (og.input.intent's events): the recorded input a UI's controls stand for. None by default.
+   *
+   * @default []
+   */
+  readonly intents?: readonly ExploreIntent[];
+}
+
+/**
+ * An intent `og explore` sends (ExploreDesc.intents).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ExploreIntent {
+  /**
+   * The event's name.
+   *
+   * @default ""
+   */
+  readonly event?: string;
+  /**
+   * The payloads to send, as objects of its fields. Empty: drawn from its reflection (each enum variant, a ranged integer's values, both bools, a ranged float's min, middle and max; other fields at their defaults).
+   *
+   * @default []
+   */
+  readonly values?: readonly unknown[];
 }
 
 /** A declared game, the bundle's default export. */
@@ -39682,6 +39740,7 @@ export interface UiActionHint {
  * - `"scroll"`: `scroll:dx,dy`: scroll at the pointer.
  * - `"touch"`: `touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.
  * - `"gamepad"`: `gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.
+ * - `"intent"`: `intent:<Event>[:<fields as JSON>]`: send a gameplay intent through og.input.intent's recorded input path for the next tick, its fields from the JSON object and the rest at their defaults (`intent:Buy:{"item":3}`).
  * - `"key_down"`: `key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl).
  * - `"key_up"`: `key_up:[Mod+]<Key>`: release a key, then the modifiers named before it.
  * - `"type"`: `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. The text runs to the `;` exactly, a trailing space included; after it a text field takes typed text only, so a bare key_down types nothing.
@@ -39710,7 +39769,7 @@ export interface UiActionHint {
  * - `"apply_prefab"`: `apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or one field; a field set at run time too) into its prefab's `.ogt` at the entity's node, and out of its scene's instance block, so the scene cooks to the same world and every other instance takes the values; with `base`, into a variant's base (docs/design.md §2.5, prefabs).
  * - `"revert_prefab"`: `revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's.
  */
-export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "invariant" | "save_scene" | "help" | "mouse_move" | "pointer_lock" | "apply_prefab" | "revert_prefab";
+export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "intent" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "invariant" | "save_scene" | "help" | "mouse_move" | "pointer_lock" | "apply_prefab" | "revert_prefab";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -40942,6 +41001,13 @@ export interface EngineProbe extends RuntimeProbe {
    * The assertions' stream since the last call: each site's first firing, each each-bucket's first holding and each site's first violation, with its tick, in the order they happened (at most 4,096 between calls; more are counted in dropped). A tool that steps a run reads it after each advance and stops at the first violation, instead of reading the whole report.
    */
   assertionEvents(): AssertEvents;
+  /**
+   * The game's reflected state as values: each of its resources' fields, and each of its components' fields on up to 256 entities by probe id (`{ tick, resources: { Score: { value } }, components: { Health: { hero: { hp } } } }`). Records names which (engine records too, `og.Transform`); empty is every record the game declared. What a search of the game's states abstracts its cells from (og explore).
+   *
+   * @param records The records to read; null or empty: the game's own.
+   * @param types Also answer `types`: each of those records' kind (component, resource or event) and fields with their type, min, max and variants, the events among them. Default `false`.
+   */
+  observe(records?: readonly string[] | null, types?: boolean): unknown;
   /**
    * Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.
    *

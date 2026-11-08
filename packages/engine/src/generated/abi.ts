@@ -1201,6 +1201,8 @@ export interface HostAbi<A, V> {
   og_engine_probe_assertions(engine_probe: number, take: boolean | undefined): string;
   /** `EngineProbe.assertionEvents` */
   og_engine_probe_assertion_events(engine_probe: number): string;
+  /** `EngineProbe.observe` */
+  og_engine_probe_observe(engine_probe: number, records: string | undefined, types: boolean | undefined): string;
   /** `EngineProbe.saveScene` */
   og_engine_probe_save_scene(engine_probe: number, write: boolean | undefined, spawned: boolean | undefined): string;
   /** `EngineProbe.pickUi` */
@@ -1924,6 +1926,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_probe_expectations",
   "og_engine_probe_assertions",
   "og_engine_probe_assertion_events",
+  "og_engine_probe_observe",
   "og_engine_probe_save_scene",
   "og_engine_probe_pick_ui",
   "og_terrain_load",

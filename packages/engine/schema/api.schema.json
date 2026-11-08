@@ -3014,7 +3014,9 @@
       "place": "root",
       "publish": true,
       "types": [
-        "GameDesc"
+        "GameDesc",
+        "ExploreDesc",
+        "ExploreIntent"
       ],
       "consts": [],
       "functions": [
@@ -17879,6 +17881,27 @@
               "publish": false
             },
             {
+              "name": "observe",
+              "doc": "The game's reflected state as values: each of its resources' fields, and each of its components' fields on up to 256 entities by probe id (`{ tick, resources: { Score: { value } }, components: { Health: { hero: { hp } } } }`). Records names which (engine records too, `og.Transform`); empty is every record the game declared. What a search of the game's states abstracts its cells from (og explore).",
+              "params": [
+                {
+                  "name": "records",
+                  "type": "Option<List<String>>",
+                  "optional": true,
+                  "doc": "The records to read; null or empty: the game's own."
+                },
+                {
+                  "name": "types",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Also answer `types`: each of those records' kind (component, resource or event) and fields with their type, min, max and variants, the events among them."
+                }
+              ],
+              "returns": "Json",
+              "publish": false
+            },
+            {
               "name": "saveScene",
               "doc": "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.",
               "params": [
@@ -21106,10 +21129,76 @@
           "description": "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.",
           "default": []
         },
+        "explore": {
+          "$ref": "#/$defs/ExploreDesc",
+          "description": "How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from every button action and none of the intents. Read by the tool only; the engine and the world never see it.",
+          "default": {}
+        },
         "look": {
           "type": "string",
           "description": "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Left out or empty, project.ogt's `look \"looks/<name>.ogt\"` (the look whose art contract the cook reads) is applied when it has one, else none; the two naming different looks is refused (one value in two places).",
           "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExploreDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "game",
+      "description": "`og explore`'s view of a game (GameDesc.explore): the state its archive of cells abstracts and the inputs it perturbs from them. Every field is optional.",
+      "type": "object",
+      "properties": {
+        "cells": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The fields a cell reads, as `Record.field` or a whole `Record` (a resource or a component): what tells two states apart. Empty: every field of the game's own resources and components. A named entity's fields count by its name, unnamed entities as their number and each field's set of values. Numbers are bucketed (an integer up to 16 by value, a number within -1..1 in eighths, others by power of two, NaN and the infinities apart), bools, strings and enums by value. The time is a cell's too, in 64 slices of the search's horizon, unless `ignore` names `@tick`.",
+          "default": []
+        },
+        "ignore": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields left out of cells (`Record.field` or `Record`): timers, counters and caches that make every state look new; `@tick` for a game whose state does not depend on when things happen.",
+          "default": []
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The actions it presses, by name. Empty: every button action the game defines (og.input.actions), each by its first key or pad binding.",
+          "default": []
+        },
+        "intents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExploreIntent"
+          },
+          "description": "The intents it sends (og.input.intent's events): the recorded input a UI's controls stand for. None by default.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExploreIntent": {
+      "x-og-kind": "desc",
+      "x-og-module": "game",
+      "description": "An intent `og explore` sends (ExploreDesc.intents).",
+      "type": "object",
+      "properties": {
+        "event": {
+          "type": "string",
+          "description": "The event's name.",
+          "default": ""
+        },
+        "values": {
+          "type": "array",
+          "items": {},
+          "description": "The payloads to send, as objects of its fields. Empty: drawn from its reflection (each enum variant, a ranged integer's values, both bools, a ranged float's min, middle and max; other fields at their defaults).",
+          "default": []
         }
       },
       "additionalProperties": false
@@ -68521,6 +68610,7 @@
         "scroll",
         "touch",
         "gamepad",
+        "intent",
         "key_down",
         "key_up",
         "type",
@@ -68559,6 +68649,7 @@
         "scroll": "`scroll:dx,dy`: scroll at the pointer.",
         "touch": "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.",
         "gamepad": "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.",
+        "intent": "`intent:<Event>[:<fields as JSON>]`: send a gameplay intent through og.input.intent's recorded input path for the next tick, its fields from the JSON object and the rest at their defaults (`intent:Buy:{\"item\":3}`).",
         "key_down": "`key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl).",
         "key_up": "`key_up:[Mod+]<Key>`: release a key, then the modifiers named before it.",
         "type": "`type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. The text runs to the `;` exactly, a trailing space included; after it a text field takes typed text only, so a bare key_down types nothing.",
