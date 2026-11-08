@@ -1483,6 +1483,11 @@ impl Ui {
                         })
                 });
         }
+        for (i, node) in self.nodes.iter_mut().enumerate() {
+            if let Some(previous) = k.prev.get(k.twin[i]) {
+                node.inherit_layout(previous, k.clean[i]);
+            }
+        }
         self.stats = LayoutStats {
             elements: n as u32,
             rebuilt,

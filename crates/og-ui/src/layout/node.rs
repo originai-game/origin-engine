@@ -430,6 +430,10 @@ pub(crate) struct Node {
     pub rows: Vec<(usize, usize)>,
     pub clip: Rect,
     pub rect: Rect,
+    /// Constraints and parent-relative position of the cached layout.
+    pub layout_size: [f32; 2],
+    pub layout_offset: [f32; 2],
+    pub layout_step: Option<TypeStep>,
 }
 
 impl Node {
@@ -491,7 +495,35 @@ impl Node {
             rows: Vec::new(),
             clip: Rect::default(),
             rect: Rect::default(),
+            layout_size: [0.0; 2],
+            layout_offset: [0.0; 2],
+            layout_step: None,
         }
+    }
+
+    /// Immediate builders import their prior layout once. Retained nodes
+    /// already own these outputs; layout never needs a second tree.
+    pub(crate) fn inherit_layout(&mut self, previous: &Self, clean: bool) {
+        self.w = previous.w;
+        self.h = previous.h;
+        self.x = previous.x;
+        self.y = previous.y;
+        self.layout_size = previous.layout_size;
+        self.layout_offset = previous.layout_offset;
+        if !clean {
+            return;
+        }
+        self.pref_w = previous.pref_w;
+        self.min_w = previous.min_w;
+        self.pref_h = previous.pref_h;
+        self.min_h = previous.min_h;
+        self.content_w = previous.content_w;
+        self.content_h = previous.content_h;
+        self.lines.clone_from(&previous.lines);
+        self.rich_lines.clone_from(&previous.rich_lines);
+        self.rows.clone_from(&previous.rows);
+        self.grid.clone_from(&previous.grid);
+        self.layout_step = previous.layout_step;
     }
 
     /// The scroll range: how far the content overflows the inner height.

@@ -261,13 +261,8 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
 }
 
 impl LayoutCache {
-    /// Node `i`'s twin when its layout inputs are clean.
-    fn clean_twin(&self, i: usize) -> Option<&Node> {
-        if *self.clean.get(i)? {
-            self.prev.get(*self.twin.get(i)?)
-        } else {
-            None
-        }
+    fn is_clean(&self, i: usize) -> bool {
+        self.clean.get(i).copied().unwrap_or(false)
     }
 }
 
@@ -338,16 +333,8 @@ pub(crate) fn layout(
         }
     }
     let order = preorder(nodes, root);
-    let twin_of = |kept: &LayoutCache, i: usize| -> Option<usize> {
-        kept.clean_twin(i)?;
-        kept.twin.get(i).copied()
-    };
     for &i in order.iter().rev() {
-        if let Some(t) = twin_of(kept, i) {
-            let p = &kept.prev[t];
-            nodes[i].pref_w = p.pref_w;
-            nodes[i].min_w = p.min_w;
-            nodes[i].grid = p.grid.clone();
+        if kept.is_clean(i) {
             if let Content::Text(t) = &nodes[i].content {
                 measure.texts.touch(t);
             }
@@ -367,26 +354,17 @@ pub(crate) fn layout(
     // A clean node at the width it had keeps its children's widths, its
     // lines and its tracks.
     let same_w = |nodes: &[Node], kept: &LayoutCache, i: usize| {
-        twin_of(kept, i).filter(|&t| kept.prev[t].w == nodes[i].w)
+        kept.is_clean(i) && nodes[i].layout_size[0] == nodes[i].w
     };
     let kids_of = |n: &Node| all_children(n);
     for &i in &order {
-        if let Some(t) = same_w(nodes, kept, i) {
-            let p = &kept.prev[t];
-            nodes[i].lines = p.lines.clone();
-            nodes[i].rich_lines = p.rich_lines.clone();
+        if same_w(nodes, kept, i) {
             // An auto-fit text keeps the step its lines were broken at.
-            if let (Content::Text(a), Content::Text(b)) = (&mut nodes[i].content, &p.content)
+            let step = nodes[i].layout_step;
+            if let (Content::Text(a), Some(step)) = (&mut nodes[i].content, step)
                 && !a.fit.is_empty()
             {
-                a.step = b.step;
-            }
-            nodes[i].rows = p.rows.clone();
-            nodes[i].grid = p.grid.clone();
-            for c in kids_of(&nodes[i]) {
-                if let Some(&tc) = kept.twin.get(c) {
-                    nodes[c].w = kept.prev[tc].w;
-                }
+                a.step = step;
             }
             continue;
         }
@@ -394,11 +372,7 @@ pub(crate) fn layout(
         distribute_w(nodes, i, measure);
     }
     for &i in order.iter().rev() {
-        if let Some(t) = same_w(nodes, kept, i) {
-            let p = &kept.prev[t];
-            nodes[i].pref_h = p.pref_h;
-            nodes[i].min_h = p.min_h;
-            nodes[i].content_h = p.content_h;
+        if same_w(nodes, kept, i) {
             continue;
         }
         size_h(nodes, i);
@@ -413,18 +387,10 @@ pub(crate) fn layout(
         }
     };
     let same_wh = |nodes: &[Node], kept: &LayoutCache, i: usize| {
-        same_w(nodes, kept, i).filter(|&t| kept.prev[t].h == nodes[i].h)
+        same_w(nodes, kept, i) && nodes[i].layout_size[1] == nodes[i].h
     };
     for &i in &order {
-        if let Some(t) = same_wh(nodes, kept, i) {
-            if let (Some(g), Some(pg)) = (nodes[i].grid.as_mut(), kept.prev[t].grid.as_ref()) {
-                g.rows = pg.rows.clone();
-            }
-            for c in kids_of(&nodes[i]) {
-                if let Some(&tc) = kept.twin.get(c) {
-                    nodes[c].h = kept.prev[tc].h;
-                }
-            }
+        if same_wh(nodes, kept, i) {
             continue;
         }
         distribute_h(nodes, i);
@@ -432,18 +398,10 @@ pub(crate) fn layout(
     nodes[root].x = area.x;
     nodes[root].y = area.y;
     for &i in &order {
-        if !nodes[i].scrolls()
-            && let Some(t) = same_wh(nodes, kept, i)
-        {
-            let p = &kept.prev[t];
-            let (px, py) = (p.x, p.y);
-            nodes[i].content_w = p.content_w;
+        if !nodes[i].scrolls() && same_wh(nodes, kept, i) {
             for c in kids_of(&nodes[i]) {
-                if let Some(&tc) = kept.twin.get(c) {
-                    let q = &kept.prev[tc];
-                    nodes[c].x = nodes[i].x + (q.x - px);
-                    nodes[c].y = nodes[i].y + (q.y - py);
-                }
+                nodes[c].x = nodes[i].x + nodes[c].layout_offset[0];
+                nodes[c].y = nodes[i].y + nodes[c].layout_offset[1];
             }
             continue;
         }
@@ -466,6 +424,17 @@ pub(crate) fn layout(
         nodes[i].clip = parent_clip;
         nodes[i].clip_src = src;
         nodes[i].rect = rect.snapped(dpr);
+        nodes[i].layout_size = [nodes[i].w, nodes[i].h];
+        nodes[i].layout_offset = if nodes[i].parent == NONE || i == root {
+            [0.0; 2]
+        } else {
+            let parent = &nodes[nodes[i].parent];
+            [nodes[i].x - parent.x, nodes[i].y - parent.y]
+        };
+        nodes[i].layout_step = match &nodes[i].content {
+            Content::Text(text) if !text.fit.is_empty() => Some(text.step),
+            _ => None,
+        };
         kept.measurements.observe(
             nodes[i].key,
             crate::ui::settlement::ContentBox {
