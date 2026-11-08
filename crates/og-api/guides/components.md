@@ -638,6 +638,9 @@ Its own props, beside every element's:
 | `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
 | `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
 | `-og-stepper:` | `none \| buttons` | A number input drawn as minus, its value and plus (`-og-stepper: buttons`). |
+| `-og-stepper-wrap:` | `none \| wrap` | A stepper past its max goes to its min and back (`-og-stepper-wrap: wrap`; needs both). |
+| `-og-stepper-large-step:` | `<number>` | What a held stepper button's repeats move by after a second (`-og-stepper-large-step: 10`); 0 is ten steps. |
+| `data-format` | `text` | How a stepper writes its value: an ICU message over `value` in the UI's locale (`data-format="{value, number} m"`, `{value, number, compact}`, `{value, plural, =0 {Off} =1 {Low} other {High}}`); empty writes the number. |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `suggestions` | `names` | A text input's suggestions, from the `<datalist>` its `list` names (its options' values, or its `items={$names}`): a list under the field while it has the focus, those containing the text first by prefix, choosing one writes it to the field. |
 | `value` | `text` | The field's text (written back). Two-way only with an explicit bind: attribute. |

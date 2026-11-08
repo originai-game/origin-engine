@@ -2514,11 +2514,6 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_number_stepper(id: String, value: f64, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_number_stepper(&Host, id, value, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_dropdown(id: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_dropdown(&Host, id, desc)
 }

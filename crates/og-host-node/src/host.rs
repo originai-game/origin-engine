@@ -1341,9 +1341,6 @@ impl UiApi for NodeHost {
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>) {
         rt::og_ui_label(id, text, desc)
     }
-    fn og_ui_number_stepper(&self, id: String, value: f64, desc: Option<String>) -> String {
-        rt::og_ui_number_stepper(id, value, desc)
-    }
     fn og_ui_dropdown(&self, id: String, desc: Option<String>) -> String {
         rt::og_ui_dropdown(id, desc)
     }

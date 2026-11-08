@@ -1126,6 +1126,16 @@ impl Ui {
                             min: r.num("min"),
                             max: r.num("max"),
                             step: r.num("stepBy").filter(|s| *s > 0.0).unwrap_or(1.0),
+                            large_step: styled.num("stepperLargeStep").unwrap_or(0.0),
+                            wrap: styled.str("stepperWrap") == Some("wrap"),
+                            format: crate::widgets::ValueFormat {
+                                message: r
+                                    .str("dataFormat")
+                                    .filter(|f| !f.is_empty())
+                                    .and_then(|f| og_i18n::Message::parse(f).ok()),
+                                locale: self.locale.clone(),
+                                ..Default::default()
+                            },
                             disabled: r.flag("disabled") || r.flag("readonly"),
                             width: r.size("width"),
                             ..Default::default()

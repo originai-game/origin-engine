@@ -1,9 +1,8 @@
-//! og.ui's controls (`api/ui-controls.ogt`): the number stepper and the
-//! dropdown, each og-ui's native control (docs/ui.md §2), their descs
-//! read from the JSON the API passes.
+//! og.ui's dropdown (`api/ui-controls.ogt`), og-ui's native control
+//! (docs/ui.md §2), its desc read from the JSON the API passes.
 
 use super::*;
-use og_ui::{DropdownDesc, DropdownOption, NumberStepperDesc, ValueFormat};
+use og_ui::{DropdownDesc, DropdownOption};
 
 fn text(v: &Value) -> String {
     v.as_str().unwrap_or_default().to_owned()
@@ -19,43 +18,6 @@ fn num(v: &Value) -> Option<f32> {
 
 fn items(v: &Value) -> &[Value] {
     v.as_array().map_or(&[], Vec::as_slice)
-}
-
-fn format(v: &Value) -> ValueFormat {
-    ValueFormat {
-        decimals: v["decimals"].as_i64().and_then(|d| usize::try_from(d).ok()),
-        unit: text(&v["unit"]),
-        percent: flag(&v["percent"]),
-        labels: items(&v["labels"]).iter().map(text).collect(),
-        digits: v["digits"]
-            .as_u64()
-            .and_then(|d| usize::try_from(d).ok())
-            .unwrap_or(0),
-    }
-}
-
-pub fn og_ui_number_stepper(id: String, value: f64, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let desc = NumberStepperDesc {
-        min: num(&d["min"]),
-        max: num(&d["max"]),
-        step: num(&d["step"]).unwrap_or(1.0),
-        large_step: num(&d["largeStep"]).unwrap_or(0.0),
-        label: text(&d["label"]),
-        format: format(&d["format"]),
-        wrap: flag(&d["wrap"]),
-        disabled: flag(&d["disabled"]),
-        width: size(&d["width"]),
-    };
-    let v = value as f32;
-    let r = with_ui("og.ui.numberStepper", |ui| {
-        ui.number_stepper(id.as_str(), v, &desc)
-    })
-    .unwrap_or(og_ui::NumberResult {
-        value: v,
-        changed: false,
-    });
-    json!({ "value": r.value, "changed": r.changed }).to_string()
 }
 
 pub fn og_ui_dropdown(id: String, desc: Option<String>) -> String {

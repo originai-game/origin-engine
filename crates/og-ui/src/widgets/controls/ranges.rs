@@ -27,12 +27,20 @@ pub struct ValueFormat {
     /// Whole digits shown, zero-padded and not grouped (a clock's `05`, a
     /// year's `2026`); 0 groups thousands.
     pub digits: usize,
+    /// An ICU message over `value` that writes it in `locale`
+    /// (`{value, number} m`); it wins over the rest.
+    pub message: Option<og_i18n::Message>,
+    pub locale: String,
 }
 
 impl ValueFormat {
     /// A number as a slider or stepper shows it: a level's word, a
     /// percent, or the number with its unit.
     pub fn show(&self, value: f32, min: f32, step: f32) -> String {
+        if let Some(m) = &self.message {
+            let args = [("value".to_string(), og_i18n::Arg::Num(f64::from(value)))];
+            return m.format(&self.locale, &args.into_iter().collect());
+        }
         let k = (value - min).round();
         if k >= 0.0 && (k as usize) < self.labels.len() {
             return self.labels[k as usize].clone();

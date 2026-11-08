@@ -1625,6 +1625,16 @@ impl Parser {
                 ));
             }
             if internal == "field"
+                && a.name == "data-format"
+                && !a.bound
+                && let Err(e) = og_i18n::Message::parse(&a.value)
+            {
+                return Err((
+                    a.at,
+                    format!("data-format \"{}\" is not a message: {e}", a.value),
+                ));
+            }
+            if internal == "field"
                 && let Some(html) = match a.name.as_str() {
                     "max-chars" | "maxChars" => Some("maxlength"),
                     "min-chars" | "minChars" => Some("minlength"),

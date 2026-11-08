@@ -198,10 +198,6 @@ module ui {
 | [`og.ui.emitter`](ui/fn-emitter.md) | function | `(id: string, desc?: EmitterDesc): void` | An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. |
 | [`EffectLayerDesc`](ui/type-EffectLayerDesc.md) | desc struct |  | A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`. |
 | [`og.ui.effectLayer`](ui/fn-effectLayer.md) | function | `(id: string, desc: EffectLayerDesc, build: UiBuild): void` | A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hi… |
-| [`ValueFormat`](ui/type-ValueFormat.md) | desc struct |  | How a control shows a number. |
-| [`NumberStepperDesc`](ui/type-NumberStepperDesc.md) | desc struct |  | A number stepper: minus, the value and plus. |
-| [`NumberResult`](ui/type-NumberResult.md) | struct |  | A stepper's value after this tick. |
-| [`og.ui.numberStepper`](ui/fn-numberStepper.md) | function | `(id: string, value: number, desc?: NumberStepperDesc): NumberResult` | A number stepper: minus, the value and plus. |
 | [`DropdownOption`](ui/type-DropdownOption.md) | desc struct |  | One option of a dropdown. |
 | [`DropdownDesc`](ui/type-DropdownDesc.md) | desc struct |  | A dropdown: its options, label and states. |
 | [`DropdownResult`](ui/type-DropdownResult.md) | struct |  | A dropdown's state after this tick. |
@@ -425,7 +421,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 3130</sub>
+<sub>Module `ui` line 3087</sub>
 
 ```ogt
 column UiMaterial {
@@ -436,4 +432,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 3137</sub>
+<sub>Module `ui` line 3094</sub>

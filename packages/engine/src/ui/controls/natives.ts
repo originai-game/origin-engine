@@ -16,10 +16,6 @@ function abi(): NonNullable<ReturnType<typeof boundHost>>["abi"] {
 const parse = <T>(text: string): T => JSON.parse(text) as T;
 const json = (value: unknown): string | undefined => (value === undefined ? undefined : JSON.stringify(value));
 
-export function numberStepper(id: string, value: number, desc?: Api.NumberStepperDesc): Api.NumberResult {
-  return parse(abi().og_ui_number_stepper(id, value, json(desc)));
-}
-
 export function dropdown(id: string, desc?: Api.DropdownDesc): Api.DropdownResult {
   return parse(abi().og_ui_dropdown(id, json(desc)));
 }

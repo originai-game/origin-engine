@@ -102,7 +102,6 @@ test("foundations: an effect layer shows what it holds; a view frame turns by a 
 test("every control: on a coarse pointer each target a finger presses is at least 44 px (or reaches it by its hit slop)", () => {
   // Wrong: a 28 px stepper arrow or clear button a thumb misses.
   const engine = run(() => {
-    og.ui.numberStepper("Step", 1, { label: "Step" });
     og.ui.inputField("Field", "", { label: "Field", clearable: true });
     og.ui.dropdown("Drop", { label: "Drop", options: [{ label: "A" }] });
   }, 360);
@@ -123,24 +122,6 @@ test("every control: on a coarse pointer each target a finger presses is at leas
     engine.advance(6);
   }
 });
-
-test("numberStepper: the buttons step to the bounds and disable there; typed text is not needed", () => {
-  // Wrong: going past max, or leaving + enabled at max.
-  let v = 8;
-  const engine = run(() => {
-    v = og.ui.numberStepper("Players", v, { label: "Players", min: 1, max: 10, step: 1 }).value;
-  });
-  // On a fine pointer + is the pointer's shortcut for Right on the focused stepper: a named image to the pad graph.
-  const plus = find(engine, (e) => e.name.startsWith("Increase"))!;
-  expect(plus.role).toBe("image");
-  tap(engine, plus.path);
-  tap(engine, plus.path);
-  tap(engine, plus.path);
-  expect(v).toBe(10);
-  expect(find(engine, (e) => e.name.startsWith("Increase"))!.disabled).toBeTrue();
-});
-
-// ── fields and pickers ──────────────────────────────────────────────────
 
 test("inputField: an error marks it invalid with its message described, the clear button empties it", () => {
   let value = "Arthur";
@@ -186,7 +167,6 @@ test("dropdown: a tap opens the list with the focus on the chosen option, a tap 
 
 /** The controls a settings or a shop screen holds, labelled through `l` (the pseudo-locale's longer words). */
 function gallery(l: (s: string) => string): void {
-  og.ui.numberStepper("Players", 2, { label: l("Players"), min: 1, max: 8 });
   og.ui.inputField("Name", "", { label: l("Hero name"), placeholder: l("Type a name"), helper: l("Shown to other players") });
   og.ui.dropdown("Lang", { label: l("Language"), selected: 0, options: [{ label: "English" }, { label: "日本語" }] });
 }

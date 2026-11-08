@@ -209,6 +209,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("centerY", "-og-center-y"),
     ("anchorTo", "-og-anchor"),
     ("stepper", "-og-stepper"),
+    ("stepperWrap", "-og-stepper-wrap"),
+    ("stepperLargeStep", "-og-stepper-large-step"),
     ("countDuration", "-og-count-duration"),
     ("countDecimals", "-og-count-decimals"),
     ("reveal", "-og-reveal"),
@@ -452,13 +454,14 @@ fn conv(prop: &str) -> Conv {
         | "cornerBottomLeftShape" => Conv::Raw,
         "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop" => Conv::Len,
-        "aspect" | "opacity" | "z" | "scale" | "maxLines" | "fillOrigin" | "minGap" => Conv::Num,
+        "aspect" | "opacity" | "z" | "scale" | "maxLines" | "fillOrigin" | "minGap"
+        | "stepperLargeStep" => Conv::Num,
         "rotate" => Conv::Angle,
         "background" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
         | "textAlign" | "verticalAlign" | "captionSide" | "fit" | "display" | "markerType"
         | "markerPosition" | "userSelect" | "appearance" | "labelDirection" | "stepper"
-        | "selectAppearance" => Conv::Kebab,
+        | "stepperWrap" | "selectAppearance" => Conv::Kebab,
         "countDuration" | "countDecimals" | "reveal" => Conv::Num,
         "spotlight" => Conv::Ident,
         "wrap" => Conv::Bool("wrap", "nowrap"),

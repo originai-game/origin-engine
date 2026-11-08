@@ -27325,115 +27325,6 @@ export interface EffectLayerDesc {
 
 
 /**
- * How a control shows a number.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ValueFormat {
-  /**
-   * Decimals; -1 follows the step (1 → 0, 0.5 → 1, 0.05 → 2).
-   *
-   * @default -1
-   */
-  readonly decimals?: number;
-  /**
-   * Written after it (`%`, ` m`, `×`); empty for none.
-   *
-   * @default ""
-   */
-  readonly unit?: string;
-  /**
-   * Show 0–1 as a whole percent.
-   *
-   * @default false
-   */
-  readonly percent?: boolean;
-  /**
-   * Words for whole values from min (`Off`, `Low`, `Medium`, `High`): a setting's levels.
-   *
-   * @default []
-   */
-  readonly labels?: readonly string[];
-  /**
-   * Whole digits shown, zero-padded and not grouped (a clock's `05`, a year's `2026`); 0 groups thousands (`1,234`).
-   *
-   * @default 0
-   */
-  readonly digits?: number;
-}
-
-/**
- * A number stepper: minus, the value and plus.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface NumberStepperDesc {
-  /**
-   * The least value; null is unbounded.
-   *
-   * @default null
-   */
-  readonly min?: number | null;
-  /**
-   * The most; null is unbounded.
-   *
-   * @default null
-   */
-  readonly max?: number | null;
-  /**
-   * What each press adds or takes.
-   *
-   * @default 1
-   */
-  readonly step?: number;
-  /**
-   * What a held press's repeats move by after a second; 0 is ten steps.
-   *
-   * @default 0
-   */
-  readonly largeStep?: number;
-  /**
-   * Its name, before it in its row; empty for none.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-  /**
-   * How its value reads.
-   *
-   * @default {}
-   */
-  readonly format?: ValueFormat;
-  /**
-   * Past max it goes to min and back (needs both).
-   *
-   * @default false
-   */
-  readonly wrap?: boolean;
-  /**
-   * Shown but inert.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-  /**
-   * Its width; null fits.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-}
-
-/** A stepper's value after this tick. */
-export interface NumberResult {
-  /** The value, to keep and pass back. */
-  readonly value: number;
-  /** It changed this tick. */
-  readonly changed: boolean;
-}
-
-
-/**
  * One option of a dropdown.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -40986,14 +40877,6 @@ export declare namespace og {
      * @param build Builds what it draws.
      */
     function effectLayer(id: string, desc: EffectLayerDesc, build: UiBuild): void;
-    /**
-     * A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Its label and the buttons share a line while they fit, the buttons go under the label when they do not (larger text, a narrow column). Role spinbutton with its range; its − and + are buttons under a finger (stops keys and pads reach too) and named images on a fine pointer (Left and Right on the focused stepper are theirs). Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`.
-     *
-     * @param id Its id.
-     * @param value The value from game state.
-     * @param desc Its range, step and look.
-     */
-    function numberStepper(id: string, value: number, desc?: NumberStepperDesc): NumberResult;
     /**
      * A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes the focus at the chosen option, with groups, icons, descriptions, a tick on the chosen and a filter past 10 options. A press, Enter, Space or A opens it and chooses; Back, Escape or a press outside closes it and the focus returns to the trigger. Plays open, select and close. Parts: `Dropdown.trigger[open][invalid][hover|pressed|focused|disabled]`, `Dropdown.list`, `Dropdown.option[selected][hover|focused|disabled]`, `Dropdown.group`. Role combobox (expanded while open) and a listbox of options. Probe: `<id>/Trigger`, `<id>.list/List/Option#i`.
      *

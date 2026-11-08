@@ -12010,9 +12010,6 @@
         "EmitterPreset",
         "EmitterDesc",
         "EffectLayerDesc",
-        "ValueFormat",
-        "NumberStepperDesc",
-        "NumberResult",
         "DropdownOption",
         "DropdownDesc",
         "DropdownResult",
@@ -13470,32 +13467,6 @@
           "returns": "Void",
           "publish": true,
           "host": false
-        },
-        {
-          "name": "numberStepper",
-          "doc": "A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Its label and the buttons share a line while they fit, the buttons go under the label when they do not (larger text, a narrow column). Role spinbutton with its range; its − and + are buttons under a finger (stops keys and pads reach too) and named images on a fine pointer (Left and Right on the focused stepper are theirs). Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "value",
-              "type": "f32",
-              "optional": false,
-              "doc": "The value from game state."
-            },
-            {
-              "name": "desc",
-              "type": "NumberStepperDesc",
-              "optional": true,
-              "doc": "Its range, step and look."
-            }
-          ],
-          "returns": "NumberResult",
-          "publish": true
         },
         {
           "name": "dropdown",
@@ -49426,143 +49397,6 @@
           "default": []
         }
       },
-      "additionalProperties": false
-    },
-    "ValueFormat": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "How a control shows a number.",
-      "type": "object",
-      "properties": {
-        "decimals": {
-          "type": "integer",
-          "minimum": -2147483648,
-          "maximum": 2147483647,
-          "description": "Decimals; -1 follows the step (1 → 0, 0.5 → 1, 0.05 → 2).",
-          "default": -1
-        },
-        "unit": {
-          "type": "string",
-          "description": "Written after it (`%`, ` m`, `×`); empty for none.",
-          "default": ""
-        },
-        "percent": {
-          "type": "boolean",
-          "description": "Show 0–1 as a whole percent.",
-          "default": false
-        },
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Words for whole values from min (`Off`, `Low`, `Medium`, `High`): a setting's levels.",
-          "default": []
-        },
-        "digits": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "Whole digits shown, zero-padded and not grouped (a clock's `05`, a year's `2026`); 0 groups thousands (`1,234`).",
-          "default": 0
-        }
-      },
-      "additionalProperties": false
-    },
-    "NumberStepperDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A number stepper: minus, the value and plus.",
-      "type": "object",
-      "properties": {
-        "min": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The least value; null is unbounded.",
-          "default": null
-        },
-        "max": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The most; null is unbounded.",
-          "default": null
-        },
-        "step": {
-          "type": "number",
-          "description": "What each press adds or takes.",
-          "default": 1
-        },
-        "largeStep": {
-          "type": "number",
-          "description": "What a held press's repeats move by after a second; 0 is ten steps.",
-          "default": 0
-        },
-        "label": {
-          "type": "string",
-          "description": "Its name, before it in its row; empty for none.",
-          "default": ""
-        },
-        "format": {
-          "$ref": "#/$defs/ValueFormat",
-          "description": "How its value reads.",
-          "default": {}
-        },
-        "wrap": {
-          "type": "boolean",
-          "description": "Past max it goes to min and back (needs both).",
-          "default": false
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "Shown but inert.",
-          "default": false
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null fits.",
-          "default": null
-        }
-      },
-      "additionalProperties": false
-    },
-    "NumberResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A stepper's value after this tick.",
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "number",
-          "description": "The value, to keep and pass back."
-        },
-        "changed": {
-          "type": "boolean",
-          "description": "It changed this tick."
-        }
-      },
-      "required": [
-        "value",
-        "changed"
-      ],
       "additionalProperties": false
     },
     "DropdownOption": {

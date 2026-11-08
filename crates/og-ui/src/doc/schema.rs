@@ -1441,6 +1441,24 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "A number input drawn as minus, its value and plus (`-og-stepper: buttons`)."
     ),
     p!(
+        "stepperWrap",
+        Ty::Word(&["none", "wrap"]),
+        ["field"],
+        "A stepper past its max goes to its min and back (`-og-stepper-wrap: wrap`; needs both)."
+    ),
+    p!(
+        "stepperLargeStep",
+        Ty::Num,
+        ["field"],
+        "What a held stepper button's repeats move by after a second (`-og-stepper-large-step: 10`); 0 is ten steps."
+    ),
+    p!(
+        "dataFormat",
+        Ty::Text,
+        ["field"],
+        "How a stepper writes its value: an ICU message over `value` in the UI's locale (`data-format=\"{value, number} m\"`, `{value, number, compact}`, `{value, plural, =0 {Off} =1 {Low} other {High}}`); empty writes the number."
+    ),
+    p!(
         "count",
         Ty::Num,
         ["label"],

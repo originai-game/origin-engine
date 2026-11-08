@@ -1004,13 +1004,15 @@ fn core_controls_choose_step_hold_and_report() {
   <label><input type="checkbox" switch id="Sw" data-on="On" data-off="Off"> Switch</label>
   <label><input type="radio" id="Easy" name="lv" value="easy" bind:group={$level}> Easy</label>
   <label><input type="radio" id="Hard" name="lv" value="hard" bind:group={$level}> Hard</label>
-  <input type="number" id="Qty" class="stepper" max="3" bind:value={$qty}>
+  <input type="number" id="Qty" class="stepper" max="3" data-format="{value, number} m" bind:value={$qty}>
+  <input type="number" id="Lv" class="stepper wrap" min="0" max="2" bind:value={$lv}>
   <menu id="Menu"><button id="Copy">Copy</button></menu>
   <button id="Buy" onhold={buy} data-hold="300" oncontextmenu={more}>Buy</button>
   <details id="More" summary="More" ontoggle={toggled}><p>x</p></details>
 </div>
 <style>
 .stepper { -og-stepper: buttons; }
+.wrap { -og-stepper-wrap: wrap; }
 #Page { gap: 8px; padding: 8px; }
 #Buy::-og-hold { background: #ff0000; }
 </style>"#;
@@ -1018,6 +1020,7 @@ fn core_controls_choose_step_hold_and_report() {
         ("box", json!(false)),
         ("level", json!("easy")),
         ("qty", json!("2")),
+        ("lv", json!("2")),
     ];
     let d = &mut Doc::new(text, &stores, true);
     for _ in 0..5 {
@@ -1047,6 +1050,15 @@ fn core_controls_choose_step_hold_and_report() {
     d.click_at(at);
     d.click_at(at);
     assert_eq!(d.read("qty"), json!("3"), "steps to max and stops");
+    assert_eq!(d.get("Qty/Frame/Value/Text").text, "3 m", "data-format writes it");
+    // -og-stepper-wrap goes past max to min.
+    let plus =
+        d.ui.probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/Lv/Frame/Inc"))
+            .expect("the wrapping stepper's plus");
+    d.click_at(Vec2::new(plus.x + plus.width / 2.0, plus.y + plus.height / 2.0));
+    assert_eq!(d.read("lv"), json!("0"), "wraps past max to min");
     assert_eq!(d.a11y("Copy").role, "menuitem");
     // Hold: fires once, after 300 ms, not at once.
     let buy = d.get("Buy");

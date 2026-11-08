@@ -41,7 +41,7 @@ pub use widgets::{
     og_ui_rich_text, og_ui_screen_transition, og_ui_text_area, og_ui_text_field, og_ui_zoom_view,
 };
 mod controls;
-pub use controls::{og_ui_dropdown, og_ui_number_stepper};
+pub use controls::og_ui_dropdown;
 mod game_widgets;
 use crate::{art, assets, extract, ui_draw};
 pub(crate) use game_widgets::a11y_json;
