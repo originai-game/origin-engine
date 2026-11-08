@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "UI documents: SVG <use>, <symbol>, <clipPath>, <mask>, <pattern>, <image> and <title>",
+      "summary": "<use href> draws a copy of a symbol (its viewBox fitted by preserveAspectRatio), group or shape that inherits the use's presentation attributes; clip-path and mask cut groups and shapes (a mask of one gradient-filled shape fades); a <pattern> fill tiles its shapes; <image href> draws an atlas image icon or a render texture in its rect; <title> names its parent for assistive technology and binds. Rect, circle and ellipse clips are native; a clip to paths draws uncut with a warning."
+    },
+    {
+      "member": "og-ui: ElementDraw.view_rect",
+      "summary": "With a view box, the sub-rect its non-path shape, clip and paints fill, in view-box units."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og-ui: a layered view-box draw",
+      "summary": "A masked or material layer of an element drawn through a view box composited through its unfitted shape; it now uses the fitted geometry, and a gradient mask in view-box units is fitted as a fill gradient is."
+    }
+  ]
+}

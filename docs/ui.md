@@ -402,9 +402,35 @@ dashes scale with it, as in browsers. Each shape is one element: its fill
 is an analytic path in og-render's UI pass and its subpaths are its stroked
 outlines, so a shape whose bound attribute changes is drawn again and
 nothing else is, and a box that only resizes places the same draws again.
-The parser is the cook's (`og_ui::svg`, shared with `type vector`); text,
-`<use>`, clips, masks, filters and patterns are refused with the element
-named. A dash array takes one dash and one gap. Cost: re-tessellating one
+The parser is the cook's (`og_ui::svg`, shared with `type vector`).
+
+Definitions are referenced by `#id`, as in browsers:
+- `<use href="#id" x y width height>` draws a copy of a `<symbol>` (its
+  `viewBox` fitted into the width and height by `preserveAspectRatio`), a
+  group or a shape. The copy is made when the document is parsed, so it
+  inherits the use's presentation attributes and its own attributes bind
+  as the original's do. A bound `x` on a use costs the use and its copy.
+- `clip-path="url(#id)"` on a group or a shape cuts it to a `<clipPath>`'s
+  shapes. `mask="url(#id)"` cuts it to a `<mask>`'s white shapes, or fades
+  it through a mask of one gradient-filled shape (luminance times alpha, as
+  SVG masks). og-render clips natively to one rect, circle or ellipse under
+  an axis-aligned transform. A clip to paths or to a turned shape draws
+  uncut, with a warning, until og-render clips to paths.
+- `fill="url(#id)"` naming a `<pattern>` tiles its shapes over a rect,
+  circle or ellipse, with `patternUnits`, `patternTransform` and
+  `viewBox`. The tiles of each shape are one path, at most 4096 tiles.
+- `<title>` names its parent for assistive technology, as `aria-label`
+  does, and can bind (`<title>{$label}</title>`). A named `<svg>` is an
+  image. `<desc>` is dropped.
+
+`<image href x y width height preserveAspectRatio>` draws an atlas image
+icon by name (`href="gem"`) or a render texture by handle
+(`href={$target}`), filling its rect (contained by default, `slice`
+covers, `none` stretches); it takes no turn or skew.
+
+Definition attributes (gradients, clips, masks, patterns) are literal.
+Text and filters are refused with the element named; a dash array takes
+one dash and one gap. Cost: re-tessellating one
 dashed ring as a cooked vector takes 438 µs and 840 vertices; changing a
 bound attribute on one of 64 inline rings costs 69–150 µs of the frame
 (dev profile), and unchanged shapes cost nothing.

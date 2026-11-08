@@ -36,9 +36,14 @@ pub const KINDS: &[KindSpec] = &[
         doc: "An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable.",
     },
     KindSpec {
+        name: "svgUse",
+        container: true,
+        doc: "SVG's `<use href=\"#id\" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height.",
+    },
+    KindSpec {
         name: "svgDef",
         container: true,
-        doc: "An SVG definition (`<defs>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`): not drawn; shapes reference gradients with `url(#id)`.",
+        doc: "An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent.",
     },
 ];
 
@@ -61,6 +66,7 @@ pub(super) fn tags(kind: &str) -> Option<Vec<(String, String)>> {
             "<svg id=\"Name\" viewBox=\"0 0 40 40\">…</svg>",
         ),
         "svgGroup" => one("g", "<g transform=\"rotate(-90 20 20)\" stroke=\"var(--accent)\">…</g>"),
+        "svgUse" => one("use", "<use href=\"#Coin\" x={i * 12} y=\"0\" width=\"10\" height=\"10\" />"),
         "svgShape" => Some(vec![
             ("path".into(), "<path d={$line} fill=\"none\" stroke=\"currentColor\" />".into()),
             ("circle".into(), "<circle cx=\"20\" cy=\"20\" r=\"18\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset={1 - $ready} />".into()),
@@ -70,6 +76,9 @@ pub(super) fn tags(kind: &str) -> Option<Vec<(String, String)>> {
         "svgDef" => Some(vec![(
             "linearGradient".into(),
             "<linearGradient id=\"Up\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#fff\" />…</linearGradient> (radialGradient, defs)".into(),
+        ), (
+            "symbol".into(),
+            "<symbol id=\"Coin\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"10\" /></symbol> (clipPath, mask, pattern, title)".into(),
         )]),
         _ => None,
     }
@@ -115,6 +124,14 @@ const SVG_ATTRS: &[(&str, &str)] = &[
     ("gradientTransform", "svgGradientTransform"),
     ("spreadMethod", "svgSpreadMethod"),
     ("href", "svgHref"),
+    ("clip-path", "svgClipPath"),
+    ("mask", "svgMask"),
+    ("clipPathUnits", "svgClipPathUnits"),
+    ("maskContentUnits", "svgMaskContentUnits"),
+    ("patternUnits", "svgPatternUnits"),
+    ("patternContentUnits", "svgPatternContentUnits"),
+    ("patternTransform", "svgPatternTransform"),
+    ("preserveAspectRatio", "svgPreserveAspectRatio"),
 ];
 
 /// The prop SVG's attribute `attr` sets.
@@ -127,8 +144,9 @@ pub(super) fn svg_attr(prop: &str) -> Option<&'static str> {
     SVG_ATTRS.iter().find(|(_, p)| *p == prop).map(|(a, _)| *a)
 }
 
-const ALL: On = On::Kinds(&["svg", "svgGroup", "svgShape", "svgDef"]);
-const SHAPES: On = On::Kinds(&["svgShape"]);
+const ALL: On = On::Kinds(&["svg", "svgGroup", "svgShape", "svgUse", "svgDef"]);
+const SHAPES: On = On::Kinds(&["svgShape", "svgUse"]);
+const PAINTED: On = On::Kinds(&["svgGroup", "svgShape", "svgUse"]);
 const DEFS: On = On::Kinds(&["svgDef"]);
 
 macro_rules! svg {
@@ -230,7 +248,7 @@ pub const PROPS: &[PropSpec] = &[
     },
     svg!(
         "svgViewBox",
-        On::Kinds(&["svg"]),
+        On::Kinds(&["svg", "svgDef"]),
         "SVG `viewBox`: the user space `min-x min-y width height` its box shows."
     ),
     svg!(
@@ -273,8 +291,12 @@ pub const PROPS: &[PropSpec] = &[
     svg!("svgD", SHAPES, "A `<path>`'s path data."),
     svg!("svgX", ALL, "SVG `x`."),
     svg!("svgY", ALL, "SVG `y`."),
-    svg!("svgWidth", SHAPES, "A `<rect>`'s `width`."),
-    svg!("svgHeight", SHAPES, "A `<rect>`'s `height`."),
+    svg!(
+        "svgWidth",
+        ALL,
+        "SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`)."
+    ),
+    svg!("svgHeight", ALL, "SVG `height`."),
     svg!("svgRx", SHAPES, "SVG `rx`."),
     svg!("svgRy", SHAPES, "SVG `ry`."),
     svg!("svgCx", ALL, "SVG `cx`."),
@@ -303,7 +325,35 @@ pub const PROPS: &[PropSpec] = &[
     svg!("svgSpreadMethod", DEFS, "A gradient's `spreadMethod`."),
     svg!(
         "svgHref",
+        On::Kinds(&["svgDef", "svgUse", "svgShape"]),
+        "SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from."
+    ),
+    svg!(
+        "svgClipPath",
+        PAINTED,
+        "SVG `clip-path=\"url(#id)\"`: the `<clipPath>` whose shapes cut it."
+    ),
+    svg!(
+        "svgMask",
+        PAINTED,
+        "SVG `mask=\"url(#id)\"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape)."
+    ),
+    svg!("svgClipPathUnits", DEFS, "A clip path's `clipPathUnits`."),
+    svg!("svgMaskContentUnits", DEFS, "A mask's `maskContentUnits`."),
+    svg!("svgPatternUnits", DEFS, "A pattern's `patternUnits`."),
+    svg!(
+        "svgPatternContentUnits",
         DEFS,
-        "A gradient's `href`: the gradient it takes its stops from."
+        "A pattern's `patternContentUnits`."
+    ),
+    svg!(
+        "svgPatternTransform",
+        DEFS,
+        "A pattern's `patternTransform`."
+    ),
+    svg!(
+        "svgPreserveAspectRatio",
+        On::Kinds(&["svg", "svgDef", "svgShape"]),
+        "SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`."
     ),
 ];

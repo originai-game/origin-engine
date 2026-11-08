@@ -59,6 +59,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
             return Err((0, "add one root UI element".into()));
         }
         p.join_labels()?;
+        super::extern_element::finish(&mut p.doc, &mut p.selectors).map_err(|e| (0, e))?;
         super::stylesheet::apply(&mut p.doc, &p.selectors, &p.styles)?;
         let mut errors = Vec::new();
         p.doc.check(&mut errors);

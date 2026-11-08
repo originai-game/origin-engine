@@ -609,6 +609,11 @@ pub struct ElementDraw {
     /// its box when it is drawn as SVG's `xMidYMid meet` fits it: stroke
     /// widths and dashes scale with it. `None`: CSS px from its top left.
     pub view_box: Option<[f32; 4]>,
+    /// With a view box: the sub-rect `[x, y, width, height]` of it, in its
+    /// units, that its shape (other than a path), clip and paints fill
+    /// instead of the whole box (an SVG `<image>`, a rect or ellipse
+    /// clip); a rect's radii are then view-box units too.
+    pub view_rect: Option<[f32; 4]>,
 }
 
 /// A playing artboard as an element's draw. Two are equal when they play
@@ -646,6 +651,7 @@ impl Default for ElementDraw {
             rive: None,
             outlines: Vec::new(),
             view_box: None,
+            view_rect: None,
         }
     }
 }
@@ -684,6 +690,23 @@ impl ElementDraw {
         ))
     }
 
+    /// The rect its shape fills in `at`: its view rect through the view
+    /// box's fit, else the box.
+    fn frame(&self, at: &Placed) -> Rect {
+        match (self.fit(at), self.view_rect) {
+            (Some((k, mid, half)), Some([x, y, w, h])) => {
+                let o = (Vec2::new(x, y) - mid) * k + half;
+                Rect {
+                    x: at.rect.x + o.x,
+                    y: at.rect.y + o.y,
+                    width: w * k,
+                    height: h * k,
+                }
+            }
+            _ => at.rect,
+        }
+    }
+
     /// `kind`'s geometry placed in `at`, through the view box when it has one.
     fn geometry(&self, kind: &ShapeKind, at: &Placed) -> og_render::UiGeometry {
         let size = [at.rect.width, at.rect.height];
@@ -716,7 +739,18 @@ impl ElementDraw {
                 join: *join,
             }
             .geometry(at.radius, size),
-            other => other.geometry(at.radius, size),
+            ShapeKind::Rect {
+                radii: Some(r),
+                corner,
+            } if self.view_rect.is_some() => ShapeKind::Rect {
+                radii: Some(r.map(|v| v * k)),
+                corner: *corner,
+            }
+            .geometry(at.radius, size),
+            other => {
+                let f = self.frame(at);
+                other.geometry(at.radius, [f.width, f.height])
+            }
         }
     }
 
@@ -755,7 +789,11 @@ impl ElementDraw {
         opacity: f32,
         blend: Blend,
     ) -> DrawCmd {
-        let r = at.rect;
+        let r = if matches!(kind, ShapeKind::Path { .. }) {
+            at.rect
+        } else {
+            self.frame(at)
+        };
         DrawCmd::Shape {
             shape: Box::new(og_render::UiShape {
                 geometry: self.geometry(kind, at),
@@ -804,8 +842,12 @@ impl ElementDraw {
                 },
             };
             let mask = match &self.clip {
+                // Written in view-box units, it is fitted as a fill is.
                 Clip::Mask(Mask::Gradient(g)) => {
-                    Some(og_render::UiMask::Gradient(g.resolve(theme)))
+                    match self.paint(&Paint::Gradient(g.clone()), theme, at) {
+                        og_render::UiPaint::Gradient(g) => Some(og_render::UiMask::Gradient(g)),
+                        _ => None,
+                    }
                 }
                 Clip::Mask(Mask::Image { texture, uv }) => Some(og_render::UiMask::Image {
                     texture: *texture,
@@ -985,7 +1027,11 @@ impl ElementDraw {
         if self.clip != Clip::Shape {
             return Vec::new();
         }
-        let r = at.rect;
+        let r = if matches!(self.shape, ShapeKind::Path { .. }) {
+            at.rect
+        } else {
+            self.frame(at)
+        };
         vec![DrawCmd::PushClip {
             geometry: self.geometry(&self.shape, at),
             center: (r.x + r.width / 2.0, r.y + r.height / 2.0),
@@ -1062,10 +1108,7 @@ impl ElementDraw {
             // to the element's shape only when it clips.
             let shaped = matches!(self.clip, Clip::Shape);
             out.push(DrawCmd::EndLayer {
-                geometry: shaped.then(|| {
-                    self.shape
-                        .geometry(at.radius, [at.rect.width, at.rect.height])
-                }),
+                geometry: shaped.then(|| self.geometry(&self.shape, at)),
                 rect: at.rect,
                 opacity: self.opacity,
                 blend: self.blend,

@@ -185,7 +185,11 @@ local styles and `og style new` remain available.
   fill="none" stroke="var(--accent)" pathLength="1" stroke-dasharray="1 1"
   stroke-dashoffset={1 - $ready}/></svg>`. Size the `<svg>` with CSS; its
   view box scales to fit, strokes with it. Gradients are
-  `<linearGradient id>` and `fill="url(#id)"`.
+  `<linearGradient id>` and `fill="url(#id)"`. Icons reuse a `<symbol
+  id="Coin" viewBox>` with `<use href="#Coin" x y width height/>`; cut with
+  `clip-path="url(#id)"` or a gradient `mask="url(#id)"` (one rect, circle
+  or ellipse clips natively), hatch with a `<pattern>`, and name the graphic
+  with `<title>{$label}</title>`.
 - Drag and drop: `<li draggable="true" data-drag-type="gem"
   ondragstart={lift}>` and `<div data-accept="gem" ondrop={stash}>`; the
   event's value is `{ dragged, target, x, y }` (row keys and the point).

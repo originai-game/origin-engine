@@ -4,19 +4,27 @@
 
 /// SVG's shapes, each one element of kind `svgShape` (its tag says which).
 pub(crate) const SVG_SHAPES: &[&str] = &[
-    "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
+    "path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "image",
 ];
 
-/// What SVG elements read past: definitions drawn only where referenced.
+/// What SVG elements read past: definitions drawn only where referenced
+/// (`<symbol>` by a `<use>`, `<clipPath>` by `clip-path`, `<mask>` by
+/// `mask`, `<pattern>` and gradients by a paint), and text for people
+/// (`<title>` names its parent, see [`finish`]).
 const SVG_DEFS: &[&str] = &[
     "defs",
+    "symbol",
+    "clipPath",
+    "mask",
+    "pattern",
     "linearGradient",
     "radialGradient",
     "stop",
-    "title",
-    "desc",
     "metadata",
 ];
+
+/// The elements whose children are SVG.
+const SVG_PARENTS: &[&str] = &["svg", "g", "defs", "symbol", "clipPath", "mask", "pattern"];
 
 /// SVG's presentation properties: attributes on SVG elements and CSS
 /// properties of them (CSS wins over the attribute), inherited down the
@@ -42,7 +50,12 @@ pub(crate) fn svg_longhand(name: &str) -> bool {
 }
 
 fn in_svg(parent_tag: Option<&str>) -> bool {
-    matches!(parent_tag, Some("svg" | "g" | "defs"))
+    parent_tag.is_some_and(|p| SVG_PARENTS.contains(&p))
+}
+
+/// Inside any SVG element (`<title>` and `<desc>` go in shapes too).
+fn under_svg(parent_tag: Option<&str>) -> bool {
+    in_svg(parent_tag) || parent_tag.is_some_and(|p| SVG_SHAPES.contains(&p) || p == "use")
 }
 
 /// The internal kind lowercase `tag` names (one [`super::schema_extra`]
@@ -63,6 +76,16 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
         "joystick" => Some(Ok("joystick")),
         "dpad" => Some(Ok("dpad")),
         "g" => svg_child("svgGroup"),
+        "use" => svg_child("svgUse"),
+        // Parsed as text (so its content binds), then lifted into its
+        // parent's name by [`finish`].
+        "title" | "desc" => Some(if under_svg(parent_tag) {
+            Ok("label")
+        } else {
+            Err(format!(
+                "<{tag}> names an SVG element; outside SVG, write aria-label (or the HTML title attribute)"
+            ))
+        }),
         t if SVG_SHAPES.contains(&t) => svg_child("svgShape"),
         "stop" => Some(
             if matches!(parent_tag, Some("linearGradient" | "radialGradient")) {
@@ -73,7 +96,7 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
         ),
         t if SVG_DEFS.contains(&t) => svg_child("svgDef"),
         t if in_svg(parent_tag) => Some(Err(format!(
-            "<{t}> is not in the inline SVG subset: g, path, rect, circle, ellipse, line, polyline, polygon, defs, linearGradient, radialGradient and stop (docs/ui.md §3.3)"
+            "<{t}> is not in the inline SVG subset: g, use, path, rect, circle, ellipse, line, polyline, polygon, image, defs, symbol, clipPath, mask, pattern, linearGradient, radialGradient, stop, title and desc (docs/ui.md §3.3)"
         ))),
         _ => None,
     }
@@ -88,12 +111,146 @@ pub(super) fn property(kind: &str, attr: &str) -> Option<String> {
     }
     let svg = match kind {
         "svg" => matches!(attr, "viewBox") || PRESENTATION.contains(&attr),
-        "svgGroup" => attr == "transform" || PRESENTATION.contains(&attr),
-        "svgShape" => attr != "opacity",
+        "svgGroup" => {
+            matches!(attr, "transform" | "clip-path" | "mask") || PRESENTATION.contains(&attr)
+        }
+        "svgShape" | "svgUse" => attr != "opacity",
         "svgDef" => true,
         _ => false,
     };
     svg.then(|| super::schema_extra::svg_prop(attr))
         .flatten()
         .map(str::to_string)
+}
+
+/// A literal attribute of `n` by its SVG name.
+fn literal(n: &super::DocNode, name: &str) -> Option<String> {
+    n.selector_attrs
+        .iter()
+        .find(|(a, _)| a == name)
+        .and_then(|(_, e)| match e {
+            crate::bind::Expr::Lit(v) => Some(crate::bind::text(v)),
+            _ => None,
+        })
+}
+
+/// Copies node `from`'s subtree under `parent`, with the selector entries
+/// of its elements, so the stylesheet styles the copy as the original.
+fn copy<A: Clone>(
+    doc: &mut super::UiDocument,
+    selectors: &mut Vec<(usize, String, A)>,
+    from: usize,
+    parent: usize,
+) -> usize {
+    let at = doc.nodes.len();
+    let mut node = doc.nodes[from].clone();
+    node.parent = parent;
+    node.children.clear();
+    doc.nodes.push(node);
+    if let Some(entry) = selectors.iter().find(|(n, ..)| *n == from).cloned() {
+        selectors.push((at, entry.1, entry.2));
+    }
+    for c in doc.nodes[from].children.clone() {
+        let child = copy(doc, selectors, c, at);
+        doc.nodes[at].children.push(child);
+    }
+    at
+}
+
+/// After parsing, before the stylesheet: each `<use href="#id">` takes a
+/// copy of what it names as its children (a `<symbol>`'s children, with
+/// its `viewBox` and `preserveAspectRatio`, or the element itself), so it
+/// builds as a group whose copies inherit its presentation attributes, as
+/// SVG's shadow tree does. Then each SVG `<title>` names its parent (an
+/// `<svg>`, a group, a `<use>` or a shape) as `aria-label` does, unless it
+/// has one, so a bound title is the parent's own binding; titles and
+/// `<desc>` leave the tree.
+pub(super) fn finish<A: Clone>(
+    doc: &mut super::UiDocument,
+    selectors: &mut Vec<(usize, String, A)>,
+) -> Result<(), String> {
+    use super::NodeKind;
+    let start = doc.nodes.len();
+    let mut i = 0;
+    while i < doc.nodes.len() {
+        if doc.nodes[i].kind == NodeKind::Element("svgUse") {
+            if doc.nodes.len() > start + 20_000 {
+                return Err("<use> copies past 20000 elements: a <use> that draws itself?".into());
+            }
+            let href = literal(&doc.nodes[i], "href")
+                .or_else(|| literal(&doc.nodes[i], "xlink:href"))
+                .ok_or_else(|| "<use> takes a literal href=\"#id\"".to_string())?;
+            let id = href.strip_prefix('#').unwrap_or(&href).to_string();
+            let target = doc
+                .nodes
+                .iter()
+                .position(|n| {
+                    n.id == id
+                        && matches!(n.kind, NodeKind::Element(k) if k.starts_with("svg") && k != "svg")
+                })
+                .ok_or_else(|| format!("<use href=\"#{id}\">: no SVG element has id \"{id}\""))?;
+            if ancestor_of(doc, target, i) {
+                return Err(format!("<use href=\"#{id}\"> is inside what it draws"));
+            }
+            if doc.nodes[target].selector_tag.as_deref() == Some("symbol") {
+                for name in ["svgViewBox", "svgPreserveAspectRatio"] {
+                    let own = doc.nodes[i].props.iter().any(|p| p.name() == name);
+                    if !own
+                        && let Some(p) = doc.nodes[target]
+                            .props
+                            .iter()
+                            .find(|p| p.name() == name)
+                            .cloned()
+                    {
+                        doc.nodes[i].props.push(p);
+                    }
+                }
+                for c in doc.nodes[target].children.clone() {
+                    let child = copy(doc, selectors, c, i);
+                    doc.nodes[i].children.push(child);
+                }
+            } else {
+                let child = copy(doc, selectors, target, i);
+                doc.nodes[i].children.push(child);
+            }
+        }
+        i += 1;
+    }
+    let name = super::schema::prop("name").expect("name is a prop").0;
+    for i in 0..doc.nodes.len() {
+        let tag = doc.nodes[i].selector_tag.as_deref();
+        if !matches!(tag, Some("title" | "desc")) || doc.nodes[i].kind != NodeKind::Element("label")
+        {
+            continue;
+        }
+        let parent = doc.nodes[i].parent;
+        if parent == super::NONE {
+            continue;
+        }
+        let text = doc.nodes[i]
+            .props
+            .iter()
+            .find(|p| p.name() == "text")
+            .cloned();
+        if tag == Some("title")
+            && let Some(mut text) = text
+            && !doc.nodes[parent].props.iter().any(|p| p.name() == "name")
+        {
+            text.spec = name;
+            doc.nodes[parent].props.push(text);
+        }
+        doc.nodes[parent].children.retain(|&c| c != i);
+    }
+    Ok(())
+}
+
+/// Node `a` is `b` or one of its ancestors.
+fn ancestor_of(doc: &super::UiDocument, a: usize, mut b: usize) -> bool {
+    while b != super::NONE {
+        if a == b {
+            return true;
+        }
+        b = doc.nodes[b].parent;
+    }
+    false
 }

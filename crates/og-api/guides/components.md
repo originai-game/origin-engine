@@ -520,6 +520,8 @@ Its own props, beside every element's:
 | `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
 | `x` | `text` | SVG `x`. |
 | `y` | `text` | SVG `y`. |
+| `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
+| `height` | `text` | SVG `height`. |
 | `cx` | `text` | SVG `cx`. |
 | `cy` | `text` | SVG `cy`. |
 | `r` | `text` | SVG `r`. |
@@ -527,6 +529,7 @@ Its own props, beside every element's:
 | `y1` | `text` | SVG `y1`. |
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
+| `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
 ## 32. `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
 
@@ -550,6 +553,8 @@ Its own props, beside every element's:
 | `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
 | `x` | `text` | SVG `x`. |
 | `y` | `text` | SVG `y`. |
+| `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
+| `height` | `text` | SVG `height`. |
 | `cx` | `text` | SVG `cx`. |
 | `cy` | `text` | SVG `cy`. |
 | `r` | `text` | SVG `r`. |
@@ -557,6 +562,8 @@ Its own props, beside every element's:
 | `y1` | `text` | SVG `y1`. |
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
+| `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
+| `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 
 ## 33. `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
 
@@ -582,8 +589,8 @@ Its own props, beside every element's:
 | `d` | `text` | A `<path>`'s path data. |
 | `x` | `text` | SVG `x`. |
 | `y` | `text` | SVG `y`. |
-| `width` | `text` | A `<rect>`'s `width`. |
-| `height` | `text` | A `<rect>`'s `height`. |
+| `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
+| `height` | `text` | SVG `height`. |
 | `rx` | `text` | SVG `rx`. |
 | `ry` | `text` | SVG `ry`. |
 | `cx` | `text` | SVG `cx`. |
@@ -594,15 +601,59 @@ Its own props, beside every element's:
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
 | `points` | `text` | A `<polyline>`'s or `<polygon>`'s points. |
+| `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from. |
+| `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
+| `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
+| `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
-## 34. `<linearGradient>` (`svgDef`): An SVG definition (`<defs>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`): not drawn; shapes reference gradients with `url(#id)`
+## 34. `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
 
-An SVG definition (`<defs>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`): not drawn; shapes reference gradients with `url(#id)`. A container with nested children: `<linearGradient id="Up" x2="0" y2="1"><stop offset="0" stop-color="#fff" />…</linearGradient> (radialGradient, defs)`.
+SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height. A container with nested children: `<use href="#Coin" x={i * 12} y="0" width="10" height="10" />`.
 
 Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
+| `fill` | `text` | SVG `fill`: a colour, `var(--role)`, `currentColor` (the style's ink), `url(#gradient)` or `none`. |
+| `fill-opacity` | `text` | SVG `fill-opacity`. |
+| `fill-rule` | `text` | SVG `fill-rule`: nonzero or evenodd. |
+| `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
+| `stroke-opacity` | `text` | SVG `stroke-opacity`. |
+| `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
+| `stroke-linecap` | `text` | SVG `stroke-linecap`. |
+| `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
+| `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
+| `pathLength` | `text` | SVG `pathLength`: the length its dashes and offset measure the outline in (`pathLength="1"` makes `stroke-dashoffset` a fraction). |
+| `d` | `text` | A `<path>`'s path data. |
+| `x` | `text` | SVG `x`. |
+| `y` | `text` | SVG `y`. |
+| `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
+| `height` | `text` | SVG `height`. |
+| `rx` | `text` | SVG `rx`. |
+| `ry` | `text` | SVG `ry`. |
+| `cx` | `text` | SVG `cx`. |
+| `cy` | `text` | SVG `cy`. |
+| `r` | `text` | SVG `r`. |
+| `x1` | `text` | SVG `x1`. |
+| `y1` | `text` | SVG `y1`. |
+| `x2` | `text` | SVG `x2`. |
+| `y2` | `text` | SVG `y2`. |
+| `points` | `text` | A `<polyline>`'s or `<polygon>`'s points. |
+| `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from. |
+| `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
+| `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
+
+## 35. `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
+
+An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent. A container with nested children: `<linearGradient id="Up" x2="0" y2="1"><stop offset="0" stop-color="#fff" />…</linearGradient> (radialGradient, defs)` or `<symbol id="Coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></symbol> (clipPath, mask, pattern, title)`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `viewBox` | `text` | SVG `viewBox`: the user space `min-x min-y width height` its box shows. |
 | `transform` | `text` | SVG `transform` (matrix, translate, scale, rotate, skewX, skewY); on a gradient, `gradientTransform`. |
 | `fill` | `text` | SVG `fill`: a colour, `var(--role)`, `currentColor` (the style's ink), `url(#gradient)` or `none`. |
 | `fill-opacity` | `text` | SVG `fill-opacity`. |
@@ -617,6 +668,8 @@ Its own props, beside every element's:
 | `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
 | `x` | `text` | SVG `x`. |
 | `y` | `text` | SVG `y`. |
+| `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
+| `height` | `text` | SVG `height`. |
 | `cx` | `text` | SVG `cx`. |
 | `cy` | `text` | SVG `cy`. |
 | `r` | `text` | SVG `r`. |
@@ -632,4 +685,10 @@ Its own props, beside every element's:
 | `gradientUnits` | `text` | A gradient's `gradientUnits`. |
 | `gradientTransform` | `text` | A gradient's `gradientTransform`. |
 | `spreadMethod` | `text` | A gradient's `spreadMethod`. |
-| `href` | `text` | A gradient's `href`: the gradient it takes its stops from. |
+| `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from. |
+| `clipPathUnits` | `text` | A clip path's `clipPathUnits`. |
+| `maskContentUnits` | `text` | A mask's `maskContentUnits`. |
+| `patternUnits` | `text` | A pattern's `patternUnits`. |
+| `patternContentUnits` | `text` | A pattern's `patternContentUnits`. |
+| `patternTransform` | `text` | A pattern's `patternTransform`. |
+| `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
