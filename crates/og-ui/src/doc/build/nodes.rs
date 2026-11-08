@@ -469,7 +469,7 @@ impl Ui {
             let fields =
                 fields::RenderFields::capture(self, self.parent(), kind, resp, props, None)
                     .with_textures(&r, b.env);
-            self.apply_document_fields(n, &r, &fields);
+            self.apply_document_fields(&doc, n, &r, &fields);
             self.note_render_fields(key, fields);
             // A content button feeds og-input's action as a text one does.
             if kind == "button" && r.has("dataOgTouch") {
@@ -1241,7 +1241,7 @@ impl Ui {
             if kind == "label" && styled.text.is_some() {
                 fields.text = raw_of(&styled, b);
             }
-            self.apply_document_fields(n, &styled, &fields);
+            self.apply_document_fields(&doc, n, &styled, &fields);
             self.note_render_fields(key, fields);
             if styled.has("dataOgTouch") {
                 self.note_touch_button(&styled);

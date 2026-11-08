@@ -1778,8 +1778,12 @@ impl Ui {
         // children to its shape (a map's view larger than its frame draws
         // only inside the frame).
         let clips = |j: usize| -> bool {
-            self.draw_of(j)
-                .is_some_and(|d| d.clip == crate::paint::Clip::Shape)
+            self.draw_of(j).is_some_and(|d| {
+                matches!(
+                    d.clip,
+                    crate::paint::Clip::Shape | crate::paint::Clip::Cut(_)
+                )
+            })
         };
         // Each node's is worked out once: the pairs below ask for the same
         // node's again and again (every sibling of a long list against every

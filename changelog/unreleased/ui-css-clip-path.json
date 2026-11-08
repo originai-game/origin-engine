@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS clip-path rect(), xywh(), shape(), geometry boxes and url(#id)",
+      "summary": "clip-path takes rect() and xywh() with round, CSS Shapes 2's shape() (move, line, hline, vline, curve, smooth, arc, close), a geometry box beside a shape or alone (border-, padding-, content-, margin-, fill-, stroke- and view-box), and url(#id) of an inline SVG <clipPath> in user space or objectBoundingBox units."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI: CSS clip-path cuts the element's own shadows and borders",
+      "summary": "As CSS has it, clip-path now cuts the element's box shadows, borders and outline with its background and children; before, only the background and children were cut. A `#` inside parentheses in a declaration (`url(#id)`) is no longer read as a comment."
+    }
+  ]
+}

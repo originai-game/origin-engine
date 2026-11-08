@@ -732,8 +732,12 @@ pub enum Mask {
 pub enum Clip {
     #[default]
     None,
-    /// To its shape, antialiased.
+    /// Its children to its shape, antialiased (`overflow: hidden`).
     Shape,
+    /// Everything it draws, its own shadows, fills, strokes and border
+    /// and its children, to this shape (CSS `clip-path`), in CSS px from
+    /// its box's top left.
+    Cut(ShapeKind),
     /// By a mask's alpha (the subtree draws offscreen).
     Mask(Mask),
 }
@@ -1272,6 +1276,11 @@ impl ElementDraw {
         if self.masked() {
             out.push(plain_layer(None));
         }
+        // A cut (CSS `clip-path`) takes all it draws, to `leave`; a layered
+        // one is cut by its composite.
+        if let Some(cut) = self.cut(at) {
+            out.push(cut);
+        }
         if self.layered() {
             let (outer, inner) = self.stages();
             let (material, params) = match outer {
@@ -1503,16 +1512,29 @@ impl ElementDraw {
         if self.clip != Clip::Shape {
             return Vec::new();
         }
-        let r = if matches!(self.shape, ShapeKind::Path { .. }) {
+        vec![self.clip_to(&self.shape, at)]
+    }
+
+    /// Its CSS cut, unless a layer's composite cuts it.
+    fn cut(&self, at: &Placed) -> Option<DrawCmd> {
+        match &self.clip {
+            Clip::Cut(shape) if !self.layered() => Some(self.clip_to(shape, at)),
+            _ => None,
+        }
+    }
+
+    /// The clip to `shape`.
+    fn clip_to(&self, shape: &ShapeKind, at: &Placed) -> DrawCmd {
+        let r = if matches!(shape, ShapeKind::Path { .. }) {
             at.rect
         } else {
             self.frame(at)
         };
-        vec![DrawCmd::PushClip {
-            geometry: self.geometry(&self.shape, at),
+        DrawCmd::PushClip {
+            geometry: self.geometry(shape, at),
             center: (r.x + r.width / 2.0, r.y + r.height / 2.0),
             half: (r.width / 2.0, r.height / 2.0),
-        }]
+        }
     }
 
     /// What draws after the subtree: the end of the cut, the strokes, then
@@ -1523,6 +1545,9 @@ impl ElementDraw {
             out.push(DrawCmd::PopClip);
         }
         out.extend(self.strokes(theme, at));
+        if self.cut(at).is_some() {
+            out.push(DrawCmd::PopClip);
+        }
         out.extend(self.composite(theme, at));
         out
     }
@@ -1533,7 +1558,7 @@ impl ElementDraw {
     /// levels (docs/ui.md §3.3).
     pub(crate) fn leave_stroked(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
-        if self.clip == Clip::Shape {
+        if self.clip == Clip::Shape || self.cut(at).is_some() {
             out.push(DrawCmd::PopClip);
         }
         out.extend(self.composite(theme, at));
@@ -1593,10 +1618,14 @@ impl ElementDraw {
                 });
             }
             // The composite covers the layer; a mask or a material clips
-            // to the element's shape only when it clips.
-            let shaped = matches!(self.clip, Clip::Shape);
+            // to the element's shape only when it clips, and to its CSS cut.
+            let geometry = match &self.clip {
+                Clip::Shape => Some(self.geometry(&self.shape, at)),
+                Clip::Cut(shape) => Some(self.geometry(shape, at)),
+                _ => None,
+            };
             out.push(DrawCmd::EndLayer {
-                geometry: shaped.then(|| self.geometry(&self.shape, at)),
+                geometry,
                 rect: at.rect,
                 opacity: if masked { 1.0 } else { self.opacity },
                 blend: if masked { Blend::Normal } else { self.blend },

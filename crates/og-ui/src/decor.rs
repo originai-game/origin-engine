@@ -233,8 +233,9 @@ impl BoxDecor {
                 d.layer = Some(l.clone());
             }
             if let Some(shape) = &c.clip {
-                d.shape = shape.resolve(w, h);
-                d.clip = crate::paint::Clip::Shape;
+                // Its own shape stays its box: the cut takes everything
+                // drawn in it once.
+                d.clip = crate::paint::Clip::Cut(shape.resolve(w, h, c.clip_ref));
             }
             // A blend or `isolation: isolate` makes it a group (CSS
             // Compositing 1 §3.2): its subtree drawn offscreen over a

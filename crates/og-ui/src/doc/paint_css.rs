@@ -317,13 +317,51 @@ impl LayerFrame {
     }
 }
 
-/// A `clip-path` basic shape.
+/// A `clip-path` shape, over its reference box.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum CssClip {
     Inset([Pos; 4], f32),
+    /// `rect()`: its top, right, bottom and left edges from the box's top
+    /// and left (`None`: `auto`, the box's edge), and its radius.
+    Rect([Option<Pos>; 4], f32),
+    /// `xywh()`: x, y, width, height and radius.
+    Xywh([Pos; 4], f32),
     Ellipse([Option<Pos>; 2], bool, [Pos; 2]),
     Polygon(FillRule, Vec<[Pos; 2]>),
     Path(FillRule, Vec<(Vec<[f32; 2]>, bool)>),
+    /// `shape()`: SVG path commands whose numbers are lengths over the box.
+    Shape(FillRule, Vec<(char, Vec<Pos>)>),
+    /// A `<clipPath>` with `clipPathUnits="objectBoundingBox"`: a path in
+    /// fractions of the box.
+    Units(FillRule, Vec<(Vec<[f32; 2]>, bool)>),
+    /// `url(#id)`, before the element builds it into a path.
+    Url(String),
+    /// A geometry box alone: the reference box with its corners.
+    Box,
+}
+
+/// `clip-path`'s reference box (CSS Masking 1 §4.1). On an element with a
+/// CSS box, `fill-box` is its content box and `stroke-box` and `view-box`
+/// its border box.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum GeoBox {
+    #[default]
+    Border,
+    Padding,
+    Content,
+    Margin,
+}
+
+impl GeoBox {
+    fn parse(w: &str) -> Option<GeoBox> {
+        Some(match w {
+            "border-box" | "stroke-box" | "view-box" => GeoBox::Border,
+            "padding-box" => GeoBox::Padding,
+            "content-box" | "fill-box" => GeoBox::Content,
+            "margin-box" => GeoBox::Margin,
+            _ => return None,
+        })
+    }
 }
 
 /// The paint of one element: what [`crate::decor::BoxDecor`] adds to its
@@ -346,6 +384,11 @@ pub(crate) struct CssPaint {
     pub isolate: bool,
     pub text_shadows: Vec<TextShadow>,
     pub clip: Option<CssClip>,
+    /// The clip's reference box, and once the element is laid out its
+    /// insets from the border box (top, right, bottom, left; negative
+    /// outside it) and the corner radius it takes.
+    pub clip_box: GeoBox,
+    pub clip_ref: ([f32; 4], f32),
     pub layer: Option<Layer>,
 }
 
@@ -1825,19 +1868,42 @@ fn rule(t: &[Tok]) -> (FillRule, &[Tok]) {
     }
 }
 
-/// `clip-path`: `inset()`, `circle()`, `ellipse()`, `polygon()`, `path()`
-/// or `none`.
-pub(crate) fn clip(text: &str) -> Result<Option<CssClip>, String> {
+/// `clip-path`: `[<basic-shape> || <geometry-box>] | url(#id) | none`;
+/// the basic shapes `inset()`, `rect()`, `xywh()`, `circle()`,
+/// `ellipse()`, `polygon()`, `path()` and `shape()`.
+pub(crate) fn clip(text: &str) -> Result<Option<(CssClip, GeoBox)>, String> {
+    const FORMS: &str = "a clip-path is [inset() | rect() | xywh() | circle() | ellipse() | polygon() | path() | shape()] [<geometry-box>], a <geometry-box>, url(#id) or none";
     let t = tokens(text)?;
-    let (f, args) = match t.as_slice() {
-        [Tok::Ident(w)] if w == "none" => return Ok(None),
-        [Tok::Func(f, a)] => (f.as_str(), a),
-        _ => {
-            return Err(
-                "a clip-path is inset(), circle(), ellipse(), polygon(), path() or none".into(),
-            );
+    let mut shape = None;
+    let mut geo = None;
+    for tok in &t {
+        match tok {
+            Tok::Ident(w) if w == "none" && t.len() == 1 => return Ok(None),
+            Tok::Ident(w) if geo.is_none() => {
+                geo = Some(GeoBox::parse(w).ok_or_else(|| format!("'{w}': {FORMS}"))?);
+            }
+            Tok::Func(f, a) if shape.is_none() => shape = Some((f.as_str(), a)),
+            _ => return Err(FORMS.into()),
         }
+    }
+    let geo = geo.unwrap_or_default();
+    let Some((f, args)) = shape else {
+        return Ok(Some((CssClip::Box, geo)));
     };
+    if f == "url" {
+        if t.len() > 1 {
+            return Err("clip-path: url(#id) takes no box".into());
+        }
+        let id = match args.as_slice() {
+            [a] => match a.as_slice() {
+                [Tok::Hash(h)] => h.clone(),
+                [Tok::Str(s)] if s.starts_with('#') => s.clone(),
+                _ => return Err("clip-path: url(#id) names a <clipPath>".into()),
+            },
+            _ => return Err("clip-path: url(#id) names a <clipPath>".into()),
+        };
+        return Ok(Some((CssClip::Url(format!("url({id})")), geo)));
+    }
     let split_at = |a: &[Tok]| -> Result<(Vec<Tok>, [Pos; 2]), String> {
         match a
             .iter()
@@ -1847,12 +1913,22 @@ pub(crate) fn clip(text: &str) -> Result<Option<CssClip>, String> {
             None => Ok((a.to_vec(), [Pos::Frac(0.5); 2])),
         }
     };
-    Ok(Some(match (f, args.as_slice()) {
+    // `… round <r>`: the lengths before it and the radius.
+    let rounded = |a: &[Tok]| -> Result<(usize, f32), String> {
+        let k = a
+            .iter()
+            .position(|t| matches!(t, Tok::Ident(w) if w == "round"))
+            .unwrap_or(a.len());
+        let radius = match &a[k..] {
+            [] => 0.0,
+            [_, r] => px(r)?,
+            _ => return Err(format!("{f}(… round <n>px)")),
+        };
+        Ok((k, radius))
+    };
+    let shape = match (f, args.as_slice()) {
         ("inset", [a]) => {
-            let k = a
-                .iter()
-                .position(|t| matches!(t, Tok::Ident(w) if w == "round"))
-                .unwrap_or(a.len());
+            let (k, radius) = rounded(a)?;
             let p: Vec<Pos> = a[..k].iter().map(pos).collect::<Result<_, _>>()?;
             let sides = match p.as_slice() {
                 [a] => [*a; 4],
@@ -1861,13 +1937,31 @@ pub(crate) fn clip(text: &str) -> Result<Option<CssClip>, String> {
                 [a, b, c, d] => [*a, *b, *c, *d],
                 _ => return Err("inset() takes one to four lengths".into()),
             };
-            let radius = match &a[k..] {
-                [] => 0.0,
-                [_, r] => px(r)?,
-                _ => return Err("inset(… round <n>px)".into()),
-            };
             CssClip::Inset(sides, radius)
         }
+        ("rect", [a]) => {
+            let (k, radius) = rounded(a)?;
+            let p: Vec<Option<Pos>> = a[..k]
+                .iter()
+                .map(|t| match t {
+                    Tok::Ident(w) if w == "auto" => Ok(None),
+                    t => pos(t).map(Some),
+                })
+                .collect::<Result<_, _>>()?;
+            let [t, r, b, l] = p[..] else {
+                return Err("rect(<top> <right> <bottom> <left> [round <r>])".into());
+            };
+            CssClip::Rect([t, r, b, l], radius)
+        }
+        ("xywh", [a]) => {
+            let (k, radius) = rounded(a)?;
+            let p: Vec<Pos> = a[..k].iter().map(pos).collect::<Result<_, _>>()?;
+            let [x, y, w, h] = p[..] else {
+                return Err("xywh(<x> <y> <width> <height> [round <r>])".into());
+            };
+            CssClip::Xywh([x, y, w, h], radius)
+        }
+        ("shape", items) => shape_fn(items)?,
         ("circle", [a]) => {
             let (r, at) = split_at(a)?;
             let r = match r.as_slice() {
@@ -1914,7 +2008,128 @@ pub(crate) fn clip(text: &str) -> Result<Option<CssClip>, String> {
             CssClip::Path(fill, super::build::svg::subpaths(&p))
         }
         (f, _) => return Err(format!("{f}() is not a clip-path shape")),
-    }))
+    };
+    Ok(Some((shape, geo)))
+}
+
+/// `shape([<rule>,] from <x> <y>, <command>, …)` (CSS Shapes 2 §3.2.1) as
+/// SVG path commands: `move`, `line`, `hline`, `vline`, `curve … with
+/// <c1> [/ <c2>]`, `smooth … [with <c>]`, `arc … of <rx> [<ry>] [cw | ccw]
+/// [large | small] [rotate <angle>]`, each `to` or `by`, and `close`.
+fn shape_fn(items: &[Vec<Tok>]) -> Result<CssClip, String> {
+    const FORM: &str = "shape([<rule>,] from <x> <y>, <command>, …)";
+    let (fill, first) = rule(items.first().map_or(&[][..], |p| p.as_slice()));
+    let skip = first.is_empty() as usize;
+    let mut cmds: Vec<(char, Vec<Pos>)> = Vec::new();
+    for (k, item) in items.iter().enumerate().skip(skip) {
+        let item = if k == 0 { first } else { item.as_slice() };
+        let word = |i: usize| match item.get(i) {
+            Some(Tok::Ident(w)) => Some(w.as_str()),
+            _ => None,
+        };
+        // The command letter, lower case for `by`.
+        let rel = |upper: char| -> Result<char, String> {
+            match word(1) {
+                Some("to") => Ok(upper),
+                Some("by") => Ok(upper.to_ascii_lowercase()),
+                _ => Err(format!(
+                    "{FORM}: '{}' takes to or by",
+                    word(0).unwrap_or("")
+                )),
+            }
+        };
+        let pair = |i: usize| -> Result<Vec<Pos>, String> {
+            match (item.get(i), item.get(i + 1)) {
+                (Some(x), Some(y)) => Ok(vec![pos(x)?, pos(y)?]),
+                _ => Err(format!("{FORM}: a point is <x> <y>")),
+            }
+        };
+        let cmd = match word(0) {
+            Some("from") if cmds.is_empty() => ('M', pair(1)?),
+            _ if cmds.is_empty() => return Err(format!("{FORM}: it starts with from")),
+            Some("close") => ('Z', Vec::new()),
+            Some("move") => (rel('M')?, pair(2)?),
+            Some("line") => (rel('L')?, pair(2)?),
+            Some("hline") => (rel('H')?, vec![pos(item.get(2).ok_or(FORM)?)?]),
+            Some("vline") => (rel('V')?, vec![pos(item.get(2).ok_or(FORM)?)?]),
+            Some(c @ ("curve" | "smooth")) => {
+                let end = pair(2)?;
+                let with = item
+                    .iter()
+                    .position(|t| matches!(t, Tok::Ident(w) if w == "with"));
+                let controls: Vec<Pos> = match with {
+                    None => Vec::new(),
+                    Some(w) => item[w + 1..]
+                        .iter()
+                        .filter(|t| !matches!(t, Tok::Slash))
+                        .map(pos)
+                        .collect::<Result<_, _>>()?,
+                };
+                let letter = match (c, controls.len()) {
+                    ("curve", 2) => 'Q',
+                    ("curve", 4) => 'C',
+                    ("smooth", 0) => 'T',
+                    ("smooth", 2) => 'S',
+                    _ => return Err(format!("{FORM}: {c} … with <x> <y> [/ <x> <y>]")),
+                };
+                let letter = rel(letter)?;
+                (letter, [controls, end].concat())
+            }
+            Some("arc") => {
+                let end = pair(2)?;
+                let of = item
+                    .iter()
+                    .position(|t| matches!(t, Tok::Ident(w) if w == "of"))
+                    .ok_or_else(|| format!("{FORM}: arc … of <radius>"))?;
+                let mut radii = Vec::new();
+                let (mut sweep, mut large, mut rotate) = (0.0, 0.0, 0.0);
+                let mut i = of + 1;
+                while i < item.len() {
+                    match &item[i] {
+                        Tok::Ident(w) if w == "cw" => sweep = 1.0,
+                        Tok::Ident(w) if w == "ccw" => sweep = 0.0,
+                        Tok::Ident(w) if w == "large" => large = 1.0,
+                        Tok::Ident(w) if w == "small" => large = 0.0,
+                        Tok::Ident(w) if w == "rotate" => {
+                            i += 1;
+                            rotate = angle(item.get(i).ok_or(FORM)?)?.to_degrees();
+                        }
+                        t => radii.push(pos(t)?),
+                    }
+                    i += 1;
+                }
+                let (rx, ry) = match radii[..] {
+                    [r] => (r, r),
+                    [rx, ry] => (rx, ry),
+                    _ => return Err(format!("{FORM}: arc … of <rx> [<ry>]")),
+                };
+                let letter = rel('A')?;
+                (
+                    letter,
+                    vec![
+                        rx,
+                        ry,
+                        Pos::Px(rotate),
+                        Pos::Px(large),
+                        Pos::Px(sweep),
+                        end[0],
+                        end[1],
+                    ],
+                )
+            }
+            _ => {
+                return Err(format!(
+                    "{FORM}: '{}' is not a command",
+                    item.first().map(describe).unwrap_or_default()
+                ));
+            }
+        };
+        cmds.push(cmd);
+    }
+    if cmds.len() < 2 {
+        return Err(format!("{FORM}: it takes a command after from"));
+    }
+    Ok(CssClip::Shape(fill, cmds))
 }
 
 /// `-og-material: <name>(<n> …[, <colour>])`: the element and its subtree
@@ -2186,10 +2401,59 @@ fn fix_stops(o: &mut [Option<f32>]) {
 /// A cubic's controls for a quarter ellipse.
 const KAPPA: f32 = 0.552_284_8;
 
+/// A rounded rectangle's outline as straight and quarter-ellipse cubics
+/// (a square corner is a straight cubic).
+fn rrect(x0: f32, y0: f32, x1: f32, y1: f32, radius: f32) -> Vec<[f32; 2]> {
+    let (x1, y1) = (x1.max(x0), y1.max(y0));
+    let rr = radius.min((x1 - x0) / 2.0).min((y1 - y0) / 2.0).max(0.0);
+    let k = rr * (1.0 - KAPPA);
+    vec![
+        [x0 + rr, y0],
+        [x0 + rr, y0],
+        [x1 - rr, y0],
+        [x1 - rr, y0],
+        [x1 - k, y0],
+        [x1, y0 + k],
+        [x1, y0 + rr],
+        [x1, y0 + rr],
+        [x1, y1 - rr],
+        [x1, y1 - rr],
+        [x1, y1 - k],
+        [x1 - k, y1],
+        [x1 - rr, y1],
+        [x1 - rr, y1],
+        [x0 + rr, y1],
+        [x0 + rr, y1],
+        [x0 + k, y1],
+        [x0, y1 - k],
+        [x0, y1 - rr],
+        [x0, y1 - rr],
+        [x0, y0 + rr],
+        [x0, y0 + rr],
+        [x0, y0 + k],
+        [x0 + k, y0],
+        [x0 + rr, y0],
+    ]
+}
+
 impl CssClip {
-    /// The shape over a `w` × `h` box, as a filled path in CSS px from its
-    /// top left.
-    pub(crate) fn resolve(&self, w: f32, h: f32) -> ShapeKind {
+    /// The shape over a `w` × `h` border box, as a filled path in CSS px
+    /// from its top left: resolved over its reference box, `insets` from
+    /// the border box (top, right, bottom, left), whose corners take
+    /// `radius`.
+    pub(crate) fn resolve(&self, w: f32, h: f32, (insets, radius): ([f32; 4], f32)) -> ShapeKind {
+        let [t, r, b, l] = insets;
+        let mut shape = self.local((w - l - r).max(0.0), (h - t - b).max(0.0), radius);
+        if let ShapeKind::Path { points, .. } = &mut shape {
+            for p in points {
+                *p = [p[0] + l, p[1] + t];
+            }
+        }
+        shape
+    }
+
+    /// The shape over a `w` × `h` reference box from its top left.
+    fn local(&self, w: f32, h: f32, radius: f32) -> ShapeKind {
         let path = |contours: Vec<(Vec<[f32; 2]>, bool)>, fill_rule, curves| ShapeKind::Path {
             contours: contours.iter().map(|(p, _)| p.len() as u32).collect(),
             points: contours.into_iter().flat_map(|(p, _)| p).collect(),
@@ -2204,39 +2468,62 @@ impl CssClip {
         match self {
             CssClip::Inset([t, r, b, l], radius) => {
                 let (x0, y0) = (l.at(w), t.at(h));
-                let (x1, y1) = ((w - r.at(w)).max(x0), (h - b.at(h)).max(y0));
-                let rr = radius.min((x1 - x0) / 2.0).min((y1 - y0) / 2.0).max(0.0);
-                let k = rr * (1.0 - KAPPA);
-                // Corners as cubics (a square corner is a straight cubic).
-                let pts = vec![
-                    [x0 + rr, y0],
-                    [x0 + rr, y0],
-                    [x1 - rr, y0],
-                    [x1 - rr, y0],
-                    [x1 - k, y0],
-                    [x1, y0 + k],
-                    [x1, y0 + rr],
-                    [x1, y0 + rr],
-                    [x1, y1 - rr],
-                    [x1, y1 - rr],
-                    [x1, y1 - k],
-                    [x1 - k, y1],
-                    [x1 - rr, y1],
-                    [x1 - rr, y1],
-                    [x0 + rr, y1],
-                    [x0 + rr, y1],
-                    [x0 + k, y1],
-                    [x0, y1 - k],
-                    [x0, y1 - rr],
-                    [x0, y1 - rr],
-                    [x0, y0 + rr],
-                    [x0, y0 + rr],
-                    [x0, y0 + k],
-                    [x0 + k, y0],
-                    [x0 + rr, y0],
-                ];
+                let pts = rrect(x0, y0, w - r.at(w), h - b.at(h), *radius);
                 path(vec![(pts, true)], FillRule::NonZero, true)
             }
+            CssClip::Rect([t, r, b, l], radius) => {
+                let at = |p: &Option<Pos>, whole: f32, none: f32| p.map_or(none, |p| p.at(whole));
+                let pts = rrect(
+                    at(l, w, 0.0),
+                    at(t, h, 0.0),
+                    at(r, w, w),
+                    at(b, h, h),
+                    *radius,
+                );
+                path(vec![(pts, true)], FillRule::NonZero, true)
+            }
+            CssClip::Xywh([x, y, ww, hh], radius) => {
+                let (x0, y0) = (x.at(w), y.at(h));
+                let pts = rrect(x0, y0, x0 + ww.at(w), y0 + hh.at(h), *radius);
+                path(vec![(pts, true)], FillRule::NonZero, true)
+            }
+            CssClip::Box => path(
+                vec![(rrect(0.0, 0.0, w, h, radius), true)],
+                FillRule::NonZero,
+                true,
+            ),
+            CssClip::Units(fill, contours) => {
+                let scaled = contours
+                    .iter()
+                    .map(|(p, c)| (p.iter().map(|[x, y]| [x * w, y * h]).collect(), *c))
+                    .collect();
+                path(scaled, *fill, true)
+            }
+            CssClip::Shape(fill, cmds) => {
+                // SVG path data with the lengths resolved over the box: a
+                // pair's x of its width, y of its height; an arc's radii
+                // likewise, its rotation and flags as written.
+                let mut d = String::new();
+                for (c, args) in cmds {
+                    d.push(*c);
+                    for (k, a) in args.iter().enumerate() {
+                        let whole = match (c.to_ascii_uppercase(), k) {
+                            ('H', _) => w,
+                            ('V', _) => h,
+                            ('A', 2..=4) => 0.0,
+                            (_, k) if k % 2 == 0 => w,
+                            _ => h,
+                        };
+                        d.push_str(&format!(" {}", a.at(whole)));
+                    }
+                    d.push(' ');
+                }
+                match crate::svg::Path::parse(&d) {
+                    Ok(p) => path(super::build::svg::subpaths(&p), *fill, true),
+                    Err(_) => path(Vec::new(), *fill, true),
+                }
+            }
+            CssClip::Url(_) => path(Vec::new(), FillRule::NonZero, true),
             CssClip::Ellipse(r, circle, at) => {
                 let c = [at[0].at(w), at[1].at(h)];
                 let (cx, cy) = ([c[0], w - c[0]], [c[1], h - c[1]]);

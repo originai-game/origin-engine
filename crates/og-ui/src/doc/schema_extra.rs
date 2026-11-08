@@ -874,7 +874,7 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `clip-path`: `inset()`, `circle()`, `ellipse()`, `polygon()` or `path()` cuts the element, its background and its children to the shape (by its path's coverage, either fill rule).",
+        doc: "CSS `clip-path`: a basic shape (`inset()`, `rect()`, `xywh()`, `circle()`, `ellipse()`, `polygon()`, `path()` or `shape()`) over a geometry box (`border-box` by default, `padding-box`, `content-box`, `margin-box`; `fill-box` is the content box, `stroke-box` and `view-box` the border box), a geometry box alone (that box with its corners), or `url(#id)` of a `<clipPath>` in the document. It cuts everything the element draws (shadows, background, borders) and its children, by the shape's coverage with either fill rule.",
     },
     PropSpec {
         name: "material",

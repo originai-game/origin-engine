@@ -520,7 +520,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if prop == "isolation" => "auto | isolate".into(),
         Conv::Raw if prop == "textShadow" => "<x> <y> [<blur>] [<colour>], … | none".into(),
         Conv::Raw if prop == "clipPath" => {
-            "inset(…) | circle(…) | ellipse(…) | polygon(…) | path(\"…\") | none".into()
+            "[inset(…) | rect(…) | xywh(…) | circle(…) | ellipse(…) | polygon(…) | path(\"…\") | shape(…)] [<geometry-box>] | <geometry-box> | url(#id) | none".into()
         }
         Conv::Raw if prop == "scrollSnapType" => {
             "none | x | y | block | inline | both [mandatory | proximity]".into()
@@ -2761,7 +2761,8 @@ pub(crate) fn split_decls(t: &str) -> Result<Vec<(String, String)>, String> {
         } else if ch == '"' {
             in_str = true;
             cur.push(ch);
-        } else if ch == '#' && !c.get(i + 1).is_some_and(|d| d.is_ascii_hexdigit()) {
+        } else if ch == '#' && depth == 0 && !c.get(i + 1).is_some_and(|d| d.is_ascii_hexdigit()) {
+            // A comment; inside parentheses a `#` is a reference (`url(#id)`).
             break;
         } else if ch == '(' {
             depth += 1;

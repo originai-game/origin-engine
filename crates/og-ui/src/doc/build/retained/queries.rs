@@ -73,6 +73,7 @@ impl RetainedHost {
             if let Some(index) = ui.replace_fields(
                 fields,
                 &resolved.path,
+                &e.document,
                 &e.document.nodes[e.index],
                 &resolved.values,
             ) {

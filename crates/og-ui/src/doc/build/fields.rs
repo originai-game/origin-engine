@@ -136,6 +136,7 @@ impl Ui {
     /// shadow takes its background under it.
     fn box_decor(
         &self,
+        doc: &crate::doc::UiDocument,
         r: &Resolved,
         el: &mut Element,
         kind: &str,
@@ -210,7 +211,7 @@ impl Ui {
             }
         }
         d.corners = corners(r, el.radius);
-        let css = self.css_paint(r, current, textures, warn);
+        let css = self.css_paint(doc, r, current, textures, warn);
         // A clip, mask, blend, filter or material cuts or composites the
         // background too: it is drawn with them.
         if (css.as_ref().is_some_and(|c| {
@@ -291,6 +292,7 @@ impl Ui {
     /// stylesheet already checked, so one that fails here is skipped.
     fn css_paint(
         &self,
+        doc: &crate::doc::UiDocument,
         r: &Resolved,
         current: Srgba,
         textures: &[(f64, og_render::TextureHandle)],
@@ -408,7 +410,20 @@ impl Ui {
         {
             c.text_shadows = s;
         }
-        c.clip = r.str("clipPath").and_then(|v| p::clip(v).ok()).flatten();
+        if let Some((clip, geo)) = r.str("clipPath").and_then(|v| p::clip(v).ok()).flatten() {
+            c.clip_box = geo;
+            c.clip = Some(match clip {
+                p::CssClip::Url(u) => match super::svg::css_clip(doc, &u) {
+                    Ok((rule, parts, false)) => p::CssClip::Path(rule, parts),
+                    Ok((rule, parts, true)) => p::CssClip::Units(rule, parts),
+                    Err(e) => {
+                        warn.push(format!("clip-path: {e}"));
+                        p::CssClip::Path(crate::paint::FillRule::NonZero, Vec::new())
+                    }
+                },
+                clip => clip,
+            });
+        }
         if let Some(Ok(Some(l))) = r.str("material").map(p::material) {
             c.layer = Some(l);
         }
@@ -433,7 +448,13 @@ impl Ui {
         }
     }
 
-    pub(super) fn apply_document_fields(&mut self, n: &DocNode, r: &Resolved, base: &RenderFields) {
+    pub(super) fn apply_document_fields(
+        &mut self,
+        doc: &crate::doc::UiDocument,
+        n: &DocNode,
+        r: &Resolved,
+        base: &RenderFields,
+    ) {
         let i = base.index;
         self.nodes[i].el = base.element;
         self.nodes[i].props = base.widget_props.clone();
@@ -721,11 +742,37 @@ impl Ui {
             };
         }
         let mut warn = Vec::new();
-        let decor = self.box_decor(r, &mut el, base.kind, &base.textures, &mut warn);
+        let mut decor = self.box_decor(doc, r, &mut el, base.kind, &base.textures, &mut warn);
         for w in warn {
             self.warnings.push(format!("line {}: {w}", n.line));
         }
         let el = Self::sized(r, Self::item_of(r, el));
+        // A clip's reference box from the laid-out box: its insets from
+        // the border box and the corner it takes (CSS Masking 1 §4.1; the
+        // border width pads the element, so padding holds it).
+        if let Some(d) = decor.as_mut()
+            && let Some(c) = d.css.as_mut()
+        {
+            use crate::doc::paint_css::GeoBox;
+            let borders = d.borders.map(|b| b.map_or(0.0, |b| b.width));
+            let p = el.padding;
+            let m = el.margin.map(|m| m.intrinsic());
+            let insets = match c.clip_box {
+                GeoBox::Border => [0.0; 4],
+                GeoBox::Padding => borders,
+                GeoBox::Content => [p.top, p.right, p.bottom, p.left],
+                GeoBox::Margin => m.map(|v| -v),
+            };
+            let grow = -insets.iter().copied().fold(f32::INFINITY, f32::min);
+            c.clip_ref = (
+                insets,
+                if el.radius > 0.0 {
+                    (el.radius + grow).max(0.0)
+                } else {
+                    0.0
+                },
+            );
+        }
         self.nodes[i].el = el;
         self.nodes[i].decor = decor.map(Box::new);
         let mut props = Self::resolved_props(n, r);
@@ -1053,7 +1100,7 @@ mod tests {
                     let events = ui.docs.queued.clone();
                     let count = ui.nodes.len();
                     for (node, values, fields) in &replacements {
-                        ui.apply_document_fields(&target.nodes[*node], values, fields);
+                        ui.apply_document_fields(&target, &target.nodes[*node], values, fields);
                     }
                     assert_eq!(ui.save_state(), state);
                     assert_eq!(ui.docs.queued, events);

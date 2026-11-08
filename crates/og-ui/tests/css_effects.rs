@@ -1,5 +1,7 @@
-//! CSS effects in documents (docs/ui.md, CSS paint): group blending and
-//! `isolation`. The frames match `references/metal/css-effects-{1280,390}.png`
+//! CSS effects in documents (docs/ui.md, CSS paint): group blending,
+//! `isolation`, and `clip-path`'s `rect()`, `xywh()`, `shape()`, geometry
+//! boxes and `url(#id)` of a `<clipPath>` in user space and in
+//! objectBoundingBox units. The frames match `references/metal/css-effects-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
 //! Ways it could fail: a blend applied to each shape of an element rather
@@ -7,7 +9,10 @@
 //! with each other), an isolated group whose children blend with what is
 //! under the group, a blend over a group's transparent pixels that
 //! darkens them (multiply's fixed-function blend reads them as black), or
-//! a blend inside a filtered layer dropped.
+//! a blend inside a filtered layer dropped; `rect()`'s right and bottom
+//! read as insets, a shape's `by`, curve controls or percentages against
+//! the wrong axis, a geometry box that clips the border box, or a
+//! `<clipPath>`'s units ignored.
 
 use crate::support;
 
@@ -24,6 +29,18 @@ const CARD: &str = r##"<meta name="component" content="effects">
     <div id="Grouped" class="well"><div id="Pair"><div class="dot a"></div><div class="dot b"></div></div></div>
     <div id="Filtered" class="well"><div id="Sepia"><div class="dot a"></div><div class="dot b"></div></div></div>
   </div>
+  <div id="Clips">
+    <div id="ByRect" class="cut"></div>
+    <div id="ByXywh" class="cut"></div>
+    <div id="ByShape" class="cut"></div>
+    <div id="ByBox" class="cut"><div class="fill"></div></div>
+    <div id="ByUrl" class="cut"></div>
+    <div id="ByUnits" class="cut"></div>
+  </div>
+  <svg id="Defs" width="0" height="0">
+    <clipPath id="Notch"><rect x="8" y="8" width="40" height="48"/><circle cx="64" cy="32" r="22"/></clipPath>
+    <clipPath id="Diamond" clipPathUnits="objectBoundingBox"><path d="M0.5 0 L1 0.5 L0.5 1 L0 0.5 Z"/></clipPath>
+  </svg>
 </div>
 </column>
 <style>
@@ -43,7 +60,18 @@ const CARD: &str = r##"<meta name="component" content="effects">
 #Pair { position: absolute; top: 0; inset-inline-start: 0; width: 112px; height: 80px; mix-blend-mode: difference; }
 #Sepia { position: absolute; top: 0; inset-inline-start: 0; width: 112px; height: 80px; filter: sepia(1); }
 #Sepia .dot { mix-blend-mode: screen; }
+#Clips { display: flex; flex-direction: row; gap: 16px; }
+.cut { width: 80px; height: 64px; background: linear-gradient(135deg, #d2a8ff, #1f6feb); }
+#ByRect { clip-path: rect(8px auto 75% 25%  round 8px); }
+#ByXywh { clip-path: xywh(10% 10% 60% 70% round 12px); }
+#ByShape { clip-path: shape(from 0% 100%, line to 50% 0%, curve to 100% 100% with 100% 20%, close); }
+#ByBox { padding: 12px; border: 4px solid #f0b429; border-radius: 20px; clip-path: content-box; }
+.fill { width: stretch; height: stretch; background: #7ee787; }
+#ByUrl { clip-path: url(#Notch); }
+#ByUnits { clip-path: url(#Diamond); }
 @media (max-width: 500px) {
+  #Clips { gap: 4px; }
+  .cut { width: 56px; height: 48px; }
   #Blends { gap: 8px; }
   .well, #Iso, #Pair, #Sepia { width: 76px; height: 64px; }
   .dot { width: 40px; height: 40px; border-radius: 20px; }

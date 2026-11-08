@@ -738,10 +738,22 @@ nine parts, `slice 0` and `width auto` by default, with `mask-border-mode`.
 The subtree draws offscreen and is kept where the mask is; the layers
 combine through og-render's Porter-Duff blends (`UiBlend::SourceIn`,
 `SourceOut`, `DestinationIn`, `Xor`). `clip-path`
-takes `inset(… [round r])`, `circle()`, `ellipse()`, `polygon([rule,]
-…)` and `path([rule,] "…")` and cuts the element, its background and its
-children by the shape's analytic coverage (the path clip of inline SVG),
-with either fill rule. `filter` takes Filter Effects 1's functions in the
+takes `inset(… [round r])`, `rect(t r b l [round r])` (`auto` an edge),
+`xywh(x y w h [round r])`, `circle()`, `ellipse()`, `polygon([rule,] …)`,
+`path([rule,] "…")` and `shape([rule,] from x y, …)` (CSS Shapes 2:
+`move`, `line`, `hline`, `vline`, `curve … with c1 [/ c2]`, `smooth`,
+`arc … of rx [ry] [cw] [large] [rotate a]`, each `to` or `by`, and
+`close`), resolved over a geometry box written beside it (`border-box`
+by default, `padding-box`, `content-box`, `margin-box`; on a CSS box
+`fill-box` is the content box and `stroke-box` and `view-box` the border
+box). A geometry box alone clips to that box with the border radius
+grown or shrunk to it, and `url(#id)` clips to a `<clipPath>` anywhere in
+the document (inline SVG's definitions), its shapes in the reference
+box's CSS px or, with `clipPathUnits="objectBoundingBox"`, in fractions
+of it. As CSS has it, the clip cuts everything the element draws (its
+shadows, background, borders and outline) and its children, by the
+shape's analytic coverage (the path clip of inline SVG), with either
+fill rule; `overflow: hidden` still cuts only the children. `filter` takes Filter Effects 1's functions in the
 order written: `blur()` (a standard deviation, as CSS), `brightness()`,
 `contrast()`, `grayscale()`, `hue-rotate()`, `invert()`, `opacity()`,
 `saturate()`, `sepia()` and `drop-shadow([colour] x y [blur])`, whose
@@ -776,8 +788,8 @@ is under it. In a layer, a blend reads a copy of the layer drawn so far
 (og-render splits the layer's pass there) and follows the spec's
 backdrop alpha, so over the group's transparent pixels a colour is
 itself; multiply reads it too there, while screen and plus-lighter stay
-fixed-function, exact over any alpha. A world panel's layer (
-§1) still drops the blends that read what is under them. `text-shadow` takes a comma list of `x y [blur] [color]`.
+fixed-function, exact over any alpha. A world panel's layer
+(§1) still drops the blends that read what is under them. `text-shadow` takes a comma list of `x y [blur] [color]`.
 `-og-material: <name>(<params>…)` composites the element and its subtree
 through one of og-render's built-in layer materials (dissolve, shine,
 hologram, glitch, ripple, pixelate, color-adjust, outline, blur), each

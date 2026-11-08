@@ -598,9 +598,24 @@ fn cut(doc: &UiDocument, r: &Resolved, t: &Affine, vb: [f32; 4]) -> Result<Optio
             return Ok(Some(Cut::Box(shape, rect)));
         }
     }
-    // `clip-rule` (a clip's shapes) or `fill-rule` (a mask's): the cut's
-    // rule when every shape takes it, else nonzero. The shapes are one
-    // path, so two evenodd shapes that overlap cut a hole where they do.
+    let (rule, parts) = def_path(&shapes, tags[0] == "mask", id, vb, t)?;
+    Ok(Some(Cut::Shape(filled(parts, rule))))
+}
+
+/// A clip's or mask's shapes as one path under `t`: its rule (`clip-rule`
+/// of a clip's shapes, `fill-rule` of a mask's, when every shape takes it,
+/// else nonzero) and its subpaths. The shapes are one path, so two
+/// evenodd shapes that overlap cut a hole where they do; a mask's black or
+/// unfilled shapes reveal nothing.
+#[allow(clippy::type_complexity)]
+fn def_path(
+    shapes: &[DefShape],
+    mask: bool,
+    id: &str,
+    vb: [f32; 4],
+    t: &Affine,
+) -> Result<(crate::paint::FillRule, Vec<(Vec<[f32; 2]>, bool)>), String> {
+    let tags = [if mask { "mask" } else { "clipPath" }];
     let rule_attr = if tags[0] == "mask" {
         "fill-rule"
     } else {
@@ -631,7 +646,7 @@ fn cut(doc: &UiDocument, r: &Resolved, t: &Affine, vb: [f32; 4]) -> Result<Optio
         crate::paint::FillRule::NonZero
     };
     let mut parts = Vec::new();
-    for (tag, attrs, own) in &shapes {
+    for (tag, attrs, own) in shapes {
         let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
         // A mask's black or unfilled shapes reveal nothing.
         if tags[0] == "mask"
@@ -645,7 +660,35 @@ fn cut(doc: &UiDocument, r: &Resolved, t: &Affine, vb: [f32; 4]) -> Result<Optio
             parts.extend(subpaths(&local.transformed(&t.then(own))));
         }
     }
-    Ok(Some(Cut::Shape(filled(parts, rule))))
+    Ok((rule, parts))
+}
+
+/// CSS `clip-path: url(#id)` on an element: the `<clipPath>`'s shapes as
+/// one path in the reference box's user space (CSS px from its top left),
+/// its rule, and whether they are fractions of the box
+/// (`clipPathUnits="objectBoundingBox"`).
+#[allow(clippy::type_complexity)]
+pub(crate) fn css_clip(
+    doc: &UiDocument,
+    reference: &str,
+) -> Result<(crate::paint::FillRule, Vec<(Vec<[f32; 2]>, bool)>, bool), String> {
+    let id = url_id(reference).ok_or_else(|| format!("\"{reference}\" is not url(#id)"))?;
+    let node =
+        def(doc, id, &["clipPath"]).ok_or_else(|| format!("url(#{id}) names no <clipPath>"))?;
+    let attrs = literal_attrs(node)?;
+    let units = attrs
+        .iter()
+        .any(|(k, v)| k == "clipPathUnits" && v == "objectBoundingBox");
+    let mut shapes = Vec::new();
+    def_shapes(doc, node, Affine::IDENTITY, &mut shapes)?;
+    // A percentage is of the box: of 1 in its units, else of 100 px.
+    let vb = if units {
+        [0.0, 0.0, 1.0, 1.0]
+    } else {
+        [0.0, 0.0, 100.0, 100.0]
+    };
+    let (rule, parts) = def_path(&shapes, false, id, vb, &Affine::IDENTITY)?;
+    Ok((rule, parts, units))
 }
 
 /// A pattern's tiles under a shape of local bounds `bbox` and transform

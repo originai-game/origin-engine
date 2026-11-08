@@ -156,7 +156,7 @@ impl Ui {
         let mut built = node.probe.clone();
         let props = self.props_of(b, n, node.key, &node.values, &mut built);
         let fields = fields::RenderFields::capture(self, i, kind, Default::default(), props, None);
-        self.apply_document_fields(n, &node.values, &fields);
+        self.apply_document_fields(&b.doc, n, &node.values, &fields);
     }
 
     /// A pseudo-element's text style from its declarations (`name:

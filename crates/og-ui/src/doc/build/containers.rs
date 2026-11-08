@@ -181,7 +181,9 @@ impl Ui {
                 q.computed = r.cascade.computed.clone();
             }
             let fields = self.docs.render_fields.get(&q.key).cloned();
-            if let Some(index) = self.replace_fields(fields, &q.path, &q.doc.nodes[q.node], &r) {
+            if let Some(index) =
+                self.replace_fields(fields, &q.path, &q.doc, &q.doc.nodes[q.node], &r)
+            {
                 dirty.push(index);
             }
         }
@@ -195,13 +197,14 @@ impl Ui {
         &mut self,
         fields: Option<fields::RenderFields>,
         path: &str,
+        doc: &crate::doc::UiDocument,
         n: &DocNode,
         r: &Resolved,
     ) -> Option<usize> {
         let fields = fields?;
         let i = fields.index;
         let hidden = self.nodes[i].hidden;
-        self.apply_document_fields(n, r, &fields);
+        self.apply_document_fields(doc, n, r, &fields);
         // A Rive frame already advanced this tick when its board is unchanged.
         let layout_key = self.nodes[i].key;
         let playing = self.state.rive.get(&layout_key).map(|s| s.board.clone());
