@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "<input type=\"range\" bind:low bind:high>",
+      "summary": "A range input with `low` and `high` is a range slider: two knobs on one track and the fill between them, each its own focus stop, a press taking the nearer knob, and CSS `-og-min-gap` keeping them apart; both values are written back. The document form of the rangeSlider builder (docs/ui.md §2)."
+    },
+    {
+      "member": "<input list> naming a <datalist> of suggestions",
+      "summary": "A text input's `list` names a `<datalist>` whose options, or whose bound `items={$names}`, are suggestions listed under the field while it has the focus, filtered by its text with prefix matches first; choosing one writes it to the field. The document form of the searchBox builder (docs/ui.md §2)."
+    }
+  ]
+}

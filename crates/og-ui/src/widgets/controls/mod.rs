@@ -32,6 +32,7 @@ pub use choices::{
 };
 pub use details::{DetailsDesc, DetailsResult};
 pub use dropdown::{DropdownDesc, DropdownOption, DropdownResult, kept_options};
+pub(crate) use ranges::RangeSliderDesc;
 pub use ranges::{
     NumberResult, NumberStepperDesc, SliderMark, ValueFormat, ValueSliderDesc, ValueSliderResult,
 };

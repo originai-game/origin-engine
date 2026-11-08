@@ -213,6 +213,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("uv", "-og-uv"),
     ("appearance", "appearance"),
     ("fillOrigin", "-og-fill-origin"),
+    ("minGap", "-og-min-gap"),
     ("pickerMaxHeight", "-og-picker-max-height"),
 ];
 
@@ -265,7 +266,7 @@ fn conv(prop: &str) -> Conv {
         "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop"
         | "pickerMaxHeight" => Conv::Len,
-        "aspect" | "opacity" | "z" | "scale" | "maxLines" | "fillOrigin" => Conv::Num,
+        "aspect" | "opacity" | "z" | "scale" | "maxLines" | "fillOrigin" | "minGap" => Conv::Num,
         "rotate" => Conv::Angle,
         "background" | "backdrop" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => {
             Conv::Paint

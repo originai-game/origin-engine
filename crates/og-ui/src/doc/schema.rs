@@ -1225,14 +1225,28 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "low",
         Ty::Num,
-        ["meter"],
-        "The top of the low region (HTML `low`; default `min`)."
+        ["meter", "slider"],
+        two_way,
+        "A meter's top of the low region (HTML `low`; default `min`). On a range input with `high`, its low knob (a slider writes it back)."
     ),
     p!(
         "high",
         Ty::Num,
-        ["meter"],
-        "The bottom of the high region (HTML `high`; default `max`)."
+        ["meter", "slider"],
+        two_way,
+        "A meter's bottom of the high region (HTML `high`; default `max`). On a range input, its high knob: two knobs on one track, `low` to `high` (a slider writes both back)."
+    ),
+    p!(
+        "suggestions",
+        Ty::Names,
+        ["field"],
+        "A text input's suggestions, from the `<datalist>` its `list` names (its options' values, or its `items={$names}`): a list under the field while it has the focus, those containing the text first by prefix, choosing one writes it to the field."
+    ),
+    p!(
+        "minGap",
+        Ty::Num,
+        ["slider"],
+        "The least distance between a range input's two knobs (`-og-min-gap`, in its values; default 0)."
     ),
     p!(
         "optimum",

@@ -94,7 +94,162 @@ pub fn kept_options(options: &[DropdownOption], filter: &str) -> Vec<usize> {
         .collect()
 }
 
+/// A text input's suggestions for `query`: those containing it (case and
+/// accents ignored), those starting with it first, then the shorter; with
+/// no query, the first ones as written. At most `max`.
+fn kept_suggestions<'a>(all: &'a [String], query: &str, max: usize) -> Vec<&'a str> {
+    let q = fold(query.trim());
+    let mut hits: Vec<(bool, &str)> = all
+        .iter()
+        .filter_map(|s| {
+            let f = fold(s);
+            (q.is_empty() || f.contains(&q)).then(|| (!f.starts_with(&q), s.as_str()))
+        })
+        .collect();
+    if !q.is_empty() {
+        hits.sort_by_key(|&(later, s)| (later, s.chars().count()));
+    }
+    hits.into_iter().take(max).map(|(_, s)| s).collect()
+}
+
 impl Ui {
+    /// A text input's suggestion list (HTML's `list` naming a
+    /// `<datalist>`): open under `field` (the field's node) while the field
+    /// or one of its options has the focus, it lists the suggestions that
+    /// keep the query (§ [`kept_suggestions`]). Down reaches it by spatial
+    /// navigation; a press or Enter on one chooses it, and the focus goes
+    /// back to the field. Back, Escape or a press outside closes it until
+    /// the player types again. Dressed as a select's list: `Dropdown.list`,
+    /// `Dropdown.option`. Role
+    /// a listbox of options. Probe: `<id>~list/Option#i`. Answers the
+    /// chosen suggestion.
+    pub(crate) fn suggestions(
+        &mut self,
+        id: &str,
+        field: usize,
+        (focused, typed): (bool, bool),
+        query: &str,
+        all: &[String],
+    ) -> Option<String> {
+        let t = self.theme;
+        let kept = kept_suggestions(all, query, 8);
+        let open_key = format!("{id}~suggest");
+        let shut_key = format!("{id}~shut");
+        let field_key = format!("{id}~field");
+        if focused {
+            self.remember(&field_key, f64::from_bits(self.state.focus));
+        }
+        let was_open = self.memory(&open_key, 0.0) > 0.0;
+        let shut = self.memory(&shut_key, 0.0) > 0.0 && !typed;
+        let open = (focused || was_open) && !shut && !kept.is_empty();
+        let row_h = self.by_text(if self.touch_frame() { TOUCH } else { 36.0 });
+        let content = Element {
+            direction: Direction::Column,
+            width: Size::px(
+                self.last_bounds(self.nodes[field].key)
+                    .map_or(240.0, |b| b.width),
+            ),
+            padding: Insets::xy(0.0, t.space.xxs),
+            radius: t.radius.control,
+            background: Some(self.role("panelRaised").srgba()),
+            part: crate::dress::PartRef::parse("Dropdown.list", ElementClass::Tooltip).ok(),
+            ..Element::default()
+        };
+        let mut chosen = None;
+        let mut on_option = false;
+        // Back while it is open closes it and leaves the field focused.
+        let dismissed = open && self.nav.back;
+        if dismissed {
+            self.nav.back = false;
+        }
+        // An anchored layer that is no focus scope: the focus stays in the
+        // field while the player types (a combobox), and Down reaches it.
+        if open && !dismissed {
+            self.open_layer(
+                "menu",
+                Id::from(format!("{id}~list").as_str()),
+                content,
+                crate::layout::Float::Popover,
+                field,
+            );
+            for (i, s) in kept.iter().enumerate() {
+                let b = self.ctl(
+                    crate::ui_idi("Option", i as u32),
+                    Ctl {
+                        part: "Dropdown.option",
+                        width: Some(Size::grow()),
+                        height: Some(Size::px(row_h)),
+                        padding: Insets::xy(t.space.md, 0.0),
+                        align: Align::Start,
+                        cross: Cross::Center,
+                        fill: None,
+                        wash_by: 0.08,
+                        lift: 0.0,
+                        press: 0.99,
+                        radius: Some(t.radius.small),
+                        semantics: Some(Semantics {
+                            role: Some("option".into()),
+                            name: Some((*s).to_string()),
+                            ..Semantics::default()
+                        }),
+                        ..Ctl::default()
+                    },
+                    |ui, _| {
+                        ui.text(
+                            "Text",
+                            s,
+                            Text {
+                                nowrap: true,
+                                ellipsis: true,
+                                width: Some(Size::grow()),
+                                ..Text::default()
+                            },
+                        );
+                    },
+                );
+                on_option |= b.r.focused;
+                if b.r.clicked {
+                    chosen = Some((*s).to_string());
+                }
+            }
+            self.close();
+            self.semantics(&Semantics {
+                role: Some("listbox".into()),
+                name: Some("Suggestions".into()),
+                ..Semantics::default()
+            });
+        }
+        if chosen.is_some() || dismissed {
+            self.feedback(if dismissed {
+                SoundEvent::Close
+            } else {
+                SoundEvent::Select
+            });
+            let back = self.memory(&field_key, 0.0).to_bits();
+            if back != 0 {
+                self.request_focus = back;
+            }
+        }
+        self.remember(
+            &open_key,
+            if (focused || on_option) && chosen.is_none() {
+                1.0
+            } else {
+                0.0
+            },
+        );
+        let reopen = !(focused || on_option) || typed;
+        self.remember(
+            &shut_key,
+            if dismissed || chosen.is_some() || (shut && !reopen) {
+                1.0
+            } else {
+                0.0
+            },
+        );
+        chosen
+    }
+
     /// A dropdown (a select): a field-like trigger with the chosen option
     /// and a chevron that turns as it opens; its list opens below it (above
     /// without room, kept on screen) as a floating layer that takes the

@@ -11,8 +11,8 @@
 //! - a `<datalist>` drawn as content, its options' ticks missing or at the
 //!   wrong fractions, an option labelled by its value shown as text, the
 //!   fill growing from min when `-og-fill-origin` names another value, a
-//!   disabled range still taking a drag, or a `list` on a text input (or
-//!   naming nothing) accepted → `a_range_takes_its_datalist_origin_and_disabled`
+//!   disabled range still taking a drag, or a `list` naming nothing
+//!   accepted → `a_range_takes_its_datalist_origin_and_disabled`
 //! - a caption on the wrong side of its switch for the source order, a
 //!   label's `flex-direction: row-reverse` ignored, a `<small>` merged into
 //!   the caption, `-og-control-size` or `disabled` dropped →
@@ -73,6 +73,119 @@ fn key(d: &mut Doc, k: UiKey) {
     for _ in 0..30 {
         d.step(InputFrame::default());
     }
+}
+
+/// A range input with `low` and `high` is two knobs on one track: a press
+/// takes the nearer knob, each knob steps on its own, and neither passes
+/// the other by less than `-og-min-gap`.
+///
+/// Ways it could fail: a press always moving one knob, a step on the high
+/// knob moving the low one, the knobs crossing or closing past the gap, or
+/// only one value written back.
+#[test]
+fn a_range_with_low_and_high_is_two_knobs() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <input type="range" id="Price" min="0" max="100" step="10" bind:low={$lo} bind:high={$hi} />
+</div>
+<style>
+#Page { padding: 20px; }
+#Price { width: 400px; -og-min-gap: 20; }
+</style>"#;
+    let knobs = |d: &mut Doc| {
+        (
+            d.read("lo").as_f64().unwrap(),
+            d.read("hi").as_f64().unwrap(),
+        )
+    };
+    let d = &mut Doc::new(text, &[("lo", json!(20)), ("hi", json!(80))], true);
+    {
+        d.step(InputFrame::default());
+        assert_eq!(under(d, "Price", "Value").text, "20 – 80");
+        let track = under(d, "Price", "Track");
+        let knob = under(d, "Price", "Low").width;
+        let at = |f: f32| {
+            Vec2::new(
+                track.x + knob / 2.0 + f * (track.width - knob),
+                track.y + track.height / 2.0,
+            )
+        };
+        d.click_at(at(0.9));
+        assert_eq!(knobs(d), (20.0, 90.0), "the nearer knob, high");
+        d.click_at(at(0.3));
+        assert_eq!(knobs(d), (30.0, 90.0), "the nearer knob, low");
+        // The high knob steps down to the low one less the gap, no further.
+        d.click("High");
+        for _ in 0..6 {
+            key(d, UiKey::Left);
+        }
+        assert_eq!(knobs(d), (30.0, 50.0));
+    }
+}
+
+/// A text input's `list` names a `<datalist>` of suggestions: a list under
+/// the field while it has the focus, those containing the text with the
+/// prefix matches first, and choosing one writes it to the field.
+///
+/// Ways it could fail: suggestions shown while the field is not focused, a
+/// filter that keeps everything or misorders prefix matches, a choice not
+/// written back, the list staying open after it, or a datalist's bound
+/// `items` ignored.
+#[test]
+fn a_text_input_list_suggests_from_its_datalist() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <input type="search" id="Q" list="Fruit" bind:value={$q} />
+  <datalist id="Fruit">
+    <option value="Apple"></option><option value="Grape"></option>
+    <option value="Apricot"></option><option value="Banana"></option>
+  </datalist>
+</div>
+<style>#Page { padding: 20px; } #Q { width: 300px; }</style>"#;
+    let options = |d: &Doc| -> Vec<String> {
+        d.ui.probe_elements()
+            .into_iter()
+            .filter(|e| e.path.contains("~list/Option#") && !e.text.is_empty())
+            .map(|e| e.text)
+            .collect()
+    };
+    let d = &mut Doc::new(text, &[("q", json!(""))], true);
+    assert!(
+        options(d).is_empty(),
+        "closed until the field has the focus"
+    );
+    d.click("Q");
+    d.step(InputFrame::default());
+    assert_eq!(options(d), ["Apple", "Grape", "Apricot", "Banana"]);
+    d.set("q", json!("ap"));
+    d.step(InputFrame::default());
+    assert_eq!(
+        options(d),
+        ["Apple", "Apricot", "Grape"],
+        "prefix matches first"
+    );
+    let apricot =
+        d.ui.probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("~list/Option#1"))
+            .unwrap();
+    d.click_at(Vec2::new(
+        apricot.x + apricot.width / 2.0,
+        apricot.y + apricot.height / 2.0,
+    ));
+    d.step(InputFrame::default());
+    assert_eq!(d.read("q"), json!("Apricot"));
+    assert!(options(d).is_empty(), "closed once one is chosen");
+    let bound = r#"<meta name="component" content="t">
+<div id="Page"><input id="Q" list="L" bind:value={$q} /><datalist id="L" items={$names}></datalist></div>"#;
+    let d = &mut Doc::new(
+        bound,
+        &[("q", json!("")), ("names", json!(["Silk", "Salt"]))],
+        false,
+    );
+    d.click("Q");
+    d.step(InputFrame::default());
+    assert_eq!(options(d), ["Silk", "Salt"]);
 }
 
 #[test]
@@ -145,10 +258,6 @@ input { width: 400px; }
             "a disabled range takes no press"
         );
     });
-    let on_text = refused(
-        r#"<meta name="component" content="t"><div><input type="text" list="L" /><datalist id="L"><option value="1"></option></datalist></div>"#,
-    );
-    assert!(on_text.contains("combobox"), "{on_text}");
     let missing = refused(
         r#"<meta name="component" content="t"><div><input type="range" list="Nope" /></div>"#,
     );

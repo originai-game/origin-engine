@@ -91,6 +91,31 @@ pub struct ValueSliderResult {
     pub committed: bool,
 }
 
+/// A range slider ([`Ui::range_slider`]): two knobs on one track.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct RangeSliderDesc {
+    pub min: f32,
+    pub max: f32,
+    /// Snap to multiples of this from min (0: continuous).
+    pub step: f32,
+    /// The least distance between the knobs.
+    pub min_gap: f32,
+    pub label: String,
+    /// Both values at the label row's end.
+    pub show_value: bool,
+    pub format: ValueFormat,
+    pub disabled: bool,
+    pub width: Option<Size>,
+}
+
+/// A range slider's values after this tick.
+pub(crate) struct RangeSliderResult {
+    pub low: f32,
+    pub high: f32,
+    /// Either changed this tick.
+    pub changed: bool,
+}
+
 /// A number stepper: minus, the value and plus.
 #[derive(Clone, Debug, PartialEq)]
 pub struct NumberStepperDesc {
@@ -247,6 +272,22 @@ impl Ui {
     /// A slider's knob: a round part at a fraction of the rail, drawn in
     /// its state; it swells under a finger and takes no press of its own.
     fn knob_at(&mut self, f: f32, g: Geo, pressed: bool, focused: bool, disabled: bool) {
+        self.knob_named("Knob", None, None, f, g, (pressed, focused, disabled));
+    }
+
+    /// A knob named `name`, with a flag (`low`, `high`); with `semantics`
+    /// it is its own focus stop that Left and Right adjust (a range
+    /// slider's), else inert inside its track's control.
+    fn knob_named(
+        &mut self,
+        name: &str,
+        extra: Option<&'static str>,
+        semantics: Option<Semantics>,
+        f: f32,
+        g: Geo,
+        (pressed, focused, disabled): (bool, bool, bool),
+    ) -> Built {
+        let stop = semantics.is_some();
         let big = pressed && self.touch_frame() && !self.still();
         let last = self.last_path();
         let track = parent_of(&last).to_owned();
@@ -257,17 +298,20 @@ impl Ui {
         };
         let primary = self.role("primary");
         self.ctl(
-            "Knob",
+            name,
             Ctl {
                 part: "Slider.knob",
                 cls: ElementClass::Chip,
                 flags: vec![
                     Some("round"),
+                    extra,
                     pressed.then_some("pressed"),
                     (focused && !pressed).then_some("focused"),
                 ],
                 disabled,
-                focusable: false,
+                focusable: stop,
+                adjustable: stop,
+                semantics,
                 width: Some(Size::px(g.knob)),
                 height: Some(Size::px(g.knob)),
                 radius: Some(g.knob / 2.0),
@@ -275,8 +319,8 @@ impl Ui {
                 wash: Some(None),
                 lift: 0.0,
                 press: 1.0,
-                touch: 0.0,
-                inert: true,
+                touch: if stop { TOUCH } else { 0.0 },
+                inert: !stop,
                 props: Props {
                     position: Position::Absolute,
                     // Along the track by layout, so it follows a track
@@ -321,7 +365,7 @@ impl Ui {
                     ui.close();
                 }
             },
-        );
+        )
     }
 
     /// The value bubble over a knob.
@@ -582,6 +626,218 @@ impl Ui {
             value: v,
             changed,
             committed,
+        }
+    }
+
+    /// A range slider (a document's `<input type="range">` with `low` and
+    /// `high`): two knobs on one track and the fill between them. A press
+    /// on the track takes the nearer knob there and a drag moves it, never
+    /// past the other and kept `min_gap` apart; each knob is its own focus
+    /// stop that Left and Right step. Probe: `<id>/Track/Low`,
+    /// `<id>/Track/High`, `<id>/Head/Value`.
+    pub(crate) fn range_slider(
+        &mut self,
+        id: impl Into<Id>,
+        (low, high): (f32, f32),
+        desc: &RangeSliderDesc,
+    ) -> RangeSliderResult {
+        let id = id.into();
+        let key = id.as_str().to_owned();
+        let t = self.theme;
+        let (min, max, step) = (desc.min.min(desc.max), desc.min.max(desc.max), desc.step);
+        let span = if max - min == 0.0 { 1.0 } else { max - min };
+        let disabled = desc.disabled;
+        let touch = self.touch_frame();
+        let knob = self.by_text(if touch { 26.0 } else { 20.0 });
+        let unit = if step > 0.0 { step } else { span / 20.0 };
+        let gap = desc.min_gap.max(0.0);
+        let track_path = format!("{}/Track", self.child_path(&key));
+        let tb = self.bounds_of(&track_path);
+        let g = Geo {
+            h: (knob + 8.0).max(if touch { TOUCH } else { 28.0 }),
+            knob,
+            rail: if touch { 6.0 } else { 4.0 },
+            width: tb.map_or(0.0, |b| (b.width - knob).max(1.0)),
+        };
+        let down = self.input().down;
+        // Which knob a held press moves: 1 low, 2 high.
+        let active = self.memory(&format!("{key}~knob"), 0.0) as u8;
+        let clean = |v: f32| if v.is_finite() { v } else { min };
+        let (a, b) = (clean(low), clean(high));
+        let mut lo = a.min(b).clamp(min, max);
+        let mut hi = a.max(b).clamp(min, max);
+        let place = |k: u8, at: f32, lo: &mut f32, hi: &mut f32| {
+            let v = snap(at, min, max, step);
+            if k == 1 {
+                *lo = v.clamp(min, (*hi - gap).max(min));
+            } else {
+                *hi = v.clamp((*lo + gap).min(max), max);
+            }
+        };
+        if let (true, false, Some(b)) = (active != 0 && down, disabled, tb) {
+            place(
+                active,
+                min + self.fraction_at(b, knob) * span,
+                &mut lo,
+                &mut hi,
+            );
+        }
+        let show = |v: f32| desc.format.show(v, min, step);
+        let label_before = self.label_before();
+        self.open(
+            id,
+            Element {
+                direction: Direction::Column,
+                width: desc.width.unwrap_or(Size::grow()),
+                gap: t.space.xs,
+                cross: Cross::Stretch,
+                ..Element::default()
+            },
+        );
+        if !desc.label.is_empty() || desc.show_value {
+            self.open(
+                "Head",
+                Element {
+                    direction: Direction::Row,
+                    width: Size::grow(),
+                    gap: t.space.sm,
+                    cross: Cross::Baseline,
+                    ..Element::default()
+                },
+            );
+            if desc.label.is_empty() {
+                self.spacer("Lead", Some(Size::grow()));
+            } else {
+                self.text(
+                    "Label",
+                    &desc.label,
+                    Text {
+                        step: Some(t.type_ramp.sm),
+                        color: Ink::Role(if disabled { "inkFaint" } else { "inkMuted" }),
+                        width: Some(Size::grow()),
+                        ..Text::default()
+                    },
+                );
+            }
+            if desc.show_value {
+                self.text(
+                    "Value",
+                    &format!("{} – {}", show(lo), show(hi)),
+                    Text {
+                        step: Some(t.type_ramp.sm),
+                        color: Ink::Role(if disabled { "inkFaint" } else { "ink" }),
+                        nowrap: true,
+                        font: FontRole::Mono,
+                        ..Text::default()
+                    },
+                );
+            }
+            self.close();
+        }
+        let name = if desc.label.is_empty() {
+            label_before.unwrap_or_else(|| key.clone())
+        } else {
+            desc.label.clone()
+        };
+        let (fl, fh) = ((lo - min) / span, (hi - min) / span);
+        let sem = |which: &str, v: f32| Semantics {
+            role: Some("slider".into()),
+            name: Some(format!("{name}, {which}")),
+            value: Some(show(v)),
+            value_min: Some(min),
+            value_max: Some(max),
+            value_now: Some(v),
+            ..Semantics::default()
+        };
+        let (sem_lo, sem_hi) = (sem("minimum", lo), sem("maximum", hi));
+        let mut knobs: Option<(Built, Built)> = None;
+        let built = self.ctl(
+            "Track",
+            Ctl {
+                part: "Slider.reach",
+                cls: ElementClass::Badge,
+                disabled,
+                focusable: false,
+                width: Some(Size::grow()),
+                height: Some(Size::px(g.h)),
+                fill: None,
+                wash: Some(None),
+                lift: 0.0,
+                press: 1.0,
+                ..Ctl::default()
+            },
+            |ui, _| {
+                ui.rail(g, fl, fh, &[], disabled);
+                let held = |k: u8| active == k && down;
+                let k1 = ui.knob_named(
+                    "Low",
+                    Some("low"),
+                    Some(sem_lo),
+                    fl,
+                    g,
+                    (held(1), false, disabled),
+                );
+                let k2 = ui.knob_named(
+                    "High",
+                    Some("high"),
+                    Some(sem_hi),
+                    fh,
+                    g,
+                    (held(2), false, disabled),
+                );
+                knobs = Some((k1, k2));
+            },
+        );
+        self.close();
+        let (k1, k2) = knobs.expect("the track builds its knobs");
+        let mut press = if k1.r.pressed {
+            1
+        } else if k2.r.pressed {
+            2
+        } else {
+            0
+        };
+        if !disabled {
+            for (k, b, v) in [(1, &k1, lo), (2, &k2, hi)] {
+                if b.r.adjust != 0 {
+                    place(
+                        k,
+                        v + unit * self.forward(b.r.adjust) as f32,
+                        &mut lo,
+                        &mut hi,
+                    );
+                }
+            }
+        }
+        if let (true, 0, Some(b), false) = (built.r.pressed, press, tb, disabled) {
+            // A press on the track takes the nearer knob there.
+            let at = min + self.fraction_at(b, knob) * span;
+            press = if (at - lo).abs() <= (at - hi).abs() {
+                1
+            } else {
+                2
+            };
+            place(press, at, &mut lo, &mut hi);
+        }
+        let held = press != 0 || (active != 0 && down);
+        self.remember(
+            &format!("{key}~knob"),
+            f64::from(if press != 0 {
+                press
+            } else if held {
+                active
+            } else {
+                0
+            }),
+        );
+        let changed = lo != a.min(b).clamp(min, max) || hi != a.max(b).clamp(min, max);
+        if changed {
+            self.feedback(SoundEvent::SliderTick);
+        }
+        RangeSliderResult {
+            low: lo,
+            high: hi,
+            changed,
         }
     }
 

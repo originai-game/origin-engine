@@ -91,10 +91,11 @@ probe) are unchanged. The mapping:
 
 | Document | Core kind | Notes |
 |---|---|---|
-| `<input>` (`type` text, password, number, email, url, tel, search) | field | `placeholder`, `maxlength`, `minlength`, `readonly`, `required`, `pattern`, `min`, `max`, `step` (`any`), `aria-invalid`; CSS `appearance: none` drops its frame |
+| `<input>` (`type` text, password, number, email, url, tel, search) | field | `placeholder`, `maxlength`, `minlength`, `readonly`, `required`, `pattern`, `min`, `max`, `step` (`any`), `aria-invalid`, `list` naming a `<datalist>` of suggestions (below); CSS `appearance: none` drops its frame |
 | `<textarea rows>` | field (multi-line) | the same constraints; `rows` lines shown |
 | `<input type="range">` | slider | `min`, `max`, `step`, `disabled`, `list` naming a `<datalist>` (below); CSS `-og-fill-origin: <value>` |
-| `<datalist id>` of `<option value [label]>` | — | draws nothing: a range's `list` puts a tick at each option and its `label` (or text other than the value) under the track |
+| `<input type="range" bind:low bind:high>` | slider (range) | two knobs on one track, `low` to `high` (HTML meter's names), the fill between them: a press takes the nearer knob, each knob is its own focus stop that Left and Right step, and neither passes the other; CSS `-og-min-gap: <value>` keeps them apart. The readout is `low – high`; to a screen reader they are two sliders, `<name>, minimum` and `<name>, maximum` |
+| `<datalist id>` of `<option value [label]>` | — | draws nothing: a range's `list` puts a tick at each option and its `label` (or text other than the value) under the track. A text input's `list` takes its options' values, or `<datalist id items={$names}>`'s, as suggestions: a list under the field while it has the focus (dressed as a select's, `Dropdown.list` and `Dropdown.option`), those containing the text, case and accents ignored, prefix matches first, at most 8; with no text, the first ones as written. The focus stays in the field as the player types; Down reaches the list, choosing one writes it to the field and returns the focus, and Back closes it until the player types again |
 | `<input type="checkbox" switch>` | toggle | `checked`, `disabled`; CSS `-og-control-size` |
 | `<input type="checkbox">` | toggle | `checked`; drawn as a switch (og-ui has one checkbox control) |
 | `<label><input type="checkbox"> Caption</label>` | toggle | the label's text is the caption; the two are one node. The caption sits where it is written (after the switch here, before it in `<label>Caption <input …></label>`); `flex-direction: row-reverse` on the label swaps it. A `<small>` inside is its description line |

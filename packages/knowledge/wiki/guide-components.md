@@ -392,6 +392,9 @@ Its own props, beside every element's:
 | `mark-values` | `names` | The values of the `<datalist>` its `list` names: a tick at each. |
 | `mark-labels` | `names` | The marks' labels, under the track (an `<option label>`'s, or its text); empty for a tick only. |
 | `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
+| `low` | `number` | A meter's top of the low region (HTML `low`; default `min`). On a range input with `high`, its low knob (a slider writes it back). Two-way only with an explicit bind: attribute. |
+| `high` | `number` | A meter's bottom of the high region (HTML `high`; default `max`). On a range input, its high knob: two knobs on one track, `low` to `high` (a slider writes both back). Two-way only with an explicit bind: attribute. |
+| `-og-min-gap:` | `<number>` | The least distance between a range input's two knobs (`-og-min-gap`, in its values; default 0). |
 
 <a id="guide-components-18"></a>
 ### `components §18` `<input type="checkbox">`, `<input type="checkbox" switch>`, `<label>` (`toggle`): A switch with a label (two-way `checked`)
@@ -479,6 +482,7 @@ Its own props, beside every element's:
 | `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
 | `-og-stepper:` | `none \| buttons` | A number input drawn as minus, its value and plus (`-og-stepper: buttons`). |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
+| `suggestions` | `names` | A text input's suggestions, from the `<datalist>` its `list` names (its options' values, or its `items={$names}`): a list under the field while it has the focus, those containing the text first by prefix, choosing one writes it to the field. |
 | `value` | `text` | The field's text (written back). Two-way only with an explicit bind: attribute. |
 | `placeholder` | `text` | Shown while it is empty. |
 | `readonly` | `bool` | Its text is selected and copied but never edited; it keeps its focus stop. |
@@ -603,8 +607,8 @@ Its own props, beside every element's:
 | `value` | `number` | Its value (a slider writes it back). Two-way only with an explicit bind: attribute. |
 | `min` | `number` | The range's low end; a number input under it is invalid (`rangeUnderflow`). |
 | `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
-| `low` | `number` | The top of the low region (HTML `low`; default `min`). |
-| `high` | `number` | The bottom of the high region (HTML `high`; default `max`). |
+| `low` | `number` | A meter's top of the low region (HTML `low`; default `min`). On a range input with `high`, its low knob (a slider writes it back). Two-way only with an explicit bind: attribute. |
+| `high` | `number` | A meter's bottom of the high region (HTML `high`; default `max`). On a range input, its high knob: two knobs on one track, `low` to `high` (a slider writes both back). Two-way only with an explicit bind: attribute. |
 | `optimum` | `number` | The best value (HTML `optimum`; default the middle): its region is `optimum`, the next `suboptimum`, the far one `poor`. |
 
 <a id="guide-components-31"></a>

@@ -694,6 +694,31 @@ impl Ui {
                     },
                 );
             }
+            "slider" if r.has("high") => {
+                let out = self.range_slider(
+                    id.as_str(),
+                    (
+                        r.num("low").unwrap_or(f32::MIN),
+                        r.num("high").unwrap_or(f32::MAX),
+                    ),
+                    &crate::widgets::RangeSliderDesc {
+                        min: r.num("min").unwrap_or(0.0),
+                        max: r.num("max").unwrap_or(1.0),
+                        step: r.num("stepBy").unwrap_or(0.0),
+                        min_gap: styled.num("minGap").unwrap_or(0.0),
+                        label: text_of(&r, b),
+                        show_value: !r.has("showValue") || r.flag("showValue"),
+                        width: r.size("width"),
+                        disabled: r.flag("disabled"),
+                        ..crate::widgets::RangeSliderDesc::default()
+                    },
+                );
+                resp.changed = out.changed;
+                if out.changed {
+                    self.write_back(b, n, "low", json!(out.low));
+                    self.write_back(b, n, "high", json!(out.high));
+                }
+            }
             "slider" => {
                 let v0 = r.num("value").unwrap_or(0.0);
                 // Its `<datalist>`'s options: a tick at each value.
@@ -948,6 +973,15 @@ impl Ui {
                         },
                     )
                 };
+                if let Some(V::Strs(all)) = r.get("suggestions") {
+                    let field = self.last_closed;
+                    if let Some(c) =
+                        self.suggestions(&path, field, (resp.focused, resp.changed), &s, all)
+                    {
+                        s = c;
+                        resp.changed = true;
+                    }
+                }
                 if resp.changed {
                     self.write_back(b, n, "input", json!(s));
                 }

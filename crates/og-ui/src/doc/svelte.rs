@@ -337,15 +337,20 @@ struct Parser {
     /// `<label for>`s, joined to their controls once the tree is read:
     /// (the label's node, the control's id, where `for` is written).
     label_fors: Vec<(usize, String, usize)>,
-    /// `<datalist>`s by id: their options' values and labels.
-    datalists: Vec<(String, Vec<(String, String)>)>,
-    /// Ranges' `list`s, joined to their datalists once the tree is read:
-    /// (the range's node, the datalist's id, where `list` is written).
+    /// `<datalist>`s by id: their options' values and labels, and their
+    /// bound `items` (a text input's suggestions from a store).
+    datalists: Vec<Datalist>,
+    /// Inputs' `list`s, joined to their datalists once the tree is read:
+    /// (the input's node, the datalist's id, where `list` is written).
     list_fors: Vec<(usize, String, usize)>,
     /// `aria-labelledby` and `aria-describedby`, joined once the tree is
     /// read: (the element, the prop the text goes to, the ids, where).
     aria_refs: Vec<(usize, &'static str, String, usize)>,
 }
+/// A `<datalist>`: its id, its options' values and labels, and its bound
+/// `items`.
+type Datalist = (String, Vec<(String, String)>, Option<Expr>);
+
 impl Parser {
     fn line(&self, at: usize) -> usize {
         syntax::location(&self.doc.text, at).0
@@ -640,19 +645,30 @@ impl Parser {
             }
             "datalist" => {
                 // HTML renders none: its options are the values a range's
-                // `list` marks.
+                // `list` marks, or a text input's suggestions.
                 let Some(id) = attrs.iter().find(|a| a.name == "id" && !a.bound) else {
                     return Err((
                         at,
-                        "a <datalist> needs a literal id, which a range's list names".into(),
+                        "a <datalist> needs a literal id, which an input's list names".into(),
                     ));
                 };
-                if let Some(a) = attrs.iter().find(|a| a.name != "id") {
+                if let Some(a) = attrs
+                    .iter()
+                    .find(|a| a.name != "id" && !(a.name == "items" && a.bound))
+                {
                     return Err((
                         a.at,
-                        format!("a <datalist> takes only an id, not {}", a.name),
+                        format!(
+                            "a <datalist> takes only an id and items={{$names}}, not {}",
+                            a.name
+                        ),
                     ));
                 }
+                let items = attrs
+                    .iter()
+                    .find(|a| a.name == "items")
+                    .map(|a| expression(&a.value, a.at))
+                    .transpose()?;
                 if !self.ids.insert(id.value.clone()) {
                     return Err((
                         id.at,
@@ -663,18 +679,6 @@ impl Parser {
                     ));
                 }
                 let options = select_options(children)?;
-                if let Some(o) = options
-                    .iter()
-                    .find(|o| o.value.trim().parse::<f32>().is_err())
-                {
-                    return Err((
-                        at,
-                        format!(
-                            "a range's <datalist> lists numbers; '{}' is not one",
-                            o.value
-                        ),
-                    ));
-                }
                 // An option labelled only by its value is a tick without text.
                 let marks = options
                     .into_iter()
@@ -687,7 +691,7 @@ impl Parser {
                         (o.value.trim().to_string(), label)
                     })
                     .collect();
-                self.datalists.push((id.value.clone(), marks));
+                self.datalists.push((id.value.clone(), marks, items));
                 return Ok(self.push(NodeKind::If(Expr::Lit(false.into())), parent, at));
             }
             "select" => {
@@ -1096,11 +1100,14 @@ impl Parser {
                     ),
                 ));
             }
-            // A range's ticks: the `<datalist>` it names, joined once the
-            // tree is read.
+            // A range's ticks, or a text input's suggestions: the
+            // `<datalist>` it names, joined once the tree is read.
             if tag == "input" && a.name == "list" {
-                if internal != "slider" {
-                    return Err((a.at, "list marks a range's ticks; a text input's suggestions (a combobox) are not supported yet".into()));
+                if internal != "slider" && internal != "field" {
+                    return Err((
+                        a.at,
+                        "list names a range's ticks or a text input's suggestions".into(),
+                    ));
                 }
                 if a.bound || a.value.is_empty() {
                     return Err((a.at, "list names a <datalist> by its literal id".into()));
@@ -1749,17 +1756,37 @@ impl Parser {
         Ok(())
     }
 
-    /// Joins each range's `list` to the `<datalist>` its id names: its
-    /// options are the range's marks.
+    /// Joins each input's `list` to the `<datalist>` its id names: its
+    /// options are a range's marks, or a text input's suggestions.
     fn join_lists(&mut self) -> Result<(), Error> {
         for (range, id, at) in std::mem::take(&mut self.list_fors) {
-            let Some((_, marks)) = self.datalists.iter().find(|(d, _)| *d == id) else {
+            let Some((_, marks, items)) = self.datalists.iter().find(|(d, _, _)| *d == id).cloned()
+            else {
                 return Err((
                     at,
                     format!("list=\"{id}\" names no <datalist>; write <datalist id=\"{id}\">"),
                 ));
             };
             let strs = |v: Vec<String>| PropValue::Lit(Lit::Strs(v));
+            if matches!(self.doc.nodes[range].kind, NodeKind::Element("field")) {
+                // A text input's suggestions: the options' values, or the
+                // datalist's bound items.
+                let value = match items {
+                    Some(e) => PropValue::Bind(e, None),
+                    None => strs(marks.iter().map(|m| m.0.clone()).collect()),
+                };
+                self.prop(range, "field", "suggestions", value, at, "")?;
+                continue;
+            }
+            if items.is_some() {
+                return Err((at, "a range's <datalist> lists literal <option>s".into()));
+            }
+            if let Some(m) = marks.iter().find(|m| m.0.parse::<f32>().is_err()) {
+                return Err((
+                    at,
+                    format!("a range's <datalist> lists numbers; '{}' is not one", m.0),
+                ));
+            }
             let values = strs(marks.iter().map(|m| m.0.clone()).collect());
             let labels = strs(marks.iter().map(|m| m.1.clone()).collect());
             self.prop(range, "slider", "markValues", values, at, "")?;

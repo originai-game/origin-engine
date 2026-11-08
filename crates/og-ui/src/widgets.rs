@@ -18,6 +18,7 @@ use og_core::hash::StableHasher;
 use og_render::TextureHandle;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
+pub(crate) use controls::RangeSliderDesc;
 pub use controls::{
     CheckFieldDesc, ChoiceIndexResult, DetailsDesc, DetailsResult, DropdownDesc, DropdownOption,
     DropdownResult, LabelSide, NumberResult, NumberStepperDesc, RadioGroupDesc, RadioOption,
