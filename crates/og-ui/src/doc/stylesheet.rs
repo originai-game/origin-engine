@@ -46,6 +46,9 @@ pub(super) fn apply(
         }
     }
     rules.retain(|rule| !rule.selector.starts_with("@keyframes "));
+    for rule in &mut rules {
+        backdrop(rule)?;
+    }
     let mut parsed = Vec::new();
     for rule in rules {
         for selector in Selector::parse_list(&rule.selector).map_err(|e| (rule.at, e))? {
@@ -278,4 +281,51 @@ fn matches(
         Expr::Lit(serde_json::Value::Bool(false)) => None,
         condition => Some(condition),
     })
+}
+
+/// `<dialog>::backdrop { background: … }`, CSS's pseudo-element for a
+/// modal's scrim: the rule becomes the dialog's own `-og-backdrop`, so it
+/// cascades (states, variables, media) as any declaration does.
+fn backdrop(rule: &mut Rule) -> Result<(), (usize, String)> {
+    let selectors: Vec<&str> = rule.selector.split(',').map(str::trim).collect();
+    let on = selectors
+        .iter()
+        .filter(|s| s.ends_with("::backdrop"))
+        .count();
+    if on == 0 {
+        return Ok(());
+    }
+    if on != selectors.len() {
+        return Err((
+            rule.at,
+            format!(
+                "{}: write ::backdrop rules apart from the element's own",
+                rule.selector
+            ),
+        ));
+    }
+    let mut body = String::new();
+    for d in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
+        if d.name != "background" {
+            return Err((
+                rule.at,
+                format!(
+                    "::backdrop takes background (the scrim's fill), not {}",
+                    d.name
+                ),
+            ));
+        }
+        body.push_str(&format!(
+            "-og-backdrop: {}{};",
+            d.source,
+            if d.important { " !important" } else { "" }
+        ));
+    }
+    rule.selector = selectors
+        .iter()
+        .map(|s| s.trim_end_matches("::backdrop"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    rule.body = body;
+    Ok(())
 }

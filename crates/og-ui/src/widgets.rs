@@ -119,6 +119,8 @@ pub struct DialogDesc {
     pub name: String,
     /// Its width; `None`: a modal's 420 CSS px, a non-modal's fit.
     pub width: Option<Size>,
+    /// A modal's scrim fill (`dialog::backdrop`); `None`: the style's `scrim`.
+    pub backdrop: Option<Srgba>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

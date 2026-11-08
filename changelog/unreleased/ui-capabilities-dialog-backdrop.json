@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: dialog::backdrop",
+      "summary": "CSS's ::backdrop pseudo-element on a modal <dialog>: `dialog::backdrop { background: … }` fills its scrim, cascading with states, variables and media; the scrim is the part Dialog.backdrop to a style pack. ui.DialogDesc.backdrop for Rust."
+    }
+  ]
+}

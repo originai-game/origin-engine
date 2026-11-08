@@ -94,6 +94,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("radius", "border-radius"),
     ("frame", "-og-frame"),
     ("rive", "-og-frame"),
+    ("backdrop", "-og-backdrop"),
     ("aspect", "aspect-ratio"),
     ("fade", "-og-scroll-fade"),
     ("fadeInto", "-og-scroll-fade-into"),
@@ -176,7 +177,9 @@ fn conv(prop: &str) -> Conv {
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop" => Conv::Len,
         "aspect" | "opacity" | "z" | "scale" | "maxLines" => Conv::Num,
         "rotate" => Conv::Angle,
-        "background" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => Conv::Paint,
+        "background" | "backdrop" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => {
+            Conv::Paint
+        }
         "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
         | "textAlign" | "fit" => Conv::Kebab,
         "wrap" => Conv::Bool("wrap", "nowrap"),
@@ -1209,6 +1212,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         "z-index" => Ok(vec![e("z", vec![want_num(&one(&t, name)?)?])]),
         "border-radius" => Ok(vec![e("radius", vec![want_len(&one(&t, name)?)?])]),
         "background" => Ok(vec![e("background", paint_vals(&t)?)]),
+        "-og-backdrop" if !state => Ok(vec![e("backdrop", paint_vals(&t)?)]),
         "color" => Ok(vec![e(
             if state { "ink" } else { "color" },
             paint_vals(&t)?,

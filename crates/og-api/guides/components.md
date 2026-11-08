@@ -385,6 +385,7 @@ Its own props, beside every element's:
 | Write | Value | What |
 |---|---|---|
 | `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
+| `-og-backdrop:` | `var(--<role>) \| #rrggbb[aa]` | A modal's scrim fill (`dialog::backdrop { background: … }`); else the style's `scrim`. |
 | `modal` | `bool` | Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`). |
 
 ## 25. `<details>` (`details`): A disclosure (two-way `open`): its `<summary>` row, its content shown only while open

@@ -21,6 +21,9 @@
 //! - a control dressed under another part name than docs/ui.md §2.4
 //!   lists, so a pack's `Component::part` rule never reaches it →
 //!   `each_control_is_dressed_by_its_named_parts`
+//! - `dialog::backdrop { background }` not reaching the scrim (or
+//!   reaching an in-place dialog's page), or a `::backdrop` rule taking a
+//!   property it cannot honour → `the_backdrop_pseudo_element_fills_the_scrim`
 //! - `<option>` or `<summary>` accepted out of place, or a select's
 //!   `{#each}` accepted though it cannot list → `misplaced_parts_are_refused`
 
@@ -471,13 +474,18 @@ fn each_control_is_dressed_by_its_named_parts() {
     rig.set("more", json!(true));
     rig.set("note", json!(true));
     rig.click("Pick/Trigger");
-    let parts: std::collections::BTreeSet<String> = rig
+    let mut parts: std::collections::BTreeSet<String> = rig
         .ui
         .parts()
         .iter()
         .flatten()
         .map(|p| format!("{p}"))
         .collect();
+    let mut modal = self::rig();
+    modal.set("ask", json!(true));
+    modal.settle();
+    assert!(modal.el("Ask/Panel").is_some());
+    parts.extend(modal.ui.parts().iter().flatten().map(|p| format!("{p}")));
     for want in [
         "Dropdown.trigger[open]",
         "Dropdown.list",
@@ -489,6 +497,7 @@ fn each_control_is_dressed_by_its_named_parts() {
         "Details.summary[open]",
         "Details.content",
         "Dialog.panel[open]",
+        "Dialog.backdrop",
         "Meter.track",
     ] {
         assert!(parts.contains(want), "{want} in {parts:?}");
@@ -590,5 +599,58 @@ fn html_controls_match_their_reference_frames() {
                 .unwrap_or_else(|e| panic!("{name}: {e}"));
             println!("{name}: RMSE {rmse:.6}");
         }
+    }
+}
+
+#[test]
+fn the_backdrop_pseudo_element_fills_the_scrim() {
+    let doc = r#"<meta name="component" content="form">
+<column id="Form">
+  <dialog id="Ask" modal bind:open={$ask} aria-label="Quit?"><button id="Yes">Yes</button></dialog>
+</column>
+<style>
+dialog::backdrop { background: #336699; }
+dialog { width: 200px; }
+</style>"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("ui/form.svelte", doc).expect("::backdrop parses"));
+    let source = SourceId::new("test", "ask");
+    let mut rig = Rig { ui };
+    rig.apply(json!({"op": "signal", "source": source, "initial": true}));
+    rig.ui
+        .mount_document(
+            SourceId::new("test", "form"),
+            "form",
+            [("ask".to_string(), source)].into(),
+            &bind::NoEnv,
+        )
+        .unwrap();
+    rig.settle();
+    let want = Srgba::rgb(0x33, 0x66, 0x99).linear();
+    let scrim = rig.ui.frame().items.iter().any(|it| match &it.cmd {
+        DrawCmd::Shape { shape, .. } => {
+            shape.half.x >= 399.0
+                && matches!(shape.paint, og_render::UiPaint::Solid(c) if c == want)
+        }
+        _ => false,
+    });
+    assert!(scrim, "the scrim is drawn in the ::backdrop fill");
+    assert_eq!(
+        rig.el("Ask/Panel").unwrap().width,
+        200.0,
+        "the dialog's own rule still applies"
+    );
+    for (bad, why) in [
+        ("dialog::backdrop { opacity: 0.5; }", "takes background"),
+        ("dialog, dialog::backdrop { background: red; }", "apart"),
+    ] {
+        let doc = format!(
+            "<meta name=\"component\" content=\"form\">\n<column><dialog modal></dialog></column>\n<style>{bad}</style>"
+        );
+        let err = UiDocument::parse("ui/form.svelte", &doc)
+            .err()
+            .unwrap_or_else(|| panic!("{bad} parses"))
+            .join("\n");
+        assert!(err.contains(why), "{bad}: {err}");
     }
 }

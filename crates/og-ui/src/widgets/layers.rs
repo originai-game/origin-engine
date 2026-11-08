@@ -356,10 +356,18 @@ impl Ui {
                 open,
                 &ModalDesc {
                     width: desc.width,
+                    backdrop: desc.backdrop,
                     ..ModalDesc::default()
                 },
             );
             let panel = self.parent();
+            // The scrim is `Dialog.backdrop` to a style (CSS `::backdrop`).
+            let scrim = self.nodes[panel].parent;
+            self.nodes[scrim].el.part = crate::dress::PartRef::parse(
+                "Dialog.backdrop",
+                None::<crate::tokens::ElementClass>,
+            )
+            .ok();
             self.nodes[panel].a11y.name = Some(desc.name.clone());
             return r;
         }

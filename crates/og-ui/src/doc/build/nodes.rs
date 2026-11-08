@@ -275,6 +275,7 @@ impl Ui {
             modal: r.flag("modal"),
             name: r.str("name").unwrap_or_default().to_string(),
             width: r.size("width"),
+            backdrop: r.color("backdrop"),
         };
         let mut opened: Option<bool> = None;
         // A closed dialog or disclosure builds no content (HTML renders

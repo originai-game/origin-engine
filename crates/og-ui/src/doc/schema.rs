@@ -708,6 +708,12 @@ pub const PROPS: &[PropSpec] = &[
         "Whether it is open (HTML `open`; closing writes false back)."
     ),
     p!(
+        "backdrop",
+        Ty::Paint,
+        ["dialog"],
+        "A modal's scrim fill (`dialog::backdrop { background: … }`); else the style's `scrim`."
+    ),
+    p!(
         "modal",
         Ty::Bool,
         ["dialog"],

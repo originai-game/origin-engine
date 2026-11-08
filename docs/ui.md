@@ -371,8 +371,13 @@ trigger. The value, never the label, is written back. Parts:
 `<dialog bind:open={$x} aria-label="…">` is HTML's dialog. With `modal`
 it is `showModal()`: a scrim layer that takes every press, the focus moved
 to its first control and trapped, Escape, pad B or a press on the scrim
-closing it, and the focus returned to its opener. The panel is
-`<id>/Panel`. Without `modal` it is `show()`: a panel in place
+closing it, and the focus returned to its opener. Like HTML's UA style
+(top layer, `position: fixed`, `margin: auto`), the scrim covers the
+viewport and the panel (`<id>/Panel`) is centred in it, whatever the page
+under it. `dialog::backdrop { background: … }` fills the scrim (default
+the style's `scrim`); a `::backdrop` rule takes only `background`, and
+cascades with states, variables and media as the dialog's own rules do.
+To a style pack the scrim is the part `Dialog.backdrop`. Without `modal` it is `show()`: a panel in place
 (`Dialog.panel[open]`) that Back closes only while the focus is inside, the
 focus then returning to what held it when it opened. Closing writes
 `open` false back.
