@@ -142,6 +142,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("enter", "-og-enter"),
     ("exit", "-og-exit"),
     ("cursor", "cursor"),
+    ("userSelect", "user-select"),
     ("reduced", "-og-reduced-motion"),
     ("step", "font"),
     ("fitMin", "-og-fit-min"),
@@ -195,7 +196,9 @@ fn conv(prop: &str) -> Conv {
             Conv::Paint
         }
         "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
-        | "textAlign" | "fit" | "display" | "markerType" | "markerPosition" => Conv::Kebab,
+        | "textAlign" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect" => {
+            Conv::Kebab
+        }
         "wrap" => Conv::Bool("wrap", "nowrap"),
         "centerX" | "centerY" | "onScene" => Conv::Bool("true", "false"),
         "uppercase" => Conv::Bool("uppercase", "none"),

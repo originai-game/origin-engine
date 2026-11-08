@@ -315,6 +315,7 @@ pub(crate) struct DrawSig {
     pad_rings: u8,
     scale: f32,
     sampled: crate::layout::node::SampledStyle,
+    selected: Option<(u32, u32)>,
 }
 
 impl DrawSig {
@@ -343,6 +344,7 @@ impl DrawSig {
             pad_rings: n.pad_rings,
             scale: n.scale,
             sampled: n.sampled,
+            selected: n.selected,
         }
     }
 }
@@ -366,6 +368,7 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.widget == b.widget
         && a.shapes == b.shapes
         && a.lines == b.lines
+        && a.selected == b.selected
         && a.rich_lines == b.rich_lines
 }
 

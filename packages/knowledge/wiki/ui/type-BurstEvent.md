@@ -25,4 +25,4 @@ struct BurstEvent {
 }
 ```
 
-<sub>Module `ui` line 4887</sub>
+<sub>Module `ui` line 4896</sub>

@@ -25,4 +25,4 @@ struct BannerResult {
 }
 ```
 
-<sub>Module `ui` line 5587</sub>
+<sub>Module `ui` line 5596</sub>

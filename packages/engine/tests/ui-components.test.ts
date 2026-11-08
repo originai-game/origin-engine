@@ -1192,3 +1192,33 @@ test("colorVision: the player's colour-blind mode reaches the theme, partial con
   expect(theme()).toMatchObject({ colorVision: "none", colorVisionFilter: "simulate" });
   engine.destroy();
 });
+
+test("userSelect: a drag over labels in a box that allows it selects across them in order; a press on the box's button selects nothing", () => {
+  // Wrong: the prop not reaching og-ui (nothing selected), labels joined
+  // without a break, a drag back up reversing their order, or a control's
+  // label taken for text.
+  const engine = run(() => {
+    og.ui.open("Notes", { direction: "column", gap: 8 } as Api.ElementDesc);
+    og.ui.label("First", "Alpha beta gamma");
+    og.ui.label("Second", "Delta epsilon");
+    og.ui.button("Go", "Go");
+    og.ui.close();
+    og.ui.props({ userSelect: "text" } as Api.ElementProps);
+  });
+  const selection = () => (engine.probe.dump({ what: "ui" }) as unknown as { selection: { text: string } | null }).selection;
+  const a = byPath(engine, "First")!;
+  const b = byPath(engine, "Second")!;
+  const drag = (from: [number, number], to: [number, number]) => {
+    const mid = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+    engine.probe.commands(`0:touch_move:${from.join(",")};0.02:touch_start;0.06:touch_move:${mid.join(",")};0.1:touch_move:${to.join(",")};0.14:touch_end`);
+    engine.advance(14);
+  };
+  drag([a.x + 1, a.y + a.height / 2], [b.x + b.width + 20, b.y + b.height / 2]);
+  expect(selection()?.text).toBe("Alpha beta gamma\nDelta epsilon");
+  // Back up from the second's last glyph to the first's first.
+  drag([b.x + b.width - 0.5, b.y + b.height / 2], [a.x + 1, a.y + a.height / 2]);
+  expect(selection()?.text).toBe("Alpha beta gamma\nDelta epsilon");
+  const go = byPath(engine, "Go")!;
+  drag([go.x + go.width / 2, go.y + go.height / 2], [go.x + go.width / 2 + 2, go.y + go.height / 2]);
+  expect(selection()).toBeNull();
+});

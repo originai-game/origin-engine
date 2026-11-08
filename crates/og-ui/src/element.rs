@@ -635,6 +635,46 @@ impl Cursor {
     }
 }
 
+/// Whether the player can select an element's text and copy it (CSS
+/// `user-select`, docs/ui.md §2). `Auto` takes its parent's, and with
+/// none set above it (or under a control: a button's label is pressed, not
+/// selected) `None`: a game's text is not selectable unless it says so.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum UserSelect {
+    #[default]
+    Auto,
+    /// Not selectable.
+    None,
+    /// A press and drag selects characters, a double press a word, a
+    /// triple press a line; a long press on a touch screen a word.
+    Text,
+    /// A press selects the element's whole text at once.
+    All,
+}
+
+impl UserSelect {
+    pub const ALL: [UserSelect; 4] = [
+        UserSelect::Auto,
+        UserSelect::None,
+        UserSelect::Text,
+        UserSelect::All,
+    ];
+
+    /// Its IDL and CSS name.
+    pub fn name(self) -> &'static str {
+        match self {
+            UserSelect::Auto => "auto",
+            UserSelect::None => "none",
+            UserSelect::Text => "text",
+            UserSelect::All => "all",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<UserSelect> {
+        UserSelect::ALL.into_iter().find(|c| c.name() == name)
+    }
+}
+
 /// An element the player can move, scale and fade in a HUD layout editor
 /// (docs/ui.md §2.1): a HUD group, a touch stick or button. Its placement
 /// is kept per player under `key` ([`crate::Ui::hud_layout`]); the zero
@@ -898,6 +938,8 @@ pub struct Props {
     pub gestures: Option<GestureSpec>,
     /// The pointer's shape over it and its subtree.
     pub cursor: Cursor,
+    /// Whether its text can be selected and copied (`user-select`).
+    pub select: UserSelect,
     /// The player can move, scale and fade it (a customisable HUD).
     pub customize: Option<Customize>,
     /// How its animatable values move when they change (`None`: at once).
@@ -949,6 +991,7 @@ impl Default for Props {
             focus_group: None,
             gestures: None,
             cursor: Cursor::Auto,
+            select: UserSelect::Auto,
             customize: None,
             motion: None,
             transitions: Vec::new(),

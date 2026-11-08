@@ -79,7 +79,8 @@ pub use dress::{DressFrame, Dressing, Selector};
 pub use element::{
     Affine, Cursor, Customize, Dismiss, DragAxis, DragSpec, DropSpec, Edges, FocusGroup,
     GestureSpec, GridFlow, GridPlace, GridSpec, LayoutMode, LayoutStats, NavLinks, Orientation,
-    Overlap, Patch, PinchSpec, Position, Prop, Props, Query, Track, Transform, Values, Variant,
+    Overlap, Patch, PinchSpec, Position, Prop, Props, Query, Track, Transform, UserSelect, Values,
+    Variant,
 };
 pub use hud_layout::{HudEditInfo, HudEditorDesc, HudEditorResponse, HudPlacement};
 pub use id::{Id, ui_id, ui_idi};

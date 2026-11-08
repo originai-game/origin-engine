@@ -522,6 +522,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "The pointer's shape over it and its subtree."
     ),
     p!(
+        "userSelect",
+        Ty::Word(&["auto", "none", "text", "all"]),
+        "Whether its text and its subtree's can be selected and copied; auto takes its parent's (none at the top and under a control)."
+    ),
+    p!(
         "customize",
         Ty::Bool,
         "The player can move, scale and fade it in the HUD edit mode."

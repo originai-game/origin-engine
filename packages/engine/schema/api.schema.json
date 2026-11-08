@@ -11853,6 +11853,7 @@
         "GestureSpec",
         "Customize",
         "Cursor",
+        "UserSelect",
         "ElementProps",
         "EaseKey",
         "HoldKey",
@@ -59430,6 +59431,24 @@
         "none": "Hidden (a game drawing its own)."
       }
     },
+    "UserSelect": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Whether the player can select an element's text and copy it (CSS user-select, docs/ui.md §2).",
+      "type": "string",
+      "enum": [
+        "auto",
+        "none",
+        "text",
+        "all"
+      ],
+      "x-og-variants": {
+        "auto": "Its parent's; with none set above it, or under a control (a button's label is pressed, not selected), none.",
+        "none": "Not selectable.",
+        "text": "A press and drag selects characters, a double press a word, a triple press a line, a long press on a touch screen a word; Ctrl or Cmd+C copies.",
+        "all": "A press selects its whole text at once."
+      }
+    },
     "ElementProps": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -59600,6 +59619,11 @@
         "cursor": {
           "$ref": "#/$defs/Cursor",
           "description": "The pointer's shape over it and its subtree; auto takes its parent's.",
+          "default": "auto"
+        },
+        "userSelect": {
+          "$ref": "#/$defs/UserSelect",
+          "description": "Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's.",
           "default": "auto"
         },
         "customize": {

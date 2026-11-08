@@ -462,6 +462,31 @@ field so phones show the requested keyboard and autofill reaches it; a
 text area keeps its `<textarea>`. A number uses a text input with the
 decimal keyboard.
 
+#### Selectable text
+
+CSS `user-select` (`ElementProps.userSelect` in TypeScript) makes read-only
+text selectable: `text` selects by characters, `all` takes the element's
+whole text with one press, `none` turns it off, and `auto` takes the
+parent's. Nothing is selectable by default, and a control's subtree (a
+button's label) stays `none` unless it sets the property itself. Only plain
+text elements take a selection; rich text and text controls keep their own.
+
+A press and drag selects, a double press selects a word (UAX #29), a triple
+press a line, and Shift with a press extends. On a coarse pointer a long
+press (500 ms) selects the word under it and a drag that moves at once
+scrolls instead. A drag runs across elements in the tree's order, as a page
+selection does: one that leaves the text picks the selectable text level
+with the pointer, else the nearest above or below. A press anywhere else
+clears it. Ctrl+C (Cmd+C under mac keys) copies it to the host's clipboard
+unless a text control has the focus. The copy joins elements with line
+breaks and puts back what each wrap dropped: a space, nothing between CJK,
+or the source's line break. The fill is the text controls' `TextEdit
+.selection` part, under the glyphs, and the pointer is the I-beam over
+selectable text. The selection is UI state (version 20) and survives save
+and restore. `dump_ui` carries it as `selection` (`text`, and each end's
+`path` and character), `null` with none. Only the elements whose selected
+range changed are painted again.
+
 ### 2.4 Select, dialog, details and meter
 
 These four are core controls with HTML's elements and attributes; kits

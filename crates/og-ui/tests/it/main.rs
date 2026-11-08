@@ -68,6 +68,8 @@ mod support;
 mod text;
 #[path = "../theme.rs"]
 mod theme;
+#[path = "../user_select.rs"]
+mod user_select;
 #[path = "../widgets.rs"]
 mod widgets;
 #[path = "../world.rs"]

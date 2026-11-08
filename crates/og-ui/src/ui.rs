@@ -11,6 +11,7 @@ mod dressing;
 mod finish;
 mod inspect;
 mod node_draw;
+pub(crate) mod select;
 pub(crate) mod settlement;
 mod snapshot;
 mod text_controls;
@@ -119,6 +120,8 @@ pub(crate) const HIT_SCOPE: u16 = 64;
 pub(crate) const HIT_MULTILINE: u16 = 128;
 /// It takes drops of dragged elements (`Props::drop`).
 pub(crate) const HIT_DROP: u16 = 256;
+/// Its text can be selected and copied (`user-select: text | all`).
+pub(crate) const HIT_SELECT: u16 = 1 << 13;
 /// The arrows it claims while focused: [`ARROW_LEFT`] … shifted by 9.
 pub(crate) const HIT_CLAIM_SHIFT: u16 = 9;
 
@@ -283,6 +286,10 @@ pub(crate) struct State {
     pub typed_stream: bool,
     /// The presses counted into double and triple clicks in text controls.
     pub click: crate::edit::Click,
+    /// The player's selection of read-only text (`user-select`), and the
+    /// presses on such text.
+    pub selection: Option<select::Selection>,
+    pub select_press: select::SelectPress,
     /// Each text control's undo history, by key.
     pub histories: IdMap<u64, crate::edit::History>,
     pub hover_ticks: u32,
@@ -511,6 +518,8 @@ pub struct Ui {
     pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
     /// Text a copy or cut took, for the host's clipboard ([`Ui::take_clipboard`]).
     pub(crate) clipboard: Option<String>,
+    /// The keys of the text elements last painted with a selection.
+    pub(crate) selected: Vec<u64>,
     /// The focused text control this frame (into [`UiFrame::text_input`]).
     pub(crate) text_target: Option<TextTarget>,
     /// This frame's screen-transition cover.
@@ -582,7 +591,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 19;
+const STATE_VERSION: u32 = 20;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,

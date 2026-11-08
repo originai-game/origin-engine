@@ -75,6 +75,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `long-press-ms` | `number` | How long its long press is held, ms (0: 500). |
 | `gesture-priority` | `number` | Among nested recognisers of one press: higher wins. |
 | `cursor:` | `auto \| default \| pointer \| text \| grab \| grabbing \| move \| not-allowed \| crosshair \| help \| wait \| progress \| ew-resize \| ns-resize \| nesw-resize \| nwse-resize \| zoom-in \| zoom-out \| none` | The pointer's shape over it and its subtree. |
+| `user-select:` | `auto \| none \| text \| all` | Whether its text and its subtree's can be selected and copied; auto takes its parent's (none at the top and under a control). |
 | `customize` | `bool` | The player can move, scale and fade it in the HUD edit mode. |
 | `customize-key` | `name` | With customize: its name in the saved HUD layout (default: its path). |
 | `-og-reduced-motion:` | `fade \| none \| keep` | Its reduced-motion fallback. |

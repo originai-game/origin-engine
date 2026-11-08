@@ -1168,13 +1168,98 @@ panel { width: 120px; height: 120px; }
     )
 }
 
+/// The selectable text of `user-select-<width>` (tests/user_select.rs).
+pub const USER_SELECT_DOC: &str = r#"<meta name="component" content="sel">
+<column id="Doc">
+  <p id="Wrap">The quick brown fox jumps over the lazy dog</p>
+  <p id="Second">Second paragraph</p>
+  <button id="Go">Go</button>
+  <p id="Off">Not this one</p>
+  <p id="Code">ID-1234</p>
+</column>
+<style>
+#Doc { user-select: text; padding: 16px; gap: 12px; width: 600px; }
+#Wrap { width: 80px; }
+#Off { user-select: none; }
+#Code { user-select: all; }
+</style>"#;
+
+/// `user-select-<width>`: a drag from the wrapped paragraph's second line
+/// into the next paragraph, its selection under the text, drawn by the
+/// host's own og-ui (wasm in Chrome, native on Metal). Panics where the
+/// drag did not select what it must.
+pub fn user_select_scene(font: &FontFiles, width: u32, height: u32) -> (RenderScene, RenderDesc) {
+    let mut scene = RenderScene::new();
+    let font = add_font(&mut scene, font);
+    let mut ui = ui_with_font(font);
+    ui.define_document(UiDocument::parse("ui/sel.svelte", USER_SELECT_DOC).expect("sel parses"));
+    let vp = Viewport::new(width as f32, height as f32);
+    let step = |ui: &mut Ui, p: Vec2, down: bool, pressed: bool, released: bool| {
+        ui.begin(
+            InputFrame {
+                pointer: p,
+                pointer_inside: true,
+                down,
+                pressed,
+                released,
+                ..InputFrame::default()
+            },
+            vp,
+        );
+        ui.component("T", "sel", &mut serde_json::json!({}), &bind::NoEnv);
+        ui.end();
+    };
+    step(&mut ui, Vec2::ZERO, false, false, false);
+    step(&mut ui, Vec2::ZERO, false, false, false);
+    let at = |ui: &Ui, id: &str, fx: f32, fy: f32| {
+        let e = ui.element(id).expect(id);
+        Vec2::new(e.x + e.width * fx, e.y + e.height * fy)
+    };
+    let (from, to) = (at(&ui, "Wrap", 0.3, 0.3), at(&ui, "Second", 0.5, 0.5));
+    step(&mut ui, from, true, true, false);
+    for k in 1..=4 {
+        step(
+            &mut ui,
+            from + (to - from) * (k as f32 / 4.0),
+            true,
+            false,
+            false,
+        );
+    }
+    step(&mut ui, to, false, false, true);
+    let selected = ui.probe_extra()["selection"]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
+    assert!(
+        selected.contains("jumps over the lazy dog\nSecond"),
+        "the drag selected {selected:?}"
+    );
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    let bg = ui.theme().palette.backdrop.linear();
+    scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
+    scene.post.tonemap = Tonemap::None;
+    (
+        scene,
+        RenderDesc {
+            width,
+            height,
+            ..Default::default()
+        },
+    )
+}
+
 /// The reference frames, by their file name under `references/<tier>/`.
-pub const REFERENCE_SCENES: [&str; 5] = [
+pub const REFERENCE_SCENES: [&str; 7] = [
     "sample-screen",
     "text-glow",
     "glass",
     "widget-set",
     "text-fields-2",
+    "user-select-1280",
+    "user-select-390",
 ];
 
 /// The scene and renderer description of reference frame `name`.
@@ -1196,6 +1281,8 @@ pub fn reference_scene(name: &str, font: &FontFiles) -> Result<(RenderScene, Ren
         }
         "color-vision-1280" => color_vision_scene(font, 1280, 720),
         "color-vision-390" => color_vision_scene(font, 390, 844),
+        "user-select-1280" => user_select_scene(font, 1280, 720),
+        "user-select-390" => user_select_scene(font, 390, 844),
         _ => {
             return Err(format!(
                 "no og-ui reference scene {name} (it knows {})",

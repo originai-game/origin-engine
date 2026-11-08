@@ -888,6 +888,12 @@ impl Ui {
         if let Some(c) = r.str("cursor").and_then(crate::element::Cursor::from_name) {
             p.cursor = c;
         }
+        if let Some(s) = r
+            .str("userSelect")
+            .and_then(crate::element::UserSelect::from_name)
+        {
+            p.select = s;
+        }
         p.customize = r.flag("customize").then(|| crate::element::Customize {
             key: r.str("customizeKey").unwrap_or_default().to_owned(),
             ..crate::element::Customize::default()

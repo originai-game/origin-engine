@@ -361,6 +361,10 @@ pub(crate) fn props(d: &Value) -> Props {
             .as_str()
             .and_then(og_ui::Cursor::from_name)
             .unwrap_or_default(),
+        select: d["userSelect"]
+            .as_str()
+            .and_then(og_ui::UserSelect::from_name)
+            .unwrap_or_default(),
         customize: customize(&d["customize"]),
         motion: transition(&d["motion"]),
         layout_motion: transition(&d["layoutMotion"]),

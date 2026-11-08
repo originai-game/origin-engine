@@ -72,6 +72,7 @@ impl Ui {
             dress_set: false,
             part_draws: Default::default(),
             clipboard: None,
+            selected: Vec::new(),
             text_target: None,
             cover: None,
             style_name: String::new(),
@@ -584,6 +585,9 @@ impl Ui {
                 self.state.focus = self.hit(hot).map_or(0, |h| h.owner);
             }
             self.state.focus_visible = false;
+        }
+        if grabbed.is_none() {
+            self.select_input(&input, hot);
         }
         self.recognize(&input, hot, grabbed.is_some());
         let intents = self.intents(&input);

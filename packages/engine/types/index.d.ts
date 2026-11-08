@@ -33263,6 +33263,15 @@ export interface Customize {
 export type Cursor = "auto" | "default" | "pointer" | "text" | "grab" | "grabbing" | "move" | "notAllowed" | "crosshair" | "help" | "wait" | "progress" | "resizeEw" | "resizeNs" | "resizeNesw" | "resizeNwse" | "zoomIn" | "zoomOut" | "none";
 
 /**
+ * Whether the player can select an element's text and copy it (CSS user-select, docs/ui.md §2).
+ * - `"auto"`: Its parent's; with none set above it, or under a control (a button's label is pressed, not selected), none.
+ * - `"none"`: Not selectable.
+ * - `"text"`: A press and drag selects characters, a double press a word, a triple press a line, a long press on a touch screen a word; Ctrl or Cmd+C copies.
+ * - `"all"`: A press selects its whole text at once.
+ */
+export type UserSelect = "auto" | "none" | "text" | "all";
+
+/**
  * Everything an element carries beyond its box (docs/ui.md §2): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -33414,6 +33423,12 @@ export interface ElementProps {
    * @default "auto"
    */
   readonly cursor?: Cursor;
+  /**
+   * Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's.
+   *
+   * @default "auto"
+   */
+  readonly userSelect?: UserSelect;
   /**
    * The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout).
    *

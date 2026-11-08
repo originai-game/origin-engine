@@ -803,7 +803,15 @@ impl Ui {
         self.build_part_draws(&parts);
         // Painted again where a node's drawing may have changed (every
         // node on a fresh frame).
-        let trees = self.commands(&order, seeds.is_some().then_some(&mapped[..]));
+        // The selection's ranges on its elements: those whose range
+        // changed are painted again.
+        let selected = self.mark_selection();
+        let painted = if selected.is_empty() {
+            mapped
+        } else {
+            [mapped, selected].concat()
+        };
+        let trees = self.commands(&order, seeds.is_some().then_some(&painted[..]));
         #[cfg(debug_assertions)]
         if bounded::checking() {
             for &i in &order {

@@ -467,6 +467,9 @@ pub(crate) struct Node {
     /// The content's width (its children's extent), for horizontal scrolling.
     pub content_w: f32,
     pub lines: Vec<Line>,
+    /// The characters of its text the player selected (`user-select`),
+    /// `[start, end)` over its lines joined by one break each.
+    pub selected: Option<(u32, u32)>,
     /// A rich text's lines.
     pub rich_lines: Vec<crate::rich::RichLine>,
     /// A rich text's links, by id, in order.
@@ -561,6 +564,7 @@ impl Node {
             content_h: 0.0,
             content_w: 0.0,
             lines: Vec::new(),
+            selected: None,
             rich_lines: Vec::new(),
             links: Vec::new(),
             rows: Vec::new(),

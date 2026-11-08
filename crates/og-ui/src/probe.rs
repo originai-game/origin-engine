@@ -243,6 +243,7 @@ impl Ui {
             })).collect()),
         );
         m.insert("actions".into(), self.actions_json());
+        m.insert("selection".into(), self.selection_json());
         m.insert(
             "documents".into(),
             Value::Array(self.docs.docs.values().map(|d| d.to_json()).collect()),

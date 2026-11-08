@@ -18,7 +18,7 @@
 use crate::element::{FocusGroup, GestureSpec};
 use crate::input::InputFrame;
 use crate::layout::{NONE, Node};
-use crate::ui::{HIT_NAV, HIT_TEXT, Ui};
+use crate::ui::{HIT_NAV, HIT_SELECT, HIT_TEXT, Ui};
 use og_core::IdMap;
 use og_core::glam::Vec2;
 
@@ -396,6 +396,26 @@ impl Ui {
         } else {
             self.state.hot
         };
+        // Over selectable text (or selecting it): its own cursor where one
+        // is set on it or above it, else the I-beam.
+        let selecting = self.hit(key).filter(|h| h.has(HIT_SELECT)).map(|h| h.key);
+        if let Some(t) = selecting.or_else(|| {
+            (self.state.active == 0)
+                .then(|| self.select_hit_at(self.state.pointer, key))
+                .flatten()
+        }) && let Some(i) = self.tree.find(t)
+        {
+            let mut j = i;
+            while j != NONE && j < self.nodes.len() {
+                let c = self.nodes[j].props.cursor;
+                if c != Cursor::Auto {
+                    return c;
+                }
+                let n = &self.nodes[j];
+                j = if n.parent == NONE { n.anchor } else { n.parent };
+            }
+            return Cursor::Text;
+        }
         let Some(i) = self.tree.find(key) else {
             return Cursor::Default;
         };

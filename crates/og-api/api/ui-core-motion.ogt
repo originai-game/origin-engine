@@ -463,6 +463,14 @@
     variant none "Hidden (a game drawing its own)."
   }
 
+  enum UserSelect {
+    doc "Whether the player can select an element's text and copy it (CSS user-select, docs/ui.md §2)."
+    variant auto "Its parent's; with none set above it, or under a control (a button's label is pressed, not selected), none."
+    variant none "Not selectable."
+    variant text "A press and drag selects characters, a double press a word, a triple press a line, a long press on a touch screen a word; Ctrl or Cmd+C copies."
+    variant all "A press selects its whole text at once."
+  }
+
   struct ElementProps {
     doc "Everything an element carries beyond its box (docs/ui.md §2): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion."
     desc true
@@ -496,6 +504,7 @@
     field focusGroup Option.FocusGroup "Its focusable controls are one focus group: arrows move among them first; at its edge it wraps or is left; it can remember its last member."
     field gestures Option.GestureSpec "Tap, double tap and long press on it."
     field cursor Cursor "The pointer's shape over it and its subtree; auto takes its parent's."
+    field userSelect UserSelect "Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's."
     field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout)."
     field motion Option.Transition "How its animatable values move when they change; null is at once."
     field layoutMotion Option.Transition "Moves from its last laid-out rectangle to its new one (FLIP); null jumps."

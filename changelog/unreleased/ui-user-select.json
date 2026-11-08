@@ -1,0 +1,6 @@
+{
+  "added": [
+    {"member":"ElementProps.userSelect","summary":"Selectable read-only text (CSS `user-select` in documents): `text` selects by press and drag, a double press a word, a triple press a line, a long press on a touch screen a word; `all` takes the whole element; drags run across elements in tree order. Ctrl or Cmd+C copies to the host's clipboard with wrapped lines rejoined as their source had them. Off by default and under controls."},
+    {"member":"dump_ui selection","summary":"The probe's UI dump carries the player's text selection: its text and each end's path and character, null with none. UI state version 20 saves it; versions 11 to 19 upgrade with nothing selected."}
+  ]
+}

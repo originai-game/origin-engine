@@ -291,6 +291,21 @@ impl Ui {
             u32_(&mut b, bytes.len() as u32);
             b.extend_from_slice(&bytes);
         }
+        // The read-only selection and the presses on such text (version 20).
+        let sel = s.selection.unwrap_or_default();
+        b.push(u8::from(s.selection.is_some()));
+        for (key, at) in [sel.anchor, sel.focus, sel.origin.0, sel.origin.1] {
+            u64_(&mut b, key);
+            u32_(&mut b, at);
+        }
+        b.push(sel.unit);
+        let p = &s.select_press;
+        u64_(&mut b, p.tick);
+        f32_(&mut b, p.at.x);
+        f32_(&mut b, p.at.y);
+        b.push(p.count);
+        b.push(u8::from(p.moved));
+        b.push(u8::from(p.long));
         // The layer stack, its viewmodels and the documents' states.
         let mut docs = self.docs_state();
         if !s.motion.css.is_empty() {
@@ -381,7 +396,7 @@ impl Ui {
     /// the next frame), the state of version 16 with no typeahead, the
     /// state of version 17 with no Rive players, and the state of version
     /// 18 with its frozen texts' shaped forms (U+F0000 + glyph id) as
-    /// glyph ids.
+    /// glyph ids, and the state of version 19 with no text selected.
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -404,7 +419,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11..=18 => {
+            11..=19 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -429,7 +444,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 18"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 19"
             ))),
         }
     }
@@ -860,6 +875,26 @@ impl Reader<'_> {
                 },
             );
         }
+        if version < 20 {
+            return Some(s);
+        }
+        let on = self.u8()? != 0;
+        let mut end = || Some((self.u64()?, self.u32()?));
+        let (anchor, focus, o0, o1) = (end()?, end()?, end()?, end()?);
+        let sel = crate::ui::select::Selection {
+            anchor,
+            focus,
+            origin: (o0, o1),
+            unit: self.u8()?,
+        };
+        s.selection = on.then_some(sel);
+        s.select_press = crate::ui::select::SelectPress {
+            tick: self.u64()?,
+            at: Vec2::new(self.f32()?, self.f32()?),
+            count: self.u8()?,
+            moved: self.u8()? != 0,
+            long: self.u8()? != 0,
+        };
         Some(s)
     }
 }
@@ -880,6 +915,10 @@ mod tests {
 
     /// The version 18 block of a state with no Rive players.
     const V18: usize = 4;
+
+    /// The version 20 block: the selection's flag, its four ends and unit,
+    /// and the last press on selectable text.
+    const V20: usize = 1 + 4 * (8 + 4) + 1 + 8 + 4 + 4 + 1 + 1 + 1;
 
     /// `b` without the `tail` bytes just before its layer stack.
     fn cut_before_docs(b: &[u8], tail: usize) -> Vec<u8> {
@@ -904,7 +943,7 @@ mod tests {
     fn without_v14_tail(b: &[u8]) -> Vec<u8> {
         cut_before_docs(
             b,
-            3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8 + V15 + V16 + V17 + V18,
+            3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8 + V15 + V16 + V17 + V18 + V20,
         )
     }
 
@@ -1013,7 +1052,7 @@ mod tests {
         ui.state.focus = 5;
         ui.state.tick = 31;
         let saved = ui.save_state();
-        let mut v14 = cut_before_docs(&saved, V15 + V16 + V17 + V18);
+        let mut v14 = cut_before_docs(&saved, V15 + V16 + V17 + V18 + V20);
         v14[..4].copy_from_slice(&14u32.to_le_bytes());
         let mut fresh = Ui::default();
         assert!(
@@ -1035,7 +1074,7 @@ mod tests {
         let mut ui = Ui::default();
         ui.state.tick = 12;
         let saved = ui.save_state();
-        let mut v15 = cut_before_docs(&saved, V16 + V17 + V18);
+        let mut v15 = cut_before_docs(&saved, V16 + V17 + V18 + V20);
         v15[..4].copy_from_slice(&15u32.to_le_bytes());
         assert!(Ui::default().restore_state(&v15).is_err());
         assert_eq!(Ui::upgrade_state(&v15).expect("version 15 upgrades"), saved);
@@ -1044,7 +1083,7 @@ mod tests {
         fresh.restore_state(&ui.save_state()).expect("restores");
         assert_eq!(fresh.state.touch_owners.get(&0xabcd), Some(&3));
         // Version 16 (no typeahead) upgrades too; a typeahead in progress round-trips.
-        let mut v16 = cut_before_docs(&saved, V17 + V18);
+        let mut v16 = cut_before_docs(&saved, V17 + V18 + V20);
         v16[..4].copy_from_slice(&16u32.to_le_bytes());
         assert_eq!(Ui::upgrade_state(&v16).expect("version 16 upgrades"), saved);
         ui.state.typeahead = ("ré".into(), 41);
@@ -1052,14 +1091,17 @@ mod tests {
         fresh.restore_state(&ui.save_state()).expect("restores");
         assert_eq!(fresh.state.typeahead, ("ré".into(), 41));
         // Version 17 (no Rive players) upgrades too.
-        let mut v17 = cut_before_docs(&saved, V18);
+        let mut v17 = cut_before_docs(&saved, V18 + V20);
         v17[..4].copy_from_slice(&17u32.to_le_bytes());
         assert_eq!(Ui::upgrade_state(&v17).expect("version 17 upgrades"), saved);
-        // Version 18 (no frozen text here: the same bytes) upgrades too.
-        let mut v18 = saved.clone();
-        v18[..4].copy_from_slice(&18u32.to_le_bytes());
-        assert!(Ui::default().restore_state(&v18).is_err());
-        assert_eq!(Ui::upgrade_state(&v18).expect("version 18 upgrades"), saved);
+        // Versions 18 (no frozen text here: 19's bytes) and 19 (nothing
+        // selected) upgrade too.
+        for v in [18u32, 19] {
+            let mut old = cut_before_docs(&saved, V20);
+            old[..4].copy_from_slice(&v.to_le_bytes());
+            assert!(Ui::default().restore_state(&old).is_err());
+            assert_eq!(Ui::upgrade_state(&old).expect("upgrades"), saved, "{v}");
+        }
     }
 
     /// The virtual cursor and every player's HUD layout, the edit mode, a

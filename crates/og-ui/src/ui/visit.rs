@@ -155,6 +155,9 @@ pub(crate) struct Orders {
     pub owner_of: Vec<u64>,
     pub group_of: Vec<u64>,
     pub gesture_of: Vec<u64>,
+    /// Per slot: whether its text can be selected (`user-select` as used:
+    /// its own, else its parent's; never `Auto`).
+    pub select_of: Vec<crate::element::UserSelect>,
     /// Per slot: its hits and the warning its place gives; the nodes
     /// with either, in drawing order.
     pub hit_of: Vec<Vec<Hit>>,
@@ -205,6 +208,7 @@ impl Ui {
             o.owner_of.resize(n, 0);
             o.group_of.resize(n, 0);
             o.gesture_of.resize(n, 0);
+            o.select_of.resize(n, crate::element::UserSelect::None);
             o.hit_of.resize(n, Vec::new());
             o.warn_of.resize(n, None);
             o.written_at.resize(n, 0);
@@ -398,6 +402,21 @@ impl Ui {
             Some(_) if !n.inert => n.key,
             _ => pr,
         };
+        // `user-select`: its own, else its parent's; a control's subtree
+        // (a button's label) is pressed, not selected, unless it says so.
+        let select = {
+            use crate::element::UserSelect;
+            let ps = if up == NONE {
+                UserSelect::None
+            } else {
+                o.select_of[up]
+            };
+            match n.props.select {
+                UserSelect::Auto if n.el.interactive || n.focusable => UserSelect::None,
+                UserSelect::Auto => ps,
+                s => s,
+            }
+        };
         let o = &mut self.orders;
         let old = (
             o.scope_of[i],
@@ -405,14 +424,16 @@ impl Ui {
             o.owner_of[i],
             o.group_of[i],
             o.gesture_of[i],
+            o.select_of[i],
         );
-        let new = (scope, scroller, owner, group, gesture);
+        let new = (scope, scroller, owner, group, gesture, select);
         (
             o.scope_of[i],
             o.scroller_of[i],
             o.owner_of[i],
             o.group_of[i],
             o.gesture_of[i],
+            o.select_of[i],
         ) = new;
         old != new
     }
@@ -483,6 +504,15 @@ impl Ui {
             }
             if n.nav {
                 flags |= HIT_NAV;
+            }
+            if matches!(n.content, Content::Text(_))
+                && !matches!(n.widget, Widget::Field(_))
+                && matches!(
+                    o.select_of[i],
+                    crate::element::UserSelect::Text | crate::element::UserSelect::All
+                )
+            {
+                flags |= HIT_SELECT;
             }
             if n.adjust {
                 flags |= HIT_ADJUST;

@@ -345,6 +345,8 @@ impl Ui {
                         _ => None,
                     };
                     let mut field_x = inner.x;
+                    // The first character of each line, for its selection.
+                    let mut first = 0u32;
                     for (k, line) in n.lines.iter().enumerate() {
                         let ly = top + k as f32 * lh;
                         let free = inner.width - line.width * sk;
@@ -384,6 +386,11 @@ impl Ui {
                             }
                             _ => x,
                         };
+                        // The player's selection (`user-select`), under the text.
+                        if n.selected.is_some() && field.is_none() {
+                            self.select_marks(i, &line.text, first, (x, ly, lh), text_clip, cmds);
+                        }
+                        first += line.text.chars().count() as u32 + 1;
                         // Bidi runs in visual order, shaped runs shaped, one
                         // piece per font of a mixed text (crate::text).
                         let pieces = crate::text::pieces_with(
