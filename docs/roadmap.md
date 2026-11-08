@@ -32,7 +32,7 @@ All streams run on macrunner and report to the coordinator thread
 | Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Lazy diagnostics and retained paint reuse, TS builder removal, both-host proof, perf after-numbers |
 | og-ui generic capabilities | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | HTML element names, select/dialog/details/meter, colour-blind modes, live regions, selectable text, run-time colour emoji, split screen, UI debugger and `dump_ui:motion`, text on a path, untested components, UI perf budgets |
 | og explore and invariants | [T-01a1b99f-0ce1](https://ampcode.com/threads/T-01a1b99f-0ce1-7570-9185-d8d1698ac145) | Per-tick invariants stream, invariants follow-ups, `og explore` |
-| Presentation checkpoints and og.motion | [T-01a1b99f-1445](https://ampcode.com/threads/T-01a1b99f-1445-70df-9528-b3bc997e0683) | Byte-identical restore of every presentation state, og.motion poses identical on every host, session forking, the jump pitch and the wave goal, module-scope state check |
+| Presentation checkpoints and og.motion | [T-01a1b99f-1445](https://ampcode.com/threads/T-01a1b99f-1445-70df-9528-b3bc997e0683) | og.motion poses identical on every host, Chrome WebGPU restore check, session forking |
 | Rendering performance | [T-01a1b99f-2748](https://ampcode.com/threads/T-01a1b99f-2748-7173-98de-af62ac91012f) | FSR 3.1, GI probes, crowds at 50k, first frame |
 
 ## Landed this round (2026-11-07 to 2026-11-08)
@@ -50,6 +50,12 @@ All streams run on macrunner and report to the coordinator thread
 - **og-ui capabilities:** input types, `inputmode`, `autocomplete` and
   password reveal (4d8b785b9); ten Noto font packs loaded per script on
   demand (84d8ec3e2).
+- **Checkpoints:** module-scope state fails `og check` as OG9101
+  (bf1fd9440); a presentation checkpoint restores the display's whole frame
+  history (TAA, SMAA, GI, SSR, FSR, terrain streaming), and
+  `og run --capture-only` draws a still frame (1fac50487). The og.motion
+  pitch and wave rows were stale since aea4a0f15 (no bounds remain; the
+  wave plays past 15 s).
 - **Core gaps:** CSS length tokens, keyed variable-height virtualization,
   CLDR formatting (a62282dbb, 00a1f5016, e8d43c7b8); structured rich text
   (80ca008ab).
@@ -71,8 +77,7 @@ Each must be met before 0.8.0.
 | GI probes | main pass 3.70 ms; `both` 12.70 ms; screen GI 0.65 of the path-traced reference | ceiling 0.72–0.80, cheaper | rendering |
 | First frame | terrain 7–12 s on DX12; Pixel 14–17 s | the shader compile budget | rendering |
 | Crowds at 50k | 24.35 ms a frame | prepass and main pass reduced | rendering |
-| Presentation checkpoints | og.motion poses differ from native in the last bits on the web; a web tick waits for a late batch; terrain fades by frame seconds | byte-identical on every host | checkpoints |
-| og.motion | the jump's pitch clamped, not fixed at the source; the wave goal idles at 12 s | fixed at the source | checkpoints |
+| Presentation checkpoints | og.motion poses differ from native in the last bits on the web; a web tick waits for a late batch | byte-identical on every host | checkpoints |
 | UI per-frame cost | idle 1.229 ms, one label 1.254 ms (median, 2560×1440) | follows the change, not the tree | retained UI |
 | Watercolour look | reads as oil | a watercolour primitive (Bousseau, MNPR) | with the art review, after the pilot opens |
 | Distant impostors | no own shadow, the view from below, no sway | — | with the art review |
