@@ -66,6 +66,10 @@ pub struct RenderScene {
     /// The glTF-shaped form of the materials added as [`Material`].
     gltf_materials: Vec<Option<Material>>,
     material_revisions: Vec<u64>,
+    /// Counts every change to a material, its revision or its shader's
+    /// parameters: while it holds, the renderer skips its per-frame pass
+    /// over the materials (engine s96).
+    material_serial: u64,
     /// Per material: the one it draws in the batches of
     /// ([`RenderScene::alias_material`]), with both revisions when it was
     /// set; it holds only while both are unchanged.

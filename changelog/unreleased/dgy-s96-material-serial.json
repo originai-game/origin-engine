@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: per-frame material sync",
+      "summary": "The renderer goes over the scene's materials only in a frame after one of them changed (a value, a material shader, a shader parameter's value, a texture it samples) or while a shader parameter's previous value still has to catch up for motion vectors. Before, it went over every material every frame. Frames do not change. A garden of 6502 materials: Renderer::sync 276 -> 38 ms per 10 s on the web."
+    }
+  ]
+}

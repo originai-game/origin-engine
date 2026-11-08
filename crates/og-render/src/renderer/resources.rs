@@ -229,6 +229,13 @@ pub(crate) struct SceneCache {
     pub(crate) palette_revisions: Vec<u64>,
     /// The material style the materials were uploaded with.
     pub(crate) material_style: MaterialStyle,
+    /// The scene's material serial the materials were last brought in
+    /// line with (none: never), and whether some material's uniform still
+    /// holds previous shader parameters other than its current ones (the
+    /// next frame advances them): the per-frame material pass runs only
+    /// when either asks (engine s96).
+    pub(crate) material_serial: Option<u64>,
+    pub(crate) material_advance: bool,
     pub(crate) scene_id: u64,
     pub(crate) meshes: Vec<GpuMesh>,
     /// The lit shader with each of the scene's material shaders.
