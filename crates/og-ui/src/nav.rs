@@ -483,6 +483,9 @@ impl Ui {
     /// ([`TYPE_SELECT_ROLES`]). A move clears the letters. Adjustable
     /// members and text fields keep these keys.
     pub(crate) fn apply_list_keys(&mut self, input: &InputFrame) {
+        if input.keys.is_empty() && input.text.is_empty() {
+            return;
+        }
         if (!self.state.nav_off || self.state.scope != 0)
             && let Some((container, mut index)) = self.virtual_item(self.state.focus)
         {
@@ -576,10 +579,11 @@ impl Ui {
             .collect();
         // Letters pick only in a list's kind of group, never a toolbar's or a
         // game's, where they are its own keys.
-        let listy = self.frame.elements.iter().any(|e| {
-            TYPE_SELECT_ROLES.contains(&e.role.as_str())
-                && crate::id::key_of_path(&e.path) == from.group
-        });
+        let listy = !typed.is_empty()
+            && self.kept.prev.iter().enumerate().any(|(i, n)| {
+                n.key == from.group
+                    && TYPE_SELECT_ROLES.contains(&crate::a11y::role_of(self.prev_kinds[i].0, n))
+            });
         if listy && !typed.is_empty() && !input.ctrl && !input.meta {
             let tick = self.state.tick;
             let (buffer, at) = &mut self.state.typeahead;
@@ -595,16 +599,30 @@ impl Ui {
             } else {
                 buffer.clone()
             };
-            let names: std::collections::HashMap<u64, String> = self
-                .frame
-                .elements
-                .iter()
-                .filter(|e| !e.name.is_empty() || !e.text.is_empty())
-                .map(|e| {
-                    let name = if e.name.is_empty() { &e.text } else { &e.name };
-                    (crate::id::key_of_path(&e.path), name.to_lowercase())
-                })
-                .collect();
+            let mut names = crate::id::KeyMap::default();
+            for (i, node) in self.kept.prev.iter().enumerate() {
+                let (_, name, _, _, _) =
+                    crate::a11y::node_info(&self.kept.prev, &self.prev_kinds, i);
+                let name = if name.is_empty() {
+                    &node.probe_text
+                } else {
+                    &name
+                };
+                if !name.is_empty() {
+                    names.insert(node.key, name.to_lowercase());
+                }
+                if let crate::layout::Content::Rich(rich) = &node.content {
+                    for link in &node.links {
+                        let text: String = rich
+                            .spans
+                            .iter()
+                            .filter(|span| span.link.as_ref() == Some(link))
+                            .map(|span| span.text.as_str())
+                            .collect();
+                        names.insert(crate::id::child_key(node.key, link), text.to_lowercase());
+                    }
+                }
+            }
             let n = cands.len();
             to = (0..n)
                 .map(|k| if cycle { (i + 1 + k) % n } else { k })

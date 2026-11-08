@@ -14,6 +14,54 @@
 
 use crate::layout::{Node, Widget};
 
+/// Semantic information from render nodes, shared by navigation and diagnostics.
+pub(crate) fn node_info(
+    nodes: &[Node],
+    kinds: &[(&'static str, bool)],
+    i: usize,
+) -> (&'static str, String, String, String, Vec<String>) {
+    let n = &nodes[i];
+    let (kind, anonymous) = kinds.get(i).copied().unwrap_or(("", true));
+    let role = role_of(kind, n);
+    let none = || ("", String::new(), String::new(), String::new(), Vec::new());
+    if role.is_empty() {
+        return none();
+    }
+    let textbox = role == "textbox";
+    let mut name = n.a11y.name.clone().unwrap_or_default();
+    let mut description = n.a11y.description.clone().unwrap_or_default();
+    if name.is_empty() && !textbox {
+        name = n.probe_text.clone();
+    }
+    if name.is_empty() && role == "image" && !n.nav {
+        return none();
+    }
+    if name.is_empty() && (n.el.interactive || n.nav) && !textbox {
+        name = text_within(nodes, i);
+    }
+    let labelled = role != "text" && role != "heading";
+    if name.is_empty()
+        && labelled
+        && n.parent != crate::layout::NONE
+        && nodes[n.parent].el.direction == crate::layout::Direction::Row
+    {
+        let siblings = &nodes[n.parent].children;
+        if let Some(at) = siblings.iter().position(|&c| c == i)
+            && at > 0
+            && kinds[siblings[at - 1]].0 == "label"
+        {
+            name = nodes[siblings[at - 1]].probe_text.clone();
+        }
+    }
+    if name.is_empty() && !description.is_empty() {
+        name = std::mem::take(&mut description);
+    }
+    if name.is_empty() && !anonymous && labelled {
+        name = n.id.clone();
+    }
+    (role, name, description, value_of(n), states_of(n))
+}
+
 /// What a widget tells the tree beyond its kind (set while it is built).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct A11y {

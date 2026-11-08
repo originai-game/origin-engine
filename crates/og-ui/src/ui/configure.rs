@@ -202,58 +202,7 @@ impl Ui {
         &self,
         i: usize,
     ) -> (&'static str, String, String, String, Vec<String>) {
-        let n = &self.nodes[i];
-        let (kind, anonymous) = self.kinds.get(i).copied().unwrap_or(("", true));
-        let role = crate::a11y::role_of(kind, n);
-        let none = || ("", String::new(), String::new(), String::new(), Vec::new());
-        if role.is_empty() {
-            return none();
-        }
-        // A text box shows its value (or its placeholder), which is not
-        // what it is: it is named by its label, the placeholder described.
-        let textbox = role == "textbox";
-        let mut name = n.a11y.name.clone().unwrap_or_default();
-        let mut description = n.a11y.description.clone().unwrap_or_default();
-        if name.is_empty() && !textbox {
-            name = n.probe_text.clone();
-        }
-        // A picture nothing names is decoration (an icon names itself).
-        if name.is_empty() && role == "image" && !n.nav {
-            return none();
-        }
-        if name.is_empty() && (n.el.interactive || n.nav) && !textbox {
-            name = crate::a11y::text_within(&self.nodes, i);
-        }
-        let labelled = role != "text" && role != "heading";
-        if name.is_empty()
-            && labelled
-            && n.parent != NONE
-            && self.nodes[n.parent].el.direction == crate::layout::Direction::Row
-        {
-            // A control without text of its own is named by the label just
-            // before it in its row (a settings row's "Master" names its slider).
-            let siblings = &self.nodes[n.parent].children;
-            if let Some(at) = siblings.iter().position(|&c| c == i)
-                && at > 0
-                && self.kinds[siblings[at - 1]].0 == "label"
-            {
-                name = self.nodes[siblings[at - 1]].probe_text.clone();
-            }
-        }
-        // Without a label, a field is named by what its placeholder asks.
-        if name.is_empty() && !description.is_empty() {
-            name = std::mem::take(&mut description);
-        }
-        if name.is_empty() && !anonymous && labelled {
-            name = n.id.clone();
-        }
-        (
-            role,
-            name,
-            description,
-            crate::a11y::value_of(n),
-            crate::a11y::states_of(n),
-        )
+        crate::a11y::node_info(&self.nodes, &self.kinds, i)
     }
 
     /// The path of the control pad `pad`'s focus is on in the last frame
