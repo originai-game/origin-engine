@@ -316,3 +316,76 @@ fn compressed_formats_are_chosen_per_tier_and_draw_like_rgba8() {
     std::fs::write(out.join("texture-formats.md"), &text).expect("write");
     print!("{text}");
 }
+
+/// The linked lists composite equal depths by the fragments' keys, never by
+/// the order the draws arrived in (`oit_list.wgsl` `oit_before`): four
+/// coplanar blended quads facing the camera, each its own draw at its own
+/// transform, submitted in one order and in the reverse (the back-to-front
+/// sort keeps submission order for equal depths), draw the same frame. A
+/// linked-list pipeline that lost the vertex stages' key (`oit.wgsl`
+/// `OIT_KEY`) composites them in arrival order instead.
+#[test]
+#[ignore = "requires GPU"]
+fn linked_lists_order_equal_depths_by_key_not_by_draw() {
+    let desc = RenderDesc {
+        width: 256,
+        height: 256,
+        transparency: og_render::Transparency::LinkedList,
+        ..scenes::base_desc()
+    };
+    let quads = [
+        (Vec3::new(1.0, 0.1, 0.1), -0.45),
+        (Vec3::new(0.1, 1.0, 0.1), -0.15),
+        (Vec3::new(0.1, 0.1, 1.0), 0.15),
+        (Vec3::new(1.0, 1.0, 0.1), 0.45),
+    ];
+    let draw = |order: [usize; 4]| {
+        let mut scene = RenderScene::new();
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 0.0, 4.0),
+            target: Vec3::ZERO,
+            exposure: og_render::Exposure::linear(1.0),
+            ..Default::default()
+        };
+        let quad = scene.add_mesh(shapes::plane_xy(1.0, 1.0));
+        for i in order {
+            let (color, x) = quads[i];
+            let m = scene.add_standard_material(StandardMaterial {
+                color,
+                opacity: 0.5,
+                transparent: 1,
+                side: 2,
+                ..Default::default()
+            });
+            scene.add_instance(quad, m, Mat4::from_translation(Vec3::new(x, 0.0, 0.0)));
+        }
+        let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+        if renderer.info().transparency != og_render::Transparency::LinkedList {
+            return None;
+        }
+        let stats = renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        assert!(stats.transparency_layers > 0, "the linked lists ran");
+        Some(renderer.read_offscreen().expect("capture"))
+    };
+    let Some(forward) = draw([0, 1, 2, 3]) else {
+        println!("no linked lists on this device");
+        return;
+    };
+    let backward = draw([3, 2, 1, 0]).expect("the same device");
+    // All four overlap at the centre, two by two further out.
+    let c = forward.width / 2;
+    assert_ne!(
+        pixel(&forward, c, c),
+        pixel(&forward, 2, 2),
+        "the quads drawn"
+    );
+    let differ = forward
+        .pixels
+        .chunks(4)
+        .zip(backward.pixels.chunks(4))
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(differ, 0, "pixels that depend on the draw order");
+}

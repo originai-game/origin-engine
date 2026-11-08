@@ -57,7 +57,7 @@ fn vs_lightmap_compact(v: CompactVertexIn, i: InstanceIn, k: InstanceFxIn, m: Li
   l.affine = vec3<f32>(0.0);
   l.lightmap = m.lightmap;
   l.look = k.look;
-  l.oit_key = oit_key(model, v.position.xyz);
+  if (OIT_KEY) { l.oit_key = oit_key(model, v.position.xyz); }
   return l;
 }
 

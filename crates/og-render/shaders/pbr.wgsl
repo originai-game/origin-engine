@@ -285,7 +285,7 @@ fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
   o.color = v.color;
   o.local_pos = v.position;
   o.look = vec4<f32>(0.0);
-  o.oit_key = oit_key(model, v.position);
+  if (OIT_KEY) { o.oit_key = oit_key(model, v.position); }
   // A tangent follows the surface: through the model itself.
   let t = (model * vec4<f32>(v.tangent.xyz, 0.0)).xyz;
   o.tangent = vec4<f32>(select(vec3<f32>(0.0), normalize(t), dot(t, t) > 1e-20), v.tangent.w);

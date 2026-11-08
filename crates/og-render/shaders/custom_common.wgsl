@@ -197,7 +197,7 @@ fn custom_place(v: VertexInput, model: mat4x4<f32>) -> CustomOut {
   r.color = o.color;
   r.local = v.position;
   r.data = o.data;
-  r.oit_key = oit_key(model, v.position);
+  if (OIT_KEY) { r.oit_key = oit_key(model, v.position); }
   return r;
 }
 
