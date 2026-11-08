@@ -183,8 +183,13 @@ pub(crate) fn pipeline(
     p: HdrPipeline,
     mode: Oit,
 ) -> wgpu::RenderPipeline {
+    // Only the linked lists read the vertex stages' OIT key (oit.wgsl).
+    let mut constants = constants.to_vec();
+    if mode == Oit::List {
+        constants.push(("OIT_KEY", 1.0));
+    }
     let options = wgpu::PipelineCompilationOptions {
-        constants,
+        constants: &constants,
         ..Default::default()
     };
     let fs = fragment_entry(p.fs, mode);

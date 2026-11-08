@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: lit vertex stages",
+      "summary": "The vertex stages of lit meshes, custom lit materials and lightmapped compact meshes hash a surface's order-independent transparency key only in the linked-list transparency pipelines, the only ones that read it. Before, every pipeline of a lit module computed it: the depth prepass, the opaque and planar-reflection passes and the weighted transparency. Frames do not change. A garden of 1072 cells: native GPU frame 18.96 -> 17.88 ms, prepass 5.34 -> 4.62 ms."
+    }
+  ]
+}

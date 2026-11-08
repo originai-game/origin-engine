@@ -16,6 +16,12 @@
 // not its own (pbr_fs.wgsl, physical.wgsl, lib.rs `screen_ao`).
 var<private> oit_pass: bool;
 
+// 1 only in the linked-list pipelines (oit.rs `pipeline` with Oit::List),
+// the only fragments that read the vertex stages' `oit_key`. Every other
+// pipeline of a module leaves the key's per-vertex hash out: drivers kept it
+// where nothing read it (a depth prepass whose output has no key).
+override OIT_KEY: bool = false;
+
 // What a fragment adds to the OIT pass's targets: `accum` the weighted
 // tail's colour and alpha times weight, `reveal` the transmittances the
 // tail (r) and the front layer (g) multiply in, `front` the front layer's
