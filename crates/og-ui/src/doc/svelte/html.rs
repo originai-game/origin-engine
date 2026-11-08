@@ -110,7 +110,12 @@ impl Parser {
                     None => self.forms.push((i, None, Some(a.value.clone()))),
                 }
             }
-            ("form", "novalidate") => {}
+            ("form", "novalidate") | ("button", "formnovalidate") => {
+                if a.bound {
+                    return Err((a.at, format!("{} is a boolean attribute", a.name)));
+                }
+                self.novalidate.push(i);
+            }
             ("button", "type") => {
                 if a.bound || !matches!(a.value.as_str(), "submit" | "reset" | "button") {
                     return Err((a.at, "a button's type is submit, reset or button".into()));
@@ -323,14 +328,44 @@ impl Parser {
                 "reset" => reset,
                 _ => continue,
             };
-            if let Some(action) = action.clone() {
-                let line = self.doc.nodes[i].line;
-                self.doc.nodes[i].triggers.push(Trigger {
-                    when: When::Click,
-                    act: Act::Emit(action),
-                    line,
-                });
-            }
+            let Some(action) = action.clone() else {
+                continue;
+            };
+            // A submit validates the form's text fields first, unless the
+            // form or the button says novalidate.
+            let act = if ty == "submit"
+                && !self.novalidate.contains(&form)
+                && !self.novalidate.contains(&i)
+            {
+                let mut controls = Vec::new();
+                let mut stack = element_children(&self.doc, form);
+                while let Some(k) = stack.pop() {
+                    if self.doc.nodes[k].kind == NodeKind::Element("field") {
+                        controls.push(k);
+                    }
+                    stack.extend(element_children(&self.doc, k));
+                }
+                controls.sort_unstable();
+                let mut row = false;
+                let mut k = self.doc.nodes[form].parent;
+                while k != NONE {
+                    row |= matches!(self.doc.nodes[k].kind, NodeKind::For { .. });
+                    k = self.doc.nodes[k].parent;
+                }
+                Act::Submit {
+                    action,
+                    controls,
+                    row,
+                }
+            } else {
+                Act::Emit(action)
+            };
+            let line = self.doc.nodes[i].line;
+            self.doc.nodes[i].triggers.push(Trigger {
+                when: When::Click,
+                act,
+                line,
+            });
         }
         Ok(())
     }

@@ -353,6 +353,16 @@ pub enum Act {
     State(String, String),
     /// An event to code, by name.
     Emit(String),
+    /// A form's submit (`<button type="submit">`): the form's action,
+    /// sent unless one of its constraint-validated controls (`controls`,
+    /// by node) is invalid, when the first of them takes the focus
+    /// instead. `row`: the form sits in an `{#each}`, so only controls of
+    /// the button's row count.
+    Submit {
+        action: String,
+        controls: Vec<usize>,
+        row: bool,
+    },
     /// Pushes a screen.
     Push(String),
     /// Pops the top layer.

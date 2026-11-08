@@ -1020,6 +1020,10 @@ impl Ui {
             }
             "field" => {
                 let mut s = r.str("input").unwrap_or_default().to_string();
+                let input_type = r
+                    .str("type")
+                    .and_then(crate::InputType::from_name)
+                    .unwrap_or_default();
                 let constraints = crate::input_type::Constraints {
                     required: r.flag("required"),
                     min_chars: r.num("minChars").unwrap_or(0.0) as u32,
@@ -1065,7 +1069,7 @@ impl Ui {
                             tight: r.flag("tight"),
                             component: r.str("component").map(str::to_string),
                             readonly: r.flag("readonly"),
-                            constraints,
+                            constraints: constraints.clone(),
                         },
                     );
                     self.docs.placeholder_ink = None;
@@ -1083,14 +1087,11 @@ impl Ui {
                             bare: styled.str("appearance") == Some("none"),
                             tight: r.flag("tight"),
                             component: r.str("component").map(str::to_string),
-                            input_type: r
-                                .str("type")
-                                .and_then(crate::InputType::from_name)
-                                .unwrap_or_default(),
+                            input_type,
                             inputmode: r.str("inputmode").and_then(crate::InputMode::from_name),
                             autocomplete: r.str("autocomplete").unwrap_or_default().to_string(),
                             readonly: r.flag("readonly"),
-                            constraints,
+                            constraints: constraints.clone(),
                         },
                     );
                     self.docs.placeholder_ink = None;
@@ -1111,6 +1112,21 @@ impl Ui {
                 if resp.changed {
                     self.write_back(b, n, "input", json!(s));
                 }
+                // HTML bars disabled and read-only controls from validation.
+                let barred = r.flag("disabled") || r.flag("readonly");
+                self.docs.validity.insert(
+                    key,
+                    super::mount::FieldValidity {
+                        mount: b.mount.clone(),
+                        doc: doc.name.clone(),
+                        node: i,
+                        row_key: b.row_key.clone(),
+                        invalid: !barred
+                            && (r.flag("invalid")
+                                || input_type.mismatch(&s)
+                                || constraints.fails(input_type, &s)),
+                    },
+                );
             }
             "badge" => {
                 let text = text_of(&r, b);
@@ -1657,6 +1673,31 @@ impl Ui {
                     self.docs.states.insert((key, g.clone()), s.clone());
                 }
                 Act::Emit(name) => b.event(path, "emit", name, Value::Null),
+                Act::Submit {
+                    action,
+                    controls,
+                    row,
+                } => {
+                    // The first invalid control in document order takes
+                    // the focus, and the form is not submitted.
+                    let first = self
+                        .docs
+                        .validity
+                        .iter()
+                        .filter(|(_, v)| {
+                            v.invalid
+                                && v.mount == b.mount
+                                && v.doc == b.doc.name
+                                && controls.contains(&v.node)
+                                && (!row || v.row_key == b.row_key)
+                        })
+                        .min_by(|a, b| (a.1.node, &a.1.row_key).cmp(&(b.1.node, &b.1.row_key)))
+                        .map(|(k, _)| *k);
+                    match first {
+                        Some(k) => self.request_focus = k,
+                        None => b.event(path, "emit", action, Value::Null),
+                    }
+                }
                 Act::Push(screen) => self
                     .docs
                     .ops

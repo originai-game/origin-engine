@@ -1,5 +1,15 @@
 use super::*;
 
+/// A text field's constraint validity as last built ([`Act::Submit`]).
+#[derive(Clone, Debug)]
+pub(crate) struct FieldValidity {
+    pub(crate) mount: String,
+    pub(crate) doc: String,
+    pub(crate) node: usize,
+    pub(crate) row_key: String,
+    pub(crate) invalid: bool,
+}
+
 /// Something a document did that code may want: a click, a changed
 /// control, a named event (`emit`, a timeline's callback), an action, a
 /// two-way write (`set`), a Back the layer turned into an event.
@@ -90,6 +100,9 @@ pub struct DocHost {
     /// Immediately built elements with `use:` actions, by key: who they
     /// are and their actions' names, for their `destroy` once not built.
     pub(crate) uses: BTreeMap<u64, (DocEvent, Vec<String>)>,
+    /// Text fields' constraint validity as last built, by key: what a
+    /// form's submit reads. Kept while their element is.
+    pub(crate) validity: BTreeMap<u64, FieldValidity>,
     /// `data-og-instant` elements whose first entrance has landed: a
     /// later one plays (presentation, outside `world_hash`).
     pub(crate) entered: BTreeSet<u64>,

@@ -733,6 +733,10 @@ impl Ui {
         self.state
             .screens
             .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
+        let tree = &self.tree;
+        self.docs
+            .validity
+            .retain(|k, _| tree.find(*k).is_some() || retained.keeps_memory(*k));
         self.touched = touched;
 
         // Scopes, scrollers, focus owners, groups and recognisers around

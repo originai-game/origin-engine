@@ -36,6 +36,9 @@
 //! - a plain checkbox refused, `<label for>` not joining its checkbox (or
 //!   left drawn twice), a field not named by its label, a bare `<label>`
 //!   accepted → `checkboxes_and_labels_join_by_for`
+//! - a form sent while a field is invalid, the focus not moving to the
+//!   first invalid one, a disabled field validated, or `formnovalidate`
+//!   ignored → `a_form_submits_only_when_its_fields_are_valid`
 
 use crate::support;
 
@@ -909,4 +912,43 @@ fn html_text_matches_its_reference_frames() {
             .unwrap_or_else(|e| panic!("{name}: {e}"));
         println!("{name}: RMSE {rmse:.6}");
     }
+}
+
+#[test]
+fn a_form_submits_only_when_its_fields_are_valid() {
+    let text = r#"<meta name="component" content="t">
+<div><form id="Form" onsubmit={save}>
+  <input type="text" id="Name" required bind:value={$name}>
+  <input type="email" id="Mail" bind:value={$mail}>
+  <input type="text" id="Off" required disabled bind:value={$off}>
+  <button id="Save">Save</button>
+  <button id="Skip" formnovalidate>Skip</button>
+</form></div>"#;
+    let stores = [
+        ("name", json!("")),
+        ("mail", json!("x")),
+        ("off", json!("")),
+    ];
+    let saved = |events: &[DocEvent]| events.iter().any(|e| e.kind == "emit" && e.name == "save");
+    both(text, &stores, |d| {
+        // The first invalid field takes the focus and nothing is sent; a
+        // disabled one is barred from validation.
+        let events = d.click("Save");
+        assert!(!saved(&events), "{events:?}");
+        assert!(
+            d.ui.focus_path(0).ends_with("/Name"),
+            "{}",
+            d.ui.focus_path(0)
+        );
+        assert!(saved(&d.click("Skip")));
+        d.set("name", json!("Ana"));
+        assert!(!saved(&d.click("Save")));
+        assert!(
+            d.ui.focus_path(0).ends_with("/Mail"),
+            "{}",
+            d.ui.focus_path(0)
+        );
+        d.set("mail", json!("ana@example.com"));
+        assert!(saved(&d.click("Save")));
+    });
 }

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI documents: <form> submit",
+      "summary": "A submit button no longer sends the form's onsubmit action while one of its text fields is :invalid; the first invalid field takes the focus instead, as HTML's constraint validation does. novalidate on the form or formnovalidate on the button skips the check; disabled and read-only fields are not validated."
+    }
+  ]
+}

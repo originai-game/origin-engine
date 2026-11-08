@@ -50,6 +50,7 @@ pub(super) fn parse(
             forms: Vec::new(),
             buttons: Vec::new(),
             fieldsets: Vec::new(),
+            novalidate: Vec::new(),
             aria_refs_for: Vec::new(),
             white_space: None,
         };
@@ -456,6 +457,8 @@ struct Parser {
     buttons: Vec<(usize, String, usize)>,
     /// `<fieldset disabled>`s and their condition.
     fieldsets: Vec<(usize, Expr)>,
+    /// Forms with `novalidate` and buttons with `formnovalidate`.
+    novalidate: Vec<usize>,
     /// `<output for>`'s ids, checked once the tree is read.
     aria_refs_for: Vec<(String, usize)>,
     /// An SVG `<text>`'s `white-space` while its runs are read: whether
@@ -2866,7 +2869,7 @@ button.active { opacity: 1; }
                 .triggers
                 .iter()
                 .filter_map(|t| match (&t.when, &t.act) {
-                    (When::Click, Act::Emit(a)) => Some(a.clone()),
+                    (When::Click, Act::Emit(a) | Act::Submit { action: a, .. }) => Some(a.clone()),
                     _ => None,
                 })
                 .collect()

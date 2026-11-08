@@ -37,7 +37,7 @@ fn names<'a>(
     for n in &doc.nodes {
         ids.insert(n.id.clone());
         for t in &n.triggers {
-            if let Act::Emit(e) = &t.act {
+            if let Act::Emit(e) | Act::Submit { action: e, .. } = &t.act {
                 emit.insert(e.clone());
             }
         }
