@@ -48,3 +48,13 @@ expect("abc").toEqual(expect.stringMatching(/b/));
     rmSync(dir, { recursive: true, force: true });
   }
 }, 60_000);
+
+// quick type-checks without building the web host, so a literal import of a
+// build output (dist/) resolves only in a lane that happens to have one and
+// fails quick in a fresh lane whatever its diff. Import it by a computed path.
+test("type-checked engine sources import no build output by a literal path", () => {
+  const glob = new Bun.Glob("{src,extensions,shell,tests,bench,scripts}/**/*.ts");
+  const literal = /(?:\bfrom\s*|\bimport\s*\(\s*)["'][^"']*\/dist\//;
+  const found = [...glob.scanSync(join(repo, "packages/engine"))].filter((f) => literal.test(read(`packages/engine/${f}`)));
+  expect(found, "import dist/ modules by a computed path (fileURLToPath(new URL(...)))").toEqual([]);
+});

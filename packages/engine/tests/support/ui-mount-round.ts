@@ -11,7 +11,7 @@ if (host === "node") {
   (await import("../../src/node/index.ts")).loadNativeHost();
 } else if (host === "web") {
   const { loadWebHost } = await import("../../src/web/host.ts");
-  const glue = await import("../../dist/web/origin-engine.js");
+  const glue = await import(fileURLToPath(new URL("../../dist/web/origin-engine.js", import.meta.url)));
   await loadWebHost(glue, readFileSync(fileURLToPath(new URL("../../dist/web/origin-engine_bg.wasm", import.meta.url))));
   function preload(directory: string): void {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
