@@ -1539,6 +1539,33 @@ pub(crate) struct TerrainPasses {
     pub corners: Rc<Deferred<wgpu::ComputePipeline>>,
 }
 
+impl TerrainPasses {
+    /// Starts compiling what a frame draws a terrain with on worker
+    /// threads (deferred.rs): the corners' writer and the lit pass, the
+    /// prepass and the shadows when the frame draws them, and the same
+    /// for its stamps.
+    pub(crate) fn start(&self, prepass: bool, shadows: bool, stamps: bool) {
+        use crate::deferred::Start;
+        let mut items: Vec<&dyn Start> = vec![&*self.corners, &*self.lit];
+        if prepass {
+            items.push(&*self.prepass);
+        }
+        if shadows {
+            items.push(&*self.shadow);
+        }
+        if stamps {
+            items.push(&*self.stamp_lit);
+            if prepass {
+                items.push(&*self.stamp_prepass);
+            }
+            if shadows {
+                items.push(&*self.stamp_shadow);
+            }
+        }
+        crate::deferred::start_all(&items);
+    }
+}
+
 /// Which pass [`draw_levels`] draws: each terrain sets its own pipeline.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TerrainPass {
@@ -1633,7 +1660,7 @@ fn terrain_passes(
                fs: &'static str,
                buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
         let (device, layout, module) = (device.clone(), layout.clone(), lit_module.clone());
-        crate::deferred::Sampled::new(samples, move |samples| {
+        crate::deferred::Sampled::anywhere(samples, move |samples| {
             crate::hdr_pipeline_with(
                 &device,
                 constants,
@@ -1681,7 +1708,7 @@ fn terrain_passes(
          fs: &'static str,
          buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
             let (device, layout, module) = (device.clone(), layout.clone(), lit_module.clone());
-            Deferred::new(move || {
+            Deferred::anywhere(move || {
                 let module = module.module();
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some(label),
@@ -1728,7 +1755,7 @@ fn terrain_passes(
         } else {
             &[("TERRAIN_HOLES", 0.0), ("SHADOW_SIDE", 2.0)]
         };
-        Deferred::new(move || {
+        Deferred::anywhere(move || {
             let module = module.module();
             crate::ShadowSet::new(|target| {
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1800,7 +1827,7 @@ fn terrain_passes(
         )),
         corners: Rc::new({
             let device = device.clone();
-            Deferred::new(move || {
+            Deferred::anywhere(move || {
                 device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some("terrain corners"),
                     layout: Some(&corners_layout),

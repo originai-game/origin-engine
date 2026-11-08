@@ -347,14 +347,14 @@ pub(crate) fn fullscreen_pipeline(
 pub(crate) fn deferred_fullscreen(
     device: &wgpu::Device,
     label: &'static str,
-    module: &(impl AsModule + Clone + 'static),
+    module: &(impl AsModule + Clone + crate::deferred::Anywhere + 'static),
     entry: &'static str,
     layout: &wgpu::PipelineLayout,
     format: wgpu::TextureFormat,
     blend: Option<wgpu::BlendState>,
 ) -> Deferred<wgpu::RenderPipeline> {
     let (device, module, layout) = (device.clone(), module.clone(), layout.clone());
-    Deferred::new(move || {
+    Deferred::anywhere(move || {
         fullscreen_pipeline(
             &device,
             label,

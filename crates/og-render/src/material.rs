@@ -1309,12 +1309,15 @@ pub(crate) struct ArrayMaps {
     pub module: wgpu::ShaderModule,
     pub shadow_module: wgpu::ShaderModule,
     /// By (side, blended, skinned, effects).
-    pub lit: std::collections::HashMap<crate::PbrKey, wgpu::RenderPipeline>,
+    pub lit:
+        std::collections::HashMap<crate::PbrKey, crate::deferred::Deferred<wgpu::RenderPipeline>>,
     /// By (side, skinned).
-    pub prepass: std::collections::HashMap<(Side, bool), wgpu::RenderPipeline>,
+    pub prepass:
+        std::collections::HashMap<(Side, bool), crate::deferred::Deferred<wgpu::RenderPipeline>>,
     /// Unskinned casters by (side, dissolve) (skinned instances carry no
     /// layer: the standard shadow pipelines draw them).
-    pub shadow: std::collections::HashMap<(Side, bool), crate::ShadowSet>,
+    pub shadow:
+        std::collections::HashMap<(Side, bool), crate::deferred::Deferred<crate::ShadowSet>>,
     /// One-layer stand-ins for a missing array: white, and the flat normal.
     pub white: wgpu::TextureView,
     pub flat_normal: wgpu::TextureView,

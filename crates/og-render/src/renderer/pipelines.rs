@@ -188,13 +188,14 @@ pub(crate) fn hdr_pipeline(device: &wgpu::Device, p: HdrPipeline) -> wgpu::Rende
 pub(crate) fn deferred_hdr(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
-    module: impl AsModule + 'static,
+    module: impl AsModule + crate::deferred::Anywhere + 'static,
     samples: u32,
     state: impl for<'a> Fn(&'a wgpu::PipelineLayout, &'a wgpu::ShaderModule) -> HdrPipeline<'a>
+    + crate::deferred::Anywhere
     + 'static,
 ) -> Sampled<wgpu::RenderPipeline> {
     let (device, layout) = (device.clone(), layout.clone());
-    Sampled::new(samples, move |samples| {
+    Sampled::anywhere(samples, move |samples| {
         hdr_pipeline(
             &device,
             HdrPipeline {

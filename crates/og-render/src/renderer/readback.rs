@@ -76,7 +76,7 @@ impl Renderer {
                 key,
                 self.samples,
             );
-            self.pbr_pipelines.insert(key, p);
+            self.pbr_pipelines.insert(key, Deferred::new(|| p));
             return true;
         }
         let key = (Side::Front, false, false);
@@ -89,7 +89,7 @@ impl Renderer {
                 false,
                 false,
             );
-            self.shadow_pipelines.insert(key, p);
+            self.shadow_pipelines.insert(key, Deferred::new(|| p));
             return true;
         }
         false

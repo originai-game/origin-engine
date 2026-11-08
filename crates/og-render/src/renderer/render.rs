@@ -390,6 +390,23 @@ impl Renderer {
             // too: cull_gpu.rs `previous`).
             || (taa_on
                 && (skinned_motion == Some(true) || batches.iter().any(|b| b.simulated) || !skinned.garments.is_empty() || skinned.baked_moved || objects_moved(scene) || crate::debris::moving(scene)));
+        // What the frame will draw with beyond its batches starts compiling
+        // on worker threads before the batches' pipelines (deferred.rs):
+        // the terrains', the frame's longest compiles, the sky's and the
+        // post chain's.
+        if WORLD_3D {
+            self.terrain.start_passes(scene, prepass);
+        }
+        {
+            use crate::deferred::Start;
+            match scene.environment.background {
+                Background::Sky => self.sky_pipeline.start(),
+                Background::Procedural { .. } => self.sky_look_pipeline.start(),
+                Background::Color(_) => {}
+            }
+        }
+        self.post.start();
+        self.water.start(scene_water);
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
@@ -1468,6 +1485,11 @@ impl Renderer {
             )?
         };
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
+        // The variants the prepare made (holes, layer arrays), and stamps.
+        for d in &terrain_draws {
+            d.passes
+                .start(prepass, d.cast_shadows, !d.stamps.is_empty());
+        }
         // Scattered copies: the chunks this frame needs built, what to draw.
         let mut scatter_batches = if !WORLD_3D {
             scatter::ScatterBatches::default()
@@ -4149,8 +4171,8 @@ impl Renderer {
         let shadow_skinned: Vec<&ShadowSet> = skinned_batches
             .iter()
             .map(|b| match b.shader {
-                Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, b.side, true)],
-                None => &self.shadow_pipelines[&(b.side, true, b.dissolve)],
+                Some(sh) => self.cache.hook_shadow_pipelines[&(sh, b.side, true)].get(),
+                None => self.shadow_pipelines[&(b.side, true, b.dissolve)].get(),
             })
             .collect();
         let prepass_skinned: Vec<&wgpu::RenderPipeline> = if prepass {
@@ -4168,7 +4190,7 @@ impl Renderer {
                     hooked
                         .or(array)
                         .or_else(|| self.prepass_pipelines.get(&(b.side, true)))
-                        .unwrap_or(lit_skinned[0])
+                        .map_or(lit_skinned[0], |p| p.get())
                 })
                 .collect()
         } else {

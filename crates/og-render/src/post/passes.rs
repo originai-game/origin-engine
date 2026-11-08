@@ -3,6 +3,20 @@
 use super::*;
 
 impl PostPasses {
+    /// Starts compiling the passes every frame of a camera draws, the
+    /// tonemap and TAA with its sharpening, on worker threads before the
+    /// scene's passes are encoded (deferred.rs).
+    pub(crate) fn start(&self) {
+        use crate::deferred::Start;
+        self.tonemap.start();
+        for p in [&self.taa, &self.taa_sharpen_pipeline]
+            .into_iter()
+            .flatten()
+        {
+            p.start();
+        }
+    }
+
     /// Makes one of its pipelines no frame used yet: the tonemap, the
     /// exposure meter and bloom first, then TAA and the effect passes
     /// (Renderer::warm).

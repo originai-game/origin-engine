@@ -628,17 +628,17 @@ pub struct Renderer {
     shadow_shader: deferred::Module,
     /// Lit pipelines, each made when a batch first needs it (or by
     /// [`Renderer::warm`]).
-    pbr_pipelines: HashMap<PbrKey, wgpu::RenderPipeline>,
-    shadow_pipelines: HashMap<ShadowKey, ShadowSet>,
+    pbr_pipelines: HashMap<PbrKey, Deferred<wgpu::RenderPipeline>>,
+    shadow_pipelines: HashMap<ShadowKey, Deferred<ShadowSet>>,
     /// Prepass pipelines by (side, skinned).
-    prepass_pipelines: HashMap<(Side, bool), wgpu::RenderPipeline>,
+    prepass_pipelines: HashMap<(Side, bool), Deferred<wgpu::RenderPipeline>>,
     /// The lean lit pipelines of plain materials, made at first use.
-    lean_pipelines: HashMap<LeanKey, wgpu::RenderPipeline>,
+    lean_pipelines: HashMap<LeanKey, Deferred<wgpu::RenderPipeline>>,
     /// Their prepass pipelines by (side, derivatives, compact).
-    lean_prepass_pipelines: HashMap<(Side, bool, bool), wgpu::RenderPipeline>,
+    lean_prepass_pipelines: HashMap<(Side, bool, bool), Deferred<wgpu::RenderPipeline>>,
     /// The shadow pipelines of compact casters (lean, from the compact
     /// vertices) by side.
-    compact_shadow_pipelines: HashMap<Side, ShadowSet>,
+    compact_shadow_pipelines: HashMap<Side, Deferred<ShadowSet>>,
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     stylise_object: Option<stylise_object::ObjectPass>,

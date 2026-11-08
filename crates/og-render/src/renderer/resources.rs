@@ -236,17 +236,18 @@ pub(crate) struct SceneCache {
     /// The shadow shader with each of them.
     pub(crate) shadow_shaders: Vec<wgpu::ShaderModule>,
     /// Their lit pipelines by (shader, side, blended, effects, skinned).
-    pub(crate) hook_pipelines: HashMap<(usize, Side, bool, bool, bool), wgpu::RenderPipeline>,
+    pub(crate) hook_pipelines:
+        HashMap<(usize, Side, bool, bool, bool), Deferred<wgpu::RenderPipeline>>,
     /// Their shadow and prepass pipelines by (shader, side, skinned).
-    pub(crate) hook_shadow_pipelines: HashMap<(usize, Side, bool), ShadowSet>,
-    pub(crate) hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
+    pub(crate) hook_shadow_pipelines: HashMap<(usize, Side, bool), Deferred<ShadowSet>>,
+    pub(crate) hook_prepass_pipelines: HashMap<(usize, Side, bool), Deferred<wgpu::RenderPipeline>>,
     pub(crate) surface_prepass_pipelines:
-        HashMap<(Option<usize>, Side, bool), wgpu::RenderPipeline>,
+        HashMap<(Option<usize>, Side, bool), Deferred<wgpu::RenderPipeline>>,
     pub(crate) garments: HashMap<(u64, usize), crate::garment_gpu::Mesh>,
     /// The physical lit shader with a material shader, made when a physical
     /// material first uses it, and its pipelines by (shader, key).
     pub(crate) physical_shaders: HashMap<usize, wgpu::ShaderModule>,
-    pub(crate) physical_hook_pipelines: HashMap<(usize, PbrKey), wgpu::RenderPipeline>,
+    pub(crate) physical_hook_pipelines: HashMap<(usize, PbrKey), Deferred<wgpu::RenderPipeline>>,
     /// Physical materials' packed maps, shared by materials with the same maps.
     pub(crate) packs: HashMap<physical::PackKey, wgpu::TextureView>,
     pub(crate) textures: Vec<GpuTexture>,

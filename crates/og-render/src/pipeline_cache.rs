@@ -14,7 +14,6 @@ pub use web::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
-    use std::cell::RefCell;
     use std::path::PathBuf;
     use std::sync::Mutex;
 
@@ -29,20 +28,20 @@ mod native {
         DIR.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
-    thread_local! {
-        /// The caches of this thread's devices (a renderer and its device stay
-        /// on the thread that made them).
-        static CACHES: RefCell<Vec<(wgpu::Device, wgpu::PipelineCache)>> = const { RefCell::new(Vec::new()) };
+    /// The caches of the renderers' devices: shared by every thread, since
+    /// a renderer's pipelines compile on worker threads too (deferred.rs).
+    static CACHES: Mutex<Vec<(wgpu::Device, wgpu::PipelineCache)>> = Mutex::new(Vec::new());
+
+    fn caches() -> std::sync::MutexGuard<'static, Vec<(wgpu::Device, wgpu::PipelineCache)>> {
+        CACHES.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// The pipeline cache of `device`, if its renderer keeps one.
     pub(crate) fn of(device: &wgpu::Device) -> Option<wgpu::PipelineCache> {
-        CACHES.with(|c| {
-            c.borrow()
-                .iter()
-                .find(|(d, _)| d == device)
-                .map(|(_, cache)| cache.clone())
-        })
+        caches()
+            .iter()
+            .find(|(d, _)| d == device)
+            .map(|(_, cache)| cache.clone())
     }
 
     /// A renderer's cache and the file it lives in.
@@ -78,7 +77,7 @@ mod native {
                     fallback: true,
                 })
             };
-            CACHES.with(|c| c.borrow_mut().push((device.clone(), cache.clone())));
+            caches().push((device.clone(), cache.clone()));
             Some(DiskCache {
                 device: device.clone(),
                 cache,
@@ -125,7 +124,7 @@ mod native {
         fn drop(&mut self) {
             self.save();
             let device = self.device.clone();
-            CACHES.with(|c| c.borrow_mut().retain(|(d, _)| *d != device));
+            caches().retain(|(d, _)| *d != device);
         }
     }
 }

@@ -1249,6 +1249,18 @@ pub(crate) struct WaterDraw {
 }
 
 impl WaterRenderer {
+    /// Starts compiling the pipelines `waters` draw with on worker threads
+    /// (deferred.rs): the grid's or the mesh's, as each surface asks.
+    pub(crate) fn start(&self, waters: &[Water]) {
+        use crate::deferred::Start;
+        if waters.iter().any(|w| w.mesh.is_some()) {
+            self.mesh_pipeline.start();
+        }
+        if waters.iter().any(|w| w.mesh.is_none()) {
+            self.pipeline.start();
+        }
+    }
+
     /// Makes its pipeline if no frame used it yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
         crate::deferred::warm_one(&[&self.pipeline, &self.mesh_pipeline, &self.spray_pipeline])

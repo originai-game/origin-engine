@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Renderer",
+      "summary": "A scene's first frame waits far less for shaders on desktop: the pipelines it needs compile side by side on worker threads, started as soon as the frame knows it draws them, instead of one after another as its passes meet them. The 2 km terrain scene's first frame on DX12 with an empty driver cache takes 4.6 s instead of 10.5 s; the picture is unchanged. The web is unchanged."
+    }
+  ]
+}

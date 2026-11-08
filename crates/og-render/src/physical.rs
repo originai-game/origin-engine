@@ -265,7 +265,7 @@ pub(crate) struct PhysicalPipelines {
     pub layouts: (wgpu::PipelineLayout, wgpu::PipelineLayout),
     /// The physical shader with the built-in hooks.
     pub module: wgpu::ShaderModule,
-    pub pipelines: HashMap<PbrKey, wgpu::RenderPipeline>,
+    pub pipelines: HashMap<PbrKey, crate::deferred::Deferred<wgpu::RenderPipeline>>,
     /// A pack for a material without packed maps (one layer).
     pub empty_pack: wgpu::TextureView,
     pack_layout: wgpu::BindGroupLayout,

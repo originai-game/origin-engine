@@ -11,39 +11,198 @@
 //! is the frame it was. [`Renderer::warm`](crate::Renderer::warm) makes
 //! the rest one at a time when the host has idle time (behind the web
 //! page's play gate), so a pass met later does not stop a frame to compile.
+//!
+//! **Compiling ahead, natively.** A pipeline compiles on the CPU (DXC and
+//! the driver on DX12 take over a second for the terrain's lit stages),
+//! and a frame used to make what its passes met one after another. A value
+//! made by [`Deferred::anywhere`] (or [`Sampled::anywhere`]) can be started
+//! on a worker thread ([`Deferred::start`]) as soon as the frame knows it
+//! will draw it, before its passes are encoded; the pass that sets it waits
+//! for it there, so the frame's compiles overlap each other and the CPU
+//! work between them. wgpu's native device makes pipelines from any thread
+//! (Bevy's pipeline cache compiles on a task pool the same way); the
+//! pipelines are the same objects from the same descriptors, so nothing a
+//! frame draws changes. On the web a value is made where it is first used,
+//! as before: the browser's GPU process compiles it, and the host's frame
+//! span asks for it asynchronously (`FrameSpan`).
 
 use std::cell::{Cell, OnceCell};
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
+use std::sync::{Arc, Mutex, OnceLock};
+
+/// A closure that makes a value off the renderer's thread (natively; on
+/// the web, where nothing is made off it, any closure).
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) type MakeAnywhere<T> = Box<dyn FnOnce() -> T + Send>;
+#[cfg(target_arch = "wasm32")]
+pub(crate) type MakeAnywhere<T> = Box<dyn FnOnce() -> T>;
+
+/// What a closure or module needs to be made off the renderer's thread:
+/// `Send + Sync` natively, nothing on the web.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) trait Anywhere: Send + Sync {}
+#[cfg(not(target_arch = "wasm32"))]
+impl<T: Send + Sync> Anywhere for T {}
+#[cfg(target_arch = "wasm32")]
+pub(crate) trait Anywhere {}
+#[cfg(target_arch = "wasm32")]
+impl<T> Anywhere for T {}
+
+/// What a closure run once needs to be run off the renderer's thread:
+/// `Send` natively, nothing on the web.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) trait AnywhereOnce: Send {}
+#[cfg(not(target_arch = "wasm32"))]
+impl<T: Send> AnywhereOnce for T {}
+#[cfg(target_arch = "wasm32")]
+pub(crate) trait AnywhereOnce {}
+#[cfg(target_arch = "wasm32")]
+impl<T> AnywhereOnce for T {}
+
+/// How a [`Deferred`] value is made.
+enum Make<T> {
+    /// On first use, here.
+    Here(Box<dyn FnOnce() -> T>),
+    /// On first use, or on a worker thread once started.
+    Anywhere(MakeAnywhere<T>),
+    /// Started on a worker thread.
+    #[cfg(not(target_arch = "wasm32"))]
+    Started(Pending<T>),
+}
+
+impl<T> Make<T> {
+    fn make(self) -> T {
+        match self {
+            Make::Here(make) => make(),
+            Make::Anywhere(make) => make(),
+            #[cfg(not(target_arch = "wasm32"))]
+            Make::Started(worker) => joined(worker),
+        }
+    }
+}
+
+/// A value being made on a compile worker ([`spawn`]).
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) struct Pending<T>(std::sync::mpsc::Receiver<std::thread::Result<T>>);
+
+/// A worker's value, waited for, its panic passed on.
+#[cfg(not(target_arch = "wasm32"))]
+fn joined<T>(pending: Pending<T>) -> T {
+    match pending.0.recv() {
+        Ok(Ok(value)) => value,
+        Ok(Err(panic)) => std::panic::resume_unwind(panic),
+        Err(_) => unreachable!("a compile worker always answers"),
+    }
+}
+
+/// A job for the compile workers.
+#[cfg(not(target_arch = "wasm32"))]
+type Job = Box<dyn FnOnce() + Send>;
+
+/// Runs `make` on the compile workers: one a core, started on first use
+/// and kept for the process, taking jobs in the order they were started
+/// (a frame starts its longest compiles first). A bounded pool, not a
+/// thread a pipeline: a scene's first frame can ask for dozens at once.
+#[cfg(not(target_arch = "wasm32"))]
+fn spawn<T: Send + 'static>(make: impl FnOnce() -> T + Send + 'static) -> Pending<T> {
+    static QUEUE: OnceLock<Mutex<std::sync::mpsc::Sender<Job>>> = OnceLock::new();
+    let queue = QUEUE.get_or_init(|| {
+        let (send, receive) = std::sync::mpsc::channel::<Job>();
+        let receive = Arc::new(Mutex::new(receive));
+        let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+        for i in 0..workers {
+            let receive = receive.clone();
+            std::thread::Builder::new()
+                .name(format!("og-render compile {i}"))
+                .spawn(move || {
+                    loop {
+                        let job = receive.lock().unwrap_or_else(|e| e.into_inner()).recv();
+                        match job {
+                            Ok(job) => job(),
+                            Err(_) => break,
+                        }
+                    }
+                })
+                .expect("a pipeline compile worker");
+        }
+        Mutex::new(send)
+    });
+    let (answer, pending) = std::sync::mpsc::channel();
+    let job: Job = Box::new(move || {
+        let made = std::panic::catch_unwind(std::panic::AssertUnwindSafe(make));
+        let _ = answer.send(made);
+    });
+    queue
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .send(job)
+        .expect("the compile workers run for the process");
+    Pending(pending)
+}
 
 /// A value made by its closure on first use (deref), at most once.
 pub(crate) struct Deferred<T> {
     value: OnceCell<T>,
-    make: Cell<Option<Box<dyn FnOnce() -> T>>>,
+    make: Cell<Option<Make<T>>>,
 }
 
 impl<T> Deferred<T> {
     pub(crate) fn new(make: impl FnOnce() -> T + 'static) -> Deferred<T> {
         Deferred {
             value: OnceCell::new(),
-            make: Cell::new(Some(Box::new(make))),
+            make: Cell::new(Some(Make::Here(Box::new(make)))),
         }
     }
 
-    /// The value, made now if it was not yet.
+    /// One that [`Start::start`] can make on a worker thread ahead of its
+    /// first use (on the web, made on first use).
+    pub(crate) fn anywhere(make: impl FnOnce() -> T + AnywhereOnce + 'static) -> Deferred<T> {
+        Deferred {
+            value: OnceCell::new(),
+            make: Cell::new(Some(Make::Anywhere(Box::new(make)))),
+        }
+    }
+
+    /// The value, made now if it was not yet (waited for, if started).
     pub(crate) fn get(&self) -> &T {
         self.value.get_or_init(|| {
-            let make = self
-                .make
+            self.make
                 .take()
-                .expect("a deferred value is made once, by its first use");
-            make()
+                .expect("a deferred value is made once, by its first use")
+                .make()
         })
     }
 
     /// Whether the value has been made.
     pub(crate) fn made(&self) -> bool {
         self.value.get().is_some()
+    }
+}
+
+/// Something a frame can start making ahead of the pass that uses it.
+pub(crate) trait Start {
+    /// Starts making it on a worker thread if it can be made there and is
+    /// neither made nor started (natively; on the web nothing).
+    fn start(&self);
+}
+
+impl<T: Send + 'static> Start for Deferred<T> {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn start(&self) {
+        match self.make.take() {
+            Some(Make::Anywhere(make)) => self.make.set(Some(Make::Started(spawn(make)))),
+            other => self.make.set(other),
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn start(&self) {}
+}
+
+/// Starts every one of `items` (see [`Start`]).
+pub(crate) fn start_all(items: &[&dyn Start]) {
+    for item in items {
+        item.start();
     }
 }
 
@@ -69,25 +228,69 @@ impl<T> DerefMut for Deferred<T> {
 pub(crate) struct Sampled<T> {
     samples: Cell<u32>,
     made: [OnceCell<T>; 2],
-    make: Box<dyn Fn(u32) -> T>,
+    /// A count's value started on a worker thread ([`Sampled::anywhere`]).
+    #[cfg(not(target_arch = "wasm32"))]
+    started: [Cell<Option<Pending<T>>>; 2],
+    make: SampledMake<T>,
+}
+
+enum SampledMake<T> {
+    Here(Box<dyn Fn(u32) -> T>),
+    #[cfg(not(target_arch = "wasm32"))]
+    Anywhere(Arc<dyn Fn(u32) -> T + Send + Sync>),
 }
 
 impl<T> Sampled<T> {
-    pub(crate) fn new(samples: u32, make: impl Fn(u32) -> T + 'static) -> Sampled<T> {
+    fn with(samples: u32, make: SampledMake<T>) -> Sampled<T> {
         Sampled {
             samples: Cell::new(samples),
             made: [OnceCell::new(), OnceCell::new()],
-            make: Box::new(make),
+            #[cfg(not(target_arch = "wasm32"))]
+            started: [Cell::new(None), Cell::new(None)],
+            make,
         }
     }
 
-    fn slot(&self) -> &OnceCell<T> {
-        &self.made[(self.samples.get() > 1) as usize]
+    pub(crate) fn new(samples: u32, make: impl Fn(u32) -> T + 'static) -> Sampled<T> {
+        Sampled::with(samples, SampledMake::Here(Box::new(make)))
     }
 
-    /// The value at the current count, made now if it was not yet.
+    /// One whose value at a count [`Start::start`] can make on a worker
+    /// thread ahead of its first use (on the web, made on first use).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn anywhere(
+        samples: u32,
+        make: impl Fn(u32) -> T + Anywhere + 'static,
+    ) -> Sampled<T> {
+        Sampled::with(samples, SampledMake::Anywhere(Arc::new(make)))
+    }
+
+    /// One whose value at a count [`Start::start`] can make on a worker
+    /// thread ahead of its first use (on the web, made on first use).
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn anywhere(samples: u32, make: impl Fn(u32) -> T + 'static) -> Sampled<T> {
+        Sampled::new(samples, make)
+    }
+
+    fn index(&self) -> usize {
+        (self.samples.get() > 1) as usize
+    }
+
+    /// The value at the current count, made now if it was not yet (waited
+    /// for, if started).
     pub(crate) fn get(&self) -> &T {
-        self.slot().get_or_init(|| (self.make)(self.samples.get()))
+        let i = self.index();
+        self.made[i].get_or_init(|| {
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(worker) = self.started[i].take() {
+                return joined(worker);
+            }
+            match &self.make {
+                SampledMake::Here(make) => make(self.samples.get()),
+                #[cfg(not(target_arch = "wasm32"))]
+                SampledMake::Anywhere(make) => make(self.samples.get()),
+            }
+        })
     }
 
     /// Draw at `samples` per pixel from now on.
@@ -97,8 +300,31 @@ impl<T> Sampled<T> {
 
     /// Whether the value at the current count has been made.
     pub(crate) fn made(&self) -> bool {
-        self.slot().get().is_some()
+        self.made[self.index()].get().is_some()
     }
+}
+
+impl<T: Send + 'static> Start for Sampled<T> {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn start(&self) {
+        let i = self.index();
+        let SampledMake::Anywhere(make) = &self.make else {
+            return;
+        };
+        if self.made() {
+            return;
+        }
+        match self.started[i].take() {
+            Some(worker) => self.started[i].set(Some(worker)),
+            None => {
+                let (make, samples) = (make.clone(), self.samples.get());
+                self.started[i].set(Some(spawn(move || make(samples))));
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn start(&self) {}
 }
 
 impl<T> Deref for Sampled<T> {
@@ -118,18 +344,53 @@ impl<T> Warm for Sampled<T> {
     }
 }
 
+/// A shader module parsed when the first pipeline that uses it is made,
+/// on whichever thread that is ([`Deferred::anywhere`]).
+pub(crate) struct ModuleCell {
+    value: OnceLock<wgpu::ShaderModule>,
+    make: Mutex<Option<MakeAnywhere<wgpu::ShaderModule>>>,
+}
+
+impl ModuleCell {
+    /// The module, parsed now if it was not yet.
+    pub(crate) fn get(&self) -> &wgpu::ShaderModule {
+        self.value.get_or_init(|| {
+            let make = self
+                .make
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take()
+                .expect("a module is parsed once, by its first use");
+            make()
+        })
+    }
+}
+
+impl Deref for ModuleCell {
+    type Target = wgpu::ShaderModule;
+    fn deref(&self) -> &wgpu::ShaderModule {
+        self.get()
+    }
+}
+
 /// A shader module parsed when the first pipeline that uses it is made.
-pub(crate) type Module = Rc<Deferred<wgpu::ShaderModule>>;
+pub(crate) type Module = Arc<ModuleCell>;
 
 /// A WGSL module made on first use ([`Module`]).
+// The web's wgpu objects are neither Send nor Sync; nothing there leaves
+// the renderer's thread.
+#[cfg_attr(target_arch = "wasm32", allow(clippy::arc_with_non_send_sync))]
 pub(crate) fn module(device: &wgpu::Device, label: &'static str, source: String) -> Module {
     let device = device.clone();
-    Rc::new(Deferred::new(move || {
-        device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(label),
-            source: wgpu::ShaderSource::Wgsl(source.into()),
-        })
-    }))
+    Arc::new(ModuleCell {
+        value: OnceLock::new(),
+        make: Mutex::new(Some(Box::new(move || {
+            device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(label),
+                source: wgpu::ShaderSource::Wgsl(source.into()),
+            })
+        }))),
+    })
 }
 
 /// A shader module a deferred pipeline is made from: one already made, or a [`Module`].
@@ -176,7 +437,7 @@ mod tests {
 
     #[test]
     fn made_once_on_first_use_and_warmed_in_order() {
-        let made = Rc::new(Cell::new(0));
+        let made = std::rc::Rc::new(Cell::new(0));
         let m = made.clone();
         let a = Deferred::new(move || {
             m.set(m.get() + 1);
@@ -196,5 +457,34 @@ mod tests {
         let mut d = Deferred::new(|| vec![1]);
         d.push(2);
         assert_eq!(*d, vec![1, 2]);
+    }
+
+    /// A started value is made once, on a compile worker, and its first use
+    /// waits for it; a worker's panic reaches that first use.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn started_values_are_made_on_a_worker_and_waited_for() {
+        let here = std::thread::current().id();
+        let made = Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let m = made.clone();
+        let a = Deferred::anywhere(move || {
+            m.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            std::thread::current().id()
+        });
+        a.start();
+        a.start();
+        assert_ne!(*a.get(), here);
+        assert_eq!(made.load(std::sync::atomic::Ordering::SeqCst), 1);
+        let s = Sampled::anywhere(4, |n| (n, std::thread::current().id()));
+        s.start();
+        assert_eq!(s.get().0, 4);
+        assert_ne!(s.get().1, here);
+        let p = Deferred::anywhere(|| -> u32 { panic!("compile failed") });
+        p.start();
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| *p.get()));
+        assert_eq!(
+            panic.unwrap_err().downcast_ref::<&str>(),
+            Some(&"compile failed")
+        );
     }
 }

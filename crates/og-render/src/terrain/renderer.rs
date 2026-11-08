@@ -32,6 +32,29 @@ impl TerrainRenderer {
         }
     }
 
+    /// Starts compiling the pipelines `scene`'s visible terrains draw with,
+    /// as far as they are known before [`TerrainRenderer::prepare`] (which
+    /// makes the hole and layer-array variants; the frame starts those
+    /// after it, from its draws): the frame's longest compiles, on worker
+    /// threads while the rest of the frame is prepared (deferred.rs).
+    pub(crate) fn start_passes(&self, scene: &crate::RenderScene, prepass: bool) {
+        for t in scene.terrains.iter().filter(|t| t.visible) {
+            let holes = self
+                .datas
+                .get(t.terrain.index())
+                .and_then(Option::as_ref)
+                .is_some_and(|d| d.layout.holes);
+            let passes = match (holes, t.layer_arrays.any(), &self.arrays) {
+                (true, arrayed, _) => self.holed[usize::from(arrayed)].as_ref(),
+                (false, true, arrays) => arrays.as_ref().map(|(_, p)| p),
+                (false, false, _) => Some(&self.passes),
+            };
+            if let Some(passes) = passes {
+                passes.start(prepass, t.cast_shadows, !scene.terrain_stamps.is_empty());
+            }
+        }
+    }
+
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
         let p = &self.passes;

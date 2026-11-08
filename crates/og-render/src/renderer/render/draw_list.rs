@@ -146,6 +146,7 @@ impl Renderer {
                             None if batch.compact => &self.compact_shadow_pipelines[&batch.side],
                             None => &self.shadow_pipelines[&key.0],
                         }
+                        .get()
                         .get(shadow),
                     );
                     shadow_key = Some(key);

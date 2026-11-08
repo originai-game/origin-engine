@@ -425,26 +425,32 @@ impl Renderer {
             return self
                 .cache
                 .surface_prepass_pipelines
-                .get(&(b.shader, b.side, b.array));
+                .get(&(b.shader, b.side, b.array))
+                .map(|p| p.get());
         }
         if let Some(sh) = b.shader {
             return self
                 .cache
                 .hook_prepass_pipelines
-                .get(&(sh, b.side, skinned));
+                .get(&(sh, b.side, skinned))
+                .map(|p| p.get());
         }
         if b.lean && !skinned {
             return self
                 .lean_prepass_pipelines
-                .get(&(b.side, b.derivatives, b.compact));
+                .get(&(b.side, b.derivatives, b.compact))
+                .map(|p| p.get());
         }
         if b.array {
             return self
                 .array_maps
                 .as_ref()
-                .and_then(|a| a.prepass.get(&(b.side, skinned)));
+                .and_then(|a| a.prepass.get(&(b.side, skinned)))
+                .map(|p| p.get());
         }
-        self.prepass_pipelines.get(&(b.side, skinned))
+        self.prepass_pipelines
+            .get(&(b.side, skinned))
+            .map(|p| p.get())
     }
 
     /// Makes the lit, shadow and prepass pipelines this frame's batches need.
@@ -454,6 +460,117 @@ impl Renderer {
     }
 
     fn ensure_pipelines_now(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
+        for (slot, job) in self.pipeline_jobs(batches, skinned, prepass) {
+            use Made::{Pipeline as P, Shadows as S};
+            // Natively each compiles on the compile workers (deferred.rs)
+            // and the pass that first sets it waits for it; on the web it
+            // is made here, inside the host's frame span.
+            if let Slot::ArrayShadow(_)
+            | Slot::HookShadow(_)
+            | Slot::CompactShadow(_)
+            | Slot::Shadow(_) = slot
+            {
+                let set = deferred(move || match job() {
+                    S(set) => set,
+                    P(_) => unreachable!("a shadow slot's job makes shadows"),
+                });
+                match slot {
+                    Slot::ArrayShadow(k) => {
+                        self.array_maps
+                            .as_mut()
+                            .expect("array material")
+                            .shadow
+                            .insert(k, set);
+                    }
+                    Slot::HookShadow(k) => {
+                        self.cache.hook_shadow_pipelines.insert(k, set);
+                    }
+                    Slot::CompactShadow(k) => {
+                        self.compact_shadow_pipelines.insert(k, set);
+                    }
+                    Slot::Shadow(k) => {
+                        self.shadow_pipelines.insert(k, set);
+                    }
+                    _ => unreachable!("a shadow slot"),
+                }
+                continue;
+            }
+            let p = deferred(move || match job() {
+                P(p) => p,
+                S(_) => unreachable!("a pipeline slot's job makes a pipeline"),
+            });
+            match slot {
+                Slot::SurfacePrepass(k) => {
+                    self.cache.surface_prepass_pipelines.insert(k, p);
+                }
+                Slot::ArrayLit(k) => {
+                    self.array_maps
+                        .as_mut()
+                        .expect("array material")
+                        .lit
+                        .insert(k, p);
+                }
+                Slot::ArrayPrepass(k) => {
+                    self.array_maps
+                        .as_mut()
+                        .expect("array material")
+                        .prepass
+                        .insert(k, p);
+                }
+                Slot::Physical(k) => {
+                    self.physical
+                        .as_mut()
+                        .expect("physical material")
+                        .pipelines
+                        .insert(k, p);
+                }
+                Slot::PhysicalHook(k) => {
+                    self.cache.physical_hook_pipelines.insert(k, p);
+                }
+                Slot::Hook(k) => {
+                    self.cache.hook_pipelines.insert(k, p);
+                }
+                Slot::HookPrepass(k) => {
+                    self.cache.hook_prepass_pipelines.insert(k, p);
+                }
+                Slot::Lean(k) => {
+                    self.lean_pipelines.insert(k, p);
+                }
+                Slot::LeanPrepass(k) => {
+                    self.lean_prepass_pipelines.insert(k, p);
+                }
+                Slot::Pbr(k) => {
+                    self.pbr_pipelines.insert(k, p);
+                }
+                Slot::Prepass(k) => {
+                    self.prepass_pipelines.insert(k, p);
+                }
+                _ => unreachable!("the shadow slots are matched above"),
+            }
+        }
+    }
+
+    /// The pipelines this frame's batches need and no map holds yet, each
+    /// with the slot it goes in, once each; each job owns what it makes its
+    /// pipeline from, so it can run on another thread.
+    fn pipeline_jobs(
+        &self,
+        batches: &[Batch],
+        skinned: &[Batch],
+        prepass: bool,
+    ) -> Vec<(Slot, Job)> {
+        let device = &self.device;
+        let samples = self.samples;
+        let pbr = &(self.pbr_layout.clone(), self.pbr_skinned_layout.clone());
+        let pbr_shader = &self.pbr_shader;
+        let shadow_shader = &self.shadow_shader;
+        let shadow_layouts = &self.shadow_layouts;
+        let mut jobs: Vec<(Slot, Job)> = Vec::new();
+        let mut add = |slot: Slot, held: bool, job: Job| {
+            if !held && !jobs.iter().any(|(s, _)| *s == slot) {
+                jobs.push((slot, job));
+            }
+        };
         let all = batches
             .iter()
             .map(|b| (b, false))
@@ -464,211 +581,304 @@ impl Renderer {
                 && !is_skinned
                 && !b.transparent
                 && self.cache.meshes[b.mesh].surface.is_some()
-                && !self.cache.surface_prepass_pipelines.contains_key(&key)
             {
                 let (layouts, module) = if b.array {
                     let a = self.array_maps.as_ref().expect("array material");
-                    ((&a.layouts.0, &a.layouts.1), &a.module)
+                    (a.layouts.clone(), Shader::Made(a.module.clone()))
                 } else {
                     (
-                        (&self.pbr_layout, &self.pbr_skinned_layout),
-                        b.shader
-                            .map_or::<&wgpu::ShaderModule, _>(&self.pbr_shader, |sh| {
-                                &self.cache.shaders[sh]
-                            }),
+                        pbr.clone(),
+                        b.shader.map_or(Shader::Lazy(pbr_shader.clone()), |sh| {
+                            Shader::Made(self.cache.shaders[sh].clone())
+                        }),
                     )
                 };
-                let p = surface_prepass_pipeline(&self.device, layouts, module, b.side, b.array);
-                self.cache.surface_prepass_pipelines.insert(key, p);
+                let (device, side, array) = (device.clone(), b.side, b.array);
+                add(
+                    Slot::SurfacePrepass(key),
+                    self.cache.surface_prepass_pipelines.contains_key(&key),
+                    Box::new(move || {
+                        Made::Pipeline(surface_prepass_pipeline(
+                            &device,
+                            (&layouts.0, &layouts.1),
+                            &module,
+                            side,
+                            array,
+                        ))
+                    }),
+                );
             }
             if b.array {
                 // The array-map variant: the standard builders over its
                 // module and layouts (`material::ArrayMaps`).
-                let a = self.array_maps.as_mut().expect("made with the material");
-                let layouts = (&a.layouts.0, &a.layouts.1);
+                let a = self.array_maps.as_ref().expect("made with the material");
                 let key = (b.side, b.blend, is_skinned, b.effects);
-                if !a.lit.contains_key(&key) {
-                    let p = pbr_pipeline(&self.device, layouts, &a.module, key, self.samples);
-                    a.lit.insert(key, p);
-                }
+                let (d, layouts, module) = (device.clone(), a.layouts.clone(), a.module.clone());
+                add(
+                    Slot::ArrayLit(key),
+                    a.lit.contains_key(&key),
+                    Box::new(move || {
+                        Made::Pipeline(pbr_pipeline(
+                            &d,
+                            (&layouts.0, &layouts.1),
+                            &module,
+                            key,
+                            samples,
+                        ))
+                    }),
+                );
                 let key = (b.side, is_skinned);
-                if prepass && !b.transparent && !a.prepass.contains_key(&key) {
-                    let p = prepass_pipeline(
-                        &self.device,
-                        layouts,
-                        &a.module,
-                        b.side,
-                        is_skinned,
-                        None,
-                        None,
+                if prepass && !b.transparent {
+                    let (d, layouts, module, side) =
+                        (device.clone(), a.layouts.clone(), a.module.clone(), b.side);
+                    add(
+                        Slot::ArrayPrepass(key),
+                        a.prepass.contains_key(&key),
+                        Box::new(move || {
+                            Made::Pipeline(prepass_pipeline(
+                                &d,
+                                (&layouts.0, &layouts.1),
+                                &module,
+                                side,
+                                is_skinned,
+                                None,
+                                None,
+                            ))
+                        }),
                     );
-                    a.prepass.insert(key, p);
                 }
                 let key = (b.side, b.dissolve);
-                if !is_skinned && !a.shadow.contains_key(&key) {
-                    let p = shadow_pipeline(
-                        &self.device,
-                        &self.shadow_layouts,
-                        &a.shadow_module,
-                        (b.side, false, b.dissolve),
-                        false,
-                        false,
+                if !is_skinned {
+                    let (d, layouts, module) = (
+                        device.clone(),
+                        shadow_layouts.clone(),
+                        a.shadow_module.clone(),
                     );
-                    a.shadow.insert(key, p);
+                    let (side, dissolve) = key;
+                    add(
+                        Slot::ArrayShadow(key),
+                        a.shadow.contains_key(&key),
+                        Box::new(move || {
+                            Made::Shadows(shadow_pipeline(
+                                &d,
+                                &layouts,
+                                &module,
+                                (side, false, dissolve),
+                                false,
+                                false,
+                            ))
+                        }),
+                    );
                 }
             }
             if b.physical {
                 // The physical lit pipeline (the standard ones below draw the
                 // material's reflection).
                 let key = (b.side, b.blend, is_skinned, b.effects);
-                let physical = self.physical.as_mut().expect("made with the material");
-                let layouts = (&physical.layouts.0, &physical.layouts.1);
+                let physical = self.physical.as_ref().expect("made with the material");
+                let layouts = physical.layouts.clone();
+                let d = device.clone();
                 match b.shader {
-                    None if !physical.pipelines.contains_key(&key) => {
-                        let p = lit_pipeline(
-                            &self.device,
-                            layouts,
-                            &physical.module,
-                            key,
-                            self.samples,
-                            true,
+                    None => {
+                        let module = physical.module.clone();
+                        add(
+                            Slot::Physical(key),
+                            physical.pipelines.contains_key(&key),
+                            Box::new(move || {
+                                Made::Pipeline(lit_pipeline(
+                                    &d,
+                                    (&layouts.0, &layouts.1),
+                                    &module,
+                                    key,
+                                    samples,
+                                    true,
+                                ))
+                            }),
                         );
-                        physical.pipelines.insert(key, p);
                     }
-                    Some(sh) if !self.cache.physical_hook_pipelines.contains_key(&(sh, key)) => {
-                        let p = lit_pipeline(
-                            &self.device,
-                            layouts,
-                            &self.cache.physical_shaders[&sh],
-                            key,
-                            self.samples,
-                            true,
+                    Some(sh) => {
+                        let module = self.cache.physical_shaders[&sh].clone();
+                        add(
+                            Slot::PhysicalHook((sh, key)),
+                            self.cache.physical_hook_pipelines.contains_key(&(sh, key)),
+                            Box::new(move || {
+                                Made::Pipeline(lit_pipeline(
+                                    &d,
+                                    (&layouts.0, &layouts.1),
+                                    &module,
+                                    key,
+                                    samples,
+                                    true,
+                                ))
+                            }),
                         );
-                        self.cache.physical_hook_pipelines.insert((sh, key), p);
                     }
-                    _ => {}
                 }
             }
             if let Some(sh) = b.shader {
                 let key = (sh, b.side, b.blend, b.effects, is_skinned);
-                if !self.cache.hook_pipelines.contains_key(&key) {
-                    let p = pbr_pipeline(
-                        &self.device,
-                        (&self.pbr_layout, &self.pbr_skinned_layout),
-                        &self.cache.shaders[sh],
-                        (b.side, b.blend, is_skinned, b.effects),
-                        self.samples,
-                    );
-                    self.cache.hook_pipelines.insert(key, p);
-                }
+                let lit = (b.side, b.blend, is_skinned, b.effects);
+                let (d, layouts, module) =
+                    (device.clone(), pbr.clone(), self.cache.shaders[sh].clone());
+                add(
+                    Slot::Hook(key),
+                    self.cache.hook_pipelines.contains_key(&key),
+                    Box::new(move || {
+                        Made::Pipeline(pbr_pipeline(
+                            &d,
+                            (&layouts.0, &layouts.1),
+                            &module,
+                            lit,
+                            samples,
+                        ))
+                    }),
+                );
                 // Shadows and the prepass see the material shader's offset.
                 let key = (sh, b.side, is_skinned);
-                if !self.cache.hook_shadow_pipelines.contains_key(&key) {
-                    let p = shadow_pipeline(
-                        &self.device,
-                        &self.shadow_layouts,
-                        &self.cache.shadow_shaders[sh],
-                        (b.side, is_skinned, b.dissolve),
-                        true,
-                        false,
-                    );
-                    self.cache.hook_shadow_pipelines.insert(key, p);
-                }
-                if prepass
-                    && !b.transparent
-                    && !self.cache.hook_prepass_pipelines.contains_key(&key)
-                {
-                    let p = prepass_pipeline(
-                        &self.device,
-                        (&self.pbr_layout, &self.pbr_skinned_layout),
-                        &self.cache.shaders[sh],
+                let shadow = (b.side, is_skinned, b.dissolve);
+                let (d, layouts, module) = (
+                    device.clone(),
+                    shadow_layouts.clone(),
+                    self.cache.shadow_shaders[sh].clone(),
+                );
+                add(
+                    Slot::HookShadow(key),
+                    self.cache.hook_shadow_pipelines.contains_key(&key),
+                    Box::new(move || {
+                        Made::Shadows(shadow_pipeline(&d, &layouts, &module, shadow, true, false))
+                    }),
+                );
+                if prepass && !b.transparent {
+                    let (d, layouts, module, side) = (
+                        device.clone(),
+                        pbr.clone(),
+                        self.cache.shaders[sh].clone(),
                         b.side,
-                        is_skinned,
-                        None,
-                        None,
                     );
-                    self.cache.hook_prepass_pipelines.insert(key, p);
+                    add(
+                        Slot::HookPrepass(key),
+                        self.cache.hook_prepass_pipelines.contains_key(&key),
+                        Box::new(move || {
+                            Made::Pipeline(prepass_pipeline(
+                                &d,
+                                (&layouts.0, &layouts.1),
+                                &module,
+                                side,
+                                is_skinned,
+                                None,
+                                None,
+                            ))
+                        }),
+                    );
                 }
             }
             if b.lean && !is_skinned {
                 // A plain material: the lean lit and prepass pipelines (its
                 // shadows take the shadow pipeline below, lean as well).
                 let key = (b.side, b.effects, b.derivatives, b.compact);
-                if !self.lean_pipelines.contains_key(&key) {
-                    let p = lean_pipeline(
-                        &self.device,
-                        &self.pbr_layout,
-                        &self.pbr_shader,
-                        key,
-                        self.samples,
-                    );
-                    self.lean_pipelines.insert(key, p);
-                }
+                let (d, layout, module) =
+                    (device.clone(), self.pbr_layout.clone(), pbr_shader.clone());
+                add(
+                    Slot::Lean(key),
+                    self.lean_pipelines.contains_key(&key),
+                    Box::new(move || {
+                        Made::Pipeline(lean_pipeline(&d, &layout, &module, key, samples))
+                    }),
+                );
                 let key = (b.side, b.derivatives, b.compact);
-                if prepass && !self.lean_prepass_pipelines.contains_key(&key) {
-                    let p = prepass_pipeline(
-                        &self.device,
-                        (&self.pbr_layout, &self.pbr_skinned_layout),
-                        &self.pbr_shader,
-                        b.side,
-                        false,
-                        Some((b.derivatives, b.compact)),
-                        None,
+                if prepass {
+                    let (d, layouts, module) = (device.clone(), pbr.clone(), pbr_shader.clone());
+                    let (side, lean) = (b.side, (b.derivatives, b.compact));
+                    add(
+                        Slot::LeanPrepass(key),
+                        self.lean_prepass_pipelines.contains_key(&key),
+                        Box::new(move || {
+                            Made::Pipeline(prepass_pipeline(
+                                &d,
+                                (&layouts.0, &layouts.1),
+                                &module,
+                                side,
+                                false,
+                                Some(lean),
+                                None,
+                            ))
+                        }),
                     );
-                    self.lean_prepass_pipelines.insert(key, p);
                 }
-                if b.compact && !self.compact_shadow_pipelines.contains_key(&b.side) {
-                    let p = shadow_pipeline(
-                        &self.device,
-                        &self.shadow_layouts,
-                        &self.shadow_shader,
-                        (b.side, false, false),
-                        false,
-                        true,
+                if b.compact {
+                    let (d, layouts, module, side) = (
+                        device.clone(),
+                        shadow_layouts.clone(),
+                        shadow_shader.clone(),
+                        b.side,
                     );
-                    self.compact_shadow_pipelines.insert(b.side, p);
+                    add(
+                        Slot::CompactShadow(side),
+                        self.compact_shadow_pipelines.contains_key(&side),
+                        Box::new(move || {
+                            Made::Shadows(shadow_pipeline(
+                                &d,
+                                &layouts,
+                                &module,
+                                (side, false, false),
+                                false,
+                                true,
+                            ))
+                        }),
+                    );
                 }
             }
             let key = (b.side, b.blend, is_skinned, b.effects);
-            if !(b.lean && !is_skinned) && !self.pbr_pipelines.contains_key(&key) {
-                let p = pbr_pipeline(
-                    &self.device,
-                    (&self.pbr_layout, &self.pbr_skinned_layout),
-                    &self.pbr_shader,
-                    key,
-                    self.samples,
+            if !(b.lean && !is_skinned) {
+                let (d, layouts, module) = (device.clone(), pbr.clone(), pbr_shader.clone());
+                add(
+                    Slot::Pbr(key),
+                    self.pbr_pipelines.contains_key(&key),
+                    Box::new(move || {
+                        Made::Pipeline(pbr_pipeline(
+                            &d,
+                            (&layouts.0, &layouts.1),
+                            &module,
+                            key,
+                            samples,
+                        ))
+                    }),
                 );
-                self.pbr_pipelines.insert(key, p);
             }
             let key = (b.side, is_skinned, b.dissolve);
-            if !self.shadow_pipelines.contains_key(&key) {
-                let p = shadow_pipeline(
-                    &self.device,
-                    &self.shadow_layouts,
-                    &self.shadow_shader,
-                    key,
-                    false,
-                    false,
+            let (d, layouts, module) = (
+                device.clone(),
+                shadow_layouts.clone(),
+                shadow_shader.clone(),
+            );
+            add(
+                Slot::Shadow(key),
+                self.shadow_pipelines.contains_key(&key),
+                Box::new(move || {
+                    Made::Shadows(shadow_pipeline(&d, &layouts, &module, key, false, false))
+                }),
+            );
+            if prepass && !b.transparent && !(b.lean && !is_skinned) {
+                let key = (b.side, is_skinned);
+                let (d, layouts, module) = (device.clone(), pbr.clone(), pbr_shader.clone());
+                add(
+                    Slot::Prepass(key),
+                    self.prepass_pipelines.contains_key(&key),
+                    Box::new(move || {
+                        Made::Pipeline(prepass_pipeline(
+                            &d,
+                            (&layouts.0, &layouts.1),
+                            &module,
+                            key.0,
+                            key.1,
+                            None,
+                            None,
+                        ))
+                    }),
                 );
-                self.shadow_pipelines.insert(key, p);
-            }
-            if prepass
-                && !b.transparent
-                && !(b.lean && !is_skinned)
-                && !self.prepass_pipelines.contains_key(&(b.side, is_skinned))
-            {
-                let p = prepass_pipeline(
-                    &self.device,
-                    (&self.pbr_layout, &self.pbr_skinned_layout),
-                    &self.pbr_shader,
-                    b.side,
-                    is_skinned,
-                    None,
-                    None,
-                );
-                self.prepass_pipelines.insert((b.side, is_skinned), p);
             }
         }
+        jobs
     }
 
     /// The skinned instances as (mesh, material) batches over the skinned
@@ -1189,4 +1399,68 @@ impl Renderer {
             ));
         }
     }
+}
+
+/// Where a batch pipeline [`Renderer::ensure_pipelines`] made goes: the map
+/// and its key.
+#[derive(Clone, Copy, PartialEq)]
+enum Slot {
+    SurfacePrepass((Option<usize>, Side, bool)),
+    ArrayLit(PbrKey),
+    ArrayPrepass((Side, bool)),
+    ArrayShadow((Side, bool)),
+    Physical(PbrKey),
+    PhysicalHook((usize, PbrKey)),
+    Hook((usize, Side, bool, bool, bool)),
+    HookShadow((usize, Side, bool)),
+    HookPrepass((usize, Side, bool)),
+    Lean(LeanKey),
+    LeanPrepass((Side, bool, bool)),
+    CompactShadow(Side),
+    Pbr(PbrKey),
+    Shadow(ShadowKey),
+    Prepass((Side, bool)),
+}
+
+/// What a batch pipeline's job makes.
+enum Made {
+    Pipeline(wgpu::RenderPipeline),
+    Shadows(ShadowSet),
+}
+
+/// A batch pipeline's making, which owns what it reads: run on the
+/// compile workers natively (deferred.rs).
+#[cfg(not(target_arch = "wasm32"))]
+type Job = Box<dyn FnOnce() -> Made + Send>;
+#[cfg(target_arch = "wasm32")]
+type Job = Box<dyn FnOnce() -> Made>;
+
+/// A material shader's module, or the built-in one parsed on first use.
+enum Shader {
+    Made(wgpu::ShaderModule),
+    Lazy(crate::deferred::Module),
+}
+
+impl std::ops::Deref for Shader {
+    type Target = wgpu::ShaderModule;
+    fn deref(&self) -> &wgpu::ShaderModule {
+        match self {
+            Shader::Made(m) => m,
+            Shader::Lazy(m) => m.get(),
+        }
+    }
+}
+
+/// A batch pipeline made by `make`: started on the compile workers
+/// natively, made at once on the web (inside the host's frame span, which
+/// asks for it asynchronously).
+fn deferred<T: Send + 'static>(
+    make: impl FnOnce() -> T + crate::deferred::AnywhereOnce + 'static,
+) -> Deferred<T> {
+    let d = Deferred::anywhere(make);
+    #[cfg(not(target_arch = "wasm32"))]
+    crate::deferred::Start::start(&d);
+    #[cfg(target_arch = "wasm32")]
+    d.get();
+    d
 }
