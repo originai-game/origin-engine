@@ -344,7 +344,7 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     (
         "expect",
         "expect:<entity:<id>:within:x,y,w,h | event:<Name>[:count] | ui:text:<text> | region:x,y,w,h:color:#rrggbb[:tol] | frame:<ref.png>:rmse:<=v | state:<path>==<value> | entity:<id>:<path>==<value> | timings:<path>==<value>>",
-        "Assert at this tick: a failure is logged as a warning with the tick and the observed value, and fails `og run --json` (exit 1) and the playtest; a frame expectation without a renderer is unchecked.",
+        "Assert at this tick (a value written `$<path>` is another path of the same source: `state:coins<=$total`): a failure is logged as a warning with the tick and the observed value, and fails `og run --json` (exit 1) and the playtest; a frame expectation without a renderer is unchecked.",
     ),
     (
         "invariant",

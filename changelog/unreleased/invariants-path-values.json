@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "commands.CoreAction.expect",
+      "summary": "An expect: or invariant: comparison's value may be `$<path>`, another path of the same source read when it is evaluated (`state:coins<=$total`, `entity:hero:Health.hp<=$Health.max`); a plain value is still taken as written."
+    }
+  ]
+}

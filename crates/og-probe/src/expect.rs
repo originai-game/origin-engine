@@ -114,6 +114,30 @@ impl Op {
     }
 }
 
+/// What a comparison compares against: a value as written, or `$<path>`,
+/// another path of the same source read when it is evaluated
+/// (`state:coins<=$total`).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Rhs {
+    Value(Value),
+    Path(String),
+}
+
+impl From<Value> for Rhs {
+    fn from(v: Value) -> Rhs {
+        Rhs::Value(v)
+    }
+}
+
+impl std::fmt::Display for Rhs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Rhs::Value(v) => write!(f, "{v}"),
+            Rhs::Path(p) => write!(f, "${p}"),
+        }
+    }
+}
+
 /// A parsed expectation.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Expect {
@@ -140,28 +164,29 @@ pub(crate) enum Expect {
     State {
         path: String,
         op: Op,
-        value: Value,
+        value: Rhs,
     },
     /// A field of an entity's dump (`dump_entity`).
     Field {
         id: String,
         path: String,
         op: Op,
-        value: Value,
+        value: Rhs,
     },
     /// The probe's timings (`state().timings`).
     Timings {
         path: String,
         op: Op,
-        value: Value,
+        value: Rhs,
     },
 }
 
-const USAGE: &str = "write `expect:entity:<id>:within:x,y,w,h`, `expect:entity:<id>:<path>==<value>`, `expect:event:<Name>[:count]`, `expect:ui:text:<text>`, `expect:region:x,y,w,h:color:#rrggbb[:tolerance]`, `expect:frame:<ref.png>:rmse:<=v`, `expect:state:<path>==<value>` or `expect:timings:<path>==<value>`";
+const USAGE: &str = "write `expect:entity:<id>:within:x,y,w,h`, `expect:entity:<id>:<path>==<value>`, `expect:event:<Name>[:count]`, `expect:ui:text:<text>`, `expect:region:x,y,w,h:color:#rrggbb[:tolerance]`, `expect:frame:<ref.png>:rmse:<=v`, `expect:state:<path>==<value>` or `expect:timings:<path>==<value>`, where a value may be `$<path>`, another path of the same source";
 
 /// `<path><op><value>`: the dotted path, the comparison and the value (JSON,
-/// else text). `form` names the expectation in the error.
-fn comparison(text: &str, form: &str) -> Result<(String, Op, Value), String> {
+/// else text; `$<path>` another path of the same source). `form` names the
+/// expectation in the error.
+fn comparison(text: &str, form: &str) -> Result<(String, Op, Rhs), String> {
     let ops = [
         ("==", Op::Eq),
         ("!=", Op::Ne),
@@ -180,7 +205,12 @@ fn comparison(text: &str, form: &str) -> Result<(String, Op, Value), String> {
     if path.is_empty() || raw.is_empty() {
         return Err(format!("write `expect:{form}<path>{}<value>`", op.text()));
     }
-    let value = serde_json::from_str(raw).unwrap_or_else(|_| Value::String(raw.to_owned()));
+    let value = match raw.strip_prefix('$') {
+        Some(other) if !other.trim().is_empty() => Rhs::Path(other.trim().to_owned()),
+        _ => {
+            Rhs::Value(serde_json::from_str(raw).unwrap_or_else(|_| Value::String(raw.to_owned())))
+        }
+    };
     Ok((path, op, value))
 }
 
@@ -333,21 +363,41 @@ fn check_path(
     prefix: &str,
     path: &str,
     op: Op,
-    expected: &Value,
+    expected: &Rhs,
 ) {
-    check_value(r, at_path(of, path), what, prefix, path, op, expected);
+    let rhs = match expected {
+        Rhs::Value(v) => Some(v),
+        Rhs::Path(p) => at_path(of, p),
+    };
+    check_value(r, at_path(of, path), rhs, what, prefix, path, op, expected);
 }
 
+/// Records `at <op> rhs`: `rhs` is the expected value, read from `expected`'s
+/// path when it names one (None: the source has no such path).
+#[allow(clippy::too_many_arguments)]
 fn check_value(
     r: &mut ExpectResult,
     at: Option<&Value>,
+    rhs: Option<&Value>,
     what: &str,
     prefix: &str,
     path: &str,
     op: Op,
-    expected: &Value,
+    expected: &Rhs,
 ) {
-    r.expected = json!(format!("{} {}", op.text(), expected));
+    r.expected = match (expected, rhs) {
+        (Rhs::Path(p), Some(v)) => json!(format!("{} {v} (${p})", op.text())),
+        _ => json!(format!("{} {expected}", op.text())),
+    };
+    let Some(rhs) = rhs else {
+        r.observed = at.cloned().unwrap_or(Value::Null);
+        r.status = Status::Fail;
+        r.reason = format!(
+            "{what} has no '{}'",
+            expected.to_string().trim_start_matches('$')
+        );
+        return;
+    };
     match at {
         None => {
             r.observed = Value::Null;
@@ -356,9 +406,17 @@ fn check_value(
         }
         Some(v) => {
             r.observed = v.clone();
-            if !compare(v, op, expected) {
+            if !compare(v, op, rhs) {
                 r.status = Status::Fail;
-                r.reason = format!("{prefix}{path} {} {expected} does not hold", op.text());
+                r.reason = match expected {
+                    Rhs::Path(p) => {
+                        format!(
+                            "{prefix}{path} {} {prefix}{p} ({rhs}) does not hold",
+                            op.text()
+                        )
+                    }
+                    Rhs::Value(_) => format!("{prefix}{path} {} {rhs} does not hold", op.text()),
+                };
             }
         }
     }
@@ -830,9 +888,14 @@ impl Probe {
                     }
                 }
                 let at = dump_path(&dump, &path);
+                let rhs = match &value {
+                    Rhs::Value(v) => Some(v),
+                    Rhs::Path(p) => dump_path(&dump, p),
+                };
                 check_value(
                     &mut r,
                     at,
+                    rhs,
                     &format!("dump_entity of '{id}'"),
                     "",
                     &path,
@@ -1018,7 +1081,7 @@ mod tests {
             Expect::State {
                 path: "guard".into(),
                 op: Op::Eq,
-                value: json!("patrol")
+                value: json!("patrol").into()
             }
         );
         assert_eq!(
@@ -1026,7 +1089,7 @@ mod tests {
             Expect::State {
                 path: "crateY".into(),
                 op: Op::Le,
-                value: json!(0.6)
+                value: json!(0.6).into()
             }
         );
         assert_eq!(
@@ -1035,7 +1098,7 @@ mod tests {
                 id: "tree-1990".into(),
                 path: "render.lod".into(),
                 op: Op::Eq,
-                value: json!(2)
+                value: json!(2).into()
             }
         );
         assert_eq!(
@@ -1043,13 +1106,54 @@ mod tests {
             Expect::Timings {
                 path: "triangles".into(),
                 op: Op::Le,
-                value: json!(1500000)
+                value: json!(1500000).into()
+            }
+        );
+        assert_eq!(
+            parse(&args("state:coins<=$total")).unwrap(),
+            Expect::State {
+                path: "coins".into(),
+                op: Op::Le,
+                value: Rhs::Path("total".into())
             }
         );
         assert!(parse(&args("entity:crate:nothing")).is_err());
         assert!(parse(&args("state:started")).is_err());
         assert!(parse(&args("region:1,2:color:#fff")).is_err());
         assert!(parse(&args("nothing")).is_err());
+    }
+
+    /// `$total` is the facts' total read at evaluation, not the text "total".
+    #[test]
+    fn a_dollar_path_compares_against_another_field() {
+        let eval = |facts: Value, what: &str| {
+            let Expect::State { path, op, value } = parse(&args(what)).unwrap() else {
+                panic!("{what} is a state expectation");
+            };
+            let mut r = ExpectResult {
+                tick: 1,
+                at: None,
+                expect: what.into(),
+                kind: "state".into(),
+                status: Status::Pass,
+                expected: Value::Null,
+                observed: Value::Null,
+                reason: String::new(),
+            };
+            check_path(&mut r, &facts, "state().facts", "facts.", &path, op, &value);
+            r
+        };
+        assert_eq!(
+            eval(json!({"coins": 1, "total": 2}), "state:coins<=$total").status,
+            Status::Pass
+        );
+        let r = eval(json!({"coins": 3, "total": 2}), "state:coins<=$total");
+        assert_eq!(r.status, Status::Fail, "{r:?}");
+        assert_eq!(r.observed, json!(3));
+        assert!(r.reason.contains("facts.total (2)"), "{}", r.reason);
+        let r = eval(json!({"coins": 1}), "state:coins<=$total");
+        assert_eq!(r.status, Status::Fail);
+        assert!(r.reason.contains("has no 'total'"), "{}", r.reason);
     }
 
     #[test]

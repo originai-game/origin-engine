@@ -50,7 +50,9 @@ tick, not as pictures compared afterwards.
   fields real ranges and declare the bounds: each is a free check.
 - A playtest's `invariants` (`"state:lives>=0"`,
   `"entity:hero:og.Transform.position.y>-5"`) check the script's own
-  properties from tick 0, without game code.
+  properties from tick 0, without game code. A value written `$<path>` is
+  another field of the same source (`"state:coins<=$total"`); without the
+  `$` it is the text `total`.
 - Assertions cost nothing in publish builds and never touch the world
   hash: leave them in.
 
