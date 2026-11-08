@@ -346,6 +346,87 @@ impl Ui {
         self.reach()
     }
 
+    /// The record whose children the node `key` names holds in the
+    /// accessibility tree: the node itself when it has a role and `own`,
+    /// else its nearest ancestor with one; `Some(0)` for the frame's root
+    /// (`key` 0 is the root), `None` for a node not in the trees.
+    pub(crate) fn a11y_owner(&self, key: u64, own: bool) -> Option<u64> {
+        let mut i = if key == 0 {
+            return Some(0);
+        } else {
+            *self.tree.by_key.get(&key)?
+        };
+        if !own {
+            i = self.a11y_up(i);
+        }
+        while i != NONE && i != 0 {
+            if !self.a11y_info(i).0.is_empty() {
+                return Some(self.nodes[i].key);
+            }
+            i = self.a11y_up(i);
+        }
+        Some(0)
+    }
+
+    /// The records under the record `owner` names (`0`: the frame's root),
+    /// as [`Ui::a11y`] lists them, by key and path: its descendants with a
+    /// role, through those without one, in drawing order, then those of
+    /// the layers placed against it. Read without the whole tree; `None`
+    /// where the whole tree must be read (a world layer reorders it, a
+    /// rich text's links are records of their own).
+    pub(crate) fn a11y_children(&self, owner: u64) -> Option<Vec<(u64, String)>> {
+        let at = if owner == 0 {
+            0
+        } else {
+            *self.tree.by_key.get(&owner)?
+        };
+        let named = |j: usize| !self.a11y_info(j).0.is_empty();
+        let mut out = Vec::new();
+        let walk = |root: usize, out: &mut Vec<(u64, String)>| -> Option<()> {
+            let mut stack = vec![root];
+            while let Some(j) = stack.pop() {
+                let n = &self.nodes[j];
+                if n.float == Float::World || !n.links.is_empty() {
+                    return None;
+                }
+                if j != at && named(j) {
+                    out.push((n.key, self.path_of(j)));
+                    continue;
+                }
+                let mut kids = crate::layout::all_children(n);
+                if kids.iter().any(|&c| self.nodes[c].sampled.z != 0) {
+                    og_core::sort::sort_by_key(&mut kids, |&c| self.nodes[c].sampled.z);
+                }
+                stack.extend(kids.into_iter().rev());
+            }
+            Some(())
+        };
+        walk(at, &mut out)?;
+        // Layers whose nearest record above them is `owner`.
+        for &f in &self.floating {
+            if self.nodes[f].float == Float::World {
+                return None;
+            }
+            let mut up = self.a11y_up(f);
+            while up != NONE && up != 0 && up != at && !named(up) {
+                up = self.a11y_up(up);
+            }
+            let reaches = if at == 0 {
+                up == NONE || up == 0
+            } else {
+                up == at
+            };
+            if reaches {
+                if named(f) {
+                    out.push((self.nodes[f].key, self.path_of(f)));
+                } else {
+                    walk(f, &mut out)?;
+                }
+            }
+        }
+        Some(out)
+    }
+
     /// A rich text's links: nodes of their own under its node.
     fn link_nodes(&self, i: usize, parent: String, tree: &mut Vec<(u64, crate::a11y::A11yNode)>) {
         let n = &self.nodes[i];

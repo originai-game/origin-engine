@@ -228,6 +228,9 @@ pub(crate) struct SemanticLog {
     floor: u64,
     full: u64,
     entries: std::collections::VecDeque<(u64, u64)>,
+    /// The nodes whose children changed, by frame (`0`: the frame's root):
+    /// a bridge reads their children again, and only theirs.
+    shapes: std::collections::VecDeque<(u64, u64)>,
     /// The focus and scope last frame ended with, and the scrollers'
     /// offsets as they were then.
     focus: [u64; 4],
@@ -242,11 +245,22 @@ impl SemanticLog {
         }
     }
 
+    /// The children of the node `key` names (`0`: the frame's root) may
+    /// have changed: some entered, left or moved.
+    pub(crate) fn note_shape(&mut self, key: u64) {
+        if self.full != self.frame + 1 {
+            self.shapes.push_back((self.frame, key));
+        }
+    }
+
     /// Every node may say something else this frame.
     pub(crate) fn note_all(&mut self) {
         self.full = self.frame + 1;
         while self.entries.back().is_some_and(|&(f, _)| f == self.frame) {
             self.entries.pop_back();
+        }
+        while self.shapes.back().is_some_and(|&(f, _)| f == self.frame) {
+            self.shapes.pop_back();
         }
     }
 
@@ -254,12 +268,25 @@ impl SemanticLog {
     /// when the bridge reads the whole tree (never synchronised, fallen
     /// behind, or every node changed since).
     pub(crate) fn since(&self, since: Option<u64>) -> Option<Vec<u64>> {
+        self.read(&self.entries, since)
+    }
+
+    /// The nodes whose children changed after frame `since`, as
+    /// [`Self::since`] answers.
+    pub(crate) fn shapes_since(&self, since: Option<u64>) -> Option<Vec<u64>> {
+        self.read(&self.shapes, since)
+    }
+
+    fn read(
+        &self,
+        log: &std::collections::VecDeque<(u64, u64)>,
+        since: Option<u64>,
+    ) -> Option<Vec<u64>> {
         let since = since?;
         if since < self.floor || self.full > since {
             return None;
         }
-        let mut keys: Vec<u64> = self
-            .entries
+        let mut keys: Vec<u64> = log
             .iter()
             .rev()
             .take_while(|&&(f, _)| f >= since)
@@ -273,7 +300,8 @@ impl SemanticLog {
 
 impl Ui {
     /// Notes what this frame may have changed for screen readers: nodes
-    /// that entered or left the trees (`TreeIndex::moved_keys`), nodes
+    /// that entered or left the trees (`TreeIndex::moved_keys`) and the
+    /// parents whose children changed (`TreeIndex::restructured`), nodes
     /// written and their named ancestors and next sibling (a control is
     /// named by its text, a field by the label before it), nodes drawn
     /// elsewhere (`repainted`), the focus moved, the scope changed, and
@@ -293,11 +321,16 @@ impl Ui {
             }
         }
         log.focus = focus;
-        // A node entered or left: the tree's shape changed, and a bridge
-        // reads it whole (its parents' children in the tree's order).
-        if !self.tree.moved_keys.is_empty() {
-            self.tree.moved_keys.clear();
-            log.note_all();
+        // A node entered or left: a bridge reads it (or drops it) and the
+        // children of the parents whose children changed, in the tree's
+        // order.
+        for key in std::mem::take(&mut self.tree.moved_keys) {
+            log.note(key);
+        }
+        for &i in &self.tree.restructured {
+            if let Some(n) = self.nodes.get(i) {
+                log.note_shape(if i == 0 { 0 } else { n.key });
+            }
         }
         for &i in self.emitted.iter().chain(repainted.unwrap_or_default()) {
             // A rich text's links are nodes of their own: the shape again.
@@ -344,6 +377,9 @@ impl Ui {
         while log.entries.front().is_some_and(|&(f, _)| f < floor) {
             log.entries.pop_front();
         }
+        while log.shapes.front().is_some_and(|&(f, _)| f < floor) {
+            log.shapes.pop_front();
+        }
         log.floor = floor;
     }
 
@@ -352,5 +388,12 @@ impl Ui {
     /// it has now read up to.
     pub fn semantic_changes(&self, since: Option<u64>) -> (Option<Vec<u64>>, u64) {
         (self.semantics.since(since), self.semantics.frame)
+    }
+
+    /// The nodes whose children may have changed since a bridge last read
+    /// at `since` (`0`: the frame's root), beside [`Ui::semantic_changes`];
+    /// `None` when it reads the whole tree.
+    pub fn semantic_shapes(&self, since: Option<u64>) -> Option<Vec<u64>> {
+        self.semantics.shapes_since(since)
     }
 }

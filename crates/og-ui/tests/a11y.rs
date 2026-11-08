@@ -460,10 +460,12 @@ fn native_tree_is_incremental_and_actions_round_trip_on_the_tick() {
 
 /// A screen reader reads only what changed: an idle tick reads no record
 /// and sends nothing, and one bound label reads a handful of records and
-/// sends that label, however long the list beside it is. Fails if the
-/// bridge falls back to the whole tree on every change, or if a change is
-/// missed (`OG_UI_CHECK_BOUNDED=1` also compares every update with the
-/// whole tree).
+/// sends that label, however long the list beside it is. Rows that enter,
+/// leave or move in a small group read that group's children and the rows
+/// themselves, not the 300 rows beside it. Fails if the bridge falls back
+/// to the whole tree on every change, or if a change is missed
+/// (`OG_UI_CHECK_BOUNDED=1` also compares every update with the whole
+/// tree).
 #[test]
 fn native_tree_reads_only_the_changed_nodes() {
     use og_ui::reactive::{SourceId, wire};
@@ -477,6 +479,7 @@ fn native_tree_reads_only_the_changed_nodes() {
   <h2 id="Title">Hud</h2>
   <text id="Score">{$score}</text>
   {#each $rows as row (row.id)}<button id="Row">{row.id}</button>{/each}
+  <scroll id="Small" height="160">{#each $small as item (item.id)}<button id="Item">{item.id}</button>{/each}</scroll>
 </column>"#,
         )
         .unwrap(),
@@ -500,8 +503,15 @@ fn native_tree_reads_only_the_changed_nodes() {
         &mut ui,
         json!({"op": "collection", "source": list, "key": "id", "items": rows}),
     );
+    let small = SourceId::new("test", "small");
+    apply(
+        &mut ui,
+        json!({"op": "collection", "source": small, "key": "id",
+               "items": [{"id": "a"}, {"id": "b"}, {"id": "c"}]}),
+    );
     inputs.insert("score".to_string(), score);
     inputs.insert("rows".to_string(), list);
+    inputs.insert("small".to_string(), small.clone());
     ui.mount_document(
         SourceId::new("test", "hud"),
         "hud",
@@ -544,4 +554,42 @@ fn native_tree_reads_only_the_changed_nodes() {
     assert!(bridge.read() < 8, "read {} records", bridge.read());
     step(&mut ui);
     assert!(bridge.update(&ui, [1.0, 1.0]).is_none());
+    // In the small group: an item enters, one moves, one leaves. The
+    // group's children are sent again, and only the items that moved with
+    // them; the order is the whole tree's.
+    let names = |ui: &Ui| -> Vec<String> {
+        ui.a11y()
+            .nodes
+            .iter()
+            .filter(|n| n.path.contains("Item"))
+            .map(|n| n.name.clone())
+            .collect()
+    };
+    for (command, expect) in [
+        (
+            json!({"op": "insert", "source": small, "row": {"id": "n"}, "before": "b"}),
+            ["a", "n", "b", "c"].as_slice(),
+        ),
+        (
+            json!({"op": "move", "source": small, "key": "c", "before": "a"}),
+            ["c", "a", "n", "b"].as_slice(),
+        ),
+        (
+            json!({"op": "remove", "source": small, "key": "a"}),
+            ["c", "n", "b"].as_slice(),
+        ),
+    ] {
+        apply(&mut ui, command);
+        step(&mut ui);
+        let update = bridge.update(&ui, [1.0, 1.0]).expect("the group changed");
+        assert!(bridge.read() < 30, "read {} records", bridge.read());
+        assert!(update.nodes.len() < 8, "sent {} nodes", update.nodes.len());
+        let group = update
+            .nodes
+            .iter()
+            .find(|(_, n)| n.role() == native_a11y::accesskit::Role::Group)
+            .expect("the group's children are sent again");
+        assert_eq!(group.1.children().len(), expect.len());
+        assert_eq!(names(&ui), expect);
+    }
 }

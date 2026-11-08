@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"An active screen reader receives only the accessibility nodes that enter, leave, move or change. A row scrolling in or out no longer makes the native bridge read the whole tree; only the parents whose children changed are read again."}
+  ]
+}

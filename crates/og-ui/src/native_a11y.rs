@@ -14,8 +14,11 @@ const ROOT: NodeId = NodeId(0);
 #[derive(Clone, Default)]
 pub struct Bridge {
     ids: BTreeMap<String, NodeId>,
-    /// The node ids of the tree last sent, by element key.
+    /// The node ids of the tree last sent, by element key, the key of each
+    /// and the parent each was sent under.
     by_key: std::collections::HashMap<u64, NodeId>,
+    key_of: std::collections::HashMap<NodeId, u64>,
+    parent_of: std::collections::HashMap<NodeId, NodeId>,
     previous: BTreeMap<NodeId, Node>,
     focus: Option<NodeId>,
     /// The UI's semantic frame and the scale it last read at.
@@ -28,13 +31,19 @@ impl Bridge {
     /// Bounds are multiplied into the shared frame's physical pixel space.
     /// A fresh bridge produces a full tree; unchanged frames produce
     /// nothing. Afterwards it reads only the nodes the UI says may have
-    /// changed since its last update (`Ui::semantic_changes`), and the
-    /// whole tree when the tree's shape changed.
+    /// changed since its last update (`Ui::semantic_changes`), adds and
+    /// drops the ones that entered and left, and reads again only the
+    /// children of the records whose children changed
+    /// (`Ui::semantic_shapes`).
     pub fn update(&mut self, ui: &Ui, scale: [f64; 2]) -> Option<TreeUpdate> {
-        let (changes, frame) = ui.semantic_changes(self.frame.filter(|_| self.scale == scale));
+        let since = self.frame.filter(|_| self.scale == scale);
+        let (changes, frame) = ui.semantic_changes(since);
+        let shapes = ui.semantic_shapes(since);
         let initial = self.focus.is_none();
         self.read = 0;
-        let patched = changes.and_then(|keys| self.patched(ui, &keys));
+        let patched = changes
+            .zip(shapes)
+            .and_then(|(keys, shapes)| self.patched(ui, &keys, &shapes));
         let (changed, focus) = match patched {
             Some(patched) => patched,
             None => self.full(ui, scale),
@@ -86,10 +95,14 @@ impl Bridge {
         }
         let mut nodes = BTreeMap::from([(ROOT, Node::new(Role::Pane))]);
         self.by_key.clear();
+        self.key_of.clear();
+        self.parent_of.clear();
         for n in &tree.nodes {
             let id = self.ids[&n.path];
             nodes.insert(id, access_node(ui, n, scale));
-            self.by_key.insert(crate::id::key_of_path(&n.path), id);
+            let key = crate::id::key_of_path(&n.path);
+            self.by_key.insert(key, id);
+            self.key_of.insert(id, key);
         }
         for n in &tree.nodes {
             let parent = self
@@ -98,10 +111,9 @@ impl Bridge {
                 .copied()
                 .filter(|id| nodes.contains_key(id))
                 .unwrap_or(ROOT);
-            nodes
-                .get_mut(&parent)
-                .expect("tree parent")
-                .push_child(self.ids[&n.path]);
+            let id = self.ids[&n.path];
+            nodes.get_mut(&parent).expect("tree parent").push_child(id);
+            self.parent_of.insert(id, parent);
         }
         let focus = self
             .ids
@@ -118,32 +130,143 @@ impl Bridge {
         (changed, focus)
     }
 
-    /// The nodes `keys` name read again, each with the children it had
-    /// (the tree's shape did not change), or `None` where one entered or
-    /// left the tree after all (the whole tree is read then).
-    fn patched(&mut self, ui: &Ui, keys: &[u64]) -> Option<(Vec<(NodeId, Node)>, NodeId)> {
+    /// The nodes `keys` name read again, those that entered added and
+    /// those that left dropped with what was under them, and the children
+    /// of the records whose children changed (`shapes`, and the parents of
+    /// what entered or left) read again; `None` where that cannot follow
+    /// (the whole tree is read then). Nothing is kept until it all reads.
+    fn patched(
+        &mut self,
+        ui: &Ui,
+        keys: &[u64],
+        shapes: &[u64],
+    ) -> Option<(Vec<(NodeId, Node)>, NodeId)> {
         let reach = if keys.is_empty() {
             Vec::new()
         } else {
             ui.a11y_reach()
         };
-        let mut changed = Vec::new();
+        // What this update writes (`None`: dropped), over `previous`.
+        let mut staged: BTreeMap<NodeId, Option<Node>> = BTreeMap::new();
+        let mut by_key = Vec::new();
+        let mut parents = Vec::new();
+        let mut reshape = std::collections::BTreeSet::new();
+        for &key in shapes {
+            if let Some(owner) = ui.a11y_owner(key, true) {
+                reshape.insert(owner);
+            }
+        }
+        let current = |staged: &BTreeMap<NodeId, Option<Node>>, id: NodeId| -> Option<Node> {
+            match staged.get(&id) {
+                Some(n) => n.clone(),
+                None => self.previous.get(&id).cloned(),
+            }
+        };
         for &key in keys {
             self.read += 1;
             let record = ui.a11y_node(key, &reach);
-            let id = match (&record, self.by_key.get(&key)) {
-                (Some(n), Some(&id)) if self.ids.get(&n.path) == Some(&id) => id,
-                (None, None) => continue,
+            match (&record, self.by_key.get(&key).copied()) {
+                (Some(n), Some(id)) if self.ids.get(&n.path) == Some(&id) => {
+                    let mut node = access_node(ui, n, self.scale);
+                    for &child in current(&staged, id)?.children() {
+                        node.push_child(child);
+                    }
+                    staged.insert(id, Some(node));
+                }
+                (Some(n), None) => {
+                    let next = NodeId(self.ids.len() as u64 + 1);
+                    let id = *self.ids.entry(n.path.clone()).or_insert(next);
+                    if current(&staged, id).is_some() {
+                        return None;
+                    }
+                    staged.insert(id, Some(access_node(ui, n, self.scale)));
+                    by_key.push((key, Some(id)));
+                    reshape.insert(key);
+                    reshape.insert(ui.a11y_owner(key, false)?);
+                }
+                (None, Some(id)) => {
+                    let parent = self.parent_of.get(&id).copied().unwrap_or(ROOT);
+                    reshape.insert(if parent == ROOT {
+                        0
+                    } else {
+                        *self.key_of.get(&parent)?
+                    });
+                    let mut stack = vec![id];
+                    while let Some(gone) = stack.pop() {
+                        if let Some(old) = current(&staged, gone) {
+                            stack.extend_from_slice(old.children());
+                        }
+                        staged.insert(gone, None);
+                        if let Some(&k) = self.key_of.get(&gone) {
+                            by_key.push((k, None));
+                        }
+                    }
+                }
+                (None, None) => {}
                 _ => return None,
+            }
+        }
+        let known = |by_key: &[(u64, Option<NodeId>)], key: u64| -> Option<NodeId> {
+            match by_key.iter().rev().find(|(k, _)| *k == key) {
+                Some(&(_, id)) => id,
+                None => self.by_key.get(&key).copied(),
+            }
+        };
+        for owner in reshape {
+            let id = if owner == 0 {
+                ROOT
+            } else {
+                known(&by_key, owner)?
             };
-            let mut node = access_node(ui, record.as_ref().expect("record"), self.scale);
-            let old = self.previous.get(&id)?;
-            for &child in old.children() {
+            let Some(mut node) = current(&staged, id) else {
+                continue;
+            };
+            let kids = ui.a11y_children(owner)?;
+            self.read += kids.len();
+            let mut ids = Vec::with_capacity(kids.len());
+            for (key, path) in kids {
+                let child = known(&by_key, key)?;
+                if self.ids.get(&path) != Some(&child) || current(&staged, child).is_none() {
+                    return None;
+                }
+                ids.push(child);
+                parents.push((child, id));
+            }
+            // As `full` builds it: a node without children has no
+            // children property at all, not an empty one.
+            node.clear_children();
+            for child in ids {
                 node.push_child(child);
             }
-            if *old != node {
-                self.previous.insert(id, node.clone());
-                changed.push((id, node));
+            staged.insert(id, Some(node));
+        }
+        for (key, id) in by_key {
+            match id {
+                Some(id) => {
+                    self.by_key.insert(key, id);
+                    self.key_of.insert(id, key);
+                }
+                None => {
+                    if let Some(id) = self.by_key.remove(&key) {
+                        self.key_of.remove(&id);
+                        self.parent_of.remove(&id);
+                    }
+                }
+            }
+        }
+        self.parent_of.extend(parents);
+        let mut changed = Vec::new();
+        for (id, node) in staged {
+            match node {
+                Some(node) => {
+                    if self.previous.get(&id) != Some(&node) {
+                        self.previous.insert(id, node.clone());
+                        changed.push((id, node));
+                    }
+                }
+                None => {
+                    self.previous.remove(&id);
+                }
             }
         }
         let focus = self
