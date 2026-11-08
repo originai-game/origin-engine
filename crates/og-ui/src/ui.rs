@@ -8,6 +8,7 @@ mod descriptors;
 mod dressing;
 mod finish;
 mod node_draw;
+pub(crate) mod settlement;
 mod snapshot;
 mod text_controls;
 

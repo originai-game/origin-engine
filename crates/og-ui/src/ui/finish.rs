@@ -17,10 +17,23 @@ impl Ui {
 
     /// Lays out the frame, updates the interaction state and returns the frame.
     pub fn end(&mut self) -> &UiFrame {
+        if let Err(error) = self.end_with_layout_queries(|_, _| Ok(Vec::new())) {
+            self.warnings.push(error.to_string());
+        }
+        &self.frame
+    }
+
+    pub(crate) fn end_with_layout_queries(
+        &mut self,
+        mut resolve: impl FnMut(
+            &mut Ui,
+            &[settlement::ContainerMeasurement],
+        ) -> Result<Vec<usize>, settlement::SettlementError>,
+    ) -> Result<&UiFrame, settlement::SettlementError> {
         if !self.building {
             self.warnings
                 .push("end without begin: call ui.begin() at the start of the tick".into());
-            return &self.frame;
+            return Ok(&self.frame);
         }
         while self.stack.len() > 1 {
             let i = self.stack.pop().unwrap_or(0);
@@ -119,117 +132,164 @@ impl Ui {
         let vp = self.viewport;
         let dpr = vp.dpr();
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
-        let scroll = self.state.scroll.clone();
-        let scroll_x = self.state.scroll_x.clone();
         let rtl = self.direction == og_i18n::Direction::Rtl;
-        let offset = |k: u64| {
-            (
-                scroll_x.get(&k).copied().unwrap_or(0.0),
-                scroll.get(&k).copied().unwrap_or(0.0),
-            )
-        };
-        let mut measure = Measure {
-            fonts: &self.fonts,
-            texts: &mut self.texts,
-        };
-        layout(
-            &mut self.nodes,
-            0,
-            screen,
-            &mut measure,
-            &offset,
-            dpr,
-            screen,
-            &mut self.kept,
-        );
-        let safe = Rect::new(
-            vp.safe_area.left,
-            vp.safe_area.top,
-            vp.width - vp.safe_area.horizontal(),
-            vp.height - vp.safe_area.vertical(),
-        );
-        // The HUD band: the safe area at most `hud_max_aspect` wide,
-        // centred (an ultrawide's corners stay near the play), where the
-        // anchored groups and the toasts lay out.
-        let hud = vp.hud_rect(self.hud_max_aspect);
-        // The host's control, where the layout stands before a right-to-left
-        // mirror (which moves a top-left group to the top right).
-        let covered = {
-            let c = vp.covered;
-            if self.direction == og_i18n::Direction::Rtl {
-                Rect::new(vp.width - c.x - c.width, c.y, c.width, c.height)
-            } else {
-                c
-            }
-        };
-        let gap = self.theme.space.xs;
-        // The anchored groups first, each laid out in its area and placed
-        // once all of them are known (so one the host's control moves keeps
-        // off the others), then the other layers in their order (a popover
-        // reads its anchor's final place).
-        let (groups, rest): (Vec<usize>, Vec<usize>) = self
-            .floating
-            .iter()
-            .partition(|&&f| matches!(self.nodes[f].float, Float::Anchored { .. }));
-        let mut spots: Vec<(usize, Rect)> = Vec::new();
-        for f in groups.into_iter().chain([NONE]).chain(rest) {
-            // NONE marks the groups' end: place them, then go on to the rest.
-            if f == NONE {
-                if !covered.is_empty() {
+        self.kept.query_roots = None;
+        let mut settlement = settlement::Settlement::default();
+        loop {
+            let mut layout_inputs = settlement::LayoutInputs::new(&self.kept.measurements);
+            let scroll = self.state.scroll.clone();
+            let scroll_x = self.state.scroll_x.clone();
+            let offset = |k: u64| {
+                (
+                    scroll_x.get(&k).copied().unwrap_or(0.0),
+                    scroll.get(&k).copied().unwrap_or(0.0),
+                )
+            };
+            let mut measure = Measure {
+                fonts: &self.fonts,
+                texts: &mut self.texts,
+            };
+            layout(
+                &mut self.nodes,
+                0,
+                screen,
+                &mut measure,
+                &offset,
+                dpr,
+                screen,
+                &mut self.kept,
+            );
+            let safe = Rect::new(
+                vp.safe_area.left,
+                vp.safe_area.top,
+                vp.width - vp.safe_area.horizontal(),
+                vp.height - vp.safe_area.vertical(),
+            );
+            // The HUD band: the safe area at most `hud_max_aspect` wide,
+            // centred (an ultrawide's corners stay near the play), where the
+            // anchored groups and the toasts lay out.
+            let hud = vp.hud_rect(self.hud_max_aspect);
+            // The host's control, where the layout stands before a right-to-left
+            // mirror (which moves a top-left group to the top right).
+            let covered = {
+                let c = vp.covered;
+                if self.direction == og_i18n::Direction::Rtl {
+                    Rect::new(vp.width - c.x - c.width, c.y, c.width, c.height)
+                } else {
+                    c
+                }
+            };
+            let gap = self.theme.space.xs;
+            // The anchored groups first, each laid out in its area and placed
+            // once all of them are known (so one the host's control moves keeps
+            // off the others), then the other layers in their order (a popover
+            // reads its anchor's final place).
+            let (groups, rest): (Vec<usize>, Vec<usize>) = self
+                .floating
+                .iter()
+                .partition(|&&f| matches!(self.nodes[f].float, Float::Anchored { .. }));
+            let mut spots: Vec<(usize, Rect)> = Vec::new();
+            for f in groups.into_iter().chain([NONE]).chain(rest) {
+                // NONE marks the groups' end: place them, then go on to the rest.
+                if f == NONE {
+                    if !covered.is_empty() {
+                        for k in 0..spots.len() {
+                            let (g, r) = spots[k];
+                            let Float::Anchored { anchor, margin, .. } = self.nodes[g].float else {
+                                continue;
+                            };
+                            let others: Vec<Rect> = spots
+                                .iter()
+                                .enumerate()
+                                .filter(|&(j, _)| j != k)
+                                .map(|(_, &(_, o))| o)
+                                .collect();
+                            spots[k].1 =
+                                keep_out(r, anchor, covered, margin.max(gap), hud, &others);
+                        }
+                    }
+                    // A group placed at a point steps clear of the others
+                    // (which keep their places) and of the host's control.
                     for k in 0..spots.len() {
                         let (g, r) = spots[k];
-                        let Float::Anchored { anchor, margin, .. } = self.nodes[g].float else {
+                        if !matches!(self.nodes[g].float, Float::Anchored { avoid: true, .. }) {
                             continue;
-                        };
-                        let others: Vec<Rect> = spots
+                        }
+                        let mut others: Vec<Rect> = spots
                             .iter()
-                            .enumerate()
-                            .filter(|&(j, _)| j != k)
-                            .map(|(_, &(_, o))| o)
+                            .filter(|&&(o, _)| {
+                                !matches!(self.nodes[o].float, Float::Anchored { avoid: true, .. })
+                            })
+                            .map(|&(_, o)| o)
                             .collect();
-                        spots[k].1 = keep_out(r, anchor, covered, margin.max(gap), hud, &others);
+                        if !covered.is_empty() {
+                            others.push(covered);
+                        }
+                        spots[k].1 = step_clear(r, &others, gap, safe);
                     }
+                    for &(g, placed) in &spots {
+                        layout_inputs.remember(g, &self.nodes[g]);
+                        self.nodes[g].el.width = Size::Fixed(placed.width);
+                        self.nodes[g].el.height = Size::Fixed(placed.height);
+                        layout(
+                            &mut self.nodes,
+                            g,
+                            placed,
+                            &mut measure,
+                            &offset,
+                            dpr,
+                            screen,
+                            &mut self.kept,
+                        );
+                    }
+                    continue;
                 }
-                // A group placed at a point steps clear of the others
-                // (which keep their places) and of the host's control.
-                for k in 0..spots.len() {
-                    let (g, r) = spots[k];
-                    if !matches!(self.nodes[g].float, Float::Anchored { avoid: true, .. }) {
-                        continue;
-                    }
-                    let mut others: Vec<Rect> = spots
-                        .iter()
-                        .filter(|&&(o, _)| {
-                            !matches!(self.nodes[o].float, Float::Anchored { avoid: true, .. })
-                        })
-                        .map(|&(_, o)| o)
-                        .collect();
-                    if !covered.is_empty() {
-                        others.push(covered);
-                    }
-                    spots[k].1 = step_clear(r, &others, gap, safe);
-                }
-                for &(g, placed) in &spots {
-                    self.nodes[g].el.width = Size::Fixed(placed.width);
-                    self.nodes[g].el.height = Size::Fixed(placed.height);
+                let float = self.nodes[f].float;
+                if float == Float::World {
+                    // At its own size: an anchor where it is projected later, a
+                    // panel in its slot off the screen.
+                    let (area, clip) = self.world.area(f, screen);
                     layout(
                         &mut self.nodes,
-                        g,
-                        placed,
+                        f,
+                        area,
+                        &mut measure,
+                        &offset,
+                        dpr,
+                        clip,
+                        &mut self.kept,
+                    );
+                    continue;
+                }
+                if float == Float::Modal {
+                    // The backdrop covers the surface; the safe area pads its content.
+                    layout_inputs.remember(f, &self.nodes[f]);
+                    self.nodes[f].el.width = Size::Fixed(vp.width);
+                    self.nodes[f].el.height = Size::Fixed(vp.height);
+                    if self.nodes[f].backdrop {
+                        self.nodes[f].el.padding = self.nodes[f].el.padding.add(&vp.safe_area);
+                    }
+                    layout(
+                        &mut self.nodes,
+                        f,
+                        screen,
                         &mut measure,
                         &offset,
                         dpr,
                         screen,
                         &mut self.kept,
                     );
+                    continue;
                 }
-                continue;
-            }
-            let float = self.nodes[f].float;
-            if float == Float::World {
-                // At its own size: an anchor where it is projected later, a
-                // panel in its slot off the screen.
-                let (area, clip) = self.world.area(f, screen);
+                let area = match float {
+                    Float::Anchored { margin, .. } | Float::Toasts { margin, .. } => Rect::new(
+                        hud.x + margin,
+                        hud.y + margin,
+                        (hud.width - 2.0 * margin).max(0.0),
+                        (hud.height - 2.0 * margin).max(0.0),
+                    ),
+                    _ => safe,
+                };
                 layout(
                     &mut self.nodes,
                     f,
@@ -237,134 +297,106 @@ impl Ui {
                     &mut measure,
                     &offset,
                     dpr,
-                    clip,
+                    screen,
                     &mut self.kept,
                 );
-                continue;
-            }
-            if float == Float::Modal {
-                // The backdrop covers the surface; the safe area pads its content.
-                self.nodes[f].el.width = Size::Fixed(vp.width);
-                self.nodes[f].el.height = Size::Fixed(vp.height);
-                if self.nodes[f].backdrop {
-                    self.nodes[f].el.padding = self.nodes[f].el.padding.add(&vp.safe_area);
+                let (w, h) = (self.nodes[f].w, self.nodes[f].h);
+                let (x, y) = match float {
+                    Float::Anchored { anchor, dx, dy, .. } => {
+                        let (ax, ay) = anchor.fractions();
+                        (
+                            area.x + (area.width - w) * ax + dx,
+                            area.y + (area.height - h) * ay + dy,
+                        )
+                    }
+                    Float::Toasts { anchor, .. } => {
+                        let (ax, ay) = anchor.fractions();
+                        (
+                            area.x + (area.width - w) * ax,
+                            area.y + (area.height - h) * ay,
+                        )
+                    }
+                    _ => {
+                        let a = self
+                            .nodes
+                            .get(self.nodes[f].anchor)
+                            .map_or(safe, |n| n.rect);
+                        let popover = float == Float::Popover;
+                        let x = if popover {
+                            // Aligned to the anchor's start in the reading direction.
+                            if rtl { a.right() - w } else { a.x }
+                        } else {
+                            a.x + a.width / 2.0 - w / 2.0
+                        };
+                        let x = x.min(safe.right() - w).max(safe.x);
+                        let mut y = a.bottom() + gap;
+                        // A popover goes above only where there is more room
+                        // (a tooltip whenever it does not fit), then stays on screen.
+                        let above = a.y - safe.y > safe.bottom() - a.bottom();
+                        if y + h > safe.bottom() && (above || !popover) {
+                            y = (a.y - gap - h).max(safe.y);
+                        }
+                        if popover {
+                            y = y.min(safe.bottom() - h).max(safe.y);
+                        }
+                        (x, y)
+                    }
+                };
+                let placed = Rect::new(x, y, w, h);
+                if matches!(float, Float::Anchored { .. }) {
+                    spots.push((f, placed));
+                    continue;
                 }
+                layout_inputs.remember(f, &self.nodes[f]);
+                self.nodes[f].el.width = Size::Fixed(w);
+                self.nodes[f].el.height = Size::Fixed(h);
                 layout(
                     &mut self.nodes,
                     f,
-                    screen,
+                    placed,
                     &mut measure,
                     &offset,
                     dpr,
                     screen,
                     &mut self.kept,
                 );
-                continue;
             }
-            let area = match float {
-                Float::Anchored { margin, .. } | Float::Toasts { margin, .. } => Rect::new(
-                    hud.x + margin,
-                    hud.y + margin,
-                    (hud.width - 2.0 * margin).max(0.0),
-                    (hud.height - 2.0 * margin).max(0.0),
-                ),
-                _ => safe,
-            };
-            layout(
-                &mut self.nodes,
-                f,
-                area,
-                &mut measure,
-                &offset,
-                dpr,
-                screen,
-                &mut self.kept,
-            );
-            let (w, h) = (self.nodes[f].w, self.nodes[f].h);
-            let (x, y) = match float {
-                Float::Anchored { anchor, dx, dy, .. } => {
-                    let (ax, ay) = anchor.fractions();
-                    (
-                        area.x + (area.width - w) * ax + dx,
-                        area.y + (area.height - h) * ay + dy,
-                    )
-                }
-                Float::Toasts { anchor, .. } => {
-                    let (ax, ay) = anchor.fractions();
-                    (
-                        area.x + (area.width - w) * ax,
-                        area.y + (area.height - h) * ay,
-                    )
-                }
-                _ => {
-                    let a = self
-                        .nodes
-                        .get(self.nodes[f].anchor)
-                        .map_or(safe, |n| n.rect);
-                    let popover = float == Float::Popover;
-                    let x = if popover {
-                        // Aligned to the anchor's start in the reading direction.
-                        if rtl { a.right() - w } else { a.x }
-                    } else {
-                        a.x + a.width / 2.0 - w / 2.0
-                    };
-                    let x = x.min(safe.right() - w).max(safe.x);
-                    let mut y = a.bottom() + gap;
-                    // A popover goes above only where there is more room
-                    // (a tooltip whenever it does not fit), then stays on screen.
-                    let above = a.y - safe.y > safe.bottom() - a.bottom();
-                    if y + h > safe.bottom() && (above || !popover) {
-                        y = (a.y - gap - h).max(safe.y);
-                    }
-                    if popover {
-                        y = y.min(safe.bottom() - h).max(safe.y);
-                    }
-                    (x, y)
-                }
-            };
-            let placed = Rect::new(x, y, w, h);
-            if matches!(float, Float::Anchored { .. }) {
-                spots.push((f, placed));
-                continue;
+            // Elements placed on the screen (Position::Screen): laid out again in
+            // the whole surface, under the safe area their layer keeps clear,
+            // and clipped by nothing but the surface.
+            let mut placed_order = preorder(&self.nodes, 0);
+            for &f in &self.floating {
+                placed_order.extend(preorder(&self.nodes, f));
             }
-            self.nodes[f].el.width = Size::Fixed(w);
-            self.nodes[f].el.height = Size::Fixed(h);
-            layout(
-                &mut self.nodes,
-                f,
-                placed,
-                &mut measure,
-                &offset,
-                dpr,
-                screen,
-                &mut self.kept,
-            );
-        }
-        // Elements placed on the screen (Position::Screen): laid out again in
-        // the whole surface, under the safe area their layer keeps clear,
-        // and clipped by nothing but the surface.
-        let mut placed_order = preorder(&self.nodes, 0);
-        for &f in &self.floating {
-            placed_order.extend(preorder(&self.nodes, f));
-        }
-        for i in placed_order {
-            if self.nodes[i].props.position != crate::element::Position::Screen {
-                continue;
+            for i in placed_order {
+                if self.nodes[i].props.position != crate::element::Position::Screen {
+                    continue;
+                }
+                let r = crate::layout::on_screen(&self.nodes[i], &screen);
+                layout_inputs.remember(i, &self.nodes[i]);
+                self.nodes[i].el.width = Size::Fixed(r.width);
+                self.nodes[i].el.height = Size::Fixed(r.height);
+                layout(
+                    &mut self.nodes,
+                    i,
+                    r,
+                    &mut measure,
+                    &offset,
+                    dpr,
+                    screen,
+                    &mut self.kept,
+                );
             }
-            let r = crate::layout::on_screen(&self.nodes[i], &screen);
-            self.nodes[i].el.width = Size::Fixed(r.width);
-            self.nodes[i].el.height = Size::Fixed(r.height);
-            layout(
-                &mut self.nodes,
-                i,
-                r,
-                &mut measure,
-                &offset,
-                dpr,
-                screen,
-                &mut self.kept,
-            );
+            match self.settle_layout_queries(&mut settlement, layout_inputs, &mut resolve) {
+                Ok(true) => {}
+                Ok(false) => break,
+                Err(error) => {
+                    self.abort_layout_queries();
+                    return Err(error);
+                }
+            }
         }
+        self.kept.query_roots = None;
         self.texts.sweep();
 
         let mut order = preorder(&self.nodes, 0);
@@ -1069,7 +1101,7 @@ impl Ui {
             unit: self.unit,
             cursor,
         };
-        &self.frame
+        Ok(&self.frame)
     }
 
     /// [`UiFrame::missing_glyphs`] of a frame's commands: read from each

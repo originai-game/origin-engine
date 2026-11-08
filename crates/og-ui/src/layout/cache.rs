@@ -235,6 +235,8 @@ pub(crate) struct LayoutCache {
     /// everything it draws from is unchanged, with how many of them are
     /// its background (its draw paints between those and the rest).
     pub cmds: crate::id::KeyMap<(usize, Vec<crate::DrawCmd>)>,
+    pub measurements: crate::ui::settlement::Measurements,
+    pub query_roots: Option<std::collections::BTreeSet<usize>>,
 }
 
 /// Everything an element's own commands are made from is as last frame
@@ -326,6 +328,15 @@ pub(crate) fn layout(
     clip: Rect,
     kept: &mut LayoutCache,
 ) {
+    if let Some(roots) = &kept.query_roots {
+        let mut at = root;
+        while nodes[at].parent != NONE {
+            at = nodes[at].parent;
+        }
+        if !roots.contains(&at) {
+            return;
+        }
+    }
     let order = preorder(nodes, root);
     let twin_of = |kept: &LayoutCache, i: usize| -> Option<usize> {
         kept.clean_twin(i)?;
@@ -455,6 +466,13 @@ pub(crate) fn layout(
         nodes[i].clip = parent_clip;
         nodes[i].clip_src = src;
         nodes[i].rect = rect.snapped(dpr);
+        kept.measurements.observe(
+            nodes[i].key,
+            crate::ui::settlement::ContentBox {
+                width: (nodes[i].w - nodes[i].el.padding.horizontal()).max(0.0),
+                height: (nodes[i].h - nodes[i].el.padding.vertical()).max(0.0),
+            },
+        );
     }
 }
 
