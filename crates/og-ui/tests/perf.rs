@@ -496,8 +496,10 @@ fn perf_ui_change_budgets() {
 /// Svelte documents over named stores, mounted once and driven only by store
 /// writes and input, with the tick's executed work. Idle writes nothing; one
 /// label patches one row's field each tick; the list scrolls by the wheel.
-/// `row-999` scrolls a 1,000-row list to its last row and back with the
-/// focus held on row 999 by key.
+/// `fling-1000` scrolls that list by a trackpad's momentum, fractional
+/// steps that decay, at a 1.5 device pixel ratio. `row-999` scrolls a
+/// 1,000-row list to its last row and back with the focus held on row 999
+/// by key.
 #[test]
 #[ignore = "perf: run on the reference machines in release"]
 fn perf_ui_retained_change_budgets() {
@@ -517,12 +519,13 @@ fn perf_ui_retained_change_budgets() {
         "idle-animated",
         "one-label",
         "scroll-1000",
+        "fling-1000",
         "row-999",
     ] {
         let mut scene = og_render::RenderScene::new();
         let mut ui = ui_with_font(add_test_font(&mut scene));
         let mut inputs = BTreeMap::new();
-        let list = scenario == "scroll-1000" || scenario == "row-999";
+        let list = matches!(scenario, "scroll-1000" | "fling-1000" | "row-999");
         let text = if list {
             let rows: Vec<_> = (0..1000)
                 .map(|row| json!({"id": format!("r{row}"), "label": format!("Inventory item {row}")}))
@@ -596,6 +599,9 @@ fn perf_ui_retained_change_budgets() {
             }
             let wheel = match scenario {
                 "scroll-1000" if tick > 0 => 24.0,
+                // A trackpad's momentum: fractional steps that decay, again
+                // and again, on a 1.5 device pixel ratio.
+                "fling-1000" if tick > 0 => 46.3 * 0.94f32.powi((tick % 40) as i32),
                 // Down to the end in the first half, back in the second.
                 "row-999" if tick > 0 => {
                     if tick < total / 2 {
@@ -613,7 +619,10 @@ fn perf_ui_retained_change_budgets() {
                     wheel: og_core::glam::Vec2::new(0.0, wheel),
                     ..InputFrame::default()
                 },
-                Viewport::new(2560.0, 1440.0),
+                Viewport {
+                    dpr: if scenario == "fling-1000" { 1.5 } else { 1.0 },
+                    ..Viewport::new(2560.0, 1440.0)
+                },
             );
             ui.build_retained_documents(&bind::NoEnv).unwrap();
             let built = start.elapsed().as_secs_f64() * 1000.0;
@@ -650,7 +659,9 @@ fn perf_ui_retained_change_budgets() {
         }
         assert!(commands > 0);
         match scenario {
-            "scroll-1000" => assert!(max_first > 100, "the measured list must actually scroll"),
+            "scroll-1000" | "fling-1000" => {
+                assert!(max_first > 100, "the measured list must actually scroll")
+            }
             "row-999" => {
                 assert!(max_first >= 999, "reached row {max_first}");
                 assert_eq!(ui.focus_path(0), far, "focus held on row 999 by key");
