@@ -492,6 +492,7 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.aspect == b.aspect
         && a.margin == b.margin
         && a.block == b.block
+        && a.bounds == b.bounds
 }
 
 /// The content layout measures is equal (an ink may differ).
@@ -557,16 +558,18 @@ pub(crate) fn layout(
         }
         size_w(nodes, i, measure);
     }
-    nodes[root].w = match nodes[root].el.width {
-        Size::Fixed(v) => v,
-        Size::Fit { .. } => nodes[root].pref_w.min(area.width).max(nodes[root].min_w),
-        Size::Percent(p) => p * area.width,
-        Size::Calc(c) => c.of(area.width),
+    let r = &nodes[root];
+    let w = match r.el.width {
+        Size::Fit { .. } => r.pref_w.min(area.width).max(r.min_w),
         Size::Grow { .. } => {
-            let (lo, hi) = nodes[root].el.width.bounds();
+            let (lo, hi) = r.el.width.bounds();
             area.width.clamp(lo, hi)
         }
+        size => size
+            .definite(r.pref_w, r.min_w, Some(area.width))
+            .unwrap_or(r.pref_w),
     };
+    nodes[root].w = super::flex::clamp_to(r, 0, Some(area.width), w);
     // A clean node at the width it had keeps its children's widths, its
     // lines and its tracks.
     let same_w = |nodes: &[Node], kept: &LayoutCache, i: usize| {
@@ -596,16 +599,18 @@ pub(crate) fn layout(
         }
         size_h(nodes, i);
     }
-    nodes[root].h = match nodes[root].el.height {
-        Size::Fixed(v) => v,
-        Size::Fit { .. } => nodes[root].pref_h,
-        Size::Percent(p) => p * area.height,
-        Size::Calc(c) => c.of(area.height),
+    let r = &nodes[root];
+    let h = match r.el.height {
+        Size::Fit { .. } => r.pref_h,
         Size::Grow { .. } => {
-            let (lo, hi) = nodes[root].el.height.bounds();
+            let (lo, hi) = r.el.height.bounds();
             area.height.clamp(lo, hi)
         }
+        size => size
+            .definite(r.pref_h, r.min_h, Some(area.height))
+            .unwrap_or(r.pref_h),
     };
+    nodes[root].h = super::flex::clamp_to(r, 1, Some(area.height), h);
     let same_wh = |nodes: &[Node], kept: &LayoutCache, i: usize| {
         same_w(nodes, kept, i) && nodes[i].layout_size[1] == nodes[i].h
     };

@@ -11,9 +11,18 @@ What every kind takes: its box, layout, paint, motion and input.
 
 | Write | Value | What |
 |---|---|---|
-| `width:` | `fit-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) (min-/max- bounds)` | Its width (fit by default). |
-| `height:` | `fit-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) (min-/max- bounds)` | Its height (fit by default). |
+| `width:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its width (fit by default). |
+| `height:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its height (fit by default). |
 | `padding:` | `1 to 4 lengths (top right bottom left)` | Space inside its edges, CSS px. |
+| `padding-top:` | `<n>px` | Space inside its top edge, CSS px (over `padding`). |
+| `padding-right:` | `<n>px` | Space inside its right edge, CSS px (over `padding`). |
+| `padding-bottom:` | `<n>px` | Space inside its bottom edge, CSS px (over `padding`). |
+| `padding-left:` | `<n>px` | Space inside its left edge, CSS px (over `padding`). |
+| `min-width:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its least width: CSS px, a percentage or calc() of the width its parent offers, or minContent or maxContent. |
+| `max-width:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its greatest width: CSS px, a percentage or calc() of the width its parent offers, or minContent or maxContent. |
+| `min-height:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its least height: CSS px, a percentage or calc() of the height its parent offers, or minContent or maxContent. |
+| `max-height:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its greatest height: CSS px, a percentage or calc() of the height its parent offers, or minContent or maxContent. |
+| `box-sizing:` | `border-box \| content-box` | Whether its width and height hold its padding and border (borderBox, every element's default) or its content alone (contentBox). |
 | `margin-top:` | `<n>px \| <n>em \| <n>% \| auto \| calc(…)` | Space outside its top edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). Adjacent block margins collapse. |
 | `margin-right:` | `<n>px \| <n>em \| <n>% \| auto \| calc(…)` | Space outside its right edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). |
 | `margin-bottom:` | `<n>px \| <n>em \| <n>% \| auto \| calc(…)` | Space outside its bottom edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). Adjacent block margins collapse. |

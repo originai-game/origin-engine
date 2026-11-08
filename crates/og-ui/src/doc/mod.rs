@@ -701,8 +701,7 @@ fn parse_presence(vals: &[Value], enter: bool) -> Result<PresenceSpec, String> {
 }
 
 fn parse_size(vals: &[Value]) -> Result<Size, String> {
-    const HOW: &str =
-        "a size: fit [min max], grow [min max], fixed <px> (or a number), percent <0–1>";
+    const HOW: &str = "a size: fit [min max], grow [min max], fixed <px> (or a number), percent <0–1>, minContent, maxContent";
     if let [Value::Number(n)] = vals {
         return Ok(Size::Fixed(n.as_f32()));
     }
@@ -718,6 +717,8 @@ fn parse_size(vals: &[Value]) -> Result<Size, String> {
             let (min, max) = range();
             Size::Grow { min, max }
         }
+        "minContent" => Size::MinContent,
+        "maxContent" => Size::MaxContent,
         "fixed" => Size::Fixed(n(1).ok_or(HOW)?),
         "percent" => Size::Percent(n(1).ok_or(HOW)?),
         "calc" => {

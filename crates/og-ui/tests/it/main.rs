@@ -16,6 +16,8 @@ mod color_vision;
 mod component_documents;
 #[path = "../control_props.rs"]
 mod control_props;
+#[path = "../css_layout.rs"]
+mod css_layout;
 #[path = "../css_paint.rs"]
 mod css_paint;
 #[path = "../custom_properties.rs"]

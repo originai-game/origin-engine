@@ -504,6 +504,10 @@ impl Ui {
             for name in [
                 "height",
                 "padding",
+                "paddingTop",
+                "paddingRight",
+                "paddingBottom",
+                "paddingLeft",
                 "marginTop",
                 "marginRight",
                 "marginBottom",
@@ -545,6 +549,7 @@ impl Ui {
         for w in warn {
             self.warnings.push(format!("line {}: {w}", n.line));
         }
+        let el = Self::sized(r, el);
         self.nodes[i].el = el;
         self.nodes[i].decor = decor.map(Box::new);
         let mut props = Self::resolved_props(n, r);

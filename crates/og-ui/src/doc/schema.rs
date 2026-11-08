@@ -328,6 +328,51 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!("height", Ty::Size, "Its height (fit by default)."),
     p!("padding", Ty::Insets, "Space inside its edges, CSS px."),
     p!(
+        "paddingTop",
+        Ty::Num,
+        "Space inside its top edge, CSS px (over `padding`)."
+    ),
+    p!(
+        "paddingRight",
+        Ty::Num,
+        "Space inside its right edge, CSS px (over `padding`)."
+    ),
+    p!(
+        "paddingBottom",
+        Ty::Num,
+        "Space inside its bottom edge, CSS px (over `padding`)."
+    ),
+    p!(
+        "paddingLeft",
+        Ty::Num,
+        "Space inside its left edge, CSS px (over `padding`)."
+    ),
+    p!(
+        "minWidth",
+        Ty::Size,
+        "Its least width: CSS px, a percentage or calc() of the width its parent offers, or minContent or maxContent."
+    ),
+    p!(
+        "maxWidth",
+        Ty::Size,
+        "Its greatest width: CSS px, a percentage or calc() of the width its parent offers, or minContent or maxContent."
+    ),
+    p!(
+        "minHeight",
+        Ty::Size,
+        "Its least height: CSS px, a percentage or calc() of the height its parent offers, or minContent or maxContent."
+    ),
+    p!(
+        "maxHeight",
+        Ty::Size,
+        "Its greatest height: CSS px, a percentage or calc() of the height its parent offers, or minContent or maxContent."
+    ),
+    p!(
+        "boxSizing",
+        Ty::Word(&["borderBox", "contentBox"]),
+        "Whether its width and height hold its padding and border (borderBox, every element's default) or its content alone (contentBox)."
+    ),
+    p!(
         "marginTop",
         Ty::Num4,
         "Space outside its top edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). Adjacent block margins collapse."

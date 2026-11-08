@@ -204,6 +204,10 @@ pub enum Size {
     /// one unit (`calc(100% - 12px)`), resolved against the size a
     /// percentage reads.
     Calc(Calc),
+    /// CSS `min-content`: its least size (a wrapping text's longest word).
+    MinContent,
+    /// CSS `max-content`: its preferred size (a text unwrapped).
+    MaxContent,
 }
 
 /// A CSS length as a linear sum: a fraction of a basis plus CSS px.
@@ -373,8 +377,50 @@ impl Size {
         match *self {
             Size::Fit { min, max } | Size::Grow { min, max } => (min, max.max(min)),
             Size::Fixed(v) => (v, v),
-            Size::Percent(_) | Size::Calc(_) => (0.0, f32::INFINITY),
+            Size::Percent(_) | Size::Calc(_) | Size::MinContent | Size::MaxContent => {
+                (0.0, f32::INFINITY)
+            }
         }
+    }
+
+    /// Its CSS px when it names one: a length, a percentage or calc() of
+    /// `basis` (`None`: an indefinite basis, where a percentage behaves as
+    /// `auto`, CSS Sizing 3 §5.2.1), or a content size from `pref` and `min`.
+    pub(crate) fn definite(&self, pref: f32, min: f32, basis: Option<f32>) -> Option<f32> {
+        match *self {
+            Size::Fixed(v) => Some(v),
+            Size::Percent(p) => basis.map(|b| p * b),
+            Size::Calc(c) => basis.map(|b| c.of(b)),
+            Size::MinContent => Some(min),
+            Size::MaxContent => Some(pref),
+            Size::Fit { .. } | Size::Grow { .. } => None,
+        }
+    }
+}
+
+impl Element {
+    /// `v` held between its CSS min- and max- bounds along `axis` (0:
+    /// width, 1: height), resolved against `basis` (`None`: a percentage
+    /// bound does not apply). A min- bound wins over a max- one (CSS 2
+    /// §10.4).
+    pub(crate) fn bounded(
+        &self,
+        axis: usize,
+        basis: Option<f32>,
+        pref: f32,
+        min: f32,
+        v: f32,
+    ) -> f32 {
+        let [lo, hi] = self.bounds[axis];
+        let at = |b: Option<Size>| b.and_then(|b| b.definite(pref, min, basis));
+        let mut v = v;
+        if let Some(h) = at(hi) {
+            v = v.min(h);
+        }
+        if let Some(l) = at(lo) {
+            v = v.max(l);
+        }
+        v
     }
 }
 
@@ -503,6 +549,11 @@ pub struct Element {
     /// margins collapse with each other and, where no padding separates
     /// them, with its own (CSS 2 §8.3.1).
     pub block: bool,
+    /// Its CSS `min-`/`max-` bounds beyond those a `Fit` or `Grow` size
+    /// holds, per axis (width, height), as (min, max): a length, a
+    /// percentage or calc() of the size its parent offers, or a content
+    /// size (`MinContent`, `MaxContent`). `None`: unbounded.
+    pub bounds: [[Option<Size>; 2]; 2],
 }
 
 impl Element {

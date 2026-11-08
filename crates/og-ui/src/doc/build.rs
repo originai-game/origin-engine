@@ -853,6 +853,17 @@ impl Ui {
         } else if let Some(n) = r.num("padding") {
             el.padding = Insets::all(n);
         }
+        // The CSS longhands, over the shorthand and a widget's own padding.
+        for (name, side) in [
+            ("paddingTop", &mut el.padding.top),
+            ("paddingRight", &mut el.padding.right),
+            ("paddingBottom", &mut el.padding.bottom),
+            ("paddingLeft", &mut el.padding.left),
+        ] {
+            if let Some(v) = r.num(name) {
+                *side = v;
+            }
+        }
         if let Some(g) = r.num("gap") {
             el.gap = g;
         }
@@ -902,6 +913,67 @@ impl Ui {
         }
         if r.has("adjustable") {
             el.adjustable = r.flag("adjustable");
+        }
+        el
+    }
+
+    /// `el` with its CSS min- and max- bounds and its box sizing: a px
+    /// bound of a fit-content or stretch size joins the size's range (as
+    /// the house form writes it), others bound whatever size it takes; a
+    /// `content-box` size and its bounds grow by its padding and border.
+    fn sized(r: &Resolved, mut el: Element) -> Element {
+        let bounds = [["minWidth", "maxWidth"], ["minHeight", "maxHeight"]]
+            .map(|names| names.map(|name| r.size(name)));
+        el.bounds = bounds;
+        for (axis, size) in [&mut el.width, &mut el.height].into_iter().enumerate() {
+            if let Size::Fit { min, max } | Size::Grow { min, max } = size {
+                if let Some(Size::Fixed(v)) = el.bounds[axis][0] {
+                    *min = v;
+                    el.bounds[axis][0] = None;
+                }
+                if let Some(Size::Fixed(v)) = el.bounds[axis][1] {
+                    *max = v;
+                    el.bounds[axis][1] = None;
+                }
+            }
+        }
+        if r.str("boxSizing") == Some("contentBox") {
+            let pad = [el.padding.horizontal(), el.padding.vertical()];
+            let grow = |s: Size, p: f32| match s {
+                Size::Fixed(v) => Size::Fixed(v + p),
+                Size::Percent(f) => Size::Calc(crate::Calc {
+                    args: [
+                        crate::Length { pct: f, px: p },
+                        crate::Length::default(),
+                        crate::Length::default(),
+                    ],
+                    count: 1,
+                    ..crate::Calc::default()
+                }),
+                Size::Calc(mut c) => {
+                    for a in &mut c.args[..c.count.max(1) as usize] {
+                        a.px += p;
+                    }
+                    Size::Calc(c)
+                }
+                Size::Fit { min, max } => Size::Fit {
+                    min: if min > 0.0 { min + p } else { min },
+                    max: max + p,
+                },
+                Size::Grow { min, max } => Size::Grow {
+                    min: if min > 0.0 { min + p } else { min },
+                    max: max + p,
+                },
+                // A content size already holds its padding.
+                s @ (Size::MinContent | Size::MaxContent) => s,
+            };
+            el.width = grow(el.width, pad[0]);
+            el.height = grow(el.height, pad[1]);
+            for axis in 0..2 {
+                for b in &mut el.bounds[axis] {
+                    *b = b.map(|s| grow(s, pad[axis]));
+                }
+            }
         }
         el
     }

@@ -579,6 +579,27 @@ A `display: block` box with an auto width fills its block parent's
 content width, as in CSS block flow, so a `<div>` inside a `<section>` is
 as wide as the section.
 
+Sizes follow CSS Sizing 3. `width` and `height` (and the logical
+`inline-size` and `block-size`) take `auto` (the element's own size: a
+block fills its parent, a flex item fits its content), a length, a
+percentage, a math function, `min-content`, `max-content`,
+`fit-content`, `fit-content(<length>)` and the engine's `stretch` (the
+room its parent leaves). `min-width`, `max-width`, `min-height`,
+`max-height` and their logical forms take the same (`none` for no
+maximum), bound any size, and the minimum wins over the maximum, as in
+CSS 2 §10.4: `width: 100%; max-width: 640px` and a bound alone
+(`max-width: 640px` on a block, which still fills up to it) both work. A
+percentage bound reads the size the parent offers and is ignored where
+that is not known yet, as CSS ignores one against an indefinite size.
+`aspect-ratio` takes `auto`, `<width> / <height>` or one number. Every
+element's `box-sizing` is `border-box`, as if the user-agent sheet had
+the common `* { box-sizing: border-box }` reset; `box-sizing:
+content-box` makes its width, height and bounds the content's, its
+padding and border added outside them. `padding` takes its longhands
+(`padding-top`, `-right`, `-bottom`, `-left`) and the logical
+`padding-block`, `padding-inline` and their `-start`/`-end`; a later
+shorthand resets the sides a longhand set.
+
 Kits use `@origingame/engine`, `@origingame/engine/ui-extensions`, and the
 public helpers in `@origingame/engine/ui-parts/hud` and
 `@origingame/engine/ui-parts/screen`. Private source-path imports, unsafe

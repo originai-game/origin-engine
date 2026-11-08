@@ -91,6 +91,15 @@ pub const STYLE: &[(&str, &str)] = &[
     ("width", "width"),
     ("height", "height"),
     ("padding", "padding"),
+    ("paddingTop", "padding-top"),
+    ("paddingRight", "padding-right"),
+    ("paddingBottom", "padding-bottom"),
+    ("paddingLeft", "padding-left"),
+    ("minWidth", "min-width"),
+    ("maxWidth", "max-width"),
+    ("minHeight", "min-height"),
+    ("maxHeight", "max-height"),
+    ("boxSizing", "box-sizing"),
     ("marginTop", "margin-top"),
     ("marginRight", "margin-right"),
     ("marginBottom", "margin-bottom"),
@@ -232,12 +241,27 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "margin-inline-end" => vec!["marginRight"],
         "margin-block-start" => vec!["marginTop"],
         "margin-block-end" => vec!["marginBottom"],
+        "padding" => vec!["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"],
+        "padding-block" => vec!["paddingTop", "paddingBottom"],
+        "padding-inline" => vec!["paddingRight", "paddingLeft"],
+        "padding-block-start" => vec!["paddingTop"],
+        "padding-block-end" => vec!["paddingBottom"],
+        "padding-inline-start" => vec!["paddingLeft"],
+        "padding-inline-end" => vec!["paddingRight"],
+        "min-width" | "min-inline-size" => vec!["minWidth"],
+        "max-width" | "max-inline-size" => vec!["maxWidth"],
+        "min-height" | "min-block-size" => vec!["minHeight"],
+        "max-height" | "max-block-size" => vec!["maxHeight"],
         _ => super::boxes::longhands(name),
     };
     let target = match name {
         "grid-row" => "grid-column",
-        "min-width" | "max-width" => "width",
-        "min-height" | "max-height" => "height",
+        "min-width" | "max-width" | "inline-size" | "min-inline-size" | "max-inline-size" => {
+            "width"
+        }
+        "min-height" | "max-height" | "block-size" | "min-block-size" | "max-block-size" => {
+            "height"
+        }
         _ => name,
     };
     alias.into_iter().chain(both).chain(
@@ -249,8 +273,10 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
 
 fn conv(prop: &str) -> Conv {
     match prop {
-        "width" | "height" => Conv::Size,
+        "width" | "height" | "minWidth" | "maxWidth" | "minHeight" | "maxHeight" => Conv::Size,
         "padding" => Conv::Insets,
+        "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft" => Conv::Len,
+        "boxSizing" => Conv::Kebab,
         p if p.starts_with("border") && p.ends_with("Width") => Conv::Len,
         p if p.starts_with("border") && p.ends_with("Color") => Conv::Paint,
         p if p.starts_with("border") && p.ends_with("Style") => Conv::Kebab,
@@ -312,7 +338,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Angle => "<n>deg | <n>rad | <n>turn".into(),
         Conv::Paint => "var(--<role>) | #rrggbb[aa]".into(),
         Conv::Size => {
-            "fit-content | stretch | <n>px | <n>% | calc(…) | min(…) | max(…) | clamp(…) (min-/max- bounds)"
+            "auto | fit-content | fit-content(<n>px) | min-content | max-content | stretch | <n>px | <n>% | calc(…) | min(…) | max(…) | clamp(…) | round(…) …"
                 .into()
         }
         Conv::Insets => "1 to 4 lengths (top right bottom left)".into(),
@@ -749,6 +775,10 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
             let w = vals.first().map(text_of).unwrap_or_default();
             match w.as_str() {
                 "fixed" => px(vals.get(1).ok_or("fixed <px>")?),
+                "fit" => Ok("fit-content".into()),
+                "grow" => Ok("stretch".into()),
+                "minContent" => Ok("min-content".into()),
+                "maxContent" => Ok("max-content".into()),
                 "percent" => Ok(format!(
                     "{}%",
                     shift(&vals.get(1).map(text_of).ok_or("percent <0–1>")?, 2)
@@ -1652,47 +1682,146 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             }?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }
-        "width" | "height" | "min-width" | "max-width" | "min-height" | "max-height" => {
-            let axis = if name.ends_with("width") { 0 } else { 1 };
+        "width" | "height" | "min-width" | "max-width" | "min-height" | "max-height"
+        | "inline-size" | "block-size" | "min-inline-size" | "max-inline-size"
+        | "min-block-size" | "max-block-size" => {
+            let axis = usize::from(!(name.ends_with("width") || name.ends_with("inline-size")));
             let v = one(&t, name)?;
-            if let Some(bound) = name.strip_suffix("-width").or(name.strip_suffix("-height")) {
-                return Ok(vec![Part::Size(
-                    axis,
-                    SizeBit::Range(bound == "min", want_len(&v)?),
-                )]);
+            let bound = name
+                .strip_prefix("min-")
+                .map(|_| true)
+                .or(name.strip_prefix("max-").map(|_| false));
+            // `auto` (and a bound's `none`) is the initial value: the
+            // element's own size, unbounded (CSS Sizing 3 §3.1).
+            if matches!(&v, Tok::Ident(k) if k == "auto" || (k == "none" && bound == Some(false))) {
+                return Ok(Vec::new());
             }
-            Ok(vec![Part::Size(
+            let mut parts = Vec::new();
+            let vals = match &v {
+                Tok::Ident(k) if k == "fit-content" => vec![Value::Word("fit".into())],
+                Tok::Ident(k) if k == "stretch" => vec![Value::Word("grow".into())],
+                Tok::Ident(k) if k == "min-content" => vec![Value::Word("minContent".into())],
+                Tok::Ident(k) if k == "max-content" => vec![Value::Word("maxContent".into())],
+                // fit-content(<length>): its content, at most the length and
+                // at least its min-content (CSS Sizing 3 §3.2).
+                Tok::Func(f, args) if f == "fit-content" && bound.is_none() => {
+                    let [arg] = args.as_slice() else {
+                        return Err(format!("{name}: fit-content(<length>)"));
+                    };
+                    let [len] = arg.as_slice() else {
+                        return Err(format!("{name}: fit-content(<length>)"));
+                    };
+                    match len {
+                        Tok::Num(n, u) if u == "%" => {
+                            parts.push(Part::Size(
+                                axis,
+                                SizeBit::Range(
+                                    false,
+                                    vec![Value::Word("percent".into()), number(&shift(n, -2))?],
+                                ),
+                            ));
+                            vec![Value::Word("fit".into())]
+                        }
+                        len => vec![Value::Word("fit".into()), number("0")?, want_len(len)?],
+                    }
+                }
+                Tok::Num(n, u) if u == "%" => {
+                    vec![Value::Word("percent".into()), number(&shift(n, -2))?]
+                }
+                Tok::Func(f, args)
+                    if matches!(
+                        f.as_str(),
+                        "calc"
+                            | "min"
+                            | "max"
+                            | "clamp"
+                            | "round"
+                            | "mod"
+                            | "rem"
+                            | "abs"
+                            | "hypot"
+                    ) =>
+                {
+                    size_calc(name, f, args)?
+                }
+                v => vec![want_len(v)?],
+            };
+            parts.push(Part::Size(
                 axis,
-                SizeBit::Kind(match &v {
-                    Tok::Ident(k) if k == "fit-content" => vec![Value::Word("fit".into())],
-                    Tok::Ident(k) if k == "stretch" => vec![Value::Word("grow".into())],
-                    Tok::Ident(k) if k == "auto" => {
-                        return Err(format!(
-                            "{name}: fit-content (its content), stretch (the room left), <n>px or <n>%"
-                        ));
+                match bound {
+                    Some(min) => SizeBit::Range(min, vals),
+                    None => SizeBit::Kind(vals),
+                },
+            ));
+            Ok(parts)
+        }
+        "aspect-ratio" => {
+            // `auto`, `<ratio>` or both (CSS Sizing 4 §2.1); `auto` alone is
+            // the initial value, and a ratio is width / height.
+            let ratio: Vec<&Tok> = t
+                .iter()
+                .filter(|v| !matches!(v, Tok::Ident(a) if a == "auto"))
+                .collect();
+            let n = |v: &Tok| -> Result<f64, String> {
+                match v {
+                    Tok::Num(n, u) if u.is_empty() => {
+                        n.parse().map_err(|_| format!("'{n}' is not a number"))
                     }
-                    Tok::Num(n, u) if u == "%" => {
-                        vec![Value::Word("percent".into()), number(&shift(n, -2))?]
-                    }
-                    Tok::Func(f, args)
-                        if matches!(
-                            f.as_str(),
-                            "calc"
-                                | "min"
-                                | "max"
-                                | "clamp"
-                                | "round"
-                                | "mod"
-                                | "rem"
-                                | "abs"
-                                | "hypot"
-                        ) =>
-                    {
-                        size_calc(name, f, args)?
-                    }
-                    v => vec![want_len(v)?],
-                }),
-            )])
+                    v => Err(format!(
+                        "aspect-ratio: auto | <width> [/ <height>], not '{}'",
+                        describe(v)
+                    )),
+                }
+            };
+            let r = match ratio.as_slice() {
+                [] => return Ok(Vec::new()),
+                [a] => n(a)?,
+                [a, Tok::Slash, b] => {
+                    let b = n(b)?;
+                    if b == 0.0 { 0.0 } else { n(a)? / b }
+                }
+                _ => return Err("aspect-ratio: auto | <width> [/ <height>]".into()),
+            };
+            Ok(vec![e("aspect", vec![number(&super::calc::number(r))?])])
+        }
+        "padding-top"
+        | "padding-right"
+        | "padding-bottom"
+        | "padding-left"
+        | "padding-block"
+        | "padding-inline"
+        | "padding-block-start"
+        | "padding-block-end"
+        | "padding-inline-start"
+        | "padding-inline-end" => {
+            // CSS order: top, right, bottom, left (left to right).
+            let sides: [Option<&Tok>; 4] = match (name, t.as_slice()) {
+                ("padding-top" | "padding-block-start", [a]) => [Some(a), None, None, None],
+                ("padding-right" | "padding-inline-end", [a]) => [None, Some(a), None, None],
+                ("padding-bottom" | "padding-block-end", [a]) => [None, None, Some(a), None],
+                ("padding-left" | "padding-inline-start", [a]) => [None, None, None, Some(a)],
+                ("padding-block", [a]) => [Some(a), None, Some(a), None],
+                ("padding-block", [a, b]) => [Some(a), None, Some(b), None],
+                ("padding-inline", [a]) => [None, Some(a), None, Some(a)],
+                ("padding-inline", [start, end]) => [None, Some(end), None, Some(start)],
+                _ => {
+                    return Err(format!(
+                        "{name} takes one length (two for -block and -inline)"
+                    ));
+                }
+            };
+            let mut out = Vec::new();
+            for (side, prop) in sides.into_iter().zip([
+                "paddingTop",
+                "paddingRight",
+                "paddingBottom",
+                "paddingLeft",
+            ]) {
+                if let Some(side) = side {
+                    out.push(e(prop, vec![want_len(side)?]));
+                }
+            }
+            Ok(out)
         }
         "padding" => {
             let n: Vec<Value> = t.iter().map(want_len).collect::<Result<_, _>>()?;
@@ -1999,8 +2128,8 @@ fn hint_for(name: &str) -> String {
 
 enum SizeBit {
     Kind(Vec<Value>),
-    /// `min-` (true) or `max-`, a length.
-    Range(bool, Value),
+    /// `min-` (true) or `max-`, a size's values.
+    Range(bool, Vec<Value>),
 }
 
 enum Part {
@@ -2010,9 +2139,14 @@ enum Part {
     Grid(usize, Option<Value>, Option<Value>),
 }
 
-/// A size being joined: its entry's index in the block, its kind, its
-/// `min-` and its `max-`.
-type SizeParts = (usize, Vec<Value>, Option<Value>, Option<Value>);
+/// A size being joined: its entry's index in the block and its kind (once
+/// one is declared), its `min-` and its `max-`, and the line of the first.
+type SizeParts = (
+    Option<(usize, Vec<Value>)>,
+    Option<Vec<Value>>,
+    Option<Vec<Value>>,
+    usize,
+);
 
 pub(crate) fn declarations(text: &str, line: usize) -> Result<Vec<Entry>, String> {
     declarations_at([(line, text)])
@@ -2066,24 +2200,46 @@ impl Frame {
     fn part(&mut self, p: Part, line: usize) -> Result<(), String> {
         match p {
             Part::Entry(k, values) => {
+                const SIDES: [&str; 4] =
+                    ["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"];
+                // The shorthand resets the sides a longhand set before it.
+                let reset =
+                    k == "padding"
+                        && self.entry.block.as_ref().is_some_and(|b| {
+                            b.entries.iter().any(|e| SIDES.contains(&e.key.as_str()))
+                        });
+                let sides = reset.then(|| match values.as_slice() {
+                    [a] => [a.clone(), a.clone(), a.clone(), a.clone()],
+                    [x, y] => [y.clone(), x.clone(), y.clone(), x.clone()],
+                    [l, t, r, b] => [t.clone(), r.clone(), b.clone(), l.clone()],
+                    _ => std::array::from_fn(|_| Value::Number(Number::parse("0").unwrap())),
+                });
                 let mut e = Entry::new(k);
                 e.values = values;
                 e.line = line;
                 self.push(e);
+                for (side, v) in SIDES.into_iter().zip(sides.into_iter().flatten()) {
+                    let mut e = Entry::new(side);
+                    e.values = vec![v];
+                    e.line = line;
+                    self.push(e);
+                }
             }
             Part::Size(axis, bit) => {
-                if self.size[axis].is_none() {
-                    let mut e = Entry::new(if axis == 0 { "width" } else { "height" });
-                    e.line = line;
-                    let at = self.len();
-                    self.push(e);
-                    self.size[axis] = Some((at, vec![Value::Word("fit".into())], None, None));
-                }
-                let s = self.size[axis].as_mut().unwrap();
+                let at = self.len();
+                let s = self.size[axis].get_or_insert((None, None, None, line));
                 match bit {
-                    SizeBit::Kind(k) => s.1 = k,
-                    SizeBit::Range(true, v) => s.2 = Some(v),
-                    SizeBit::Range(false, v) => s.3 = Some(v),
+                    SizeBit::Kind(k) => match &mut s.0 {
+                        Some((_, kind)) => *kind = k,
+                        None => {
+                            s.0 = Some((at, k));
+                            let mut e = Entry::new(if axis == 0 { "width" } else { "height" });
+                            e.line = line;
+                            self.push(e);
+                        }
+                    },
+                    SizeBit::Range(true, v) => s.1 = Some(v),
+                    SizeBit::Range(false, v) => s.2 = Some(v),
                 }
             }
             Part::Grid(axis, start, span) => {
@@ -2105,24 +2261,41 @@ impl Frame {
     /// Joins sizes and grid lines.
     fn finish(&mut self) -> Result<(), String> {
         for axis in 0..2 {
-            let Some((at, kind, min, max)) = self.size[axis].take() else {
+            let Some((kind, mut min, mut max, line)) = self.size[axis].take() else {
                 continue;
             };
-            let mut v = kind;
-            let ranged = matches!(v.first(), Some(Value::Word(w)) if w == "fit" || w == "grow");
-            if (min.is_some() || max.is_some()) && !ranged {
-                return Err(format!(
-                    "line {}: min- and max- bound a fit-content or stretch size",
-                    self.entry.block.as_ref().unwrap().entries[at].line
-                ));
+            // A px bound of a fit-content or stretch size is the size's own
+            // range (as `width fit <min> <max>` writes it); any other bound
+            // is its own prop, applied to whatever size the element takes.
+            let px = |b: &Option<Vec<Value>>| matches!(b.as_deref(), Some([Value::Number(_)]));
+            if let Some((at, mut v)) = kind {
+                let ranged = matches!(v.as_slice(), [Value::Word(w)] if w == "fit" || w == "grow");
+                if ranged
+                    && (px(&min) || px(&max))
+                    && (min.is_none() || px(&min))
+                    && (max.is_none() || px(&max))
+                {
+                    let zero = Value::Number(Number::parse("0").unwrap());
+                    v.push(min.take().map_or(zero, |m| m[0].clone()));
+                    if let Some(m) = max.take() {
+                        v.push(m[0].clone());
+                    }
+                }
+                self.entry.block.as_mut().unwrap().entries[at].values = v;
             }
-            if ranged && (min.is_some() || max.is_some()) {
-                v.push(min.unwrap_or(Value::Number(Number::parse("0").unwrap())));
-                if let Some(m) = max {
-                    v.push(m);
+            let names = if axis == 0 {
+                ["minWidth", "maxWidth"]
+            } else {
+                ["minHeight", "maxHeight"]
+            };
+            for (name, b) in names.into_iter().zip([min, max]) {
+                if let Some(values) = b {
+                    let mut e = Entry::new(name);
+                    e.values = values;
+                    e.line = line;
+                    self.push(e);
                 }
             }
-            self.entry.block.as_mut().unwrap().entries[at].values = v;
         }
         for i in 0..2 {
             let Some(at) = self.grid[i].take() else {

@@ -395,6 +395,7 @@ impl DressDraw {
                 Size::Calc(c) => c.of(available).max(0.0),
                 Size::Fit { min, max } => current.clamp(min, max),
                 Size::Grow { min, max } => available.clamp(min, max),
+                Size::MinContent | Size::MaxContent => current,
             },
             _ => current,
         };

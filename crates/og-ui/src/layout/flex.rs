@@ -101,6 +101,8 @@ fn apply_size(size: Size, pref: f32, min: f32) -> (f32, f32) {
             (p, min.max(lo).min(p))
         }
         Size::Percent(_) | Size::Calc(_) => (pref, min.min(pref)),
+        Size::MinContent => (min, min),
+        Size::MaxContent => (pref, pref),
     }
 }
 
@@ -393,16 +395,21 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
         min
     };
     let (p, m) = apply_size(n.el.width, pad + pref, pad + min);
-    nodes[i].pref_w = p;
-    nodes[i].min_w = m;
+    let (cp, cm) = (pad + pref, pad + min);
+    let el = n.el;
+    nodes[i].pref_w = el.bounded(0, None, cp, cm, p);
+    nodes[i].min_w = el.bounded(0, None, cp, cm, m);
 }
 
-/// A child's width across a column (or height across a row).
-fn cross_size(size: Size, pref: f32, min: f32, inner: f32, stretch: bool) -> f32 {
-    match size {
-        Size::Fixed(v) => v,
-        Size::Percent(p) => p * inner,
-        Size::Calc(c) => c.of(inner),
+/// A child's width across a column (or height across a row), within its
+/// bounds against `basis` (the parent's inner size, its percentages' basis).
+fn cross_size(n: &Node, axis: usize, inner: f32, basis: f32, stretch: bool) -> f32 {
+    let (size, pref, min) = if axis == 0 {
+        (n.el.width, n.pref_w, n.min_w)
+    } else {
+        (n.el.height, n.pref_h, n.min_h)
+    };
+    let v = match size {
         Size::Grow { .. } => {
             let (lo, hi) = size.bounds();
             inner.clamp(lo, hi)
@@ -412,7 +419,19 @@ fn cross_size(size: Size, pref: f32, min: f32, inner: f32, stretch: bool) -> f32
             inner.clamp(lo, hi)
         }
         Size::Fit { .. } => pref.min(inner).max(min),
-    }
+        _ => size.definite(pref, min, Some(basis)).unwrap_or(pref),
+    };
+    n.el.bounded(axis, Some(basis), pref, min, v)
+}
+
+/// Node `c`'s size along `axis` held to its bounds against `basis`.
+pub(super) fn clamp_to(n: &Node, axis: usize, basis: Option<f32>, v: f32) -> f32 {
+    let (pref, min) = if axis == 0 {
+        (n.pref_w, n.min_w)
+    } else {
+        (n.pref_h, n.min_h)
+    };
+    n.el.bounded(axis, basis, pref, min, v)
 }
 
 /// Main-axis sizes of a line of children: base, then grow or shrink.
@@ -434,13 +453,8 @@ fn main_sizes(
         } else {
             (n.el.height, n.pref_h, n.min_h)
         };
-        let base = match size {
-            Size::Fixed(v) => v,
-            Size::Percent(p) => p * inner,
-            Size::Calc(c) => c.of(inner),
-            _ => pref,
-        };
-        sizes.push(base);
+        let base = size.definite(pref, min, Some(inner)).unwrap_or(pref);
+        sizes.push(clamp_to(n, usize::from(!horizontal), Some(inner), base));
         grow.push(match size {
             Size::Grow { .. } => Some(size.bounds().1),
             _ => None,
@@ -451,6 +465,9 @@ fn main_sizes(
         });
     }
     flex(&mut sizes, &grow, &shrink, avail);
+    for (s, &c) in sizes.iter_mut().zip(kids) {
+        *s = clamp_to(&nodes[c], usize::from(!horizontal), Some(inner), *s);
+    }
     sizes
 }
 
@@ -476,7 +493,7 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
             nodes[c].props.insets.start,
             nodes[c].props.insets.end,
         );
-        nodes[c].w = w;
+        nodes[c].w = clamp_to(&nodes[c], 0, Some(outer), w);
     }
     let fonts = measure.fonts;
     // An auto-fit label: the largest of its steps its text fits at this width.
@@ -535,15 +552,9 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                 let ins = n.props.insets;
                 let w = match (ins.start, ins.end) {
                     (Some(s), Some(e)) if !matches!(n.el.width, Size::Fixed(_)) => {
-                        (inner - s - e).max(0.0)
+                        clamp_to(n, 0, Some(inner), (inner - s - e).max(0.0))
                     }
-                    _ => cross_size(
-                        n.el.width,
-                        n.pref_w,
-                        n.min_w,
-                        inner,
-                        el.cross == Cross::Stretch,
-                    ),
+                    _ => cross_size(n, 0, inner, inner, el.cross == Cross::Stretch),
                 };
                 nodes[c].w = w;
             }
@@ -567,13 +578,7 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                     Size::Grow { .. } | Size::Fit { .. } => fill,
                     _ => inner,
                 };
-                let w = cross_size(
-                    n.el.width,
-                    n.pref_w,
-                    n.min_w,
-                    basis,
-                    el.cross == Cross::Stretch,
-                );
+                let w = cross_size(n, 0, basis, inner, el.cross == Cross::Stretch);
                 // In a horizontal scroller a fitting child keeps its width.
                 let w = match n.el.width {
                     Size::Fit { .. } if el.scroll_x => w.max(n.pref_w),
@@ -602,12 +607,11 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
             let mut sides = Vec::with_capacity(kids.len());
             for &c in &kids {
                 let n = &nodes[c];
-                base.push(match n.el.width {
-                    Size::Fixed(v) => v,
-                    Size::Percent(p) => p * inner,
-                    Size::Calc(c) => c.of(inner),
-                    _ => n.pref_w.min(inner).max(n.min_w),
-                });
+                let w =
+                    n.el.width
+                        .definite(n.pref_w, n.min_w, Some(inner))
+                        .unwrap_or_else(|| n.pref_w.min(inner).max(n.min_w));
+                base.push(clamp_to(n, 0, Some(inner), w));
                 sides.push(n.el.margin[1].of(inner) + n.el.margin[3].of(inner));
             }
             let mut rows = Vec::new();
@@ -640,6 +644,9 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                 let none = vec![None; line.len()];
                 let avail = inner - gaps(el.gap, line.len()) - sides[s..e].iter().sum::<f32>();
                 flex(&mut sizes, &grow, &none, avail);
+                for (s, &c) in sizes.iter_mut().zip(line) {
+                    *s = clamp_to(&nodes[c], 0, Some(inner), *s);
+                }
                 let free = avail - sizes.iter().sum::<f32>();
                 for (&c, w) in line.iter().zip(sizes) {
                     nodes[c].w = w;
@@ -752,9 +759,11 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
     let pad = n.el.padding.vertical();
     let content_min = if scroll { 0.0 } else { min };
     let (p, m) = apply_size(n.el.height, pad + pref, pad + content_min);
+    let (cp, cm) = (pad + pref, pad + content_min);
+    let el = n.el;
     nodes[i].content_h = pref;
-    nodes[i].pref_h = p;
-    nodes[i].min_h = m;
+    nodes[i].pref_h = el.bounded(1, None, cp, cm, p);
+    nodes[i].min_h = el.bounded(1, None, cp, cm, m);
 }
 
 pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
@@ -769,7 +778,7 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
             nodes[c].props.insets.top,
             nodes[c].props.insets.bottom,
         );
-        nodes[c].h = h;
+        nodes[c].h = clamp_to(&nodes[c], 1, Some(outer), h);
     }
     let kids = nodes[i].children.clone();
     if kids.is_empty() {
@@ -782,15 +791,9 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
                 let ins = n.props.insets;
                 let h = match (ins.top, ins.bottom) {
                     (Some(t), Some(b)) if !matches!(n.el.height, Size::Fixed(_)) => {
-                        (inner - t - b).max(0.0)
+                        clamp_to(n, 1, Some(inner), (inner - t - b).max(0.0))
                     }
-                    _ => cross_size(
-                        n.el.height,
-                        n.pref_h,
-                        n.min_h,
-                        inner,
-                        el.cross == Cross::Stretch,
-                    ),
+                    _ => cross_size(n, 1, inner, inner, el.cross == Cross::Stretch),
                 };
                 nodes[c].h = h;
             }
@@ -814,10 +817,10 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
             for &c in &kids {
                 let n = &nodes[c];
                 let h = cross_size(
-                    n.el.height,
-                    n.pref_h,
-                    n.min_h,
+                    n,
+                    1,
                     (inner - cross_margins(n)).max(0.0),
+                    inner,
                     el.cross == Cross::Stretch,
                 );
                 // A Fit child keeps its content height across a row.
@@ -840,17 +843,17 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
                     let n = &nodes[c];
                     let line_h = line_h - cross_margins(n);
                     let h = match n.el.height {
-                        Size::Fixed(v) => v,
-                        Size::Percent(p) => p * inner,
-                        Size::Calc(c) => c.of(inner),
                         Size::Grow { .. } => {
                             let (lo, hi) = n.el.height.bounds();
                             line_h.clamp(lo, hi)
                         }
                         Size::Fit { .. } if el.cross == Cross::Stretch => line_h,
                         Size::Fit { .. } => n.pref_h,
+                        size => size
+                            .definite(n.pref_h, n.min_h, Some(inner))
+                            .unwrap_or(n.pref_h),
                     };
-                    nodes[c].h = h;
+                    nodes[c].h = clamp_to(n, 1, Some(inner), h);
                 }
             }
         }
@@ -1155,7 +1158,9 @@ pub(super) fn auto_offset(n: &Node, edge: usize, free: f32) -> Option<f32> {
 pub(crate) fn on_screen(n: &Node, screen: &Rect) -> Rect {
     let ins = &n.props.insets;
     let w = out_size(n.el.width, n.pref_w, screen.width, ins.start, ins.end);
+    let w = clamp_to(n, 0, Some(screen.width), w);
     let h = out_size(n.el.height, n.pref_h, screen.height, ins.top, ins.bottom);
+    let h = clamp_to(n, 1, Some(screen.height), h);
     let (x, y) = place_in(screen, w, h, ins, Align::Start, Cross::Start);
     Rect::new(x, y, w, h)
 }
@@ -1210,5 +1215,7 @@ fn out_size(size: Size, pref: f32, outer: f32, a: Option<f32>, b: Option<f32>) -
             let (lo, hi) = size.bounds();
             pref.clamp(lo, hi)
         }
+        // A content size is its preferred size, which layout already holds.
+        (_, _, Size::MinContent | Size::MaxContent) => pref,
     }
 }
