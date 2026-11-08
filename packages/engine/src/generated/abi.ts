@@ -1009,8 +1009,6 @@ export interface HostAbi<A, V> {
   og_ui_screen_transition(id: string, screen: string, desc: string | undefined): string;
   /** `og.ui.previewViewport` */
   og_ui_preview_viewport(world: number, viewport: string): void;
-  /** `og.ui.toggleSwitch` */
-  og_ui_toggle_switch(id: string, on: boolean, desc: string | undefined): string;
   /** `og.ui.numberStepper` */
   og_ui_number_stepper(id: string, value: number, desc: string | undefined): string;
   /** `og.ui.dropdown` */
@@ -1804,7 +1802,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_burst",
   "og_ui_screen_transition",
   "og_ui_preview_viewport",
-  "og_ui_toggle_switch",
   "og_ui_number_stepper",
   "og_ui_dropdown",
   "og_ui_props",

@@ -3015,12 +3015,6 @@ pub fn og_ui_preview_viewport(env: Env, world: u32, viewport: String) {
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
 }
 
-#[napi(js_name = "og_ui_toggle_switch")]
-pub fn og_ui_toggle_switch(env: Env, id: String, on: bool, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_toggle_switch(&Host, id, on, desc)
-}
-
 #[napi(js_name = "og_ui_number_stepper")]
 pub fn og_ui_number_stepper(env: Env, id: String, value: f64, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

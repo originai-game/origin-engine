@@ -12010,9 +12010,6 @@
         "EmitterPreset",
         "EmitterDesc",
         "EffectLayerDesc",
-        "LabelSide",
-        "ToggleSwitchDesc",
-        "SwitchResult",
         "ValueFormat",
         "NumberStepperDesc",
         "NumberResult",
@@ -13473,32 +13470,6 @@
           "returns": "Void",
           "publish": true,
           "host": false
-        },
-        {
-          "name": "toggleSwitch",
-          "doc": "A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Toggle.track[on|off][hover|pressed|focused|disabled]`, `Toggle.knob[on]`, `Toggle.row[hover|pressed|focused|disabled]` (the whole row, which takes the press). Role switch, checked when on. Probe: `<id>` (its label as name), `<id>/Track`, `<id>/Track/Knob`.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "on",
-              "type": "bool",
-              "optional": false,
-              "doc": "Its state from game state."
-            },
-            {
-              "name": "desc",
-              "type": "ToggleSwitchDesc",
-              "optional": true,
-              "doc": "Its label and states."
-            }
-          ],
-          "returns": "SwitchResult",
-          "publish": true
         },
         {
           "name": "numberStepper",
@@ -49455,102 +49426,6 @@
           "default": []
         }
       },
-      "additionalProperties": false
-    },
-    "LabelSide": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "Which side of a switch or a check its label sits.",
-      "type": "string",
-      "enum": [
-        "start",
-        "end"
-      ],
-      "x-og-variants": {
-        "start": "Before it, the switch at the row's end (a settings row: the default for a switch).",
-        "end": "After it (the default for a check)."
-      }
-    },
-    "ToggleSwitchDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A switch: its label, description and states.",
-      "type": "object",
-      "properties": {
-        "label": {
-          "type": "string",
-          "description": "Its label (the whole row takes the press).",
-          "default": ""
-        },
-        "description": {
-          "type": "string",
-          "description": "A line under the label; empty for none.",
-          "default": ""
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "Shown but inert.",
-          "default": false
-        },
-        "side": {
-          "$ref": "#/$defs/LabelSide",
-          "description": "Where the label sits.",
-          "default": "start"
-        },
-        "size": {
-          "$ref": "#/$defs/ControlSize",
-          "description": "Its size.",
-          "default": "medium"
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The row's width; null fits (a settings row grows: pass grow).",
-          "default": null
-        },
-        "onLabel": {
-          "type": "string",
-          "description": "What a screen reader and the probe say when on (`On`); empty for none.",
-          "default": ""
-        },
-        "offLabel": {
-          "type": "string",
-          "description": "And when off.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "SwitchResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A switch's or a check's state after this tick.",
-      "type": "object",
-      "properties": {
-        "response": {
-          "$ref": "#/$defs/Response",
-          "description": "What happened to it."
-        },
-        "on": {
-          "type": "boolean",
-          "description": "Its state, to keep and pass back."
-        },
-        "changed": {
-          "type": "boolean",
-          "description": "It changed this tick."
-        }
-      },
-      "required": [
-        "response",
-        "on",
-        "changed"
-      ],
       "additionalProperties": false
     },
     "ValueFormat": {

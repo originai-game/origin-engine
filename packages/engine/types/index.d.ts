@@ -27325,80 +27325,6 @@ export interface EffectLayerDesc {
 
 
 /**
- * Which side of a switch or a check its label sits.
- * - `"start"`: Before it, the switch at the row's end (a settings row: the default for a switch).
- * - `"end"`: After it (the default for a check).
- */
-export type LabelSide = "start" | "end";
-
-/**
- * A switch: its label, description and states.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ToggleSwitchDesc {
-  /**
-   * Its label (the whole row takes the press).
-   *
-   * @default ""
-   */
-  readonly label?: string;
-  /**
-   * A line under the label; empty for none.
-   *
-   * @default ""
-   */
-  readonly description?: string;
-  /**
-   * Shown but inert.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-  /**
-   * Where the label sits.
-   *
-   * @default "start"
-   */
-  readonly side?: LabelSide;
-  /**
-   * Its size.
-   *
-   * @default "medium"
-   */
-  readonly size?: ControlSize;
-  /**
-   * The row's width; null fits (a settings row grows: pass grow).
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * What a screen reader and the probe say when on (`On`); empty for none.
-   *
-   * @default ""
-   */
-  readonly onLabel?: string;
-  /**
-   * And when off.
-   *
-   * @default ""
-   */
-  readonly offLabel?: string;
-}
-
-/** A switch's or a check's state after this tick. */
-export interface SwitchResult {
-  /** What happened to it. */
-  readonly response: Response;
-  /** Its state, to keep and pass back. */
-  readonly on: boolean;
-  /** It changed this tick. */
-  readonly changed: boolean;
-}
-
-
-/**
  * How a control shows a number.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -41060,14 +40986,6 @@ export declare namespace og {
      * @param build Builds what it draws.
      */
     function effectLayer(id: string, desc: EffectLayerDesc, build: UiBuild): void;
-    /**
-     * A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Toggle.track[on|off][hover|pressed|focused|disabled]`, `Toggle.knob[on]`, `Toggle.row[hover|pressed|focused|disabled]` (the whole row, which takes the press). Role switch, checked when on. Probe: `<id>` (its label as name), `<id>/Track`, `<id>/Track/Knob`.
-     *
-     * @param id Its id.
-     * @param on Its state from game state.
-     * @param desc Its label and states.
-     */
-    function toggleSwitch(id: string, on: boolean, desc?: ToggleSwitchDesc): SwitchResult;
     /**
      * A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Its label and the buttons share a line while they fit, the buttons go under the label when they do not (larger text, a narrow column). Role spinbutton with its range; its − and + are buttons under a finger (stops keys and pads reach too) and named images on a fine pointer (Left and Right on the focused stepper are theirs). Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`.
      *

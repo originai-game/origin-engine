@@ -1287,6 +1287,18 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Neither on nor off: a dash in its box (HTML `indeterminate`); a press turns it on."
     ),
     p!(
+        "dataOn",
+        Ty::Text,
+        ["toggle"],
+        "What a switch's value says while on (`data-on=\"On\"`), for a screen reader and the probe; empty for none."
+    ),
+    p!(
+        "dataOff",
+        Ty::Text,
+        ["toggle"],
+        "And while off (`data-off=\"Off\"`)."
+    ),
+    p!(
         "group",
         Ty::Text,
         ["radio"],

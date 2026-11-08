@@ -943,7 +943,8 @@ impl Ui {
                             side,
                             size: styled.control_size(),
                             width: r.size("width"),
-                            ..crate::widgets::ToggleSwitchDesc::default()
+                            on_label: r.str("dataOn").unwrap_or_default().to_string(),
+                            off_label: r.str("dataOff").unwrap_or_default().to_string(),
                         },
                     )
                 } else {

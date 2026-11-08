@@ -29,7 +29,7 @@ short message popup that goes away on its own	og.ui.toast
 weapon wheel chosen with the right stick	screens §7
 on-screen virtual joystick for mobile	components §37
 plus and minus buttons to pick how many players	og.ui.numberStepper
-on off switch for the music	og.ui.toggleSwitch
+on off switch for the music	components §18
 make the hand reach for the door handle	og.IkChain
 hair and tail that jiggle when the character moves	og.SpringBone
 sprite sheet animation	og.Flipbook

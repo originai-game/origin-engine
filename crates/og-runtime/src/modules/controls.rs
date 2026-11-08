@@ -1,13 +1,9 @@
-//! og.ui's controls (`api/ui-controls.ogt`): the switch, the checkbox, the
-//! radio group, the segmented control, the slider, the number stepper and
-//! the dropdown, each og-ui's native control (docs/ui.md §2), their descs
+//! og.ui's controls (`api/ui-controls.ogt`): the number stepper and the
+//! dropdown, each og-ui's native control (docs/ui.md §2), their descs
 //! read from the JSON the API passes.
 
 use super::*;
-use og_ui::{
-    ControlSize, DropdownDesc, DropdownOption, LabelSide, NumberStepperDesc, SwitchResult,
-    ToggleSwitchDesc, ValueFormat,
-};
+use og_ui::{DropdownDesc, DropdownOption, NumberStepperDesc, ValueFormat};
 
 fn text(v: &Value) -> String {
     v.as_str().unwrap_or_default().to_owned()
@@ -25,14 +21,6 @@ fn items(v: &Value) -> &[Value] {
     v.as_array().map_or(&[], Vec::as_slice)
 }
 
-fn control_size(v: &Value) -> ControlSize {
-    match v.as_str() {
-        Some("small") => ControlSize::Small,
-        Some("large") => ControlSize::Large,
-        _ => ControlSize::Medium,
-    }
-}
-
 fn format(v: &Value) -> ValueFormat {
     ValueFormat {
         decimals: v["decimals"].as_i64().and_then(|d| usize::try_from(d).ok()),
@@ -44,34 +32,6 @@ fn format(v: &Value) -> ValueFormat {
             .and_then(|d| usize::try_from(d).ok())
             .unwrap_or(0),
     }
-}
-
-fn switch(r: SwitchResult) -> String {
-    json!({ "response": response(r.response), "on": r.on, "changed": r.changed }).to_string()
-}
-
-pub fn og_ui_toggle_switch(id: String, on: bool, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let desc = ToggleSwitchDesc {
-        label: text(&d["label"]),
-        description: text(&d["description"]),
-        disabled: flag(&d["disabled"]),
-        side: d["side"]
-            .as_str()
-            .and_then(LabelSide::from_name)
-            .unwrap_or(LabelSide::Start),
-        size: control_size(&d["size"]),
-        width: size(&d["width"]),
-        on_label: text(&d["onLabel"]),
-        off_label: text(&d["offLabel"]),
-    };
-    let r = with_ui("og.ui.toggleSwitch", |ui| {
-        ui.toggle_switch(id.as_str(), on, &desc)
-    });
-    switch(r.unwrap_or(SwitchResult {
-        on,
-        ..SwitchResult::default()
-    }))
 }
 
 pub fn og_ui_number_stepper(id: String, value: f64, desc: Option<String>) -> String {

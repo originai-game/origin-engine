@@ -1347,9 +1347,6 @@ impl UiApi for WebHost {
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>) {
         rt::og_ui_label(id, text, desc)
     }
-    fn og_ui_toggle_switch(&self, id: String, on: bool, desc: Option<String>) -> String {
-        rt::og_ui_toggle_switch(id, on, desc)
-    }
     fn og_ui_number_stepper(&self, id: String, value: f64, desc: Option<String>) -> String {
         rt::og_ui_number_stepper(id, value, desc)
     }

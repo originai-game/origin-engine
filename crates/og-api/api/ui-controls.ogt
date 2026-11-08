@@ -1,38 +1,3 @@
-  enum LabelSide {
-    doc "Which side of a switch or a check its label sits."
-    variant start "Before it, the switch at the row's end (a settings row: the default for a switch)."
-    variant end "After it (the default for a check)."
-  }
-
-  struct ToggleSwitchDesc {
-    doc "A switch: its label, description and states."
-    desc true
-    field label String "Its label (the whole row takes the press)."
-    field description String "A line under the label; empty for none."
-    field disabled bool "Shown but inert."
-    field side LabelSide "Where the label sits."
-    field size ControlSize "Its size."
-    field width Option.Size "The row's width; null fits (a settings row grows: pass grow)."
-    field onLabel String "What a screen reader and the probe say when on (`On`); empty for none."
-    field offLabel String "And when off."
-  }
-
-  struct SwitchResult {
-    doc "A switch's or a check's state after this tick."
-    field response Response "What happened to it."
-    field on bool "Its state, to keep and pass back."
-    field changed bool "It changed this tick."
-  }
-
-  fn toggleSwitch {
-    doc "A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Toggle.track[on|off][hover|pressed|focused|disabled]`, `Toggle.knob[on]`, `Toggle.row[hover|pressed|focused|disabled]` (the whole row, which takes the press). Role switch, checked when on. Probe: `<id>` (its label as name), `<id>/Track`, `<id>/Track/Knob`."
-    aliases "toggle, switch, Unity Toggle, Godot CheckButton"
-    param id String "Its id."
-    param on bool "Its state from game state."
-    param desc ToggleSwitchDesc "Its label and states."
-    returns SwitchResult
-  }
-
   struct ValueFormat {
     doc "How a control shows a number."
     desc true

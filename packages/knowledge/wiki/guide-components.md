@@ -523,6 +523,8 @@ Its own props, beside every element's:
 | `disabled` | `bool` | Takes no input. |
 | `switch` | `bool` | Draws the checkbox as a switch (HTML `switch`); without it, a box with a check. |
 | `indeterminate` | `bool` | Neither on nor off: a dash in its box (HTML `indeterminate`); a press turns it on. |
+| `data-on` | `text` | What a switch's value says while on (`data-on="On"`), for a screen reader and the probe; empty for none. |
+| `data-off` | `text` | And while off (`data-off="Off"`). |
 | `checked` | `bool` | Whether it is on (written back). Two-way only with an explicit bind: attribute. |
 | `description` | `text` | A line under its caption: a `<small>` in its `<label>`. |
 | `side` | `start \| end` | Where its caption sits, from the source order in its `<label>`: start before the switch (caption first), end after it. |

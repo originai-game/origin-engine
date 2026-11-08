@@ -102,7 +102,6 @@ test("foundations: an effect layer shows what it holds; a view frame turns by a 
 test("every control: on a coarse pointer each target a finger presses is at least 44 px (or reaches it by its hit slop)", () => {
   // Wrong: a 28 px stepper arrow or clear button a thumb misses.
   const engine = run(() => {
-    og.ui.toggleSwitch("Switch", false, { label: "Switch" });
     og.ui.numberStepper("Step", 1, { label: "Step" });
     og.ui.inputField("Field", "", { label: "Field", clearable: true });
     og.ui.dropdown("Drop", { label: "Drop", options: [{ label: "A" }] });
@@ -124,23 +123,6 @@ test("every control: on a coarse pointer each target a finger presses is at leas
     engine.advance(6);
   }
 });
-
-test("toggleSwitch: the whole row takes the tap; the state is the game's", () => {
-  // Wrong: only the knob taking the tap, or the component keeping its own state (game state ignored).
-  let on = false;
-  const engine = run(() => {
-    on = og.ui.toggleSwitch("Music", on, { label: "Music", description: "Background tracks", width: { kind: "grow" } as never }).on;
-  });
-  const sw = find(engine, (e) => e.role === "switch")!;
-  expect(sw.name).toContain("Music");
-  // A tap at the row's start, on the label, far from the track.
-  const label = find(engine, (e) => e.text === "Music")!;
-  engine.probe.commands(`0:touch_move:${Math.round(label.x + 4)},${Math.round(label.y + label.height / 2)};0.05:touch_start;0.1:touch_end`);
-  engine.advance(12);
-  expect(on).toBeTrue();
-});
-
-// ── ranges ──────────────────────────────────────────────────────────────
 
 test("numberStepper: the buttons step to the bounds and disable there; typed text is not needed", () => {
   // Wrong: going past max, or leaving + enabled at max.
@@ -204,7 +186,6 @@ test("dropdown: a tap opens the list with the focus on the chosen option, a tap 
 
 /** The controls a settings or a shop screen holds, labelled through `l` (the pseudo-locale's longer words). */
 function gallery(l: (s: string) => string): void {
-  og.ui.toggleSwitch("Music", true, { label: l("Music"), description: l("Background tracks"), width: { kind: "grow" } as never });
   og.ui.numberStepper("Players", 2, { label: l("Players"), min: 1, max: 8 });
   og.ui.inputField("Name", "", { label: l("Hero name"), placeholder: l("Type a name"), helper: l("Shown to other players") });
   og.ui.dropdown("Lang", { label: l("Language"), selected: 0, options: [{ label: "English" }, { label: "日本語" }] });

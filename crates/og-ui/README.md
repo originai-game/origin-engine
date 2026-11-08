@@ -1150,9 +1150,8 @@ snapshot and restore).
 
 The IDL module `ui` (`crates/og-api/api/ui.ogt`, `og.ui` in
 `packages/engine/types/index.d.ts`, `packages/knowledge/wiki/ui.md`) carries
-every call above with the same names in lowerCamelCase: value-carrying
-widgets return the new value (`og.ui.toggleSwitch(...).on`,
-`og.ui.numberStepper(...).value`); containers have `open*`/`close` pairs and
+every call above with the same names in lowerCamelCase: widgets return
+what happened to them (`og.ui.close().clicked`); containers have `open*`/`close` pairs and
 `host false` sugar taking a build callback (`row`, `column`, `anchor`); `toast`,
 `dismissToast`, `navigate` and `previewViewport` take the world and work
 between ticks; `frameTheme`, `frameViewport`, `hasIcon`,

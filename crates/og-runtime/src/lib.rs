@@ -203,8 +203,8 @@ pub use modules::{
     og_ui_set_device, og_ui_set_focus, og_ui_set_haptics, og_ui_set_hud_edit, og_ui_set_hud_layout,
     og_ui_set_hud_player, og_ui_set_navigation, og_ui_set_players, og_ui_set_prop,
     og_ui_set_virtual_cursor, og_ui_spacer, og_ui_spinner, og_ui_stop, og_ui_text_area,
-    og_ui_text_field, og_ui_theme, og_ui_tick, og_ui_toast, og_ui_toggle_switch, og_ui_viewport,
-    og_ui_virtual_cursor, og_ui_visual_state, og_ui_zoom_view, set_viewport,
+    og_ui_text_field, og_ui_theme, og_ui_tick, og_ui_toast, og_ui_viewport, og_ui_virtual_cursor,
+    og_ui_visual_state, og_ui_zoom_view, set_viewport,
 };
 pub use motion::{
     og_motion_capabilities, og_motion_clear, og_motion_face, og_motion_jump, og_motion_look_at,

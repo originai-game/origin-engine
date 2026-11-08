@@ -4,10 +4,9 @@
 // are `host false`, the rest are og-ui's native controls (natives.ts).
 
 import { inputArea, inputField } from "./fields.ts";
-import { dropdown, numberStepper, toggleSwitch } from "./natives.ts";
+import { dropdown, numberStepper } from "./natives.ts";
 
 export const controls = Object.freeze({
-  toggleSwitch,
   numberStepper,
   inputField,
   inputArea,

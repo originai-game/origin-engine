@@ -1001,7 +1001,7 @@ fn core_controls_choose_step_hold_and_report() {
 <div id="Page">
   <label><input type="checkbox" id="Box" bind:checked={$box}> Box</label>
   <label><input type="checkbox" id="Mixed" indeterminate> Some</label>
-  <label><input type="checkbox" switch id="Sw"> Switch</label>
+  <label><input type="checkbox" switch id="Sw" data-on="On" data-off="Off"> Switch</label>
   <label><input type="radio" id="Easy" name="lv" value="easy" bind:group={$level}> Easy</label>
   <label><input type="radio" id="Hard" name="lv" value="hard" bind:group={$level}> Hard</label>
   <input type="number" id="Qty" class="stepper" max="3" bind:value={$qty}>
@@ -1025,6 +1025,7 @@ fn core_controls_choose_step_hold_and_report() {
     }
     assert_eq!(d.a11y("Box").role, "checkbox", "a plain checkbox is a box");
     assert_eq!(d.a11y("Sw").role, "switch");
+    assert_eq!(d.a11y("Sw").value, "Off", "data-off is its value while off");
     assert_eq!(d.a11y("Mixed").value, "mixed", "indeterminate");
     d.click("Box");
     assert_eq!(d.read("box"), json!(true));
