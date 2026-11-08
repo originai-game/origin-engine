@@ -81,7 +81,7 @@ const BUILTINS: [(&str, Builtin); 9] = [
     ("blur", Builtin::Blur),
 ];
 
-const BLENDS: [(&str, Blend); 7] = [
+const BLENDS: [(&str, Blend); 17] = [
     ("normal", Blend::Normal),
     ("multiply", Blend::Multiply),
     ("screen", Blend::Screen),
@@ -89,6 +89,16 @@ const BLENDS: [(&str, Blend); 7] = [
     ("overlay", Blend::Overlay),
     ("softLight", Blend::SoftLight),
     ("colorDodge", Blend::ColorDodge),
+    ("darken", Blend::Darken),
+    ("lighten", Blend::Lighten),
+    ("colorBurn", Blend::ColorBurn),
+    ("hardLight", Blend::HardLight),
+    ("difference", Blend::Difference),
+    ("exclusion", Blend::Exclusion),
+    ("hue", Blend::Hue),
+    ("saturation", Blend::Saturation),
+    ("color", Blend::Color),
+    ("luminosity", Blend::Luminosity),
 ];
 
 fn names<T>(all: &[(&str, T)]) -> String {

@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "UI: every CSS mix-blend-mode, in documents, style packs and Rive",
+      "summary": "mix-blend-mode takes darken, lighten, color-burn, hard-light, difference, exclusion, hue, saturation, color and luminosity beside the earlier modes; style packs take them as `blend`, Rive's blend modes 16 to 28 convert instead of failing, and og-render's UiBlend gains the variants."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og-render UiBlend::Overlay, SoftLight and ColorDodge",
+      "summary": "They now blend sRGB-encoded values, as CSS Compositing does, instead of linear light; mid-tones under them are lighter than before."
+    }
+  ]
+}

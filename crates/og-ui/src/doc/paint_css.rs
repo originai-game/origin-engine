@@ -1062,13 +1062,23 @@ pub(crate) fn blend(text: &str) -> Result<Blend, String> {
         "overlay" => Blend::Overlay,
         "soft-light" => Blend::SoftLight,
         "color-dodge" => Blend::ColorDodge,
+        "darken" => Blend::Darken,
+        "lighten" => Blend::Lighten,
+        "color-burn" => Blend::ColorBurn,
+        "hard-light" => Blend::HardLight,
+        "difference" => Blend::Difference,
+        "exclusion" => Blend::Exclusion,
+        "hue" => Blend::Hue,
+        "saturation" => Blend::Saturation,
+        "color" => Blend::Color,
+        "luminosity" => Blend::Luminosity,
         w => {
-            return Err(format!(
-                "'{w}' is not a mix-blend-mode here: normal, multiply, screen, plus-lighter, overlay, soft-light, color-dodge"
-            ));
+            return Err(format!("'{w}' is not a blend mode: {BLEND_MODES}"));
         }
     })
 }
+
+const BLEND_MODES: &str = "normal, multiply, screen, overlay, darken, lighten, color-dodge, color-burn, hard-light, soft-light, difference, exclusion, hue, saturation, color, luminosity, plus-lighter";
 
 /// `text-shadow: <x> <y> [<blur>] [<colour>], …` (unset colour: the text's,
 /// given as `current`).

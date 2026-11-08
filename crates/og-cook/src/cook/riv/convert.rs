@@ -384,12 +384,22 @@ fn convert(groups: &[Group], assets: &[Asset], g: usize, depth: u32) -> Result<A
                     3 => UiBlend::Normal,
                     14 => UiBlend::Screen,
                     15 => UiBlend::Overlay,
+                    16 => UiBlend::Darken,
+                    17 => UiBlend::Lighten,
                     18 => UiBlend::ColorDodge,
+                    19 => UiBlend::ColorBurn,
+                    20 => UiBlend::HardLight,
                     21 => UiBlend::SoftLight,
+                    22 => UiBlend::Difference,
+                    23 => UiBlend::Exclusion,
                     24 => UiBlend::Multiply,
+                    25 => UiBlend::Hue,
+                    26 => UiBlend::Saturation,
+                    27 => UiBlend::Color,
+                    28 => UiBlend::Luminosity,
                     m => {
                         return Err(format!(
-                            "{}: blend mode {m} is not converted (normal, screen, overlay, colour dodge, soft light and multiply are)",
+                            "{}: blend mode {m} is not a Rive blend mode (3, 14 to 28)",
                             at(o)
                         ));
                     }

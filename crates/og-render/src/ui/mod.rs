@@ -496,14 +496,28 @@ pub enum UiBlend {
     Overlay,
     SoftLight,
     ColorDodge,
+    Darken,
+    Lighten,
+    ColorBurn,
+    HardLight,
+    Difference,
+    Exclusion,
+    /// The non-separable modes (Compositing and Blending 1 §10.2): the
+    /// shape's hue, saturation, both, or luminosity over the backdrop's.
+    Hue,
+    Saturation,
+    Color,
+    Luminosity,
 }
 
 impl UiBlend {
-    /// Whether the blend reads the destination in the shader.
+    /// Whether the blend reads the destination in the shader: every mode
+    /// but normal, multiply, screen and add, which fixed-function blending
+    /// does.
     pub fn reads_destination(self) -> bool {
-        matches!(
+        !matches!(
             self,
-            UiBlend::Overlay | UiBlend::SoftLight | UiBlend::ColorDodge
+            UiBlend::Normal | UiBlend::Multiply | UiBlend::Screen | UiBlend::Add
         )
     }
 }

@@ -62,7 +62,7 @@ fn ralign(r: &mut R) -> Option<UiAlign> {
     })
 }
 
-const BLENDS: [UiBlend; 7] = [
+const BLENDS: [UiBlend; 17] = [
     UiBlend::Normal,
     UiBlend::Multiply,
     UiBlend::Screen,
@@ -70,6 +70,16 @@ const BLENDS: [UiBlend; 7] = [
     UiBlend::Overlay,
     UiBlend::SoftLight,
     UiBlend::ColorDodge,
+    UiBlend::Darken,
+    UiBlend::Lighten,
+    UiBlend::ColorBurn,
+    UiBlend::HardLight,
+    UiBlend::Difference,
+    UiBlend::Exclusion,
+    UiBlend::Hue,
+    UiBlend::Saturation,
+    UiBlend::Color,
+    UiBlend::Luminosity,
 ];
 const REPEATS: [UiRepeat; 4] = [
     UiRepeat::Repeat,

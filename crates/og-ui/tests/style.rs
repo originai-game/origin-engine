@@ -506,7 +506,7 @@ fn a_dressing_draws_with_the_ui_pass_types() {
         ),
         ("-og-stroke: 2px var(--primary) sideways", "'sideways'"),
         ("-og-effect: sparkle 2", "not an effect"),
-        ("mix-blend-mode: lighten", "not a blend mode"),
+        ("mix-blend-mode: sparkle", "not a blend mode"),
         (
             "-og-fill: linear 90 var(--primary) 0.8 var(--danger) 0.2",
             "out of order",

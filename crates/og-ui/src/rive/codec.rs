@@ -65,6 +65,16 @@ fn blend(b: UiBlend) -> u8 {
         UiBlend::Overlay => 4,
         UiBlend::SoftLight => 5,
         UiBlend::ColorDodge => 6,
+        UiBlend::Darken => 7,
+        UiBlend::Lighten => 8,
+        UiBlend::ColorBurn => 9,
+        UiBlend::HardLight => 10,
+        UiBlend::Difference => 11,
+        UiBlend::Exclusion => 12,
+        UiBlend::Hue => 13,
+        UiBlend::Saturation => 14,
+        UiBlend::Color => 15,
+        UiBlend::Luminosity => 16,
     }
 }
 
@@ -77,6 +87,16 @@ fn rblend(v: u8) -> Option<UiBlend> {
         4 => UiBlend::Overlay,
         5 => UiBlend::SoftLight,
         6 => UiBlend::ColorDodge,
+        7 => UiBlend::Darken,
+        8 => UiBlend::Lighten,
+        9 => UiBlend::ColorBurn,
+        10 => UiBlend::HardLight,
+        11 => UiBlend::Difference,
+        12 => UiBlend::Exclusion,
+        13 => UiBlend::Hue,
+        14 => UiBlend::Saturation,
+        15 => UiBlend::Color,
+        16 => UiBlend::Luminosity,
         _ => return None,
     })
 }

@@ -592,6 +592,16 @@ pub(crate) fn shape(
         UiBlend::Overlay => 4,
         UiBlend::SoftLight => 5,
         UiBlend::ColorDodge => 6,
+        UiBlend::Darken => 7,
+        UiBlend::Lighten => 8,
+        UiBlend::ColorBurn => 9,
+        UiBlend::HardLight => 10,
+        UiBlend::Difference => 11,
+        UiBlend::Exclusion => 12,
+        UiBlend::Hue => 13,
+        UiBlend::Saturation => 14,
+        UiBlend::Color => 15,
+        UiBlend::Luminosity => 16,
     };
     g.kinds[2] = mode_word | blend << 4;
     let mut texture = None;

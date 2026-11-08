@@ -559,8 +559,17 @@ blurred backdrop (its `opacity()` mixes over the unblurred one), and
 `drop-shadow()` casts nothing on the opaque backdrop. The backdrop is
 read from the blur pyramid, so a backdrop with no blur is as soft as
 its finest level. `mix-blend-mode`
-takes normal, multiply, screen, plus-lighter, overlay, soft-light and
-color-dodge. `text-shadow` takes a comma list of `x y [blur] [color]`.
+takes every mode of CSS Compositing 1: normal, multiply, screen, overlay,
+darken, lighten, color-dodge, color-burn, hard-light, soft-light,
+difference, exclusion, hue, saturation, color, luminosity and
+plus-lighter. All but multiply, screen and plus-lighter read what is
+under the element and blend sRGB-encoded values, as CSS does; multiply
+and screen are fixed-function blends in linear light (a few levels darker
+than a browser's mid-tones), which also work inside an offscreen layer. A
+mode that reads what is under it is drawn only on the screen, not inside
+a layer (a `filter`, mask or material of an ancestor), and an element's
+mode applies to each of its own shapes, not to its subtree as one group,
+so `isolation` is not yet read. `text-shadow` takes a comma list of `x y [blur] [color]`.
 `-og-material: <name>(<params>…)` composites the element and its subtree
 through one of og-render's built-in layer materials (dissolve, shine,
 hologram, glitch, ripple, pixelate, color-adjust, outline, blur), each
