@@ -1854,6 +1854,12 @@ pub(crate) struct QueryWorld {
     colliders: rp::ColliderSet,
     broad: rp::BroadPhaseBvh,
     narrow: rp::NarrowPhase,
+    /// Each static height field built in chunks ([`crate::FIELD_CHUNK`]):
+    /// its chunks' colliders, which [`QueryWorld::raycast`] casts itself
+    /// in the order the ray meets them.
+    fields: Vec<Vec<rp::ColliderHandle>>,
+    /// By collider handle index: whether it is one of those chunks.
+    chunk: Vec<bool>,
 }
 
 fn keep(c: &rp::Collider, f: &QueryFilter) -> bool {
@@ -1873,6 +1879,8 @@ impl QueryWorld {
             colliders: rp::ColliderSet::new(),
             broad: rp::BroadPhaseBvh::new(),
             narrow: rp::NarrowPhase::new(),
+            fields: Vec::new(),
+            chunk: Vec::new(),
         };
         let mut placed = Vec::with_capacity(scene.bodies.len() + scene.statics.len());
         for b in &scene.bodies {
@@ -1899,13 +1907,21 @@ impl QueryWorld {
             if let Some(f) = chunked(&s.collider, shared) {
                 let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
                 let (cx, cz) = crate::field_chunks(f.columns, f.rows);
+                let mut chunks = Vec::with_capacity((cx * cz) as usize);
                 for k in 0..cx * cz {
                     let built =
                         chunk_collider(&s.collider, &f, k, s.scale, at, s.entity, shared)?.build();
                     let aabb = built.compute_aabb();
                     let h = q.colliders.insert(built);
                     q.broad.set_aabb(&params, h, aabb);
+                    let i = h.into_raw_parts().0 as usize;
+                    if q.chunk.len() <= i {
+                        q.chunk.resize(i + 1, false);
+                    }
+                    q.chunk[i] = true;
+                    chunks.push(h);
                 }
+                q.fields.push(chunks);
                 continue;
             }
             placed.push((
@@ -1931,7 +1947,24 @@ impl QueryWorld {
     }
 
     fn with<T>(&self, f: &QueryFilter, run: impl FnOnce(&rp::QueryPipeline<'_>) -> T) -> T {
-        let predicate = |_: rp::ColliderHandle, c: &rp::Collider| keep(c, f);
+        self.pipeline(f, false, run)
+    }
+
+    /// [`Self::with`], without the height fields' chunks when `no_chunks`.
+    fn pipeline<T>(
+        &self,
+        f: &QueryFilter,
+        no_chunks: bool,
+        run: impl FnOnce(&rp::QueryPipeline<'_>) -> T,
+    ) -> T {
+        let chunk = |h: rp::ColliderHandle| {
+            no_chunks
+                && self
+                    .chunk
+                    .get(h.into_raw_parts().0 as usize)
+                    .is_some_and(|&c| c)
+        };
+        let predicate = |h: rp::ColliderHandle, c: &rp::Collider| !chunk(h) && keep(c, f);
         let mut filter = rp::QueryFilter::new().predicate(&predicate);
         if !f.include_sensors {
             filter = filter.exclude_sensors();
@@ -1954,15 +1987,47 @@ impl QueryWorld {
     ) -> Result<Option<RaycastHit>> {
         let dir = crate::direction(flat(direction), "RaycastDesc", PROFILE_NAME)?;
         let ray = rp::Ray::new(v(origin), v(dir));
-        Ok(self.with(f, |p| {
-            p.cast_ray_and_get_normal(&ray, max, true)
-                .map(|(h, hit)| RaycastHit {
-                    entity: entity_of(&self.colliders[h]),
-                    body: body_of(&self.colliders[h]),
-                    distance: hit.time_of_impact,
-                    point: unv(ray.point_at(hit.time_of_impact)),
-                    normal: unv(hit.normal),
-                })
+        let mut best = self.pipeline(f, true, |p| p.cast_ray_and_get_normal(&ray, max, true));
+        // A field's chunks in the order the ray enters them, each cast only
+        // as far as the nearest hit so far. In the BVH, rapier casts both
+        // leaves of a node at once and goes down the nearer subtree first, so
+        // a far chunk was walked cell by cell to its edge before a nearer
+        // chunk's (or a wall's) hit could cut it short: a ray over a chunked
+        // field visited several times the cells one field does.
+        let mut order: Vec<(f32, rp::ColliderHandle)> = Vec::new();
+        for chunks in &self.fields {
+            let c = &self.colliders[chunks[0]];
+            if !keep(c, f) || (c.is_sensor() && !f.include_sensors) {
+                continue;
+            }
+            for &h in chunks {
+                if let Some((enter, _)) = self.colliders[h].compute_aabb().clip_ray_parameters(&ray)
+                {
+                    order.push((enter, h));
+                }
+            }
+        }
+        order.sort_by(|a, b| a.0.total_cmp(&b.0));
+        for (enter, h) in order {
+            let limit = best.map_or(max, |(_, hit)| hit.time_of_impact);
+            if enter >= limit {
+                break;
+            }
+            let c = &self.colliders[h];
+            if let Some(hit) = c
+                .shape()
+                .cast_ray_and_get_normal(c.position(), &ray, limit, true)
+                .filter(|hit| hit.time_of_impact < limit)
+            {
+                best = Some((h, hit));
+            }
+        }
+        Ok(best.map(|(h, hit)| RaycastHit {
+            entity: entity_of(&self.colliders[h]),
+            body: body_of(&self.colliders[h]),
+            distance: hit.time_of_impact,
+            point: unv(ray.point_at(hit.time_of_impact)),
+            normal: unv(hit.normal),
         }))
     }
 

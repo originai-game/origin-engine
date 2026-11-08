@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "fixed": [
+    {
+      "member": "og.physics raycast over a large height field",
+      "summary": "A ray over a height field built in chunks casts the chunks itself, nearest first, and stops at the nearest hit so far. Before, the query's tree walked far chunks cell by cell before a nearer chunk's hit could cut them short, so a ray over a chunked field visited about twice the cells one field does. The answer is the same nearest hit; only where a ray meets two chunks at exactly the same distance (their shared edge) can the chunk it reports, and so its normal, differ, which is why ticks can differ. A garden on a 681 x 821 walk field (12 chunks): height-field casts 312 -> 86 ms per 10 s, og.physics raycasts 935 -> 760 ms."
+    }
+  ]
+}

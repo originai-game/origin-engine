@@ -202,6 +202,64 @@ fn an_edit_rebuilds_only_the_chunks_of_a_large_field_under_it() {
     assert_eq!(transform(&w, far).position, rested);
 }
 
+/// A ray over a field in chunks answers the nearest hit among them and the
+/// other colliders, as one collider would: the query casts the chunks
+/// itself, in the order the ray enters them (engine s95), so its filter,
+/// its maximum and the walls in front must hold there too.
+#[test]
+fn a_ray_over_a_field_in_chunks_answers_the_nearest_hit() {
+    let (mut w, p) = world(Physics::default(), 1);
+    // 601 × 601 samples, 0.5 m apart, flat at y = 0: 3 × 3 chunks, their
+    // edges at x and z of -22 m and 106 m.
+    p.set_heightfield(9, field(601, 601, Vec2::splat(300.0), |_, _| 0.0))
+        .unwrap();
+    let ground = spawn_static(&mut w, at(0.0, 0.0, 0.0), terrain_collider(9));
+    run(&mut w, 1);
+    // Down 1 in 50 along z = x + 10: through five chunks to y = 0 at x 110.
+    let ray = |w: &World, max_distance: f32, exclude: Option<og_ecs::Entity>| {
+        p.query(w)
+            .unwrap()
+            .raycast(&RaycastDesc {
+                origin: Vec3::new(-140.0, 5.0, -130.0),
+                direction: Vec3::new(1.0, -0.02, 1.0),
+                max_distance,
+                filter: QueryFilter {
+                    exclude,
+                    ..QueryFilter::default()
+                },
+            })
+            .unwrap()
+    };
+    let hit = ray(&w, 0.0, None).expect("the field");
+    assert_eq!(hit.entity, ground);
+    assert!(
+        (hit.point - Vec3::new(110.0, 0.0, 120.0)).length() < 1e-2,
+        "the far chunk's ground at {}",
+        hit.point
+    );
+    assert_eq!(
+        ray(&w, hit.distance - 0.1, None),
+        None,
+        "beyond its maximum"
+    );
+    assert_eq!(ray(&w, 0.0, Some(ground)), None, "the field excluded");
+    // A wall across the ray in the middle chunk comes first.
+    let wall = spawn_static(
+        &mut w,
+        at(0.0, 2.0, 10.0),
+        Collider::cuboid(Vec3::new(1.0, 10.0, 10.0)),
+    );
+    run(&mut w, 1);
+    let hit = ray(&w, 0.0, None).expect("the wall");
+    assert_eq!(hit.entity, wall);
+    assert!(
+        (hit.point.x + 0.5).abs() < 1e-3,
+        "its face at {}",
+        hit.point
+    );
+    assert_eq!(ray(&w, 0.0, Some(wall)).map(|h| h.entity), Some(ground));
+}
+
 /// A snapshot of a field in chunks carries each chunk by its key, not its
 /// heights, and restores to the same world.
 #[test]
