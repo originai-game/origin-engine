@@ -1,7 +1,6 @@
 //! `og.ui`'s documents, layer stack and actions (docs/ui.md §2.1, §2.1, §2.1,
 //! §16): `og.load.document` reads a cooked `og.UiDocument` into the world's
-//! UI; `og.ui.screen`, `component` and `openSlot` mount documents in the
-//! frame; `push`, `pop`, `replace` and `clear` manage the layer stack from
+//! UI; `push`, `pop`, `replace` and `clear` manage the layer stack from
 //! anywhere; the UI actions, glyphs and the action bar; the probe's `ui:`
 //! commands (set, state, play, seek, push, pop, save, clear, action); and
 //! the hot reload of an edited document or style in place.
@@ -12,7 +11,7 @@
 
 use super::super::engine::{Engine, engine};
 use super::super::{ok, ok_void, parse, refuse};
-use super::{BUILDING, LAST, ui_of, with_ui};
+use super::{BUILDING, ui_of, with_ui};
 use og_ui::{ActionDesc, ActionTrigger, Device, SharedUi, Ui, UiDocument};
 use serde_json::{Map, Value, json};
 use std::cell::{Cell, RefCell};
@@ -77,10 +76,6 @@ pub(crate) fn env(engine: u32) -> RtEnv {
         resources: with(engine, |d| d.resources.clone()),
         language: super::super::i18n::language(engine),
     }
-}
-
-fn building() -> Option<u32> {
-    BUILDING.with(Cell::get).or_else(|| LAST.with(Cell::get))
 }
 
 /// Reads the resources the documents name, after a tick (the world is
@@ -352,36 +347,11 @@ pub(crate) fn note_styles(eng: &Engine) {
     }
 }
 
-// ── og.ui: documents in the frame ───────────────────────────────────────────
-
-fn response(r: og_ui::DocResponse) -> String {
-    json!({
-        "path": r.path,
-        "events": r.events.iter().map(og_ui::DocEvent::to_json).collect::<Vec<_>>(),
-    })
-    .to_string()
-}
+// ── og.ui: the layer stack, from anywhere ───────────────────────────────────
 
 fn vm_of(v: Option<String>) -> Value {
     parse(v.as_deref()).unwrap_or(Value::Null)
 }
-
-pub fn og_ui_screen(name: String, vm: Option<String>) -> String {
-    let Some(id) = building() else {
-        return response(Default::default());
-    };
-    let env = env(id);
-    with_ui("og.ui.screen", |ui| {
-        response(ui.screen(&name, vm_of(vm), &env))
-    })
-    .unwrap_or_else(|| response(Default::default()))
-}
-
-pub fn og_ui_open_slot(path: String) -> bool {
-    with_ui("og.ui.openSlot", |ui| ui.open_slot(&path)).unwrap_or(false)
-}
-
-// ── og.ui: the layer stack, from anywhere ───────────────────────────────────
 
 fn on_ui<T>(world: u32, f: impl FnOnce(&mut Ui) -> T) -> Result<T, String> {
     let ui: SharedUi = ui_of(world).ok_or("the world has no UI")?;

@@ -250,8 +250,8 @@ commands:
                       assets/ui/<screen>.ogt to edit as the game's own; refuses to overwrite one
                       there without --force; --list prints each with its Appendix B row
   ui types [project]  write .og/types/ui/<name>.d.ts for every screen and component document:
-                      its props, the events it can send and its slots, so og.ui.screen(name, vm)
-                      checks vm; og check, og run, og build and og dev write them first
+                      its props, the events it can send and its slots, so og.ui.push(world, name,
+                      vm) checks vm; og check, og run, og build and og dev write them first
   frame measure <png> [--region x,y,w,h] [--against x,y,w,h] [--units px|fraction]
       [--metric contrast,highpass,mean,ramp] [--rows N] [--json] [--require-checked]
                       a reviewer's numbers off a captured frame, the same on every machine: WCAG

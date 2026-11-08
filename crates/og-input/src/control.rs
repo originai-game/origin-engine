@@ -356,7 +356,7 @@ pub struct ControlZone {
     pub width: f32,
     pub height: f32,
     /// A stick's dead zone as a ratio of its radius; 0: 0.15. Past it the
-    /// value is rescaled to rise from 0 (as `og.ui.joystick` answers).
+    /// value is rescaled to rise from 0 (as a document's `<joystick>` answers).
     pub dead_zone: f32,
 }
 

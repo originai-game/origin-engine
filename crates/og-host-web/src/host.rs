@@ -1218,9 +1218,6 @@ impl UiApi for WebHost {
     fn og_ui_open_world_anchor(&self, id: String, desc: Option<String>) -> String {
         rt::og_ui_open_world_anchor(id, desc)
     }
-    fn og_ui_open_world_panel(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_open_world_panel(id, desc)
-    }
     fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> String {
         rt::og_ui_define_mass(name, desc)
     }
@@ -1330,9 +1327,6 @@ impl UiApi for WebHost {
     fn og_ui_open_anchor(&self, id: String, desc: Option<String>) {
         rt::og_ui_open_anchor(id, desc)
     }
-    fn og_ui_open_transition(&self, id: String, show: bool, desc: Option<String>) -> String {
-        rt::og_ui_open_transition(id, show, desc)
-    }
     fn og_ui_open_modal(&self, id: String, open: bool, desc: Option<String>) -> String {
         rt::og_ui_open_modal(id, open, desc)
     }
@@ -1362,9 +1356,6 @@ impl UiApi for WebHost {
     }
     fn og_ui_close_list(&self) -> String {
         rt::og_ui_close_list()
-    }
-    fn og_ui_dragging(&self, id: String) -> String {
-        rt::og_ui_dragging(id)
     }
     fn og_ui_chip(&self, id: String, text: String, desc: Option<String>) -> String {
         rt::og_ui_chip(id, text, desc)
@@ -1401,12 +1392,6 @@ impl UiApi for WebHost {
     }
     fn og_ui_dialogue(&self, id: String, desc: Option<String>) -> String {
         rt::og_ui_dialogue(id, desc)
-    }
-    fn og_ui_joystick(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_joystick(id, desc)
-    }
-    fn og_ui_dpad(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_dpad(id, desc)
     }
     fn og_ui_action_button(&self, id: String, text: String, desc: Option<String>) -> String {
         rt::og_ui_action_button(id, text, desc)
@@ -1547,12 +1532,6 @@ impl UiApi for WebHost {
     }
     fn og_ui_layout_stats(&self) -> String {
         rt::og_ui_layout_stats()
-    }
-    fn og_ui_screen(&self, name: String, vm: Option<String>) -> String {
-        rt::og_ui_screen(name, vm)
-    }
-    fn og_ui_open_slot(&self, path: String) -> bool {
-        rt::og_ui_open_slot(path)
     }
     fn og_ui_push(&self, world: u32, screen: String, vm: Option<String>) -> String {
         rt::og_ui_push(world, screen, vm)

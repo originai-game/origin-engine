@@ -1,0 +1,28 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.dragging",
+      "change": "The query for the row or cell a held press started on in a list or grid is removed: drag and drop is a document's.",
+      "fix": "Mark the dragged element `draggable=\"true\"` in a document and handle `ondragstart`, `ondragend`, `ondragover` and `ondrop` (filtered by `data-accept` against `data-drag-type`); their events, read with og.ui.docEvents, carry the dragged and target rows' keys and the pointer.",
+      "find": ["og.ui.dragging"]
+    },
+    {
+      "member": "og.ui.joystick, og.ui.JoystickDesc, og.ui.JoystickResult",
+      "change": "The immediate-mode virtual joystick and its desc and result are removed.",
+      "fix": "Write `<joystick action=\"move\">` in a document (sized by its CSS width, `data-dead-zone` for the dead zone) and read the two-axis action with og.input.actionVector(world, \"move\"); define the action with og.input.defineAction.",
+      "find": ["og.ui.joystick", "JoystickDesc", "JoystickResult"]
+    },
+    {
+      "member": "og.ui.dpad, og.ui.DpadDesc, og.ui.DpadResult",
+      "change": "The immediate-mode d-pad and its desc and result are removed.",
+      "fix": "Write `<dpad action=\"move\">` in a document and read its eight ways, -1 to 1 on each axis, with og.input.actionVector(world, \"move\").",
+      "find": ["og.ui.dpad", "DpadDesc", "DpadResult"]
+    },
+    {
+      "member": "og.ui.openTransition, og.ui.transition, og.ui.TransitionDesc, og.ui.Presence",
+      "change": "The transition containers and their desc and presence are removed; og.ui.TransitionKind stays.",
+      "fix": "Wrap the content in `{#if $shown}` in a document and give it `-og-enter` and `-og-exit` in its `<style>` (or CSS transition and animation); `data-og-instant` settles its first entrance, as `instant` did.",
+      "find": ["og.ui.openTransition", "og.ui.transition", "TransitionDesc", "Presence"]
+    }
+  ]
+}

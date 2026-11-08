@@ -130,7 +130,7 @@ export type View<T> = T extends ComponentType<infer F, any> ? ColumnViews<F> : n
 /**
  * The game's screen documents by name, each with its viewmodel, events and
  * slots. Empty here: `og ui types` writes one `.og/types/ui/<name>.d.ts`
- * per document that adds itself, so `og.ui.screen("shop", vm)` checks `vm`.
+ * per document that adds itself, so `og.ui.push(world, "shop", vm)` checks `vm`.
  */
 export interface UiScreens {}
 /** The game's component documents by name, as {@link UiScreens}. */
@@ -143,17 +143,6 @@ export type ComponentName = (keyof UiComponents & string) | (string & {});
 export type ScreenProps<S> = S extends keyof UiScreens ? UiScreens[S]["props"] : unknown;
 /** A declared component's props; `unknown` for an undeclared name. */
 export type ComponentProps<C> = C extends keyof UiComponents ? UiComponents[C]["props"] : unknown;
-/** What mounting a declared screen answers, its events narrowed to the ones it can send. */
-export type ScreenResponse<S> = S extends keyof UiScreens
-  ? Omit<UiDocResponse, "events"> & { readonly events: readonly UiScreens[S]["events"][] }
-  : UiDocResponse;
-/** What mounting a declared component answers, its props and events typed. */
-export type ComponentResponse<C> = C extends keyof UiComponents
-  ? Omit<UiDocResponse, "events" | "props"> & {
-      readonly events: readonly UiComponents[C]["events"][];
-      readonly props: UiComponents[C]["props"];
-    }
-  : UiDocResponse;
 
 /** Every column kind, from the IDL's `column` declarations. */
 export interface ColumnKinds {
@@ -25310,58 +25299,6 @@ export interface AnchorDesc {
 }
 
 /**
- * How a transition moves, timed in ticks from the style's motion.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TransitionDesc {
-  /**
-   * The movement.
-   *
-   * @default "fade"
-   */
-  readonly kind?: TransitionKind;
-  /**
-   * How long entering and leaving take; 0 is motion.duration.base (240 ms).
-   *
-   * @default 0
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly durationMs?: number;
-  /**
-   * How far slides travel; 0 is space.xl.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly distance?: number;
-  /**
-   * Shown at once the first time it is built (no entrance).
-   *
-   * @default false
-   */
-  readonly instant?: boolean;
-}
-
-/** Where a transition or dialog is this tick. */
-export interface Presence {
-  /** Build its content: shown, entering or leaving. */
-  readonly visible: boolean;
-  /**
-   * 0 gone, 1 settled.
-   *
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly progress: number;
-  /** Moving in. */
-  readonly entering: boolean;
-  /** Moving out. */
-  readonly leaving: boolean;
-}
-
-/**
  * A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -25856,92 +25793,6 @@ export interface DialogueResult {
 }
 
 /**
- * A virtual joystick: one translucent disc of the HUD ground with a rim (part Joystick.base, which a style dresses) and a knob that follows the finger that started on it, the rim lit toward the push while held. A finger sliding onto it from elsewhere does not take it.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface JoystickDesc {
-  /**
-   * The base's diameter; 0 is 128 (never under three touch targets).
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly size?: number;
-  /**
-   * The ignored radius; 0 is 0.15. Past it the vector is rescaled, rising from 0 at the dead zone's edge to 1 at the base's.
-   *
-   * @default 0
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly deadZone?: number;
-  /**
-   * The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).
-   *
-   * @default null
-   */
-  readonly customize?: Customize | null;
-  /**
-   * It answers nothing and shows faded (a cutscene, a stun).
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-}
-
-/** A joystick's vector this tick. */
-export interface JoystickResult {
-  /** -1 left to 1 right; 0 inside the dead zone. */
-  readonly x: number;
-  /** -1 up to 1 down; 0 inside the dead zone. */
-  readonly y: number;
-  /** A press that started on it is held. */
-  readonly active: boolean;
-}
-
-/**
- * A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, read as one target by the angle of the finger from its centre: eight ways (a diagonal holds both of its arms), nothing in its middle, the held direction lit under its chevron. The thumb rolls between directions without lifting.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface DpadDesc {
-  /**
-   * The pad's size; 0 is 132 (each arm at least 44).
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly size?: number;
-  /**
-   * The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).
-   *
-   * @default null
-   */
-  readonly customize?: Customize | null;
-  /**
-   * It answers nothing and shows faded.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-}
-
-/** Which arms of a d-pad are held this tick. */
-export interface DpadResult {
-  /** Up is held. */
-  readonly up: boolean;
-  /** Down is held. */
-  readonly down: boolean;
-  /** Left is held. */
-  readonly left: boolean;
-  /** Right is held. */
-  readonly right: boolean;
-}
-
-/**
  * A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face, flagged primary, pressed and disabled, which a style dresses), its icon on it; a label wider than it with no icon widens it to a capsule instead. A further touch holds it only when it went down on it, so a thumb steering a stick never fires it by sliding over.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -26085,8 +25936,6 @@ export interface UiPointer {
 
 
 
-
-
 /** A scroll container as the last frame laid it out (og.ui.scrollState). */
 export interface ScrollState {
   /**
@@ -26126,9 +25975,6 @@ export interface ScrollState {
    */
   readonly contentHeight: number;
 }
-
-
-
 
 
 
@@ -26759,65 +26605,6 @@ export interface CardDesc {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly padding?: number | null;
-}
-
-/**
- * A scroll area: og.ui's scroll container whose content fades out at an edge where more lies beyond.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ScrollAreaDesc {
-  /**
-   * Which ways it scrolls.
-   *
-   * @default "vertical"
-   */
-  readonly axes?: ScrollAxes;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height (it scrolls inside); null fits the content.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Space around the content.
-   *
-   * @default { left: 0, top: 0, right: 0, bottom: 0 }
-   */
-  readonly padding?: Insets;
-  /**
-   * Space between children; null is space.sm.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gap?: number | null;
-  /**
-   * How far the edge fades reach; 0 is 24.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly fade?: number;
-  /**
-   * The surface the content fades into; null is panel.
-   *
-   * @default null
-   */
-  readonly fadeInto?: ThemeColor | null;
-  /**
-   * What a screen reader calls the region.
-   *
-   * @default ""
-   */
-  readonly label?: string;
 }
 
 /**
@@ -29531,7 +29318,6 @@ export interface CalendarResult {
   /** The month was turned this tick. */
   readonly changed: boolean;
 }
-
 
 
 
@@ -38689,122 +38475,6 @@ export interface AnchorInfo {
 
 
 /**
- * A world panel (docs/ui.md §1): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface WorldPanelDesc {
-  /**
-   * The colour of an og.render.renderTarget made with format rgba16float (RenderTargetInfo.texture); give the mesh's material it as map (lit) or emissiveMap with colour black (unlit). It shows the frame after the UI drew it. Null: laid out and hit, drawn nowhere.
-   *
-   * @default null
-   */
-  readonly target?: Texture | null;
-  /**
-   * Its layout width; the target's pixels spread over it.
-   *
-   * @default 480
-   * @range 1..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly width?: number;
-  /**
-   * Its layout height.
-   *
-   * @default 320
-   * @range 1..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly height?: number;
-  /**
-   * Where its quad is: centred on the target's pose, facing its +Z (an og.render.planeGeometry of quadWidth by quadHeight on that entity). Null: no ray reaches it.
-   *
-   * @default null
-   */
-  readonly quad?: WorldTarget | null;
-  /**
-   * The quad's rotation after its target's.
-   *
-   * @default { x: 0, y: 0, z: 0, w: 1 }
-   */
-  readonly rotation?: Quaternion;
-  /**
-   * The quad's width along its +X.
-   *
-   * @default 1
-   * @range 0..
-   * @unit m (metres)
-   */
-  readonly quadWidth?: number;
-  /**
-   * The quad's height along its +Y.
-   *
-   * @default 1
-   * @range 0..
-   * @unit m (metres)
-   */
-  readonly quadHeight?: number;
-  /**
-   * Which way it lays out its children; the default is a column.
-   *
-   * @default "row"
-   */
-  readonly direction?: Direction;
-  /**
-   * Space between children.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gap?: number;
-  /**
-   * Space inside its edges.
-   *
-   * @default { left: 0, top: 0, right: 0, bottom: 0 }
-   */
-  readonly padding?: Insets;
-  /**
-   * Its fill; null draws none (the target clears to transparent).
-   *
-   * @default null
-   */
-  readonly background?: Paint | null;
-  /**
-   * Drawn by the UI itself onto where its quad is seen (a ground decal under a unit, a sign over a door) in a band under the screen's elements, instead of into target: no render target or mesh. Inert: no ray reaches it and its controls take no focus. Not drawn while a corner of its quad is behind the camera.
-   *
-   * @default false
-   */
-  readonly projected?: boolean;
-}
-
-/** What the pointer does on a world panel this tick. */
-export interface PanelInfo {
-  /**
-   * The ray from the pointer meets the panel's quad (and no screen element is under it): its controls take the press.
-   */
-  readonly pointed: boolean;
-  /**
-   * Where on the panel, from its top left.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly x: number;
-  /**
-   * Where on the panel, from its top left.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly y: number;
-  /**
-   * Along the ray to the hit.
-   *
-   * @unit m (metres)
-   */
-  readonly distance: number;
-}
-
-
-/**
  * What a mass element template draws.
  * - `"number"`: The instance's value as a number (a damage number, a score).
  * - `"text"`: One of strings, by the instance's value (a nameplate, a loot label).
@@ -39577,18 +39247,6 @@ export interface UiDocEvent {
   readonly value: unknown;
 }
 
-/**
- * What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes.
- */
-export interface UiDocResponse {
-  /** Its root's path; empty when it was not built. */
-  readonly path: string;
-  /** Its events. */
-  readonly events: readonly UiDocEvent[];
-  /** A component's props after its writes (a screen's viewmodel is og.ui.screenVm's). */
-  readonly props: unknown;
-}
-
 /** A layer of the stack (docs/ui.md §2.1), as its screen declares it. */
 export interface UiLayer {
   /** Its number, unique for the UI's life: what push answered. */
@@ -39701,8 +39359,6 @@ export interface UiActionHint {
   /** It is a hold. */
   readonly hold: boolean;
 }
-
-
 
 
 
@@ -46463,7 +46119,7 @@ export declare namespace og {
      */
     function style(world: World, path: string): Result<Style>;
     /**
-     * Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §3.2; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.screen and og.ui.push name a screen and a document's own markup names a component by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.
+     * Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §3.2; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.push and og.ui.replace name a screen and a document's own markup names a component by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.
      *
      * @param world The world whose UI uses it.
      * @param path The asset id, such as `ui/shop.ogt`.
@@ -48615,23 +48271,6 @@ export declare namespace og {
      */
     function anchor(id: string, desc: AnchorDesc, build: UiBuild): void;
     /**
-     * Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves.
-     *
-     * @param id Its id.
-     * @param show Whether it should be shown.
-     * @param desc How it moves.
-     */
-    function openTransition(id: string, show: boolean, desc?: TransitionDesc): Presence;
-    /**
-     * Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible.
-     *
-     * @param id Its id.
-     * @param show Whether it should be shown.
-     * @param desc How it moves.
-     * @param build Makes its content.
-     */
-    function transition(id: string, show: boolean, desc: TransitionDesc, build: UiBuild): Presence;
-    /**
      * Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`.
      *
      * @param id Its id.
@@ -48700,12 +48339,6 @@ export declare namespace og {
     function gridItem(index: number, selected: boolean): Response;
     /** Close a list or grid opened with openList or openGrid. */
     function closeList(): Response;
-    /**
-     * The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer.
-     *
-     * @param id The list's or grid's id.
-     */
-    function dragging(id: string): number | null;
     /**
      * A chip: a control-filled tag; selected inverts to ink. For filters and tags.
      *
@@ -48789,20 +48422,6 @@ export declare namespace og {
      * @param desc Speaker, text, portrait and speed.
      */
     function dialogue(id: string, desc?: DialogueDesc): DialogueResult;
-    /**
-     * A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time.
-     *
-     * @param id Its id.
-     * @param desc Size and dead zone.
-     */
-    function joystick(id: string, desc?: JoystickDesc): JoystickResult;
-    /**
-     * A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px.
-     *
-     * @param id Its id.
-     * @param desc Its size.
-     */
-    function dpad(id: string, desc?: DpadDesc): DpadResult;
     /**
      * A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.
      *
@@ -48990,14 +48609,6 @@ export declare namespace og {
      * @param build Builds its body.
      */
     function card(id: string, desc: CardDesc, build: UiBuild): Response;
-    /**
-     * A scroll container whose content fades out at an edge where more lies beyond.
-     *
-     * @param id Its id.
-     * @param desc Axes, size and fades.
-     * @param build Builds its content.
-     */
-    function scrollArea(id: string, desc: ScrollAreaDesc, build: UiBuild): void;
     /**
      * Sections whose headers open and close their bodies; the sections under one move on the panel spring.
      *
@@ -49839,13 +49450,6 @@ export declare namespace og {
      */
     function openWorldAnchor(id: string, desc?: WorldAnchorDesc): AnchorInfo;
     /**
-     * Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. One render target per panel.
-     *
-     * @param id Its id; the probe path is the id alone.
-     * @param desc Its target, size and quad.
-     */
-    function openWorldPanel(id: string, desc?: WorldPanelDesc): PanelInfo;
-    /**
      * Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. Invalid timing text returns an error naming the text and required syntax; it never falls back to linear.
      *
      * @param name Its name.
@@ -49900,19 +49504,6 @@ export declare namespace og {
      */
     function scope(world: World, id: string): UiScope;
     /**
-     * Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have.
-     *
-     * @param name The screen's name (its `name` line); a name `og ui types` declared types its viewmodel and events.
-     * @param vm Its viewmodel: an object (null keeps the one it has).
-     */
-    function screen<S extends ScreenName>(name: S, vm?: ScreenProps<S> | null): ScreenResponse<S>;
-    /**
-     * Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick.
-     *
-     * @param path Its full path, or `<screen>/<slot id>`.
-     */
-    function openSlot(path: string): boolean;
-    /**
      * Push a screen onto the layer stack (docs/ui.md §2.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.
      *
      * @param world The world.
@@ -49956,7 +49547,7 @@ export declare namespace og {
      */
     function screenVm<S extends ScreenName>(world: World, screen: S): ScreenProps<S> | null;
     /**
-     * Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own.
+     * Take the events of the documents built this frame: pushed layers and store-driven mounts.
      *
      * @param world The world.
      */

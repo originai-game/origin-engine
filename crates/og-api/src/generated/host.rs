@@ -1013,8 +1013,6 @@ pub trait UiApi: Wire {
     fn og_ui_frame_theme(&self) -> String;
     /// `og.ui.openAnchor`
     fn og_ui_open_anchor(&self, id: String, desc: Option<String>);
-    /// `og.ui.openTransition`
-    fn og_ui_open_transition(&self, id: String, show: bool, desc: Option<String>) -> String;
     /// `og.ui.openModal`
     fn og_ui_open_modal(&self, id: String, open: bool, desc: Option<String>) -> String;
     /// `og.ui.closeModal`
@@ -1035,8 +1033,6 @@ pub trait UiApi: Wire {
     fn og_ui_grid_item(&self, index: u32, selected: bool) -> String;
     /// `og.ui.closeList`
     fn og_ui_close_list(&self) -> String;
-    /// `og.ui.dragging`
-    fn og_ui_dragging(&self, id: String) -> String;
     /// `og.ui.chip`
     fn og_ui_chip(&self, id: String, text: String, desc: Option<String>) -> String;
     /// `og.ui.badge`
@@ -1059,10 +1055,6 @@ pub trait UiApi: Wire {
     fn og_ui_minimap(&self, id: String, desc: Option<String>);
     /// `og.ui.dialogue`
     fn og_ui_dialogue(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.joystick`
-    fn og_ui_joystick(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.dpad`
-    fn og_ui_dpad(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.actionButton`
     fn og_ui_action_button(&self, id: String, text: String, desc: Option<String>) -> String;
     /// `og.ui.toast`
@@ -1177,8 +1169,6 @@ pub trait UiApi: Wire {
     fn og_ui_set_draw(&self, desc: Option<String>);
     /// `og.ui.openWorldAnchor`
     fn og_ui_open_world_anchor(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.openWorldPanel`
-    fn og_ui_open_world_panel(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.defineMass`
     fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> String;
     /// `og.ui.spawnMass`
@@ -1193,10 +1183,6 @@ pub trait UiApi: Wire {
     fn og_ui_meta(&self, id: String, desc: Option<String>);
     /// `og.ui.sceneViewport`
     fn og_ui_scene_viewport(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.screen`
-    fn og_ui_screen(&self, name: String, vm: Option<String>) -> String;
-    /// `og.ui.openSlot`
-    fn og_ui_open_slot(&self, path: String) -> bool;
     /// `og.ui.push`
     fn og_ui_push(&self, world: u32, screen: String, vm: Option<String>) -> String;
     /// `og.ui.pop`
@@ -1934,7 +1920,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_frame_direction",
     "og_ui_frame_theme",
     "og_ui_open_anchor",
-    "og_ui_open_transition",
     "og_ui_open_modal",
     "og_ui_close_modal",
     "og_ui_spotlight",
@@ -1945,7 +1930,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_list_item",
     "og_ui_grid_item",
     "og_ui_close_list",
-    "og_ui_dragging",
     "og_ui_chip",
     "og_ui_badge",
     "og_ui_divider",
@@ -1957,8 +1941,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_cooldown",
     "og_ui_minimap",
     "og_ui_dialogue",
-    "og_ui_joystick",
-    "og_ui_dpad",
     "og_ui_action_button",
     "og_ui_toast",
     "og_ui_dismiss_toast",
@@ -2016,7 +1998,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_semantics",
     "og_ui_set_draw",
     "og_ui_open_world_anchor",
-    "og_ui_open_world_panel",
     "og_ui_define_mass",
     "og_ui_spawn_mass",
     "og_ui_push_mass",
@@ -2024,8 +2005,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_particles",
     "og_ui_meta",
     "og_ui_scene_viewport",
-    "og_ui_screen",
-    "og_ui_open_slot",
     "og_ui_push",
     "og_ui_pop",
     "og_ui_replace",

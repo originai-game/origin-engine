@@ -899,8 +899,6 @@ export interface HostAbi<A, V> {
   og_ui_frame_theme(): string;
   /** `og.ui.openAnchor` */
   og_ui_open_anchor(id: string, desc: string | undefined): void;
-  /** `og.ui.openTransition` */
-  og_ui_open_transition(id: string, show: boolean, desc: string | undefined): string;
   /** `og.ui.openModal` */
   og_ui_open_modal(id: string, open: boolean, desc: string | undefined): string;
   /** `og.ui.closeModal` */
@@ -921,8 +919,6 @@ export interface HostAbi<A, V> {
   og_ui_grid_item(index: number, selected: boolean): string;
   /** `og.ui.closeList` */
   og_ui_close_list(): string;
-  /** `og.ui.dragging` */
-  og_ui_dragging(id: string): string;
   /** `og.ui.chip` */
   og_ui_chip(id: string, text: string, desc: string | undefined): string;
   /** `og.ui.badge` */
@@ -945,10 +941,6 @@ export interface HostAbi<A, V> {
   og_ui_minimap(id: string, desc: string | undefined): void;
   /** `og.ui.dialogue` */
   og_ui_dialogue(id: string, desc: string | undefined): string;
-  /** `og.ui.joystick` */
-  og_ui_joystick(id: string, desc: string | undefined): string;
-  /** `og.ui.dpad` */
-  og_ui_dpad(id: string, desc: string | undefined): string;
   /** `og.ui.actionButton` */
   og_ui_action_button(id: string, text: string, desc: string | undefined): string;
   /** `og.ui.toast` */
@@ -1063,8 +1055,6 @@ export interface HostAbi<A, V> {
   og_ui_set_draw(desc: string | undefined): void;
   /** `og.ui.openWorldAnchor` */
   og_ui_open_world_anchor(id: string, desc: string | undefined): string;
-  /** `og.ui.openWorldPanel` */
-  og_ui_open_world_panel(id: string, desc: string | undefined): string;
   /** `og.ui.defineMass` */
   og_ui_define_mass(name: string, desc: string | undefined): string;
   /** `og.ui.spawnMass` */
@@ -1079,10 +1069,6 @@ export interface HostAbi<A, V> {
   og_ui_meta(id: string, desc: string | undefined): void;
   /** `og.ui.sceneViewport` */
   og_ui_scene_viewport(id: string, desc: string | undefined): string;
-  /** `og.ui.screen` */
-  og_ui_screen(name: string, vm: string | undefined): string;
-  /** `og.ui.openSlot` */
-  og_ui_open_slot(path: string): boolean;
   /** `og.ui.push` */
   og_ui_push(world: number, screen: string, vm: string | undefined): string;
   /** `og.ui.pop` */
@@ -1763,7 +1749,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_frame_direction",
   "og_ui_frame_theme",
   "og_ui_open_anchor",
-  "og_ui_open_transition",
   "og_ui_open_modal",
   "og_ui_close_modal",
   "og_ui_spotlight",
@@ -1774,7 +1759,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_list_item",
   "og_ui_grid_item",
   "og_ui_close_list",
-  "og_ui_dragging",
   "og_ui_chip",
   "og_ui_badge",
   "og_ui_divider",
@@ -1786,8 +1770,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_cooldown",
   "og_ui_minimap",
   "og_ui_dialogue",
-  "og_ui_joystick",
-  "og_ui_dpad",
   "og_ui_action_button",
   "og_ui_toast",
   "og_ui_dismiss_toast",
@@ -1845,7 +1827,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_semantics",
   "og_ui_set_draw",
   "og_ui_open_world_anchor",
-  "og_ui_open_world_panel",
   "og_ui_define_mass",
   "og_ui_spawn_mass",
   "og_ui_push_mass",
@@ -1853,8 +1834,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_particles",
   "og_ui_meta",
   "og_ui_scene_viewport",
-  "og_ui_screen",
-  "og_ui_open_slot",
   "og_ui_push",
   "og_ui_pop",
   "og_ui_replace",

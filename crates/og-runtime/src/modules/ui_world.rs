@@ -16,7 +16,7 @@ use og_render::{
 };
 use og_ui::{
     AnchorScale, Declutter, EdgeClamp, EmitFrom, MetaDesc, MetaKind, ParticlesDesc, ViewportDesc,
-    WorldAnchorDesc, WorldOcclusion, WorldPanelDesc, WorldTarget, WorldView,
+    WorldAnchorDesc, WorldOcclusion, WorldTarget, WorldView,
 };
 
 /// What the UI's end reads to place world-space UI.
@@ -339,41 +339,6 @@ pub fn og_ui_open_world_anchor(id: String, desc: Option<String>) -> String {
         ui.open_world_anchor(id.as_str(), anchor_desc(&theme, &d))
     });
     anchor_info_json(&info.unwrap_or_default())
-}
-
-pub fn og_ui_open_world_panel(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let target_texture = texture_of(&d["target"]);
-    let info = with_ui("og.ui.openWorldPanel", |ui| {
-        let theme = *ui.theme();
-        let r = &d["rotation"];
-        let rotation = if r.is_object() {
-            quat(r)
-        } else {
-            og_core::glam::Quat::IDENTITY
-        };
-        let desc = WorldPanelDesc {
-            target: target_texture,
-            width: f(&d, "width", 480.0).max(1.0),
-            height: f(&d, "height", 320.0).max(1.0),
-            quad: d["quad"].is_object().then(|| {
-                (
-                    target(&d["quad"]),
-                    rotation,
-                    Vec2::new(
-                        f(&d, "quadWidth", 1.0).max(0.0),
-                        f(&d, "quadHeight", 1.0).max(0.0),
-                    ),
-                )
-            }),
-            element: box_element(&theme, &d),
-            projected: d["projected"].as_bool().unwrap_or(false),
-        };
-        ui.open_world_panel(id.as_str(), desc)
-    })
-    .unwrap_or_default();
-    json!({ "pointed": info.pointed, "x": info.x, "y": info.y, "distance": info.distance })
-        .to_string()
 }
 
 pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {

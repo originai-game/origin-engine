@@ -5,10 +5,6 @@
       "summary": "A box laid flat in the world at an entity or point, drawn by the UI onto the plane in perspective under the screen's elements (selection rings, range markers, decals). A moving camera moves only its quad: no bindings, no reconciling, no relevelling. Inert; not drawn behind the camera."
     },
     {
-      "member": "WorldPanelDesc.projected",
-      "summary": "A world panel the UI draws itself onto where its quad is seen, instead of into a render target (UiFrame.grounds holds this tick's quads)."
-    },
-    {
       "member": "og-render: UiLayer.quad",
       "summary": "A layer composited onto a screen quadrilateral through the projective map (square_to_quad), its target sized from the size it is seen at, capped at UI_QUAD_LAYER_MAX. New reference: og-tests ui-ground."
     }

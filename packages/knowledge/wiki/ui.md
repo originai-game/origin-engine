@@ -97,8 +97,6 @@ module ui {
 | [`IconAtlasDesc`](ui/type-IconAtlasDesc.md) | desc struct |  | The icon atlas: a texture of equal cells in a grid, named in reading order, or an icon set cooked like a font (font). |
 | [`UiInlineImage`](ui/type-UiInlineImage.md) | desc struct |  | A picture rich text draws inline by name ([img=<name>]). |
 | [`AnchorDesc`](ui/type-AnchorDesc.md) | desc struct |  | An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls). |
-| [`TransitionDesc`](ui/type-TransitionDesc.md) | desc struct |  | How a transition moves, timed in ticks from the style's motion. |
-| [`Presence`](ui/type-Presence.md) | struct |  | Where a transition or dialog is this tick. |
 | [`ModalDesc`](ui/type-ModalDesc.md) | desc struct |  | A dialog: a scrim over everything and a centred panel. |
 | [`ModalResult`](ui/type-ModalResult.md) | struct |  | A dialog's answer this tick. |
 | [`SpotlightDesc`](ui/type-SpotlightDesc.md) | desc struct |  | A spotlight: the surface dimmed except a hole around a target. |
@@ -114,10 +112,6 @@ module ui {
 | [`MinimapDesc`](ui/type-MinimapDesc.md) | desc struct |  | A mini-map frame. |
 | [`DialogueDesc`](ui/type-DialogueDesc.md) | desc struct |  | A dialogue box: a portrait slot, the speaker and the line typed out by the tick. |
 | [`DialogueResult`](ui/type-DialogueResult.md) | struct |  | A dialogue box's answer this tick. |
-| [`JoystickDesc`](ui/type-JoystickDesc.md) | desc struct |  | A virtual joystick: one translucent disc of the HUD ground with a rim (part Joystick.base, which a style dresses) and a knob that follows the finger that started on it, the rim lit toward the push wh… |
-| [`JoystickResult`](ui/type-JoystickResult.md) | struct |  | A joystick's vector this tick. |
-| [`DpadDesc`](ui/type-DpadDesc.md) | desc struct |  | A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, read as one target by the angle of the finger from its centre: eight ways (a diagonal holds both of its arms),… |
-| [`DpadResult`](ui/type-DpadResult.md) | struct |  | Which arms of a d-pad are held this tick. |
 | [`ActionButtonDesc`](ui/type-ActionButtonDesc.md) | desc struct |  | A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face, flagged primary, pressed and disabled, which a style dresses), its icon on it; a label wider than it with no ic… |
 | [`SkeletonDesc`](ui/type-SkeletonDesc.md) | desc struct |  | A skeleton: the neutral fill standing in for content that is loading. |
 | [`UiItemBuild`](ui/type-UiItemBuild.md) | callback |  | Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it. |
@@ -134,8 +128,6 @@ module ui {
 | [`og.ui.frameTheme`](ui/fn-frameTheme.md) | function | `(): UiTheme` | The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the components and patterns). |
 | [`og.ui.openAnchor`](ui/fn-openAnchor.md) | function | `(id: string, desc?: AnchorDesc): void` | Open an anchored group, closed by close(): og.ui.anchor without the callback. |
 | [`og.ui.anchor`](ui/fn-anchor.md) | function | `(id: string, desc: AnchorDesc, build: UiBuild): void` | An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls. |
-| [`og.ui.openTransition`](ui/fn-openTransition.md) | function | `(id: string, show: boolean, desc?: TransitionDesc): Presence` | Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. |
-| [`og.ui.transition`](ui/fn-transition.md) | function | `(id: string, show: boolean, desc: TransitionDesc, build: UiBuild): Presence` | Content that enters and leaves: fade, slide or scale by the tick from the style's motion. |
 | [`og.ui.openModal`](ui/fn-openModal.md) | function | `(id: string, open: boolean, desc?: ModalDesc): ModalResult` | Open a dialog, closed by closeModal(); build its content only while the answer is visible. |
 | [`og.ui.closeModal`](ui/fn-closeModal.md) | function | `(): void` | Close a dialog opened with openModal (its panel and backdrop). |
 | [`og.ui.modal`](ui/fn-modal.md) | function | `(id: string, open: boolean, desc: ModalDesc, build: UiBuild): ModalResult` | A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. |
@@ -148,7 +140,6 @@ module ui {
 | [`og.ui.listItem`](ui/fn-listItem.md) | function | `(index: number, selected: boolean): Response` | Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). |
 | [`og.ui.gridItem`](ui/fn-gridItem.md) | function | `(index: number, selected: boolean): Response` | Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). |
 | [`og.ui.closeList`](ui/fn-closeList.md) | function | `(): Response` | Close a list or grid opened with openList or openGrid. |
-| [`og.ui.dragging`](ui/fn-dragging.md) | function | `(id: string): number \| null` | The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer. |
 | [`og.ui.chip`](ui/fn-chip.md) | function | `(id: string, text: string, desc?: ChipDesc): Response` | A chip: a control-filled tag; selected inverts to ink. |
 | [`og.ui.badge`](ui/fn-badge.md) | function | `(id: string, text: string, tone: Tone): void` | A badge: a small status tag in its tone. |
 | [`og.ui.divider`](ui/fn-divider.md) | function | `(id: string, vertical: boolean): void` | A hairline in the border colour across its parent. |
@@ -160,8 +151,6 @@ module ui {
 | [`og.ui.cooldown`](ui/fn-cooldown.md) | function | `(id: string, remaining: number, desc?: CooldownDesc): Response` | A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. |
 | [`og.ui.minimap`](ui/fn-minimap.md) | function | `(id: string, desc?: MinimapDesc): void` | A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label. |
 | [`og.ui.dialogue`](ui/fn-dialogue.md) | function | `(id: string, desc?: DialogueDesc): DialogueResult` | A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. |
-| [`og.ui.joystick`](ui/fn-joystick.md) | function | `(id: string, desc?: JoystickDesc): JoystickResult` | A virtual joystick: a base and a knob that follows a press that started on it. |
-| [`og.ui.dpad`](ui/fn-dpad.md) | function | `(id: string, desc?: DpadDesc): DpadResult` | A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px. |
 | [`og.ui.actionButton`](ui/fn-actionButton.md) | function | `(id: string, text: string, desc?: ActionButtonDesc): Response` | A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px. |
 | [`og.ui.toast`](ui/fn-toast.md) | function | `(world: World, text: string, desc?: ToastDesc): number` | Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. |
 | [`og.ui.dismissToast`](ui/fn-dismissToast.md) | function | `(world: World, toastId: number): void` | Start a toast's exit. |
@@ -208,7 +197,6 @@ module ui {
 | [`CardVariant`](ui/type-CardVariant.md) | enum |  | How a card stands off what it sits on. |
 | [`CardMedia`](ui/type-CardMedia.md) | desc struct |  | A card's media slot: art the game fills, or a placeholder drawn from the style when it has none. |
 | [`CardDesc`](ui/type-CardDesc.md) | desc struct |  | A card: media, an eyebrow, a title, a subtitle and a corner badge over a body the game builds. |
-| [`ScrollAreaDesc`](ui/type-ScrollAreaDesc.md) | desc struct |  | A scroll area: og.ui's scroll container whose content fades out at an edge where more lies beyond. |
 | [`AccordionSection`](ui/type-AccordionSection.md) | desc struct |  | A section of an accordion: its header's title, subtitle and badge. |
 | [`AccordionDesc`](ui/type-AccordionDesc.md) | desc struct |  | An accordion: sections whose headers open and close their bodies. |
 | [`AccordionResult`](ui/type-AccordionResult.md) | struct |  | What an accordion answered this tick. |
@@ -277,7 +265,6 @@ module ui {
 | [`CalendarDesc`](ui/type-CalendarDesc.md) | desc struct |  | A month grid of days: today, a selected day, a range, marks, and days that cannot be chosen. |
 | [`CalendarResult`](ui/type-CalendarResult.md) | struct |  | What a calendar answered this tick. |
 | [`og.ui.card`](ui/fn-card.md) | function | `(id: string, desc: CardDesc, build: UiBuild): Response` | A card over a body the game builds. |
-| [`og.ui.scrollArea`](ui/fn-scrollArea.md) | function | `(id: string, desc: ScrollAreaDesc, build: UiBuild): void` | A scroll container whose content fades out at an edge where more lies beyond. |
 | [`og.ui.accordion`](ui/fn-accordion.md) | function | `(id: string, desc: AccordionDesc, build: UiItemBuild): AccordionResult` | Sections whose headers open and close their bodies; the sections under one move on the panel spring. |
 | [`og.ui.splitView`](ui/fn-splitView.md) | function | `(id: string, desc: SplitViewDesc, start: UiBuild, end: UiBuild): SplitResult` | Two panes with a divider a drag moves and a press of the focused divider steps. |
 | [`og.ui.dialog`](ui/fn-dialog.md) | function | `(id: string, open: boolean, desc: DialogDesc, build: UiBuild): DialogResult` | A dialog on the modal layer: tone mark, message, body and actions. |
@@ -651,9 +638,6 @@ module ui {
 | [`WorldAnchorDesc`](ui/type-WorldAnchorDesc.md) | desc struct |  | An element anchored in the world (docs/ui.md §1): laid out at its own size and placed each tick on its target's point projected with the tick's camera. |
 | [`AnchorInfo`](ui/type-AnchorInfo.md) | struct |  | Where an anchored element stands: its distance and level of detail from this tick's camera, the rest as last tick placed it. |
 | [`og.ui.openWorldAnchor`](ui/fn-openWorldAnchor.md) | function | `(id: string, desc?: WorldAnchorDesc): AnchorInfo` | Open an element anchored in the world, closed by close(): its children are an ordinary subtree (labels, bars, icons, buttons) laid out at its own size, then projected, scaled, depth tested, declutter… |
-| [`WorldPanelDesc`](ui/type-WorldPanelDesc.md) | desc struct |  | A world panel (docs/ui.md §1): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad. |
-| [`PanelInfo`](ui/type-PanelInfo.md) | struct |  | What the pointer does on a world panel this tick. |
-| [`og.ui.openWorldPanel`](ui/fn-openWorldPanel.md) | function | `(id: string, desc?: WorldPanelDesc): PanelInfo` | Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. |
 | [`MassKind`](ui/type-MassKind.md) | enum |  | What a mass element template draws. |
 | [`MassSpace`](ui/type-MassSpace.md) | enum |  | Where a mass element's position is. |
 | [`ParticleShape`](ui/type-ParticleShape.md) | enum |  | A particle's shape. |
@@ -678,22 +662,19 @@ module ui {
 | [`UiScope`](ui/type-UiScope.md) | interface |  | Named presentation stores for one world, following the svelte/store contract. |
 | [`og.ui.scope`](ui/fn-scope.md) | function | `(world: World, id: string): UiScope` | The entry to named svelte/store-compatible presentation data and retained document mounts. |
 | [`UiDocEvent`](ui/type-UiDocEvent.md) | struct |  | Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back i… |
-| [`UiDocResponse`](ui/type-UiDocResponse.md) | struct |  | What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes. |
 | [`UiLayer`](ui/type-UiLayer.md) | struct |  | A layer of the stack (docs/ui.md §2.1), as its screen declares it. |
 | [`UiActionTrigger`](ui/type-UiActionTrigger.md) | enum |  | When a UI action fires. |
 | [`UiActionDesc`](ui/type-UiActionDesc.md) | struct |  | A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key. |
 | [`UiDevice`](ui/type-UiDevice.md) | enum |  | The device a glyph set is for: the one the player used last. |
 | [`UiGlyph`](ui/type-UiGlyph.md) | struct |  | An action's control on the device used last. |
 | [`UiActionHint`](ui/type-UiActionHint.md) | struct |  | One entry of the action bar: an action the top layer accepts, its hint and glyph. |
-| [`og.ui.screen`](ui/fn-screen.md) | function | `<S extends ScreenName>(name: S, vm?: ScreenProps<S> \| null): ScreenResponse<S>` | Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots a… |
-| [`og.ui.openSlot`](ui/fn-openSlot.md) | function | `(path: string): boolean` | Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. |
 | [`og.ui.push`](ui/fn-push.md) | function | `<S extends ScreenName>(world: World, screen: S, vm?: ScreenProps<S> \| null): Result<number>` | Push a screen onto the layer stack (docs/ui.md §2.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its f… |
 | [`og.ui.pop`](ui/fn-pop.md) | function | `(world: World): string` | Pop the active layer; the next active one takes its remembered focus. |
 | [`og.ui.replace`](ui/fn-replace.md) | function | `<S extends ScreenName>(world: World, screen: S, vm?: ScreenProps<S> \| null): Result<number>` | Replace the active layer with a screen. |
 | [`og.ui.clear`](ui/fn-clear.md) | function | `(world: World): void` | Empty the layer stack. |
 | [`og.ui.layers`](ui/fn-layers.md) | function | `(world: World): readonly UiLayer[]` | The layer stack, bottom first. |
 | [`og.ui.screenVm`](ui/fn-screenVm.md) | function | `<S extends ScreenName>(world: World, screen: S): ScreenProps<S> \| null` | A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack. |
-| [`og.ui.docEvents`](ui/fn-docEvents.md) | function | `(world: World): readonly UiDocEvent[]` | Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own. |
+| [`og.ui.docEvents`](ui/fn-docEvents.md) | function | `(world: World): readonly UiDocEvent[]` | Take the events of the documents built this frame: pushed layers and store-driven mounts. |
 | [`og.ui.gameInput`](ui/fn-gameInput.md) | function | `(world: World): boolean` | Gameplay takes input this tick: no layer whose input is `menu` is on the stack. |
 | [`og.ui.paused`](ui/fn-paused.md) | function | `(world: World): boolean` | A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had. |
 | [`og.ui.defineAction`](ui/fn-defineAction.md) | function | `(world: World, desc: UiActionDesc): Result<void>` | Define (or redefine) a UI action. |
@@ -726,7 +707,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 6817</sub>
+<sub>Module `ui` line 6685</sub>
 
 ```ogt
 column UiMaterial {
@@ -737,4 +718,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 6824</sub>
+<sub>Module `ui` line 6692</sub>

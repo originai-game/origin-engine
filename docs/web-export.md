@@ -594,7 +594,7 @@ and the boot telemetry sample's `pipelines` (§Telemetry).
   first tick (`SETTLE_MS`). So a returning player's title is in the saved
   language with Continue on behind the gate (`tests/settle.test.ts`). The
   frame is a still a few ticks in, so a game builds the screen it opens on
-  settled (`og.ui.anchor`'s and `og.ui.transition`'s `instant`). These are the game's own ticks; the gate's tap ends
+  settled (`data-og-instant`). These are the game's own ticks; the gate's tap ends
   the settling. The first tap, click, Enter or Space unlocks audio (one
   AudioContext), asks for fullscreen when `fullscreen gesture` and the page
   is not framed (and locks `orientation`), takes a screen wake lock and

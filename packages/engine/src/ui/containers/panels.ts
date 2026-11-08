@@ -160,49 +160,6 @@ export function media(id: string, m: Api.CardMedia, radius: number, badged = fal
   if (m.label) kit.semantics({ role: "image", name: m.label });
 }
 
-// ── scroll area ─────────────────────────────────────────────────────────
-
-/**
- * A scroll area: og.ui's scroll container (the wheel, a drag with
- * momentum, two fingers, draggable bars, focus scrolled into view, nested
- * handoff) whose content fades into the surface it sits on at an edge
- * where more of it lies beyond, so a cut list reads as "there is more".
- */
-export function scrollArea(id: string, desc: Api.ScrollAreaDesc, build: Api.UiBuild): void {
-  const { t } = frame();
-  const horizontal = desc.axes === "horizontal";
-  const fadeRole: Api.ThemeColor = desc.fadeInto ?? "panel";
-  const fade = desc.fade && desc.fade > 0 ? desc.fade : 24;
-  kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, part: "ScrollArea.frame", partClass: "panel" });
-  try {
-    kit.openScroll("View", { width: grow(), height: desc.height ? grow() : null, padding: all(0), gap: 0, axes: desc.axes ?? "vertical" });
-    try {
-      kit.spacer("Start", px(0));
-      kit.open("Content", { direction: horizontal ? "row" : "column", width: horizontal ? null : grow(), padding: desc.padding ?? all(0), gap: desc.gap ?? t.sm, cross: horizontal ? "start" : "stretch" });
-      try {
-        build();
-      } finally {
-        kit.close();
-      }
-      kit.spacer("End", px(0));
-    } finally {
-      kit.close();
-    }
-    const view = kit.lastPath();
-    // Whether the content's ends are in view, last tick: a marker scrolled out of view is not listed.
-    const vb = kit.bounds(view);
-    const first = kit.bounds(`${view}/Start`);
-    const last = kit.bounds(`${view}/End`);
-    const before = vb !== null && (first === null || (horizontal ? first.x < vb.x - 0.5 : first.y < vb.y - 0.5));
-    const after = vb !== null && (last === null || (horizontal ? last.x > vb.x + vb.width + 0.5 : last.y > vb.y + vb.height + 0.5));
-    edge("FadeStart", true, kit.animate("~start", before ? 1 : 0, spring("ui")), horizontal, fade, fadeRole);
-    edge("FadeEnd", false, kit.animate("~end", after ? 1 : 0, spring("ui")), horizontal, fade, fadeRole);
-  } finally {
-    kit.close();
-  }
-  kit.semantics({ role: "region", ...(desc.label ? { name: desc.label } : {}) });
-}
-
 /** A fade over a scrolling view's edge (`k` its strength, 0 to 1) into the surface it sits on: more lies that way. */
 export function edge(id: string, start: boolean, k: number, horizontal: boolean, size: number, ink: Api.ThemeColor): void {
   if (k < 0.01) return;

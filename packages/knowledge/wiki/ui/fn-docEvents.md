@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.docEvents`
 
-Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own.
+Take the events of the documents built this frame: pushed layers and store-driven mounts.
 
 ```ts
 og.ui.docEvents(world: World): readonly UiDocEvent[]
@@ -22,10 +22,10 @@ Binding symbol `og_ui_doc_events` · publish builds: kept
 
 ```ogt
 fn docEvents {
-  doc "Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own."
+  doc "Take the events of the documents built this frame: pushed layers and store-driven mounts."
   param world World "The world."
   returns List.UiDocEvent
 }
 ```
 
-<sub>Module `ui` line 8078</sub>
+<sub>Module `ui` line 7867</sub>

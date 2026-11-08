@@ -6654,7 +6654,7 @@
         },
         {
           "name": "document",
-          "doc": "Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §3.2; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.screen and og.ui.push name a screen and a document's own markup names a component by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.",
+          "doc": "Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §3.2; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.push and og.ui.replace name a screen and a document's own markup names a component by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.",
           "params": [
             {
               "name": "world",
@@ -11629,8 +11629,6 @@
         "IconAtlasDesc",
         "UiInlineImage",
         "AnchorDesc",
-        "TransitionDesc",
-        "Presence",
         "ModalDesc",
         "ModalResult",
         "SpotlightDesc",
@@ -11646,10 +11644,6 @@
         "MinimapDesc",
         "DialogueDesc",
         "DialogueResult",
-        "JoystickDesc",
-        "JoystickResult",
-        "DpadDesc",
-        "DpadResult",
         "ActionButtonDesc",
         "SkeletonDesc",
         "UiPointer",
@@ -11671,7 +11665,6 @@
         "CardVariant",
         "CardMedia",
         "CardDesc",
-        "ScrollAreaDesc",
         "AccordionSection",
         "AccordionDesc",
         "AccordionResult",
@@ -12001,8 +11994,6 @@
         "EdgeClampDesc",
         "WorldAnchorDesc",
         "AnchorInfo",
-        "WorldPanelDesc",
-        "PanelInfo",
         "MassKind",
         "MassSpace",
         "ParticleShape",
@@ -12017,7 +12008,6 @@
         "SceneViewportInfo",
         "UiCollectionDesc",
         "UiDocEvent",
-        "UiDocResponse",
         "UiLayer",
         "UiActionTrigger",
         "UiActionDesc",
@@ -12530,65 +12520,6 @@
           "host": false
         },
         {
-          "name": "openTransition",
-          "doc": "Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "show",
-              "type": "bool",
-              "optional": false,
-              "doc": "Whether it should be shown."
-            },
-            {
-              "name": "desc",
-              "type": "TransitionDesc",
-              "optional": true,
-              "doc": "How it moves."
-            }
-          ],
-          "returns": "Presence",
-          "publish": true
-        },
-        {
-          "name": "transition",
-          "doc": "Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "show",
-              "type": "bool",
-              "optional": false,
-              "doc": "Whether it should be shown."
-            },
-            {
-              "name": "desc",
-              "type": "TransitionDesc",
-              "optional": false,
-              "doc": "How it moves."
-            },
-            {
-              "name": "build",
-              "type": "UiBuild",
-              "optional": false,
-              "doc": "Makes its content."
-            }
-          ],
-          "returns": "Presence",
-          "publish": true,
-          "host": false
-        },
-        {
           "name": "openModal",
           "doc": "Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`.",
           "params": [
@@ -12793,20 +12724,6 @@
           "doc": "Close a list or grid opened with openList or openGrid.",
           "params": [],
           "returns": "Response",
-          "publish": true
-        },
-        {
-          "name": "dragging",
-          "doc": "The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "The list's or grid's id."
-            }
-          ],
-          "returns": "Option<u32>",
           "publish": true
         },
         {
@@ -13063,46 +12980,6 @@
             }
           ],
           "returns": "DialogueResult",
-          "publish": true
-        },
-        {
-          "name": "joystick",
-          "doc": "A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "JoystickDesc",
-              "optional": true,
-              "doc": "Size and dead zone."
-            }
-          ],
-          "returns": "JoystickResult",
-          "publish": true
-        },
-        {
-          "name": "dpad",
-          "doc": "A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "DpadDesc",
-              "optional": true,
-              "doc": "Its size."
-            }
-          ],
-          "returns": "DpadResult",
           "publish": true
         },
         {
@@ -13604,33 +13481,6 @@
             }
           ],
           "returns": "Response",
-          "publish": true,
-          "host": false
-        },
-        {
-          "name": "scrollArea",
-          "doc": "A scroll container whose content fades out at an edge where more lies beyond.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "ScrollAreaDesc",
-              "optional": false,
-              "doc": "Axes, size and fades."
-            },
-            {
-              "name": "build",
-              "type": "UiBuild",
-              "optional": false,
-              "doc": "Builds its content."
-            }
-          ],
-          "returns": "Void",
           "publish": true,
           "host": false
         },
@@ -16124,26 +15974,6 @@
           "publish": true
         },
         {
-          "name": "openWorldPanel",
-          "doc": "Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. One render target per panel.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id; the probe path is the id alone."
-            },
-            {
-              "name": "desc",
-              "type": "WorldPanelDesc",
-              "optional": true,
-              "doc": "Its target, size and quad."
-            }
-          ],
-          "returns": "PanelInfo",
-          "publish": true
-        },
-        {
           "name": "defineMass",
           "doc": "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. Invalid timing text returns an error naming the text and required syntax; it never falls back to linear.",
           "params": [
@@ -16293,46 +16123,6 @@
           "host": false
         },
         {
-          "name": "screen",
-          "doc": "Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have.",
-          "generics": [
-            {
-              "name": "S",
-              "bound": "ScreenName"
-            }
-          ],
-          "params": [
-            {
-              "name": "name",
-              "type": "S",
-              "optional": false,
-              "doc": "The screen's name (its `name` line); a name `og ui types` declared types its viewmodel and events."
-            },
-            {
-              "name": "vm",
-              "type": "Option<ScreenProps<S>>",
-              "optional": true,
-              "doc": "Its viewmodel: an object (null keeps the one it has)."
-            }
-          ],
-          "returns": "ScreenResponse<S>",
-          "publish": true
-        },
-        {
-          "name": "openSlot",
-          "doc": "Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick.",
-          "params": [
-            {
-              "name": "path",
-              "type": "String",
-              "optional": false,
-              "doc": "Its full path, or `<screen>/<slot id>`."
-            }
-          ],
-          "returns": "bool",
-          "publish": true
-        },
-        {
           "name": "push",
           "doc": "Push a screen onto the layer stack (docs/ui.md §2.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.",
           "generics": [
@@ -16468,7 +16258,7 @@
         },
         {
           "name": "docEvents",
-          "doc": "Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own.",
+          "doc": "Take the events of the documents built this frame: pushed layers and store-driven mounts.",
           "params": [
             {
               "name": "world",
@@ -49160,71 +48950,6 @@
       },
       "additionalProperties": false
     },
-    "TransitionDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "How a transition moves, timed in ticks from the style's motion.",
-      "type": "object",
-      "properties": {
-        "kind": {
-          "$ref": "#/$defs/TransitionKind",
-          "description": "The movement.",
-          "default": "fade"
-        },
-        "durationMs": {
-          "type": "number",
-          "description": "How long entering and leaving take; 0 is motion.duration.base (240 ms).",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "ms"
-        },
-        "distance": {
-          "type": "number",
-          "description": "How far slides travel; 0 is space.xl.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "instant": {
-          "type": "boolean",
-          "description": "Shown at once the first time it is built (no entrance).",
-          "default": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "Presence": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "Where a transition or dialog is this tick.",
-      "type": "object",
-      "properties": {
-        "visible": {
-          "type": "boolean",
-          "description": "Build its content: shown, entering or leaving."
-        },
-        "progress": {
-          "type": "number",
-          "description": "0 gone, 1 settled.",
-          "x-og-unit": "ratio"
-        },
-        "entering": {
-          "type": "boolean",
-          "description": "Moving in."
-        },
-        "leaving": {
-          "type": "boolean",
-          "description": "Moving out."
-        }
-      },
-      "required": [
-        "visible",
-        "progress",
-        "entering",
-        "leaving"
-      ],
-      "additionalProperties": false
-    },
     "ModalDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -49886,137 +49611,6 @@
         "shown",
         "done",
         "advanced"
-      ],
-      "additionalProperties": false
-    },
-    "JoystickDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A virtual joystick: one translucent disc of the HUD ground with a rim (part Joystick.base, which a style dresses) and a knob that follows the finger that started on it, the rim lit toward the push while held. A finger sliding onto it from elsewhere does not take it.",
-      "type": "object",
-      "properties": {
-        "size": {
-          "type": "number",
-          "description": "The base's diameter; 0 is 128 (never under three touch targets).",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "deadZone": {
-          "type": "number",
-          "description": "The ignored radius; 0 is 0.15. Past it the vector is rescaled, rising from 0 at the dead zone's edge to 1 at the base's.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-unit": "ratio"
-        },
-        "customize": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Customize"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).",
-          "default": null
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "It answers nothing and shows faded (a cutscene, a stun).",
-          "default": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "JoystickResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A joystick's vector this tick.",
-      "type": "object",
-      "properties": {
-        "x": {
-          "type": "number",
-          "description": "-1 left to 1 right; 0 inside the dead zone."
-        },
-        "y": {
-          "type": "number",
-          "description": "-1 up to 1 down; 0 inside the dead zone."
-        },
-        "active": {
-          "type": "boolean",
-          "description": "A press that started on it is held."
-        }
-      },
-      "required": [
-        "x",
-        "y",
-        "active"
-      ],
-      "additionalProperties": false
-    },
-    "DpadDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, read as one target by the angle of the finger from its centre: eight ways (a diagonal holds both of its arms), nothing in its middle, the held direction lit under its chevron. The thumb rolls between directions without lifting.",
-      "type": "object",
-      "properties": {
-        "size": {
-          "type": "number",
-          "description": "The pad's size; 0 is 132 (each arm at least 44).",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "customize": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Customize"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).",
-          "default": null
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "It answers nothing and shows faded.",
-          "default": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "DpadResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "Which arms of a d-pad are held this tick.",
-      "type": "object",
-      "properties": {
-        "up": {
-          "type": "boolean",
-          "description": "Up is held."
-        },
-        "down": {
-          "type": "boolean",
-          "description": "Down is held."
-        },
-        "left": {
-          "type": "boolean",
-          "description": "Left is held."
-        },
-        "right": {
-          "type": "boolean",
-          "description": "Right is held."
-        }
-      },
-      "required": [
-        "up",
-        "down",
-        "left",
-        "right"
       ],
       "additionalProperties": false
     },
@@ -51023,91 +50617,6 @@
           "description": "Space around the body; null is space.lg.",
           "default": null,
           "x-og-unit": "cssPx"
-        }
-      },
-      "additionalProperties": false
-    },
-    "ScrollAreaDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A scroll area: og.ui's scroll container whose content fades out at an edge where more lies beyond.",
-      "type": "object",
-      "properties": {
-        "axes": {
-          "$ref": "#/$defs/ScrollAxes",
-          "description": "Which ways it scrolls.",
-          "default": "vertical"
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null grows.",
-          "default": null
-        },
-        "height": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its height (it scrolls inside); null fits the content.",
-          "default": null
-        },
-        "padding": {
-          "$ref": "#/$defs/Insets",
-          "description": "Space around the content.",
-          "default": {
-            "left": 0,
-            "top": 0,
-            "right": 0,
-            "bottom": 0
-          }
-        },
-        "gap": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Space between children; null is space.sm.",
-          "default": null,
-          "x-og-unit": "cssPx"
-        },
-        "fade": {
-          "type": "number",
-          "description": "How far the edge fades reach; 0 is 24.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "fadeInto": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ThemeColor"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The surface the content fades into; null is panel.",
-          "default": null
-        },
-        "label": {
-          "type": "string",
-          "description": "What a screen reader calls the region.",
-          "default": ""
         }
       },
       "additionalProperties": false
@@ -67025,149 +66534,6 @@
       ],
       "additionalProperties": false
     },
-    "WorldPanelDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A world panel (docs/ui.md §1): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad.",
-      "type": "object",
-      "properties": {
-        "target": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Texture"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The colour of an og.render.renderTarget made with format rgba16float (RenderTargetInfo.texture); give the mesh's material it as map (lit) or emissiveMap with colour black (unlit). It shows the frame after the UI drew it. Null: laid out and hit, drawn nowhere.",
-          "default": null
-        },
-        "width": {
-          "type": "number",
-          "description": "Its layout width; the target's pixels spread over it.",
-          "default": 480,
-          "minimum": 1,
-          "x-og-unit": "cssPx"
-        },
-        "height": {
-          "type": "number",
-          "description": "Its layout height.",
-          "default": 320,
-          "minimum": 1,
-          "x-og-unit": "cssPx"
-        },
-        "quad": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/WorldTarget"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Where its quad is: centred on the target's pose, facing its +Z (an og.render.planeGeometry of quadWidth by quadHeight on that entity). Null: no ray reaches it.",
-          "default": null
-        },
-        "rotation": {
-          "$ref": "#/$defs/Quaternion",
-          "description": "The quad's rotation after its target's.",
-          "default": {
-            "x": 0,
-            "y": 0,
-            "z": 0,
-            "w": 1
-          }
-        },
-        "quadWidth": {
-          "type": "number",
-          "description": "The quad's width along its +X.",
-          "default": 1,
-          "minimum": 0,
-          "x-og-unit": "m"
-        },
-        "quadHeight": {
-          "type": "number",
-          "description": "The quad's height along its +Y.",
-          "default": 1,
-          "minimum": 0,
-          "x-og-unit": "m"
-        },
-        "direction": {
-          "$ref": "#/$defs/Direction",
-          "description": "Which way it lays out its children; the default is a column.",
-          "default": "row"
-        },
-        "gap": {
-          "type": "number",
-          "description": "Space between children.",
-          "default": 0,
-          "x-og-unit": "cssPx"
-        },
-        "padding": {
-          "$ref": "#/$defs/Insets",
-          "description": "Space inside its edges.",
-          "default": {
-            "left": 0,
-            "top": 0,
-            "right": 0,
-            "bottom": 0
-          }
-        },
-        "background": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Paint"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its fill; null draws none (the target clears to transparent).",
-          "default": null
-        },
-        "projected": {
-          "type": "boolean",
-          "description": "Drawn by the UI itself onto where its quad is seen (a ground decal under a unit, a sign over a door) in a band under the screen's elements, instead of into target: no render target or mesh. Inert: no ray reaches it and its controls take no focus. Not drawn while a corner of its quad is behind the camera.",
-          "default": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "PanelInfo": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "What the pointer does on a world panel this tick.",
-      "type": "object",
-      "properties": {
-        "pointed": {
-          "type": "boolean",
-          "description": "The ray from the pointer meets the panel's quad (and no screen element is under it): its controls take the press."
-        },
-        "x": {
-          "type": "number",
-          "description": "Where on the panel, from its top left.",
-          "x-og-unit": "cssPx"
-        },
-        "y": {
-          "type": "number",
-          "description": "Where on the panel, from its top left.",
-          "x-og-unit": "cssPx"
-        },
-        "distance": {
-          "type": "number",
-          "description": "Along the ray to the hit.",
-          "x-og-unit": "m"
-        }
-      },
-      "required": [
-        "pointed",
-        "x",
-        "y",
-        "distance"
-      ],
-      "additionalProperties": false
-    },
     "MassKind": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -68033,34 +67399,6 @@
         "kind",
         "name",
         "value"
-      ],
-      "additionalProperties": false
-    },
-    "UiDocResponse": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes.",
-      "type": "object",
-      "properties": {
-        "path": {
-          "type": "string",
-          "description": "Its root's path; empty when it was not built."
-        },
-        "events": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/UiDocEvent"
-          },
-          "description": "Its events."
-        },
-        "props": {
-          "description": "A component's props after its writes (a screen's viewmodel is og.ui.screenVm's)."
-        }
-      },
-      "required": [
-        "path",
-        "events",
-        "props"
       ],
       "additionalProperties": false
     },

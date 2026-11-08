@@ -156,7 +156,7 @@ pub const CORE_KINDS: &[KindSpec] = &[
     KindSpec {
         name: "slot",
         container: true,
-        doc: "A place code fills (og.ui.openSlot), its box laid out with the document.",
+        doc: "A named place, its box laid out with the document; content a mount passes is placed with `{@render}`.",
     },
     KindSpec {
         name: "label",

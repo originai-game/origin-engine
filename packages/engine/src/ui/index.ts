@@ -3,7 +3,7 @@
 // Every member is declared in crates/og-api/api/ui.ogt (module `ui`) as a
 // `host false` function written here over public og.ui calls only.
 
-import { accordion, card, scrollArea, splitView } from "./containers/panels.ts";
+import { accordion, card, splitView } from "./containers/panels.ts";
 import { confirm, contextMenu, dialog, menu, popover, sheet } from "./containers/layers.ts";
 import { actionHints, breadcrumbs, carousel, pagination, radialMenu, tabBar } from "./containers/navigation.ts";
 import { dataGrid, dataList, table } from "./data/table.ts";
@@ -17,7 +17,6 @@ import { patterns } from "./patterns/index.ts";
 
 export const components = Object.freeze({
   card,
-  scrollArea,
   accordion,
   splitView,
   dialog,

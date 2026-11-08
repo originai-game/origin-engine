@@ -2239,11 +2239,6 @@ pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_open_transition(id: String, show: bool, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_open_transition(&Host, id, show, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_open_modal(id: String, open: bool, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_open_modal(&Host, id, open, desc)
 }
@@ -2291,11 +2286,6 @@ pub fn og_ui_grid_item(index: u32, selected: bool) -> String {
 #[wasm_bindgen]
 pub fn og_ui_close_list() -> String {
     <Host as UiApi>::og_ui_close_list(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_dragging(id: String) -> String {
-    <Host as UiApi>::og_ui_dragging(&Host, id)
 }
 
 #[wasm_bindgen]
@@ -2351,16 +2341,6 @@ pub fn og_ui_minimap(id: String, desc: Option<String>) {
 #[wasm_bindgen]
 pub fn og_ui_dialogue(id: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_dialogue(&Host, id, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_joystick(id: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_joystick(&Host, id, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_dpad(id: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_dpad(&Host, id, desc)
 }
 
 #[wasm_bindgen]
@@ -2649,11 +2629,6 @@ pub fn og_ui_open_world_anchor(id: String, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_open_world_panel(id: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_open_world_panel(&Host, id, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_define_mass(&Host, name, desc)
 }
@@ -2686,16 +2661,6 @@ pub fn og_ui_meta(id: String, desc: Option<String>) {
 #[wasm_bindgen]
 pub fn og_ui_scene_viewport(id: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_scene_viewport(&Host, id, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_screen(name: String, vm: Option<String>) -> String {
-    <Host as UiApi>::og_ui_screen(&Host, name, vm)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_open_slot(path: String) -> bool {
-    <Host as UiApi>::og_ui_open_slot(&Host, path)
 }
 
 #[wasm_bindgen]

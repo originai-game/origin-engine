@@ -879,31 +879,6 @@ module ui {
     field instant bool "Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."
   }
 
-  struct TransitionDesc {
-    doc "How a transition moves, timed in ticks from the style's motion."
-    desc true
-    field kind TransitionKind "The movement."
-    field durationMs f32 "How long entering and leaving take; 0 is motion.duration.base (240 ms)." {
-      unit ms
-      min 0
-    }
-    field distance f32 "How far slides travel; 0 is space.xl." {
-      unit cssPx
-      min 0
-    }
-    field instant bool "Shown at once the first time it is built (no entrance)."
-  }
-
-  struct Presence {
-    doc "Where a transition or dialog is this tick."
-    field visible bool "Build its content: shown, entering or leaving."
-    field progress f32 "0 gone, 1 settled." {
-      unit ratio
-    }
-    field entering bool "Moving in."
-    field leaving bool "Moving out."
-  }
-
   struct ModalDesc {
     doc "A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked."
     desc true
@@ -1079,48 +1054,6 @@ module ui {
     field advanced bool "Pressed (or activated) while done: show the next line."
   }
 
-  struct JoystickDesc {
-    doc "A virtual joystick: one translucent disc of the HUD ground with a rim (part Joystick.base, which a style dresses) and a knob that follows the finger that started on it, the rim lit toward the push while held. A finger sliding onto it from elsewhere does not take it."
-    desc true
-    field size f32 "The base's diameter; 0 is 128 (never under three touch targets)." {
-      unit cssPx
-      min 0
-    }
-    field deadZone f32 "The ignored radius; 0 is 0.15. Past it the vector is rescaled, rising from 0 at the dead zone's edge to 1 at the base's." {
-      unit ratio
-      min 0
-      max 1
-    }
-    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
-    field disabled bool "It answers nothing and shows faded (a cutscene, a stun)."
-  }
-
-  struct JoystickResult {
-    doc "A joystick's vector this tick."
-    field x f32 "-1 left to 1 right; 0 inside the dead zone."
-    field y f32 "-1 up to 1 down; 0 inside the dead zone."
-    field active bool "A press that started on it is held."
-  }
-
-  struct DpadDesc {
-    doc "A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, read as one target by the angle of the finger from its centre: eight ways (a diagonal holds both of its arms), nothing in its middle, the held direction lit under its chevron. The thumb rolls between directions without lifting."
-    desc true
-    field size f32 "The pad's size; 0 is 132 (each arm at least 44)." {
-      unit cssPx
-      min 0
-    }
-    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
-    field disabled bool "It answers nothing and shows faded."
-  }
-
-  struct DpadResult {
-    doc "Which arms of a d-pad are held this tick."
-    field up bool "Up is held."
-    field down bool "Down is held."
-    field left bool "Left is held."
-    field right bool "Right is held."
-  }
-
   struct ActionButtonDesc {
     doc "A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face, flagged primary, pressed and disabled, which a style dresses), its icon on it; a label wider than it with no icon widens it to a capsule instead. A further touch holds it only when it went down on it, so a thumb steering a stick never fires it by sliding over."
     desc true
@@ -1240,24 +1173,6 @@ module ui {
     returns Void
   }
 
-  fn openTransition {
-    doc "Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves."
-    param id String "Its id."
-    param show bool "Whether it should be shown."
-    param desc TransitionDesc "How it moves."
-    returns Presence
-  }
-
-  fn transition {
-    doc "Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible."
-    host false
-    param id String "Its id."
-    param show bool "Whether it should be shown."
-    param desc TransitionDesc "How it moves."
-    param build UiBuild "Makes its content."
-    returns Presence
-  }
-
   fn openModal {
     doc "Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`."
     param id String "Its id."
@@ -1357,12 +1272,6 @@ module ui {
     returns Response
   }
 
-  fn dragging {
-    doc "The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer."
-    param id String "The list's or grid's id."
-    returns Option.u32
-  }
-
   fn chip {
     doc "A chip: a control-filled tag; selected inverts to ink. For filters and tags."
     param id String "Its id."
@@ -1445,20 +1354,6 @@ module ui {
     param id String "Its id."
     param desc DialogueDesc "Speaker, text, portrait and speed."
     returns DialogueResult
-  }
-
-  fn joystick {
-    doc "A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time."
-    param id String "Its id."
-    param desc JoystickDesc "Size and dead zone."
-    returns JoystickResult
-  }
-
-  fn dpad {
-    doc "A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px."
-    param id String "Its id."
-    param desc DpadDesc "Its size."
-    returns DpadResult
   }
 
   fn actionButton {

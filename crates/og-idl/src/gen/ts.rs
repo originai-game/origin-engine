@@ -153,7 +153,7 @@ export type View<T> = T extends ComponentType<infer F, any> ? ColumnViews<F> : n
 /**
  * The game's screen documents by name, each with its viewmodel, events and
  * slots. Empty here: `og ui types` writes one `.og/types/ui/<name>.d.ts`
- * per document that adds itself, so `og.ui.screen("shop", vm)` checks `vm`.
+ * per document that adds itself, so `og.ui.push(world, "shop", vm)` checks `vm`.
  */
 export interface UiScreens {}
 /** The game's component documents by name, as {@link UiScreens}. */
@@ -166,17 +166,6 @@ export type ComponentName = (keyof UiComponents & string) | (string & {});
 export type ScreenProps<S> = S extends keyof UiScreens ? UiScreens[S]["props"] : unknown;
 /** A declared component's props; `unknown` for an undeclared name. */
 export type ComponentProps<C> = C extends keyof UiComponents ? UiComponents[C]["props"] : unknown;
-/** What mounting a declared screen answers, its events narrowed to the ones it can send. */
-export type ScreenResponse<S> = S extends keyof UiScreens
-  ? Omit<UiDocResponse, "events"> & { readonly events: readonly UiScreens[S]["events"][] }
-  : UiDocResponse;
-/** What mounting a declared component answers, its props and events typed. */
-export type ComponentResponse<C> = C extends keyof UiComponents
-  ? Omit<UiDocResponse, "events" | "props"> & {
-      readonly events: readonly UiComponents[C]["events"][];
-      readonly props: UiComponents[C]["props"];
-    }
-  : UiDocResponse;
 "#;
 
 impl<'a> Gen<'a, '_> {
@@ -699,9 +688,8 @@ impl<'a> Gen<'a, '_> {
                 let one = arg(0);
                 format!("[{}]", vec![one; n].join(", "))
             }
-            "ComponentType" | "ResourceType" | "ScreenProps" | "ScreenResponse"
-            | "ComponentProps" | "ComponentResponse" | "UiReadable" | "UiWritable" | "UiStart"
-            | "UiCollection" => format!("{name}<{}>", arg(0)),
+            "ComponentType" | "ResourceType" | "ScreenProps" | "ComponentProps" | "UiReadable"
+            | "UiWritable" | "UiStart" | "UiCollection" => format!("{name}<{}>", arg(0)),
             "EventType" => format!("EventType<FieldValues<{}>>", arg(0)),
             "UiDerive" => format!("UiDerive<{}, {}>", arg(0), arg(1)),
             other => other.to_string(),

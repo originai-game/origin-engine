@@ -1,6 +1,6 @@
 // The game widget set's host calls (IDL module `ui`, crates/og-ui) and the
-// TypeScript sugar over them: anchor, transition and modal take
-// a build callback and close what they open even when it throws. The
+// TypeScript sugar over them: anchor and modal take a build
+// callback and close what they open even when it throws. The
 // components (../ui) are written against `kit`, which is og.ui with these
 // members added.
 
@@ -55,13 +55,6 @@ export const widgets = {
   openAnchor: (id: string, desc?: Api.AnchorDesc): void => abi().og_ui_open_anchor(id, json(desc)),
   anchor: (id: string, desc: Api.AnchorDesc, build: Api.UiBuild): void =>
     within(() => abi().og_ui_open_anchor(id, json(desc)), build, () => abi().og_ui_close()),
-  openTransition: (id: string, show: boolean, desc?: Api.TransitionDesc): Api.Presence =>
-    parse(abi().og_ui_open_transition(id, show, json(desc))),
-  transition: (id: string, show: boolean, desc: Api.TransitionDesc, build: Api.UiBuild): Api.Presence => {
-    const p = parse<Api.Presence>(abi().og_ui_open_transition(id, show, json(desc)));
-    within(() => {}, () => { if (p.visible) build(); }, () => abi().og_ui_close());
-    return p;
-  },
   openModal: (id: string, open: boolean, desc?: Api.ModalDesc): Api.ModalResult => parse(abi().og_ui_open_modal(id, open, json(desc))),
   closeModal: (): void => abi().og_ui_close_modal(),
   modal: (id: string, open: boolean, desc: Api.ModalDesc, build: Api.UiBuild): Api.ModalResult => {
@@ -78,7 +71,6 @@ export const widgets = {
   listItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_list_item(index, selected)),
   gridItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_grid_item(index, selected)),
   closeList: (): Api.Response => parse(abi().og_ui_close_list()),
-  dragging: (id: string): number | null => parse(abi().og_ui_dragging(id)),
   chip: (id: string, text: string, desc?: Api.ChipDesc): Api.Response => parse(abi().og_ui_chip(id, text, json(desc))),
   badge: (id: string, text: string, tone: Api.Tone): void => abi().og_ui_badge(id, text, tone),
   divider: (id: string, vertical: boolean): void => abi().og_ui_divider(id, vertical),
@@ -91,8 +83,6 @@ export const widgets = {
   minimap: (id: string, desc?: Api.MinimapDesc): void => abi().og_ui_minimap(id, json(desc)),
   zoomView: (id: string, desc?: Api.ZoomViewDesc): Api.ZoomResult => parse(abi().og_ui_zoom_view(id, json(desc))),
   dialogue: (id: string, desc?: Api.DialogueDesc): Api.DialogueResult => parse(abi().og_ui_dialogue(id, json(desc))),
-  joystick: (id: string, desc?: Api.JoystickDesc): Api.JoystickResult => parse(abi().og_ui_joystick(id, json(desc))),
-  dpad: (id: string, desc?: Api.DpadDesc): Api.DpadResult => parse(abi().og_ui_dpad(id, json(desc))),
   actionButton: (id: string, text: string, desc?: Api.ActionButtonDesc): Api.Response => parse(abi().og_ui_action_button(id, text, json(desc))),
   toast: (world: Api.World, text: string, desc?: Api.ToastDesc): number => abi().og_ui_toast(worldId(world), text, json(desc)),
   dismissToast: (world: Api.World, toastId: number): void => abi().og_ui_dismiss_toast(worldId(world), toastId),
@@ -124,8 +114,6 @@ export const widgets = {
   // World-space UI (docs/ui.md §1, §3.3).
   openWorldAnchor: (id: string, desc?: Api.WorldAnchorDesc): Api.AnchorInfo =>
     parse(abi().og_ui_open_world_anchor(id, json(desc))),
-  openWorldPanel: (id: string, desc?: Api.WorldPanelDesc): Api.PanelInfo =>
-    parse(abi().og_ui_open_world_panel(id, json(desc))),
   defineMass: (name: string, desc?: Api.MassTemplateDesc): Api.Result<number> => parse(abi().og_ui_define_mass(name, json(desc))),
   spawnMass: (template: number, instances: Api.MassInstance[]): void =>
     abi().og_ui_spawn_mass(template, JSON.stringify(instances)),
@@ -161,8 +149,6 @@ export const widgets = {
   overlaps: (): Api.UiOverlap[] => parse(abi().og_ui_overlaps()),
   layoutStats: (): Api.UiLayoutStats => parse(abi().og_ui_layout_stats()),
   // Documents, the layer stack, actions and glyphs (docs/ui.md §2.1, §2.1, §2.1).
-  screen: (name: string, vm?: unknown): Api.UiDocResponse => parse(abi().og_ui_screen(name, json(vm))),
-  openSlot: (path: string): boolean => abi().og_ui_open_slot(path),
   push: (world: Api.World, screen: string, vm?: unknown): Api.Result<number> =>
     parse(abi().og_ui_push(worldId(world), screen, json(vm))),
   pop: (world: Api.World): string => abi().og_ui_pop(worldId(world)),

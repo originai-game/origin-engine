@@ -2685,12 +2685,6 @@ pub fn og_ui_open_anchor(env: Env, id: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_open_anchor(&Host, id, desc)
 }
 
-#[napi(js_name = "og_ui_open_transition")]
-pub fn og_ui_open_transition(env: Env, id: String, show: bool, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_open_transition(&Host, id, show, desc)
-}
-
 #[napi(js_name = "og_ui_open_modal")]
 pub fn og_ui_open_modal(env: Env, id: String, open: bool, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2749,12 +2743,6 @@ pub fn og_ui_grid_item(env: Env, index: u32, selected: bool) -> String {
 pub fn og_ui_close_list(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_close_list(&Host)
-}
-
-#[napi(js_name = "og_ui_dragging")]
-pub fn og_ui_dragging(env: Env, id: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_dragging(&Host, id)
 }
 
 #[napi(js_name = "og_ui_chip")]
@@ -2821,18 +2809,6 @@ pub fn og_ui_minimap(env: Env, id: String, desc: Option<String>) {
 pub fn og_ui_dialogue(env: Env, id: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_dialogue(&Host, id, desc)
-}
-
-#[napi(js_name = "og_ui_joystick")]
-pub fn og_ui_joystick(env: Env, id: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_joystick(&Host, id, desc)
-}
-
-#[napi(js_name = "og_ui_dpad")]
-pub fn og_ui_dpad(env: Env, id: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_dpad(&Host, id, desc)
 }
 
 #[napi(js_name = "og_ui_action_button")]
@@ -3177,12 +3153,6 @@ pub fn og_ui_open_world_anchor(env: Env, id: String, desc: Option<String>) -> St
     <Host as UiApi>::og_ui_open_world_anchor(&Host, id, desc)
 }
 
-#[napi(js_name = "og_ui_open_world_panel")]
-pub fn og_ui_open_world_panel(env: Env, id: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_open_world_panel(&Host, id, desc)
-}
-
 #[napi(js_name = "og_ui_define_mass")]
 pub fn og_ui_define_mass(env: Env, name: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -3223,18 +3193,6 @@ pub fn og_ui_meta(env: Env, id: String, desc: Option<String>) {
 pub fn og_ui_scene_viewport(env: Env, id: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_scene_viewport(&Host, id, desc)
-}
-
-#[napi(js_name = "og_ui_screen")]
-pub fn og_ui_screen(env: Env, name: String, vm: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_screen(&Host, name, vm)
-}
-
-#[napi(js_name = "og_ui_open_slot")]
-pub fn og_ui_open_slot(env: Env, path: String) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_open_slot(&Host, path)
 }
 
 #[napi(js_name = "og_ui_push")]

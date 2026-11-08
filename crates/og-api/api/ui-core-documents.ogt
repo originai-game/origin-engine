@@ -10,13 +10,6 @@
     field value Json "The new value (changed, set), the row's index (select); null otherwise."
   }
 
-  struct UiDocResponse {
-    doc "What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes."
-    field path String "Its root's path; empty when it was not built."
-    field events List.UiDocEvent "Its events."
-    field props Json "A component's props after its writes (a screen's viewmodel is og.ui.screenVm's)."
-  }
-
   struct UiLayer {
     doc "A layer of the stack (docs/ui.md §2.1), as its screen declares it."
     field serial u32 "Its number, unique for the UI's life: what push answered."
@@ -85,22 +78,6 @@
     field hold bool "It is a hold."
   }
 
-  fn screen {
-    doc "Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have."
-    generic S ScreenName
-    param name S "The screen's name (its `name` line); a name `og ui types` declared types its viewmodel and events."
-    param vm Option.ScreenProps.S "Its viewmodel: an object (null keeps the one it has)." {
-      optional true
-    }
-    returns ScreenResponse.S
-  }
-
-  fn openSlot {
-    doc "Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick."
-    param path String "Its full path, or `<screen>/<slot id>`."
-    returns bool
-  }
-
   fn push {
     doc "Push a screen onto the layer stack (docs/ui.md §2.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
     generic S ScreenName
@@ -150,7 +127,7 @@
   }
 
   fn docEvents {
-    doc "Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own."
+    doc "Take the events of the documents built this frame: pushed layers and store-driven mounts."
     param world World "The world."
     returns List.UiDocEvent
   }

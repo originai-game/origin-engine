@@ -208,7 +208,7 @@ document support from pending retained mounting.
 
 ### Bindings and formats (`src/bind.rs`)
 
-A **viewmodel** is JSON: an object code passes (`og.ui.screen("shop", vm)`),
+A **viewmodel** is JSON: an object code passes (`og.ui.push(world, "shop", vm)`),
 a fixture, or a reflected resource or component code reads into it. A path
 (`hero.health`, `items.0.price`, `items.length`) reads the viewmodel, a
 `for`'s item variable first; a Capitalised root (`Wallet.gold`) is the
@@ -1173,7 +1173,7 @@ reference source of `references/<tier>/kit-*.png`; the `screens` guide
 `ui/data`, merged into `og.ui`, docs/ui.md §2): `host false` components
 built from the public calls only (open/close with `ElementDesc.focusable`
 and `part`, `props`, `setDraw`, `semantics`, `animate`, `memory`, `gesture`,
-the modal layer). Containers and navigation: `card`, `scrollArea`,
+the modal layer). Containers and navigation: `card`,
 `accordion`, `splitView`, `dialog`, `confirm`, `popover`, `menu`,
 `contextMenu`, `sheet`, `tabBar`, `carousel`, `breadcrumbs`, `pagination`,
 `actionHints`, `radialMenu`. Data: `dataList`, `dataGrid`, `table` (sorted

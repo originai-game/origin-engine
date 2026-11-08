@@ -1,8 +1,8 @@
 //! A document's TypeScript declaration (docs/ui.md §2.1): its props, the
 //! events it can send and its slots, as one `.d.ts` that adds the document
 //! to the engine's `UiScreens` or `UiComponents` registry. Then
-//! `og.ui.screen("shop", vm)` type-checks `vm` against the contract and
-//! narrows its answer's events to the ones the document can send.
+//! `og.ui.push(world, "shop", vm)` type-checks `vm` against the contract
+//! and og.ui.screenVm answers the contract's viewmodel type.
 //!
 //! A prop's type is its contract's (`number`, `string`, `bool`, `list`,
 //! `object`, `any`); a list's items and an object's fields are read from
@@ -286,7 +286,7 @@ pub fn document_dts<'a>(
         .map(|n| format!("{}/{}", doc.name, n.id))
         .collect();
     out.push_str(&format!(
-        "/** Its slots, as og.ui.openSlot names them. */\nexport type {t}Slot = {};\n\n",
+        "/** Its slots, by path. */\nexport type {t}Slot = {};\n\n",
         union(&slots)
     ));
     out.push_str(&format!(

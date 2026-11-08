@@ -417,18 +417,17 @@ fn vfx_add_downloads_a_signed_pack_and_refuses_anything_else() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// `og check` types each screen and component from its document (`og ui
-/// types`): a viewmodel against the props, a list's items as its fixtures
-/// show them, the events' names (a used component's included); a name
-/// no document has stays untyped; an edit to a
-/// document retypes the next check.
+/// `og check` types each screen from its document (`og ui types`): a
+/// viewmodel pushed or replaced against the props, a list's items as its
+/// fixtures show them, and the viewmodel og.ui.screenVm answers; a name
+/// no document has stays untyped; an edit to a document retypes the next
+/// check.
 ///
 /// Ways it could fail: the engine's string overload chosen before the
-/// game's documents (nothing caught), a used component's emit missing
-/// (valid code refused), an unknown screen refused, or types written once
-/// and left stale.
+/// game's documents (nothing caught), an unknown screen refused, or types
+/// written once and left stale.
 #[test]
-fn og_check_types_viewmodels_and_events_from_the_documents() {
+fn og_check_types_viewmodels_from_the_documents() {
     let dir = scratch_root();
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::create_dir_all(dir.join("assets/ui")).unwrap();
@@ -453,16 +452,16 @@ fn og_check_types_viewmodels_and_events_from_the_documents() {
     std::fs::write(
         dir.join("src/main.ts"),
         r#"import { og } from "@origingame/engine";
-og.ui.screen("shop", { gold: 1, items: [{ name: "a", price: 1 }] });
-og.ui.screen("shop", { gold: "1", items: [] });
-og.ui.screen("shop", { gold: 1, items: [{ name: "a", cost: 1 }] });
-og.ui.screen("elsewhere", { anything: 1 });
-for (const e of og.ui.screen("shop", null).events) {
-  if (e.kind === "emit" && (e.name === "buy" || e.name === "tapped")) {}
-  if (e.kind === "back" && e.name === "closeShop") {}
-  if (e.kind === "emit" && e.name === "buyy") {}
-}
-export default og.game({});
+export default og.game({
+  start: (world) => {
+    og.ui.push(world, "shop", { gold: 1, items: [{ name: "a", price: 1 }] });
+    og.ui.push(world, "shop", { gold: "1", items: [] });
+    og.ui.replace(world, "shop", { gold: 1, items: [{ name: "a", cost: 1 }] });
+    og.ui.push(world, "elsewhere", { anything: 1 });
+    const vm = og.ui.screenVm(world, "shop");
+    if (vm) Math.round(vm.gold);
+  },
+});
 "#,
     )
     .unwrap();
@@ -477,13 +476,12 @@ export default og.game({});
             .map(|d| (d["line"].as_u64().unwrap(), d["code"].as_u64().unwrap()))
             .collect()
     };
-    // The string gold, the item's unknown field and the misspelt event;
-    // nothing else.
-    assert_eq!(errors(), [(3, 2322), (4, 2353), (9, 2367)]);
+    // The string gold and the item's unknown field; nothing else.
+    assert_eq!(errors(), [(5, 2322), (6, 2353)]);
     std::fs::write(dir.join("assets/ui/shop.svelte"), shop("string")).unwrap();
     assert_eq!(
         errors(),
-        [(2, 2322), (4, 2322), (4, 2353), (9, 2367)],
+        [(4, 2322), (6, 2322), (6, 2353), (9, 2345)],
         "gold is a string now: the numbers are the wrong ones"
     );
 }

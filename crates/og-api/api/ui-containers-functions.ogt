@@ -9,15 +9,6 @@
     returns Response
   }
 
-  fn scrollArea {
-    doc "A scroll container whose content fades out at an edge where more lies beyond."
-    host false
-    param id String "Its id."
-    param desc ScrollAreaDesc "Axes, size and fades."
-    param build UiBuild "Builds its content."
-    returns Void
-  }
-
   fn accordion {
     doc "Sections whose headers open and close their bodies; the sections under one move on the panel spring."
     host false

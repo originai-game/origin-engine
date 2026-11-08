@@ -30,27 +30,6 @@ pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
     });
 }
 
-fn presence_json(p: Presence) -> String {
-    json!({ "visible": p.visible, "progress": p.progress, "entering": p.entering, "leaving": p.leaving }).to_string()
-}
-
-pub fn og_ui_open_transition(id: String, show: bool, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let p = with_ui("og.ui.openTransition", |ui| {
-        ui.open_transition(
-            id.as_str(),
-            show,
-            TransitionDesc {
-                kind: transition_kind(&d["kind"]).unwrap_or_default(),
-                duration_ms: f(&d, "durationMs", 0.0),
-                distance: f(&d, "distance", 0.0),
-                instant: d["instant"].as_bool().unwrap_or(false),
-            },
-        )
-    });
-    presence_json(p.unwrap_or_default())
-}
-
 pub fn og_ui_open_modal(id: String, open: bool, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let r = with_ui("og.ui.openModal", |ui| {
@@ -170,10 +149,6 @@ pub fn og_ui_grid_item(index: u32, selected: bool) -> String {
 
 pub fn og_ui_close_list() -> String {
     response(with_ui("og.ui.closeList", |ui| ui.close_list()).unwrap_or_default()).to_string()
-}
-
-pub fn og_ui_dragging(id: String) -> String {
-    opt(with_ui("og.ui.dragging", |ui| ui.dragging(id.as_str())).flatten()).to_string()
 }
 
 pub fn og_ui_chip(id: String, text: String, desc: Option<String>) -> String {
@@ -332,39 +307,6 @@ pub fn og_ui_dialogue(id: String, desc: Option<String>) -> String {
     })
     .unwrap_or_default();
     json!({ "shown": r.shown, "done": r.done, "advanced": r.advanced }).to_string()
-}
-
-pub fn og_ui_joystick(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.joystick", |ui| {
-        ui.joystick(
-            id.as_str(),
-            JoystickDesc {
-                size: f(&d, "size", 0.0),
-                dead_zone: f(&d, "deadZone", 0.0),
-                customize: customize(&d["customize"]),
-                disabled: d["disabled"].as_bool().unwrap_or(false),
-            },
-        )
-    })
-    .unwrap_or_default();
-    json!({ "x": r.x, "y": r.y, "active": r.active }).to_string()
-}
-
-pub fn og_ui_dpad(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.dpad", |ui| {
-        ui.dpad(
-            id.as_str(),
-            DpadDesc {
-                size: f(&d, "size", 0.0),
-                customize: customize(&d["customize"]),
-                disabled: d["disabled"].as_bool().unwrap_or(false),
-            },
-        )
-    })
-    .unwrap_or_default();
-    json!({ "up": r.up, "down": r.down, "left": r.left, "right": r.right }).to_string()
 }
 
 pub fn og_ui_action_button(id: String, text: String, desc: Option<String>) -> String {

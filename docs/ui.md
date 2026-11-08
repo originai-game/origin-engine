@@ -681,7 +681,7 @@ that moves costs 0 bindings and 0 reconciled elements, and a renamed row
 writes that one anchor. `anchor` is not an HTML element; no standard names a
 box held over a 3D point.
 
-`<panel world>` is the native world panel (`og.ui.openWorldPanel`): a box
+`<panel world>` is the native world panel: a box
 laid out at its CSS size and drawn into the render target `src` names,
 which the game shows on a plane: `<panel id="Terminal" world
 entity={$console} size="3 2" rotation="0 30 0" src={$screen}>…</panel>`.
@@ -735,8 +735,7 @@ seen at, rounded to a power of two and capped at 2048 px. It is inert: no
 ray reaches it and its controls take no focus. While a corner is behind
 the camera it is not drawn. The plane is flat at the entity's height;
 draping it over terrain (a decal) is a follow-up. `ground` is not an HTML
-element; no web standard lays a box onto a 3D plane. Hosts get the same
-member as `WorldPanelDesc.projected`.
+element; no web standard lays a box onto a 3D plane.
 
 An anchor or world panel stands outside the screen's tree, in a world
 layer of its own, but its layer is keyed by the element's own path: the

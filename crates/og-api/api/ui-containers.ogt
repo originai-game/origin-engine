@@ -49,24 +49,6 @@
     }
   }
 
-  struct ScrollAreaDesc {
-    doc "A scroll area: og.ui's scroll container whose content fades out at an edge where more lies beyond."
-    desc true
-    field axes ScrollAxes "Which ways it scrolls."
-    field width Option.Size "Its width; null grows."
-    field height Option.Size "Its height (it scrolls inside); null fits the content."
-    field padding Insets "Space around the content."
-    field gap Option.f32 "Space between children; null is space.sm." {
-      unit cssPx
-    }
-    field fade f32 "How far the edge fades reach; 0 is 24." {
-      unit cssPx
-      min 0
-    }
-    field fadeInto Option.ThemeColor "The surface the content fades into; null is panel."
-    field label String "What a screen reader calls the region."
-  }
-
   struct AccordionSection {
     doc "A section of an accordion: its header's title, subtitle and badge."
     desc true
