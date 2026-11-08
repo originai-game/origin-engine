@@ -14,6 +14,7 @@ mod spans;
 mod stylesheet;
 mod svelte;
 mod syntax;
+pub mod topology;
 pub mod types;
 pub mod variables;
 mod writeback;
