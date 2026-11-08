@@ -189,26 +189,43 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
     const r = Bun.spawnSync(c, { env, stdout: "pipe", stderr: "pipe" });
     return summarise(r.exitCode, new TextDecoder().decode(r.stdout), new TextDecoder().decode(r.stderr), what);
   };
-  /** PlaytestDesc.require over a run's report: each named site (or `name[key]` bucket) fired. */
-  const requireFired = (a: PlaytestAssertions, what: string): void => {
+  /**
+   * PlaytestDesc.require over every process of the playtest (the script, its `then` steps, the
+   * room's peers): a named site (or `name[key]` bucket) fired when it fired in any of them, and an
+   * each's buckets are those any of them saw, each held when it held in one.
+   */
+  const reports: PlaytestAssertions[] = [];
+  const requireFired = (what: string): void => {
+    type Merged = { kind: string; name: string; ran: boolean; fired: boolean; buckets: Map<string, boolean> };
+    const merged = new Map<string, Merged>();
+    for (const a of reports)
+      for (const s of a.sites) {
+        if (s.kind === "always" || s.kind === "unreachable") continue;
+        const key = `${s.kind}\u0000${s.name}\u0000${s.location}`;
+        const m = merged.get(key) ?? { kind: s.kind, name: s.name, ran: false, fired: false, buckets: new Map() };
+        m.ran ||= s.ran;
+        m.fired ||= s.fired;
+        for (const b of s.buckets ?? []) m.buckets.set(b.key, (m.buckets.get(b.key) ?? false) || b.fired);
+        merged.set(key, m);
+      }
     for (const want of desc.require ?? []) {
       checks++;
       const m = /^(.*)\[(.*)\]$/.exec(want);
       const name = m ? m[1]! : want;
-      const sites = a.sites.filter((s) => s.name === name && s.kind !== "always" && s.kind !== "unreachable");
+      const sites = [...merged.values()].filter((s) => s.name === name);
       let fired: boolean;
       let why = "";
       if (sites.length === 0) {
         fired = false;
         why = `no og.assert.sometimes, reachable or each named '${name}' ran or was declared: check the name`;
       } else if (m) {
-        fired = sites.some((s) => s.buckets?.some((b) => b.key === m[2] && b.fired));
-        if (!fired) why = `bucket [${m[2]}] never held${sites.some((s) => s.buckets?.some((b) => b.key === m[2])) ? "" : " (never seen)"}`;
+        fired = sites.some((s) => s.buckets.get(m[2]!) === true);
+        if (!fired) why = `bucket [${m[2]}] never held${sites.some((s) => s.buckets.has(m[2]!)) ? "" : " (never seen)"}`;
       } else {
-        fired = sites.some((s) => s.fired && (s.kind !== "each" || (s.buckets ?? []).every((b) => b.fired)));
+        fired = sites.some((s) => s.fired && (s.kind !== "each" || [...s.buckets.values()].every(Boolean)));
         if (!fired) {
           const s = sites[0]!;
-          const open = (s.buckets ?? []).filter((b) => !b.fired).map((b) => b.key);
+          const open = [...s.buckets].filter(([, held]) => !held).map(([key]) => key);
           why = s.kind === "each" && open.length > 0 ? `buckets never held: ${open.join(", ")}` : s.ran ? "it ran but never held" : "the run never got there";
         }
       }
@@ -260,7 +277,7 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
     for (const [i, s] of peerSummaries.entries()) for (const f of s.unchecked ?? []) unchecked.push(`peer ${i + 1} ${f}`);
   } else summary = await spawn(command(desc.commands, out, clock), "og run");
   if (!summary) return refuse();
-  requireFired(summary.assertions ?? EMPTY_ASSERTIONS, "og run");
+  for (const s of [summary, ...peerSummaries]) reports.push(s.assertions ?? EMPTY_ASSERTIONS);
   const rendered = summary.tier !== "none";
   unchecked.push(...(summary.unchecked ?? []));
   // More runs of the same script (desc.runs), each with a fresh world into
@@ -350,14 +367,17 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
       const peerDir = (p: number) => join(dir, `peer-${p}`);
       const all = await playRoom(`${room!.name ?? "playtest"}.then-${i + 1}`, () => step.commands, (p) => (p === 0 ? dir : peerDir(p)), step.clock ?? clock, `then[${i}]`);
       for (const [p, s] of all.entries()) for (const f of s.unchecked ?? []) unchecked.push(`then[${i}]${p > 0 ? ` peer ${p}` : ""} ${f}`);
+      for (const s of all) reports.push(s.assertions ?? EMPTY_ASSERTIONS);
       later.push(runOf(all[0]!, dir, [], all.slice(1).map((s, p) => runOf(s, peerDir(p + 1), []))));
       continue;
     }
     const s = await spawn(command(step.commands, dir, step.clock ?? clock), `then[${i}]`);
     if (!s) return refuse();
     for (const f of s.unchecked ?? []) unchecked.push(`then[${i}] ${f}`);
+    reports.push(s.assertions ?? EMPTY_ASSERTIONS);
     later.push(runOf(s, dir, []));
   }
+  requireFired(desc.then?.length || room ? "the playtest's processes" : "og run");
   const run = runOf(
     summary,
     out,

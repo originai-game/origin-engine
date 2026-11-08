@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "PlaytestDesc.require",
+      "summary": "A required site counts as fired when any process of the playtest fired it: the script, a `then` relaunch or a room peer (an each's buckets are merged across them). It read only the first process before, so a site that fires after a relaunch could not be required."
+    }
+  ]
+}

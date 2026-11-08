@@ -17,6 +17,8 @@ test("a relaunch two hours later reads the time away from the kept store", async
     clock: T,
     commands: "0.5:save;0.7:get:Away:first.json;0.8:quit",
     then: [{ commands: "0.3:get:Away:second.json;0.4:quit", clock: T + 2 * 3600 * 1000 }],
+    // Only the relaunch finds it: require reads every process of the playtest.
+    require: ["a launch finds the save"],
   });
   const first = run.json<A>("first.json").value;
   expect(first.found, "the first launch found no save").toBe(0);

@@ -222,8 +222,9 @@ export interface PlaytestDesc {
    */
   readonly invariants?: readonly string[];
   /**
-   * The og.assert.sometimes, reachable and each sites (by name) the run must see fire: one that
-   * never fired fails the playtest. Every other site that never fired is listed as uncovered,
+   * The og.assert.sometimes, reachable and each sites (by name) the playtest must see fire, in any
+   * of its processes (the script, its `then` steps, a room's peers): one that never fired in any
+   * fails the playtest. Every other site that never fired is listed as uncovered,
    * never a failure. `each` names a site, all of whose buckets the run saw must hold; `name[key]`
    * names one bucket.
    */

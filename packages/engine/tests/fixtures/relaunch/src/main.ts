@@ -34,6 +34,8 @@ const Launch = defineSystem("Launch", { writes: [Away] }, (_q, time, world) => {
     a.value.savedAt = saved.at;
     a.value.answeredAt = r.time;
     a.value.away = (r.time - saved.at) / 1000;
+    // Fires only in a relaunch: away.og.ts requires it across its processes.
+    og.assert.reachable("a launch finds the save");
   }
 });
 
