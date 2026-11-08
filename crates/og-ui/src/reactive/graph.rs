@@ -21,6 +21,7 @@ pub enum Dependency {
     Row(SourceId, String),
     Field(SourceId, String, String),
     Interaction(MountedNode, crate::bind::InteractionState),
+    CustomProperty(MountedNode, String),
     Locale,
 }
 
@@ -28,7 +29,7 @@ impl Dependency {
     fn source(&self) -> Option<&SourceId> {
         match self {
             Self::Value(id) | Self::Keys(id) | Self::Row(id, _) | Self::Field(id, _, _) => Some(id),
-            Self::Interaction(node, _) => Some(&node.mount),
+            Self::Interaction(node, _) | Self::CustomProperty(node, _) => Some(&node.mount),
             Self::Locale => None,
         }
     }
@@ -160,7 +161,7 @@ impl Graph {
         self.changed(id)?;
         match edit {
             CollectionEdit::Move { .. } => self.notify(&Dependency::Keys(id.clone())),
-            CollectionEdit::Insert { key, .. } | CollectionEdit::Remove { key } => {
+            CollectionEdit::Insert { key, .. } | CollectionEdit::Remove { key, .. } => {
                 self.notify(&Dependency::Keys(id.clone()));
                 self.notify(&Dependency::Row(id.clone(), key.clone()));
                 let fields: Vec<_> = self
@@ -212,6 +213,12 @@ impl Graph {
         state: crate::bind::InteractionState,
     ) {
         self.notify(&Dependency::Interaction(node.clone(), state));
+    }
+
+    /// Notify after a computed value changes, including invalid/missing values
+    /// becoming valid. The identity is the instance supplying the inherited map.
+    pub fn custom_property_changed(&mut self, node: &MountedNode, name: &str) {
+        self.notify(&Dependency::CustomProperty(node.clone(), name.into()));
     }
 
     pub fn locale_changed(&mut self) {
@@ -668,12 +675,20 @@ mod tests {
             &CollectionEdit::Move {
                 key: "left".into(),
                 before: Some("right".into()),
+                from: 1,
+                to: 0,
             },
         )
         .unwrap();
         assert_eq!(g.take_bindings(), BTreeSet::from([1]));
-        g.collection_changed(&id("rows"), &CollectionEdit::Remove { key: "left".into() })
-            .unwrap();
+        g.collection_changed(
+            &id("rows"),
+            &CollectionEdit::Remove {
+                key: "left".into(),
+                index: 0,
+            },
+        )
+        .unwrap();
         assert_eq!(g.take_bindings(), BTreeSet::from([1, 2, 4]));
         g.bind(2, BTreeSet::from([Dependency::Value(id("a"))]));
         g.changed(&id("a")).unwrap();
@@ -691,5 +706,49 @@ mod tests {
         assert!(g.take_bindings().is_empty());
         g.forget(&id("rows")).unwrap();
         assert_eq!(g.take_bindings(), BTreeSet::from([1, 3, 4]));
+    }
+
+    #[test]
+    fn inherited_property_changes_target_the_supplier_instance_and_property() {
+        let mut graph = Graph::default();
+        let parents = [
+            MountedNode {
+                mount: id("first"),
+                key: 7,
+            },
+            MountedNode {
+                mount: id("second"),
+                key: 7,
+            },
+            MountedNode {
+                mount: id("first"),
+                key: 11,
+            },
+        ];
+        let read = |parent: &MountedNode, name: &str| {
+            BTreeSet::from([Dependency::CustomProperty(parent.clone(), name.into())])
+        };
+        for (binding, parent) in parents.iter().enumerate() {
+            graph.bind(binding as u64, read(parent, "--ink"));
+        }
+        graph.bind(3, read(&parents[0], "--gap"));
+        assert!(graph.take_bindings().is_empty());
+        graph.custom_property_changed(&parents[0], "--ink");
+        assert_eq!(graph.take_bindings(), BTreeSet::from([0]));
+        graph.custom_property_changed(&parents[0], "--gap");
+        assert_eq!(graph.take_bindings(), BTreeSet::from([3]));
+        // A fallback may stop reading one name and start reading another.
+        graph.bind(0, read(&parents[0], "--fallback"));
+        graph.custom_property_changed(&parents[0], "--ink");
+        assert!(graph.take_bindings().is_empty());
+        graph.custom_property_changed(&parents[0], "--fallback");
+        assert_eq!(graph.take_bindings(), BTreeSet::from([0]));
+        graph.unbind(0);
+        graph.custom_property_changed(&parents[0], "--fallback");
+        assert!(graph.take_bindings().is_empty());
+        graph.custom_property_changed(&parents[1], "--ink");
+        assert_eq!(graph.take_bindings(), BTreeSet::from([1]));
+        graph.custom_property_changed(&parents[2], "--ink");
+        assert_eq!(graph.take_bindings(), BTreeSet::from([2]));
     }
 }

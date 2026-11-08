@@ -180,6 +180,39 @@ impl Ui {
                 .iter()
                 .map(|error| format!("{}:{} ({path}): {error}", doc.source, n.line)),
         );
+        self.build_resolved_node(
+            b,
+            i,
+            ResolvedNode {
+                id,
+                path,
+                key,
+                values: r,
+                probe: built,
+            },
+            true,
+        )
+    }
+
+    fn build_resolved_node(
+        &mut self,
+        b: &mut Build<'_>,
+        i: usize,
+        resolved: ResolvedNode,
+        build_children: bool,
+    ) -> Option<String> {
+        let doc = b.doc.clone();
+        let n = &doc.nodes[i];
+        let NodeKind::Element(kind) = n.kind else {
+            unreachable!("only element nodes have resolved widget properties");
+        };
+        let ResolvedNode {
+            id,
+            path,
+            key,
+            values: r,
+            probe: mut built,
+        } = resolved;
         if r.has("visible") && !r.flag("visible") {
             return None;
         }
@@ -258,11 +291,13 @@ impl Ui {
                 self.docs.slots.entry(short).or_insert(at);
             }
             self.docs.built.push(built);
-            let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-            for &c in &n.children {
-                self.build_node(b, c, None);
+            if build_children {
+                let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
+                for &c in &n.children {
+                    self.build_node(b, c, None);
+                }
+                b.inherited = inherited;
             }
-            b.inherited = inherited;
             resp = self.close();
             self.fire(b, n, key, &path, resp);
             return Some(path);

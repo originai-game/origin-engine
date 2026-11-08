@@ -139,6 +139,34 @@ impl Session {
         self.sources.read(source)
     }
 
+    /// A document model can write a writable store, never a readable producer
+    /// or a derived value. The generic Set command also serves producers.
+    pub fn write_model(
+        &mut self,
+        source: &SourceId,
+        path: &str,
+        value: Value,
+    ) -> Result<(), String> {
+        let Some(super::Source::Signal {
+            value: current,
+            readable: false,
+            ..
+        }) = self.sources.sources.get(source)
+        else {
+            return Err(source.error("model requires a writable store"));
+        };
+        let mut next = current.clone();
+        if !crate::bind::set_path(&mut next, path, value) {
+            return Err(source.error(&format!("model cannot write path '{path}'")));
+        }
+        self.execute(Command::Set {
+            source: source.clone(),
+            value: next,
+            force: false,
+        })?;
+        Ok(())
+    }
+
     pub(crate) fn save(&self) -> Value {
         json!({
             "sources": self.sources.save(),

@@ -26,6 +26,48 @@ pub struct BindingContext {
     pub node: MountedNode,
     pub inputs: Arc<BTreeMap<String, SourceId>>,
     pub rows: Arc<BTreeMap<String, RowRef>>,
+    /// Current-document indices resolved through this instance's lexical ancestry.
+    pub selector_nodes: Arc<BTreeMap<usize, MountedNode>>,
+}
+
+impl BindingContext {
+    pub fn write_model(
+        &self,
+        session: &mut Session,
+        path: &str,
+        value: Value,
+    ) -> Result<(), String> {
+        let (root, rest) = path.split_once('.').unwrap_or((path, ""));
+        if let Some(row) = self.rows.get(root) {
+            let (field, tail) = rest.split_once('.').unwrap_or((rest, ""));
+            if field.is_empty() {
+                return Err(format!("model '{path}' must name a row field"));
+            }
+            let record = session
+                .sources
+                .keyed(&row.source)?
+                .row(&row.key)
+                .ok_or_else(|| row.source.error(&format!("row '{}' was removed", row.key)))?;
+            let mut next = record.get(field).cloned().unwrap_or(Value::Null);
+            if !crate::bind::set_path(&mut next, tail, value) {
+                return Err(format!("model cannot write path '{path}'"));
+            }
+            session.execute(super::session::Command::Patch {
+                source: row.source.clone(),
+                key: row.key.clone(),
+                fields: [(field.to_owned(), next)].into_iter().collect(),
+            })?;
+            return Ok(());
+        }
+        let name = root
+            .strip_prefix('$')
+            .ok_or_else(|| format!("model '{path}' must name a store or keyed row field"))?;
+        let source = self
+            .inputs
+            .get(name)
+            .ok_or_else(|| format!("mount has no input store '{name}'"))?;
+        session.write_model(source, rest, value)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -56,7 +98,7 @@ impl Bindings {
         context: BindingContext,
         expression: Expr,
         host: &dyn Env,
-        interaction_state: u8,
+        interaction: impl Fn(&MountedNode, InteractionState) -> bool,
     ) -> BindingId {
         let id = BindingId(self.next_id);
         self.next_id += 1;
@@ -64,9 +106,10 @@ impl Bindings {
             session,
             inputs: &context.inputs,
             rows: &context.rows,
+            selector_nodes: &context.selector_nodes,
             host,
             node: &context.node,
-            interaction_state,
+            interaction: &interaction,
         }
         .evaluate(&expression);
         session.graph.bind(id.0, evaluation.reads);
@@ -98,7 +141,7 @@ impl Bindings {
         &mut self,
         session: &mut Session,
         host: &dyn Env,
-        interaction: impl Fn(&MountedNode) -> u8,
+        interaction: impl Fn(&MountedNode, InteractionState) -> bool,
     ) -> BindingChanges {
         let pending = session.graph.take_bindings();
         let mut changes = BindingChanges {
@@ -113,9 +156,10 @@ impl Bindings {
                 session,
                 inputs: &context.inputs,
                 rows: &context.rows,
+                selector_nodes: &context.selector_nodes,
                 host,
                 node: &context.node,
-                interaction_state: interaction(&context.node),
+                interaction: &interaction,
             }
             .evaluate(&binding.expression);
             session.graph.bind(raw, evaluation.reads);
@@ -137,9 +181,10 @@ pub struct SourceEnv<'a> {
     pub session: &'a Session,
     pub inputs: &'a BTreeMap<String, SourceId>,
     pub rows: &'a BTreeMap<String, RowRef>,
+    pub selector_nodes: &'a BTreeMap<usize, MountedNode>,
     pub host: &'a dyn Env,
     pub node: &'a MountedNode,
-    pub interaction_state: u8,
+    pub interaction: &'a dyn Fn(&MountedNode, InteractionState) -> bool,
 }
 
 impl SourceEnv<'_> {
@@ -164,10 +209,6 @@ impl SourceEnv<'_> {
             reads: tracked.reads.into_inner(),
         }
     }
-}
-
-pub fn interaction_bit(state: InteractionState) -> u8 {
-    1 << state as u8
 }
 
 struct Tracked<'a, 'b> {
@@ -233,7 +274,22 @@ impl Env for Tracked<'_, '_> {
         self.reads
             .borrow_mut()
             .insert(Dependency::Interaction(self.source.node.clone(), state));
-        self.source.interaction_state & interaction_bit(state) != 0
+        (self.source.interaction)(self.source.node, state)
+    }
+
+    fn interaction_at(&self, index: usize, state: InteractionState) -> bool {
+        let Some(node) = self.source.selector_nodes.get(&index) else {
+            self.errors
+                .borrow_mut()
+                .push(self.source.node.mount.error(&format!(
+                    "selector document node {index} has no mounted identity"
+                )));
+            return false;
+        };
+        self.reads
+            .borrow_mut()
+            .insert(Dependency::Interaction(node.clone(), state));
+        (self.source.interaction)(node, state)
     }
 
     fn language(&self) -> &str {
@@ -254,6 +310,119 @@ mod tests {
     use super::*;
     use crate::reactive::session::Command;
     use serde_json::json;
+
+    #[test]
+    fn models_write_writable_inputs_and_keyed_rows_but_not_readable_or_derived_inputs() {
+        let mut session = Session::default();
+        let id = |name| SourceId::new("settings", name);
+        for (name, readable) in [("editable", false), ("external", true)] {
+            session
+                .execute(Command::Signal {
+                    source: id(name),
+                    initial: json!({"level": 3}),
+                    readable,
+                })
+                .unwrap();
+        }
+        session
+            .execute(Command::Memo {
+                source: id("derived"),
+                inputs: Some(Vec::new()),
+                initial: Some(json!(5)),
+                inactive: true,
+            })
+            .unwrap();
+        session
+            .execute(Command::Collection {
+                source: id("items"),
+                key: "id".into(),
+                items: [json!({"id":"a", "count":7}), json!({"id":"b", "count":11})]
+                    .into_iter()
+                    .map(|v| v.as_object().unwrap().clone())
+                    .collect(),
+            })
+            .unwrap();
+        let context = BindingContext {
+            node: MountedNode {
+                mount: id("screen"),
+                key: 1,
+            },
+            selector_nodes: Arc::default(),
+            inputs: Arc::new(
+                ["editable", "external", "derived"]
+                    .into_iter()
+                    .map(|name| (name.into(), id(name)))
+                    .collect(),
+            ),
+            rows: Arc::new(BTreeMap::from([(
+                "item".into(),
+                RowRef {
+                    source: id("items"),
+                    key: "a".into(),
+                },
+            )])),
+        };
+        context
+            .write_model(&mut session, "$editable.level", json!(9))
+            .unwrap();
+        assert_eq!(
+            session.read_value(&id("editable")).unwrap(),
+            &json!({"level":9})
+        );
+        assert!(
+            context
+                .write_model(&mut session, "$external.level", json!(9))
+                .is_err()
+        );
+        assert!(
+            context
+                .write_model(&mut session, "$derived", json!(9))
+                .is_err()
+        );
+        assert_eq!(
+            session.read_value(&id("external")).unwrap(),
+            &json!({"level":3})
+        );
+        // Producer writes remain legal even though documents cannot write them.
+        session
+            .execute(Command::Set {
+                source: id("external"),
+                value: json!({"level":4}),
+                force: false,
+            })
+            .unwrap();
+        assert_eq!(
+            session.read_value(&id("external")).unwrap(),
+            &json!({"level":4})
+        );
+        session
+            .execute(Command::Move {
+                source: id("items"),
+                key: "a".into(),
+                before: None,
+            })
+            .unwrap();
+        context
+            .write_model(&mut session, "item.count", json!(17))
+            .unwrap();
+        let items = session.sources.keyed(&id("items")).unwrap();
+        assert_eq!(items.keys(), &["b", "a"]);
+        assert_eq!(items.row("a").unwrap()["count"], json!(17));
+        assert_eq!(items.row("b").unwrap()["count"], json!(11));
+        assert!(
+            context
+                .write_model(&mut session, "item.id", json!("c"))
+                .is_err()
+        );
+        assert!(
+            session
+                .sources
+                .keyed(&id("items"))
+                .unwrap()
+                .row("c")
+                .is_none()
+        );
+    }
 
     #[test]
     fn queued_bindings_do_no_idle_work_and_update_only_the_changed_row_field() {
@@ -283,6 +452,7 @@ mod tests {
                         mount: SourceId::new("inventory", "screen"),
                         key,
                     },
+                    selector_nodes: Arc::default(),
                     inputs: Arc::default(),
                     rows: Arc::new(BTreeMap::from([(
                         "item".into(),
@@ -294,10 +464,10 @@ mod tests {
                 },
                 Expr::parse("item.label").unwrap(),
                 &crate::bind::NoEnv,
-                0,
+                |_, _| false,
             ));
         }
-        let idle = bindings.refresh(&mut session, &crate::bind::NoEnv, |_| {
+        let idle = bindings.refresh(&mut session, &crate::bind::NoEnv, |_, _| {
             panic!("idle visited a binding")
         });
         assert_eq!(idle.evaluated, 0);
@@ -311,7 +481,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             bindings
-                .refresh(&mut session, &crate::bind::NoEnv, |_| panic!(
+                .refresh(&mut session, &crate::bind::NoEnv, |_, _| panic!(
                     "unread field"
                 ))
                 .evaluated,
@@ -324,9 +494,8 @@ mod tests {
                 fields: json!({"label": "Last row"}).as_object().unwrap().clone(),
             })
             .unwrap();
-        let changed = bindings.refresh(&mut session, &crate::bind::NoEnv, |node| {
-            assert_eq!(node.key, 999);
-            0
+        let changed = bindings.refresh(&mut session, &crate::bind::NoEnv, |_, _| {
+            panic!("label binding does not read interaction")
         });
         assert_eq!(changed.evaluated, 1);
         assert_eq!(changed.changed, vec![ids[999]]);
@@ -341,7 +510,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             bindings
-                .refresh(&mut session, &crate::bind::NoEnv, |_| panic!(
+                .refresh(&mut session, &crate::bind::NoEnv, |_, _| panic!(
                     "key moved, value did not"
                 ))
                 .evaluated,
@@ -353,7 +522,7 @@ mod tests {
                 key: "999".into(),
             })
             .unwrap();
-        let removed = bindings.refresh(&mut session, &crate::bind::NoEnv, |_| 0);
+        let removed = bindings.refresh(&mut session, &crate::bind::NoEnv, |_, _| false);
         assert_eq!(removed.evaluated, 1);
         assert_eq!(removed.changed, vec![ids[999]]);
         assert!(
@@ -374,7 +543,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             bindings
-                .refresh(&mut session, &crate::bind::NoEnv, |_| 0)
+                .refresh(&mut session, &crate::bind::NoEnv, |_, _| false)
                 .changed,
             vec![ids[999]]
         );
@@ -408,10 +577,11 @@ mod tests {
                         node: node.clone(),
                         inputs: Arc::default(),
                         rows: Arc::default(),
+                        selector_nodes: Arc::default(),
                     },
                     Expr::Interaction(InteractionState::Hover),
                     &crate::bind::NoEnv,
-                    0,
+                    |_, _| false,
                 )
             })
             .collect();
@@ -420,7 +590,7 @@ mod tests {
             .interaction_changed(&nodes[0], InteractionState::FocusVisible);
         assert_eq!(
             bindings
-                .refresh(&mut session, &crate::bind::NoEnv, |_| panic!(
+                .refresh(&mut session, &crate::bind::NoEnv, |_, _| panic!(
                     "unread selector"
                 ))
                 .evaluated,
@@ -429,9 +599,9 @@ mod tests {
         session
             .graph
             .interaction_changed(&nodes[0], InteractionState::Hover);
-        let changed = bindings.refresh(&mut session, &crate::bind::NoEnv, |node| {
+        let changed = bindings.refresh(&mut session, &crate::bind::NoEnv, |node, state| {
             assert_eq!(node, &nodes[0]);
-            interaction_bit(InteractionState::Hover)
+            state == InteractionState::Hover
         });
         assert_eq!(changed.evaluated, 1);
         assert_eq!(changed.changed, vec![ids[0]]);
@@ -444,12 +614,86 @@ mod tests {
             .interaction_changed(&nodes[0], InteractionState::Hover);
         assert_eq!(
             bindings
-                .refresh(&mut session, &crate::bind::NoEnv, |_| panic!(
+                .refresh(&mut session, &crate::bind::NoEnv, |_, _| panic!(
                     "removed node"
                 ))
                 .evaluated,
             0
         );
+    }
+
+    #[test]
+    fn ancestor_selectors_track_mapped_instances_and_refuse_missing_identities() {
+        let mut session = Session::default();
+        let mut bindings = Bindings::default();
+        let ancestors = [
+            MountedNode {
+                mount: SourceId::new("hud", "first"),
+                key: 17,
+            },
+            MountedNode {
+                mount: SourceId::new("hud", "second"),
+                key: 17,
+            },
+            MountedNode {
+                mount: SourceId::new("hud", "first"),
+                key: 32,
+            },
+        ];
+        let mut ids = Vec::new();
+        for ancestor in &ancestors {
+            let target = MountedNode {
+                mount: ancestor.mount.clone(),
+                key: ancestor.key + 100,
+            };
+            let binding = bindings.insert(
+                &mut session,
+                BindingContext {
+                    node: target,
+                    inputs: Arc::default(),
+                    rows: Arc::default(),
+                    selector_nodes: Arc::new(BTreeMap::from([(7, ancestor.clone())])),
+                },
+                Expr::InteractionAt {
+                    node: 7,
+                    state: InteractionState::PlaceholderShown,
+                },
+                &crate::bind::NoEnv,
+                |node, _| node.key >= 100,
+            );
+            assert_eq!(bindings.value(binding).unwrap(), &json!(false));
+            ids.push(binding);
+        }
+        session
+            .graph
+            .interaction_changed(&ancestors[0], InteractionState::PlaceholderShown);
+        let changed = bindings.refresh(&mut session, &crate::bind::NoEnv, |node, state| {
+            assert_eq!(node, &ancestors[0]);
+            assert_eq!(state, InteractionState::PlaceholderShown);
+            true
+        });
+        assert_eq!(changed.evaluated, 1);
+        assert_eq!(changed.changed, vec![ids[0]]);
+        assert_eq!(bindings.value(ids[0]).unwrap(), &json!(true));
+        assert_eq!(bindings.value(ids[1]).unwrap(), &json!(false));
+        assert_eq!(bindings.value(ids[2]).unwrap(), &json!(false));
+        let missing = bindings.insert(
+            &mut session,
+            BindingContext {
+                node: ancestors[0].clone(),
+                inputs: Arc::default(),
+                rows: Arc::default(),
+                selector_nodes: Arc::default(),
+            },
+            Expr::InteractionAt {
+                node: 7,
+                state: InteractionState::Hover,
+            },
+            &crate::bind::NoEnv,
+            |_, _| panic!("missing ancestor must not query target state"),
+        );
+        let error = bindings.value(missing).unwrap_err();
+        assert!(error.contains("hud") && error.contains("first") && error.contains("node 7"));
     }
 
     #[test]
@@ -471,6 +715,7 @@ mod tests {
                 mount: SourceId::new("hud", "main"),
                 key: 1,
             },
+            selector_nodes: Arc::default(),
             inputs: Arc::default(),
             rows: Arc::default(),
         };
@@ -479,18 +724,18 @@ mod tests {
             context.clone(),
             Expr::Translate(Box::new(Expr::Lit(json!("greeting"))), Vec::new()),
             &Messages("en"),
-            0,
+            |_, _| false,
         );
         let literal = bindings.insert(
             &mut ui.reactive,
             context,
             Expr::Lit(json!("unchanged")),
             &Messages("en"),
-            0,
+            |_, _| false,
         );
         assert_eq!(bindings.value(translated).unwrap(), &json!("Hello"));
         ui.set_locale("fr");
-        let changed = bindings.refresh(&mut ui.reactive, &Messages("fr"), |_| 0);
+        let changed = bindings.refresh(&mut ui.reactive, &Messages("fr"), |_, _| false);
         assert_eq!(changed.evaluated, 1);
         assert_eq!(changed.changed, vec![translated]);
         assert_eq!(bindings.value(translated).unwrap(), &json!("Bonjour"));
@@ -498,7 +743,7 @@ mod tests {
         ui.set_locale("fr");
         assert_eq!(
             bindings
-                .refresh(&mut ui.reactive, &Messages("fr"), |_| panic!(
+                .refresh(&mut ui.reactive, &Messages("fr"), |_, _| panic!(
                     "locale unchanged"
                 ))
                 .evaluated,
@@ -548,9 +793,10 @@ mod tests {
                 session,
                 inputs: &inputs,
                 rows: &rows,
+                selector_nodes: &BTreeMap::new(),
                 host: &crate::bind::NoEnv,
                 node: &node,
-                interaction_state: interaction_bit(InteractionState::Hover),
+                interaction: &|_, state| state == InteractionState::Hover,
             }
             .evaluate(&expression)
         };

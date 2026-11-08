@@ -52,6 +52,14 @@ struct Resolved {
     span_styles: Vec<(crate::TextSpan, crate::TextSpanStyle)>,
 }
 
+struct ResolvedNode {
+    id: String,
+    path: String,
+    key: u64,
+    values: Resolved,
+    probe: Built,
+}
+
 impl Resolved {
     fn get(&self, name: &str) -> Option<&V> {
         self.vals

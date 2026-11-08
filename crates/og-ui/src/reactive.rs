@@ -55,12 +55,29 @@ impl SourceId {
 
 /// A keyed collection's committed edit. Measurement/virtualization consumers
 /// keep only keys and extents; the collection remains the owner of row data.
+/// Positions are zero-based in this edit's pre/post order, not identities.
+/// Notifications retain removed keys and old ranks until drained.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum CollectionEdit {
-    Insert { key: String, before: Option<String> },
-    Remove { key: String },
-    Move { key: String, before: Option<String> },
-    Patch { key: String, fields: Vec<String> },
+    Insert {
+        key: String,
+        before: Option<String>,
+        index: usize,
+    },
+    Remove {
+        key: String,
+        index: usize,
+    },
+    Move {
+        key: String,
+        before: Option<String>,
+        from: usize,
+        to: usize,
+    },
+    Patch {
+        key: String,
+        fields: Vec<String>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -309,6 +326,7 @@ impl Sources {
             CollectionEdit::Insert {
                 key,
                 before: before.map(str::to_owned),
+                index,
             },
         );
         Ok(())
@@ -319,7 +337,13 @@ impl Sources {
         let index = c.destination(source, Some(key))?;
         c.keys.remove(index);
         c.rows.remove(key);
-        self.note_collection(source, CollectionEdit::Remove { key: key.into() });
+        self.note_collection(
+            source,
+            CollectionEdit::Remove {
+                key: key.into(),
+                index,
+            },
+        );
         Ok(())
     }
 
@@ -336,13 +360,15 @@ impl Sources {
             return Ok(());
         }
         let key = c.keys.remove(from);
-        c.keys
-            .insert(if to > from { to - 1 } else { to }, key.clone());
+        let to = if to > from { to - 1 } else { to };
+        c.keys.insert(to, key.clone());
         self.note_collection(
             source,
             CollectionEdit::Move {
                 key,
                 before: before.map(str::to_owned),
+                from,
+                to,
             },
         );
         Ok(())
@@ -479,6 +505,39 @@ mod tests {
         assert_eq!(sources.keyed(&id).unwrap().row("c").unwrap()["count"], 11);
         let changes = sources.take_changes();
         assert_eq!(changes.len(), 7);
+        assert_eq!(
+            changes[2].change,
+            SourceChange::Collection(CollectionEdit::Insert {
+                key: "c".into(),
+                before: None,
+                index: 2,
+            })
+        );
+        assert_eq!(
+            changes[3].change,
+            SourceChange::Collection(CollectionEdit::Move {
+                key: "a".into(),
+                before: None,
+                from: 0,
+                to: 2,
+            })
+        );
+        assert_eq!(
+            changes[4].change,
+            SourceChange::Collection(CollectionEdit::Move {
+                key: "a".into(),
+                before: Some("b".into()),
+                from: 2,
+                to: 0,
+            })
+        );
+        assert_eq!(
+            changes[6].change,
+            SourceChange::Collection(CollectionEdit::Remove {
+                key: "a".into(),
+                index: 0,
+            })
+        );
         assert!(
             matches!(&changes[5].change, SourceChange::Collection(CollectionEdit::Patch { key, fields })
             if key == "b" && fields == &["count"])
