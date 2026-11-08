@@ -1323,9 +1323,6 @@ impl UiApi for NodeHost {
     fn og_ui_mass_count(&self, template: u32) -> u32 {
         rt::og_ui_mass_count(template)
     }
-    fn og_ui_meta(&self, id: String, desc: Option<String>) {
-        rt::og_ui_meta(id, desc)
-    }
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>) {
         rt::og_ui_open_scroll(id, desc)
     }

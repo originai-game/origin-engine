@@ -178,7 +178,7 @@ pub use i18n::{
 pub use invariants::og_assert_record;
 pub use light2d_at::og_render_light2d_at;
 pub use memory::memory_report;
-pub use modules::ui_world::{og_ui_define_mass, og_ui_mass_count, og_ui_meta, og_ui_spawn_mass};
+pub use modules::ui_world::{og_ui_define_mass, og_ui_mass_count, og_ui_spawn_mass};
 pub use modules::{
     THEME_COLORS, TYPE_STEPS, og_load_document, og_load_style, og_physics_overlap,
     og_physics_project_point, og_physics_raycast, og_physics_raycast_all, og_physics_set_mesh,

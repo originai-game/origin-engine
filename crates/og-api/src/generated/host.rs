@@ -1157,8 +1157,6 @@ pub trait UiApi: Wire {
     fn og_ui_spawn_mass(&self, template: u32, instances: String);
     /// `og.ui.massCount`
     fn og_ui_mass_count(&self, template: u32) -> u32;
-    /// `og.ui.meta`
-    fn og_ui_meta(&self, id: String, desc: Option<String>);
     /// `og.ui.push`
     fn og_ui_push(&self, world: u32, screen: String, vm: Option<String>) -> String;
     /// `og.ui.pop`
@@ -1970,7 +1968,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_define_mass",
     "og_ui_spawn_mass",
     "og_ui_mass_count",
-    "og_ui_meta",
     "og_ui_push",
     "og_ui_pop",
     "og_ui_replace",

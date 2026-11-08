@@ -2599,11 +2599,6 @@ pub fn og_ui_mass_count(template: u32) -> u32 {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_meta(id: String, desc: Option<String>) {
-    <Host as UiApi>::og_ui_meta(&Host, id, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_push(world: u32, screen: String, vm: Option<String>) -> String {
     <Host as UiApi>::og_ui_push(&Host, world, screen, vm)
 }

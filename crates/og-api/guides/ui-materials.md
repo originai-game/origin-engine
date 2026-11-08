@@ -29,20 +29,29 @@ Slot::frame[rarity=legendary] {
 }
 ```
 
-## 3. Custom draw parameters
+## 3. On an element, in a document
 
-Keep the element's structure in its document and static material defaults
-in the style. A custom draw callback can load a material with
-og.load.uiMaterial and apply a custom layer through og.ui.setDraw.
-The element's children are drawn offscreen and composited through it.
-Declare the callback's data dependencies; do not build a TypeScript tree
-to attach a material.
+An element takes the same preset with `-og-material` in its document's
+`<style>`: the asset path in quotes, then numbers over its defaults in
+`param` order, four per parameter vector. Any number may be a custom
+property, so a store drives it through `style:`:
 
-- Animate a parameter by passing a new value each tick (a burn's
-  `progress` from 0 to 1 over the exit, on the style's exit curve) or from
-  a timeline (og.ui.defineTimeline).
+```svelte
+<div id="Card" style:--burn={$burn}>…</div>
+<style>
+#Card { -og-material: "ui-kits/materials/burn.ogt" var(--burn) 0 0 0 6; }
+</style>
+```
+
+The element and its children are drawn offscreen and composited through it;
+`og.load.document` loads the materials its declarations name.
+`-og-meta: material "…" …` composites the whole frame under the element
+through one the same way.
+
+- Animate a parameter from a store each tick (a burn's `progress` from 0
+  to 1 over the exit) or with a CSS `@keyframes` of the custom property.
 - A foil reads as metal when its band follows the player: set `sweep` to
-  `0 <offset>` and drive the offset from −1 to 1 with the pointer over the
+  `0 var(--tilt)` and drive the tilt from −1 to 1 with the pointer over the
   card or the device's tilt. Keep the clock sweep for cards nobody touches.
 
 ## 4. Tuning and review

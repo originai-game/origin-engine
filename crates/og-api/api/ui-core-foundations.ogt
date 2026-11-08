@@ -9,30 +9,3 @@
   # mirrors under a right-to-left locale, grows with the player's text size,
   # says its role to the accessibility tree and plays the style's sounds.
 
-  struct EffectLayerDesc {
-    doc "A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`."
-    desc true
-    field material MaterialName "The material."
-    field amount f32 "How far in it is, 0 to 1: dissolve's threshold, shine's sweep, hologram's flicker, glitch's strength, pixelate's cell, blur's radius, colorAdjust's grey." {
-      min 0
-      max 1
-    }
-    field color Option.ThemeColor "The material's colour (a dissolve's edge, a shine, a hologram's tint, an outline); null is the style's highlight."
-    field sweep bool "Run amount from 0 to 1 and back by the clock (a shine passing, a hologram flickering); still under reduced motion."
-    field periodMs f32 "One sweep's length." {
-      default 2400
-      unit ms
-    }
-    field custom Option.UiMaterial "A custom material (material custom)."
-    field params List.f32 "A custom material's parameters."
-  }
-
-  fn effectLayer {
-    doc "A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children."
-    host false
-    param id String "Its id."
-    param desc EffectLayerDesc "The material and its amount."
-    param build UiBuild "Builds what it draws."
-    returns Void
-  }
-

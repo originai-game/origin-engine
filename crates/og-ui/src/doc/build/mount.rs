@@ -163,6 +163,15 @@ pub struct DocHost {
     pub(crate) zones_changed: bool,
     /// The Rive artboards elements can play, by id ([`Ui::define_rive`]).
     pub(crate) rive: BTreeMap<String, Arc<crate::rive::Artboard>>,
+    /// The `type ui-material` assets documents name (`-og-material:
+    /// "<path>" …`): each one's handle and its parameters' defaults.
+    pub(crate) materials: BTreeMap<
+        String,
+        (
+            og_render::UiMaterialHandle,
+            [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+        ),
+    >,
     /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.
     pub(crate) keyframes: BTreeMap<String, Arc<crate::motion::css::Keyframes>>,
     /// Query containers' settled content boxes, by layout key.
@@ -244,6 +253,42 @@ impl Ui {
     /// when it fits the new one, else starts it again.
     pub fn define_rive(&mut self, id: &str, artboard: Arc<crate::rive::Artboard>) {
         self.docs.rive.insert(id.to_owned(), artboard);
+    }
+
+    /// Binds the UI material asset `path` a document's `-og-material`
+    /// names ([`UiDocument::material_assets`]) to its loaded handle and
+    /// its parameters' defaults.
+    pub fn define_material(
+        &mut self,
+        path: &str,
+        handle: og_render::UiMaterialHandle,
+        defaults: [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+    ) {
+        self.docs
+            .materials
+            .insert(path.to_owned(), (handle, defaults));
+    }
+
+    /// A document's `-og-material` as the layer it draws: a built-in's, or
+    /// a defined asset's with its defaults under the numbers written.
+    pub(crate) fn css_material(
+        &self,
+        m: crate::dress::DressMaterial,
+    ) -> Result<crate::paint::Layer, String> {
+        let Some(path) = m.asset else {
+            return Ok(m.layer);
+        };
+        let (handle, mut params) = *self.docs.materials.get(&path).ok_or_else(|| {
+            format!("-og-material: \"{path}\" is not a loaded UI material (a `type ui-material` asset under assets/)")
+        })?;
+        for k in 0..m.params {
+            params[k / 4][k % 4] = m.layer.params[k / 4][k % 4];
+        }
+        Ok(crate::paint::Layer {
+            material: crate::paint::Material::Custom(handle),
+            params,
+            filter: None,
+        })
     }
 
     /// Plays the Rive artboard `id` in element `node` (its key `key`) this

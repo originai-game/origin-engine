@@ -11986,7 +11986,6 @@
         "SheetDesc",
         "SheetResult",
         "DataStateDesc",
-        "EffectLayerDesc",
         "UiProp",
         "LayoutMode",
         "Position",
@@ -12113,8 +12112,6 @@
         "MassKey",
         "MassTemplateDesc",
         "MassInstance",
-        "MetaKind",
-        "MetaDesc",
         "UiCollectionDesc",
         "UiDocEvent",
         "UiLayer",
@@ -13158,33 +13155,6 @@
           "host": false
         },
         {
-          "name": "effectLayer",
-          "doc": "A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "EffectLayerDesc",
-              "optional": false,
-              "doc": "The material and its amount."
-            },
-            {
-              "name": "build",
-              "type": "UiBuild",
-              "optional": false,
-              "doc": "Builds what it draws."
-            }
-          ],
-          "returns": "Void",
-          "publish": true,
-          "host": false
-        },
-        {
           "name": "props",
           "doc": "Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §2, §3.1). Call it right after the element.",
           "params": [
@@ -13597,26 +13567,6 @@
             }
           ],
           "returns": "u32",
-          "publish": true
-        },
-        {
-          "name": "meta",
-          "doc": "A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "MetaDesc",
-              "optional": true,
-              "doc": "What it draws."
-            }
-          ],
-          "returns": "Void",
           "publish": true
         },
         {
@@ -47803,70 +47753,6 @@
       },
       "additionalProperties": false
     },
-    "EffectLayerDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`.",
-      "type": "object",
-      "properties": {
-        "material": {
-          "$ref": "#/$defs/MaterialName",
-          "description": "The material.",
-          "default": "plain"
-        },
-        "amount": {
-          "type": "number",
-          "description": "How far in it is, 0 to 1: dissolve's threshold, shine's sweep, hologram's flicker, glitch's strength, pixelate's cell, blur's radius, colorAdjust's grey.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1
-        },
-        "color": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ThemeColor"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The material's colour (a dissolve's edge, a shine, a hologram's tint, an outline); null is the style's highlight.",
-          "default": null
-        },
-        "sweep": {
-          "type": "boolean",
-          "description": "Run amount from 0 to 1 and back by the clock (a shine passing, a hologram flickering); still under reduced motion.",
-          "default": false
-        },
-        "periodMs": {
-          "type": "number",
-          "description": "One sweep's length.",
-          "default": 2400,
-          "x-og-unit": "ms"
-        },
-        "custom": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/UiMaterial"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A custom material (material custom).",
-          "default": null
-        },
-        "params": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "description": "A custom material's parameters.",
-          "default": []
-        }
-      },
-      "additionalProperties": false
-    },
     "UiProp": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -53592,111 +53478,6 @@
           "description": "Its starting rotation, clockwise.",
           "default": 0,
           "x-og-unit": "rad"
-        }
-      },
-      "additionalProperties": false
-    },
-    "MetaKind": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "What a meta layer draws over the scene.",
-      "type": "string",
-      "enum": [
-        "vignette",
-        "tint",
-        "material"
-      ],
-      "x-og-variants": {
-        "vignette": "Its colour at the edges, clear in the middle (a damage vignette).",
-        "tint": "A flat tint.",
-        "material": "The frame under it composited through a UI material (a ripple for sanity, a glitch for a hit)."
-      }
-    },
-    "MetaDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A meta layer (docs/ui.md §1): full screen, over the scene and under the screen's elements, never taking input.",
-      "type": "object",
-      "properties": {
-        "kind": {
-          "$ref": "#/$defs/MetaKind",
-          "description": "What it draws.",
-          "default": "vignette"
-        },
-        "color": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Paint"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Vignette and tint: its ink; null is a deep red.",
-          "default": null
-        },
-        "inner": {
-          "type": "number",
-          "description": "Vignette: clear out to this fraction of the half diagonal.",
-          "default": 0.55,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-unit": "ratio"
-        },
-        "outer": {
-          "type": "number",
-          "description": "Vignette: full colour from this fraction on.",
-          "default": 1,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-unit": "ratio"
-        },
-        "material": {
-          "$ref": "#/$defs/MaterialName",
-          "description": "Material: the built-in material, or custom.",
-          "default": "plain"
-        },
-        "custom": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/UiMaterial"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Material: the custom material.",
-          "default": null
-        },
-        "params": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "description": "Material: its parameters, up to four vec4s flattened.",
-          "default": []
-        },
-        "intensity": {
-          "type": "number",
-          "description": "Its opacity.",
-          "default": 1,
-          "minimum": 0,
-          "maximum": 1
-        },
-        "pulseHz": {
-          "type": "number",
-          "description": "Pulses this many times a second (a low-health heartbeat); 0 is steady.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "hz"
-        },
-        "pulseDepth": {
-          "type": "number",
-          "description": "How far a pulse dims it.",
-          "default": 0.5,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-unit": "ratio"
         }
       },
       "additionalProperties": false

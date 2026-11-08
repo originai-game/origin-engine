@@ -479,8 +479,11 @@ impl Ui {
                 clip => clip,
             });
         }
-        if let Some(Ok(Some(l))) = r.str("material").map(p::material) {
-            c.layer = Some(l);
+        if let Some(Ok(Some(m))) = r.str("material").map(p::material) {
+            match self.css_material(m) {
+                Ok(l) => c.layer = Some(l),
+                Err(e) => warn.push(e),
+            }
         }
         (c != p::CssPaint::default()).then_some(c)
     }
@@ -1290,5 +1293,91 @@ mod tests {
             );
             assert_eq!(patched.a11y(), direct.a11y(), "styled={styled}");
         }
+    }
+
+    /// `-og-material: "<asset>" var(--burn)`: the defined material's handle,
+    /// its defaults under the numbers written, and a store driving one
+    /// through a custom property; `-og-meta: material` takes the same.
+    ///
+    /// Ways it could fail: an asset path read as a built-in (or refused), a
+    /// default lost under the written numbers, a store change that does not
+    /// reach the parameter.
+    #[test]
+    fn a_document_material_names_an_asset_and_binds_its_parameters() {
+        use crate::reactive::SourceId;
+        use crate::reactive::session::Command;
+        use crate::{InputFrame, Ui, UiDesc, Viewport};
+        let doc = r#"<meta name="component" content="card">
+<div id="Root"><div id="Card" style:--burn={$burn}>Card</div><div id="Hurt"></div></div>
+<style>
+#Card { width: 120px; height: 160px; background: #334455; -og-material: "fx/burn.ogt" var(--burn) 0 0 0 6; }
+#Hurt { -og-meta: material "fx/burn.ogt" 0.25; }
+</style>"#;
+        let parsed = crate::doc::UiDocument::parse("card.svelte", doc).unwrap();
+        assert_eq!(parsed.material_assets(), ["fx/burn.ogt"]);
+        let mut ui = Ui::new(UiDesc::default());
+        let handle = og_render::UiMaterialHandle(7);
+        let mut defaults = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+        defaults[1] = [1.0, 2.0, 3.0, 4.0];
+        ui.define_material("fx/burn.ogt", handle, defaults);
+        ui.define_document(parsed);
+        let burn = SourceId::new("test", "burn");
+        ui.reactive
+            .execute(Command::Signal {
+                source: burn.clone(),
+                initial: serde_json::json!(0.2),
+                readable: false,
+            })
+            .unwrap();
+        ui.mount_document(
+            SourceId::new("test", "card"),
+            "card",
+            std::collections::BTreeMap::from([("burn".to_string(), burn.clone())]),
+            std::collections::BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let layer = |ui: &mut Ui| {
+            for _ in 0..2 {
+                ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+                ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+                ui.end();
+            }
+            assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+            ui.frame()
+                .items
+                .iter()
+                .find_map(|it| match &it.cmd {
+                    crate::DrawCmd::BeginLayer {
+                        material: og_render::UiMaterial::Custom(h),
+                        params,
+                        ..
+                    } if *h == handle => Some(*params),
+                    _ => None,
+                })
+                .expect("the card composites through the asset")
+        };
+        let p = layer(&mut ui);
+        assert_eq!(p[0], [0.2, 0.0, 0.0, 0.0]);
+        assert_eq!(
+            p[1],
+            [6.0, 2.0, 3.0, 4.0],
+            "written numbers over the defaults"
+        );
+        ui.reactive
+            .execute(Command::Set {
+                source: burn,
+                value: serde_json::json!(0.8),
+                force: false,
+            })
+            .unwrap();
+        assert_eq!(layer(&mut ui)[0][0], 0.8, "the store drives the parameter");
+        assert!(
+            ui.world.kept_effects.values().any(|(_, m)| matches!(
+                m,
+                Some(crate::world::MetaDesc { kind: crate::world::MetaKind::Material { material: og_render::UiMaterial::Custom(h), params }, .. }) if *h == handle && params[0][0] == 0.25
+            )),
+            "-og-meta: material takes the asset"
+        );
     }
 }

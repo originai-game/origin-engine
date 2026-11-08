@@ -570,7 +570,9 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         }
         Conv::Raw if prop == "scrollSnapAlign" => "none | start | center | end [<inline>]".into(),
         Conv::Raw if prop == "sheetDetents" => "<n>% | <n>px …".into(),
-        Conv::Raw if prop == "material" => "<material>(<n> …[, <colour>]) | none".into(),
+        Conv::Raw if prop == "material" => {
+            "<material>(<n> …[, <colour>]) | \"<ui-material asset>\" <n> … | none".into()
+        }
         Conv::Raw if prop == "emitter" => {
             "[<preset>] [<rate>] [burst <n>] [for <time>] [life <time>] [<n>px/s …] … | none"
                 .into()

@@ -14,7 +14,7 @@ use og_render::{
     UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOcclusion,
     UiParticleShape,
 };
-use og_ui::{MetaDesc, MetaKind, WorldOcclusion};
+use og_ui::WorldOcclusion;
 
 /// What the UI's end reads to place world-space UI.
 pub(crate) struct Feed {
@@ -274,32 +274,4 @@ pub fn og_ui_mass_count(template: u32) -> u32 {
         ui.mass_count(og_ui::MassHandle(template)) as u32
     })
     .unwrap_or(0)
-}
-
-pub fn og_ui_meta(id: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    // Read before the UI is locked (it reads the loaded materials).
-    let material = crate::ui_draw::layer_material(&d);
-    with_ui("og.ui.meta", |ui| {
-        let theme = *ui.theme();
-        let color = paint(&theme, &d["color"]).unwrap_or(og_ui::Srgba::rgb(160, 0, 0));
-        let kind = match (d["kind"].as_str(), material) {
-            (Some("tint"), _) => MetaKind::Tint { color },
-            (Some("material"), Some((material, params))) => MetaKind::Material { material, params },
-            _ => MetaKind::Vignette {
-                color,
-                inner: f(&d, "inner", 0.55).clamp(0.0, 1.0),
-                outer: f(&d, "outer", 1.0).clamp(0.0, 1.0),
-            },
-        };
-        ui.meta(
-            id.as_str(),
-            MetaDesc {
-                kind,
-                intensity: f(&d, "intensity", 1.0).clamp(0.0, 1.0),
-                pulse_hz: f(&d, "pulseHz", 0.0).max(0.0),
-                pulse_depth: f(&d, "pulseDepth", 0.5).clamp(0.0, 1.0),
-            },
-        )
-    });
 }

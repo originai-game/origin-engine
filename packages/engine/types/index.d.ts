@@ -26392,59 +26392,6 @@ export interface DataStateDesc {
 
 
 /**
- * A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface EffectLayerDesc {
-  /**
-   * The material.
-   *
-   * @default "plain"
-   */
-  readonly material?: MaterialName;
-  /**
-   * How far in it is, 0 to 1: dissolve's threshold, shine's sweep, hologram's flicker, glitch's strength, pixelate's cell, blur's radius, colorAdjust's grey.
-   *
-   * @default 0
-   * @range 0..1
-   */
-  readonly amount?: number;
-  /**
-   * The material's colour (a dissolve's edge, a shine, a hologram's tint, an outline); null is the style's highlight.
-   *
-   * @default null
-   */
-  readonly color?: ThemeColor | null;
-  /**
-   * Run amount from 0 to 1 and back by the clock (a shine passing, a hologram flickering); still under reduced motion.
-   *
-   * @default false
-   */
-  readonly sweep?: boolean;
-  /**
-   * One sweep's length.
-   *
-   * @default 2400
-   * @unit ms (milliseconds)
-   */
-  readonly periodMs?: number;
-  /**
-   * A custom material (material custom).
-   *
-   * @default null
-   */
-  readonly custom?: UiMaterial | null;
-  /**
-   * A custom material's parameters.
-   *
-   * @default []
-   */
-  readonly params?: readonly number[];
-}
-
-
-/**
  * An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.
  * - `"x"`: Its horizontal offset, CSS px (the transform's x).
  * - `"y"`: Its vertical offset, CSS px.
@@ -29849,92 +29796,6 @@ export interface MassInstance {
 }
 
 
-
-
-/**
- * What a meta layer draws over the scene.
- * - `"vignette"`: Its colour at the edges, clear in the middle (a damage vignette).
- * - `"tint"`: A flat tint.
- * - `"material"`: The frame under it composited through a UI material (a ripple for sanity, a glitch for a hit).
- */
-export type MetaKind = "vignette" | "tint" | "material";
-
-/**
- * A meta layer (docs/ui.md §1): full screen, over the scene and under the screen's elements, never taking input.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface MetaDesc {
-  /**
-   * What it draws.
-   *
-   * @default "vignette"
-   */
-  readonly kind?: MetaKind;
-  /**
-   * Vignette and tint: its ink; null is a deep red.
-   *
-   * @default null
-   */
-  readonly color?: Paint | null;
-  /**
-   * Vignette: clear out to this fraction of the half diagonal.
-   *
-   * @default 0.55
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly inner?: number;
-  /**
-   * Vignette: full colour from this fraction on.
-   *
-   * @default 1
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly outer?: number;
-  /**
-   * Material: the built-in material, or custom.
-   *
-   * @default "plain"
-   */
-  readonly material?: MaterialName;
-  /**
-   * Material: the custom material.
-   *
-   * @default null
-   */
-  readonly custom?: UiMaterial | null;
-  /**
-   * Material: its parameters, up to four vec4s flattened.
-   *
-   * @default []
-   */
-  readonly params?: readonly number[];
-  /**
-   * Its opacity.
-   *
-   * @default 1
-   * @range 0..1
-   */
-  readonly intensity?: number;
-  /**
-   * Pulses this many times a second (a low-health heartbeat); 0 is steady.
-   *
-   * @default 0
-   * @range 0..
-   * @unit hz (ticks or cycles per second)
-   */
-  readonly pulseHz?: number;
-  /**
-   * How far a pulse dims it.
-   *
-   * @default 0.5
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly pulseDepth?: number;
-}
 
 
 /** A store's stable checkpoint identity. Stores are created in a named scope. */
@@ -39306,14 +39167,6 @@ export declare namespace og {
      */
     function sheet(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult;
     /**
-     * A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.
-     *
-     * @param id Its id.
-     * @param desc The material and its amount.
-     * @param build Builds what it draws.
-     */
-    function effectLayer(id: string, desc: EffectLayerDesc, build: UiBuild): void;
-    /**
      * Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §2, §3.1). Call it right after the element.
      *
      * @param desc Its props.
@@ -39470,13 +39323,6 @@ export declare namespace og {
      * @param template From defineMass.
      */
     function massCount(template: number): number;
-    /**
-     * A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame.
-     *
-     * @param id Its id.
-     * @param desc What it draws.
-     */
-    function meta(id: string, desc?: MetaDesc): void;
     /**
      * The entry to named svelte/store-compatible presentation data and retained document mounts. Rust owns values, the dependency graph and mounted elements. No Svelte compiler, runes, TS elements or asynchronous primitives. See docs/ui.md for a worked example and If you know Svelte.
      *

@@ -438,9 +438,24 @@ fn emitter_desc(
     Ok(Some(d))
 }
 
-/// `-og-meta: vignette [<colour>] | tint <colour> | none`.
-fn meta_desc(v: &str) -> Result<Option<crate::world::MetaDesc>, String> {
+/// `-og-meta: vignette [<colour>] | tint <colour> | material <material> |
+/// none`, the material written as `-og-material` writes one (resolved by
+/// `material`).
+fn meta_desc(
+    v: &str,
+    material: impl FnOnce(&str) -> Result<crate::paint::Layer, String>,
+) -> Result<Option<crate::world::MetaDesc>, String> {
     use crate::world::{MetaDesc, MetaKind};
+    if let Some(m) = v.trim().strip_prefix("material ") {
+        let l = material(m.trim())?;
+        return Ok(Some(MetaDesc {
+            kind: MetaKind::Material {
+                material: l.material.into(),
+                params: l.params,
+            },
+            ..MetaDesc::default()
+        }));
+    }
     let mut w = v.split_whitespace();
     let kind = match (w.next(), w.next()) {
         (Some("none"), None) | (None, _) => return Ok(None),
@@ -453,7 +468,12 @@ fn meta_desc(v: &str) -> Result<Option<crate::world::MetaDesc>, String> {
             outer: 1.0,
         },
         (Some("tint"), Some(c)) => MetaKind::Tint { color: srgba(c)? },
-        _ => return Err("-og-meta is vignette [<colour>], tint <colour> or none".into()),
+        _ => {
+            return Err(
+                "-og-meta is vignette [<colour>], tint <colour>, material <material> or none"
+                    .into(),
+            );
+        }
     };
     Ok(Some(MetaDesc {
         kind,
@@ -485,7 +505,16 @@ impl Ui {
             .str("emitter")
             .map(|v| emitter_desc(v, &palette))
             .transpose();
-        let meta = r.str("meta").map(meta_desc).transpose();
+        let meta = r
+            .str("meta")
+            .map(|v| {
+                meta_desc(v, |m| {
+                    super::super::paint_css::material(m)?
+                        .ok_or_else(|| "-og-meta: material takes a material, not none".to_string())
+                        .and_then(|m| self.css_material(m))
+                })
+            })
+            .transpose();
         match (emitter, meta) {
             (Ok(e), Ok(m)) => self.document_effects(i, e.flatten(), m.flatten()),
             (Err(e), _) | (_, Err(e)) => self

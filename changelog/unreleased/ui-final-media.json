@@ -88,6 +88,25 @@
       "find": [
         "og.ui.spinner("
       ]
+    },
+    {
+      "member": "og.ui.effectLayer, og.ui.EffectLayerDesc",
+      "change": "The effect layer builder is removed.",
+      "fix": "Write `-og-material: shine(…)` (a built-in) or `-og-material: \"ui-kits/materials/foil.ogt\" 0.7` (a `type ui-material` asset, numbers over its defaults in `param` order) on the element in a document; bind a parameter from a store with `style:--k={$k}` and `var(--k)`, and sweep one with a `@keyframes` of the property.",
+      "find": [
+        "og.ui.effectLayer(",
+        "EffectLayerDesc"
+      ]
+    },
+    {
+      "member": "og.ui.meta, og.ui.MetaDesc, og.ui.MetaKind",
+      "change": "The meta layer builder is removed.",
+      "fix": "Write `-og-meta: vignette #a00`, `tint <colour>` or `material <material>` (as `-og-material` writes one, a custom asset too) on an element in a document; its strength is the element's `opacity`, and a pulse is a CSS animation of it.",
+      "find": [
+        "og.ui.meta(",
+        "MetaDesc",
+        "MetaKind"
+      ]
     }
   ]
 }

@@ -3117,12 +3117,6 @@ pub fn og_ui_mass_count(env: Env, template: u32) -> u32 {
     <Host as UiApi>::og_ui_mass_count(&Host, template)
 }
 
-#[napi(js_name = "og_ui_meta")]
-pub fn og_ui_meta(env: Env, id: String, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_meta(&Host, id, desc)
-}
-
 #[napi(js_name = "og_ui_push")]
 pub fn og_ui_push(env: Env, world: u32, screen: String, vm: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

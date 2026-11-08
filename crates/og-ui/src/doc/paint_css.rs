@@ -2172,14 +2172,39 @@ fn shape_fn(items: &[Vec<Tok>]) -> Result<CssClip, String> {
 /// `-og-material: <name>(<n> …[, <colour>])`: the element and its subtree
 /// drawn offscreen and composited through one of the engine's built-in
 /// materials, its parameters in the order the material lists them (a
-/// colour as linear RGBA).
-pub(crate) fn material(text: &str) -> Result<Option<Layer>, String> {
+/// colour as linear RGBA); or `-og-material: "<asset>" [<n> …]`, a `type
+/// ui-material` asset by its path under `assets/` with numbers over its
+/// defaults in `param` order, four a parameter, as a style's dressing
+/// writes one (bound to its handle when the document loads).
+pub(crate) fn material(text: &str) -> Result<Option<crate::dress::DressMaterial>, String> {
     let t = tokens(text)?;
+    if let [Tok::Str(path), rest @ ..] = t.as_slice() {
+        let mut layer = Layer::default();
+        let max = 4 * layer.params.len();
+        if rest.len() > max {
+            return Err(format!("\"{path}\" takes at most {max} parameter numbers"));
+        }
+        for (k, n) in rest.iter().enumerate() {
+            layer.params[k / 4][k % 4] = match number(n)? {
+                (x, "%") => x / 100.0,
+                (x, _) => x,
+            };
+        }
+        return Ok(Some(crate::dress::DressMaterial {
+            layer,
+            asset: Some(path.clone()),
+            params: rest.len(),
+        }));
+    }
     let (name, args) = match t.as_slice() {
         [Tok::Ident(w)] if w == "none" => return Ok(None),
         [Tok::Ident(w)] => (w.as_str(), &[][..]),
         [Tok::Func(f, a)] => (f.as_str(), a.as_slice()),
-        _ => return Err("-og-material: <name>(<params>)".into()),
+        _ => {
+            return Err(
+                "-og-material: <name>(<params>) or \"<ui-material asset>\" <params>".into(),
+            );
+        }
     };
     let builtin = match name {
         "dissolve" => Builtin::Dissolve,
@@ -2230,7 +2255,11 @@ pub(crate) fn material(text: &str) -> Result<Option<Layer>, String> {
             _ => return Err("a material group is up to four numbers, or a colour".into()),
         };
     }
-    Ok(Some(layer))
+    Ok(Some(crate::dress::DressMaterial {
+        layer,
+        asset: None,
+        params: 0,
+    }))
 }
 
 /// `scroll-snap-type` as [`crate::layout::Element::snap`].

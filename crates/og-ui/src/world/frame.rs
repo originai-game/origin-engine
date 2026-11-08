@@ -410,23 +410,6 @@ impl Ui {
         self.world.state.pools.get(&h.0).map_or(0, Vec::len)
     }
 
-    // ── meta UI ──────────────────────────────────────────────────────────
-
-    /// A meta layer: full screen, over the scene and under the screen's
-    /// elements, never taking input.
-    pub fn meta(&mut self, id: impl Into<Id>, desc: MetaDesc) {
-        let vp = self.viewport;
-        let el = Element {
-            width: Size::Fixed(vp.width),
-            height: Size::Fixed(vp.height),
-            ..Element::default()
-        };
-        let i = self.open_layer("meta", id.into(), el, Float::World, NONE);
-        self.nodes[i].props.inert = true;
-        self.close();
-        self.world.metas.push((i, desc));
-    }
-
     // ── the frame ────────────────────────────────────────────────────────
 
     /// Starts the world part of a frame: the pointer retargeted onto a

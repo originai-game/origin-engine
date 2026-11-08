@@ -1043,8 +1043,6 @@ export interface HostAbi<A, V> {
   og_ui_spawn_mass(template: number, instances: string): void;
   /** `og.ui.massCount` */
   og_ui_mass_count(template: number): number;
-  /** `og.ui.meta` */
-  og_ui_meta(id: string, desc: string | undefined): void;
   /** `og.ui.push` */
   og_ui_push(world: number, screen: string, vm: string | undefined): string;
   /** `og.ui.pop` */
@@ -1799,7 +1797,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_define_mass",
   "og_ui_spawn_mass",
   "og_ui_mass_count",
-  "og_ui_meta",
   "og_ui_push",
   "og_ui_pop",
   "og_ui_replace",

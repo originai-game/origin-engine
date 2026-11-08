@@ -51,13 +51,3 @@ function focusOn(engine: Engine, end: string): void {
   for (let i = 0; i < 12 && !focused(engine).endsWith(end); i++) key(engine, "Tab");
   expectFocus(engine, end);
 }
-
-// ── foundations ─────────────────────────────────────────────────────────
-
-test("foundations: an effect layer shows what it holds", () => {
-  // Wrong: an effect layer that hides its content.
-  const engine = run(() => {
-    og.ui.effectLayer("Shine", { material: "shine", sweep: true } as never, () => og.ui.label("Inner", "Legendary", {}));
-  });
-  expect(find(engine, (e) => e.text === "Legendary")).toBeDefined();
-});

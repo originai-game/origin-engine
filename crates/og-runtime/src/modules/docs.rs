@@ -174,6 +174,31 @@ fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
 /// The Rive artboards a document plays (`-og-frame: rive("<id>")`), read
 /// from their cooked blobs and checked, with their hashes: one missing or
 /// malformed refuses the document.
+/// The UI materials a document's `-og-material` names, loaded by path.
+#[allow(clippy::type_complexity)]
+fn read_materials(
+    eng: &Engine,
+    doc: &UiDocument,
+) -> Result<
+    Vec<(
+        String,
+        (
+            og_render::UiMaterialHandle,
+            [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+        ),
+    )>,
+    String,
+> {
+    doc.material_assets()
+        .into_iter()
+        .map(|path| {
+            let m = crate::ui_draw::ui_material(eng, &path)
+                .map_err(|e| format!("{}: -og-material: \"{path}\": {e}", doc.source))?;
+            Ok((path, m))
+        })
+        .collect()
+}
+
 fn read_rive(
     eng: &Engine,
     doc: &UiDocument,
@@ -238,6 +263,7 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     let id = og_bundle::runtime::asset_id(path).to_string();
     let doc = read_document(eng, &id)?;
     let rive = read_rive(eng, &doc)?;
+    let materials = read_materials(eng, &doc)?;
     let name = doc.name.clone();
     let hash = hash_of(eng, &id);
     let hashes: Vec<(String, u64)> = rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
@@ -265,6 +291,9 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     let mut ui = ui.lock();
     for (r, _, artboard) in rive {
         ui.define_rive(&r, artboard);
+    }
+    for (path, (handle, defaults)) in materials {
+        ui.define_material(&path, handle, defaults);
     }
     define(&mut ui, doc, faces);
     Ok(name)
@@ -341,10 +370,15 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
         if now == l.hash && l.rive.iter().all(|(r, h)| hash_of(eng, r) == *h) {
             continue;
         }
-        match read_document(eng, &l.id)
-            .and_then(|doc| Ok((read_rive(eng, &doc)?, family_faces(eng, &doc)?, doc)))
-        {
-            Ok((rive, faces, doc)) => {
+        match read_document(eng, &l.id).and_then(|doc| {
+            Ok((
+                read_rive(eng, &doc)?,
+                read_materials(eng, &doc)?,
+                family_faces(eng, &doc)?,
+                doc,
+            ))
+        }) {
+            Ok((rive, materials, faces, doc)) => {
                 let hashes: Vec<(String, u64)> =
                     rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
                 with(eng.id, |d| {
@@ -356,6 +390,9 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
                 let mut ui = ui.lock();
                 for (r, _, artboard) in rive {
                     ui.define_rive(&r, artboard);
+                }
+                for (path, (handle, defaults)) in materials {
+                    ui.define_material(&path, handle, defaults);
                 }
                 define(&mut ui, doc, faces);
             }

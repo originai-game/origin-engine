@@ -162,8 +162,6 @@ module ui {
 | [`og.ui.menu`](ui/fn-menu.md) | function | `(id: string, open: boolean, desc?: MenuDesc): MenuChoice` | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. |
 | [`og.ui.contextMenu`](ui/fn-contextMenu.md) | function | `(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice` | A menu at a point: where a right press or a long press happened. |
 | [`og.ui.sheet`](ui/fn-sheet.md) | function | `(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult` | A sheet sliding in from the bottom (resting at detents, dragged) or a side. |
-| [`EffectLayerDesc`](ui/type-EffectLayerDesc.md) | desc struct |  | A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`. |
-| [`og.ui.effectLayer`](ui/fn-effectLayer.md) | function | `(id: string, desc: EffectLayerDesc, build: UiBuild): void` | A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hi… |
 | [`UiProp`](ui/type-UiProp.md) | enum |  | An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. |
 | [`LayoutMode`](ui/type-LayoutMode.md) | enum |  | How a container lays out its children. |
 | [`Position`](ui/type-Position.md) | enum |  | How an element is placed. |
@@ -315,9 +313,6 @@ module ui {
 | [`og.ui.defineMass`](ui/fn-defineMass.md) | function | `(name: string, desc?: MassTemplateDesc): Result<number>` | Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. |
 | [`og.ui.spawnMass`](ui/fn-spawnMass.md) | function | `(template: number, instances: readonly MassInstance[]): void` | Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). |
 | [`og.ui.massCount`](ui/fn-massCount.md) | function | `(template: number): number` | The live spawned instances of a template. |
-| [`MetaKind`](ui/type-MetaKind.md) | enum |  | What a meta layer draws over the scene. |
-| [`MetaDesc`](ui/type-MetaDesc.md) | desc struct |  | A meta layer (docs/ui.md §1): full screen, over the scene and under the screen's elements, never taking input. |
-| [`og.ui.meta`](ui/fn-meta.md) | function | `(id: string, desc?: MetaDesc): void` | A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame. |
 | [`UiSource`](ui/type-UiSource.md) | interface |  | A store's stable checkpoint identity. |
 | [`UiCollectionDesc`](ui/type-UiCollectionDesc.md) | struct |  | A keyed collection's identity rule. |
 | [`UiScope`](ui/type-UiScope.md) | interface |  | Named presentation stores for one world, following the svelte/store contract. |
@@ -369,7 +364,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 2533</sub>
+<sub>Module `ui` line 2506</sub>
 
 ```ogt
 column UiMaterial {
@@ -380,4 +375,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 2540</sub>
+<sub>Module `ui` line 2513</sub>

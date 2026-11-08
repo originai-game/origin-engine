@@ -292,7 +292,7 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "`-og-meta: vignette [<colour>] | tint <colour>`: a full-screen overlay drawn with the element, never taking input, its strength the element's `opacity` (`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`).",
+        doc: "`-og-meta: vignette [<colour>] | tint <colour> | material <material>`: a full-screen overlay drawn with the element, never taking input, its strength the element's `opacity` (`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`); `material` composites the frame under it through a material written as `-og-material` writes one (`-og-meta: material ripple(6 48 60)` for sanity, `-og-meta: material \"fx/static.ogt\" var(--k)`). A pulse is a CSS animation of its opacity.",
     },
     PropSpec {
         name: "mass",
@@ -1133,7 +1133,7 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "`-og-material: <name>(<n> …[, <colour>])`: the element and its subtree composited through one of the engine's built-in materials (dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur), its parameters in the material's order. No CSS standard has shader materials.",
+        doc: "`-og-material: <name>(<n> …[, <colour>])`: the element and its subtree composited through one of the engine's built-in materials (dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur), its parameters in the material's order; or `-og-material: \"<asset>\" [<n> …]`, a `type ui-material` asset (`og ui add materials`) by its path under `assets/`, the numbers over its defaults in `param` order, four a parameter, as a style's dressing writes one (`-og-material: \"ui-kits/materials/burn.ogt\" var(--burn)`). Any number may be `var(--name)`, so `style:--burn={$burn}` drives it from a store. No CSS standard has shader materials.",
     },
     PropSpec {
         name: "scrollSnapType",

@@ -265,6 +265,53 @@ impl UiDocument {
         out
     }
 
+    /// The `type ui-material` assets its `-og-material` and `-og-meta:
+    /// material` declarations name (`-og-material: "ui-kits/materials/foil.ogt"
+    /// …`), each once: the host loads them and binds them with
+    /// [`crate::Ui::define_material`].
+    pub fn material_assets(&self) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        let mut add = |name: &str, text: &str| {
+            let text = match name {
+                "material" | "-og-material" => text,
+                _ => match text.trim().strip_prefix("material ") {
+                    Some(m) => m,
+                    None => return,
+                },
+            };
+            if let Ok(Some(m)) = super::paint_css::material(text)
+                && let Some(path) = m.asset
+                && !out.contains(&path)
+            {
+                out.push(path);
+            }
+        };
+        for n in &self.nodes {
+            for p in n
+                .props
+                .iter()
+                .chain(n.at.iter().flat_map(|a| &a.1))
+                .chain(n.rules.iter().flat_map(|rule| &rule.props))
+            {
+                if matches!(p.name(), "material" | "meta")
+                    && let PropValue::Lit(Lit::Str(text)) = &p.value
+                {
+                    add(p.name(), text);
+                }
+            }
+            // Declarations with custom properties are resolved per element:
+            // their asset is the same whatever the variables hold.
+            for d in n.rules.iter().flat_map(|rule| &rule.declarations) {
+                if matches!(d.name.as_str(), "-og-material" | "-og-meta")
+                    && let Ok(text) = d.value.substitute(&mut |_| Some("0".into()))
+                {
+                    add(&d.name, &text);
+                }
+            }
+        }
+        out
+    }
+
     /// Every path a node's bindings read (its own, not its children's).
     pub fn node_paths(&self, n: &DocNode, out: &mut Vec<String>) {
         let value = |v: &PropValue, out: &mut Vec<String>| match v {
