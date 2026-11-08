@@ -449,6 +449,17 @@ pub struct AnchorPoint {
     pub clamped: bool,
 }
 
+/// A document's mass element (`<anchor mass>`): its template, where it
+/// stands and its instance, and the element that owns it.
+#[derive(Clone, Debug)]
+pub(crate) struct KeptMass {
+    pub handle: MassHandle,
+    pub target: WorldTarget,
+    pub offset: Vec3,
+    pub instance: UiMassInstance,
+    pub owner: u64,
+}
+
 /// A world panel the UI draws itself, as seen this tick: its layout `rect`
 /// and where that rect's top left, top right, bottom right and bottom left
 /// corners land on the screen, CSS px (the quad its plane is seen as).
@@ -576,6 +587,14 @@ pub(crate) struct WorldUi {
     /// their element was built again ([`Ui::keep_world_anchors`]).
     /// Each with the key of the in-flow element that owns it.
     pub kept: BTreeMap<u64, (WorldAnchorDesc, u64)>,
+    /// Mounted documents' standing mass elements (`<anchor mass>` without
+    /// an animation) by key: pushed every tick while their owner stands.
+    pub kept_mass: BTreeMap<u64, KeptMass>,
+    /// Mass elements built this tick (an immediate document's).
+    pub mass_built: Vec<u64>,
+    /// The one-shot mass elements already spawned, by key, while their
+    /// row stands: a row spawns once.
+    pub mass_spawned: std::collections::BTreeSet<u64>,
     /// This tick's projected panels as seen ([`crate::UiFrame::grounds`]).
     pub grounds: Vec<GroundQuad>,
     /// Mounted documents' world panels by key, with the rect each was laid

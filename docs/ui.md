@@ -572,6 +572,20 @@ it as on the screen; without `entity` or `at` it takes no rays. `world`
 is a boolean attribute on HTML's `panel` kind because no web standard
 draws a box into a texture.
 
+A keyed `{#each}` of `<anchor mass="name">` becomes mass elements, GPU-drawn
+by the thousand, instead of boxes: `{#each $hits as h (h.id)}<anchor
+entity={h.entity} mass="damage" value={h.amount}></anchor>{/each}`. The
+element defines the template `name`. It is a number, or with `max` a bar
+filled to value/max sized by CSS `width` and `height`, tinted by `color`.
+Its first CSS `animation` is the template's timeline: the `@keyframes`'
+`translate`, `scale` and `opacity` sampled at each key, over the
+animation's duration. A row with an animation spawns one instance when it
+appears and never again (a damage number). A row without one stands while
+its row does (an overhead bar), and the engine pushes it every tick at its
+entity with nothing built. A patched value writes that row alone. `mass` is
+an attribute on the engine's `anchor`; no standard names a GPU-instanced
+element.
+
 `<ground>` lays a box flat in the world: `<ground entity={u.entity}
 size="3 3" rotation="0 45 0"><svg viewBox="0 0 40 40">…</svg></ground>`.
 It is laid out at its CSS size and drawn by the UI itself onto the

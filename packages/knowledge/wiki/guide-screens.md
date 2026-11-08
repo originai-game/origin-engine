@@ -214,7 +214,11 @@ local styles and `og style new` remain available.
   target `src` on a plane `size` world units across, and pointer rays
   that meet it press its buttons. Lay a selection ring under a unit with
   `<ground entity={u.entity} size="2 2"><svg viewBox="0 0 40 40">…</svg></ground>`:
-  drawn flat on the ground in perspective, inert.
+  drawn flat on the ground in perspective, inert. For many at once (damage
+  numbers, overhead bars) write `<anchor entity={h.entity} mass="damage"
+  value={h.amount}>` in a keyed each: with a CSS animation (`rise 1s`) each row
+  spawns one number that plays `@keyframes rise`; with `max="100"` and no
+  animation it is a bar that stays with its row.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.

@@ -198,6 +198,178 @@ impl Ui {
         Some(path)
     }
 
+    /// An `<anchor mass>`: a mass element of the template its `mass` names
+    /// (defined from the element: a number, or with `max` a bar; its first
+    /// CSS animation's `@keyframes` its timeline), held in the tree by a
+    /// hidden leaf so the retained document keeps it.
+    fn build_mass(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        name: &str,
+        path: &str,
+        key: u64,
+    ) {
+        use og_render::{UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate};
+        let target = match (r.num("entity"), r.str("worldAt")) {
+            (Some(e), _) => WorldTarget::Entity(e as u64),
+            (None, Some(p)) => match vec3(p) {
+                Some(v) => WorldTarget::Point(v),
+                None => {
+                    self.warnings.push(format!(
+                        "{}:{} ({path}): at=\"{p}\" is three numbers, x y z",
+                        b.doc.source, n.line
+                    ));
+                    return;
+                }
+            },
+            (None, None) => {
+                self.warnings.push(format!(
+                    "{}:{} ({path}): an <anchor mass> takes entity={{…}} or at=\"x y z\"",
+                    b.doc.source, n.line
+                ));
+                return;
+            }
+        };
+        let offset = r.str("worldOffset").and_then(vec3).unwrap_or(Vec3::ZERO);
+        let em = self.em_of(r);
+        let value = r.num("massValue").unwrap_or(0.0);
+        let max = r.num("massMax");
+        let px = |s: Option<Size>, d: f32| match s {
+            Some(Size::Fixed(v)) => v,
+            _ => d,
+        };
+        let (kind, size, shown) = match max {
+            Some(m) => (
+                UiMassKind::Bar {
+                    back: [0.0, 0.0, 0.0, 0.6],
+                    ghost: [1.0, 1.0, 1.0, 0.7],
+                    radius: 2.0,
+                },
+                og_core::glam::Vec2::new(px(r.size("width"), 60.0), px(r.size("height"), 6.0)),
+                if m > 0.0 {
+                    (value / m).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                },
+            ),
+            None => (
+                UiMassKind::Number {
+                    decimals: 0,
+                    plus: false,
+                    compact: false,
+                },
+                og_core::glam::Vec2::splat(em),
+                value,
+            ),
+        };
+        // The timeline: the first animation's keyframes, its translate,
+        // scale and opacity tracks sampled at every key any of them has.
+        let mut lifetime = 0;
+        let mut keys = Vec::new();
+        if let Some(a) = r.animations.first()
+            && let Some(frames) = self.docs.keyframes.get(&a.name).cloned()
+        {
+            lifetime =
+                ((a.duration_ms * self.ticks_per_second as f32 / 1000.0).round() as u32).max(1);
+            let track = |prop: crate::element::Prop, t: f32, rest: f32| {
+                let Some(tr) = frames.tracks.iter().find(|tr| tr.prop == prop) else {
+                    return rest;
+                };
+                let mut pts: Vec<(f32, f32)> =
+                    tr.keys.iter().map(|k| (k.offset, k.value)).collect();
+                if pts.first().is_none_or(|p| p.0 > 0.0) {
+                    pts.insert(0, (0.0, rest));
+                }
+                if pts.last().is_none_or(|p| p.0 < 1.0) {
+                    pts.push((1.0, rest));
+                }
+                let k = pts.iter().position(|p| p.0 >= t).unwrap_or(pts.len() - 1);
+                if k == 0 {
+                    return pts[0].1;
+                }
+                let (a, b) = (pts[k - 1], pts[k]);
+                let f = if b.0 > a.0 {
+                    (t - a.0) / (b.0 - a.0)
+                } else {
+                    1.0
+                };
+                a.1 + (b.1 - a.1) * f
+            };
+            let mut at: Vec<f32> = frames
+                .tracks
+                .iter()
+                .flat_map(|tr| tr.keys.iter().map(|k| k.offset))
+                .chain([0.0, 1.0])
+                .collect();
+            at.sort_by(f32::total_cmp);
+            at.dedup();
+            use crate::element::Prop;
+            for t in at {
+                let scale = if frames.tracks.iter().any(|tr| tr.prop == Prop::Scale) {
+                    track(Prop::Scale, t, 1.0)
+                } else {
+                    track(Prop::ScaleX, t, 1.0)
+                };
+                keys.push(UiMassKey {
+                    t,
+                    offset: og_core::glam::Vec2::new(
+                        track(Prop::X, t, 0.0),
+                        track(Prop::Y, t, 0.0),
+                    ),
+                    scale,
+                    alpha: track(Prop::Opacity, t, 1.0),
+                    ..UiMassKey::default()
+                });
+            }
+        }
+        let handle = self.define_mass(
+            name,
+            UiMassTemplate {
+                kind,
+                size,
+                pivot: og_core::glam::Vec2::new(0.5, 1.0),
+                lifetime,
+                keys,
+                ..UiMassTemplate::default()
+            },
+            UiMassSpace::World,
+        );
+        let color = r.color("color").map_or([1.0; 4], |c| c.linear());
+        // Its place in the tree, so the retained document keeps it.
+        let i = self.leaf(
+            "mass",
+            crate::Id::from(path.rsplit('/').next().unwrap_or(path)),
+            Element {
+                width: Size::Fixed(0.0),
+                height: Size::Fixed(0.0),
+                ..Element::default()
+            },
+        );
+        self.nodes[i].hidden = true;
+        let owner = self.nodes[i].key;
+        debug_assert_eq!(owner, key, "the leaf takes the element's key");
+        self.document_mass(
+            key,
+            owner,
+            lifetime > 0,
+            crate::world::KeptMass {
+                handle,
+                target,
+                offset,
+                instance: UiMassInstance {
+                    value: shown,
+                    color,
+                    scale: 1.0,
+                    seed: key as u32,
+                    ..UiMassInstance::default()
+                },
+                owner,
+            },
+        );
+    }
+
     /// An `<anchor>`: opened as the native anchor, kept for placement while
     /// its subtree is not built again.
     #[allow(clippy::too_many_arguments)]
@@ -212,6 +384,12 @@ impl Ui {
         built: Built,
         build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
     ) -> Option<String> {
+        if let Some(name) = r.str("mass").filter(|m| !m.is_empty()) {
+            let name = name.to_owned();
+            self.build_mass(b, n, r, &name, &path, key);
+            self.note_built(built);
+            return Some(path);
+        }
         let el = Self::box_of(
             r,
             Element {
@@ -440,5 +618,121 @@ mod tests {
         let layer = ui.nodes[ui.nodes[ui.nodes[word].parent].parent].parent;
         assert_eq!(ui.nodes[layer].parent, crate::layout::NONE);
         assert_eq!(ui.nodes[layer].key, crate::id::key_of_path("test:sign"));
+    }
+
+    /// A keyed each of `<anchor mass>`: a row with an animation spawns one
+    /// mass element when it appears and never again; a row without one
+    /// stands as a bar pushed every tick with nothing built, and leaves
+    /// with its row. The keyframes are the template's timeline.
+    ///
+    /// Ways it could fail: a spawn on every build (numbers repeat), a bar
+    /// that needs its element rebuilt each tick, or one left after its row.
+    #[test]
+    fn mass_anchors_spawn_once_and_bars_follow_their_rows() {
+        let doc = r#"<meta name="component" content="hits">
+<div id="Root">
+  {#each $hits as h (h.id)}<anchor id="Hit" entity={h.entity} mass="damage" value={h.amount}></anchor>{/each}
+  {#each $units as u (u.id)}<anchor id="Bar" entity={u.entity} mass="hp" value={u.hp} max="100"></anchor>{/each}
+</div>
+<style>
+#Hit { animation: rise 1s linear; }
+@keyframes rise { from { translate: 0 0; } to { translate: 0 -40px; opacity: 0; } }
+</style>"#;
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(UiDocument::parse("hits.svelte", doc).unwrap());
+        let rows = |v: serde_json::Value| -> Vec<serde_json::Map<String, serde_json::Value>> {
+            v.as_array()
+                .unwrap()
+                .iter()
+                .map(|r| r.as_object().unwrap().clone())
+                .collect()
+        };
+        let hits = SourceId::new("test", "hits");
+        let units = SourceId::new("test", "units");
+        for (source, items) in [
+            (&hits, json!([{"id": "a", "entity": 1, "amount": 12}])),
+            (&units, json!([{"id": "u", "entity": 1, "hp": 50}])),
+        ] {
+            ui.reactive
+                .execute(Command::Collection {
+                    source: source.clone(),
+                    key: "id".into(),
+                    items: rows(items),
+                })
+                .unwrap();
+        }
+        ui.mount_document(
+            SourceId::new("test", "hits"),
+            "hits",
+            BTreeMap::from([
+                ("hits".to_string(), hits.clone()),
+                ("units".to_string(), units.clone()),
+            ]),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let tick = |ui: &mut Ui| {
+            ui.set_world_view(Some(WorldView::look_at(
+                Vec3::new(0.0, 3.0, 10.0),
+                Vec3::ZERO,
+                Vec3::Y,
+                50.0,
+                800.0 / 600.0,
+                0.1,
+                100.0,
+            )));
+            ui.set_world_poses(&[(1u64, (Vec3::ZERO, Quat::IDENTITY, Vec3::ONE))]);
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end().stats
+        };
+        for _ in 0..3 {
+            tick(&mut ui);
+        }
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        let damage = ui.mass_handle("damage").expect("the damage template");
+        let hp = ui.mass_handle("hp").expect("the hp template");
+        assert_eq!(ui.mass_count(damage), 1);
+        let t = &ui.world.templates[damage.0 as usize].1;
+        assert_eq!(t.lifetime, ui.ticks_per_second);
+        let last = t.keys.last().expect("keys");
+        assert_eq!((last.t, last.offset.y, last.alpha), (1.0, -40.0, 0.0));
+        let bars = |ui: &Ui| {
+            ui.world_frame()
+                .batches
+                .iter()
+                .filter(|b| matches!(b.template.kind, og_render::UiMassKind::Bar { .. }))
+                .map(|b| b.instances.len())
+                .sum::<usize>()
+        };
+        let idle = tick(&mut ui);
+        assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+        assert_eq!(bars(&ui), 1);
+        // A second hit spawns one more; the first is not spawned again.
+        ui.reactive
+            .execute(Command::Insert {
+                source: hits.clone(),
+                row: json!({"id": "b", "entity": 1, "amount": 30})
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+                before: None,
+            })
+            .unwrap();
+        tick(&mut ui);
+        assert_eq!(ui.mass_count(damage), 2);
+        assert!(hp != damage);
+        // The unit leaves: its bar does.
+        ui.reactive
+            .execute(Command::Remove {
+                source: units,
+                key: "u".into(),
+            })
+            .unwrap();
+        for _ in 0..2 {
+            tick(&mut ui);
+        }
+        assert_eq!(bars(&ui), 0);
     }
 }

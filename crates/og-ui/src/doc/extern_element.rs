@@ -194,6 +194,8 @@ pub(super) fn property(kind: &str, attr: &str) -> Option<String> {
             "offset" => "worldOffset",
             "clamp" => "worldClamp",
             "scale-at" => "worldScaleAt",
+            "value" => "massValue",
+            "max" => "massMax",
             _ => return None,
         };
         return Some(p.into());

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <anchor mass>",
+      "summary": "A keyed each of <anchor mass=\"name\" value max> compiles to a mass template (a number, or a bar with max) whose timeline is the element's CSS animation keyframes (translate, scale, opacity). A row with an animation spawns one instance when it appears; one without stands with its row, pushed every tick with nothing built."
+    }
+  ]
+}

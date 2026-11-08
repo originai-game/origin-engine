@@ -195,6 +195,27 @@ macro_rules! svg {
 
 pub const PROPS: &[PropSpec] = &[
     PropSpec {
+        name: "mass",
+        ty: Ty::Text,
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "`<anchor entity={h.entity} mass=\"damage\" value={h.amount}>`: a mass element of the template `mass` instead of a box (thousands per frame, drawn on the GPU). With a CSS `animation`, each row spawns one that plays its `@keyframes` (translate, scale, opacity) over the animation's duration; without one it stays while its row does. `value` is the number shown, or with `max` a bar filled to value/max; `color` tints it.",
+    },
+    PropSpec {
+        name: "massValue",
+        ty: Ty::Num,
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "A mass element's value: the number it shows, or its bar's fill with `max`.",
+    },
+    PropSpec {
+        name: "massMax",
+        ty: Ty::Num,
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "A mass element's bar: drawn as a bar filled to value/max (an overhead health bar).",
+    },
+    PropSpec {
         name: "world",
         ty: Ty::Bool,
         on: On::Kinds(&["panel"]),

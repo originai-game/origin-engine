@@ -148,6 +148,52 @@ impl Ui {
             }
         });
         self.world.kept_panels = kept;
+        // Mass elements: standing ones pushed where their target is now,
+        // one-shots forgotten once their row leaves.
+        let mut kept = std::mem::take(&mut self.world.kept_mass);
+        kept.retain(|key, m| {
+            if !self.world.mass_built.contains(key) && !self.docs.retained.owns(m.owner) {
+                return false;
+            }
+            self.world.want(m.target);
+            if let Some((p, _)) = self.world.pose_of(m.target) {
+                let p = p + m.offset;
+                let instance = UiMassInstance {
+                    position: [p.x, p.y, p.z],
+                    ..m.instance
+                };
+                self.push_mass(m.handle, instance);
+            }
+            true
+        });
+        self.world.kept_mass = kept;
+        let mut spawned = std::mem::take(&mut self.world.mass_spawned);
+        spawned.retain(|k| self.world.mass_built.contains(k) || self.docs.retained.owns(*k));
+        self.world.mass_spawned = spawned;
+    }
+
+    /// A document's mass element `key` (owned by the element `owner`):
+    /// `once`, spawned when its row first builds and left to play its
+    /// template's life; else kept and pushed every tick while it stands.
+    pub(crate) fn document_mass(&mut self, key: u64, owner: u64, once: bool, m: KeptMass) {
+        self.world.mass_built.push(key);
+        if !once {
+            self.world.kept_mass.insert(key, KeptMass { owner, ..m });
+            return;
+        }
+        self.world.kept_mass.remove(&key);
+        if !self.world.mass_spawned.insert(key) {
+            return;
+        }
+        self.world.want(m.target);
+        if let Some((p, _)) = self.world.pose_of(m.target) {
+            let p = p + m.offset;
+            let instance = UiMassInstance {
+                position: [p.x, p.y, p.z],
+                ..m.instance
+            };
+            self.spawn_mass(m.handle, instance);
+        }
     }
 
     /// Keeps a document's world panel `node` for placement and rays on the
@@ -345,6 +391,7 @@ impl Ui {
         w.immediate.clear();
         w.marks.clear();
         w.grounds.clear();
+        w.mass_built.clear();
         w.pointed = None;
         let Some(view) = w.view else {
             return;
