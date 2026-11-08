@@ -896,13 +896,16 @@ impl Ui {
         // Focus: kept while its control is on screen (or reachable); a scope
         // that opened takes it (its first control, or the one a widget asked
         // for); a scope that closed gives it back.
-        let alive = |k: u64| hits.iter().any(|h: &Hit| h.key == k);
+        let alive = |k: u64| {
+            hits.iter().any(|h: &Hit| h.key == k)
+                || self.docs.retained.deferred_focus_path(k).is_some()
+        };
         let first_in = |scope: u64| {
             hits.iter()
                 .find(|h| h.scope == scope && h.has(HIT_NAV) && !h.has(HIT_OFFSCREEN))
                 .map_or(0, |h| h.key)
         };
-        if self.request_focus != 0 && alive(self.request_focus) {
+        if self.request_focus != 0 && hits.iter().any(|h| h.key == self.request_focus) {
             self.state.focus = self.request_focus;
         }
         if top_scope != self.state.scope {
@@ -1077,6 +1080,8 @@ impl Ui {
                 {
                     focus_paths[slot] = format!("{}/{l}", focus_paths[slot]);
                 }
+            } else if let Some(path) = self.docs.retained.deferred_focus_path(key) {
+                focus_paths[slot] = path.to_owned();
             }
         }
         self.frame = UiFrame {

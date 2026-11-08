@@ -190,7 +190,7 @@ impl Ui {
                 values: r,
                 probe: built,
             },
-            |ui, b| {
+            |ui, b, _| {
                 for &child in &n.children {
                     ui.build_node(b, child, None);
                 }
@@ -203,7 +203,7 @@ impl Ui {
         b: &mut Build<'_>,
         i: usize,
         resolved: ResolvedNode,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>),
+        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
     ) -> Option<String> {
         let doc = b.doc.clone();
         let n = &doc.nodes[i];
@@ -264,7 +264,11 @@ impl Ui {
                 }
                 "list" | "cells" => {
                     let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-                    self.build_virtual(b, n, kind, &id, &r, props, &path);
+                    if b.cached.is_some() {
+                        build_children(self, b, Some(props));
+                    } else {
+                        self.build_virtual(b, n, kind, &id, &r, props, &path);
+                    }
                     b.inherited = inherited;
                     self.docs.built.push(built);
                     self.fire(b, n, key, &path, resp);
@@ -296,7 +300,7 @@ impl Ui {
             }
             self.docs.built.push(built);
             let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-            build_children(self, b);
+            build_children(self, b, None);
             b.inherited = inherited;
             resp = self.close();
             self.fire(b, n, key, &path, resp);

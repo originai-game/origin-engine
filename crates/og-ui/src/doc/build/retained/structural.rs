@@ -18,6 +18,7 @@ pub(super) struct BranchInstance {
     context: BindingContext,
     parent: MountedNode,
     suffix: String,
+    render_prefix: String,
     binding: BindingId,
     enabled: bool,
     pub children: Vec<Child>,
@@ -28,12 +29,13 @@ pub(super) struct EachInstance {
     document: Arc<UiDocument>,
     index: usize,
     context: BindingContext,
-    parent: MountedNode,
+    pub parent: MountedNode,
     source: SourceId,
     revision: u64,
     pub order: Vec<String>,
     pub rows: BTreeMap<String, Vec<Child>>,
     pub empty: Vec<Child>,
+    pub materialized: BTreeSet<String>,
 }
 
 impl RetainedHost {
@@ -74,8 +76,16 @@ impl RetainedHost {
             context,
             parent,
             suffix: id
+                .rsplit('/')
+                .next()
+                .unwrap()
                 .find('#')
-                .map_or_else(String::new, |at| id[at..].to_owned()),
+                .map_or_else(String::new, |at| {
+                    id.rsplit('/').next().unwrap()[at..].to_owned()
+                }),
+            render_prefix: id
+                .rsplit_once('/')
+                .map_or_else(String::new, |(prefix, _)| format!("{prefix}/")),
             binding,
             enabled,
             children: Vec::new(),
@@ -97,7 +107,8 @@ impl RetainedHost {
         for &child in &branch.document.nodes[branch.index].children {
             let n = &branch.document.nodes[child];
             let id = format!(
-                "{}{}",
+                "{}{}{}",
+                branch.render_prefix,
                 if n.id.is_empty() {
                     format!("node{child}")
                 } else {
@@ -236,6 +247,7 @@ impl RetainedHost {
             order,
             rows: BTreeMap::new(),
             empty: Vec::new(),
+            materialized: BTreeSet::new(),
         };
         for key in each.order.clone() {
             let children = self.compile_row(ui, &each, Some(&key), env)?;
@@ -311,6 +323,12 @@ impl RetainedHost {
                     .replace('#', "%23");
                 id.push('#');
                 id.push_str(&escaped);
+                let parent = &self.elements[&each.parent];
+                if let NodeKind::Element(kind @ ("list" | "cells")) =
+                    parent.document.nodes[parent.index].kind
+                {
+                    id = format!("{}/{id}", crate::virtualize::item_id(key, kind == "cells"));
+                }
             }
             children.push(self.compile(
                 ui,
@@ -445,7 +463,16 @@ impl RetainedHost {
             let SourceChange::Collection(edit) = change.change else {
                 continue;
             };
-            if matches!(edit, CollectionEdit::Patch { .. }) {
+            if let CollectionEdit::Patch { key, .. } = &edit {
+                if let Some(readers) = self.collections.get(&change.source) {
+                    for id in readers {
+                        if let Some(list) =
+                            ui.state.virtual_lists.get_mut(&self.each[id].parent.key)
+                        {
+                            list.invalidate(std::slice::from_ref(key));
+                        }
+                    }
+                }
                 continue;
             }
             let readers = self

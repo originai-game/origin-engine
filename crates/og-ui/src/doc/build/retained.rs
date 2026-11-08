@@ -8,6 +8,7 @@ use crate::reactive::{
 };
 
 mod structural;
+mod virtualized;
 use structural::{BranchInstance, Child, EachInstance};
 
 #[derive(Clone, Debug, Default)]
@@ -52,6 +53,7 @@ struct ElementInstance {
     id: String,
     cached: CachedInputs,
     resolved: Option<ResolvedNode>,
+    style_dirty: bool,
     children: Vec<Child>,
     bindings: Vec<BindingId>,
 }
@@ -80,6 +82,7 @@ pub struct RetainedHost {
     interaction: [u64; 4],
     viewport: Option<crate::doc::media::Context>,
     media: [BTreeSet<MountedNode>; 3],
+    materializing: Option<Materialization>,
     built_tick: Option<u64>,
     pub evaluated: usize,
     pub resolved: usize,
@@ -95,6 +98,29 @@ impl std::fmt::Debug for RetainedHost {
 }
 
 impl RetainedHost {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.registrations.is_empty()
+    }
+
+    pub(crate) fn deferred_focus_path(&self, key: u64) -> Option<&str> {
+        let identity = self.by_key.get(&key)?;
+        let node = self.topology.node(identity)?;
+        if node.materialization != Materialization::Deferred
+            || node
+                .states
+                .contains(&crate::bind::InteractionState::Disabled)
+        {
+            return None;
+        }
+        let element = &self.elements[identity];
+        if element.resolved.as_ref().is_some_and(|resolved| {
+            resolved.values.has("visible") && !resolved.values.flag("visible")
+        }) {
+            return None;
+        }
+        Some(&element.path)
+    }
+
     pub(crate) fn save(&self) -> Value {
         serde_json::to_value(self.registrations.iter().collect::<Vec<_>>())
             .expect("serializable mount registrations")
@@ -279,6 +305,17 @@ impl RetainedHost {
         context.node.key = crate::id::key_of_path(&path);
         Arc::make_mut(&mut context.selector_nodes).insert(index, context.node.clone());
         let identity = context.node.clone();
+        let materialization = parent.map_or(Materialization::Visible, |parent| {
+            let element = &self.elements[parent];
+            if matches!(
+                element.document.nodes[element.index].kind,
+                NodeKind::Element("list" | "cells")
+            ) {
+                Materialization::Deferred
+            } else {
+                self.topology.node(parent).unwrap().materialization
+            }
+        });
         self.by_key.insert(identity.key, identity.clone());
         self.topology.insert(
             parent,
@@ -290,7 +327,7 @@ impl RetainedHost {
                 attributes: BTreeMap::new(),
                 direct_text: String::new(),
                 states: BTreeSet::new(),
-                materialization: Materialization::Visible,
+                materialization,
             },
         )?;
         let mut element = ElementInstance {
@@ -298,9 +335,10 @@ impl RetainedHost {
             index,
             context,
             path,
-            id,
+            id: id.rsplit('/').next().unwrap().to_owned(),
             cached: CachedInputs::default(),
             resolved: None,
+            style_dirty: true,
             children: Vec::new(),
             bindings: Vec::new(),
         };
@@ -440,6 +478,14 @@ impl RetainedHost {
             }
         }
         let flag = |name| facts.get(name).is_some_and(truthy);
+        self.topology.set_text(
+            identity,
+            facts
+                .get("text")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+        )?;
         for (state, enabled) in [
             (Disabled, flag("disabled")),
             (Checked, flag("checked")),
@@ -563,7 +609,10 @@ impl RetainedHost {
             }
         }
         while let Some(node) = self.dirty.pop_first() {
-            self.resolve(ui, &node, env)?;
+            self.elements.get_mut(&node).unwrap().style_dirty = true;
+            if self.topology.node(&node).unwrap().materialization != Materialization::Deferred {
+                self.resolve(ui, &node, env)?;
+            }
         }
         Ok(())
     }
@@ -605,7 +654,12 @@ impl RetainedHost {
         Ok(())
     }
 
-    fn resolve(&mut self, ui: &Ui, identity: &MountedNode, env: &dyn Env) -> Result<(), String> {
+    fn resolve(
+        &mut self,
+        ui: &mut Ui,
+        identity: &MountedNode,
+        env: &dyn Env,
+    ) -> Result<(), String> {
         let parent = self.topology.parent(identity).cloned();
         if let Some(parent) = &parent
             && (self.dirty.remove(parent) || self.elements[parent].resolved.is_none())
@@ -639,14 +693,13 @@ impl RetainedHost {
             &mut probe,
             &build.inherited,
         );
-        if !values.cascade.diagnostics.is_empty() {
-            return Err(format!(
-                "{}:{}: {}",
-                e.document.source,
-                e.document.nodes[e.index].line,
-                values.cascade.diagnostics.join("; ")
-            ));
-        }
+        ui.warnings
+            .extend(values.cascade.diagnostics.iter().map(|error| {
+                format!(
+                    "{}:{} ({}): {error}",
+                    e.document.source, e.document.nodes[e.index].line, e.path
+                )
+            }));
         let text = values.str("text").unwrap_or_default().to_owned();
         let previous = e.resolved.as_ref().map(|r| &r.values.cascade);
         let reads = values.cascade.viewport_reads;
@@ -697,6 +750,7 @@ impl RetainedHost {
             probe,
         };
         self.elements.get_mut(identity).unwrap().resolved = Some(resolved);
+        self.elements.get_mut(identity).unwrap().style_dirty = false;
         self.topology.set_text(identity, text)?;
         self.topology.style_resolved(identity)?;
         self.resolved += 1;
@@ -704,43 +758,59 @@ impl RetainedHost {
     }
 
     fn emit(
-        &self,
+        &mut self,
         ui: &mut Ui,
         child: &Child,
         env: &dyn Env,
         events: &mut Vec<DocEvent>,
         writes: &mut Vec<(BindingContext, String, Value)>,
-    ) {
+    ) -> Result<(), String> {
         let identity = match child {
             Child::Element(identity) => identity,
             Child::Branch(identity) => {
-                for child in &self.branches[identity].children {
-                    self.emit(ui, child, env, events, writes);
+                for child in self.branches[identity].children.clone() {
+                    self.emit(ui, &child, env, events, writes)?;
                 }
-                return;
+                return Ok(());
             }
             Child::Each(identity) => {
                 let each = &self.each[identity];
-                for key in &each.order {
-                    for child in &each.rows[key] {
-                        self.emit(ui, child, env, events, writes);
-                    }
+                let children: Vec<_> = if each.order.is_empty() {
+                    each.empty.clone()
+                } else {
+                    each.order
+                        .iter()
+                        .flat_map(|key| each.rows[key].iter().cloned())
+                        .collect()
+                };
+                for child in children {
+                    self.emit(ui, &child, env, events, writes)?;
                 }
-                if each.order.is_empty() {
-                    for child in &each.empty {
-                        self.emit(ui, child, env, events, writes);
-                    }
-                }
-                return;
+                return Ok(());
             }
         };
-        let e = &self.elements[identity];
+        self.topology.set_materialization(
+            identity,
+            self.materializing.unwrap_or(Materialization::Visible),
+        )?;
+        if self.dirty.remove(identity)
+            || self.elements[identity].style_dirty
+            || self.topology.style_is_stale(identity) == Some(true)
+        {
+            self.resolve(ui, identity, env)?;
+        }
+        let e = self.elements[identity].clone();
         let resolved = e.resolved.as_ref().expect("resolved mount");
         let mut b = e.build(env, resolved.values.cascade.computed.clone());
-        ui.build_resolved_node(&mut b, e.index, resolved.clone(), |ui, _| {
-            for child in &e.children {
-                self.emit(ui, child, env, events, writes);
-            }
+        let mut result = Ok(());
+        ui.build_resolved_node(&mut b, e.index, resolved.clone(), |ui, b, virtual_props| {
+            result = if let Some(props) = virtual_props {
+                self.emit_virtual(ui, &e, b, props, env, events, writes)
+            } else {
+                e.children
+                    .iter()
+                    .try_for_each(|child| self.emit(ui, child, env, events, writes))
+            };
         });
         events.extend(b.events);
         writes.extend(
@@ -748,6 +818,7 @@ impl RetainedHost {
                 .into_iter()
                 .map(|(path, value)| (e.context.clone(), path, value)),
         );
+        result
     }
 }
 
@@ -843,12 +914,15 @@ impl Ui {
             self.docs.retained = host;
             return Ok(());
         }
-        let result = host.refresh(self, env);
+        let mut result = host.refresh(self, env);
         if result.is_ok() {
             let mut events = Vec::new();
             let mut writes = Vec::new();
-            for root in host.roots.values() {
-                host.emit(self, root, env, &mut events, &mut writes);
+            for root in host.roots.values().cloned().collect::<Vec<_>>() {
+                if let Err(error) = host.emit(self, &root, env, &mut events, &mut writes) {
+                    result = Err(error);
+                    break;
+                }
             }
             self.docs.queued.extend(events);
             for (context, path, value) in writes {
@@ -857,7 +931,9 @@ impl Ui {
                     return Err(error);
                 }
             }
-            host.built_tick = Some(self.tick());
+            if result.is_ok() {
+                host.built_tick = Some(self.tick());
+            }
         }
         self.docs.retained = host;
         result
@@ -873,6 +949,114 @@ mod tests {
     use super::*;
     use crate::reactive::session::Command;
     use crate::{InputFrame, UiDesc, Viewport};
+
+    #[test]
+    fn virtual_mounts_defer_offscreen_styles_and_keep_far_row_identity() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(UiDocument::parse("virtual.svelte", r#"
+            <meta name="component" content="virtual">
+            <list id="Rows" row-height="40" height="400">
+                {#each $items as item (item.id)}<button id="Pick" height="40">{item.label}</button>{/each}
+            </list>
+        "#).unwrap());
+        let source = SourceId::new("test", "items");
+        ui.reactive
+            .execute(Command::Collection {
+                source: source.clone(),
+                key: "id".into(),
+                items: (0..1000)
+                    .map(|i| {
+                        json!({"id":format!("r{i}"),"label":format!("Row {i}")})
+                            .as_object()
+                            .unwrap()
+                            .clone()
+                    })
+                    .collect(),
+            })
+            .unwrap();
+        ui.mount_document(
+            SourceId::new("test", "virtual"),
+            "virtual",
+            BTreeMap::from([("items".into(), source.clone())]),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let tick = |ui: &mut Ui, wheel: f32, focus: Option<&str>| {
+            ui.begin(
+                InputFrame {
+                    pointer_inside: true,
+                    pointer: og_core::glam::Vec2::new(200.0, 100.0),
+                    wheel: og_core::glam::Vec2::new(0.0, wheel),
+                    ..Default::default()
+                },
+                Viewport::new(2560.0, 1440.0),
+            );
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            if let Some(path) = focus {
+                ui.set_focus(path);
+            }
+            ui.end();
+        };
+        tick(&mut ui, 0.0, None);
+        let list = ui.mounted_topology().child_at(None, 0).unwrap().clone();
+        let far = ui
+            .mounted_topology()
+            .child_at(Some(&list), 999)
+            .unwrap()
+            .clone();
+        assert_eq!(
+            ui.mounted_topology().node(&far).unwrap().direct_text,
+            "Row 999"
+        );
+        assert_eq!(
+            ui.mounted_topology().node(&far).unwrap().materialization,
+            Materialization::Deferred
+        );
+        assert!(ui.docs.retained.resolved < 20);
+        tick(&mut ui, 0.0, None);
+        assert_eq!(ui.docs.retained.resolved, 0);
+        assert_eq!(ui.docs.retained.evaluated, 0);
+        ui.docs
+            .retained
+            .topology
+            .invalidate_styles(Some(&list), 0..1000)
+            .unwrap();
+        tick(&mut ui, 0.0, None);
+        assert!(ui.docs.retained.resolved < 20);
+        assert_eq!(ui.docs.retained.topology.style_is_stale(&far), Some(true));
+        tick(&mut ui, 100000.0, None);
+        assert!(ui.probe_elements().iter().any(|n| n.text == "Row 999"));
+        let path = "test:virtual/Row#r999/Pick#r999";
+        tick(&mut ui, 0.0, Some(path));
+        assert_eq!(ui.focused_key(), far.key);
+        assert_eq!(ui.focus_path(0), path);
+        assert_eq!(ui.docs.retained.topology.style_is_stale(&far), Some(false));
+        tick(&mut ui, -100000.0, None);
+        assert!(ui.probe_elements().iter().any(|n| n.text == "Row 0"));
+        assert_eq!(ui.mounted_topology().child_at(Some(&list), 999), Some(&far));
+        assert_eq!(
+            ui.mounted_topology().node(&far).unwrap().materialization,
+            Materialization::Deferred
+        );
+        let snapshot = ui.save_state();
+        ui.restore_state(&snapshot).unwrap();
+        tick(&mut ui, 0.0, None);
+        assert_eq!(ui.focused_key(), far.key);
+        assert_eq!(ui.focus_path(0), path);
+        tick(&mut ui, 100000.0, None);
+        assert_eq!(ui.mounted_topology().child_at(Some(&list), 999), Some(&far));
+        assert_eq!(ui.focused_key(), far.key);
+        assert_eq!(ui.focus_path(0), path);
+        ui.reactive
+            .execute(Command::Remove {
+                source,
+                key: "r999".into(),
+            })
+            .unwrap();
+        tick(&mut ui, 0.0, None);
+        assert!(ui.mounted_topology().node(&far).is_none());
+        assert_ne!(ui.focused_key(), far.key);
+    }
 
     #[test]
     fn mounted_each_edits_keep_multiple_siblings_and_bound_row_identity() {
@@ -1195,7 +1379,6 @@ mod tests {
         .unwrap();
         let tick = |ui: &mut Ui| {
             ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
-            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
             ui.end();
         };
         tick(&mut ui);

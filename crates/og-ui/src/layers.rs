@@ -314,6 +314,11 @@ impl Ui {
         if self.docs.built_tick == tick {
             return;
         }
+        if !self.docs.retained.is_empty()
+            && let Err(error) = self.build_retained_documents(env)
+        {
+            self.warnings.push(error);
+        }
         self.docs.built_tick = tick;
         for k in 0..self.docs.layers.layers.len() {
             if self
@@ -529,6 +534,7 @@ impl Ui {
         }
         let d = &mut self.docs;
         d.retained = retained;
+        d.built_tick = 0;
         let key = |v: &Value| v.as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
         d.seen_now = v["seen"]
             .as_array()
