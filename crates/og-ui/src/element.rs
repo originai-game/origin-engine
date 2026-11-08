@@ -13,8 +13,12 @@ use crate::layout::{Align, Anchor, Cross, Direction, Insets, Rect, Size};
 use crate::motion::{PresenceSpec, Reduced, StateGroup, Transition};
 use crate::style::Breakpoint;
 
-/// A 2D affine map of CSS px, DOMMatrix's `a`–`f`:
-/// `x' = a·x + c·y + e`, `y' = b·x + d·y + f` (y down).
+/// A map of CSS px, DOMMatrix's `a`–`f` with a projective row `g h i`:
+/// `x' = (a·x + c·y + e) / w`, `y' = (b·x + d·y + f) / w`,
+/// `w = g·x + h·y + i` (y down). It is affine (`g = h = 0`, `i = 1`)
+/// except where a CSS 3D transform puts an element on a plane in
+/// perspective; the draw then lays that element's layer through it
+/// ([`crate::ui`]'s 3D planes) and hit tests map through its inverse.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Affine {
     pub a: f32,
@@ -23,6 +27,9 @@ pub struct Affine {
     pub d: f32,
     pub e: f32,
     pub f: f32,
+    pub g: f32,
+    pub h: f32,
+    pub i: f32,
 }
 
 impl Default for Affine {
@@ -39,7 +46,23 @@ impl Affine {
         d: 1.0,
         e: 0.0,
         f: 0.0,
+        g: 0.0,
+        h: 0.0,
+        i: 1.0,
     };
+
+    /// The 2D affine map `[a, b, c, d, e, f]`.
+    pub const fn new(a: f32, b: f32, c: f32, d: f32, e: f32, f: f32) -> Affine {
+        Affine {
+            a,
+            b,
+            c,
+            d,
+            e,
+            f,
+            ..Affine::IDENTITY
+        }
+    }
 
     pub const fn translate(x: f32, y: f32) -> Affine {
         Affine {
@@ -88,14 +111,52 @@ impl Affine {
 
     /// `self × o`: `o` first, then `self`.
     pub fn mul(&self, o: &Affine) -> Affine {
-        Affine {
-            a: self.a * o.a + self.c * o.b,
-            b: self.b * o.a + self.d * o.b,
-            c: self.a * o.c + self.c * o.d,
-            d: self.b * o.c + self.d * o.d,
-            e: self.a * o.e + self.c * o.f + self.e,
-            f: self.b * o.e + self.d * o.f + self.f,
+        if self.is_affine() && o.is_affine() {
+            return Affine {
+                a: self.a * o.a + self.c * o.b,
+                b: self.b * o.a + self.d * o.b,
+                c: self.a * o.c + self.c * o.d,
+                d: self.b * o.c + self.d * o.d,
+                e: self.a * o.e + self.c * o.f + self.e,
+                f: self.b * o.e + self.d * o.f + self.f,
+                ..Affine::IDENTITY
+            };
         }
+        let (l, r) = (self.rows(), o.rows());
+        let at = |i: usize, j: usize| (0..3).map(|k| l[i][k] * r[k][j]).sum::<f32>();
+        Affine::from_rows([
+            [at(0, 0), at(0, 1), at(0, 2)],
+            [at(1, 0), at(1, 1), at(1, 2)],
+            [at(2, 0), at(2, 1), at(2, 2)],
+        ])
+    }
+
+    /// Its 3×3 matrix by rows (`[[a, c, e], [b, d, f], [g, h, i]]`).
+    pub fn rows(&self) -> [[f32; 3]; 3] {
+        [
+            [self.a, self.c, self.e],
+            [self.b, self.d, self.f],
+            [self.g, self.h, self.i],
+        ]
+    }
+
+    pub fn from_rows(m: [[f32; 3]; 3]) -> Affine {
+        Affine {
+            a: m[0][0],
+            c: m[0][1],
+            e: m[0][2],
+            b: m[1][0],
+            d: m[1][1],
+            f: m[1][2],
+            g: m[2][0],
+            h: m[2][1],
+            i: m[2][2],
+        }
+    }
+
+    /// No projective part: it keeps parallel lines parallel.
+    pub fn is_affine(&self) -> bool {
+        self.g == 0.0 && self.h == 0.0 && self.i == 1.0
     }
 
     /// `self` about the point `(px, py)`: `T(p) · self · T(-p)`.
@@ -105,11 +166,21 @@ impl Affine {
             .mul(&Affine::translate(-px, -py))
     }
 
+    /// Where `(x, y)` lands (behind the eye, where w is not positive, at
+    /// infinity).
     pub fn apply(&self, x: f32, y: f32) -> (f32, f32) {
-        (
+        let (px, py) = (
             self.a * x + self.c * y + self.e,
             self.b * x + self.d * y + self.f,
-        )
+        );
+        if self.is_affine() {
+            return (px, py);
+        }
+        let w = self.g * x + self.h * y + self.i;
+        if w <= 1e-6 {
+            return (px.signum() * f32::MAX, py.signum() * f32::MAX);
+        }
+        (px / w, py / w)
     }
 
     pub fn is_identity(&self) -> bool {
@@ -118,11 +189,18 @@ impl Affine {
 
     /// Translation and scale only: it maps a rectangle to a rectangle.
     pub fn is_axis_aligned(&self) -> bool {
-        self.b == 0.0 && self.c == 0.0
+        self.b == 0.0 && self.c == 0.0 && self.is_affine()
     }
 
+    /// The determinant of its linear part (its 3×3's for a projective map).
     pub fn determinant(&self) -> f32 {
-        self.a * self.d - self.b * self.c
+        if self.is_affine() {
+            return self.a * self.d - self.b * self.c;
+        }
+        let m = self.rows();
+        m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+            - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+            + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
     }
 
     /// The inverse (`None` for a map that flattens the plane).
@@ -132,14 +210,38 @@ impl Affine {
             return None;
         }
         let k = 1.0 / det;
-        Some(Affine {
-            a: self.d * k,
-            b: -self.b * k,
-            c: -self.c * k,
-            d: self.a * k,
-            e: (self.c * self.f - self.d * self.e) * k,
-            f: (self.b * self.e - self.a * self.f) * k,
-        })
+        if self.is_affine() {
+            return Some(Affine {
+                a: self.d * k,
+                b: -self.b * k,
+                c: -self.c * k,
+                d: self.a * k,
+                e: (self.c * self.f - self.d * self.e) * k,
+                f: (self.b * self.e - self.a * self.f) * k,
+                ..Affine::IDENTITY
+            });
+        }
+        let m = self.rows();
+        let cof = |r0: usize, r1: usize, c0: usize, c1: usize| {
+            m[r0][c0] * m[r1][c1] - m[r0][c1] * m[r1][c0]
+        };
+        Some(Affine::from_rows([
+            [
+                cof(1, 2, 1, 2) * k,
+                -cof(0, 2, 1, 2) * k,
+                cof(0, 1, 1, 2) * k,
+            ],
+            [
+                -cof(1, 2, 0, 2) * k,
+                cof(0, 2, 0, 2) * k,
+                -cof(0, 1, 0, 2) * k,
+            ],
+            [
+                cof(1, 2, 0, 1) * k,
+                -cof(0, 2, 0, 1) * k,
+                cof(0, 1, 0, 1) * k,
+            ],
+        ]))
     }
 
     /// The axis-aligned bounds of `r` mapped.
@@ -1063,6 +1165,9 @@ pub struct ViewPlace {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Props {
     pub transform: Transform,
+    /// CSS `transform`, `perspective` and the other 3D properties, over
+    /// `transform` (`None`: none of them).
+    pub space3d: Option<std::sync::Arc<crate::transform3d::Space3d>>,
     /// 0–1 (1: opaque), multiplied down the tree.
     pub opacity: f32,
     /// Drawing (and hit-testing) order among its siblings: higher draws over
@@ -1155,6 +1260,7 @@ impl Default for Props {
         Props {
             player: None,
             transform: Transform::IDENTITY,
+            space3d: None,
             opacity: 1.0,
             z: 0,
             position: Position::Flow,

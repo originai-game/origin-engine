@@ -29,6 +29,7 @@ pub fn decode(bytes: &[u8]) -> Result<Artboard, String> {
         bytes,
         at: 4,
         legacy_glyphs: false,
+        affine_only: false,
     };
     let v = r.u32().ok_or("the artboard is cut short")?;
     if v != VERSION {

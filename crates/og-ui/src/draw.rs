@@ -158,11 +158,22 @@ pub enum DrawCmd {
         opacity: f32,
         blend: UiBlend,
         clip: Rect,
-        ground: Option<u64>,
+        ground: Option<Ground>,
     },
     /// World-space UI's commands (`crate::world`): occlusion brackets,
     /// mass elements and particles, a world panel's target.
     World(Box<crate::world::WorldCmd>),
+}
+
+/// Where a layer's composite is laid by a quad of the frame
+/// ([`crate::GroundQuad`] of that key) rather than by its command.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Ground {
+    /// A world panel's, under the screen's levels.
+    Panel(u64),
+    /// A CSS 3D plane's, in the screen's levels where it stands (and, in a
+    /// 3D rendering context, sorted by depth among the context's planes).
+    Plane(u64),
 }
 
 /// A command and the painter level it draws on (in its layer's levels,
@@ -584,7 +595,8 @@ fn collect(
                 }
                 if let (
                     DrawCmd::EndLayer {
-                        ground: Some(_), ..
+                        ground: Some(Ground::Panel(_)),
+                        ..
                     },
                     _,
                 ) = &end
@@ -599,8 +611,14 @@ fn collect(
                     });
                     continue;
                 }
-                if let (DrawCmd::EndLayer { clip, .. }, _) = &end {
-                    bounds = bounds.intersect(clip);
+                if let (DrawCmd::EndLayer { clip, ground, .. }, _) = &end {
+                    // A plane is seen anywhere its map takes it: over
+                    // everything before it in its space, under what follows.
+                    bounds = if matches!(ground, Some(Ground::Plane(_))) {
+                        *clip
+                    } else {
+                        bounds.intersect(clip)
+                    };
                 }
                 entries.push(Entry::Layer {
                     begin: Box::new((begin, m)),
@@ -1529,6 +1547,53 @@ fn shifted(item: &DrawItem, d: Vec2) -> DrawItem {
 /// world frame's mass elements ([`crate::WorldFrame::emit`], one under).
 const GROUND_BELOW: i32 = 2;
 
+/// The levels of the planes of each 3D rendering context, farthest
+/// first (CSS Transforms 2 §6.2): a context's composites are consecutive
+/// in their space and each is a level of its own there (`collect`), so
+/// handing their levels out by depth draws them back to front.
+fn depth_order(
+    items: &[DrawItem],
+    grounds: &[crate::GroundQuad],
+) -> std::collections::HashMap<u64, i32> {
+    // (space, context) → each plane's (level, depth, key).
+    type Planes = Vec<(i32, f32, u64)>;
+    let mut groups: std::collections::BTreeMap<(u32, u64), Planes> = Default::default();
+    let (mut spaces, mut next) = (vec![0u32], 0u32);
+    for item in items {
+        match &item.cmd {
+            DrawCmd::BeginLayer { .. } => {
+                next += 1;
+                spaces.push(next);
+            }
+            DrawCmd::EndLayer { ground, .. } => {
+                spaces.pop();
+                if let Some(Ground::Plane(key)) = ground
+                    && let Some(g) = grounds.iter().find(|g| g.key == *key)
+                    && g.context != 0
+                {
+                    let space = spaces.last().copied().unwrap_or(0);
+                    groups
+                        .entry((space, g.context))
+                        .or_default()
+                        .push((item.level, g.depth, *key));
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut out = std::collections::HashMap::new();
+    for (_, mut planes) in groups {
+        let mut levels: Vec<i32> = planes.iter().map(|p| p.0).collect();
+        levels.sort_unstable();
+        // Stable: equal depths keep their order in the tree.
+        planes.sort_by(|a, b| a.1.total_cmp(&b.1));
+        for (level, p) in levels.into_iter().zip(planes) {
+            out.insert(p.2, level);
+        }
+    }
+    out
+}
+
 pub(crate) fn emit(
     items: &[DrawItem],
     desc: &EmitDesc,
@@ -1545,6 +1610,7 @@ pub(crate) fn emit(
         occluders: Vec::new(),
     };
     overlay.ui.time = desc.time;
+    let sorted = depth_order(items, grounds);
     let mut spaces = vec![Space {
         base: desc.layer,
         layer: None,
@@ -1690,7 +1756,40 @@ pub(crate) fn emit(
                 let Some(k) = done.layer else {
                     continue;
                 };
-                if let Some(key) = ground {
+                if let Some(Ground::Plane(key)) = ground {
+                    // Laid through its map where it stands; nowhere when it
+                    // shows its hidden back face (no quad).
+                    let Some(g) = grounds.iter().find(|g| g.key == *key) else {
+                        continue;
+                    };
+                    let [lx, ly, lw, lh] = overlay.ui.layers[k as usize].rect;
+                    let corners = g.corners_of(Rect::new(lx, ly, lw, lh));
+                    overlay.ui.layers[k as usize].ground = Some(og_render::UiGround {
+                        corners,
+                        drape: g.drape,
+                        plane: true,
+                    });
+                    let bounds = match corners {
+                        Some(c) => {
+                            let (lo, hi) = c
+                                .iter()
+                                .fold((c[0], c[0]), |(lo, hi), p| (lo.min(*p), hi.max(*p)));
+                            Rect::new(lo.x, lo.y, hi.x - lo.x, hi.y - lo.y).outset(1.0)
+                        }
+                        None => *clip,
+                    }
+                    .intersect(clip);
+                    let parent = spaces.last().map_or(desc.layer, |s| s.base);
+                    let c = clips.index(overlay, clip);
+                    let mut s = rect_shape(bounds, 0.0, [1.0; 4]);
+                    s.paint = UiPaint::Layer(k);
+                    s.opacity = *opacity;
+                    s.blend = *blend;
+                    let level = sorted.get(key).copied().unwrap_or(item.level);
+                    overlay.ui.shapes.push(placed(s, parent + level, c));
+                    continue;
+                }
+                if let Some(Ground::Panel(key)) = ground {
                     // Draped where its panel is seen, under the screen's
                     // levels and the world frame's mass elements; nowhere
                     // when it is not seen (no layer composited is drawn).
@@ -1701,6 +1800,7 @@ pub(crate) fn emit(
                     overlay.ui.layers[k as usize].ground = Some(og_render::UiGround {
                         corners: g.corners_of(Rect::new(lx, ly, lw, lh)),
                         drape: g.drape,
+                        plane: false,
                     });
                     let c = clips.index(overlay, clip);
                     let mut s = rect_shape(g.bounds, 0.0, [1.0; 4]);

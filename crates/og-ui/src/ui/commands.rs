@@ -78,7 +78,7 @@ impl Ui {
     fn world_step(&mut self, i: usize) -> bool {
         let before = {
             let n = &self.nodes[i];
-            (n.world, n.alpha, n.inert)
+            (n.world, n.alpha, n.inert, n.plane.clone())
         };
         let parent = self.nodes[i].parent;
         let (alpha, inert, pw) = if parent == NONE {
@@ -87,6 +87,19 @@ impl Ui {
             let p = &self.nodes[parent];
             (p.alpha, p.inert, p.world)
         };
+        // The 3D space its parent gives it: the parent's plane, and the
+        // parent's `perspective` (about its perspective-origin).
+        let (pplane, ppersp) = if parent == NONE {
+            (None, None)
+        } else {
+            let p = &self.nodes[parent];
+            let persp = p.props.space3d.as_ref().and_then(|s| {
+                s.perspective
+                    .map(|_| s.perspective_matrix(&reference_box(p, s.transform_box)))
+            });
+            (p.plane.as_deref().cloned(), persp)
+        };
+
         let rtl = self.direction == og_i18n::Direction::Rtl;
         let n = &mut self.nodes[i];
         n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0);
@@ -133,14 +146,99 @@ impl Ui {
                 local = local.mul(&fit);
             }
         }
-        if !n.sampled.transform.is_identity() {
-            local = local.mul(&n.sampled.transform.matrix(&r));
+        let space = n.props.space3d.clone();
+        let tbox = space
+            .as_ref()
+            .map_or(r, |s| reference_box(n, s.transform_box));
+        let mut t = n.sampled.transform;
+        if let Some(s) = space.as_ref().filter(|s| s.origin.is_some()) {
+            // `transform-origin` pivots the individual properties too.
+            let (ox, oy, _) = s.origin_at(&tbox, (t.pivot_x, t.pivot_y));
+            t.pivot_x = (ox - r.x) / r.width.max(1e-6);
+            t.pivot_y = (oy - r.y) / r.height.max(1e-6);
         }
-        n.world = if local.is_identity() {
-            pw
+        if !t.is_identity() {
+            local = local.mul(&t.matrix(&r));
+        }
+        if space.is_none() && ppersp.is_none() && pplane.is_none() {
+            n.plane = None;
+            n.world = if local.is_identity() {
+                pw
+            } else {
+                pw.mul(&local)
+            };
         } else {
-            pw.mul(&local)
-        };
+            use crate::transform3d as t3;
+            let mut local4 = t3::from_affine(&local);
+            if let Some(s) = &space {
+                let pivot = (n.sampled.transform.pivot_x, n.sampled.transform.pivot_y);
+                local4 = t3::mul(&local4, &s.matrix(&tbox, pivot));
+            }
+            if let Some(pm) = &ppersp {
+                local4 = t3::mul(pm, &local4);
+            }
+            // Into the parent's space: its 3D context unflattened, a
+            // root's own layer, or the parent's plane flattened.
+            let (into, base, shared) = match &pplane {
+                Some(pp) if pp.preserve => (pp.into, pp.m, pp.context),
+                Some(pp) if pp.root => (parent, t3::IDENTITY, 0),
+                Some(pp) => (pp.into, t3::flatten(&pp.m), 0),
+                None => (NONE, t3::from_affine(&pw), 0),
+            };
+            let m = t3::mul(&base, &local4);
+            let preserve = space.as_ref().is_some_and(|s| s.preserve_3d);
+            let root = !t3::is_flat(&m);
+            n.plane = (into != NONE || root || preserve).then(|| {
+                Box::new(t3::Plane {
+                    into,
+                    m,
+                    root,
+                    preserve,
+                    context: if shared != 0 {
+                        shared
+                    } else if preserve {
+                        n.key
+                    } else {
+                        0
+                    },
+                    hidden: false,
+                    clip: INFINITE,
+                })
+            });
+            let onto = if into == NONE {
+                Affine::IDENTITY
+            } else {
+                self.nodes[into].world
+            };
+            let n = &mut self.nodes[i];
+            n.world = onto.mul(&t3::project(&m));
+            if let Some(p) = n.plane.as_deref_mut()
+                && p.root
+                && space.as_ref().is_some_and(|s| s.backface_hidden)
+            {
+                // Seen from behind: its corners wind the other way on
+                // the screen (CSS Transforms 2 §6.3).
+                let w = n.world;
+                let c = [
+                    (r.x, r.y),
+                    (r.right(), r.y),
+                    (r.right(), r.bottom()),
+                    (r.x, r.bottom()),
+                ];
+                let ws: Vec<f32> = c.iter().map(|&(x, y)| w.g * x + w.h * y + w.i).collect();
+                if ws.iter().all(|&v| v > 0.0) {
+                    let q: Vec<(f32, f32)> = c.iter().map(|&(x, y)| w.apply(x, y)).collect();
+                    let area: f32 = (0..4)
+                        .map(|k| {
+                            let (a, b) = (q[k], q[(k + 1) % 4]);
+                            a.0 * b.1 - b.0 * a.1
+                        })
+                        .sum();
+                    p.hidden = area < 0.0;
+                }
+            }
+        }
+        let n = &mut self.nodes[i];
         n.screen = n.world.map_rect(&r);
         // A transformed scroll container's clip moves with it: made from
         // the clip layout gave (mirrored right to left), so a node layout
@@ -154,8 +252,34 @@ impl Ui {
             }
             self.nodes[i].clip = w.map_rect(&c);
         }
+        // Its clip in the space its layer draws in: a scroll container's
+        // in the same layer, else none (an outer clip cuts the composite).
+        if self.nodes[i].plane.is_some() {
+            let into = self.nodes[i].plane.as_ref().map_or(NONE, |p| p.into);
+            let clip = if src == NONE {
+                INFINITE
+            } else if into == NONE {
+                self.nodes[i].clip
+            } else if src == into {
+                self.nodes[src].laid_clip
+            } else {
+                match self.nodes[src].plane.as_deref() {
+                    Some(sp) if sp.into == into && !sp.root => {
+                        crate::transform3d::project(&sp.m).map_rect(&self.nodes[src].laid_clip)
+                    }
+                    _ => INFINITE,
+                }
+            };
+            if let Some(p) = self.nodes[i].plane.as_deref_mut() {
+                p.clip = clip;
+            }
+        }
         let n = &self.nodes[i];
-        before != (n.world, n.alpha, n.inert)
+        if n.plane.as_ref().is_some_and(|p| p.root) {
+            self.world.planes.insert(n.key);
+        }
+        let n = &self.nodes[i];
+        before != (n.world, n.alpha, n.inert, n.plane.clone())
     }
 
     /// The frame's draw commands with their maps (docs/ui.md §2): each
@@ -293,8 +417,23 @@ impl Ui {
                 reused_roots = false;
             }
             let n = &self.nodes[i];
-            let world = n.world;
+            let world = n.plane.as_ref().map_or(n.world, |p| p.draw());
+            // Its clip where its commands draw: a 3D plane's in its layer.
+            let draw_clip = match n.plane.as_deref() {
+                Some(p) if p.root => INFINITE,
+                Some(p) => p.clip,
+                None => n.clip,
+            };
+            let plane = n
+                .plane
+                .as_deref()
+                .filter(|p| p.root)
+                .map(|p| (p.preserve, p.clip));
             let start = cmds.len();
+            if plane.is_some() {
+                // A 3D plane draws into a layer of its own, laid onto it.
+                cmds.push((plane_begin(), Affine::IDENTITY));
+            }
             let draw = self.draw_of(i).cloned();
             let n = &self.nodes[i];
             if let Some(m) = self.world_marks(n.key) {
@@ -345,12 +484,15 @@ impl Ui {
                     }
                     if world.is_identity() {
                         self.stats.painted += 1;
+                        let screen_clip = n.clip;
+                        self.nodes[i].clip = draw_clip;
                         background = self.node_commands(i, &mut local, &snap);
+                        self.nodes[i].clip = screen_clip;
                     } else if let Some(inv) = world.invert() {
                         self.stats.painted += 1;
                         // Drawn in its layout box: its screen clip taken there.
                         let screen_clip = n.clip;
-                        self.nodes[i].clip = inv.map_rect(&screen_clip);
+                        self.nodes[i].clip = inv.map_rect(&draw_clip);
                         self.drawing = world;
                         background = self.node_commands(i, &mut local, &snap);
                         self.drawing = Affine::IDENTITY;
@@ -389,10 +531,13 @@ impl Ui {
             }
             let mut ring = Vec::new();
             if world.is_identity() {
+                let screen_clip = self.nodes[i].clip;
+                self.nodes[i].clip = draw_clip;
                 self.focus_ring_commands(i, &mut ring);
+                self.nodes[i].clip = screen_clip;
             } else if let Some(inv) = world.invert() {
                 let screen_clip = self.nodes[i].clip;
-                self.nodes[i].clip = inv.map_rect(&screen_clip);
+                self.nodes[i].clip = inv.map_rect(&draw_clip);
                 self.drawing = world;
                 self.focus_ring_commands(i, &mut ring);
                 self.drawing = Affine::IDENTITY;
@@ -407,6 +552,11 @@ impl Ui {
             if let Some(d) = &draw {
                 let at = placed(&self.nodes[i]);
                 cmds.extend(d.children(&at).into_iter().map(|c| (c, world)));
+            }
+            if let Some((true, clip)) = plane {
+                // Its children are planes of its 3D space, not drawn onto
+                // its own: its layer ends with its own drawing.
+                cmds.push((plane_end(self.nodes[i].key, clip), Affine::IDENTITY));
             }
             self.kept.sigs_set(i, self.nodes[i].key, sig);
             open.push((i, start, ends[k], at_last.map(|a| a.0), k));
@@ -511,6 +661,12 @@ impl Ui {
                     cmds.append(ring);
                     false
                 });
+                if let Some(p) = self.nodes[j].plane.as_deref()
+                    && p.root
+                    && !p.preserve
+                {
+                    cmds.push((plane_end(key, p.clip), Affine::IDENTITY));
+                }
                 if let Some(m) = self.world_marks(key) {
                     cmds.extend(m.leave.iter().map(|c| (c.clone(), Affine::IDENTITY)));
                 }
@@ -1429,5 +1585,121 @@ impl Ui {
             i = self.nodes[i].parent;
         }
         None
+    }
+}
+
+/// Everything: no clip.
+const INFINITE: Rect = Rect {
+    x: -1e9,
+    y: -1e9,
+    width: 2e9,
+    height: 2e9,
+};
+
+/// The box `transform-box` names: its border box or its content box.
+fn reference_box(n: &crate::layout::Node, b: crate::transform3d::TransformBox) -> Rect {
+    let r = n.rect;
+    match b {
+        crate::transform3d::TransformBox::BorderBox => r,
+        crate::transform3d::TransformBox::ContentBox => {
+            let p = n.el.padding;
+            Rect::new(
+                r.x + p.left,
+                r.y + p.top,
+                (r.width - p.left - p.right).max(0.0),
+                (r.height - p.top - p.bottom).max(0.0),
+            )
+        }
+    }
+}
+
+fn plane_begin() -> DrawCmd {
+    DrawCmd::BeginLayer {
+        material: og_render::UiMaterial::Plain,
+        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+        mask: None,
+        expand: 0.0,
+        rect: Rect::default(),
+    }
+}
+
+/// A 3D plane's composite, laid by its quad of the frame
+/// ([`Ui::plane_quads`]) and cut by `clip` in the space it is laid onto.
+fn plane_end(key: u64, clip: Rect) -> DrawCmd {
+    DrawCmd::EndLayer {
+        geometry: None,
+        rect: Rect::default(),
+        opacity: 1.0,
+        blend: og_render::UiBlend::Normal,
+        clip,
+        ground: Some(crate::draw::Ground::Plane(key)),
+    }
+}
+
+impl Ui {
+    /// This tick's quads of the CSS 3D planes (`world.grounds`): each
+    /// root's layer laid through its map onto the space it stands in, with
+    /// its context and depth there. One that shows a hidden back face has
+    /// none (it is not drawn); a root gone from the tree leaves the set.
+    pub(super) fn plane_quads(&mut self) {
+        let keys: Vec<u64> = self.world.planes.iter().copied().collect();
+        for key in keys {
+            let found = self.tree.find(key).filter(|&i| {
+                self.nodes[i].key == key && self.nodes[i].plane.as_ref().is_some_and(|p| p.root)
+            });
+            let Some(i) = found else {
+                self.world.planes.remove(&key);
+                continue;
+            };
+            let n = &self.nodes[i];
+            let p = n.plane.as_deref().expect("a plane root");
+            if p.hidden {
+                continue;
+            }
+            let map = crate::transform3d::project(&p.m);
+            let Some(inv) = map.invert() else { continue };
+            // The screen (or the space it is laid onto) to its layer: rows
+            // b, with a ray the drape meets at w = 1 (og_render::UiGround).
+            let mut b = inv.rows();
+            let (cx, cy) = n.rect.center();
+            let (sx, sy) = map.apply(cx, cy);
+            let w = b[2][0] * sx + b[2][1] * sy + b[2][2];
+            if w < 0.0 {
+                b = b.map(|r| r.map(|v| -v));
+            }
+            let r = n.rect;
+            let corner = |x: f32, y: f32| {
+                let w = map.g * x + map.h * y + map.i;
+                (w > 1e-6).then(|| {
+                    let (px, py) = map.apply(x, y);
+                    og_core::glam::Vec2::new(px, py)
+                })
+            };
+            let corners = [
+                corner(r.x, r.y),
+                corner(r.right(), r.y),
+                corner(r.right(), r.bottom()),
+                corner(r.x, r.bottom()),
+            ];
+            let corners = corners
+                .iter()
+                .all(Option::is_some)
+                .then(|| corners.map(|c| c.unwrap_or_default()));
+            let (centre, _) = crate::transform3d::apply(&p.m, [cx, cy, 0.0]);
+            self.world.grounds.push(crate::GroundQuad {
+                key,
+                rect: r,
+                corners,
+                bounds: p.clip,
+                drape: og_render::UiDrape {
+                    a: [[0.0; 3], [0.0; 3], [0.0, 0.0, -1.0]],
+                    b,
+                    scale: og_core::glam::Vec2::ONE,
+                    reach: 0.0,
+                },
+                context: p.context,
+                depth: centre[2],
+            });
+        }
     }
 }

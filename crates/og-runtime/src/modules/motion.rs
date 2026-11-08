@@ -306,6 +306,7 @@ pub(crate) fn props(d: &Value) -> Props {
         } else {
             z.transform
         },
+        space3d: None,
         opacity: f(d, "opacity", 1.0).clamp(0.0, 1.0),
         z: d["z"].as_i64().map_or(0, |n| n as i32),
         position: match d["position"].as_str() {

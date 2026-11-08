@@ -38,7 +38,9 @@ impl Ui {
             u64_(&mut b, h.scope);
             u64_(&mut b, h.scroller);
             u64_(&mut b, h.owner);
-            for v in [h.inv.a, h.inv.b, h.inv.c, h.inv.d, h.inv.e, h.inv.f] {
+            for v in [
+                h.inv.a, h.inv.b, h.inv.c, h.inv.d, h.inv.e, h.inv.f, h.inv.g, h.inv.h, h.inv.i,
+            ] {
                 f32_(&mut b, v);
             }
             rect(&mut b, &h.local);
@@ -399,7 +401,8 @@ impl Ui {
     /// the next frame), the state of version 16 with no typeahead, the
     /// state of version 17 with no Rive players, and the state of version
     /// 18 with its frozen texts' shaped forms (U+F0000 + glyph id) as
-    /// glyph ids, and the state of version 19 with no text selected.
+    /// glyph ids, the state of version 19 with no text selected, and the
+    /// states of versions 20 and 21, whose maps have no projective row.
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -422,7 +425,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11..=20 => {
+            11..=21 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -447,7 +450,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 20"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 21"
             ))),
         }
     }
@@ -526,18 +529,26 @@ impl Reader<'_> {
             let (inv, local, clip) = if v9 {
                 (Affine::IDENTITY, full, rect)
             } else {
-                (
+                let m = Affine::new(
+                    self.f32()?,
+                    self.f32()?,
+                    self.f32()?,
+                    self.f32()?,
+                    self.f32()?,
+                    self.f32()?,
+                );
+                // A 3D plane's projective row came in at version 22.
+                let m = if version >= 22 {
                     Affine {
-                        a: self.f32()?,
-                        b: self.f32()?,
-                        c: self.f32()?,
-                        d: self.f32()?,
-                        e: self.f32()?,
-                        f: self.f32()?,
-                    },
-                    self.rect()?,
-                    self.rect()?,
-                )
+                        g: self.f32()?,
+                        h: self.f32()?,
+                        i: self.f32()?,
+                        ..m
+                    }
+                } else {
+                    m
+                };
+                (m, self.rect()?, self.rect()?)
             };
             // Each hit's focus group and recogniser came in at version 14.
             let (group, gesture) = if version >= 14 {
@@ -728,6 +739,7 @@ impl Reader<'_> {
             bytes: self.bytes,
             at: self.at,
             legacy_glyphs: version < 19,
+            affine_only: version < 22,
         };
         s.motion = r.motion()?;
         self.at = r.at;
@@ -1016,7 +1028,17 @@ mod tests {
             player: 0,
         }];
         let v14 = ui.save_state();
-        // Version 13 had no group and recogniser per hit…
+        // Before 22 a hit's map had no projective row…
+        let row: Vec<u8> = [1.0f32, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
+        let at = v14
+            .windows(row.len())
+            .position(|w| w == row.as_slice())
+            .expect("the hit's map");
+        let v14 = [&v14[..at + 24], &v14[at + 36..]].concat();
+        // …and version 13 had no group and recogniser per hit…
         let mut ids = 0x1111_1111_1111_1111u64.to_le_bytes().to_vec();
         ids.extend_from_slice(&0x2222_2222_2222_2222u64.to_le_bytes());
         // (and no split screen region, which came in at 21)

@@ -990,6 +990,7 @@ mod tests {
             bytes: &bytes,
             at: 0,
             legacy_glyphs: false,
+            affine_only: false,
         };
         for c in &cmds {
             assert_eq!(r.cmd().as_ref(), Some(c));
@@ -1025,6 +1026,7 @@ mod tests {
                 bytes: &bytes,
                 at: 0,
                 legacy_glyphs: false,
+                affine_only: false,
             });
             assert_eq!(back, Some(g));
         }
@@ -1054,6 +1056,7 @@ mod tests {
                 bytes: b,
                 at: 0,
                 legacy_glyphs: false,
+                affine_only: false,
             })
         };
         assert_eq!(read(&bytes), Some(g));

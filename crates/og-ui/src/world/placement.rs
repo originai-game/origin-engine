@@ -485,7 +485,7 @@ impl Ui {
                             opacity: 1.0,
                             blend: og_render::UiBlend::Normal,
                             clip: all,
-                            ground: Some(key),
+                            ground: Some(crate::draw::Ground::Panel(key)),
                         }],
                     },
                 );
@@ -554,6 +554,8 @@ impl Ui {
                             corners: corners.map(|c| [c[0], c[1], c[2], c[3]]),
                             bounds,
                             drape,
+                            context: 0,
+                            depth: 0.0,
                         });
                     }
                 }

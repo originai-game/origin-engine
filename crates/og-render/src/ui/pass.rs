@@ -24,7 +24,8 @@ struct LayerParams {
     params: [[f32; 4]; super::UI_MATERIAL_PARAMS],
     info: [f32; 4],
     mask_uv: [f32; 4],
-    /// A projected layer's drape (`info.w` 1, [`super::UiDrape`]): its
+    /// A projected layer's drape (`info.w` 1, 2 on its plane only,
+    /// [`super::UiDrape`]): its
     /// rows `a` with the scale's x and y and the reach in w, then its
     /// rows `b`.
     drape: [[f32; 4]; 6],
@@ -1002,7 +1003,7 @@ impl UiRenderer {
             if let Some(g) = &layer.ground {
                 let d = &g.drape;
                 let w = [d.scale.x, d.scale.y, d.reach];
-                params.info[3] = 1.0;
+                params.info[3] = if g.plane { 2.0 } else { 1.0 };
                 for i in 0..3 {
                     params.drape[i] = [d.a[i][0], d.a[i][1], d.a[i][2], w[i]];
                     params.drape[i + 3] = [d.b[i][0], d.b[i][1], d.b[i][2], 0.0];

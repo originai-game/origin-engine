@@ -473,6 +473,10 @@ pub struct GroundQuad {
     pub corners: Option<[Vec2; 4]>,
     pub bounds: Rect,
     pub drape: og_render::UiDrape,
+    /// A CSS 3D plane's 3D rendering context (a key; 0: none) and its
+    /// depth toward the viewer there, CSS px.
+    pub context: u64,
+    pub depth: f32,
 }
 
 impl GroundQuad {
@@ -606,6 +610,9 @@ pub(crate) struct WorldUi {
     pub kept_effects: BTreeMap<u64, (Option<crate::particles::ParticlesDesc>, Option<MetaDesc>)>,
     /// This tick's projected panels as seen ([`crate::UiFrame::grounds`]).
     pub grounds: Vec<GroundQuad>,
+    /// The keys of the CSS 3D plane roots (each a layer laid onto its
+    /// plane, its quad among `grounds` each tick); kept across ticks.
+    pub planes: std::collections::BTreeSet<u64>,
     /// Mounted documents' world panels by key, with the rect each was laid
     /// out in, kept for rays and placement as anchors are.
     kept_panels: BTreeMap<u64, (WorldPanelDesc, Rect, u64)>,

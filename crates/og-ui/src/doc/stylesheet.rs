@@ -144,6 +144,22 @@ pub(super) fn apply(
             {
                 continue;
             }
+            if crate::transform3d::LONGHANDS.contains(&name) {
+                if !declaration.value.has_variables() {
+                    let mut errors = Vec::new();
+                    let value = declaration.value.substitute(&mut |_| None);
+                    if let Ok(value) = value
+                        && !super::calc::has_absolute(&value)
+                    {
+                        let value = super::calc::reduce(&value).map_err(|e| (rule.at, e))?;
+                        crate::transform3d::resolve(&[(name.into(), value)], &mut errors);
+                    }
+                    if let Some(e) = errors.into_iter().next() {
+                        return Err((rule.at, e));
+                    }
+                }
+                continue;
+            }
             if css::targets(name).next().is_none() {
                 return Err((
                     rule.at,

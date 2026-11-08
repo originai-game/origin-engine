@@ -509,6 +509,26 @@ reads no role, `currentColor` or `light-dark()` reduces to sRGB at cook;
 one that does is resolved against the active style when drawn, so a
 style switch recolours it.
 
+Transforms. Elements take CSS Transforms 1 and 2 whole beside the
+individual `translate`, `scale`, `rotate` and `-og-skew`, which stay and
+apply first: `transform` with every function (`translate`, `translateX`,
+`-Y`, `-Z`, `translate3d`, `scale` and its axis and 3D forms, `rotate`,
+`rotateX`, `-Y`, `-Z`, `rotate3d`, `skew`, `skewX`, `skewY`, `matrix`,
+`matrix3d`, `perspective()`), lengths in px or % of the reference box and
+angles in `deg`, `rad`, `grad` or `turn`; `transform-origin` with
+keywords, lengths, percentages and a z; `perspective` and
+`perspective-origin` for the children; `transform-style: preserve-3d`;
+`backface-visibility`; and `transform-box` (`content-box` and `fill-box`
+are the content box, the others the border box). An element whose plane
+leaves the screen's (a 3D turn, or its parent's perspective) draws itself
+and its subtree into a layer laid through its projective map
+(og-render's plane ground), so its edges and text are perspective-correct;
+the pointer hits it where it is seen, through the map's inverse. A
+`preserve-3d` element's children are planes of one 3D rendering context,
+drawn back to front by the depth of their centres (intersecting planes are
+not split); a plane showing its back with `backface-visibility: hidden`
+draws nothing.
+
 CSS paint. `background` (or `background-image`) takes comma-separated
 layers over the background colour, the first on top, as CSS Backgrounds
 3 writes them: each `<image> [<position> [/ <size>]] [<repeat>]`, the

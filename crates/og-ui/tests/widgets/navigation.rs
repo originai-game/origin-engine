@@ -253,7 +253,7 @@ fn a_version_12_state_upgrades_and_restores() {
     // before the layer stack.
     let u32_at =
         |b: &[u8], at: usize| u32::from_le_bytes(b[at..at + 4].try_into().unwrap()) as usize;
-    assert_eq!(u32_at(&now, 0), 21);
+    assert_eq!(u32_at(&now, 0), 22);
     let scrolls = u32_at(&now, 44);
     let hits_at = 48 + scrolls * 12;
     let hits = u32_at(&now, hits_at);
@@ -268,12 +268,15 @@ fn a_version_12_state_upgrades_and_restores() {
         zeroed.extend_from_slice(&now[at..at + head]);
         owners += usize::from(now[at + head..at + head + 8] != [0; 8]);
         zeroed.extend_from_slice(&[0; 8]);
-        let tail = 24 + 16 + 16;
-        v12.extend_from_slice(&now[at + head + 8..at + head + 8 + tail]);
+        // Its map (24, and version 22's projective row, 12), local rect
+        // and clip.
+        let map = at + head + 8;
+        v12.extend_from_slice(&now[map..map + 24]);
+        v12.extend_from_slice(&now[map + 36..map + 36 + 32]);
         // Version 14's group and recogniser (16) and version 21's split
         // screen region (1) are kept in the upgrade, empty.
-        zeroed.extend_from_slice(&now[at + head + 8..at + head + 8 + tail + 16 + 1]);
-        at += head + 8 + tail + 16 + 1;
+        zeroed.extend_from_slice(&now[map..map + 36 + 32 + 16 + 1]);
+        at = map + 36 + 32 + 16 + 1;
     }
     zeroed.extend_from_slice(&now[at..]);
     // The layer stack is the last string: its length, then its JSON.

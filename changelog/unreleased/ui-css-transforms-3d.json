@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: CSS transform with 3D, perspective and preserve-3d",
+      "summary": "transform takes every CSS function including matrix3d, rotate3d/X/Y/Z, translate3d/Z, scale3d/Z and perspective(); transform-origin takes keywords, lengths and a z; perspective, perspective-origin, transform-style: preserve-3d, backface-visibility and transform-box work. A 3D-transformed element is drawn perspective-correct and hit tested where it is seen. The individual translate, scale and rotate properties stay. Ui::save_state now writes version 22 (a map's projective row); Ui::upgrade_state reads versions 20 and 21."
+    }
+  ]
+}

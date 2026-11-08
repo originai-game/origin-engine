@@ -39,7 +39,7 @@ impl W<'_> {
         }
     }
     pub fn affine(&mut self, m: &Affine) {
-        for v in [m.a, m.b, m.c, m.d, m.e, m.f] {
+        for v in [m.a, m.b, m.c, m.d, m.e, m.f, m.g, m.h, m.i] {
             self.f32(v);
         }
     }
@@ -461,6 +461,8 @@ pub(crate) struct R<'a> {
     /// A UI state before version 19: a placement has no glyph id, and a
     /// shaped form is its text's character U+F0000 + glyph id.
     pub legacy_glyphs: bool,
+    /// A UI state before version 22: a map has no projective row.
+    pub affine_only: bool,
 }
 
 /// Where a state before version 19 kept a shaped form: U+F0000 + glyph id.
@@ -502,13 +504,22 @@ impl R<'_> {
         ))
     }
     pub fn affine(&mut self) -> Option<Affine> {
+        let m = Affine::new(
+            self.f32()?,
+            self.f32()?,
+            self.f32()?,
+            self.f32()?,
+            self.f32()?,
+            self.f32()?,
+        );
+        if self.affine_only {
+            return Some(m);
+        }
         Some(Affine {
-            a: self.f32()?,
-            b: self.f32()?,
-            c: self.f32()?,
-            d: self.f32()?,
-            e: self.f32()?,
-            f: self.f32()?,
+            g: self.f32()?,
+            h: self.f32()?,
+            i: self.f32()?,
+            ..m
         })
     }
     fn vec2(&mut self) -> Option<Vec2> {
@@ -918,6 +929,7 @@ mod tests {
                 bytes,
                 at: 0,
                 legacy_glyphs,
+                affine_only: false,
             }
             .cmd()
         };

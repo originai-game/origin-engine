@@ -575,6 +575,7 @@ impl Ui {
             w
         });
         let mapped = self.apply_world(&order, world_seeds.as_deref());
+        self.plane_quads();
         self.hud_collect(&custom);
         self.world_finish();
         let dnd = self.orders.with(visit::feat::DND).to_vec();

@@ -2349,3 +2349,186 @@ fn a_turned_rive_frame_is_cut_by_its_turned_box() {
     }
     assert!(red_at(c, c), "the centre");
 }
+
+/// A card turned 45° about its vertical axis under its parent's 400 px
+/// `perspective` (CSS Transforms 2): its left edge comes toward the viewer
+/// and is seen taller than the card, its right edge recedes and is seen
+/// shorter, as the projective map puts them; and the pointer hits it where
+/// it is seen, not where it was laid out.
+///
+/// Ways it could fail: the layer is laid on its plane affinely (both edges
+/// as tall), the plane reads the scene's depth and is hidden, or hit
+/// testing ignores the projective row (a hit right of the seen card).
+#[test]
+#[ignore = "requires GPU"]
+fn a_card_turned_in_perspective_draws_and_hits_where_it_is_seen() {
+    use og_ui::doc::UiDocument;
+    use serde_json::json;
+    let vp = Viewport {
+        width: 400.0,
+        height: 300.0,
+        dpr: 1.0,
+        ..Viewport::default()
+    };
+    let mut ui = Ui::new(UiDesc::default());
+    ui.define_document(
+        UiDocument::parse(
+            "m.svelte",
+            r#"<meta name="screen" content="m" data-layer="hud">
+<stack id="Stage"><button id="Card"/></stack>
+<style>
+#Stage { width: 400px; height: 300px; perspective: 400px; }
+#Card { position: absolute; top: 50px; inset-inline-start: 100px; width: 200px; height: 200px;
+        background: #ff0000; border-radius: 0; cursor: crosshair; transform: rotateY(45deg); }
+</style>"#,
+        )
+        .unwrap(),
+    );
+    ui.push_screen("m", json!({})).unwrap();
+    let frame = |ui: &mut Ui, p: Vec2| {
+        ui.begin(
+            InputFrame {
+                pointer: p,
+                pointer_inside: true,
+                ..InputFrame::default()
+            },
+            vp,
+        );
+        ui.end();
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    };
+    // Where the card's corners are seen: centre (200, 150), perspective
+    // origin the stage's centre (200, 150), d = 400. x off the centre is
+    // u; turned, it lies at x = 200 + u·cos45, z = -u·sin45 (+x recedes)
+    // and is seen scaled by d / (d - z).
+    let seen = |u: f32, v: f32| {
+        let (c, s) = (45f32.to_radians().cos(), 45f32.to_radians().sin());
+        let k = 400.0 / (400.0 + u * s);
+        (200.0 + u * c * k, 150.0 + v * k)
+    };
+    let (lx, ly) = seen(-100.0, -100.0);
+    let (rx, ry) = seen(100.0, -100.0);
+    assert!(ly < 50.0 && ry > 50.0, "{ly} {ry}");
+    frame(&mut ui, Vec2::new(10.0, 10.0));
+    let mut scene = RenderScene::new();
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: 400,
+        height: 300,
+        ..RenderDesc::default()
+    };
+    let (pixels, _) = rendered(&scene, &desc);
+    image::save_buffer(
+        out_dir().join("transform-3d.png"),
+        &pixels,
+        400,
+        300,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let red_at = |x: f32, y: f32| {
+        let i = (y as usize * 400 + x as usize) * 4;
+        pixels[i] > 200 && pixels[i + 1] < 60
+    };
+    // The near edge reaches above the laid-out top, the far edge does not
+    // reach it; both corners are where the map puts them.
+    assert!(
+        red_at(lx + 4.0, ly + 4.0),
+        "near top corner at ({lx}, {ly})"
+    );
+    assert!(!red_at(lx + 4.0, ly - 4.0), "above the near top corner");
+    assert!(red_at(rx - 4.0, ry + 4.0), "far top corner at ({rx}, {ry})");
+    assert!(!red_at(rx - 4.0, ry - 4.0), "above the far top corner");
+    assert!(!red_at(rx + 6.0, 150.0), "right of the far edge");
+    // Hit where it is seen: inside near the far edge, and not past it
+    // though the laid-out box reaches there.
+    frame(&mut ui, Vec2::new(rx - 6.0, 150.0));
+    frame(&mut ui, Vec2::new(rx - 6.0, 150.0));
+    assert_eq!(ui.frame().cursor, Cursor::Crosshair, "over the seen card");
+    frame(&mut ui, Vec2::new(rx + 10.0, 150.0));
+    frame(&mut ui, Vec2::new(rx + 10.0, 150.0));
+    assert_ne!(ui.frame().cursor, Cursor::Crosshair, "past the seen card");
+}
+
+/// Planes of one 3D rendering context (`transform-style: preserve-3d`)
+/// draw back to front by depth, not in tree order: the cube's back face
+/// is last in the tree and stays behind its front face. A card turned
+/// to show its back with `backface-visibility: hidden` draws nothing.
+///
+/// Ways it could fail: the context's planes are drawn in tree order (the
+/// back face's green over the front's red), the children are flattened
+/// into the cube's own layer (nothing turned), or the hidden back face
+/// still draws.
+#[test]
+#[ignore = "requires GPU"]
+fn preserve_3d_planes_draw_by_depth_and_hide_their_backs() {
+    use og_ui::doc::UiDocument;
+    use serde_json::json;
+    let vp = Viewport {
+        width: 400.0,
+        height: 300.0,
+        dpr: 1.0,
+        ..Viewport::default()
+    };
+    let mut ui = Ui::new(UiDesc::default());
+    ui.define_document(
+        UiDocument::parse(
+            "m.svelte",
+            r#"<meta name="screen" content="m" data-layer="hud">
+<stack id="Stage"><stack id="Cube"><panel id="F"/><panel id="L"/><panel id="B"/></stack><panel id="Flip"/></stack>
+<style>
+#Stage { width: 400px; height: 300px; perspective: 600px; }
+#Cube { position: absolute; top: 100px; inset-inline-start: 200px; width: 100px; height: 100px;
+        transform-style: preserve-3d; transform: rotateY(30deg); }
+#F, #L, #B { position: absolute; top: 0; inset-inline-start: 0; width: 100px; height: 100px; border-radius: 0; }
+#F { background: #ff0000; transform: translateZ(50px); }
+#L { background: #ffff00; transform: rotateY(-90deg) translateZ(50px); }
+#B { background: #00ff00; transform: rotateY(180deg) translateZ(50px); }
+#Flip { position: absolute; top: 100px; inset-inline-start: 40px; width: 100px; height: 100px;
+        border-radius: 0; background: #0000ff; transform: rotateY(180deg); backface-visibility: hidden; }
+</style>"#,
+        )
+        .unwrap(),
+    );
+    ui.push_screen("m", json!({})).unwrap();
+    ui.begin(InputFrame::default(), vp);
+    ui.end();
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let mut scene = RenderScene::new();
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: 400,
+        height: 300,
+        ..RenderDesc::default()
+    };
+    let (pixels, _) = rendered(&scene, &desc);
+    image::save_buffer(
+        out_dir().join("preserve-3d.png"),
+        &pixels,
+        400,
+        300,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let at = |x: usize, y: usize| {
+        let i = (y * 400 + x) * 4;
+        [pixels[i], pixels[i + 1], pixels[i + 2]]
+    };
+    // The front face is seen right of the cube's centre (250, 150): the
+    // turn moves it right; the back face lies behind it there.
+    let front = at(262, 150);
+    assert!(front[0] > 200 && front[1] < 60, "front face red: {front:?}");
+    // The left face shows left of the centre.
+    let left = at(222, 150);
+    assert!(left[0] > 200 && left[1] > 200, "left face yellow: {left:?}");
+    let flip = at(90, 150);
+    assert!(flip.iter().all(|&c| c < 20), "hidden back face: {flip:?}");
+}

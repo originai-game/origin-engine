@@ -157,6 +157,7 @@ impl Player {
             bytes,
             at: 0,
             legacy_glyphs: false,
+            affine_only: false,
         };
         let mut next = self.clone();
         if next.read(&mut r).is_none() || r.at != bytes.len() {

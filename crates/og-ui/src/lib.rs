@@ -81,6 +81,7 @@ pub use doc::build::{DocEvent, DocResponse};
 pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS, drawn_lines};
 pub use dress::{DressFrame, Dressing, Selector};
 pub mod text_path;
+pub mod transform3d;
 pub use element::{
     Affine, AutoRepeat, Breadth, Cursor, Customize, Dismiss, DragAxis, DragSpec, DropSpec, Edges,
     FocusGroup, GestureSpec, GridFlow, GridLine, GridPlace, GridSpec, LayoutMode, LayoutStats,

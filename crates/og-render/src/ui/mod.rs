@@ -685,6 +685,11 @@ pub struct UiLayer {
 /// nearer the camera than that hides it. Where the surface lies farther
 /// behind the plane, or there is none (no prepass, the sky), it is laid
 /// on the plane itself, as a sign in the air is.
+///
+/// A `plane` ground is laid on its plane only and never reads the scene:
+/// a UI layer under a CSS 3D transform, whose drape is the projective map
+/// from the screen to the layer (rows `a` (0, 0, 0), (0, 0, 0), (0, 0, -1),
+/// rows `b` the map's), drawn wherever the map's w is positive.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct UiGround {
     /// Where the rect's top left, top right, bottom right and bottom left
@@ -693,6 +698,7 @@ pub struct UiGround {
     /// sizes it at [`UI_QUAD_LAYER_MAX`].
     pub corners: Option<[Vec2; 4]>,
     pub drape: UiDrape,
+    pub plane: bool,
 }
 
 /// The map from a screen point to a projected layer's plane: the point
@@ -941,7 +947,10 @@ impl UiList {
     /// prepass.
     pub fn needs_depth(&self) -> bool {
         !self.occluders.is_empty()
-            || self.layers.iter().any(|l| l.ground.is_some())
+            || self
+                .layers
+                .iter()
+                .any(|l| l.ground.is_some_and(|g| !g.plane))
             || self
                 .mass
                 .iter()

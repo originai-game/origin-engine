@@ -749,6 +749,7 @@ pub fn ground() -> RenderScene {
                 1.5,
             )
             .expect("a plane in view"),
+            plane: false,
         }),
     });
     // The composite covers the screen; the drape cuts it.

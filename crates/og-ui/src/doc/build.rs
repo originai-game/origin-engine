@@ -61,6 +61,8 @@ struct Resolved {
     text: Option<Arc<super::text_css::TextCss>>,
     /// Its SMIL animations are playing: it resolves again next frame.
     smil: bool,
+    /// Its `transform` and 3D properties ([`crate::transform3d`]).
+    space3d: Option<Arc<crate::transform3d::Space3d>>,
 }
 
 #[derive(Clone)]
@@ -611,6 +613,8 @@ impl Ui {
             super::container::push(Arc::make_mut(&mut r.cascade.computed), key, kind, &names);
             r.container = Some(key);
         }
+        r.space3d = crate::transform3d::resolve(&r.cascade.transform, &mut r.cascade.diagnostics)
+            .map(Arc::new);
         (r.transitions, r.animations) =
             super::motion::resolve(&r.cascade.motion, &b.doc.name, &mut r.cascade.diagnostics);
         // A conditional `@keyframes` defines its name while its conditions
@@ -1066,6 +1070,7 @@ impl Ui {
             t.pivot_x = x;
             t.pivot_y = y;
         }
+        p.space3d = r.space3d.clone();
         if let Some(v) = r.num("opacity") {
             p.opacity = v.clamp(0.0, 1.0);
         }

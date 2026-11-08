@@ -26,6 +26,8 @@ pub struct Cascade {
     pub(crate) svg: Vec<(String, String)>,
     /// Winning text and font properties ([`crate::doc::text_css`]), substituted.
     pub(crate) text: Vec<(String, String)>,
+    /// Winning `transform` and 3D properties ([`crate::transform3d`]).
+    pub(crate) transform: Vec<(String, String)>,
     /// Query containers whose settled size the matched rules depend on.
     pub container_reads: BTreeSet<u64>,
 }
@@ -188,6 +190,10 @@ pub(crate) fn resolve(
     for (name, value, line) in out.values.clone() {
         if crate::doc::motion::longhand(&name) {
             out.motion.push((name, value));
+            continue;
+        }
+        if crate::transform3d::LONGHANDS.contains(&name.as_str()) {
+            out.transform.push((name, value));
             continue;
         }
         if crate::doc::container::longhand(&name) {

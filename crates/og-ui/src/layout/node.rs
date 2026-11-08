@@ -450,6 +450,8 @@ pub(crate) struct Node {
     /// its ancestors'), and its box's bounds there.
     pub world: crate::element::Affine,
     pub screen: Rect,
+    /// Its place in a 3D space (`None`: drawn flat by `world`).
+    pub plane: Option<Box<crate::transform3d::Plane>>,
     /// Layout animation's offset and scale this tick (x, y, sx, sy).
     pub flip: [f32; 4],
     /// A drag's offset and a pinch's scale and turn (x, y, scale, radians).
@@ -576,6 +578,7 @@ impl Node {
             caret: None,
             out: Vec::new(),
             grid: None,
+            plane: None,
             world: crate::element::Affine::IDENTITY,
             screen: Rect::default(),
             flip: [0.0, 0.0, 1.0, 1.0],

@@ -530,9 +530,6 @@ pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
         "float" | "clear" => "write `display` as the kind: a `row` or a `grid`",
         "left" => "write `inset-inline-start` (it mirrors right to left)",
         "right" => "write `inset-inline-end` (it mirrors right to left)",
-        "transform" => {
-            "write each part as its own property: `translate: 0 -4px`, `scale: 1.05`, `rotate: 0.1rad`, `-og-skew`"
-        }
         "visibility" => "write the attribute `visible false` (or `visible bind …`)",
         "inset-inline" | "inset" | "inset-block" => {
             "write each side: `top`, `bottom`, `inset-inline-start`, `inset-inline-end`"

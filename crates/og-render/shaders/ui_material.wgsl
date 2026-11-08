@@ -9,7 +9,8 @@ struct LayerParams {
   rect: vec4<f32>,
   params: array<vec4<f32>, 4>,
   // x: the built-in material, y: mask (0 none, 1 gradient, 2 image), z:
-  // the mask's gradient, w: 1 for a layer laid onto a quad (`quad`).
+  // the mask's gradient, w: 1 for a layer laid onto a quad (`quad`), 2
+  // for one laid on its plane only (a CSS 3D transform: no scene read).
   info: vec4<f32>,
   // The mask image's uv rectangle.
   mask_uv: vec4<f32>,
@@ -117,20 +118,25 @@ fn drape(css: vec2<f32>) -> Draped {
   let b = vec3<f32>(dot(g[3].xyz, h), dot(g[4].xyz, h), dot(g[5].xyz, h));
   let scale = vec2<f32>(g[0].w, g[1].w);
   let reach = g[2].w;
-  let d = scene_depth_at(css);
-  let s = a + d * b;
+  let r = layer_params.rect;
   // Where the ray meets the plane (none behind the eye).
   let dp = select(-1.0, -a.z / b.z, abs(b.z) > 1e-12);
   let p = a + max(dp, 0.0) * b;
+  var out: Draped;
+  out.plane = (p.xy - r.xy) / max(r.zw, vec2<f32>(1e-4));
+  out.uv = out.plane;
+  out.weight = select(0.0, 1.0, dp > 0.0);
+  if (layer_params.info.w > 1.5) {
+    // On its plane only: a CSS 3D transform's layer.
+    return out;
+  }
+  let d = scene_depth_at(css);
+  let s = a + d * b;
   // The surface's facing, from its place's change across the pixel in
   // world units: 1 lying along the plane, 0 standing across it.
   let m = vec3<f32>(s.xy * scale, s.z);
   let nrm = cross(dpdx(m), dpdy(m));
   let facing = abs(nrm.z) / max(length(nrm), 1e-12);
-  let r = layer_params.rect;
-  var out: Draped;
-  out.plane = (p.xy - r.xy) / max(r.zw, vec2<f32>(1e-4));
-  out.uv = out.plane;
   out.weight = 0.0;
   let surface = d < 0.5 * FAR_DEPTH;
   if (surface && abs(s.z) <= reach) {
