@@ -2734,6 +2734,11 @@ pub fn og_ui_device(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_file_picker(world: u32) -> bool {
+    <Host as UiApi>::og_ui_file_picker(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_set_device(world: u32, device: String) {
     <Host as UiApi>::og_ui_set_device(&Host, world, device)
 }

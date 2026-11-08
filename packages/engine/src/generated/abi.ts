@@ -1097,6 +1097,8 @@ export interface HostAbi<A, V> {
   og_ui_frame_glyph(action: string): string;
   /** `og.ui.device` */
   og_ui_device(world: number): string;
+  /** `og.ui.filePicker` */
+  og_ui_file_picker(world: number): boolean;
   /** `og.ui.setDevice` */
   og_ui_set_device(world: number, device: string): void;
   /** `og.ui.actionBar` */
@@ -1846,6 +1848,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_glyph",
   "og_ui_frame_glyph",
   "og_ui_device",
+  "og_ui_file_picker",
   "og_ui_set_device",
   "og_ui_action_bar",
   "og_ui_document_schema",

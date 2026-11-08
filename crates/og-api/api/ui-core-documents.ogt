@@ -182,6 +182,12 @@
     returns UiDevice
   }
 
+  fn filePicker {
+    doc "Whether this host opens a file picker for a document's `<input type=\"file\">` (a capability query, the same on every host that has one): false on the web and natively today, where such an input is refused at build with a warning. Where true, a press sends the host a `filepick` event (its `accept` and `multiple`) and the host writes the chosen names to the input's bound value."
+    param world World "The world."
+    returns bool
+  }
+
   fn setDevice {
     doc "Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on."
     param world World "The world."

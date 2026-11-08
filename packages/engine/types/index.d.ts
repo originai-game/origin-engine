@@ -31993,6 +31993,7 @@ export interface UiActionHint {
 
 
 
+
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
@@ -41523,6 +41524,12 @@ export declare namespace og {
      * @param world The world.
      */
     function device(world: World): UiDevice;
+    /**
+     * Whether this host opens a file picker for a document's `<input type="file">` (a capability query, the same on every host that has one): false on the web and natively today, where such an input is refused at build with a warning. Where true, a press sends the host a `filepick` event (its `accept` and `multiple`) and the host writes the chosen names to the input's bound value.
+     *
+     * @param world The world.
+     */
+    function filePicker(world: World): boolean;
     /**
      * Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on.
      *

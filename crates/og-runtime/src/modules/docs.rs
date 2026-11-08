@@ -506,6 +506,11 @@ pub fn og_ui_device(world: u32) -> String {
     on_ui(world, |ui| ui.device().name().to_string()).unwrap_or_else(|_| "keyboardMouse".into())
 }
 
+/// No host opens a file picker yet: false on the web and natively.
+pub fn og_ui_file_picker(world: u32) -> bool {
+    on_ui(world, |ui| ui.file_picker()).unwrap_or(false)
+}
+
 pub fn og_ui_set_device(world: u32, device: String) {
     if let Some(d) = Device::from_name(&device) {
         let _ = on_ui(world, |ui| {

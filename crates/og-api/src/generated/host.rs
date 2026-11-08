@@ -1211,6 +1211,8 @@ pub trait UiApi: Wire {
     fn og_ui_frame_glyph(&self, action: String) -> String;
     /// `og.ui.device`
     fn og_ui_device(&self, world: u32) -> String;
+    /// `og.ui.filePicker`
+    fn og_ui_file_picker(&self, world: u32) -> bool;
     /// `og.ui.setDevice`
     fn og_ui_set_device(&self, world: u32, device: String);
     /// `og.ui.actionBar`
@@ -2017,6 +2019,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_glyph",
     "og_ui_frame_glyph",
     "og_ui_device",
+    "og_ui_file_picker",
     "og_ui_set_device",
     "og_ui_action_bar",
     "og_ui_document_schema",

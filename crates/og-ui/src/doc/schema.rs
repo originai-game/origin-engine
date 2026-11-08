@@ -214,6 +214,11 @@ pub const CORE_KINDS: &[KindSpec] = &[
         doc: "A date or time input (`<input type=\"date|time|datetime-local|month|week\">`): a stepper per part, two-way `dateValue` in HTML's format.",
     },
     KindSpec {
+        name: "file",
+        container: false,
+        doc: "A file input (`<input type=\"file\">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`.",
+    },
+    KindSpec {
         name: "radio",
         container: false,
         doc: "One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes.",
@@ -1187,8 +1192,8 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "disabled",
         Ty::Bool,
         [
-            "button", "slider", "toggle", "radio", "color", "datetime", "tabs", "field", "select",
-            "details", "joystick", "dpad"
+            "button", "slider", "toggle", "radio", "color", "datetime", "file", "tabs", "field",
+            "select", "details", "joystick", "dpad"
         ],
         "Takes no input."
     ),
@@ -1271,6 +1276,25 @@ pub const CORE_PROPS: &[PropSpec] = &[
         ["radio"],
         two_way,
         "The store its group's choice is in (`bind:group`): it is checked while that holds its value, and a press writes its value."
+    ),
+    p!(
+        "fileValue",
+        Ty::Text,
+        ["file"],
+        two_way,
+        "The names of the files chosen, comma-separated (HTML `value`; the host writes it)."
+    ),
+    p!(
+        "accept",
+        Ty::Text,
+        ["file"],
+        "The types it takes (HTML `accept`: `.png,image/*`)."
+    ),
+    p!(
+        "multiple",
+        Ty::Bool,
+        ["file"],
+        "More than one file may be chosen."
     ),
     p!(
         "dateValue",

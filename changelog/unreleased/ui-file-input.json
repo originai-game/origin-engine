@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og.ui.filePicker",
+      "summary": "Whether the host opens a file picker for a document's <input type=\"file\">; false on the web and natively today."
+    },
+    {
+      "member": "UI documents: <input type=\"file\">",
+      "summary": "Parses with accept, multiple and bind:value; built as a button sending a filepick event only where og.ui.filePicker is true, otherwise not built with a frame warning (it was refused at parse)."
+    }
+  ]
+}

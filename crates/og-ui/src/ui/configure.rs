@@ -56,6 +56,7 @@ impl Ui {
             vcursor: None,
             hud_editor_key: 0,
             request_focus: 0,
+            file_picker: false,
             button_ink: Vec::new(),
             scopes: Vec::new(),
             icons: IconAtlas::default(),
@@ -277,6 +278,18 @@ impl Ui {
     /// The key of the focused control (0: none).
     pub fn focused_key(&self) -> u64 {
         self.state.focus
+    }
+
+    /// Whether the host opens a file picker: `<input type="file">` builds
+    /// only then (og.ui.filePicker).
+    pub fn file_picker(&self) -> bool {
+        self.file_picker
+    }
+
+    /// Says the host opens a file picker on an `<input type="file">`'s
+    /// `filepick` event and writes the names chosen to its bound value.
+    pub fn set_file_picker(&mut self, on: bool) {
+        self.file_picker = on;
     }
 
     /// Moves the shared focus (the pointer's, the keys' and pad 0's) to the

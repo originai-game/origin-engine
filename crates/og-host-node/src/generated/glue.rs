@@ -3279,6 +3279,12 @@ pub fn og_ui_device(env: Env, world: u32) -> String {
     <Host as UiApi>::og_ui_device(&Host, world)
 }
 
+#[napi(js_name = "og_ui_file_picker")]
+pub fn og_ui_file_picker(env: Env, world: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_file_picker(&Host, world)
+}
+
 #[napi(js_name = "og_ui_set_device")]
 pub fn og_ui_set_device(env: Env, world: u32, device: String) {
     let _env = crate::EnvScope::enter(&env);

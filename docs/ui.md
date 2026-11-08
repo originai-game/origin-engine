@@ -200,7 +200,11 @@ probe) are unchanged. The mapping:
 | `<input type="date">` (`time`, `datetime-local`, `month`, `week`) `bind:value={$when}` | datetime (group) | a pad-friendly picker of og-ui steppers, one per part (Year, Month, Day, Week, Hour, Minute, and Second when `step` or the value has seconds), each a focus stop that Left and Right, a press or a held press step; no OS picker. A part stepped past its end carries into the next (the 30th of February is March 1st), a month or year moved keeps the day in its month. The value is HTML's (`2026-11-08`, `14:30`, `2026-11-08T14:30`, `2026-11`, `2026-W45`, ISO weeks), kept within `min` and `max` and on the `step` grid from `min` (seconds for times, days, months or weeks otherwise; a 900 s step moves the minutes by 15). Empty, it shows `min` (else `max`, else 2000-01-01 00:00; no clock is read) and writes once a part is stepped. `required`, `disabled`, `readonly`; empty and required, or outside `min`…`max`, is `:invalid` and holds a form's submit back. Parts `Stepper.*`; probe `<id>/<Part>/Frame/Inc` |
 
 `<template>` is refused: snippets are its Svelte form. `<input
-type="file">` is refused because no host has a file picker.
+type="file" accept multiple bind:value={$files}>` is a button only where the
+host opens a file picker (`og.ui.filePicker`, the same query on the web and
+natively; false on both today): a press sends the host a `filepick` event
+with `accept` and `multiple`, and the host writes the names chosen to the
+bound value. Elsewhere it is not built and the frame warns.
 `<field>`, `<slider>`, `<toggle>`, `<divider>`, `<image>` and a
 `<label>` that neither wraps a checkbox nor has `for` are refused. CSS type selectors match the written tag (`input`,
 `textarea`), so `input[type=range]` and `textarea` select as in HTML.

@@ -140,15 +140,6 @@ impl Parser {
                 self.aria_refs_for.push((a.value.clone(), a.at));
             }
             ("output", "name") => {}
-            ("input", "type") if !a.bound => match a.value.as_str() {
-                "file" => {
-                    return Err((
-                        a.at,
-                        "<input type=\"file\"> needs a host file picker, which no host offers; take files in a TS system".into(),
-                    ));
-                }
-                _ => return Ok(false),
-            },
             _ => return Ok(false),
         }
         Ok(true)

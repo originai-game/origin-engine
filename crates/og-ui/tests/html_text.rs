@@ -42,6 +42,8 @@
 //! - a date part stepping past its month or year, `min`/`max` or `step`
 //!   ignored, or an empty required date input not holding a form back →
 //!   `date_and_time_inputs_step_their_parts_within_min_max_and_step`
+//! - a file input built on a host without a picker, or a press not
+//!   asking the host for one → `a_file_input_builds_only_where_the_host_has_a_picker`
 
 use crate::support;
 
@@ -1008,5 +1010,29 @@ fn date_and_time_inputs_step_their_parts_within_min_max_and_step() {
         step(d, "Wk/Week/Frame/Inc", "wk");
         assert!(d.click("Book").iter().any(|e| e.name == "book"));
         assert_eq!(d.a11y("When").role, "group");
+    });
+}
+
+#[test]
+fn a_file_input_builds_only_where_the_host_has_a_picker() {
+    let text = r#"<meta name="component" content="t">
+<div>{#if $show}<input type="file" id="Pick" accept=".png" multiple bind:value={$files}>{/if}</div>"#;
+    both(text, &[("files", json!("")), ("show", json!(true))], |d| {
+        assert!(d.el("Pick").is_none(), "no picker, no input");
+        assert!(
+            d.ui.frame().warnings.iter().any(|w| w.contains("file picker")),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        // A host says so as it starts; the input built after it is a button.
+        d.set("show", json!(false));
+        d.ui.set_file_picker(true);
+        d.set("show", json!(true));
+        let events = d.click("Pick");
+        let pick = events
+            .iter()
+            .find(|e| e.kind == "filepick")
+            .unwrap_or_else(|| panic!("{events:?}"));
+        assert_eq!(pick.value, json!({ "accept": ".png", "multiple": true }));
     });
 }

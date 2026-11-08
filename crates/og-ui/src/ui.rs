@@ -494,6 +494,9 @@ pub struct Ui {
     pub(crate) hud_editor_key: u64,
     /// The control a widget asked to focus this frame.
     pub(crate) request_focus: u64,
+    /// The host opens a file picker for `<input type="file">`
+    /// ([`Ui::set_file_picker`]).
+    pub(crate) file_picker: bool,
     /// The content buttons open now and their ink (the innermost last).
     pub(crate) button_ink: Vec<(usize, Srgba)>,
     /// Open focus scopes this frame, in build order.

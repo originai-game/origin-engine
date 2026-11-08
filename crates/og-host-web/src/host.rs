@@ -1614,6 +1614,9 @@ impl UiApi for WebHost {
     fn og_ui_device(&self, world: u32) -> String {
         rt::og_ui_device(world)
     }
+    fn og_ui_file_picker(&self, world: u32) -> bool {
+        rt::og_ui_file_picker(world)
+    }
     fn og_ui_set_device(&self, world: u32, device: String) {
         rt::og_ui_set_device(world, device)
     }

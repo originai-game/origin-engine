@@ -1337,6 +1337,7 @@ impl Parser {
                 Some("radio") => "radio",
                 Some("color") => "color",
                 Some("date" | "time" | "datetime-local" | "month" | "week") => "datetime",
+                Some("file") => "file",
                 _ => "field",
             },
             other => match super::extern_element::kind(other, self.parent_tag(parent)) {
@@ -1652,6 +1653,9 @@ impl Parser {
             }
             if name == "value" && internal == "color" {
                 name = "colorValue".into();
+            }
+            if internal == "file" && name == "value" {
+                name = "fileValue".into();
             }
             if internal == "datetime" {
                 match name.as_str() {
@@ -2909,7 +2913,6 @@ button.active { opacity: 1; }
                 "inside a <form>",
             ),
             ("<div><output for='Nope'>x</output></div>", "no element"),
-            ("<input type='file'>", "file picker"),
         ] {
             let text = format!("<meta name='screen' content='t'>\n{body}");
             let errors = UiDocument::parse("bad.svelte", &text).unwrap_err();

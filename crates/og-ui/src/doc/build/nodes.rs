@@ -932,6 +932,30 @@ impl Ui {
             "color" => {
                 resp = self.color_input(b, n, id.as_str(), &r);
             }
+            "file" => {
+                if !self.file_picker {
+                    self.warnings.push(format!(
+                        "{}:{}: <input type=\"file\"> needs a host file picker, which this host lacks (og.ui.filePicker is false); take files in a TS system",
+                        doc.source, n.line
+                    ));
+                    return None;
+                }
+                let chosen = r.str("fileValue").unwrap_or_default();
+                let text = match text_of(&r, b) {
+                    t if !t.is_empty() => t,
+                    _ if !chosen.is_empty() => chosen.to_string(),
+                    _ => "Choose file…".to_string(),
+                };
+                resp = self.button(id.as_str(), &text, r.button_desc());
+                if resp.clicked && !r.flag("disabled") {
+                    b.event(
+                        &path,
+                        "filepick",
+                        &n.id,
+                        json!({ "accept": r.str("accept").unwrap_or_default(), "multiple": r.flag("multiple") }),
+                    );
+                }
+            }
             "datetime" => {
                 resp = self.datetime_input(b, n, id.as_str(), &r);
                 let barred = r.flag("disabled") || r.flag("readonly");
