@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS linear() easing",
+      "summary": "transition-timing-function, animation-timing-function, keyframe timing and og.tween ease text take CSS Easing 2's linear(<number> <percentage>{0,2}, …) with the spec's canonicalisation and extrapolation."
+    }
+  ]
+}

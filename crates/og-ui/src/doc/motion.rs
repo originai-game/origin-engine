@@ -127,6 +127,7 @@ fn is_timing(word: &str) -> bool {
     timing(word).is_some()
         || word.starts_with("cubic-bezier(")
         || word.starts_with("steps(")
+        || word.starts_with("linear(")
         || word.starts_with("-og-spring(")
 }
 
@@ -301,7 +302,7 @@ fn hint(name: &str) -> &'static str {
         "transition-duration" | "animation-duration" => "write a non-negative time: 200ms or 0.2s",
         "transition-delay" | "animation-delay" => "write a time: 50ms or -0.1s",
         "transition-timing-function" | "animation-timing-function" => {
-            "write a CSS easing (ease-out, cubic-bezier(…), steps(…)), -og-spring(<ms>, <bounce>) or var(--motion-<role>)"
+            "write a CSS easing (ease-out, cubic-bezier(…), steps(…), linear(…)), -og-spring(<ms>, <bounce>) or var(--motion-<role>)"
         }
         "animation-iteration-count" => "write a non-negative number or infinite",
         "animation-direction" => "write normal, reverse, alternate or alternate-reverse",

@@ -137,6 +137,12 @@ fn leaf(out: &mut Vec<u8>, l: &Leaf) {
                 },
             );
         }
+        Ease::Points(p) => {
+            u32_(out, p.len() as u32);
+            for v in p.iter().flatten() {
+                f32_(out, *v);
+            }
+        }
         _ => {}
     }
     out.extend_from_slice(&l.loops.to_le_bytes());
@@ -348,6 +354,17 @@ impl Reader<'_> {
                     _ => return Err(bad("unknown step position")),
                 },
             },
+            24 => {
+                let n = self.u32()? as usize;
+                if !(2..=1024).contains(&n) {
+                    return Err(bad("invalid linear() points"));
+                }
+                let mut p = Vec::with_capacity(n);
+                for _ in 0..n {
+                    p.push([self.f32()?, self.f32()?]);
+                }
+                Ease::linear(&p)
+            }
             code => Ease::from_code(code).ok_or_else(|| bad("unknown ease"))?,
         };
         if !ease.is_valid() {

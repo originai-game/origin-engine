@@ -219,7 +219,9 @@ fn key_entry(time: f32, block: Block) -> Entry {
 fn ease_entry(b: &mut Block, e: Ease) {
     if e != Ease::Linear {
         let value = match e {
-            Ease::CubicBezier(_) | Ease::Steps { .. } => Value::String(e.to_text()),
+            Ease::CubicBezier(_) | Ease::Steps { .. } | Ease::Points(_) => {
+                Value::String(e.to_text())
+            }
             _ => Value::Word(e.name().into()),
         };
         b.push(Entry::new("ease").with(value));

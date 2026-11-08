@@ -436,6 +436,41 @@ mod document_tests {
     }
 
     #[test]
+    fn a_linear_easing_times_a_transition_by_its_points_and_restores() {
+        // 60 ticks a second: 300 ms is 18 ticks; linear(0, 0.8 25%, 1)
+        // reaches 0.8 of the way a quarter through (4.5 ticks).
+        let mut ui = ui(
+            "#Card { width: 40px; height: 20px; transition: translate 300ms linear(0, 0.8 25%, 1); }
+             #Card.on { translate: 100px 0; }",
+            false,
+        );
+        let on = json!({"on": true, "paused": false});
+        tick(&mut ui, &json!({"on": false, "paused": false}));
+        let curve = |t: f32| {
+            if t < 0.25 {
+                3.2 * t
+            } else {
+                0.8 + (t - 0.25) / 0.75 * 0.2
+            }
+        };
+        for j in 0..20 {
+            let v = tick(&mut ui, &on);
+            let t = (j as f32 / 18.0).min(1.0);
+            assert!(close(v[X], 100.0 * curve(t)), "x at {j}: {}", v[X]);
+            if j == 6 {
+                let saved = ui.save_state();
+                let rest: Vec<_> = (0..4).map(|_| tick(&mut ui, &on)).collect();
+                ui.restore_state(&saved).unwrap();
+                for r in rest {
+                    assert_eq!(tick(&mut ui, &on), r, "after restore");
+                }
+                // Back to tick 6 for the rest of the run.
+                ui.restore_state(&saved).unwrap();
+            }
+        }
+    }
+
+    #[test]
     fn transitions_time_each_listed_property_with_its_delay_and_curve() {
         // 60 ticks a second: 100 ms is 6 ticks, 50 ms is 3, 200 ms is 12.
         let mut ui = ui(

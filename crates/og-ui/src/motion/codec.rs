@@ -413,6 +413,12 @@ pub(crate) fn ease_code(e: super::Ease) -> (u8, [f32; 4]) {
                 [(count & 0xffff) as f32, (count >> 16) as f32, position, 0.0],
             )
         }
+        // A `linear()` curve by its points' hash, in exact 16-bit quarters:
+        // its document defines it again before a restore reads it.
+        Ease::Points(_) => {
+            let h = e.points_hash().unwrap_or(0);
+            (29, [0, 16, 32, 48].map(|s| ((h >> s) & 0xffff) as f32))
+        }
         named => (5 + named.code() as u8, [0.0; 4]),
     }
 }
@@ -427,6 +433,18 @@ pub(crate) fn ease_from_code(code: u8, c: [f32; 4]) -> Option<super::Ease> {
         3 => Ease::CubicBezier([0.65, 0.0, 0.35, 1.0]),
         4 => Ease::CubicBezier(c),
         5..=26 => Ease::from_code(u32::from(code - 5))?,
+        29 => {
+            if c.iter()
+                .any(|n| !(0.0..=65535.0).contains(n) || n.fract() != 0.0)
+            {
+                return None;
+            }
+            let h = c
+                .iter()
+                .enumerate()
+                .fold(0u64, |h, (k, &q)| h | (q as u64) << (16 * k));
+            return og_tween::Ease::from_points_hash(h);
+        }
         28 => {
             if c[..2]
                 .iter()

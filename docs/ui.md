@@ -1614,7 +1614,11 @@ numbers, colours, or arbitrary expressions. Other styling belongs in
 property lists with per-property duration, delay and timing function, `all`,
 several animations per element with delay, iteration count (including
 `infinite`), direction, fill mode and play state, and keyframes at percentage
-stops with per-keyframe timing functions. The shorthands expand into
+stops with per-keyframe timing functions. Timing functions include CSS
+Easing 2's `linear(0, 0.8 25%, 1)` (stops with zero to two input
+percentages, canonicalised as the spec says); a saved state names a
+`linear()` curve by its points' hash, so its document defines it again
+before a restore reads it. The shorthands expand into
 longhands at cook, so selectors, state and media choose an element's
 animations; an animation starts when its rule begins to match and ends when
 it stops. Motion runs on presentation ticks, never a clock, and is saved with
