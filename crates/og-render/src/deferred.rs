@@ -356,7 +356,7 @@ pub(crate) trait Start {
     fn start(&self);
 }
 
-impl<T: Send + 'static> Deferred<T> {
+impl<T: AnywhereOnce + 'static> Deferred<T> {
     /// [`Start::start`] at `priority`.
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn start_at(&self, priority: Priority) {
@@ -367,7 +367,7 @@ impl<T: Send + 'static> Deferred<T> {
     }
 }
 
-impl<T: Send + 'static> Start for Deferred<T> {
+impl<T: AnywhereOnce + 'static> Start for Deferred<T> {
     #[cfg(not(target_arch = "wasm32"))]
     fn start(&self) {
         self.start_at(Priority::Frame);
@@ -507,7 +507,7 @@ impl<T> Sampled<T> {
     }
 }
 
-impl<T: Send + 'static> Sampled<T> {
+impl<T: AnywhereOnce + 'static> Sampled<T> {
     /// [`Start::start`] at `priority`.
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn start_at(&self, priority: Priority) {
@@ -528,7 +528,7 @@ impl<T: Send + 'static> Sampled<T> {
     }
 }
 
-impl<T: Send + 'static> Start for Sampled<T> {
+impl<T: AnywhereOnce + 'static> Start for Sampled<T> {
     #[cfg(not(target_arch = "wasm32"))]
     fn start(&self) {
         self.start_at(Priority::Frame);

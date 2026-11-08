@@ -1514,7 +1514,7 @@ pub(crate) fn variants(
 /// A batch pipeline made by `make`: started on the compile workers
 /// natively, made at once on the web (inside the host's frame span, which
 /// asks for it asynchronously).
-fn deferred<T: Send + 'static>(
+fn deferred<T: crate::deferred::AnywhereOnce + 'static>(
     make: impl FnOnce() -> T + crate::deferred::AnywhereOnce + 'static,
 ) -> Deferred<T> {
     let d = Deferred::anywhere(make);

@@ -175,7 +175,7 @@ pub(crate) trait Cell {
     fn follow(&self, _full: &Self) {}
 }
 
-impl<T: Send + 'static> Cell for Deferred<T> {
+impl<T: crate::deferred::AnywhereOnce + 'static> Cell for Deferred<T> {
     type Value = T;
     #[cfg(not(target_arch = "wasm32"))]
     fn start_at(&self, priority: Priority) {
@@ -189,7 +189,7 @@ impl<T: Send + 'static> Cell for Deferred<T> {
     }
 }
 
-impl<T: Send + 'static> Cell for Sampled<T> {
+impl<T: crate::deferred::AnywhereOnce + 'static> Cell for Sampled<T> {
     type Value = T;
     #[cfg(not(target_arch = "wasm32"))]
     fn start_at(&self, priority: Priority) {
