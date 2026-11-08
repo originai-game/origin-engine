@@ -15,6 +15,7 @@ pub(crate) mod settlement;
 mod snapshot;
 mod text_controls;
 mod tree;
+pub(crate) mod visit;
 
 pub(crate) use commands::bake;
 pub use descriptors::*;
@@ -450,6 +451,8 @@ pub struct Ui {
     pub(crate) glyphs_missed: std::collections::BTreeSet<(og_render::FontHandle, char)>,
     /// The trees' membership, keys and features (`tree`).
     pub(crate) tree: tree::TreeIndex,
+    /// The frame's orders and each feature's nodes (`visit`).
+    pub(crate) orders: visit::Orders,
     /// What may have changed for screen readers, by frame (`tree`).
     pub(crate) semantics: tree::SemanticLog,
     /// This frame's command ranges kept from last frame's paint, in order.

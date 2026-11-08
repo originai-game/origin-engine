@@ -69,72 +69,79 @@ impl Ui {
     /// multiplied down the tree; inert where a transition moves it, a state
     /// or timeline holds it, or its parent is. Clips made by a transformed
     /// scroll container move with it.
-    pub(super) fn apply_world(&mut self, order: &[usize]) {
-        for &i in order {
-            let parent = self.nodes[i].parent;
-            let (alpha, inert, pw) = if parent == NONE {
-                (1.0, false, Affine::IDENTITY)
-            } else {
-                let p = &self.nodes[parent];
-                (p.alpha, p.inert, p.world)
-            };
-            let n = &mut self.nodes[i];
-            n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0);
-            n.scale = 1.0;
-            n.inert = inert || n.sampled.inert;
-            let r = n.rect;
-            let (cx, cy) = r.center();
-            let mut local = Affine::IDENTITY;
-            let [fx, fy, fsx, fsy] = n.flip;
-            if fx != 0.0 || fy != 0.0 || fsx != 1.0 || fsy != 1.0 {
-                local = Affine::translate(fx, fy).mul(&Affine::scale(fsx, fsy).about(r.x, r.y));
-            }
-            let [hx, hy, hs, ho] = n.custom;
-            n.alpha *= ho.clamp(0.0, 1.0);
-            if hx != 0.0 || hy != 0.0 || hs != 1.0 {
-                local = local
-                    .mul(&Affine::translate(hx, hy))
-                    .mul(&Affine::scale(hs, hs).about(cx, cy));
-            }
-            let [gx, gy, gs, gr] = n.gesture;
-            if gx != 0.0 || gy != 0.0 || gs != 1.0 || gr != 0.0 {
-                let turn = Affine::rotate(gr).mul(&Affine::scale(gs, gs)).about(cx, cy);
-                local = local.mul(&Affine::translate(gx, gy)).mul(&turn);
-            }
-            if let Some(f) = n.fx {
-                n.alpha *= f.alpha;
-                n.inert |= f.inert;
-                if f.dx != 0.0 || f.dy != 0.0 || f.scale != 1.0 {
-                    local = local
-                        .mul(&Affine::translate(f.dx, f.dy))
-                        .mul(&Affine::scale(f.scale, f.scale).about(cx, cy));
-                }
-            }
-            if !n.sampled.transform.is_identity() {
-                local = local.mul(&n.sampled.transform.matrix(&r));
-            }
-            n.world = if local.is_identity() {
-                pw
-            } else {
-                pw.mul(&local)
-            };
-            n.screen = n.world.map_rect(&r);
+    pub(super) fn apply_world(&mut self, order: &[usize], seeds: Option<&[usize]>) -> Vec<usize> {
+        self.visit(order, seeds, Self::world_step)
+    }
+
+    /// Node `i`'s map, opacity and inertness from its parent's (see
+    /// `apply_world`); answers whether its children's change with them.
+    fn world_step(&mut self, i: usize) -> bool {
+        let before = {
+            let n = &self.nodes[i];
+            (n.world, n.alpha, n.inert)
+        };
+        let parent = self.nodes[i].parent;
+        let (alpha, inert, pw) = if parent == NONE {
+            (1.0, false, Affine::IDENTITY)
+        } else {
+            let p = &self.nodes[parent];
+            (p.alpha, p.inert, p.world)
+        };
+        let n = &mut self.nodes[i];
+        n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0);
+        n.scale = 1.0;
+        n.inert = inert || n.sampled.inert;
+        let r = n.rect;
+        let (cx, cy) = r.center();
+        let mut local = Affine::IDENTITY;
+        let [fx, fy, fsx, fsy] = n.flip;
+        if fx != 0.0 || fy != 0.0 || fsx != 1.0 || fsy != 1.0 {
+            local = Affine::translate(fx, fy).mul(&Affine::scale(fsx, fsy).about(r.x, r.y));
         }
+        let [hx, hy, hs, ho] = n.custom;
+        n.alpha *= ho.clamp(0.0, 1.0);
+        if hx != 0.0 || hy != 0.0 || hs != 1.0 {
+            local = local
+                .mul(&Affine::translate(hx, hy))
+                .mul(&Affine::scale(hs, hs).about(cx, cy));
+        }
+        let [gx, gy, gs, gr] = n.gesture;
+        if gx != 0.0 || gy != 0.0 || gs != 1.0 || gr != 0.0 {
+            let turn = Affine::rotate(gr).mul(&Affine::scale(gs, gs)).about(cx, cy);
+            local = local.mul(&Affine::translate(gx, gy)).mul(&turn);
+        }
+        if let Some(f) = n.fx {
+            n.alpha *= f.alpha;
+            n.inert |= f.inert;
+            if f.dx != 0.0 || f.dy != 0.0 || f.scale != 1.0 {
+                local = local
+                    .mul(&Affine::translate(f.dx, f.dy))
+                    .mul(&Affine::scale(f.scale, f.scale).about(cx, cy));
+            }
+        }
+        if !n.sampled.transform.is_identity() {
+            local = local.mul(&n.sampled.transform.matrix(&r));
+        }
+        n.world = if local.is_identity() {
+            pw
+        } else {
+            pw.mul(&local)
+        };
+        n.screen = n.world.map_rect(&r);
         // A transformed scroll container's clip moves with it: made from
         // the clip layout gave (mirrored right to left), so a node layout
         // left out is not moved twice.
-        let mirror = (self.direction == og_i18n::Direction::Rtl).then_some(self.viewport.width);
-        for &i in order {
-            let src = self.nodes[i].clip_src;
-            if src != NONE && !self.nodes[src].world.is_identity() {
-                let w = self.nodes[src].world;
-                let mut c = self.nodes[i].laid_clip;
-                if let Some(width) = mirror {
-                    c.x = width - c.x - c.width;
-                }
-                self.nodes[i].clip = w.map_rect(&c);
+        let src = self.nodes[i].clip_src;
+        if src != NONE && !self.nodes[src].world.is_identity() {
+            let w = self.nodes[src].world;
+            let mut c = self.nodes[i].laid_clip;
+            if self.direction == og_i18n::Direction::Rtl {
+                c.x = self.viewport.width - c.x - c.width;
             }
+            self.nodes[i].clip = w.map_rect(&c);
         }
+        let n = &self.nodes[i];
+        before != (n.world, n.alpha, n.inert)
     }
 
     /// The frame's draw commands with their maps (docs/ui.md §2): each

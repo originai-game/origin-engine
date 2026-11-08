@@ -566,4 +566,9 @@ impl WorldUi {
     pub(crate) fn is_panel_node(&self, node: usize) -> bool {
         self.panels.iter().any(|p| p.node == node)
     }
+
+    /// The nodes this frame's world panels are laid out at.
+    pub(crate) fn panel_nodes(&self) -> Vec<usize> {
+        self.panels.iter().map(|p| p.node).collect()
+    }
 }

@@ -12,6 +12,7 @@ use crate::element::{CHANNELS, Prop};
 use crate::id::child_key;
 use crate::layout::{Rect, read_values, write_values};
 use crate::ui::Ui;
+use crate::ui::visit::feat;
 
 /// A play asked for this tick, flattened at `end` (when every rectangle is known).
 #[derive(Clone, Debug, PartialEq)]
@@ -244,19 +245,16 @@ impl Ui {
         }
     }
 
-    /// The tick's motion. `order` is every node in drawing order.
-    pub(crate) fn run_motion(&mut self, order: &[usize]) {
+    /// The tick's motion: on the nodes that animate, drag or match
+    /// (`visit::feat`), and those a play this tick drives.
+    pub(crate) fn run_motion(&mut self) {
         let now = self.state.tick;
         let tps = self.ticks_per_second;
         let tokens = self.theme.motion;
         let reduced = self.theme.reduced_motion;
         let mut m = std::mem::take(&mut self.state.motion);
-        let present: crate::id::KeyMap<usize> =
-            crate::id::KeyMap::from_iter(order.iter().map(|&i| (self.nodes[i].key, i)));
-        let mut touched = crate::id::KeySet::with_capacity_and_hasher(
-            m.channels.len() + order.len(),
-            Default::default(),
-        );
+        let mut touched =
+            crate::id::KeySet::with_capacity_and_hasher(m.channels.len(), Default::default());
 
         // Plays asked for this tick: flattened now that rectangles are known.
         for p in std::mem::take(&mut self.pending_plays) {
@@ -264,7 +262,7 @@ impl Ui {
                 continue;
             }
             let mut clips = Vec::new();
-            let length = self.flatten(&p.choreo, p.root, &present, 0.0, 0, &mut clips);
+            let length = self.flatten(&p.choreo, p.root, &self.tree.by_key, 0.0, 0, &mut clips);
             let first = clips
                 .first()
                 .and_then(|c| self.timelines.get(&c.timeline))
@@ -303,7 +301,7 @@ impl Ui {
         let mut state_events: Vec<(u64, String, String)> = Vec::new();
         let mut bursts: Vec<BurstRun> = Vec::new();
         m.plays
-            .retain(|p| present.contains_key(&p.root) && !(p.ended && !p.hold));
+            .retain(|p| self.tree.by_key.contains_key(&p.root) && !(p.ended && !p.hold));
         if reduced {
             // Decorative loops stop under reduced motion.
             m.plays.retain(|p| p.repeat == 0);
@@ -374,7 +372,9 @@ impl Ui {
                         continue;
                     }
                     let target = Ui::below(clip.target, &e.target);
-                    let path = present
+                    let path = self
+                        .tree
+                        .by_key
                         .get(&target)
                         .map_or(String::new(), |&i| self.path_of(i));
                     let pitch_of = |pitch: f32| {
@@ -441,7 +441,8 @@ impl Ui {
         }
 
         // Drags and pinches.
-        for &i in order {
+        for k in 0..self.orders.with(feat::GESTURE).len() {
+            let i = self.orders.with(feat::GESTURE)[k];
             let n = &self.nodes[i];
             if n.props.drag.is_none() && n.props.pinch.is_none() {
                 continue;
@@ -457,10 +458,19 @@ impl Ui {
         // Each element: states, channels, entrance, FLIP.
         // The nodes that animate their layout, by node (FLIP is relative to
         // the nearest of them above).
-        let mut flip_rel = vec![false; self.nodes.len()];
+        let mut flip_rel = std::collections::HashSet::new();
         let mut css_events: Vec<UiEvent> = Vec::new();
         let mut starts: Vec<(u64, String)> = Vec::new();
-        for &i in order {
+        // The nodes that animate, and those a play drives, in preorder.
+        let mut animating = self.orders.with(feat::ANIMATED).to_vec();
+        animating.extend(
+            overrides
+                .iter()
+                .filter_map(|o| self.tree.by_key.get(&o.0).copied()),
+        );
+        animating.sort_unstable_by_key(|&i| self.orders.pre_pos[i]);
+        animating.dedup();
+        for i in animating {
             let key = self.nodes[i].key;
             let props = &self.nodes[i].props;
             let has_override = overrides.iter().any(|o| o.0 == key);
@@ -687,7 +697,7 @@ impl Ui {
                 let mut up = self.nodes[i].parent;
                 let mut origin = (0.0, 0.0);
                 while up != crate::layout::NONE {
-                    if flip_rel[up] {
+                    if flip_rel.contains(&up) {
                         let pr = self.nodes[up].rect;
                         origin = (pr.x, pr.y);
                         break;
@@ -700,7 +710,7 @@ impl Ui {
                     rect.width,
                     rect.height,
                 );
-                flip_rel[i] = true;
+                flip_rel.insert(i);
                 let t = if reduced && fallback != Reduced::Keep {
                     Transition::Instant
                 } else {
@@ -749,16 +759,14 @@ impl Ui {
         // Shared elements: one that arrives where another with its match
         // key was last tick morphs from that one's place, and the old one's
         // drawing follows it while it fades.
-        for &i in order {
-            if self.nodes[i].props.match_key.is_empty() {
-                continue;
-            }
+        for k in 0..self.orders.with(feat::MATCH).len() {
+            let i = self.orders.with(feat::MATCH)[k];
             let key = self.nodes[i].key;
             let mk = name_hash(&self.nodes[i].props.match_key);
             let Some(prev) = m.matches.get(&mk).copied() else {
                 continue;
             };
-            if prev.key == key || prev.tick + 1 < now || present.contains_key(&prev.key) {
+            if prev.key == key || prev.tick + 1 < now || self.tree.by_key.contains_key(&prev.key) {
                 continue;
             }
             let rect = self.nodes[i].rect;
@@ -842,10 +850,10 @@ impl Ui {
         let gone: Vec<u64> = m
             .frozen
             .iter()
-            .filter(|(k, f)| !present.contains_key(k) && f.exit.is_some())
+            .filter(|(k, f)| !self.tree.by_key.contains_key(k) && f.exit.is_some())
             .map(|(k, _)| *k)
             .collect();
-        m.ghosts.retain(|g| !present.contains_key(&g.key));
+        m.ghosts.retain(|g| !self.tree.by_key.contains_key(&g.key));
         for k in gone {
             if m.ghosts.iter().any(|g| g.key == k) {
                 continue;
@@ -907,12 +915,12 @@ impl Ui {
         m.ghosts.retain(|g| {
             let left = now.saturating_sub(g.since) <= u64::from(g.ticks)
                 || g.channels.iter().any(|(_, c)| !c.done(now, tps));
-            left && (g.morph_to == 0 || present.contains_key(&g.morph_to))
+            left && (g.morph_to == 0 || self.tree.by_key.contains_key(&g.morph_to))
         });
 
         // Bursts an event started.
         m.bursts.retain(|b| {
-            present.contains_key(&b.key)
+            self.tree.by_key.contains_key(&b.key)
                 && now.saturating_sub(b.since)
                     < u64::from(crate::style::Theme::ticks(
                         self.theme.durations_ms.slow + self.theme.durations_ms.base,
@@ -926,8 +934,8 @@ impl Ui {
             .retain(|k, c| touched.contains(k) || c.stepped >= now);
         m.groups.retain(|k, _| touched.contains(k));
         m.set_states.retain(|k, _| touched.contains(k));
-        m.flip.retain(|k, _| present.contains_key(k));
-        m.seen.retain(|k, _| present.contains_key(k));
+        m.flip.retain(|k, _| self.tree.by_key.contains_key(k));
+        m.seen.retain(|k, _| self.tree.by_key.contains_key(k));
         // A CSS animation no element ran this tick ended with its element
         // or its `animation-name`.
         m.css.retain(|r| r.stepped == now);

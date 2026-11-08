@@ -418,12 +418,15 @@ impl Ui {
     /// next tick's edit mode.
     pub(crate) fn hud_collect(&mut self, order: &[usize]) {
         let mut targets = Vec::new();
-        let mut editor = Rect::default();
+        let editor = match self.hud_editor_key {
+            0 => Rect::default(),
+            k => self
+                .tree
+                .find(k)
+                .map_or(Rect::default(), |i| self.nodes[i].screen),
+        };
         for &i in order {
             let n = &self.nodes[i];
-            if n.key == self.hud_editor_key && self.hud_editor_key != 0 {
-                editor = n.screen;
-            }
             let Some(spec) = &n.props.customize else {
                 continue;
             };

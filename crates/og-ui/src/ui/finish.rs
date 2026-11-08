@@ -489,14 +489,18 @@ impl Ui {
         }
         self.texts.sweep();
 
-        let mut order = preorder(&self.nodes, 0);
-        for &f in &self.floating {
-            order.extend(preorder(&self.nodes, f));
-        }
+        // The trees' orders and features, kept where nothing changed shape.
+        self.update_orders(whole);
+        let order = std::mem::take(&mut self.orders.pre);
         self.stats.elements = order.len() as u32;
-        self.align_baselines(&order);
-        self.place_anchored(&order);
-        for &i in &order {
+        let baselines = self.orders.with(visit::feat::BASELINE).to_vec();
+        self.align_baselines(&baselines);
+        let anchored = self.orders.with(visit::feat::ANCHORED).to_vec();
+        self.place_anchored(&anchored);
+        // What may change this frame (`visit`): every node on a fresh one.
+        let seeds = (!whole).then(|| self.frame_seeds());
+        let sampled: &[usize] = seeds.as_deref().unwrap_or(&order);
+        for &i in sampled {
             self.nodes[i].sample_style();
         }
         if self.direction == og_i18n::Direction::Rtl {
@@ -512,7 +516,7 @@ impl Ui {
                 let c = &mut self.nodes[i].clip;
                 c.x = vp.width - c.x - c.width;
             }
-            for &i in &order {
+            for &i in sampled {
                 let t = self.nodes[i].sampled.transform;
                 if !t.is_identity() {
                     self.nodes[i].sampled.transform = t.mirrored();
@@ -520,21 +524,35 @@ impl Ui {
             }
         }
         self.apply_shakes(&order);
-        self.apply_stagger(&order);
-        self.run_motion(&order);
+        let staggered = self.orders.with(visit::feat::STAGGER).to_vec();
+        self.apply_stagger(&staggered);
+        self.run_motion();
         self.apply_bursts(&order);
         self.world_place();
+        self.orders.pre = order;
         // Drawn and hit in z order among siblings.
-        let mut order = crate::layout::draw_order(&self.nodes, 0);
-        for &f in &self.floating {
-            order.extend(crate::layout::draw_order(&self.nodes, f));
+        let animated = self.orders.with(visit::feat::ANIMATED).to_vec();
+        self.update_draw_order(&animated);
+        #[cfg(debug_assertions)]
+        if bounded::checking() {
+            self.check_orders();
         }
-        self.world_order(&mut order);
-        self.hud_apply(&order);
-        self.apply_world(&order);
-        self.hud_collect(&order);
+        let order = std::mem::take(&mut self.orders.draw);
+        let custom = self.orders.drawn(visit::feat::CUSTOM);
+        self.hud_apply(&custom);
+        // Maps, opacity and inertness where they may have changed, and
+        // below wherever they did.
+        let world_seeds = seeds.as_ref().map(|s| {
+            let mut w = s.clone();
+            w.extend_from_slice(&self.orders.wrote);
+            w.extend_from_slice(&custom);
+            w
+        });
+        let mapped = self.apply_world(&order, world_seeds.as_deref());
+        self.hud_collect(&custom);
         self.world_finish();
-        self.note_drag_and_drop(&order);
+        let dnd = self.orders.with(visit::feat::DND).to_vec();
+        self.note_drag_and_drop(&dnd);
 
         // Interaction state for the next tick: what is on screen is what
         // the trees' index holds (`tree`), a rich text's links with it.
@@ -560,36 +578,27 @@ impl Ui {
             );
         }
         // Each scroll container's ranges and bar lengths, as drawn.
-        self.kept.scrollers = order
-            .iter()
-            .copied()
-            .filter(|&i| self.nodes[i].scrolls())
-            .collect();
+        self.kept.scrollers = self.orders.drawn(visit::feat::SCROLLS);
         let min_bar = self.theme.space.xl;
-        self.state.scroll_info = IdMap::from_iter(
-            order
-                .iter()
-                .filter(|&&i| self.nodes[i].scrolls())
-                .map(|&i| {
-                    let n = &self.nodes[i];
-                    let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
-                    let bar = Vec2::new(
-                        crate::scroll::bar_len(
-                            n.rect.width,
-                            n.w - n.el.padding.horizontal(),
-                            n.content_w,
-                            min_bar,
-                        ),
-                        crate::scroll::bar_len(
-                            n.rect.height,
-                            n.h - n.el.padding.vertical(),
-                            n.content_h,
-                            min_bar,
-                        ),
-                    );
-                    (n.key, crate::scroll::ScrollInfo { range, bar })
-                }),
-        );
+        self.state.scroll_info = IdMap::from_iter(self.kept.scrollers.iter().map(|&i| {
+            let n = &self.nodes[i];
+            let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
+            let bar = Vec2::new(
+                crate::scroll::bar_len(
+                    n.rect.width,
+                    n.w - n.el.padding.horizontal(),
+                    n.content_w,
+                    min_bar,
+                ),
+                crate::scroll::bar_len(
+                    n.rect.height,
+                    n.h - n.el.padding.vertical(),
+                    n.content_h,
+                    min_bar,
+                ),
+            );
+            (n.key, crate::scroll::ScrollInfo { range, bar })
+        }));
         if let Some((k, _)) = self.state.fling
             && self.tree.find(k).is_none()
         {
@@ -608,192 +617,58 @@ impl Ui {
             .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
         self.touched = touched;
 
-        // Scopes: the nearest scope around each node, by walking the order.
-        let mut scope_of = vec![0u64; self.nodes.len()];
-        let mut scroller_of = vec![0u64; self.nodes.len()];
-        let mut owner_of = vec![0u64; self.nodes.len()];
-        for &i in &order {
-            let n = &self.nodes[i];
-            let up = if n.parent == NONE { NONE } else { n.parent };
-            let (ps, pr) = if up == NONE {
-                (0, 0)
-            } else {
-                (scope_of[up], scroller_of[up])
-            };
-            owner_of[i] = match up {
-                NONE => 0,
-                u if self.nodes[u].nav && !self.nodes[u].inert => self.nodes[u].key,
-                u => owner_of[u],
-            };
-            scope_of[i] = if n.scope { n.key } else { ps };
-            scroller_of[i] = if up != NONE && self.nodes[up].scrolls() {
-                self.nodes[up].key
-            } else {
-                pr
-            };
-        }
+        // Scopes, scrollers, focus owners, groups and recognisers around
+        // each node: again where they may have changed, and below wherever
+        // they did (a layer takes its anchor's).
+        let scope_seeds = seeds.as_ref().map(|s| {
+            let mut w = mapped.clone();
+            w.extend_from_slice(s);
+            w.extend_from_slice(&self.floating);
+            w
+        });
+        let scoped = self.visit(&order, scope_seeds.as_deref(), Self::scope_step);
         // Focus groups, explicit moves and gesture recognisers for the next frame.
-        let mut group_of = vec![0u64; self.nodes.len()];
-        let mut gesture_of = vec![0u64; self.nodes.len()];
-        self.collect_input_specs(&order, &mut group_of, &mut gesture_of);
-        let mut hits = Vec::new();
-        let mut top_scope = 0u64;
-        let mut top_locked = false;
-        // The minimum touch target, in og-ui units (44 CSS px), on a touch screen.
+        self.collect_input_specs();
+        // Hits where a node's place, map or scopes may have changed (every
+        // node when the touch target or the screen did).
         let touch_min = self.touch_min();
-        for &i in &order[1..] {
-            let n = &self.nodes[i];
-            if n.scope && !n.inert {
-                top_scope = n.key;
-                top_locked = n.locked;
+        let hit_seeds = match &seeds {
+            Some(_) if self.orders.hit_inputs == Some((touch_min, screen)) => {
+                let mut h = mapped;
+                h.extend(scoped);
+                Some(h)
             }
-            let visible = n.screen.intersect(&n.clip);
-            // Scrolled or clipped out of view: not on screen, not listed. A
-            // zero-size element (an empty spacer) is listed where it sits.
-            let (r, c) = (&n.screen, &n.clip);
-            let outside =
-                r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
-            // A control laid out past the screen's edge with no scroller to
-            // bring it back (a menu taller than a landscape phone): the
-            // player cannot reach it, so the frame says which and by how much.
-            if n.el.interactive
-                && scroller_of[i] == 0
-                && !r.is_empty()
-                && !n.inert
-                && !crate::world::off_screen(&n.rect)
-            {
-                // Where layout put it: a transform's move (a card thrown
-                // off by a swipe) is not a layout that does not fit.
-                let r = &n.rect;
-                let cut = (screen.x - r.x)
-                    .max(r.right() - screen.right())
-                    .max(screen.y - r.y)
-                    .max(r.bottom() - screen.bottom());
-                if cut > 1.0 {
-                    self.warnings.push(format!(
-                        "'{}' is laid out {:.0} px past the {}x{} screen and nothing scrolls to it: fit the screen (a smaller type step, fewer rows, a row instead of a column) or put it in a scroll container",
-                        self.path_of(i),
-                        cut,
-                        screen.width,
-                        screen.height
-                    ));
-                }
-            }
-            let mut flags = 0u16;
-            if n.scrolls() && !n.el.interactive {
-                flags |= HIT_SCROLL;
-            }
-            if n.el.interactive
-                || n.backdrop
-                || n.props.drag.is_some()
-                || n.props.pinch.is_some()
-                || n.props.gestures.is_some_and(|g| g.any())
-            {
-                flags |= HIT_POINTER;
-            }
-            if n.props.drop.is_some() {
-                flags |= HIT_DROP;
-            }
-            if n.focusable {
-                flags |= HIT_TEXT;
-            }
-            if n.multiline {
-                flags |= HIT_MULTILINE;
-            }
-            if n.nav {
-                flags |= HIT_NAV;
-            }
-            if n.adjust {
-                flags |= HIT_ADJUST;
-            }
-            flags |= u16::from(n.claim) << crate::ui::HIT_CLAIM_SHIFT;
-            if n.scope {
-                flags |= HIT_SCOPE;
-            }
-            if flags == 0 && n.links.is_empty() {
-                continue;
-            }
-            // Its reach past its box: its hit slop, and on a touch screen a
-            // control's box grown to the minimum touch target (§15.2).
-            let slop = n.props.hit_slop.max(0.0);
-            let control = flags & (HIT_POINTER | HIT_TEXT) != 0 && !n.backdrop;
-            let (sx, sy) = if control && touch_min > 0.0 {
-                (
-                    slop.max((touch_min - n.rect.width) / 2.0),
-                    slop.max((touch_min - n.rect.height) / 2.0),
-                )
-            } else {
-                (slop, slop)
-            };
-            let reach = Rect::new(
-                n.rect.x - sx,
-                n.rect.y - sy,
-                n.rect.width + 2.0 * sx,
-                n.rect.height + 2.0 * sy,
-            );
-            let reaches = sx > 0.0 || sy > 0.0;
-            let transformed = !n.world.is_identity();
-            let inv = if transformed {
-                n.world.invert().unwrap_or(Affine::IDENTITY)
-            } else {
-                Affine::IDENTITY
-            };
-            let hit = |rect: Rect, flags: u16| {
-                let rect = if reaches {
-                    n.world.map_rect(&reach).intersect(&n.clip)
-                } else {
-                    rect
-                };
-                Hit {
-                    key: n.key,
-                    rect,
-                    full: *r,
-                    flags,
-                    scope: scope_of[i],
-                    scroller: scroller_of[i],
-                    owner: owner_of[i],
-                    inv,
-                    local: reach,
-                    clip: n.clip,
-                    group: group_of[i],
-                    gesture: gesture_of[i],
-                }
-            };
-            if outside || (visible.is_empty() && !r.is_empty()) {
-                // Navigation can still reach a control just out of a list's view.
-                if n.nav && !n.inert && scroller_of[i] != 0 {
-                    hits.push(hit(*r, (flags & (HIT_NAV | HIT_ADJUST)) | HIT_OFFSCREEN));
-                }
-                continue;
-            }
-            if (!visible.is_empty() || reaches) && flags != 0 && !n.inert {
-                hits.push(hit(visible, flags));
-            }
-            // A rich text's links are controls of their own.
-            if !n.links.is_empty() && !n.inert {
-                for (l, lr) in self.rich_links(i) {
-                    let lr = n.world.map_rect(&lr);
-                    let shown = lr.intersect(&n.clip);
-                    if shown.is_empty() {
-                        continue;
-                    }
-                    hits.push(Hit {
-                        key: child_key(n.key, &l),
-                        rect: shown,
-                        full: lr,
-                        flags: HIT_POINTER | HIT_NAV,
-                        scope: scope_of[i],
-                        scroller: scroller_of[i],
-                        owner: owner_of[i],
-                        inv: Affine::IDENTITY,
-                        local: shown,
-                        clip: n.clip,
-                        group: group_of[i],
-                        gesture: gesture_of[i],
-                    });
-                }
+            _ => None,
+        };
+        self.orders.hit_inputs = Some((touch_min, screen));
+        let mut hits_changed =
+            hit_seeds.is_none() || self.kept.fresh || std::mem::take(&mut self.orders.hits_moved);
+        let hit_seeds = hit_seeds.unwrap_or_else(|| order.clone());
+        for i in hit_seeds {
+            if self.orders.pos[i] != u32::MAX {
+                hits_changed |= self.hit_step(i, touch_min, screen);
             }
         }
+        let o = &self.orders;
+        if hits_changed || self.state.hits.is_empty() {
+            self.state.hits = o
+                .hit_nodes
+                .iter()
+                .flat_map(|&i| o.hit_of[i].iter().copied())
+                .collect();
+        }
+        self.warnings
+            .extend(o.hit_nodes.iter().filter_map(|&i| o.warn_of[i].clone()));
+        let hits = std::mem::take(&mut self.state.hits);
+        // The topmost scope open (not leaving).
+        let (top_scope, top_locked) = o
+            .drawn(visit::feat::SCOPE)
+            .into_iter()
+            .rev()
+            .filter(|&i| i != order[0] && !self.nodes[i].inert)
+            .map(|i| (self.nodes[i].key, self.nodes[i].locked))
+            .next()
+            .unwrap_or((0, false));
         // Focus: kept while its control is on screen (or reachable); a scope
         // that opened takes it (its first control, or the one a widget asked
         // for); a scope that closed gives it back.
@@ -898,21 +773,24 @@ impl Ui {
         // out: a style draws it plain (fantasy's hairline and bevel, no
         // ornament under 160 px, art review 2026-11-04). `Ui::button`
         // decides its own as it builds (its label's ink follows the art).
-        for &i in &order {
+        for k in 0..self.orders.with(visit::feat::BUTTON_PART).len() {
+            let i = self.orders.with(visit::feat::BUTTON_PART)[k];
             let n = &mut self.nodes[i];
-            if !matches!(n.widget, crate::layout::Widget::Button { .. })
-                && let Some(p) = n.el.part.as_mut()
-                && p.class == Some(crate::tokens::ElementClass::Button)
+            if let Some(p) = n.el.part.as_mut()
                 && n.rect.width < NARROW_BUTTON
             {
                 *p = p.flag("narrow");
             }
         }
-        self.build_part_draws(&order);
+        // Parts a style dresses, and game draws it may restyle.
+        let mut parts = self.orders.with(visit::feat::PART).to_vec();
+        parts.extend(self.draws.keys().copied().filter(|&i| self.tree.has(i)));
+        self.build_part_draws(&parts);
         let trees = self.commands(&order);
         let repainted = self.kept.repainted.take();
         self.note_semantics(repainted.as_deref());
-        self.record_matches(&order);
+        let matched = self.orders.with(visit::feat::MATCH).to_vec();
+        self.record_matches(&matched);
         let mut tail = Vec::new();
         if let Some(c) = self.cover {
             let mut cover = Vec::new();
@@ -964,6 +842,7 @@ impl Ui {
                 focus_paths[slot] = path.to_owned();
             }
         }
+        self.orders.draw = order;
         self.frame = UiFrame {
             viewport: vp,
             items,

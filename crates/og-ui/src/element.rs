@@ -1161,7 +1161,7 @@ impl Ui {
     }
 
     /// The node a path names: a full path, else one relative to `from`'s parent.
-    pub(crate) fn node_at(&self, path: &str, from: usize, order: &[usize]) -> Option<usize> {
+    pub(crate) fn node_at(&self, path: &str, from: usize) -> Option<usize> {
         let full = crate::id::key_of_path(path);
         let parent = self.nodes[from].parent;
         let sibling = if parent == NONE {
@@ -1170,16 +1170,11 @@ impl Ui {
             path.split('/')
                 .fold(self.nodes[parent].key, crate::id::child_key)
         };
-        order
-            .iter()
+        self.tree
+            .by_key
+            .get(&full)
+            .or_else(|| self.tree.by_key.get(&sibling))
             .copied()
-            .find(|&j| self.nodes[j].key == full)
-            .or_else(|| {
-                order
-                    .iter()
-                    .copied()
-                    .find(|&j| self.nodes[j].key == sibling)
-            })
     }
 
     /// Anchored elements onto their targets' rectangles.
@@ -1189,7 +1184,7 @@ impl Ui {
                 continue;
             }
             let p = self.nodes[i].props.clone();
-            let Some(t) = self.node_at(&p.anchor_to, i, order) else {
+            let Some(t) = self.node_at(&p.anchor_to, i) else {
                 let at = self.path_of(i);
                 self.warnings.push(format!(
                     "'{at}' is anchored to '{}', which is not on screen: anchorTo takes a full path (Hud/Coins) or a sibling's id",

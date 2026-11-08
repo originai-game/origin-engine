@@ -219,57 +219,53 @@ impl Ui {
     }
 
     /// The focus groups, explicit focus moves and gesture recognisers of
-    /// this frame's nodes (`order`, in draw order), for the next frame:
-    /// each node's nearest group and recogniser around it (`group_of`,
-    /// `gesture_of`, by node, filled here) and the hits' focusable keys in
-    /// reading order (`reach`).
-    pub(crate) fn collect_input_specs(
-        &mut self,
-        order: &[usize],
-        group_of: &mut [u64],
-        gesture_of: &mut [u64],
-    ) {
-        let mut groups: IdMap<u64, GroupState> = IdMap::new();
-        let mut recognizers: IdMap<u64, (GestureSpec, u64)> = IdMap::new();
-        for &i in order {
+    /// this frame's nodes for the next frame, from the nodes that have
+    /// them and each node's nearest group and recogniser around it
+    /// (`visit::Orders::group_of`, `gesture_of`).
+    pub(crate) fn collect_input_specs(&mut self) {
+        let o = &self.orders;
+        // A group's parent group: its parent's (a layer's anchor's, where
+        // the anchor is drawn before it).
+        let around = |i: usize, of: &[u64]| {
             let n = &self.nodes[i];
             let up = if n.parent == NONE { n.anchor } else { n.parent };
-            let (pg, pr) = if up == NONE || up >= self.nodes.len() {
-                (0, 0)
+            if up == NONE || up >= self.nodes.len() || o.pos[up] > o.pos[i] {
+                0
             } else {
-                (group_of[up], gesture_of[up])
-            };
-            if let Some(spec) = n.props.focus_group {
-                let last = self.state.groups.get(&n.key).map_or(0, |g| g.last);
-                groups.insert(
-                    n.key,
-                    GroupState {
-                        spec,
-                        parent: pg,
-                        last,
-                        first: 0,
-                    },
-                );
-                group_of[i] = n.key;
-            } else {
-                group_of[i] = pg;
+                of[up]
             }
-            match n.props.gestures.filter(GestureSpec::any) {
-                Some(spec) if !n.inert => {
-                    recognizers.insert(n.key, (spec, pr));
-                    gesture_of[i] = n.key;
-                }
-                _ => gesture_of[i] = pr,
+        };
+        let mut groups: IdMap<u64, GroupState> = IdMap::new();
+        for &i in o.with(crate::ui::visit::feat::GROUP) {
+            let n = &self.nodes[i];
+            let Some(spec) = n.props.focus_group else {
+                continue;
+            };
+            let last = self.state.groups.get(&n.key).map_or(0, |g| g.last);
+            groups.insert(
+                n.key,
+                GroupState {
+                    spec,
+                    parent: around(i, &o.group_of),
+                    last,
+                    first: 0,
+                },
+            );
+        }
+        let mut recognizers: IdMap<u64, (GestureSpec, u64)> = IdMap::new();
+        for &i in o.with(crate::ui::visit::feat::RECOGNIZER) {
+            let n = &self.nodes[i];
+            if let Some(spec) = n.props.gestures.filter(GestureSpec::any)
+                && !n.inert
+            {
+                recognizers.insert(n.key, (spec, around(i, &o.gesture_of)));
             }
         }
         self.state.groups = groups;
         self.state.recognizers = recognizers;
         // Explicit moves: each path resolved to where it lands.
         let mut links: IdMap<u64, [u64; 6]> = IdMap::new();
-        for &i in order {
-            if self.nodes[i].props.nav.is_empty() {
-                continue;
-            }
+        for i in self.orders.drawn(crate::ui::visit::feat::NAV_LINKS) {
             let nav = self.nodes[i].props.nav.clone();
             let mut to = [0u64; 6];
             for (k, path) in [
@@ -281,8 +277,8 @@ impl Ui {
                 if path.is_empty() {
                     continue;
                 }
-                match self.node_at(path, i, order) {
-                    Some(j) => to[k] = self.landing(j, order),
+                match self.node_at(path, i) {
+                    Some(j) => to[k] = self.landing(j),
                     None => {
                         let at = self.path_of(i);
                         self.warnings.push(format!(
@@ -299,16 +295,15 @@ impl Ui {
     /// Where a focus move to node `j` lands: a group (resolved when the
     /// move is made), a focusable control, or the first focusable control
     /// inside it.
-    fn landing(&self, j: usize, order: &[usize]) -> u64 {
+    fn landing(&self, j: usize) -> u64 {
         let n = &self.nodes[j];
         if n.props.focus_group.is_some() || n.nav || n.focusable {
             return n.key;
         }
-        let sub = crate::layout::preorder(&self.nodes, j);
-        order
-            .iter()
-            .copied()
-            .filter(|o| sub.contains(o))
+        // Its subtree in drawing order.
+        let mut sub = crate::layout::preorder(&self.nodes, j);
+        sub.sort_unstable_by_key(|&o| self.orders.pos[o]);
+        sub.into_iter()
             .find(|&o| {
                 let m: &Node = &self.nodes[o];
                 (m.nav || m.focusable) && !m.inert

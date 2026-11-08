@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "Finishing a frame no longer walks every node: the drawing order and each node's features (motion, drags, matches, anchors, groups, recognisers, scrollers, scopes, parts) are kept across frames and made again only where the trees changed shape, and each node's map, opacity, inertness, scopes and hits are made again only where they may have changed and below wherever they did. An idle frame's finish no longer grows with the size of the tree."
+    }
+  ]
+}

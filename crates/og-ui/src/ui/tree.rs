@@ -32,6 +32,9 @@ pub(crate) struct TreeIndex {
     /// last taken (`Ui::note_semantics`).
     pub(crate) moved_keys: Vec<u64>,
     pub all_restructured: bool,
+    /// Changes whenever a node enters or leaves a tree or a parent's
+    /// children change: what the frame's orders are kept by (`visit`).
+    pub shape: u64,
 }
 
 impl TreeIndex {
@@ -109,6 +112,7 @@ impl Ui {
         t.grow(n);
         let nodes = &self.nodes;
         t.all_restructured |= whole;
+        let shape = t.shape + 1;
         if whole {
             *t = TreeIndex::default();
             t.all_restructured = true;
@@ -122,6 +126,7 @@ impl Ui {
                     t.mark(nodes, r, true);
                 }
             }
+            t.shape = shape;
             return;
         }
         // Nodes whose place in a tree may have changed.
@@ -141,12 +146,14 @@ impl Ui {
             queue.extend(new.iter().filter(|c| !old.contains(c)));
         }
         if t.floats != self.floating {
+            t.shape = shape;
             let old = std::mem::replace(&mut t.floats, self.floating.clone());
             queue.extend(old.iter().filter(|c| !self.floating.contains(c)));
             queue.extend(self.floating.iter().filter(|c| !old.contains(c)));
         }
         // The screen's root is always in its tree.
         if n > 0 && !t.in_tree[0] {
+            t.shape = shape;
             t.mark(nodes, 0, true);
         }
         // Parents first, so a child reads its parent's final membership.
@@ -158,6 +165,9 @@ impl Ui {
             }
             d
         };
+        if !queue.is_empty() || !t.restructured.is_empty() {
+            t.shape = shape;
+        }
         let mut queue: Vec<(u32, usize)> = queue.into_iter().map(|i| (depth(i), i)).collect();
         queue.sort_unstable();
         queue.dedup();
@@ -197,6 +207,7 @@ impl Ui {
         }
         t.kids[i].clear();
         t.vacated.push(i);
+        t.shape += 1;
     }
 }
 
