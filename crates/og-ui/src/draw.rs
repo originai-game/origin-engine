@@ -718,6 +718,7 @@ fn levelled(
 
 /// Assigns painter levels in submission order (see the module
 /// documentation); each command's bounds are taken under its map.
+#[cfg(any(test, debug_assertions))]
 pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
     assign_levels_kept(cmds).0
 }

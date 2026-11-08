@@ -968,7 +968,7 @@ impl Ui {
             let mut cmds: Vec<(DrawCmd, Affine)> = trees.to_vec();
             cmds.extend(tail.iter().cloned());
             let cmds: Vec<_> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
-            let fresh = crate::draw::zoom_items(assign_levels(cmds), self.unit);
+            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), self.unit);
             assert!(
                 fresh == items,
                 "the frame's items levelled again differ from levelling it afresh"
