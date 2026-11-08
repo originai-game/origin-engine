@@ -1429,22 +1429,12 @@ impl Ui {
         k.sig = Some(sig);
         k.fresh = fresh;
         k.laid_out = 0;
-        let by_key: crate::id::KeyMap<usize> =
-            crate::id::KeyMap::from_iter(k.prev.iter().enumerate().map(|(i, p)| (p.key, i)));
-        k.twin = nodes
-            .iter()
-            .map(|nd| by_key.get(&nd.key).copied().unwrap_or(NONE))
-            .collect();
         k.clean = vec![false; n];
         let mut rebuilt = 0u32;
-        let keys = |list: &[usize], all: &[Node]| -> Vec<u64> {
-            list.iter().map(|&c| all[c].key).collect()
-        };
-        // Children come after their parents: backwards is bottom-up.
-        for i in (0..n).rev() {
+        // Emission order, unlike slot order, puts children after parents.
+        for &i in self.emitted.iter().rev() {
             let a = &nodes[i];
-            let t = k.twin[i];
-            let Some(b) = k.prev.get(t) else {
+            let Some(b) = k.prev.get(&i) else {
                 rebuilt += 1;
                 continue;
             };
@@ -1453,8 +1443,8 @@ impl Ui {
                 && crate::layout::props_layout_eq(&a.props, &b.props)
                 && a.float == b.float
                 && a.float == Float::None
-                && keys(&a.children, nodes) == keys(&b.children, &k.prev)
-                && keys(&a.out, nodes) == keys(&b.out, &k.prev);
+                && a.children == b.children
+                && a.out == b.out;
             let same = same_layout
                 && a.el == b.el
                 && a.content == b.content
@@ -1468,7 +1458,7 @@ impl Ui {
                 && same_layout
                 && a.children.iter().chain(&a.out).all(|&c| {
                     k.clean[c]
-                        || k.prev.get(k.twin[c]).is_some_and(|old| {
+                        || k.prev.get(&c).is_some_and(|old| {
                             let child = &nodes[c];
                             // A fixed box still lays out its dirty contents, but
                             // those contents cannot change its parent's sizing.
@@ -1483,13 +1473,13 @@ impl Ui {
                         })
                 });
         }
-        for (i, node) in self.nodes.iter_mut().enumerate() {
-            if let Some(previous) = k.prev.get(k.twin[i]) {
-                node.inherit_layout(previous, k.clean[i]);
+        for &i in &self.emitted {
+            if let Some(previous) = k.prev.get(&i) {
+                self.nodes[i].inherit_layout(previous, k.clean[i]);
             }
         }
         self.stats = LayoutStats {
-            elements: n as u32,
+            elements: self.emitted.len() as u32,
             rebuilt,
             laid_out: 0,
             kept_commands: 0,

@@ -215,10 +215,8 @@ impl<V> Sweep for std::collections::HashMap<String, Vec<Kept<V>>> {
 /// the child still lays out even when the parent reuses its own layout.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct LayoutCache {
-    /// Last frame's nodes, with their layout.
-    pub prev: Vec<Node>,
-    /// Per node of this frame: its twin in `prev` (NONE: new).
-    pub twin: Vec<usize>,
+    /// Replaced or removed slots, with their previous layout.
+    pub prev: std::collections::HashMap<usize, Node>,
     /// Per node: its own layout inputs and child size contributions are unchanged.
     pub clean: Vec<bool>,
     /// Fonts, theme, direction or pixel ratio changed: nothing is clean.

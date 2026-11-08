@@ -80,6 +80,7 @@ impl Ui {
         }
         crate::layers::build_without_host(self);
         self.build_toasts();
+        self.retire_nodes();
         self.building = false;
         // Breakpoint and orientation variants (docs/ui.md §2), before
         // anything is laid out.
@@ -95,6 +96,7 @@ impl Ui {
                 .into_iter()
                 .filter(|&c| !self.nodes[c].hidden)
                 .collect();
+            self.nodes[i].ordered_children = kept.clone();
             self.nodes[i].children = kept;
             // Out of the flow (absolute, anchored): laid out against the box.
             if self.nodes[i]

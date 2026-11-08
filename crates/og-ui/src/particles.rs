@@ -308,7 +308,7 @@ impl Ui {
     /// its clip. Built every tick it emits; a burst fires on the ticks
     /// `fire` is set. Nothing under reduced motion.
     pub fn particles(&mut self, desc: ParticlesDesc) {
-        let Some(node) = self.nodes.len().checked_sub(1) else {
+        let Some(&node) = self.emitted.last() else {
             return;
         };
         let at = (self.last_closed != NONE).then_some(self.last_closed);

@@ -340,6 +340,8 @@ pub(crate) struct Node {
     pub id: String,
     pub parent: usize,
     pub children: Vec<usize>,
+    /// Sibling order before the flow/out-of-flow partition, independent of slots.
+    pub ordered_children: Vec<usize>,
     pub el: Element,
     pub content: Content,
     pub widget: Widget,
@@ -443,6 +445,7 @@ impl Node {
             id,
             parent,
             children: Vec::new(),
+            ordered_children: Vec::new(),
             el,
             content: Content::None,
             widget: Widget::None,

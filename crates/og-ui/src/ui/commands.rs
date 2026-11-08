@@ -200,13 +200,12 @@ impl Ui {
                 }
                 out.into_iter().map(|c| (c, world)).collect()
             };
-            let twin = self.kept.twin.get(i).copied().unwrap_or(NONE);
             // Rich text draws from the tick (its moving spans), focus and
             // the hot link as well: it is always made again.
             same[i] = !self.kept.fresh
                 && !matches!(n.content, Content::Rich(_))
-                && self.kept.prev.get(twin).is_some_and(|b| {
-                    crate::layout::draw_eq(n, b) && self.kinds[i] == prev_kinds[twin]
+                && self.kept.prev.get(&i).is_some_and(|b| {
+                    crate::layout::draw_eq(n, b) && Some(&self.kinds[i]) == prev_kinds.get(&i)
                 })
                 && (n.parent == NONE || same[n.parent])
                 && !game_draw;

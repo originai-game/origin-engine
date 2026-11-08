@@ -414,7 +414,12 @@ pub struct Ui {
     pub(crate) nodes: Vec<Node>,
     pub(crate) kinds: Vec<(&'static str, bool)>,
     /// Last frame's `kinds`, beside `kept.prev`.
-    pub(crate) prev_kinds: Vec<(&'static str, bool)>,
+    pub(crate) prev_kinds: std::collections::HashMap<usize, (&'static str, bool)>,
+    render_slots: std::collections::HashMap<(u64, usize), usize>,
+    free_slots: Vec<usize>,
+    pub(crate) emitted: Vec<usize>,
+    retiring: Vec<usize>,
+    slot_present: Vec<bool>,
     /// This frame's element keys under a parent, which a repeated id
     /// would take again (`Ui::push` renames it), and the anonymous
     /// elements of each kind under each parent: kept as built, so a

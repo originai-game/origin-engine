@@ -22,7 +22,12 @@ impl Ui {
             native_input: Default::default(),
             nodes: Vec::new(),
             kinds: Vec::new(),
-            prev_kinds: Vec::new(),
+            prev_kinds: Default::default(),
+            render_slots: Default::default(),
+            free_slots: Vec::new(),
+            emitted: Vec::new(),
+            retiring: Vec::new(),
+            slot_present: Vec::new(),
             built: Default::default(),
             anonymous: Default::default(),
             stack: Vec::new(),
@@ -447,13 +452,14 @@ impl Ui {
         self.theme = effective_theme(self.configured, &viewport).to_unit(unit);
         // The style's atlas at the density this surface draws at.
         self.theme.art.atlas = self.configured.art.atlas_for(viewport.dpr());
-        // Last frame's nodes are kept to compare against (docs/ui.md §2).
-        if !self.building {
-            std::mem::swap(&mut self.kept.prev, &mut self.nodes);
-            std::mem::swap(&mut self.prev_kinds, &mut self.kinds);
+        self.retire_nodes();
+        self.kept.prev.clear();
+        self.prev_kinds.clear();
+        std::mem::swap(&mut self.emitted, &mut self.retiring);
+        self.emitted.clear();
+        for &i in &self.retiring {
+            self.slot_present[i] = false;
         }
-        self.nodes.clear();
-        self.kinds.clear();
         self.built.clear();
         self.anonymous.clear();
         self.stack.clear();
@@ -544,8 +550,7 @@ impl Ui {
         el.height = Size::Fixed(viewport.height);
         el.padding = el.padding.add(&viewport.safe_area);
         el.scroll = false;
-        self.nodes.push(Node::new(1, String::new(), NONE, el));
-        self.kinds.push(("root", false));
+        self.write_node(Node::new(1, String::new(), NONE, el), ("root", false));
         self.stack.push(0);
     }
 }

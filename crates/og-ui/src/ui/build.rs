@@ -1,6 +1,58 @@
 use super::*;
 
 impl Ui {
+    pub(super) fn write_node(&mut self, node: Node, kind: (&'static str, bool)) -> usize {
+        let identity = (node.key, node.parent);
+        let i = if let Some(&i) = self.render_slots.get(&identity) {
+            let previous = std::mem::replace(&mut self.nodes[i], node);
+            self.kept.prev.entry(i).or_insert(previous);
+            self.prev_kinds.entry(i).or_insert(self.kinds[i]);
+            self.kinds[i] = kind;
+            i
+        } else if let Some(i) = self.free_slots.pop() {
+            self.nodes[i] = node;
+            self.kinds[i] = kind;
+            self.render_slots.insert(identity, i);
+            i
+        } else {
+            let i = self.nodes.len();
+            self.nodes.push(node);
+            self.kinds.push(kind);
+            self.slot_present.push(false);
+            self.render_slots.insert(identity, i);
+            i
+        };
+        self.slot_present[i] = true;
+        self.emitted.push(i);
+        i
+    }
+
+    pub(super) fn retire_nodes(&mut self) {
+        for &i in &self.retiring {
+            if self.slot_present[i] {
+                continue;
+            }
+            let old = &self.nodes[i];
+            self.render_slots.remove(&(old.key, old.parent));
+            let mut vacant = Node::new(0, String::new(), NONE, Element::default());
+            vacant.hidden = true;
+            let old = std::mem::replace(&mut self.nodes[i], vacant);
+            self.kept.prev.entry(i).or_insert(old);
+            self.prev_kinds.entry(i).or_insert(self.kinds[i]);
+            self.kinds[i] = ("vacant", false);
+            self.free_slots.push(i);
+        }
+        self.retiring.clear();
+    }
+
+    pub(crate) fn previous_node(&self, i: usize) -> Option<&Node> {
+        self.kept.prev.get(&i).or_else(|| self.nodes.get(i))
+    }
+
+    pub(crate) fn previous_nodes(&self) -> impl Iterator<Item = &Node> {
+        self.retiring.iter().filter_map(|&i| self.previous_node(i))
+    }
+
     /// A further touch (pointers 1 to 4, `og.Pointers`) on the touch control
     /// `key`: the first pointer held, or released this tick, that started on
     /// its last-frame rectangle (`by_start`, a stick that keeps the finger
@@ -80,9 +132,7 @@ impl Ui {
             ));
             local = renamed;
         }
-        let index = self.nodes.len();
-        self.nodes.push(Node::new(key, local, parent, el));
-        self.kinds.push((kind, anonymous));
+        let index = self.write_node(Node::new(key, local, parent, el), (kind, anonymous));
         self.nodes[parent].children.push(index);
         index
     }
@@ -186,7 +236,7 @@ impl Ui {
     /// blend, how it clips its children and whether its subtree draws
     /// offscreen through a material; over its background.
     pub fn set_draw(&mut self, draw: crate::paint::ElementDraw) {
-        if let Some(last) = self.nodes.len().checked_sub(1) {
+        if let Some(&last) = self.emitted.last() {
             if self.draws.contains_key(&last) {
                 let path = self.path_of(last);
                 self.warnings.push(format!(
@@ -206,7 +256,7 @@ impl Ui {
     /// replaces the whole draw; the draw's shape stays, so a ring, a star
     /// or a segment keeps its geometry in every style (docs/ui.md §3.2).
     pub fn set_draw_dressable(&mut self, draw: crate::paint::ElementDraw) {
-        if let Some(last) = self.nodes.len().checked_sub(1) {
+        if let Some(&last) = self.emitted.last() {
             self.draws.insert(last, draw);
             self.dressable.insert(last);
         }
@@ -432,9 +482,7 @@ impl Ui {
         node.probe_text = text.to_owned();
         node.anchor = anchor;
         node.float = Float::Tooltip;
-        let index = self.nodes.len();
-        self.nodes.push(node);
-        self.kinds.push(("tooltip", false));
+        let index = self.write_node(node, ("tooltip", false));
         self.floating.push(index);
     }
 
@@ -475,9 +523,7 @@ impl Ui {
         let mut node = Node::new(key, local, NONE, el);
         node.float = float;
         node.anchor = anchor;
-        let index = self.nodes.len();
-        self.nodes.push(node);
-        self.kinds.push((kind, false));
+        let index = self.write_node(node, (kind, false));
         self.floating.push(index);
         self.stack.push(index);
         index

@@ -521,12 +521,9 @@ pub(crate) fn preorder(nodes: &[Node], root: usize) -> Vec<usize> {
     order
 }
 
-/// A node's children in and out of the flow, in build order (node indices
-/// grow in build order).
+/// A node's children in and out of the flow, in sibling order.
 pub(crate) fn all_children(n: &Node) -> Vec<usize> {
-    let mut all: Vec<usize> = n.children.iter().chain(&n.out).copied().collect();
-    all.sort_unstable();
-    all
+    n.ordered_children.clone()
 }
 
 /// The preorder with each node's children in drawing order: by `z`, then

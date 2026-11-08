@@ -580,9 +580,9 @@ impl Ui {
         // Letters pick only in a list's kind of group, never a toolbar's or a
         // game's, where they are its own keys.
         let listy = !typed.is_empty()
-            && self.kept.prev.iter().enumerate().any(|(i, n)| {
+            && self.nodes.iter().enumerate().any(|(i, n)| {
                 n.key == from.group
-                    && TYPE_SELECT_ROLES.contains(&crate::a11y::role_of(self.prev_kinds[i].0, n))
+                    && TYPE_SELECT_ROLES.contains(&crate::a11y::role_of(self.kinds[i].0, n))
             });
         if listy && !typed.is_empty() && !input.ctrl && !input.meta {
             let tick = self.state.tick;
@@ -600,9 +600,8 @@ impl Ui {
                 buffer.clone()
             };
             let mut names = crate::id::KeyMap::default();
-            for (i, node) in self.kept.prev.iter().enumerate() {
-                let (_, name, _, _, _) =
-                    crate::a11y::node_info(&self.kept.prev, &self.prev_kinds, i);
+            for (i, node) in self.nodes.iter().enumerate() {
+                let (_, name, _, _, _) = crate::a11y::node_info(&self.nodes, &self.kinds, i);
                 let name = if name.is_empty() {
                     &node.probe_text
                 } else {

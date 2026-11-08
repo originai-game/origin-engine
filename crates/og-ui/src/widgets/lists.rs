@@ -30,7 +30,7 @@ impl Ui {
         if key == 0 {
             return None;
         }
-        self.kept.prev.iter().find(|n| n.key == key).map(|n| n.rect)
+        self.previous_nodes().find(|n| n.key == key).map(|n| n.rect)
     }
 
     /// Opens a virtualised list (a scroll column) and answers which rows to
@@ -139,11 +139,9 @@ impl Ui {
     ) -> (ListRange, f32, f32) {
         let prefix = if grid { "Cell#" } else { "Row#" };
         let measurements: Vec<_> = self
-            .kept
-            .prev
-            .iter()
+            .previous_nodes()
             .filter_map(|n| {
-                let parent = self.kept.prev.get(n.parent)?;
+                let parent = self.previous_node(n.parent)?;
                 if parent.key != container {
                     return None;
                 }
