@@ -849,6 +849,9 @@ impl Ui {
                 };
                 self.badge(id.as_str(), &text, tone);
             }
+            "kbd" => {
+                resp = self.kbd(b, n, id.as_str(), &r, text_of(&r, b));
+            }
             "spacer" => {
                 let s = r.size("width").or(r.size("height"));
                 self.spacer(id.as_str(), s);

@@ -392,6 +392,45 @@ impl Ui {
         }
     }
 
+    /// The engine's `$ui` store (docs/ui.md §2): the device used last, a
+    /// coarse pointer, and the action bar (each action's hint, glyph and
+    /// hold), as a document reads it.
+    pub(crate) fn ui_store_value(&self) -> Value {
+        json!({
+            "device": self.actions.device.name(),
+            "coarsePointer": self.viewport.coarse_pointer,
+            "actions": self.action_bar().iter().map(ActionHint::to_json).collect::<Vec<_>>(),
+        })
+    }
+
+    /// Publishes `$ui` to mounted documents when it changed, so only what
+    /// reads it rebuilds.
+    pub(crate) fn publish_ui_store(&mut self) {
+        use crate::reactive::session::Command;
+        let value = self.ui_store_value();
+        if self.docs.ui_store.as_ref() == Some(&value) {
+            return;
+        }
+        let command = if self.docs.ui_store.is_none() {
+            Command::Signal {
+                source: crate::doc::UI_STORE.clone(),
+                initial: value.clone(),
+                readable: false,
+            }
+        } else {
+            Command::Set {
+                source: crate::doc::UI_STORE.clone(),
+                value: value.clone(),
+                force: false,
+            }
+        };
+        if let Err(e) = self.reactive.execute(command) {
+            self.warnings.push(format!("$ui store: {e}"));
+            return;
+        }
+        self.docs.ui_store = Some(value);
+    }
+
     /// The actions' state as JSON (dump_ui's `actions`).
     pub fn actions_json(&self) -> Value {
         let fired = self.actions.fired.clone();

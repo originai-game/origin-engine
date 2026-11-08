@@ -45,6 +45,12 @@ pub use spans::SpanRule;
 pub const SCREEN_TYPE: &str = "screen";
 pub const COMPONENT_TYPE: &str = "component";
 
+/// The engine's `$ui` store, which every mounted document reads unless it
+/// binds its own `ui` (docs/ui.md §2): the device used last, a coarse
+/// pointer and the action bar.
+pub(crate) static UI_STORE: std::sync::LazyLock<crate::reactive::SourceId> =
+    std::sync::LazyLock::new(|| crate::reactive::SourceId::new("og", "ui"));
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DocKind {
     Screen,

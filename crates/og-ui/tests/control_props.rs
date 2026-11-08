@@ -585,3 +585,64 @@ fn aria_attributes_reach_the_accessibility_tree() {
     let bad = refused(r#"<meta name="component" content="t"><div role="banana">x</div>"#);
     assert!(bad.contains("not an accessibility role"), "{bad}");
 }
+
+/// Device-following glyphs (G7): `<kbd data-action>` shows the action's
+/// key on a keyboard and its button on a pad, rebuilt when the device
+/// changes; `$ui` carries the device, the coarse pointer and the action
+/// bar; `data-og-rebind` captures the next key into its bound value.
+/// Ways it could fail: a glyph stuck on the device it was built for, `$ui`
+/// not reaching a mounted or an immediate document, the capture writing
+/// Escape or never ending.
+#[test]
+fn kbd_glyphs_follow_the_device_and_rebind() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <kbd id="J" data-action="jump"></kbd>
+  <kbd id="Esc">Esc</kbd>
+  <p id="Dev">{$ui.device}</p>
+  <p id="Count">{$ui.coarsePointer ? "touch" : "fine"}</p>
+  <kbd id="R" data-action="jump" data-og-rebind bind:value={$key}></kbd>
+</div>"#;
+    both(text, &[("key", json!("KeyE"))], |d| {
+        d.ui.define_action(ActionDesc {
+            name: "jump".into(),
+            keys: vec!["KeyE".into()],
+            buttons: vec!["a".into()],
+            label: "Jump".into(),
+            ..ActionDesc::default()
+        });
+        d.ui.set_device(og_input::Device::KeyboardMouse);
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+        let key_cap = d.get("J").text;
+        assert_eq!(d.get("Esc").text, "Esc");
+        assert_eq!(d.get("Dev").text, "keyboardMouse");
+        assert_eq!(d.get("Count").text, "fine");
+        assert_eq!(d.a11y("J").name, "Jump", "named by the action");
+        d.ui.set_device(og_input::Device::Xbox);
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+        assert_ne!(d.get("J").text, key_cap, "the glyph follows the device");
+        assert_eq!(d.get("Dev").text, "xbox");
+        d.ui.set_device(og_input::Device::KeyboardMouse);
+        d.click("R");
+        d.step(InputFrame {
+            keys_pressed: vec!["KeyQ"],
+            keys_held: vec!["KeyQ"],
+            ..InputFrame::default()
+        });
+        d.step(InputFrame::default());
+        if d.mounted {
+            assert_eq!(d.read("key"), json!("KeyQ"), "the next key is its binding");
+        }
+        d.click("R");
+        d.step(InputFrame {
+            keys_pressed: vec!["Escape"],
+            ..InputFrame::default()
+        });
+        d.step(InputFrame::default());
+        if d.mounted {
+            assert_eq!(d.read("key"), json!("KeyQ"), "Escape cancels");
+        }
+    });
+}

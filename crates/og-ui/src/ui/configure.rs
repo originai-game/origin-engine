@@ -548,6 +548,7 @@ impl Ui {
         self.world_begin(&mut input);
         self.docs_begin();
         self.actions_begin(&input);
+        self.publish_ui_store();
 
         // Hit test against last frame's rectangles, topmost first.
         let p = input.pointer;

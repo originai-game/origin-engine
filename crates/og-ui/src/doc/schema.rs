@@ -169,6 +169,11 @@ pub const CORE_KINDS: &[KindSpec] = &[
         doc: "A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states.",
     },
     KindSpec {
+        name: "kbd",
+        container: false,
+        doc: "A key or an action's glyph: `<kbd>Esc</kbd>` a keycap, `<kbd data-action=\"jump\"></kbd>` the action's glyph on the device used last.",
+    },
+    KindSpec {
         name: "image",
         container: false,
         doc: "A texture (or a tint).",
@@ -760,6 +765,32 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Word(&["page", "step", "location", "date", "time", "true", "false"]),
         "The current item in a set (`aria-current`): a pagination's page, a breadcrumb's last, a wizard's step."
     ),
+    // Glyphs.
+    p!(
+        "dataAction",
+        Ty::Name,
+        ["kbd"],
+        "The action whose glyph it shows on the device used last (its key, its pad button, or its touch icon); it follows the device live."
+    ),
+    p!(
+        "glyphDevice",
+        Ty::Text,
+        ["kbd"],
+        "The device it draws for (bound to `$ui.device` by the parser: a device change rebuilds it)."
+    ),
+    p!(
+        "dataOgRebind",
+        Ty::Bool,
+        ["kbd"],
+        "A press captures the next key as its binding (`bind:value`), Escape cancels."
+    ),
+    p!(
+        "binding",
+        Ty::Text,
+        ["kbd"],
+        two_way,
+        "With dataOgRebind: the key code it captured (`bind:value`), written back."
+    ),
     p!(
         "dataOgInstant",
         Ty::Bool,
@@ -774,13 +805,13 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "text",
         Ty::Text,
-        ["label", "button", "badge", "toggle", "tabs"],
+        ["label", "button", "badge", "toggle", "tabs", "kbd"],
         "What it says."
     ),
     p!(
         "key",
         Ty::Name,
-        ["label", "button", "badge", "toggle", "tabs"],
+        ["label", "button", "badge", "toggle", "tabs", "kbd"],
         "A string table key (og.i18n) its text comes from; `text` is the fallback."
     ),
     p!("step", Ty::Word(STEPS), ["label"], "The type step."),

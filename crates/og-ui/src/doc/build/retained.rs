@@ -1776,6 +1776,12 @@ impl Ui {
             .get(document)
             .cloned()
             .ok_or_else(|| format!("missing document '{document}'"))?;
+        // Every mount reads the engine's `$ui` unless it binds its own.
+        let mut inputs = inputs;
+        if !inputs.contains_key("ui") {
+            self.publish_ui_store();
+            inputs.insert("ui".into(), crate::doc::UI_STORE.clone());
+        }
         let mut host = std::mem::take(&mut self.docs.retained);
         if host.roots.contains_key(&mount) {
             self.docs.retained = host;

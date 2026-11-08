@@ -1138,6 +1138,9 @@ impl Parser {
             if name == "value" && internal == "select" {
                 name = "current".into();
             }
+            if name == "value" && internal == "kbd" {
+                name = "binding".into();
+            }
             if a.name == "hidden" {
                 name = "visible".into();
             }
@@ -1186,6 +1189,18 @@ impl Parser {
             } else {
                 self.prop(i, internal, &name, value, a.at, &a.value)?;
             }
+        }
+        // An action's glyph follows the device: it reads `$ui.device`.
+        if internal == "kbd" && attrs.iter().any(|a| a.name == "data-action") {
+            let device = expression("$ui.device", at)?;
+            self.prop(
+                i,
+                internal,
+                "glyphDevice",
+                PropValue::Bind(device, None),
+                at,
+                "",
+            )?;
         }
         if tag == "textarea" {
             self.prop(

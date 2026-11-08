@@ -90,6 +90,8 @@ pub struct DocHost {
     /// `data-og-instant` elements whose first entrance has landed: a
     /// later one plays (presentation, outside `world_hash`).
     pub(crate) entered: BTreeSet<u64>,
+    /// The `$ui` store's value as last published.
+    pub(crate) ui_store: Option<Value>,
     /// This tick's builds, slots and art slots.
     pub(crate) built: Vec<Built>,
     pub(crate) slots: BTreeMap<String, usize>,
@@ -285,6 +287,10 @@ impl Ui {
             return DocResponse::default();
         };
         let mount = format!("{}/{id}", self.path_of(self.parent()));
+        // An immediate document reads `$ui` from its viewmodel.
+        if let Some(vm) = props.as_object_mut() {
+            vm.insert("$ui".into(), self.ui_store_value());
+        }
         let game = self.game_input();
         let accepts = std::mem::replace(&mut self.docs.accepts, game);
         let r = self.mount_doc(doc, mount, id, props, env, Arc::default());

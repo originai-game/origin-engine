@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "<kbd> is a keycap, and <kbd data-action=\"jump\"> the action's glyph on the device used last, rebuilt when the device changes; data-og-rebind bind:value captures the next key. Every document reads the engine's $ui store: device, coarsePointer and the top layer's action bar."
+    }
+  ]
+}

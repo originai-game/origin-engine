@@ -119,6 +119,24 @@ Elements HTML has no name for (`column`, `row`, `stack`, `grid`, `panel`,
 `scroll`, the virtualised `list` and `cells`, `art`, `icon`, `tabs`,
 `badge`, `spacer`) keep their names.
 
+#### Glyphs and the `$ui` store
+
+`<kbd>Esc</kbd>` is a keycap. `<kbd data-action="jump"></kbd>` is the
+action's glyph on the device used last: its key on a keyboard, its button
+on a pad (the pad family's), its touch icon under a finger; the style's
+icon where the atlas has one, else the name on a cap. It is named by the
+action's label and rebuilt when the device changes. With
+`data-og-rebind bind:value={$jump}` it is a button whose press captures
+the next key (its code, `KeyQ`) into the store; Escape cancels. The game
+applies the binding through og.input.
+
+Every document reads the engine's `$ui` store (a mount that binds its own
+`ui` keeps it): `$ui.device` (`keyboardMouse`, `xbox`, `playstation`,
+`switch`, `touch`…), `$ui.coarsePointer`, and `$ui.actions`, the action
+bar of the top layer, each `{ action, hint, icon, text, hold }`. An
+action hint row is `{#each $ui.actions as a (a.action)}<kbd data-action={a.action}></kbd><span>{a.hint}</span>{/each}`.
+It is published only when it changes, so only what reads it rebuilds.
+
 #### ARIA
 
 Any element takes ARIA over what its kind tells the accessibility tree:
