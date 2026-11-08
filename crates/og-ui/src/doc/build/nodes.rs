@@ -240,27 +240,19 @@ impl Ui {
                         id.as_str(),
                         crate::ui::PanelDesc {
                             row: false,
-                            width: r.size("width").unwrap_or_default(),
-                            height: r.size("height").unwrap_or_default(),
                             ..Default::default()
                         },
                     );
-                    let at = self.parent();
-                    self.nodes[at].el = Ui::box_of(&r, self.nodes[at].el);
-                    self.nodes[at].props = props;
                 }
                 "scroll" => {
                     self.open_scroll(
                         id.as_str(),
                         crate::ui::ScrollDesc {
-                            width: r.size("width").unwrap_or(Size::grow()),
-                            height: r.size("height").unwrap_or(Size::grow()),
+                            width: Size::grow(),
+                            height: Size::grow(),
                             ..Default::default()
                         },
                     );
-                    let at = self.parent();
-                    self.nodes[at].el = Ui::box_of(&r, self.nodes[at].el);
-                    self.nodes[at].props = props;
                 }
                 "list" | "cells" => {
                     let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
@@ -275,19 +267,22 @@ impl Ui {
                     return Some(path);
                 }
                 _ => {
-                    let el = Ui::box_of(
-                        &r,
+                    self.open(
+                        id.as_str(),
                         Element {
-                            direction: match r.str("direction").unwrap_or(kind) {
+                            direction: match kind {
                                 "row" => Direction::Row,
                                 _ => Direction::Column,
                             },
                             ..Element::default()
                         },
                     );
-                    self.open_with(id.as_str(), el, props);
                 }
             }
+            let fields =
+                fields::RenderFields::capture(self, self.parent(), kind, resp, props, None);
+            self.apply_document_fields(n, &r, &fields);
+            self.docs.render_fields.insert(key, fields);
             if let Some(id) = r.str("rive") {
                 let at = self.parent();
                 self.play_rive(at, id, &path);
@@ -306,35 +301,15 @@ impl Ui {
             self.fire(b, n, key, &path, resp);
             return Some(path);
         }
-        // A leaf: its widget, then its props and box over the widget's.
+        // Keep the widget's intrinsic box separate from CSS-owned fields.
+        // Settlement can replace those fields without processing its input again.
+        let styled = r;
+        let r = styled.intrinsic();
+        let mut texture = None;
         match kind {
             "label" => {
                 let text = text_of(&r, b);
-                let desc = LabelDesc {
-                    step: r.str("step").and_then(|s| {
-                        crate::style_file::ramp_step(&mut t.type_ramp.clone(), s).copied()
-                    }),
-                    color: r.color("color"),
-                    on_scene: r.flag("onScene"),
-                    uppercase: r.flag("uppercase"),
-                    align: match r.str("textAlign") {
-                        Some("center") => TextAlign::Center,
-                        Some("end") => TextAlign::End,
-                        _ => TextAlign::Start,
-                    },
-                    nowrap: r.flag("nowrap"),
-                    width: r.size("width").unwrap_or_default(),
-                    font: r
-                        .str("font")
-                        .and_then(FontRole::from_name)
-                        .unwrap_or_default(),
-                    heading: r.flag("heading"),
-                    ellipsis: r.flag("ellipsis"),
-                    max_lines: r.num("maxLines").unwrap_or(0.0) as u32,
-                    fit_min: r.str("fitMin").and_then(|s| {
-                        crate::style_file::ramp_step(&mut t.type_ramp.clone(), s).copied()
-                    }),
-                };
+                let desc = r.label_desc(&t);
                 if let Some(V::Spans(spans)) = r.get("spans") {
                     let spans = match spans {
                         Ok(spans) => spans,
@@ -374,28 +349,7 @@ impl Ui {
             }
             "button" => {
                 let text = text_of(&r, b);
-                resp = self.button(
-                    id.as_str(),
-                    &text,
-                    ButtonDesc {
-                        variant: match r.str("variant") {
-                            Some("primary") => ButtonVariant::Primary,
-                            Some("quiet") => ButtonVariant::Quiet,
-                            Some("danger") => ButtonVariant::Danger,
-                            Some("ghost") => ButtonVariant::Ghost,
-                            _ => ButtonVariant::Secondary,
-                        },
-                        size: match r.str("size") {
-                            Some("small") => ControlSize::Small,
-                            Some("large") => ControlSize::Large,
-                            _ => ControlSize::Medium,
-                        },
-                        disabled: r.flag("disabled"),
-                        width: r.size("width"),
-                        autofocus: r.flag("autofocus"),
-                        square: r.flag("square"),
-                    },
-                );
+                resp = self.button(id.as_str(), &text, r.button_desc());
             }
             "art" => {
                 // An art slot: its art fitted by its spec, or the style's
@@ -407,7 +361,7 @@ impl Ui {
                     .last()
                     .map(|(_, s)| s.clone())
                     .expect("pushed");
-                let texture = r.handle("texture").and_then(|h| b.env.texture(h));
+                texture = r.handle("texture").and_then(|h| b.env.texture(h));
                 self.art(
                     id.as_str(),
                     &crate::widgets::ArtDesc {
@@ -421,7 +375,7 @@ impl Ui {
                 );
             }
             "image" => {
-                let texture = r.handle("texture").and_then(|h| b.env.texture(h));
+                texture = r.handle("texture").and_then(|h| b.env.texture(h));
                 let tint = r.color("tint");
                 self.image(
                     id.as_str(),
@@ -604,57 +558,9 @@ impl Ui {
         }
         let last = self.last_closed;
         if last != NONE && last < self.nodes.len() {
-            let mut el = self.nodes[last].el;
-            // The widget's own box stays where the document says nothing.
-            for name in [
-                "height",
-                "padding",
-                "gap",
-                "align",
-                "cross",
-                "background",
-                "radius",
-                "frame",
-                "aspect",
-                "interactive",
-                "focusable",
-                "adjustable",
-                "wrap",
-            ] {
-                if r.has(name) {
-                    el = Ui::box_of(
-                        &Resolved {
-                            vals: r
-                                .vals
-                                .iter()
-                                .filter(|(s, _)| PROPS[*s].name == name)
-                                .cloned()
-                                .collect(),
-                            ..Default::default()
-                        },
-                        el,
-                    );
-                }
-            }
-            if r.has("width")
-                && !matches!(
-                    kind,
-                    "label" | "button" | "image" | "art" | "progress" | "slider" | "field"
-                )
-            {
-                el.width = r.size("width").unwrap_or(el.width);
-            }
-            self.nodes[last].el = el;
-            if props != Props::default() {
-                let mut p = props;
-                // A widget's own states (a button's interaction) stay.
-                let own = std::mem::take(&mut self.nodes[last].props.states);
-                p.states.extend(
-                    own.into_iter()
-                        .filter(|g| !n.groups.iter().any(|x| x.name == g.name)),
-                );
-                self.nodes[last].props = p;
-            }
+            let fields = fields::RenderFields::capture(self, last, kind, resp, props, texture);
+            self.apply_document_fields(n, &styled, &fields);
+            self.docs.render_fields.insert(key, fields);
         }
         self.docs.built.push(built);
         self.fire(b, n, key, &path, resp);

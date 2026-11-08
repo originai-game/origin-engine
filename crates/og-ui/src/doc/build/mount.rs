@@ -79,6 +79,7 @@ pub struct DocHost {
     pub(crate) built: Vec<Built>,
     pub(crate) slots: BTreeMap<String, usize>,
     pub(crate) arts: Vec<(String, crate::slot::SlotSpec)>,
+    pub(super) render_fields: BTreeMap<u64, super::fields::RenderFields>,
     /// Events queued for code (screens built at the end of a tick reach
     /// code the next).
     pub(crate) queued: Vec<DocEvent>,
@@ -469,5 +470,6 @@ impl Ui {
         d.built.clear();
         d.slots.clear();
         d.arts.clear();
+        d.render_fields.clear();
     }
 }

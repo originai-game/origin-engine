@@ -5,6 +5,42 @@ use super::*;
 pub(crate) const TOUCH_TARGET: f32 = 44.0;
 
 impl Ui {
+    /// Normalize freshly assigned presentation before measurement. Call once
+    /// after replacing fields, not on already prepared scroll padding.
+    pub(crate) fn prepare_layout_node(&mut self, i: usize) {
+        let node = &mut self.nodes[i];
+        if let Content::Text(text) = &mut node.content
+            && self.theme.art.display_min > 0.0
+            && text.font == crate::FontRole::Display
+            && text.step.size < self.theme.art.display_min
+        {
+            text.font = crate::FontRole::Body;
+        }
+        if !matches!(node.widget, Widget::Field(_) | Widget::TextArea { .. }) {
+            match &mut node.content {
+                Content::Text(text) if text.step.uppercase => {
+                    text.text = og_i18n::text::uppercase(&text.text, &self.locale);
+                }
+                Content::Rich(rich) => {
+                    for span in &mut rich.spans {
+                        if span.step.uppercase && span.atom.is_none() {
+                            span.text = og_i18n::text::uppercase(&span.text, &self.locale);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
+            let key = node.key;
+            let gutter = self.bar_gutter(key);
+            if gutter > 0.0 {
+                self.nodes[i].el.padding.right += gutter;
+            }
+        }
+        crate::layout::snap_pixel_text(&mut self.nodes[i..i + 1], &self.fonts);
+    }
+
     /// The minimum touch target in og-ui units (44 CSS px) on a touch
     /// screen, zero with a fine pointer.
     pub(crate) fn touch_min(&self) -> f32 {
@@ -74,51 +110,9 @@ impl Ui {
                 self.nodes[i].out = out;
             }
         }
-        // A style's display face stops at its `displayMin`: smaller text in
-        // the display role takes the body face, before it is measured.
-        let min = self.theme.art.display_min;
-        if min > 0.0 {
-            for n in &mut self.nodes {
-                if let Content::Text(tc) = &mut n.content
-                    && tc.font == crate::FontRole::Display
-                    && tc.step.size < min
-                {
-                    tc.font = crate::FontRole::Body;
-                }
-            }
+        for i in 0..self.nodes.len() {
+            self.prepare_layout_node(i);
         }
-        for node in &mut self.nodes {
-            if matches!(node.widget, Widget::Field(_) | Widget::TextArea { .. }) {
-                continue;
-            }
-            match &mut node.content {
-                Content::Text(text) if text.step.uppercase => {
-                    text.text = og_i18n::text::uppercase(&text.text, &self.locale);
-                }
-                Content::Rich(rich) => {
-                    for span in &mut rich.spans {
-                        if span.step.uppercase && span.atom.is_none() {
-                            span.text = og_i18n::text::uppercase(&span.text, &self.locale);
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-        // A vertical scroller whose content ran past it last frame keeps a
-        // gutter at its end for its bar (Ui::bar_gutter).
-        let gutters: Vec<(usize, f32)> = (0..self.nodes.len())
-            .filter(|&i| {
-                let el = &self.nodes[i].el;
-                el.scroll && !el.scroll_x && !el.hide_bars
-            })
-            .map(|i| (i, self.bar_gutter(self.nodes[i].key)))
-            .filter(|g| g.1 > 0.0)
-            .collect();
-        for (i, g) in gutters {
-            self.nodes[i].el.padding.right += g;
-        }
-        crate::layout::snap_pixel_text(&mut self.nodes, &self.fonts);
         self.reuse_check();
         let mut floating: Vec<usize> = self
             .floating

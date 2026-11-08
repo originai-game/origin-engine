@@ -322,49 +322,53 @@ impl Ui {
             return;
         }
         for i in 0..self.nodes.len() {
-            let Some(part) = self.nodes[i]
-                .el
-                .part
-                .or_else(|| self.nodes[i].el.frame.map(crate::StylePart::part_ref))
-            else {
-                continue;
-            };
-            let appearance = self.dress.resolve(&part).draw.appearance;
-            if appearance.is_empty() {
-                continue;
+            self.apply_part_appearance(i);
+        }
+    }
+
+    pub(crate) fn apply_part_appearance(&mut self, i: usize) {
+        let Some(part) = self.nodes[i]
+            .el
+            .part
+            .or_else(|| self.nodes[i].el.frame.map(crate::StylePart::part_ref))
+        else {
+            return;
+        };
+        let appearance = self.dress.resolve(&part).draw.appearance;
+        if appearance.is_empty() {
+            return;
+        }
+        let r = Resolved {
+            vals: appearance
+                .iter()
+                .filter_map(|(index, value)| lit(self, value).map(|v| (*index, v)))
+                .collect(),
+            ..Default::default()
+        };
+        let mut ramp = self.theme.type_ramp;
+        let step = r
+            .str("step")
+            .and_then(|name| crate::style_file::ramp_step(&mut ramp, name).copied());
+        let n = &mut self.nodes[i];
+        n.el = Self::box_of(&r, n.el);
+        if let Some(x) = r.num("x") {
+            n.props.transform.x = x;
+        }
+        if let Some(y) = r.num("y") {
+            n.props.transform.y = y;
+        }
+        if let Some(opacity) = r.num("opacity") {
+            n.props.opacity = opacity.clamp(0.0, 1.0);
+        }
+        if let Some(V::Transition(t)) = r.get("motion") {
+            n.props.motion = Some(*t);
+        }
+        if let crate::layout::Content::Text(text) = &mut n.content {
+            if let Some(color) = r.color("color") {
+                text.color = color;
             }
-            let r = Resolved {
-                vals: appearance
-                    .iter()
-                    .filter_map(|(index, value)| lit(self, value).map(|v| (*index, v)))
-                    .collect(),
-                ..Default::default()
-            };
-            let mut ramp = self.theme.type_ramp;
-            let step = r
-                .str("step")
-                .and_then(|name| crate::style_file::ramp_step(&mut ramp, name).copied());
-            let n = &mut self.nodes[i];
-            n.el = Self::box_of(&r, n.el);
-            if let Some(x) = r.num("x") {
-                n.props.transform.x = x;
-            }
-            if let Some(y) = r.num("y") {
-                n.props.transform.y = y;
-            }
-            if let Some(opacity) = r.num("opacity") {
-                n.props.opacity = opacity.clamp(0.0, 1.0);
-            }
-            if let Some(V::Transition(t)) = r.get("motion") {
-                n.props.motion = Some(*t);
-            }
-            if let crate::layout::Content::Text(text) = &mut n.content {
-                if let Some(color) = r.color("color") {
-                    text.color = color;
-                }
-                if let Some(step) = step {
-                    text.step = step;
-                }
+            if let Some(step) = step {
+                text.step = step;
             }
         }
     }
@@ -524,15 +528,8 @@ impl Ui {
         el
     }
 
-    /// The element-model props of an element (§6.1) and its state groups.
-    fn props_of(
-        &self,
-        b: &Build<'_>,
-        n: &DocNode,
-        key: u64,
-        r: &Resolved,
-        built: &mut Built,
-    ) -> Props {
+    /// Element fields depend only on resolved values, not a binding scope.
+    fn resolved_props(n: &DocNode, r: &Resolved) -> Props {
         let mut p = Props::default();
         let t = &mut p.transform;
         if let Some(v) = r.num("x") {
@@ -690,6 +687,19 @@ impl Ui {
             Some("keep") => Some(crate::Reduced::Keep),
             _ => None,
         };
+        p
+    }
+
+    /// The element-model props of an element (§6.1) and its state groups.
+    fn props_of(
+        &self,
+        b: &Build<'_>,
+        n: &DocNode,
+        key: u64,
+        r: &Resolved,
+        built: &mut Built,
+    ) -> Props {
+        let mut p = Self::resolved_props(n, r);
         for g in &n.groups {
             let mut group = StateGroup {
                 name: g.name.clone(),
@@ -826,6 +836,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 }
 
 pub mod cascade;
+mod fields;
 mod mount;
 mod nodes;
 mod retained;
