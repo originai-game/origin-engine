@@ -161,6 +161,22 @@ impl Ui {
             if i >= self.nodes.len() {
                 return Err(SettlementError::InvalidNode(i));
             }
+            let parent = self.nodes[i].parent;
+            if parent != NONE {
+                let out = self.nodes[i].props.out_of_flow();
+                let parent = &mut self.nodes[parent];
+                let (from, to) = if out {
+                    (&mut parent.children, &mut parent.out)
+                } else {
+                    (&mut parent.out, &mut parent.children)
+                };
+                // Both lists preserve build order. A declaration can move a
+                // child in either direction without rebuilding its siblings.
+                if let Ok(position) = from.binary_search(&i) {
+                    from.remove(position);
+                    to.insert(to.partition_point(|&child| child < i), i);
+                }
+            }
             let mut at = i;
             loop {
                 self.kept.clean[at] = false;

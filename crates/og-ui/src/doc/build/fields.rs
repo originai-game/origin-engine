@@ -280,7 +280,7 @@ mod tests {
 
     fn document(styled: bool) -> UiDocument {
         let css = if styled {
-            "#Root { padding: 13px; gap: 7px; } #Title { text-transform: uppercase; color: #f0a020; } #Action { -og-control-size: large; width: 173px; } #Check, #Range { width: 219px; padding: 5px; }"
+            "#Root { padding: 13px; gap: 7px; } #Title { text-transform: uppercase; color: #f0a020; position: absolute; top: 230px; } #Action { -og-control-size: large; width: 173px; } #Check, #Range { width: 219px; padding: 5px; }"
         } else {
             ""
         };
