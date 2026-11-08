@@ -24,4 +24,4 @@ struct SaveSpawnDesc {
 }
 ```
 
-<sub>Module `world` line 71</sub>
+<sub>Module `world` line 72</sub>

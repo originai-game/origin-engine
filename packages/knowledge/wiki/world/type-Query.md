@@ -14,7 +14,7 @@ interface Query {
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 413</sub>
+<sub>Module `world` line 414</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -37,7 +37,7 @@ fn archetypes {
 }
 ```
 
-<sub>Module `world` line 415</sub>
+<sub>Module `world` line 416</sub>
 
 <a id="member-Query-count"></a>
 
@@ -60,4 +60,4 @@ fn count {
 }
 ```
 
-<sub>Module `world` line 419</sub>
+<sub>Module `world` line 420</sub>

@@ -14,7 +14,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 233</sub>
+<sub>Module `world` line 234</sub>
 
 <a id="member-World-tick"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>Module `world` line 236</sub>
+<sub>Module `world` line 237</sub>
 
 <a id="member-World-spawn"></a>
 
@@ -63,7 +63,7 @@ fn spawn {
 }
 ```
 
-<sub>Module `world` line 238</sub>
+<sub>Module `world` line 239</sub>
 
 <a id="member-World-despawn"></a>
 
@@ -94,7 +94,7 @@ fn despawn {
 }
 ```
 
-<sub>Module `world` line 245</sub>
+<sub>Module `world` line 246</sub>
 
 <a id="member-World-alive"></a>
 
@@ -122,7 +122,7 @@ fn alive {
 }
 ```
 
-<sub>Module `world` line 252</sub>
+<sub>Module `world` line 253</sub>
 
 <a id="member-World-has"></a>
 
@@ -153,7 +153,7 @@ fn has {
 }
 ```
 
-<sub>Module `world` line 258</sub>
+<sub>Module `world` line 259</sub>
 
 <a id="member-World-insert"></a>
 
@@ -188,7 +188,7 @@ fn insert {
 }
 ```
 
-<sub>Module `world` line 266</sub>
+<sub>Module `world` line 267</sub>
 
 <a id="member-World-remove"></a>
 
@@ -219,7 +219,7 @@ fn remove {
 }
 ```
 
-<sub>Module `world` line 277</sub>
+<sub>Module `world` line 278</sub>
 
 <a id="member-World-get"></a>
 
@@ -250,7 +250,7 @@ fn get {
 }
 ```
 
-<sub>Module `world` line 285</sub>
+<sub>Module `world` line 286</sub>
 
 <a id="member-World-set"></a>
 
@@ -283,7 +283,7 @@ fn set {
 }
 ```
 
-<sub>Module `world` line 293</sub>
+<sub>Module `world` line 294</sub>
 
 <a id="member-World-resource"></a>
 
@@ -312,7 +312,7 @@ fn resource {
 }
 ```
 
-<sub>Module `world` line 302</sub>
+<sub>Module `world` line 303</sub>
 
 <a id="member-World-children"></a>
 
@@ -340,7 +340,7 @@ fn children {
 }
 ```
 
-<sub>Module `world` line 309</sub>
+<sub>Module `world` line 310</sub>
 
 <a id="member-World-removed"></a>
 
@@ -369,7 +369,7 @@ fn removed {
 }
 ```
 
-<sub>Module `world` line 315</sub>
+<sub>Module `world` line 316</sub>
 
 <a id="member-World-spatial"></a>
 
@@ -399,7 +399,7 @@ fn spatial {
 }
 ```
 
-<sub>Module `world` line 322</sub>
+<sub>Module `world` line 323</sub>
 
 <a id="member-World-state"></a>
 
@@ -427,7 +427,7 @@ fn state {
 }
 ```
 
-<sub>Module `world` line 330</sub>
+<sub>Module `world` line 331</sub>
 
 <a id="member-World-setState"></a>
 
@@ -457,7 +457,7 @@ fn setState {
 }
 ```
 
-<sub>Module `world` line 336</sub>
+<sub>Module `world` line 337</sub>
 
 <a id="member-World-find"></a>
 
@@ -485,7 +485,7 @@ fn find {
 }
 ```
 
-<sub>Module `world` line 343</sub>
+<sub>Module `world` line 344</sub>
 
 <a id="member-World-prefabOf"></a>
 
@@ -513,7 +513,7 @@ fn prefabOf {
 }
 ```
 
-<sub>Module `world` line 349</sub>
+<sub>Module `world` line 350</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -541,7 +541,7 @@ fn nameOf {
 }
 ```
 
-<sub>Module `world` line 355</sub>
+<sub>Module `world` line 356</sub>
 
 <a id="member-World-query"></a>
 
@@ -569,7 +569,7 @@ fn query {
 }
 ```
 
-<sub>Module `world` line 361</sub>
+<sub>Module `world` line 362</sub>
 
 <a id="member-World-events"></a>
 
@@ -598,7 +598,7 @@ fn events {
 }
 ```
 
-<sub>Module `world` line 367</sub>
+<sub>Module `world` line 368</sub>
 
 <a id="member-World-emit"></a>
 
@@ -629,7 +629,7 @@ fn emit {
 }
 ```
 
-<sub>Module `world` line 374</sub>
+<sub>Module `world` line 375</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -662,7 +662,7 @@ fn instantiate {
 }
 ```
 
-<sub>Module `world` line 382</sub>
+<sub>Module `world` line 383</sub>
 
 <a id="member-World-snapshot"></a>
 
@@ -695,7 +695,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `world` line 390</sub>
+<sub>Module `world` line 391</sub>
 
 <a id="member-World-openSave"></a>
 
@@ -723,7 +723,7 @@ fn openSave {
 }
 ```
 
-<sub>Module `world` line 399</sub>
+<sub>Module `world` line 400</sub>
 
 <a id="member-World-restore"></a>
 
@@ -753,4 +753,4 @@ fn restore {
 }
 ```
 
-<sub>Module `world` line 405</sub>
+<sub>Module `world` line 406</sub>

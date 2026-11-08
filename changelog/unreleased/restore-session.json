@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "RestoreDesc.session",
+      "summary": "world.restore(save, { session: true }) takes the save's input too (og.Input, og.Pointers, og.Gamepad, og.PointerLock: what was held and the tick's edges) instead of keeping the host's, so the world is the one saved, hash and all: what a tool returning to a state needs (og explore). The default still keeps the player's input."
+    }
+  ]
+}

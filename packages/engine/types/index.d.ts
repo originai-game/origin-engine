@@ -1417,6 +1417,12 @@ export interface RestoreDesc {
    * @default false
    */
   readonly migrate?: boolean;
+  /**
+   * Take the save's input too (og.Input, og.Pointers, og.Gamepad, og.PointerLock: the keys, buttons and pointers held and this tick's edges) instead of keeping the host's. Off, a loaded game reads the keys the player holds now; on, the world is the one saved, hash and all, which a tool returning to a state needs (og explore, a replay from a snapshot). A selection keeps the host's input either way.
+   *
+   * @default false
+   */
+  readonly session?: boolean;
 }
 
 /**

@@ -74,6 +74,8 @@ fn engine_owned(name: &str) -> bool {
 pub(crate) struct Pending {
     snapshot: Vec<u8>,
     migrate: bool,
+    /// The save's input (RestoreDesc.session) instead of the host's.
+    session: bool,
     ui: Option<super::presentation::UiCheckpoint>,
 }
 
@@ -341,11 +343,12 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         Ok(e) => e,
         Err(e) => return refuse(e),
     };
-    let migrate = desc
+    let desc = desc
         .as_deref()
         .and_then(|d| serde_json::from_str::<Value>(d).ok())
-        .and_then(|d| d["migrate"].as_bool())
-        .unwrap_or(false);
+        .unwrap_or(Value::Null);
+    let migrate = desc["migrate"].as_bool().unwrap_or(false);
+    let session = desc["session"].as_bool().unwrap_or(false);
     let current = eng.state.borrow().save_version;
     let (snapshot, ui) = match upgraded(&save, current) {
         Ok(s) => {
@@ -370,6 +373,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
             eng.state.borrow_mut().pending_restore = Some(Pending {
                 snapshot,
                 migrate,
+                session,
                 ui,
             });
             return ok(Value::Null);
@@ -384,6 +388,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
             &Pending {
                 snapshot,
                 migrate,
+                session,
                 ui,
             },
         ) {
@@ -401,6 +406,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
             eng.state.borrow_mut().pending_restore = Some(Pending {
                 snapshot,
                 migrate,
+                session,
                 ui,
             });
             return ok(Value::Null);
@@ -418,6 +424,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         eng.state.borrow_mut().pending_restore = Some(Pending {
             snapshot,
             migrate,
+            session,
             ui,
         });
         return ok(Value::Null);
@@ -436,6 +443,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         eng.state.borrow_mut().pending_restore = Some(Pending {
             snapshot,
             migrate,
+            session,
             ui,
         });
         return ok(Value::Null);
@@ -447,6 +455,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         &Pending {
             snapshot,
             migrate,
+            session,
             ui,
         },
     );
@@ -810,6 +819,7 @@ pub(crate) fn restore_session(
     let pending = Pending {
         snapshot: snapshot.to_vec(),
         migrate: false,
+        session: false,
         ui: None,
     };
     apply_keeping(eng, world, &pending, keep)
@@ -959,8 +969,10 @@ fn apply_keeping(
         rs.interp.forget();
         rs.motion.forget();
     }
+    // With RestoreDesc.session the save's input too: only the audio device stays the host's.
     let kept: Vec<(og_ecs::SchemaId, Vec<u8>)> = SESSION
         .iter()
+        .filter(|name| !pending.session || **name == "og.Audio")
         .chain(keep.iter())
         .filter_map(|name| {
             let id = world.id_by_name(name).ok()?;

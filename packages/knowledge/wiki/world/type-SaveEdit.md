@@ -14,7 +14,7 @@ interface SaveEdit {
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 104</sub>
+<sub>Module `world` line 105</sub>
 
 <a id="member-SaveEdit-version"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_save_edit_get_version` · publish builds: kept
 prop version u32 "The game's save version the save was written at (1 for a save of a game that never declared one)."
 ```
 
-<sub>Module `world` line 106</sub>
+<sub>Module `world` line 107</sub>
 
 <a id="member-SaveEdit-types"></a>
 
@@ -55,7 +55,7 @@ fn types {
 }
 ```
 
-<sub>Module `world` line 107</sub>
+<sub>Module `world` line 108</sub>
 
 <a id="member-SaveEdit-has"></a>
 
@@ -84,7 +84,7 @@ fn has {
 }
 ```
 
-<sub>Module `world` line 111</sub>
+<sub>Module `world` line 112</sub>
 
 <a id="member-SaveEdit-records"></a>
 
@@ -112,7 +112,7 @@ fn records {
 }
 ```
 
-<sub>Module `world` line 117</sub>
+<sub>Module `world` line 118</sub>
 
 <a id="member-SaveEdit-setRecords"></a>
 
@@ -142,7 +142,7 @@ fn setRecords {
 }
 ```
 
-<sub>Module `world` line 122</sub>
+<sub>Module `world` line 123</sub>
 
 <a id="member-SaveEdit-transform"></a>
 
@@ -175,7 +175,7 @@ fn transform {
 }
 ```
 
-<sub>Module `world` line 128</sub>
+<sub>Module `world` line 129</sub>
 
 <a id="member-SaveEdit-split"></a>
 
@@ -206,7 +206,7 @@ fn split {
 }
 ```
 
-<sub>Module `world` line 136</sub>
+<sub>Module `world` line 137</sub>
 
 <a id="member-SaveEdit-renameType"></a>
 
@@ -236,7 +236,7 @@ fn renameType {
 }
 ```
 
-<sub>Module `world` line 143</sub>
+<sub>Module `world` line 144</sub>
 
 <a id="member-SaveEdit-renameField"></a>
 
@@ -268,7 +268,7 @@ fn renameField {
 }
 ```
 
-<sub>Module `world` line 149</sub>
+<sub>Module `world` line 150</sub>
 
 <a id="member-SaveEdit-dropType"></a>
 
@@ -296,7 +296,7 @@ fn dropType {
 }
 ```
 
-<sub>Module `world` line 156</sub>
+<sub>Module `world` line 157</sub>
 
 <a id="member-SaveEdit-spawn"></a>
 
@@ -324,7 +324,7 @@ fn spawn {
 }
 ```
 
-<sub>Module `world` line 161</sub>
+<sub>Module `world` line 162</sub>
 
 <a id="member-SaveEdit-text"></a>
 
@@ -347,7 +347,7 @@ fn text {
 }
 ```
 
-<sub>Module `world` line 166</sub>
+<sub>Module `world` line 167</sub>
 
 <a id="member-SaveEdit-close"></a>
 
@@ -370,4 +370,4 @@ fn close {
 }
 ```
 
-<sub>Module `world` line 170</sub>
+<sub>Module `world` line 171</sub>

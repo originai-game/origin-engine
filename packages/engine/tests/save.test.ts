@@ -12,6 +12,10 @@
 //   "inside a system a snapshot is taken at once and a restore waits …"
 // - the session goes back with the save (the player's volume, the probe's
 //   scheduled steps jumping with og.Time) → "a restore keeps the session …"
+// - `{ session: true }` keeps the host's input instead of the save's, so a
+//   key held at the save is not held after it (and the hash differs), or
+//   the default leaves the save's input behind → "a restore with session
+//   takes the save's input …"
 // - the text is not what the docs say, or garbage is restored → "a save is
 //   text …"
 // - the hosts write different saves for one world, or one host's save does
@@ -212,6 +216,36 @@ test("a restore keeps the session: the player's volumes, and the scheduled steps
   expect(run(engine).marker).toBe(0);
   engine.advance(1);
   expect(run(engine).marker).toBe(7);
+  engine.destroy();
+});
+
+test("a restore with session takes the save's input, hash and all; without it the host's input stays", () => {
+  const engine = start();
+  // Whether og.Input holds a key (KeyQ is the only one pressed).
+  const keys = () => {
+    const i = engine.world.resource(og.Input);
+    if (!i.ok) throw new Error(i.reason);
+    const v = i.value as { keys0: number; keys1: number; keys2: number; keys3: number };
+    return (v.keys0 | v.keys1 | v.keys2 | v.keys3) !== 0;
+  };
+  engine.advance(5);
+  expect(engine.probe.commands("0:key_down:KeyQ")).toBeTruthy();
+  engine.advance(1);
+  expect(keys()).toBeTrue();
+  const save = engine.world.snapshot();
+  if (!save.ok) throw new Error(save.reason);
+  const hash = engine.hash();
+  engine.probe.commands("0:key_up:KeyQ");
+  engine.advance(3);
+  expect(keys()).toBeFalse();
+  // The default: the world is the save's, the keys the player holds now.
+  expect(engine.world.restore(save.value).ok).toBeTrue();
+  expect(keys()).toBeFalse();
+  expect(engine.hash()).not.toBe(hash);
+  // With session: the key held as it was saved, the same world hash.
+  expect(engine.world.restore(save.value, { session: true }).ok).toBeTrue();
+  expect(keys()).toBeTrue();
+  expect(engine.hash()).toBe(hash);
   engine.destroy();
 });
 
