@@ -379,6 +379,25 @@ dashed ring as a cooked vector takes 438 µs and 840 vertices; changing a
 bound attribute on one of 64 inline rings costs 69–150 µs of the frame
 (dev profile), and unchanged shapes cost nothing.
 
+Drag and drop and pointer input use HTML's names. `draggable="true"` makes
+an element follow a drag that starts on it and spring home on release.
+Handlers name actions: `ondragstart` and `ondragend` on the dragged
+element, `ondragover` and `ondrop` on the element it is over. An element
+with either of those takes drops, filtered by `data-accept="gem coin"`
+against the dragged element's `data-drag-type`. Their events carry
+`{ dragged, target }`, the two elements' row keys, and `{ x, y }`, the
+pointer in the handler's box: `{#each $bag as item (item.id)}<li
+draggable="true" ondragstart={lift}>…{/each}<div ondrop={stash}>`.
+`onpointerdown`, `onpointermove`, `onpointerup` and `onwheel` (with
+`deltaX` and `deltaY`) fire on any element, as in HTML: a move goes to the
+held element while a press is down, and an up goes to the element the press
+went down on (pointer capture). Each event fires at the element the input is
+at and bubbles up the mounted tree to the nearest element that handles it.
+These events come from one pass over the held element, the one under the
+pointer and a drop's target, so they cost nothing as the tree grows. An
+element with a pointer handler can be under the pointer, so like any
+hovered control it is written again each tick while hovered.
+
 The authoring contract below also includes requirements whose TypeScript
 wiring remains pending:
 

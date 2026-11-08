@@ -930,6 +930,10 @@ pub struct Props {
     pub drag: Option<DragSpec>,
     pub pinch: Option<PinchSpec>,
     pub drop: Option<DropSpec>,
+    /// It listens to pointer events (a document's `onpointerdown`,
+    /// `onpointermove`, `onpointerup` or `onwheel`): the pointer hits it,
+    /// as it hits any element in HTML.
+    pub pointer: bool,
     /// Explicit focus moves from it (keys and pads), over the spatial pick.
     pub nav: NavLinks,
     /// Its focusable controls are one focus group.
@@ -987,6 +991,7 @@ impl Default for Props {
             drag: None,
             pinch: None,
             drop: None,
+            pointer: false,
             nav: NavLinks::default(),
             focus_group: None,
             gestures: None,

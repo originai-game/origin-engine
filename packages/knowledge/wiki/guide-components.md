@@ -81,6 +81,9 @@ What every kind takes: its box, layout, paint, motion and input.
 | `customize` | `bool` | The player can move, scale and fade it in the HUD edit mode. |
 | `customize-key` | `name` | With customize: its name in the saved HUD layout (default: its path). |
 | `-og-reduced-motion:` | `fade \| none \| keep` | Its reduced-motion fallback. |
+| `draggable` | `bool` | HTML `draggable`: a drag that starts on it moves it with the pointer and returns it home on release, firing `ondragstart`, `ondragend`, and `ondragover`/`ondrop` on the element it is over (any element with one of those handlers takes drops). |
+| `data-drag-type` | `text` | What a draggable element is to drop targets (`data-drag-type="weapon"`), as a drag's data type is in HTML. |
+| `data-accept` | `text` | The drag types a drop target takes, space-separated (`data-accept="weapon shield"`; default any). |
 
 Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).
 

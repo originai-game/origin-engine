@@ -8,6 +8,7 @@ use crate::reactive::{
 };
 
 mod content;
+mod pointer;
 mod queries;
 mod registration;
 mod selection;
@@ -154,6 +155,8 @@ pub struct RetainedHost {
     /// Structural-selector work since the last refresh.
     pub css: CssWork,
     profiles: BTreeMap<String, crate::doc::matching::Profile>,
+    /// The input pass's memory ([`pointer`]).
+    pointer: pointer::PointerMemory,
 }
 
 /// Structural-selector work of one refresh, for bounded-cost checks.
@@ -1691,6 +1694,7 @@ impl Ui {
             {
                 result = Err(error);
             }
+            host.input_events(self, env, &mut events);
             self.docs.queued.extend(events);
             for (context, path, value) in writes {
                 if let Err(error) = context.write_model(&mut self.reactive, &path, value) {

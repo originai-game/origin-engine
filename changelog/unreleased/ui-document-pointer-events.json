@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: drag and drop and Pointer Events",
+      "summary": "draggable=\"true\" with data-drag-type, and ondragstart, ondragend, ondragover and ondrop (drop targets filter by data-accept); onpointerdown, onpointermove, onpointerup and onwheel on any element. Events bubble to the nearest handler and carry { dragged, target } row keys and { x, y } in the handler's box (wheel: deltaX, deltaY)."
+    },
+    {
+      "member": "UI documents: onhold, oncontextmenu, onrevealed, ontoggle, onclose",
+      "summary": "Parsed as handlers; the controls that fire them land with the capabilities work (holdButton, menus, typewriter text, popovers, dialogs)."
+    }
+  ]
+}

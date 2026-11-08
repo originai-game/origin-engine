@@ -120,6 +120,27 @@ macro_rules! svg {
 }
 
 pub const PROPS: &[PropSpec] = &[
+    PropSpec {
+        name: "draggable",
+        ty: Ty::Bool,
+        on: On::All,
+        two_way: false,
+        doc: "HTML `draggable`: a drag that starts on it moves it with the pointer and returns it home on release, firing `ondragstart`, `ondragend`, and `ondragover`/`ondrop` on the element it is over (any element with one of those handlers takes drops).",
+    },
+    PropSpec {
+        name: "dataDragType",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "What a draggable element is to drop targets (`data-drag-type=\"weapon\"`), as a drag's data type is in HTML.",
+    },
+    PropSpec {
+        name: "dataAccept",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "The drag types a drop target takes, space-separated (`data-accept=\"weapon shield\"`; default any).",
+    },
     svg!(
         "svgViewBox",
         On::Kinds(&["svg"]),

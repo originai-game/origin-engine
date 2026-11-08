@@ -850,6 +850,7 @@ impl Ui {
         if let Some(V::Strs(o)) = r.get("overlaps") {
             p.overlaps = o.clone();
         }
+        gestures::props(n, r, &mut p);
         if let Some(m) = r.str("match") {
             p.match_key = m.to_string();
         }
@@ -1060,6 +1061,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 pub mod cascade;
 mod containers;
 mod fields;
+mod gestures;
 mod mount;
 mod nodes;
 mod retained;

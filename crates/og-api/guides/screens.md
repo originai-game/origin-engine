@@ -179,6 +179,11 @@ local styles and `og style new` remain available.
   stroke-dashoffset={1 - $ready}/></svg>`. Size the `<svg>` with CSS; its
   view box scales to fit, strokes with it. Gradients are
   `<linearGradient id>` and `fill="url(#id)"`.
+- Drag and drop: `<li draggable="true" data-drag-type="gem"
+  ondragstart={lift}>` and `<div data-accept="gem" ondrop={stash}>`; the
+  event's value is `{ dragged, target, x, y }` (row keys and the point).
+  `onpointerdown`, `onpointermove`, `onpointerup` and `onwheel` work on any
+  element and bubble to the nearest handler.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.

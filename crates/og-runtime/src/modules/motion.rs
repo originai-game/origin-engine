@@ -333,6 +333,8 @@ pub(crate) fn props(d: &Value) -> Props {
         drop: d["drop"].is_object().then(|| DropSpec {
             accept: strings(&d["drop"]["accept"]),
         }),
+        // Documents' pointer handlers only; built UI's interactive flag hits.
+        pointer: false,
         nav: og_ui::NavLinks {
             up: string(&d["nav"]["up"]),
             down: string(&d["nav"]["down"]),

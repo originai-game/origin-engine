@@ -490,6 +490,7 @@ impl Ui {
                 || n.props.drag.is_some()
                 || n.props.pinch.is_some()
                 || n.props.gestures.is_some_and(|g| g.any())
+                || n.props.pointer
             {
                 flags |= HIT_POINTER;
             }
