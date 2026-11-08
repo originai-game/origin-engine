@@ -389,7 +389,23 @@ Media rules use standard conditions, such as
 inclusive `min-`/`max-` bounds and range comparisons. Commas and `or` select
 alternatives, `and` intersects, and `not` negates; mixed operators require
 parentheses. Nested media rules intersect. There is no named-breakpoint
-reader. Container-query runtime support remains pending.
+reader.
+
+Container queries follow CSS Containment Level 3 size queries.
+`container-type: size | inline-size` (with `container-name` and the
+`container: <names> / <type>` shorthand) makes an element a query container
+for its descendants. `@container [name] <condition>` takes the media range
+grammar over `width`, `height`, `inline-size`, `block-size`, `aspect-ratio`
+and `orientation`; a block-axis condition needs a `size` container. Each
+condition reads the nearest eligible ancestor; with none, or before the first
+measurement, it is unknown and false. Conditions settle through the
+settlement hook on the first frame and on every resize, before paint:
+elements that read a changed container resolve again from their evaluated
+inputs and replace their fields, including `display`, list and grid boxes and
+Rive frames. There is no size containment, so a query that keeps resizing its
+own container fails as a settlement cycle. Style and scroll-state queries,
+container units (`cqw` and the rest) and other features fail at cook with the
+feature named.
 
 Safe-area values use the supported CSS `env(safe-area-inset-*)` spellings.
 Svelte `class:` directives select
@@ -421,8 +437,8 @@ CPU motion, GPU mass elements, and camera timing share `Ease`: GSAP names
 such as `none`, `power1.out`, and `back.out`, plus `cubic-bezier(...)` and
 `steps(...)`. Style tokens retain `EaseRole` indirection. CSS timing
 keywords belong to the CSS parser; shared timing does not make them GSAP
-names. Lexical custom properties and the cascade above are implemented.
-Standard CSS completion remains pending for container queries.
+names. Lexical custom properties, the cascade, media and container queries
+above are implemented.
 The supported subset in the component catalogue is not full CSS support.
 
 Core's native settlement hook publishes measured container content boxes
@@ -430,8 +446,8 @@ before effects, hit testing, and paint. First measurements include zero
 dimensions; unchanged measurements do not notify again. Changed query
 styles relayout their roots and dependent floating placement in the same
 frame, with safe-area geometry included. Repeated geometry states produce
-an error rather than publish an intermediate frame. This hook is landed;
-the CSS query adapter is still pending. Retained rendering limits and
+an error rather than publish an intermediate frame. Container queries use
+this hook for immediate and mounted documents. Retained rendering limits and
 TypeScript integration are tracked separately in §2.1.
 
 Core parts keep their existing names and meanings. Each kit documents its

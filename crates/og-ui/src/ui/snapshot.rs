@@ -354,6 +354,10 @@ impl Ui {
             .filter(|&i| self.persistent[i])
             .collect();
         self.retire_owned(&owned);
+        // Container sizes are layout's: the next frame measures and settles
+        // them again, watched afresh.
+        self.docs.containers.clear();
+        self.docs.container_sizes.clear();
         Ok(())
     }
 }

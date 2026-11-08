@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "Container queries: container-type (size, inline-size), container-name, the container shorthand and @container conditions on width, height, inline-size, block-size, aspect-ratio and orientation. They settle before paint on the first frame and on resize, for pushed and mounted documents, and can change display, list and grid boxes and Rive frames. Unsupported container features, style queries and container units fail at cook with the name."
+    }
+  ]
+}

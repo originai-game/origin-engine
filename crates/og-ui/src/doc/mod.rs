@@ -6,6 +6,7 @@
 
 pub mod build;
 pub mod catalogue;
+pub mod container;
 pub mod css;
 pub mod matching;
 pub mod media;
@@ -256,6 +257,8 @@ impl PropSet {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AtQuery {
     pub media: media::Query,
+    /// Enclosing `@container` conditions; each picks its own container.
+    pub container: Vec<container::Condition>,
 }
 
 /// A state value: an animatable prop or a colour.

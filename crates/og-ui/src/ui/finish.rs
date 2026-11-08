@@ -71,7 +71,7 @@ impl Ui {
 
     /// Lays out the frame, updates the interaction state and returns the frame.
     pub fn end(&mut self) -> &UiFrame {
-        if let Err(error) = self.end_with_layout_queries(|_, _| Ok(Vec::new())) {
+        if let Err(error) = self.end_with_layout_queries(Ui::settle_document_containers) {
             self.warnings.push(error.to_string());
         }
         &self.frame

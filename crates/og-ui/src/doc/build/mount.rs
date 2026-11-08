@@ -110,6 +110,14 @@ pub struct DocHost {
     pub(crate) rive: BTreeMap<String, Arc<crate::rive::Artboard>>,
     /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.
     pub(crate) keyframes: BTreeMap<String, Arc<crate::motion::css::Keyframes>>,
+    /// Query containers' settled content boxes, by layout key.
+    pub(crate) container_sizes: crate::doc::container::Sizes,
+    /// This tick's immediate-built elements under a query container, in
+    /// build order, with what settlement needs to resolve them again.
+    pub(crate) queried: Vec<super::containers::Queried>,
+    /// Query containers watched for settlement, and those built this tick.
+    pub(crate) containers: BTreeSet<u64>,
+    pub(crate) containers_now: BTreeSet<u64>,
     /// What structural selectors of every defined document read.
     pub(crate) structure: crate::doc::matching::Profile,
     /// The instantiated sibling levels of the screen being built.
@@ -286,6 +294,7 @@ impl Ui {
             events: Vec::new(),
             writes: Vec::new(),
             cached: None,
+            recording: Default::default(),
         };
         let path = self.build_node(&mut b, root, Some(id));
         let (events, writes) = (b.events, b.writes);
@@ -595,5 +604,10 @@ impl Ui {
         d.retained.evaluated = 0;
         d.retained.resolved = 0;
         d.retained.reconciled = 0;
+        d.queried.clear();
+        // Last tick's containers, immediate and mounted, stay watched.
+        let mut live = std::mem::take(&mut d.containers_now);
+        live.extend(d.retained.containers());
+        self.watch_document_containers(live);
     }
 }

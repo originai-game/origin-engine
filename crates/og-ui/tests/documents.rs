@@ -726,6 +726,28 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
         let e = err(&format!("  -og-frame: {bad}"));
         assert!(e.contains("takes one quoted id"), "{bad}: {e}");
     }
+    // Container queries outside size queries name what is unsupported.
+    assert!(err("  container-type: scroll-state").contains("scroll-state"));
+    let rule = |rule: &str| {
+        let t = format!(
+            "<meta name=\"screen\" content=\"s\"><column id=\"Root\"/><style>{rule}</style>"
+        );
+        UiDocument::parse("ui/s.svelte", &t).unwrap_err().join("\n")
+    };
+    for (bad, needle) in [
+        (
+            "@container style(--wide: 1) { #Root { gap: 4px; } }",
+            "@container",
+        ),
+        ("@container (width > 20cqw) { #Root { gap: 4px; } }", "cqw"),
+        (
+            "@container (prefers-reduced-motion) { #Root { gap: 4px; } }",
+            "prefers-reduced-motion",
+        ),
+    ] {
+        let e = rule(bad);
+        assert!(e.contains(needle), "{bad}: {e}");
+    }
 }
 
 /// Probe edits preserve authored structure and existing stylesheet rules.
@@ -1038,4 +1060,80 @@ fn pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows() 
     assert!(g1_width != 111.0 && g1_width != 222.0, "{g1_width}");
     assert!(c1_width != 111.0 && c1_width != 222.0, "{c1_width}");
     assert_ne!(measure(&ui, "Box").1, 17.0);
+}
+
+/// Container queries restyle, before paint, the kinds that build
+/// differently: a virtual list's and grid's own box, and a Rive frame that
+/// starts, stops and starts again with its container's width.
+///
+/// Ways it could fail: lists and grids without a field baseline (their
+/// padding never changes after the first build, or a removed padding
+/// sticks), a Rive player advanced twice in a tick or left playing after its
+/// frame is queried away, conditions read one frame late.
+#[test]
+fn container_queries_restyle_lists_grids_and_rive_frames_before_paint() {
+    let doc = UiDocument::parse(
+        "ui/shelf.ogt",
+        r#"<meta name="screen" content="loot">
+<column id="Shelf">
+  <column id="Chest"/>
+  <list id="Log" row-height="20" height="80">{#each rows as row (row.id)}<text>{row.id}</text>{/each}</list>
+  <cells id="Bag" cell-width="30" cell-height="30" height="70">{#each rows as row (row.id)}<panel/>{/each}</cells>
+</column>
+<style>
+#Shelf { width: 50%; padding: 0px; container: shelf / inline-size; }
+#Chest { width: 100px; height: 50px; }
+#Log { padding: 2px; }
+@container shelf (width >= 400px) {
+  #Chest { -og-frame: rive("ui/chest.riv#Chest"); }
+  #Log { padding: 7px; }
+  #Bag { padding: 5px; }
+}
+</style>"#,
+    )
+    .expect("parses");
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_rive("ui/chest.riv#Chest", chest());
+    ui.define_document(doc);
+    let rows: Vec<Value> = ["a", "b", "c", "d", "e", "f", "g"]
+        .map(|id| json!({ "id": id }))
+        .into();
+    ui.push_screen("loot", json!({ "rows": rows })).unwrap();
+    let frame = |ui: &mut Ui, width: f32| {
+        ui.begin(InputFrame::default(), Viewport::new(width, 600.0));
+        ui.end();
+    };
+    let row = |ui: &Ui, path: &str| -> (f32, f32) {
+        let els = ui.probe_elements();
+        let first = els
+            .iter()
+            .find(|e| e.path.starts_with(&format!("loot/Shelf/{path}/")))
+            .unwrap_or_else(|| panic!("a {path} item"));
+        let me = els
+            .iter()
+            .find(|e| e.path == format!("loot/Shelf/{path}"))
+            .unwrap();
+        (first.x - me.x, first.y - me.y)
+    };
+    let rive_objects = |ui: &Ui| {
+        ui.probe_elements()
+            .iter()
+            .filter(|e| e.kind == "rive")
+            .count()
+    };
+    // 1000 wide: Shelf is 500, so the query holds on the very first frame.
+    frame(&mut ui, 1000.0);
+    assert_eq!(row(&ui, "Log"), (7.0, 7.0));
+    assert_eq!(row(&ui, "Bag"), (5.0, 5.0));
+    assert!(rive_objects(&ui) > 0, "the chest plays");
+    // 600 wide: Shelf is 300; the list keeps its unconditional 2px, the
+    // grid loses its padding, the chest stops.
+    frame(&mut ui, 600.0);
+    assert_eq!(row(&ui, "Log"), (2.0, 2.0));
+    assert_eq!(row(&ui, "Bag"), (0.0, 0.0));
+    assert_eq!(rive_objects(&ui), 0, "the chest stopped");
+    frame(&mut ui, 820.0);
+    assert_eq!(row(&ui, "Log"), (7.0, 7.0));
+    assert!(rive_objects(&ui) > 0, "the chest plays again");
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }

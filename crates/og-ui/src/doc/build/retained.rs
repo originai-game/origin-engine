@@ -7,6 +7,7 @@ use crate::reactive::{
     graph::MountedNode,
 };
 
+mod queries;
 mod registration;
 mod selection;
 mod structural;
@@ -20,6 +21,23 @@ pub(super) struct CachedInputs {
 }
 
 impl CachedInputs {
+    /// Records an immediate build's evaluated input (container-query replay).
+    pub(super) fn remember_expression(&mut self, expression: &Expr, value: &Value) {
+        if !self.expressions.iter().any(|(e, _)| e == expression) {
+            self.expressions.push((expression.clone(), value.clone()));
+        }
+    }
+
+    pub(super) fn remember_property(&mut self, property: &PropValue, ty: Ty, value: &Option<V>) {
+        if !self
+            .properties
+            .iter()
+            .any(|(p, t, _)| p == property && *t == ty)
+        {
+            self.properties.push((property.clone(), ty, value.clone()));
+        }
+    }
+
     pub fn expression(&self, expression: &Expr) -> Value {
         self.expressions
             .iter()
@@ -1395,6 +1413,7 @@ impl ElementInstance {
             events: Vec::new(),
             writes: Vec::new(),
             cached: Some(&self.cached),
+            recording: Default::default(),
         }
     }
 }

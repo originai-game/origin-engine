@@ -52,6 +52,10 @@ struct Resolved {
     span_styles: Vec<(crate::TextSpan, crate::TextSpanStyle)>,
     transitions: Vec<crate::motion::css::CssTransition>,
     animations: Vec<crate::motion::css::CssAnimation>,
+    /// The layout key this element publishes as a query container.
+    container: Option<u64>,
+    /// An immediate build's inputs under a query container (settlement replay).
+    replay: Option<Arc<containers::Replay>>,
 }
 
 #[derive(Clone)]
@@ -231,6 +235,9 @@ struct Build<'a> {
     events: Vec<DocEvent>,
     writes: Vec<(String, Value)>,
     cached: Option<&'a retained::CachedInputs>,
+    /// While resolving an element under a query container, what `eval` and
+    /// `value` computed, so settlement can resolve it again without a model.
+    recording: std::cell::RefCell<Option<retained::CachedInputs>>,
 }
 
 impl Build<'_> {
@@ -250,7 +257,11 @@ impl Build<'_> {
         if let Some(cached) = self.cached {
             return cached.expression(e);
         }
-        e.eval(&self.scope())
+        let value = e.eval(&self.scope());
+        if let Some(recording) = self.recording.borrow_mut().as_mut() {
+            recording.remember_expression(e, &value);
+        }
+        value
     }
 
     /// Where a write to `path` lands in the viewmodel: through an item
@@ -293,6 +304,16 @@ impl Build<'_> {
         {
             return cached.property(v, ty);
         }
+        let value = self.evaluate(ui, ty, v);
+        if !matches!(v, PropValue::Lit(_))
+            && let Some(recording) = self.recording.borrow_mut().as_mut()
+        {
+            recording.remember_property(v, ty, &value);
+        }
+        value
+    }
+
+    fn evaluate(&self, ui: &Ui, ty: Ty, v: &PropValue) -> Option<V> {
         match v {
             PropValue::Lit(l) => lit(ui, l),
             PropValue::Model(path) => coerce(ui, ty, &self.scope().get(path)),
@@ -394,17 +415,61 @@ impl Ui {
             reduced_motion: self.theme().reduced_motion,
         };
         let mut media_reads = super::media::Reads::default();
+        let chain = super::container::chain(inherited);
+        // Under a container, an immediate build records every input this
+        // element can read, including branches the current sizes skip.
+        let recording = b.cached.is_none() && !chain.is_empty();
+        let mut decisions = Vec::new();
+        if recording {
+            *b.recording.borrow_mut() = Some(Default::default());
+            for (_, props) in &n.at {
+                for p in props {
+                    b.value(self, PROPS[p.spec].ty, &p.value);
+                }
+            }
+            let conditions = n.rules.iter().map(|r| &r.condition);
+            for e in conditions
+                .chain(n.span_rules.iter().map(|r| &r.condition))
+                .flatten()
+            {
+                b.eval(e);
+            }
+            for s in n.rules.iter().filter_map(|rule| rule.structure.as_ref()) {
+                decisions.push((Arc::as_ptr(s) as usize, structure(s)));
+            }
+        }
+        let structure = &mut |s: &super::selectors::Selector| {
+            decisions
+                .iter()
+                .find(|(at, _)| *at == s as *const _ as usize)
+                .map_or_else(|| structure(s), |&(_, matched)| matched)
+        };
+        let sizes = &self.docs.container_sizes;
+        let mut container_reads = BTreeSet::new();
+        let mut applies = |q: &super::AtQuery, reads: &mut super::media::Reads| {
+            q.media.matches(context, reads)
+                && q.container
+                    .iter()
+                    .all(|c| c.matches(&chain, sizes, &mut container_reads))
+        };
         let mut sets: Vec<&super::PropSet> = n.props.iter().collect();
         for (q, props) in &n.at {
-            if q.media.matches(context, &mut media_reads) {
+            if applies(q, &mut media_reads) {
                 sets.extend(props.iter());
             }
         }
         r.cascade = cascade::resolve(&n.rules, inherited, self.theme(), |rule| {
-            rule.query.media.matches(context, &mut media_reads)
+            applies(&rule.query, &mut media_reads)
                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 && rule.structure.as_ref().is_none_or(|s| structure(s))
         });
+        if let Some((kind, names)) =
+            super::container::declared(&r.cascade.container, &mut r.cascade.diagnostics)
+        {
+            let key = crate::id::key_of_path(path);
+            super::container::push(Arc::make_mut(&mut r.cascade.computed), key, kind, &names);
+            r.container = Some(key);
+        }
         (r.transitions, r.animations) =
             super::motion::resolve(&r.cascade.motion, &b.doc.name, &mut r.cascade.diagnostics);
         sets.retain(|prop| !r.cascade.unset.contains(&prop.spec));
@@ -438,7 +503,7 @@ impl Ui {
                 .span_rules
                 .iter()
                 .filter(|rule| {
-                    rule.query.media.matches(context, &mut media_reads)
+                    applies(&rule.query, &mut media_reads)
                         && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 })
                 .collect();
@@ -465,6 +530,18 @@ impl Ui {
             }
         }
         r.cascade.viewport_reads = media_reads;
+        if !container_reads.is_empty() {
+            // The chain is inherited state: a container appearing or leaving
+            // above this element re-resolves it like a custom property would.
+            r.cascade
+                .inherited_reads
+                .insert(super::container::CHAIN.to_string());
+        }
+        r.cascade.container_reads = container_reads;
+        if recording {
+            let cached = b.recording.borrow_mut().take().unwrap_or_default();
+            r.replay = Some(Arc::new(containers::Replay { cached, decisions }));
+        }
         r
     }
 
@@ -844,6 +921,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 }
 
 pub mod cascade;
+mod containers;
 mod fields;
 mod mount;
 mod nodes;

@@ -80,7 +80,23 @@ pub enum Query {
     Or(Vec<Query>),
 }
 
+/// Which at-rule a condition belongs to: container conditions take the
+/// size features and the logical `inline-size` and `block-size`, never
+/// media types or user preferences.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Scope {
+    Media,
+    Container,
+}
+
 impl Query {
+    /// An `@container` condition (the prelude after any container name).
+    pub fn parse_container(source: &str) -> Result<Self, String> {
+        Parser::new(source)
+            .parse_entirely(|p| condition(p, true, Scope::Container))
+            .map_err(|error| format!("invalid container query {source:?}: {error:?}"))
+    }
+
     pub fn parse(source: &str) -> Result<Self, String> {
         let queries = Parser::new(source)
             .parse_comma_separated(query)
@@ -155,7 +171,7 @@ fn query(input: &mut Parser<'_>) -> Result<Query, Error> {
             Query::All
         } else {
             input.expect_ident_matching("and")?;
-            condition(input, false)?
+            condition(input, false, Scope::Media)?
         };
         return Ok(if negate {
             Query::Not(Box::new(value))
@@ -167,16 +183,16 @@ fn query(input: &mut Parser<'_>) -> Result<Query, Error> {
         return Err(ParseError::custom("only requires screen or all"));
     }
     input.reset(&state);
-    condition(input, true)
+    condition(input, true, Scope::Media)
 }
 
-fn condition(input: &mut Parser<'_>, allow_or: bool) -> Result<Query, Error> {
+fn condition(input: &mut Parser<'_>, allow_or: bool, scope: Scope) -> Result<Query, Error> {
     if input.try_parse(|p| p.expect_ident_matching("not")).is_ok() {
-        let q = Query::Not(Box::new(group(input)?));
+        let q = Query::Not(Box::new(group(input, scope)?));
         input.expect_exhausted()?;
         return Ok(q);
     }
-    let mut queries = vec![group(input)?];
+    let mut queries = vec![group(input, scope)?];
     let mut operator = None;
     while !input.is_exhausted() {
         let word = input.expect_ident_cloned()?.to_ascii_lowercase();
@@ -192,7 +208,7 @@ fn condition(input: &mut Parser<'_>, allow_or: bool) -> Result<Query, Error> {
             ));
         }
         operator = Some(word);
-        queries.push(group(input)?);
+        queries.push(group(input, scope)?);
     }
     Ok(match operator.as_deref() {
         None => queries.pop().unwrap(),
@@ -201,7 +217,7 @@ fn condition(input: &mut Parser<'_>, allow_or: bool) -> Result<Query, Error> {
     })
 }
 
-fn group(input: &mut Parser<'_>) -> Result<Query, Error> {
+fn group(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
     input.expect_parenthesis_block()?;
     input.parse_nested_block(|input| {
         let state = input.state();
@@ -211,9 +227,9 @@ fn group(input: &mut Parser<'_>) -> Result<Query, Error> {
         };
         input.reset(&state);
         if nested {
-            condition(input, true)
+            condition(input, true, scope)
         } else {
-            feature(input)
+            feature(input, scope)
         }
     })
 }
@@ -316,9 +332,29 @@ fn ranged(name: &str, cmp: Comparison, value: Value) -> Result<Query, Error> {
     Ok(Query::Feature(feature))
 }
 
-fn feature(input: &mut Parser<'_>) -> Result<Query, Error> {
+/// The size feature a container condition names: horizontal writing only,
+/// so the inline axis is the width.
+fn logical(name: String, scope: Scope) -> Result<String, Error> {
+    if scope == Scope::Media {
+        return Ok(name);
+    }
+    let (prefix, bare) = ["min-", "max-"]
+        .iter()
+        .find_map(|p| name.strip_prefix(p).map(|rest| (*p, rest)))
+        .unwrap_or(("", name.as_str()));
+    match bare {
+        "width" | "height" | "aspect-ratio" | "orientation" => Ok(name),
+        "inline-size" => Ok(format!("{prefix}width")),
+        "block-size" => Ok(format!("{prefix}height")),
+        _ => Err(ParseError::custom(format!(
+            "unsupported container feature {name}; container queries take width, height, inline-size, block-size, aspect-ratio and orientation"
+        ))),
+    }
+}
+
+fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
     if let Ok(name) = input.try_parse(|p| p.expect_ident_cloned()) {
-        let name = name.to_ascii_lowercase();
+        let name = logical(name.to_ascii_lowercase(), scope)?;
         if input.is_exhausted() {
             return match name.as_str() {
                 "width" | "height" | "aspect-ratio" => {
@@ -364,7 +400,7 @@ fn feature(input: &mut Parser<'_>) -> Result<Query, Error> {
     }
     let left = value(input)?;
     let first = comparison(input)?;
-    let name = input.expect_ident_cloned()?.to_ascii_lowercase();
+    let name = logical(input.expect_ident_cloned()?.to_ascii_lowercase(), scope)?;
     let a = ranged(&name, first.reverse(), left)?;
     if input.is_exhausted() {
         return Ok(a);

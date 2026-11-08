@@ -238,10 +238,14 @@ impl Ui {
             values: r,
             probe: mut built,
         } = resolved;
-        if r.has("visible") && !r.flag("visible") {
+        if r.has("visible") && !r.flag("visible") && r.cascade.container_reads.is_empty() {
             return None;
         }
         self.docs.seen_now.insert(key);
+        self.remember_queried(b, i, &path, key, &r);
+        if let Some(container) = r.container {
+            self.build_container(container);
+        }
         let props = self.props_of(b, n, key, &r, &mut built);
         let t = self.theme;
         let text_of = |r: &Resolved, b: &Build<'_>| -> String {
@@ -278,11 +282,20 @@ impl Ui {
                 "list" | "cells" => {
                     let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
                     if b.cached.is_some() {
-                        build_children(self, b, Some(props));
+                        build_children(self, b, Some(props.clone()));
                     } else {
-                        self.build_virtual(b, n, kind, &id, &r, props, &path);
+                        self.build_virtual(b, n, kind, &id, &r, props.clone(), &path);
                     }
                     b.inherited = inherited;
+                    let at = self.last_closed;
+                    if at != NONE && at < self.nodes.len() && self.nodes[at].key == key {
+                        // Settlement replaces the box the list was opened with;
+                        // its window and stride follow on the next build.
+                        let mut fields =
+                            fields::RenderFields::capture(self, at, kind, resp, props, None);
+                        fields.unstyle_virtual();
+                        self.note_render_fields(key, fields);
+                    }
                     self.note_built(built);
                     self.fire(b, n, key, &path, resp);
                     return Some(path);

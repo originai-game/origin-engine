@@ -18,6 +18,10 @@ pub struct Cascade {
     pub(crate) values: Vec<(String, String, usize)>,
     /// Winning transition and animation longhands, substituted.
     pub(crate) motion: Vec<(String, String)>,
+    /// Winning container-name and container-type, substituted.
+    pub(crate) container: Vec<(String, String)>,
+    /// Query containers whose settled size the matched rules depend on.
+    pub container_reads: BTreeSet<u64>,
 }
 
 pub(crate) fn resolve_values(
@@ -100,6 +104,10 @@ pub fn resolve(
     for (name, value, line) in std::mem::take(&mut out.values) {
         if crate::doc::motion::longhand(&name) {
             out.motion.push((name, value));
+            continue;
+        }
+        if crate::doc::container::longhand(&name) {
+            out.container.push((name, value));
             continue;
         }
         let declaration = format!("{name}: {value};");

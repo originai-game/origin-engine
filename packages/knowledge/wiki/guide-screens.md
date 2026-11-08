@@ -115,8 +115,17 @@ local styles and `og style new` remain available.
   CSS units, and `em`/`rem` at the engine's initial 16px font size, independent
   of document styling. Unsupported features, zero-denominator ratios,
   viewport units, and `calc()` fail cooking instead of silently matching.
-  Legacy names such as `@media phone` are not supported. Container queries
-  are separate from media queries and are not implemented by this contract.
+  Legacy names such as `@media phone` are not supported.
+- Size a component to its slot with container queries: give the slot
+  `container-type: inline-size` (or `size` for height conditions), optionally
+  `container-name: card` or the shorthand `container: card / inline-size`,
+  then write `@container card (width < 320px) { ... }`. Conditions take the
+  media range syntax over `width`, `height`, `inline-size`, `block-size`,
+  `aspect-ratio` and `orientation`, and read the nearest matching ancestor
+  container, never the element itself. They settle before the first frame
+  paints and again on every resize. Do not let a query resize its own
+  container: that fails as a settlement cycle. Style queries, scroll-state
+  queries and container units such as `cqw` fail cooking.
 - Declare custom properties in any scoped rule, such as
   `.card { --spacing: 12px; gap: var(--spacing); }`. Declarations win by
   `!important`, specificity, then source order. Custom properties inherit

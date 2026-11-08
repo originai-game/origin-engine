@@ -27,7 +27,7 @@ test("cooked documents render typed spans and preserve game translations on both
   <panel id="Anim"/>
 </column>
 <style>
-#Root { width: 600px; --size: 32px; --saved: var(--size); --ramp: var(--text-xl3); }
+#Root { width: 600px; container: card / inline-size; --size: 32px; --saved: var(--size); --ramp: var(--text-xl3); }
 #Rich::part(emphasis)[large=true] { font: var(--ramp); color: var(--danger); }
 .chosen { --size: 80px; width: var(--saved) !important; }
 #Inherited { width: 100px; height: 12px; }
@@ -38,6 +38,8 @@ test("cooked documents render typed spans and preserve game translations on both
   @media (height < 0px) { #Sibling { width: 99px; } }
 }
 @media (width < 0px) { #Sibling { width: 101px; } }
+@container card (width > 599px) { #Sibling { height: 19px; } }
+@container card (width < 599px) { #Sibling { height: 3px; } }
 #Inherited + #Branch > panel:only-child { width: 66px; }
 #Root > panel:nth-last-child(2):nth-child(7 of panel, text) { width: 77px; height: 12px; }
 #Anim { width: 10px; height: 12px; transition: translate 90ms linear; animation: drift 100ms cubic-bezier(0.3, 0, 0.2, 1) 3 alternate both, nudge 50ms steps(2) infinite; }
@@ -53,7 +55,7 @@ test("cooked documents render typed spans and preserve game translations on both
       return JSON.parse(new TextDecoder().decode(result.stdout));
     };
     const node = run("node");
-    expect(node).toMatchObject({ title: "Game title", base: "Base fallback", body: "A🦊B <b>C</b>", larger: true, restored: true, widths: [32, 66, 53, 77], animRestored: true });
+    expect(node).toMatchObject({ title: "Game title", base: "Base fallback", body: "A🦊B <b>C</b>", larger: true, restored: true, widths: [32, 66, 53, 77], animRestored: true, queried: 19 });
     expect((node as { animMoved: number }).animMoved).toBeGreaterThan(0);
     expect(run("web")).toEqual(node);
   } finally {

@@ -15,6 +15,8 @@ pub(crate) struct RenderFields {
     press: f32,
     texture: Option<og_render::TextureHandle>,
     art: Option<String>,
+    /// Hidden by something other than the document's `display`.
+    hidden: bool,
 }
 
 impl RenderFields {
@@ -42,7 +44,19 @@ impl RenderFields {
             },
             texture,
             art: (kind == "art").then(|| ui.last_art_path()),
+            hidden: node.hidden,
         }
+    }
+}
+
+impl RenderFields {
+    /// A list or grid opens with its styled width, height, padding and gap;
+    /// its baseline is the box without them.
+    pub(super) fn unstyle_virtual(&mut self) {
+        self.element.width = Size::grow();
+        self.element.height = Size::grow();
+        self.element.padding = Insets::default();
+        self.element.gap = 0.0;
     }
 }
 
@@ -51,6 +65,9 @@ impl Ui {
         let i = base.index;
         self.nodes[i].el = base.element;
         self.nodes[i].props = base.widget_props.clone();
+        // `display: none` that a container query decides keeps its element
+        // built, so settlement can show it again.
+        self.nodes[i].hidden = base.hidden || (r.has("visible") && !r.flag("visible"));
         match base.kind {
             "label" => {
                 let desc = r.label_desc(self.theme());
@@ -147,7 +164,7 @@ impl Ui {
         let mut el = self.nodes[i].el;
         if schema::kind(base.kind).is_some_and(|kind| kind.container) {
             el = Self::box_of(r, el);
-            if !matches!(base.kind, "panel" | "scroll") {
+            if !matches!(base.kind, "panel" | "scroll" | "list" | "cells") {
                 el.direction = match r.str("direction").unwrap_or(base.kind) {
                     "row" => Direction::Row,
                     _ => Direction::Column,
@@ -342,6 +359,7 @@ mod tests {
                 events: Vec::new(),
                 writes: Vec::new(),
                 cached: None,
+                recording: Default::default(),
             };
             // Resolve before settlement; the callback has only evaluated values
             // and the existing controls, not a viewmodel or a second build.

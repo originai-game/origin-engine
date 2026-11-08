@@ -32,7 +32,7 @@ pub(super) fn apply(
                 return Err((
                     rule.at,
                     format!(
-                        "@keyframes {name} inside @media: declare keyframes at the top level and choose the animation in a media rule"
+                        "@keyframes {name} inside @media or @container: declare keyframes at the top level and choose the animation in a conditional rule"
                     ),
                 ));
             }
@@ -91,15 +91,20 @@ pub(super) fn apply(
         let known: Vec<String> = doc.keyframes.iter().map(|(n, _)| n.clone()).collect();
         let mut declarations = Vec::new();
         for declaration in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
-            declarations.extend(
-                super::motion::expand(declaration, &|name| known.iter().any(|k| k == name))
-                    .map_err(|e| (rule.at, e))?,
-            );
+            for declaration in super::container::expand(declaration).map_err(|e| (rule.at, e))? {
+                declarations.extend(
+                    super::motion::expand(declaration, &|name| known.iter().any(|k| k == name))
+                        .map_err(|e| (rule.at, e))?,
+                );
+            }
         }
         let mut body = String::new();
         for declaration in &declarations {
             let name = declaration.name.as_str();
-            if name.starts_with("--") || super::motion::longhand(name) {
+            if name.starts_with("--")
+                || super::motion::longhand(name)
+                || super::container::longhand(name)
+            {
                 continue;
             }
             if css::targets(name).next().is_none() {
@@ -232,7 +237,17 @@ fn read_rules(text: &str, base: usize, query: AtQuery, out: &mut Vec<Rule>) -> R
                 super::media::Query::parse(media).map_err(|error| (base + start, error))?;
             let q = AtQuery {
                 media: query.media.clone().and(parsed),
+                container: query.container.clone(),
             };
+            read_rules(body, base + open + 1, q, out)?;
+        } else if let Some(prelude) = selector.get(10..).filter(|rest| {
+            selector[..10].eq_ignore_ascii_case("@container")
+                && (rest.starts_with(char::is_whitespace) || rest.starts_with('('))
+        }) {
+            let condition = super::container::Condition::parse(prelude)
+                .map_err(|error| (base + start, error))?;
+            let mut q = query.clone();
+            q.container.push(condition);
             read_rules(body, base + open + 1, q, out)?;
         } else {
             out.push(Rule {
