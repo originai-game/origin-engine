@@ -363,6 +363,8 @@ impl Ui {
                 let initial = match (base.kind, r.str("display")) {
                     ("box", Some("flex")) => "row",
                     ("box", _) if r.str("markerPosition") == Some("inside") => "row",
+                    // A button's content is a row in it.
+                    ("button", _) => "row",
                     (kind, _) => kind,
                 };
                 el.direction = match r.str("direction").unwrap_or(initial) {

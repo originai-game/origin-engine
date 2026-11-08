@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "A <button> holds content: <button class=\"primary\"><icon name=\"coin\"/>Buy<badge>3</badge></button> lays its icon, text and badge out as a centred row inside the button's frame, states and press, and they take the button's ink. A text-only button is unchanged."
+    }
+  ]
+}

@@ -165,8 +165,8 @@ pub const CORE_KINDS: &[KindSpec] = &[
     },
     KindSpec {
         name: "button",
-        container: false,
-        doc: "A button with a label.",
+        container: true,
+        doc: "A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states.",
     },
     KindSpec {
         name: "image",

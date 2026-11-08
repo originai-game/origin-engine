@@ -285,7 +285,9 @@ impl Ui {
             r.str("text").unwrap_or_default().to_string()
         };
         let mut resp = crate::ui::Response::default();
-        let container = schema::kind(kind).is_some_and(|k| k.container);
+        // A button with only text is the leaf control; with content it holds it.
+        let container = schema::kind(kind).is_some_and(|k| k.container)
+            && (kind != "button" || !n.children.is_empty());
         // A dialog's or a disclosure's `open`: the bound store's, else the
         // literal's until the player toggles it (kept as widget memory).
         let open_now = |ui: &mut Ui| -> bool {
@@ -348,6 +350,9 @@ impl Ui {
                         opened = Some(out.open);
                     }
                 }
+                "button" => {
+                    resp = self.open_button(id.as_str(), r.button_desc());
+                }
                 "panel" => {
                     self.open_panel(
                         id.as_str(),
@@ -405,6 +410,10 @@ impl Ui {
                 fields::RenderFields::capture(self, self.parent(), kind, resp, props, None);
             self.apply_document_fields(n, &r, &fields);
             self.note_render_fields(key, fields);
+            // A content button feeds og-input's action as a text one does.
+            if kind == "button" && r.has("dataOgTouch") {
+                self.note_touch_button(&r);
+            }
             if kind == "box"
                 && let Some(marker) = r.str("markerType")
                 && let Some(text) = crate::doc::lists::marker(marker, r.ordinal.unwrap_or(1))
@@ -435,6 +444,7 @@ impl Ui {
             match kind {
                 "dialog" => self.close_dialog(&dialog),
                 "details" => self.close_details(),
+                "button" => self.close_button(),
                 _ => resp = self.close(),
             }
             if let Some(open) = opened {

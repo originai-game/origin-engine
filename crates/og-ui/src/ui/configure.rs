@@ -56,6 +56,7 @@ impl Ui {
             vcursor: None,
             hud_editor_key: 0,
             request_focus: 0,
+            button_ink: Vec::new(),
             scopes: Vec::new(),
             icons: IconAtlas::default(),
             cue_icons: Vec::new(),

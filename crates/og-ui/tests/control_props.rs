@@ -463,3 +463,47 @@ fn data_og_instant_settles_only_the_first_entrance() {
         );
     });
 }
+
+/// `<button>` holding content (G16): its icon, text and badge lie in a row
+/// centred in its frame and its press is the button's. Ways it could fail:
+/// the content laid out beside the button instead of in it, a column
+/// instead of a row, or a press on the icon not clicking the button.
+#[test]
+fn a_button_holds_its_content_in_a_row() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <button id="Buy" variant="primary" onclick={buy}><icon id="Coin" icon="coin" />Buy<badge id="N">3</badge></button>
+  <button id="Plain">Plain</button>
+</div>"#;
+    both(text, &[], |d| {
+        let (buy, coin, n) = (d.get("Buy"), d.get("Coin"), d.get("N"));
+        let words =
+            d.ui.probe_elements()
+                .into_iter()
+                .find(|e| e.path.contains("/Buy/") && e.text == "Buy")
+                .expect("the text in the button");
+        for e in [&coin, &words, &n] {
+            assert!(
+                e.x >= buy.x
+                    && e.x + e.width <= buy.x + buy.width + 0.5
+                    && e.y >= buy.y
+                    && e.y + e.height <= buy.y + buy.height + 0.5,
+                "{} inside the button: {e:?} in {buy:?}",
+                e.id
+            );
+        }
+        assert!(coin.x < words.x && words.x < n.x, "a row in source order");
+        let mid = |e: &UiElement| e.y + e.height / 2.0;
+        assert!((mid(&coin) - mid(&buy)).abs() < 1.0 && (mid(&words) - mid(&buy)).abs() < 1.0);
+        assert_eq!(
+            d.get("Plain").text,
+            "Plain",
+            "a text-only button is unchanged"
+        );
+        let events = d.click("Coin");
+        assert!(
+            events.iter().any(|e| e.name == "buy"),
+            "a press on its icon clicks it: {events:?}"
+        );
+    });
+}

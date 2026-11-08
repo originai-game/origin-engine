@@ -25,6 +25,7 @@ impl Ui {
         self.nodes[i].el.width = width;
         self.nodes[i].el.padding = Insets::default();
         self.draws.remove(&i);
+        let ink = self.content_ink();
         // Borrowed, not copied: a label is the most frequent element.
         let t = &self.theme;
         let mut step = desc.step.unwrap_or(t.type_ramp.body);
@@ -39,7 +40,7 @@ impl Ui {
             color: desc.color.unwrap_or(if desc.on_scene {
                 t.palette.scene_ink
             } else {
-                t.palette.ink
+                ink
             }),
             align: desc.align,
             wrap: !desc.nowrap,
@@ -101,6 +102,35 @@ impl Ui {
     /// A capsule button with a label. `clicked` is a press and a release inside it.
     pub fn button(&mut self, id: impl Into<Id>, text: &str, desc: ButtonDesc) -> Response {
         let i = self.leaf("button", id.into(), Element::default());
+        self.button_at(i, text, desc)
+    }
+
+    /// A button holding content (a document's `<button><icon/>Buy<badge/></button>`):
+    /// the children built until [`Ui::close_button`] lie in a row in its
+    /// frame, its states and its press; text and icons in it without a
+    /// colour of their own take its ink.
+    pub(crate) fn open_button(&mut self, id: impl Into<Id>, desc: ButtonDesc) -> Response {
+        let i = self.push("button", id.into(), Element::default());
+        self.stack.push(i);
+        self.button_ink.push((i, self.theme.palette.ink));
+        self.button_at(i, "", desc)
+    }
+
+    /// Closes a button opened with [`Ui::open_button`].
+    pub(crate) fn close_button(&mut self) {
+        self.button_ink.pop();
+        self.close();
+    }
+
+    /// The ink a text or icon without its own colour takes: its button's
+    /// while one holds it, else the palette's.
+    pub(crate) fn content_ink(&self) -> Srgba {
+        self.button_ink
+            .last()
+            .map_or(self.theme.palette.ink, |&(_, ink)| ink)
+    }
+
+    fn button_at(&mut self, i: usize, text: &str, desc: ButtonDesc) -> Response {
         self.nodes[i].disabled = desc.disabled;
         let refused = desc.disabled
             && self.theme.art.motion.shake > 0.0
@@ -160,6 +190,11 @@ impl Ui {
             width,
             height: Size::Fixed(h),
             padding: Insets::xy(pad, 0.0),
+            // Its content, when it holds some, is a centred row.
+            direction: Direction::Row,
+            align: Align::Center,
+            cross: Cross::Center,
+            gap: t.space.xs,
             // A style that shakes a refused press hears presses on a disabled button.
             interactive: !desc.disabled || t.art.motion.shake > 0.0,
             radius: t.radius.control,
@@ -303,12 +338,19 @@ impl Ui {
         let mut content = self.role_text(text, crate::tokens::TypeRole::Button, fg);
         content.align = TextAlign::Center;
         let radius = crate::dress::corner_of(resolved.shape(&part, &t)).1;
+        if let Some(top) = self.button_ink.last_mut().filter(|(at, _)| *at == i) {
+            top.1 = fg;
+        }
         let n = &mut self.nodes[i];
         n.el.background = bg;
         n.el.radius = radius.min(h / 2.0);
         n.el.part = Some(part);
         n.el.frame = None;
-        n.content = Content::Text(content);
+        n.content = if text.is_empty() {
+            Content::None
+        } else {
+            Content::Text(content)
+        };
         n.widget = Widget::Button {
             pressed: r.pressed,
             press,

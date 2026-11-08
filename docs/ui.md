@@ -106,7 +106,7 @@ probe) are unchanged. The mapping:
 | `<a href>` | label (a link) | a click sends a `link` event named by its href through the document's events, as `onclick` sends `emit`; accent ink and an underline |
 | `<div>`, `<section>`, `<header>`, `<footer>`, `<nav>`, `<main>`, `<aside>`, `<article>` | box | layout from CSS `display` (below); landmarks take their roles: `navigation`, `main`, `banner`, `contentinfo`, `complementary`, `article`, and `region` for a named `<section>` |
 | `<ul>`, `<ol>`, `<li>` | box (list, listitem) | not virtualised (that is `<list>`); markers from `list-style` (below); `<ol start reversed>`, `<li value>` |
-| `<button>`, `<progress>` | button, progress | already HTML |
+| `<button>`, `<progress>` | button, progress | already HTML; a `<button>` holding elements (`<icon/>`, text, `<badge>`) lays them out as a centred row inside its frame, states and press, and its text and icons without a colour of their own take its ink |
 | `<select>` with `<option>` and `<optgroup>` | select | `value`, `placeholder`, `disabled`, `aria-invalid`; options take `value`, `label`, `i18n`, `disabled`, `selected`; `select::picker(select) { max-height }` bounds the open list |
 | `<dialog>` | dialog | `open`, `modal`, `closedby`, `aria-label`; CSS `appearance: none` drops its frame |
 | `<details>` with a first `<summary>` | details | `open`, `disabled` |
