@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"A slider or a <details> resized by a container query draws its new size in that frame: the slider's knob is placed by layout at its value instead of from last frame's track, and the disclosure's root takes the queried width as its summary row does."}
+  ]
+}

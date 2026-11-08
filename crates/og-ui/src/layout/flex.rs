@@ -939,7 +939,9 @@ pub(crate) fn on_screen(n: &Node, screen: &Rect) -> Rect {
 /// Where a `w`×`h` box sits in `bx`: by its insets where they are set,
 /// else by `align` across and `cross` down.
 fn place_in(bx: &Rect, w: f32, h: f32, ins: &Edges, align: Align, cross: Cross) -> (f32, f32) {
-    let x = if ins.center_x {
+    let x = if let Some(f) = ins.across {
+        bx.x + ((bx.width - w) * f).round() + ins.start.unwrap_or(0.0)
+    } else if ins.center_x {
         bx.x + (bx.width - w) / 2.0 + ins.start.unwrap_or(0.0)
     } else if let Some(s) = ins.start {
         bx.x + s

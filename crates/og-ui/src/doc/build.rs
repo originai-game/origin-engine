@@ -807,6 +807,7 @@ impl Ui {
             bottom: r.num("bottom"),
             center_x: r.flag("centerX"),
             center_y: r.flag("centerY"),
+            across: None,
         };
         if p.position == Position::Flow && p.insets.is_set() {
             p.position = Position::Absolute;

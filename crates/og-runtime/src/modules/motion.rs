@@ -55,6 +55,7 @@ fn edges(v: &Value) -> Edges {
         bottom: opt_f(v, "bottom"),
         center_x: v["centerX"].as_bool().unwrap_or(false),
         center_y: v["centerY"].as_bool().unwrap_or(false),
+        across: None,
     }
 }
 

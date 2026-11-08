@@ -267,6 +267,14 @@ impl Ui {
                     },
                 );
             }
+            "details" => {
+                // Its fields are its content column's; the build gives its
+                // root (the parent) the CSS width too (`DetailsDesc.width`).
+                let root = self.nodes[i].parent;
+                if root != crate::layout::NONE {
+                    self.nodes[root].el.width = r.size("width").unwrap_or(Size::grow());
+                }
+            }
             "spacer" => {
                 let size = r.size("width").or(r.size("height")).unwrap_or(Size::grow());
                 self.nodes[i].el.width = size;

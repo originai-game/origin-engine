@@ -1181,3 +1181,50 @@ fn action_listeners_build_only_when_their_action_fires() {
     assert_eq!(frame(&mut ui), (1, vec!["buy".to_string()]));
     assert_eq!(frame(&mut ui), (0, vec![]));
 }
+
+/// A container query that resizes a slider and a disclosure: settlement
+/// replaces their fields, and what their widgets build inside (the knob at
+/// its value, the summary row) follows the new box in that frame, as a
+/// fresh build at that size draws it.
+#[test]
+fn queried_controls_follow_their_new_box_in_the_frame_it_changes() {
+    let mount = || {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            doc::UiDocument::parse(
+                "shelf.svelte",
+                r#"<meta name="component" content="shelf">
+<column id="Shelf">
+  <input id="Range" type="range" value="0.4">
+  <details id="More" summary="More" open><text>In</text></details>
+</column>
+<style>
+#Shelf { width: 60%; padding: 0px; container-type: inline-size; }
+@container (width > 250px) { #Range, #More { width: 180px; } }
+</style>"#,
+            )
+            .unwrap(),
+        );
+        ui.mount_document(
+            reactive::SourceId::new("test", "shelf"),
+            "shelf",
+            Default::default(),
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap();
+        ui
+    };
+    let frame = |ui: &mut Ui, width: f32| {
+        ui.begin(InputFrame::default(), Viewport::new(width, 300.0));
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        format!("{:?}", ui.frame().items)
+    };
+    let mut resized = mount();
+    frame(&mut resized, 400.0);
+    frame(&mut resized, 400.0);
+    let mut fresh = mount();
+    frame(&mut fresh, 700.0);
+    assert_eq!(frame(&mut resized, 700.0), frame(&mut fresh, 700.0));
+}

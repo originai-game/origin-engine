@@ -279,8 +279,10 @@ impl Ui {
                 inert: true,
                 props: Props {
                     position: Position::Absolute,
+                    // Along the track by layout, so it follows a track
+                    // whose width changed this frame.
                     insets: Edges {
-                        start: Some((f * g.width).round()),
+                        across: Some(f.clamp(0.0, 1.0)),
                         top: Some((g.h - g.knob) / 2.0),
                         ..Edges::default()
                     },

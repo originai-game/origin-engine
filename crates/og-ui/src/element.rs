@@ -299,6 +299,11 @@ pub struct Edges {
     pub center_x: bool,
     /// Centred down the parent (the top inset, if any, moves it).
     pub center_y: bool,
+    /// Placed at this fraction of the room its parent leaves across it,
+    /// rounded to a whole px (0: at its start, 1: at its end; the start
+    /// inset, if any, moves it). Layout places it, so it follows a parent
+    /// whose width changed this frame: a slider's knob at its value.
+    pub across: Option<f32>,
 }
 
 impl Edges {
@@ -309,6 +314,7 @@ impl Edges {
             || self.bottom.is_some()
             || self.center_x
             || self.center_y
+            || self.across.is_some()
     }
 }
 
