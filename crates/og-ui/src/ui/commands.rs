@@ -160,6 +160,9 @@ impl Ui {
         let snap = |v: f32| (v * dpr).round() / dpr;
         let ends = std::mem::take(&mut self.orders.ends);
         let mut last = std::mem::take(&mut self.kept.last_cmds);
+        self.kept.prev_len = last.len();
+        self.kept.aligned.clear();
+        self.kept.aligned_kept = 0;
         let mut cmds: Vec<(DrawCmd, Affine)> = Vec::with_capacity(last.len());
         let ghosts = std::mem::take(&mut self.state.motion.ghosts);
         let mut drawn = vec![false; ghosts.len()];
@@ -228,10 +231,31 @@ impl Ui {
                 } else if cmds.is_empty() && from == 0 && len == last.len() {
                     // Last frame's whole list, as it was: taken, not copied.
                     cmds = std::mem::take(&mut last);
+                } else if from == start {
+                    // Where it stood last frame: moved out of last frame's
+                    // list, which is not read there again (`relevel`
+                    // compares only what is not kept in place).
+                    #[cfg(debug_assertions)]
+                    if bounded::checking() {
+                        assert!(
+                            self.kept.aligned.last().is_none_or(|r| r.end <= from),
+                            "a range of last frame's commands is kept twice"
+                        );
+                    }
+                    let blank = || (DrawCmd::PopClip, Affine::IDENTITY);
+                    cmds.extend(
+                        last[from..from + len]
+                            .iter_mut()
+                            .map(|c| std::mem::replace(c, blank())),
+                    );
                 } else {
                     cmds.extend_from_slice(&last[from..from + len]);
                 }
                 self.kept_spans.push(start..cmds.len());
+                if !moved && from == start {
+                    self.kept.aligned.push(start..cmds.len());
+                    self.kept.aligned_kept += 1;
+                }
                 self.stats.kept_commands += count;
                 let base = open.last().map_or(0, |o| o.1);
                 self.kept
@@ -377,6 +401,7 @@ impl Ui {
         self.orders.ends = ends;
         self.orders.reuse = reuse;
         self.kept.reused_all = reused_roots && same_roots && !self.kept.fresh && !self.kept.whole;
+        self.kept.prev_cmds = last;
         cmds
     }
 
@@ -509,6 +534,7 @@ impl Ui {
                     );
                     // Every later command moves one place: no span is kept.
                     self.kept_spans.retain(|r| r.end <= first);
+                    self.kept.aligned.retain(|r| r.end <= first);
                     cmds.insert(first, (begin, nj.world));
                     cmds.push((end, nj.world));
                 }

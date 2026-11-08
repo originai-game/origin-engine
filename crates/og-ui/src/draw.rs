@@ -537,7 +537,7 @@ fn collect(
                 // A world panel: its own space of levels, off the screen
                 // (it levels nothing there).
                 let (inner, end) = collect(cmds, layers);
-                let items = levelled(inner, layers, None);
+                let items = levelled(inner, layers, None, None);
                 let end = end.unwrap_or((
                     DrawCmd::World(Box::new(WorldCmd::EndPanel)),
                     Affine::IDENTITY,
@@ -557,7 +557,7 @@ fn collect(
             DrawCmd::BeginLayer { .. } => {
                 let (inner, end) = collect(cmds, layers);
                 let mut bounds = Rect::default();
-                let items = levelled(inner, layers, Some(&mut bounds));
+                let items = levelled(inner, layers, Some(&mut bounds), None);
                 let mut begin = cmd;
                 let end = end.unwrap_or((
                     DrawCmd::EndLayer {
@@ -593,8 +593,6 @@ fn collect(
     (entries, None)
 }
 
-/// Levels a space's entries and flattens them; `drawn` gets the union of
-/// what they draw.
 /// A text with visible characters (plain or styled): one that has no
 /// bounds only because its face lacks every glyph of it.
 fn unmeasured_text(cmd: &DrawCmd) -> bool {
@@ -605,7 +603,15 @@ fn unmeasured_text(cmd: &DrawCmd) -> bool {
     }
 }
 
-fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> Vec<DrawItem> {
+/// Levels a space's entries and flattens them; `drawn` gets the union of
+/// what they draw, and `top` what the next frame's [`Levels::update`]
+/// needs.
+fn levelled(
+    entries: Vec<Entry>,
+    layers: &mut u32,
+    drawn: Option<&mut Rect>,
+    top: Option<&mut Levels>,
+) -> Vec<DrawItem> {
     let keyed: Vec<(Rect, Batch)> = entries
         .iter()
         .map(|e| match e {
@@ -617,7 +623,7 @@ fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> 
             }
         })
         .collect();
-    let levels = assign(&keyed);
+    let (levels, grid, cells) = assign(&keyed);
     if let Some(u) = drawn {
         let mut acc: Option<Rect> = None;
         for (r, _) in &keyed {
@@ -628,7 +634,9 @@ fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> 
         *u = acc.unwrap_or_default();
     }
     let mut out = Vec::with_capacity(entries.len());
-    for (entry, level) in entries.into_iter().zip(levels) {
+    let mut spans = Vec::with_capacity(if top.is_some() { entries.len() } else { 0 });
+    for (entry, &level) in entries.into_iter().zip(&levels) {
+        let first = out.len() as u32;
         match (entry, level) {
             (Entry::Bracket(cmd, transform), _) => out.push(DrawItem {
                 level: 0,
@@ -686,6 +694,20 @@ fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> 
             // Nothing to draw.
             (_, None) => {}
         }
+        if top.is_some() {
+            let end = out.len() as u32;
+            spans.push((end > first).then(|| (first, end - 1)));
+        }
+    }
+    if let Some(top) = top {
+        *top = Levels {
+            at: Vec::new(),
+            keyed,
+            levels,
+            items: spans,
+            grid,
+            cells,
+        };
     }
     out
 }
@@ -693,6 +715,13 @@ fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> 
 /// Assigns painter levels in submission order (see the module
 /// documentation); each command's bounds are taken under its map.
 pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
+    assign_levels_kept(cmds).0
+}
+
+/// [`assign_levels`], with what it decided about the top level space for
+/// the next frame's [`Levels::update`].
+pub(crate) fn assign_levels_kept(cmds: Vec<(DrawCmd, Affine)>) -> (Vec<DrawItem>, Levels) {
+    let at = top_entries(&cmds);
     let mut layers = 0;
     let mut it = cmds.into_iter();
     let mut entries = Vec::new();
@@ -704,7 +733,10 @@ pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
             break;
         }
     }
-    levelled(entries, &mut layers, None)
+    let mut top = Levels::default();
+    let items = levelled(entries, &mut layers, None, Some(&mut top));
+    top.at = at;
+    (items, top)
 }
 
 /// The levels of `keyed` (bounds and batch) in submission order: a command
@@ -714,45 +746,167 @@ pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
 /// rectangles of its own cells: a screen transition's dissolve is 1,620
 /// quads over the frame, and testing each against every earlier command was
 /// 7 to 17 ms of a dev tick (Lantern Vale's playtests, the former test sample
-fn assign(keyed: &[(Rect, Batch)]) -> Vec<Option<i32>> {
+fn assign(keyed: &[(Rect, Batch)]) -> (Vec<Option<i32>>, Grid, Vec<Vec<u32>>) {
     let bounds: Vec<Rect> = keyed.iter().map(|(r, _)| *r).collect();
     let grid = Grid::over(&bounds);
     let mut cells: Vec<Vec<u32>> = vec![Vec::new(); grid.cols * grid.rows];
-    let mut out = Vec::with_capacity(keyed.len());
-    let mut placed: Vec<(Rect, Batch, i32)> = Vec::with_capacity(keyed.len());
-    for &(bounds, batch) in keyed {
+    let mut out: Vec<Option<i32>> = Vec::with_capacity(keyed.len());
+    for (e, &(bounds, _)) in keyed.iter().enumerate() {
         if bounds.is_empty() {
             out.push(None);
             continue;
         }
-        let (cols, rows) = grid.span(&bounds);
-        let mut level = 0;
-        for row in rows.clone() {
-            for col in cols.clone() {
-                for &p in &cells[row * grid.cols + col] {
-                    let (r, b, l) = &placed[p as usize];
-                    if r.overlaps(&bounds) {
-                        level = level.max(if *b == batch { *l } else { *l + 1 });
+        let level = grid.level(keyed, &out, &cells, e);
+        grid.file(&mut cells, &bounds, e as u32);
+        out.push(Some(level));
+    }
+    (out, grid, cells)
+}
+
+/// What [`assign_levels`] decided about a frame's top level space: each
+/// entry's bounds, batch and level, the grid they are filed in, and where
+/// each submitted command and entry stand. A next frame that replaces a few
+/// commands there levels again only what they overlap ([`Levels::update`]).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Levels {
+    /// Per submitted command: its top level entry when it is one levelled
+    /// command (`u32::MAX`: a bracket, a layer's or panel's, an end).
+    at: Vec<u32>,
+    keyed: Vec<(Rect, Batch)>,
+    levels: Vec<Option<i32>>,
+    /// Per entry: its first and last item (a layer's begin and end), if
+    /// it has any.
+    items: Vec<Option<(u32, u32)>>,
+    grid: Grid,
+    cells: Vec<Vec<u32>>,
+}
+
+impl Levels {
+    /// Replaces the items of the commands at `changed` (submitted
+    /// position, baked command and map) and levels again what they
+    /// overlapped or now overlap, as [`assign_levels`] would. `false`,
+    /// with nothing changed, when one is not a top level command or starts
+    /// or stops drawing (the item list changes): level the frame afresh.
+    pub(crate) fn update(
+        &mut self,
+        items: &mut [DrawItem],
+        changed: Vec<(usize, DrawCmd, Affine)>,
+        unit: f32,
+    ) -> bool {
+        let mut keys = Vec::with_capacity(changed.len());
+        for (p, cmd, m) in &changed {
+            let Some(&e) = self.at.get(*p).filter(|&&e| e != u32::MAX) else {
+                return false;
+            };
+            let key = (mapped_bounds(cmd, m), cmd.batch());
+            let shown = !key.0.is_empty() || unmeasured_text(cmd);
+            if key.0.is_empty() != self.keyed[e as usize].0.is_empty()
+                || shown != self.items[e as usize].is_some()
+            {
+                return false;
+            }
+            keys.push((e as usize, key));
+        }
+        let mut work = std::collections::BTreeSet::new();
+        let mut moved: std::collections::BTreeMap<usize, Rect> = Default::default();
+        for ((e, key), (_, cmd, transform)) in keys.into_iter().zip(changed) {
+            let Some((at, _)) = self.items[e] else {
+                continue;
+            };
+            let at = at as usize;
+            items[at] = zoom_items(
+                vec![DrawItem {
+                    level: items[at].level,
+                    cmd,
+                    transform,
+                }],
+                unit,
+            )
+            .pop()
+            .expect("one item");
+            // Drawing nothing (a text of missing glyphs): on level 0, levelling nothing.
+            if key.0.is_empty() {
+                continue;
+            }
+            let old = self.keyed[e];
+            if old != key {
+                self.grid.unfile(&mut self.cells, &old.0, e as u32);
+                self.grid.file(&mut self.cells, &key.0, e as u32);
+                self.keyed[e] = key;
+                moved.entry(e).or_insert(old.0);
+            }
+            work.insert(e);
+        }
+        // In submission order: an entry is levelled after every earlier
+        // one it reads, and what it overlaps is levelled after it.
+        while let Some(e) = work.pop_first() {
+            let level = self.grid.level(&self.keyed, &self.levels, &self.cells, e);
+            let old = moved.get(&e).copied();
+            if self.levels[e] == Some(level) && old.is_none() {
+                continue;
+            }
+            self.levels[e] = Some(level);
+            let (first, last) = self.items[e].expect("a levelled entry has items");
+            items[first as usize].level = level;
+            items[last as usize].level = level;
+            for r in std::iter::once(self.keyed[e].0).chain(old) {
+                let (cols, rows) = self.grid.span(&r);
+                for row in rows {
+                    for col in cols.clone() {
+                        for &q in &self.cells[row * self.grid.cols + col] {
+                            if q as usize > e && self.keyed[q as usize].0.overlaps(&r) {
+                                work.insert(q as usize);
+                            }
+                        }
                     }
                 }
             }
         }
-        let id = placed.len() as u32;
-        for row in rows {
-            for col in cols.clone() {
-                cells[row * grid.cols + col].push(id);
-            }
-        }
-        placed.push((bounds, batch, level));
-        out.push(Some(level));
+        true
     }
-    out
+}
+
+/// Per submitted command, its top level entry when [`collect`] makes it
+/// one levelled command ([`Levels::at`]); the entries counted as
+/// [`assign_levels`] makes them (a stray end makes none).
+fn top_entries(cmds: &[(DrawCmd, Affine)]) -> Vec<u32> {
+    let mut depth = 0u32;
+    let mut entry = 0u32;
+    cmds.iter()
+        .map(|(c, _)| {
+            let (opens, closes, plain) = match c {
+                DrawCmd::BeginLayer { .. } => (true, false, false),
+                DrawCmd::EndLayer { .. } => (false, true, false),
+                DrawCmd::PushClip { .. } | DrawCmd::PopClip => (false, false, false),
+                DrawCmd::World(w) => match &**w {
+                    WorldCmd::BeginPanel { .. } => (true, false, false),
+                    WorldCmd::EndPanel => (false, true, false),
+                    WorldCmd::Mass { .. } => (false, false, true),
+                    _ => (false, false, false),
+                },
+                _ => (false, false, true),
+            };
+            let at = if depth == 0 && !closes {
+                entry += 1;
+                if plain { entry - 1 } else { u32::MAX }
+            } else {
+                u32::MAX
+            };
+            if opens {
+                depth += 1;
+            } else if closes {
+                depth = depth.saturating_sub(1);
+            }
+            at
+        })
+        .collect()
 }
 
 /// [`assign`]'s grid: about one cell for every four commands, at
 /// most 64 by 64 cells of at least 32 CSS px, over the commands' bounds. A rectangle is filed in every cell its closed
 /// extent touches (clamped to the grid), so two rectangles that overlap
 /// share a cell.
+#[derive(Clone, Debug, Default)]
 struct Grid {
     x: f32,
     y: f32,
@@ -799,6 +953,57 @@ impl Grid {
             cell_h,
             cols,
             rows,
+        }
+    }
+
+    /// Entry `e`'s level: above every earlier entry it overlaps, on the
+    /// same level as one of its own batch.
+    fn level(
+        &self,
+        keyed: &[(Rect, Batch)],
+        levels: &[Option<i32>],
+        cells: &[Vec<u32>],
+        e: usize,
+    ) -> i32 {
+        let (bounds, batch) = keyed[e];
+        let (cols, rows) = self.span(&bounds);
+        let mut level = 0;
+        for row in rows {
+            for col in cols.clone() {
+                for &p in &cells[row * self.cols + col] {
+                    let p = p as usize;
+                    if p < e
+                        && let Some(l) = levels[p]
+                        && keyed[p].0.overlaps(&bounds)
+                    {
+                        level = level.max(if keyed[p].1 == batch { l } else { l + 1 });
+                    }
+                }
+            }
+        }
+        level
+    }
+
+    /// Files entry `e` in the cells `r` touches.
+    fn file(&self, cells: &mut [Vec<u32>], r: &Rect, e: u32) {
+        let (cols, rows) = self.span(r);
+        for row in rows {
+            for col in cols.clone() {
+                cells[row * self.cols + col].push(e);
+            }
+        }
+    }
+
+    /// Takes entry `e` out of the cells `r` touches.
+    fn unfile(&self, cells: &mut [Vec<u32>], r: &Rect, e: u32) {
+        if r.is_empty() {
+            return;
+        }
+        let (cols, rows) = self.span(r);
+        for row in rows {
+            for col in cols.clone() {
+                cells[row * self.cols + col].retain(|&q| q != e);
+            }
         }
     }
 
@@ -1648,6 +1853,77 @@ mod levels {
             blend: UiBlend::Normal,
             clip: ALL,
         }
+    }
+
+    /// Replacing a few commands and levelling only what they touch gives
+    /// the items levelling the whole list afresh gives: a command moved
+    /// away lowers what was stacked over it, transitively, and one moved
+    /// over others raises what follows; a layer and a clip keep their
+    /// places. A change inside the layer is refused.
+    #[test]
+    fn levelling_again_what_changed_matches_levelling_afresh() {
+        let mut seed = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut rand = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            (seed >> 11) as f32 / (1u64 << 53) as f32
+        };
+        let mut cmd = |i: usize| {
+            let r = Rect::new(
+                rand() * 900.0,
+                rand() * 500.0,
+                20.0 + rand() * 260.0,
+                20.0 + rand() * 160.0,
+            );
+            if rand() < 0.4 {
+                image(r, i as u32 % 2)
+            } else {
+                quad(r)
+            }
+        };
+        let mut cmds: Vec<DrawCmd> = (0..120).map(&mut cmd).collect();
+        cmds.splice(
+            40..40,
+            [
+                begin(),
+                quad(Rect::new(0.0, 0.0, 600.0, 400.0)),
+                quad(Rect::new(10.0, 10.0, 50.0, 50.0)),
+                end(),
+            ],
+        );
+        cmds.insert(
+            70,
+            DrawCmd::PushClip {
+                geometry: UiGeometry::Rect {
+                    radii: [0.0; 4],
+                    corner: og_render::UiCorner::Round,
+                },
+                center: (300.0, 200.0),
+                half: (200.0, 100.0),
+            },
+        );
+        cmds.insert(90, DrawCmd::PopClip);
+        let (mut items, mut levels) = assign_levels_kept(plain(cmds.clone()));
+        let movable: Vec<usize> = (0..cmds.len())
+            .filter(|&p| !(40..44).contains(&p) && p != 70 && p != 90)
+            .collect();
+        let mut pick = 0usize;
+        for round in 0..40 {
+            let mut changed = Vec::new();
+            for _ in 0..1 + round % 4 {
+                pick = (pick * 31 + 17 + round) % movable.len();
+                let p = movable[pick];
+                cmds[p] = cmd(p + round);
+                changed.push((p, cmds[p].clone(), Affine::IDENTITY));
+            }
+            assert!(levels.update(&mut items, changed, 1.0));
+            assert_eq!(items, assign_levels(plain(cmds.clone())), "round {round}");
+        }
+        let inside = vec![(42, quad(Rect::new(5.0, 5.0, 5.0, 5.0)), Affine::IDENTITY)];
+        let before = items.clone();
+        assert!(!levels.update(&mut items, inside, 1.0));
+        assert_eq!(items, before);
     }
 
     /// A layer levels its own commands from 0 and is one command of its

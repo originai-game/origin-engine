@@ -821,16 +821,18 @@ impl Ui {
             self.kept.reused_all && tail == self.kept.last_tail && self.frame.unit == self.unit;
         let (items, missing_glyphs) = if kept_items {
             (std::mem::take(&mut self.frame.items), Vec::new())
+        } else if let Some(relevelled) = self.relevel(&trees, &tail) {
+            relevelled
         } else {
             let mut cmds = trees.clone();
             cmds.extend(tail.iter().cloned());
             let cmds: Vec<(DrawCmd, Affine)> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
             let missing_glyphs = self.missing_glyphs(&cmds);
-            (
-                crate::draw::zoom_items(assign_levels(cmds), self.unit),
-                missing_glyphs,
-            )
+            let (items, levels) = crate::draw::assign_levels_kept(cmds);
+            self.kept.levels = Some(levels);
+            (crate::draw::zoom_items(items, self.unit), missing_glyphs)
         };
+        self.kept.prev_cmds = Vec::new();
         self.kept.last_cmds = trees;
         self.kept.last_tail = tail;
         let mut focus_paths: [String; 4] = Default::default();
@@ -880,6 +882,86 @@ impl Ui {
     /// face's metrics on the CPU, so a run with no renderer warns as one
     /// with a GPU does. Commands kept from last frame (`kept_spans`) were
     /// read when they were painted.
+    /// Last frame's items with only the commands that differ from last
+    /// frame's replaced and levelled again ([`crate::draw::Levels`]): the
+    /// commands outside the ranges kept in place are compared, not every
+    /// command. `None` when the list's shape changed or much of it did.
+    fn relevel(
+        &mut self,
+        trees: &[(DrawCmd, Affine)],
+        tail: &[(DrawCmd, Affine)],
+    ) -> Option<(Vec<DrawItem>, MissingGlyphs)> {
+        let prev = std::mem::take(&mut self.kept.prev_cmds);
+        if self.kept.levels.is_none()
+            || self.kept.aligned.len() != self.kept.aligned_kept
+            || self.frame.unit != self.unit
+            || trees.len() != self.kept.prev_len
+            || tail.len() != self.kept.last_tail.len()
+        {
+            return None;
+        }
+        let total = trees.len() + tail.len();
+        let mut changed = Vec::new();
+        let mut at = 0;
+        let gaps = self
+            .kept
+            .aligned
+            .iter()
+            .map(|r| (r.start, r.end))
+            .chain([(trees.len(), trees.len())]);
+        for (start, end) in gaps {
+            if start > at {
+                let was = prev.get(at..start)?;
+                for (k, (now, was)) in trees[at..start].iter().zip(was).enumerate() {
+                    if now != was {
+                        changed.push(at + k);
+                    }
+                }
+            }
+            at = at.max(end);
+        }
+        for (k, (now, was)) in tail.iter().zip(&self.kept.last_tail).enumerate() {
+            if now != was {
+                changed.push(trees.len() + k);
+            }
+        }
+        if changed.len() * 8 > total {
+            return None;
+        }
+        let baked: Vec<(DrawCmd, Affine)> = changed
+            .iter()
+            .map(|&p| {
+                let (c, m) = trees.get(p).unwrap_or_else(|| &tail[p - trees.len()]);
+                bake(c.clone(), *m)
+            })
+            .collect();
+        self.kept_spans.clear();
+        let missing_glyphs = self.missing_glyphs(&baked);
+        let mut items = std::mem::take(&mut self.frame.items);
+        let replaced = changed
+            .into_iter()
+            .zip(baked)
+            .map(|(p, (c, m))| (p, c, m))
+            .collect();
+        let levels = self.kept.levels.as_mut().expect("checked");
+        if !levels.update(&mut items, replaced, self.unit) {
+            self.frame.items = items;
+            return None;
+        }
+        #[cfg(debug_assertions)]
+        if bounded::checking() {
+            let mut cmds: Vec<(DrawCmd, Affine)> = trees.to_vec();
+            cmds.extend(tail.iter().cloned());
+            let cmds: Vec<_> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
+            let fresh = crate::draw::zoom_items(assign_levels(cmds), self.unit);
+            assert!(
+                fresh == items,
+                "the frame's items levelled again differ from levelling it afresh"
+            );
+        }
+        Some((items, missing_glyphs))
+    }
+
     fn missing_glyphs(
         &mut self,
         cmds: &[(DrawCmd, Affine)],
@@ -934,3 +1016,6 @@ impl Ui {
         }
     }
 }
+
+/// Per font, the characters it lacks that a frame drew for the first time.
+type MissingGlyphs = Vec<(og_render::FontHandle, Vec<char>)>;

@@ -282,6 +282,17 @@ pub(crate) struct LayoutCache {
     /// What last frame drew after its trees (a cover, the HUD editor, the
     /// virtual cursor), before baking.
     pub last_tail: Vec<(crate::DrawCmd, crate::element::Affine)>,
+    /// This frame's ranges copied from where they stood in last frame's
+    /// commands, at the same place; last frame's commands, as `commands`
+    /// leaves them (empty when taken whole), and how many there were.
+    pub aligned: Vec<std::ops::Range<usize>>,
+    /// How many ranges `aligned` held before a later insertion dropped
+    /// some (their commands are no longer in last frame's list).
+    pub aligned_kept: usize,
+    pub prev_cmds: Vec<(crate::DrawCmd, crate::element::Affine)>,
+    pub prev_len: usize,
+    /// What last frame's levelling decided (`None`: level afresh).
+    pub levels: Option<crate::draw::Levels>,
 }
 
 /// What the frame changes about a node's drawing without writing it again:

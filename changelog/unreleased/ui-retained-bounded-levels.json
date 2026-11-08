@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "A frame that changes a few commands at the top of its draw list levels, bakes and scales only those, and levels again only the commands they overlapped or now overlap; it compares only the commands not kept in place, instead of baking, levelling and scaling the whole list. Subtrees kept where they stood last frame move their commands out of last frame's list instead of copying them. A changed list shape, a change inside a layer, or a change to an eighth of the list levels the frame afresh as before."
+    }
+  ]
+}
