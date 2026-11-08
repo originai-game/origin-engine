@@ -93,6 +93,7 @@ struct Frame {
   // zw unused.
   toon: vec4<f32>,
   ssr: vec4<f32>,             // screen-space reflections (ssr.rs): x 1 when ssr_tex holds this camera's, y intensity
+  drawn: vec4<u32>,           // x: the renderer's frames drawn before this one (it counts on while the clock is paused), yzw unused
 };
 
 // The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added beside the environment's
@@ -103,6 +104,15 @@ fn hemi_irradiance(n: vec3<f32>) -> vec3<f32> {
 }
 
 @group(0) @binding(0) var<uniform> frame: Frame;
+
+// Whether a material's shader parameters changed in this frame: `stamp` is the drawn frame its uniform's `custom`
+// was written in (material.wgsl `MaterialFactors.stamp`), so `previous_shader_params()` (hooks.rs) reads
+// `previous_custom` in that frame only and the parameters' motion stops on the next one without another write. The
+// casters' modules, which draw no motion, define it false (shadow_pass.wgsl).
+fn params_moved(stamp: u32) -> bool {
+  return stamp == frame.drawn.x;
+}
+
 // Shadow depths stored in R32Float colour targets and read with textureLoad
 // (lighting.wgsl's explicit compares).
 @group(0) @binding(1) var cascade_map: texture_2d_array<f32>;

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: shader parameter uploads",
+      "summary": "A material's shader parameter change is one write: its new values, the ones the frame before drew and the number of the frame it is drawn in. previous_shader_params() (motion vectors) reads the previous values in that frame only, so the parameters' motion stops on the next frame, also while the game is paused, with nothing written then. Before, the frame after each change wrote the previous values again on every changed material and ran the per-frame material pass for it. Frames do not change."
+    }
+  ]
+}

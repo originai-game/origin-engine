@@ -2460,6 +2460,9 @@ impl Renderer {
                 0.0,
             ],
             ssr: ssr::ScreenSpaceReflections::frame_row(ssr.as_ref()),
+            // The stamp a material's shader parameter change carries in
+            // this frame (`sync_assets`; engine s100).
+            drawn: [self.frame_index as u32, 0, 0, 0],
         };
         uniform.atmosphere.time[3] = self.previous_time.unwrap_or(uniform.atmosphere.time[0]);
         // The shadow passes' clock, and the scene's origin for the hooks

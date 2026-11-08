@@ -13,9 +13,9 @@
 
 // The material's parameters (`MaterialUniform::custom` of the lit
 // shader's material, the same values og.render.setShaderParam writes).
+// Sprites draw no motion: `previous_shader_params()` reads these too.
 struct SpriteMaterial {
   custom: array<vec4<f32>, 8>,
-  previous_custom: array<vec4<f32>, 8>,
 };
 @group(3) @binding(0) var<uniform> material: SpriteMaterial;
 

@@ -610,6 +610,7 @@ impl Renderer {
         index: usize,
         m: &StandardMaterial,
         custom: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
+        previous: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
     ) -> Result<(wgpu::BindGroup, Option<wgpu::BindGroup>, wgpu::Buffer), RenderError> {
         let [
             map,
@@ -650,7 +651,11 @@ impl Renderer {
         let mut uniform: MaterialUniform = material::uniform(m, two_channel);
         if let Some(c) = custom {
             uniform.custom = c;
-            uniform.previous_custom = c;
+            // The parameters the frames before drew, read in this frame
+            // only (engine s100): a colour or texture edit keeps the
+            // vertex's motion.
+            uniform.previous_custom = previous.unwrap_or(c);
+            uniform.stamp = [self.frame_index as u32, 0, 0, 0];
         }
         // The array maps' views (a material shader keeps the standard path).
         let arrays = match self.array_maps.as_ref() {
