@@ -359,6 +359,11 @@ pub struct DocNode {
     pub line: usize,
     /// Byte offset of the authored node, used by source-preserving probe edits.
     pub source_offset: usize,
+    /// Authored tag before reflected aliases; structural nodes have no tag.
+    pub selector_tag: Option<String>,
+    /// Authored selector inputs, independent of currently declared CSS rules.
+    /// Names retain `class:` and `bind:` prefixes; event handlers are excluded.
+    pub selector_attrs: Vec<(String, Expr)>,
     pub props: Vec<PropSet>,
     /// Breakpoint and orientation overrides, in order (later wins).
     pub at: Vec<(AtQuery, Vec<PropSet>)>,

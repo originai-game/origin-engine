@@ -284,6 +284,8 @@ impl Parser {
             id: String::new(),
             line: self.line(at),
             source_offset: at,
+            selector_tag: None,
+            selector_attrs: Vec::new(),
             props: Vec::new(),
             at: Vec::new(),
             rules: Vec::new(),
@@ -407,6 +409,17 @@ impl Parser {
             NodeKind::Element(schema::kind(internal).ok_or((at, format!("unknown element <{tag}>; use a reflected core tag or capitalised component")))?.name)
         };
         let i = self.push(kind, parent, at);
+        self.doc.nodes[i].selector_tag = Some(tag.into());
+        for attr in attrs.iter().filter(|a| !a.name.starts_with("on")) {
+            let value = if attr.bound || attr.name.starts_with("class:") {
+                expression(&attr.value, attr.at)?
+            } else {
+                Expr::Lit(attr.value.clone().into())
+            };
+            self.doc.nodes[i]
+                .selector_attrs
+                .push((attr.name.clone(), value));
+        }
         self.selectors.push((i, tag.into(), attrs.to_vec()));
         for a in attrs {
             if a.name == "id" {
@@ -629,6 +642,64 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn retains_selector_inputs_without_any_matching_stylesheet() {
+        let doc = UiDocument::parse(
+            "facts.svelte",
+            r#"
+<meta name="component" content="facts">
+<column class="root fixed">
+  {#if $shown}<text id="Label" class={$classes} class:active={$selected}>Hello</text>{/if}
+  <slider id="Amount" step="0.25" bind:value={$amount}/>
+  <button onclick={choose} class:quiet="false">Choose</button>
+</column>"#,
+        )
+        .unwrap();
+        assert_eq!(
+            doc.nodes[doc.root].selector_attrs,
+            vec![("class".into(), Expr::Lit("root fixed".into()))]
+        );
+        let label = doc.nodes.iter().find(|node| node.id == "Label").unwrap();
+        assert_eq!(label.selector_tag.as_deref(), Some("text"));
+        assert_eq!(
+            label.selector_attrs,
+            vec![
+                ("id".into(), Expr::Lit("Label".into())),
+                ("class".into(), Expr::Path("$classes".into())),
+                ("class:active".into(), Expr::Path("$selected".into())),
+            ]
+        );
+        let mut paths = Vec::new();
+        doc.node_paths(label, &mut paths);
+        assert!(paths.contains(&"$classes".into()) && paths.contains(&"$selected".into()));
+        let amount = doc.nodes.iter().find(|node| node.id == "Amount").unwrap();
+        assert!(
+            amount
+                .selector_attrs
+                .contains(&("step".into(), Expr::Lit("0.25".into())))
+        );
+        assert!(
+            amount
+                .selector_attrs
+                .contains(&("bind:value".into(), Expr::Path("$amount".into())))
+        );
+        let button = doc
+            .nodes
+            .iter()
+            .find(|node| node.selector_tag.as_deref() == Some("button"))
+            .unwrap();
+        assert_eq!(
+            button.selector_attrs,
+            vec![("class:quiet".into(), Expr::Lit(false.into()))]
+        );
+        let conditional = doc
+            .nodes
+            .iter()
+            .find(|node| matches!(node.kind, NodeKind::If(_)))
+            .unwrap();
+        assert!(conditional.selector_tag.is_none() && conditional.selector_attrs.is_empty());
+    }
 
     #[test]
     fn interpolation_keeps_word_boundaries_and_literal_rune_names() {

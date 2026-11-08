@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "Preserve authored tags and selector attributes in UI documents, including classes not referenced by the document's current stylesheet, for retained mount matching."
+  ]
+}

@@ -242,6 +242,9 @@ impl UiDocument {
         for (_, v, _) in &n.args {
             value(v, out);
         }
+        for (_, expression) in &n.selector_attrs {
+            expression.paths(out);
+        }
         for rule in &n.rules {
             if let Some(condition) = &rule.condition {
                 condition.paths(out);
