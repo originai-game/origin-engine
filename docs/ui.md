@@ -332,14 +332,33 @@ corner (a `<button>`'s plate); sides that differ are drawn as strips, and
 the first listed on top, outer shadows under the background and inset ones
 over it.
 
-CSS paint. `background` (or `background-image`) takes
-`linear-gradient()`, `radial-gradient()` and `conic-gradient()` and
-their `repeating-` forms as CSS Images 3 writes them (angles with 0 up
-and clockwise, `to <side or corner>`, radial shapes and extents, `from
-<angle> at <position>`, stops with one or two positions, at most 8),
-layered over the background colour, the first image on top; they mix in
-OKLab and are resolved against the placed box, so the line of a
-`45deg` gradient reaches the corners of a wide box. `mask-image: <gradient>`
+CSS paint. `background` (or `background-image`) takes comma-separated
+layers over the background colour, the first on top, as CSS Backgrounds
+3 writes them: each `<image> [<position> [/ <size>]] [<repeat>]`, the
+colour only in the last. An image is `url(<name>)`, an icon of the UI's
+atlas (`UiDesc.icons`), or `url(<handle>)`, a texture by its asset handle
+(`og.load.texture`), resolved as `<image href>` resolves one (a glyph
+icon or a name that resolves to nothing is a warning naming it), or a
+gradient: `linear-gradient()`, `radial-gradient()` and
+`conic-gradient()` and their `repeating-` forms as CSS Images 3 writes
+them (angles with 0 up and clockwise, `to <side or corner>`, radial
+shapes and extents, `from <angle> at <position>`, stops with one or two
+positions, at most 8), mixed in OKLab and resolved against the placed
+box, so the line of a `45deg` gradient reaches the corners of a wide
+box. An image layer's natural size is its texels, one a CSS px;
+`background-size` takes `cover`, `contain` and one or two of `auto`,
+lengths and percentages of the box; `background-position` one to four
+values (`right 10px bottom 20%` from those edges); `background-repeat`
+`repeat-x`, `repeat-y` and one or two of `repeat`, `no-repeat`, `space`
+and `round` (with `auto` on the other axis keeping the ratio). The
+longhands take a comma list repeated over the layers, and a shorthand
+with an image resets them. og-render draws each layer as one image fill
+(`UiFit::Background`): its size, placement and repeat are resolved per
+pixel from the texture's own size, so a host never tells the UI an
+image's size. Layers are placed in and cut to the element's box, so
+`border-radius` and `clip-path` cut them; `background-origin`, `-clip`
+and `-attachment` other than `scroll` are not taken, and a gradient
+layer fills the box (its size, position and repeat are not taken). `mask-image: <gradient>`
 fades the element and its subtree by the gradient's alpha. `clip-path`
 takes `inset(… [round r])`, `circle()`, `ellipse()`, `polygon([rule,]
 …)` and `path([rule,] "…")` and cuts the element, its background and its

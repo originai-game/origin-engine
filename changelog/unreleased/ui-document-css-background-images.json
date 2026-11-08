@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: background image layers",
+      "summary": "background and background-image take url() layers beside gradients: an atlas icon by name or a texture by its asset handle, each with a position, size and repeat (CSS Backgrounds 3), and background-size, background-position and background-repeat as comma lists over the layers. border-radius and clip-path cut them."
+    },
+    {
+      "member": "og-render: UiFit.Background, UiBackground, UiBackgroundSize, UiRepeat",
+      "summary": "An image fill sized (cover, contain, given or auto from the texture's own size), placed and repeated per axis (repeat, no-repeat, space, round) as a CSS background layer."
+    }
+  ]
+}

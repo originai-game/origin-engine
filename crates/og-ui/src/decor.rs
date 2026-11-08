@@ -105,12 +105,7 @@ impl BoxDecor {
         if let Some(c) = &self.css {
             let [w, h] = size;
             // The first image listed is on top: drawn last.
-            d.fills.extend(
-                c.images
-                    .iter()
-                    .rev()
-                    .map(|g| Paint::Gradient(g.resolve(w, h))),
-            );
+            d.fills.extend(c.images.iter().rev().map(|l| l.paint(w, h)));
             d.effects.extend(c.effects.iter().cloned());
             d.filters.extend(c.filters.iter().cloned());
             if let Some(b) = c.blend {

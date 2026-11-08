@@ -244,6 +244,56 @@ pub enum UiFit {
         offset: Vec2,
         scroll: Vec2,
     },
+    /// A CSS background layer's image (CSS Backgrounds 3 §3.6–3.9).
+    Background(UiBackground),
+}
+
+/// A CSS background layer's image in the shape's box: sized, placed and
+/// repeated per axis. Its natural size is its texture region's texels,
+/// one a CSS px.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct UiBackground {
+    pub size: UiBackgroundSize,
+    /// Where the image (the first tile) sits on each axis, CSS px from the
+    /// box's top left: `align × (box − image) + offset` (`right 10px` is
+    /// align 1, offset −10).
+    pub align: Vec2,
+    pub offset: Vec2,
+    /// x, then y.
+    pub repeat: [UiRepeat; 2],
+}
+
+/// `background-size`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum UiBackgroundSize {
+    /// Scaled to cover the box, keeping its ratio.
+    Cover,
+    /// Scaled to fit inside the box, keeping its ratio.
+    Contain,
+    /// Width and height in CSS px; `None` is `auto` (from the other
+    /// through the image's ratio, else the image's own).
+    Given([Option<f32>; 2]),
+}
+
+impl Default for UiBackgroundSize {
+    fn default() -> UiBackgroundSize {
+        UiBackgroundSize::Given([None; 2])
+    }
+}
+
+/// `background-repeat` on one axis.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum UiRepeat {
+    #[default]
+    Repeat,
+    NoRepeat,
+    /// As many whole images as fit, the first and last at the edges and
+    /// the room left shared between them (one placed by its position when
+    /// fewer than two fit).
+    Space,
+    /// Rescaled so a whole number fit (and the other axis, when its size
+    /// is `auto`, keeps the ratio).
+    Round,
 }
 
 /// An image paint: a region `uv` (u0 v0 u1 v1) of `texture`, `size` its

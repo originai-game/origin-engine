@@ -14,6 +14,9 @@ pub(crate) struct RenderFields {
     amounts: (f32, f32),
     press: f32,
     texture: Option<og_render::TextureHandle>,
+    /// The textures of the asset handles its `background`'s `url()`s name,
+    /// looked up while the host was at hand ([`css_textures`]).
+    textures: Vec<(f64, og_render::TextureHandle)>,
     art: Option<String>,
     /// Hidden by something other than the document's `display`.
     hidden: bool,
@@ -43,6 +46,7 @@ impl RenderFields {
                 _ => 0.0,
             },
             texture,
+            textures: Vec::new(),
             art: (kind == "art").then(|| ui.last_art_path()),
             hidden: node.hidden,
         }
@@ -50,6 +54,12 @@ impl RenderFields {
 }
 
 impl RenderFields {
+    /// With the textures `r`'s background `url(<handle>)`s name in `env`.
+    pub(super) fn with_textures(mut self, r: &Resolved, env: &dyn crate::bind::Env) -> Self {
+        self.textures = css_textures(r, env);
+        self
+    }
+
     /// A list or grid opens with its styled width, height, padding and gap;
     /// its baseline is the box without them.
     pub(super) fn unstyle_virtual(&mut self) {
@@ -58,6 +68,28 @@ impl RenderFields {
         self.element.padding = Insets::default();
         self.element.gap = 0.0;
     }
+}
+
+/// The textures of the asset handles (`og.load.texture`) an element's
+/// `background` names by `url(<handle>)`: settlement resolves its fields
+/// again without the host, so they are looked up when it builds.
+fn css_textures(r: &Resolved, env: &dyn crate::bind::Env) -> Vec<(f64, og_render::TextureHandle)> {
+    let Some(Ok((layers, _))) = r
+        .str("backgroundImage")
+        .and_then(crate::doc::paint_css::background)
+    else {
+        return Vec::new();
+    };
+    layers
+        .iter()
+        .filter_map(|l| match &l.image {
+            crate::doc::paint_css::CssImage::Url(u) => {
+                let h = u.parse::<f64>().ok()?;
+                Some((h, env.texture(h)?))
+            }
+            _ => None,
+        })
+        .collect()
 }
 
 impl Ui {
@@ -70,6 +102,8 @@ impl Ui {
         r: &Resolved,
         el: &mut Element,
         kind: &str,
+        textures: &[(f64, og_render::TextureHandle)],
+        warn: &mut Vec<String>,
     ) -> Option<crate::decor::BoxDecor> {
         use crate::decor::{BoxDecor, Line, LineStyle, Shadow};
         let theme = self.theme();
@@ -138,7 +172,7 @@ impl Ui {
                     .map(|c| crate::paint::Paint::Solid(crate::paint::ColorRef::Literal(c)));
             }
         }
-        let css = self.css_paint(r, current);
+        let css = self.css_paint(r, current, textures, warn);
         // A clip, mask, blend, filter or material cuts or composites the
         // background too: it is drawn with them.
         if css.as_ref().is_some_and(|c| {
@@ -199,11 +233,64 @@ impl Ui {
 
     /// The element's CSS paint (`docs/ui.md`, CSS paint); values the
     /// stylesheet already checked, so one that fails here is skipped.
-    fn css_paint(&self, r: &Resolved, current: Srgba) -> Option<crate::doc::paint_css::CssPaint> {
+    fn css_paint(
+        &self,
+        r: &Resolved,
+        current: Srgba,
+        textures: &[(f64, og_render::TextureHandle)],
+        warn: &mut Vec<String>,
+    ) -> Option<crate::doc::paint_css::CssPaint> {
         use crate::doc::paint_css as p;
         let mut c = p::CssPaint::default();
-        if let Some(Ok((images, _))) = r.str("backgroundImage").and_then(p::background) {
-            c.images = images;
+        if let Some(Ok((mut layers, _))) = r.str("backgroundImage").and_then(p::background) {
+            if let Err(e) = p::longhands(
+                &mut layers,
+                r.str("backgroundSize"),
+                r.str("backgroundPosition"),
+                r.str("backgroundRepeat"),
+            ) {
+                warn.push(e);
+            }
+            for l in layers {
+                let (texture, uv) = match l.image {
+                    p::CssImage::None => continue,
+                    p::CssImage::Gradient(g) => {
+                        c.images.push(p::BgLayer::Gradient(g));
+                        continue;
+                    }
+                    // A texture by its handle, else an atlas icon by name,
+                    // as `<image href>` resolves one.
+                    p::CssImage::Url(u) => match u.parse::<f64>() {
+                        Ok(h) => match textures.iter().find(|(k, _)| *k == h) {
+                            Some((_, t)) => (*t, [0.0, 0.0, 1.0, 1.0]),
+                            None => {
+                                warn.push(format!("background: url({u}) names no texture"));
+                                continue;
+                            }
+                        },
+                        Err(_) => match self.icons().find(&u) {
+                            Some(crate::ui::IconCell::Image(t, uv)) => (t, uv),
+                            Some(_) => {
+                                warn.push(format!(
+                                    "background: url({u}) is a glyph icon, not an image: write <icon name=\"{u}\">"
+                                ));
+                                continue;
+                            }
+                            None => {
+                                warn.push(format!("background: url({u}) names no atlas image"));
+                                continue;
+                            }
+                        },
+                    },
+                };
+                c.images.push(p::BgLayer::Image {
+                    texture,
+                    uv,
+                    size: l.size,
+                    position: l.position,
+                    repeat: l.repeat,
+                });
+            }
         }
         c.mask = r.str("maskImage").and_then(|v| p::mask(v).ok()).flatten();
         if let Some(Ok(Some(e))) = r.str("backdropFilter").map(p::backdrop) {
@@ -422,7 +509,11 @@ impl Ui {
                 el.width = r.size("width").unwrap_or(el.width);
             }
         }
-        let decor = self.box_decor(r, &mut el, base.kind);
+        let mut warn = Vec::new();
+        let decor = self.box_decor(r, &mut el, base.kind, &base.textures, &mut warn);
+        for w in warn {
+            self.warnings.push(format!("line {}: {w}", n.line));
+        }
         self.nodes[i].el = el;
         self.nodes[i].decor = decor.map(Box::new);
         let mut props = Self::resolved_props(n, r);

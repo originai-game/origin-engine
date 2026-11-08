@@ -2,7 +2,10 @@
 //! (linear, radial, conic, repeating), `mask-image`, `clip-path` shapes,
 //! `text-shadow`, `filter` chains (a drop shadow that follows a clipped
 //! star's alpha, colour functions in order, opacity and blur), and
-//! `backdrop-filter` colour functions over stripes.
+//! `backdrop-filter` colour functions over stripes, and image layers
+//! (`url()` of atlas icons) sized, placed and repeated: 16 px tiles cut
+//! by a radius, a cover photo under a badge 6 px from its corner, a
+//! contained icon over a gradient, and tiles spaced edge to edge.
 //! The frames match `references/metal/css-paint-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
@@ -40,6 +43,12 @@ const CARD: &str = r##"<meta name="component" content="paint">
     <div id="Ghost"></div>
   </div>
   <div id="Pane"><div id="Lens"></div></div>
+  <div id="Row4">
+    <div id="Tiles"></div>
+    <div id="Photo"></div>
+    <div id="Fit"></div>
+    <div id="Spaced"></div>
+  </div>
   <p id="Glow">Shadowed text</p>
 </div>
 </column>
@@ -48,8 +57,9 @@ const CARD: &str = r##"<meta name="component" content="paint">
 #Card { padding: 24px; display: flex; flex-direction: column; gap: 16px;
   background: linear-gradient(160deg, #1f2a44, #0d1117 70%); border-radius: 16px; }
 #Title { margin: 0; }
-#Row, #Row2, #Row3 { display: flex; flex-direction: row; gap: 16px; }
-#Sunset, #Orb, #Dial, #Stripes, #Gem, #Tag, #Fade, #Grey, #Star, #Chain, #Negative, #Ghost { width: 96px; height: 64px; }
+#Row, #Row2, #Row3, #Row4 { display: flex; flex-direction: row; gap: 16px; }
+#Sunset, #Orb, #Dial, #Stripes, #Gem, #Tag, #Fade, #Grey, #Star, #Chain, #Negative, #Ghost,
+#Tiles, #Photo, #Fit, #Spaced { width: 96px; height: 64px; }
 #Sunset { background: linear-gradient(to top right, #ff7b72, #f0b429 50%, #58a6ff); border-radius: 8px; }
 #Orb { background: radial-gradient(circle at 30% 30%, #ffffff, #7ee787 40%, #0d1117); border-radius: 32px; }
 #Dial { background: conic-gradient(from 90deg, #f85149, #f0b429, #7ee787, #58a6ff, #f85149); border-radius: 32px; }
@@ -68,18 +78,75 @@ const CARD: &str = r##"<meta name="component" content="paint">
 #Pane { width: 100%; height: 40px; display: flex; flex-direction: row;
   background: repeating-linear-gradient(90deg, #f0b429 0px, #f0b429 10px, #1f6feb 10px, #1f6feb 20px); }
 #Lens { width: 50%; height: 100%; backdrop-filter: invert(1) grayscale(0.5); }
+#Tiles { background: url(coin) 0 0 / 16px 16px, #1f6feb; border-radius: 16px; }
+#Photo { background: url(coin) right 6px bottom 6px / 24px no-repeat, url("sky") center / cover no-repeat;
+  border-radius: 32px; }
+#Fit { background: url(coin) center / contain no-repeat, linear-gradient(#30363d, #0d1117); }
+#Spaced { background: url(coin), #238636; background-size: 20px; background-repeat: space; }
 #Glow { margin: 0; color: #ffffff; text-shadow: 0 2px 6px #58a6ff; }
 @media (max-width: 500px) {
-  #Row, #Row2, #Row3 { gap: 8px; }
-  #Sunset, #Orb, #Dial, #Stripes, #Gem, #Tag, #Fade, #Grey, #Star, #Chain, #Negative, #Ghost { width: 72px; height: 56px; }
+  #Row, #Row2, #Row3, #Row4 { gap: 8px; }
+  #Sunset, #Orb, #Dial, #Stripes, #Gem, #Tag, #Fade, #Grey, #Star, #Chain, #Negative, #Ghost,
+  #Tiles, #Photo, #Fit, #Spaced { width: 72px; height: 56px; }
 }
 </style>"##;
+
+/// A 2×1 atlas of 64 px cells: `coin`, a gold disc with a dark rim on
+/// clear, and `sky`, blue over orange with a white sun up and to the
+/// left (an image whose crop shows where cover centres it).
+fn atlas() -> og_render::TextureData {
+    let (w, h) = (128u32, 64u32);
+    let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+    for y in 0..h {
+        for x in 0..w {
+            let (cx, fy) = ((x % 64) as f32 + 0.5, y as f32 + 0.5);
+            let px = if x < 64 {
+                let d = ((cx - 32.0).powi(2) + (fy - 32.0).powi(2)).sqrt();
+                if d > 28.0 {
+                    [0, 0, 0, 0]
+                } else if d > 23.0 {
+                    [120, 72, 10, 255]
+                } else {
+                    [240, 180, 40, 255]
+                }
+            } else {
+                let t = fy / 64.0;
+                let sun = ((cx - 20.0).powi(2) + (fy - 20.0).powi(2)).sqrt() < 9.0;
+                if sun {
+                    [255, 255, 240, 255]
+                } else {
+                    [
+                        (40.0 + 200.0 * t) as u8,
+                        (90.0 + 40.0 * t) as u8,
+                        (200.0 - 150.0 * t) as u8,
+                        255,
+                    ]
+                }
+            };
+            rgba.extend_from_slice(&px);
+        }
+    }
+    og_render::TextureData {
+        width: w,
+        height: h,
+        rgba,
+        color_space: og_render::ColorSpace::Srgb,
+        mips: og_render::Mips::Generate,
+    }
+}
 
 fn render(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
     use og_render::*;
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
     let mut ui = ui_with_font(font);
+    ui.set_icons(IconAtlas {
+        texture: Some(scene.add_texture(atlas())),
+        columns: 2,
+        rows: 1,
+        names: vec!["coin".into(), "sky".into()],
+        ..IconAtlas::default()
+    });
     ui.define_document(UiDocument::parse("ui/paint.svelte", CARD).unwrap());
     ui.mount_document(
         reactive::SourceId::new("test", "paint"),

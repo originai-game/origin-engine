@@ -121,6 +121,9 @@ pub const STYLE: &[(&str, &str)] = &[
     ("outlineOffset", "outline-offset"),
     ("boxShadow", "box-shadow"),
     ("backgroundImage", "background-image"),
+    ("backgroundSize", "background-size"),
+    ("backgroundPosition", "background-position"),
+    ("backgroundRepeat", "background-repeat"),
     ("maskImage", "mask-image"),
     ("backdropFilter", "backdrop-filter"),
     ("filter", "filter"),
@@ -254,9 +257,11 @@ fn conv(prop: &str) -> Conv {
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
         "boxShadow" | "uv" => Conv::Raw,
-        "backgroundImage" | "maskImage" | "backdropFilter" | "filter" | "mixBlendMode"
-        | "textShadow" | "clipPath" | "material" | "scrollSnapType" | "scrollSnapAlign"
-        | "sheetDetents" => Conv::Raw,
+        "backgroundImage" | "backgroundSize" | "backgroundPosition" | "backgroundRepeat"
+        | "maskImage" | "backdropFilter" | "filter" | "mixBlendMode" | "textShadow"
+        | "clipPath" | "material" | "scrollSnapType" | "scrollSnapAlign" | "sheetDetents" => {
+            Conv::Raw
+        }
         "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop"
         | "pickerMaxHeight" => Conv::Len,
@@ -333,8 +338,20 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Origin => "<x>% <y>%".into(),
         Conv::Rive => "rive(\"<file>.riv#<Artboard>\")".into(),
         Conv::Raw if prop == "uv" => "inset(<t>% <r>% <b>% <l>%) | -og-uv: <u0> <v0> <u1> <v1>".into(),
-        Conv::Raw if prop == "backgroundImage" || prop == "maskImage" => {
+        Conv::Raw if prop == "maskImage" => {
             "linear-gradient(…) | radial-gradient(…) | conic-gradient(…) (repeating- too)".into()
+        }
+        Conv::Raw if prop == "backgroundImage" => {
+            "<image> [<position> [/ <size>]] [<repeat>], … [<colour>], an <image> url(<icon or texture>) or a gradient".into()
+        }
+        Conv::Raw if prop == "backgroundSize" => {
+            "cover | contain | [<n>px | <n>% | auto]{1,2}, …".into()
+        }
+        Conv::Raw if prop == "backgroundPosition" => {
+            "[left | center | right | top | bottom | <n>px | <n>%]{1,4}, …".into()
+        }
+        Conv::Raw if prop == "backgroundRepeat" => {
+            "repeat-x | repeat-y | [repeat | no-repeat | space | round]{1,2}, …".into()
         }
         Conv::Raw if prop == "backdropFilter" || prop == "filter" => {
             "blur(<n>px) brightness(<n>) contrast(<n>) drop-shadow([<colour>] <x> <y> [<blur>]) grayscale(<n>) hue-rotate(<angle>) invert(<n>) opacity(<n>) saturate(<n>) sepia(<n>) … | none".into()
@@ -1500,6 +1517,14 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             if let Some(c) = colour {
                 out.push(e("background", paint_vals(&[c])?));
             }
+            // The shorthand resets the longhands to its own layers' (an
+            // empty value), so an earlier `background-size` stops applying
+            // and a later one still does.
+            if name == "background" {
+                for prop in ["backgroundSize", "backgroundPosition", "backgroundRepeat"] {
+                    out.push(e(prop, vec![Value::String(String::new())]));
+                }
+            }
             Ok(out)
         }
         "background" | "background-color" => Ok(vec![e("background", paint_vals(&t)?)]),
@@ -1535,6 +1560,15 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 }
                 _ => super::build::gestures::detents(value, 100.0).map(|_| "sheetDetents"),
             }?;
+            Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
+        }
+        "background-size" | "background-position" | "background-repeat" if !state => {
+            super::paint_css::longhand(name, value)?;
+            let prop = match name {
+                "background-size" => "backgroundSize",
+                "background-position" => "backgroundPosition",
+                _ => "backgroundRepeat",
+            };
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }
         "mask-image" | "backdrop-filter" | "filter" | "mix-blend-mode" | "text-shadow"

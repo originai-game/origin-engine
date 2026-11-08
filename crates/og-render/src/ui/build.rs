@@ -617,6 +617,28 @@ pub(crate) fn shape(
                     g.geo2[3] = rotation;
                     (5, 0, 0)
                 }
+                UiFit::Background(b) => {
+                    // paint2.xy the given size (-1: auto), paint3 the
+                    // position; the repeats in the edges' bits, the size's
+                    // kind in the centre's.
+                    let (kind, given) = match b.size {
+                        UiBackgroundSize::Given(g) => {
+                            (0, g.map(|v| v.map_or(-1.0, |v| v.max(0.0))))
+                        }
+                        UiBackgroundSize::Cover => (1, [-1.0; 2]),
+                        UiBackgroundSize::Contain => (2, [-1.0; 2]),
+                    };
+                    g.paint2[0] = given[0];
+                    g.paint2[1] = given[1];
+                    g.paint3 = [b.align.x, b.align.y, b.offset.x, b.offset.y];
+                    let r = |r: UiRepeat| match r {
+                        UiRepeat::Repeat => 0,
+                        UiRepeat::NoRepeat => 1,
+                        UiRepeat::Space => 2,
+                        UiRepeat::Round => 3,
+                    };
+                    (6, r(b.repeat[0]) | r(b.repeat[1]) << 2, kind)
+                }
             };
             g.kinds[1] = 2 | fit << 4 | edges << 8 | center << 12;
         }

@@ -404,7 +404,8 @@ impl Ui {
                         // Settlement replaces the box the list was opened with;
                         // its window and stride follow on the next build.
                         let mut fields =
-                            fields::RenderFields::capture(self, at, kind, resp, props, None);
+                            fields::RenderFields::capture(self, at, kind, resp, props, None)
+                                .with_textures(&r, b.env);
                         fields.unstyle_virtual();
                         self.note_render_fields(key, fields);
                     }
@@ -426,7 +427,8 @@ impl Ui {
                 }
             }
             let fields =
-                fields::RenderFields::capture(self, self.parent(), kind, resp, props, None);
+                fields::RenderFields::capture(self, self.parent(), kind, resp, props, None)
+                    .with_textures(&r, b.env);
             self.apply_document_fields(n, &r, &fields);
             self.note_render_fields(key, fields);
             // A content button feeds og-input's action as a text one does.
@@ -981,7 +983,8 @@ impl Ui {
         }
         let last = self.last_closed;
         if last != NONE && last < self.nodes.len() {
-            let fields = fields::RenderFields::capture(self, last, kind, resp, props, texture);
+            let fields = fields::RenderFields::capture(self, last, kind, resp, props, texture)
+                .with_textures(&styled, b.env);
             self.apply_document_fields(n, &styled, &fields);
             self.note_render_fields(key, fields);
             if styled.has("dataOgTouch") {

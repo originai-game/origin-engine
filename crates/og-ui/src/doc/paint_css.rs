@@ -69,6 +69,56 @@ pub(crate) struct CssGradient {
     stops: Vec<(ColorRef, Option<Pos>)>,
 }
 
+/// A background layer as drawn: a gradient filling the box, or an image
+/// its texture region resolved.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum BgLayer {
+    Gradient(CssGradient),
+    Image {
+        texture: og_render::TextureHandle,
+        uv: [f32; 4],
+        size: BgSize,
+        position: [BgPos; 2],
+        repeat: [og_render::UiRepeat; 2],
+    },
+}
+
+impl BgLayer {
+    /// Its paint over a `w` × `h` box.
+    pub(crate) fn paint(&self, w: f32, h: f32) -> crate::paint::Paint {
+        use crate::paint::{ImagePaint, Paint};
+        match self {
+            BgLayer::Gradient(g) => Paint::Gradient(g.resolve(w, h)),
+            BgLayer::Image {
+                texture,
+                uv,
+                size,
+                position,
+                repeat,
+            } => Paint::Image(ImagePaint {
+                texture: *texture,
+                uv: *uv,
+                size: [0.0; 2],
+                tint: ColorRef::Literal(Srgba::WHITE),
+                fit: og_render::UiFit::Background(og_render::UiBackground {
+                    size: match size {
+                        BgSize::Cover => og_render::UiBackgroundSize::Cover,
+                        BgSize::Contain => og_render::UiBackgroundSize::Contain,
+                        BgSize::Given([x, y]) => og_render::UiBackgroundSize::Given([
+                            x.map(|p| p.at(w)),
+                            y.map(|p| p.at(h)),
+                        ]),
+                    },
+                    align: og_core::glam::Vec2::new(position[0].0, position[1].0),
+                    offset: og_core::glam::Vec2::new(position[0].1, position[1].1),
+                    repeat: *repeat,
+                }),
+                focal: [0.5; 2],
+            }),
+        }
+    }
+}
+
 /// A `clip-path` basic shape.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum CssClip {
@@ -82,8 +132,8 @@ pub(crate) enum CssClip {
 /// draw.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct CssPaint {
-    /// `background` images over its colour, the first on top.
-    pub images: Vec<CssGradient>,
+    /// `background` layers over its colour, the first on top.
+    pub images: Vec<BgLayer>,
     pub mask: Option<CssGradient>,
     pub effects: Vec<Effect>,
     /// `filter`'s layers, the first innermost.
@@ -333,35 +383,376 @@ fn gradient_of(kind: &str, repeating: bool, args: &[Vec<Tok>]) -> Result<CssGrad
     })
 }
 
-/// A `background` value: its gradient images, the first on top, and its
-/// colour (the last layer), if any. `None` when there is no gradient (a
-/// plain colour, lowered as before).
-/// A `background`'s gradient images and its trailing colour.
-pub(crate) type Background = (Vec<CssGradient>, Option<Tok>);
+/// A background layer's image.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum CssImage {
+    None,
+    Gradient(CssGradient),
+    /// `url(…)`: an icon of the UI's atlas by name, or a texture by its
+    /// asset handle (`og.load.texture`), as `<image href>` names one.
+    Url(String),
+}
 
-pub(crate) fn background(text: &str) -> Option<Result<Background, String>> {
-    let Ok(t) = tokens(text) else { return None };
-    if !t.iter().any(|t| gradient(t).is_some()) {
-        return None;
+/// `background-size` of one layer; a percentage is of the box.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum BgSize {
+    Cover,
+    Contain,
+    /// `None` is `auto`.
+    Given([Option<Pos>; 2]),
+}
+
+/// `background-position` on one axis: `align × (box − image) + offset`
+/// CSS px (`right 10px` is (1, −10), `30%` is (0.3, 0)).
+pub(crate) type BgPos = (f32, f32);
+
+/// One `background` layer (CSS Backgrounds 3 §3): its image and how it
+/// is sized, placed and repeated (a gradient fills the box).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct CssLayer {
+    pub image: CssImage,
+    pub size: BgSize,
+    pub position: [BgPos; 2],
+    pub repeat: [og_render::UiRepeat; 2],
+}
+
+impl CssLayer {
+    fn new(image: CssImage) -> CssLayer {
+        CssLayer {
+            image,
+            size: BgSize::Given([None; 2]),
+            position: [(0.0, 0.0); 2],
+            repeat: [og_render::UiRepeat::Repeat; 2],
+        }
     }
-    let n = t.len();
-    Some((|| {
-        let mut images = Vec::new();
-        let mut colour = None;
-        for (k, t) in t.iter().enumerate() {
-            match gradient(t) {
-                Some(g) => images.push(g?),
-                None if k + 1 == n && is_color(t) => colour = Some(t.clone()),
-                None => {
-                    return Err(format!(
-                        "'{}' is not a background layer: a gradient, or a colour last",
-                        describe(t)
-                    ));
+}
+
+/// A `background`'s layers, the first on top, and its trailing colour.
+pub(crate) type Background = (Vec<CssLayer>, Option<Tok>);
+
+fn is_image(t: &Tok) -> bool {
+    matches!(t, Tok::Func(f, _) if f == "url") || gradient(t).is_some()
+}
+
+/// `url(<name>)`, `url("<name>")` or `url(<handle>)`.
+fn url(args: &[Vec<Tok>]) -> Result<String, String> {
+    let mut out = String::new();
+    for t in args.iter().flatten() {
+        match t {
+            Tok::Str(s) | Tok::Ident(s) => out.push_str(s),
+            Tok::Num(n, u) => {
+                out.push_str(n);
+                out.push_str(u);
+            }
+            Tok::Slash => out.push('/'),
+            t => return Err(format!("url(): '{}' is not part of a name", describe(t))),
+        }
+    }
+    if out.is_empty() {
+        return Err("url() names an atlas icon or a texture handle".into());
+    }
+    Ok(out)
+}
+
+fn image(t: &Tok) -> Result<CssImage, String> {
+    match t {
+        Tok::Ident(w) if w == "none" => Ok(CssImage::None),
+        Tok::Func(f, a) if f == "url" => url(a).map(CssImage::Url),
+        t => match gradient(t) {
+            Some(g) => g.map(CssImage::Gradient),
+            None => Err(format!(
+                "'{}' is not an image: url(…), a gradient or none",
+                describe(t)
+            )),
+        },
+    }
+}
+
+/// A `background-position` (one to four values, CSS Backgrounds 3
+/// §3.6): keywords, lengths and percentages, an edge keyword followed by
+/// its offset.
+fn bg_position(t: &[Tok]) -> Result<[BgPos; 2], String> {
+    let err = || {
+        "a position is one to four of: left, center, right, top, bottom, <n>px, <n>%".to_string()
+    };
+    // An offset from the start: (align, px).
+    let len = |t: &Tok| -> Result<BgPos, String> {
+        Ok(match pos(t)? {
+            Pos::Frac(f) => (f, 0.0),
+            Pos::Px(p) => (0.0, p),
+        })
+    };
+    // Which axis a keyword names (0 x, 1 y, 2 either) and its fraction.
+    let word = |t: &Tok| -> Option<(u8, f32)> {
+        match t {
+            Tok::Ident(w) => match w.as_str() {
+                "left" => Some((0, 0.0)),
+                "right" => Some((0, 1.0)),
+                "top" => Some((1, 0.0)),
+                "bottom" => Some((1, 1.0)),
+                "center" => Some((2, 0.5)),
+                _ => None,
+            },
+            _ => None,
+        }
+    };
+    let center = (0.5, 0.0);
+    match t {
+        [] => Ok([(0.0, 0.0); 2]),
+        [a] => match word(a) {
+            Some((1, f)) => Ok([center, (f, 0.0)]),
+            Some((_, f)) => Ok([(f, 0.0), center]),
+            None => Ok([len(a)?, center]),
+        },
+        [a, b] => {
+            let (wa, wb) = (word(a), word(b));
+            match (wa, wb) {
+                // `top left`: y first.
+                (Some((1, fa)), Some((k, fb))) if k != 1 => Ok([(fb, 0.0), (fa, 0.0)]),
+                (Some((2, fa)), Some((0, fb))) => Ok([(fb, 0.0), (fa, 0.0)]),
+                (Some((ka, fa)), Some((kb, fb))) if ka != 1 && kb != 0 => {
+                    Ok([(fa, 0.0), (fb, 0.0)])
                 }
+                (Some((ka, fa)), None) if ka != 1 => Ok([(fa, 0.0), len(b)?]),
+                (None, Some((kb, fb))) if kb != 0 => Ok([len(a)?, (fb, 0.0)]),
+                (None, None) => Ok([len(a)?, len(b)?]),
+                _ => Err(err()),
             }
         }
-        Ok((images, colour))
+        _ if t.len() <= 4 => {
+            // Edge keywords, each with an optional offset from that edge;
+            // a `center` takes the axis the others leave.
+            let mut edges = Vec::new();
+            let mut i = 0;
+            while i < t.len() {
+                let (k, f) = word(&t[i]).ok_or_else(err)?;
+                let offset = match t.get(i + 1) {
+                    Some(o) if word(o).is_none() => {
+                        i += 1;
+                        Some(len(o)?)
+                    }
+                    _ => None,
+                };
+                i += 1;
+                if k == 2 && offset.is_some() {
+                    return Err(err());
+                }
+                edges.push((k, f, offset));
+            }
+            let mut out: [Option<BgPos>; 2] = [None; 2];
+            for (k, f, offset) in edges
+                .iter()
+                .filter(|e| e.0 != 2)
+                .chain(edges.iter().filter(|e| e.0 == 2))
+            {
+                let axis = match k {
+                    2 => out.iter().position(Option::is_none).ok_or_else(err)?,
+                    k => *k as usize,
+                };
+                if out[axis].is_some() {
+                    return Err(err());
+                }
+                // An offset from the far edge counts back from it.
+                out[axis] = Some(match *offset {
+                    None => (*f, 0.0),
+                    Some((a, p)) if *f == 1.0 => (1.0 - a, -p),
+                    Some(o) => o,
+                });
+            }
+            Ok([out[0].unwrap_or(center), out[1].unwrap_or(center)])
+        }
+        _ => Err(err()),
+    }
+}
+
+/// A `background-size` of one layer.
+fn bg_size(t: &[Tok]) -> Result<BgSize, String> {
+    let one = |t: &Tok| -> Result<Option<Pos>, String> {
+        match t {
+            Tok::Ident(w) if w == "auto" => Ok(None),
+            t => pos(t).map(Some),
+        }
+    };
+    match t {
+        [Tok::Ident(w)] if w == "cover" => Ok(BgSize::Cover),
+        [Tok::Ident(w)] if w == "contain" => Ok(BgSize::Contain),
+        [a] => Ok(BgSize::Given([one(a)?, None])),
+        [a, b] => Ok(BgSize::Given([one(a)?, one(b)?])),
+        _ => Err("a background-size is cover, contain, or one or two of auto, <n>px, <n>%".into()),
+    }
+}
+
+fn repeat_word(w: &str) -> Option<og_render::UiRepeat> {
+    use og_render::UiRepeat as R;
+    Some(match w {
+        "repeat" => R::Repeat,
+        "no-repeat" => R::NoRepeat,
+        "space" => R::Space,
+        "round" => R::Round,
+        _ => return None,
+    })
+}
+
+/// A `background-repeat` of one layer.
+fn bg_repeat(t: &[Tok]) -> Result<[og_render::UiRepeat; 2], String> {
+    use og_render::UiRepeat as R;
+    let word = |t: &Tok| match t {
+        Tok::Ident(w) => repeat_word(w),
+        _ => None,
+    };
+    match t {
+        [Tok::Ident(w)] if w == "repeat-x" => Ok([R::Repeat, R::NoRepeat]),
+        [Tok::Ident(w)] if w == "repeat-y" => Ok([R::NoRepeat, R::Repeat]),
+        [a] if word(a).is_some() => Ok([word(a).unwrap(); 2]),
+        [a, b] if word(a).is_some() && word(b).is_some() => Ok([word(a).unwrap(), word(b).unwrap()]),
+        _ => Err("a background-repeat is repeat-x, repeat-y, or one or two of repeat, no-repeat, space, round".into()),
+    }
+}
+
+/// One layer of the `background` shorthand; `last` may end in a colour.
+fn layer(item: &str, last: bool) -> Result<(CssLayer, Option<Tok>), String> {
+    let t = tokens(item)?;
+    let mut img = None;
+    let mut colour = None;
+    let mut place = Vec::new();
+    let mut size = None;
+    let mut repeat = Vec::new();
+    let mut k = 0;
+    while k < t.len() {
+        let tok = &t[k];
+        let ident = match tok {
+            Tok::Ident(w) => Some(w.as_str()),
+            _ => None,
+        };
+        if is_image(tok) || ident == Some("none") {
+            if img.is_some() {
+                return Err("a background layer takes one image".into());
+            }
+            img = Some(image(tok)?);
+        } else if matches!(tok, Tok::Slash) {
+            // `<position> / <size>`: one or two sizes.
+            let n = t[k + 1..]
+                .iter()
+                .take(2)
+                .take_while(|t| match t {
+                    Tok::Num(..) => true,
+                    Tok::Ident(w) => matches!(w.as_str(), "auto" | "cover" | "contain"),
+                    _ => false,
+                })
+                .count();
+            if place.is_empty() || n == 0 {
+                return Err("a background's size follows its position: <position> / <size>".into());
+            }
+            size = Some(bg_size(&t[k + 1..k + 1 + n])?);
+            k += 1 + n;
+            continue;
+        } else if matches!(tok, Tok::Num(..))
+            || matches!(ident, Some("left" | "right" | "top" | "bottom" | "center"))
+        {
+            place.push(tok.clone());
+        } else if ident
+            .is_some_and(|w| repeat_word(w).is_some() || w == "repeat-x" || w == "repeat-y")
+        {
+            repeat.push(tok.clone());
+        } else if ident == Some("scroll") {
+            // background-attachment's default.
+        } else if matches!(
+            ident,
+            Some("fixed" | "local" | "border-box" | "padding-box" | "content-box" | "text")
+        ) {
+            return Err(format!(
+                "'{}' is not supported here: a layer is placed in and cut to the element's box",
+                ident.unwrap()
+            ));
+        } else if last && colour.is_none() && is_color(tok) {
+            colour = Some(tok.clone());
+        } else {
+            return Err(format!(
+                "'{}' is not part of a background layer: an image, <position> [/ <size>], a repeat{}",
+                describe(tok),
+                if last {
+                    ", a colour"
+                } else {
+                    " (a colour only in the last layer)"
+                }
+            ));
+        }
+        k += 1;
+    }
+    let mut l = CssLayer::new(img.unwrap_or(CssImage::None));
+    l.position = bg_position(&place)?;
+    if let Some(s) = size {
+        l.size = s;
+    }
+    if !repeat.is_empty() {
+        l.repeat = bg_repeat(&repeat)?;
+    }
+    Ok((l, colour))
+}
+
+/// A `background` (or `background-image`) value with an image layer: its
+/// layers, the first on top, and the colour under them. `None` when it
+/// has no image (a plain colour, lowered as before).
+pub(crate) fn background(text: &str) -> Option<Result<Background, String>> {
+    let Ok(t) = tokens(text) else { return None };
+    if !t.iter().any(is_image) {
+        return None;
+    }
+    let items = super::boxes::items(text);
+    let n = items.len();
+    Some((|| {
+        let mut layers = Vec::new();
+        let mut colour = None;
+        for (k, item) in items.into_iter().enumerate() {
+            let (l, c) = layer(item, k + 1 == n)?;
+            layers.push(l);
+            colour = colour.or(c);
+        }
+        Ok((layers, colour))
     })())
+}
+
+/// The longhands over a `background`'s layers: `background-size`,
+/// `-position` and `-repeat`, each a comma list repeated to the layers'
+/// count (CSS Backgrounds 3 §3); an empty value is the shorthand's own.
+pub(crate) fn longhands(
+    layers: &mut [CssLayer],
+    size: Option<&str>,
+    position: Option<&str>,
+    repeat: Option<&str>,
+) -> Result<(), String> {
+    fn each<T: Copy>(
+        text: Option<&str>,
+        layers: &mut [CssLayer],
+        parse: impl Fn(&[Tok]) -> Result<T, String>,
+        set: impl Fn(&mut CssLayer, T),
+    ) -> Result<(), String> {
+        let Some(text) = text.filter(|t| !t.trim().is_empty()) else {
+            return Ok(());
+        };
+        let values: Vec<T> = super::boxes::items(text)
+            .iter()
+            .map(|i| tokens(i).and_then(|t| parse(&t)))
+            .collect::<Result<_, _>>()?;
+        for (k, l) in layers.iter_mut().enumerate() {
+            set(l, values[k % values.len()]);
+        }
+        Ok(())
+    }
+    each(size, layers, bg_size, |l, v| l.size = v)?;
+    each(position, layers, bg_position, |l, v| l.position = v)?;
+    each(repeat, layers, bg_repeat, |l, v| l.repeat = v)?;
+    Ok(())
+}
+
+/// Checks a `background-size`, `-position` or `-repeat` list (`name`).
+pub(crate) fn longhand(name: &str, text: &str) -> Result<(), String> {
+    let mut l = [CssLayer::new(CssImage::None)];
+    match name {
+        "background-size" => longhands(&mut l, Some(text), None, None),
+        "background-position" => longhands(&mut l, None, Some(text), None),
+        _ => longhands(&mut l, None, None, Some(text)),
+    }
 }
 
 /// `mask-image`: one gradient, or `none`.
@@ -1196,7 +1587,10 @@ mod tests {
     /// conic start not turned from up to +x.
     #[test]
     fn gradients_resolve_as_css_draws_them() {
-        let g = |s: &str| background(s).unwrap().unwrap().0.remove(0);
+        let g = |s: &str| match background(s).unwrap().unwrap().0.remove(0).image {
+            CssImage::Gradient(g) => g,
+            i => panic!("{i:?}"),
+        };
         let close =
             |a: [f32; 2], b: [f32; 2]| (a[0] - b[0]).abs() < 1e-4 && (a[1] - b[1]).abs() < 1e-4;
         // `to right` across a 200 × 100 box.
@@ -1306,5 +1700,45 @@ mod tests {
         assert_eq!(l[3].params[3][0], 0.5);
         assert!(filter_fns("grayscale(-1)", "filter").is_err());
         assert!(filter_fns("url(#f)", "filter").is_err());
+    }
+
+    /// Background layers as CSS Backgrounds 3 reads them. Ways it could
+    /// fail: an offset from the right or bottom edge taken from the left
+    /// or top, `center` given the axis a later keyword names, `top left`
+    /// read x first, a size after `/` read as a position, a longhand list
+    /// not repeated over the layers, or the shorthand's colour taken from
+    /// a layer that is not the last.
+    #[test]
+    fn background_layers_place_as_css_does() {
+        use og_render::UiRepeat as R;
+        let (layers, colour) = background(
+            "url(coin) right 10px bottom 20% / 32px auto no-repeat, url(\"gem\") top left repeat-x, linear-gradient(red, blue), #123",
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(colour, Some(Tok::Hash("#123".into())));
+        // The colour alone is the final layer, its image none.
+        assert_eq!(layers.len(), 4);
+        assert_eq!(layers[3].image, CssImage::None);
+        assert_eq!(layers[0].image, CssImage::Url("coin".into()));
+        assert_eq!(layers[0].position, [(1.0, -10.0), (0.8, 0.0)]);
+        assert_eq!(layers[0].size, BgSize::Given([Some(Pos::Px(32.0)), None]));
+        assert_eq!(layers[0].repeat, [R::NoRepeat; 2]);
+        assert_eq!(layers[1].image, CssImage::Url("gem".into()));
+        assert_eq!(layers[1].position, [(0.0, 0.0), (0.0, 0.0)]);
+        assert_eq!(layers[1].repeat, [R::Repeat, R::NoRepeat]);
+        let pos = |s: &str| background(&format!("url(a) {s}")).unwrap().unwrap().0[0].position;
+        assert_eq!(pos("center left 10px"), [(0.0, 10.0), (0.5, 0.0)]);
+        assert_eq!(pos("bottom"), [(0.5, 0.0), (1.0, 0.0)]);
+        assert_eq!(pos("25% 4px"), [(0.25, 0.0), (0.0, 4.0)]);
+        assert!(background("url(a) #fff, url(b)").unwrap().is_err());
+        assert!(background("url(a) left left").unwrap().is_err());
+        // Longhands repeat their lists over the layers.
+        let mut l = background("url(a), url(b), url(c)").unwrap().unwrap().0;
+        longhands(&mut l, Some("cover, 50%"), None, Some("space round")).unwrap();
+        assert_eq!(l[0].size, BgSize::Cover);
+        assert_eq!(l[1].size, BgSize::Given([Some(Pos::Frac(0.5)), None]));
+        assert_eq!(l[2].size, BgSize::Cover);
+        assert!(l.iter().all(|l| l.repeat == [R::Space, R::Round]));
     }
 }

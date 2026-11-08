@@ -30,6 +30,7 @@ const FIT_CONTAIN: u32 = 2u;
 const FIT_NONE: u32 = 3u;
 const FIT_NINE: u32 = 4u;
 const FIT_PATTERN: u32 = 5u;
+const FIT_BACKGROUND: u32 = 6u;
 
 struct ImageUv {
   // Where to sample.
@@ -70,6 +71,37 @@ fn nine_axis(x: f32, len: f32, a: f32, b: f32, sa: f32, sb: f32, edges: u32, src
   }
   let k = (x - a) / max(tile, 1e-4);
   return vec3<f32>(sa + fract(k) * src_mid, sa + k * src_mid, 1.0);
+}
+
+// One axis of a CSS background layer: `x` CSS px from the box's start of
+// `len`, the image `w` long placed at `origin`, repeated by `rep` (0
+// repeat, 1 no-repeat, 2 space, 3 round, whose `w` is already rounded):
+// the fraction of the image to sample, its unwrapped twin, and 1 where an
+// image is drawn (not in a gap, not past a lone image).
+fn background_axis(x: f32, len: f32, w: f32, origin: f32, rep: u32) -> vec3<f32> {
+  let iw = max(w, 1e-4);
+  var o = origin;
+  var pitch = iw;
+  var tiled = rep != 1u;
+  if (rep == 2u) {
+    // Space: whole images from edge to edge, the room left between them;
+    // fewer than two fit, one placed by its position.
+    let n = floor(len / iw);
+    if (n >= 2.0) {
+      pitch = iw + (len - n * iw) / (n - 1.0);
+      o = 0.0;
+    } else {
+      tiled = false;
+    }
+  }
+  let q = x - o;
+  if (!tiled) {
+    let t = q / iw;
+    return vec3<f32>(clamp(t, 0.0, 1.0), t, select(0.0, 1.0, t >= 0.0 && t <= 1.0));
+  }
+  let k = q / pitch;
+  let t = fract(k) * pitch / iw;
+  return vec3<f32>(min(t, 1.0), k * pitch / iw, select(0.0, 1.0, t <= 1.0));
 }
 
 fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
@@ -122,6 +154,50 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       let k = r / tile;
       out.uv = mix(s.paint.xy, s.paint.zw, fract(k));
       out.raw = mix(s.paint.xy, s.paint.zw, k);
+      return out;
+    }
+    case 6u: {
+      // A CSS background layer (UiBackground): its natural size the
+      // region's texels, sized (paint2.xy given, -1 auto; cover 1,
+      // contain 2 in the centre's bits), rounded, placed (paint3) and
+      // repeated per axis (the edges' bits).
+      let nat = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
+      let sizing = (s.kinds.y >> 12u) & 3u;
+      let g = s.paint2.xy;
+      var w = nat;
+      if (sizing == 1u) {
+        w = nat * max(size.x / nat.x, size.y / nat.y);
+      } else if (sizing == 2u) {
+        w = nat * min(size.x / nat.x, size.y / nat.y);
+      } else if (g.x >= 0.0 && g.y >= 0.0) {
+        w = g;
+      } else if (g.x >= 0.0) {
+        w = vec2<f32>(g.x, g.x * nat.y / nat.x);
+      } else if (g.y >= 0.0) {
+        w = vec2<f32>(g.y * nat.x / nat.y, g.y);
+      }
+      let rx = (s.kinds.y >> 8u) & 3u;
+      let ry = (s.kinds.y >> 10u) & 3u;
+      let given = w;
+      if (rx == 3u) {
+        w.x = size.x / max(round(size.x / max(given.x, 1e-4)), 1.0);
+      }
+      if (ry == 3u) {
+        w.y = size.y / max(round(size.y / max(given.y, 1e-4)), 1.0);
+      }
+      // Round on one axis keeps the ratio on the other when its size is auto.
+      if (rx == 3u && ry != 3u && sizing == 0u && g.y < 0.0) {
+        w.y = given.y * w.x / max(given.x, 1e-4);
+      }
+      if (ry == 3u && rx != 3u && sizing == 0u && g.x < 0.0) {
+        w.x = given.x * w.y / max(given.y, 1e-4);
+      }
+      let origin = s.paint3.xy * (size - w) + s.paint3.zw;
+      let ax = background_axis(pos.x, size.x, w.x, origin.x, rx);
+      let ay = background_axis(pos.y, size.y, w.y, origin.y, ry);
+      out.mask = ax.z * ay.z;
+      out.uv = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.x, ay.x));
+      out.raw = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.y, ay.y));
       return out;
     }
     default: {}

@@ -8,10 +8,10 @@ use crate::draw::DrawCmd;
 use crate::motion::codec::{R, W};
 use og_core::glam::Vec2;
 use og_render::{
-    TextureHandle, UiAlign, UiBlend, UiBuiltin, UiCap, UiCorner, UiEdge, UiFillRule, UiFit,
-    UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiMask, UiMaterial, UiMaterialHandle,
-    UiMode, UiPaint, UiPath, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline,
-    UiTextShadow, UiVectorHandle, UiVerb,
+    TextureHandle, UiAlign, UiBackgroundSize, UiBlend, UiBuiltin, UiCap, UiCorner, UiEdge,
+    UiFillRule, UiFit, UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiMask, UiMaterial,
+    UiMaterialHandle, UiMode, UiPaint, UiPath, UiRepeat, UiShape, UiSpread, UiStop, UiStroke,
+    UiTextEffects, UiTextOutline, UiTextShadow, UiVectorHandle, UiVerb,
 };
 
 fn v2(w: &mut W, v: Vec2) {
@@ -70,6 +70,12 @@ const BLENDS: [UiBlend; 7] = [
     UiBlend::Overlay,
     UiBlend::SoftLight,
     UiBlend::ColorDodge,
+];
+const REPEATS: [UiRepeat; 4] = [
+    UiRepeat::Repeat,
+    UiRepeat::NoRepeat,
+    UiRepeat::Space,
+    UiRepeat::Round,
 ];
 const BUILTINS: [UiBuiltin; 12] = [
     UiBuiltin::None,
@@ -359,6 +365,24 @@ fn paint(w: &mut W, p: &UiPaint) {
                     v2(w, offset);
                     v2(w, scroll);
                 }
+                UiFit::Background(b) => {
+                    w.u8(6);
+                    match b.size {
+                        UiBackgroundSize::Cover => w.u8(1),
+                        UiBackgroundSize::Contain => w.u8(2),
+                        UiBackgroundSize::Given(g) => {
+                            w.u8(0);
+                            for v in g {
+                                w.f32(v.unwrap_or(-1.0));
+                            }
+                        }
+                    }
+                    v2(w, b.align);
+                    v2(w, b.offset);
+                    for r in b.repeat {
+                        w.u8(index_of(&REPEATS, &r));
+                    }
+                }
             }
             v2(w, im.focal);
         }
@@ -400,6 +424,22 @@ fn rpaint(r: &mut R) -> Option<UiPaint> {
                     offset: rv2(r)?,
                     scroll: rv2(r)?,
                 },
+                6 => UiFit::Background(og_render::UiBackground {
+                    size: match r.u8()? {
+                        0 => UiBackgroundSize::Given(
+                            [r.f32()?, r.f32()?].map(|v| (v >= 0.0).then_some(v)),
+                        ),
+                        1 => UiBackgroundSize::Cover,
+                        2 => UiBackgroundSize::Contain,
+                        _ => return None,
+                    },
+                    align: rv2(r)?,
+                    offset: rv2(r)?,
+                    repeat: [
+                        *REPEATS.get(r.u8()? as usize)?,
+                        *REPEATS.get(r.u8()? as usize)?,
+                    ],
+                }),
                 _ => return None,
             };
             UiPaint::Image(UiImage {
