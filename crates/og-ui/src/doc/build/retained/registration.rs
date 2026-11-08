@@ -14,11 +14,20 @@ impl Ui {
         mount: SourceId,
         document: String,
         inputs: BTreeMap<String, SourceId>,
+        content: BTreeMap<String, String>,
     ) -> Result<(), String> {
         mount.validate()?;
         self.reactive.graph.check_idle(&mount)?;
         if !self.docs.docs.contains_key(&document) {
             return Err(format!("missing document '{document}'"));
+        }
+        for reference in content.values() {
+            let name = reference
+                .split_once('#')
+                .map_or(reference.as_str(), |(d, _)| d);
+            if !self.docs.docs.contains_key(name) {
+                return Err(format!("mount content names a missing document '{name}'"));
+            }
         }
         for (name, source) in &inputs {
             if name.is_empty() {
@@ -26,7 +35,11 @@ impl Ui {
             }
             source.validate()?;
         }
-        let registration = Registration { document, inputs };
+        let registration = Registration {
+            document,
+            inputs,
+            content,
+        };
         let document = registration.document.clone();
         if self.docs.retained.registrations.get(&mount) == Some(&registration) {
             self.sync_mount_layer(&mount, Some(&document));

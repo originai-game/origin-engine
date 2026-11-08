@@ -83,7 +83,13 @@ impl Rig {
             inputs.insert(name.to_string(), source);
         }
         rig.ui
-            .mount_document(SourceId::new("test", "form"), "form", inputs, &bind::NoEnv)
+            .mount_document(
+                SourceId::new("test", "form"),
+                "form",
+                inputs,
+                Default::default(),
+                &bind::NoEnv,
+            )
             .expect("the form mounts");
         rig.step(InputFrame::default());
         rig
@@ -622,6 +628,7 @@ dialog { width: 200px; }
             SourceId::new("test", "form"),
             "form",
             [("ask".to_string(), source)].into(),
+            Default::default(),
             &bind::NoEnv,
         )
         .unwrap();

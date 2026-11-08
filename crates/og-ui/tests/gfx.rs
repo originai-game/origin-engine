@@ -80,6 +80,7 @@ fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
                     ("title".into(), title.clone()),
                     ("enabled".into(), enabled.clone()),
                 ]),
+                Default::default(),
                 &bind::NoEnv,
             )
             .unwrap();

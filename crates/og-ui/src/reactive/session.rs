@@ -16,6 +16,9 @@ pub enum Command {
         mount: SourceId,
         document: String,
         inputs: BTreeMap<String, SourceId>,
+        /// Content passed by reference: `document` or `document#snippet`.
+        #[serde(default)]
+        content: BTreeMap<String, String>,
     },
     Unmount {
         mount: SourceId,

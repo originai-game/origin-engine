@@ -43,16 +43,34 @@ impl RetainedHost {
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),
-        mut context: BindingContext,
+        context: BindingContext,
         parent: Option<&MountedNode>,
         id: String,
         env: &dyn Env,
     ) -> Result<Child, String> {
-        let (doc, index) = source;
-        let parent = parent.ok_or("if requires an element parent")?.clone();
-        let NodeKind::If(expression) = &doc.nodes[index].kind else {
+        let NodeKind::If(expression) = &source.0.nodes[source.1].kind else {
             unreachable!()
         };
+        let expression = expression.clone();
+        self.compile_block(ui, source, context, parent, id, &expression, env)
+    }
+
+    /// A block of `source`'s children, shown while `expression` holds: an
+    /// `{#if}`, a rendered snippet (always), or a snippet's definition and
+    /// an optional render of no snippet (never).
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn compile_block(
+        &mut self,
+        ui: &mut Ui,
+        source: (Arc<UiDocument>, usize),
+        mut context: BindingContext,
+        parent: Option<&MountedNode>,
+        id: String,
+        expression: &Expr,
+        env: &dyn Env,
+    ) -> Result<Child, String> {
+        let (doc, index) = source;
+        let parent = parent.ok_or("a block requires an element parent")?.clone();
         context.node.key = crate::id::child_key(parent.key, &format!("$if:{id}"));
         let identity = context.node.clone();
         let topology = &self.topology;
@@ -225,14 +243,7 @@ impl RetainedHost {
                 doc.source, doc.nodes[index].line
             ));
         };
-        let name = path
-            .strip_prefix('$')
-            .ok_or("each reads a named collection as $name")?;
-        let source = context
-            .inputs
-            .get(name)
-            .cloned()
-            .ok_or_else(|| format!("mount has no collection '{name}'"))?;
+        let source = super::content::collection(&context, path)?;
         let collection = ui.reactive.sources.keyed(&source)?;
         let order = collection.keys().to_vec();
         let revision = collection.revision();
@@ -297,6 +308,7 @@ impl RetainedHost {
                 inputs: &context.inputs,
                 rows: &context.rows,
                 selector_nodes: &context.selector_nodes,
+                lexical: &context.lexical,
                 host: env,
                 node: &context.node,
                 interaction: &|_, _| false,

@@ -46,6 +46,7 @@ fn the_media_feature_follows_the_setting() {
                 SourceId::new("test", "cv"),
                 "cv",
                 BTreeMap::new(),
+                BTreeMap::new(),
                 &bind::NoEnv,
             )
             .unwrap();

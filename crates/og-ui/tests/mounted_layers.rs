@@ -66,6 +66,7 @@ fn mounted_layers_match_their_reference_frames() {
                 reactive::SourceId::new("test", id),
                 doc,
                 BTreeMap::from([("volume".to_string(), volume.clone())]),
+                Default::default(),
                 &bind::NoEnv,
             )
             .unwrap();

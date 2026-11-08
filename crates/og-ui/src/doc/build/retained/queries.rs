@@ -93,6 +93,7 @@ panel { width: 10px; height: 10px; }
             SourceId::new("test", "shelf"),
             "shelf",
             BTreeMap::new(),
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();

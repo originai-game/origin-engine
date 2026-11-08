@@ -575,6 +575,7 @@ fn perf_ui_retained_change_budgets() {
             SourceId::new("perf", "screen"),
             "perf",
             inputs,
+            Default::default(),
             &bind::NoEnv,
         )
         .unwrap();

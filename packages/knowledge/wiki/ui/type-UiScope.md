@@ -214,7 +214,7 @@ fn collection {
 Register a loaded document once with named store inputs. The native renderer updates it from store changes; no per-element TypeScript calls are made. Re-registering the same ID and inputs preserves its mounted identity. Inputs stay subscribed until unmount or scope disposal. A `type screen` document is a layer of the stack while it is mounted (docs/ui.md §2.1): its `<meta name="screen" data-layer …>` decides its kind, input, pause, Back and focus memory, Back or a `pop` trigger unmounts it, and its `@view-transition` covers the frame as it joins and leaves the stack.
 
 ```ts
-UiScope.mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>): Result<void>
+UiScope.mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>, content?: Readonly<Record<string, string>>): Result<void>
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -222,6 +222,7 @@ UiScope.mount(id: string, document: string, inputs: Readonly<Record<string, UiRe
 | `id` | `string` | no | Stable mount ID within this scope. |
 | `document` | `string` | no | The loaded document's declared name. |
 | `inputs` | `Readonly<Record<string, UiReadable<unknown>>>` | no | Document input names mapped to named stores from this world. |
+| `content` | `Readonly<Record<string, string>>` | yes | Content passed by reference (Svelte snippets as props): a name the document renders with `{@render name()}`, mapped to a loaded document's name (its root) or `document#snippet` (one of its snippets), rendered with this mount's stores. |
 
 **Returns** `Result<void>`.
 
@@ -234,6 +235,9 @@ fn mount {
   param id String "Stable mount ID within this scope."
   param document String "The loaded document's declared name."
   param inputs Map.UiReadable.Json "Document input names mapped to named stores from this world."
+  param content Map.String "Content passed by reference (Svelte snippets as props): a name the document renders with `{@render name()}`, mapped to a loaded document's name (its root) or `document#snippet` (one of its snippets), rendered with this mount's stores." {
+    optional true
+  }
   returns Result.Void
 }
 ```
@@ -267,7 +271,7 @@ fn unmount {
 }
 ```
 
-<sub>Module `ui` line 7870</sub>
+<sub>Module `ui` line 7873</sub>
 
 <a id="member-UiScope-takeErrors"></a>
 
@@ -291,7 +295,7 @@ fn takeErrors {
 }
 ```
 
-<sub>Module `ui` line 7876</sub>
+<sub>Module `ui` line 7879</sub>
 
 <a id="member-UiScope-dispose"></a>
 
@@ -315,4 +319,4 @@ fn dispose {
 }
 ```
 
-<sub>Module `ui` line 7881</sub>
+<sub>Module `ui` line 7884</sub>

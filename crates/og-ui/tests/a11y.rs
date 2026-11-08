@@ -502,8 +502,14 @@ fn native_tree_reads_only_the_changed_nodes() {
     );
     inputs.insert("score".to_string(), score);
     inputs.insert("rows".to_string(), list);
-    ui.mount_document(SourceId::new("test", "hud"), "hud", inputs, &bind::NoEnv)
-        .unwrap();
+    ui.mount_document(
+        SourceId::new("test", "hud"),
+        "hud",
+        inputs,
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
     let step = |ui: &mut Ui| {
         ui.begin(InputFrame::default(), Viewport::new(800.0, 900.0));
         ui.build_retained_documents(&bind::NoEnv).unwrap();

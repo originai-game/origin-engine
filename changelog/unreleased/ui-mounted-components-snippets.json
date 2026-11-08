@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: components and snippets in mounted documents",
+      "summary": "A capitalised tag instantiates a component document in a scope.mount: its props are the user's expressions read in the user's context (bind: writes back), snippets inside the instance and its other children (`children`) are content rendered by {@render name()} in the context they were written in; {#each} iterates a collection passed as a prop."
+    },
+    {
+      "member": "UiScope.mount content",
+      "summary": "A fourth argument passes content by reference: a name the document renders with {@render name()}, mapped to a document (its root) or `document#snippet`."
+    }
+  ]
+}

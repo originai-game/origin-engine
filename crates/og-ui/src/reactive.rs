@@ -29,8 +29,9 @@ impl crate::Ui {
                     mount,
                     document,
                     inputs,
+                    content,
                 } => {
-                    self.register_document_mount(mount, document, inputs)?;
+                    self.register_document_mount(mount, document, inputs, content)?;
                 }
                 Command::Unmount { mount } => {
                     mount.validate()?;

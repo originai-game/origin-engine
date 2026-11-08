@@ -878,8 +878,13 @@ mod tests {
                 readable: false,
             })
             .ok();
-        ui.register_document_mount(SourceId::new("test", id), document.into(), inputs)
-            .unwrap();
+        ui.register_document_mount(
+            SourceId::new("test", id),
+            document.into(),
+            inputs,
+            Default::default(),
+        )
+        .unwrap();
     }
 
     fn step(ui: &mut Ui, input: InputFrame) -> crate::LayoutStats {

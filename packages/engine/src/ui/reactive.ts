@@ -441,7 +441,7 @@ class Scope implements UiScope {
     return handle;
   }
 
-  mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>): Result<void> {
+  mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>, content: Readonly<Record<string, string>> = {}): Result<void> {
     const mount = this.source(id);
     if (!this.reactor.note(this, id, "mounts")) return { ok: false, reason: "duplicate mount ID" };
     const idle = this.reactor.operation(mount, { op: "checkIdle", source: mount });
@@ -459,7 +459,7 @@ class Scope implements UiScope {
     const previous = this.mounts.get(id) ?? new Set<Store>();
     for (const store of next) if (!previous.has(store)) store.retain();
     this.reactor.flush();
-    const result = this.reactor.operation(mount, { op: "mount", mount, document, inputs: sources });
+    const result = this.reactor.operation(mount, { op: "mount", mount, document, inputs: sources, content });
     if (!result.ok) {
       for (const store of next) if (!previous.has(store)) store.release();
       return result;

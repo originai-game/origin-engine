@@ -77,6 +77,7 @@ impl Doc {
                 SourceId::new("test", "t"),
                 &d.name.clone(),
                 inputs,
+                Default::default(),
                 &bind::NoEnv,
             )
             .unwrap_or_else(|e| panic!("mounts: {e}"));
@@ -695,6 +696,7 @@ fn html_text_matches_its_reference_frames() {
             SourceId::new("test", "t"),
             "t",
             BTreeMap::from([("steps".to_string(), source)]),
+            Default::default(),
             &bind::NoEnv,
         )
         .unwrap();

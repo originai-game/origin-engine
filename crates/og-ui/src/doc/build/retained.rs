@@ -7,6 +7,7 @@ use crate::reactive::{
     graph::MountedNode,
 };
 
+mod content;
 mod queries;
 mod registration;
 mod selection;
@@ -98,6 +99,9 @@ struct ElementInstance {
 struct Registration {
     document: String,
     inputs: BTreeMap<String, SourceId>,
+    /// Content passed by reference: a document, or `document#snippet`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    content: BTreeMap<String, String>,
 }
 
 #[derive(Clone, Default)]
@@ -252,15 +256,26 @@ impl RetainedHost {
                 rows: Arc::default(),
                 row_key: String::new(),
                 selector_nodes: Arc::default(),
+                lexical: Arc::default(),
             };
-            match self.compile(
-                ui,
-                (document.clone(), document.root),
-                context,
-                None,
-                root_path(&mount, &document),
-                env,
-            ) {
+            let compiled =
+                content::mount_content(ui, &registration.content, &context).map(|lexical| {
+                    BindingContext {
+                        lexical: Arc::new(lexical),
+                        ..context
+                    }
+                });
+            let compiled = compiled.and_then(|context| {
+                self.compile(
+                    ui,
+                    (document.clone(), document.root),
+                    context,
+                    None,
+                    root_path(&mount, &document),
+                    env,
+                )
+            });
+            match compiled {
                 Ok(root) => {
                     self.pending_mounts.remove(&mount);
                     self.roots.insert(mount, root);
@@ -418,6 +433,46 @@ impl RetainedHost {
         }
         if matches!(node.kind, NodeKind::If(_)) {
             return self.compile_branch(ui, (doc, index), context, parent, id, env);
+        }
+        match &node.kind {
+            NodeKind::Use(component) => {
+                let component = component.clone();
+                return self.compile_component(
+                    ui,
+                    (doc, index),
+                    &component,
+                    context,
+                    parent,
+                    id,
+                    env,
+                );
+            }
+            NodeKind::Render { name, optional } => {
+                let (name, optional) = (name.clone(), *optional);
+                return self.compile_render(
+                    ui,
+                    (doc, index),
+                    &name,
+                    optional,
+                    context,
+                    parent,
+                    id,
+                    env,
+                );
+            }
+            // A definition renders nothing where it is written.
+            NodeKind::Snippet(_) => {
+                return self.compile_block(
+                    ui,
+                    (doc, index),
+                    context,
+                    parent,
+                    id,
+                    &Expr::Lit(false.into()),
+                    env,
+                );
+            }
+            _ => {}
         }
         let NodeKind::Element(_) = node.kind else {
             return Err(format!(
@@ -1492,6 +1547,7 @@ impl Ui {
         mount: SourceId,
         document: &str,
         inputs: BTreeMap<String, SourceId>,
+        content: BTreeMap<String, String>,
         env: &dyn Env,
     ) -> Result<(), String> {
         mount.validate()?;
@@ -1512,6 +1568,7 @@ impl Ui {
         let registration = Registration {
             document: document.into(),
             inputs: inputs.clone(),
+            content: content.clone(),
         };
         let context = BindingContext {
             node: MountedNode {
@@ -1522,6 +1579,18 @@ impl Ui {
             rows: Arc::default(),
             row_key: String::new(),
             selector_nodes: Arc::default(),
+            lexical: Arc::default(),
+        };
+        let lexical = match content::mount_content(self, &content, &context) {
+            Ok(lexical) => lexical,
+            Err(error) => {
+                self.docs.retained = host;
+                return Err(error);
+            }
+        };
+        let context = BindingContext {
+            lexical: Arc::new(lexical),
+            ..context
         };
         let root = host.compile(
             self,
@@ -1682,6 +1751,7 @@ mod tests {
             SourceId::new("test", "actions"),
             "actions",
             inputs,
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();
@@ -1765,6 +1835,7 @@ mod tests {
             SourceId::new("test", "grid"),
             "grid",
             inputs,
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();
@@ -1851,6 +1922,7 @@ mod tests {
             SourceId::new("test", "virtual"),
             "virtual",
             BTreeMap::from([("items".into(), source.clone())]),
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();
@@ -1985,6 +2057,7 @@ mod tests {
             SourceId::new("test", "screen"),
             "each",
             BTreeMap::from([("items".into(), source.clone())]),
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();
@@ -2126,6 +2199,7 @@ mod tests {
             SourceId::new("test", "state"),
             "states",
             BTreeMap::from([("checked".into(), source.clone())]),
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();
@@ -2198,6 +2272,7 @@ mod tests {
             SourceId::new("test", "screen"),
             "cascade",
             BTreeMap::from([("wide".into(), wide.clone()), ("label".into(), label)]),
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();
@@ -2260,6 +2335,7 @@ mod tests {
             mount.clone(),
             "retained",
             BTreeMap::from([("label".into(), source.clone())]),
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();
@@ -2385,6 +2461,7 @@ mod tests {
             SourceId::new("test", "paint"),
             "paint",
             BTreeMap::from([("paint".into(), source)]),
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();
@@ -2439,6 +2516,7 @@ mod tests {
                 .into_iter()
                 .map(|name| (name.to_owned(), source(name)))
                 .collect(),
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();

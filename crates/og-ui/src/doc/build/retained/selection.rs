@@ -299,6 +299,7 @@ mod tests {
                 ("rows".into(), source.clone()),
                 ("extra".into(), extra.clone()),
             ]),
+            Default::default(),
             &crate::bind::NoEnv,
         )
         .unwrap();

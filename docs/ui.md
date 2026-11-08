@@ -305,6 +305,25 @@ it. Its layer's id is the mount's `scope:id`, and its root's path is
 wrapper node per frame; the retained tree under it is written only where
 it changed.
 
+Mounted documents use components and snippets as Svelte 5 does. A
+capitalised tag instantiates the component document of that name. Its
+attributes are props: an expression of the instance's user, read in the
+user's context, so `<Card title={item.name}>` follows that row's field and
+nothing else re-evaluates. `bind:amount={item.qty}` writes back through the
+prop. A `{#snippet body()}` inside the instance is content passed to it.
+The instance's other children are its implicit `children` snippet.
+`{@render body?.()}` in the component renders the passed content where it
+was written, with the user's rows and stores. Otherwise it renders the
+document's own snippet of that name, and with `?.()` nothing. A component
+reads the mount's stores (`$name`) as its user does, and `{#each items as
+…}` iterates a collection its user passed as a prop (`<List
+items={$inventory}>`). Content can also be passed at mount, by reference:
+`scope.mount("pause", "pause", inputs, { side: "game#pauseSide" })`
+renders that document's snippet, or with a bare document name its root,
+where the screen writes `{@render side?.()}`. Rendered content's paths sit
+under the snippet's name (`…/Card#a/body/Desc`), and a component
+instance's root takes the instance's id.
+
 A screen opts into a CSS view transition with `@view-transition
 { navigation: auto; types: wipe from-right; }`. The frame is covered as the
 layer joins the stack and again as it leaves. The old view stays under the

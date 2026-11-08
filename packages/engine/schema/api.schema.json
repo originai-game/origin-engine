@@ -16899,6 +16899,12 @@
                   "type": "Map<UiReadable<Json>>",
                   "optional": false,
                   "doc": "Document input names mapped to named stores from this world."
+                },
+                {
+                  "name": "content",
+                  "type": "Map<String>",
+                  "optional": true,
+                  "doc": "Content passed by reference (Svelte snippets as props): a name the document renders with `{@render name()}`, mapped to a loaded document's name (its root) or `document#snippet` (one of its snippets), rendered with this mount's stores."
                 }
               ],
               "returns": "Result<Void>",

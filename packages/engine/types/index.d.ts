@@ -39448,8 +39448,9 @@ export interface UiScope {
    * @param id Stable mount ID within this scope.
    * @param document The loaded document's declared name.
    * @param inputs Document input names mapped to named stores from this world.
+   * @param content Content passed by reference (Svelte snippets as props): a name the document renders with `{@render name()}`, mapped to a loaded document's name (its root) or `document#snippet` (one of its snippets), rendered with this mount's stores.
    */
-  mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>): Result<void>;
+  mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>, content?: Readonly<Record<string, string>>): Result<void>;
   /**
    * Remove a registered document and release its input subscriptions. Removing an absent mount succeeds.
    *

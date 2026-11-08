@@ -167,6 +167,10 @@ local styles and `og style new` remain available.
   while it is mounted; Back unmounts it. Give it a CSS view transition with
   `@view-transition { navigation: auto; types: iris; }` and
   `::view-transition-group(root) { animation-duration: 500ms; }`.
+- Compose with components and snippets, not code callbacks:
+  `<Card title={item.name}>{#snippet body()}<p>{item.desc}</p>{/snippet}</Card>`,
+  rendered in `Card` with `{@render body?.()}`. Pass content to a mount by
+  reference: `scope.mount("pause", "pause", inputs, { side: "game#pauseSide" })`.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.

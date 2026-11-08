@@ -29,6 +29,41 @@ pub struct BindingContext {
     pub row_key: String,
     /// Current-document indices resolved through this instance's lexical ancestry.
     pub selector_nodes: Arc<BTreeMap<usize, MountedNode>>,
+    /// A component instance's props and the content passed to it.
+    pub lexical: Arc<Lexical>,
+}
+
+/// What a component instance, or content passed to one, reads beyond its
+/// mount's stores (Svelte's props and snippets).
+#[derive(Clone, Debug, Default)]
+pub struct Lexical {
+    /// Its props by name: each an expression of the instance's user, read
+    /// in the user's context, so a prop's reads are the user's reads.
+    pub props: BTreeMap<String, PropRef>,
+    /// The snippets passed to it (and to a mount), by name: what
+    /// `{@render name()}` renders.
+    pub content: BTreeMap<String, ContentRef>,
+}
+
+/// A component prop: its user's expression and context; `model`, a
+/// `bind:` prop's writable path in that context.
+#[derive(Clone, Debug)]
+pub struct PropRef {
+    pub expression: BindingExpression,
+    pub model: Option<String>,
+    pub context: Arc<BindingContext>,
+}
+
+/// Content passed by reference: a snippet (or a component's children)
+/// rendered in the context it was written in, or a whole document.
+#[derive(Clone, Debug)]
+pub enum ContentRef {
+    Snippet {
+        document: Arc<crate::doc::UiDocument>,
+        index: usize,
+        context: Arc<BindingContext>,
+    },
+    Document(String),
 }
 
 impl BindingContext {
@@ -39,6 +74,19 @@ impl BindingContext {
         value: Value,
     ) -> Result<(), String> {
         let (root, rest) = path.split_once('.').unwrap_or((path, ""));
+        if let Some(prop) = self.lexical.props.get(root) {
+            let Some(model) = &prop.model else {
+                return Err(format!(
+                    "prop '{root}' is not bound two-way; its user writes bind:{root}={{…}}"
+                ));
+            };
+            let path = if rest.is_empty() {
+                model.clone()
+            } else {
+                format!("{model}.{rest}")
+            };
+            return prop.context.write_model(session, &path, value);
+        }
         if let Some(row) = self.rows.get(root) {
             let (field, tail) = rest.split_once('.').unwrap_or((rest, ""));
             if field.is_empty() {
@@ -131,6 +179,7 @@ impl Bindings {
             inputs: &context.inputs,
             rows: &context.rows,
             selector_nodes: &context.selector_nodes,
+            lexical: &context.lexical,
             host,
             node: &context.node,
             interaction: &interaction,
@@ -181,6 +230,7 @@ impl Bindings {
                 inputs: &context.inputs,
                 rows: &context.rows,
                 selector_nodes: &context.selector_nodes,
+                lexical: &context.lexical,
                 host,
                 node: &context.node,
                 interaction: &interaction,
@@ -206,6 +256,7 @@ pub struct SourceEnv<'a> {
     pub inputs: &'a BTreeMap<String, SourceId>,
     pub rows: &'a BTreeMap<String, RowRef>,
     pub selector_nodes: &'a BTreeMap<usize, MountedNode>,
+    pub lexical: &'a Lexical,
     pub host: &'a dyn Env,
     pub node: &'a MountedNode,
     pub interaction: &'a dyn Fn(&MountedNode, InteractionState) -> bool,
@@ -255,6 +306,23 @@ struct Tracked<'a, 'b> {
 impl Tracked<'_, '_> {
     fn lookup(&self, path: &str) -> Result<Value, String> {
         let (root, rest) = path.split_once('.').unwrap_or((path, ""));
+        if let Some(prop) = self.source.lexical.props.get(root) {
+            let user = &prop.context;
+            let evaluation = SourceEnv {
+                session: self.source.session,
+                inputs: &user.inputs,
+                rows: &user.rows,
+                selector_nodes: &user.selector_nodes,
+                lexical: &user.lexical,
+                host: self.source.host,
+                node: &user.node,
+                interaction: self.source.interaction,
+            }
+            .evaluate_binding(&prop.expression);
+            self.reads.borrow_mut().extend(evaluation.reads);
+            let value = evaluation.value?;
+            return Ok(get_path(&value, rest).map_or(Value::Null, |value| value.into_owned()));
+        }
         if let Some(row) = self.source.rows.get(root) {
             let field = rest.split('.').next().unwrap_or_default();
             self.reads.borrow_mut().insert(if field.is_empty() {
@@ -384,6 +452,7 @@ mod tests {
             },
             row_key: "a".into(),
             selector_nodes: Arc::default(),
+            lexical: Arc::default(),
             inputs: Arc::new(
                 ["editable", "external", "derived"]
                     .into_iter()
@@ -490,6 +559,7 @@ mod tests {
                     },
                     row_key: key.to_string(),
                     selector_nodes: Arc::default(),
+                    lexical: Arc::default(),
                     inputs: Arc::default(),
                     rows: Arc::new(BTreeMap::from([(
                         "item".into(),
@@ -616,6 +686,7 @@ mod tests {
                         inputs: Arc::default(),
                         rows: Arc::default(),
                         selector_nodes: Arc::default(),
+                        lexical: Arc::default(),
                     },
                     Expr::Interaction(InteractionState::Hover),
                     &crate::bind::NoEnv,
@@ -692,6 +763,7 @@ mod tests {
                     inputs: Arc::default(),
                     rows: Arc::default(),
                     selector_nodes: Arc::new(BTreeMap::from([(7, ancestor.clone())])),
+                    lexical: Arc::default(),
                 },
                 Expr::InteractionAt {
                     node: 7,
@@ -724,6 +796,7 @@ mod tests {
                 inputs: Arc::default(),
                 rows: Arc::default(),
                 selector_nodes: Arc::default(),
+                lexical: Arc::default(),
             },
             Expr::InteractionAt {
                 node: 7,
@@ -757,6 +830,7 @@ mod tests {
             },
             row_key: String::new(),
             selector_nodes: Arc::default(),
+            lexical: Arc::default(),
             inputs: Arc::default(),
             rows: Arc::default(),
         };
@@ -835,6 +909,7 @@ mod tests {
                 inputs: &inputs,
                 rows: &rows,
                 selector_nodes: &BTreeMap::new(),
+                lexical: &Lexical::default(),
                 host: &crate::bind::NoEnv,
                 node: &node,
                 interaction: &|_, state| state == InteractionState::Hover,

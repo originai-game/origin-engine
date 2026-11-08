@@ -68,7 +68,13 @@ impl Rig {
             inputs.insert(name.to_string(), source);
         }
         rig.ui
-            .mount_document(SourceId::new("test", "form"), "form", inputs, &bind::NoEnv)
+            .mount_document(
+                SourceId::new("test", "form"),
+                "form",
+                inputs,
+                Default::default(),
+                &bind::NoEnv,
+            )
             .expect("the form mounts");
         rig.step(InputFrame::default());
         rig
@@ -440,7 +446,13 @@ fn input_types_match_their_reference_frames() {
             inputs.insert(name.to_string(), source);
         }
         rig.ui
-            .mount_document(SourceId::new("test", "form"), "form", inputs, &bind::NoEnv)
+            .mount_document(
+                SourceId::new("test", "form"),
+                "form",
+                inputs,
+                Default::default(),
+                &bind::NoEnv,
+            )
             .unwrap();
         rig.step(InputFrame::default());
         rig.focus("Pin");

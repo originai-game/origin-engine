@@ -76,6 +76,9 @@
       param id String "Stable mount ID within this scope."
       param document String "The loaded document's declared name."
       param inputs Map.UiReadable.Json "Document input names mapped to named stores from this world."
+      param content Map.String "Content passed by reference (Svelte snippets as props): a name the document renders with `{@render name()}`, mapped to a loaded document's name (its root) or `document#snippet` (one of its snippets), rendered with this mount's stores." {
+        optional true
+      }
       returns Result.Void
     }
     fn unmount {
