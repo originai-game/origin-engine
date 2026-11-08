@@ -84,10 +84,15 @@ local styles and `og style new` remain available.
   arbitrary calls, scripts, runes, and raw HTML are errors.
 - Style reactive state with `class:active={$step == 'brightness'}` and
   `.active` rules. The selector grammar includes types, IDs, classes,
-  attributes, descendant and child combinators, `:not()`, `:is()`, and `:where()`.
-  `:where()` contributes zero specificity. `:not()` and `:is()` take the
-  highest specificity of their arguments. `:has()` and sibling combinators
-  (`+` and `~`) fail cooking.
+  attributes, descendant, child and sibling (`+`, `~`) combinators, `:not()`,
+  `:is()`, and `:where()`. `:where()` contributes zero specificity. `:not()`
+  and `:is()` take the highest specificity of their arguments. `:has()`
+  fails cooking.
+- Structural selectors read the instantiated rows, after `{#if}` and keyed
+  `{#each}`: `.row:nth-child(odd)`, `:nth-child(2n of .gem)`,
+  `:nth-last-child(2)`, `:first-child`, `:last-child`, `:only-child`,
+  `:empty`, and `.item + .item` separators all follow reorders, inserts and
+  removals. Rows of a `list` restyle when they scroll into view.
   Interaction selectors name `:hover`, `:active`, `:focus`,
   `:focus-visible`, `:focus-within`, `:disabled`, `:checked`, `:selected`,
   `:invalid`, and `:placeholder-shown`. Ancestor selectors read that

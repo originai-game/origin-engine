@@ -324,11 +324,22 @@ A document's `<style>` controls appearance and layout; attributes control
 content and behaviour. Declarations win by `!important`, selector
 specificity, then source order. Rules are document-scoped and never affect
 unrelated mounts. Parsed selectors support element, ID, class, attribute,
-descendant and child matching, plus `:not()`, `:is()`, and `:where()`.
-`:where()` has zero specificity; `:not()` and `:is()` take the highest
-specificity of their arguments. Sibling combinators (`+`, `~`), structural
-pseudo-classes, and `:has()` are rejected for now. CSS head 4 adds sibling
-combinators and structural pseudo-classes; it does not promise `:has()`.
+descendant, child, adjacent (`+`) and general (`~`) sibling matching, plus
+`:not()`, `:is()`, and `:where()`. `:where()` has zero specificity; `:not()`
+and `:is()` take the highest specificity of their arguments.
+
+Structural pseudo-classes are `:first-child`, `:last-child`, `:only-child`,
+`:nth-child(an+b [of S])`, `:nth-last-child(an+b [of S])`, and `:empty`.
+`of S` takes compound selectors and adds their highest specificity. Siblings
+and positions are those of the instantiated element tree, after `{#if}`,
+keyed `{#each}`, snippets and components; structural blocks are not
+siblings. `:empty` means no instantiated element children and no text.
+Retained mounts match on the logical sibling order, never render slots.
+An edit invalidates only the sibling interval it can affect, in O(log n)
+per interval. Virtualized rows outside the materialized range restyle when
+they materialize, so a front insert restyles only visible and overscan rows.
+Structural selectors cannot select `::part` spans. `:has()` and other
+pseudo-classes fail at cook with the selector named.
 
 The ten state selectors are `:hover`, `:active`, `:focus`, `:focus-visible`,
 `:focus-within`, `:disabled`, `:checked`, `:selected`, `:invalid`, and
@@ -369,8 +380,8 @@ such as `none`, `power1.out`, and `back.out`, plus `cubic-bezier(...)` and
 `steps(...)`. Style tokens retain `EaseRole` indirection. CSS timing
 keywords belong to the CSS parser; shared timing does not make them GSAP
 names. Lexical custom properties and the cascade above are implemented.
-Standard CSS completion remains pending for container queries,
-transitions and animations, and sibling and structural selectors.
+Standard CSS completion remains pending for container queries and
+property-level transitions and animations.
 The supported subset in the component catalogue is not full CSS support.
 
 Core's native settlement hook publishes measured container content boxes

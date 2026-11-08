@@ -93,6 +93,10 @@ struct Entry {
     style_epoch: u64,
     subtree_epoch: u64,
     resolved_epoch: u64,
+    /// Bit k: the element matches registered sibling filter k.
+    marks: u64,
+    /// Per filter, the elements of this order subtree that match it.
+    counts: Vec<u32>,
 }
 
 /// An order-statistic treap per parent. Insertions and moves change tree links,
@@ -109,6 +113,10 @@ pub struct Topology {
     changes: Vec<SiblingChange>,
     facts: Vec<FactChange>,
     work: TopologyWork,
+    /// Registered sibling filters (`:nth-child(… of S)`), counted per subtree
+    /// so filtered ranks need no scan of unchanged siblings.
+    filters: usize,
+    filter_list: Vec<Vec<super::selectors::Selector>>,
 }
 
 impl Topology {
@@ -139,8 +147,18 @@ impl Topology {
         }
     }
 
+    fn count(&self, root: Link, filter: usize) -> u32 {
+        root.map_or(0, |i| self.entry(i).counts[filter])
+    }
+
     fn update(&mut self, i: usize, left: Link, right: Link) {
         let size = 1 + self.size(left) + self.size(right);
+        for k in 0..self.filters {
+            let count = u32::from(self.entry(i).marks >> k & 1 == 1)
+                + self.count(left, k)
+                + self.count(right, k);
+            self.entry_mut(i).counts[k] = count;
+        }
         let e = self.entry_mut(i);
         e.left = left;
         e.right = right;
@@ -296,6 +314,7 @@ impl Topology {
             node: id.clone(),
             name: name.into(),
         });
+        self.refresh_marks(i);
         Ok(())
     }
 
@@ -305,6 +324,7 @@ impl Topology {
         if *old != text {
             *old = text;
             self.facts.push(FactChange::Text(id.clone()));
+            self.refresh_marks(i);
         }
         Ok(())
     }
@@ -327,6 +347,7 @@ impl Topology {
                 node: id.clone(),
                 state,
             });
+            self.refresh_marks(i);
         }
         Ok(())
     }
@@ -463,6 +484,8 @@ impl Topology {
             style_epoch: self.style_epoch,
             subtree_epoch: 0,
             resolved_epoch: 0,
+            marks: 0,
+            counts: vec![0; self.filters],
         };
         let i = if let Some(i) = self.free.pop() {
             self.entries[i] = Some(entry);
@@ -472,6 +495,14 @@ impl Topology {
             self.entries.len() - 1
         };
         self.identities.insert(id.clone(), i);
+        if self.filters > 0 {
+            let marks = self.marks_of(i);
+            let e = self.entry_mut(i);
+            e.marks = marks;
+            for (k, count) in e.counts.iter_mut().enumerate() {
+                *count = u32::from(marks >> k & 1 == 1);
+            }
+        }
         let (left, right) = self.split(self.root(p), at);
         let left = self.merge(left, Some(i));
         let root = self.merge(left, right);
@@ -574,6 +605,96 @@ impl Topology {
         Ok(())
     }
 
+    /// Registers a sibling filter (`:nth-child(… of S)`) and answers its
+    /// index. Registration marks every element once; later fact changes keep
+    /// the marks current. At most 64 filters are counted.
+    pub fn register_filter(&mut self, filter: &[super::selectors::Selector]) -> Option<usize> {
+        if let Some(k) = self.filter_list.iter().position(|f| f == filter) {
+            return Some(k);
+        }
+        if self.filter_list.len() == 64 {
+            return None;
+        }
+        self.filter_list.push(filter.to_vec());
+        self.filters = self.filter_list.len();
+        for e in self.entries.iter_mut().flatten() {
+            e.counts.resize(self.filters, 0);
+        }
+        let live: Vec<usize> = self.identities.values().copied().collect();
+        for i in live {
+            self.refresh_marks(i);
+        }
+        Some(self.filters - 1)
+    }
+
+    pub fn filter_index(&self, filter: &[super::selectors::Selector]) -> Option<usize> {
+        self.filter_list.iter().position(|f| f == filter)
+    }
+
+    fn marks_of(&self, i: usize) -> u64 {
+        let instance = &self.entry(i).instance;
+        let facts = super::matching::Facts {
+            document: &instance.document,
+            node: instance.document_node,
+            attributes: &instance.attributes,
+            states: &instance.states,
+            text: &instance.direct_text,
+        };
+        self.filter_list
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| super::matching::filter_matches(&facts, f))
+            .fold(0, |m, (k, _)| m | 1 << k)
+    }
+
+    /// Recomputes which filters the element matches, updating the counts of
+    /// its order ancestors only.
+    fn refresh_marks(&mut self, mut i: usize) {
+        if self.filters == 0 {
+            return;
+        }
+        let marks = self.marks_of(i);
+        if self.entry(i).marks == marks && self.entry(i).counts.len() == self.filters {
+            return;
+        }
+        self.entry_mut(i).marks = marks;
+        loop {
+            let e = self.entry(i);
+            let (left, right, up) = (e.left, e.right, e.order_parent);
+            for k in 0..self.filters {
+                let count = u32::from(self.entry(i).marks >> k & 1 == 1)
+                    + self.count(left, k)
+                    + self.count(right, k);
+                self.entry_mut(i).counts[k] = count;
+            }
+            self.work.order_nodes += 1;
+            match up {
+                Some(up) => i = up,
+                None => return,
+            }
+        }
+    }
+
+    /// Siblings before the element that match filter `k`, and all that do.
+    pub fn filtered(&self, id: &MountedNode, k: usize) -> Option<(usize, usize)> {
+        let mut i = *self.identities.get(id)?;
+        let parent = self.entry(i).parent;
+        let mut before = self.count(self.entry(i).left, k);
+        while let Some(up) = self.entry(i).order_parent {
+            if self.entry(up).right == Some(i) {
+                before += self.count(self.entry(up).left, k)
+                    + u32::from(self.entry(up).marks >> k & 1 == 1);
+            }
+            i = up;
+        }
+        Some((before as usize, self.count(self.root(parent), k) as usize))
+    }
+
+    /// Every live identity, in no particular order.
+    pub fn identities(&self) -> impl Iterator<Item = &MountedNode> {
+        self.identities.keys()
+    }
+
     pub fn take_changes(&mut self) -> Vec<SiblingChange> {
         std::mem::take(&mut self.changes)
     }
@@ -584,6 +705,59 @@ impl Topology {
 
     pub fn take_work(&mut self) -> TopologyWork {
         std::mem::take(&mut self.work)
+    }
+}
+
+impl super::matching::Tree for Topology {
+    type Id = MountedNode;
+
+    fn facts(&self, id: &MountedNode) -> super::matching::Facts<'_> {
+        let instance = &self.entry(self.identities[id]).instance;
+        super::matching::Facts {
+            document: &instance.document,
+            node: instance.document_node,
+            attributes: &instance.attributes,
+            states: &instance.states,
+            text: &instance.direct_text,
+        }
+    }
+
+    fn parent(&self, id: &MountedNode) -> Option<MountedNode> {
+        Topology::parent(self, id).cloned()
+    }
+
+    fn previous(&self, id: &MountedNode) -> Option<MountedNode> {
+        let at = self.position(id)?.checked_sub(1)?;
+        self.child_at(Topology::parent(self, id), at).cloned()
+    }
+
+    fn position(&self, id: &MountedNode) -> (usize, usize) {
+        let parent = Topology::parent(self, id);
+        (
+            Topology::position(self, id).unwrap_or(0),
+            self.child_count(parent),
+        )
+    }
+
+    fn filtered(&self, id: &MountedNode, filter: &[super::selectors::Selector]) -> (usize, usize) {
+        if let Some(k) = self.filter_index(filter) {
+            return Topology::filtered(self, id, k).unwrap_or((0, 0));
+        }
+        // An unregistered filter (more than 64): count by scanning.
+        let parent = Topology::parent(self, id);
+        let at = Topology::position(self, id).unwrap_or(0);
+        let (mut before, mut total) = (0, 0);
+        for (k, sibling) in self.children(parent, 0..usize::MAX).enumerate() {
+            if super::matching::filter_matches(&self.facts(sibling), filter) {
+                total += 1;
+                before += usize::from(k < at);
+            }
+        }
+        (before, total)
+    }
+
+    fn has_children(&self, id: &MountedNode) -> bool {
+        self.child_count(Some(id)) > 0
     }
 }
 

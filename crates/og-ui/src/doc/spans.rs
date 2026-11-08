@@ -198,6 +198,7 @@ pub(crate) fn resolve(
         .iter()
         .filter(|rule| rule.matches(span))
         .map(|rule| super::StyleRule {
+            structure: None,
             query: AtQuery::default(),
             condition: None,
             props: Vec::new(),

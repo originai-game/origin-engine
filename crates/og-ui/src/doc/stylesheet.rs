@@ -41,8 +41,20 @@ pub(super) fn apply(
         }
     }
     parsed.sort_by_key(|(selector, rule)| (selector.specificity(), rule.order));
-    for (_, rule) in parsed {
+    for (parsed, rule) in parsed {
+        let structure = parsed
+            .structural()
+            .then(|| std::sync::Arc::new(parsed.clone()));
         if let Some((parent, selector)) = rule.selector.split_once("::part(") {
+            if structure.is_some() {
+                return Err((
+                    rule.at,
+                    format!(
+                        "{}: sibling combinators and structural pseudo-classes cannot select ::part spans; select the text element itself",
+                        parsed.source
+                    ),
+                ));
+            }
             let span = super::spans::parse(selector, &rule.body).map_err(|e| (rule.at, e))?;
             let parent = if parent.is_empty() { "text" } else { parent };
             for (i, tag, _) in elements {
@@ -100,8 +112,21 @@ pub(super) fn apply(
         let entries = css::declarations(&body, syntax::location(&doc.text, rule.at).0)
             .map_err(|e| (rule.at, e))?;
         for (i, _, _) in elements {
-            let Some(condition) = matches(doc, elements, *i, &rule.selector, rule.at)? else {
-                continue;
+            let condition = match &structure {
+                // The subject's static facts prune elements at cook; the whole
+                // selector is matched on the instantiated tree.
+                Some(_) => match parsed
+                    .subject_filter()
+                    .condition(doc, elements, *i)
+                    .map_err(|e| (rule.at, e))?
+                {
+                    Expr::Lit(serde_json::Value::Bool(false)) => continue,
+                    _ => Expr::Lit(true.into()),
+                },
+                None => match matches(doc, elements, *i, &rule.selector, rule.at)? {
+                    Some(condition) => condition,
+                    None => continue,
+                },
             };
             let kind = match doc.nodes[*i].kind {
                 NodeKind::Element(k) => k,
@@ -129,7 +154,7 @@ pub(super) fn apply(
                 c => Some(c),
             };
             if let Some(timeline) = &animation {
-                if condition.is_some() || rule.query != AtQuery::default() {
+                if condition.is_some() || structure.is_some() || rule.query != AtQuery::default() {
                     return Err((rule.at, "conditional animations are not supported; put the animation on a mounted element and control its presence with #if".into()));
                 }
                 let name = format!("css-animation-{}", i);
@@ -147,6 +172,7 @@ pub(super) fn apply(
             doc.nodes[*i].rules.push(StyleRule {
                 query: rule.query.clone(),
                 condition,
+                structure: structure.clone(),
                 props,
                 declarations: declarations.clone(),
                 line: syntax::location(&doc.text, rule.at).0,

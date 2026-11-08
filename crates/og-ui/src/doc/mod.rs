@@ -7,6 +7,7 @@
 pub mod build;
 pub mod catalogue;
 pub mod css;
+pub mod matching;
 pub mod media;
 pub mod schema;
 pub mod selectors;
@@ -235,6 +236,9 @@ pub struct StyleDeclaration {
 pub struct StyleRule {
     pub query: AtQuery,
     pub condition: Option<Expr>,
+    /// A sibling or structural selector, matched on the instantiated tree
+    /// ([`matching`]) instead of through `condition`.
+    pub structure: Option<std::sync::Arc<selectors::Selector>>,
     /// Cook-time reflected values available without custom-property substitution.
     pub props: Vec<PropSet>,
     pub declarations: Vec<StyleDeclaration>,

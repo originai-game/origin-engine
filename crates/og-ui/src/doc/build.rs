@@ -382,6 +382,7 @@ impl Ui {
         path: &str,
         built: &mut Built,
         inherited: &super::variables::Computed,
+        structure: &mut dyn FnMut(&super::selectors::Selector) -> bool,
     ) -> Resolved {
         let mut r = Resolved::default();
         let vp = self.viewport();
@@ -400,6 +401,7 @@ impl Ui {
         r.cascade = cascade::resolve(&n.rules, inherited, self.theme(), |rule| {
             rule.query.media.matches(context, &mut media_reads)
                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
+                && rule.structure.as_ref().is_none_or(|s| structure(s))
         });
         sets.retain(|prop| !r.cascade.unset.contains(&prop.spec));
         sets.extend(&r.cascade.props);
@@ -840,4 +842,5 @@ mod fields;
 mod mount;
 mod nodes;
 mod retained;
+mod structure;
 pub use mount::{Built, DocEvent, DocHost, DocResponse, Edit};

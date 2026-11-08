@@ -8,6 +8,7 @@ use crate::reactive::{
 };
 
 mod registration;
+mod selection;
 mod structural;
 mod virtualized;
 use structural::{BranchInstance, Child, EachInstance};
@@ -93,6 +94,21 @@ pub struct RetainedHost {
     built_tick: Option<u64>,
     pub evaluated: usize,
     pub resolved: usize,
+    /// Structural-selector work since the last refresh.
+    pub css: CssWork,
+    profiles: BTreeMap<String, crate::doc::matching::Profile>,
+}
+
+/// Structural-selector work of one refresh, for bounded-cost checks.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CssWork {
+    /// Sibling edits and selector-fact changes consumed.
+    pub changes: usize,
+    /// Sibling intervals invalidated lazily (each costs O(log n)).
+    pub intervals: usize,
+    /// Structural selectors evaluated, and elements visited for them.
+    pub selectors: usize,
+    pub candidates: usize,
 }
 
 impl std::fmt::Debug for RetainedHost {
@@ -200,6 +216,7 @@ impl RetainedHost {
     }
 
     pub(super) fn document_replaced(&mut self, ui: &mut Ui, document: &str) {
+        self.profiles.remove(document);
         let mounts: Vec<_> = self
             .registrations
             .iter()
@@ -581,6 +598,7 @@ impl RetainedHost {
         }
         self.evaluated = 0;
         self.resolved = 0;
+        self.css = CssWork::default();
         loop {
             let topology = &self.topology;
             let changes = self.bindings.refresh(&mut ui.reactive, env, |node, state| {
@@ -658,6 +676,7 @@ impl RetainedHost {
                 result?;
             }
         }
+        self.consume_selector_changes(ui)?;
         while let Some(node) = self.dirty.pop_first() {
             self.elements.get_mut(&node).unwrap().style_dirty = true;
             if self.topology.node(&node).unwrap().materialization != Materialization::Deferred {
@@ -720,6 +739,8 @@ impl RetainedHost {
         {
             self.resolve(ui, parent, env)?;
         }
+        let structurally_stale =
+            ui.docs.structure.ancestors && self.topology.style_is_stale(identity) == Some(true);
         let inherited = parent.as_ref().map_or_else(Arc::default, |p| {
             self.elements[p]
                 .resolved
@@ -754,13 +775,20 @@ impl RetainedHost {
             mount: identity.mount.id.clone(),
             ..Default::default()
         };
+        let topology = &self.topology;
+        let mut work = crate::doc::matching::MatchWork::default();
         let values = ui.resolve(
             &build,
             &e.document.nodes[e.index],
             &e.path,
             &mut probe,
             &build.inherited,
+            &mut |selector| {
+                crate::doc::matching::matches(topology, &e.document, selector, identity, &mut work)
+            },
         );
+        self.css.selectors += work.selectors;
+        self.css.candidates += work.candidates;
         ui.warnings
             .extend(values.cascade.diagnostics.iter().map(|error| {
                 format!(
@@ -822,6 +850,11 @@ impl RetainedHost {
         self.elements.get_mut(identity).unwrap().theme_epoch = self.theme_epoch;
         self.topology.set_text(identity, text)?;
         self.topology.style_resolved(identity)?;
+        if structurally_stale {
+            // Descendant and child selectors can read this element's position.
+            self.topology
+                .invalidate_styles(Some(identity), 0..usize::MAX)?;
+        }
         self.resolved += 1;
         Ok(())
     }

@@ -1,5 +1,8 @@
 //! Parsed scoped selectors. Functional pseudo-classes contribute their argument
-//! specificity (`:where` contributes zero), not punctuation counts.
+//! specificity (`:where` contributes zero), not punctuation counts. Sibling
+//! combinators and structural pseudo-classes depend on the instantiated tree, so
+//! [`Selector::structural`] selectors are matched at runtime (`super::matching`)
+//! instead of being lowered to a reactive predicate here.
 use super::{NONE, UiDocument, syntax::Attr};
 use crate::bind::{Expr, InteractionState, Op};
 use cssparser::{ParseError, Parser, Token};
@@ -17,6 +20,10 @@ impl Specificity {
 pub enum Combinator {
     Descendant,
     Child,
+    /// `+`: the immediately preceding element sibling.
+    Next,
+    /// `~`: any preceding element sibling.
+    Subsequent,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -24,13 +31,45 @@ pub enum Simple {
     Type(String),
     Id(String),
     Class(String),
-    Attribute { name: String, value: Option<String> },
+    Attribute {
+        name: String,
+        value: Option<String>,
+    },
     State(InteractionState),
     Root,
     Not(Vec<Selector>),
     Is(Vec<Selector>),
     Where(Vec<Selector>),
     Part(String),
+    /// `:first-child`, `:last-child`, `:only-child`, `:nth-child()` and
+    /// `:nth-last-child()`: the element's 1-based index among its instantiated
+    /// element siblings (those matching `of` when given) is `a·n + b` for some
+    /// n ≥ 0. `:first-child` is `nth(0, 1)`; `:only-child` is both ends.
+    Nth(Nth),
+    OnlyChild,
+    /// `:empty`: no instantiated element children and no text.
+    Empty,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Nth {
+    pub a: i32,
+    pub b: i32,
+    pub last: bool,
+    /// `of S`: compound selectors that filter the counted siblings.
+    pub of: Option<Vec<Selector>>,
+}
+
+impl Nth {
+    /// Whether the 1-based `index` is `a·n + b` for some integer n ≥ 0.
+    pub fn matches(&self, index: usize) -> bool {
+        let (a, k) = (i64::from(self.a), index as i64 - i64::from(self.b));
+        if a == 0 {
+            k == 0
+        } else {
+            k % a == 0 && k / a >= 0
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -59,7 +98,17 @@ impl Selector {
                     Simple::Class(_)
                     | Simple::Attribute { .. }
                     | Simple::State(_)
-                    | Simple::Root => Specificity(0, 1, 0),
+                    | Simple::Root
+                    | Simple::OnlyChild
+                    | Simple::Empty => Specificity(0, 1, 0),
+                    Simple::Nth(nth) => Specificity(0, 1, 0).add(
+                        nth.of
+                            .iter()
+                            .flatten()
+                            .map(Self::specificity)
+                            .max()
+                            .unwrap_or_default(),
+                    ),
                     Simple::Type(_) | Simple::Part(_) => Specificity(0, 0, 1),
                     Simple::Not(list) | Simple::Is(list) => {
                         list.iter().map(Self::specificity).max().unwrap_or_default()
@@ -68,6 +117,50 @@ impl Selector {
                 })
             },
         )
+    }
+
+    /// Whether matching needs the instantiated sibling order: a sibling
+    /// combinator or a structural pseudo-class anywhere, including arguments.
+    pub fn structural(&self) -> bool {
+        self.combinators
+            .iter()
+            .any(|c| matches!(c, Combinator::Next | Combinator::Subsequent))
+            || self
+                .compounds
+                .iter()
+                .flat_map(|compound| &compound.0)
+                .any(Simple::structural)
+    }
+
+    /// One compound, recursively, that reads only the element's own facts.
+    pub(super) fn compound_only(&self) -> bool {
+        self.compounds.len() == 1
+            && !self.structural()
+            && self.compounds[0].0.iter().all(|simple| match simple {
+                Simple::Part(_) => false,
+                Simple::Not(list) | Simple::Is(list) | Simple::Where(list) => {
+                    list.iter().all(Self::compound_only)
+                }
+                _ => true,
+            })
+    }
+
+    /// The subject compound without what needs the instantiated tree: used at
+    /// cook to skip elements that can never be the subject.
+    pub(super) fn subject_filter(&self) -> Self {
+        let subject = self.compounds.last().expect("a selector has a compound");
+        Self {
+            source: self.source.clone(),
+            compounds: vec![Compound(
+                subject
+                    .0
+                    .iter()
+                    .filter(|simple| !simple.structural())
+                    .cloned()
+                    .collect(),
+            )],
+            combinators: Vec::new(),
+        }
     }
 
     pub(super) fn condition(
@@ -184,6 +277,12 @@ impl Selector {
                     Simple::Part(_) => {
                         return Err("::part must be the final selector's named text span".into());
                     }
+                    Simple::Nth(_) | Simple::OnlyChild | Simple::Empty => {
+                        return Err(format!(
+                            "{} needs the instantiated tree; it is matched at runtime",
+                            selector.source
+                        ));
+                    }
                 };
                 own = combine(Op::And, own, test);
             }
@@ -191,6 +290,12 @@ impl Selector {
                 return Ok(own);
             }
             let combinator = selector.combinators[part - 1];
+            if matches!(combinator, Combinator::Next | Combinator::Subsequent) {
+                return Err(format!(
+                    "{} needs the instantiated tree; it is matched at runtime",
+                    selector.source
+                ));
+            }
             let mut candidates = Vec::new();
             let mut parent = doc.nodes[index].parent;
             while parent != NONE {
@@ -213,6 +318,18 @@ impl Selector {
             Ok(combine(Op::And, own, matches))
         }
         chain(self, doc, elements, index, self.compounds.len() - 1)
+    }
+}
+
+impl Simple {
+    fn structural(&self) -> bool {
+        match self {
+            Simple::Nth(_) | Simple::OnlyChild | Simple::Empty => true,
+            Simple::Not(list) | Simple::Is(list) | Simple::Where(list) => {
+                list.iter().any(Selector::structural)
+            }
+            _ => false,
+        }
     }
 }
 
@@ -257,11 +374,6 @@ fn parse(input: &mut Parser<'_>) -> Result<Selector, ParseError<String>> {
             continue;
         }
         if let Token::Delim(c @ ('>' | '+' | '~')) = token {
-            if c != '>' {
-                return Err(ParseError::custom(format!(
-                    "unsupported sibling combinator '{c}'; use a descendant or child selector"
-                )));
-            }
             if !started {
                 return Err(ParseError::custom(
                     "a combinator needs a selector on both sides",
@@ -270,7 +382,11 @@ fn parse(input: &mut Parser<'_>) -> Result<Selector, ParseError<String>> {
             selector
                 .compounds
                 .push(Compound(std::mem::take(&mut compound)));
-            selector.combinators.push(Combinator::Child);
+            selector.combinators.push(match c {
+                '>' => Combinator::Child,
+                '+' => Combinator::Next,
+                _ => Combinator::Subsequent,
+            });
             started = false;
             whitespace = false;
             continue;
@@ -333,10 +449,39 @@ fn parse(input: &mut Parser<'_>) -> Result<Selector, ParseError<String>> {
                     })?))
                 } else {
                     match next {
+                        Token::Function(name)
+                            if matches!(&*name, "nth-child" | "nth-last-child") =>
+                        {
+                            let last = &*name == "nth-last-child";
+                            Some(Simple::Nth(input.parse_nested_block(|input| {
+                                let (a, b) = cssparser::parse_nth(input)?;
+                                let of = if input.is_exhausted() {
+                                    None
+                                } else {
+                                    input.expect_ident_matching("of")?;
+                                    let list = input.parse_comma_separated(parse)?;
+                                    if let Some(bad) =
+                                        list.iter().find(|s| !s.compound_only())
+                                    {
+                                        return Err(ParseError::custom(format!(
+                                            "`of {}` in :{name}() takes compound selectors without combinators or structural pseudo-classes",
+                                            bad.source
+                                        )));
+                                    }
+                                    Some(list)
+                                };
+                                Ok(Nth { a, b, last, of })
+                            })?))
+                        }
                         Token::Function(name) => {
+                            if &*name == "has" {
+                                return Err(ParseError::custom(
+                                    ":has() is not supported; give the ancestor a class or state (class:name={…}) and select that instead",
+                                ));
+                            }
                             if !matches!(&*name, "not" | "is" | "where") {
                                 return Err(ParseError::custom(format!(
-                                    "unsupported pseudo-class :{name}(); :has() is not supported"
+                                    "unsupported pseudo-class :{name}(); supported functions are :not(), :is(), :where(), :nth-child() and :nth-last-child()"
                                 )));
                             }
                             let list = input
@@ -349,6 +494,20 @@ fn parse(input: &mut Parser<'_>) -> Result<Selector, ParseError<String>> {
                         }
                         Token::Ident(name) => Some(match &*name {
                             "root" => Simple::Root,
+                            "first-child" => Simple::Nth(Nth {
+                                a: 0,
+                                b: 1,
+                                last: false,
+                                of: None,
+                            }),
+                            "last-child" => Simple::Nth(Nth {
+                                a: 0,
+                                b: 1,
+                                last: true,
+                                of: None,
+                            }),
+                            "only-child" => Simple::OnlyChild,
+                            "empty" => Simple::Empty,
                             "hover" => Simple::State(InteractionState::Hover),
                             "active" => Simple::State(InteractionState::Active),
                             "focus" => Simple::State(InteractionState::Focus),
@@ -363,7 +522,7 @@ fn parse(input: &mut Parser<'_>) -> Result<Selector, ParseError<String>> {
                             }
                             _ => {
                                 return Err(ParseError::custom(format!(
-                                    "unsupported pseudo-class :{name}"
+                                    "unsupported pseudo-class :{name}; use a state (:hover, :focus-visible, :checked, …), :root, :empty or :first-child/:last-child/:only-child/:nth-child()"
                                 )));
                             }
                         }),
@@ -407,12 +566,51 @@ mod tests {
             Selector::parse_list("* > *").unwrap()[0].specificity(),
             Specificity::default()
         );
+        let structural = Selector::parse_list(
+            ".row:nth-child(2n+1 of .shown, [kind='a']) + .row ~ :not(:last-child) > text:empty",
+        )
+        .unwrap();
+        assert!(structural[0].structural());
+        assert_eq!(
+            structural[0].combinators,
+            vec![Combinator::Next, Combinator::Subsequent, Combinator::Child]
+        );
+        assert_eq!(structural[0].specificity(), Specificity(0, 6, 1));
+        let Simple::Nth(nth) = &structural[0].compounds[0].0[1] else {
+            panic!("nth-child")
+        };
+        assert_eq!((nth.a, nth.b, nth.last), (2, 1, false));
+        assert_eq!(nth.of.as_ref().unwrap().len(), 2);
+        assert!(!selectors[0].structural());
+        for (text, index, expected) in [
+            (":nth-child(2n+1)", 5, true),
+            (":nth-child(2n+1)", 4, false),
+            (":nth-child(-n+3)", 3, true),
+            (":nth-child(-n+3)", 4, false),
+            (":nth-last-child(3)", 3, true),
+            (":first-child", 1, true),
+            (":first-child", 2, false),
+            (":nth-child(even)", 2, true),
+            (":nth-child(n+4)", 3, false),
+        ] {
+            let Simple::Nth(nth) = &Selector::parse_list(text).unwrap()[0].compounds[0].0[0] else {
+                panic!("{text}")
+            };
+            assert_eq!(nth.matches(index), expected, "{text} at {index}");
+        }
+        let has = format!("{:?}", Selector::parse_list(".card:has(.x)").unwrap_err());
+        assert!(has.contains(":has() is not supported"), "{has}");
         for bad in [
             ":has(.x)",
             ".x >",
             ".x + ~ .y",
-            ".x + .y",
-            ".x ~ .y",
+            ".x +",
+            "~ .y",
+            ":nth-child(2n of .a .b)",
+            ":nth-child(odd of :first-child)",
+            ":nth-child(odd of :is(.a .b))",
+            ":nth-child(x)",
+            ":first-of-type",
             "text:unknown",
             "[x*=y]",
             ". x",

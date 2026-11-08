@@ -61,7 +61,7 @@ try {
   const restored = engine.world.restore(saved.value);
   if (!restored.ok) throw new Error(restored.reason);
   engine.advance(1);
-  console.log(JSON.stringify({ title: element("Title").text, base: element("Base").text, body: rich.text, larger: rich.height > plain.height, restored: JSON.stringify(element("Rich")) === JSON.stringify(rich), widths: ["Inherited", "Nested", "Sibling"].map(id => element(id).width) }));
+  console.log(JSON.stringify({ title: element("Title").text, base: element("Base").text, body: rich.text, larger: rich.height > plain.height, restored: JSON.stringify(element("Rich")) === JSON.stringify(rich), widths: ["Inherited", "Nested", "Sibling", "Last"].map(id => element(id).width) }));
 } finally {
   engine.destroy();
 }

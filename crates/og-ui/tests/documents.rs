@@ -981,3 +981,61 @@ fn a_rive_frame_plays_draws_names_its_objects_and_is_saved() {
         ["ui/chest.riv#Chest", "ui/chest.riv#Lid"]
     );
 }
+
+#[test]
+fn pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows() {
+    let document = UiDocument::parse(
+        "structure.svelte",
+        r#"<meta name="screen" content="structure">
+<column id="Root">
+  {#each items as item (item.id)}<text id="Item" class={item.kind}>{item.id}</text>{/each}
+  {#if note}<text id="Note">{note}</text>{/if}
+  <column id="Box"></column>
+</column>
+<style>
+  text:nth-child(2n+1 of .gem) { width: 111px; }
+  text:nth-last-child(2) { width: 222px; }
+  #Note ~ #Box:empty { height: 17px; }
+</style>
+"#,
+    )
+    .unwrap();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(document);
+    let row = |id: &str, kind: &str| json!({"id": id, "kind": kind});
+    let measure = |ui: &Ui, text: &str| {
+        let e = ui.probe_elements();
+        let e = e.iter().find(|e| e.text == text || e.id == text).unwrap();
+        (e.width.round(), e.height.round())
+    };
+    let (g1, c1, g2, g3) = (
+        row("g1", "gem"),
+        row("c1", "coin"),
+        row("g2", "gem"),
+        row("g3", "gem"),
+    );
+    ui.push_screen(
+        "structure",
+        json!({"items": [g1, c1, g2, g3], "note": "Note"}),
+    )
+    .unwrap();
+    tick(&mut ui, InputFrame::default());
+    // Gem ranks 1, 2, 3 (the coin is not counted); the note is second last.
+    assert_eq!(measure(&ui, "g1").0, 111.0);
+    assert_eq!(measure(&ui, "g3").0, 111.0);
+    assert_ne!(measure(&ui, "g2").0, 111.0);
+    assert_eq!(measure(&ui, "Note").0, 222.0);
+    assert_eq!(measure(&ui, "Box").1, 17.0);
+    ui.set_screen_vm(
+        "structure",
+        json!({"items": [c1, g3, g1, g2], "note": null}),
+    );
+    tick(&mut ui, InputFrame::default());
+    // Without the note, g2 is second last but its filtered rank wins.
+    assert_eq!(measure(&ui, "g3").0, 111.0);
+    assert_eq!(measure(&ui, "g2").0, 111.0);
+    let (g1_width, c1_width) = (measure(&ui, "g1").0, measure(&ui, "c1").0);
+    assert!(g1_width != 111.0 && g1_width != 222.0, "{g1_width}");
+    assert!(c1_width != 111.0 && c1_width != 222.0, "{c1_width}");
+    assert_ne!(measure(&ui, "Box").1, 17.0);
+}

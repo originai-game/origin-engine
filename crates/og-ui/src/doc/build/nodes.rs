@@ -109,7 +109,11 @@ impl Ui {
                 let mount = format!("{}/{id}", self.path_of(self.parent()));
                 let before = vm.clone();
                 let mut built = Built::default();
-                let rp = self.resolve(b, n, &mount, &mut built, &b.inherited);
+                let opened = self.enter_structure(b, i);
+                let rp = self.resolve(b, n, &mount, &mut built, &b.inherited, &mut |s| {
+                    self.structure_matches(&doc, s)
+                });
+                self.docs.component_root = self.docs.structure.any;
                 self.warnings.extend(
                     rp.cascade
                         .diagnostics
@@ -118,6 +122,10 @@ impl Ui {
                 );
                 let r =
                     self.mount_doc(cdoc, mount, id, &mut vm, b.env, rp.cascade.computed.clone());
+                self.docs.component_root = false;
+                if opened {
+                    self.docs.levels.pop();
+                }
                 // The instance's own element props apply to its root.
                 if !rp.vals.is_empty()
                     && let Some(&last) = Some(&self.last_closed)
@@ -173,14 +181,20 @@ impl Ui {
             mount: b.mount.clone(),
             ..Built::default()
         };
-        let r = self.resolve(b, n, &path, &mut built, &b.inherited);
+        let opened = self.enter_structure(b, i);
+        let children = self.child_level(b, n);
+        let r = self.resolve(b, n, &path, &mut built, &b.inherited, &mut |s| {
+            self.structure_matches(&doc, s)
+        });
         self.warnings.extend(
             r.cascade
                 .diagnostics
                 .iter()
                 .map(|error| format!("{}:{} ({path}): {error}", doc.source, n.line)),
         );
-        self.build_resolved_node(
+        let structural = children.is_some();
+        self.docs.levels.extend(children);
+        let built = self.build_resolved_node(
             b,
             i,
             ResolvedNode {
@@ -195,7 +209,14 @@ impl Ui {
                     ui.build_node(b, child, None);
                 }
             },
-        )
+        );
+        if structural {
+            self.docs.levels.pop();
+        }
+        if opened {
+            self.docs.levels.pop();
+        }
+        built
     }
 
     pub(super) fn build_resolved_node(
@@ -668,6 +689,7 @@ impl Ui {
             self.nodes[at].props = props;
         }
         for k in range.first..range.last.min(count) {
+            self.structure_row(k as usize);
             let resp = if kind == "list" {
                 self.list_item(k, false)
             } else {

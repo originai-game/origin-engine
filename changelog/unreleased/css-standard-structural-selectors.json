@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "Sibling combinators (+, ~) and structural pseudo-classes (:first-child, :last-child, :only-child, :nth-child(an+b [of S]), :nth-last-child(an+b [of S]), :empty) match the instantiated element tree after {#if}, keyed {#each}, snippets and components. Retained mounts invalidate only the affected sibling interval; virtualized rows restyle when they materialize. :has() still fails cooking with the selector named."
+    }
+  ]
+}

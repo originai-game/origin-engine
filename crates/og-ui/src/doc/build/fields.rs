@@ -356,6 +356,7 @@ mod tests {
                         &node.path,
                         &mut Built::default(),
                         &build.inherited,
+                        &mut |_| false,
                     );
                     (node.node, values, patched.docs.render_fields[&key].clone())
                 })

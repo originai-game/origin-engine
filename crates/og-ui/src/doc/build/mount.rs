@@ -96,6 +96,12 @@ pub struct DocHost {
     pub(crate) building: u32,
     /// The Rive artboards elements can play, by id ([`Ui::define_rive`]).
     pub(crate) rive: BTreeMap<String, Arc<crate::rive::Artboard>>,
+    /// What structural selectors of every defined document read.
+    pub(crate) structure: crate::doc::matching::Profile,
+    /// The instantiated sibling levels of the screen being built.
+    pub(crate) levels: Vec<super::structure::Level>,
+    /// A component's root continues its instance's place among siblings.
+    pub(crate) component_root: bool,
 }
 
 impl Ui {
@@ -105,6 +111,9 @@ impl Ui {
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
         }
+        self.docs
+            .structure
+            .merge(&crate::doc::matching::Profile::of_document(&doc));
         let mut retained = std::mem::take(&mut self.docs.retained);
         retained.document_replaced(self, &doc.name);
         self.docs.retained = retained;
