@@ -8,8 +8,8 @@ use super::*;
 /// after it (lines are cubics with their control points on the line), and
 /// whether each closes.
 #[derive(Clone, Debug, Default)]
-pub(super) struct Path {
-    subpaths: Vec<(Vec2, Vec<[Vec2; 3]>, bool)>,
+pub struct Path {
+    pub subpaths: Vec<(Vec2, Vec<[Vec2; 3]>, bool)>,
 }
 
 impl Path {
@@ -115,7 +115,7 @@ impl Path {
     }
 
     /// An ellipse at `c` with radii `r`, clockwise from its right.
-    fn ellipse(c: Vec2, r: Vec2) -> Path {
+    pub fn ellipse(c: Vec2, r: Vec2) -> Path {
         let mut p = Path::default();
         p.move_to(c + Vec2::new(r.x, 0.0));
         for q in [
@@ -130,7 +130,7 @@ impl Path {
         p
     }
 
-    pub(super) fn transformed(&self, t: &Affine) -> Path {
+    pub fn transformed(&self, t: &Affine) -> Path {
         Path {
             subpaths: self
                 .subpaths
@@ -150,7 +150,7 @@ impl Path {
 
     /// The subpaths as polylines (within `tolerance`), each with whether
     /// it closes.
-    pub(super) fn flatten(&self, tolerance: f32) -> Vec<(Vec<Vec2>, bool)> {
+    pub fn flatten(&self, tolerance: f32) -> Vec<(Vec<Vec2>, bool)> {
         self.subpaths
             .iter()
             .filter_map(|(s, cs, closed)| {
@@ -163,7 +163,7 @@ impl Path {
                         pts.push(c[2]);
                     } else {
                         pts.extend(
-                            flatten_cubic(at, c[0], c[1], c[2], tolerance)
+                            og_render::flatten_cubic(at, c[0], c[1], c[2], tolerance)
                                 .into_iter()
                                 .skip(1),
                         );
@@ -176,8 +176,22 @@ impl Path {
             .collect()
     }
 
+    /// Its length along every subpath (within `tolerance`).
+    pub fn length(&self, tolerance: f32) -> f32 {
+        self.flatten(tolerance)
+            .iter()
+            .map(|(pts, closed)| {
+                let open: f32 = pts.windows(2).map(|w| (w[1] - w[0]).length()).sum();
+                match (closed, pts.first(), pts.last()) {
+                    (true, Some(a), Some(b)) => open + (*a - *b).length(),
+                    _ => open,
+                }
+            })
+            .sum()
+    }
+
     /// Parses path data (`d`).
-    fn parse(d: &str) -> Result<Path, String> {
+    pub fn parse(d: &str) -> Result<Path, String> {
         let mut path = Path::default();
         let chars: Vec<char> = d.chars().collect();
         let mut i = 0;
@@ -354,13 +368,22 @@ fn number_end(s: &str) -> usize {
     i
 }
 
-/// The local path of a shape element.
-pub(super) fn shape_path(el: &Element, vb: [f32; 4]) -> Result<Option<Path>, String> {
+/// The local path of the shape element `name` whose attributes `get`
+/// reads, in a view box `vb` (percentages are of its size).
+pub fn shape_path<'a>(
+    name: &str,
+    get: &dyn Fn(&str) -> Option<&'a str>,
+    vb: [f32; 4],
+) -> Result<Option<Path>, String> {
     let (w, h) = (vb[2], vb[3]);
     let diag = (w * w + h * h).sqrt() / std::f32::consts::SQRT_2;
-    let len = |name: &str, whole: f32| length_attr(el, name, whole, 0.0);
-    Ok(Some(match el.name.as_str() {
-        "path" => match el.get("d") {
+    let len = |attr: &str, whole: f32| {
+        get(attr)
+            .map_or(Ok(0.0), |v| length(v, whole))
+            .map_err(|e| format!("<{name}> {attr}: {e}"))
+    };
+    Ok(Some(match name {
+        "path" => match get("d") {
             Some(d) => Path::parse(d).map_err(|e| format!("<path>: {e}"))?,
             None => return Ok(None),
         },
@@ -375,7 +398,7 @@ pub(super) fn shape_path(el: &Element, vb: [f32; 4]) -> Result<Option<Path>, Str
                 return Ok(None);
             }
             let opt = |name: &str, whole: f32| {
-                el.get(name)
+                get(name)
                     .map(|v| length(v, whole))
                     .transpose()
                     .map_err(|e| format!("<rect> {name}: {e}"))
@@ -430,8 +453,8 @@ pub(super) fn shape_path(el: &Element, vb: [f32; 4]) -> Result<Option<Path>, Str
             p
         }
         "polyline" | "polygon" => {
-            let n = numbers(el.get("points").unwrap_or(""))
-                .map_err(|e| format!("<{}> points: {e}", el.name))?;
+            let n = numbers(get("points").unwrap_or(""))
+                .map_err(|e| format!("<{name}> points: {e}"))?;
             if n.len() < 4 {
                 return Ok(None);
             }
@@ -440,7 +463,7 @@ pub(super) fn shape_path(el: &Element, vb: [f32; 4]) -> Result<Option<Path>, Str
             for q in n[2..].as_chunks::<2>().0 {
                 p.line_to(Vec2::new(q[0], q[1]));
             }
-            if el.name == "polygon" {
+            if name == "polygon" {
                 p.close();
             }
             p
@@ -451,7 +474,7 @@ pub(super) fn shape_path(el: &Element, vb: [f32; 4]) -> Result<Option<Path>, Str
 
 /// The bounding box `[x, y, w, h]` of a path's points (control points
 /// included, which bound the curve).
-pub(super) fn bounds(p: &Path) -> [f32; 4] {
+pub fn bounds(p: &Path) -> [f32; 4] {
     let mut lo = Vec2::splat(f32::MAX);
     let mut hi = Vec2::splat(f32::MIN);
     for (s, cs, _) in &p.subpaths {

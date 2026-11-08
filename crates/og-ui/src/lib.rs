@@ -58,6 +58,7 @@ pub mod slot;
 mod style;
 pub mod style_file;
 pub mod style_gen;
+pub mod svg;
 mod text;
 pub mod tokens;
 pub mod vcursor;
