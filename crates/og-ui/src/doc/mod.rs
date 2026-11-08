@@ -12,6 +12,7 @@ pub mod catalogue;
 pub mod container;
 pub mod css;
 mod extern_element;
+pub mod generated;
 pub(crate) mod lists;
 pub mod matching;
 pub mod media;

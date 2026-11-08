@@ -65,6 +65,8 @@ struct Resolved {
     space3d: Option<Arc<crate::transform3d::Space3d>>,
     /// `@starting-style` declarations that differ from its style.
     starting: String,
+    /// Its generated content and pseudo-element styles.
+    generated: Option<Arc<super::generated::Generated>>,
 }
 
 #[derive(Clone)]
@@ -701,6 +703,18 @@ impl Ui {
         }
         r.space3d = crate::transform3d::resolve(&r.cascade.transform, &mut r.cascade.diagnostics)
             .map(Arc::new);
+        if !r.cascade.generated.is_empty() {
+            let values = std::mem::take(&mut r.cascade.generated);
+            if let Some((_, q)) = values.iter().find(|(name, _)| name == "quotes") {
+                Arc::make_mut(&mut r.cascade.computed)
+                    .insert(generated::QUOTES.into(), Some(q.clone()));
+            }
+            r.generated = Some(Arc::new(super::generated::Generated::from_values(
+                &values,
+                &mut r.cascade.diagnostics,
+            )));
+            r.cascade.generated = values;
+        }
         (r.transitions, r.animations) =
             super::motion::resolve(&r.cascade.motion, &b.doc.name, &mut r.cascade.diagnostics);
         // A conditional `@keyframes` defines its name while its conditions
@@ -1463,6 +1477,7 @@ pub mod cascade;
 mod color;
 mod containers;
 mod fields;
+mod generated;
 pub(crate) mod gestures;
 mod kbd;
 mod mount;

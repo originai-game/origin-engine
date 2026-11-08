@@ -212,6 +212,7 @@ impl Ui {
         );
         let structural = children.is_some();
         self.docs.levels.extend(children);
+        self.run_enter(&r);
         let built = self.build_resolved_node(
             b,
             i,
@@ -228,6 +229,7 @@ impl Ui {
                 }
             },
         );
+        self.run_exit();
         if structural {
             self.docs.levels.pop();
         }
@@ -262,6 +264,7 @@ impl Ui {
             return None;
         }
         self.docs.seen_now.insert(key);
+        self.note_selection(key, &r);
         self.remember_queried(b, i, &path, key, &r);
         self.docs
             .scroll_now
@@ -464,10 +467,50 @@ impl Ui {
             }
             if kind == "box"
                 && let Some(marker) = r.str("markerType")
-                && let Some(text) = crate::doc::lists::marker(marker, r.ordinal.unwrap_or(1))
             {
+                // `::marker { content }` replaces the list style's text;
+                // its color inks either.
+                let (content, ink) = self.marker_override(b, n, &r);
+                let style = crate::doc::lists::marker(marker, r.ordinal.unwrap_or(1));
                 let inside = r.str("markerPosition") == Some("inside");
-                self.list_marker(&path, marker, &text, inside);
+                // `list-style-image`: the picture stands for the marker.
+                let picture = r
+                    .cascade
+                    .computed
+                    .get("--og-list-style-image")
+                    .cloned()
+                    .flatten()
+                    .and_then(|v| crate::doc::lists::image(&v).ok().flatten());
+                if let Some(name) = picture.filter(|_| content.is_none()) {
+                    let text = if inside { "\u{FFFC}\u{a0}" } else { "\u{FFFC}" };
+                    let span = crate::TextSpan {
+                        name: "marker".into(),
+                        position: 0,
+                        length: 1,
+                        properties: Default::default(),
+                    };
+                    let style = crate::TextSpanStyle {
+                        atom: Some(crate::rich::InlineAtom::Image(name)),
+                        ..Default::default()
+                    };
+                    self.rich_text_spans(
+                        "Marker",
+                        text,
+                        std::slice::from_ref(&span),
+                        crate::RichTextDesc::default(),
+                        |_| style.clone(),
+                    );
+                } else {
+                    match content {
+                        Some(Some(text)) => self.list_marker(&path, "decimal", &text, inside, ink),
+                        Some(None) => {}
+                        None => {
+                            if let Some(text) = style {
+                                self.list_marker(&path, marker, &text, inside, ink);
+                            }
+                        }
+                    }
+                }
             }
             if let Some(id) = r.str("rive") {
                 let at = self.parent();
@@ -486,7 +529,9 @@ impl Ui {
             self.note_built(built);
             if shows_content {
                 let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
+                self.generated_box(b, n, &r, true);
                 build_children(self, b, None);
+                self.generated_box(b, n, &r, false);
                 b.inherited = inherited;
             }
             match kind {
@@ -528,7 +573,33 @@ impl Ui {
                 if !n.inline.is_empty() {
                     self.inline_links(b, n, &r, &path, key);
                 }
-                if let Some(V::Spans(spans)) = r.get("spans") {
+                // `::before`, `::after` and `::first-letter` join the text
+                // as styled runs.
+                if let Some((full, runs)) = self.generated_text(b, n, &styled, key, &text) {
+                    let attributes: Vec<crate::TextSpan> =
+                        runs.iter().map(|(span, _)| span.clone()).collect();
+                    resp = self
+                        .rich_text_spans(
+                            id.as_str(),
+                            &full,
+                            &attributes,
+                            crate::RichTextDesc {
+                                step: desc.step,
+                                color: desc.color,
+                                align: desc.align,
+                                nowrap: desc.nowrap,
+                                width: desc.width,
+                                font: desc.font,
+                            },
+                            |span| {
+                                runs.iter()
+                                    .find(|(s, _)| s == span)
+                                    .map(|(_, style)| style.clone())
+                                    .unwrap_or_default()
+                            },
+                        )
+                        .response;
+                } else if let Some(V::Spans(spans)) = r.get("spans") {
                     let spans = match spans {
                         Ok(spans) => spans,
                         Err(error) => {
@@ -980,7 +1051,8 @@ impl Ui {
                         ..crate::Response::default()
                     }
                 } else if r.flag("multiline") {
-                    self.text_area(
+                    self.docs.placeholder_ink = self.pseudo_ink(&styled, false);
+                    let out = self.text_area(
                         id.as_str(),
                         &mut s,
                         &crate::ui::TextAreaDesc {
@@ -995,9 +1067,12 @@ impl Ui {
                             readonly: r.flag("readonly"),
                             constraints,
                         },
-                    )
+                    );
+                    self.docs.placeholder_ink = None;
+                    out
                 } else {
-                    self.text_field(
+                    self.docs.placeholder_ink = self.pseudo_ink(&styled, false);
+                    let out = self.text_field(
                         id.as_str(),
                         &mut s,
                         &crate::ui::FieldDesc {
@@ -1017,7 +1092,9 @@ impl Ui {
                             readonly: r.flag("readonly"),
                             constraints,
                         },
-                    )
+                    );
+                    self.docs.placeholder_ink = None;
+                    out
                 };
                 if styled.str("stepper") != Some("buttons") && !r.flag("readonly") {
                     self.pad_keyboard(&path, &r, &mut s, &mut resp);
@@ -1097,7 +1174,14 @@ impl Ui {
     /// first in its row (`inside`). A disc, circle or square is a shape on
     /// the first line, as browsers paint it, so no font has to carry the
     /// bullet; a number is text.
-    fn list_marker(&mut self, item: &str, kind: &str, text: &str, inside: bool) {
+    fn list_marker(
+        &mut self,
+        item: &str,
+        kind: &str,
+        text: &str,
+        inside: bool,
+        ink: Option<Srgba>,
+    ) {
         let t = self.theme;
         let body = t.type_ramp.body;
         // CSS's gap between marker and content: half an em.
@@ -1108,11 +1192,18 @@ impl Ui {
             } else {
                 text.to_string()
             };
-            self.label("Marker", &text, crate::LabelDesc::default());
+            self.label(
+                "Marker",
+                &text,
+                crate::LabelDesc {
+                    color: ink,
+                    ..crate::LabelDesc::default()
+                },
+            );
         } else {
             // Blink's bullet: a third of an em across, at least 3 px.
             let d = (body.size / 3.0).round().max(3.0);
-            let ink = t.palette.ink;
+            let ink = ink.unwrap_or(t.palette.ink);
             self.open(
                 "Marker",
                 Element {

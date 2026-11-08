@@ -238,6 +238,24 @@ fn apply_body(rule: &mut SpanRule, body: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// A run's style from text declarations (`name: value;`), as a
+/// `::part` rule with them would give it.
+pub(crate) fn style_of(body: &str, theme: &Theme) -> Result<TextSpanStyle, String> {
+    let mut rule = SpanRule {
+        name: String::new(),
+        attributes: Vec::new(),
+        query: AtQuery::default(),
+        condition: None,
+        style: TextSpanStyle::default(),
+        declarations: Vec::new(),
+        step: None,
+    };
+    apply_body(&mut rule, body)?;
+    let mut style = TextSpanStyle::default();
+    rule.apply(theme, &mut style);
+    Ok(style)
+}
+
 pub(crate) fn resolve(
     rules: &[&SpanRule],
     span: &TextSpan,

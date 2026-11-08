@@ -100,6 +100,16 @@ pub(super) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
                 d.important,
             )?])
         }
+        "list-style-image" => {
+            if !d.value.has_variables() {
+                image(&d.source)?;
+            }
+            Ok(vec![declaration(
+                &property("image"),
+                &d.source,
+                d.important,
+            )?])
+        }
         "list-style" => {
             if d.value.has_variables() {
                 return Err(
@@ -108,16 +118,17 @@ pub(super) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
                 );
             }
             // Omitted parts take their initial values, as CSS's shorthand does.
-            let (mut ty, mut position) = (None, None);
+            let (mut ty, mut position, mut picture) = (None, None, None);
             for word in d.source.split_whitespace() {
                 if POSITIONS.contains(&word) && position.is_none() {
                     position = Some(word);
                 } else if TYPES.contains(&word) && ty.is_none() {
                     ty = Some(word);
-                } else if word.starts_with("url(") {
-                    return Err(
-                        "list-style: marker images are not supported; use list-style-type".into(),
-                    );
+                } else if (word.starts_with("url(") || word.starts_with("image("))
+                    && picture.is_none()
+                {
+                    image(word)?;
+                    picture = Some(word);
                 } else {
                     return Err(format!(
                         "list-style takes a type ({}) and a position (outside, inside), not {word}",
@@ -126,6 +137,7 @@ pub(super) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
                 }
             }
             Ok(vec![
+                declaration(&property("image"), picture.unwrap_or("none"), d.important)?,
                 declaration(&property("type"), ty.unwrap_or("disc"), d.important)?,
                 declaration(
                     &property("position"),
@@ -136,6 +148,25 @@ pub(super) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
         }
         _ => Ok(vec![d]),
     }
+}
+
+/// `list-style-image`: `none` or `url(name)`, a picture the game
+/// registered (`UiDesc.images`); the name, or `None` for `none`.
+pub(crate) fn image(value: &str) -> Result<Option<String>, String> {
+    let v = value.trim();
+    if v == "none" {
+        return Ok(None);
+    }
+    let inner = v
+        .strip_prefix("url(")
+        .or_else(|| v.strip_prefix("image("))
+        .and_then(|r| r.strip_suffix(')'))
+        .ok_or_else(|| format!("list-style-image takes none or url(name), not {v}"))?;
+    let name = inner.trim().trim_matches(|c| c == '"' || c == '\'');
+    if name.is_empty() {
+        return Err("list-style-image: url() names a registered picture".into());
+    }
+    Ok(Some(name.to_string()))
 }
 
 fn integer(value: Option<&Value>) -> Option<i64> {

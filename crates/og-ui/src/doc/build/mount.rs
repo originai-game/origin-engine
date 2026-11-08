@@ -160,6 +160,14 @@ pub struct DocHost {
     pub(crate) scroll_states: BTreeMap<u64, (og_core::glam::Vec2, u16)>,
     pub(crate) scroll_now: BTreeSet<u64>,
     pub(crate) scroll_changed: BTreeSet<u64>,
+    /// The document-order counter and quote run of the tick being built,
+    /// kept only while some defined document uses generated content.
+    pub(crate) run: crate::doc::generated::Run,
+    pub(crate) uses_run: bool,
+    /// The `::placeholder` color of the text control being built.
+    pub(crate) placeholder_ink: Option<Srgba>,
+    /// `::selection` backgrounds by render key.
+    pub(crate) selection_ink: BTreeMap<u64, Srgba>,
     /// What structural selectors of every defined document read.
     pub(crate) structure: crate::doc::matching::Profile,
     /// The instantiated sibling levels of the screen being built.
@@ -175,6 +183,13 @@ impl Ui {
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
         }
+        self.docs.uses_run |= doc.nodes.iter().any(|n| {
+            n.rules.iter().any(|rule| {
+                rule.declarations
+                    .iter()
+                    .any(|d| crate::doc::generated::longhand(&d.name))
+            })
+        });
         let prefix = format!("{}/", doc.name);
         self.docs
             .keyframes
@@ -651,6 +666,7 @@ impl Ui {
     /// The tick's document bookkeeping starts (from `begin`).
     pub(crate) fn docs_begin(&mut self) {
         let d = &mut self.docs;
+        d.run.clear();
         d.seen = std::mem::take(&mut d.seen_now);
         let gone: Vec<u64> = d
             .uses

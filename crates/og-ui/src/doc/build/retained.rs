@@ -94,6 +94,12 @@ struct ElementInstance {
     /// named actions, or its widget memories are in motion.
     volatile: bool,
     materialization: Materialization,
+    /// While documents use generated content: the counter run as it
+    /// entered this element, what its subtree did to the run, and whether
+    /// any generated text in it read the run.
+    run_in: Option<Arc<crate::doc::generated::Run>>,
+    run_events: Arc<Vec<crate::doc::generated::Event>>,
+    run_reads: bool,
 }
 
 #[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -574,6 +580,9 @@ impl RetainedHost {
             memories: Vec::new(),
             volatile: matches!(node.kind, NodeKind::Element("slot")),
             materialization,
+            run_in: None,
+            run_events: Default::default(),
+            run_reads: false,
         };
         let properties = node
             .props
@@ -1378,8 +1387,18 @@ impl RetainedHost {
         // A world layer (`<anchor>`, `<panel world>`) stands outside the
         // tree, under no parent, and stays among the layers as it is.
         let outside = element.parent_slot == NONE;
+        // A subtree whose generated text reads the counter run is held
+        // only while the run enters it as it did when it was built.
+        let uses_run = ui.docs.uses_run;
+        let run_moved = uses_run
+            && element.run_reads
+            && element
+                .run_in
+                .as_ref()
+                .is_none_or(|entered| !entered.same_state(&ui.docs.run));
         if !in_place
             && !element.volatile
+            && !run_moved
             && !self.emit.contains(identity)
             && let Some(slot) = element.slot
             && ui.holds(slot, identity.key, if outside { NONE } else { parent_slot })
@@ -1387,8 +1406,20 @@ impl RetainedHost {
             if !outside {
                 ui.reattach(slot);
             }
+            if uses_run {
+                ui.docs.run.replay(&element.run_events);
+                ui.docs.run.reads += u64::from(element.run_reads);
+            }
             return Ok(());
         }
+        // Written in place, outside the tree walk: the run as it entered.
+        let saved_run = (uses_run && in_place)
+            .then(|| element.run_in.as_deref().cloned())
+            .flatten()
+            .map(|entered| std::mem::replace(&mut ui.docs.run, entered));
+        let run_mark = ui.docs.run.mark();
+        let run_reads = ui.docs.run.reads;
+        let run_in = uses_run.then(|| ui.docs.run.snapshot());
         self.emit.remove(identity);
         self.reconciled += 1;
         if !self.on_action.is_empty() {
@@ -1411,6 +1442,7 @@ impl RetainedHost {
         let mut b = e.build(env, resolved.values.cascade.computed.clone());
         let mut result = Ok(());
         let mut children_built = false;
+        ui.run_enter(&resolved.values);
         ui.build_resolved_node(&mut b, e.index, resolved.clone(), |ui, b, virtual_props| {
             children_built = true;
             result = if let Some(props) = virtual_props {
@@ -1421,6 +1453,16 @@ impl RetainedHost {
                     .try_for_each(|child| self.emit(ui, child, env, events, writes))
             };
         });
+        ui.run_exit();
+        let run_events = if uses_run {
+            ui.docs.run.since(run_mark)
+        } else {
+            Default::default()
+        };
+        let reads_run = ui.docs.run.reads != run_reads;
+        if let Some(saved) = saved_run {
+            ui.docs.run = saved;
+        }
         ui.in_place = None;
         let owned = ui.owning.pop().expect("pushed");
         let record = ui.docs.capture.pop().expect("pushed");
@@ -1488,6 +1530,9 @@ impl RetainedHost {
         element.memories = owned.memories;
         element.volatile = volatile;
         element.materialization = materialization;
+        element.run_in = run_in;
+        element.run_events = run_events;
+        element.run_reads = reads_run;
         if slot.is_none() || !children_built {
             // Not shown (`visible` false), or showing no content (a closed
             // dialog or disclosure): its descendants' nodes go too, and are

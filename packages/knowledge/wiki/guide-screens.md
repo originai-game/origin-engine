@@ -192,6 +192,13 @@ local styles and `og style new` remain available.
   `text::part(name)` and property selectors such as
   `text::part(name)[rarity="rare"]`. Later overlapping declarations win per
   property. Unknown span names remain metadata; the text is never markup.
+- Generate text with `::before`/`::after { content: … }`: strings,
+  `attr(name)`, `counter(name, style)`, `counters(name, ".")` and quotes,
+  with `counter-reset`/`counter-increment`/`counter-set` on any element and
+  `@counter-style` for your own styles. They take text properties only.
+  `li::marker { content: …; color: … }` and `list-style-image: url(name)`
+  restyle list markers. `::first-letter`, `::first-line`, `::placeholder
+  { color }` and `::selection { background-color }` style text.
 - Use `<meta name="screen" content="pause" data-layer="menu"
   data-focus="Menu/Resume" data-pause="true">` for a screen.
   Components use `name="component"`. Props use `name="prop:volume"`,

@@ -344,7 +344,40 @@ markers. An `outside` marker hangs half an em before the item's start
 edge and costs it no room; `inside` puts it first in the item's row. A
 disc, circle or square is drawn as a shape on the first line (no font has
 to carry it); a number is text with CSS's suffix (`3.`, `iv.`), decimal
-outside the alphabetic and roman ranges.
+outside the alphabetic and roman ranges. `list-style-image: url(name)`
+(also in the shorthand) draws a picture the game registered
+(`UiDesc.images`) in the marker's place, one em tall.
+
+Generated content follows CSS Generated Content 3 and CSS Lists 3.
+`::before` and `::after` take `content` (strings, `attr()`, `counter()`,
+`counters()`, `open-quote`, `close-quote`, `no-open-quote` and
+`no-close-quote`; text after `/` is alternative text and is dropped),
+their own `counter-*` properties, `display: none` and the text properties
+a `::part` run takes (`color`, `font`, `font-family`, `font-size`,
+`font-weight`, `font-style`, `line-height`, `letter-spacing`,
+`text-decoration`, `-og-text-motion`). On a text element they join its text
+as styled runs. On any other element they are its first and last child, a
+text run. Box properties on them (background, padding, borders, sizes) fail
+at cook. `counter-reset`, `counter-increment`, `counter-set` and `quotes`
+work on every element. Counters follow CSS scoping: an instance covers its
+element, the element's descendants and its following siblings. `list-item`
+is an item's number. Counter styles are the predefined ones (`decimal`,
+`decimal-leading-zero`, the roman, latin and greek alphabets, `cjk-decimal`,
+`hiragana`, `katakana`, `arabic-indic`, `disc`, `circle`, `square`,
+`disclosure-open`, `disclosure-closed`) and the document's
+`@counter-style` rules, with `extends`, ranges, `pad`, `negative` and
+`fallback`. Counters run in document order as the tree is built. A
+retained subtree that is not built again replays what it did to them. A
+subtree whose generated text reads them is built again only when they enter
+it differently, so an idle frame builds nothing. `::marker` takes `content`
+(it replaces the list style's text; `none` removes the marker) and `color`.
+`::first-letter` styles the first letter, with the punctuation before it.
+`::first-line` styles the first line as the last layout broke it, so its
+element builds every frame. `::placeholder` takes `color`, and
+`::selection` takes `background-color`, the selection highlight. Selected
+text keeps its color. `::file-selector-button` is accepted and styles
+nothing, because a document has no `<input type="file">`. The CSS 2
+spellings `:before`, `:after`, `:first-line` and `:first-letter` work too.
 
 HTML's block margins come with them: `<p>`, `<ul>` and `<ol>` take 1em
 above and below (a list inside a list none), and `<h1>` to `<h6>` take

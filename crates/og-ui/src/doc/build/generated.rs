@@ -1,0 +1,400 @@
+//! Generated content in the build: `::before`/`::after` text and boxes,
+//! `::marker` content, `::first-letter` runs, and the document-order
+//! counter and quote run ([`crate::doc::generated::Run`]) every element
+//! moves as it is built.
+use super::*;
+use crate::doc::generated::{self as gc, Content, PseudoBox, Quotes};
+
+/// The computed-value entry carrying the inherited `quotes`.
+pub(super) const QUOTES: &str = "@quotes";
+
+impl Ui {
+    /// Enters an element in the counter run and applies its counter
+    /// properties; nothing unless some document uses generated content.
+    pub(super) fn run_enter(&mut self, r: &Resolved) {
+        if !self.docs.uses_run {
+            return;
+        }
+        self.docs.run.enter();
+        if let Some(g) = &r.generated {
+            self.docs.run.apply(&g.ops);
+        }
+    }
+
+    pub(super) fn run_exit(&mut self) {
+        if self.docs.uses_run {
+            self.docs.run.exit();
+        }
+    }
+
+    /// A pseudo-element's generated text, evaluated at its place in the
+    /// run (its own counter properties apply first); `None` for `normal`
+    /// and `none`, or `display: none`.
+    pub(super) fn pseudo_text(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        which: &PseudoBox,
+    ) -> Option<String> {
+        let Content::Pieces(pieces) = &which.content else {
+            return None;
+        };
+        if hidden(&which.style) {
+            return None;
+        }
+        let quotes = r
+            .cascade
+            .computed
+            .get(QUOTES)
+            .cloned()
+            .flatten()
+            .and_then(|q| gc::parse_quotes(&q).ok())
+            .unwrap_or(Quotes::Auto);
+        let facts = super::structure::selector_facts(n, |e| b.eval(e));
+        let attr = |name: &str| {
+            facts.get(name).map(|v| match v {
+                Value::String(s) => s.clone(),
+                Value::Null => String::new(),
+                v => v.to_string(),
+            })
+        };
+        let run = &mut self.docs.run;
+        run.enter();
+        run.apply(&which.ops);
+        let text = run.evaluate(pieces, &quotes, &b.doc.sheet, &attr, r.ordinal);
+        run.exit();
+        Some(text)
+    }
+
+    /// A box's `::before` or `::after`: its generated text as a label
+    /// child styled by the pseudo-element's text properties.
+    pub(super) fn generated_box(&mut self, b: &Build<'_>, n: &DocNode, r: &Resolved, before: bool) {
+        let Some(g) = r.generated.clone() else {
+            return;
+        };
+        let Some(which) = (if before { &g.before } else { &g.after }) else {
+            return;
+        };
+        let Some(text) = self.pseudo_text(b, n, r, which) else {
+            return;
+        };
+        let style = self.pseudo_style(&which.style, r);
+        let span = crate::TextSpan {
+            name: "generated".into(),
+            position: 0,
+            length: text.chars().count() as u32,
+            properties: Default::default(),
+        };
+        self.rich_text_spans(
+            if before { "::before" } else { "::after" },
+            &text,
+            std::slice::from_ref(&span),
+            crate::RichTextDesc::default(),
+            |_| style.clone(),
+        );
+    }
+
+    /// A pseudo-element's text style from its declarations (`name:
+    /// value;`); invalid ones are reported and skipped.
+    pub(super) fn pseudo_style(&mut self, body: &str, _r: &Resolved) -> crate::TextSpanStyle {
+        let body: String = crate::doc::css::split_decls(body)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|(name, _)| name != "display")
+            .map(|(name, value)| {
+                let name = if name == "text-decoration" {
+                    "text-decoration-line".to_string()
+                } else {
+                    name
+                };
+                format!("{name}: {value};")
+            })
+            .collect();
+        match crate::doc::spans::style_of(&body, self.theme()) {
+            Ok(style) => style,
+            Err(error) => {
+                self.warnings.push(format!("generated content: {error}"));
+                crate::TextSpanStyle::default()
+            }
+        }
+    }
+
+    /// A text element's text with its `::before` and `::after` content and
+    /// the runs that style them and its `::first-letter`; `None` when it
+    /// generates nothing.
+    pub(super) fn generated_text(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        key: u64,
+        text: &str,
+    ) -> Option<(String, Vec<(crate::TextSpan, crate::TextSpanStyle)>)> {
+        let g = r.generated.clone()?;
+        let pre = g
+            .before
+            .as_ref()
+            .and_then(|w| Some((self.pseudo_text(b, n, r, w)?, w)));
+        let post = g
+            .after
+            .as_ref()
+            .and_then(|w| Some((self.pseudo_text(b, n, r, w)?, w)));
+        if pre.is_none() && post.is_none() && g.first_letter.is_none() && g.first_line.is_none() {
+            return None;
+        }
+        let mut spans = Vec::new();
+        let mut full = String::new();
+        let mut body_at = 0u32;
+        let parts = [
+            pre.as_ref()
+                .map(|(s, w)| (s.as_str(), Some(w.style.as_str()), "::before")),
+            Some((text, None, "")),
+            post.as_ref()
+                .map(|(s, w)| (s.as_str(), Some(w.style.as_str()), "::after")),
+        ];
+        let mut at = 0u32;
+        for (s, style, name) in parts.into_iter().flatten() {
+            let length = s.chars().count() as u32;
+            match style {
+                Some(style) if length > 0 => {
+                    let style = self.pseudo_style(style, r);
+                    spans.push((
+                        crate::TextSpan {
+                            name: name.into(),
+                            position: at,
+                            length,
+                            properties: Default::default(),
+                        },
+                        style,
+                    ));
+                }
+                Some(_) => {}
+                None => body_at = at,
+            }
+            full.push_str(s);
+            at += length;
+        }
+        // `::first-letter`: the first typographic letter unit, with the
+        // punctuation before it, of the text including `::before`.
+        if let Some(style) = &g.first_letter {
+            let chars: Vec<char> = full.chars().collect();
+            let lead = chars
+                .iter()
+                .take_while(|c| c.is_ascii_punctuation() || c.is_whitespace())
+                .count();
+            if lead < chars.len() {
+                let style = self.pseudo_style(style, r);
+                spans.push((
+                    crate::TextSpan {
+                        name: "::first-letter".into(),
+                        position: 0,
+                        length: lead as u32 + 1,
+                        properties: Default::default(),
+                    },
+                    style,
+                ));
+            }
+        }
+        // `::first-line`: the characters of the first line as the last
+        // layout broke it (the whole text before the first). The line moves
+        // with layout, so the element builds again each frame.
+        if let Some(style) = &g.first_line {
+            let total = full.chars().count();
+            let first = self.first_line_chars(key).unwrap_or(total).min(total);
+            if let Some(owned) = self.owning.last_mut() {
+                owned.moved = true;
+            }
+            if first > 0 {
+                let style = self.pseudo_style(style, r);
+                spans.insert(
+                    0,
+                    (
+                        crate::TextSpan {
+                            name: "::first-line".into(),
+                            position: 0,
+                            length: first as u32,
+                            properties: Default::default(),
+                        },
+                        style,
+                    ),
+                );
+            }
+        }
+        // The element's own runs move past `::before`.
+        for (span, style) in &r.span_styles {
+            let mut span = span.clone();
+            span.position += body_at;
+            spans.push((span, style.clone()));
+        }
+        Some((full, spans))
+    }
+
+    /// `::marker`'s content and ink for a list item: `None` content keeps
+    /// the list style's marker.
+    pub(super) fn marker_override(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+    ) -> (Option<Option<String>>, Option<Srgba>) {
+        let Some(m) = r.generated.as_ref().and_then(|g| g.marker.clone()) else {
+            return (None, None);
+        };
+        let style = self.pseudo_style(&m.style, r);
+        let ink = style.color.and_then(|c| c.srgb(self.theme()));
+        let content = match &m.content {
+            Content::Normal => None,
+            Content::None => Some(None),
+            Content::Pieces(_) => Some(self.pseudo_text(b, n, r, &m)),
+        };
+        (content, ink)
+    }
+}
+
+impl Ui {
+    /// How many characters the first line of text node `key` held in the
+    /// last layout.
+    fn first_line_chars(&self, key: u64) -> Option<usize> {
+        let n = self
+            .previous_nodes()
+            .find(|n| n.key == key)
+            .or_else(|| self.tree.find(key).map(|i| &self.nodes[i]))?;
+        if let Some(line) = n.rich_lines.first() {
+            return Some(line.pieces.iter().map(|p| p.text.chars().count()).sum());
+        }
+        n.lines.first().map(|l| l.text.chars().count())
+    }
+
+    /// `::placeholder`'s color, or `::selection`'s background, as declared.
+    pub(super) fn pseudo_ink(&self, r: &Resolved, selection: bool) -> Option<Srgba> {
+        let g = r.generated.as_ref()?;
+        let body = if selection {
+            &g.selection
+        } else {
+            &g.placeholder
+        }
+        .as_ref()?;
+        let decls = crate::doc::css::split_decls(body).ok()?;
+        let want: &[&str] = if selection {
+            &["background-color", "background"]
+        } else {
+            &["color"]
+        };
+        let (_, value) = decls
+            .iter()
+            .rev()
+            .find(|(n, _)| want.contains(&n.as_str()))?;
+        let entries = crate::doc::css::declarations(&format!("color: {value};"), 0).ok()?;
+        let (_, spec) = schema::prop("color")?;
+        match crate::doc::parse_lit(spec.ty, &entries.first()?.values).ok()? {
+            Lit::Paint(Paint::Color(c)) => Some(c),
+            Lit::Paint(Paint::Token(name)) => {
+                crate::paint::ColorRef::token(&name).srgb(self.theme())
+            }
+            _ => None,
+        }
+    }
+
+    /// Records a built element's `::selection` background for the draw.
+    pub(super) fn note_selection(&mut self, key: u64, r: &Resolved) {
+        match self.pseudo_ink(r, true) {
+            Some(c) => {
+                self.docs.selection_ink.insert(key, c);
+            }
+            None => {
+                if !self.docs.selection_ink.is_empty() {
+                    self.docs.selection_ink.remove(&key);
+                }
+            }
+        }
+    }
+}
+
+/// Whether a pseudo-element's declarations hide it (`display: none`).
+fn hidden(style: &str) -> bool {
+    crate::doc::css::split_decls(style)
+        .unwrap_or_default()
+        .iter()
+        .any(|(name, value)| name == "display" && value.trim() == "none")
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::doc::UiDocument;
+    use crate::reactive::SourceId;
+    use crate::{InputFrame, Ui, UiDesc, Viewport};
+    use std::collections::BTreeMap;
+
+    /// Counters number headings and list items in document order through
+    /// `::before`, `::marker` takes content, `::after` boxes generate text,
+    /// and an idle frame builds no element again.
+    #[test]
+    fn generated_content_counts_in_document_order() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "doc.svelte",
+                r#"<meta name="component" content="doc">
+<column id="Doc">
+  <h2 id="A">Intro</h2>
+  <h2 id="B" class="skip">Aside</h2>
+  <h2 id="C">Rules</h2>
+  <ol id="List"><li id="One">a</li><li id="Two">b</li></ol>
+  <column id="Box"/>
+  <text id="Quote">hi</text>
+</column>
+<style>
+#Doc { counter-reset: sec; }
+h2:not(.skip)::before { counter-increment: sec; content: counter(sec, upper-roman) ". "; color: #ff0000; }
+li::marker { content: "(" counter(list-item) ") "; }
+#Box::after { content: "end"; }
+#Quote::before { content: open-quote; }
+#Quote::after { content: close-quote attr(id); }
+</style>"#,
+            )
+            .unwrap(),
+        );
+        ui.mount_document(
+            SourceId::new("test", "doc"),
+            "doc",
+            BTreeMap::new(),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let frame = |ui: &mut Ui| {
+            ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            let texts: Vec<String> = ui
+                .probe_elements()
+                .iter()
+                .filter(|e| !e.text.is_empty())
+                .map(|e| e.text.clone())
+                .collect();
+            (texts, ui.docs.retained.reconciled)
+        };
+        let (texts, _) = frame(&mut ui);
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        for expected in [
+            "I. Intro",
+            "Aside",
+            "II. Rules",
+            "(1) ",
+            "(2) ",
+            "end",
+            "\u{201C}hi\u{201D}Quote",
+        ] {
+            assert!(
+                texts.iter().any(|t| t == expected),
+                "{expected:?} in {texts:?}"
+            );
+        }
+        // The first idle frame rebuilds as any document's does; then the
+        // held subtrees replay their counter events and nothing builds.
+        frame(&mut ui);
+        let (again, reconciled) = frame(&mut ui);
+        assert_eq!((again, reconciled), (texts, 0));
+    }
+}

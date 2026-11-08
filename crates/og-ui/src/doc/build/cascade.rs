@@ -28,6 +28,9 @@ pub struct Cascade {
     pub(crate) text: Vec<(String, String)>,
     /// Winning `transform` and 3D properties ([`crate::transform3d`]).
     pub(crate) transform: Vec<(String, String)>,
+    /// Winning generated-content properties and pseudo-element
+    /// declarations (`::before/content`…), substituted.
+    pub(crate) generated: Vec<(String, String)>,
     /// Query containers whose settled size the matched rules depend on.
     pub container_reads: BTreeSet<u64>,
     /// Containers whose scroll state (`scroll-state()`) the matched rules
@@ -416,6 +419,10 @@ pub(crate) fn resolve(
         }
         if crate::doc::extern_element::svg_longhand(&name) {
             out.svg.push((name, value));
+            continue;
+        }
+        if crate::doc::generated::longhand(&name) {
+            out.generated.push((name, value));
             continue;
         }
         if crate::doc::text_css::longhand(&name) {

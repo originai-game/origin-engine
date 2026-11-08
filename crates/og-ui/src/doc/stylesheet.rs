@@ -155,6 +155,7 @@ pub(super) fn apply(
     rules.retain(|r| !super::view_transition::selects(&r.selector));
     for rule in &mut rules {
         backdrop(rule)?;
+        pseudo_element(rule)?;
     }
     let mut parsed = Vec::new();
     for rule in rules {
@@ -1025,9 +1026,11 @@ pub(super) fn lower(
                     .map(|s| s.to_string())
                     .collect(),
                 "list-style" => vec![
+                    "--og-list-style-image".into(),
                     "--og-list-style-type".into(),
                     "--og-list-style-position".into(),
                 ],
+                "list-style-image" => vec!["--og-list-style-image".into()],
                 "list-style-type" => vec!["--og-list-style-type".into()],
                 "list-style-position" => vec!["--og-list-style-position".into()],
                 name => vec![name.to_string()],
@@ -1075,6 +1078,12 @@ pub(super) fn lower(
                 if let Some(e) = errors.into_iter().next() {
                     return Err(e);
                 }
+            }
+            continue;
+        }
+        if super::generated::longhand(name) {
+            if wide_keyword(&declaration.source).is_none() && !declaration.value.has_variables() {
+                super::generated::check(name, &declaration.source)?;
             }
             continue;
         }
@@ -1176,6 +1185,66 @@ fn backdrop(rule: &mut Rule) -> Result<(), (usize, String)> {
         .map(|s| s.trim_end_matches(pseudo))
         .collect::<Vec<_>>()
         .join(", ");
+    rule.body = body;
+    Ok(())
+}
+
+/// The element-backed pseudo-element a selector ends with
+/// ([`super::generated::PSEUDOS`]), and the selector without it. CSS 2's
+/// `:before`, `:after`, `:first-line` and `:first-letter` count too.
+fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str)> {
+    let lower = selector.to_ascii_lowercase();
+    super::generated::PSEUDOS.iter().find_map(|&p| {
+        let double = format!("::{p}");
+        if lower.ends_with(&double) {
+            return Some((p, &selector[..selector.len() - double.len()]));
+        }
+        let single = format!(":{p}");
+        (matches!(p, "before" | "after" | "first-line" | "first-letter")
+            && lower.ends_with(&single))
+        .then(|| (p, &selector[..selector.len() - single.len()]))
+    })
+}
+
+/// A rule on an element-backed pseudo-element becomes its originating
+/// element's declarations, each named `::pseudo/property`: they cascade
+/// with the element's (states, layers, media, variables) and the build
+/// generates or styles the pseudo-element from the winners.
+fn pseudo_element(rule: &mut Rule) -> Result<(), (usize, String)> {
+    let selectors: Vec<&str> = rule.selector.split(',').map(str::trim).collect();
+    let Some((pseudo, _)) = selectors.iter().find_map(|s| pseudo_suffix(s)) else {
+        return Ok(());
+    };
+    let mut originating = Vec::new();
+    for s in &selectors {
+        match pseudo_suffix(s) {
+            Some((p, rest)) if p == pseudo => {
+                originating.push(if rest.is_empty() { "*" } else { rest });
+            }
+            _ => {
+                return Err((
+                    rule.at,
+                    format!(
+                        "{}: write ::{pseudo} rules apart from other selectors",
+                        rule.selector
+                    ),
+                ));
+            }
+        }
+    }
+    let mut body = String::new();
+    for d in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
+        if !super::generated::allows(pseudo, &d.name) {
+            return Err((rule.at, format!("::{pseudo} does not take {}", d.name)));
+        }
+        body.push_str(&format!(
+            "{}: {}{};",
+            super::generated::encode(pseudo, &d.name),
+            d.source,
+            if d.important { " !important" } else { "" }
+        ));
+    }
+    rule.selector = originating.join(", ");
     rule.body = body;
     Ok(())
 }

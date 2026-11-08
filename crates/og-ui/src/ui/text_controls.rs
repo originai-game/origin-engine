@@ -451,10 +451,11 @@ impl Ui {
             step,
             placeholder_step: step_of(hint.step).unwrap_or(step),
             ink: text.ink.and_then(|c| c.srgb(t)).unwrap_or(t.palette.ink),
-            placeholder: hint
-                .ink
-                .and_then(|c| c.srgb(t))
-                .unwrap_or(t.palette.ink_faint),
+            placeholder: self.docs.placeholder_ink.unwrap_or_else(|| {
+                hint.ink
+                    .and_then(|c| c.srgb(t))
+                    .unwrap_or(t.palette.ink_faint)
+            }),
         }
     }
 
@@ -575,7 +576,13 @@ impl Ui {
         let ch = mk.size + self.theme.space.xxs * 2.0;
         let cy = mk.top + (mk.line_h - ch) / 2.0;
         if mk.under {
-            span("selection", e.selection, cmds, cy, ch, p.control_strong);
+            let selection = self
+                .docs
+                .selection_ink
+                .get(&self.nodes[i].key)
+                .copied()
+                .unwrap_or(p.control_strong);
+            span("selection", e.selection, cmds, cy, ch, selection);
             return;
         }
         if let Some(c) = e.composition {

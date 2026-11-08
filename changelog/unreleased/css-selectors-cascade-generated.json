@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "Document CSS takes ::before, ::after, ::marker, ::first-letter, ::first-line, ::placeholder, ::selection and ::file-selector-button, generated content (content with strings, attr(), counter(), counters() and quotes), counter-reset, counter-increment, counter-set, quotes, @counter-style counter styles, and list-style-image."
+    }
+  ]
+}
