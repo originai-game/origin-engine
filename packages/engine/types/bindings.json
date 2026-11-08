@@ -13318,6 +13318,39 @@
     },
     {
       "id": 52,
+      "name": "MediaIntent",
+      "schema": "og.MediaIntent",
+      "module": "video",
+      "fields": [
+        {
+          "name": "player",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "playing",
+          "type": "i32",
+          "default": -1
+        },
+        {
+          "name": "seek",
+          "type": "f64",
+          "default": -1
+        },
+        {
+          "name": "gain",
+          "type": "f32",
+          "default": -1
+        },
+        {
+          "name": "repeat",
+          "type": "i32",
+          "default": -1
+        }
+      ]
+    },
+    {
+      "id": 53,
       "name": "TimelineStarted",
       "schema": "og.TimelineStarted",
       "module": "timeline",
@@ -13335,7 +13368,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 54,
       "name": "TimelineMarker",
       "schema": "og.TimelineMarker",
       "module": "timeline",
@@ -13363,7 +13396,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 55,
       "name": "TimelineEnded",
       "schema": "og.TimelineEnded",
       "module": "timeline",
@@ -13381,7 +13414,7 @@
       ]
     },
     {
-      "id": 55,
+      "id": 56,
       "name": "Desync",
       "schema": "og.Desync",
       "module": "net",
@@ -13404,7 +13437,7 @@
       ]
     },
     {
-      "id": 56,
+      "id": 57,
       "name": "SeatDropped",
       "schema": "og.SeatDropped",
       "module": "net",
@@ -13432,7 +13465,7 @@
       ]
     },
     {
-      "id": 57,
+      "id": 58,
       "name": "SeatRejoined",
       "schema": "og.SeatRejoined",
       "module": "net",
@@ -13455,7 +13488,7 @@
       ]
     },
     {
-      "id": 58,
+      "id": 59,
       "name": "PeerStalled",
       "schema": "og.PeerStalled",
       "module": "net",
@@ -13478,7 +13511,7 @@
       ]
     },
     {
-      "id": 59,
+      "id": 60,
       "name": "Fractured",
       "schema": "og.Fractured",
       "module": "destruction",
@@ -13525,7 +13558,7 @@
       ]
     },
     {
-      "id": 60,
+      "id": 61,
       "name": "PixelDetached",
       "schema": "og.PixelDetached",
       "module": "destruction",
@@ -13562,7 +13595,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 62,
       "name": "VfxEvent",
       "schema": "og.VfxEvent",
       "module": "vfx",

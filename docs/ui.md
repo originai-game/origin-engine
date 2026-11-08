@@ -199,6 +199,25 @@ probe) are unchanged. The mapping:
 | `<output for="ids">` | label (status) | its text, read politely as it changes; `for` names the controls it reads by id |
 | `<input type="date">` (`time`, `datetime-local`, `month`, `week`) `bind:value={$when}` | datetime (group) | a pad-friendly picker of og-ui steppers, one per part (Year, Month, Day, Week, Hour, Minute, and Second when `step` or the value has seconds), each a focus stop that Left and Right, a press or a held press step; no OS picker. A part stepped past its end carries into the next (the 30th of February is March 1st), a month or year moved keeps the day in its month. The value is HTML's (`2026-11-08`, `14:30`, `2026-11-08T14:30`, `2026-11`, `2026-W45`, ISO weeks), kept within `min` and `max` and on the `step` grid from `min` (seconds for times, days, months or weeks otherwise; a 900 s step moves the minutes by 15). Empty, it shows `min` (else `max`, else 2000-01-01 00:00; no clock is read) and writes once a part is stepped. `required`, `disabled`, `readonly`; empty and required, or outside `min`…`max`, is `:invalid` and holds a form's submit back. Parts `Stepper.*`; probe `<id>/<Part>/Frame/Inc` |
 
+`<video src={$player}>` and `<audio src={$player}>` play a player the game
+owns: the entity (from a store) of an og.VideoPlayer, whose frame draws as
+the element's picture, or of an og.AudioSource. Svelte's media bindings
+follow it: `bind:paused` plays and pauses it (written back true at the end
+without `loop`), `bind:currentTime` is written back as it plays and seeks
+it when the store moves it elsewhere, `bind:volume` and `bind:muted` set
+its sound's gain, `bind:duration` and `bind:ended` are written back;
+`autoplay`, `loop`, `poster={$texture}` (shown until the first frame) and
+`controls` (a Play/Pause button and its time). The element sends what it
+asks as `og.MediaIntent` through the recorded intent path, as UI pause
+does, and the `og.video` system applies it at the next tick, so playback
+stays world state; what it reads back is the last tick's. An element
+asking nothing sends nothing; a media element is rebuilt every frame while
+mounted, as a slot is, since its picture and time change without a
+binding. `src` is never a file name: a document does not spawn entities,
+so spawn the player in a system with its asset and bind the entity. An
+`<audio>` has no `currentTime`, `duration`, `ended` or `poster` (a sound's
+playhead is not read).
+
 `<template>` is refused: snippets are its Svelte form. `<input
 type="file" accept multiple bind:value={$files}>` is a button only where the
 host opens a file picker (`og.ui.filePicker`, the same query on the web and

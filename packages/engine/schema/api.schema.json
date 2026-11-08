@@ -15883,6 +15883,7 @@
         "Video",
         "VideoInfo",
         "VideoCapabilities",
+        "MediaIntent",
         "VideoPlayer"
       ],
       "consts": [],
@@ -61129,6 +61130,54 @@
         "hardware",
         "maxWidth",
         "maxHeight"
+      ],
+      "additionalProperties": false
+    },
+    "MediaIntent": {
+      "x-og-kind": "event",
+      "x-og-module": "video",
+      "description": "A document's `<video>` or `<audio>` asking its player to change at the next tick boundary (docs/ui.md §2), sent through the recorded intent path as UI pause is, so playback stays world state. The og.video system applies it to the entity's og.VideoPlayer and og.AudioSource.",
+      "type": "object",
+      "properties": {
+        "player": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity whose player it asks."
+        },
+        "playing": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "1 play, 0 pause, -1 as it is.",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 1
+        },
+        "seek": {
+          "type": "number",
+          "description": "Seconds to seek a video to; negative: no seek.",
+          "default": -1
+        },
+        "gain": {
+          "type": "number",
+          "description": "Its sound's volume (0 while muted); negative: as it is.",
+          "default": -1
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "1 loop, 0 not, -1 as it is.",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "player",
+        "playing",
+        "seek",
+        "gain",
+        "repeat"
       ],
       "additionalProperties": false
     },

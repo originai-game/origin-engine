@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <video src={$player}>, <audio src={$player}>",
+      "summary": "A document plays an og.VideoPlayer (its frame as the element's picture) or og.AudioSource entity from a store, with Svelte's bind:paused, bind:currentTime, bind:duration, bind:volume, bind:muted, bind:ended and autoplay, loop, poster and controls. A literal src is refused: spawn the player in a system and bind its entity."
+    },
+    {
+      "member": "og.MediaIntent",
+      "summary": "The recorded intent a document's <video> or <audio> sends its player (play, pause, seek, gain, loop), applied by og.video at the next tick. Registered lazily, once a document with one loads."
+    }
+  ]
+}

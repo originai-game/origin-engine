@@ -27,7 +27,7 @@ make text bigger for accessibility	UiDesc | og.ui.configure
 hold the button down to delete a save	og.ui.holdButton
 short message popup that goes away on its own	og.ui.toast
 weapon wheel chosen with the right stick	screens §7
-on-screen virtual joystick for mobile	components §33
+on-screen virtual joystick for mobile	components §37
 plus and minus buttons to pick how many players	og.ui.numberStepper
 on off switch for the music	og.ui.toggleSwitch
 make the hand reach for the door handle	og.IkChain

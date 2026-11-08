@@ -737,6 +737,9 @@ impl Ui {
         self.docs
             .validity
             .retain(|k, _| tree.find(*k).is_some() || retained.keeps_memory(*k));
+        self.docs
+            .media_sent
+            .retain(|k, _| tree.find(*k).is_some() || retained.keeps_memory(*k));
         self.touched = touched;
 
         // Scopes, scrollers, focus owners, groups and recognisers around

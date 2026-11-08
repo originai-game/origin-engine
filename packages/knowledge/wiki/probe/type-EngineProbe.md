@@ -54,6 +54,8 @@ Size rule: width and height are both 0 (or absent), which is the render target's
 
 On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).
 
+Also known as: screenshot, take a screenshot, grab the screen, frame capture
+
 ```ts
 EngineProbe.capture(width?: number, height?: number): Capture | null
 ```
@@ -72,6 +74,7 @@ fn capture {
   doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
   doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
   doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
+  aliases "screenshot, take a screenshot, grab the screen, frame capture"
   publish true
   param width u32 "Width in pixels; 0 is the render target's." {
     default 0
@@ -113,7 +116,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 671</sub>
+<sub>Module `probe` line 672</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -136,7 +139,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 678</sub>
+<sub>Module `probe` line 679</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -159,7 +162,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 682</sub>
+<sub>Module `probe` line 683</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -187,7 +190,7 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 686</sub>
+<sub>Module `probe` line 687</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -217,7 +220,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 691</sub>
+<sub>Module `probe` line 692</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -245,7 +248,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 698</sub>
+<sub>Module `probe` line 699</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -275,7 +278,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 703</sub>
+<sub>Module `probe` line 704</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -298,7 +301,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 710</sub>
+<sub>Module `probe` line 711</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -321,7 +324,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 714</sub>
+<sub>Module `probe` line 715</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -349,7 +352,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 718</sub>
+<sub>Module `probe` line 719</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -372,7 +375,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 723</sub>
+<sub>Module `probe` line 724</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -402,7 +405,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 727</sub>
+<sub>Module `probe` line 728</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -425,7 +428,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 734</sub>
+<sub>Module `probe` line 735</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -459,7 +462,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 738</sub>
+<sub>Module `probe` line 739</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -493,7 +496,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 748</sub>
+<sub>Module `probe` line 749</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -523,4 +526,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 758</sub>
+<sub>Module `probe` line 759</sub>

@@ -39,6 +39,13 @@ pub(crate) const PLAYER: &str = "og.VideoPlayer";
 /// (super::save_migrations upgrades a version 1 save).
 pub(crate) const PLAYER_VERSION: u32 = 2;
 const AUDIO: &str = "og.AudioSource";
+/// A document's `<video>` or `<audio>` asking its player (IDL og.MediaIntent).
+pub(crate) const MEDIA_INTENT: &str = "og.MediaIntent";
+
+/// A player's state as the last tick left it, by engine and entity, for a
+/// document's `<video>` and `<audio>` (presentation: never read by the
+/// simulation) with its texture's handle.
+type Media = IdMap<u64, (og_ui::bind::MediaState, f64)>;
 
 /// What the system needs of a loaded video.
 #[derive(Clone, Copy, Debug)]
@@ -54,6 +61,118 @@ type Clips = Arc<Mutex<IdMap<u64, Clip>>>;
 thread_local! {
     /// Each engine's loaded videos, by Video handle (kept across a reload).
     static CLIPS: RefCell<IdMap<u32, Clips>> = const { RefCell::new(IdMap::new()) };
+    static MEDIA: RefCell<IdMap<u32, Media>> = const { RefCell::new(IdMap::new()) };
+}
+
+/// The state of `player` for a document ([`og_ui::bind::Env::media`]).
+pub(crate) fn media_state(engine: u32, player: u64) -> Option<(og_ui::bind::MediaState, f64)> {
+    MEDIA.with(|m| {
+        m.borrow()
+            .get(&engine)
+            .and_then(|m| m.get(&player))
+            .copied()
+    })
+}
+
+/// Sends a frame's `<video>` and `<audio>` requests as og.MediaIntent.
+pub(crate) fn send_media(
+    eng: &crate::engine::Engine,
+    ctx: &SystemContext<'_>,
+    ops: &[og_ui::bind::MediaOp],
+) -> Result<(), String> {
+    let Ok((layout, _)) =
+        crate::api::running_record(eng, MEDIA_INTENT, crate::codec::RecordKind::Event)
+    else {
+        return Ok(()); // no document with one loaded
+    };
+    let tri = |b: Option<bool>| b.map_or(-1, i32::from);
+    for op in ops {
+        let v = json!({
+            "player": op.player,
+            "playing": tri(op.playing),
+            "seek": op.seek.unwrap_or(-1.0),
+            "gain": op.gain.unwrap_or(-1.0),
+            "repeat": tri(op.repeat),
+        });
+        let bytes = layout.encode(None, Some(&v))?;
+        crate::api::send_intent(eng, Some(ctx), MEDIA_INTENT, &bytes)?;
+    }
+    Ok(())
+}
+
+/// Applies last tick's og.MediaIntent to the players they name: a
+/// video's playing, time and loop, and its sound's (or a sound's own)
+/// volume, playing and loop.
+fn apply_media(
+    ctx: &mut SystemContext<'_>,
+    layouts: &MediaLayouts,
+    audio: &(SchemaId, Layout),
+) -> og_core::Result<Vec<Entity>> {
+    let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
+    let mut named = Vec::new();
+    let Some(intent) = &layouts.intent else {
+        return Ok(named);
+    };
+    let Ok(id) = ctx.id_by_name(MEDIA_INTENT) else {
+        return Ok(named);
+    };
+    let player = ctx.id_by_name(PLAYER).ok();
+    for bytes in ctx.events_bytes(id)? {
+        let i = intent.decode(&bytes);
+        let e = Entity::from_bits(i["player"].as_f64().unwrap_or(0.0) as u64);
+        let playing = i["playing"].as_i64().unwrap_or(-1);
+        let repeat = i["repeat"].as_i64().unwrap_or(-1);
+        let seek = i["seek"].as_f64().unwrap_or(-1.0);
+        let gain = i["gain"].as_f64().unwrap_or(-1.0);
+        named.push(e);
+        let is_video = match player {
+            Some(p) => match ctx.get_bytes(e, p) {
+                Ok(b) => {
+                    let mut v = layouts.player.decode(&b);
+                    if playing >= 0 {
+                        v["playing"] = json!(playing == 1);
+                    }
+                    if repeat >= 0 {
+                        v["loop"] = json!(repeat == 1);
+                    }
+                    if seek >= 0.0 {
+                        v["time"] = json!(seek);
+                    }
+                    let out = layouts.player.encode(Some(&b), Some(&v)).map_err(bad)?;
+                    ctx.set_bytes(e, p, &out)?;
+                    true
+                }
+                Err(_) => false,
+            },
+            None => false,
+        };
+        let Ok(ab) = ctx.get_bytes(e, audio.0) else {
+            continue;
+        };
+        let mut s = audio.1.decode(&ab);
+        if gain >= 0.0 {
+            s["volume"] = json!(gain);
+        }
+        // A video's sound follows the picture (the loop below); a sound
+        // of its own plays as asked.
+        if !is_video {
+            if playing >= 0 {
+                s["playing"] = json!(playing == 1);
+            }
+            if repeat >= 0 {
+                s["loop"] = json!(repeat == 1);
+            }
+        }
+        let out = audio.1.encode(Some(&ab), Some(&s)).map_err(bad)?;
+        ctx.set_bytes(e, audio.0, &out)?;
+    }
+    Ok(named)
+}
+
+/// The layouts og.video decodes.
+struct MediaLayouts {
+    player: Layout,
+    intent: Option<Layout>,
 }
 
 fn clips(engine: u32) -> Clips {
@@ -201,6 +320,10 @@ pub(crate) fn install(
         .ok_or_else(|| format!("{PLAYER} has no layout"))?;
     let audio = record(world, layouts, AUDIO)?;
     let shared = clips(engine_id);
+    let player = MediaLayouts {
+        player,
+        intent: layouts.get(MEDIA_INTENT).cloned(),
+    };
     world
         .add_system(
             SystemDesc {
@@ -227,13 +350,36 @@ fn run(
     ctx: &mut SystemContext<'_>,
     engine_id: u32,
     shared: &Mutex<IdMap<u64, Clip>>,
-    layout: &Layout,
+    layouts: &MediaLayouts,
     audio: &(SchemaId, Layout),
 ) -> og_core::Result<()> {
+    let named = apply_media(ctx, layouts, audio)?;
+    let mut media = Media::new();
+    // A sound a document names: whether it plays.
+    for e in named {
+        if let Ok(ab) = ctx.get_bytes(e, audio.0) {
+            let s = audio.1.decode(&ab);
+            let state = og_ui::bind::MediaState {
+                playing: s["playing"].as_bool().unwrap_or(false),
+                ..Default::default()
+            };
+            media.insert(e.to_bits(), (state, 0.0));
+        }
+    }
+    let publish = |media: Media| {
+        MEDIA.with(|m| {
+            let mut m = m.borrow_mut();
+            let all = m.entry(engine_id).or_default();
+            // A sound keeps its last state between the ticks it is named.
+            all.retain(|_, (s, _)| s.duration == 0.0);
+            all.extend(media);
+        });
+    };
     let Ok(id) = ctx.id_by_name(PLAYER) else {
+        publish(media);
         return Ok(());
     };
-    let player = &(id, layout.clone());
+    let player = &(id, layouts.player.clone());
     // The tick's length as og.audio counts it (a whole number of ticks a
     // second), so a player's time and its sound's playhead move together.
     let dt = 1.0 / (1.0 / f64::from(ctx.time().dt)).round().max(1.0);
@@ -288,6 +434,19 @@ fn run(
         v["frame"] = json!(frame_at(time, &c));
         v["finished"] = json!(finished);
         v["texture"] = json!(texture as f64);
+        media.insert(
+            e.to_bits(),
+            (
+                og_ui::bind::MediaState {
+                    playing: playing && !finished,
+                    time,
+                    duration: c.seconds,
+                    ended: finished,
+                    texture: None,
+                },
+                texture as f64,
+            ),
+        );
         let out = player.1.encode(Some(&bytes), Some(&v)).map_err(bad)?;
         ctx.set_bytes(e, player.0, &out)?;
         // The sound: started at the video's time, stopped for a tick on a
@@ -311,6 +470,7 @@ fn run(
         let out = audio.1.encode(Some(&ab), Some(&s)).map_err(bad)?;
         ctx.set_bytes(e, audio.0, &out)?;
     }
+    publish(media);
     Ok(())
 }
 

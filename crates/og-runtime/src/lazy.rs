@@ -275,6 +275,15 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::video::PLAYER,
         enable: |w, _| w.grant(crate::video::VIDEO_SYSTEM, &[crate::video::PLAYER]),
     },
+    // A document's <video> or <audio> asks its player through it, once a
+    // document with one loads (crate::modules::docs::load_document).
+    Lazy {
+        name: crate::video::MEDIA_INTENT,
+        enable: |w, _| {
+            w.grant(crate::video::VIDEO_SYSTEM, &[crate::video::MEDIA_INTENT])?;
+            w.grant(crate::modules::UI_END, &[crate::video::MEDIA_INTENT])
+        },
+    },
     // 3D VFX: og.vfx plays composed effects, sends og.VfxEvent and
     // despawns them, once a game names og.Vfx or og.VfxEvent.
     Lazy {

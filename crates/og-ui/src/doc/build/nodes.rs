@@ -932,6 +932,9 @@ impl Ui {
             "color" => {
                 resp = self.color_input(b, n, id.as_str(), &r);
             }
+            "video" | "audio" => {
+                resp = self.media_element(b, n, id.as_str(), key, &r, kind == "video");
+            }
             "file" => {
                 if !self.file_picker {
                     self.warnings.push(format!(

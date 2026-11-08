@@ -103,6 +103,12 @@ pub struct DocHost {
     /// Text fields' constraint validity as last built, by key: what a
     /// form's submit reads. Kept while their element is.
     pub(crate) validity: BTreeMap<u64, FieldValidity>,
+    /// What media elements asked of their players this frame, taken by
+    /// the host ([`Ui::take_media_ops`]).
+    pub(crate) media_ops: Vec<crate::bind::MediaOp>,
+    /// What each media element last sent, the time it last read and the
+    /// frames a seek it sent is still on its way, by key.
+    pub(crate) media_sent: BTreeMap<u64, (f32, bool, f64, u8)>,
     /// `data-og-instant` elements whose first entrance has landed: a
     /// later one plays (presentation, outside `world_hash`).
     pub(crate) entered: BTreeSet<u64>,
@@ -411,6 +417,13 @@ impl Ui {
 
     /// Events of documents built where code did not see them (screens
     /// built at the end of a tick), taken.
+    /// The play, pause, seek, gain and loop requests documents' `<video>`
+    /// and `<audio>` made this frame, for the host to apply to their
+    /// players at the next tick.
+    pub fn take_media_ops(&mut self) -> Vec<crate::bind::MediaOp> {
+        std::mem::take(&mut self.docs.media_ops)
+    }
+
     pub fn take_doc_events(&mut self) -> Vec<DocEvent> {
         std::mem::take(&mut self.docs.queued)
     }

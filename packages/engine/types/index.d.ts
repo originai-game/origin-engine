@@ -34672,6 +34672,42 @@ export interface VideoCapabilities {
 
 
 /**
+ * A document's `<video>` or `<audio>` asking its player to change at the next tick boundary (docs/ui.md §2), sent through the recorded intent path as UI pause is, so playback stays world state. The og.video system applies it to the entity's og.VideoPlayer and og.AudioSource.
+ *
+ * The payload of the `MediaIntent` event (token `og.MediaIntent`).
+ */
+export interface MediaIntent {
+  /** The entity whose player it asks. */
+  readonly player: Entity;
+  /**
+   * 1 play, 0 pause, -1 as it is.
+   *
+   * @default -1
+   * @range -1..1
+   */
+  readonly playing: number;
+  /**
+   * Seconds to seek a video to; negative: no seek.
+   *
+   * @default -1
+   */
+  readonly seek: number;
+  /**
+   * Its sound's volume (0 while muted); negative: as it is.
+   *
+   * @default -1
+   */
+  readonly gain: number;
+  /**
+   * 1 loop, 0 not, -1 as it is.
+   *
+   * @default -1
+   * @range -1..1
+   */
+  readonly repeat: number;
+}
+
+/**
  * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region (the picture's length) each tick so the sound plays in step, however long or often it loops: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
  *
  * The value of the `VideoPlayer` component (token `og.VideoPlayer`).
@@ -41782,6 +41818,10 @@ export declare namespace og {
      */
     function setBudget(world: World, bytes: number): Result<void>;
   }
+  /**
+   * A document's `<video>` or `<audio>` asking its player to change at the next tick boundary (docs/ui.md §2), sent through the recorded intent path as UI pause is, so playback stays world state. The og.video system applies it to the entity's og.VideoPlayer and og.AudioSource.
+   */
+  const MediaIntent: EventType<MediaIntent>;
   /**
    * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region (the picture's length) each tick so the sound plays in step, however long or often it loops: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
    */

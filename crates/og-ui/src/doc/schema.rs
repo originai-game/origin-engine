@@ -214,6 +214,16 @@ pub const CORE_KINDS: &[KindSpec] = &[
         doc: "A date or time input (`<input type=\"date|time|datetime-local|month|week\">`): a stepper per part, two-way `dateValue` in HTML's format.",
     },
     KindSpec {
+        name: "video",
+        container: false,
+        doc: "HTML's `<video>`: the frame of the og.VideoPlayer entity `src` binds, with Svelte's media bindings and optional controls.",
+    },
+    KindSpec {
+        name: "audio",
+        container: false,
+        doc: "HTML's `<audio>`: the og.AudioSource entity `src` binds, played and paused by `paused`; drawn only with `controls`.",
+    },
+    KindSpec {
         name: "file",
         container: false,
         doc: "A file input (`<input type=\"file\">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`.",
@@ -1276,6 +1286,78 @@ pub const CORE_PROPS: &[PropSpec] = &[
         ["radio"],
         two_way,
         "The store its group's choice is in (`bind:group`): it is checked while that holds its value, and a press writes its value."
+    ),
+    p!(
+        "mediaSrc",
+        Ty::Num,
+        ["video", "audio"],
+        "The player (HTML `src`): an entity with og.VideoPlayer (a video's) or og.AudioSource, from a store."
+    ),
+    p!(
+        "paused",
+        Ty::Bool,
+        ["video", "audio"],
+        two_way,
+        "Whether it is paused (Svelte's `bind:paused`): written to play or pause it, written back as it ends."
+    ),
+    p!(
+        "currentTime",
+        Ty::Num,
+        ["video"],
+        two_way,
+        "Seconds in (`bind:currentTime`): written back as it plays; a value off the player's seeks it."
+    ),
+    p!(
+        "duration",
+        Ty::Num,
+        ["video"],
+        two_way,
+        "Its length in seconds (`bind:duration`; written back)."
+    ),
+    p!(
+        "volume",
+        Ty::Num,
+        ["video", "audio"],
+        two_way,
+        "Its sound's gain, 0 to 1 (`bind:volume`; default 1)."
+    ),
+    p!(
+        "muted",
+        Ty::Bool,
+        ["video", "audio"],
+        two_way,
+        "Silenced whatever its volume (`bind:muted`)."
+    ),
+    p!(
+        "ended",
+        Ty::Bool,
+        ["video"],
+        two_way,
+        "It reached its end without loop (`bind:ended`; written back)."
+    ),
+    p!(
+        "autoplay",
+        Ty::Bool,
+        ["video", "audio"],
+        "Plays as it first appears."
+    ),
+    p!(
+        "loop",
+        Ty::Bool,
+        ["video", "audio"],
+        "Starts again at its end."
+    ),
+    p!(
+        "poster",
+        Ty::Num,
+        ["video"],
+        "A texture handle shown until the first frame plays (HTML `poster`), usually bound."
+    ),
+    p!(
+        "controls",
+        Ty::Bool,
+        ["video", "audio"],
+        "Draws a play and pause button and its time."
     ),
     p!(
         "fileValue",

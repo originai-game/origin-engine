@@ -107,6 +107,39 @@ pub trait Env {
         let _ = handle;
         None
     }
+    /// A `<video>`'s or `<audio>`'s player (an entity with og.VideoPlayer
+    /// or og.AudioSource, by handle) as the last tick left it.
+    fn media(&self, player: f64) -> Option<MediaState> {
+        let _ = player;
+        None
+    }
+}
+
+/// A media player's state for a document's `<video>` or `<audio>`
+/// ([`Env::media`]): presentation, read after the tick.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct MediaState {
+    pub playing: bool,
+    /// Seconds in, and the length (0 for a sound, whose playhead is not
+    /// read).
+    pub time: f64,
+    pub duration: f64,
+    /// A player without loop reached its end.
+    pub ended: bool,
+    /// The frame it shows (a video's).
+    pub texture: Option<og_render::TextureHandle>,
+}
+
+/// What a `<video>` or `<audio>` asks of its player for the next tick:
+/// each `None` keeps what it has.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct MediaOp {
+    pub player: f64,
+    pub playing: Option<bool>,
+    pub seek: Option<f64>,
+    /// Its sound's gain: `volume`, or 0 while `muted`.
+    pub gain: Option<f32>,
+    pub repeat: Option<bool>,
 }
 
 /// No host: viewmodels alone, English.

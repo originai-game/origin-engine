@@ -44,6 +44,9 @@
 //!   `date_and_time_inputs_step_their_parts_within_min_max_and_step`
 //! - a file input built on a host without a picker, or a press not
 //!   asking the host for one → `a_file_input_builds_only_where_the_host_has_a_picker`
+//! - a video not asking its player to play, seek or mute, asking while
+//!   idle, or its time, length and end not read back →
+//!   `a_video_drives_its_player_and_reads_it_back`
 
 use crate::support;
 
@@ -1020,7 +1023,10 @@ fn a_file_input_builds_only_where_the_host_has_a_picker() {
     both(text, &[("files", json!("")), ("show", json!(true))], |d| {
         assert!(d.el("Pick").is_none(), "no picker, no input");
         assert!(
-            d.ui.frame().warnings.iter().any(|w| w.contains("file picker")),
+            d.ui.frame()
+                .warnings
+                .iter()
+                .any(|w| w.contains("file picker")),
             "{:?}",
             d.ui.frame().warnings
         );
@@ -1035,4 +1041,72 @@ fn a_file_input_builds_only_where_the_host_has_a_picker() {
             .unwrap_or_else(|| panic!("{events:?}"));
         assert_eq!(pick.value, json!({ "accept": ".png", "multiple": true }));
     });
+}
+
+#[test]
+fn a_video_drives_its_player_and_reads_it_back() {
+    use og_ui::bind::{Env, MediaState};
+    struct Player(std::cell::Cell<MediaState>);
+    impl Env for Player {
+        fn media(&self, player: f64) -> Option<MediaState> {
+            (player == 7.0).then(|| self.0.get())
+        }
+    }
+    let text = r#"<meta name="component" content="t">
+<div><video id="Clip" src={player} bind:paused={paused} bind:currentTime={t}
+  bind:duration={len} bind:ended={done} bind:muted={mute} controls></video></div>"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("ui/t.svelte", text).unwrap());
+    let mut vm =
+        json!({"player": 7, "paused": true, "t": 0, "len": 0, "done": false, "mute": false});
+    let env = Player(std::cell::Cell::new(MediaState {
+        duration: 90.0,
+        ..MediaState::default()
+    }));
+    let frame = |ui: &mut Ui, vm: &mut Value| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        let r = ui.component("T", "t", vm, &env);
+        ui.end();
+        // An immediate build's writes are its viewmodel's.
+        for e in &r.events {
+            if e.kind == "set" {
+                vm[&e.name] = e.value.clone();
+            }
+        }
+        ui.take_media_ops()
+    };
+    // Paused and paused: nothing to ask but its sound's first gain.
+    let ops = frame(&mut ui, &mut vm);
+    assert_eq!(ops.len(), 1, "{ops:?}");
+    assert_eq!((ops[0].playing, ops[0].gain), (None, Some(1.0)));
+    assert_eq!(vm["len"], json!(90.0));
+    assert!(frame(&mut ui, &mut vm).is_empty(), "idle asks nothing");
+    // Unpaused: play, until the player says it plays.
+    vm["paused"] = json!(false);
+    vm["mute"] = json!(true);
+    let ops = frame(&mut ui, &mut vm);
+    assert_eq!((ops[0].playing, ops[0].gain), (Some(true), Some(0.0)));
+    env.0.set(MediaState {
+        playing: true,
+        time: 12.5,
+        duration: 90.0,
+        ..MediaState::default()
+    });
+    assert!(frame(&mut ui, &mut vm).is_empty());
+    assert_eq!(vm["t"], json!(12.5));
+    // A store seek.
+    vm["t"] = json!(60);
+    assert_eq!(frame(&mut ui, &mut vm)[0].seek, Some(60.0));
+    // Its end pauses it and says so.
+    env.0.set(MediaState {
+        time: 90.0,
+        duration: 90.0,
+        ended: true,
+        ..MediaState::default()
+    });
+    frame(&mut ui, &mut vm);
+    assert_eq!(
+        (vm["done"].clone(), vm["paused"].clone()),
+        (json!(true), json!(true))
+    );
 }

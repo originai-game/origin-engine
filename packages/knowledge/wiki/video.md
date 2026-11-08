@@ -28,6 +28,7 @@ module video {
 | [`VideoInfo`](video/type-VideoInfo.md) | struct |  | What og.load.video loaded. |
 | [`VideoCapabilities`](video/type-VideoCapabilities.md) | struct |  | How this host plays streams. |
 | [`og.video.capabilities`](video/fn-capabilities.md) | function | `(world: World): VideoCapabilities` | How streams play on this host: the decoder, whether it is hardware and its largest real-time size. |
+| [`og.MediaIntent`](video/record-MediaIntent.md) | event |  | A document's `<video>` or `<audio>` asking its player to change at the next tick boundary (docs/ui.md §2), sent through the recorded intent path as UI pause is, so playback stays world state. |
 | [`og.VideoPlayer`](video/record-VideoPlayer.md) | component |  | Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets… |
 
 ## Column kinds

@@ -1323,6 +1323,8 @@ impl Parser {
             "div" | "section" | "header" | "footer" | "nav" | "main" | "aside" | "article"
             | "ul" | "ol" | "li" | "menu" => "box",
             "img" => "image",
+            "video" => "video",
+            "audio" => "audio",
             "hr" => "divider",
             "textarea" => "field",
             // An input's kind is its literal type's: a range is a slider, a
@@ -1653,6 +1655,35 @@ impl Parser {
             }
             if name == "value" && internal == "color" {
                 name = "colorValue".into();
+            }
+            if matches!(internal, "video" | "audio") && a.name == "src" {
+                if !a.bound {
+                    return Err((
+                        a.at,
+                        format!(
+                            "<{tag}> plays a player the game owns, not a file: spawn an og.{} with the asset in a system and bind its entity, src={{$player}}",
+                            if tag == "video" {
+                                "VideoPlayer"
+                            } else {
+                                "AudioSource"
+                            }
+                        ),
+                    ));
+                }
+                name = "mediaSrc".into();
+            }
+            if internal == "audio"
+                && matches!(
+                    name.as_str(),
+                    "currentTime" | "duration" | "ended" | "poster"
+                )
+            {
+                return Err((
+                    a.at,
+                    format!(
+                        "<audio> has no {name}: an og.AudioSource's playhead is not read; use <video> for footage"
+                    ),
+                ));
             }
             if internal == "file" && name == "value" {
                 name = "fileValue".into();

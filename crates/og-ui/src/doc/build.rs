@@ -1537,6 +1537,7 @@ mod fields;
 mod generated;
 pub(crate) mod gestures;
 mod kbd;
+mod media;
 mod mount;
 mod nodes;
 mod popover;

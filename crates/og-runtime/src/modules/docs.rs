@@ -68,6 +68,11 @@ impl og_ui::bind::Env for RtEnv {
         let rs = eng.render.try_borrow().ok()?;
         super::super::assets::index_of(handle).and_then(|i| rs.textures.get(i).copied())
     }
+    fn media(&self, player: f64) -> Option<og_ui::bind::MediaState> {
+        let (mut state, texture) = crate::video::media_state(self.engine, player as u64)?;
+        state.texture = (texture != 0.0).then(|| self.texture(texture)).flatten();
+        Some(state)
+    }
 }
 
 pub(crate) fn env(engine: u32) -> RtEnv {
@@ -108,6 +113,13 @@ pub(crate) fn end_of_frame(
             .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
         let bytes = og_core::reflect::to_bytes(&og_input::PauseIntent { scale })?;
         crate::api::send_intent(&eng, Some(ctx), "og.PauseIntent", &bytes)
+            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
+    }
+    let ops = ui.take_media_ops();
+    if !ops.is_empty() {
+        let eng = super::super::engine::engine(engine)
+            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
+        crate::video::send_media(&eng, ctx, &ops)
             .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
     }
     Ok(())
@@ -240,6 +252,14 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
             }),
         }
     });
+    // A <video> or <audio> asks its player through og.MediaIntent.
+    if doc
+        .nodes
+        .iter()
+        .any(|n| matches!(n.kind, og_ui::doc::NodeKind::Element("video" | "audio")))
+    {
+        crate::lazy::ensure(eng, eng.world()?, crate::video::MEDIA_INTENT)?;
+    }
     let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
     let mut ui = ui.lock();
     for (r, _, artboard) in rive {
