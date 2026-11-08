@@ -247,6 +247,16 @@ mod tests {
         let mut ui = Ui::default();
         for width in [400.0, 220.0, 400.0] {
             let (container, child) = build(&mut ui, width);
+            // Once per finish: the bounded frame's check finishes a whole
+            // twin too (`end_with_layout_queries`), resolving it as well.
+            #[cfg(debug_assertions)]
+            let finishes = if crate::ui::bounded::checking() && !ui.kept.whole {
+                2
+            } else {
+                1
+            };
+            #[cfg(not(debug_assertions))]
+            let finishes = 1;
             let mut calls = 0;
             let frame = ui
                 .end_with_layout_queries(|ui, sizes| {
@@ -271,7 +281,7 @@ mod tests {
                     Ok(vec![child])
                 })
                 .unwrap();
-            assert_eq!(calls, 1);
+            assert_eq!(calls, finishes);
             let _ = frame;
             let child = ui.elements().iter().find(|e| e.id == "child").unwrap();
             assert_eq!(child.width, if width == 400.0 { 91.0 } else { 37.0 });

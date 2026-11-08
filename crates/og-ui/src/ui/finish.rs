@@ -77,6 +77,11 @@ impl Ui {
         &self.frame
     }
 
+    /// [`Ui::end`], settling container queries with `resolve`. Under the
+    /// bounded frame's check (`OG_UI_CHECK_BOUNDED`) a whole twin of the
+    /// frame is finished too and `resolve` settles it as well: it is called
+    /// once per finish, so effects outside the `Ui` it is given happen
+    /// twice there.
     pub(crate) fn end_with_layout_queries(
         &mut self,
         mut resolve: impl FnMut(
