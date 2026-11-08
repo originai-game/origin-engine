@@ -288,6 +288,8 @@ pub(crate) struct EditDesc {
     pub input_type: crate::InputType,
     /// Laid out masked (a password not revealed).
     pub masked: bool,
+    /// Read-only: its text is selected and copied, never changed.
+    pub readonly: bool,
 }
 
 /// The character a secret text is drawn with in `m`: the bullet, else `*`.
@@ -1262,6 +1264,16 @@ impl Ui {
                     s = s.min((width - room).max(0.0)).max(0.0);
                 }
                 self.state.edit_scroll = s;
+            }
+        }
+        // A read-only text keeps its text: what this tick would have
+        // changed (typing, deleting, a cut, a paste, an undo) is dropped with
+        // the caret it moved; selecting, moving and copying stay.
+        if d.readonly {
+            composition.clear();
+            if chars != before {
+                chars.clone_from(&before);
+                (caret, anchor) = sel_before;
             }
         }
         // The tick's edit is a step of the history; a move ends the step

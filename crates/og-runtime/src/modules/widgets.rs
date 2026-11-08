@@ -218,6 +218,8 @@ pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> Stri
                 .as_str()
                 .and_then(og_ui::InputMode::from_name),
             autocomplete: d["autocomplete"].as_str().unwrap_or_default().to_string(),
+            // readonly and the constraints are document attributes only.
+            ..FieldDesc::default()
         };
         ui.text_field(id.as_str(), &mut text, &fd)
     });
@@ -237,6 +239,7 @@ pub fn og_ui_text_area(id: String, value: String, desc: Option<String>) -> Strin
             bare: d["bare"].as_bool().unwrap_or(false),
             tight: d["tight"].as_bool().unwrap_or(false),
             component: d["component"].as_str().map(str::to_string),
+            ..og_ui::TextAreaDesc::default()
         };
         ui.text_area(id.as_str(), &mut text, &ad)
     });

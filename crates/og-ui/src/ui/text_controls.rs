@@ -99,6 +99,7 @@ impl Ui {
                     inner,
                     input_type: desc.input_type,
                     masked: secret && !revealed,
+                    readonly: desc.readonly,
                 },
             );
             r.changed = e.changed;
@@ -106,7 +107,9 @@ impl Ui {
             r.focused = self.state.focus == key;
         }
         let focused = r.focused;
-        let invalid = desc.invalid || desc.input_type.mismatch(value);
+        let invalid = desc.invalid
+            || desc.input_type.mismatch(value)
+            || desc.constraints.fails(desc.input_type, value);
         let (shown, composition) = self.shown_text(value, focused);
         let mask = (secret && !revealed).then(|| {
             crate::edit::mask_char(&self.fonts.for_text(FontRole::Body, "\u{2022}").metrics)
@@ -143,6 +146,7 @@ impl Ui {
             target.inputmode = desc.inputmode.unwrap_or(desc.input_type.default_mode());
             target.autocomplete = desc.autocomplete.clone();
             target.secret = secret;
+            target.readonly = desc.readonly;
             if secret {
                 target.selection.clear();
             }
@@ -360,6 +364,7 @@ impl Ui {
                     inner,
                     input_type: crate::InputType::Text,
                     masked: false,
+                    readonly: desc.readonly,
                 },
             );
             r.changed = e.changed;
@@ -370,9 +375,13 @@ impl Ui {
         let (shown, composition) = self.shown_text(value, focused);
         let mut edit = self.edit_view(key, focused, value, composition, true);
         edit.placeholder = shown.is_empty();
+        let invalid = desc.invalid || desc.constraints.fails(crate::InputType::Text, value);
+        if let Some(target) = self.text_target.as_mut().filter(|_| focused) {
+            target.readonly = desc.readonly;
+        }
         let disabled = self.nodes[i].disabled;
-        let ink = self.field_ink(base, focused, desc.invalid, disabled);
-        self.field_part(i, base, focused, desc.invalid, desc.bare);
+        let ink = self.field_ink(base, focused, invalid, disabled);
+        self.field_part(i, base, focused, invalid, desc.bare);
         let n = &mut self.nodes[i];
         n.widget = Widget::TextArea {
             edit,

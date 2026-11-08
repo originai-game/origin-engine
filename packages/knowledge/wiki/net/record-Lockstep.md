@@ -8,7 +8,7 @@ Module [`net`](../net.md) · [index](../index.md)
 
 Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
 
-Also known as: deterministic lockstep, input sync, RTS networking, peer to peer simulation
+Also known as: deterministic lockstep, input sync, RTS networking, peer to peer simulation, same simulation on every peer, only inputs sent
 
 Token `og.Lockstep`, registered under the schema name `og.Lockstep`; its value type is `Lockstep`.
 
@@ -28,7 +28,7 @@ Token `og.Lockstep`, registered under the schema name `og.Lockstep`; its value t
 ```ogt
 resource Lockstep {
   doc "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared."
-  aliases "deterministic lockstep, input sync, RTS networking, peer to peer simulation"
+  aliases "deterministic lockstep, input sync, RTS networking, peer to peer simulation, same simulation on every peer, only inputs sent"
   field enabled bool "Whether the world takes its ticks in lockstep when in a room."
   field players u32 "The seats: the peers lockstep waits for before it starts, and whose inputs each tick waits for." {
     default 2

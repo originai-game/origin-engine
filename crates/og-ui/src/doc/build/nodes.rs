@@ -545,25 +545,54 @@ impl Ui {
             }
             "field" => {
                 let mut s = r.str("input").unwrap_or_default().to_string();
-                resp = self.text_field(
-                    id.as_str(),
-                    &mut s,
-                    &crate::ui::FieldDesc {
-                        placeholder: r.str("placeholder").unwrap_or_default().to_string(),
-                        width: r.size("width"),
-                        max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
-                        invalid: r.flag("invalid"),
-                        bare: false,
-                        tight: r.flag("tight"),
-                        component: r.str("component").map(str::to_string),
-                        input_type: r
-                            .str("type")
-                            .and_then(crate::InputType::from_name)
-                            .unwrap_or_default(),
-                        inputmode: r.str("inputmode").and_then(crate::InputMode::from_name),
-                        autocomplete: r.str("autocomplete").unwrap_or_default().to_string(),
-                    },
-                );
+                let constraints = crate::input_type::Constraints {
+                    required: r.flag("required"),
+                    min_chars: r.num("minChars").unwrap_or(0.0) as u32,
+                    pattern: r.str("pattern").map(str::to_string),
+                    min: r.num("min").map(f64::from),
+                    max: r.num("max").map(f64::from),
+                    step: r.num("stepBy").map(f64::from),
+                };
+                resp = if r.flag("multiline") {
+                    self.text_area(
+                        id.as_str(),
+                        &mut s,
+                        &crate::ui::TextAreaDesc {
+                            placeholder: r.str("placeholder").unwrap_or_default().to_string(),
+                            width: r.size("width"),
+                            rows: r.num("lines").unwrap_or(0.0) as u32,
+                            max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
+                            invalid: r.flag("invalid"),
+                            bare: false,
+                            tight: r.flag("tight"),
+                            component: r.str("component").map(str::to_string),
+                            readonly: r.flag("readonly"),
+                            constraints,
+                        },
+                    )
+                } else {
+                    self.text_field(
+                        id.as_str(),
+                        &mut s,
+                        &crate::ui::FieldDesc {
+                            placeholder: r.str("placeholder").unwrap_or_default().to_string(),
+                            width: r.size("width"),
+                            max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
+                            invalid: r.flag("invalid"),
+                            bare: false,
+                            tight: r.flag("tight"),
+                            component: r.str("component").map(str::to_string),
+                            input_type: r
+                                .str("type")
+                                .and_then(crate::InputType::from_name)
+                                .unwrap_or_default(),
+                            inputmode: r.str("inputmode").and_then(crate::InputMode::from_name),
+                            autocomplete: r.str("autocomplete").unwrap_or_default().to_string(),
+                            readonly: r.flag("readonly"),
+                            constraints,
+                        },
+                    )
+                };
                 if resp.changed {
                     self.write_back(b, n, "input", json!(s));
                 }

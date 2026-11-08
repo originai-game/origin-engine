@@ -108,13 +108,21 @@ pub(super) fn edit(
         "name" => "aria-label",
         "texture" => "src",
         "tabIndex" => "tabindex",
-        "input" if tag == "field" => "value",
+        "input" if matches!(tag.as_str(), "input" | "textarea") => "value",
+        "maxChars" => "maxlength",
+        "minChars" => "minlength",
+        "lines" => "rows",
         _ => prop,
     };
     let attribute = format!("{name}=\"{}\"", escaped(&literal));
     if let Some(attr) = attrs.iter().find(|a| {
         let name = a.name.strip_prefix("bind:").unwrap_or(&a.name);
-        svelte::property(name) == prop || (prop == "input" && tag == "field" && name == "value")
+        svelte::property(name) == prop
+            || (prop == "input" && matches!(tag.as_str(), "input" | "textarea") && name == "value")
+            || matches!(
+                (prop, name),
+                ("maxChars", "maxlength") | ("minChars", "minlength") | ("lines", "rows")
+            )
     }) {
         text.replace_range(attr.at..attr.end, &attribute);
     } else {
@@ -134,7 +142,7 @@ mod tests {
 <!-- keep this comment -->
 <column id="Root">
   <text id="Title">Before</text><text id="Other">Other</text>
-  <slider id="Amount" bind:value={$amount} step="0.25"/>
+  <input type="range" id="Amount" bind:value={$amount} step="0.25"/>
 </column>
 <style>text { opacity: 0.4; } #Title { translate: 3px 7px; }</style>
 "#;

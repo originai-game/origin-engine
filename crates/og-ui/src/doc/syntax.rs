@@ -295,7 +295,8 @@ impl Parser<'_> {
                 break;
             }
             if self.take(">") {
-                closed = matches!(tag.as_str(), "meta" | "img");
+                // HTML's void elements among the core tags.
+                closed = matches!(tag.as_str(), "meta" | "img" | "input" | "hr");
                 break;
             }
             let at = self.at;

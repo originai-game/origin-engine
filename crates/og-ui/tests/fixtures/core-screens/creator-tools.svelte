@@ -17,8 +17,8 @@
   <text>Scale: 1, 1, 1</text>
   <text heading="true">Light</text>
   <text>Intensity</text>
-  <slider value="0.8" min="0" max="1" step="0.1" />
-  <toggle checked="true">Cast shadows</toggle>
+  <input type="range" value="0.8" min="0" max="1" step="0.1" />
+  <label><input type="checkbox" switch checked="true"> Cast shadows</label>
 </column>
 {/snippet}
 {#snippet cataloguePanelCatalogue()}

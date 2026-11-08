@@ -19,7 +19,7 @@
     <column id="Test">{@render test?.()}</column>
     <column id="BrightnessStep" hidden={!(($step == "brightness"))}>
       <text id="BrightnessHint">{t("screen.calibration.brightnessHint")}</text>
-      <slider id="BrightnessValue" bind:value={$brightness} step="0.01"></slider>
+      <input type="range" id="BrightnessValue" bind:value={$brightness} step="0.01">
     </column>
     <column id="OffsetStep" hidden={!(($step == "offset"))}>
       <text id="OffsetHint">{t("screen.calibration.offsetHint")}</text>
@@ -29,7 +29,7 @@
         <text id="Taps">{t("screen.calibration.Taps", { taps: $taps })}</text>
       </row>
       <row id="Manual">
-        <slider id="ManualValue" min="-200" max="200" step="1" show-value="false" bind:value={$offset}></slider>
+        <input type="range" id="ManualValue" min="-200" max="200" step="1" show-value="false" bind:value={$offset}>
         <text id="Ms">{t("screen.calibration.Ms", { offset: $offset })}</text>
       </row>
     </column>
@@ -37,7 +37,7 @@
       <text id="ControllerHint">{t("screen.calibration.controllerHint")}</text>
       <row id="DeadZone">
         <text id="Label">{t("screen.calibration.deadZone")}</text>
-        <slider id="DeadZoneValue" min="0" max="0.5" step="0.01" bind:value={$deadZone}></slider>
+        <input type="range" id="DeadZoneValue" min="0" max="0.5" step="0.01" bind:value={$deadZone}>
       </row>
     </column>
     <row id="Foot">

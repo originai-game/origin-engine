@@ -195,7 +195,7 @@ pub const KINDS: &[KindSpec] = &[
     KindSpec {
         name: "field",
         container: false,
-        doc: "A one-line text field (two-way `input`).",
+        doc: "A text control (two-way `input`): `<input>` for one line, `<textarea>` for several.",
     },
     KindSpec {
         name: "badge",
@@ -605,8 +605,18 @@ pub const PROPS: &[PropSpec] = &[
         two_way,
         "Its value (a slider writes it back)."
     ),
-    p!("min", Ty::Num, ["slider"], "The range's low end."),
-    p!("max", Ty::Num, ["slider"], "The range's high end."),
+    p!(
+        "min",
+        Ty::Num,
+        ["slider", "field"],
+        "The range's low end; a number input under it is invalid (`rangeUnderflow`)."
+    ),
+    p!(
+        "max",
+        Ty::Num,
+        ["slider", "field"],
+        "The range's high end; a number input over it is invalid (`rangeOverflow`)."
+    ),
     p!(
         "showValue",
         Ty::Bool,
@@ -616,8 +626,8 @@ pub const PROPS: &[PropSpec] = &[
     p!(
         "stepBy",
         Ty::Num,
-        ["slider"],
-        "Snap to multiples of this (0: continuous)."
+        ["slider", "field"],
+        "A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step)."
     ),
     p!(
         "checked",
@@ -676,6 +686,42 @@ pub const PROPS: &[PropSpec] = &[
         Ty::Text,
         ["field"],
         "Shown while it is empty."
+    ),
+    p!(
+        "readonly",
+        Ty::Bool,
+        ["field"],
+        "Its text is selected and copied but never edited; it keeps its focus stop."
+    ),
+    p!(
+        "required",
+        Ty::Bool,
+        ["field"],
+        "Empty is invalid (`valueMissing`)."
+    ),
+    p!(
+        "minChars",
+        Ty::Num,
+        ["field"],
+        "Fewer characters are invalid (HTML `minlength`)."
+    ),
+    p!(
+        "pattern",
+        Ty::Text,
+        ["field"],
+        "A regular expression the whole text must match (HTML `pattern`); refused when it is not one."
+    ),
+    p!(
+        "lines",
+        Ty::Num,
+        ["field"],
+        "A `<textarea>`'s lines shown at once (HTML `rows`; 0 is 4); more scroll."
+    ),
+    p!(
+        "multiline",
+        Ty::Bool,
+        ["field"],
+        "Set by `<textarea>`: Enter starts a line and the text wraps. Not written as an attribute."
     ),
     p!(
         "maxChars",

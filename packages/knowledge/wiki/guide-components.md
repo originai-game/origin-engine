@@ -82,7 +82,7 @@ What every kind takes: its box, layout, paint, motion and input.
 Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).
 
 <a id="guide-components-2"></a>
-### `components §2` `column`: Children top to bottom
+### `components §2` `<column>` (`column`): Children top to bottom
 
 Children top to bottom. A container with nested children: `<column id="Name">…</column>`.
 
@@ -94,7 +94,7 @@ Its own props, beside every element's:
 | `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 
 <a id="guide-components-3"></a>
-### `components §3` `row`: Children left to right (mirrored right to left)
+### `components §3` `<row>` (`row`): Children left to right (mirrored right to left)
 
 Children left to right (mirrored right to left). A container with nested children: `<row id="Name">…</row>`.
 
@@ -106,7 +106,7 @@ Its own props, beside every element's:
 | `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 
 <a id="guide-components-4"></a>
-### `components §4` `stack`: Children overlaid in one rectangle, each placed by its insets
+### `components §4` `<stack>` (`stack`): Children overlaid in one rectangle, each placed by its insets
 
 Children overlaid in one rectangle, each placed by its insets. A container with nested children: `<stack id="Name">…</stack>`.
 
@@ -117,7 +117,7 @@ Its own props, beside every element's:
 | `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 
 <a id="guide-components-5"></a>
-### `components §5` `grid`: Children in tracks and cells (columns, rows, areas)
+### `components §5` `<grid>` (`grid`): Children in tracks and cells (columns, rows, areas)
 
 Children in tracks and cells (columns, rows, areas). A container with nested children: `<grid id="Name">…</grid>`.
 
@@ -128,7 +128,7 @@ Its own props, beside every element's:
 | `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 
 <a id="guide-components-6"></a>
-### `components §6` `panel`: A column on the style's panel surface (its card frame)
+### `components §6` `<panel>` (`panel`): A column on the style's panel surface (its card frame)
 
 A column on the style's panel surface (its card frame). A container with nested children: `<panel id="Name">…</panel>`.
 
@@ -139,7 +139,7 @@ Its own props, beside every element's:
 | `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 
 <a id="guide-components-7"></a>
-### `components §7` `scroll`: A column that scrolls its content
+### `components §7` `<scroll>` (`scroll`): A column that scrolls its content
 
 A column that scrolls its content. A container with nested children: `<scroll id="Name">…</scroll>`.
 
@@ -152,7 +152,7 @@ Its own props, beside every element's:
 | `-og-scroll-fade-into:` | `var(--<role>) \| #rrggbb[aa]` | The colour its fade runs into: the ground it sits on (default panel). |
 
 <a id="guide-components-8"></a>
-### `components §8` `list`: A virtualised list: its `for` builds only the rows in view, each a selectable row
+### `components §8` `<list>` (`list`): A virtualised list: its `for` builds only the rows in view, each a selectable row
 
 A virtualised list: its `for` builds only the rows in view, each a selectable row. A container with nested children: `<list id="Name">…</list>`.
 
@@ -163,7 +163,7 @@ Its own props, beside every element's:
 | `row-height` | `number` | Every row's height, CSS px. |
 
 <a id="guide-components-9"></a>
-### `components §9` `cells`: A virtualised grid of equal cells: its `for` builds only the cells in view
+### `components §9` `<cells>` (`cells`): A virtualised grid of equal cells: its `for` builds only the cells in view
 
 A virtualised grid of equal cells: its `for` builds only the cells in view. A container with nested children: `<cells id="Name">…</cells>`.
 
@@ -176,7 +176,7 @@ Its own props, beside every element's:
 | `cell-columns` | `number` | Cells across (0: as many as fit). |
 
 <a id="guide-components-10"></a>
-### `components §10` `label`: A text
+### `components §10` `<text>` (`label`): A text
 
 A text. A leaf; text-bearing controls accept text content: `<text id="Name">…</text>`.
 
@@ -200,7 +200,7 @@ Its own props, beside every element's:
 | `heading` | `bool` | A heading (a style's flourish frames it). |
 
 <a id="guide-components-11"></a>
-### `components §11` `button`: A button with a label
+### `components §11` `<button>` (`button`): A button with a label
 
 A button with a label. A leaf; text-bearing controls accept text content: `<button id="Name">…</button>`.
 
@@ -217,9 +217,9 @@ Its own props, beside every element's:
 | `square` | `bool` | A square of the control height: an icon button. |
 
 <a id="guide-components-12"></a>
-### `components §12` `image`: A texture (or a tint)
+### `components §12` `<img>` (`image`): A texture (or a tint)
 
-A texture (or a tint). A leaf; text-bearing controls accept text content: `<img id="Name">…</img>`.
+A texture (or a tint). A leaf; text-bearing controls accept text content: `<img id="Name" />`.
 
 Its own props, beside every element's:
 
@@ -229,7 +229,7 @@ Its own props, beside every element's:
 | `-og-tint:` | `var(--<role>) \| #rrggbb[aa]` | Multiplies the texture (or fills without one). |
 
 <a id="guide-components-13"></a>
-### `components §13` `art`: An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one
+### `components §13` `<art>` (`art`): An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one
 
 An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one. A leaf; text-bearing controls accept text content: `<art id="Name">…</art>`.
 
@@ -249,7 +249,7 @@ Its own props, beside every element's:
 | `art-set` | `name` | The set it is generated with for a consistent look (the kind's name by default). |
 
 <a id="guide-components-14"></a>
-### `components §14` `icon`: An icon of the style's set
+### `components §14` `<icon>` (`icon`): An icon of the style's set
 
 An icon of the style's set. A leaf; text-bearing controls accept text content: `<icon id="Name">…</icon>`.
 
@@ -264,7 +264,7 @@ Its own props, beside every element's:
 | `icon-size` | `number` | CSS px (24 by default). |
 
 <a id="guide-components-15"></a>
-### `components §15` `progress`: A progress bar
+### `components §15` `<progress>` (`progress`): A progress bar
 
 A progress bar. A leaf; text-bearing controls accept text content: `<progress id="Name">…</progress>`.
 
@@ -275,9 +275,9 @@ Its own props, beside every element's:
 | `value` | `number` | Its value (a slider writes it back). Two-way only with an explicit bind: attribute. |
 
 <a id="guide-components-16"></a>
-### `components §16` `slider`: A slider (two-way `value`)
+### `components §16` `<input type="range">` (`slider`): A slider (two-way `value`)
 
-A slider (two-way `value`). A leaf; text-bearing controls accept text content: `<slider id="Name">…</slider>`.
+A slider (two-way `value`). A leaf; text-bearing controls accept text content: `<input type="range" id="Name" />`.
 
 Its own props, beside every element's:
 
@@ -285,15 +285,15 @@ Its own props, beside every element's:
 |---|---|---|
 | `disabled` | `bool` | Takes no input. |
 | `value` | `number` | Its value (a slider writes it back). Two-way only with an explicit bind: attribute. |
-| `min` | `number` | The range's low end. |
-| `max` | `number` | The range's high end. |
+| `min` | `number` | The range's low end; a number input under it is invalid (`rangeUnderflow`). |
+| `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
 | `show-value` | `bool` | Show the slider's value readout (default true); false when an adjacent label supplies units. |
-| `step` | `number` | Snap to multiples of this (0: continuous). |
+| `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
 
 <a id="guide-components-17"></a>
-### `components §17` `toggle`: A switch with a label (two-way `checked`)
+### `components §17` `<input type="checkbox" switch>`, `<label>` (`toggle`): A switch with a label (two-way `checked`)
 
-A switch with a label (two-way `checked`). A leaf; text-bearing controls accept text content: `<toggle id="Name">…</toggle>`.
+A switch with a label (two-way `checked`). A leaf; text-bearing controls accept text content: `<input type="checkbox" switch id="Name" />` or `<label id="Name"><input type="checkbox" /> Caption</label>`.
 
 Its own props, beside every element's:
 
@@ -305,7 +305,7 @@ Its own props, beside every element's:
 | `checked` | `bool` | Whether it is on (written back). Two-way only with an explicit bind: attribute. |
 
 <a id="guide-components-18"></a>
-### `components §18` `tabs`: A tab list (two-way `selected`), using the core tabs widget
+### `components §18` `<tabs>` (`tabs`): A tab list (two-way `selected`), using the core tabs widget
 
 A tab list (two-way `selected`), using the core tabs widget. A leaf; text-bearing controls accept text content: `<tabs id="Name">…</tabs>`.
 
@@ -323,18 +323,27 @@ Its own props, beside every element's:
 | `fill` | `bool` | Equal tabs filling the available width. |
 
 <a id="guide-components-19"></a>
-### `components §19` `field`: A one-line text field (two-way `input`)
+### `components §19` `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several
 
-A one-line text field (two-way `input`). A leaf; text-bearing controls accept text content: `<field id="Name">…</field>`.
+A text control (two-way `input`): `<input>` for one line, `<textarea>` for several. A leaf; text-bearing controls accept text content: `<input type="text" id="Name" />` or `<textarea id="Name" rows="4" />`.
 
 Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
 | `disabled` | `bool` | Takes no input. |
+| `min` | `number` | The range's low end; a number input under it is invalid (`rangeUnderflow`). |
+| `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
+| `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
 | `value` | `text` | The field's text (written back). Two-way only with an explicit bind: attribute. |
 | `placeholder` | `text` | Shown while it is empty. |
-| `max-chars` | `number` | The most characters it takes. |
+| `readonly` | `bool` | Its text is selected and copied but never edited; it keeps its focus stop. |
+| `required` | `bool` | Empty is invalid (`valueMissing`). |
+| `minlength` | `number` | Fewer characters are invalid (HTML `minlength`). |
+| `pattern` | `text` | A regular expression the whole text must match (HTML `pattern`); refused when it is not one. |
+| `rows` | `number` | A `<textarea>`'s lines shown at once (HTML `rows`; 0 is 4); more scroll. |
+| `<textarea>` | `bool` | Set by `<textarea>`: Enter starts a line and the text wraps. Not written as an attribute. |
+| `maxlength` | `number` | The most characters it takes. |
 | `tight` | `bool` | No inset and its text's line height: the text sits where the field is laid (in a box the screen draws). |
 | `component` | `name` | The component its style dresses it as (`Poem`, `Search[large]`): `<component>.frame`, `.text` and `.placeholder`; else Field. |
 | `invalid` | `bool` | Its text is wrong: the danger frame. |
@@ -343,7 +352,7 @@ Its own props, beside every element's:
 | `autocomplete` | `name` | The page's autofill hint (HTML `autocomplete`: `username`, `current-password`, `new-password`, `one-time-code`, `email`, `off`…). |
 
 <a id="guide-components-20"></a>
-### `components §20` `badge`: A small toned label
+### `components §20` `<badge>` (`badge`): A small toned label
 
 A small toned label. A leaf; text-bearing controls accept text content: `<badge id="Name">…</badge>`.
 
@@ -356,16 +365,16 @@ Its own props, beside every element's:
 | `tone` | `neutral \| info \| success \| warn \| danger \| accent` | Its tone. |
 
 <a id="guide-components-21"></a>
-### `components §21` `spacer`: Empty room (grows by default)
+### `components §21` `<spacer>` (`spacer`): Empty room (grows by default)
 
 Empty room (grows by default). A leaf; text-bearing controls accept text content: `<spacer id="Name">…</spacer>`.
 
 It takes every element's props and none of its own.
 
 <a id="guide-components-22"></a>
-### `components §22` `divider`: A hairline
+### `components §22` `<hr>` (`divider`): A hairline
 
-A hairline. A leaf; text-bearing controls accept text content: `<divider id="Name">…</divider>`.
+A hairline. A leaf; text-bearing controls accept text content: `<hr id="Name" />`.
 
 Its own props, beside every element's:
 

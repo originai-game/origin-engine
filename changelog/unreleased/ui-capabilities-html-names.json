@@ -1,0 +1,24 @@
+{
+  "breaking": [
+    {
+      "member": "UI documents (.svelte): core element tags",
+      "change": "Core elements take HTML's names wherever HTML names the role, with HTML's attributes: <input> (type text, password, number, email, url, tel, search) and <textarea> for the field kind, <input type=\"range\"> for slider, <input type=\"checkbox\" switch> or <label><input type=\"checkbox\"> Caption</label> for toggle, <hr> for divider (<img> and <text> were already so). <field>, <slider>, <toggle>, <divider>, <image> and a bare <label> are refused with a diagnostic naming the HTML form. Field attributes are maxlength (was max-chars), minlength, rows (on <textarea>). CSS type selectors match the written tag (input, textarea, hr). Internal kind names, the IDL descs and the probe's kinds are unchanged.",
+      "fix": "Write <field> as <input type=\"text\"> (or its type) and a multi-line one as <textarea rows=\"N\">; <slider> as <input type=\"range\">; <toggle bind:checked={$x}>Caption</toggle> as <label><input type=\"checkbox\" bind:checked={$x} /> Caption</label> (add switch for a switch); <divider /> as <hr />; <image> as <img>; a <label> of plain text as <text>. Rename CSS type selectors to match.",
+      "find": [
+        "<field",
+        "<slider",
+        "<toggle",
+        "<divider",
+        "<image",
+        "<label",
+        "max-chars"
+      ]
+    }
+  ],
+  "added": [
+    {
+      "member": "UI documents: <input>, <textarea> constraints",
+      "summary": "HTML's required, minlength, pattern (the whole text, ^(?:p)$; an invalid one is a parse error) and, on a number, min, max and step (default 1, step=\"any\" for none) set :invalid as HTML's valueMissing, tooShort, patternMismatch, rangeUnderflow, rangeOverflow and stepMismatch. readonly drops every edit but keeps selection, copy and the focus stop."
+    }
+  ]
+}

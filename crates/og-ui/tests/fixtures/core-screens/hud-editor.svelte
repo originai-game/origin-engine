@@ -7,8 +7,8 @@
   <text heading="true">HUD layout</text>
   <text>Selected: health bar</text>
   <text>Scale</text>
-  <slider value="1" min="0.5" max="1.5" step="0.1" />
-  <toggle checked="true">Snap to safe area</toggle>
+  <input type="range" value="1" min="0.5" max="1.5" step="0.1" />
+  <label><input type="checkbox" switch checked="true"> Snap to safe area</label>
   <row id="FixtureActions">
     <button variant="quiet">Reset layout</button>
     <button variant="primary">Done</button>

@@ -617,6 +617,28 @@ impl RetainedHost {
             }
         }
         let flag = |name| facts.get(name).is_some_and(truthy);
+        let num = |name| facts.get(name).and_then(Value::as_f64);
+        // A field's text its `type` or its constraints refuse is invalid.
+        let field_invalid = facts.get("input").and_then(Value::as_str).is_some_and(|v| {
+            let ty = facts
+                .get("type")
+                .and_then(Value::as_str)
+                .and_then(crate::InputType::from_name)
+                .unwrap_or_default();
+            ty.mismatch(v)
+                || crate::input_type::Constraints {
+                    required: flag("required"),
+                    min_chars: num("minChars").unwrap_or(0.0) as u32,
+                    pattern: facts
+                        .get("pattern")
+                        .and_then(Value::as_str)
+                        .map(str::to_string),
+                    min: num("min"),
+                    max: num("max"),
+                    step: num("stepBy"),
+                }
+                .fails(ty, v)
+        });
         self.topology.set_text(
             identity,
             facts
@@ -628,17 +650,7 @@ impl RetainedHost {
         for (state, enabled) in [
             (Disabled, flag("disabled")),
             (Checked, flag("checked")),
-            // A field's text its `type` does not take is invalid too.
-            (
-                Invalid,
-                flag("invalid")
-                    || facts
-                        .get("type")
-                        .and_then(Value::as_str)
-                        .and_then(crate::InputType::from_name)
-                        .zip(facts.get("input").and_then(Value::as_str))
-                        .is_some_and(|(t, v)| t.mismatch(v)),
-            ),
+            (Invalid, flag("invalid") || field_invalid),
             (
                 PlaceholderShown,
                 facts
@@ -1986,7 +1998,7 @@ mod tests {
                 "states.svelte",
                 r#"
             <meta name="component" content="states">
-            <column><toggle id="Choice" checked={$checked}>Choose</toggle></column>
+            <column><label><input type="checkbox" switch id="Choice" checked={$checked}> Choose</label></column>
             <style>#Choice { width: 70px; } #Choice:checked { width: 140px; }</style>
         "#,
             )

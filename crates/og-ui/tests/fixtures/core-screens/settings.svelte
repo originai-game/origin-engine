@@ -2,10 +2,10 @@
 <column id="FixtureSettings">
   <text heading="true">Audio</text>
   <text>Master volume</text>
-  <slider id="FixtureVolume" value="0.75" min="0" max="1" step="0.05" />
+  <input type="range" id="FixtureVolume" value="0.75" min="0" max="1" step="0.05" />
   <text heading="true">Accessibility</text>
-  <toggle id="FixtureCaptions" checked="true">Subtitles</toggle>
-  <toggle id="FixtureMotion" checked="false">Reduce motion</toggle>
+  <label><input type="checkbox" switch id="FixtureCaptions" checked="true"> Subtitles</label>
+  <label><input type="checkbox" switch id="FixtureMotion" checked="false"> Reduce motion</label>
   <button id="FixtureReset" variant="quiet">Restore defaults</button>
 </column>
 {/snippet}

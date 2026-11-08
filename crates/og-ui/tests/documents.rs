@@ -36,12 +36,12 @@ pub const SHOP: &str = r#"<meta name="screen" content="shop" data-layer="menu" d
       <row id="Item" class:selected={item.id == selected}>
         <text id="Name">{item.name}</text>
         <text id="Price">{formatNumber(item.price)} gold</text>
-        <toggle id="Owned" bind:checked={item.owned}>Owned</toggle>
+        <label><input type="checkbox" switch id="Owned" bind:checked={item.owned}> Owned</label>
       </row>
     {/each}
   </column>
   <column id="Preview">{@render preview?.()}</column>
-  <slider id="Volume" bind:value={volume} />
+  <input type="range" id="Volume" bind:value={volume} />
   <row id="Footer">
     <button id="Leave" onclick={leave}>Leave</button>
     <button id="Buy" variant="primary" disabled={gold < items.0.price} onclick={buy}>Buy</button>

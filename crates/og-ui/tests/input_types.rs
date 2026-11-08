@@ -14,6 +14,14 @@
 //! - the host told the wrong keyboard: a type's default lost, an explicit
 //!   `inputmode` ignored, `autocomplete` dropped →
 //!   `the_host_gets_the_keyboard_and_autofill_hints`
+//! - an old core tag (`<field>`, `<slider>`, `<toggle>`, `<divider>`,
+//!   `<image>`, a bare `<label>`) accepted, or refused without naming its
+//!   HTML form → `old_tags_are_refused_with_their_html_form`
+//! - `required`, `minlength`, `pattern`, `min`/`max`/`step` not matching
+//!   `:invalid` (or a valid value matching it); `readonly` letting typing
+//!   through or blocking copy; `<textarea rows>` not sizing it; a
+//!   `<label>`-wrapped checkbox not binding `checked` →
+//!   `html_constraints_readonly_rows_and_label_checkboxes`
 
 use crate::support;
 
@@ -25,15 +33,15 @@ use support::*;
 
 const FORM: &str = r#"<meta name="component" content="form">
 <column id="Form">
-  <field id="Pin" type="password" autocomplete="current-password" bind:value={$pin} />
-  <field id="Age" type="number" bind:value={$age} />
-  <field id="Mail" type="email" inputmode="text" bind:value={$mail} />
-  <field id="Site" type="url" bind:value={$site} />
+  <input id="Pin" type="password" autocomplete="current-password" bind:value={$pin} />
+  <input id="Age" type="number" step="any" bind:value={$age} />
+  <input id="Mail" type="email" inputmode="text" bind:value={$mail} />
+  <input id="Site" type="url" bind:value={$site} />
 </column>
 <style>
 #Form { gap: 8px; padding: 8px; }
-field { width: 300px; }
-field:invalid { width: 277px; }
+input { width: 300px; }
+input:invalid { width: 277px; }
 </style>"#;
 
 const STORES: [&str; 4] = ["pin", "age", "mail", "site"];
@@ -45,11 +53,16 @@ struct Rig {
 
 impl Rig {
     fn new() -> Rig {
+        Rig::with(FORM, &STORES)
+    }
+
+    /// Document `doc` (component `form`) mounted over empty stores `stores`.
+    fn with(doc: &str, stores: &[&str]) -> Rig {
         let mut ui = ui_with_font(test_font_metrics());
-        ui.define_document(UiDocument::parse("ui/form.svelte", FORM).expect("the form parses"));
+        ui.define_document(UiDocument::parse("ui/form.svelte", doc).expect("the form parses"));
         let mut rig = Rig { ui };
         let mut inputs = std::collections::BTreeMap::new();
-        for name in STORES {
+        for &name in stores {
             let source = SourceId::new("test", name);
             rig.apply(json!({"op": "signal", "source": source, "initial": ""}));
             inputs.insert(name.to_string(), source);
@@ -281,6 +294,129 @@ fn the_host_gets_the_keyboard_and_autofill_hints() {
             ("Site", "url", "url", false),
         ]
     );
+}
+
+#[test]
+fn old_tags_are_refused_with_their_html_form() {
+    for (old, html) in [
+        ("<field bind:value={$a} />", "<input type=\"text\">"),
+        ("<slider bind:value={$a} />", "<input type=\"range\">"),
+        (
+            "<toggle bind:checked={$a} />",
+            "<input type=\"checkbox\" switch>",
+        ),
+        ("<divider />", "<hr>"),
+        ("<image src=\"a.png\" />", "<img>"),
+        ("<label>Hi</label>", "<text>"),
+    ] {
+        let doc = format!("<meta name=\"component\" content=\"form\">\n<column>{old}</column>");
+        let err = UiDocument::parse("ui/form.svelte", &doc)
+            .err()
+            .unwrap_or_else(|| panic!("{old} parses"));
+        let err = err.join("\n");
+        assert!(
+            err.contains("is not a core element") && err.contains(html),
+            "{old}: {err}"
+        );
+    }
+    for bad in [
+        "<textarea multiline bind:value={$a} />",
+        "<input pattern=\"[a-\" bind:value={$a} />",
+        "<input max-chars=\"4\" bind:value={$a} />",
+        "<textarea lines=\"4\" bind:value={$a} />",
+    ] {
+        let doc = format!("<meta name=\"component\" content=\"form\">\n<column>{bad}</column>");
+        assert!(
+            UiDocument::parse("ui/form.svelte", &doc).is_err(),
+            "{bad} is refused"
+        );
+    }
+}
+
+const CONSTRAINED: &str = r#"<meta name="component" content="form">
+<column id="Form">
+  <input id="Name" required minlength="3" bind:value={$name} />
+  <input id="Code" pattern="[A-Z]{2}[0-9]+" bind:value={$code} />
+  <input id="Qty" type="number" min="2" max="10" step="2" bind:value={$qty} />
+  <input id="Fixed" readonly bind:value={$fixed} />
+  <textarea id="Notes" rows="4" bind:value={$notes} />
+  <textarea id="Line" rows="1" bind:value={$line} />
+  <label id="Opt"><input type="checkbox" bind:checked={$opt} /> Subtitles</label>
+</column>
+<style>
+#Form { gap: 8px; padding: 8px; }
+input, textarea { width: 300px; }
+input:invalid, textarea:invalid { width: 277px; }
+</style>"#;
+
+#[test]
+fn html_constraints_readonly_rows_and_label_checkboxes() {
+    let stores = ["name", "code", "qty", "fixed", "notes", "line", "opt"];
+    let mut rig = Rig::with(CONSTRAINED, &stores);
+    let width = |rig: &Rig, id: &str| rig.el(id).width;
+    assert_eq!(
+        width(&rig, "Name"),
+        277.0,
+        "an empty required field is invalid"
+    );
+    for id in ["Code", "Qty", "Fixed", "Notes"] {
+        assert_eq!(width(&rig, id), 300.0, "an empty optional {id} is valid");
+    }
+    for (store, value, id, valid) in [
+        ("name", "Al", "Name", false),
+        ("name", "Ada", "Name", true),
+        ("code", "AB12", "Code", true),
+        ("code", "ab12", "Code", false),
+        ("code", "AB12x", "Code", false),
+        ("qty", "1", "Qty", false),
+        ("qty", "4", "Qty", true),
+        ("qty", "5", "Qty", false),
+        ("qty", "12", "Qty", false),
+        ("qty", "10", "Qty", true),
+        ("qty", "4.5", "Qty", false),
+    ] {
+        rig.set(store, json!(value));
+        rig.step(InputFrame::default());
+        assert_eq!(
+            width(&rig, id) == 300.0,
+            valid,
+            "{id} = {value:?} valid: {valid}"
+        );
+    }
+    // Readonly: typing is dropped, the text still selects and copies.
+    rig.set("fixed", json!("locked"));
+    rig.step(InputFrame::default());
+    rig.focus("Fixed");
+    rig.typed("zz");
+    assert_eq!(
+        rig.store("fixed"),
+        "locked",
+        "a readonly field drops typing"
+    );
+    rig.chord(UiKey::KeyA);
+    rig.chord(UiKey::KeyX);
+    assert_eq!(rig.store("fixed"), "locked", "nor is it cut");
+    let _ = rig.ui.take_clipboard();
+    rig.chord(UiKey::KeyA);
+    rig.chord(UiKey::KeyC);
+    assert_eq!(
+        rig.ui.take_clipboard().as_deref(),
+        Some("locked"),
+        "a readonly field copies"
+    );
+    // rows: four lines are taller than one.
+    assert!(
+        rig.el("Notes").height > rig.el("Line").height * 2.0,
+        "rows=4 {} vs rows=1 {}",
+        rig.el("Notes").height,
+        rig.el("Line").height
+    );
+    // A label wrapping a checkbox is the checkbox, captioned by the label.
+    assert_eq!(rig.store("opt"), "");
+    let at = rig.centre("Opt");
+    rig.click(at);
+    assert_eq!(rig.store("opt"), true, "a press on the caption checks it");
+    assert_eq!(rig.a11y("/Opt").name, "Subtitles");
 }
 
 /// `references/metal/input-types-{1280,390}.png`: the form with a masked

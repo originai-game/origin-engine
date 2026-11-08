@@ -98,6 +98,25 @@ pub(super) fn property(name: &str) -> String {
     }
 }
 
+/// The hint a pre-HTML core tag is refused with: every core element whose
+/// role HTML names takes HTML's name (docs/ui.md §2).
+fn renamed(tag: &str) -> Option<String> {
+    let html = match tag {
+        "field" => {
+            "<input type=\"text\"> (or password, number, email, url, tel, search), or <textarea> for several lines"
+        }
+        "slider" => "<input type=\"range\">",
+        "toggle" => "<input type=\"checkbox\" switch>",
+        "divider" => "<hr>",
+        "image" => "<img>",
+        "label" => {
+            "<label> around one <input type=\"checkbox\"> and its caption, or <text> for text"
+        }
+        _ => return None,
+    };
+    Some(format!("<{tag}> is not a core element; write {html}"))
+}
+
 pub(super) fn literal(ty: Ty, text: &str) -> Result<PropValue, String> {
     let values = match ty {
         Ty::Text | Ty::Name | Ty::Word(_) => vec![Value::String(text.into())],
@@ -399,10 +418,71 @@ impl Parser {
         at: usize,
         parent: usize,
     ) -> Result<usize, Error> {
+        // A label around a checkbox is the checkbox, its text the caption
+        // (HTML's implicit label association).
+        if tag == "label" {
+            let controls: Vec<&Node> = children
+                .iter()
+                .filter(|c| matches!(c, Node::Element { .. }))
+                .collect();
+            if let [
+                Node::Element {
+                    tag: inner,
+                    attrs: inner_attrs,
+                    children: inner_children,
+                    at: inner_at,
+                    ..
+                },
+            ] = controls[..]
+                && inner == "input"
+                && inner_children.is_empty()
+                && inner_attrs
+                    .iter()
+                    .any(|a| a.name == "type" && !a.bound && a.value == "checkbox")
+            {
+                let caption: Vec<Node> = children
+                    .iter()
+                    .filter(|c| !matches!(c, Node::Element { .. }))
+                    .cloned()
+                    .collect();
+                // The two are one node: the label's attributes (an id, a
+                // class) are the checkbox's, and one set on both is refused.
+                let mut merged = inner_attrs.clone();
+                for a in attrs {
+                    if inner_attrs.iter().any(|b| b.name == a.name) {
+                        return Err((
+                            a.at,
+                            format!(
+                                "{} is set on both the <label> and its checkbox; they are one control, set it once",
+                                a.name
+                            ),
+                        ));
+                    }
+                    merged.push(a.clone());
+                }
+                return self.element("input", &merged, &caption, *inner_at, parent);
+            }
+        }
         let internal = match tag {
             "text" => "label",
             "img" => "image",
-            other => other,
+            "hr" => "divider",
+            "textarea" => "field",
+            // An input's kind is its literal type's: a range is a slider, a
+            // checkbox a toggle, every text type a field.
+            "input" => match attrs
+                .iter()
+                .find(|a| a.name == "type" && !a.bound)
+                .map(|a| a.value.as_str())
+            {
+                Some("range") => "slider",
+                Some("checkbox") => "toggle",
+                _ => "field",
+            },
+            other => match renamed(other) {
+                Some(hint) => return Err((at, hint)),
+                None => other,
+            },
         };
         let component = tag.starts_with(char::is_uppercase);
         let kind = if component {
@@ -487,8 +567,47 @@ impl Parser {
             if a.name.starts_with("style:") || a.name == "style" {
                 return Err((a.at, "declare layout and appearance in scoped <style>; style directives require a CSS token binding".into()));
             }
+            // An input's type chose its kind; a checkbox's `switch` is how
+            // it draws, and a toggle is a switch.
+            if tag == "input" && internal != "field" && (a.name == "type" || a.name == "switch") {
+                continue;
+            }
+            if a.name == "multiline" || (tag == "textarea" && a.name == "type") {
+                return Err((
+                    a.at,
+                    "write several lines as <textarea>, one line as <input type=…>".into(),
+                ));
+            }
+            if internal == "field"
+                && a.name == "pattern"
+                && !a.bound
+                && crate::input_type::pattern(&a.value).is_none()
+            {
+                return Err((
+                    a.at,
+                    format!("pattern \"{}\" is not a regular expression", a.value),
+                ));
+            }
+            if internal == "field"
+                && let Some(html) = match a.name.as_str() {
+                    "max-chars" | "maxChars" => Some("maxlength"),
+                    "min-chars" | "minChars" => Some("minlength"),
+                    "lines" => Some("rows on a <textarea>"),
+                    _ => None,
+                }
+            {
+                return Err((
+                    a.at,
+                    format!("{} is not a field attribute; write {html}", a.name),
+                ));
+            }
             let model = a.name.strip_prefix("bind:");
-            let mut name = property(model.unwrap_or(&a.name));
+            let mut name = match (internal, model.unwrap_or(&a.name)) {
+                ("field", "maxlength") => "maxChars".into(),
+                ("field", "minlength") => "minChars".into(),
+                ("field", "rows") if tag == "textarea" => "lines".into(),
+                (_, other) => property(other),
+            };
             if name == "value" && internal == "field" {
                 name = "input".into();
             }
@@ -509,6 +628,9 @@ impl Parser {
                 PropValue::Model(path)
             } else if a.bound {
                 PropValue::Bind(expression(&a.value, a.at)?, None)
+            } else if name == "stepBy" && a.value == "any" {
+                // HTML's step="any": no step constraint.
+                PropValue::Lit(Lit::Num(0.0))
             } else if let Some((_, spec)) = schema::prop(&name) {
                 literal(spec.ty, &a.value).map_err(|why| (a.at, why))?
             } else if component {
@@ -537,6 +659,16 @@ impl Parser {
             } else {
                 self.prop(i, internal, &name, value, a.at, &a.value)?;
             }
+        }
+        if tag == "textarea" {
+            self.prop(
+                i,
+                internal,
+                "multiline",
+                PropValue::Lit(Lit::Bool(true)),
+                at,
+                "",
+            )?;
         }
         let mut text = Expr::Lit(serde_json::Value::String(String::new()));
         let mut has_text = false;
@@ -653,7 +785,7 @@ mod tests {
 <meta name="component" content="facts">
 <column class="root fixed">
   {#if $shown}<text id="Label" class={$classes} class:active={$selected}>Hello</text>{/if}
-  <slider id="Amount" step="0.25" bind:value={$amount}/>
+  <input type="range" id="Amount" step="0.25" bind:value={$amount}/>
   <button onclick={choose} class:quiet="false">Choose</button>
 </column>"#,
         )
@@ -751,7 +883,7 @@ mod tests {
   {#each $items as item (item.id)}
     <button id="Choice" class:active={$active} onclick={choose}>{item.name}</button>
   {:else}<text id="Empty" i18n="empty">Empty</text>{/each}
-  {#if $active}<slider id="Value" step="0.1" bind:value={$amount}/>
+  {#if $active}<input type="range" id="Value" step="0.1" bind:value={$amount}/>
   {:else if $amount > 4}<text id="High">{t('high')}</text>
   {:else}<text id="Low">{t('low')}</text>{/if}
   {@render details()}
@@ -815,7 +947,10 @@ button.active { opacity: 1; }
             ("<slot/>", "{@render"),
             ("<script>const a = 1</script>", "scripts are not allowed"),
             ("<text>{@html $raw}</text>", "unsupported Svelte block"),
-            ("<slider bind:value={$amount + 1}/>", "writable store"),
+            (
+                r#"<input type="range" bind:value={$amount + 1}/>"#,
+                "writable store",
+            ),
             ("<text>{ { value: 1 } }</text>", "side-effect-free"),
             (
                 "<text id='T'/><style>#T { animation: missing 1s linear forwards; }</style>",

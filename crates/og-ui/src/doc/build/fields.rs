@@ -310,8 +310,8 @@ mod tests {
 <column id="Root">
   <text id="Title">Mixed Case</text>
   <button id="Action" variant="primary">Apply</button>
-  <toggle id="Check" checked={{checked}}>Enabled</toggle>
-  <slider id="Range" value={{amount}} show-value="false" />
+  <label><input type="checkbox" switch id="Check" checked={{checked}}> Enabled</label>
+  <input type="range" id="Range" value={{amount}} show-value="false" />
 </column>
 <style>{css}</style>
 "#

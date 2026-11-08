@@ -84,6 +84,30 @@ The document contract has these requirements:
 
 Structure and snippet content remain documents, never TypeScript trees.
 
+Core elements use HTML's tag and attribute names wherever HTML names the
+role; a pre-HTML tag is refused with a diagnostic naming its HTML form.
+The internal kind names (in the catalogue headings, the IDL descs and the
+probe) are unchanged. The mapping:
+
+| Document | Core kind | Notes |
+|---|---|---|
+| `<input>` (`type` text, password, number, email, url, tel, search) | field | `placeholder`, `maxlength`, `minlength`, `readonly`, `required`, `pattern`, `min`, `max`, `step` (`any`) |
+| `<textarea rows>` | field (multi-line) | the same constraints; `rows` lines shown |
+| `<input type="range">` | slider | `min`, `max`, `step` |
+| `<input type="checkbox" switch>` | toggle | `checked` |
+| `<label><input type="checkbox"> Caption</label>` | toggle | the label's text is the caption; the two are one node |
+| `<hr>` | divider | |
+| `<img>` | image | `src`, `alt` |
+| `<text>` | label | HTML has no plain-text element; `<label>` is HTML's caption wrapper |
+| `<button>`, `<progress>` | button, progress | already HTML |
+
+`<field>`, `<slider>`, `<toggle>`, `<divider>`, `<image>` and a bare
+`<label>` are refused. CSS type selectors match the written tag (`input`,
+`textarea`), so `input[type=range]` and `textarea` select as in HTML.
+Elements HTML has no name for (`column`, `row`, `stack`, `grid`, `panel`,
+`scroll`, the virtualised `list` and `cells`, `art`, `icon`, `tabs`,
+`badge`, `spacer`) keep their names.
+
 Kits use `@origingame/engine`, `@origingame/engine/ui-extensions`, and the
 public helpers in `@origingame/engine/ui-parts/hud` and
 `@origingame/engine/ui-parts/screen`. Private source-path imports, unsafe
@@ -286,14 +310,25 @@ not a private renderer.
 
 ### 2.3 Text input types
 
-`<field>` takes the HTML names `type`, `inputmode`, and `autocomplete`;
+`<input>` takes the HTML names `type`, `inputmode`, and `autocomplete`;
 `FieldDesc` carries the same three for TypeScript on both hosts. The types
 are `text`, `password`, `number`, `email`, `url`, `tel`, and `search`.
 Validity follows the HTML Living Standard: a valid floating-point number,
 its email expression, and an absolute URL with a host for special schemes.
 A nonempty text that fails its type matches `:invalid` and dresses the
-invalid frame. An empty field is never a mismatch. A number field types
-only digits, a sign, a point, and an exponent.
+invalid frame. An empty field is never a type mismatch. A number field
+types only digits, a sign, a point, and an exponent.
+
+`<input>` and `<textarea>` also take HTML's constraints, with its validity
+states: `required` (an empty one is `valueMissing`), `minlength`
+(`tooShort`), `pattern` (the whole text must match, compiled as
+`^(?:pattern)$`; an invalid pattern is a parse error) and, on a number,
+`min`, `max` and `step` (`rangeUnderflow`, `rangeOverflow`,
+`stepMismatch` from `min`; the default step is 1, `step="any"` turns it
+off). Any failure matches `:invalid`, in the retained cascade and the
+immediate draw alike. `maxlength` stops typing at its count. `readonly`
+drops every edit (typing, paste, cut, delete) and keeps selection, copy
+and the focus stop. `<textarea rows>` shows that many lines (0 is 4).
 
 A password is drawn masked with one bullet per character (`*` where the
 face lacks U+2022). The probe and the accessibility tree read the mask.

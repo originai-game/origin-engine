@@ -760,6 +760,9 @@ pub struct TextTarget {
     /// A password: `selection` is always empty, and the host neither
     /// copies nor cuts from it nor offers its text to anything else.
     pub secret: bool,
+    /// Read-only (HTML `readonly`): the host's input is read-only too, so a
+    /// phone shows no keyboard for it.
+    pub readonly: bool,
 }
 
 impl UiFrame {
@@ -963,6 +966,12 @@ pub struct FieldDesc {
     /// The page's autofill hint (HTML `autocomplete`: `username`,
     /// `current-password`, `one-time-code`, `off`…); empty: none.
     pub autocomplete: String,
+    /// Its text is selected, copied and moved through but never edited
+    /// (HTML `readonly`); it keeps its focus stop.
+    pub readonly: bool,
+    /// What else its text must be (`required`, `pattern`, `min`…): one
+    /// failing makes it invalid as `invalid` does.
+    pub constraints: crate::input_type::Constraints,
 }
 
 /// How a multi-line text area looks ([`Ui::text_area`]).
@@ -984,4 +993,8 @@ pub struct TextAreaDesc {
     pub tight: bool,
     /// The component its style dresses it as ([`FieldDesc::component`]).
     pub component: Option<String>,
+    /// Selected and copied, never edited ([`FieldDesc::readonly`]).
+    pub readonly: bool,
+    /// What else its text must be ([`FieldDesc::constraints`]).
+    pub constraints: crate::input_type::Constraints,
 }

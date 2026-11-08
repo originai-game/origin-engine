@@ -91,6 +91,82 @@ impl InputType {
     }
 }
 
+/// A text control's HTML constraints beyond its type (`required`,
+/// `minlength`, `pattern`, `min`, `max`, `step`): its text matches
+/// `:invalid` while one fails. `maxlength` is enforced as typed
+/// (`FieldDesc::max_chars`), so it never fails.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Constraints {
+    /// Empty fails (HTML `valueMissing`).
+    pub required: bool,
+    /// Fewer characters fail (`tooShort`); 0: none.
+    pub min_chars: u32,
+    /// The whole text must match this regular expression (`patternMismatch`;
+    /// HTML's `^(?:pattern)$`). Not checked on a number.
+    pub pattern: Option<String>,
+    /// A number under it fails (`rangeUnderflow`).
+    pub min: Option<f64>,
+    /// A number over it fails (`rangeOverflow`).
+    pub max: Option<f64>,
+    /// A number off this grid from `min` (else 0) fails (`stepMismatch`).
+    /// `None`: HTML's default of 1 for a number; `Some(0.0)`: `step="any"`.
+    pub step: Option<f64>,
+}
+
+impl Constraints {
+    /// Whether `value` of type `ty` fails a constraint. An empty text fails
+    /// only `required`, as in HTML; a type mismatch is
+    /// [`InputType::mismatch`]'s.
+    pub fn fails(&self, ty: InputType, value: &str) -> bool {
+        if value.is_empty() {
+            return self.required;
+        }
+        if self.min_chars > 0 && value.chars().count() < self.min_chars as usize {
+            return true;
+        }
+        if ty == InputType::Number {
+            let Ok(v) = value.trim().parse::<f64>() else {
+                return false;
+            };
+            if self.min.is_some_and(|m| v < m) || self.max.is_some_and(|m| v > m) {
+                return true;
+            }
+            let step = self.step.unwrap_or(1.0);
+            if step > 0.0 {
+                let k = (v - self.min.unwrap_or(0.0)) / step;
+                // Within a millionth of a step: decimal steps are not exact.
+                return (k - k.round()).abs() > 1e-6;
+            }
+            return false;
+        }
+        self.pattern
+            .as_deref()
+            .is_some_and(|p| pattern(p).is_some_and(|re| !re.is_match(value)))
+    }
+}
+
+/// `p` compiled as HTML compiles a `pattern` (the whole text: `^(?:p)$`),
+/// once a process; `None` when it is not a regular expression (the
+/// document parser refuses those, so the field takes no pattern).
+pub fn pattern(p: &str) -> Option<std::sync::Arc<regex_lite::Regex>> {
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex, OnceLock};
+    type Cache = Mutex<HashMap<String, Option<Arc<regex_lite::Regex>>>>;
+    static CACHE: OnceLock<Cache> = OnceLock::new();
+    let mut cache = CACHE
+        .get_or_init(Default::default)
+        .lock()
+        .expect("pattern cache");
+    cache
+        .entry(p.to_string())
+        .or_insert_with(|| {
+            regex_lite::Regex::new(&format!("^(?:{p})$"))
+                .ok()
+                .map(Arc::new)
+        })
+        .clone()
+}
+
 /// A field's `inputmode`: the virtual keyboard a touch device shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum InputMode {

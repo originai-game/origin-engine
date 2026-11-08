@@ -29,6 +29,33 @@ fn value(p: &PropSpec) -> String {
     format!("`{}`", text.replace('|', "\\|"))
 }
 
+/// The tags a document writes a kind as, each with an example: HTML's name
+/// wherever HTML has the role (docs/ui.md §2).
+pub fn tags(kind: &str) -> Vec<(String, String)> {
+    let void = |tag: &str| (tag.to_string(), format!("<{tag} id=\"Name\" />"));
+    match kind {
+        "label" => vec![("text".into(), "<text id=\"Name\">…</text>".into())],
+        "image" => vec![void("img")],
+        "field" => vec![
+            void("input type=\"text\""),
+            (
+                "textarea".into(),
+                "<textarea id=\"Name\" rows=\"4\" />".into(),
+            ),
+        ],
+        "slider" => vec![void("input type=\"range\"")],
+        "toggle" => vec![
+            void("input type=\"checkbox\" switch"),
+            (
+                "label".into(),
+                "<label id=\"Name\"><input type=\"checkbox\" /> Caption</label>".into(),
+            ),
+        ],
+        "divider" => vec![void("hr")],
+        other => vec![(other.into(), format!("<{other} id=\"Name\">…</{other}>"))],
+    }
+}
+
 /// How a document writes `p`: its CSS declaration or HTML attribute.
 fn written(p: &PropSpec) -> String {
     match css_name(p.name) {
@@ -39,6 +66,10 @@ fn written(p: &PropSpec) -> String {
             match p.name {
                 "stepBy" => "step".into(),
                 "input" => "value".into(),
+                "maxChars" => "maxlength".into(),
+                "minChars" => "minlength".into(),
+                "lines" => "rows".into(),
+                "multiline" => "<textarea>".into(),
                 "key" => "i18n".into(),
                 "name" => "aria-label".into(),
                 "texture" => "src".into(),
@@ -102,10 +133,16 @@ pub fn markdown() -> String {
             .iter()
             .filter(|p| matches!(p.on, On::Kinds(ks) if ks.contains(&k.name)))
             .collect();
+        let written = tags(k.name);
         let _ = writeln!(
             out,
-            "\n## {}. `{}`: {}\n\n{} {} `<{} id=\"Name\">…</{}>`.",
+            "\n## {}. {} (`{}`): {}\n\n{} {} {}.",
             n + 2,
+            written
+                .iter()
+                .map(|(tag, _)| format!("`<{tag}>`"))
+                .collect::<Vec<_>>()
+                .join(", "),
             k.name,
             k.doc.trim_end_matches('.'),
             k.doc,
@@ -114,16 +151,11 @@ pub fn markdown() -> String {
             } else {
                 "A leaf; text-bearing controls accept text content:"
             },
-            match k.name {
-                "label" => "text",
-                "image" => "img",
-                other => other,
-            },
-            match k.name {
-                "label" => "text",
-                "image" => "img",
-                other => other,
-            }
+            written
+                .iter()
+                .map(|(_, example)| format!("`{example}`"))
+                .collect::<Vec<_>>()
+                .join(" or ")
         );
         if own.is_empty() {
             out.push_str("\nIt takes every element's props and none of its own.\n");
