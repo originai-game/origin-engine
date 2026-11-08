@@ -160,7 +160,7 @@ impl Ui {
         let mut rings: Vec<(usize, Vec<(DrawCmd, Affine)>)> = Vec::new();
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
         self.kept_spans.clear();
-        let (same, clean) = self.paint_reuse(order, &ghosts, &prev_kinds);
+        let (same, clean, delta) = self.paint_reuse(order, &ghosts, &prev_kinds);
         let mut reused_roots = true;
         let theme = self.theme;
         // An element's draw (crate::paint) in its layout box, at its
@@ -189,13 +189,33 @@ impl Ui {
                 },
                 None => None,
             };
-            // A subtree that paints as last frame: its commands copied whole.
-            if clean[i]
+            // A subtree that paints as last frame: its commands copied whole,
+            // moved as far as it moved (a scrolled row).
+            let (dx, dy) = delta[i];
+            let moved = (dx, dy) != (0.0, 0.0);
+            let copied = match at_last {
+                Some((from, len, _)) if clean[i] && from + len <= last.len() => {
+                    if moved {
+                        last[from..from + len]
+                            .iter()
+                            .map(|(c, m)| shifted(c, dx, dy).map(|c| (c, *m)))
+                            .collect::<Option<Vec<_>>>()
+                    } else {
+                        Some(Vec::new())
+                    }
+                }
+                _ => None,
+            };
+            if let Some(copy) = copied
                 && let Some((from, len, count)) = at_last
-                && from + len <= last.len()
             {
                 let start = cmds.len();
-                cmds.extend_from_slice(&last[from..from + len]);
+                if moved {
+                    cmds.extend(copy);
+                    self.moved_subtree(&order[k..ends[k]], dx, dy);
+                } else {
+                    cmds.extend_from_slice(&last[from..from + len]);
+                }
                 self.kept_spans.push(start..cmds.len());
                 self.stats.kept_commands += count;
                 let base = open.last().map_or(0, |o| o.1);
@@ -500,13 +520,16 @@ impl Ui {
         order: &[usize],
         ghosts: &[crate::motion::state::Ghost],
         prev_kinds: &std::collections::HashMap<usize, (&'static str, bool)>,
-    ) -> (Vec<bool>, Vec<bool>) {
+    ) -> (Vec<bool>, Vec<bool>, Vec<(f32, f32)>) {
         let n = self.nodes.len();
         let mut same = vec![false; n];
         let mut clean = vec![false; n];
+        // How far each node moved since it was painted, where moving is all
+        // that changed (`DrawSig::moved_from`); NaN where it changed otherwise.
+        let mut delta = vec![(f32::NAN, f32::NAN); n];
         // The bounded frame's check paints its whole twin afresh.
         if self.kept.fresh || self.kept.whole || self.tree.all_restructured {
-            return (same, clean);
+            return (same, clean, delta);
         }
         let mut written = vec![false; n];
         for &i in &self.emitted {
@@ -546,16 +569,32 @@ impl Ui {
                     })
                 };
             same[i] = own && (node.parent == NONE || same[node.parent]);
+            let parent = (node.parent != NONE).then(|| delta[node.parent]);
+            delta[i] = if same[i] {
+                (0.0, 0.0)
+            } else if !written[i]
+                && !self.draws.contains_key(&i)
+                && !matches!(node.content, Content::Rich(_))
+                && let Some(Some((k, old))) = self.kept.sigs.get(i)
+                && *k == node.key
+                && let Some(d) = crate::layout::DrawSig::of(node).moved_from(old)
+                && parent.is_none_or(|p| p == (0.0, 0.0) || p == d)
+            {
+                d
+            } else {
+                (f32::NAN, f32::NAN)
+            };
             volatile[i] |= node.props.exit.is_some()
                 || !node.props.match_key.is_empty()
                 || !node.links.is_empty()
                 || node.fx.is_some_and(|f| f.glitch > 0.0)
                 || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars));
-            clean[i] = same[i] && !volatile[i];
+            clean[i] = !delta[i].0.is_nan() && !volatile[i];
         }
+        // A subtree is copied whole when every node in it moved as its root.
         for &i in order.iter().rev() {
             let parent = self.nodes[i].parent;
-            if !clean[i] && parent != NONE {
+            if parent != NONE && (!clean[i] || delta[i] != delta[parent]) {
                 clean[parent] = false;
             }
         }
@@ -582,7 +621,32 @@ impl Ui {
                 j = self.nodes[j].parent;
             }
         }
-        (same, clean)
+        (same, clean, delta)
+    }
+
+    /// The nodes of a subtree copied moved by `(dx, dy)`: their signatures
+    /// and kept commands are where they are drawn now.
+    fn moved_subtree(&mut self, nodes: &[usize], dx: f32, dy: f32) {
+        for &j in nodes {
+            let key = self.nodes[j].key;
+            self.kept
+                .sigs_set(j, key, crate::layout::DrawSig::of(&self.nodes[j]));
+            if let Some((_, local, sig)) = self.kept.cmds.get_mut(&key) {
+                match local
+                    .iter()
+                    .map(|c| shifted(c, dx, dy))
+                    .collect::<Option<Vec<_>>>()
+                {
+                    Some(moved) => {
+                        *local = moved;
+                        *sig = crate::layout::DrawSig::of(&self.nodes[j]);
+                    }
+                    None => {
+                        self.kept.cmds.remove(&key);
+                    }
+                }
+            }
+        }
     }
 
     /// A leaving element's frozen drawing, moved by its exit (about its
@@ -902,6 +966,52 @@ fn glitch_layer(
 /// with the command for the overlay, its clip taken onto the screen; so
 /// does a mirror over text, whose glyphs a pen position cannot flip (an
 /// image flips by its uv).
+/// Command `c` moved by `(dx, dy)` with its clip where it was (an element
+/// that moved inside what clips it); `None` for what does not move so.
+fn shifted(c: &DrawCmd, dx: f32, dy: f32) -> Option<DrawCmd> {
+    let mv = |r: &mut Rect| {
+        r.x += dx;
+        r.y += dy;
+    };
+    let mut c = c.clone();
+    match &mut c {
+        DrawCmd::Glass { rect, .. }
+        | DrawCmd::Quad { rect, .. }
+        | DrawCmd::Image { rect, .. }
+        | DrawCmd::Vector { rect, .. } => mv(rect),
+        DrawCmd::Bar { center, .. } | DrawCmd::Half { center, .. } => {
+            center.0 += dx;
+            center.1 += dy;
+        }
+        DrawCmd::Text {
+            x,
+            baseline,
+            bounds,
+            ..
+        } => {
+            *x += dx;
+            *baseline += dy;
+            mv(bounds);
+        }
+        DrawCmd::StyledText { text, effects } => {
+            **text = shifted(text, dx, dy)?;
+            effects.fill_box[0] += dx;
+            effects.fill_box[1] += dy;
+        }
+        DrawCmd::Shape { shape, .. } => {
+            shape.center.x += dx;
+            shape.center.y += dy;
+        }
+        DrawCmd::PushClip { center, .. } => {
+            center.0 += dx;
+            center.1 += dy;
+        }
+        DrawCmd::PopClip => {}
+        DrawCmd::BeginLayer { .. } | DrawCmd::EndLayer { .. } | DrawCmd::World(_) => return None,
+    }
+    Some(c)
+}
+
 pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
     if m.is_identity() {
         return (c, m);

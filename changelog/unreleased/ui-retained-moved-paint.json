@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "A subtree that only moved since it was painted (a scrolled list's rows: the same size, clip, opacity and style, no transform) copies its last commands moved as far, with their clips where they were, instead of painting again: a scroll paints only the rows it brings in."
+    }
+  ]
+}

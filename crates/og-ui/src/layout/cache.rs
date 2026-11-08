@@ -297,6 +297,21 @@ pub(crate) struct DrawSig {
 }
 
 impl DrawSig {
+    /// How far a node with this signature moved from one with `old`, when
+    /// moving is all that changed (its size, clip, map and style as they
+    /// were, no transform): its last commands, moved as far, are its own.
+    pub(crate) fn moved_from(&self, old: &DrawSig) -> Option<(f32, f32)> {
+        let same = self.rect.width == old.rect.width
+            && self.rect.height == old.rect.height
+            && self.world.is_identity()
+            && old.world.is_identity()
+            && DrawSig {
+                rect: old.rect,
+                ..*self
+            } == *old;
+        same.then_some((self.rect.x - old.rect.x, self.rect.y - old.rect.y))
+    }
+
     pub(crate) fn of(n: &Node) -> Self {
         Self {
             rect: n.rect,
