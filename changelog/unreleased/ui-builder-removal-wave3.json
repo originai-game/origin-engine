@@ -111,7 +111,7 @@
     {
       "member": "og.ui.selectionRing, og.ui.telegraph, og.ui.pathLine, og.ui.placementGhost, og.ui.SelectionRingDesc, og.ui.TelegraphDesc, og.ui.TelegraphShape, og.ui.PathLineDesc, og.ui.PlacementGhostDesc, og.ui.GroundDesc",
       "change": "The ground mark builders are removed, with terrain draping (GroundDesc).",
-      "fix": "Eject the `selection-ring`, `telegraph`, `path-line` or `placement-ghost` component document: each is a `<ground at=\"x y z\" size=\"w d\">` with inline SVG, laid flat at its point's height; a path line's route is SVG path data the game projects into its box.",
+      "fix": "Eject the `selection-ring`, `telegraph`, `path-line` or `placement-ghost` component document: each is a `<ground at=\"x y z\" size=\"w d\">` with inline SVG, draped over the terrain under its point as a decal; a path line's route is SVG path data the game projects into its box.",
       "find": ["og.ui.selectionRing", "og.ui.telegraph", "og.ui.pathLine", "og.ui.placementGhost", "SelectionRingDesc", "TelegraphDesc", "TelegraphShape", "PathLineDesc", "PlacementGhostDesc", "GroundDesc"]
     },
     {

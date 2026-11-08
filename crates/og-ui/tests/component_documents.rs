@@ -111,3 +111,33 @@ fn component_documents_build_from_their_fixtures() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// The ground marks drape over the scene (c8e4b7a8c): each document's
+/// `<ground>` reaches the renderer as one layer carrying its drape. Fails
+/// when a mark is rebuilt as a flat panel or a screen-space box.
+#[test]
+fn ground_mark_documents_reach_the_renderer_as_draped_grounds() {
+    let (docs, messages) = documents();
+    for name in ["SelectionRing", "Telegraph", "PathLine", "PlacementGhost"] {
+        let (_, doc, props) = docs.iter().find(|(_, d, _)| d.name == name).unwrap();
+        let (width, height) = (1280.0, 720.0);
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.define_document(doc.clone());
+        ui.set_world_view(Some(view(width, height)));
+        let mut props = props.clone();
+        for _ in 0..4 {
+            ui.begin(InputFrame::default(), Viewport::new(width, height));
+            ui.component("Preview", &doc.name, &mut props, &messages);
+            ui.end();
+        }
+        let mut overlay = og_render::Overlay::new(width, height, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        let grounds = overlay
+            .ui
+            .layers
+            .iter()
+            .filter(|l| l.ground.is_some())
+            .count();
+        assert_eq!(grounds, 1, "{name}: {grounds} draped ground layer(s)");
+    }
+}
