@@ -36,6 +36,7 @@ impl RenderScene {
             shaders: Vec::new(),
             gltf_materials: Vec::new(),
             material_revisions: Vec::new(),
+            material_serial: 0,
             material_aliases: Vec::new(),
             material_copies: Vec::new(),
             fonts: Vec::new(),
@@ -870,6 +871,7 @@ impl RenderScene {
         {
             if m.forget_texture_array(slot) {
                 *revision += 1;
+                self.material_serial += 1;
             }
         }
         true
@@ -1419,6 +1421,7 @@ impl RenderScene {
         {
             if m.forget_texture(slot) {
                 *revision += 1;
+                self.material_serial += 1;
             }
         }
         for m in self.gltf_materials.iter_mut().flatten() {
@@ -1462,6 +1465,7 @@ impl RenderScene {
         gltf: Option<Material>,
     ) -> MaterialHandle {
         let (i, generation, reused) = self.material_slots.take(self.materials.len(), true);
+        self.material_serial += 1;
         if reused {
             self.materials[i] = material;
             self.gltf_materials[i] = gltf;
@@ -1490,6 +1494,7 @@ impl RenderScene {
             *s = None;
         }
         self.material_revisions[i] += 1;
+        self.material_serial += 1;
         self.material_slots.remove(i, true);
         // Its aliases end for good: a later material in the slot is another.
         if let Some(a) = self.material_aliases.get_mut(i) {
@@ -1526,6 +1531,7 @@ impl RenderScene {
         self.materials[i] = StandardMaterial::from(&material);
         self.gltf_materials[i] = Some(material);
         self.material_revisions[i] += 1;
+        self.material_serial += 1;
         self.restamp_aliases(i);
         true
     }
@@ -1544,6 +1550,7 @@ impl RenderScene {
         self.materials[i] = material;
         self.gltf_materials[i] = None;
         self.material_revisions[i] += 1;
+        self.material_serial += 1;
         self.restamp_aliases(i);
         true
     }
@@ -1981,6 +1988,7 @@ impl RenderScene {
         }
         self.material_shaders[i] = shader.map(|s| (s, self.shaders[s.index()].defaults()));
         self.material_revisions[i] += 1;
+        self.material_serial += 1;
         self.restamp_aliases(i);
         true
     }
@@ -2014,6 +2022,7 @@ impl RenderScene {
             return true;
         }
         params[slot] = v;
+        self.material_serial += 1;
         self.restamp_aliases(i);
         true
     }
@@ -2096,9 +2105,104 @@ impl RenderScene {
         &self.textures
     }
 
+    /// [`RenderScene::material_serial`]'s count of material changes.
+    pub(crate) fn material_serial(&self) -> u64 {
+        self.material_serial
+    }
+
     pub(crate) fn materials(&self) -> impl Iterator<Item = (&StandardMaterial, u64)> {
         self.materials
             .iter()
             .zip(self.material_revisions.iter().copied())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        ColorSpace, Material, MaterialShader, Mips, ParamKind, RenderScene, ShaderMode,
+        ShaderParam, StandardMaterial, TextureArrayData, TextureData, TextureSource,
+    };
+
+    /// Every edit of a material moves the serial the renderer's per-frame
+    /// material pass waits for (engine s96): an edit that left it would
+    /// never reach the GPU. A shader parameter set to the value it holds
+    /// leaves it, so a quiet frame skips the pass.
+    #[test]
+    fn every_material_edit_moves_the_material_serial() {
+        let mut scene = RenderScene::new();
+        let mut last = scene.material_serial();
+        let mut moved = |scene: &RenderScene, edit: &str| {
+            let now = scene.material_serial();
+            assert_ne!(now, last, "{edit} left the material serial");
+            last = now;
+        };
+        let texture = scene.add_texture(TextureData {
+            width: 1,
+            height: 1,
+            rgba: vec![255; 4],
+            color_space: ColorSpace::Srgb,
+            mips: Mips::None,
+        });
+        let a = scene.add_material(Material {
+            base_color_texture: Some(texture),
+            ..Material::default()
+        });
+        moved(&scene, "add_material");
+        let b = scene.add_standard_material(StandardMaterial::default());
+        moved(&scene, "add_standard_material");
+        assert!(scene.set_material(b, Material::default()));
+        moved(&scene, "set_material");
+        assert!(scene.set_standard_material(b, StandardMaterial::default()));
+        moved(&scene, "set_standard_material");
+        let shader = scene.add_shader(MaterialShader {
+            name: "wind".into(),
+            code: String::new(),
+            params: vec![ShaderParam {
+                name: "env".into(),
+                kind: ParamKind::Vec4,
+                default: [0.0; 4],
+            }],
+            mode: ShaderMode::Hooks,
+        });
+        assert!(scene.set_material_shader(b, Some(shader)));
+        moved(&scene, "set_material_shader");
+        assert!(scene.set_shader_param(b, "env", &[0.5, 0.0, 0.0, 0.0]));
+        moved(&scene, "set_shader_param");
+        let held = scene.material_serial();
+        assert!(scene.set_shader_param(b, "env", &[0.5, 0.0, 0.0, 0.0]));
+        assert_eq!(
+            scene.material_serial(),
+            held,
+            "the same value again moved it"
+        );
+        assert!(scene.remove_texture(texture));
+        moved(&scene, "remove_texture of a texture a material samples");
+        let layer = TextureSource::Rgba(TextureData {
+            width: 1,
+            height: 1,
+            rgba: vec![255; 4],
+            color_space: ColorSpace::Srgb,
+            mips: Mips::None,
+        });
+        let array = scene
+            .add_texture_array(TextureArrayData {
+                layers: vec![layer.clone(), layer],
+            })
+            .unwrap();
+        scene.add_standard_material(StandardMaterial {
+            mapArray: array.slot(),
+            ..StandardMaterial::default()
+        });
+        moved(&scene, "add_standard_material with an array map");
+        assert!(scene.remove_texture_array(array));
+        moved(
+            &scene,
+            "remove_texture_array of an array a material samples",
+        );
+        assert!(scene.remove_material(a));
+        moved(&scene, "remove_material");
+        scene.add_material(Material::default());
+        moved(&scene, "add_material into a freed slot");
     }
 }

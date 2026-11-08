@@ -471,7 +471,19 @@ impl Renderer {
         // leaves a field at its default, so a change restyles them all.
         let restyle = self.cache.material_style != scene.stylise.material;
         self.cache.material_style = scene.stylise.material;
+        // Every material as it was and its uniform up to date: nothing to do
+        // (a pass over thousands of materials costs most of a millisecond
+        // on the web, engine s96).
+        let serial = scene.material_serial();
+        let unchanged = self.cache.material_serial == Some(serial)
+            && !self.cache.material_advance
+            && !restyle
+            && replaced.is_empty();
+        let mut advance = false;
         for (i, (material, revision)) in scene.materials().enumerate() {
+            if unchanged {
+                break;
+            }
             if let Some(m) = self.cache.materials.get_mut(i)
                 && m.revision == revision
                 && !samples_replaced(material)
@@ -504,6 +516,7 @@ impl Renderer {
                     );
                     m.params = params;
                 }
+                advance |= m.previous_params != m.params;
                 continue;
             }
             let styled = material::styled(material, &scene.stylise.material);
@@ -611,11 +624,16 @@ impl Renderer {
                     && material.textures().iter().all(Option::is_none),
                 ..gpu
             };
+            advance |= gpu.previous_params != gpu.params;
             if i < self.cache.materials.len() {
                 self.cache.materials[i] = gpu;
             } else {
                 self.cache.materials.push(gpu);
             }
+        }
+        if !unchanged {
+            self.cache.material_serial = Some(serial);
+            self.cache.material_advance = advance;
         }
         let stale_fonts: Vec<usize> = (0..self.cache.fonts.len())
             .filter(|&i| {
