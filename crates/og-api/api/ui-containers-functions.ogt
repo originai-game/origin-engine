@@ -46,12 +46,3 @@
     returns SheetResult
   }
 
-  fn tabBar {
-    doc "Tabs with a sliding indicator and bumpers over the panel of the selected one."
-    host false
-    param id String "Its id."
-    param desc TabBarDesc "Tabs and the selected one."
-    param build UiItemBuild "Builds the selected tab's panel by its index."
-    returns TabBarResult
-  }
-

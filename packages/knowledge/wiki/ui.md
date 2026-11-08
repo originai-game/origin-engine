@@ -167,10 +167,6 @@ module ui {
 | [`SheetEdge`](ui/type-SheetEdge.md) | enum |  | The edge a sheet slides in from; start and end follow the writing direction. |
 | [`SheetDesc`](ui/type-SheetDesc.md) | desc struct |  | A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it. |
 | [`SheetResult`](ui/type-SheetResult.md) | struct |  | What a sheet answered this tick. |
-| [`TabVariant`](ui/type-TabVariant.md) | enum |  | How the selected tab is marked. |
-| [`TabItem`](ui/type-TabItem.md) | desc struct |  | A tab. |
-| [`TabBarDesc`](ui/type-TabBarDesc.md) | desc struct |  | Tabs over the panel the game builds for the selected one. |
-| [`TabBarResult`](ui/type-TabBarResult.md) | struct |  | What a tab bar answered this tick. |
 | [`DataStateDesc`](ui/type-DataStateDesc.md) | desc struct |  | What a data view shows instead of its rows: loading, an error, or nothing. |
 | [`GraphNodeState`](ui/type-GraphNodeState.md) | enum |  | A graph node's state, shown by its ring and a mark as well as its colour. |
 | [`GraphNodeShape`](ui/type-GraphNodeShape.md) | enum |  | A graph node's outline. |
@@ -183,7 +179,6 @@ module ui {
 | [`og.ui.menu`](ui/fn-menu.md) | function | `(id: string, open: boolean, desc?: MenuDesc): MenuChoice` | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. |
 | [`og.ui.contextMenu`](ui/fn-contextMenu.md) | function | `(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice` | A menu at a point: where a right press or a long press happened. |
 | [`og.ui.sheet`](ui/fn-sheet.md) | function | `(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult` | A sheet sliding in from the bottom (resting at detents, dragged) or a side. |
-| [`og.ui.tabBar`](ui/fn-tabBar.md) | function | `(id: string, desc: TabBarDesc, build: UiItemBuild): TabBarResult` | Tabs with a sliding indicator and bumpers over the panel of the selected one. |
 | [`og.ui.nodeGraph`](ui/fn-nodeGraph.md) | function | `(id: string, desc?: NodeGraphDesc): NodeGraphResult` | A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts. |
 | [`ViewFrameDesc`](ui/type-ViewFrameDesc.md) | desc struct |  | A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad. |
 | [`ViewFrameResult`](ui/type-ViewFrameResult.md) | struct |  | A view frame's turn, tilt and zoom after this tick's input, and its viewport's answer. |
@@ -407,7 +402,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 2929</sub>
+<sub>Module `ui` line 2875</sub>
 
 ```ogt
 column UiMaterial {
@@ -418,4 +413,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 2936</sub>
+<sub>Module `ui` line 2882</sub>

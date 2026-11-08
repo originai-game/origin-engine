@@ -1173,7 +1173,7 @@ built from the public calls only (open/close with `ElementDesc.focusable`
 and `part`, `props`, `setDraw`, `semantics`, `animate`, `memory`, `gesture`,
 the modal layer). Containers and navigation: `card`,
 `accordion`, `dialog`, `confirm`, `popover`, `menu`, `contextMenu`,
-`sheet`, `tabBar`, `pagination` (the action bar, split view, carousel,
+`sheet`, `pagination` (the action bar, split view, carousel,
 breadcrumbs and radial menu are component documents in
 `packages/engine/src/ui/components`, `og ui eject <name>`). Data: `dataList`, `dataGrid`, `table` (sorted
 and filtered once per change of its rows, only the rows in view built),
@@ -1182,7 +1182,7 @@ and filtered once per change of its rows, only the rows in view built),
 `calendar`. Each draws named parts a style dresses (`Card.frame`,
 `Card.media`, `Accordion.header`, `Dialog.tone`,
 `Popover.frame`, `Popover.arrow`, `Menu.frame`, `Menu.item`, `Sheet.frame`,
-`Sheet.handle`, `Tabs.track`, `Tabs.tab`, `Tabs.indicator`, `Tabs.bumper`,
+`Sheet.handle`,
 `Pagination.page`, `Pagination.step`,
 `List.row`, `Grid.cell`, `Table.frame`,
 `Table.header`, `Table.column`, `Table.row`, `Tree.item`, `Tree.toggle`,

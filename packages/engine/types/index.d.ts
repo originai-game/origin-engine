@@ -26547,128 +26547,6 @@ export interface SheetResult {
 }
 
 /**
- * How the selected tab is marked.
- * - `"underline"`: An underline that slides between tabs (the default).
- * - `"pill"`: A pill behind the tab, on a track.
- */
-export type TabVariant = "underline" | "pill";
-
-/**
- * A tab.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TabItem {
-  /**
-   * What it says.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-  /**
-   * An icon before it; empty is none.
-   *
-   * @default ""
-   */
-  readonly icon?: string;
-  /**
-   * A count badge after it; empty is none.
-   *
-   * @default ""
-   */
-  readonly badge?: string;
-  /**
-   * The badge's tone.
-   *
-   * @default "primary"
-   */
-  readonly badgeTone?: Tone;
-  /**
-   * Shown but not selectable.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-}
-
-/**
- * Tabs over the panel the game builds for the selected one.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TabBarDesc {
-  /**
-   * The tabs.
-   *
-   * @default []
-   */
-  readonly tabs?: readonly TabItem[];
-  /**
-   * The selected tab (keep TabBarResult.selected).
-   *
-   * @default 0
-   */
-  readonly selected?: number;
-  /**
-   * How the selected tab is marked.
-   *
-   * @default "underline"
-   */
-  readonly variant?: TabVariant;
-  /**
-   * The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs on the device used last (keyboard, Xbox, PlayStation, Switch) at the row's ends.
-   *
-   * @default true
-   */
-  readonly bumpers?: boolean;
-  /**
-   * Stepping past the last tab comes back to the first.
-   *
-   * @default true
-   */
-  readonly wrap?: boolean;
-  /**
-   * The tabs share the row's width.
-   *
-   * @default false
-   */
-  readonly fill?: boolean;
-  /**
-   * Space between the row and the panel; null is space.md.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gap?: number | null;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * The panel's height; null fits.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * What a screen reader calls the tab list.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-}
-
-/** What a tab bar answered this tick. */
-export interface TabBarResult {
-  /** The selected tab after this tick: keep it. */
-  readonly selected: number;
-  /** It changed this tick. */
-  readonly changed: boolean;
-}
-
-/**
  * What a data view shows instead of its rows: loading, an error, or nothing.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -26940,7 +26818,6 @@ export interface NodeGraphResult {
   /** The zoom changed this tick. */
   readonly changed: boolean;
 }
-
 
 
 
@@ -40406,14 +40283,6 @@ export declare namespace og {
      * @param build Builds its body.
      */
     function sheet(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult;
-    /**
-     * Tabs with a sliding indicator and bumpers over the panel of the selected one.
-     *
-     * @param id Its id.
-     * @param desc Tabs and the selected one.
-     * @param build Builds the selected tab's panel by its index.
-     */
-    function tabBar(id: string, desc: TabBarDesc, build: UiItemBuild): TabBarResult;
     /**
      * A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts.
      * Each node is a circle, rounded square, hexagon, diamond or triangle; a node with a team (a sector map's allied and hostile systems) is filled in its side's colour, a sided node with no icon showing no letters (its shape and colour mark it). Its state shows by its ring and a mark.

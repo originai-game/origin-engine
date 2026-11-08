@@ -1549,6 +1549,18 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "A string table key (og.i18n) per tab its label comes from; its item is the fallback."
     ),
     p!(
+        "icons",
+        Ty::Names,
+        ["tabs"],
+        "An icon of the style's set per tab, before its label (`icons=\"sword shield\"`, or a bound list); an empty name is none."
+    ),
+    p!(
+        "badges",
+        Ty::Names,
+        ["tabs"],
+        "A count badge per tab, after its label (`badges={$unread}`, a list of strings); an empty one is none."
+    ),
+    p!(
         "values",
         Ty::Names,
         ["tabs", "select"],

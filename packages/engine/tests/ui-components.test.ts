@@ -68,124 +68,24 @@ function key(engine: Engine, code: string): void {
   engine.advance(8);
 }
 
-// ── tabs ────────────────────────────────────────────────────────────────
-
-test("tabBar: the bumper steps to the next enabled tab, skipping a disabled one, and a tap selects", () => {
-  // Wrong: a bumper that lands on the disabled tab, or ignores wrap.
-  let sel = 1;
-  const engine = run(() => {
-    sel = og.ui.tabBar("Tabs", { tabs: [{ label: "Gear" }, { label: "Skills" }, { label: "Map", disabled: true }, { label: "Codex" }], selected: sel }, (k) => og.ui.label("Body", `Panel ${k}`, {})).selected;
-  });
-  expect(find(engine, (e) => e.role === "tablist")).toBeDefined();
-  expect(find(engine, (e) => e.id === "Tab#1")?.states).toContain("selected");
-  key(engine, "KeyE");
-  expect(sel).toBe(3);
-  key(engine, "KeyE");
-  expect(sel).toBe(0);
-  key(engine, "KeyQ");
-  expect(sel).toBe(3);
-  tap(engine, "Tab#1");
-  expect(sel).toBe(1);
-  expect(byPath(engine, "Tabs/Panel")?.role).toBe("tabpanel");
-  expect(byPath(engine, "Panel/Body")?.text).toBe("Panel 1");
-});
-
-test("tabBar: the bumpers show the device's glyphs, following it live (keyboard, Xbox, PlayStation, Switch)", () => {
-  // Wrong: fixed Q and E caps that stay when the player picks up a pad.
-  let device: Api.UiDevice = "keyboardMouse";
-  const sys = defineSystem(`UcBuild${systems++}`, {}, (_q, _t, world: World) => {
-    og.ui.setDevice(world, device);
-    og.ui.anchor("Root", { anchor: "center", direction: "column", width: { kind: "fixed", px: 640 } } as never, () => {
-      og.ui.tabBar("Tabs", { tabs: [{ label: "Gear" }, { label: "Skills" }], selected: 0 }, () => {});
-    });
-  });
-  const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, {});
-  if (!r.ok) throw new Error(r.reason);
-  const engine = r.value;
-  // A cap's text, or for a drawn symbol (PlayStation's face buttons) the name the cap gives it.
-  const cap = (p: string) => byPath(engine, `${p}/Glyph/Text`)?.text ?? (byPath(engine, `${p}/Glyph/Symbol`) ? byPath(engine, `${p}/Glyph`)?.name : undefined);
-  const caps = () => ["Prev", "Next"].map(cap);
-  const expected: Array<[Api.UiDevice, Array<string | undefined>]> = [
-    ["keyboardMouse", ["Q", "E"]],
-    ["xbox", ["LB", "RB"]],
-    ["playstation", ["L1", "R1"]],
-    ["switch", ["L", "R"]],
-    ["keyboardMouse", ["Q", "E"]],
-  ];
-  for (const [d, want] of expected) {
-    device = d;
-    engine.advance(4);
-    expect([d, ...caps()]).toEqual([d, ...want]);
-  }
-});
-
-test("tabBar: tabs that do not fit scroll the selected one into view clear of the fades, fade where they are cut, and stop short of the bumpers", () => {
-  // Wrong: a native scroll that never moves to the selected tab (Codex cut against RB), a fade that
-  // never shows because a cut tab's box is the part in view, a strip that runs under the caps.
-  let sel = 0;
-  const engine = run(() => {
-    sel = og.ui.tabBar("Tabs", { tabs: ["Equipment", "Skills", "Inventory", "Codex", "Journal"].map((label) => ({ label })), selected: sel }, () => {}).selected;
-  }, 300);
-  const clip = () => byPath(engine, "Tabs/Bar/Clip")!;
-  const fades = () => ["FadeStart", "FadeEnd"].filter((f) => byPath(engine, `Clip/${f}`));
-  expect(fades()).toEqual(["FadeEnd"]);
-  for (let k = 0; k < 4; k++) key(engine, "KeyE");
-  engine.advance(30);
-  expect(sel).toBe(4);
-  const tab = byPath(engine, "Tabs/Tab#4")!;
-  const c = clip();
-  // Whole: the last tab rests at the end, where nothing more lies and no fade is drawn.
-  expect(tab.x).toBeGreaterThanOrEqual(c.x - 0.5);
-  expect(tab.x + tab.width).toBeLessThanOrEqual(c.x + c.width + 0.5);
-  expect(tab.clipped).toBeFalse();
-  // A middle tab revealed clears the fade at its edge.
-  key(engine, "KeyQ");
-  engine.advance(30);
-  const mid = byPath(engine, "Tabs/Tab#3")!;
-  expect(mid.x).toBeGreaterThanOrEqual(clip().x + 27.5);
-  key(engine, "KeyE");
-  engine.advance(30);
-  expect(fades()).toEqual(["FadeStart"]);
-  const next = byPath(engine, "Tabs/Bar/Next")!;
-  expect(c.x + c.width).toBeLessThanOrEqual(next.x + 0.5);
-  key(engine, "KeyQ");
-  key(engine, "KeyQ");
-  key(engine, "KeyQ");
-  key(engine, "KeyQ");
-  engine.advance(30);
-  expect(sel).toBe(0);
-  expect(fades()).toEqual(["FadeEnd"]);
-  expect(byPath(engine, "Tabs/Tab#0")!.x).toBeGreaterThanOrEqual(clip().x - 0.5);
-});
-
 // ── visual states ───────────────────────────────────────────────────────
 
 test("states: parts move through §7.3 state groups (selection, interaction, expansion) a style's motion runs", () => {
   // Wrong: a part animated by the component's own tween (no group, so a style's motion and the probe's forceState never reach it).
-  let sel = 0;
   let open: number[] = [];
   // Read inside the tick (og.ui answers the UI being built): each watched path's groups.
   const watched: Array<[path: string, group: string]> = [];
   let seen = new Map<string, string>();
   const engine = run(() => {
-    sel = og.ui.tabBar("Tabs", { tabs: [{ label: "Gear" }, { label: "Skills" }], selected: sel }, () => {}).selected;
     open = og.ui.accordion("Faq", { sections: [{ title: "Rules" }], expanded: open }, () => og.ui.label("Text", "Body", {})).expanded.slice();
     seen = new Map(watched.map(([p, g]) => [`${p}:${g}`, og.ui.visualState(p, g)]));
   });
   const path = (end: string) => byPath(engine, end)!.path;
-  for (const [end, groups] of [["Tab#0", ["selection", "interaction"]], ["Tab#1", ["selection", "interaction"]], ["Section#0/Header", ["expansion"]], ["Section#0/Header/Chevron", ["expansion"]]] as const) {
+  for (const [end, groups] of [["Section#0/Header", ["expansion"]], ["Section#0/Header/Chevron", ["expansion"]]] as const) {
     for (const g of groups) watched.push([path(end), g]);
   }
   engine.advance(1);
   const vs = (end: string, group: string) => seen.get(`${path(end)}:${group}`);
-  expect([vs("Tab#0", "selection"), vs("Tab#1", "selection")]).toEqual(["on", "off"]);
-  expect(vs("Tab#1", "interaction")).toBe("normal");
-  engine.probe.commands("0:touch_move_to:Tab#1");
-  engine.advance(4);
-  expect(vs("Tab#1", "interaction")).toBe("hover");
-  tap(engine, "Tab#1");
-  expect(sel).toBe(1);
-  expect([vs("Tab#0", "selection"), vs("Tab#1", "selection")]).toEqual(["off", "on"]);
   expect([vs("Section#0/Header", "expansion"), vs("Section#0/Header/Chevron", "expansion")]).toEqual(["collapsed", "collapsed"]);
   tap(engine, "Section#0/Header");
   expect(open).toEqual([0]);
@@ -565,22 +465,6 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
 
 // ── direction, locale ───────────────────────────────────────────────────
 
-test("right to left: tabs run from the right; the pseudo-locale's longer labels overlap nothing", () => {
-  // Wrong: a component that places its parts by physical left, or draws its arrows unmirrored.
-  const engine = run(() => {
-    og.ui.tabBar("Tabs", { tabs: [{ label: pseudo("Equipment") }, { label: pseudo("Skills") }, { label: pseudo("Achievements") }] }, () => og.ui.label("Body", pseudo("Nothing equipped yet"), {}));
-  }, 640, kit);
-  const x = (end: string) => find(engine, (e) => e.path.endsWith(end))!.x;
-  expect(x("Tab#0")).toBeLessThan(x("Tab#1"));
-  const overlaps = og.ui.overlaps() as unknown as Array<{ path: string; other: string }>;
-  expect(overlaps.filter((o) => /Tabs/.test(o.path))).toEqual([]);
-  const loaded = og.i18n.load(engine.world, "strings/ar.ogt");
-  if (!loaded.ok) throw new Error(loaded.reason);
-  expect((og.i18n.setLocale(engine.world, "ar-EG") as unknown as { direction: string }).direction).toBe("rtl");
-  engine.advance(8);
-  expect(x("Tab#0")).toBeGreaterThan(x("Tab#1"));
-});
-
 // ── 200 % text ──────────────────────────────────────────────────────────
 
 test("150 % text: the containers and navigation components grow with the text and cut none of it, on a desktop and a phone", () => {
@@ -588,13 +472,11 @@ test("150 % text: the containers and navigation components grow with the text an
   // player's largest text size it clips, or a text drawn at a fixed size the scale never reaches.
   const ui = native() as unknown as { og_node_ui_frame(id: number): string };
   const nav = () => {
-    og.ui.tabBar("Tabs", { tabs: [{ label: "Equipment" }, { label: "Skills" }, { label: "Codex" }] }, () => {});
     og.ui.accordion("Faq", { sections: [{ title: "Rules", subtitle: "How a round is played" }], expanded: [0] }, () => og.ui.label("Text", "Each round lasts three minutes.", {}));
-    og.ui.tabBar("Pills", { tabs: [{ label: "Daily" }, { label: "Weekly" }, { label: "Season" }], selected: 1, variant: "pill", fill: true, bumpers: false }, () => {});
     og.ui.menu("Menu", true, { at: { x: 40, y: 40 }, entries: [{ id: "copy", label: "Copy", shortcut: "Ctrl+C" }, { id: "compare", label: "Compare", shortcut: "C" }, { id: "sort", label: "Sort by" }, { id: "destroy", label: "Destroy", danger: true }, { id: "n", label: "Name", parent: "sort" }] });
   };
   // Tall surfaces: everything is laid out on screen, nothing scrolled away.
-  for (const [bp, w, h, coarse, build, probe] of [["desktop", 1280, 2400, false, nav, "Equipment"], ["phonePortrait", 390, 2400, true, nav, "Equipment"]] as const) {
+  for (const [bp, w, h, coarse, build, probe] of [["desktop", 1280, 2400, false, nav, "Rules"], ["phonePortrait", 390, 2400, true, nav, "Rules"]] as const) {
     const frames: UiFrameSnapshot[] = [];
     for (const scale of [1, 1.5]) {
       const engine = run(build, Math.min(640, w - 32), kit);

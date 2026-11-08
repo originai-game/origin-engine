@@ -5,7 +5,6 @@
 
 import { accordion } from "./containers/panels.ts";
 import { contextMenu, menu, popover, sheet } from "./containers/layers.ts";
-import { tabBar } from "./containers/navigation.ts";
 import { nodeGraph } from "./data/tree.ts";
 import { foundations } from "./foundations/index.ts";
 
@@ -15,7 +14,6 @@ export const components = Object.freeze({
   menu,
   contextMenu,
   sheet,
-  tabBar,
   nodeGraph,
   ...foundations,
 });

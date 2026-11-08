@@ -139,6 +139,8 @@ pub struct ChoiceIndexResult {
 pub struct SegmentItem {
     pub label: String,
     pub icon: String,
+    /// A count badge after its label (`3`, `New`); empty is none.
+    pub badge: String,
     pub disabled: bool,
     /// Its accessible name when it has no label.
     pub aria_label: String,
@@ -1025,10 +1027,13 @@ impl Ui {
                             },
                         );
                     }
+                    if !it.badge.is_empty() {
+                        ui.badge("Badge", &it.badge, crate::widgets::Tone::Primary);
+                    }
                 },
             );
             // Its own width: its parts' as laid out, never what a share squeezed it to.
-            let parts: Vec<f32> = ["Icon", "Label"]
+            let parts: Vec<f32> = ["Icon", "Label", "Badge"]
                 .iter()
                 .filter_map(|c| {
                     self.bounds_of(&format!("{}/{c}", built.path))

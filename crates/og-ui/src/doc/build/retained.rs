@@ -704,6 +704,15 @@ impl RetainedHost {
                     .insert(identity.clone());
             }
         }
+        // `<tabs>` steps on the bumpers (`tabPrev`, `tabNext`).
+        if matches!(doc.nodes[index].kind, NodeKind::Element("tabs")) {
+            for action in ["tabPrev", "tabNext"] {
+                self.on_action
+                    .entry(action.into())
+                    .or_default()
+                    .insert(identity.clone());
+            }
+        }
         if let Some(parent) = parent {
             self.emit.insert(parent.clone());
         }

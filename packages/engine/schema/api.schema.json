@@ -11991,10 +11991,6 @@
         "SheetEdge",
         "SheetDesc",
         "SheetResult",
-        "TabVariant",
-        "TabItem",
-        "TabBarDesc",
-        "TabBarResult",
         "DataStateDesc",
         "GraphNodeState",
         "GraphNodeShape",
@@ -13287,33 +13283,6 @@
             }
           ],
           "returns": "SheetResult",
-          "publish": true,
-          "host": false
-        },
-        {
-          "name": "tabBar",
-          "doc": "Tabs with a sliding indicator and bumpers over the panel of the selected one.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "TabBarDesc",
-              "optional": false,
-              "doc": "Tabs and the selected one."
-            },
-            {
-              "name": "build",
-              "type": "UiItemBuild",
-              "optional": false,
-              "doc": "Builds the selected tab's panel by its index."
-            }
-          ],
-          "returns": "TabBarResult",
           "publish": true,
           "host": false
         },
@@ -48326,163 +48295,6 @@
         "detent",
         "dismissed",
         "visible"
-      ],
-      "additionalProperties": false
-    },
-    "TabVariant": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "How the selected tab is marked.",
-      "type": "string",
-      "enum": [
-        "underline",
-        "pill"
-      ],
-      "x-og-variants": {
-        "underline": "An underline that slides between tabs (the default).",
-        "pill": "A pill behind the tab, on a track."
-      }
-    },
-    "TabItem": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A tab.",
-      "type": "object",
-      "properties": {
-        "label": {
-          "type": "string",
-          "description": "What it says.",
-          "default": ""
-        },
-        "icon": {
-          "type": "string",
-          "description": "An icon before it; empty is none.",
-          "default": ""
-        },
-        "badge": {
-          "type": "string",
-          "description": "A count badge after it; empty is none.",
-          "default": ""
-        },
-        "badgeTone": {
-          "$ref": "#/$defs/Tone",
-          "description": "The badge's tone.",
-          "default": "primary"
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "Shown but not selectable.",
-          "default": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "TabBarDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "Tabs over the panel the game builds for the selected one.",
-      "type": "object",
-      "properties": {
-        "tabs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/TabItem"
-          },
-          "description": "The tabs.",
-          "default": []
-        },
-        "selected": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "The selected tab (keep TabBarResult.selected).",
-          "default": 0
-        },
-        "variant": {
-          "$ref": "#/$defs/TabVariant",
-          "description": "How the selected tab is marked.",
-          "default": "underline"
-        },
-        "bumpers": {
-          "type": "boolean",
-          "description": "The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs on the device used last (keyboard, Xbox, PlayStation, Switch) at the row's ends.",
-          "default": true
-        },
-        "wrap": {
-          "type": "boolean",
-          "description": "Stepping past the last tab comes back to the first.",
-          "default": true
-        },
-        "fill": {
-          "type": "boolean",
-          "description": "The tabs share the row's width.",
-          "default": false
-        },
-        "gap": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Space between the row and the panel; null is space.md.",
-          "default": null,
-          "x-og-unit": "cssPx"
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null grows.",
-          "default": null
-        },
-        "height": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The panel's height; null fits.",
-          "default": null
-        },
-        "label": {
-          "type": "string",
-          "description": "What a screen reader calls the tab list.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "TabBarResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "What a tab bar answered this tick.",
-      "type": "object",
-      "properties": {
-        "selected": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "The selected tab after this tick: keep it."
-        },
-        "changed": {
-          "type": "boolean",
-          "description": "It changed this tick."
-        }
-      },
-      "required": [
-        "selected",
-        "changed"
       ],
       "additionalProperties": false
     },

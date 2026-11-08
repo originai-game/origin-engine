@@ -1075,14 +1075,25 @@ impl Ui {
                     let now = r.str("current").unwrap_or_default();
                     values.iter().position(|v| v == now).unwrap_or(0)
                 };
+                // The bumpers: tabPrev and tabNext (Q and E, LB and RB) step
+                // through the tabs from anywhere on the page, wrapping.
+                let step = i32::from(self.action("tabNext")) - i32::from(self.action("tabPrev"));
+                let stepped = step != 0 && items.len() > 1 && !r.flag("disabled");
+                if stepped {
+                    selected = (selected as i32 + step).rem_euclid(items.len() as i32) as usize;
+                }
                 let fill = r.flag("fill");
+                let (icons, badges) = (strs("icons"), strs("badges"));
                 let out = self.segmented(
                     id.as_str(),
                     &crate::widgets::SegmentedDesc {
                         items: items
                             .iter()
-                            .map(|l| crate::widgets::SegmentItem {
+                            .enumerate()
+                            .map(|(i, l)| crate::widgets::SegmentItem {
                                 label: l.clone(),
+                                icon: icons.get(i).cloned().unwrap_or_default(),
+                                badge: badges.get(i).cloned().unwrap_or_default(),
                                 ..crate::widgets::SegmentItem::default()
                             })
                             .collect(),
@@ -1100,7 +1111,7 @@ impl Ui {
                 );
                 selected = usize::try_from(out.selected).unwrap_or(0);
                 resp = crate::Response {
-                    changed: out.changed,
+                    changed: out.changed || stepped,
                     focused: out.focused >= 0,
                     ..crate::Response::default()
                 };

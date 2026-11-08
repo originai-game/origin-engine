@@ -752,6 +752,58 @@ fn a_button_holds_its_content_in_a_row() {
     });
 }
 
+/// `<tabs icons badges>`: each tab draws its icon before its label and its
+/// count badge after it; an empty entry draws none. The tabPrev and tabNext
+/// actions (Q and E, LB and RB) step through the tabs.
+///
+/// Ways it could fail: the lists ignored, a badge on every tab, a badge
+/// the tab's width leaves out (cut by its neighbour), or a bumper that
+/// stops at the last tab.
+#[test]
+fn tabs_take_icons_and_badges() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <tabs id="Tabs" items="Gear Quests" icons="sword shield" badges={$badges} bind:selected={$tab}></tabs>
+</div>"#;
+    let d = &mut Doc::new(
+        text,
+        &[("tab", json!(0)), ("badges", json!(["", "3"]))],
+        false,
+    );
+    let el = |d: &Doc, end: &str| {
+        d.ui.probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with(end))
+    };
+    assert!(el(d, "Item#0/Icon").is_some(), "the first tab has its icon");
+    assert!(el(d, "Item#0/Badge").is_none(), "an empty badge is none");
+    let (badge, tab) = (
+        el(d, "Item#1/Badge").expect("the second tab's badge"),
+        el(d, "Item#1").unwrap(),
+    );
+    assert_eq!(badge.text, "3");
+    assert!(
+        badge.x + badge.width <= tab.x + tab.width + 0.5,
+        "the tab holds its badge: {badge:?} in {tab:?}"
+    );
+    // The bumpers: tabNext steps, wrapping past the last; tabPrev back.
+    let d = &mut Doc::new(text, &[("tab", json!(0)), ("badges", Value::Null)], true);
+    let press = |d: &mut Doc, key: &'static str| {
+        d.step(InputFrame {
+            keys_held: vec![key],
+            keys_pressed: vec![key],
+            ..InputFrame::default()
+        });
+        d.step(InputFrame::default());
+    };
+    press(d, "KeyE");
+    assert_eq!(d.read("tab"), json!(1), "tabNext steps");
+    press(d, "KeyE");
+    assert_eq!(d.read("tab"), json!(0), "and wraps");
+    press(d, "KeyQ");
+    assert_eq!(d.read("tab"), json!(1), "tabPrev steps back, wrapping");
+}
+
 /// ARIA in documents (G4): `role` and the `aria-*` states and values reach
 /// the accessibility tree, `aria-labelledby`/`aria-describedby` read the
 /// text of the elements they name (and follow it when it is bound), and
