@@ -1199,7 +1199,10 @@ export class WorldImpl {
       }
     }
     const restored = structural(parse<Result<void>>(abi().og_world_restore(this.id, save, json(desc))));
-    if (restored.ok) uiReactors.get(this.id)?.flush();
+    if (restored.ok) {
+      const mounts = uiReactors.get(this.id)?.restoreMounts();
+      if (mounts && !mounts.ok) return mounts;
+    }
     return restored;
   }
 
@@ -1849,7 +1852,12 @@ function makeProbe(id: number) {
     sweep: (desc?: unknown) => parse(a().og_engine_probe_sweep(id, json(desc))),
     reload: () => parse(a().og_engine_probe_reload(id)),
     snapshot: () => parse(a().og_engine_probe_snapshot(id)),
-    restore: (sid: string) => { epoch++; return a().og_engine_probe_restore(id, sid); },
+    restore: (sid: string) => {
+      epoch++;
+      const restored = a().og_engine_probe_restore(id, sid);
+      uiReactors.get(id)?.restoreMounts();
+      return restored;
+    },
     dump: (desc?: unknown) => parse(a().og_engine_probe_dump(id, json(desc))),
     commands: (script: string) => parse(a().og_engine_probe_commands(id, script)),
     listen: (seconds?: number) => parse(a().og_engine_probe_listen(id, seconds)),

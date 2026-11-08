@@ -207,6 +207,68 @@ fn collection {
 
 <sub>Module `ui` line 7961</sub>
 
+<a id="member-UiScope-mount"></a>
+
+#### `UiScope.mount`
+
+Register a loaded document once with named store inputs. The native renderer updates it from store changes; no per-element TypeScript calls are made. Re-registering the same ID and inputs preserves its mounted identity. Inputs stay subscribed until unmount or scope disposal.
+
+```ts
+UiScope.mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Stable mount ID within this scope. |
+| `document` | `string` | no | The loaded document's declared name. |
+| `inputs` | `Readonly<Record<string, UiReadable<unknown>>>` | no | Document input names mapped to named stores from this world. |
+
+**Returns** `Result<void>`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn mount {
+  host false
+  doc "Register a loaded document once with named store inputs. The native renderer updates it from store changes; no per-element TypeScript calls are made. Re-registering the same ID and inputs preserves its mounted identity. Inputs stay subscribed until unmount or scope disposal."
+  param id String "Stable mount ID within this scope."
+  param document String "The loaded document's declared name."
+  param inputs Map.UiReadable.Json "Document input names mapped to named stores from this world."
+  returns Result.Void
+}
+```
+
+<sub>Module `ui` line 7972</sub>
+
+<a id="member-UiScope-unmount"></a>
+
+#### `UiScope.unmount`
+
+Remove a registered document and release its input subscriptions. Removing an absent mount succeeds.
+
+```ts
+UiScope.unmount(id: string): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | The mount ID in this scope. |
+
+**Returns** `Result<void>`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn unmount {
+  host false
+  doc "Remove a registered document and release its input subscriptions. Removing an absent mount succeeds."
+  param id String "The mount ID in this scope."
+  returns Result.Void
+}
+```
+
+<sub>Module `ui` line 7980</sub>
+
 <a id="member-UiScope-takeErrors"></a>
 
 #### `UiScope.takeErrors`
@@ -229,7 +291,7 @@ fn takeErrors {
 }
 ```
 
-<sub>Module `ui` line 7972</sub>
+<sub>Module `ui` line 7986</sub>
 
 <a id="member-UiScope-dispose"></a>
 
@@ -253,4 +315,4 @@ fn dispose {
 }
 ```
 
-<sub>Module `ui` line 7977</sub>
+<sub>Module `ui` line 7991</sub>

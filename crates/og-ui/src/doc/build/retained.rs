@@ -7,6 +7,7 @@ use crate::reactive::{
     graph::MountedNode,
 };
 
+mod registration;
 mod structural;
 mod virtualized;
 use structural::{BranchInstance, Child, EachInstance};
@@ -59,7 +60,7 @@ struct ElementInstance {
     bindings: Vec<BindingId>,
 }
 
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct Registration {
     document: String,
     inputs: BTreeMap<String, SourceId>,
@@ -74,6 +75,7 @@ pub struct RetainedHost {
     elements: BTreeMap<MountedNode, ElementInstance>,
     roots: BTreeMap<SourceId, Child>,
     registrations: BTreeMap<SourceId, Registration>,
+    managed: Option<BTreeMap<SourceId, Registration>>,
     pending_mounts: BTreeSet<SourceId>,
     restoring: bool,
     each: BTreeMap<MountedNode, EachInstance>,

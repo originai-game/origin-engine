@@ -39451,6 +39451,20 @@ export interface UiScope {
    */
   collection<T extends unknown>(id: string, items: readonly T[], desc?: UiCollectionDesc): UiCollection<T>;
   /**
+   * Register a loaded document once with named store inputs. The native renderer updates it from store changes; no per-element TypeScript calls are made. Re-registering the same ID and inputs preserves its mounted identity. Inputs stay subscribed until unmount or scope disposal.
+   *
+   * @param id Stable mount ID within this scope.
+   * @param document The loaded document's declared name.
+   * @param inputs Document input names mapped to named stores from this world.
+   */
+  mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>): Result<void>;
+  /**
+   * Remove a registered document and release its input subscriptions. Removing an absent mount succeeds.
+   *
+   * @param id The mount ID in this scope.
+   */
+  unmount(id: string): Result<void>;
+  /**
    * Drain operation and scheduler errors naming scope and store. Errors are reported in publish too; the scheduler never throws into the engine.
    */
   takeErrors(): readonly string[];
@@ -49822,7 +49836,7 @@ export declare namespace og {
      */
     function sceneViewport(id: string, desc?: SceneViewportDesc): SceneViewportInfo;
     /**
-     * The entry to named svelte/store-compatible presentation data. Rust owns values and the dependency graph. No Svelte compiler, runes, TS elements or asynchronous primitives. Document mounting awaits the Svelte parser IR; this entry does not target the old screen dialect. See docs/ui.md for a worked example and If you know Svelte.
+     * The entry to named svelte/store-compatible presentation data and retained document mounts. Rust owns values, the dependency graph and mounted elements. No Svelte compiler, runes, TS elements or asynchronous primitives. See docs/ui.md for a worked example and If you know Svelte.
      *
      * @param world The world that owns the presentation checkpoint.
      * @param id An explicit, nonempty stable scope name.

@@ -16553,7 +16553,7 @@
         },
         {
           "name": "scope",
-          "doc": "The entry to named svelte/store-compatible presentation data. Rust owns values and the dependency graph. No Svelte compiler, runes, TS elements or asynchronous primitives. Document mounting awaits the Svelte parser IR; this entry does not target the old screen dialect. See docs/ui.md for a worked example and If you know Svelte.",
+          "doc": "The entry to named svelte/store-compatible presentation data and retained document mounts. Rust owns values, the dependency graph and mounted elements. No Svelte compiler, runes, TS elements or asynchronous primitives. See docs/ui.md for a worked example and If you know Svelte.",
           "params": [
             {
               "name": "world",
@@ -17189,6 +17189,48 @@
                 }
               ],
               "returns": "UiCollection<T>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "mount",
+              "doc": "Register a loaded document once with named store inputs. The native renderer updates it from store changes; no per-element TypeScript calls are made. Re-registering the same ID and inputs preserves its mounted identity. Inputs stay subscribed until unmount or scope disposal.",
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "Stable mount ID within this scope."
+                },
+                {
+                  "name": "document",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The loaded document's declared name."
+                },
+                {
+                  "name": "inputs",
+                  "type": "Map<UiReadable<Json>>",
+                  "optional": false,
+                  "doc": "Document input names mapped to named stores from this world."
+                }
+              ],
+              "returns": "Result<Void>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "unmount",
+              "doc": "Remove a registered document and release its input subscriptions. Removing an absent mount succeeds.",
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The mount ID in this scope."
+                }
+              ],
+              "returns": "Result<Void>",
               "publish": true,
               "host": false
             },

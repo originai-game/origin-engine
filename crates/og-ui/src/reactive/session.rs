@@ -11,6 +11,15 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Command {
+    MountInputs,
+    Mount {
+        mount: SourceId,
+        document: String,
+        inputs: BTreeMap<String, SourceId>,
+    },
+    Unmount {
+        mount: SourceId,
+    },
     Signal {
         source: SourceId,
         initial: Value,
@@ -108,6 +117,8 @@ pub enum Command {
     },
     Registered {
         sources: Vec<SourceId>,
+        #[serde(default)]
+        mounts: Vec<SourceId>,
     },
 }
 
@@ -423,6 +434,9 @@ impl Session {
                     *cached = Some(value);
                 }
             }
+            Command::MountInputs | Command::Mount { .. } | Command::Unmount { .. } => {
+                return Err("document operations require a UI host".into());
+            }
             Command::Next => return Ok(json!(self.graph.next())),
             Command::BatchBegin => self.graph.begin_batch(),
             Command::BatchEnd => self.graph.end_batch()?,
@@ -431,6 +445,10 @@ impl Session {
             Command::Dispose { scope } => {
                 self.graph.dispose(&scope)?;
                 self.sources.sources.retain(|id, _| id.scope != scope);
+                self.defaults.sources.retain(|id, _| id.scope != scope);
+                if let Some(registration) = &mut self.registration {
+                    registration.sources.retain(|id| id.scope != scope);
+                }
                 self.sources
                     .changes
                     .retain(|change| change.source.scope != scope);
@@ -451,7 +469,7 @@ impl Session {
                     .retain(|change| change.source != source);
                 self.computed.remove(&source);
             }
-            Command::Registered { sources } => {
+            Command::Registered { sources, .. } => {
                 self.graph
                     .check_idle(&SourceId::new("registration", "complete"))?;
                 self.registration = Some(Registration {

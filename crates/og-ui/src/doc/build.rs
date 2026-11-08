@@ -841,4 +841,3 @@ mod mount;
 mod nodes;
 mod retained;
 pub use mount::{Built, DocEvent, DocHost, DocResponse, Edit};
-pub(crate) use retained::RetainedHost;

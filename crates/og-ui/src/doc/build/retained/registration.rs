@@ -1,0 +1,197 @@
+use super::*;
+
+impl Ui {
+    pub(crate) fn document_mount_inputs(&self) -> Value {
+        json!(self.docs.retained.registrations.iter().map(|(mount, registration)| {
+            json!({ "mount": mount, "inputs": registration.inputs.values().collect::<Vec<_>>() })
+        }).collect::<Vec<_>>())
+    }
+
+    /// Register once over the host protocol; the next frame compiles with its
+    /// real host environment, after source callbacks have settled.
+    pub(crate) fn register_document_mount(
+        &mut self,
+        mount: SourceId,
+        document: String,
+        inputs: BTreeMap<String, SourceId>,
+    ) -> Result<(), String> {
+        mount.validate()?;
+        self.reactive.graph.check_idle(&mount)?;
+        if !self.docs.docs.contains_key(&document) {
+            return Err(format!("missing document '{document}'"));
+        }
+        for (name, source) in &inputs {
+            if name.is_empty() {
+                return Err("document input names must be nonempty".into());
+            }
+            source.validate()?;
+        }
+        let registration = Registration { document, inputs };
+        if self.docs.retained.registrations.get(&mount) == Some(&registration) {
+            return Ok(());
+        }
+        let mut host = std::mem::take(&mut self.docs.retained);
+        host.remove_mount(self, &mount);
+        host.registrations.insert(mount.clone(), registration);
+        host.pending_mounts.insert(mount);
+        self.docs.retained = host;
+        Ok(())
+    }
+
+    pub(crate) fn unmount_scope(&mut self, scope: &str) {
+        let mounts: Vec<_> = self
+            .docs
+            .retained
+            .registrations
+            .keys()
+            .filter(|mount| mount.scope == scope)
+            .cloned()
+            .collect();
+        for mount in mounts {
+            self.unmount_document(&mount);
+        }
+        if let Some(managed) = &mut self.docs.retained.managed {
+            managed.retain(|id, _| id.scope != scope);
+        }
+    }
+
+    pub(crate) fn inherit_document_registrations(&mut self, previous: &Self) {
+        let registrations = previous.docs.retained.registrations.clone();
+        self.docs.retained = RetainedHost {
+            pending_mounts: registrations.keys().cloned().collect(),
+            registrations,
+            managed: previous.docs.retained.managed.clone(),
+            ..Default::default()
+        };
+    }
+
+    pub(crate) fn registered_document_mounts(
+        &mut self,
+        mounts: Vec<SourceId>,
+    ) -> Result<(), String> {
+        self.reactive
+            .graph
+            .check_idle(&SourceId::new("registration", "complete"))?;
+        let mut managed = BTreeMap::new();
+        for mount in mounts {
+            let declaration = self
+                .docs
+                .retained
+                .registrations
+                .get(&mount)
+                .ok_or_else(|| {
+                    format!("unregistered document mount '{}:{}'", mount.scope, mount.id)
+                })?;
+            managed.insert(mount, declaration.clone());
+        }
+        self.docs.retained.managed = Some(managed);
+        Ok(())
+    }
+
+    pub(crate) fn document_registration_state(&self) -> Value {
+        json!(
+            self.docs
+                .retained
+                .managed
+                .as_ref()
+                .map(|m| m.iter().collect::<Vec<_>>())
+        )
+    }
+
+    pub(crate) fn restore_document_mounts(
+        &self,
+        value: &Value,
+        managed: &Value,
+    ) -> Result<RetainedHost, String> {
+        let mut restored = RetainedHost::restore(value)?;
+        let saved = if managed.is_null() {
+            None
+        } else {
+            Some(RetainedHost::restore(managed)?.registrations)
+        };
+        if let Some(current) = &self.docs.retained.managed {
+            if let Some(saved) = &saved {
+                for id in saved.keys().filter(|id| !current.contains_key(*id)) {
+                    restored.registrations.remove(id);
+                }
+            }
+            for (id, declaration) in current {
+                // Active mounts use current code. A newly declared mount takes
+                // its default; a saved runtime unmount remains unmounted.
+                if restored.registrations.contains_key(id)
+                    || saved.as_ref().is_none_or(|m| !m.contains_key(id))
+                {
+                    restored
+                        .registrations
+                        .insert(id.clone(), declaration.clone());
+                }
+            }
+            restored.managed = Some(current.clone());
+        } else {
+            restored.managed = saved;
+        }
+        restored.pending_mounts = restored.registrations.keys().cloned().collect();
+        restored.restoring = !restored.pending_mounts.is_empty();
+        Ok(restored)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::reactive::wire;
+
+    #[test]
+    fn binary_mounts_render_update_restore_and_dispose_without_element_calls() {
+        let mut ui = Ui::default();
+        ui.define_document(
+            UiDocument::parse(
+                "wire.svelte",
+                r#"
+            <meta name="component" content="wire">
+            <column><text id="Title">{$title}</text></column>
+        "#,
+            )
+            .unwrap(),
+        );
+        let send = |ui: &mut Ui, command: Value| {
+            let reply = wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap()))
+                .unwrap();
+            assert_eq!(reply[0]["ok"], true, "{reply}");
+        };
+        let tick = |ui: &mut Ui| {
+            ui.begin(
+                crate::InputFrame::default(),
+                crate::Viewport::new(640.0, 480.0),
+            );
+            ui.end();
+            ui.probe_elements()
+                .into_iter()
+                .filter(|e| e.kind == "label")
+                .map(|e| e.text)
+                .collect::<Vec<_>>()
+        };
+        let source = SourceId::new("test", "title");
+        let mount = json!({"op":"mount", "mount":SourceId::new("test", "view"),
+            "document":"wire", "inputs":{"title":source}});
+        send(
+            &mut ui,
+            json!({"op":"signal", "source":source, "initial":"First"}),
+        );
+        send(&mut ui, mount.clone());
+        assert_eq!(tick(&mut ui), ["First"]);
+        let saved = ui.save_state();
+        let identity = ui.mounted_topology().child_at(None, 0).unwrap().clone();
+        send(&mut ui, mount);
+        send(
+            &mut ui,
+            json!({"op":"set", "source":source, "value":"Second"}),
+        );
+        assert_eq!(tick(&mut ui), ["Second"]);
+        assert_eq!(ui.mounted_topology().child_at(None, 0), Some(&identity));
+        ui.restore_state(&saved).unwrap();
+        assert_eq!(tick(&mut ui), ["First"]);
+        send(&mut ui, json!({"op":"dispose", "scope":"test"}));
+        assert!(tick(&mut ui).is_empty());
+    }
+}

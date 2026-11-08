@@ -252,6 +252,12 @@ impl Graph {
         self.pending_bindings.remove(&binding);
     }
 
+    pub(crate) fn clear_bindings(&mut self) {
+        self.binding_reads.clear();
+        self.binding_observers.clear();
+        self.pending_bindings.clear();
+    }
+
     pub fn take_bindings(&mut self) -> BTreeSet<u64> {
         if self.batch_depth != 0 || self.next().is_some() || !self.active.is_empty() {
             return BTreeSet::new();

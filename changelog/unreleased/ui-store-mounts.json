@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UiScope.mount",
+      "summary": "Mount loaded UI documents with named store inputs over the binary host protocol, without per-element TypeScript calls. Mounts preserve keyed identities, subscribe to inputs until unmount or disposal, and restore presentation state against current code registrations."
+    }
+  ]
+}

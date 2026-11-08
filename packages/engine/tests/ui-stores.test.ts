@@ -12,6 +12,28 @@ declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stdout: Uint8
 
 beforeAll(() => { loadNativeHost(); });
 
+test("named store mounts render and restore keyed documents on both hosts", () => {
+  const root = mkdtempSync(join(tmpdir(), "og-ui-mounts-"));
+  try {
+    mkdirSync(join(root, "assets"));
+    writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Mounts"\nid "mounts"\nentry "main.ts"\n');
+    writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
+    writeFileSync(join(root, "assets/mount.svelte"), `<meta name="component" content="mount">
+<column><text id="Title">{$title}</text><text id="Sensor">{$sensor}</text>
+{#each $rows as row (row.id)}<text id="Label">{row.label}</text>{/each}
+</column>`);
+    cookProject(root, root);
+    const run = (host: string): unknown => {
+      const result = Bun.spawnSync(["bun", fileURLToPath(new URL("./support/ui-mount-round.ts", import.meta.url)), host, root]);
+      if (result.exitCode !== 0) throw new Error(new TextDecoder().decode(result.stderr));
+      return JSON.parse(new TextDecoder().decode(result.stdout));
+    };
+    const node = run("node");
+    expect(node).toEqual({ restored: true, starts: 4, stops: 4, labels: [] });
+    expect(run("web")).toEqual(node);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test("focus and hover stay outside simulation while recorded confirmation replays across hosts", () => {
   const root = mkdtempSync(join(tmpdir(), "og-ui-checkpoint-"));
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "UI checkpoint"\nid "ui-checkpoint"\nentry "main.ts"\n');

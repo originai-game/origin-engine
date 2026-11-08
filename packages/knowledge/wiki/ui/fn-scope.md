@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.scope`
 
-The entry to named svelte/store-compatible presentation data. Rust owns values and the dependency graph. No Svelte compiler, runes, TS elements or asynchronous primitives. Document mounting awaits the Svelte parser IR; this entry does not target the old screen dialect. See docs/ui.md for a worked example and If you know Svelte.
+The entry to named svelte/store-compatible presentation data and retained document mounts. Rust owns values, the dependency graph and mounted elements. No Svelte compiler, runes, TS elements or asynchronous primitives. See docs/ui.md for a worked example and If you know Svelte.
 
 ```ts
 og.ui.scope(world: World, id: string): UiScope
@@ -24,11 +24,11 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 ```ogt
 fn scope {
   host false
-  doc "The entry to named svelte/store-compatible presentation data. Rust owns values and the dependency graph. No Svelte compiler, runes, TS elements or asynchronous primitives. Document mounting awaits the Svelte parser IR; this entry does not target the old screen dialect. See docs/ui.md for a worked example and If you know Svelte."
+  doc "The entry to named svelte/store-compatible presentation data and retained document mounts. Rust owns values, the dependency graph and mounted elements. No Svelte compiler, runes, TS elements or asynchronous primitives. See docs/ui.md for a worked example and If you know Svelte."
   param world World "The world that owns the presentation checkpoint."
   param id String "An explicit, nonempty stable scope name."
   returns UiScope
 }
 ```
 
-<sub>Module `ui` line 7984</sub>
+<sub>Module `ui` line 7998</sub>

@@ -516,6 +516,7 @@ impl Ui {
             "heldScale": d.layers.held_scale,
             "stores": self.reactive.save(),
             "mounts": d.retained.save(),
+            "mountRegistrations": self.document_registration_state(),
             "seen": d.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
             "layers": d.layers.layers.iter().map(|l| json!({
                 "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
@@ -526,12 +527,13 @@ impl Ui {
     }
 
     pub(crate) fn restore_docs_state(&mut self, v: &Value) -> Result<(), String> {
-        let retained = crate::doc::build::RetainedHost::restore(&v["mounts"])?;
+        let retained = self.restore_document_mounts(&v["mounts"], &v["mountRegistrations"])?;
         if let Some(stores) = v.get("stores") {
             self.reactive.restore(stores)?;
         } else {
             self.reactive = Default::default();
         }
+        self.reactive.graph.clear_bindings();
         let d = &mut self.docs;
         d.retained = retained;
         d.built_tick = 0;

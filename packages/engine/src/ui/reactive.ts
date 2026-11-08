@@ -5,7 +5,7 @@ import { decodeUiPatch, encodeUiPatch } from "./reactive-wire.ts";
 type Transport = (bytes: Uint8Array) => Uint8Array;
 type Kind = "writable" | "readable" | "derived" | "collection";
 type Callback = { source: UiSource; run: () => unknown };
-type Registration = Map<Scope, { stores: Set<string> }>;
+type Registration = Map<Scope, { stores: Set<string>; mounts: Set<string> }>;
 
 function isSource(value: unknown): value is UiSource {
   return typeof value === "object" && value !== null && "scope" in value && typeof value.scope === "string"
@@ -44,6 +44,47 @@ export class UiReactor {
 
   constructor(transport: Transport) { this.transport = transport; }
 
+  restoreMounts(): Result<void> {
+    const source = { scope: "restoration", id: "mounts" };
+    const result = this.operation(source, { op: "mountInputs" });
+    if (!result.ok) return result;
+    if (!Array.isArray(result.value)) return this.error(source, "invalid mounted inputs reply");
+    const restored = new Map<Scope, Map<string, Set<Store>>>();
+    const entries: unknown[] = result.value;
+    for (const entry of entries) {
+      if (!entry || typeof entry !== "object" || !("mount" in entry) || !isSource(entry.mount)
+        || !("inputs" in entry) || !Array.isArray(entry.inputs) || !entry.inputs.every(isSource)) {
+        return this.error(source, "invalid mounted inputs reply");
+      }
+      const scope = this.scopes.get(entry.mount.scope);
+      if (!scope) continue;
+      const inputs = new Set<Store>();
+      for (const source of entry.inputs) {
+        const store = this.scopes.get(source.scope)?.stores.get(source.id);
+        if (store) inputs.add(store);
+      }
+      let mounts = restored.get(scope);
+      if (!mounts) restored.set(scope, mounts = new Map());
+      mounts.set(entry.mount.id, inputs);
+    }
+    // Acquire before releasing so a source transferred between mounts stays live.
+    for (const [scope, mounts] of restored) {
+      for (const [id, inputs] of mounts) {
+        for (const store of inputs) if (!scope.mounts.get(id)?.has(store)) store.retain();
+      }
+    }
+    for (const scope of this.scopes.values()) {
+      const mounts = restored.get(scope);
+      for (const [id, inputs] of scope.mounts) {
+        for (const store of inputs) if (!mounts?.get(id)?.has(store)) store.release();
+      }
+      scope.mounts.clear();
+      for (const [id, inputs] of mounts ?? []) scope.mounts.set(id, inputs);
+    }
+    this.flush();
+    return { ok: true, value: undefined };
+  }
+
   registerPresentation(run: () => void): Result<void> {
     if (this.registration) return { ok: false, reason: "UI registration is already running" };
     const current: Registration = new Map();
@@ -55,6 +96,9 @@ export class UiReactor {
     if (this.registrationErrors.length === 0) {
       for (const [scope, previous] of this.managed) {
         const next = current.get(scope);
+        for (const id of previous.mounts) {
+          if (!next?.mounts.has(id)) scope.unmount(id);
+        }
         for (const name of previous.stores) {
           const store = scope.stores.get(name);
           if (store && !next?.stores.has(name)) {
@@ -70,6 +114,7 @@ export class UiReactor {
       this.operation({ scope: "registration", id: "complete" }, {
         op: "registered",
         sources: [...current].flatMap(([scope, ids]) => [...ids.stores].map(id => ({ scope: scope.id, id }))),
+        mounts: [...current].flatMap(([scope, ids]) => [...ids.mounts].map(id => ({ scope: scope.id, id }))),
       });
     }
     const errors = this.registrationErrors;
@@ -78,15 +123,15 @@ export class UiReactor {
     return errors.length ? { ok: false, reason: errors.join("\n") } : { ok: true, value: undefined };
   }
 
-  note(scope: Scope, id: string): boolean {
+  note(scope: Scope, id: string, kind: "stores" | "mounts" = "stores"): boolean {
     if (!this.registration) return true;
     let seen = this.registration.get(scope);
-    if (!seen) this.registration.set(scope, seen = { stores: new Set() });
-    if (seen.stores.has(id)) {
+    if (!seen) this.registration.set(scope, seen = { stores: new Set(), mounts: new Set() });
+    if (seen[kind].has(id)) {
       this.error({ scope: scope.id, id }, "duplicate ID within GameDesc.ui registration");
       return false;
     }
-    seen.stores.add(id);
+    seen[kind].add(id);
     return true;
   }
 
@@ -241,6 +286,10 @@ export class UiReactor {
     const source = { scope: scope.id, id: "dispose" };
     const idle = this.operation(source, { op: "checkIdle", source });
     if (!idle.ok) return idle;
+    for (const id of [...scope.mounts.keys()]) {
+      const result = scope.unmount(id);
+      if (!result.ok) return result;
+    }
     for (const store of scope.stores.values()) {
       for (const stop of [...this.subscriptions.get(store) ?? []]) stop();
       this.subscriptions.delete(store);
@@ -296,6 +345,7 @@ class Store {
 class Scope implements UiScope {
   readonly errors: string[] = [];
   readonly stores = new Map<string, Store>();
+  readonly mounts = new Map<string, Set<Store>>();
   private readonly reactor: UiReactor;
   readonly id: string;
   constructor(reactor: UiReactor, id: string) { this.reactor = reactor; this.id = id; }
@@ -389,6 +439,45 @@ class Scope implements UiScope {
     };
     reactor.handles.set(handle, store);
     return handle;
+  }
+
+  mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>): Result<void> {
+    const mount = this.source(id);
+    if (!this.reactor.note(this, id, "mounts")) return { ok: false, reason: "duplicate mount ID" };
+    const idle = this.reactor.operation(mount, { op: "checkIdle", source: mount });
+    if (!idle.ok) return idle;
+    const sources: Record<string, UiSource> = {};
+    const next = new Set<Store>();
+    for (const [name, handle] of Object.entries(inputs)) {
+      const store = this.reactor.handles.get(handle);
+      if (!store || this.reactor.scopes.get(store.source.scope)?.stores.get(store.source.id) !== store) {
+        return this.reactor.error(mount, "mount inputs must be live named stores from this world");
+      }
+      Object.defineProperty(sources, name, { value: store.source, enumerable: true });
+      next.add(store);
+    }
+    const previous = this.mounts.get(id) ?? new Set<Store>();
+    for (const store of next) if (!previous.has(store)) store.retain();
+    this.reactor.flush();
+    const result = this.reactor.operation(mount, { op: "mount", mount, document, inputs: sources });
+    if (!result.ok) {
+      for (const store of next) if (!previous.has(store)) store.release();
+      return result;
+    }
+    this.mounts.set(id, next);
+    for (const store of previous) if (!next.has(store)) store.release();
+    return { ok: true, value: undefined };
+  }
+
+  unmount(id: string): Result<void> {
+    const mount = this.source(id);
+    const result = this.reactor.operation(mount, { op: "unmount", mount });
+    if (!result.ok) return result;
+    const previous = this.mounts.get(id);
+    this.mounts.delete(id);
+    for (const store of previous ?? []) store.release();
+    this.reactor.flush();
+    return { ok: true, value: undefined };
   }
 
   takeErrors(): readonly string[] { return this.errors.splice(0); }
