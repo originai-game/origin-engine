@@ -593,12 +593,16 @@ fn collect(
     (entries, None)
 }
 
-/// A text with visible characters (plain or styled): one that has no
-/// bounds only because its face lacks every glyph of it.
+/// A text with visible characters (plain or styled) that measured no
+/// width: its face lacks every glyph of it. A text clipped out of view
+/// measured its width and is not one; it is dropped like any command that
+/// draws nothing.
 fn unmeasured_text(cmd: &DrawCmd) -> bool {
     match cmd {
         DrawCmd::StyledText { text, .. } => unmeasured_text(text),
-        DrawCmd::Text { text, .. } => text.chars().any(|c| !c.is_whitespace()),
+        DrawCmd::Text { text, bounds, .. } => {
+            bounds.is_empty() && text.chars().any(|c| !c.is_whitespace())
+        }
         _ => false,
     }
 }
@@ -1924,6 +1928,42 @@ mod levels {
         let before = items.clone();
         assert!(!levels.update(&mut items, inside, 1.0));
         assert_eq!(items, before);
+    }
+
+    /// A text that measured no width (its face lacks every glyph) goes on
+    /// as an item, so the renderer counts its missing glyphs; one clipped
+    /// out of view measured its width and goes like any command that draws
+    /// nothing, so a long list sends the renderer only what is in view.
+    #[test]
+    fn only_a_text_that_measured_no_width_goes_on_without_bounds() {
+        let text = |bounds: Rect, clip: Rect| DrawCmd::Text {
+            x: bounds.x,
+            baseline: bounds.y + 12.0,
+            size: 16.0,
+            text: "\u{2022} item".into(),
+            color: [1.0; 4],
+            font: FontHandle::from_bits(1),
+            bounds,
+            clip,
+            tracking: 0.0,
+            weight: 0.0,
+            glow: None,
+            placements: Vec::new(),
+        };
+        let view = Rect::new(0.0, 0.0, 100.0, 100.0);
+        let items = assign_levels(plain(vec![
+            text(Rect::new(10.0, 10.0, 0.0, 16.0), view),
+            text(Rect::new(10.0, 300.0, 60.0, 16.0), view),
+            text(Rect::new(10.0, 30.0, 60.0, 16.0), view),
+        ]));
+        let ys: Vec<f32> = items
+            .iter()
+            .map(|i| match &i.cmd {
+                DrawCmd::Text { bounds, .. } => bounds.y,
+                c => panic!("{c:?}"),
+            })
+            .collect();
+        assert_eq!(ys, [10.0, 30.0]);
     }
 
     /// A layer levels its own commands from 0 and is one command of its

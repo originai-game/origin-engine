@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "A UI text clipped out of view no longer reaches the renderer on every frame as if its face lacked its glyphs: only a text that measured no width goes on without bounds. A screen of 1,000 labels with 360 in view sent all 1,000 to be recorded on every idle tick (idle 0.047 ms, record 0.032; now 0.027 and 0.013)."
+    }
+  ]
+}
