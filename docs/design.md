@@ -200,9 +200,8 @@ cancellable `og dev` checks use the stateless path.
   shift exact in f32; another step rounds each place once per shift. A
   world that never names it keeps its hash and frames.
 - The presentation layer is outside this: what is computed for display
-  only may differ between devices, precisions and runs where its owner
-  says so (the motion model's poses do only on its GPU opt-in, §2.7). It
-  never writes a component the simulation
+  only may differ between devices, precisions and runs (the motion
+  model's poses, §2.7). It never writes a component the simulation
   reads, is not in a snapshot or `world_hash`, and game code does not
   branch on it; the simulation stays bit-identical on every host.
 - Presentation checkpoints. A capture is a function of the world, the
@@ -262,37 +261,31 @@ cancellable `og dev` checks use the stateless path.
     the simulation's alone.
   - *og.motion.* The motion Presenter (§2.7) steps once a tick by the
     tick's dt (its phase, playback warp, foot contacts, the drawn root's
-    offset, the planter's legs), whether or not a frame is drawn, and
-    its poses are a function of the tick state on every host. Its model
-    batches are taken a fixed `BATCH_SECONDS` after they start and
+    offset, the planter's legs), whether or not a frame is drawn. Its
+    model batches are taken a fixed `BATCH_SECONDS` after they start and
     decoded whole; an agent with no frame left takes its batch at once;
-    the model's load is waited for when an agent first needs it; nothing
-    skips frames to catch up a wall clock. On the CPU, the default, a
-    batch is one character's generation, started the tick it asks: its
-    units (half encoder layers, decoder stages) are spread evenly over
-    the ticks to its due tick and run across the lanes, the rest at that
-    tick, so no host ever waits for it and the web holds no tick (on
-    motion-feet's course in headless Chrome, none of 802 ticks waited for
-    a batch, against 68 on the GPU). Its floats are the same on every
-    host (`crates/og-motion/src/cpu.rs`): poses and the presentation
-    hash equal native's on every tick in Chrome
-    (`packages/engine/tests/web/motion-ticks.ts`). On the GPU, the
-    opt-in (`og.motion.setBackend`), one batch of every character asking
-    runs at a time in slices of GPU time; a native host waits for it in
-    place, and the web, whose Worker cannot wait for a readback, steps
-    og.motion in the probe's tick gate (the hold a missing cell pack or
-    lockstep input puts on a tick): a step that needs a batch not yet
-    back stops where a native host would wait, the gate holds the next
-    tick while the Worker goes on drawing and the main thread taking
-    input, and a later frame goes on from there. The tick's snapshot
-    answers no presentation hash, and a capture no frame, until it has.
-    The GPU's arithmetic is the backend compiler's, so its poses and the
-    presentation hash are equal per host and backend only, and across
-    hosts the schedule is (each batch taken at its due tick, the frames
-    each agent shows). The checkpoint keeps every agent as drawn, the
-    model's queued frames, the outstanding batches' inputs, which a
-    restore runs again (the batches then computing are dropped), and
-    where a held step stopped. A display frame
+    the model's load is waited for when an agent first needs it. None of
+    these waits holds a tick on any host: the Presenter steps the ticks
+    the world has run in order, from each tick's inputs taken as it ends
+    (the agents' Transforms, the goals, og.anim's pose), and stops where
+    a result has not come back; the world goes on, and when the result
+    lands the Presenter steps the ticks behind with it, as of the tick it
+    was due. A frame meanwhile draws the last tick stepped, so live
+    frames may vary run to run (`dump_motion`'s `late` counts the ticks
+    it was behind). A capture, a presentation hash and a fork check
+    settle first: natively they wait for every result due by their tick,
+    and on the web the probe asks again, as for a font pack's glyphs;
+    their frames are then the same run to run on one host and GPU. On
+    the GPU, the default, one batch of every character asking runs at a
+    time in slices of GPU time. On the CPU, the opt-in
+    (`og.motion.setBackend`), a batch is one character's generation,
+    spread in units (half encoder layers, decoder stages) over the ticks
+    to its due tick across the lanes, about 21 ms of CPU a generation on
+    one native thread and 23 ms in wasm, so it suits a few characters.
+    The checkpoint keeps every agent as drawn, the model's queued frames,
+    the ticks behind, the outstanding batches' inputs, which a restore
+    runs again (the batches then computing are dropped), and where the
+    step in front stopped. A display frame
     between ticks blends each agent's palette from the tick before's at
     alpha, as og-anim's (translation and scale lerped, rotation slerped);
     captures and the probe draw the tick, and the blend steps nothing.
@@ -1475,11 +1468,11 @@ window: Origin Desktop owns the AccessKit platform adapter (platform ask
   motion model, a student distilled from NVIDIA MotionBricks, fills in the
   motion between the character's recent poses and those goals, a short span
   at a time. The model runs in Rust, one implementation for both hosts and
-  no third-party inference runtime: by default on the CPU across the lanes,
-  in f32 with every sum in one fixed order (`crates/og-motion/src/cpu.rs`),
-  so its poses are the same bits on every host; `og.motion.setBackend`
-  opts a big presentation-only crowd into wgpu compute, cheaper per
-  character at scale and the same only on one host and GPU. Its poses are presentation (§2.4): the simulation moves the
+  no third-party inference runtime: by default on wgpu compute beside the
+  renderer, its results applied when they come back (no tick waits for
+  them; captures do, §2.4); `og.motion.setBackend` runs it on the CPU
+  across the lanes instead (`crates/og-motion/src/cpu.rs`). Its poses are
+  presentation (§2.4), and game logic never reads them: the simulation moves the
   character by its controller deterministically, the pose follows, and
   gameplay never reads it; og-anim retargets onto the game's rig and plants
   the feet from the model's contact output. Its weights ship inside the

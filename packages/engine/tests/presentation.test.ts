@@ -32,7 +32,7 @@ import { fileURLToPath } from "node:url";
 import { cookProject, ogBin } from "./support/og-bin.ts";
 
 declare const Bun: {
-  spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawnSync(cmd: string[], o: { cwd: string; env?: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
   spawn(cmd: string[]): { kill(): void };
 };
 
@@ -110,42 +110,57 @@ gpuTest("terrain-stream's display frames after a fork before its tiles stream in
 gpuTest("motion-feet's display frames after a fork mid-course are the uninterrupted run's (og.motion's Presenter)", () => {
   const project = join(repo, "tests", "fixtures", "motion-feet");
   cookProject(project, repo);
-  displayFork(project, ["--ticks", "360", "--fork-at", "300", "--size", "640x360"], 60);
+  displayFork(project, ["--ticks", "360", "--fork-at", "300", "--size", "640x360", "--settle"], 60);
 }, 120_000);
 
-// og.motion steps by the tick (crates/og-runtime/src/motion/present.rs):
-// its batches are taken at a fixed tick and the model is waited for when
-// an agent first needs it, so the poses drawn never depend on how fast the
-// machine runs. Two runs of motion-feet's course, the second beside busy
-// CPU loops, draw the same frames and measure the same feet: a wall clock
-// left in (a skip to catch up, a decode budget, the first batch's latency)
-// moves the counts between runs, and more under load.
+// og.motion's results are applied as of the tick they were due, however
+// late they come back (crates/og-runtime/src/motion/present.rs): no tick
+// waits for one, the Presenter falls behind and catches up, and a capture
+// settles first. Three runs of motion-feet's course, one with every GPU
+// result asked for 600 ms after its batch started
+// (OG_MOTION_READBACK_DELAY_MS) and one beside busy CPU loops, capture the
+// same screenshots and measure the same feet; the late run's world ran on
+// while results were late. A wall clock left in a step (a skip to catch
+// up, a result applied at the tick it arrived) moves the frames.
 interface MotionAgent { entity: number; framesShown: number; framesStarved: number; framesWarmup: number; footing: unknown; plantedSlide: unknown }
+interface MotionRun { agents: Pick<MotionAgent, "entity" | "framesShown" | "framesStarved" | "framesWarmup" | "footing" | "plantedSlide">[]; shots: string[]; late: { ticks: number; most: number } }
 
-function motionCourse(out: string): Pick<MotionAgent, "entity" | "framesShown" | "framesStarved" | "framesWarmup" | "footing" | "plantedSlide">[] {
+function motionCourse(out: string, env: Record<string, string> = {}): MotionRun {
   const project = join(repo, "tests", "fixtures", "motion-feet");
-  const r = Bun.spawnSync([ogBin(), "run", "--headless", project, "--size", "640x360", "--commands", "14.2:dump_motion:feet.json;14.25:quit", "--out", out, "--json"], { cwd: repo });
+  const shots = ["3", "6.5", "10", "14"];
+  const commands = `${shots.map((t, i) => `${t}:screenshot:s${i}.png`).join(";")};14.2:dump_motion:feet.json;14.25:quit`;
+  const r = Bun.spawnSync([ogBin(), "run", "--headless", project, "--size", "640x360", "--commands", commands, "--out", out, "--json"], { cwd: repo, env: { ...process.env, ...env } });
   if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr));
-  const agents = (JSON.parse(readFileSync(join(out, "feet.json"), "utf8")) as { model: { agents: MotionAgent[] } }).model.agents;
-  return agents.map(({ entity, framesShown, framesStarved, framesWarmup, footing, plantedSlide }) => ({ entity, framesShown, framesStarved, framesWarmup, footing, plantedSlide }));
+  const model = (JSON.parse(readFileSync(join(out, "feet.json"), "utf8")) as { model: { agents: MotionAgent[]; late: { ticks: number; most: number } } }).model;
+  return {
+    agents: model.agents.map(({ entity, framesShown, framesStarved, framesWarmup, footing, plantedSlide }) => ({ entity, framesShown, framesStarved, framesWarmup, footing, plantedSlide })),
+    shots: shots.map((_, i) => createHash("sha256").update(readFileSync(join(out, `s${i}.png`))).digest("hex")),
+    late: model.late,
+  };
 }
 
-gpuTest("og.motion draws the same frames and feet on two runs of motion-feet, one under load", () => {
+gpuTest("og.motion captures the same frames and feet with late GPU results and under load, and no tick waits", () => {
   cookProject(join(repo, "tests", "fixtures", "motion-feet"), repo);
   const dir = mkdtempSync(join(tmpdir(), "og-motion-runs-"));
   const busy: { kill(): void }[] = [];
   try {
     const quiet = motionCourse(join(dir, "quiet"));
-    expect(quiet.length).toBe(2);
-    expect(quiet.every((a) => a.framesShown > 300)).toBe(true);
+    expect(quiet.agents.length).toBe(2);
+    expect(quiet.agents.every((a) => a.framesShown > 300)).toBe(true);
+    const late = motionCourse(join(dir, "late"), { OG_MOTION_READBACK_DELAY_MS: "600" });
+    // The world ran on past results due and not back: no tick waited.
+    expect(late.late.ticks).toBeGreaterThan(30);
+    expect(late.shots).toEqual(quiet.shots);
+    expect(late.agents).toEqual(quiet.agents);
     for (let i = 0; i < 8; i++) busy.push(Bun.spawn(["bun", "-e", "for (;;) {}"]));
     const loaded = motionCourse(join(dir, "loaded"));
-    expect(loaded).toEqual(quiet);
+    expect(loaded.shots).toEqual(quiet.shots);
+    expect(loaded.agents).toEqual(quiet.agents);
   } finally {
     for (const b of busy) b.kill();
     rmSync(dir, { recursive: true, force: true });
   }
-}, 180_000);
+}, 240_000);
 
 // og run --capture-only draws no display frame, only the captures its
 // commands ask for; each is a function of the tick-stepped presentation

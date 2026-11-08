@@ -18,7 +18,9 @@
 //             and the same ticks drawn again; every frame must be the first
 //             pass's byte for byte (`checked`, `mismatches`); with
 //             --frames <dir>, the first pass's frames as <tick>.rgba there
-//             (tests/web/presentation-fork.ts compares the web's with them)
+//             (tests/web/presentation-fork.ts compares the web's with them);
+//             with --settle, a small capture before each frame, so og.motion's
+//             results due by the tick have come back as a fork check needs
 //   ticks     a display frame on every tick, and each tick's world and
 //             presentation hash (`ticks`, from tick 1), then `dump_motion`
 //             (`motion`): what the web's run of the same project must reach
@@ -26,7 +28,7 @@
 //
 //   bun tests/support/presentation-capture.ts --project <dir> --mode every|capture|restore|synctest|display|ticks
 //       --ticks N [--restore-at A] [--fork-at R] [--rollback K] [--size WxH]
-//       [--inputs "tick:action[:args];..."] [--out <file.png>] [--frames <dir>]
+//       [--inputs "tick:action[:args];..."] [--out <file.png>] [--frames <dir>] [--settle]
 //
 // Inputs are probe steps sent before the tick they name, in every mode and
 // on every pass over a tick, so a restored run presses the same keys on the
@@ -182,7 +184,12 @@ else if (mode === "restore") {
   const pass = (): Uint8Array[] => {
     const frames: Uint8Array[] = [];
     while (tick() < ticks) {
-      stepTo(tick() + 1, true);
+      // --settle: a fork check settles first, as a capture does (a small
+      // one waits for every og.motion result due by the tick): the tick
+      // stepped without a frame, so no frame before the settle feeds TAA.
+      const settle = argv.includes("--settle");
+      stepTo(tick() + 1, !settle);
+      if (settle) probe.capture(64, 36);
       frames.push(Uint8Array.from(native().og_node_render_frame(engine.id)));
     }
     return frames;

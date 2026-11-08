@@ -15,13 +15,13 @@ What it checks:
   `bun packages/engine/scripts/motion-model.ts ensure`); without a renderer
   the check is unchecked.
 - `packages/engine/tests/web/motion-ticks.ts` (the `browser` lane): the
-  course in headless Chrome on WebGPU. On the CPU (the default) every
-  tick's world and presentation hash equal the native host's and no tick
-  after the model's load waits for a batch; on the GPU opt-in
-  (`motion_backend:gpu`), once as the GPU answers and once with every
-  og.motion readback 600 ms late, every tick has the same world and
-  presentation hash, and the native host's world hashes and og.motion
-  schedule (`dump_motion`'s `taken` and frame counts). `packages/engine/tests/presentation.test.ts` runs the course
-  twice natively, once under load.
+  course in headless Chrome on WebGPU on the GPU backend, once as the GPU
+  answers and once with every og.motion readback 600 ms late: no frame is
+  held for og.motion, the late run's Presenter falls behind the world, and
+  both runs have the same world hash on every tick and the same probe
+  captures. `packages/engine/tests/presentation.test.ts` runs the course
+  natively three times (results asked for 600 ms late with
+  `OG_MOTION_READBACK_DELAY_MS`, and under load) for the same screenshots
+  and feet, and checks display frames after a fork.
 
 Budget: under 10 s warm (measured 5–7 s on Metal at 640x360, with its cook).

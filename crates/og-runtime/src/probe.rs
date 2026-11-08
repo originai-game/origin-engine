@@ -88,9 +88,9 @@ impl Capture for RuntimeCapture {
     }
 
     fn presentation_hash(&self) -> Option<u64> {
-        // None while og.motion's step at this tick waits for the GPU (the
-        // web): ask again.
-        if !engine(self.engine).is_ok_and(|eng| super::motion::present::step(&eng)) {
+        // og.motion at this tick with every result due by it: None while
+        // one has not come back (the web, which cannot wait): ask again.
+        if !engine(self.engine).is_ok_and(|eng| super::motion::present::settle(&eng)) {
             return None;
         }
         let rs = self.render.try_borrow().ok()?;
@@ -136,10 +136,10 @@ impl Capture for RuntimeCapture {
     }
 
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
-        // og.motion at the captured tick, as a display frame there steps it
-        // (once a tick: a frame drawn at this tick already did); no frame
-        // while it waits for the GPU (the web), so the probe asks again.
-        if !engine(self.engine).is_ok_and(|eng| super::motion::present::step(&eng)) {
+        // og.motion at the captured tick with every result due by it, so
+        // the frame reproduces run to run; no frame while one has not come
+        // back (the web, which cannot wait), so the probe asks again.
+        if !engine(self.engine).is_ok_and(|eng| super::motion::present::settle(&eng)) {
             return None;
         }
         let mut rs = self.render.try_borrow_mut().ok()?;

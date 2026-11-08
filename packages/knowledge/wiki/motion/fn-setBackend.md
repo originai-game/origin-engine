@@ -6,7 +6,7 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 ### `og.motion.setBackend`
 
-Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). cpu, the default, poses every agent with the same bits on every host, which replays, forks, captures and cross-host checks rely on; its lanes split the agents' generations. gpu is an explicit opt-in for big presentation-only crowds: cheaper per character at scale, but its poses are identical only on one host and GPU (each backend's shader compiler rounds its own way), and on the web a tick whose batch has not come back waits for it. Set it before the first agent; a change later loads the model again on the other backend and every agent's generated motion starts again.
+Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). gpu, the default, runs it beside the renderer, cheapest per character. No tick waits for it: a result is applied when it comes back, as of the tick it was due, and until then a frame draws the poses it has, so live frames may vary run to run (what checks a frame waits for it, as the module's overview says). cpu runs it on the CPU across the lanes instead, each generation spread over the ticks before it is due (about 21 ms of CPU a generation natively, 23 ms in wasm), for a few characters. Set it before the first agent; a change later loads the model again on the other backend and every agent's generated motion starts again.
 
 ```ts
 og.motion.setBackend(world: World, backend: MotionBackend): Result<void>
@@ -23,7 +23,7 @@ Binding symbol `og_motion_set_backend` · publish builds: kept
 
 ```ogt
 fn setBackend {
-  doc "Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). cpu, the default, poses every agent with the same bits on every host, which replays, forks, captures and cross-host checks rely on; its lanes split the agents' generations. gpu is an explicit opt-in for big presentation-only crowds: cheaper per character at scale, but its poses are identical only on one host and GPU (each backend's shader compiler rounds its own way), and on the web a tick whose batch has not come back waits for it. Set it before the first agent; a change later loads the model again on the other backend and every agent's generated motion starts again."
+  doc "Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). gpu, the default, runs it beside the renderer, cheapest per character. No tick waits for it: a result is applied when it comes back, as of the tick it was due, and until then a frame draws the poses it has, so live frames may vary run to run (what checks a frame waits for it, as the module's overview says). cpu runs it on the CPU across the lanes instead, each generation spread over the ticks before it is due (about 21 ms of CPU a generation natively, 23 ms in wasm), for a few characters. Set it before the first agent; a change later loads the model again on the other backend and every agent's generated motion starts again."
   param world World "The world."
   param backend MotionBackend "cpu or gpu."
   returns Result.Void "Refused for none."

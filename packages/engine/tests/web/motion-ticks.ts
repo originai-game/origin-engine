@@ -1,33 +1,26 @@
-// og.motion at fixed ticks on the web (docs/design.md §2.4), on both of
-// its backends (crates/og-runtime/src/motion/present.rs).
+// og.motion on the web never holds a tick, and its captures reproduce
+// (docs/design.md §2.4, crates/og-runtime/src/motion/present.rs).
 //
 // motion-feet's course (tests/fixtures/motion-feet: two agents walking,
 // running, jumping, turning, posing) runs in headless Chrome on WebGPU from
-// its dev web export, one tick per `frame` call, --ticks ticks (default
-// 420), and natively (tests/support/presentation-capture.ts --mode ticks).
-// Each tick's snapshot (asked again while its presentation hash is empty:
-// og.motion's step at that tick still waits) is read, and checked:
-// - cpu, the default: every tick's world and presentation hash equal the
-//   native host's, bit for bit (the model's floats are the same on every
-//   host), no tick waits for og.motion, and the og.motion schedule
-//   (`dump_motion`'s `taken`, each agent's frames shown, starved and
-//   warming up) is native's;
-// - gpu, the opt-in (`motion_backend:gpu`), once as the GPU answers and
-//   once with every og.motion readback (the `og-motion readback` buffer's
-//   mapAsync, patched by a module the engine Worker imports before
-//   game.js) held back --delay ms (default 600), past its due tick at the
-//   harness's pace: the probe's tick gate holds the next tick until the
-//   batch lands, so the delayed run's world and presentation hash equal
-//   the prompt run's on every tick, both runs' world hashes and schedule
-//   equal native gpu's. Their presentation hashes are compared within the
-//   web host only: the GPU's floats are each backend compiler's.
+// its dev web export on the GPU backend (the default), one `frame` call a
+// tick, --ticks ticks (default 420), twice: once as the GPU answers and
+// once with every og.motion readback (the `og-motion readback` buffer's
+// mapAsync, patched by a module the engine Worker imports before game.js)
+// held back --delay ms (default 600). Checked:
+// - every frame call takes a tick: the probe's gate never holds one for
+//   og.motion, prompt or late (the late run's Presenter falls behind the
+//   world instead, `dump_motion`'s `late`);
+// - the world hash is the same on every tick in both runs;
+// - a probe capture every --every ticks (default 60) is the same PNG in
+//   both runs: a capture waits for every result due by its tick.
 //
 // --realtime <s> instead plays the course paced like a page (a frame every
 // 16 ms, the wall time since the last as its elapsed) for <s> seconds and
-// reports the frames whose tick the gate held, and for how long, on
-// --backend cpu (default) or gpu: what the wait costs a player.
+// reports any frames whose tick the gate held, on --backend gpu (default)
+// or cpu.
 //
-//   bun tests/web/motion-ticks.ts [--ticks N] [--delay ms] [--realtime s [--backend cpu|gpu]] [--chrome <path>]
+//   bun tests/web/motion-ticks.ts [--ticks N] [--delay ms] [--every N] [--realtime s [--backend gpu|cpu]] [--chrome <path>]
 //
 // Needs Chrome (cdp.ts), a GPU and the motion model
 // (bun scripts/motion-model.ts ensure). Writes dist/test-motion-ticks/motion-ticks.json;
@@ -56,17 +49,15 @@ const project = join(repo, "tests", "fixtures", "motion-feet");
 const TICKS = Number(opt("--ticks") ?? 420);
 const DELAY = Number(opt("--delay") ?? 600);
 const REALTIME = Number(opt("--realtime") ?? 0);
-const BACKEND = opt("--backend") ?? "cpu";
+const BACKEND = opt("--backend") ?? "gpu";
+const EVERY = Number(opt("--every") ?? 60);
 const [WIDTH, HEIGHT] = [640, 360];
 const work = join(pkg, "dist", "test-motion-ticks");
 mkdirSync(work, { recursive: true });
 
-type Tick = { tick: number; hash: string; presentation: string };
-type Motion = { model: { state: string; taken: Array<[number, number]>; agents: Array<{ entity: number; framesShown: number; framesStarved: number; framesWarmup: number }> } } | null;
-/** What of `dump_motion` is the same on every host: when each batch was taken (and due), each agent's frames shown, starved and warming up. */
-const schedule = (m: Motion) => m && { taken: m.model.taken, agents: m.model.agents.map(({ entity, framesShown, framesStarved, framesWarmup }) => ({ entity, framesShown, framesStarved, framesWarmup })) };
-/** The ticks that waited for og.motion's step (the gate holding the next tick, or the tick's snapshot asked again), and for how long in all and at most. */
-type Held = { ticks: number; ms: number; longest: number; frames: number; retries: number; at: number[] };
+type Tick = { tick: number; hash: string };
+type Shot = { tick: number; png: string };
+type Late = { behind: number; ticks: number; most: number };
 
 cookProject(project, repo);
 const dist = join(work, "motion-feet");
@@ -112,41 +103,38 @@ async function start(delay: number, log: string[]) {
   return tab;
 }
 
-/** One tick a frame to TICKS on `backend`, each tick's hashes once og.motion's step there has finished. */
-const runTicks = (backend: string) => `(async () => {
+/** One tick a frame to TICKS: the frames that took no tick (held), each tick's world hash, a capture every EVERY ticks. */
+const runTicks = `(async () => {
   const shell = globalThis.__og_shell__;
-  await shell.call("probe", "commands", "0:motion_backend:${backend}");
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const ticks = [];
-  const held = { frames: 0, ms: 0, longest: 0, ticks: 0, retries: 0, at: [] };
-  let tick = 0;
+  const ticks = [], shots = [];
+  let held = 0, tick = 0;
   while (tick < ${TICKS}) {
-    let frames = 0, retries = 0, waited = 0;
-    for (;;) {
-      const a = await shell.call("frame", 1000 / 60);
-      if (!a || a.ok === false) throw new Error("frame refused at tick " + tick + ": " + JSON.stringify(a));
-      if (a.tick > tick) { tick = a.tick; break; }
-      frames++;
-      const t = performance.now();
-      await sleep(2);
-      waited += performance.now() - t;
+    const a = await shell.call("frame", 1000 / 60);
+    if (!a || a.ok === false) throw new Error("frame refused at tick " + tick + ": " + JSON.stringify(a));
+    if (a.tick <= tick) { held++; continue; }
+    tick = a.tick;
+    const s = await shell.probe("snapshot");
+    ticks.push({ tick: s.tick, hash: s.hash });
+    if (tick % ${EVERY} === 0) {
+      let shot = null;
+      for (let tries = 0; !shot && tries < 5000; tries++) {
+        shot = await shell.probe("capture", { width: ${WIDTH}, height: ${HEIGHT} });
+        if (!shot) await sleep(2);
+      }
+      if (!shot) throw new Error("no capture at tick " + tick);
+      shots.push({ tick, png: shot.png });
     }
-    let s = await shell.probe("snapshot");
-    for (; s && s.presentation === "" && retries < 5000; retries++) {
-      const t = performance.now();
-      await sleep(2);
-      waited += performance.now() - t;
-      s = await shell.probe("snapshot");
-    }
-    if (frames + retries > 0) {
-      held.ticks++; held.frames += frames; held.retries += retries; held.ms += waited; held.longest = Math.max(held.longest, waited); held.at.push(tick);
-    }
-    ticks.push({ tick: s.tick, hash: s.hash, presentation: s.presentation });
   }
   await shell.call("probe", "commands", "0:dump_motion:motion.json");
-  await shell.call("frame", 0);
-  const dump = (await shell.call("outputs")).find((o) => o.action === "dump_motion");
-  return { ticks, held, motion: dump ? JSON.parse(dump.data) : null };
+  let dump;
+  for (let tries = 0; !dump && tries < 5000; tries++) {
+    await shell.call("frame", 0);
+    dump = (await shell.call("outputs")).find((o) => o.action === "dump_motion");
+    if (!dump) await sleep(2);
+  }
+  const motion = dump ? JSON.parse(dump.data) : null;
+  return { ticks, shots, held, late: motion && motion.model.late, state: motion && motion.model.state, batches: motion ? motion.model.batches : 0 };
 })()`;
 
 /** Paced like a page: the frames whose tick the gate held, and for how long. */
@@ -190,64 +178,34 @@ try {
     console.log(`realtime ${REALTIME} s on ${BACKEND}: ${r.frames} frames, ${r.ticks} ticks; ${r.episodes.length} held episodes, ${r.episodes.reduce((n, e) => n + e.frames, 0)} frames; ms median ${ms[ms.length >> 1] ?? 0}, max ${ms[ms.length - 1] ?? 0}`);
     console.log(JSON.stringify(r.episodes));
   } else {
-    const nativeRun = (backend: string) => {
-      const r = Bun.spawnSync(["bun", "tests/support/presentation-capture.ts", "--project", project, "--mode", "ticks", "--ticks", String(TICKS), "--size", `${WIDTH}x${HEIGHT}`, "--inputs", `0:motion_backend:${backend}`], { cwd: pkg });
-      if (r.exitCode !== 0) throw new Error(`native ${backend}: ${new TextDecoder().decode(r.stderr)}`);
-      return JSON.parse(new TextDecoder().decode(r.stdout).trim().split("\n").pop()!) as { ticks: Tick[]; motion: Motion };
-    };
-    const natives = { cpu: nativeRun("cpu"), gpu: nativeRun("gpu") };
-    const runs: Record<string, { backend: "cpu" | "gpu"; ticks: Tick[]; held: Held; motion: Motion }> = {};
-    for (const [name, backend, delay] of [["cpu", "cpu", 0], ["gpu", "gpu", 0], ["gpu delayed", "gpu", DELAY]] as const) {
+    type Run = { ticks: Tick[]; shots: Shot[]; held: number; late: Late | null; state: string; batches: number };
+    const runs: Record<string, Run> = {};
+    for (const [name, delay] of [["gpu", 0], ["gpu late", DELAY]] as const) {
       const tab = await start(delay, log);
-      const run = await tab.eval<{ ticks: Tick[]; held: Held; motion: Motion }>(runTicks(backend));
-      runs[name] = { backend, ...run };
-      console.log(`${name} (readbacks +${delay} ms): ${run.ticks.length} ticks; ${run.held.ticks} waited for og.motion's step, ${run.held.ms.toFixed(0)} ms in all, longest ${run.held.longest.toFixed(0)} ms (${run.held.frames} frames held, ${run.held.retries} snapshots asked again)`);
+      const run = await tab.eval<Run>(runTicks);
+      runs[name] = run;
+      console.log(`${name} (readbacks +${delay} ms): ${run.ticks.length} ticks, ${run.held} frames held, ${run.shots.length} captures, ${run.batches} batches; behind the world on ${run.late?.ticks ?? "?"} ticks, at most ${run.late?.most ?? "?"}`);
     }
     const fail = (why: string) => {
       failures++;
       console.log(`FAIL ${why}`);
     };
-    for (const [backend, ran] of Object.entries(natives)) {
-      const batches = ran.motion?.model.taken.length ?? 0;
-      const generated = new Set(ran.ticks.map((t) => t.presentation)).size;
-      if (ran.motion?.model.state !== backend) fail(`the native run's og.motion ran on ${ran.motion?.model.state}, not ${backend}`);
-      if (generated < TICKS / 2 || batches < 4) fail(`the native ${backend} run drew ${generated} distinct presentations and took ${batches} batches in ${TICKS} ticks: og.motion is not posing the course`);
-      if (ran.motion?.model.taken.some(([taken, due]) => taken > due)) fail(`a native ${backend} batch was taken after its due tick: ${JSON.stringify(ran.motion.model.taken)}`);
-    }
-    const parts = (a: Tick[], b: Tick[], presentation: boolean) =>
-      a.length !== b.length ? Math.min(a.length, b.length) : a.findIndex((t, i) => t.tick !== b[i]!.tick || t.hash !== b[i]!.hash || (presentation && t.presentation !== b[i]!.presentation) || t.presentation === "");
-    // 1. cpu: the web's world and presentation equal native's on every tick, and no tick waits.
-    const cpu = runs["cpu"]!;
-    const at = parts(cpu.ticks, natives.cpu.ticks, true);
-    if (at >= 0) fail(`cpu: the web parts from native at tick ${cpu.ticks[at]?.tick ?? "end"}: ${JSON.stringify(cpu.ticks[at])} against ${JSON.stringify(natives.cpu.ticks[at])}`);
-    else console.log(`ok   cpu: ${cpu.ticks.length} ticks' world and presentation hashes equal native's`);
-    // Only the weights' load may wait (the first agent's tick, before any batch): never a batch.
-    const firstDue = natives.cpu.motion?.model.taken[0]?.[1] ?? 0;
-    const late = cpu.held.at.filter((t) => t >= firstDue);
-    if (late.length > 0) fail(`cpu: ticks ${late.join(", ")} waited for og.motion's step after its first batch was due (tick ${firstDue})`);
-    else console.log(`ok   cpu: no tick waited for a batch (${cpu.held.ticks} waited for the weights' load, at ${cpu.held.at.join(", ") || "none"})`);
-    // 2. gpu: when a readback lands changes nothing on the web.
     const prompt = runs["gpu"]!;
-    const delayed = runs["gpu delayed"]!;
-    const batches = natives.gpu.motion?.model.taken.length ?? 0;
-    if (delayed.held.ticks < batches / 2) fail(`gpu delayed: og.motion waited on ${delayed.held.ticks} ticks for ${batches} batches; the readbacks were not late`);
-    const parted = parts(delayed.ticks, prompt.ticks, true);
-    if (parted >= 0) fail(`gpu delayed parts from gpu at tick ${delayed.ticks[parted]?.tick ?? "end"}: ${JSON.stringify(delayed.ticks[parted])} against ${JSON.stringify(prompt.ticks[parted])}`);
-    else console.log(`ok   gpu delayed: ${delayed.ticks.length} ticks' world and presentation hashes equal the prompt gpu run's`);
-    // 3. Each web run against native on its backend: the same world every tick, and
-    // og.motion's schedule (each batch taken at its due tick, the same frames shown).
+    const late = runs["gpu late"]!;
     for (const [name, run] of Object.entries(runs)) {
-      const native = natives[run.backend];
-      const world = parts(run.ticks, native.ticks, false);
-      if (world >= 0) fail(`${name}: the world parts from native at tick ${run.ticks[world]?.tick ?? "end"}`);
-      const a = JSON.stringify(schedule(run.motion));
-      const b = JSON.stringify(schedule(native.motion));
-      if (a !== b) fail(`${name}: og.motion's schedule is not native's:\n  web    ${a}\n  native ${b}`);
-      else console.log(`ok   ${name}: world hashes on ${native.ticks.length} ticks and og.motion's schedule (${native.motion?.model.taken.length} batches taken at their due ticks, every agent's frames) equal native ${run.backend}'s`);
+      if (run.state !== "gpu") fail(`${name}: og.motion ran on ${run.state}, not gpu`);
+      if (run.batches < 4) fail(`${name}: ${run.batches} batches in ${TICKS} ticks: og.motion is not posing the course`);
+      if (run.held !== 0) fail(`${name}: the gate held ${run.held} frames for og.motion`);
+      else console.log(`ok   ${name}: no frame held, every frame call took a tick`);
     }
-    result["native"] = { cpu: natives.cpu.ticks.length, gpu: natives.gpu.ticks.length };
-    result["schedule"] = { cpu: schedule(natives.cpu.motion), gpu: schedule(natives.gpu.motion) };
-    result["runs"] = Object.fromEntries(Object.entries(runs).map(([k, v]) => [k, { held: v.held, ticks: v.ticks }]));
+    if ((late.late?.ticks ?? 0) < 30) fail(`gpu late: the Presenter was behind on ${late.late?.ticks} ticks; the readbacks were not late`);
+    const world = late.ticks.findIndex((t, i) => t.tick !== prompt.ticks[i]?.tick || t.hash !== prompt.ticks[i]?.hash);
+    if (world >= 0 || late.ticks.length !== prompt.ticks.length) fail(`gpu late: the world parts from the prompt run at tick ${late.ticks[world]?.tick ?? "end"}`);
+    else console.log(`ok   gpu late: ${late.ticks.length} ticks' world hashes equal the prompt run's`);
+    const shot = late.shots.findIndex((s, i) => s.tick !== prompt.shots[i]?.tick || s.png !== prompt.shots[i]?.png);
+    if (shot >= 0 || late.shots.length !== prompt.shots.length) fail(`gpu late: the capture at tick ${late.shots[shot]?.tick ?? "end"} differs from the prompt run's`);
+    else console.log(`ok   gpu late: ${late.shots.length} captures (ticks ${late.shots.map((s) => s.tick).join(", ")}) are the prompt run's PNGs`);
+    result["runs"] = Object.fromEntries(Object.entries(runs).map(([k, v]) => [k, { held: v.held, late: v.late, batches: v.batches, captures: v.shots.map((s) => s.tick) }]));
   }
   result["engine"] = log.slice(-40);
 } catch (e) {

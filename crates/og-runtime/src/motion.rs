@@ -1253,6 +1253,13 @@ pub fn og_motion_presentation(world: u32, entity: f64) -> String {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         agent_of(&eng, e)?;
+        // Game logic never reads og.motion's presentation: on the GPU its
+        // results arrive when the GPU answers, so a system that branches
+        // on it differs run to run. A development build says so.
+        #[cfg(not(feature = "publish"))]
+        if super::engine::running(world).is_some() && present::backend(&eng) == "gpu" {
+            present::warn_read(&eng);
+        }
         Ok::<_, String>(present::presentation(&eng, e.to_bits()))
     })();
     match r {
@@ -1291,12 +1298,15 @@ pub fn og_motion_poses() -> String {
 
 /// The probe's `dump_motion`: every agent's goals (the simulation's) and
 /// what the model is doing for it (the presenter's: frames generated
-/// ahead, the batches, their timings).
+/// ahead, the batches, their timings), settled as a capture is (natively
+/// every result due by the tick waited for; on the web as far as has come
+/// back).
 pub(crate) fn dump(engine_id: u32) -> Value {
     let eng = match engine(engine_id) {
         Ok(eng) => eng,
         Err(e) => return json!({ "error": e }),
     };
+    present::settle(&eng);
     let goals = lock(&shared(engine_id)).clone();
     let entities = eng
         .world()
@@ -1338,7 +1348,7 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
         "motion_backend",
         og_probe::CommandDesc {
             usage: "motion_backend:<cpu|gpu>".into(),
-            doc: "og.motion.setBackend from the probe: cpu (the default, the same poses on every host) or gpu (the opt-in, the same poses only on one host and GPU)".into(),
+            doc: "og.motion.setBackend from the probe: gpu (the default, the same poses on one host and GPU) or cpu (the opt-in, the same poses on every host)".into(),
         },
         move |_world, args| {
             let eng = super::engine::engine(engine)?;

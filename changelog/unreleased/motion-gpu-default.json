@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"og.motion.setBackend","summary":"Chooses where the motion model runs for a world: `gpu`, the default, beside the renderer, or `cpu`, on the CPU across the lanes, each generation spread over the ticks before it is due (about 21 ms of CPU a generation natively, 23 ms in wasm, so it suits a few characters). The probe takes it as the action `motion_backend:<gpu|cpu>`."},
+    {"member":"MotionBackend.cpu","summary":"New variant, reported by og.motion.capabilities and `dump_motion`'s `state` when the model runs on the CPU."},
+    {"member":"dump_motion late","summary":"`late` reports how far the Presenter is behind the world now, the ticks the world ran while it was behind and the most it was."}
+  ],
+  "fixed": [
+    {"member":"og.motion ticks","summary":"No tick waits for the motion model on any host: a result is applied as of the tick it was due as soon as it comes back, the Presenter falling behind the world and catching up meanwhile, where the web held a tick for a late readback (motion-feet in Chrome: 68 of 802 ticks) and a native host waited in place. A frame meanwhile draws the last tick stepped, so live frames may vary run to run."},
+    {"member":"og.motion captures","summary":"A probe capture, an og test screenshot, a reference frame, an og explore repro frame, a presentation hash, `dump_motion` and a fork check wait for every og.motion result due by their tick (natively; the web asks again), so their frames are the same run to run with results late or under load."},
+    {"member":"og.motion.presentation","summary":"A development build logs a warning when a system reads it on the gpu backend: game logic never reads og.motion's presentation or poses."}
+  ]
+}

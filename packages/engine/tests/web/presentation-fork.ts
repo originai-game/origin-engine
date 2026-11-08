@@ -10,11 +10,14 @@
 // - Within the web host, every frame of B equals A's byte for byte.
 // - Against native: each frame of A is compared with the native pass's
 //   under the cross-platform tolerance (png.ts CROSS_TOLERANCE), since
-//   Metal through wgpu and Chrome's Dawn compile the shaders apart.
+//   Metal through wgpu and Chrome's Dawn compile the shaders apart; not
+//   for motion-feet, whose og.motion poses are the GPU's on each host.
 //
 // Cases: vehicle-terrain mid-slide (TAA, motion vectors), terrain-stream
 // before its tiles stream in (tile arrival and fades) and motion-feet
-// mid-course (og.motion's Presenter).
+// mid-course (og.motion's Presenter). motion-feet settles every tick as a
+// fork check does (a small probe capture waits for each og.motion result
+// due by the tick), then draws the frame read.
 //
 //   bun tests/web/presentation-fork.ts [--case vehicle-terrain|terrain-stream|motion-feet] [--chrome <path>]
 //
@@ -44,11 +47,11 @@ const repo = join(pkg, "..", "..");
 const work = join(pkg, "dist", "test-presentation-fork");
 mkdirSync(work, { recursive: true });
 
-type Case = { name: string; ticks: number; forkAt: number; width: number; height: number; inputs: string };
+type Case = { name: string; ticks: number; forkAt: number; width: number; height: number; inputs: string; settle?: boolean };
 const CASES: Case[] = [
   { name: "vehicle-terrain", ticks: 156, forkAt: 110, width: 960, height: 540, inputs: "12:key_down:KeyW;120:key_down:KeyD;120:key_down:Space;138:key_up:Space" },
   { name: "terrain-stream", ticks: 110, forkAt: 20, width: 960, height: 540, inputs: "" },
-  { name: "motion-feet", ticks: 360, forkAt: 300, width: 640, height: 360, inputs: "" },
+  { name: "motion-feet", ticks: 360, forkAt: 300, width: 640, height: 360, inputs: "", settle: true },
 ];
 const only = opt("--case");
 const cases = CASES.filter((c) => !only || c.name === only);
@@ -70,12 +73,26 @@ const pageHelpers = (c: Case) => `(() => {
   f.step = async (pressing) => {
     const due = pressing ? inputs.get(f.tick) : undefined;
     if (due) await shell.probe("commands", { script: due.join(";") });
-    for (;;) {
+    // Settled: the tick stepped without a frame, so no frame before the
+    // settle feeds TAA's history.
+    if (${c.settle ? "true" : "false"}) f.tick = (await shell.call("advance", 1)).tick ?? f.tick + 1;
+    for (; !${c.settle ? "true" : "false"};) {
       const a = await shell.call("frame", 1000 / 60);
       if (!a || a.ok === false) throw new Error("frame refused at tick " + f.tick + ": " + JSON.stringify(a));
-      if (a.tick > f.tick) { f.tick = a.tick; return f.tick; }
+      if (a.tick > f.tick) { f.tick = a.tick; break; }
       await sleep(2);
     }
+    if (${c.settle ? "true" : "false"}) {
+      // Settled, then the tick drawn again without stepping.
+      let shot = null;
+      for (let i = 0; !shot && i < 5000; i++) {
+        shot = await shell.probe("capture", { width: 64, height: 36 });
+        if (!shot) await sleep(2);
+      }
+      if (!shot) throw new Error("no settled capture at tick " + f.tick);
+      await shell.call("frame", 0);
+    }
+    return f.tick;
   };
   f.snapshot = async () => {
     for (let i = 0; i < 5000; i++) {
@@ -109,7 +126,7 @@ for (const c of cases) {
   cookProject(project, repo);
   const nativeDir = join(work, `${c.name}-native`);
   rmSync(nativeDir, { recursive: true, force: true });
-  const n = Bun.spawnSync(["bun", "tests/support/presentation-capture.ts", "--project", project, "--mode", "display", "--ticks", String(c.ticks), "--fork-at", String(c.forkAt), "--size", `${c.width}x${c.height}`, "--frames", nativeDir, ...(c.inputs ? ["--inputs", c.inputs] : [])], { cwd: pkg });
+  const n = Bun.spawnSync(["bun", "tests/support/presentation-capture.ts", "--project", project, "--mode", "display", "--ticks", String(c.ticks), "--fork-at", String(c.forkAt), "--size", `${c.width}x${c.height}`, "--frames", nativeDir, ...(c.inputs ? ["--inputs", c.inputs] : []), ...(c.settle ? ["--settle"] : [])], { cwd: pkg });
   if (n.exitCode !== 0) throw new Error(`native ${c.name}: ${new TextDecoder().decode(n.stderr)}`);
   const native = JSON.parse(new TextDecoder().decode(n.stdout).trim().split("\n").pop()!) as { checked: number; mismatches: string[] };
 
@@ -160,7 +177,7 @@ for (const c of cases) {
     if (native.mismatches.length > 0) fail(`${c.name}: native frames after the restore differ: ${native.mismatches.join("; ")}`);
     let worst = { tick: 0, rmse: 0, outliers: 0, bias: 0 };
     const over: number[] = [];
-    for (const f of r.a) {
+    for (const f of c.settle ? [] : r.a) {
       const web = f.img!;
       const nat = { width: c.width, height: c.height, rgba: new Uint8Array(readFileSync(join(nativeDir, `${f.tick}.rgba`))) };
       const d = compareFrames(web, nat, CROSS_TOLERANCE);
@@ -168,7 +185,8 @@ for (const c of cases) {
       if (d.rmse > worst.rmse) worst = { tick: f.tick, rmse: +d.rmse.toFixed(5), outliers: +(d.outliers * 100).toFixed(3), bias: +d.bias.toFixed(5) };
     }
     if (over.length > 0) fail(`${c.name}: web frames past the cross-platform tolerance against native at ticks ${over.join(", ")} (worst ${JSON.stringify(worst)})`);
-    else console.log(`ok   ${c.name}: every web frame within the cross-platform tolerance of native's (worst tick ${worst.tick}: RMSE ${worst.rmse}, ${worst.outliers} % outliers)`);
+    else if (!c.settle) console.log(`ok   ${c.name}: every web frame within the cross-platform tolerance of native's (worst tick ${worst.tick}: RMSE ${worst.rmse}, ${worst.outliers} % outliers)`);
+    else console.log(`ok   ${c.name}: native frames after the restore equal the uninterrupted run's (${native.checked}); poses are not compared across hosts`);
     (result["cases"] as Record<string, unknown>)[c.name] = { fork: r.fork, frames: r.a.length, parted, native: native.checked, worstAgainstNative: worst, overTolerance: over };
   } catch (e) {
     failures++;
