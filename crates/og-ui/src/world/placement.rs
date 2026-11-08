@@ -495,30 +495,65 @@ impl Ui {
                     let (vp, unit) = (self.viewport, self.unit.max(1e-6));
                     let q = q * rotation;
                     let (hx, hy) = (size.x / 2.0, size.y / 2.0);
+                    let r = self.nodes[p.node].rect;
+                    let rect = Rect::new(r.x * unit, r.y * unit, r.width * unit, r.height * unit);
+                    let world = |x: f32, y: f32, z: f32| center + q * Vec3::new(x, y, z);
+                    let seen = |p: Vec3| {
+                        let (sx, sy, _) = view.project(p, vp.width, vp.height)?;
+                        Some(Vec2::new(sx, sy) * unit)
+                    };
                     // Top left, top right, bottom right, bottom left; none
                     // when one is behind the eye (its projection would wrap).
-                    let corners: Option<Vec<Vec2>> = [(-hx, hy), (hx, hy), (hx, -hy), (-hx, -hy)]
+                    let quad = [(-hx, hy), (hx, hy), (hx, -hy), (-hx, -hy)];
+                    let corners: Option<Vec<Vec2>> =
+                        quad.iter().map(|&(x, y)| seen(world(x, y, 0.0))).collect();
+                    // A decal reaches a quarter of its shorter side off its
+                    // plane: terrain under a 2 m ring rises and falls 0.5 m.
+                    let reach = 0.25 * size.x.min(size.y);
+                    let screen = Rect::new(0.0, 0.0, vp.width * unit, vp.height * unit);
+                    // What its box (the rect, `reach` either side) covers on
+                    // the screen; all of it while a corner is behind the eye.
+                    let boxed: Vec<Option<Vec2>> = quad
                         .iter()
-                        .map(|&(x, y)| {
-                            let (sx, sy, _) = view.project(
-                                center + q * Vec3::new(x, y, 0.0),
-                                vp.width,
-                                vp.height,
-                            )?;
-                            Some(Vec2::new(sx, sy) * unit)
-                        })
+                        .flat_map(|&(x, y)| [world(x, y, -reach), world(x, y, reach)])
+                        .map(seen)
                         .collect();
-                    if let Some(c) = corners {
-                        let r = self.nodes[p.node].rect;
+                    let bounds = if boxed.iter().all(Option::is_none) {
+                        // Wholly behind the eye: nothing to draw.
+                        Rect::default()
+                    } else if boxed.iter().any(Option::is_none) {
+                        screen
+                    } else {
+                        let b: Vec<Vec2> = boxed.into_iter().flatten().collect();
+                        let (lo, hi) = b
+                            .iter()
+                            .fold((b[0], b[0]), |(lo, hi), p| (lo.min(*p), hi.max(*p)));
+                        Rect::new(lo.x, lo.y, hi.x - lo.x, hi.y - lo.y)
+                            .outset(1.0)
+                            .intersect(&screen)
+                    };
+                    let drape = og_render::UiDrape::new(
+                        view.view_proj,
+                        view.eye,
+                        view.forward,
+                        Vec2::new(screen.width, screen.height),
+                        [
+                            world(-hx, hy, 0.0),
+                            world(hx, hy, 0.0),
+                            world(-hx, -hy, 0.0),
+                        ],
+                        [rect.x, rect.y, rect.width, rect.height],
+                        reach,
+                    );
+                    if let Some(drape) = drape
+                        && !bounds.is_empty()
+                    {
                         grounds.push(crate::GroundQuad {
                             key,
-                            rect: Rect::new(
-                                r.x * unit,
-                                r.y * unit,
-                                r.width * unit,
-                                r.height * unit,
-                            ),
-                            corners: [c[0], c[1], c[2], c[3]],
+                            rect,
+                            corners: corners.map(|c| [c[0], c[1], c[2], c[3]]),
+                            bounds,
+                            drape,
                         });
                     }
                 }

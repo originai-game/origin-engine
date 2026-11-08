@@ -141,59 +141,122 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
 /// not the inside; a drop shadow darkens past the heart's edge; the morph
 /// half way is neither the square nor the circle; a turned, squashed
 /// heart keeps its point; a 14 px heart draws.
-/// A layer laid onto a quad in perspective (`ui-ground`, a document's
-/// `<ground>`): the checker's rows narrow toward the far edge, the corner
-/// of the quad's bounds outside it shows what is behind, and the near
-/// corner shows the checker's square there.
+/// A layer draped over uneven terrain as a decal (`ui-ground`, a
+/// document's `<ground>`): at screen points where the checker cell the
+/// terrain's surface falls in differs from the cell the flat plane would
+/// show there, the frame shows the surface's cell; the pillar's face shows
+/// no checker; the sky past the rect shows none.
 ///
-/// Ways it could fail: the layer stretched over the composite's bounds
-/// (no cut, rows evenly spaced), mapped affinely (rows evenly spaced), or
-/// sampled at its off-screen rect (one flat colour).
+/// Ways it could fail: the layer laid on the flat plane (the old quad
+/// map), the depth read at the wrong pixel or as the wrong depth (cells
+/// shifted), the plane's axes swapped (columns for rows), a surface that
+/// stands across the plane painted, or the layer drawn where the scene
+/// has nothing.
 #[test]
 #[ignore = "requires GPU"]
-fn ui_ground_lays_a_layer_onto_its_quad_in_perspective() {
+fn ui_ground_drapes_a_layer_over_the_terrain() {
+    use og_core::glam::{Vec3, Vec4};
+    use og_tests::ui_scenes::{ground_height, ground_pillar, ground_view};
     let r = render("ui-ground");
-    let back = px(&r, 250, 270);
-    assert!(
-        near(back, px(&r, 1270, 710), 3.0),
-        "outside the quad, inside its bounds: {back:?}"
-    );
+    let inv = ground_view().inverse();
+    let ray = |x: f32, y: f32| {
+        let n = |z: f32| {
+            let p = inv * Vec4::new(x / 640.0 - 1.0, 1.0 - y / 360.0, z, 1.0);
+            p.truncate() / p.w
+        };
+        (n(0.0), (n(1.0) - n(0.0)).normalize())
+    };
+    let (lo, hi) = ground_pillar();
+    let hits_pillar = |o: Vec3, d: Vec3| {
+        let (t0, t1) = ((lo - o) / d, (hi - o) / d);
+        let near = t0.min(t1).max_element();
+        let far = t0.max(t1).min_element();
+        near <= far && far > 0.0
+    };
+    // The checker's cell (gold or not) at a world point, and how far it
+    // lies from a cell's edge or the ring, in cells.
+    let cell = |p: Vec3| {
+        let (u, v) = ((p.x + 3.0) / 6.0 * 8.0, (p.z + 3.0) / 6.0 * 8.0);
+        let ring = (((u - 4.0).powi(2) + (v - 4.0).powi(2)).sqrt() - 2.0).abs() - 0.2;
+        let edge = (u - u.round()).abs().min((v - v.round()).abs()).min(ring);
+        let inside = (0.0..8.0).contains(&u) && (0.0..8.0).contains(&v);
+        (((u.floor() + v.floor()) as i32 % 2 == 0), edge, inside)
+    };
     let gold = ink([240, 180, 60]);
     let blue = ink([40, 90, 200]);
-    // The near left square (row 7, column 0) is blue; the far left (row 0,
-    // column 0) gold.
-    assert!(near(px(&r, 262, 650), blue, 6.0), "{:?}", px(&r, 262, 650));
-    assert!(near(px(&r, 508, 263), gold, 6.0), "{:?}", px(&r, 508, 263));
-    // Down the left column the colour flips at each row's edge: the rows
-    // grow from top to bottom.
-    let x_at = |y: f32| 500.0 + (240.0 - 500.0) * (y - 260.0) / 400.0 + 14.0;
-    let mut edges = Vec::new();
-    let mut last = None;
-    for y in 262..658 {
-        let p = px(&r, x_at(y as f32) as u32, y);
-        let c = if near(p, gold, 40.0) {
-            Some(0)
-        } else if near(p, blue, 40.0) {
-            Some(1)
-        } else {
-            None
-        };
-        if let (Some(c), Some(l)) = (c, last)
-            && c != l
-        {
-            edges.push(y);
-        }
-        if c.is_some() {
-            last = c;
+    let mut differ = 0;
+    for y in (150..700).step_by(9) {
+        for x in (150..1130).step_by(9) {
+            let (o, d) = ray(x as f32 + 0.5, y as f32 + 0.5);
+            if hits_pillar(o, d) {
+                continue;
+            }
+            // The terrain's surface: march, then halve.
+            let (mut a, mut b) = (0.0f32, 0.0f32);
+            let mut t = 0.0;
+            while t < 40.0 {
+                let p = o + d * t;
+                if p.y < ground_height(p.x, p.z) {
+                    b = t;
+                    break;
+                }
+                a = t;
+                t += 0.02;
+            }
+            if b == 0.0 {
+                continue;
+            }
+            for _ in 0..24 {
+                let m = 0.5 * (a + b);
+                let p = o + d * m;
+                if p.y < ground_height(p.x, p.z) {
+                    b = m
+                } else {
+                    a = m
+                }
+            }
+            let surface = o + d * b;
+            let flat = o + d * (-o.y / d.y);
+            let (s_gold, s_edge, s_in) = cell(surface);
+            let (f_gold, f_edge, f_in) = cell(flat);
+            // Points well inside cells, facing up, where the two differ.
+            let slope = Vec3::new(
+                ground_height(surface.x - 0.01, surface.z)
+                    - ground_height(surface.x + 0.01, surface.z),
+                0.02,
+                0.0,
+            )
+            .normalize()
+            .y;
+            if !(s_in && f_in && s_edge > 0.25 && f_edge > 0.25 && slope > 0.7 && s_gold != f_gold)
+            {
+                continue;
+            }
+            let p = px(&r, x, y);
+            let (want, not) = if s_gold { (gold, blue) } else { (blue, gold) };
+            assert!(
+                near(p, want, 30.0) && !near(p, not, 60.0),
+                "({x}, {y}): surface {surface:?} wants {want:?}, the flat plane {not:?}; got {p:?}"
+            );
+            differ += 1;
         }
     }
-    assert_eq!(edges.len(), 7, "rows: {edges:?}");
-    let first = edges[1] - edges[0];
-    let lastr = edges[6] - edges[5];
     assert!(
-        lastr > first + 8,
-        "rows should grow toward the viewer: {edges:?}"
+        differ >= 20,
+        "only {differ} points tell the drape from the plane"
     );
+    // The pillar's face, within the reach, takes no checker; the sky past
+    // the rect shows its own colour.
+    let face = (lo + hi) / 2.0 + Vec3::new(0.0, -0.6, 0.26);
+    let c = ground_view().project_point3(face);
+    let (fx, fy) = (((c.x + 1.0) * 640.0) as u32, ((1.0 - c.y) * 360.0) as u32);
+    let p = px(&r, fx, fy);
+    assert!(
+        !near(p, gold, 40.0) && !near(p, blue, 40.0),
+        "pillar face ({fx}, {fy}): {p:?}"
+    );
+    let sky = px(&r, 640, 8);
+    assert!(near(sky, px(&r, 20, 8), 3.0), "sky: {sky:?}");
 }
 
 #[test]

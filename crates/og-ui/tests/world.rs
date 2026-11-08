@@ -329,13 +329,16 @@ fn a_document_world_panel_takes_a_press_while_it_is_not_rebuilt() {
     );
 }
 
-/// A `<ground>` lies flat at its point, drawn by the UI onto where its
-/// plane is seen: the camera moving moves its quad (`UiFrame::grounds`)
-/// and nothing else. It is inert, and behind the camera it is not drawn.
+/// A `<ground>` lies flat at its point, drawn by the UI as a decal where
+/// its plane is seen: the camera moving moves its quad and drape
+/// (`UiFrame::grounds`) and nothing else. It is inert; with the camera
+/// among it (a corner behind the eye) it covers the whole screen, and
+/// wholly behind the camera it is not drawn.
 ///
 /// Ways it could fail: the quad written into the commands (every tick
 /// relevels and repaints the screen), the ground rebuilt or laid out per
-/// tick, a press reaching its button, or a quad wrapped from behind the eye.
+/// tick, a press reaching its button, a quad wrapped from behind the eye,
+/// or a ground skipped while the camera stands among it.
 #[test]
 fn a_document_ground_follows_the_camera_and_builds_nothing() {
     let mut ui = ui();
@@ -367,7 +370,7 @@ fn a_document_ground_follows_the_camera_and_builds_nothing() {
         tick(&mut ui, above, InputFrame::default());
     }
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-    let quad = |ui: &Ui| ui.frame().grounds.first().map(|g| g.corners);
+    let quad = |ui: &Ui| ui.frame().grounds.first().and_then(|g| g.corners);
     let q = quad(&ui).expect("a ground seen from above");
     // Its far edge (top) is above and narrower than its near one.
     assert!(q[0].y < q[3].y && q[1].y < q[2].y, "{q:?}");
@@ -409,13 +412,24 @@ fn a_document_ground_follows_the_camera_and_builds_nothing() {
     }
     let events = ui.take_doc_events();
     assert!(!events.iter().any(|e| e.name == "inside"), "{events:?}");
-    // Behind the camera: not drawn.
+    // Among it, a corner behind the eye: no quad (it would wrap), the
+    // whole screen covered, the commands as they were.
     tick(
         &mut ui,
         look(Vec3::new(0.0, 1.0, -1.0), Vec3::new(0.0, 1.0, -10.0)),
         InputFrame::default(),
     );
-    assert_eq!(quad(&ui), None);
+    let g = ui.frame().grounds.first().copied().expect("drawn among it");
+    assert_eq!(g.corners, None);
+    assert_eq!(g.bounds, Rect::new(0.0, 0.0, W, H));
+    assert!(ui.frame().items == items);
+    // Wholly behind the camera: not drawn.
+    tick(
+        &mut ui,
+        look(Vec3::new(0.0, 1.0, -5.0), Vec3::new(0.0, 1.0, -10.0)),
+        InputFrame::default(),
+    );
+    assert!(ui.frame().grounds.is_empty());
 }
 
 /// §15.1: a HUD plus 2,000 mass elements and 100 anchored elements in

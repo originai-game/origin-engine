@@ -793,17 +793,28 @@ presentation, outside the world's hash.
 size="3 3" rotation="0 45 0"><svg viewBox="0 0 40 40">…</svg></ground>`.
 It is laid out at its CSS size and drawn by the UI itself onto the
 horizontal plane `size` world units across at the entity's (or `at`'s)
-height, seen in perspective, under the screen's elements and the world's
-mass elements: a selection ring, a range marker, a target decal. The
-camera moving moves only its quad (`UiFrame.grounds`), read after the tick
-and never fed back into the world: the frame's commands, bindings and
-layout stay as they were (0 bindings, 0 reconciled, the layer root laid
-out as every layer is). Its offscreen layer is sized from the size it is
-seen at, rounded to a power of two and capped at 2048 px. It is inert: no
-ray reaches it and its controls take no focus. While a corner is behind
-the camera it is not drawn. The plane is flat at the entity's height;
-draping it over terrain (a decal) is a follow-up. `ground` is not an HTML
-element; no web standard lays a box onto a 3D plane.
+height, under the screen's elements and the world's mass elements: a
+selection ring, a range marker, a target decal. It is laid as a decal
+against the frame's depth prepass (og-render's `UiGround`): each screen
+point under it reads the scene's view depth, rebuilds the surface there,
+and takes the layer where that surface falls on the box along the
+plane's normal, so the box drapes over terrain rising and falling within
+a quarter of its shorter side of the plane. A surface standing across
+the plane (a wall, a unit's legs) fades it out, something standing
+nearer the camera than that reach hides it, and where the scene lies
+farther behind the plane or there is none (no geometry, the sky) it is
+laid on the plane itself, as a sign in the air is. The map from a screen
+point and its depth to the box is affine in the point for a perspective
+or orthographic camera (`UiDrape`, three rows of two 3-vectors), so the
+camera moving moves only it and the box's screen bounds
+(`UiFrame.grounds`), read after the tick and never fed back into the
+world: the frame's commands, bindings and layout stay as they were (0
+bindings, 0 reconciled, the layer root laid out as every layer is).
+Its offscreen layer is sized from the size its plane is seen at, rounded
+to a power of two and capped at 2048 px; with a corner behind the camera
+(the camera among it) it is drawn at the cap over the whole screen. It
+is inert: no ray reaches it and its controls take no focus. `ground` is
+not an HTML element; no web standard lays a box onto a 3D plane.
 
 An anchor or world panel stands outside the screen's tree, in a world
 layer of its own, but its layer is keyed by the element's own path: the

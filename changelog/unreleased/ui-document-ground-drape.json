@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <ground> drapes over terrain",
+      "summary": "A <ground> is laid as a decal against the depth prepass: it follows the terrain's height under it within a quarter of its shorter side of its plane, surfaces standing across the plane fade it, nearer geometry hides it, and it falls back to the plane where the scene lies behind it. It is drawn with the camera among it (a corner behind the camera) instead of skipped. A moving camera still costs no bindings and no reconciling."
+    },
+    {
+      "member": "og-render: UiLayer.ground, UiGround, UiDrape",
+      "summary": "A projected layer's drape, in place of the unreleased UiLayer.quad: the affine map from a screen point and its view depth to the layer's rect and the plane's normal (UiDrape::new from a view-projection), with the corners that size its target when all are in front. A frame with one runs the depth prepass. The ui-ground reference is now draped over a heightfield with a pillar."
+    }
+  ]
+}

@@ -24,9 +24,10 @@ struct LayerParams {
     params: [[f32; 4]; super::UI_MATERIAL_PARAMS],
     info: [f32; 4],
     mask_uv: [f32; 4],
-    /// A projected layer's map from the screen (CSS px) to its uv, rows
-    /// (`info.w` 1): the inverse of its rect's map onto its quad.
-    quad: [[f32; 4]; 3],
+    /// A projected layer's drape (`info.w` 1, [`super::UiDrape`]): its
+    /// rows `a` with the scale's x and y and the reach in w, then its
+    /// rows `b`.
+    drape: [[f32; 4]; 6],
 }
 
 /// The shape family's pipelines for one target format.
@@ -996,16 +997,16 @@ impl UiRenderer {
                 params: layer.params,
                 info: [builtin, 0.0, 0.0, 0.0],
                 mask_uv: [0.0, 0.0, 1.0, 1.0],
-                quad: [[0.0; 4]; 3],
+                drape: [[0.0; 4]; 6],
             };
-            if let Some(m) = layer
-                .quad
-                .as_ref()
-                .and_then(super::square_to_quad)
-                .and_then(|m| super::invert3(&m))
-            {
+            if let Some(g) = &layer.ground {
+                let d = &g.drape;
+                let w = [d.scale.x, d.scale.y, d.reach];
                 params.info[3] = 1.0;
-                params.quad = m.map(|r| [r[0], r[1], r[2], 0.0]);
+                for i in 0..3 {
+                    params.drape[i] = [d.a[i][0], d.a[i][1], d.a[i][2], w[i]];
+                    params.drape[i + 3] = [d.b[i][0], d.b[i][1], d.b[i][2], 0.0];
+                }
             }
             let mut mask_view = None;
             match &layer.mask {

@@ -628,13 +628,12 @@ pub const UI_MATERIAL_PARAMS: usize = 4;
 /// [`crate::TargetFormat::Rgba16Float`] one: linear, as a lit `map` or an
 /// unlit `emissiveMap` reads it.
 ///
-/// With a `quad` (a world panel the UI draws itself: a ground decal, a
+/// With a `ground` (a world panel the UI draws itself: a ground decal, a
 /// sign) the layer draws offscreen at `rect` wherever that is, and its
-/// composite lays `rect` onto the screen quadrilateral `quad` through the
-/// projective map between them, as a plane seen in perspective: `rect`'s
-/// top left, top right, bottom right and bottom left corners land on
-/// `quad`'s four points, CSS px. Its target is sized from the size it is
-/// seen at (capped), not from `rect`.
+/// composite lays `rect` onto its plane in the world as a decal is laid:
+/// each screen point reads the scene's depth there and takes the layer
+/// where that surface falls on the rect ([`UiGround`]). Its target is
+/// sized from the size it is seen at (capped), not from `rect`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiLayer {
     pub capture: [i32; 2],
@@ -643,7 +642,118 @@ pub struct UiLayer {
     pub params: [[f32; 4]; UI_MATERIAL_PARAMS],
     pub mask: Option<UiMask>,
     pub target: Option<TextureHandle>,
-    pub quad: Option<[Vec2; 4]>,
+    pub ground: Option<UiGround>,
+}
+
+/// Where a projected layer ([`UiLayer::ground`]) lies: its rect on a
+/// plane in the world, draped over the scene's surface.
+///
+/// A screen point takes the layer where the scene's surface under it
+/// (the depth prepass's view depth) falls on the rect, along the plane's
+/// normal, while that surface is within `reach` of the plane: terrain
+/// rising and falling under a ground decal carries it, a surface facing
+/// away from the plane's normal (a wall, a leg) fades it, and something
+/// nearer the camera than that hides it. Where the surface lies farther
+/// behind the plane, or there is none (no prepass, the sky), it is laid
+/// on the plane itself, as a sign in the air is.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct UiGround {
+    /// Where the rect's top left, top right, bottom right and bottom left
+    /// land on the screen, CSS px, when all four are in front of the
+    /// camera: the target is sized from the size it is seen at. `None`
+    /// sizes it at [`UI_QUAD_LAYER_MAX`].
+    pub corners: Option<[Vec2; 4]>,
+    pub drape: UiDrape,
+}
+
+/// The map from a screen point to a projected layer's plane: the point
+/// (x, y) CSS px at view depth d (world units along the camera's forward
+/// axis, as the depth prepass stores it) lies at `a · (x, y, 1) + d ·
+/// (b · (x, y, 1))`, each a row: its x and y in the rect's own CSS px
+/// (the layer's), and z world units off the plane.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct UiDrape {
+    pub a: [[f32; 3]; 3],
+    pub b: [[f32; 3]; 3],
+    /// World units per rect CSS px along x and y.
+    pub scale: Vec2,
+    /// How far off the plane, world units, the surface still takes it.
+    pub reach: f32,
+}
+
+impl UiDrape {
+    /// The drape of `rect` (x, y, width, height, CSS px) laid on the plane
+    /// through world points `top_left`, `top_right` and `bottom_left` (its
+    /// corners), seen through `view_proj` (depth 0 to 1, as og-render's)
+    /// from `eye` looking along `forward` (unit) on a `screen` CSS px
+    /// across. `None` when the plane or the view is degenerate.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        view_proj: glam::Mat4,
+        eye: glam::Vec3,
+        forward: glam::Vec3,
+        screen: Vec2,
+        corners: [glam::Vec3; 3],
+        rect: [f32; 4],
+        reach: f32,
+    ) -> Option<UiDrape> {
+        use glam::{DMat4, DVec3, DVec4};
+        let inv = view_proj.as_dmat4().inverse();
+        if !inv.is_finite() || screen.x <= 0.0 || screen.y <= 0.0 {
+            return None;
+        }
+        let (eye, f) = (eye.as_dvec3(), forward.as_dvec3());
+        let unproject = |m: &DMat4, x: f64, y: f64, z: f64| {
+            let p = *m * DVec4::new(x, y, z, 1.0);
+            p.truncate() / p.w
+        };
+        // The world point at view depth d under CSS px (x, y): its ray
+        // through the near and far planes, cut at d.
+        let at = |x: f64, y: f64, d: f64| -> Option<DVec3> {
+            let nx = x / f64::from(screen.x) * 2.0 - 1.0;
+            let ny = 1.0 - y / f64::from(screen.y) * 2.0;
+            let near = unproject(&inv, nx, ny, 0.0);
+            let dir = unproject(&inv, nx, ny, 1.0) - near;
+            let k = dir.dot(f);
+            (k.abs() > 1e-12).then(|| near + dir * ((d - (near - eye).dot(f)) / k))
+        };
+        let [tl, tr, bl] = corners.map(|c| c.as_dvec3());
+        let (u, v) = (tr - tl, bl - tl);
+        let n = u.cross(v).try_normalize()?;
+        let (uu, vv) = (u.length_squared(), v.length_squared());
+        if uu < 1e-12 || vv < 1e-12 {
+            return None;
+        }
+        let [rx, ry, rw, rh] = rect.map(f64::from);
+        // A world point's place: rect px across and down, world units off.
+        let local = |p: DVec3| {
+            let q = p - tl;
+            DVec3::new(rx + q.dot(u) / uu * rw, ry + q.dot(v) / vv * rh, q.dot(n))
+        };
+        let dir = |p: DVec3| DVec3::new(p.dot(u) / uu * rw, p.dot(v) / vv * rh, p.dot(n));
+        // A and B are affine in (x, y) for a perspective or an orthographic
+        // view: read them at three screen points.
+        let (sx, sy) = (f64::from(screen.x), f64::from(screen.y));
+        let mut pa = [DVec3::ZERO; 3];
+        let mut pb = [DVec3::ZERO; 3];
+        for (k, (x, y)) in [(0.0, 0.0), (sx, 0.0), (0.0, sy)].into_iter().enumerate() {
+            let p0 = at(x, y, 0.0)?;
+            let p1 = at(x, y, 1.0)?;
+            pa[k] = local(p0);
+            pb[k] = dir(p1 - p0);
+        }
+        let rows = |p: [DVec3; 3]| -> [[f32; 3]; 3] {
+            let cx = (p[1] - p[0]) / sx;
+            let cy = (p[2] - p[0]) / sy;
+            [0, 1, 2].map(|i| [cx[i] as f32, cy[i] as f32, p[0][i] as f32])
+        };
+        Some(UiDrape {
+            a: rows(pa),
+            b: rows(pb),
+            scale: Vec2::new((uu.sqrt() / rw) as f32, (vv.sqrt() / rh) as f32),
+            reach: reach.max(0.0),
+        })
+    }
 }
 
 /// The largest side of a projected layer's target, device pixels.
@@ -670,23 +780,6 @@ pub fn square_to_quad(quad: &[Vec2; 4]) -> Option<[[f32; 3]; 3]> {
         [g, h, 1.0],
     ];
     Some(m.map(|r| r.map(|v| v as f32)))
-}
-
-/// The inverse of a 3×3 map (rows); `None` when it is singular.
-pub fn invert3(m: &[[f32; 3]; 3]) -> Option<[[f32; 3]; 3]> {
-    let m = m.map(|r| r.map(f64::from));
-    let c =
-        |r0: usize, c0: usize, r1: usize, c1: usize| m[r0][c0] * m[r1][c1] - m[r0][c1] * m[r1][c0];
-    let a = [
-        [c(1, 1, 2, 2), -c(0, 1, 2, 2), c(0, 1, 1, 2)],
-        [-c(1, 0, 2, 2), c(0, 0, 2, 2), -c(0, 0, 1, 2)],
-        [c(1, 0, 2, 1), -c(0, 0, 2, 1), c(0, 0, 1, 1)],
-    ];
-    let det = m[0][0] * a[0][0] + m[0][1] * a[1][0] + m[0][2] * a[2][0];
-    if det.abs() < 1e-12 {
-        return None;
-    }
-    Some(a.map(|r| r.map(|v| (v / det) as f32)))
 }
 
 /// An outline around overlay text, drawn from its font's distance field.
@@ -815,9 +908,11 @@ impl UiList {
     }
 
     /// Whether it reads the frame's depth (occluders, mass elements the
-    /// scene hides): the frame runs its depth prepass.
+    /// scene hides, a projected layer's drape): the frame runs its depth
+    /// prepass.
     pub fn needs_depth(&self) -> bool {
         !self.occluders.is_empty()
+            || self.layers.iter().any(|l| l.ground.is_some())
             || self
                 .mass
                 .iter()

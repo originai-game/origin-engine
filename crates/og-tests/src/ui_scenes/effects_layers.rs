@@ -341,7 +341,7 @@ pub fn layers() -> RenderScene {
                 params,
                 mask,
                 target: None,
-                quad: None,
+                ground: None,
             });
             let n = o.ui.layers.len() as u32 - 1;
             o.ui.shapes.push(UiShape {
@@ -529,7 +529,7 @@ pub fn blur_detail(radius: f32) -> RenderScene {
             params,
             mask: None,
             target: None,
-            quad: None,
+            ground: None,
         });
         o.ui.shapes.push(UiShape {
             layer: 50,
@@ -558,69 +558,208 @@ pub fn blur_detail(radius: f32) -> RenderScene {
     })
 }
 
-/// Where `ui-ground`'s layer lands: a 400×400 square seen as a plane tilted
-/// away, its far edge (top) narrower than its near one.
-pub const GROUND_QUAD: [Vec2; 4] = [
-    Vec2::new(500.0, 260.0),
-    Vec2::new(780.0, 260.0),
-    Vec2::new(1040.0, 660.0),
-    Vec2::new(240.0, 660.0),
-];
+/// `ui-ground`'s camera: at [`GROUND_EYE`] looking at the origin, 45°
+/// vertically on the 1280×720 frame, 0.1 to 200 m.
+pub const GROUND_EYE: Vec3 = Vec3::new(0.0, 5.5, 8.5);
+
+/// `ui-ground`'s projection times view, as og-render's camera makes it.
+pub fn ground_view() -> og_core::glam::Mat4 {
+    use og_core::glam::{Mat4, Vec4};
+    // look_at_rh and perspective_rh by hand (og_core's maths, not libm).
+    let (eye, near, far) = (GROUND_EYE, 0.1, 200.0);
+    let f = (-eye).normalize();
+    let side = f.cross(Vec3::Y).normalize();
+    let u = side.cross(f);
+    let view = Mat4::from_cols(
+        Vec4::new(side.x, u.x, -f.x, 0.0),
+        Vec4::new(side.y, u.y, -f.y, 0.0),
+        Vec4::new(side.z, u.z, -f.z, 0.0),
+        Vec4::new(-side.dot(eye), -u.dot(eye), f.dot(eye), 1.0),
+    );
+    let (s, c) = og_core::math::sin_cos(22.5f32.to_radians());
+    let k = c / s;
+    let r = far / (near - far);
+    let proj = Mat4::from_cols(
+        Vec4::new(k / (W / H), 0.0, 0.0, 0.0),
+        Vec4::new(0.0, k, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, r, -1.0),
+        Vec4::new(0.0, 0.0, r * near, 0.0),
+    );
+    proj * view
+}
+
+/// The terrain under `ui-ground`'s decal at (x, z): waves of ±0.5 m and a
+/// 0.45 m mound right of centre, within the decal's 1.5 m reach.
+pub fn ground_height(x: f32, z: f32) -> f32 {
+    0.5 * (0.8 * x).sin() * (0.6 * z).cos()
+        + 0.45 * (-((x - 1.0).powi(2) + (z + 0.5).powi(2)) / 1.5).exp()
+}
+
+/// `ui-ground`'s pillar: 0.5 × 2.4 × 0.5 m standing at (1.8, _, 1.4) on
+/// the terrain's height there, its min and max corners.
+pub fn ground_pillar() -> (Vec3, Vec3) {
+    let base = ground_height(1.8, 1.4);
+    (
+        Vec3::new(1.55, base - 0.3, 1.15),
+        Vec3::new(2.05, base + 2.4, 1.65),
+    )
+}
 
 /// `ui-ground` (docs/ui.md §1): a layer drawn off the screen (a checker of
-/// 8×8 squares, 50 px each, and a ring) laid onto [`GROUND_QUAD`] through
-/// the projective map, as a document's `<ground>` is: rows farther away
-/// are thinner, and nothing is drawn outside the quad.
+/// 8×8 squares, 50 px each, and a ring) laid as a document's `<ground>` is
+/// on a 6 × 6 m horizontal plane at the origin, its top edge the far one,
+/// over the waves of [`ground_height`] and a pillar standing in it: the
+/// checker follows the terrain's rise and fall (a decal against the
+/// depth prepass, [`og_render::UiGround`]), the pillar hides what is
+/// behind it and its sides take none, and the sky shows past the rect.
 pub fn ground() -> RenderScene {
-    overlay_scene(|_, o| {
-        let (x0, y0) = (100_000.0, 0.0);
-        for j in 0..8 {
-            for i in 0..8 {
-                let c = if (i + j) % 2 == 0 {
-                    rgb(240, 180, 60)
-                } else {
-                    rgb(40, 90, 200)
-                };
-                o.ui.shapes.push(UiShape {
-                    layer: 10,
-                    ..UiShape::rect(
-                        [x0 + i as f32 * 50.0, y0 + j as f32 * 50.0, 50.0, 50.0],
-                        0.0,
-                        c,
-                    )
-                });
-            }
+    use og_render::{Camera, Material, Projection, Vertex, shapes};
+    let mut scene = RenderScene::new();
+    // The terrain: a 20 m heightfield, 0.2 m cells.
+    let n = 100u32;
+    let at = |i: u32, j: u32| {
+        let (x, z) = (
+            -10.0 + 20.0 * i as f32 / n as f32,
+            -10.0 + 20.0 * j as f32 / n as f32,
+        );
+        Vec3::new(x, ground_height(x, z), z)
+    };
+    let mut mesh = og_render::MeshData {
+        vertices: Vec::new(),
+        indices: Vec::new(),
+    };
+    for j in 0..=n {
+        for i in 0..=n {
+            let p = at(i, j);
+            let e = 0.01;
+            let normal = Vec3::new(
+                ground_height(p.x - e, p.z) - ground_height(p.x + e, p.z),
+                2.0 * e,
+                ground_height(p.x, p.z - e) - ground_height(p.x, p.z + e),
+            )
+            .normalize();
+            mesh.vertices.push(Vertex {
+                position: p.into(),
+                normal: normal.into(),
+                uv: [p.x / 2.0, p.z / 2.0],
+                color: [1.0; 4],
+                tangent: [0.0; 4],
+            });
         }
-        o.ui.shapes.push(UiShape {
-            layer: 11,
-            ..shape(
-                UiGeometry::Arc {
-                    start: 0.0,
-                    sweep: std::f32::consts::TAU,
-                    thickness: 20.0,
-                    cap: UiCap::Round,
-                },
-                [x0 + 100.0, y0 + 100.0, 200.0, 200.0],
-                solid(rgb(250, 250, 250)),
+    }
+    for j in 0..n {
+        for i in 0..n {
+            let a = j * (n + 1) + i;
+            let b = a + n + 1;
+            mesh.indices
+                .extend_from_slice(&[a, b, a + 1, a + 1, b, b + 1]);
+        }
+    }
+    let terrain = scene.add_mesh(mesh);
+    let grass = scene.add_material(Material {
+        base_color: [0.32, 0.42, 0.28, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    scene.add_instance(terrain, grass, og_core::glam::Mat4::IDENTITY);
+    let (lo, hi) = ground_pillar();
+    let pillar = scene.add_mesh(shapes::cuboid(hi - lo));
+    let stone = scene.add_material(Material {
+        base_color: [0.6, 0.55, 0.5, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    scene.add_instance(
+        pillar,
+        stone,
+        og_core::glam::Mat4::from_translation((lo + hi) / 2.0),
+    );
+    scene.camera = Camera {
+        position: GROUND_EYE,
+        target: Vec3::ZERO,
+        up: Vec3::Y,
+        projection: Projection::Perspective {
+            fov_y_degrees: 45.0,
+        },
+        near: 0.1,
+        far: 200.0,
+        ..Default::default()
+    };
+    scene.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
+    scene.post.tonemap = Tonemap::None;
+    let mut o = Overlay::new(W, H, 0.0);
+    let (x0, y0) = (100_000.0, 0.0);
+    for j in 0..8 {
+        for i in 0..8 {
+            let c = if (i + j) % 2 == 0 {
+                rgb(240, 180, 60)
+            } else {
+                rgb(40, 90, 200)
+            };
+            o.ui.shapes.push(UiShape {
+                layer: 10,
+                ..UiShape::rect(
+                    [x0 + i as f32 * 50.0, y0 + j as f32 * 50.0, 50.0, 50.0],
+                    0.0,
+                    c,
+                )
+            });
+        }
+    }
+    o.ui.shapes.push(UiShape {
+        layer: 11,
+        ..shape(
+            UiGeometry::Arc {
+                start: 0.0,
+                sweep: std::f32::consts::TAU,
+                thickness: 20.0,
+                cap: UiCap::Round,
+            },
+            [x0 + 100.0, y0 + 100.0, 200.0, 200.0],
+            solid(rgb(250, 250, 250)),
+        )
+    });
+    let view = ground_view();
+    let corners = [
+        Vec3::new(-3.0, 0.0, -3.0),
+        Vec3::new(3.0, 0.0, -3.0),
+        Vec3::new(3.0, 0.0, 3.0),
+        Vec3::new(-3.0, 0.0, 3.0),
+    ];
+    let seen = corners.map(|p| {
+        let c = view.project_point3(p);
+        Vec2::new((c.x + 1.0) * 0.5 * W, (1.0 - c.y) * 0.5 * H)
+    });
+    o.ui.layers.push(UiLayer {
+        capture: [10, 19],
+        rect: [x0, y0, 400.0, 400.0],
+        material: UiMaterial::Plain,
+        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+        mask: None,
+        target: None,
+        ground: Some(og_render::UiGround {
+            corners: Some(seen),
+            drape: og_render::UiDrape::new(
+                view,
+                GROUND_EYE,
+                (-GROUND_EYE).normalize(),
+                Vec2::new(W, H),
+                [corners[0], corners[1], corners[3]],
+                [x0, y0, 400.0, 400.0],
+                1.5,
             )
-        });
-        o.ui.layers.push(UiLayer {
-            capture: [10, 19],
-            rect: [x0, y0, 400.0, 400.0],
-            material: UiMaterial::Plain,
-            params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
-            mask: None,
-            target: None,
-            quad: Some(GROUND_QUAD),
-        });
-        // The composite covers the quad's bounds; the quad cuts it.
-        o.ui.shapes.push(UiShape {
-            layer: 50,
-            ..shape(
-                rect([0.0; 4], UiCorner::Round),
-                [240.0, 260.0, 800.0, 400.0],
-                UiPaint::Layer(0),
-            )
-        });
-    })
+            .expect("a plane in view"),
+        }),
+    });
+    // The composite covers the screen; the drape cuts it.
+    o.ui.shapes.push(UiShape {
+        layer: 50,
+        ..shape(
+            rect([0.0; 4], UiCorner::Round),
+            [0.0, 0.0, W, H],
+            UiPaint::Layer(0),
+        )
+    });
+    scene.overlay = Some(o);
+    scene
 }

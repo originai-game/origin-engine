@@ -13,9 +13,11 @@ struct LayerParams {
   info: vec4<f32>,
   // The mask image's uv rectangle.
   mask_uv: vec4<f32>,
-  // A projected layer's map from the screen (CSS px, homogeneous) to its
-  // uv, rows: a plane seen in perspective.
-  quad: array<vec4<f32>, 3>,
+  // A projected layer's drape (UiDrape): rows a (xyz) with the scale's x,
+  // y and the reach in w, then rows b. A screen point (x, y) at view
+  // depth d lies at a·(x, y, 1) + d·b·(x, y, 1): the rect's CSS px, and
+  // world units off its plane.
+  drape: array<vec4<f32>, 6>,
 };
 @group(1) @binding(0) var layer_tex: texture_2d<f32>;
 @group(1) @binding(1) var layer_sampler: sampler;
@@ -81,14 +83,74 @@ fn value_noise(p: vec2<f32>) -> f32 {
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
+// The depth prepass's value where it has none (post.rs FAR_DEPTH).
+const FAR_DEPTH: f32 = 1.0e9;
+
+// The scene's view depth under the screen point `css` (the overlay's CSS
+// px): the prepass's, or FAR_DEPTH where there is none.
+fn scene_depth_at(css: vec2<f32>) -> f32 {
+  let dims = vec2<f32>(textureDimensions(scene_depth));
+  let size = frame.output.xy / max(frame.output.z, 1e-6);
+  let q = clamp(css * dims / max(size, vec2<f32>(1.0)), vec2<f32>(0.0), dims - vec2<f32>(1.0));
+  return textureLoad(scene_depth, vec2<i32>(q), 0).r;
+}
+
+struct Draped {
+  // Over the layer's rectangle.
+  uv: vec2<f32>,
+  // The plane's own uv there, smooth across the scene's edges.
+  plane: vec2<f32>,
+  // How much of the layer the point takes.
+  weight: f32,
+};
+
+// A projected layer at the screen point `css`, laid as a decal: on the
+// scene's surface under it while that is within reach of the plane
+// (faded as the surface turns away from the plane's normal and as it
+// nears the reach on the camera's side), on the plane where the surface
+// is farther behind it or there is none, and nowhere where something
+// nearer hides it.
+fn drape(css: vec2<f32>) -> Draped {
+  let g = layer_params.drape;
+  let h = vec3<f32>(css, 1.0);
+  let a = vec3<f32>(dot(g[0].xyz, h), dot(g[1].xyz, h), dot(g[2].xyz, h));
+  let b = vec3<f32>(dot(g[3].xyz, h), dot(g[4].xyz, h), dot(g[5].xyz, h));
+  let scale = vec2<f32>(g[0].w, g[1].w);
+  let reach = g[2].w;
+  let d = scene_depth_at(css);
+  let s = a + d * b;
+  // Where the ray meets the plane (none behind the eye).
+  let dp = select(-1.0, -a.z / b.z, abs(b.z) > 1e-12);
+  let p = a + max(dp, 0.0) * b;
+  // The surface's facing, from its place's change across the pixel in
+  // world units: 1 lying along the plane, 0 standing across it.
+  let m = vec3<f32>(s.xy * scale, s.z);
+  let nrm = cross(dpdx(m), dpdy(m));
+  let facing = abs(nrm.z) / max(length(nrm), 1e-12);
+  let r = layer_params.rect;
+  var out: Draped;
+  out.plane = (p.xy - r.xy) / max(r.zw, vec2<f32>(1e-4));
+  out.uv = out.plane;
+  out.weight = 0.0;
+  let surface = d < 0.5 * FAR_DEPTH;
+  if (surface && abs(s.z) <= reach) {
+    out.uv = (s.xy - r.xy) / max(r.zw, vec2<f32>(1e-4));
+    // Toward the camera it fades out over the reach's last quarter; on
+    // the far side it meets the plane's fallback.
+    let near_side = dp <= 0.0 || d < dp;
+    let edge = select(1.0, 1.0 - smoothstep(0.75 * reach, reach, abs(s.z)), near_side);
+    out.weight = smoothstep(0.2, 0.45, facing) * edge;
+  } else if (dp > 0.0 && (!surface || d > dp)) {
+    out.weight = 1.0;
+  }
+  return out;
+}
+
 // The uv over the layer's rectangle of the screen point `css`: straight,
-// or through a projected layer's map.
+// or draped for a projected layer.
 fn layer_uv(css: vec2<f32>) -> vec2<f32> {
   if (layer_params.info.w > 0.5) {
-    let q = layer_params.quad;
-    let h = vec3<f32>(css, 1.0);
-    let w = dot(q[2].xyz, h);
-    return vec2<f32>(dot(q[0].xyz, h), dot(q[1].xyz, h)) / w;
+    return drape(css).uv;
   }
   let r = layer_params.rect;
   return (css - r.xy) / max(r.zw, vec2<f32>(1e-4));
@@ -100,12 +162,15 @@ fn composite(in: UiOut, c: vec4<f32>) -> vec4<f32> {
   var cov = clamp(0.5 - shape_distance(s, in.local).x / px, 0.0, 1.0);
   let r = layer_params.rect;
   let css = css_of(in.position.xy);
-  let uv = layer_uv(css);
+  var uv = (css - r.xy) / max(r.zw, vec2<f32>(1e-4));
   if (layer_params.info.w > 0.5) {
-    // Inside the quad, its edges smoothed over a device pixel: the uv's
-    // distance to the unit square's border over its change per pixel.
-    let edge = min(uv, vec2<f32>(1.0) - uv) / max(fwidth(uv), vec2<f32>(1e-6));
-    cov = cov * clamp(0.5 + min(edge.x, edge.y), 0.0, 1.0);
+    // Inside the rect, its edges smoothed over a device pixel: the uv's
+    // distance to the unit square's border over the plane's change per
+    // pixel (the surface's jumps at the scene's edges would blur them).
+    let dr = drape(css);
+    uv = dr.uv;
+    let edge = min(uv, vec2<f32>(1.0) - uv) / max(fwidth(dr.plane), vec2<f32>(1e-6));
+    cov = cov * clamp(0.5 + min(edge.x, edge.y), 0.0, 1.0) * dr.weight;
   }
   var mask = 1.0;
   let mk = u32(layer_params.info.y);

@@ -1631,7 +1631,7 @@ pub(crate) fn emit(
                         params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
                         mask: None,
                         target: Some(*target),
-                        quad: None,
+                        ground: None,
                     });
                     spaces.push(Space {
                         base,
@@ -1669,7 +1669,7 @@ pub(crate) fn emit(
                     params: *params,
                     mask: mask.clone(),
                     target: None,
-                    quad: None,
+                    ground: None,
                 });
                 spaces.push(Space {
                     base,
@@ -1691,27 +1691,19 @@ pub(crate) fn emit(
                     continue;
                 };
                 if let Some(key) = ground {
-                    // Laid onto where its panel is seen, under the screen's
+                    // Draped where its panel is seen, under the screen's
                     // levels and the world frame's mass elements; nowhere
                     // when it is not seen (no layer composited is drawn).
-                    let [lx, ly, lw, lh] = overlay.ui.layers[k as usize].rect;
-                    let Some(q) = grounds
-                        .iter()
-                        .find(|g| g.key == *key)
-                        .and_then(|g| g.corners_of(Rect::new(lx, ly, lw, lh)))
-                    else {
+                    let Some(g) = grounds.iter().find(|g| g.key == *key) else {
                         continue;
                     };
-                    overlay.ui.layers[k as usize].quad = Some(q);
-                    let (lo, hi) = q
-                        .iter()
-                        .fold((q[0], q[0]), |(lo, hi), p| (lo.min(*p), hi.max(*p)));
+                    let [lx, ly, lw, lh] = overlay.ui.layers[k as usize].rect;
+                    overlay.ui.layers[k as usize].ground = Some(og_render::UiGround {
+                        corners: g.corners_of(Rect::new(lx, ly, lw, lh)),
+                        drape: g.drape,
+                    });
                     let c = clips.index(overlay, clip);
-                    let mut s = rect_shape(
-                        Rect::new(lo.x, lo.y, hi.x - lo.x, hi.y - lo.y).outset(1.0),
-                        0.0,
-                        [1.0; 4],
-                    );
+                    let mut s = rect_shape(g.bounds, 0.0, [1.0; 4]);
                     s.paint = UiPaint::Layer(k);
                     s.opacity = *opacity;
                     s.blend = *blend;

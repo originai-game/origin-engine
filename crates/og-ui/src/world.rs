@@ -319,8 +319,8 @@ pub struct WorldPanelDesc {
     /// Drawn by the UI itself onto where its quad is seen (a ground decal,
     /// a sign), in a band under the screen's elements, instead of into
     /// `target`: no render target or mesh. Inert: no ray reaches it, and
-    /// its controls take no focus. Not drawn while a corner of its quad is
-    /// behind the camera.
+    /// its controls take no focus. Laid over the scene's surface as a
+    /// decal ([`og_render::UiGround`]).
     pub projected: bool,
 }
 
@@ -461,20 +461,26 @@ pub(crate) struct KeptMass {
 }
 
 /// A world panel the UI draws itself, as seen this tick: its layout `rect`
-/// and where that rect's top left, top right, bottom right and bottom left
-/// corners land on the screen, CSS px (the quad its plane is seen as).
+/// (CSS px), where that rect's top left, top right, bottom right and
+/// bottom left corners land on the screen when all four are in front of
+/// the camera, the screen `bounds` its decal can cover (the whole screen
+/// while a corner of it is behind the camera), and its drape onto the
+/// scene ([`og_render::UiDrape`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GroundQuad {
     pub key: u64,
     pub rect: Rect,
-    pub corners: [Vec2; 4],
+    pub corners: Option<[Vec2; 4]>,
+    pub bounds: Rect,
+    pub drape: og_render::UiDrape,
 }
 
 impl GroundQuad {
     /// Where the part `r` of the rect lands, its corners in the same order:
     /// through the plane's projective map, as the rect's own corners do.
+    /// `None` while a corner is behind the camera.
     pub fn corners_of(&self, r: Rect) -> Option<[Vec2; 4]> {
-        let m = og_render::square_to_quad(&self.corners)?;
+        let m = og_render::square_to_quad(&self.corners?)?;
         let at = |x: f32, y: f32| {
             let u = (x - self.rect.x) / self.rect.width.max(1e-6);
             let v = (y - self.rect.y) / self.rect.height.max(1e-6);
