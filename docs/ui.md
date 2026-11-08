@@ -929,6 +929,24 @@ toggle `<id>/Reveal` sits at the field's end (start in RTL), dressed
 Show password or Hide password and keeps the field's text focus when
 pressed. Revealed is UI state and survives save and restore.
 
+A text input a pad gives the focus opens og-ui's on-screen keyboard, a
+panel docked at the screen's bottom over a scrim: the text with its caret,
+rows of keys the pad walks (the focus starts on the first; Y erases, LB
+and RB move the caret, Back closes) and a finger presses, letters with
+shift (a quick second press locks capitals), symbols and a number pad. Its
+keys edit the bound value as the player types; Done submits, as Enter
+does, and Done or Back return the focus to the input, which opens it again
+only after it has lost the focus. `type` and `inputmode` pick its layout
+(`numeric`, `decimal` and `tel` the number pad, a PIN's digits only for a
+`password`), `enterkeyhint` labels Done (`Search`, `Send`, `Go`…),
+`maxlength` counts down in it, a password shows as dots, and `lang="ja"`
+offers the kana table, whose typed kana compose underlined with the voicing
+marks and small kana until Enter or a candidate (the hiragana or its
+katakana) commits them. `inputmode="none"` (the game's own keyboard) opens
+none. Parts: `Keyboard.panel`, `Keyboard.preview`,
+`Keyboard.key[wide][action][active][primary]`, `Keyboard.candidates`,
+`Keyboard.candidate`.
+
 The host receives the type, the effective `inputmode` (unset: the type's
 own), `autocomplete`, and `secret` with the focused text target. The web
 shell stands a hidden `<input>` with those attributes behind a one-line

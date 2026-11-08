@@ -973,6 +973,9 @@ impl Ui {
                         },
                     )
                 };
+                if styled.str("stepper") != Some("buttons") && !r.flag("readonly") {
+                    self.pad_keyboard(&path, &r, &mut s, &mut resp);
+                }
                 if let Some(V::Strs(all)) = r.get("suggestions") {
                     let field = self.last_closed;
                     if let Some(c) =
@@ -1295,6 +1298,92 @@ impl Ui {
             b.event("", "set", &w, v.clone());
         }
         b.event("", "changed", prop, v);
+    }
+
+    /// The on-screen keyboard of the text input at `path`: it opens when a
+    /// pad gives the input the focus (unless `inputmode="none"`, the
+    /// game's own keyboard), edits `s` in place, and Done submits; Done or
+    /// Back return the focus to the input, which opens it again only once
+    /// it has lost the focus. Its layout follows `type` and `inputmode`,
+    /// `enterkeyhint` labels Done and `lang="ja"` offers kana.
+    fn pad_keyboard(
+        &mut self,
+        path: &str,
+        r: &Resolved,
+        s: &mut String,
+        resp: &mut crate::Response,
+    ) {
+        use crate::widgets::KeyboardLayout as L;
+        let id = format!("{path}~keyboard");
+        let (open_key, off_key, field_key) = (
+            format!("{id}~open"),
+            format!("{id}~off"),
+            format!("{id}~field"),
+        );
+        let was_open = self.memory(&open_key, 0.0) > 0.0;
+        let off = self.memory(&off_key, 0.0) > 0.0;
+        if resp.focused {
+            self.remember(&field_key, f64::from_bits(self.state.focus));
+        }
+        let wants =
+            resp.focused && self.device().is_pad() && r.str("inputmode") != Some("none") && !off;
+        let open = was_open || wants;
+        if !open {
+            if !resp.focused {
+                self.remember(&off_key, 0.0);
+            }
+            return;
+        }
+        let ty = r.str("type").unwrap_or("text");
+        let mode = r.str("inputmode").unwrap_or(match ty {
+            "number" => "decimal",
+            "tel" => "tel",
+            _ => "text",
+        });
+        let password = ty == "password";
+        let desc = crate::widgets::KeyboardDesc {
+            layout: match mode {
+                "numeric" | "decimal" | "tel" => L::Numeric,
+                _ => L::Letters,
+            },
+            kana: r
+                .str("lang")
+                .is_some_and(|l| l == "ja" || l.starts_with("ja-")),
+            max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
+            title: r
+                .str("label")
+                .or(r.str("name"))
+                .unwrap_or_default()
+                .to_string(),
+            placeholder: r.str("placeholder").unwrap_or_default().to_string(),
+            submit_label: r
+                .str("enterkeyhint")
+                .map(|h| {
+                    let mut c = h.chars();
+                    c.next()
+                        .map(|f| f.to_uppercase().chain(c).collect())
+                        .unwrap_or_default()
+                })
+                .unwrap_or_default(),
+            password,
+        };
+        // Open, it builds each tick: its keys take input and its caret
+        // blinks.
+        if let Some(owned) = self.owning.last_mut() {
+            owned.moved = true;
+        }
+        let out = self.on_screen_keyboard(&id, open, s, &desc);
+        resp.changed |= out.changed;
+        resp.submitted |= out.submitted;
+        let done = out.submitted || out.closed;
+        if done {
+            let back = self.memory(&field_key, 0.0).to_bits();
+            if back != 0 {
+                self.request_focus = back;
+            }
+        }
+        self.remember(&open_key, if open && !done { 1.0 } else { 0.0 });
+        self.remember(&off_key, if done { 1.0 } else { f64::from(u8::from(off)) });
     }
 
     /// Whether a press held on `key` reached its `data-hold` ms this tick

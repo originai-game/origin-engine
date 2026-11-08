@@ -24,6 +24,7 @@ use crate::widgets::IconDesc;
 mod choices;
 mod details;
 mod dropdown;
+mod keyboard;
 mod ranges;
 
 pub use choices::{
@@ -32,6 +33,7 @@ pub use choices::{
 };
 pub use details::{DetailsDesc, DetailsResult};
 pub use dropdown::{DropdownDesc, DropdownOption, DropdownResult, kept_options};
+pub(crate) use keyboard::{KeyboardDesc, KeyboardLayout};
 pub(crate) use ranges::RangeSliderDesc;
 pub use ranges::{
     NumberResult, NumberStepperDesc, SliderMark, ValueFormat, ValueSliderDesc, ValueSliderResult,
@@ -683,6 +685,56 @@ impl Ui {
                     s,
                     [0.0, 0.0],
                 );
+            }
+            "backspace" => {
+                self.set_draw(draw(line(
+                    &[
+                        [0.34, 0.24],
+                        [0.9, 0.24],
+                        [0.9, 0.76],
+                        [0.34, 0.76],
+                        [0.08, 0.5],
+                    ],
+                    true,
+                )));
+                layer(
+                    self,
+                    "X",
+                    line(
+                        &[
+                            [0.48, 0.38],
+                            [0.72, 0.62],
+                            [0.6, 0.5],
+                            [0.72, 0.38],
+                            [0.48, 0.62],
+                        ],
+                        false,
+                    ),
+                    s,
+                    [0.0, 0.0],
+                );
+            }
+            "shift" => self.set_draw(draw(line(
+                &[
+                    [0.5, 0.14],
+                    [0.88, 0.52],
+                    [0.68, 0.52],
+                    [0.68, 0.84],
+                    [0.32, 0.84],
+                    [0.32, 0.52],
+                    [0.12, 0.52],
+                ],
+                true,
+            ))),
+            // The reading order's start and end: mirrored right to left.
+            "chevronStart" | "chevronEnd" => {
+                let x = if (name == "chevronStart") == self.rtl() {
+                    0.38
+                } else {
+                    0.62
+                };
+                let tip = 1.0 - x;
+                self.set_draw(draw(line(&[[x, 0.24], [tip, 0.5], [x, 0.76]], false)));
             }
             "warning" => {
                 self.set_draw(draw(line(&[[0.5, 0.12], [0.9, 0.84], [0.1, 0.84]], true)));

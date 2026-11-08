@@ -1346,6 +1346,18 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "The virtual keyboard a touch device shows (HTML `inputmode`; `none`: the game shows its own); unset, its `type`'s."
     ),
     p!(
+        "enterkeyhint",
+        Ty::Word(&["enter", "done", "go", "next", "previous", "search", "send"]),
+        ["field"],
+        "The on-screen keyboard's enter key (HTML `enterkeyhint`): `Search`, `Send`, `Go` and so on; unset, `Done`."
+    ),
+    p!(
+        "lang",
+        Ty::Name,
+        ["field"],
+        "The language typed (HTML `lang`): `ja` offers the on-screen keyboard's kana table."
+    ),
+    p!(
         "autocomplete",
         Ty::Name,
         ["field"],

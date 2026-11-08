@@ -188,6 +188,84 @@ fn a_text_input_list_suggests_from_its_datalist() {
     assert_eq!(options(d), ["Silk", "Salt"]);
 }
 
+/// A text input a pad focuses opens the on-screen keyboard: its keys type
+/// into the bound value, `enterkeyhint` labels Done, and Done closes it.
+/// The pointer's focus opens none.
+///
+/// Ways it could fail: a keyboard opening for a mouse, keys that type
+/// nothing or into a copy the store never sees, Done not closing it, or
+/// the field reopening it at once when the focus comes back.
+#[test]
+fn a_pad_focus_opens_the_on_screen_keyboard() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page"><input id="Name" bind:value={$name} placeholder="Hero" enterkeyhint="go" /></div>
+<style>#Page { padding: 20px; } #Name { width: 300px; }</style>"#;
+    let key = |d: &Doc, row: u32, k: u32| {
+        d.ui.probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with(&format!("Keys/Row#{row}/Key#{k}")))
+    };
+    let d = &mut Doc::new(text, &[("name", json!(""))], true);
+    d.click("Name");
+    d.step(InputFrame::default());
+    assert!(key(d, 0, 0).is_none(), "no keyboard for the pointer");
+    d.click_at(Vec2::new(700.0, 800.0));
+    // A pad moves the focus onto the field (the pad is the device now).
+    d.step(InputFrame {
+        gamepad: GamepadFrame {
+            pressed: 1 << 13,
+            held: 1 << 13,
+            device: Some(Device::Xbox),
+            ..GamepadFrame::default()
+        },
+        ..InputFrame::default()
+    });
+    for _ in 0..20 {
+        d.step(InputFrame::default());
+    }
+    assert!(
+        d.ui.focus_path(0).ends_with("Keys/Row#0/Key#0"),
+        "the keyboard takes the focus at its first key: {}",
+        d.ui.focus_path(0)
+    );
+    let q = key(d, 0, 0).expect("the keyboard opens for a pad");
+    assert!(
+        d.ui.probe_elements()
+            .iter()
+            .any(|e| e.path == format!("{}/Label", q.path) && e.text == "q"),
+        "the first key types q"
+    );
+    for _ in 0..2 {
+        d.click_at(Vec2::new(q.x + q.width / 2.0, q.y + q.height / 2.0));
+    }
+    assert_eq!(d.read("name"), json!("qq"));
+    // The action row's last key is enter, labelled by enterkeyhint.
+    let enter =
+        d.ui.probe_elements()
+            .into_iter()
+            .filter(|e| e.path.contains("Keys/Row#3/Key#"))
+            .max_by(|a, b| a.x.total_cmp(&b.x))
+            .unwrap();
+    assert!(
+        d.ui.probe_elements()
+            .iter()
+            .any(|e| e.path.starts_with(&enter.path) && e.text == "Go"),
+        "enter reads Go"
+    );
+    d.click_at(Vec2::new(
+        enter.x + enter.width / 2.0,
+        enter.y + enter.height / 2.0,
+    ));
+    for _ in 0..20 {
+        d.step(InputFrame::default());
+    }
+    assert!(
+        key(d, 0, 0).is_none(),
+        "Done closes it, and it stays closed"
+    );
+    assert_eq!(d.read("name"), json!("qq"));
+}
+
 #[test]
 fn a_range_takes_its_datalist_origin_and_disabled() {
     let text = r#"<meta name="component" content="t">

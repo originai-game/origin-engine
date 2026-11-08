@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "On-screen keyboard for text inputs",
+      "summary": "A document's text input that a pad gives the focus opens an on-screen keyboard docked at the screen's bottom: letters with shift and caps, symbols, a number pad, and with `lang=\"ja\"` the kana table with composition. Its keys edit the bound value; `type` and `inputmode` pick the layout, `enterkeyhint` labels Done, `inputmode=\"none\"` opens none (docs/ui.md §2.3). The document form of the onScreenKeyboard builder."
+    }
+  ]
+}
