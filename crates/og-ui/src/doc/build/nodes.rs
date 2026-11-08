@@ -20,6 +20,14 @@ impl Ui {
                 }
                 return None;
             }
+            // An immediate build makes every element each tick: a key block
+            // is its content.
+            NodeKind::Key(_) => {
+                for &c in &n.children {
+                    self.build_node(b, c, None);
+                }
+                return None;
+            }
             NodeKind::Snippet(_) => return None,
             NodeKind::Render { name, optional } => {
                 if let Some(snippet) = doc
@@ -99,6 +107,13 @@ impl Ui {
                         PropValue::Template(t) => json!(t.format(&b.scope())),
                     };
                     props.insert(k.clone(), x);
+                }
+                for p in &cdoc.props {
+                    if let Some(default) = &p.default {
+                        props
+                            .entry(p.name.clone())
+                            .or_insert_with(|| default.clone());
+                    }
                 }
                 let mut vm = Value::Object(props);
                 let id = root_id.unwrap_or(if n.id.is_empty() {
@@ -1446,6 +1461,34 @@ impl Ui {
             }
         }
         let appeared = !self.docs.seen.contains(&key);
+        // `use:` in an immediate build: made the first tick it is built,
+        // updated when its params change; gone is found in docs_begin. A
+        // mounted element's are sent by the retained host.
+        if b.cached.is_none() && !n.uses.is_empty() {
+            for (k, (name, params)) in n.uses.iter().enumerate() {
+                let value = params.as_ref().map_or(Value::Null, |p| b.eval(p));
+                let old = self.docs.last.insert((key, usize::MAX - k), value.clone());
+                let phase = match old {
+                    None => "create",
+                    Some(old) if old != value => "update",
+                    Some(_) => continue,
+                };
+                b.event(
+                    path,
+                    "use",
+                    name,
+                    json!({ "phase": phase, "params": value }),
+                );
+            }
+            let names = n.uses.iter().map(|(name, _)| name.clone()).collect();
+            let event = DocEvent {
+                mount: b.mount.clone(),
+                path: path.to_string(),
+                row_key: b.row_key.clone(),
+                ..DocEvent::default()
+            };
+            self.docs.uses.insert(key, (event, names));
+        }
         let happened = std::mem::take(&mut self.docs.happened);
         let held = n.triggers.iter().any(|t| t.when == When::Hold) && self.held(key, n);
         let context = long || (self.input.secondary_pressed && self.state.hot == key);

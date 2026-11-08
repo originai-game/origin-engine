@@ -104,11 +104,4 @@ fn calc_reduces_once_its_variables_are_known() {
     .unwrap_err()
     .join("\n");
     assert!(mixed.contains("calc() mixes % and ms"), "{mixed}");
-    let style = UiDocument::parse(
-        "ui/t.svelte",
-        "<meta name=\"component\" content=\"t\"><div style:width=\"4px\"></div>",
-    )
-    .unwrap_err()
-    .join("\n");
-    assert!(style.contains("style:--fill"), "{style}");
 }

@@ -119,6 +119,9 @@ pub struct RetainedHost {
     restoring: bool,
     each: BTreeMap<MountedNode, EachInstance>,
     branches: BTreeMap<MountedNode, BranchInstance>,
+    /// `use:` lifecycle events (made, params changed, gone) for the next
+    /// build's answer.
+    uses: Vec<DocEvent>,
     collections: BTreeMap<SourceId, BTreeSet<MountedNode>>,
     dirty: BTreeSet<MountedNode>,
     inherited: BTreeMap<(MountedNode, String), BTreeSet<MountedNode>>,
@@ -422,6 +425,7 @@ impl RetainedHost {
         for node in removed {
             ui.state.virtual_lists.remove(&node.key);
             self.release_element(ui, &node);
+            self.use_events(&node, "destroy", None);
         }
         self.elements.retain(|node, _| &node.mount != mount);
         self.emit.retain(|node| &node.mount != mount);
@@ -462,7 +466,7 @@ impl RetainedHost {
         if matches!(node.kind, NodeKind::For { .. }) {
             return self.compile_each(ui, (doc, index), context, parent, id, env);
         }
-        if matches!(node.kind, NodeKind::If(_)) {
+        if matches!(node.kind, NodeKind::If(_) | NodeKind::Key(_)) {
             return self.compile_branch(ui, (doc, index), context, parent, id, env);
         }
         match &node.kind {
@@ -618,7 +622,15 @@ impl RetainedHost {
                     _ => None,
                 };
                 when.into_iter().chain(action)
-            }));
+            }))
+            .chain(node.uses.iter().filter_map(|(_, params)| params.as_ref()))
+            // `style:prop={…}`'s values (`style:--name`'s are selector facts).
+            .chain(
+                node.custom
+                    .iter()
+                    .map(|(_, e)| e)
+                    .filter(|e| !node.selector_attrs.iter().any(|(_, s)| s == *e)),
+            );
         for e in expressions {
             self.bind(
                 ui,
@@ -630,6 +642,9 @@ impl RetainedHost {
         }
         let context = element.context.clone();
         self.elements.insert(identity.clone(), element);
+        if !self.restoring {
+            self.use_events(&identity, "create", None);
+        }
         let mut children = Vec::new();
         for &child in &node.children {
             let n = &doc.nodes[child];
@@ -664,6 +679,33 @@ impl RetainedHost {
             self.emit.insert(parent.clone());
         }
         Ok(Child::Element(identity))
+    }
+
+    /// Queues `node`'s `use:` events of `phase` (`create`, `update`,
+    /// `destroy`): an update only for the action whose params are
+    /// `changed`'s expression, with its new value.
+    fn use_events(&mut self, node: &MountedNode, phase: &str, changed: Option<(&Expr, Value)>) {
+        let Some(element) = self.elements.get(node) else {
+            return;
+        };
+        for (name, params) in &element.document.nodes[element.index].uses {
+            let value = match (&changed, params) {
+                (Some((e, v)), Some(p)) if *e == p => v.clone(),
+                (Some(_), _) => continue,
+                (None, _) if phase == "destroy" => Value::Null,
+                (None, Some(Expr::Lit(v))) => v.clone(),
+                (None, Some(p)) => element.cached.expression(p),
+                (None, None) => Value::Null,
+            };
+            self.uses.push(DocEvent {
+                mount: element.context.node.mount.id.clone(),
+                path: element.path.clone(),
+                row_key: element.context.row_key.clone(),
+                kind: "use".into(),
+                name: name.clone(),
+                value: json!({ "phase": phase, "params": value }),
+            });
+        }
     }
 
     fn sync_facts(
@@ -831,8 +873,8 @@ impl RetainedHost {
             for &id in &pending {
                 if let Some((node, Input::Structure)) = self.inputs.get(&id) {
                     let node = node.clone();
-                    let enabled = truthy(self.bindings.value(id).map_err(Clone::clone)?);
-                    if let Err(error) = self.refresh_branch(ui, &node, enabled, env) {
+                    let value = self.bindings.value(id).map_err(Clone::clone)?.clone();
+                    if let Err(error) = self.refresh_branch(ui, &node, &value, env) {
                         self.rebuild_mount(ui, &node.mount);
                         return Err(error);
                     }
@@ -844,6 +886,7 @@ impl RetainedHost {
                 }
             }
             let mut facts_changed = BTreeSet::new();
+            let mut changed_uses = Vec::new();
             for id in pending {
                 self.pending_bindings.remove(&id);
                 let Some((node, input)) = self.inputs.get(&id) else {
@@ -856,6 +899,13 @@ impl RetainedHost {
                 let element = self.elements.get_mut(node).unwrap();
                 match input {
                     Input::Expression(e) => {
+                        if element.document.nodes[element.index]
+                            .uses
+                            .iter()
+                            .any(|(_, params)| params.as_ref() == Some(e))
+                        {
+                            changed_uses.push((node.clone(), e.clone(), value.clone()));
+                        }
                         if element.document.nodes[element.index]
                             .selector_attrs
                             .iter()
@@ -884,6 +934,9 @@ impl RetainedHost {
                     Input::Structure => unreachable!(),
                 }
                 self.dirty.insert(node.clone());
+            }
+            for (node, params, value) in changed_uses {
+                self.use_events(&node, "update", Some((&params, value)));
             }
             for node in facts_changed {
                 let element = self.elements.remove(&node).unwrap();
@@ -1945,6 +1998,7 @@ impl Ui {
             if result.is_ok() {
                 host.advance_rive(self);
             }
+            events.append(&mut host.uses);
             host.input_events(self, env, &mut events);
             self.docs.retained = std::mem::take(&mut host);
             self.keep_world_anchors();
@@ -2839,6 +2893,240 @@ mod tests {
             ui.probe_elements()
                 .iter()
                 .any(|node| node.id == "Other" && node.text == "new")
+        );
+    }
+
+    #[test]
+    fn script_props_derived_const_await_and_key_blocks_follow_svelte() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "badge.svelte",
+                r#"
+            <script lang="ts">
+                // Data only: props with defaults and pure derived values.
+                let { label = 'none', count = 2 }: { label?: string; count?: number } = $props();
+                const doubled = $derived(count * 2);
+                const shown = $derived.by(() => label + ':' + doubled);
+            </script>
+            <meta name="component" content="Badge">
+            <text id="Badge">{shown}</text>
+        "#,
+            )
+            .unwrap(),
+        );
+        ui.define_document(
+            UiDocument::parse(
+                "shop.svelte",
+                r#"
+            <meta name="component" content="shop">
+            <column id="Root">
+                <Badge id="Badge" label={$name}/>
+                {#await $load}<text id="Wait">wait</text>
+                {:then v}{@const n = v.count}<text id="Done">{n + 1}</text>
+                {:catch e}<text id="Fail">{e}</text>{/await}
+                {#key $round}<text id="Round">{$round}</text>{/key}
+            </column>
+        "#,
+            )
+            .unwrap(),
+        );
+        let store = |name: &str| SourceId::new("test", name);
+        for (name, value) in [
+            ("name", json!("gold")),
+            ("load", json!({ "status": "pending" })),
+            ("round", json!(1)),
+        ] {
+            ui.reactive
+                .execute(Command::Signal {
+                    source: store(name),
+                    initial: value,
+                    readable: false,
+                })
+                .unwrap();
+        }
+        ui.mount_document(
+            store("screen"),
+            "shop",
+            ["name", "load", "round"]
+                .into_iter()
+                .map(|n| (n.to_string(), store(n)))
+                .collect(),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let frame = |ui: &mut Ui, set: Option<(&str, Value)>| {
+            if let Some((name, value)) = set {
+                ui.reactive
+                    .execute(Command::Set {
+                        source: store(name),
+                        value,
+                        force: false,
+                    })
+                    .unwrap();
+            }
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            ui.probe_elements()
+                .into_iter()
+                .map(|e| (e.path, e.text))
+                .collect::<Vec<_>>()
+        };
+        let text = |els: &[(String, String)], id: &str| {
+            els.iter()
+                .find(|(p, _)| p.rsplit('/').next().unwrap().starts_with(id))
+                .map(|(p, t)| (p.clone(), t.clone()))
+        };
+        let first = frame(&mut ui, None);
+        // The default count (2) doubled, beside the label passed in.
+        assert_eq!(text(&first, "Badge").unwrap().1, "gold:4");
+        assert!(text(&first, "Wait").is_some() && text(&first, "Done").is_none());
+        let (round_path, round) = text(&first, "Round").unwrap();
+        assert_eq!(round, "1");
+        let done = frame(
+            &mut ui,
+            Some((
+                "load",
+                json!({ "status": "fulfilled", "value": { "count": 3 } }),
+            )),
+        );
+        assert_eq!(text(&done, "Done").unwrap().1, "4");
+        assert!(text(&done, "Wait").is_none() && text(&done, "Fail").is_none());
+        let failed = frame(
+            &mut ui,
+            Some(("load", json!({ "status": "rejected", "reason": "offline" }))),
+        );
+        assert_eq!(text(&failed, "Fail").unwrap().1, "offline");
+        // A new key value makes a new element; the same value keeps it.
+        let next = frame(&mut ui, Some(("round", json!(2))));
+        let (next_path, next_text) = text(&next, "Round").unwrap();
+        assert_eq!(next_text, "2");
+        assert_ne!(next_path, round_path);
+        let again = frame(&mut ui, Some(("name", json!("silver"))));
+        assert_eq!(text(&again, "Round").unwrap().0, next_path);
+        assert_eq!(text(&again, "Badge").unwrap().1, "silver:4");
+    }
+
+    #[test]
+    fn directives_map_onto_presence_inline_style_and_use_events() {
+        let mut ui = Ui::new(UiDesc::default());
+        let doc = UiDocument::parse(
+            "fx.svelte",
+            r#"
+            <meta name="component" content="fx">
+            <svelte:window bind:innerWidth={vw}/>
+            <column id="Root">
+                {#if $show}
+                <div id="Box" use:tooltip={{ text: 'hi' }} use:track={$n}
+                     style="width: 40px; height: 12px" style:width={$w + 'px'}
+                     transition:fly={{ y: 20, duration: 200, easing: quintOut }}></div>
+                {/if}
+                <p bind:this={note}>{vw}</p>
+                <svelte:element this={$level}>{note}</svelte:element>
+            </column>
+            <style>#Box { width: 10px; height: 30px; } #note { width: 50px; }</style>
+        "#,
+        )
+        .unwrap();
+        let boxed = doc.nodes.iter().find(|n| n.id == "Box").unwrap();
+        let presence = |name: &str| {
+            boxed
+                .props
+                .iter()
+                .find(|p| p.name() == name)
+                .map(|p| match &p.value {
+                    PropValue::Lit(crate::doc::Lit::Presence(s)) => s.clone(),
+                    other => panic!("{other:?}"),
+                })
+        };
+        let enter = presence("enter").unwrap();
+        assert_eq!(enter, presence("exit").unwrap());
+        assert!(enter.values.contains(&(crate::element::Prop::Y, 20.0)));
+        assert!(enter.values.contains(&(crate::element::Prop::Opacity, 0.0)));
+        assert_eq!(
+            enter.transition,
+            crate::motion::Transition::Tween {
+                duration_ms: 200.0,
+                ease: crate::motion::Ease::CubicBezier([0.22, 1.0, 0.36, 1.0])
+            }
+        );
+        ui.define_document(doc);
+        let store = |name: &str| SourceId::new("test", name);
+        for (name, value) in [
+            ("show", json!(true)),
+            ("n", json!(1)),
+            ("w", json!(70)),
+            ("level", json!("h2")),
+        ] {
+            ui.reactive
+                .execute(Command::Signal {
+                    source: store(name),
+                    initial: value,
+                    readable: false,
+                })
+                .unwrap();
+        }
+        ui.mount_document(
+            store("screen"),
+            "fx",
+            ["show", "n", "w", "level"]
+                .into_iter()
+                .map(|n| (n.to_string(), store(n)))
+                .collect(),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let frame = |ui: &mut Ui, set: Option<(&str, Value)>| {
+            if let Some((name, value)) = set {
+                ui.reactive
+                    .execute(Command::Set {
+                        source: store(name),
+                        value,
+                        force: false,
+                    })
+                    .unwrap();
+            }
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            let uses: Vec<_> = ui
+                .take_doc_events()
+                .into_iter()
+                .filter(|e| e.kind == "use")
+                .map(|e| (e.name, e.value["phase"].clone(), e.value["params"].clone()))
+                .collect();
+            (ui.probe_elements(), uses)
+        };
+        let (els, uses) = frame(&mut ui, None);
+        let find = |id: &str| els.iter().find(|e| e.path.ends_with(id)).unwrap().clone();
+        // The bound style:width beats the attribute's, which beats the rule.
+        assert_eq!((find("/Box").width, find("/Box").height), (70.0, 12.0));
+        assert_eq!(find("/note").text, "400");
+        assert_eq!(find("/note").width, 50.0);
+        assert!(els.iter().any(|e| e.text == "note" && e.role == "heading"));
+        assert_eq!(
+            uses,
+            vec![
+                ("tooltip".into(), json!("create"), json!({ "text": "hi" })),
+                ("track".into(), json!("create"), json!(1)),
+            ]
+        );
+        let (els, uses) = frame(&mut ui, Some(("n", json!(2))));
+        assert_eq!(uses, vec![("track".into(), json!("update"), json!(2))]);
+        assert_eq!(
+            els.iter().find(|e| e.path.ends_with("/Box")).unwrap().width,
+            70.0
+        );
+        let (_, uses) = frame(&mut ui, Some(("show", json!(false))));
+        assert_eq!(
+            uses,
+            vec![
+                ("tooltip".into(), json!("destroy"), Value::Null),
+                ("track".into(), json!("destroy"), Value::Null),
+            ]
         );
     }
 }

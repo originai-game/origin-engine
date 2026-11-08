@@ -19,6 +19,7 @@ pub(crate) mod motion;
 pub(crate) mod paint_css;
 pub mod schema;
 mod schema_extra;
+mod script;
 pub mod selectors;
 mod spans;
 mod stylesheet;
@@ -418,6 +419,8 @@ pub enum NodeKind {
         name: String,
         optional: bool,
     },
+    /// `{#key expr}`: its children are made again when `expr` changes.
+    Key(Expr),
 }
 
 /// One node of a document's tree.
@@ -462,6 +465,9 @@ pub struct DocNode {
     /// declarations that win over every rule but an `!important` one and
     /// inherit like any custom property.
     pub custom: Vec<(String, Expr)>,
+    /// Its `use:name={params}` actions, in order: the game's handler of
+    /// each hears it made, its params change and it go (docs/ui.md §2).
+    pub uses: Vec<(String, Option<Expr>)>,
 }
 
 /// One run of a text element's inline content.
@@ -491,6 +497,9 @@ pub struct ContractProp {
     pub name: String,
     pub ty: String,
     pub doc: String,
+    /// Its default (`let { gold = 0 } = $props()`): what it reads when the
+    /// user passes none.
+    pub default: Option<serde_json::Value>,
 }
 
 /// A parsed, validated document.
@@ -521,6 +530,8 @@ pub struct UiDocument {
     pub keyframe_rules: Vec<(String, AtQuery, String)>,
     /// Viewmodels to preview and push it with (`ui:push:shop:rich`).
     pub fixtures: Vec<(String, serde_json::Value)>,
+    /// The script's `$derived` values, in order: names the whole tree reads.
+    pub derived: Vec<(String, Expr)>,
     pub nodes: Vec<DocNode>,
     pub root: usize,
     /// Author diagnostics that publish promotes to errors.

@@ -55,7 +55,8 @@ target contract, not a claim that those builders have already been removed.
 The document contract has these requirements:
 
 - A `.svelte` file has compile-time `<meta>` declarations, one root element,
-  and document-scoped `<style>`. There is no `<template>` wrapper or script.
+  and document-scoped `<style>`. There is no `<template>` wrapper; a
+  `<script>` holds only props and derived values (below).
   Metadata declares screen or component identity, layer, focus, typed
   props, actions, and preview fixtures. IDs are unique within the document.
 - Text uses `{expr}` and attributes use `attr={expr}`. Mounted stores use
@@ -78,9 +79,84 @@ The document contract has these requirements:
   produce cook warnings and publish errors. Object expressions are allowed
   only for translation parameters and classes. Companion English messages
   use cooked string tables.
-- Script, JSX, runes, `{@html}`, `{@const}`, `use:`, `transition:`, and
-  `on:click` are unsupported. Motion uses CSS, not template directives.
-  Parse errors identify file, line, column, and a fix.
+- JSX, `$state`, `$effect`, `$bindable` outside a prop's default,
+  statements, imports and functions in a script, `{@html}`, `on:click`,
+  `<svelte:document>`, `<svelte:boundary>` and the Svelte 4 elements are
+  refused, each with the Svelte 5 or TS-system form to use. `transition:`,
+  `in:`, `out:`, `animate:`, `use:`, `style:`, `bind:this`, `{@const}`,
+  `{#key}`, `{#await}`, `<svelte:window>` and `<svelte:element>` are
+  supported as below. Parse errors identify file, line, column, and a fix.
+
+#### Svelte blocks, script and directives
+
+Each is Svelte 5's meaning mapped onto what og-ui already does; none runs
+code in the tick.
+
+- `{#key expr}…{/key}` makes its content again when `expr`'s value
+  changes: its elements are new (their ids carry the value's hash, so
+  their paths change), the old ones leave with their exits and the new
+  ones arrive with their entrances.
+- `{@const name = expr}` names an expression for the rest of its block;
+  it sits directly inside `{#if}`, `{#each}`, `{#key}`, `{#await}`,
+  `{#snippet}` or a component. It is replaced by its expression where it
+  is read, so it costs no binding. A name for a non-path expression is
+  read whole (`{total}`, not `{total.x}`).
+- `{#await $load}…{:then value}…{:catch error}…{/await}` (and the short
+  `{#await $load then value}`) reads a store or row field holding a
+  settled record, `{ status: "pending" | "fulfilled" | "rejected", value,
+  reason }` (`Promise.allSettled`'s words): the pending branch until
+  `status` is `fulfilled` or `rejected`, then `{:then}` with `value` or
+  `{:catch}` with `reason`. The TS system that starts the work writes the
+  record; no promise runs in the tick.
+- `<script lang="ts">` holds `let { a, b = 1, c = $bindable('x') }: Props
+  = $props()` (literal defaults: numbers, strings, booleans, null,
+  arrays and objects of them), `const d = $derived(expr)` and `const e =
+  $derived.by(() => expr)` (or `() => { return expr; }`) over pure
+  expressions, and `interface` and `type` declarations, which are erased.
+  A prop's type is its default's (`any` without one) unless a `<meta
+  name="prop:…">` states it; a component user who leaves a prop out reads
+  its default, and the generated `.d.ts` marks it optional. Derived values
+  are names for their expressions, replaced where read. Anything else
+  (`$state`, `$effect`, imports, functions, other statements) is refused:
+  state and logic live in a TS system that writes the stores.
+- `transition:name`, `in:name` and `out:name` (`|local` and `|global`
+  accepted) set the element's `enter`, `exit` or both from Svelte's
+  `fade`, `fly` (`x`, `y`, `opacity`), `slide` (`axis`: it scales along
+  the axis; the layout does not shrink), `scale` (`start`, `opacity`) and
+  `blur` (`amount`, `opacity`: only the opacity moves until og-ui
+  animates a filter), with `duration` (ms, default 400), `delay` and
+  `easing` named from `svelte/easing` (cubic Béziers; the elastic and
+  bounce curves are springs). Params are literal: `transition:fly={{ y:
+  20, easing: quintOut }}`. `in:receive`, `out:send` or
+  `transition:crossfade` with `{{ key: item.id }}` is the shared-element
+  key (`match`). `draw` is refused until og-ui animates a stroke; write
+  `stroke-dashoffset={1 - $t}` with `pathLength="1"`.
+- `animate:flip={{ duration, easing }}` on an element directly inside a
+  keyed `{#each}` is its layout motion (default 300 ms, `cubicOut`).
+- `style="width: 40px; color: red"` and `style:prop="value"` or
+  `style:prop={expr}` (any supported property; `style:--name` is a custom
+  property, as before) are the element's own declarations: they win over
+  every stylesheet rule but an `!important` one, and `style:prop|important`
+  wins over that too. A bound value is written with its unit, `style:width
+  ={$w + 'px'}`.
+- `bind:this={name}` names the element: it is its id, and `name` reads
+  as that id wherever an expression names an element (`popovertarget`,
+  `anchorTo`) and as `#name` in the stylesheet.
+- `use:name` or `use:name={params}` sends a DocEvent of kind `use` named
+  `name` with value `{ phase, params }`: `create` when the element is
+  made, `update` when its params' value changes and `destroy` when it
+  goes. The game's handler for `name` (a TS system) does what Svelte's
+  action function would.
+- `<svelte:window onresize={action} bind:innerWidth={w}
+  bind:innerHeight={h}/>`, beside the root, sends `action` when the
+  screen's size changes and names its size in CSS px (`$ui.width` and
+  `$ui.height`, which any document reads too). Keys reach a game as
+  input actions, so `onkeydown` is refused with that hint.
+- `<svelte:element this="h2">` is that element; `this={$tag}` is the text
+  tag it names (`p`, `span`, `small`, `h1`–`h6`) when its content is
+  inline, or the block tag (`div`, `section`, `header`, `footer`, `nav`,
+  `main`, `aside`, `article`), and nothing for another value. Its
+  descendants take no ids, since each tag is a branch of its own.
 
 Structure and snippet content remain documents, never TypeScript trees.
 

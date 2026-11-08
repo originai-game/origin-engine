@@ -235,8 +235,9 @@ pub fn document_dts<'a>(
             out.push_str(&format!("  /** {} */\n", p.doc.replace("*/", "*\\/")));
         }
         out.push_str(&format!(
-            "  readonly {}: {};\n",
+            "  readonly {}{}: {};\n",
             ident_or_quoted(&p.name),
+            if p.default.is_some() { "?" } else { "" },
             prop_type(doc, &p.name, &p.ty)
         ));
     }
@@ -261,7 +262,7 @@ pub fn document_dts<'a>(
     arms.push(format!(
         "{base} & {{ readonly kind: \"click\" | \"tap\" | \"doubleTap\" | \"longPress\"; readonly name: {ids} }}"
     ));
-    let mut rest = vec!["changed", "select", "action", "set"];
+    let mut rest = vec!["changed", "select", "action", "set", "use"];
     if doc.kind == DocKind::Screen {
         rest.extend(["activate", "deactivate"]);
     }

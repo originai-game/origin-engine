@@ -1,0 +1,28 @@
+{
+  "added": [
+    {
+      "member": "UI documents: {#key}, {@const} and {#await}",
+      "summary": "{#key expr} makes its content again (new elements, their entrances playing) when expr changes; {@const name = expr} names an expression inside a block; {#await $load}…{:then value}…{:catch error}…{/await} shows its branches by the settled record a store holds ({ status: \"pending\" | \"fulfilled\" | \"rejected\", value, reason }). Nothing is awaited in the tick (docs/ui.md §2)."
+    },
+    {
+      "member": "UI documents: <script> with $props() and $derived",
+      "summary": "A document's <script lang=\"ts\"> may declare its props with literal defaults (let { gold = 0 } = $props()) and name pure expressions with $derived(expr) or $derived.by(() => expr); a component user who leaves a prop out reads its default, and the generated .d.ts marks it optional. $state, $effect, imports, functions and other statements are refused with a diagnostic pointing to a TS system."
+    },
+    {
+      "member": "UI documents: transition:, in:, out: and animate:flip",
+      "summary": "Svelte's fade, fly, slide, scale and blur with their duration, delay, easing (svelte/easing's names) and own params map onto the element's enter and exit presence, crossfade's key onto its shared-element key, and animate:flip onto its layout motion. Presentation only."
+    },
+    {
+      "member": "UI documents: style:prop={value}, style:prop|important and style=\"…\"",
+      "summary": "An element's own declarations for any supported property, bound or literal; they win over every stylesheet rule but an !important one, and |important wins over that too."
+    },
+    {
+      "member": "UI documents: bind:this and use:action",
+      "summary": "bind:this={name} names the element (its id; the name reads as that id, for popovertarget, anchorTo and #name selectors). use:name={params} sends DocEvents of kind \"use\" with value { phase: \"create\" | \"update\" | \"destroy\", params } when the element is made, its params change and it goes, for the game's handler."
+    },
+    {
+      "member": "UI documents: <svelte:window> and <svelte:element this>",
+      "summary": "<svelte:window onresize={action} bind:innerWidth={w} bind:innerHeight={h}/> sends an event when the screen's size changes and names its size; <svelte:element this={tag}> is that tag, or for a bound tag the text or block tag it names. The $ui store gains width and height. <svelte:document>, <svelte:boundary> and the Svelte 4 elements are refused with the reason."
+    }
+  ]
+}

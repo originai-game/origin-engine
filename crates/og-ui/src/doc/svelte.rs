@@ -2,6 +2,8 @@ use super::syntax::{Attr, Error, Node, identifier};
 use super::*;
 use std::collections::BTreeSet;
 
+mod directives;
+
 pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>> {
     let run = || -> Result<UiDocument, Error> {
         let nodes = syntax::parse(text)?;
@@ -20,6 +22,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
                 keyframes: Vec::new(),
                 keyframe_rules: Vec::new(),
                 fixtures: Vec::new(),
+                derived: Vec::new(),
                 nodes: Vec::new(),
                 root: NONE,
                 warnings: Vec::new(),
@@ -31,11 +34,28 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
             datalists: Vec::new(),
             list_fors: Vec::new(),
             aria_refs: Vec::new(),
+            consts: Vec::new(),
+            script_props: Vec::new(),
+            inline_styles: Vec::new(),
         };
+        let mut script = false;
+        let mut window = None;
         for node in &nodes {
             match node {
                 Node::Text(text, _) if text.trim().is_empty() => {}
                 Node::Element { tag, attrs, at, .. } if tag == "meta" => p.meta(attrs, *at)?,
+                Node::Element {
+                    tag,
+                    attrs,
+                    children,
+                    at,
+                    ..
+                } if tag == "svelte:window" => {
+                    if window.is_some() || !children.is_empty() {
+                        return Err((*at, "a document has one empty <svelte:window/>".into()));
+                    }
+                    window = Some(attrs.clone());
+                }
                 Node::Element { tag, children, .. } if tag == "style" => {
                     if let [Node::Text(css, at)] = children.as_slice() {
                         p.styles.push((css.clone(), *at));
@@ -43,6 +63,29 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
                 }
                 Node::Snippet { .. } => {
                     p.node(node, NONE)?;
+                }
+                Node::Script(text, at) => {
+                    if std::mem::replace(&mut script, true) {
+                        return Err((*at, "a document has one <script>".into()));
+                    }
+                    let (props, derived) = super::script::read(text, *at)?;
+                    if let Some((n, _)) = derived
+                        .iter()
+                        .find(|(n, _)| p.doc.derived.iter().any(|(m, _)| m == n))
+                    {
+                        return Err((*at, format!("{n} is declared twice")));
+                    }
+                    for prop in props {
+                        // A `<meta name="prop:…">` before it states the type
+                        // and its doc; the script adds the default.
+                        if let Some(q) = p.doc.props.iter_mut().find(|q| q.name == prop.name) {
+                            q.default = prop.default;
+                        } else {
+                            p.script_props.push(prop.name.clone());
+                            p.doc.props.push(prop);
+                        }
+                    }
+                    p.doc.derived.extend(derived);
                 }
                 _ => {
                     if p.doc.root != NONE {
@@ -61,11 +104,28 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
         if p.doc.root == NONE {
             return Err((0, "add one root UI element".into()));
         }
+        if let Some(attrs) = window {
+            p.window(&attrs)?;
+        }
         p.join_labels()?;
         p.join_lists()?;
         p.join_aria()?;
         super::extern_element::finish(&mut p.doc, &mut p.selectors).map_err(|e| (0, e))?;
         super::stylesheet::apply(&mut p.doc, &p.selectors, &p.styles)?;
+        // Inline declarations come last: they win over every rule but an
+        // `!important` one, which an `|important` one wins over in turn.
+        for (i, declarations) in std::mem::take(&mut p.inline_styles) {
+            let line = p.doc.nodes[i].line;
+            p.doc.nodes[i].rules.push(StyleRule {
+                query: AtQuery::default(),
+                condition: None,
+                structure: None,
+                props: Vec::new(),
+                declarations,
+                line,
+            });
+        }
+        super::script::apply(&mut p.doc, &p.consts).map_err(|e| (0, e))?;
         let mut errors = Vec::new();
         p.doc.check(&mut errors);
         if let Some(error) = errors.first() {
@@ -127,6 +187,17 @@ fn renamed(tag: &str) -> Option<String> {
         _ => return None,
     };
     Some(format!("<{tag}> is not a core element; write {html}"))
+}
+
+/// A directive the parser maps itself ([`directives`]), never a selector
+/// fact (`style:--name` stays one: a custom property is data).
+fn directive_name(name: &str) -> bool {
+    ["transition:", "in:", "out:", "animate:", "use:"]
+        .iter()
+        .any(|p| name.starts_with(p))
+        || name == "bind:this"
+        || name == "style"
+        || (name.starts_with("style:") && !name.starts_with("style:--"))
 }
 
 /// Inline content a text element reads as runs: words, expressions, the
@@ -252,7 +323,11 @@ fn select_options(children: &[Node]) -> Result<Vec<SelectOption>, Error> {
                 | Node::Expression(_, at)
                 | Node::If { at, .. }
                 | Node::Snippet { at, .. }
-                | Node::Render { at, .. } => {
+                | Node::Render { at, .. }
+                | Node::Key { at, .. }
+                | Node::Const { at, .. }
+                | Node::Await { at, .. }
+                | Node::Script(_, at) => {
                     return Err((
                         *at,
                         "a <select> holds <option>s and <optgroup>s (one level) only".into(),
@@ -346,6 +421,15 @@ struct Parser {
     /// `aria-labelledby` and `aria-describedby`, joined once the tree is
     /// read: (the element, the prop the text goes to, the ids, where).
     aria_refs: Vec<(usize, &'static str, String, usize)>,
+    /// `{@const}`s: (their block, name, expression), substituted once the
+    /// tree is read ([`super::script::apply`]).
+    consts: Vec<(usize, String, Expr)>,
+    /// Props the script declared, whose type a `<meta name="prop:…">` may
+    /// state.
+    script_props: Vec<String>,
+    /// Elements' `style` attributes and `style:` directives: declarations
+    /// that follow every rule of the stylesheet.
+    inline_styles: Vec<(usize, Vec<StyleDeclaration>)>,
 }
 /// A `<datalist>`: its id, its options' values and labels, and its bound
 /// `items`.
@@ -446,7 +530,8 @@ impl Parser {
                 }
             }
         } else if let Some(name) = name.strip_prefix("prop:") {
-            if self.doc.props.iter().any(|p| p.name == name) {
+            let from_script = self.script_props.iter().any(|p| p == name);
+            if self.doc.props.iter().any(|p| p.name == name) && !from_script {
                 return Err((at, format!("duplicate prop {name}; declare it once")));
             }
             if !identifier(name)
@@ -457,11 +542,20 @@ impl Parser {
             {
                 return Err((at, "prop metadata needs a name and type number/string/bool/list/object/any/content".into()));
             }
-            self.doc.props.push(ContractProp {
-                name: name.into(),
-                ty: content.into(),
-                doc: get("data-doc").into(),
-            });
+            if from_script {
+                // The script declared it; the metadata states its type.
+                self.script_props.retain(|p| p != name);
+                let p = self.doc.props.iter_mut().find(|p| p.name == name).unwrap();
+                p.ty = content.into();
+                p.doc = get("data-doc").into();
+            } else {
+                self.doc.props.push(ContractProp {
+                    name: name.into(),
+                    ty: content.into(),
+                    doc: get("data-doc").into(),
+                    default: None,
+                });
+            }
         } else if let Some(name) = name.strip_prefix("action:") {
             self.doc.actions.push((name.into(), content.into()));
         } else if let Some(name) = name.strip_prefix("fixture:") {
@@ -534,15 +628,58 @@ impl Parser {
             inline: Vec::new(),
             links: Vec::new(),
             custom: Vec::new(),
+            uses: Vec::new(),
         });
         index
     }
     fn children(&mut self, nodes: &[Node], parent: usize) -> Result<Vec<usize>, Error> {
-        nodes
+        let mut out = Vec::new();
+        for n in nodes {
+            match n {
+                Node::Text(text, _) if text.trim().is_empty() => {}
+                Node::Const { name, expr, at } => {
+                    let value = expression(expr, *at)?;
+                    self.constant(parent, name, value, *at)?;
+                }
+                n => out.push(self.node(n, parent)?),
+            }
+        }
+        Ok(out)
+    }
+    /// `{@const name = value}` in block `parent`.
+    fn constant(&mut self, parent: usize, name: &str, value: Expr, at: usize) -> Result<(), Error> {
+        let block = parent != NONE
+            && matches!(
+                self.doc.nodes[parent].kind,
+                NodeKind::If(_)
+                    | NodeKind::For { .. }
+                    | NodeKind::Snippet(_)
+                    | NodeKind::Use(_)
+                    | NodeKind::Key(_)
+            );
+        if !block {
+            return Err((
+                at,
+                "{@const} sits directly inside a block ({#if}, {#each}, {#key}, {#await}, {#snippet} or a component); for the whole document write $derived in the <script>".into(),
+            ));
+        }
+        if self
+            .consts
             .iter()
-            .filter(|n| !matches!(n, Node::Text(text, _) if text.trim().is_empty()))
-            .map(|n| self.node(n, parent))
-            .collect()
+            .any(|(b, n, _)| *b == parent && n == name)
+        {
+            return Err((at, format!("{name} is declared twice in this block")));
+        }
+        if self.doc.props.iter().any(|p| p.name == name)
+            || self.doc.derived.iter().any(|(n, _)| n == name)
+        {
+            return Err((
+                at,
+                format!("{name} names a prop or derived value already; choose another name"),
+            ));
+        }
+        self.consts.push((parent, name.into(), value));
+        Ok(())
     }
     fn node(&mut self, node: &Node, parent: usize) -> Result<usize, Error> {
         match node {
@@ -615,6 +752,28 @@ impl Parser {
                 parent,
                 *at,
             )),
+            Node::Key { expr, body, at } => {
+                let i = self.push(NodeKind::Key(expression(expr, *at)?), parent, *at);
+                self.doc.nodes[i].children = self.children(body, i)?;
+                Ok(i)
+            }
+            Node::Const { name, expr, at } => {
+                // Reached only outside a block's children (an element's).
+                let value = expression(expr, *at)?;
+                self.constant(NONE, name, value, *at)?;
+                unreachable!("a const outside a block is refused")
+            }
+            Node::Await {
+                expr,
+                pending,
+                then,
+                catch,
+                at,
+            } => self.await_block(expr, pending, then, catch, parent, *at),
+            Node::Script(_, at) => Err((
+                *at,
+                "a <script> sits at the top of the file, beside the root element".into(),
+            )),
             Node::Text(_, at) | Node::Expression(_, at) => Err((
                 *at,
                 "text needs a text-bearing element such as <text> or <button>".into(),
@@ -628,6 +787,175 @@ impl Parser {
             } => self.element(tag, attrs, children, *at, parent),
         }
     }
+    /// `{#await $load}`: three `{#if}`s over the settled record its store
+    /// holds (`status` `pending`, `fulfilled` or `rejected`, Promise.allSettled's
+    /// vocabulary), `{:then v}` naming its `value` and `{:catch e}` its
+    /// `reason` as `{@const}` does. Nothing is awaited in the tick.
+    fn await_block(
+        &mut self,
+        expr: &str,
+        pending: &[Node],
+        then: &Option<(String, Vec<Node>)>,
+        catch: &Option<(String, Vec<Node>)>,
+        parent: usize,
+        at: usize,
+    ) -> Result<usize, Error> {
+        let Expr::Path(path) = expression(expr, at)? else {
+            return Err((
+                at,
+                "{#await} reads a store or row field holding { status, value, reason }, such as {#await $load}; a promise never runs in the tick".into(),
+            ));
+        };
+        let status = |s: &str| {
+            Expr::Bin(
+                crate::bind::Op::Eq,
+                Box::new(Expr::Path(format!("{path}.status"))),
+                Box::new(Expr::Lit(s.into())),
+            )
+        };
+        let settled = Expr::Bin(
+            crate::bind::Op::Or,
+            Box::new(status("fulfilled")),
+            Box::new(status("rejected")),
+        );
+        let wrapper = self.push(NodeKind::If(Expr::Lit(true.into())), parent, at);
+        let mut arms = Vec::new();
+        let branches = [
+            (Expr::Not(Box::new(settled)), None, pending),
+            (
+                status("fulfilled"),
+                then.as_ref().map(|(n, _)| (n, "value")),
+                then.as_ref().map_or(&[][..], |(_, b)| b),
+            ),
+            (
+                status("rejected"),
+                catch.as_ref().map(|(n, _)| (n, "reason")),
+                catch.as_ref().map_or(&[][..], |(_, b)| b),
+            ),
+        ];
+        for (condition, alias, body) in branches {
+            if body.is_empty() && alias.is_none() {
+                continue;
+            }
+            let arm = self.push(NodeKind::If(condition), wrapper, at);
+            if let Some((name, field)) = alias.filter(|(n, _)| !n.is_empty()) {
+                let value = Expr::Path(format!("{path}.{field}"));
+                self.constant(arm, name, value, at)?;
+            }
+            self.doc.nodes[arm].children = self.children(body, arm)?;
+            arms.push(arm);
+        }
+        self.doc.nodes[wrapper].children = arms;
+        Ok(wrapper)
+    }
+    /// `<svelte:element this={tag}>`: a literal tag is that element; a
+    /// bound one is an `{#if}` over the text tags (when its content is
+    /// inline) or the block tags, and nothing for another value.
+    fn dynamic_element(
+        &mut self,
+        attrs: &[Attr],
+        children: &[Node],
+        at: usize,
+        parent: usize,
+    ) -> Result<usize, Error> {
+        let Some(this) = attrs.iter().find(|a| a.name == "this") else {
+            return Err((at, "<svelte:element> needs this={tag}".into()));
+        };
+        let rest: Vec<Attr> = attrs.iter().filter(|a| a.name != "this").cloned().collect();
+        if !this.bound {
+            if this.value.starts_with("svelte:") {
+                return Err((this.at, "this names an HTML or core tag".into()));
+            }
+            return self.element(&this.value, &rest, children, at, parent);
+        }
+        let tags: &[&str] = if children.iter().all(inline) {
+            &["p", "span", "small", "h1", "h2", "h3", "h4", "h5", "h6"]
+        } else {
+            &[
+                "div", "section", "header", "footer", "nav", "main", "aside", "article",
+            ]
+        };
+        let mut chain: Vec<Node> = Vec::new();
+        for tag in tags.iter().rev() {
+            chain = vec![Node::If {
+                condition: format!("({}) == '{tag}'", this.value),
+                yes: vec![Node::Element {
+                    tag: (*tag).into(),
+                    attrs: rest.clone(),
+                    children: children.to_vec(),
+                    at,
+                    end: at,
+                    close: at,
+                }],
+                no: chain,
+                at,
+            }];
+        }
+        self.node(&chain[0], parent)
+    }
+    /// `<svelte:window>`'s attributes, on the root once it is read:
+    /// `onresize={action}` when the screen's size changes, and
+    /// `bind:innerWidth={w}` / `bind:innerHeight={h}` naming its size.
+    fn window(&mut self, attrs: &[Attr]) -> Result<(), Error> {
+        for a in attrs {
+            match a.name.as_str() {
+                "onresize" => {
+                    if !a.bound || !identifier(&a.value) {
+                        return Err((
+                            a.at,
+                            "onresize names a mounted action: onresize={relayout}".into(),
+                        ));
+                    }
+                    let size = expression("$ui.width + 'x' + $ui.height", a.at)?;
+                    let line = self.line(a.at);
+                    self.doc.nodes[self.doc.root].triggers.push(Trigger {
+                        when: When::Change(size),
+                        act: Act::Emit(a.value.clone()),
+                        line,
+                    });
+                }
+                "bind:innerWidth" | "bind:innerHeight" => {
+                    if !a.bound || !identifier(&a.value) {
+                        return Err((
+                            a.at,
+                            format!(
+                                "{} names the size for the document (bind:innerWidth={{width}}); a store reads $ui.width",
+                                a.name
+                            ),
+                        ));
+                    }
+                    let field = if a.name.ends_with("Width") {
+                        "width"
+                    } else {
+                        "height"
+                    };
+                    if self.doc.derived.iter().any(|(n, _)| *n == a.value) {
+                        return Err((a.at, format!("{} is declared twice", a.value)));
+                    }
+                    self.doc
+                        .derived
+                        .push((a.value.clone(), Expr::Path(format!("$ui.{field}"))));
+                }
+                name if name.starts_with("onkey") => {
+                    return Err((
+                        a.at,
+                        format!(
+                            "{name}: keys reach a game as input actions; declare <meta name=\"action:confirm\" content=\"…\"> and write onconfirm={{…}}"
+                        ),
+                    ));
+                }
+                other => {
+                    return Err((
+                        a.at,
+                        format!(
+                            "<svelte:window> takes onresize, bind:innerWidth and bind:innerHeight, not {other}"
+                        ),
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
     fn element(
         &mut self,
         tag: &str,
@@ -637,6 +965,35 @@ impl Parser {
         parent: usize,
     ) -> Result<usize, Error> {
         match tag {
+            "svelte:element" => return self.dynamic_element(attrs, children, at, parent),
+            "svelte:window" => {
+                return Err((
+                    at,
+                    "<svelte:window> sits at the top of the file, beside the root element".into(),
+                ));
+            }
+            "svelte:document" | "svelte:body" | "svelte:head" => {
+                return Err((
+                    at,
+                    format!(
+                        "<{tag}> has nothing to reach in a game: its UI is one layer stack; listen with <svelte:window onresize> or an input action (<meta name=\"action:…\">)"
+                    ),
+                ));
+            }
+            "svelte:boundary" => {
+                return Err((
+                    at,
+                    "<svelte:boundary> catches errors a document never throws while it runs: its expressions are checked when it cooks, and a missing store fails the mount with its path".into(),
+                ));
+            }
+            "svelte:options" | "svelte:fragment" | "svelte:self" | "svelte:component" => {
+                return Err((
+                    at,
+                    format!(
+                        "<{tag}> is not Svelte 5 markup a document takes; use a capitalised component, a snippet or <svelte:element this>"
+                    ),
+                ));
+            }
             "option" | "optgroup" => {
                 return Err((at, format!("<{tag}> belongs inside a <select>")));
             }
@@ -957,7 +1314,10 @@ impl Parser {
             "li" => Some("listitem"),
             _ => None,
         };
-        for attr in attrs.iter().filter(|a| !a.name.starts_with("on")) {
+        for attr in attrs
+            .iter()
+            .filter(|a| !a.name.starts_with("on") && !directive_name(&a.name))
+        {
             let value = if attr.bound || attr.name.starts_with("class:") {
                 expression(&attr.value, attr.at)?
             } else {
@@ -993,6 +1353,9 @@ impl Parser {
                 if a.bound {
                     expression(&a.value, a.at)?;
                 }
+                continue;
+            }
+            if self.directive(i, internal, a)? {
                 continue;
             }
             if let Some(event) = a.name.strip_prefix("on") {
@@ -1052,9 +1415,6 @@ impl Parser {
                 };
                 self.doc.nodes[i].custom.push((name.to_string(), value));
                 continue;
-            }
-            if a.name.starts_with("style:") || a.name == "style" {
-                return Err((a.at, "declare layout and appearance in scoped <style>; bind data to it with a custom property, style:--fill={$hp / $max}, read as var(--fill)".into()));
             }
             // A block's key translates its anonymous text.
             if internal == "box" && a.name == "i18n" {
@@ -1688,7 +2048,11 @@ impl Parser {
                 Node::If { at, .. }
                 | Node::Each { at, .. }
                 | Node::Snippet { at, .. }
-                | Node::Render { at, .. } => {
+                | Node::Render { at, .. }
+                | Node::Key { at, .. }
+                | Node::Const { at, .. }
+                | Node::Await { at, .. }
+                | Node::Script(_, at) => {
                     return Err((
                         *at,
                         "a block cannot sit inside text; put it beside the text in a <div>, or use {cond ? a : b}".into(),
@@ -2088,8 +2452,49 @@ button.active { opacity: 1; }
             ("<text>{$state(1)}</text>", "game's mounted stores"),
             ("<button on:click={next}/>", "onclick"),
             ("<slot/>", "{@render"),
-            ("<script>const a = 1</script>", "scripts are not allowed"),
-            ("<text>{@html $raw}</text>", "unsupported Svelte block"),
+            ("<script>let count = $state(0)</script><text/>", "TS system"),
+            (
+                "<script>$effect(() => log())</script><text/>",
+                "$effect is not allowed",
+            ),
+            ("<script>import X from './x'</script><text/>", "imports"),
+            (
+                "<script>function go() {}</script><text/>",
+                "functions are not allowed",
+            ),
+            (
+                "<script>const a = 1</script><text/>",
+                "variable, which is not allowed",
+            ),
+            (
+                "<script>let { a = b() } = $props()</script><text/>",
+                "not a literal",
+            ),
+            ("<text>{@html $raw}</text>", "TS system"),
+            ("<column>{@const a = 1}</column>", "directly inside a block"),
+            (
+                "<column>{#await $a + 1}{/await}</column>",
+                "a promise never runs",
+            ),
+            ("<column>{#key $a}<text/></column>", "{/key}"),
+            (
+                "<svg><path d='M0 0' in:draw/></svg>",
+                "draw is not supported yet",
+            ),
+            ("<div animate:flip></div>", "keyed {#each}"),
+            ("<div transition:spin></div>", "not a built-in transition"),
+            ("<div in:fade out:fade transition:fade></div>", "set twice"),
+            (
+                "<div transition:fly={{ easing: wobble }}></div>",
+                "svelte/easing",
+            ),
+            ("<div style={$css}></div>", "literal CSS"),
+            (
+                "<div style='colour: red'></div>",
+                "unsupported CSS property",
+            ),
+            ("<svelte:boundary><text/></svelte:boundary>", "never throws"),
+            ("<svelte:window onkeydown={go}/><text/>", "input actions"),
             (
                 r#"<input type="range" bind:value={$amount + 1}/>"#,
                 "writable store",

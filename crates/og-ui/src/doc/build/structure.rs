@@ -245,6 +245,7 @@ impl Ui {
                         self.instantiate(b, doc, &n.children, level, false);
                     }
                 }
+                NodeKind::Key(_) => self.instantiate(b, doc, &n.children, level, false),
                 NodeKind::Snippet(_) => {}
                 NodeKind::Render { name, .. } => {
                     if let Some(snippet) = doc

@@ -395,3 +395,73 @@ fn backdrop(rule: &mut Rule) -> Result<(), (usize, String)> {
     rule.body = body;
     Ok(())
 }
+
+/// An element's own declarations (its `style` attribute or a `style:`
+/// directive, `body` at `at`), expanded and checked as a rule's are.
+pub(super) fn inline(
+    doc: &UiDocument,
+    node: usize,
+    body: &str,
+    at: usize,
+) -> Result<Vec<StyleDeclaration>, Error> {
+    let known: Vec<String> = doc.keyframe_rules.iter().map(|(n, ..)| n.clone()).collect();
+    let mut out = Vec::new();
+    for declaration in variables::declarations(body).map_err(|e| (at, e))? {
+        for d in super::container::expand(declaration)
+            .and_then(|ds| {
+                let mut v = Vec::new();
+                for d in ds {
+                    v.extend(super::lists::expand(d)?);
+                }
+                Ok(v)
+            })
+            .map_err(|e| (at, e))?
+        {
+            out.extend(
+                super::motion::expand(d, &|name| known.iter().any(|k| k == name))
+                    .map_err(|e| (at, e))?,
+            );
+        }
+    }
+    let kind = match doc.nodes[node].kind {
+        NodeKind::Element(k) => k,
+        _ => "column",
+    };
+    for d in &out {
+        let name = d.name.as_str();
+        if name.starts_with("--")
+            || super::motion::longhand(name)
+            || super::container::longhand(name)
+            || super::extern_element::svg_longhand(name)
+        {
+            continue;
+        }
+        if css::targets(name).next().is_none() {
+            return Err((
+                at,
+                format!(
+                    "unsupported CSS property {name}: {}",
+                    css::unsupported(name)
+                        .unwrap_or("use a property listed in the document CSS reference")
+                ),
+            ));
+        }
+        if d.value.has_variables() {
+            continue;
+        }
+        let value = d.value.substitute(&mut |_| None).map_err(|e| (at, e))?;
+        if super::calc::has_absolute(&value) {
+            continue;
+        }
+        let value = super::calc::reduce(&value).map_err(|e| (at, e))?;
+        for e in css::declarations(&format!("{name}: {value};"), 0).map_err(|e| (at, e))? {
+            let applies = schema::prop(&e.key).is_some_and(|(_, p)| p.applies(kind));
+            let side = (e.key == "direction" && kind == "toggle")
+                || (e.key == "labelDirection" && kind != "toggle");
+            if !applies && !side {
+                return Err((at, format!("CSS property {name} does not apply to {kind}")));
+            }
+        }
+    }
+    Ok(out)
+}

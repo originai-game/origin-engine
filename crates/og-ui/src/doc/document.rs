@@ -278,7 +278,7 @@ impl UiDocument {
                 list.paths(out);
                 key.paths(out);
             }
-            NodeKind::If(e) => e.paths(out),
+            NodeKind::If(e) | NodeKind::Key(e) => e.paths(out),
             _ => {}
         }
     }
@@ -302,7 +302,10 @@ impl UiDocument {
     fn child_by_id(&self, at: usize, id: &str) -> Option<usize> {
         for &c in &self.nodes[at].children {
             let n = &self.nodes[c];
-            if matches!(n.kind, NodeKind::For { .. } | NodeKind::If(_)) {
+            if matches!(
+                n.kind,
+                NodeKind::For { .. } | NodeKind::If(_) | NodeKind::Key(_)
+            ) {
                 if let Some(x) = self.child_by_id(c, id) {
                     return Some(x);
                 }
@@ -354,7 +357,7 @@ impl UiDocument {
                 "back": match &self.layer.back { Back::Pop => "pop".to_string(), Back::None => "none".into(), Back::Emit(n) => format!("emit {n}") },
                 "focus": self.layer.focus, "remember": self.layer.remember,
             },
-            "props": self.props.iter().map(|p| json!({ "name": p.name, "type": p.ty, "doc": p.doc })).collect::<Vec<_>>(),
+            "props": self.props.iter().map(|p| json!({ "name": p.name, "type": p.ty, "doc": p.doc, "default": p.default })).collect::<Vec<_>>(),
             "parts": self.parts,
             "slots": slots,
             "arts": arts,

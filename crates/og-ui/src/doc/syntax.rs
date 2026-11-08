@@ -45,6 +45,29 @@ pub(super) enum Node {
         optional: bool,
         at: usize,
     },
+    /// `{#key expr}`: its content is rebuilt when `expr`'s value changes.
+    Key {
+        expr: String,
+        body: Vec<Node>,
+        at: usize,
+    },
+    /// `{@const name = expr}`: a name for `expr` in the enclosing block.
+    Const {
+        name: String,
+        expr: String,
+        at: usize,
+    },
+    /// `{#await expr}`: a store holding a settled-promise record
+    /// (`{ status: "pending" | "fulfilled" | "rejected", value, reason }`).
+    Await {
+        expr: String,
+        pending: Vec<Node>,
+        then: Option<(String, Vec<Node>)>,
+        catch: Option<(String, Vec<Node>)>,
+        at: usize,
+    },
+    /// A `<script>`'s text, read by the props-and-derived subset.
+    Script(String, usize),
 }
 
 pub(super) type Error = (usize, String);
@@ -97,7 +120,8 @@ impl Parser<'_> {
     fn name(&mut self) -> Result<String, Error> {
         let start = self.at;
         while let Some(c) = self.rest().chars().next() {
-            if c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | ':' | '.' | '$') {
+            // `|` joins a directive's modifiers (`transition:fade|global`).
+            if c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | ':' | '.' | '$' | '|') {
                 self.at += 1;
             } else {
                 break;
@@ -237,8 +261,44 @@ impl Parser<'_> {
                         optional,
                         at,
                     });
+                } else if let Some(key) = expr.strip_prefix("#key ") {
+                    let (body, end) = self.nodes()?;
+                    if end != "/key" {
+                        return self.fail("close the key block with {/key}");
+                    }
+                    nodes.push(Node::Key {
+                        expr: key.trim().into(),
+                        body,
+                        at,
+                    });
+                } else if let Some(decl) = expr.strip_prefix("@const ") {
+                    let Some((name, value)) = decl
+                        .split_once('=')
+                        .filter(|(_, v)| !v.starts_with('=') && !v.trim().is_empty())
+                    else {
+                        return Err((at, "write {@const name = expression}".into()));
+                    };
+                    let name = name.trim();
+                    if !identifier(name) {
+                        return Err((
+                            at,
+                            "{@const} names one value; destructuring is not supported".into(),
+                        ));
+                    }
+                    nodes.push(Node::Const {
+                        name: name.into(),
+                        expr: value.trim().into(),
+                        at,
+                    });
+                } else if let Some(head) = expr.strip_prefix("#await ") {
+                    nodes.push(self.await_block(head, at)?);
+                } else if expr.starts_with("@html") {
+                    return Err((
+                        at,
+                        "{@html} parses markup while the game runs, which a document never does; write the elements, render content with {@render name()}, or prepare rich text in a TS system and pass it through a store".into(),
+                    ));
                 } else if expr.starts_with(['@', '#']) {
-                    return self.fail("unsupported Svelte block; use if, keyed each, snippet or render (no @html/@const)");
+                    return self.fail("unsupported Svelte block; use if, keyed each, key, await, snippet, render or const");
                 } else {
                     nodes.push(Node::Expression(expr, at));
                 }
@@ -250,6 +310,69 @@ impl Parser<'_> {
             }
         }
         Ok((nodes, String::new()))
+    }
+    /// `{#await $load}…{:then value}…{:catch error}…{/await}`, and the
+    /// short forms `{#await $load then value}` and `{#await $load catch e}`.
+    fn await_block(&mut self, head: &str, at: usize) -> Result<Node, Error> {
+        let alias = |s: &str| -> Result<String, Error> {
+            let s = s.trim();
+            if s.is_empty() || identifier(s) {
+                Ok(s.into())
+            } else {
+                Err((
+                    at,
+                    format!("{s} is not a name; {{:then value}} binds one name"),
+                ))
+            }
+        };
+        let (expr, mut first) = if let Some((e, v)) = head.split_once(" then ") {
+            (e, Some(("then", alias(v)?)))
+        } else if let Some((e, v)) = head.split_once(" catch ") {
+            (e, Some(("catch", alias(v)?)))
+        } else {
+            (head, None)
+        };
+        let expr = expr.trim();
+        if expr.is_empty() {
+            return Err((
+                at,
+                "write {#await $store} with the store holding the result".into(),
+            ));
+        }
+        let mut pending = Vec::new();
+        let mut then = None;
+        let mut catch = None;
+        let (mut body, mut end) = self.nodes()?;
+        loop {
+            match first.take() {
+                Some(("then", name)) if then.is_none() && catch.is_none() => {
+                    then = Some((name, body))
+                }
+                Some(("catch", name)) if catch.is_none() => catch = Some((name, body)),
+                Some(_) => {
+                    return self.fail("an await block takes one {:then} before one {:catch}");
+                }
+                None => pending = body,
+            }
+            if end == "/await" {
+                break;
+            }
+            if let Some(v) = end.strip_prefix(":then") {
+                first = Some(("then", alias(v)?));
+            } else if let Some(v) = end.strip_prefix(":catch") {
+                first = Some(("catch", alias(v)?));
+            } else {
+                return self.fail("close the await block with {/await}");
+            }
+            (body, end) = self.nodes()?;
+        }
+        Ok(Node::Await {
+            expr: expr.into(),
+            pending,
+            then,
+            catch,
+            at,
+        })
     }
     fn if_block(&mut self, condition: String, at: usize) -> Result<Node, Error> {
         let (yes, end) = self.nodes()?;
@@ -279,7 +402,32 @@ impl Parser<'_> {
         let tag = self.name()?;
         match tag.as_str() {
             "script" => {
-                return self.fail("scripts are not allowed; pass game stores and actions at mount");
+                // Only the props-and-derived subset is read (svelte::script).
+                self.space();
+                if self.rest().starts_with("lang") {
+                    let _ = self.name()?;
+                    self.space();
+                    if self.take("=") {
+                        self.space();
+                        let lang = ["\"ts\"", "'ts'", "\"typescript\""]
+                            .into_iter()
+                            .find(|l| self.rest().starts_with(l));
+                        let Some(lang) = lang else {
+                            return self.fail("a <script> is TypeScript: lang=\"ts\" or none");
+                        };
+                        self.at += lang.len();
+                    }
+                    self.space();
+                }
+                if !self.take(">") {
+                    return self.fail("a <script> takes no attributes but lang=\"ts\"; module scripts are not supported");
+                }
+                let start = self.at;
+                let Some(len) = self.rest().find("</script>") else {
+                    return self.fail("close the script with </script>");
+                };
+                self.at += len + "</script>".len();
+                return Ok(Node::Script(self.text[start..start + len].into(), start));
             }
             "slot" => {
                 return self.fail("Svelte 5 uses snippets; replace <slot> with {@render name?.()}");
@@ -313,15 +461,6 @@ impl Parser<'_> {
                         "Svelte 5 events use {}={{action}} instead of {name}",
                         name.replace("on:", "on")
                     ));
-                }
-                if name.starts_with("use:")
-                    || name.starts_with("transition:")
-                    || name.starts_with("in:")
-                    || name.starts_with("out:")
-                {
-                    return self.fail(
-                        "actions and transitions are not executable markup; declare motion in CSS",
-                    );
                 }
                 self.space();
                 if self.take("=") {

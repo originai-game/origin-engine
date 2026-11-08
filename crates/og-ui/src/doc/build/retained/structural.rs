@@ -21,7 +21,15 @@ pub(super) struct BranchInstance {
     render_prefix: String,
     binding: BindingId,
     enabled: bool,
+    /// A `{#key}` block's value's hash: its children are new elements,
+    /// their ids carrying it, each time the value changes.
+    keyed: Option<u64>,
     pub children: Vec<Child>,
+}
+
+/// A `{#key}` value's hash, carried in its children's ids.
+fn key_hash(value: &Value) -> u64 {
+    crate::id::key_of_path(&value.to_string())
 }
 
 #[derive(Clone)]
@@ -48,7 +56,8 @@ impl RetainedHost {
         id: String,
         env: &dyn Env,
     ) -> Result<Child, String> {
-        let NodeKind::If(expression) = &source.0.nodes[source.1].kind else {
+        let (NodeKind::If(expression) | NodeKind::Key(expression)) = &source.0.nodes[source.1].kind
+        else {
             unreachable!()
         };
         let expression = expression.clone();
@@ -87,7 +96,9 @@ impl RetainedHost {
         );
         self.inputs
             .insert(binding, (identity.clone(), Input::Structure));
-        let enabled = truthy(self.bindings.value(binding).map_err(Clone::clone)?);
+        let value = self.bindings.value(binding).map_err(Clone::clone)?;
+        let keyed = matches!(doc.nodes[index].kind, NodeKind::Key(_)).then(|| key_hash(value));
+        let enabled = keyed.is_some() || truthy(value);
         let mut branch = BranchInstance {
             document: doc,
             index,
@@ -106,6 +117,7 @@ impl RetainedHost {
                 .map_or_else(String::new, |(prefix, _)| format!("{prefix}/")),
             binding,
             enabled,
+            keyed,
             children: Vec::new(),
         };
         if enabled {
@@ -125,13 +137,16 @@ impl RetainedHost {
         for &child in &branch.document.nodes[branch.index].children {
             let n = &branch.document.nodes[child];
             let id = format!(
-                "{}{}{}",
+                "{}{}{}{}",
                 branch.render_prefix,
                 if n.id.is_empty() {
                     format!("node{child}")
                 } else {
                     n.id.clone()
                 },
+                branch
+                    .keyed
+                    .map_or_else(String::new, |k| format!("~{:08x}", k as u32)),
                 branch.suffix
             );
             children.push(self.compile(
@@ -147,6 +162,27 @@ impl RetainedHost {
     }
 
     pub(super) fn refresh_branch(
+        &mut self,
+        ui: &mut Ui,
+        id: &MountedNode,
+        value: &Value,
+        env: &dyn Env,
+    ) -> Result<(), String> {
+        if let Some(old) = self.branches[id].keyed {
+            let key = key_hash(value);
+            if old == key {
+                return Ok(());
+            }
+            // A new value: the old content goes (its exits play) and new
+            // elements are made (their entrances play), as Svelte's {#key}.
+            self.set_branch(ui, id, false, env)?;
+            self.branches.get_mut(id).unwrap().keyed = Some(key);
+            return self.set_branch(ui, id, true, env);
+        }
+        self.set_branch(ui, id, truthy(value), env)
+    }
+
+    fn set_branch(
         &mut self,
         ui: &mut Ui,
         id: &MountedNode,
@@ -436,6 +472,7 @@ impl RetainedHost {
                 self.pending_bindings.remove(&branch.binding);
             }
             Child::Element(id) => {
+                self.use_events(&id, "destroy", None);
                 let parent = self.topology.parent(&id).cloned();
                 if let Some(parent) = &parent {
                     self.emit.insert(parent.clone());

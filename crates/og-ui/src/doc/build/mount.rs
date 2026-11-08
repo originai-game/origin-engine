@@ -87,6 +87,9 @@ pub struct DocHost {
     /// Document elements seen last tick (for `on appear`).
     pub(crate) seen: BTreeSet<u64>,
     pub(crate) seen_now: BTreeSet<u64>,
+    /// Immediately built elements with `use:` actions, by key: who they
+    /// are and their actions' names, for their `destroy` once not built.
+    pub(crate) uses: BTreeMap<u64, (DocEvent, Vec<String>)>,
     /// `data-og-instant` elements whose first entrance has landed: a
     /// later one plays (presentation, outside `world_hash`).
     pub(crate) entered: BTreeSet<u64>,
@@ -629,6 +632,24 @@ impl Ui {
     pub(crate) fn docs_begin(&mut self) {
         let d = &mut self.docs;
         d.seen = std::mem::take(&mut d.seen_now);
+        let gone: Vec<u64> = d
+            .uses
+            .keys()
+            .filter(|k| !d.seen.contains(k))
+            .copied()
+            .collect();
+        for key in gone {
+            let (event, names) = d.uses.remove(&key).unwrap();
+            for (k, name) in names.into_iter().enumerate() {
+                d.last.remove(&(key, usize::MAX - k));
+                d.queued.push(DocEvent {
+                    kind: "use".into(),
+                    name,
+                    value: json!({ "phase": "destroy", "params": Value::Null }),
+                    ..event.clone()
+                });
+            }
+        }
         d.built.clear();
         d.slots.clear();
         d.arts.clear();

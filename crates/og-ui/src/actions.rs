@@ -399,6 +399,9 @@ impl Ui {
         json!({
             "device": self.actions.device.name(),
             "coarsePointer": self.viewport.coarse_pointer,
+            // `<svelte:window>`'s innerWidth and innerHeight, CSS px.
+            "width": self.viewport.width,
+            "height": self.viewport.height,
             "actions": self.action_bar().iter().map(ActionHint::to_json).collect::<Vec<_>>(),
         })
     }

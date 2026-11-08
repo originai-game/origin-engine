@@ -55,6 +55,21 @@ impl RetainedHost {
                 },
             );
         }
+        // A prop its user leaves out reads its default (`$props()`).
+        for prop in &instance.props {
+            if let Some(default) = &prop.default
+                && !lexical.props.contains_key(&prop.name)
+            {
+                lexical.props.insert(
+                    prop.name.clone(),
+                    PropRef {
+                        expression: Expr::Lit(default.clone()).into(),
+                        model: None,
+                        context: user.clone(),
+                    },
+                );
+            }
+        }
         let mut children = false;
         for &c in &node.children {
             match &doc.nodes[c].kind {

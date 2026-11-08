@@ -68,9 +68,11 @@ local styles and `og style new` remain available.
 
 ## 4. Structure and data
 
-- Write one scriptless `.svelte` file per screen or component. Declare
-  contracts with `<meta>`, structure with core HTML tags, and look in a
-  scoped `<style>` block. TypeScript builds no UI trees.
+- Write one `.svelte` file per screen or component. Declare contracts
+  with `<meta>`, structure with core HTML tags, and look in a scoped
+  `<style>` block. TypeScript builds no UI trees. A `<script lang="ts">`
+  holds only `let { gold = 0 } = $props()` and `const x = $derived(expr)`;
+  state and logic live in a TS system that writes stores.
 - Read a named store with `{$gold}` or `disabled={$gold < 10}`. Use
   `bind:value={$volume}` for two-way controls. Ordinary attribute bindings
   never write. `onclick={buy}` names an action supplied by the game.
@@ -79,9 +81,17 @@ local styles and `og style new` remain available.
   needs a stable string key. Index keys and executable JavaScript fail cooking.
 - Compose content with `{#snippet name()}…{/snippet}` and
   `{@render name()}`. Use `{@render name?.()}` for optional content.
+- `{#key $round}` remakes its content when the value changes, `{@const n =
+  item.count}` names an expression in a block, and `{#await $load}…{:then
+  v}…{:catch e}{/await}` reads a store holding `{ status, value, reason }`.
+- Motion: `transition:fly={{ y: 20, easing: quintOut }}`, `in:`, `out:`
+  (fade, fly, slide, scale, blur, crossfade by key) and `animate:flip` in a
+  keyed each, or CSS. `style:width={$w + 'px'}` and `style="…"` win over
+  rules. `bind:this={panel}` names an element; `use:tooltip={params}` sends
+  `use` events (create, update, destroy) to the game.
 - Expressions allow property access, comparisons, arithmetic, ternaries,
   pure number formatters, and `t(key, { named: expression })`. Assignments,
-  arbitrary calls, scripts, runes, and raw HTML are errors.
+  arbitrary calls, `$state`, `$effect`, and raw HTML are errors.
 - Style reactive state with `class:active={$step == 'brightness'}` and
   `.active` rules. The selector grammar includes types, IDs, classes,
   attributes, descendant, child and sibling (`+`, `~`) combinators, `:not()`,
