@@ -3,6 +3,7 @@ use super::*;
 use std::collections::BTreeSet;
 
 mod directives;
+mod html;
 
 pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>> {
     let run = || -> Result<UiDocument, Error> {
@@ -37,6 +38,11 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
             consts: Vec::new(),
             script_props: Vec::new(),
             inline_styles: Vec::new(),
+            scoped: Vec::new(),
+            forms: Vec::new(),
+            buttons: Vec::new(),
+            fieldsets: Vec::new(),
+            aria_refs_for: Vec::new(),
         };
         let mut script = false;
         let mut window = None;
@@ -107,6 +113,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
         if let Some(attrs) = window {
             p.window(&attrs)?;
         }
+        p.join_html()?;
         p.join_labels()?;
         p.join_lists()?;
         p.join_aria()?;
@@ -430,6 +437,16 @@ struct Parser {
     /// Elements' `style` attributes and `style:` directives: declarations
     /// that follow every rule of the stylesheet.
     inline_styles: Vec<(usize, Vec<StyleDeclaration>)>,
+    /// Header cells with a `scope` ([`html`]).
+    scoped: Vec<usize>,
+    /// Forms and their onsubmit and onreset actions.
+    forms: Vec<(usize, Option<String>, Option<String>)>,
+    /// Buttons with a literal `type`, and where it is written.
+    buttons: Vec<(usize, String, usize)>,
+    /// `<fieldset disabled>`s and their condition.
+    fieldsets: Vec<(usize, Expr)>,
+    /// `<output for>`'s ids, checked once the tree is read.
+    aria_refs_for: Vec<(String, usize)>,
 }
 /// A `<datalist>`: its id, its options' values and labels, and its bound
 /// `items`.
@@ -1249,7 +1266,9 @@ impl Parser {
         if tag == "li" && !self.in_list(parent) {
             return Err((at, "<li> belongs inside a <ul> or an <ol>".into()));
         }
+        let html = self.html_kind(tag, parent, at)?;
         let internal = match tag {
+            _ if let Some((kind, _)) = html => kind,
             // SVG's text: placed in its view box (extern_element).
             "text" if super::extern_element::in_svg(self.parent_tag(parent)) => "svgText",
             "text" | "p" | "span" | "small" | "a" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
@@ -1312,7 +1331,7 @@ impl Parser {
             "section" if named => Some("region"),
             "ul" | "ol" => Some("list"),
             "li" => Some("listitem"),
-            _ => None,
+            _ => html.and_then(|(_, role)| role),
         };
         for attr in attrs
             .iter()
@@ -1355,7 +1374,7 @@ impl Parser {
                 }
                 continue;
             }
-            if self.directive(i, internal, a)? {
+            if self.directive(i, internal, a)? || self.html_attr(i, tag, a)? {
                 continue;
             }
             if let Some(event) = a.name.strip_prefix("on") {
@@ -2430,6 +2449,125 @@ button.active { opacity: 1; }
                 ..
             }
         )));
+    }
+
+    #[test]
+    fn html_tables_forms_fieldsets_and_figures_take_their_semantics() {
+        let doc = UiDocument::parse(
+            "html.svelte",
+            r#"
+<meta name="component" content="html">
+<div>
+  <table id="T">
+    <caption>Scores</caption>
+    <thead><tr><th id="H">Name</th><th>Score</th></tr></thead>
+    <tbody>
+      {#each $rows as row (row.id)}
+      <tr><th id="R">{row.name}</th><td colspan="2" rowspan="0">{row.score}</td></tr>
+      {/each}
+    </tbody>
+  </table>
+  <form onsubmit={save} onreset={clear}>
+    <fieldset disabled={$busy}>
+      <legend>Profile <input type="checkbox" id="Inside" bind:checked={$a}></legend>
+      <input id="Name" bind:value={$name} required>
+      <input type="checkbox" id="Off" disabled={$locked} bind:checked={$b}>
+    </fieldset>
+    <button id="Go">Save</button>
+    <button id="Undo" type="reset">Undo</button>
+    <button id="Other" type="button">Other</button>
+  </form>
+  <figure id="F"><img src={$pic} alt="A"><figcaption>A map</figcaption></figure>
+  <output id="O" for="Name">{$name}</output>
+</div>
+"#,
+        )
+        .unwrap();
+        let node = |id: &str| doc.nodes.iter().find(|n| n.id == id).unwrap();
+        let text = |n: &DocNode, prop: &str| {
+            n.props
+                .iter()
+                .rev()
+                .find(|p| p.name() == prop)
+                .map(|p| p.value.clone())
+        };
+        assert_eq!(node("T").role, Some("table"));
+        assert_eq!(
+            text(node("T"), "name"),
+            Some(PropValue::Lit(Lit::Str("Scores".into())))
+        );
+        assert_eq!(node("H").role, Some("columnheader"));
+        // A header beside data cells heads its row.
+        assert_eq!(node("R").role, Some("rowheader"));
+        let cell = doc
+            .nodes
+            .iter()
+            .find(|n| n.selector_tag.as_deref() == Some("td"))
+            .unwrap();
+        assert_eq!(
+            (cell.role, text(cell, "colspan")),
+            (Some("cell"), Some(PropValue::Lit(Lit::Num(2.0))))
+        );
+        assert_eq!(text(cell, "rowspan"), Some(PropValue::Lit(Lit::Num(0.0))));
+        // A disabled fieldset's controls, but those in its legend.
+        assert_eq!(text(node("Inside"), "disabled"), None);
+        assert_eq!(
+            text(node("Name"), "disabled"),
+            Some(PropValue::Bind(Expr::Path("$busy".into()), None))
+        );
+        assert_eq!(
+            text(node("Off"), "disabled"),
+            Some(PropValue::Bind(
+                Expr::Bin(
+                    crate::bind::Op::Or,
+                    Box::new(Expr::Path("$locked".into())),
+                    Box::new(Expr::Path("$busy".into()))
+                ),
+                None
+            ))
+        );
+        let emits = |id: &str| -> Vec<String> {
+            node(id)
+                .triggers
+                .iter()
+                .filter_map(|t| match (&t.when, &t.act) {
+                    (When::Click, Act::Emit(a)) => Some(a.clone()),
+                    _ => None,
+                })
+                .collect()
+        };
+        assert_eq!(emits("Go"), ["save"]);
+        assert_eq!(emits("Undo"), ["clear"]);
+        assert!(emits("Other").is_empty());
+        assert_eq!(
+            (node("F").role, text(node("F"), "name")),
+            (
+                Some("figure"),
+                Some(PropValue::Lit(Lit::Str("A map".into())))
+            )
+        );
+        assert_eq!(node("O").role, Some("status"));
+        for (body, reason) in [
+            ("<div><tr><td/></tr></div>", "belongs inside a <table>"),
+            ("<table><tr><td colspan='0'/></tr></table>", "colspan takes"),
+            ("<table><tr><th scope='all'/></tr></table>", "scope is"),
+            (
+                "<table><tr><td/></tr><caption>x</caption></table>",
+                "first child",
+            ),
+            ("<div><template><p/></template></div>", "{#snippet"),
+            (
+                "<div><button type='submit'>Go</button></div>",
+                "inside a <form>",
+            ),
+            ("<div><output for='Nope'>x</output></div>", "no element"),
+            ("<input type='date' bind:value={$d}>", "not supported yet"),
+            ("<input type='file'>", "file picker"),
+        ] {
+            let text = format!("<meta name='screen' content='t'>\n{body}");
+            let errors = UiDocument::parse("bad.svelte", &text).unwrap_err();
+            assert!(errors[0].contains(reason), "{body}: {}", errors[0]);
+        }
     }
 
     #[test]

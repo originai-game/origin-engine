@@ -621,6 +621,18 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Transition,
         "Moves from its old rectangle to its new one."
     ),
+    p!(
+        "colspan",
+        Ty::Num,
+        ["box"],
+        "A table cell's columns (`<td colspan>`), 1 by default; CSS table layout reads it."
+    ),
+    p!(
+        "rowspan",
+        Ty::Num,
+        ["box"],
+        "A table cell's rows (`<td rowspan>`), 1 by default, 0 to the end of its row group; CSS table layout reads it."
+    ),
     p!("enter", Ty::Presence, "How it arrives."),
     p!("exit", Ty::Presence, "How it leaves."),
     p!("inert", Ty::Bool, "It and its subtree take no input."),

@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <table>, <caption>, <thead>, <tbody>, <tfoot>, <tr>, <th>, <td>",
+      "summary": "Tables with HTML's content model, roles (table, row, cell, columnheader, rowheader by scope or HTML's auto rule) and colspan and rowspan as the cells' colspan and rowspan props, which CSS table layout reads; the first caption names the table."
+    },
+    {
+      "member": "UI documents: <form onsubmit onreset>, <fieldset disabled> with <legend>, <figure> with <figcaption>, <output for>",
+      "summary": "A button in a form sends the form's onsubmit action (type reset: onreset); a disabled fieldset disables its controls but those in its first legend, which names the group; a figcaption names its figure; an output is a polite status text."
+    }
+  ]
+}
