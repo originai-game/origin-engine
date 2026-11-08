@@ -1,0 +1,16 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "A scroll of a retained list writes, copies and levels only what it changes. It writes and copies only the rows it brings in, and drops the paint marks of rows it let go (630 to 940 stale marks a tick). The rows it keeps move their commands with the scroll and keep their painter levels, because rows moved exactly still overlap what they overlapped. Only the rows it brings in, rows clipped otherwise at the edge, what lies across the moved rows' edge and what a dropped row overlapped are levelled again. Before, every command was levelled afresh."
+    },
+    {
+      "member": "ui.end",
+      "summary": "A list whose rows in view change no longer repaints every element on the screen: the filler height it keeps for the rows after them was compared as drawing, so on each scroll tick that brought a row in the list and everything under it painted afresh."
+    },
+    {
+      "member": "Viewport.dpr",
+      "summary": "Edges snapped to device pixels are also held to a multiple of 1/256 CSS px (less than 1/512 px off the device grid). At ratios such as 1.25, 1.5 and 3 a device pixel is no exact f32. Now a scrolled row's moved commands equal painting it there, and a fling there keeps the bounded scroll. Nothing moves at 1, 2 and 4. At 1.5, edge pixels change by at most 12/255 (widget set RMSE 0.00038)."
+    }
+  ]
+}

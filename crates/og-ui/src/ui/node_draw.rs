@@ -764,7 +764,7 @@ impl Ui {
                     let x = r.x + (r.width - w) / 2.0;
                     let ly = r.y + (r.height - lh) / 2.0;
                     let baseline = m.baseline(text, ly, lh, size);
-                    let snap = |v: f32| (v * dpr).round() / dpr;
+                    let snap = |v: f32| crate::layout::snap(v, dpr);
                     let pieces =
                         crate::text::pieces_with(f, text, self.direction, tracking, features);
                     let one = pieces.len() == 1;

@@ -778,7 +778,7 @@ impl Ui {
         let p = &t.palette;
         let alpha = n.alpha;
         let dpr = self.viewport.dpr();
-        let snap = |v: f32| (v * dpr).round() / dpr;
+        let snap = |v: f32| crate::layout::snap(v, dpr);
         let clip = n.clip;
         let tick = self.state.tick as f32;
         let still = t.reduced_motion;

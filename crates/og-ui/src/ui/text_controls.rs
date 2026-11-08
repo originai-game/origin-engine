@@ -633,7 +633,7 @@ impl Ui {
         );
         let clip = clip.intersect(&rect);
         let dpr = self.viewport.dpr();
-        let snap = |v: f32| (v * dpr).round() / dpr;
+        let snap = |v: f32| crate::layout::snap(v, dpr);
         let chars: Vec<char> = shown.chars().collect();
         let lines = crate::edit::wrap(&chars, m, size, tracking, inner.width.max(1.0));
         let caret_line = lines

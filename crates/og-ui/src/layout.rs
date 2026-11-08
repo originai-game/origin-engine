@@ -125,12 +125,21 @@ impl Rect {
         )
     }
 
-    /// Edges rounded to the device pixel grid.
+    /// Edges rounded to the device pixel grid ([`snap`]).
     pub fn snapped(&self, dpr: f32) -> Rect {
-        let s = |v: f32| (v * dpr).round() / dpr;
+        let s = |v: f32| snap(v, dpr);
         let (x, y) = (s(self.x), s(self.y));
         Rect::new(x, y, s(self.right()) - x, s(self.bottom()) - y)
     }
+}
+
+/// `v` CSS px on the device pixel grid of `dpr`, held to a multiple of
+/// 1/256 px (less than 1/512 px off it, unseen): at a ratio like 1.5 a
+/// device pixel is no exact `f32`, and a grid of exact values keeps every
+/// sum of edges and moves exact, so a scrolled row's commands moved by the
+/// scroll are the ones painting it there gives, and overlap what they did.
+pub(crate) fn snap(v: f32, dpr: f32) -> f32 {
+    ((v * dpr).round() / dpr * 256.0).round() / 256.0
 }
 
 /// Space inside an element's edges (padding) or a device's unsafe margins.
@@ -689,4 +698,33 @@ pub(crate) fn write_values(n: &mut Node, v: &[f32; crate::element::CHANNELS]) {
     };
     n.sampled.z = v[17].round() as i32;
     n.sampled.inert = v[18] >= 0.5;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A snapped edge is on the device pixel grid to within 1/512 px and a
+    /// multiple of 1/256 px at every ratio, and snapping it again keeps it:
+    /// so a move between snapped edges is exact in `f32`, at 1.5 and 3 as
+    /// at 1 and 2 (where nothing moved).
+    #[test]
+    fn snapped_edges_are_exact_on_every_device_grid() {
+        for dpr in [1.0f32, 1.25, 1.5, 2.0, 2.625, 3.0] {
+            for k in 0..20_000 {
+                let v = k as f32 * 0.731 - 4000.0;
+                let s = snap(v, dpr);
+                let device = (v * dpr).round() / dpr;
+                assert!(
+                    (s - device).abs() <= 1.0 / 512.0,
+                    "{v} at {dpr}: {s} vs {device}"
+                );
+                assert_eq!((s * 256.0).fract(), 0.0, "{v} at {dpr}: {s}");
+                assert_eq!(snap(s, dpr), s, "{v} at {dpr}");
+                if dpr == 1.0 || dpr == 2.0 {
+                    assert_eq!(s, device, "{v} at {dpr}");
+                }
+            }
+        }
+    }
 }

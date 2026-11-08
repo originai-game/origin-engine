@@ -157,7 +157,7 @@ impl Ui {
         changed: Option<&[usize]>,
     ) -> Vec<(DrawCmd, Affine)> {
         let dpr = self.viewport.dpr();
-        let snap = |v: f32| (v * dpr).round() / dpr;
+        let snap = |v: f32| crate::layout::snap(v, dpr);
         let ends = std::mem::take(&mut self.orders.ends);
         let mut last = std::mem::take(&mut self.kept.last_cmds);
         self.kept.prev_len = last.len();
