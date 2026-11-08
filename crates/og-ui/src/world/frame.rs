@@ -64,6 +64,37 @@ impl Ui {
         info
     }
 
+    /// Places again the anchors of mounted documents that were not built
+    /// this tick (a retained element keeps its node, not its registration),
+    /// and forgets those no longer mounted. Work: one lookup per anchor,
+    /// which follows the camera every tick anyway.
+    pub(crate) fn keep_world_anchors(&mut self) {
+        let built: std::collections::BTreeSet<u64> = self
+            .world
+            .anchors
+            .iter()
+            .map(|a| self.nodes[a.node].key)
+            .collect();
+        let mut kept = std::mem::take(&mut self.world.kept);
+        kept.retain(|key, desc| {
+            if built.contains(key) {
+                return true;
+            }
+            match self.tree.by_key.get(key) {
+                Some(&node) if self.docs.retained.owns(*key) => {
+                    self.world.want(desc.target);
+                    self.world.anchors.push(AnchorEntry {
+                        node,
+                        desc: desc.clone(),
+                    });
+                    true
+                }
+                _ => false,
+            }
+        });
+        self.world.kept = kept;
+    }
+
     /// An anchored element built by `f`, which reads where it stands (its
     /// level of detail, its distance, whether it is clamped).
     pub fn world_anchor(

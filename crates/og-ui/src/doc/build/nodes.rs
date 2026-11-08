@@ -253,6 +253,19 @@ impl Ui {
         if kind == "viewport" {
             return self.build_viewport(b, n, id.as_str(), &r, props, path, key, built);
         }
+        if kind == "anchor" {
+            return self.build_anchor(
+                b,
+                n,
+                id.as_str(),
+                &r,
+                props,
+                path,
+                key,
+                built,
+                build_children,
+            );
+        }
         if svg::KINDS.contains(&kind) {
             return self.build_svg(
                 b,

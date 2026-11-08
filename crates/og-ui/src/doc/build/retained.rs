@@ -1309,6 +1309,36 @@ impl RetainedHost {
         // An element without the slot it was built in (offscreen in a
         // virtual list, in a branch not shown, retired) is written whole
         // when it is built again: marking it does nothing, so the mark goes.
+        // One built inside an `<anchor>`'s world layer holds no slot of its
+        // own (its node's key follows the layer's): the anchor is written
+        // again in its place.
+        let orphans: Vec<MountedNode> = self
+            .emit
+            .iter()
+            .filter(|identity| {
+                self.elements
+                    .get(*identity)
+                    .is_some_and(|e| e.slot.is_none() && e.resolved.is_some())
+            })
+            .cloned()
+            .collect();
+        for identity in orphans {
+            let mut at = self.topology.parent(&identity).cloned();
+            while let Some(parent) = at {
+                let Some(e) = self.elements.get(&parent) else {
+                    break;
+                };
+                if matches!(e.document.nodes[e.index].kind, NodeKind::Element("anchor")) {
+                    if e.slot
+                        .is_some_and(|slot| ui.holds(slot, parent.key, e.parent_slot))
+                    {
+                        self.emit.insert(parent);
+                    }
+                    break;
+                }
+                at = self.topology.parent(&parent).cloned();
+            }
+        }
         let elements = &self.elements;
         self.emit.retain(|identity| {
             elements.get(identity).is_some_and(|e| {
@@ -1773,6 +1803,9 @@ impl Ui {
                 result = Err(error);
             }
             host.input_events(self, env, &mut events);
+            self.docs.retained = std::mem::take(&mut host);
+            self.keep_world_anchors();
+            host = std::mem::take(&mut self.docs.retained);
             self.docs.queued.extend(events);
             for (context, path, value) in writes {
                 if let Err(error) = context.write_model(&mut self.reactive, &path, value) {

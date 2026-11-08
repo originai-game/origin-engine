@@ -495,6 +495,20 @@ control. `data-og-touch` takes the engine prefix because HTML leaves
 custom data on a standard element to `data-*`, and an og-input action is
 an engine concept.
 
+`<anchor>` holds a box over a world point. It is the native world anchor
+(`og.ui.openWorldAnchor`), its children laid out as a column:
+`<anchor entity={u.entity} offset="0 2.1 0" occlusion="fade"
+declutter="stack" clamp="edge">…</anchor>`. `entity` follows an entity's
+pose as the host hands it in; `at="x y z"` names a fixed point instead.
+`occlusion` (`none`, `fade`, `hide`), `declutter` (`none`, `shift`,
+`stack`, `hide`), `clamp="edge"` (held on the screen's edge with an arrow,
+a waypoint), `priority`, `max-distance` and `scale-at` are the native
+desc's fields. It is placed every tick from the camera and the pose, but
+its subtree is built again only when a binding it reads changes: a camera
+that moves costs 0 bindings and 0 reconciled elements, and a renamed row
+writes that one anchor. `anchor` is not an HTML element; no standard names a
+box held over a 3D point.
+
 The authoring contract below also includes requirements whose TypeScript
 wiring remains pending:
 

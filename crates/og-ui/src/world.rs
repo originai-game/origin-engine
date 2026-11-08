@@ -536,6 +536,9 @@ pub(crate) struct WorldUi {
     pub state: WorldState,
     /// The pointer last tick (a viewport's drag).
     pub last_pointer: Vec2,
+    /// Mounted documents' anchors by key, placed every tick whether or not
+    /// their element was built again ([`Ui::keep_world_anchors`]).
+    pub kept: BTreeMap<u64, WorldAnchorDesc>,
 }
 
 impl WorldUi {

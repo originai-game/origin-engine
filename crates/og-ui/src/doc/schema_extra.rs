@@ -6,6 +6,11 @@ use super::schema::{KindSpec, On, PropSpec, Ty};
 
 pub const KINDS: &[KindSpec] = &[
     KindSpec {
+        name: "anchor",
+        container: true,
+        doc: "A box held over a world point (`<anchor entity={u.entity} offset=\"0 2 0\">`): placed every tick from the camera and the entity's pose, its children laid out as a column; `occlusion`, `declutter`, `clamp=\"edge\"`, `priority`, `max-distance`, `scale-at`.",
+    },
+    KindSpec {
         name: "joystick",
         container: false,
         doc: "A virtual stick (`<joystick action=\"move\">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px).",
@@ -59,6 +64,10 @@ pub(super) fn tags(kind: &str) -> Option<Vec<(String, String)>> {
         "joystick" => one(
             "joystick",
             "<joystick id=\"Stick\" action=\"move\" data-dead-zone=\"0.2\" customize />",
+        ),
+        "anchor" => one(
+            "anchor",
+            "<anchor entity={u.entity} offset=\"0 2.1 0\" occlusion=\"fade\" declutter=\"stack\" clamp=\"edge\">…</anchor>",
         ),
         "dpad" => one("dpad", "<dpad id=\"Pad\" action=\"move\" />"),
         "svg" => one(
@@ -162,6 +171,69 @@ macro_rules! svg {
 }
 
 pub const PROPS: &[PropSpec] = &[
+    PropSpec {
+        name: "entity",
+        ty: Ty::Num,
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "The entity it follows, by its bits (`entity={u.entity}`): its world pose as the host hands it in.",
+    },
+    PropSpec {
+        name: "worldAt",
+        ty: Ty::Text,
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "`at=\"x y z\"`: a world point it follows, without an entity.",
+    },
+    PropSpec {
+        name: "worldOffset",
+        ty: Ty::Text,
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "`offset=\"0 2 0\"`: added to the point, world units (over a head).",
+    },
+    PropSpec {
+        name: "occlusion",
+        ty: Ty::Word(&["none", "fade", "hide"]),
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "What the scene in front of its point does to it: faded or hidden.",
+    },
+    PropSpec {
+        name: "declutter",
+        ty: Ty::Word(&["none", "shift", "stack", "hide"]),
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "How it resolves overlapping an anchor of higher priority.",
+    },
+    PropSpec {
+        name: "worldClamp",
+        ty: Ty::Word(&["none", "edge"]),
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "`clamp=\"edge\"`: held on the screen's edge with an arrow while its point is off screen (a waypoint).",
+    },
+    PropSpec {
+        name: "priority",
+        ty: Ty::Num,
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "Higher keeps its place when anchors overlap.",
+    },
+    PropSpec {
+        name: "maxDistance",
+        ty: Ty::Num,
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "`max-distance`: hidden past this many world units, fading over its last tenth.",
+    },
+    PropSpec {
+        name: "worldScaleAt",
+        ty: Ty::Num,
+        on: On::Kinds(&["anchor"]),
+        two_way: false,
+        doc: "`scale-at=\"10\"`: scaled 1 at this distance, larger nearer and smaller farther (0.5 to 2).",
+    },
     PropSpec {
         name: "action",
         ty: Ty::Name,

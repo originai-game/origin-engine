@@ -74,6 +74,7 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
         "svg" => Some(Ok("svg")),
         "viewport" => Some(Ok("viewport")),
         "joystick" => Some(Ok("joystick")),
+        "anchor" => Some(Ok("anchor")),
         "dpad" => Some(Ok("dpad")),
         "g" => svg_child("svgGroup"),
         "use" => svg_child("svgUse"),
@@ -86,6 +87,8 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
                 "<{tag}> names an SVG element; outside SVG, write aria-label (or the HTML title attribute)"
             ))
         }),
+        // Outside SVG, `<image>` is the core's old name for `<img>`.
+        "image" if !in_svg(parent_tag) => None,
         t if SVG_SHAPES.contains(&t) => svg_child("svgShape"),
         "stop" => Some(
             if matches!(parent_tag, Some("linearGradient" | "radialGradient")) {
@@ -108,6 +111,16 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
 pub(super) fn property(kind: &str, attr: &str) -> Option<String> {
     if kind == "viewport" && attr == "src" {
         return Some("viewportSrc".into());
+    }
+    if kind == "anchor" {
+        let p = match attr {
+            "at" => "worldAt",
+            "offset" => "worldOffset",
+            "clamp" => "worldClamp",
+            "scale-at" => "worldScaleAt",
+            _ => return None,
+        };
+        return Some(p.into());
     }
     let svg = match kind {
         "svg" => matches!(attr, "viewBox") || PRESENTATION.contains(&attr),

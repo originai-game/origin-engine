@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <anchor>",
+      "summary": "A box held over an entity or world point (the native world anchor): offset, occlusion, declutter, clamp=\"edge\", priority, max-distance and scale-at. Placed every tick; its subtree is built again only when a binding it reads changes."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og-ui: retained elements inside an <anchor>",
+      "summary": "An element inside an anchor's world layer holds no slot of its own; a binding change writes the anchor again in its place."
+    }
+  ]
+}
