@@ -40,6 +40,7 @@ impl Ui {
             warnings: Vec::new(),
             glyphs_missed: Default::default(),
             kept_spans: Vec::new(),
+            tree: Default::default(),
             building: false,
             state: State::default(),
             frame: UiFrame::default(),

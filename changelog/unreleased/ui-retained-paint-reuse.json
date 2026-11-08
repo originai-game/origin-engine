@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "A subtree that paints as last frame copies its commands whole, and a frame whose trees and overlays all paint as last frame keeps last frame's draw items without baking or levelling them again. Subtrees below a focus ring's owner, ghosts' parents, world-marked, frozen, glitching and scrolling-with-bars nodes, and parents whose children changed are drawn again. A virtual list's rows with no input on them are kept as they stand when the list scrolls: only the rows the scroll brings in are written. What is on screen is found through a persistent index of the frame's trees instead of a map rebuilt every frame."
+    }
+  ]
+}

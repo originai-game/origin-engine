@@ -94,6 +94,8 @@ impl RetainedHost {
                     self.emit(ui, child, env, events, writes)?;
                 }
             }
+            let list_slot = ui.parent();
+            let list_key = ui.nodes[list_slot].key;
             for (index, key, children) in rows {
                 let list = &ui.state.virtual_lists[&element.context.node.key];
                 let offset = ui
@@ -109,6 +111,30 @@ impl RetainedHost {
                 } else {
                     Materialization::Overscan
                 };
+                // A row whose own node would be written as it stands (no
+                // input on it now or last frame, the same frame-wide
+                // inputs) is put back with its subtree: a scroll writes
+                // only the rows it brings in. What changed inside it is
+                // written in place (`emit_in_place`).
+                let row_key =
+                    crate::id::child_key(list_key, &crate::virtualize::item_id(&key, grid));
+                let still = !self.restyled
+                    && !self.input.contains(&row_key)
+                    && !self.last_input.contains(&row_key)
+                    && children.iter().all(|child| match child {
+                        Child::Element(id) => self
+                            .topology
+                            .node(id)
+                            .is_some_and(|n| n.materialization == materialization),
+                        _ => false,
+                    });
+                if still
+                    && let Some(slot) = ui.render_slot(row_key, list_slot)
+                    && ui.holds(slot, row_key, list_slot)
+                {
+                    ui.keep_owned(slot);
+                    continue;
+                }
                 let response = if grid {
                     ui.grid_item(index, false)
                 } else {

@@ -158,7 +158,7 @@ impl Ui {
             d.dedup();
             d
         };
-        for i in derive {
+        for &i in &derive {
             if self.nodes[i].hidden {
                 continue;
             }
@@ -205,6 +205,11 @@ impl Ui {
             .collect();
         og_core::sort::sort_by_key(&mut floating, |&f| self.nodes[f].float.rank());
         self.floating = floating;
+        let written = std::mem::take(&mut self.emitted);
+        self.tree.restructured.clear();
+        self.tree.all_restructured = false;
+        self.sync_tree(&derive, &written, whole);
+        self.emitted = written;
 
         let vp = self.viewport;
         let dpr = vp.dpr();
@@ -479,6 +484,9 @@ impl Ui {
             }
         }
         self.kept.query_roots = None;
+        if !self.tree.pending.is_empty() {
+            self.sync_tree(&[], &[], false);
+        }
         self.texts.sweep();
 
         let mut order = preorder(&self.nodes, 0);
@@ -528,29 +536,28 @@ impl Ui {
         self.world_finish();
         self.note_drag_and_drop(&order);
 
-        // Interaction state for the next tick.
-        let mut present: crate::id::KeyMap<usize> =
-            crate::id::KeyMap::from_iter(order.iter().map(|&i| (self.nodes[i].key, i)));
-        // A rich text's links are controls of their own, inside its node.
-        for &i in &order {
-            for l in &self.nodes[i].links {
-                present.insert(child_key(self.nodes[i].key, l), i);
-            }
+        // Interaction state for the next tick: what is on screen is what
+        // the trees' index holds (`tree`), a rich text's links with it.
+        #[cfg(debug_assertions)]
+        if bounded::checking() {
+            bounded::compare_tree(self, &order);
         }
+        let present = |k: &u64| self.tree.find(*k);
         self.state
             .scroll
-            .retain(|k, _| present.get(k).is_some_and(|&i| self.nodes[i].el.scroll));
-        self.state
-            .virtual_lists
-            .retain(|k, _| present.contains_key(k));
+            .retain(|k, _| present(k).is_some_and(|i| self.nodes[i].el.scroll));
+        self.state.virtual_lists.retain(|k, _| present(k).is_some());
         for (k, v) in self.state.scroll.iter_mut() {
-            *v = v.clamp(0.0, self.nodes[present[k]].max_scroll());
+            *v = v.clamp(0.0, present(k).map_or(0.0, |i| self.nodes[i].max_scroll()));
         }
         self.state
             .scroll_x
-            .retain(|k, _| present.get(k).is_some_and(|&i| self.nodes[i].el.scroll_x));
+            .retain(|k, _| present(k).is_some_and(|i| self.nodes[i].el.scroll_x));
         for (k, v) in self.state.scroll_x.iter_mut() {
-            *v = v.clamp(0.0, self.nodes[present[k]].max_scroll_x());
+            *v = v.clamp(
+                0.0,
+                present(k).map_or(0.0, |i| self.nodes[i].max_scroll_x()),
+            );
         }
         // Each scroll container's ranges and bar lengths, as drawn.
         self.kept.scrollers = order
@@ -584,11 +591,11 @@ impl Ui {
                 }),
         );
         if let Some((k, _)) = self.state.fling
-            && !present.contains_key(&k)
+            && self.tree.find(k).is_none()
         {
             self.state.fling = None;
         }
-        if !self.input.down || !present.contains_key(&self.state.active) {
+        if !self.input.down || self.tree.find(self.state.active).is_none() {
             self.state.active = 0;
         }
         let touched = std::mem::take(&mut self.touched);
@@ -879,12 +886,12 @@ impl Ui {
         self.state.nav_off = !self.nav_on;
         self.state.hits = hits;
         self.note_groups();
-        self.note_taps(&present);
+        self.note_taps();
         let cursor = if self.state.vcursor.shown && self.state.vcursor.desc.is_some() {
             // The pad's cursor is drawn; the system's is hidden.
             crate::Cursor::None
         } else {
-            self.resolve_cursor(&present)
+            self.resolve_cursor()
         };
 
         // A button narrower than an ornament's span is `[narrow]`, laid
@@ -902,19 +909,36 @@ impl Ui {
             }
         }
         self.build_part_draws(&order);
-        let mut cmds = self.commands(&order);
+        let trees = self.commands(&order);
         self.record_matches(&order);
+        let mut tail = Vec::new();
         if let Some(c) = self.cover {
             let mut cover = Vec::new();
             self.cover_commands(&c, &mut cover);
-            cmds.extend(cover.into_iter().map(|c| (c, Affine::IDENTITY)));
+            tail.extend(cover.into_iter().map(|c| (c, Affine::IDENTITY)));
         }
         let mut over = Vec::new();
         self.hud_edit_commands(&mut over);
         self.virtual_cursor_commands(&mut over);
-        cmds.extend(over.into_iter().map(|c| (c, Affine::IDENTITY)));
-        let cmds: Vec<(DrawCmd, Affine)> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
-        let missing_glyphs = self.missing_glyphs(&cmds);
+        tail.extend(over.into_iter().map(|c| (c, Affine::IDENTITY)));
+        // Every tree drew as last frame, and what is over them too: the
+        // frame's items are last frame's.
+        let kept_items =
+            self.kept.reused_all && tail == self.kept.last_tail && self.frame.unit == self.unit;
+        let (items, missing_glyphs) = if kept_items {
+            (std::mem::take(&mut self.frame.items), Vec::new())
+        } else {
+            let mut cmds = trees.clone();
+            cmds.extend(tail.iter().cloned());
+            let cmds: Vec<(DrawCmd, Affine)> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
+            let missing_glyphs = self.missing_glyphs(&cmds);
+            (
+                crate::draw::zoom_items(assign_levels(cmds), self.unit),
+                missing_glyphs,
+            )
+        };
+        self.kept.last_cmds = trees;
+        self.kept.last_tail = tail;
         let mut focus_paths: [String; 4] = Default::default();
         let focused = [
             self.state.focus,
@@ -924,7 +948,7 @@ impl Ui {
         ];
         for (slot, key) in focused.into_iter().enumerate() {
             if key != 0
-                && let Some(&i) = present.get(&key)
+                && let Some(i) = self.tree.find(key)
             {
                 focus_paths[slot] = self.path_of(i);
                 if let Some(l) = self.nodes[i]
@@ -940,7 +964,7 @@ impl Ui {
         }
         self.frame = UiFrame {
             viewport: vp,
-            items: crate::draw::zoom_items(assign_levels(cmds), self.unit),
+            items,
             warnings: std::mem::take(&mut self.warnings),
             missing_glyphs,
             focus_paths,

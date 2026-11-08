@@ -133,8 +133,12 @@ pub struct RetainedHost {
     owner_of: std::collections::HashMap<u64, MountedNode>,
     /// The widget memories mounted elements keep while they are not built.
     memories: std::collections::HashMap<u64, u32>,
-    /// Last frame's interaction keys (hover, press, focus, activation).
+    /// This frame's and last frame's interaction keys (hover, press,
+    /// focus, activation).
     input: Vec<u64>,
+    last_input: Vec<u64>,
+    /// The frame-wide inputs changed this frame: every node is written.
+    restyled: bool,
     /// What every element's nodes depend on beyond its own inputs.
     signature: Option<Signature>,
     /// Virtual containers and the scroll offset they were emitted at.
@@ -1371,7 +1375,8 @@ impl RetainedHost {
             players: ui.players,
             nav_on: ui.nav_on,
         };
-        if self.signature.as_ref() != Some(&signature) {
+        self.restyled = self.signature.as_ref() != Some(&signature);
+        if self.restyled {
             self.signature = Some(signature);
             self.emit.extend(self.elements.keys().cloned());
         }
@@ -1408,7 +1413,7 @@ impl RetainedHost {
                 self.emit.insert(owner.clone());
             }
         }
-        self.input = input;
+        self.last_input = std::mem::replace(&mut self.input, input);
         for (identity, offset) in &self.scrollers {
             if ui.state.scroll.get(&identity.key).copied().unwrap_or(0.0) != *offset {
                 self.emit.insert(identity.clone());

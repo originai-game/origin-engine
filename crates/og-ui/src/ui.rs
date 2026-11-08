@@ -14,6 +14,7 @@ mod node_draw;
 pub(crate) mod settlement;
 mod snapshot;
 mod text_controls;
+mod tree;
 
 pub(crate) use commands::bake;
 pub use descriptors::*;
@@ -447,6 +448,8 @@ pub struct Ui {
     pub(crate) warnings: Vec<String>,
     /// The (face, character) pairs [`UiFrame::missing_glyphs`] named.
     pub(crate) glyphs_missed: std::collections::BTreeSet<(og_render::FontHandle, char)>,
+    /// The trees' membership, keys and features (`tree`).
+    pub(crate) tree: tree::TreeIndex,
     /// This frame's command ranges kept from last frame's paint, in order.
     pub(crate) kept_spans: Vec<std::ops::Range<usize>>,
     pub(crate) building: bool,

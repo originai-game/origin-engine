@@ -148,28 +148,20 @@ impl Ui {
         let dpr = self.viewport.dpr();
         let snap = |v: f32| (v * dpr).round() / dpr;
         let ends = crate::layout::subtree_ends(&self.nodes, order);
-        let mut cmds: Vec<(DrawCmd, Affine)> = Vec::new();
+        let last = std::mem::take(&mut self.kept.last_cmds);
+        let mut cmds: Vec<(DrawCmd, Affine)> = Vec::with_capacity(last.len());
         let ghosts = std::mem::take(&mut self.state.motion.ghosts);
-        let present: crate::id::KeySet = order.iter().map(|&i| self.nodes[i].key).collect();
         let mut drawn = vec![false; ghosts.len()];
         let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
-        // Open subtrees: (node, its first command, the order position past it).
-        let mut open: Vec<(usize, usize, usize)> = Vec::new();
+        // Open subtrees: (node, its first command, the order position past
+        // it, where its commands began in last frame's list).
+        let mut open: Vec<(usize, usize, usize, Option<usize>, usize)> = Vec::new();
         // Focus rings waiting for the subtree they draw over (`ring_over`).
         let mut rings: Vec<(usize, Vec<(DrawCmd, Affine)>)> = Vec::new();
-        // Elements whose commands and ancestors' fills are as last frame
-        // (docs/ui.md §2): their commands are last frame's.
-        let mut same = vec![false; self.nodes.len()];
-        let mut next = crate::id::KeyMap::<(usize, Vec<DrawCmd>, crate::layout::DrawSig)>::with_capacity_and_hasher(
-            order.len(),
-            Default::default(),
-        );
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
         self.kept_spans.clear();
-        let mut written = vec![false; self.nodes.len()];
-        for &i in &self.emitted {
-            written[i] = true;
-        }
+        let (same, clean) = self.paint_reuse(order, &ghosts, &prev_kinds);
+        let mut reused_roots = true;
         let theme = self.theme;
         // An element's draw (crate::paint) in its layout box, at its
         // opacity; its clip is the screen's (bake leaves draw commands be).
@@ -184,11 +176,50 @@ impl Ui {
             clip: n.clip,
             alpha: n.alpha,
         };
-        for (k, &i) in order.iter().enumerate() {
+        let mut k = 0;
+        while k < order.len() {
+            let i = order[k];
+            // Where its subtree's commands began in last frame's list.
+            let up = open.last().map(|o| o.3);
+            let at_last = match self.kept.ranges.get(&self.nodes[i].key) {
+                Some(&(rel, len, count)) => match up {
+                    Some(Some(base)) => Some((base + rel, len, count)),
+                    Some(None) => None,
+                    None => Some((rel, len, count)),
+                },
+                None => None,
+            };
+            // A subtree that paints as last frame: its commands copied whole.
+            if clean[i]
+                && let Some((from, len, count)) = at_last
+                && from + len <= last.len()
+            {
+                let start = cmds.len();
+                cmds.extend_from_slice(&last[from..from + len]);
+                self.kept_spans.push(start..cmds.len());
+                self.stats.kept_commands += count;
+                let base = open.last().map_or(0, |o| o.1);
+                self.kept
+                    .ranges
+                    .insert(self.nodes[i].key, (start - base, len, count));
+                k = ends[k];
+                self.close_subtrees(
+                    &mut open,
+                    &mut cmds,
+                    k,
+                    &ghosts,
+                    &mut drawn,
+                    &mut rings,
+                    &mut frozen,
+                );
+                continue;
+            }
+            if self.nodes[i].parent == NONE {
+                reused_roots = false;
+            }
             let n = &self.nodes[i];
             let world = n.world;
             let start = cmds.len();
-            let game_draw = self.draws.contains_key(&i);
             let draw = self
                 .draws
                 .get(&i)
@@ -212,36 +243,17 @@ impl Ui {
                 }
                 out.into_iter().map(|c| (c, world)).collect()
             };
-            // Rich text draws from the tick (its moving spans), focus and
-            // the hot link as well: it is always made again.
             let sig = crate::layout::DrawSig::of(n);
-            same[i] = !self.kept.fresh
-                && !matches!(n.content, Content::Rich(_))
-                && match self.kept.prev.get(&i) {
-                    Some(b) => {
-                        crate::layout::draw_eq(n, b) && Some(&self.kinds[i]) == prev_kinds.get(&i)
-                    }
-                    // A retained node not written again: its own inputs are
-                    // as they were; what the frame moves is in its signature.
-                    None => {
-                        !written[i]
-                            && self
-                                .kept
-                                .cmds
-                                .get(&n.key)
-                                .is_some_and(|(_, _, old)| *old == sig)
-                    }
-                }
-                && (n.parent == NONE || same[n.parent])
-                && !game_draw;
             if i != 0 || n.sampled.background.is_some() {
                 let mut local = Vec::new();
                 let mut background = 0;
+                let mut kept_now = false;
                 if same[i]
                     && let Some((b, c, _)) = self.kept.cmds.get(&n.key)
                 {
                     (background, local) = (*b, c.clone());
                     self.stats.kept_commands += 1;
+                    kept_now = true;
                 } else if world.is_identity() {
                     self.stats.painted += 1;
                     background = self.node_commands(i, &mut local, &snap);
@@ -262,8 +274,11 @@ impl Ui {
                     };
                     d.style_text(&theme, &mut local, grid);
                 }
-                next.insert(self.nodes[i].key, (background, local.clone(), sig));
-                let kept_at = same[i].then_some(local.len());
+                let key = self.nodes[i].key;
+                if !kept_now {
+                    self.kept.cmds.insert(key, (background, local.clone(), sig));
+                }
+                let kept_at = kept_now.then_some(local.len());
                 let mut local = local.into_iter().map(|c| (c, world));
                 let from = cmds.len();
                 cmds.extend(local.by_ref().take(background));
@@ -300,9 +315,69 @@ impl Ui {
                 let at = placed(&self.nodes[i]);
                 cmds.extend(d.children(&at).into_iter().map(|c| (c, world)));
             }
-            open.push((i, start, ends[k]));
-            while let Some(&(j, first, end)) = open.last() {
-                if end != k + 1 {
+            self.kept.sigs_set(i, self.nodes[i].key, sig);
+            open.push((i, start, ends[k], at_last.map(|a| a.0), k));
+            k += 1;
+            self.close_subtrees(
+                &mut open,
+                &mut cmds,
+                k,
+                &ghosts,
+                &mut drawn,
+                &mut rings,
+                &mut frozen,
+            );
+        }
+        for (g, ghost) in ghosts.iter().enumerate() {
+            if !drawn[g] {
+                reused_roots = false;
+                self.ghost_commands(ghost, &mut cmds);
+            }
+        }
+        self.state.motion.ghosts = ghosts;
+        self.state.motion.frozen = frozen;
+        // The same trees as last frame, each drawn whole as it was.
+        let roots: Vec<u64> = order
+            .iter()
+            .filter(|&&i| self.nodes[i].parent == NONE)
+            .map(|&i| self.nodes[i].key)
+            .collect();
+        let same_roots = roots == self.kept.last_roots;
+        self.kept.last_roots = roots;
+        self.kept.reused_all = reused_roots && same_roots && !self.kept.fresh && !self.kept.whole;
+        cmds
+    }
+
+    /// Closes the open subtrees that end at order position `k`: what each
+    /// draws after its children (ghosts, a scroll's fade and bars, its
+    /// draw's end, focus rings), its frozen drawing, and its range in this
+    /// frame's commands for the next.
+    #[allow(clippy::too_many_arguments)]
+    fn close_subtrees(
+        &mut self,
+        open: &mut Vec<(usize, usize, usize, Option<usize>, usize)>,
+        cmds: &mut Vec<(DrawCmd, Affine)>,
+        k: usize,
+        ghosts: &[crate::motion::state::Ghost],
+        drawn: &mut [bool],
+        rings: &mut Vec<(usize, Vec<(DrawCmd, Affine)>)>,
+        frozen: &mut IdMap<u64, crate::motion::state::Frozen>,
+    ) {
+        let theme = self.theme;
+        let marked = |n: &crate::layout::Node| {
+            n.el.part
+                .is_some_and(|p| p.has("selected") || p.has("focused"))
+        };
+        let press_scale = theme.press_scale;
+        let placed = |n: &crate::layout::Node| crate::paint::Placed {
+            rect: part_rect(n, press_scale),
+            radius: n.sampled.radius,
+            clip: n.clip,
+            alpha: n.alpha,
+        };
+        {
+            while let Some(&(j, first, end, _, pos)) = open.last() {
+                if end != k {
                     break;
                 }
                 open.pop();
@@ -310,7 +385,7 @@ impl Ui {
                 for (g, ghost) in ghosts.iter().enumerate() {
                     if !drawn[g] && ghost.frozen.parent == key {
                         drawn[g] = true;
-                        self.ghost_commands(ghost, &mut cmds);
+                        self.ghost_commands(ghost, cmds);
                     }
                 }
                 if self.nodes[j].scrolls() && self.nodes[j].el.fade > 0.0 {
@@ -367,7 +442,11 @@ impl Ui {
                             rect: nj.rect,
                             world: nj.world,
                             alpha: nj.alpha,
-                            parent: if present.contains(&parent) { parent } else { 0 },
+                            parent: if self.tree.by_key.contains_key(&parent) {
+                                parent
+                            } else {
+                                0
+                            },
                             path: self.path_of(j),
                             exit: nj.props.exit.clone(),
                             match_key: if nj.props.match_key.is_empty() {
@@ -401,17 +480,109 @@ impl Ui {
                     cmds.insert(first, (begin, nj.world));
                     cmds.push((end, nj.world));
                 }
+                // Its range for the next frame, from its parent's start.
+                let base = open.last().map_or(0, |o| o.1);
+                let count = (k - pos) as u32;
+                self.kept
+                    .ranges
+                    .insert(self.nodes[j].key, (first - base, cmds.len() - first, count));
             }
         }
-        for (g, ghost) in ghosts.iter().enumerate() {
-            if !drawn[g] {
-                self.ghost_commands(ghost, &mut cmds);
+    }
+
+    /// Which nodes paint as last frame (`same`: their own commands and
+    /// their ancestors' fills are unchanged) and which subtrees do whole
+    /// (`clean`: every node in them is `same`, and none draws what the
+    /// frame makes again on its own: a focus ring, a ghost, world marks, a
+    /// frozen or glitching drawing, a scroll's fade and bars).
+    fn paint_reuse(
+        &self,
+        order: &[usize],
+        ghosts: &[crate::motion::state::Ghost],
+        prev_kinds: &std::collections::HashMap<usize, (&'static str, bool)>,
+    ) -> (Vec<bool>, Vec<bool>) {
+        let n = self.nodes.len();
+        let mut same = vec![false; n];
+        let mut clean = vec![false; n];
+        // The bounded frame's check paints its whole twin afresh.
+        if self.kept.fresh || self.kept.whole || self.tree.all_restructured {
+            return (same, clean);
+        }
+        let mut written = vec![false; n];
+        for &i in &self.emitted {
+            written[i] = true;
+        }
+        let mut volatile = vec![false; n];
+        // A node whose children changed draws them anew.
+        for &i in self.draws.keys().chain(&self.tree.restructured) {
+            volatile[i] = true;
+        }
+        let keyed = ghosts
+            .iter()
+            .map(|g| g.frozen.parent)
+            .chain(self.world.marks.keys().copied());
+        for key in keyed {
+            if let Some(&i) = self.tree.by_key.get(&key) {
+                volatile[i] = true;
             }
         }
-        self.state.motion.ghosts = ghosts;
-        self.state.motion.frozen = frozen;
-        self.kept.cmds = next;
-        cmds
+        for &i in order {
+            let node = &self.nodes[i];
+            let own = !self.draws.contains_key(&i)
+                && !matches!(node.content, Content::Rich(_))
+                && if written[i] {
+                    // A node written again: as it was drawn last frame.
+                    self.kept.prev.get(&i).is_some_and(|b| {
+                        crate::layout::draw_eq(node, b)
+                            && Some(&self.kinds[i]) == prev_kinds.get(&i)
+                    })
+                } else {
+                    // A retained node not written again: its own inputs are
+                    // as they were; what the frame moves is in its signature.
+                    self.kept.sigs.get(i).is_some_and(|s| {
+                        s.is_some_and(|(k, sig)| {
+                            k == node.key && sig == crate::layout::DrawSig::of(node)
+                        })
+                    })
+                };
+            same[i] = own && (node.parent == NONE || same[node.parent]);
+            volatile[i] |= node.props.exit.is_some()
+                || !node.props.match_key.is_empty()
+                || !node.links.is_empty()
+                || node.fx.is_some_and(|f| f.glitch > 0.0)
+                || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars));
+            clean[i] = same[i] && !volatile[i];
+        }
+        for &i in order.iter().rev() {
+            let parent = self.nodes[i].parent;
+            if !clean[i] && parent != NONE {
+                clean[parent] = false;
+            }
+        }
+        // A focus ring is drawn at the end of the subtree it draws over
+        // (`ring_over`): that subtree is copied whole with it or not at
+        // all, never a part of it below.
+        let field_ring = |n: &crate::layout::Node| match &n.widget {
+            Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
+                e.focused && n.sampled.background.is_some()
+            }
+            _ => false,
+        };
+        for &i in order {
+            let n = &self.nodes[i];
+            let outline =
+                self.theme.outline && (n.nav || n.focusable) && n.sampled.background.is_some();
+            if !(n.ring || n.pad_rings != 0 || outline || field_ring(n)) {
+                continue;
+            }
+            let over = self.ring_over(i);
+            let mut j = i;
+            while j != over && j != NONE {
+                clean[j] = false;
+                j = self.nodes[j].parent;
+            }
+        }
+        (same, clean)
     }
 
     /// A leaving element's frozen drawing, moved by its exit (about its

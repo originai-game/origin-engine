@@ -14,12 +14,18 @@ pub(super) fn checking() -> bool {
 pub(super) fn compare(ui: &Ui, twin: &Ui) {
     let at = |what: &str| format!("bounded frame differs from the whole frame: {what}");
     let (a, b) = (&ui.frame, &twin.frame);
-    assert_eq!(
-        format!("{:?}", a.items),
-        format!("{:?}", b.items),
-        "{}",
-        at("draw items")
-    );
+    if a.items != b.items {
+        let k = a.items.iter().zip(&b.items).position(|(x, y)| x != y);
+        panic!(
+            "{}: {} vs {} items, first difference at {k:?}:\n bounded {:?}\n whole   {:?}",
+            at("draw items"),
+            a.items.len(),
+            b.items.len(),
+            k.and_then(|k| a.items.get(k)),
+            k.and_then(|k| b.items.get(k))
+                .or(b.items.get(a.items.len())),
+        );
+    }
     assert_eq!(a.warnings, b.warnings, "{}", at("warnings"));
     assert_eq!(
         a.missing_glyphs,
@@ -51,5 +57,39 @@ pub(super) fn compare(ui: &Ui, twin: &Ui) {
             )
         };
         assert_eq!(place(n), place(m), "{}", at(&ui.path_of(i)));
+    }
+}
+
+/// Panics where the trees' index (`tree`) differs from the frame's order.
+pub(super) fn compare_tree(ui: &Ui, order: &[usize]) {
+    let mut keys: Vec<(u64, usize)> = Vec::new();
+    for &i in order {
+        keys.push((ui.nodes[i].key, i));
+        for l in &ui.nodes[i].links {
+            keys.push((child_key(ui.nodes[i].key, l), i));
+        }
+    }
+    keys.sort_unstable();
+    keys.dedup();
+    let mut held: Vec<(u64, usize)> = ui
+        .tree
+        .by_key
+        .iter()
+        .chain(&ui.tree.links)
+        .map(|(&k, &i)| (k, i))
+        .collect();
+    held.sort_unstable();
+    held.dedup();
+    assert_eq!(
+        keys, held,
+        "the trees' index differs from the frame's order"
+    );
+    for i in 0..ui.nodes.len() {
+        assert_eq!(
+            ui.tree.has(i),
+            order.contains(&i),
+            "the trees' index differs at '{}'",
+            ui.path_of(i)
+        );
     }
 }

@@ -58,6 +58,7 @@ impl Ui {
         if self.kinds[i].0 == "vacant" {
             return;
         }
+        self.untree(i);
         let old = &self.nodes[i];
         self.render_slots.remove(&(old.key, old.parent));
         // Its parent derives its children without it.
@@ -119,6 +120,16 @@ impl Ui {
     pub(crate) fn reattach(&mut self, i: usize) {
         let parent = self.parent();
         self.nodes[parent].built_children.push(i);
+    }
+
+    /// Puts back a retained node the element being emitted owns and does
+    /// not write again (a virtual list's row): it stays owned and keeps
+    /// its subtree.
+    pub(crate) fn keep_owned(&mut self, i: usize) {
+        self.reattach(i);
+        if let Some(owned) = self.owning.last_mut() {
+            owned.slots.push(i);
+        }
     }
 
     pub(crate) fn previous_node(&self, i: usize) -> Option<&Node> {

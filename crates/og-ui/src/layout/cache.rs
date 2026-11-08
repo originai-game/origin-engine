@@ -265,6 +265,20 @@ pub(crate) struct LayoutCache {
     pub unclean: Vec<usize>,
     /// Asks for `full` on every frame (the bounded walk's check).
     pub whole: bool,
+    /// Last frame's commands of the screen and its layers, before baking,
+    /// and each painted subtree's range in them: its start from its
+    /// parent's (a layer's from the list's), its length and its nodes.
+    pub last_cmds: Vec<(crate::DrawCmd, crate::element::Affine)>,
+    pub ranges: crate::id::KeyMap<(usize, usize, u32)>,
+    /// Per slot: the key and signature it was last painted with.
+    pub sigs: Vec<Option<(u64, DrawSig)>>,
+    /// This frame copied every tree's commands whole from the last, and
+    /// the trees' roots it drew.
+    pub reused_all: bool,
+    pub last_roots: Vec<u64>,
+    /// What last frame drew after its trees (a cover, the HUD editor, the
+    /// virtual cursor), before baking.
+    pub last_tail: Vec<(crate::DrawCmd, crate::element::Affine)>,
 }
 
 /// What the frame changes about a node's drawing without writing it again:
@@ -395,6 +409,14 @@ impl LayoutCache {
         }
         opened.push(i);
         order.splice(k + 1..k + 1, nodes[i].ordered_children.iter().copied());
+    }
+
+    /// Records the signature slot `i` was painted with.
+    pub(crate) fn sigs_set(&mut self, i: usize, key: u64, sig: DrawSig) {
+        if self.sigs.len() <= i {
+            self.sigs.resize(i + 1, None);
+        }
+        self.sigs[i] = Some((key, sig));
     }
 
     /// Records that node `i` was laid out this frame.

@@ -212,6 +212,7 @@ impl Ui {
         self.nodes[i].ordered_children = kept;
         self.nodes[i].children = flow;
         self.nodes[i].out = out;
+        self.tree.pending.push(i);
     }
 }
 

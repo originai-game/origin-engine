@@ -359,7 +359,7 @@ impl Ui {
 impl Ui {
     /// This tick's taps, double taps and long presses as frame events
     /// (`tap`, `doubleTap`, `longPress`, each naming the element's path).
-    pub(crate) fn note_taps(&mut self, present: &crate::id::KeyMap<usize>) {
+    pub(crate) fn note_taps(&mut self) {
         let fired = [
             ("tap", self.nav.tapped),
             ("doubleTap", self.nav.double_tapped),
@@ -378,7 +378,7 @@ impl Ui {
             if key == 0 {
                 continue;
             }
-            let Some(&i) = present.get(&key) else {
+            let Some(i) = self.tree.find(key) else {
                 continue;
             };
             self.events.push(crate::motion::UiEvent {
@@ -394,14 +394,14 @@ impl Ui {
     /// else the one under the pointer, the first cursor set on it or around
     /// it, else its own kind's (a text control's I-beam, a draggable
     /// element's hand, a link's), else the arrow.
-    pub(crate) fn resolve_cursor(&self, present: &crate::id::KeyMap<usize>) -> crate::Cursor {
+    pub(crate) fn resolve_cursor(&self) -> crate::Cursor {
         use crate::Cursor;
         let key = if self.state.active != 0 {
             self.state.active
         } else {
             self.state.hot
         };
-        let Some(&i) = present.get(&key) else {
+        let Some(i) = self.tree.find(key) else {
             return Cursor::Default;
         };
         let mut j = i;
