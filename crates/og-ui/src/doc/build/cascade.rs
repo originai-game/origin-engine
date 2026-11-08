@@ -3,7 +3,7 @@
 use super::*;
 use crate::doc::{StyleRule, css, variables};
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Cascade {
     pub computed: Arc<variables::Computed>,
     pub reads: BTreeSet<String>,

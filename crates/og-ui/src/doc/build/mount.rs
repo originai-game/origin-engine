@@ -64,6 +64,7 @@ pub struct Built {
 /// The documents a UI knows and what their mounts keep between ticks.
 #[derive(Clone, Debug, Default)]
 pub struct DocHost {
+    pub(crate) retained: super::retained::RetainedHost,
     /// By name.
     pub(crate) docs: BTreeMap<String, Arc<UiDocument>>,
     pub(crate) edits: Vec<Edit>,
@@ -248,6 +249,7 @@ impl Ui {
             inherited,
             events: Vec::new(),
             writes: Vec::new(),
+            cached: None,
         };
         let path = self.build_node(&mut b, root, Some(id));
         let (events, writes) = (b.events, b.writes);

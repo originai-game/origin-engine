@@ -45,13 +45,14 @@ enum V {
 }
 
 /// An element's resolved props, by schema index.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Resolved {
     vals: Vec<(usize, V)>,
     cascade: cascade::Cascade,
     span_styles: Vec<(crate::TextSpan, crate::TextSpanStyle)>,
 }
 
+#[derive(Clone)]
 struct ResolvedNode {
     id: String,
     path: String,
@@ -227,6 +228,7 @@ struct Build<'a> {
     inherited: Arc<super::variables::Computed>,
     events: Vec<DocEvent>,
     writes: Vec<(String, Value)>,
+    cached: Option<&'a retained::CachedInputs>,
 }
 
 impl Build<'_> {
@@ -243,12 +245,18 @@ impl Build<'_> {
     }
 
     fn eval(&self, e: &crate::bind::Expr) -> Value {
+        if let Some(cached) = self.cached {
+            return cached.expression(e);
+        }
         e.eval(&self.scope())
     }
 
     /// Where a write to `path` lands in the viewmodel: through an item
     /// variable to its list's entry.
     fn write_path(&self, path: &str) -> Option<String> {
+        if self.cached.is_some() {
+            return Some(path.to_owned());
+        }
         let (root, rest) = path.split_once('.').unwrap_or((path, ""));
         for (n, _, origin) in self.locals.iter().rev() {
             if n == root {
@@ -278,6 +286,11 @@ impl Build<'_> {
     }
 
     fn value(&self, ui: &Ui, ty: Ty, v: &PropValue) -> Option<V> {
+        if let Some(cached) = self.cached
+            && !matches!(v, PropValue::Lit(_))
+        {
+            return cached.property(v, ty);
+        }
         match v {
             PropValue::Lit(l) => lit(ui, l),
             PropValue::Model(path) => coerce(ui, ty, &self.scope().get(path)),
@@ -815,4 +828,6 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 pub mod cascade;
 mod mount;
 mod nodes;
+mod retained;
 pub use mount::{Built, DocEvent, DocHost, DocResponse, Edit};
+pub(crate) use retained::RetainedHost;

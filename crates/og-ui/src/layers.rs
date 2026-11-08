@@ -510,6 +510,8 @@ impl Ui {
             "next": d.layers.next,
             "heldScale": d.layers.held_scale,
             "stores": self.reactive.save(),
+            "mounts": d.retained.save(),
+            "seen": d.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
             "layers": d.layers.layers.iter().map(|l| json!({
                 "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
             })).collect::<Vec<_>>(),
@@ -519,13 +521,20 @@ impl Ui {
     }
 
     pub(crate) fn restore_docs_state(&mut self, v: &Value) -> Result<(), String> {
+        let retained = crate::doc::build::RetainedHost::restore(&v["mounts"])?;
         if let Some(stores) = v.get("stores") {
             self.reactive.restore(stores)?;
         } else {
             self.reactive = Default::default();
         }
         let d = &mut self.docs;
+        d.retained = retained;
         let key = |v: &Value| v.as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+        d.seen_now = v["seen"]
+            .as_array()
+            .map(|a| a.iter().map(key).collect())
+            .unwrap_or_default();
+        d.seen = d.seen_now.clone();
         d.layers.next = v["next"].as_u64().unwrap_or(0) as u32;
         d.layers.held_scale = v["heldScale"].as_f64().map(|x| x as f32);
         d.layers.layers = v["layers"]

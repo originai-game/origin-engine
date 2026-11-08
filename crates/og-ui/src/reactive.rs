@@ -45,7 +45,7 @@ impl SourceId {
         )
     }
 
-    fn validate(&self) -> Result<(), String> {
+    pub(crate) fn validate(&self) -> Result<(), String> {
         if self.scope.is_empty() || self.id.is_empty() {
             return Err(self.error("scope and source ID must be nonempty"));
         }

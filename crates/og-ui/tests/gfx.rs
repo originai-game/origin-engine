@@ -22,6 +22,138 @@ fn reference_dir(tier: &str) -> PathBuf {
 
 #[test]
 #[ignore = "requires GPU"]
+fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
+    use og_ui::reactive::{SourceId, wire};
+    use serde_json::{Value, json};
+    use std::collections::BTreeMap;
+    struct Env(Value);
+    impl bind::Env for Env {
+        fn lookup(&self, name: &str) -> Option<Value> {
+            self.0.get(name.trim_start_matches('$')).cloned()
+        }
+    }
+    let apply = |ui: &mut Ui, command: Value| {
+        let reply =
+            wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
+        assert_eq!(reply[0]["ok"], true, "{reply}");
+    };
+    let document = UiDocument::parse(
+        "retained.svelte",
+        r#"
+        <meta name="component" content="retained">
+        <column id="Root" gap="12">
+            <text id="Title">{$title}</text>
+            <toggle id="Choice" checked={$enabled} width={$enabled ? 300 : 240}>Enable captions</toggle>
+            <text id="Details">Captions follow the selected language.</text>
+        </column>
+        <style>
+            #Root { padding: 24px; }
+            #Title { font: var(--text-xl); }
+        </style>
+    "#,
+    )
+    .unwrap();
+    for (width, height) in [(640, 360), (390, 844)] {
+        let mut scene = RenderScene::new();
+        scene.environment.background = Background::Color(Vec3::splat(0.008));
+        let font = add_test_font(&mut scene);
+        let mut retained = ui_with_font(font.clone());
+        let mut immediate = ui_with_font(font);
+        retained.define_document(document.clone());
+        immediate.define_document(document.clone());
+        let title = SourceId::new("test", "title");
+        let enabled = SourceId::new("test", "enabled");
+        for (source, initial) in [
+            (title.clone(), json!("Caption settings")),
+            (enabled.clone(), json!(false)),
+        ] {
+            apply(
+                &mut retained,
+                json!({"op":"signal", "source":source, "initial":initial}),
+            );
+        }
+        retained
+            .mount_document(
+                SourceId::new("test", "screen"),
+                "retained",
+                BTreeMap::from([
+                    ("title".into(), title.clone()),
+                    ("enabled".into(), enabled.clone()),
+                ]),
+                &bind::NoEnv,
+            )
+            .unwrap();
+        let mut renderer = Renderer::new_blocking(&RenderDesc {
+            width,
+            height,
+            ..Default::default()
+        })
+        .unwrap();
+        let mut saved = (Vec::new(), Vec::new());
+        for (state, label, checked) in [
+            ("default", "Caption settings", false),
+            ("updated", "Captions enabled", true),
+            ("restored", "Caption settings", false),
+        ] {
+            if state == "restored" {
+                retained.restore_state(&saved.0).unwrap();
+                immediate.restore_state(&saved.1).unwrap();
+            } else {
+                for (source, value) in [
+                    (title.clone(), json!(label)),
+                    (enabled.clone(), json!(checked)),
+                ] {
+                    apply(
+                        &mut retained,
+                        json!({"op":"set", "source":source, "value":value}),
+                    );
+                }
+            }
+            let env = Env(json!({"title":label,"enabled":checked}));
+            for _ in 0..30 {
+                retained.begin(
+                    InputFrame::default(),
+                    Viewport::new(width as f32, height as f32),
+                );
+                retained.build_retained_documents(&env).unwrap();
+                retained.end();
+                immediate.begin(
+                    InputFrame::default(),
+                    Viewport::new(width as f32, height as f32),
+                );
+                immediate.component("test:screen", "retained", &mut Value::Null, &env);
+                immediate.end();
+            }
+            let mut pixels = Vec::new();
+            for ui in [&immediate, &retained] {
+                let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
+                ui.frame().emit(&EmitDesc::default(), &mut overlay);
+                scene.overlay = Some(overlay);
+                scene.post.tonemap = Tonemap::None;
+                renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+                pixels.push(renderer.read_offscreen().unwrap().pixels);
+            }
+            image::save_buffer(
+                out_dir().join(format!("retained-{state}-{width}.png")),
+                &pixels[1],
+                width,
+                height,
+                image::ColorType::Rgba8,
+            )
+            .unwrap();
+            assert!(
+                pixels[0] == pixels[1],
+                "pixel difference: {state} {width}x{height}"
+            );
+            if state == "default" {
+                saved = (retained.save_state(), immediate.save_state());
+            }
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
 fn core_documents_preserve_screen_pixels() {
     struct Env {
         vm: serde_json::Value,

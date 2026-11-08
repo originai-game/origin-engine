@@ -64,3 +64,10 @@ Visual regression fixtures must reproduce the dimensions that exposed the bug.
 A square-cell sheet cannot verify a short-side constraint: render tall, wide,
 full-bleed and small-icon slots at their real aspect ratios, and keep labels
 outside the slots so they do not shift the mark being reviewed.
+
+## Keep active implementation running across notifications
+
+A CI notification does not end an unfinished implementation request. Handle the
+notification, then continue the active work without requiring another prompt.
+Protect verified prerequisites in local logical commits; do not confuse their
+tests with the requested integrated rendering proof or land unfinished adapters.

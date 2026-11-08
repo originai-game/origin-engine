@@ -5,7 +5,7 @@ use super::{
     graph::{Dependency, MountedNode},
     session::Session,
 };
-use crate::bind::{Env, Expr, InteractionState, Scope, get_path};
+use crate::bind::{Env, Expr, InteractionState, Scope, Template, get_path};
 use serde_json::Value;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -73,8 +73,14 @@ impl BindingContext {
 #[derive(Clone, Debug)]
 struct Binding {
     context: BindingContext,
-    expression: Expr,
+    expression: BindingExpression,
     value: Result<Value, String>,
+}
+
+#[derive(Clone, Debug)]
+pub enum BindingExpression {
+    Expression(Expr),
+    Template(Template),
 }
 
 /// Compiled expressions and their last results. The source graph supplies the
@@ -100,6 +106,23 @@ impl Bindings {
         host: &dyn Env,
         interaction: impl Fn(&MountedNode, InteractionState) -> bool,
     ) -> BindingId {
+        self.insert_expression(
+            session,
+            context,
+            BindingExpression::Expression(expression),
+            host,
+            interaction,
+        )
+    }
+
+    pub fn insert_expression(
+        &mut self,
+        session: &mut Session,
+        context: BindingContext,
+        expression: BindingExpression,
+        host: &dyn Env,
+        interaction: impl Fn(&MountedNode, InteractionState) -> bool,
+    ) -> BindingId {
         let id = BindingId(self.next_id);
         self.next_id += 1;
         let evaluation = SourceEnv {
@@ -111,7 +134,7 @@ impl Bindings {
             node: &context.node,
             interaction: &interaction,
         }
-        .evaluate(&expression);
+        .evaluate_binding(&expression);
         session.graph.bind(id.0, evaluation.reads);
         self.entries.insert(
             id,
@@ -161,7 +184,7 @@ impl Bindings {
                 node: &context.node,
                 interaction: &interaction,
             }
-            .evaluate(&binding.expression);
+            .evaluate_binding(&binding.expression);
             session.graph.bind(raw, evaluation.reads);
             if binding.value != evaluation.value {
                 binding.value = evaluation.value;
@@ -189,12 +212,23 @@ pub struct SourceEnv<'a> {
 
 impl SourceEnv<'_> {
     pub fn evaluate(&self, expression: &Expr) -> Evaluation {
+        self.evaluate_with(|scope| expression.eval(scope))
+    }
+
+    fn evaluate_binding(&self, expression: &BindingExpression) -> Evaluation {
+        self.evaluate_with(|scope| match expression {
+            BindingExpression::Expression(expression) => expression.eval(scope),
+            BindingExpression::Template(template) => Value::String(template.format(scope)),
+        })
+    }
+
+    fn evaluate_with(&self, evaluate: impl FnOnce(&Scope<'_>) -> Value) -> Evaluation {
         let tracked = Tracked {
             source: self,
             reads: RefCell::new(BTreeSet::new()),
             errors: RefCell::new(Vec::new()),
         };
-        let value = expression.eval(&Scope {
+        let value = evaluate(&Scope {
             vm: &Value::Null,
             locals: Vec::new(),
             env: &tracked,

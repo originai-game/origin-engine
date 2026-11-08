@@ -190,16 +190,20 @@ impl Ui {
                 values: r,
                 probe: built,
             },
-            true,
+            |ui, b| {
+                for &child in &n.children {
+                    ui.build_node(b, child, None);
+                }
+            },
         )
     }
 
-    fn build_resolved_node(
+    pub(super) fn build_resolved_node(
         &mut self,
         b: &mut Build<'_>,
         i: usize,
         resolved: ResolvedNode,
-        build_children: bool,
+        build_children: impl FnOnce(&mut Ui, &mut Build<'_>),
     ) -> Option<String> {
         let doc = b.doc.clone();
         let n = &doc.nodes[i];
@@ -291,13 +295,9 @@ impl Ui {
                 self.docs.slots.entry(short).or_insert(at);
             }
             self.docs.built.push(built);
-            if build_children {
-                let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-                for &c in &n.children {
-                    self.build_node(b, c, None);
-                }
-                b.inherited = inherited;
-            }
+            let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
+            build_children(self, b);
+            b.inherited = inherited;
             resp = self.close();
             self.fire(b, n, key, &path, resp);
             return Some(path);
