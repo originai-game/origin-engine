@@ -80,3 +80,71 @@ fn equal_depth_meshlets_choose_the_same_triangle_across_frames() {
         previous = Some(image.pixels);
     }
 }
+
+/// A mesh given clusters after its first frame draws as one clustered from
+/// the start: its f32 vertices, made without STORAGE while it had none
+/// (engine s99), are made again with it before the meshlet path binds them.
+#[test]
+#[ignore = "requires GPU"]
+fn a_mesh_given_clusters_after_its_first_frame_draws_as_one_clustered_from_the_start() {
+    let mut mesh = MeshData::default();
+    for position in [[-0.5, -0.5, 0.0], [0.5, -0.5, 0.0], [0.0, 0.5, 0.0]] {
+        mesh.indices.push(mesh.vertices.len() as u32);
+        mesh.vertices.push(Vertex {
+            position,
+            normal: [0.0, 0.0, 1.0],
+            ..Default::default()
+        });
+    }
+    let clustered = MeshClusters {
+        levels: vec![ClusterLevel {
+            count: 3,
+            clusters: 0..1,
+            ..Default::default()
+        }],
+        indices: mesh.indices.clone(),
+        clusters: vec![Cluster {
+            first: 0,
+            triangles: 1,
+            radius: 0.75,
+            cone_cutoff: 1.0,
+            ..Default::default()
+        }],
+    };
+    let third_frame = |late: bool| {
+        let mut scene = RenderScene::new();
+        let handle = scene.add_mesh(mesh.clone());
+        let material = scene.add_material(Material::default());
+        scene.add_instance(handle, material, Mat4::IDENTITY);
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 0.0, 3.0),
+            target: Vec3::ZERO,
+            ..Default::default()
+        };
+        scene.light.cast_shadows = false;
+        // The meshlet path follows GPU culling (one instance under
+        // `Culling::Auto` may stay on the CPU path).
+        let mut renderer = Renderer::new_blocking(&RenderDesc {
+            width: 64,
+            height: 64,
+            culling: og_render::Culling::Gpu,
+            ..Default::default()
+        })
+        .expect("renderer");
+        for frame in 0..3 {
+            if frame == usize::from(late) {
+                assert!(scene.set_mesh_clusters(handle, Some(clustered.clone())));
+            }
+            renderer
+                .render(&scene, &RenderTarget::Offscreen)
+                .expect("render");
+        }
+        renderer.read_offscreen().expect("capture").pixels
+    };
+    let late = third_frame(true);
+    assert!(
+        late.chunks(4).any(|p| p[..3] != late[..3]),
+        "the triangle drew"
+    );
+    assert_eq!(late, third_frame(false));
+}

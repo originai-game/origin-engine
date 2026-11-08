@@ -109,6 +109,11 @@ pub(crate) struct GpuMesh {
     /// Whether `vertices` holds the mesh: false for a compact mesh no
     /// pipeline that reads [`Vertex`] has drawn yet ([`Renderer::ensure_full`]).
     pub(crate) full: bool,
+    /// Whether `vertices` was made with STORAGE. The meshlet path binds a
+    /// clustered mesh's f32 vertices as storage (meshlet.wgsl
+    /// `meshlet_vertices`), so only a mesh with clusters is made so, and a
+    /// mesh given clusters after its upload is uploaded again (engine s99).
+    pub(crate) storage: bool,
     /// The compact vertices ([`VertexEncoding::Compact`], `compact.rs`)
     /// and how to undo their positions' quantisation.
     pub(crate) compact: Option<(wgpu::Buffer, compact::Dequant)>,
