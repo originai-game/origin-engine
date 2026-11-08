@@ -3,26 +3,28 @@ use super::*;
 impl Ui {
     /// Text in MSDF, wrapping at its width unless `nowrap`.
     pub fn label(&mut self, id: impl Into<Id>, text: &str, desc: LabelDesc) {
+        let i = self.leaf("label", id.into(), Element::default());
+        self.apply_label(i, text, desc);
+    }
+
+    /// Replaces label-owned presentation without allocating a node or processing input.
+    pub(crate) fn apply_label(&mut self, i: usize, text: &str, desc: LabelDesc) {
         // A centred or end-aligned label left to fit its text in a column
         // takes the column's width, as a CSS block does: aligned in a box
         // only as wide as its text, it would sit at the column's start.
+        let parent = self.nodes[i].parent;
         let in_column = self
-            .stack
-            .last()
-            .is_some_and(|&p| self.nodes[p].el.direction == Direction::Column);
+            .nodes
+            .get(parent)
+            .is_some_and(|p| p.el.direction == Direction::Column);
         let width = if desc.align != TextAlign::Start && desc.width == Size::fit() && in_column {
             Size::grow()
         } else {
             desc.width
         };
-        let i = self.leaf(
-            "label",
-            id.into(),
-            Element {
-                width,
-                ..Element::default()
-            },
-        );
+        self.nodes[i].el.width = width;
+        self.nodes[i].el.padding = Insets::default();
+        self.draws.remove(&i);
         // Borrowed, not copied: a label is the most frequent element.
         let t = &self.theme;
         let mut step = desc.step.unwrap_or(t.type_ramp.body);
@@ -75,14 +77,13 @@ impl Ui {
             Content::Text(tc) => tc.metrics(&self.fonts).pixel_grid(),
             _ => 0,
         };
-        let scrolled = self
-            .stack
-            .iter()
-            .any(|&p| self.nodes[p].el.scroll || self.nodes[p].el.scroll_x);
-        let in_control = self
-            .stack
-            .last()
-            .is_some_and(|&p| self.nodes[p].el.interactive);
+        let mut ancestor = parent;
+        let mut scrolled = false;
+        while let Some(node) = self.nodes.get(ancestor) {
+            scrolled |= node.el.scroll || node.el.scroll_x;
+            ancestor = node.parent;
+        }
+        let in_control = self.nodes.get(parent).is_some_and(|p| p.el.interactive);
         if let Some((dx, _, blur, _)) = self
             .text_drop(desc.font.effect_index(), step.size, grid)
             .filter(|_| scrolled && !in_control)
@@ -99,6 +100,40 @@ impl Ui {
 
     /// A capsule button with a label. `clicked` is a press and a release inside it.
     pub fn button(&mut self, id: impl Into<Id>, text: &str, desc: ButtonDesc) -> Response {
+        let i = self.leaf("button", id.into(), Element::default());
+        self.nodes[i].disabled = desc.disabled;
+        let refused = desc.disabled
+            && self.theme.art.motion.shake > 0.0
+            && self.respond(self.nodes[i].key).clicked;
+        let r = if desc.disabled {
+            Response::default()
+        } else {
+            self.nav_target(i, false)
+        };
+        // What opens takes the focus (as a dialog's first control and a
+        // dialogue box do): appearing, outside a dialog.
+        let key = self.nodes[i].key;
+        if desc.autofocus
+            && !desc.disabled
+            && self.state.scope == 0
+            && !self.state.hits.iter().any(|h| h.key == key)
+        {
+            self.request_focus = key;
+        }
+        let amounts = if desc.disabled {
+            (0.0, 0.0)
+        } else {
+            self.state_amounts(i, &r)
+        };
+        let press = self.button_motion(i, r, refused);
+        self.apply_button(i, text, desc, r, amounts, press);
+        if r.clicked && desc.variant == ButtonVariant::Primary {
+            self.feedback(crate::tokens::SoundEvent::Confirm);
+        }
+        r
+    }
+
+    fn button_box(&self, desc: ButtonDesc) -> Element {
         let t = self.theme;
         let sizes = self.sizes();
         // Never shorter than its words with an inset above and below: a
@@ -121,43 +156,36 @@ impl Ui {
         } else {
             (desc.width.unwrap_or_default(), pad)
         };
-        let i = self.leaf(
-            "button",
-            id.into(),
-            Element {
-                width,
-                height: Size::Fixed(h),
-                padding: Insets::xy(pad, 0.0),
-                // A style that shakes a refused press hears presses on a disabled button.
-                interactive: !desc.disabled || t.art.motion.shake > 0.0,
-                radius: t.radius.control,
-                ..Element::default()
-            },
-        );
-        self.nodes[i].disabled = desc.disabled;
-        let refused =
-            desc.disabled && t.art.motion.shake > 0.0 && self.respond(self.nodes[i].key).clicked;
-        let r = if desc.disabled {
-            Response::default()
-        } else {
-            self.nav_target(i, false)
-        };
-        // What opens takes the focus (as a dialog's first control and a
-        // dialogue box do): appearing, outside a dialog.
-        let key = self.nodes[i].key;
-        if desc.autofocus
-            && !desc.disabled
-            && self.state.scope == 0
-            && !self.state.hits.iter().any(|h| h.key == key)
-        {
-            self.request_focus = key;
+        Element {
+            width,
+            height: Size::Fixed(h),
+            padding: Insets::xy(pad, 0.0),
+            // A style that shakes a refused press hears presses on a disabled button.
+            interactive: !desc.disabled || t.art.motion.shake > 0.0,
+            radius: t.radius.control,
+            ..Element::default()
         }
-        let p = &t.palette;
-        let amounts = if desc.disabled {
-            (0.0, 0.0)
-        } else {
-            self.state_amounts(i, &r)
+    }
+
+    /// Applies presentation from an already processed response and sampled motion.
+    pub(crate) fn apply_button(
+        &mut self,
+        i: usize,
+        text: &str,
+        desc: ButtonDesc,
+        r: Response,
+        amounts: (f32, f32),
+        press: f32,
+    ) {
+        let t = self.theme;
+        self.nodes[i].el = self.button_box(desc);
+        self.nodes[i].disabled = desc.disabled;
+        let width = self.nodes[i].el.width;
+        let Size::Fixed(h) = self.nodes[i].el.height else {
+            unreachable!("button geometry has a fixed height")
         };
+        let key = self.nodes[i].key;
+        let p = &t.palette;
         // Each variant's colour at rest, hovered and pressed, mixed by how
         // far into each the button is (the style's `ui` spring).
         let mix = |rest, hover, pressed| Ui::state_color(rest, hover, pressed, amounts);
@@ -274,10 +302,6 @@ impl Ui {
         };
         let mut content = self.role_text(text, crate::tokens::TypeRole::Button, fg);
         content.align = TextAlign::Center;
-        let press = self.button_motion(i, r, refused);
-        if r.clicked && desc.variant == ButtonVariant::Primary {
-            self.feedback(crate::tokens::SoundEvent::Confirm);
-        }
         let radius = crate::dress::corner_of(resolved.shape(&part, &t)).1;
         let n = &mut self.nodes[i];
         n.el.background = bg;
@@ -290,7 +314,6 @@ impl Ui {
             press,
         };
         n.probe_text = text.to_owned();
-        r
     }
 
     /// A texture region, or a solid rectangle without a texture; with

@@ -297,6 +297,75 @@ mod tests {
     }
 
     #[test]
+    fn restyling_labels_and_buttons_does_not_replay_input_or_motion() {
+        let mut ui = Ui::default();
+        for width in [400.0, 220.0, 400.0] {
+            ui.begin(
+                InputFrame {
+                    keys: vec![crate::UiKey::Enter],
+                    ..Default::default()
+                },
+                Viewport::new(width, 300.0),
+            );
+            ui.watch_layout_container(ui.nodes[0].key);
+            ui.label(
+                "label",
+                "before",
+                LabelDesc {
+                    on_scene: true,
+                    ..Default::default()
+                },
+            );
+            let label = ui.last_closed;
+            let desc = ButtonDesc {
+                variant: ButtonVariant::Primary,
+                ..Default::default()
+            };
+            let response = ui.button("button", "Confirm", desc);
+            let button = ui.last_closed;
+            ui.set_focus("button");
+            ui.end_with_layout_queries(|ui, sizes| {
+                let before = ui.save_state();
+                let feedback = ui.clone().take_feedback();
+                let width = if sizes[0].current.width > 300.0 {
+                    91.0
+                } else {
+                    37.0
+                };
+                ui.apply_label(
+                    label,
+                    "after",
+                    LabelDesc {
+                        width: Size::Fixed(width),
+                        ..Default::default()
+                    },
+                );
+                ui.apply_button(
+                    button,
+                    "Confirm",
+                    ButtonDesc {
+                        width: Some(Size::Fixed(width)),
+                        ..desc
+                    },
+                    response,
+                    (0.0, 0.0),
+                    0.0,
+                );
+                assert_eq!(ui.save_state(), before);
+                assert_eq!(ui.clone().take_feedback(), feedback);
+                Ok(vec![label, button])
+            })
+            .unwrap();
+            assert_eq!(ui.frame().element("label").unwrap().text, "after");
+            assert_eq!(
+                ui.frame().element("button").unwrap().width,
+                if width > 300.0 { 91.0 } else { 37.0 }
+            );
+            assert_eq!(ui.frame().stats.elements, 3);
+        }
+    }
+
+    #[test]
     fn unchanged_geometry_never_invokes_the_resolver() {
         let mut ui = Ui::default();
         build(&mut ui, 400.0);
