@@ -39,6 +39,10 @@ fn format(v: &Value) -> ValueFormat {
         unit: text(&v["unit"]),
         percent: flag(&v["percent"]),
         labels: items(&v["labels"]).iter().map(text).collect(),
+        digits: v["digits"]
+            .as_u64()
+            .and_then(|d| usize::try_from(d).ok())
+            .unwrap_or(0),
     }
 }
 

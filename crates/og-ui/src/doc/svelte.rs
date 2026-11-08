@@ -1336,6 +1336,7 @@ impl Parser {
                 Some("checkbox") => "toggle",
                 Some("radio") => "radio",
                 Some("color") => "color",
+                Some("date" | "time" | "datetime-local" | "month" | "week") => "datetime",
                 _ => "field",
             },
             other => match super::extern_element::kind(other, self.parent_tag(parent)) {
@@ -1594,7 +1595,7 @@ impl Parser {
                 )?;
                 continue;
             }
-            if tag == "input" && internal != "field" && a.name == "type" {
+            if tag == "input" && !matches!(internal, "field" | "datetime") && a.name == "type" {
                 continue;
             }
             // A radio's group is the store it binds; its `name` adds nothing.
@@ -1651,6 +1652,15 @@ impl Parser {
             }
             if name == "value" && internal == "color" {
                 name = "colorValue".into();
+            }
+            if internal == "datetime" {
+                match name.as_str() {
+                    "value" => name = "dateValue".into(),
+                    "type" => name = "dateType".into(),
+                    "min" => name = "dateMin".into(),
+                    "max" => name = "dateMax".into(),
+                    _ => {}
+                }
             }
             if name == "value" && internal == "radio" {
                 name = "choice".into();
@@ -2899,7 +2909,6 @@ button.active { opacity: 1; }
                 "inside a <form>",
             ),
             ("<div><output for='Nope'>x</output></div>", "no element"),
-            ("<input type='date' bind:value={$d}>", "not supported yet"),
             ("<input type='file'>", "file picker"),
         ] {
             let text = format!("<meta name='screen' content='t'>\n{body}");

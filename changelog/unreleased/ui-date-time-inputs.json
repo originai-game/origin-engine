@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <input type=\"date\">, time, datetime-local, month, week",
+      "summary": "A pad-friendly picker of og-ui steppers, one per part, bound by value in HTML's format, within min and max and on the step grid from min; a part past its end carries into the next. Required or out-of-range values are :invalid and hold a form's submit back. Before this they were refused."
+    },
+    {
+      "member": "ValueFormat.digits",
+      "summary": "Whole digits shown zero-padded and ungrouped (a clock's 05, a year's 2026); 0 keeps thousands grouping."
+    }
+  ]
+}

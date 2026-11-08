@@ -39,6 +39,9 @@
 //! - a form sent while a field is invalid, the focus not moving to the
 //!   first invalid one, a disabled field validated, or `formnovalidate`
 //!   ignored → `a_form_submits_only_when_its_fields_are_valid`
+//! - a date part stepping past its month or year, `min`/`max` or `step`
+//!   ignored, or an empty required date input not holding a form back →
+//!   `date_and_time_inputs_step_their_parts_within_min_max_and_step`
 
 use crate::support;
 
@@ -950,5 +953,60 @@ fn a_form_submits_only_when_its_fields_are_valid() {
         );
         d.set("mail", json!("ana@example.com"));
         assert!(saved(&d.click("Save")));
+    });
+}
+
+#[test]
+fn date_and_time_inputs_step_their_parts_within_min_max_and_step() {
+    let text = r#"<meta name="component" content="t">
+<div><form id="Form" onsubmit={book}>
+  <input type="date" id="When" min="2024-02-27" max="2024-03-01" bind:value={$day}>
+  <input type="time" id="At" step="900" bind:value={$at}>
+  <input type="week" id="Wk" required bind:value={$wk}>
+  <button id="Book">Book</button>
+</form></div>"#;
+    let stores = [
+        ("day", json!("2024-02-28")),
+        ("at", json!("09:00")),
+        ("wk", json!("")),
+    ];
+    both(text, &stores, |d| {
+        // A press on a part's +: the value it writes back (an immediate
+        // build's viewmodel takes it as its game would).
+        let step = |d: &mut Doc, part: &str, store: &str| -> Value {
+            let events = d.click(part);
+            let Some(v) = events
+                .iter()
+                .rfind(|e| e.kind == "changed" && e.name == "dateValue")
+                .map(|e| e.value.clone())
+            else {
+                return d.read(store);
+            };
+            if d.mounted {
+                assert_eq!(d.read(store), v);
+            } else {
+                d.set(store, v.clone());
+            }
+            v
+        };
+        assert_eq!(step(d, "When/Day/Frame/Inc", "day"), json!("2024-02-29"));
+        assert_eq!(
+            step(d, "When/Day/Frame/Inc", "day"),
+            json!("2024-03-01"),
+            "the 30th is no date"
+        );
+        assert_eq!(
+            step(d, "When/Month/Frame/Inc", "day"),
+            json!("2024-03-01"),
+            "April is past max"
+        );
+        // The minutes step by the step's 15.
+        assert_eq!(step(d, "At/Minute/Frame/Inc", "at"), json!("09:15"));
+        // An empty required week holds the form back.
+        let events = d.click("Book");
+        assert!(!events.iter().any(|e| e.name == "book"), "{events:?}");
+        step(d, "Wk/Week/Frame/Inc", "wk");
+        assert!(d.click("Book").iter().any(|e| e.name == "book"));
+        assert_eq!(d.a11y("When").role, "group");
     });
 }

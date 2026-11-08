@@ -27600,6 +27600,12 @@ export interface ValueFormat {
    * @default []
    */
   readonly labels?: readonly string[];
+  /**
+   * Whole digits shown, zero-padded and not grouped (a clock's `05`, a year's `2026`); 0 groups thousands (`1,234`).
+   *
+   * @default 0
+   */
+  readonly digits?: number;
 }
 
 /**

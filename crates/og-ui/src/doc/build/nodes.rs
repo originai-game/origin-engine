@@ -932,6 +932,20 @@ impl Ui {
             "color" => {
                 resp = self.color_input(b, n, id.as_str(), &r);
             }
+            "datetime" => {
+                resp = self.datetime_input(b, n, id.as_str(), &r);
+                let barred = r.flag("disabled") || r.flag("readonly");
+                self.docs.validity.insert(
+                    key,
+                    super::mount::FieldValidity {
+                        mount: b.mount.clone(),
+                        doc: doc.name.clone(),
+                        node: i,
+                        row_key: b.row_key.clone(),
+                        invalid: !barred && (r.flag("invalid") || super::datetime::invalid(&r)),
+                    },
+                );
+            }
             "radio" => {
                 let choice = r.str("choice").unwrap_or("on").to_string();
                 let on = if r.has("group") {

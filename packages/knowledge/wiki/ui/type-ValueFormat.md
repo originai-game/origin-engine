@@ -16,6 +16,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `unit` | `string` | `""` | — | — | — | Written after it (`%`, ` m`, `×`); empty for none. |
 | `percent` | `boolean` | `false` | — | — | — | Show 0–1 as a whole percent. |
 | `labels` | `readonly string[]` | `[]` | — | — | — | Words for whole values from min (`Off`, `Low`, `Medium`, `High`): a setting's levels. |
+| `digits` | `number` | `0` | — | — | — | Whole digits shown, zero-padded and not grouped (a clock's `05`, a year's `2026`); 0 groups thousands (`1,234`). |
 
 ```ogt
 struct ValueFormat {
@@ -27,6 +28,7 @@ struct ValueFormat {
   field unit String "Written after it (`%`, ` m`, `×`); empty for none."
   field percent bool "Show 0–1 as a whole percent."
   field labels List.String "Words for whole values from min (`Off`, `Low`, `Medium`, `High`): a setting's levels."
+  field digits u32 "Whole digits shown, zero-padded and not grouped (a clock's `05`, a year's `2026`); 0 groups thousands (`1,234`)."
 }
 ```
 

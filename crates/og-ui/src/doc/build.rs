@@ -1532,6 +1532,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 pub mod cascade;
 mod color;
 mod containers;
+mod datetime;
 mod fields;
 mod generated;
 pub(crate) mod gestures;

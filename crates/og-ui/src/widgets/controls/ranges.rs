@@ -24,6 +24,9 @@ pub struct ValueFormat {
     pub percent: bool,
     /// Words for whole values from min (`Off`, `Low`, `High`).
     pub labels: Vec<String>,
+    /// Whole digits shown, zero-padded and not grouped (a clock's `05`, a
+    /// year's `2026`); 0 groups thousands.
+    pub digits: usize,
 }
 
 impl ValueFormat {
@@ -33,6 +36,9 @@ impl ValueFormat {
         let k = (value - min).round();
         if k >= 0.0 && (k as usize) < self.labels.len() {
             return self.labels[k as usize].clone();
+        }
+        if self.digits > 0 && value.fract() == 0.0 && value >= 0.0 {
+            return format!("{:0w$}{}", value as i64, self.unit, w = self.digits);
         }
         format_value(value, self.decimals, step, &self.unit, self.percent)
     }

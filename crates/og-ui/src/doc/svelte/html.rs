@@ -141,15 +141,6 @@ impl Parser {
             }
             ("output", "name") => {}
             ("input", "type") if !a.bound => match a.value.as_str() {
-                "date" | "time" | "datetime-local" | "month" | "week" => {
-                    return Err((
-                        a.at,
-                        format!(
-                            "<input type=\"{}\"> is not supported yet: its pad-friendly picker is not built; bind a <select> or a number <input> per part",
-                            a.value
-                        ),
-                    ));
-                }
                 "file" => {
                     return Err((
                         a.at,
@@ -340,7 +331,10 @@ impl Parser {
                 let mut controls = Vec::new();
                 let mut stack = element_children(&self.doc, form);
                 while let Some(k) = stack.pop() {
-                    if self.doc.nodes[k].kind == NodeKind::Element("field") {
+                    if matches!(
+                        self.doc.nodes[k].kind,
+                        NodeKind::Element("field" | "datetime")
+                    ) {
                         controls.push(k);
                     }
                     stack.extend(element_children(&self.doc, k));

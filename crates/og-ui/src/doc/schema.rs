@@ -209,6 +209,11 @@ pub const CORE_KINDS: &[KindSpec] = &[
         doc: "A colour input: a swatch that opens a picker (two-way `value`, `#rrggbb`).",
     },
     KindSpec {
+        name: "datetime",
+        container: false,
+        doc: "A date or time input (`<input type=\"date|time|datetime-local|month|week\">`): a stepper per part, two-way `dateValue` in HTML's format.",
+    },
+    KindSpec {
         name: "radio",
         container: false,
         doc: "One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes.",
@@ -1182,8 +1187,8 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "disabled",
         Ty::Bool,
         [
-            "button", "slider", "toggle", "radio", "color", "tabs", "field", "select", "details",
-            "joystick", "dpad"
+            "button", "slider", "toggle", "radio", "color", "datetime", "tabs", "field", "select",
+            "details", "joystick", "dpad"
         ],
         "Takes no input."
     ),
@@ -1245,7 +1250,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "stepBy",
         Ty::Num,
-        ["slider", "field"],
+        ["slider", "field", "datetime"],
         "A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step)."
     ),
     p!(
@@ -1266,6 +1271,31 @@ pub const CORE_PROPS: &[PropSpec] = &[
         ["radio"],
         two_way,
         "The store its group's choice is in (`bind:group`): it is checked while that holds its value, and a press writes its value."
+    ),
+    p!(
+        "dateValue",
+        Ty::Text,
+        ["datetime"],
+        two_way,
+        "Its value in HTML's format (`2026-11-08`, `14:30`, `2026-11-08T14:30`, `2026-11`, `2026-W45`; written back); empty until a part is stepped."
+    ),
+    p!(
+        "dateType",
+        Ty::Word(&["date", "time", "datetime-local", "month", "week"]),
+        ["datetime"],
+        "Which parts it has (HTML `type`)."
+    ),
+    p!(
+        "dateMin",
+        Ty::Text,
+        ["datetime"],
+        "The earliest value (HTML `min`, in its format); the picker keeps to it and is the step base."
+    ),
+    p!(
+        "dateMax",
+        Ty::Text,
+        ["datetime"],
+        "The latest value (HTML `max`, in its format)."
     ),
     p!(
         "colorValue",
@@ -1566,13 +1596,13 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "readonly",
         Ty::Bool,
-        ["field"],
+        ["field", "datetime"],
         "Its text is selected and copied but never edited; it keeps its focus stop."
     ),
     p!(
         "required",
         Ty::Bool,
-        ["field"],
+        ["field", "datetime"],
         "Empty is invalid (`valueMissing`)."
     ),
     p!(

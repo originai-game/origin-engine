@@ -49819,6 +49819,13 @@
           },
           "description": "Words for whole values from min (`Off`, `Low`, `Medium`, `High`): a setting's levels.",
           "default": []
+        },
+        "digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Whole digits shown, zero-padded and not grouped (a clock's `05`, a year's `2026`); 0 groups thousands (`1,234`).",
+          "default": 0
         }
       },
       "additionalProperties": false
