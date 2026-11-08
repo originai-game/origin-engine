@@ -1489,6 +1489,18 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "cycle draws it as previous, its option and next (`-og-select`)."
     ),
     p!(
+        "selectFilter",
+        Ty::Word(&["auto", "on", "off"]),
+        ["select"],
+        "A filter field atop the open list that narrows its options as the player types (`-og-select-filter: on`); auto shows it past 10 options."
+    ),
+    p!(
+        "dataFilterPlaceholder",
+        Ty::Text,
+        ["select"],
+        "What the open list's filter field shows while empty (`data-filter-placeholder`); empty is Filter."
+    ),
+    p!(
         "spotlight",
         Ty::Name,
         ["dialog"],

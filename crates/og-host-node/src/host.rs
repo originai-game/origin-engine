@@ -1341,9 +1341,6 @@ impl UiApi for NodeHost {
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>) {
         rt::og_ui_label(id, text, desc)
     }
-    fn og_ui_dropdown(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_dropdown(id, desc)
-    }
     fn og_ui_image(&self, id: String, desc: Option<String>) {
         rt::og_ui_image(id, desc)
     }

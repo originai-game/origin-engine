@@ -822,6 +822,15 @@ impl Ui {
                         disabled: r.flag("disabled"),
                         width: r.size("width"),
                         max_height,
+                        searchable: match styled.str("selectFilter") {
+                            Some("on") => Some(true),
+                            Some("off") => Some(false),
+                            _ => None,
+                        },
+                        search_placeholder: r
+                            .str("dataFilterPlaceholder")
+                            .unwrap_or_default()
+                            .to_string(),
                         ..base
                     },
                     r.flag("invalid"),

@@ -30,7 +30,6 @@ ui-data.ogt
 ui-containers-functions.ogt
 ui-data-functions.ogt
 ui-core-foundations.ogt
-ui-controls.ogt
 ui-core-motion.ogt
 ui-feedback.ogt
 ui-core-draw.ogt

@@ -2504,11 +2504,6 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_dropdown(id: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_dropdown(&Host, id, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_props(desc: Option<String>) -> bool {
     <Host as UiApi>::og_ui_props(&Host, desc)
 }

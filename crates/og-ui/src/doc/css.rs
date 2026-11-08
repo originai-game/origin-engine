@@ -215,6 +215,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("countDecimals", "-og-count-decimals"),
     ("reveal", "-og-reveal"),
     ("selectAppearance", "-og-select"),
+    ("selectFilter", "-og-select-filter"),
     ("spotlight", "-og-spotlight"),
     ("anchorAt", "-og-anchor-at"),
     ("anchorSelf", "-og-anchor-self"),
@@ -461,7 +462,7 @@ fn conv(prop: &str) -> Conv {
         "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
         | "textAlign" | "verticalAlign" | "captionSide" | "fit" | "display" | "markerType"
         | "markerPosition" | "userSelect" | "appearance" | "labelDirection" | "stepper"
-        | "stepperWrap" | "selectAppearance" => Conv::Kebab,
+        | "stepperWrap" | "selectAppearance" | "selectFilter" => Conv::Kebab,
         "countDuration" | "countDecimals" | "reveal" => Conv::Num,
         "spotlight" => Conv::Ident,
         "wrap" => Conv::Bool("wrap", "nowrap"),

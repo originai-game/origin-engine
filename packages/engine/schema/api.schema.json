@@ -12007,9 +12007,6 @@
         "EmitterPreset",
         "EmitterDesc",
         "EffectLayerDesc",
-        "DropdownOption",
-        "DropdownDesc",
-        "DropdownResult",
         "UiProp",
         "LayoutMode",
         "Position",
@@ -13409,26 +13406,6 @@
           "returns": "Void",
           "publish": true,
           "host": false
-        },
-        {
-          "name": "dropdown",
-          "doc": "A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes the focus at the chosen option, with groups, icons, descriptions, a tick on the chosen and a filter past 10 options. A press, Enter, Space or A opens it and chooses; Back, Escape or a press outside closes it and the focus returns to the trigger. Plays open, select and close. Parts: `Dropdown.trigger[open][invalid][hover|pressed|focused|disabled]`, `Dropdown.list`, `Dropdown.option[selected][hover|focused|disabled]`, `Dropdown.group`. Role combobox (expanded while open) and a listbox of options. Probe: `<id>/Trigger`, `<id>.list/List/Option#i`.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "DropdownDesc",
-              "optional": true,
-              "doc": "Its options and states."
-            }
-          ],
-          "returns": "DropdownResult",
-          "publish": true
         },
         {
           "name": "props",
@@ -49122,152 +49099,6 @@
           "default": []
         }
       },
-      "additionalProperties": false
-    },
-    "DropdownOption": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "One option of a dropdown.",
-      "type": "object",
-      "properties": {
-        "label": {
-          "type": "string",
-          "description": "Its label.",
-          "default": ""
-        },
-        "description": {
-          "type": "string",
-          "description": "A line under it in the list; empty for none.",
-          "default": ""
-        },
-        "icon": {
-          "type": "string",
-          "description": "An icon before it; empty for none.",
-          "default": ""
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "Shown but cannot be chosen.",
-          "default": false
-        },
-        "group": {
-          "type": "string",
-          "description": "The heading it sits under; options of one group follow each other.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "DropdownDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A dropdown: its options, label and states.",
-      "type": "object",
-      "properties": {
-        "options": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/DropdownOption"
-          },
-          "description": "The options.",
-          "default": []
-        },
-        "selected": {
-          "type": "integer",
-          "minimum": -2147483648,
-          "maximum": 2147483647,
-          "description": "The chosen one from game state; -1 shows the placeholder.",
-          "default": -1
-        },
-        "label": {
-          "type": "string",
-          "description": "Its name, above it; empty for none.",
-          "default": ""
-        },
-        "placeholder": {
-          "type": "string",
-          "description": "Shown while nothing is chosen; empty is `Select…`.",
-          "default": ""
-        },
-        "helper": {
-          "type": "string",
-          "description": "A line under it; empty for none.",
-          "default": ""
-        },
-        "error": {
-          "type": "string",
-          "description": "An error under it (and the danger frame); empty for none.",
-          "default": ""
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "Shown but inert.",
-          "default": false
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null grows.",
-          "default": null
-        },
-        "searchable": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A filter field at the list's top; null shows it past 10 options.",
-          "default": null
-        },
-        "searchPlaceholder": {
-          "type": "string",
-          "description": "The filter's placeholder; empty is `Filter`.",
-          "default": ""
-        },
-        "maxHeight": {
-          "type": "number",
-          "description": "The list's most height before it scrolls.",
-          "default": 320,
-          "x-og-unit": "cssPx"
-        }
-      },
-      "additionalProperties": false
-    },
-    "DropdownResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A dropdown's state after this tick.",
-      "type": "object",
-      "properties": {
-        "selected": {
-          "type": "integer",
-          "minimum": -2147483648,
-          "maximum": 2147483647,
-          "description": "The chosen index, to keep and pass back."
-        },
-        "changed": {
-          "type": "boolean",
-          "description": "It changed this tick."
-        },
-        "open": {
-          "type": "boolean",
-          "description": "Its list is open."
-        }
-      },
-      "required": [
-        "selected",
-        "changed",
-        "open"
-      ],
       "additionalProperties": false
     },
     "UiProp": {

@@ -8,7 +8,6 @@ import { contextMenu, menu, popover, sheet } from "./containers/layers.ts";
 import { tabBar } from "./containers/navigation.ts";
 import { nodeGraph } from "./data/tree.ts";
 import { foundations } from "./foundations/index.ts";
-import { controls } from "./controls/index.ts";
 
 export const components = Object.freeze({
   accordion,
@@ -19,5 +18,4 @@ export const components = Object.freeze({
   tabBar,
   nodeGraph,
   ...foundations,
-  ...controls,
 });

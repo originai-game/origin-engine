@@ -1119,8 +1119,6 @@ pub trait UiApi: Wire {
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String;
     /// `og.ui.previewViewport`
     fn og_ui_preview_viewport(&self, world: u32, viewport: String);
-    /// `og.ui.dropdown`
-    fn og_ui_dropdown(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.props`
     fn og_ui_props(&self, desc: Option<String>) -> bool;
     /// `og.ui.defineTimeline`
@@ -1965,7 +1963,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_burst",
     "og_ui_screen_transition",
     "og_ui_preview_viewport",
-    "og_ui_dropdown",
     "og_ui_props",
     "og_ui_define_timeline",
     "og_ui_play",

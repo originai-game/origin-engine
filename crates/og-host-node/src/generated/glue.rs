@@ -3003,12 +3003,6 @@ pub fn og_ui_preview_viewport(env: Env, world: u32, viewport: String) {
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
 }
 
-#[napi(js_name = "og_ui_dropdown")]
-pub fn og_ui_dropdown(env: Env, id: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_dropdown(&Host, id, desc)
-}
-
 #[napi(js_name = "og_ui_props")]
 pub fn og_ui_props(env: Env, desc: Option<String>) -> bool {
     let _env = crate::EnvScope::enter(&env);

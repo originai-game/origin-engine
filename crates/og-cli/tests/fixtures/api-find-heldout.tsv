@@ -1,7 +1,7 @@
 query	expected
 show a little arrow from the gun to where it points while debugging	og.debug.arrow
 a number counting down on screen until the round ends	screens §7
-let the player choose one option from a list that drops open	og.ui.dropdown
+let the player choose one option from a list that drops open	components §30
 a volume bar the player drags left and right	og.ui.slider
 switch between inventory, map and settings pages along the top	og.ui.tabs
 confetti when the player wins	og.ui.celebration

@@ -193,10 +193,6 @@ module ui {
 | [`og.ui.emitter`](ui/fn-emitter.md) | function | `(id: string, desc?: EmitterDesc): void` | An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. |
 | [`EffectLayerDesc`](ui/type-EffectLayerDesc.md) | desc struct |  | A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`. |
 | [`og.ui.effectLayer`](ui/fn-effectLayer.md) | function | `(id: string, desc: EffectLayerDesc, build: UiBuild): void` | A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hi… |
-| [`DropdownOption`](ui/type-DropdownOption.md) | desc struct |  | One option of a dropdown. |
-| [`DropdownDesc`](ui/type-DropdownDesc.md) | desc struct |  | A dropdown: its options, label and states. |
-| [`DropdownResult`](ui/type-DropdownResult.md) | struct |  | A dropdown's state after this tick. |
-| [`og.ui.dropdown`](ui/fn-dropdown.md) | function | `(id: string, desc?: DropdownDesc): DropdownResult` | A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes th… |
 | [`UiProp`](ui/type-UiProp.md) | enum |  | An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. |
 | [`LayoutMode`](ui/type-LayoutMode.md) | enum |  | How a container lays out its children. |
 | [`Position`](ui/type-Position.md) | enum |  | How an element is placed. |
@@ -411,7 +407,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 2975</sub>
+<sub>Module `ui` line 2929</sub>
 
 ```ogt
 column UiMaterial {
@@ -422,4 +418,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 2982</sub>
+<sub>Module `ui` line 2936</sub>

@@ -699,6 +699,8 @@ Its own props, beside every element's:
 |---|---|---|
 | `disabled` | `bool` | Takes no input. |
 | `-og-select:` | `dropdown \| cycle` | cycle draws it as previous, its option and next (`-og-select`). |
+| `-og-select-filter:` | `auto \| on \| off` | A filter field atop the open list that narrows its options as the player types (`-og-select-filter: on`); auto shows it past 10 options. |
+| `data-filter-placeholder` | `text` | What the open list's filter field shows while empty (`data-filter-placeholder`); empty is Filter. |
 | `items` | `names` | The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them). |
 | `keys` | `names` | A string table key (og.i18n) per tab its label comes from; its item is the fallback. |
 | `values` | `names` | A name per tab (a screen's mode) that `current` holds instead of `selected`'s index. |

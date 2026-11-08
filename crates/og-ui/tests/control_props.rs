@@ -483,6 +483,59 @@ fn dialogs_close_as_closedby_says() {
     }
 }
 
+/// `-og-select-filter` puts the open list's filter field on a short list
+/// (`on`) or keeps it off a long one (`off`); `data-filter-placeholder`
+/// is what it shows while empty.
+///
+/// Ways it could fail: the property ignored (auto's 10-option threshold
+/// either way), or the filter showing its default word.
+#[test]
+fn a_select_filter_follows_its_property() {
+    let long: String = (0..20)
+        .map(|i| format!("<option value=\"{i}\">Option {i}</option>"))
+        .collect();
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div id="Page">
+  <select id="Short" class="find" data-filter-placeholder="Find a map" bind:value={{$a}}><option value="x">Bay</option><option value="y">Fort</option></select>
+  <select id="Long" class="plain" bind:value={{$b}}>{long}</select>
+</div>
+<style>
+#Page {{ display: flex; flex-direction: column; gap: 8px; padding: 20px; }}
+select {{ width: 260px; }}
+.find {{ -og-select-filter: on; }}
+.plain {{ -og-select-filter: off; }}
+</style>"#
+    );
+    let d = &mut Doc::new(&text, &[("a", Value::Null), ("b", Value::Null)], true);
+    let filter = |d: &Doc, of: &str| {
+        d.ui.probe_elements()
+            .into_iter()
+            .find(|e| e.id == "Filter" && e.path.contains(of))
+    };
+    d.click("Short/Trigger");
+    assert!(
+        filter(d, "Short").is_some(),
+        "on: a short list has its filter"
+    );
+    assert!(
+        d.ui.probe_elements()
+            .iter()
+            .any(|e| e.path.contains("Short") && e.text == "Find a map"),
+        "the filter shows its placeholder"
+    );
+    // A fresh page: the short list's open picker would take this press.
+    let d = &mut Doc::new(&text, &[("a", Value::Null), ("b", Value::Null)], true);
+    d.click("Long/Trigger");
+    assert!(
+        d.ui.probe_elements()
+            .iter()
+            .any(|e| e.id == "List" && e.path.contains("Long")),
+        "the long list is open"
+    );
+    assert!(filter(d, "Long").is_none(), "off: a long list has none");
+}
+
 #[test]
 fn a_select_takes_aria_invalid_and_its_picker_height() {
     let options: String = (0..20)

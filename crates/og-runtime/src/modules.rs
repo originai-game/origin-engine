@@ -40,8 +40,6 @@ pub use widgets::{
     og_ui_burst, og_ui_close, og_ui_image, og_ui_label, og_ui_open, og_ui_open_scroll,
     og_ui_rich_text, og_ui_screen_transition, og_ui_zoom_view,
 };
-mod controls;
-pub use controls::og_ui_dropdown;
 mod game_widgets;
 use crate::{art, assets, extract, ui_draw};
 pub(crate) use game_widgets::a11y_json;
