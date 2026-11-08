@@ -27,6 +27,7 @@ mod svelte;
 mod syntax;
 pub(crate) mod text_css;
 pub mod topology;
+pub(crate) mod tracks;
 pub mod types;
 pub mod variables;
 pub mod view_transition;
@@ -239,7 +240,7 @@ pub enum Lit {
     Paint(Paint),
     Transition(Transition),
     Presence(PresenceSpec),
-    Tracks(Vec<crate::element::Track>),
+    Tracks(tracks::TrackList),
     Strs(Vec<String>),
 }
 
@@ -798,43 +799,6 @@ fn parse_paint(vals: &[Value]) -> Result<Paint, String> {
     }
 }
 
-fn parse_track(v: &Value) -> Result<crate::element::Track, String> {
-    use crate::element::Track;
-    let s = match v {
-        Value::Number(n) => return Ok(Track::Px(n.as_f32())),
-        Value::Word(w) | Value::String(w) => w.as_str(),
-    };
-    if s == "auto" {
-        return Ok(Track::Auto);
-    }
-    if let Some(f) = s.strip_suffix("fr") {
-        return f
-            .parse()
-            .map(Track::Fr)
-            .map_err(|_| format!("'{s}' is not a track"));
-    }
-    if let Some(p) = s.strip_suffix('%') {
-        return p
-            .parse::<f32>()
-            .map(|p| Track::Percent(p / 100.0))
-            .map_err(|_| format!("'{s}' is not a track"));
-    }
-    if let Some(r) = s.strip_prefix("minmax:") {
-        let (a, b) = r.split_once(':').ok_or("minmax:<min>:<max>")?;
-        return Ok(Track::MinMax {
-            min: a.parse().map_err(|_| "minmax:<min>:<max>")?,
-            max: b.parse().map_err(|_| "minmax:<min>:<max>")?,
-        });
-    }
-    if let Some(r) = s.strip_prefix("repeat:") {
-        let _ = r;
-        return Err("write each track (a grid's `columns 1fr 1fr 1fr`)".into());
-    }
-    Err(format!(
-        "'{s}' is not a track: a number (px), <n>fr, auto, <n>%, minmax:<min>:<max>"
-    ))
-}
-
 /// A literal of type `ty` from its values.
 pub(crate) fn parse_lit(ty: Ty, vals: &[Value]) -> Result<Lit, String> {
     if matches!(
@@ -886,7 +850,7 @@ pub(crate) fn parse_lit(ty: Ty, vals: &[Value]) -> Result<Lit, String> {
         Ty::Paint => Lit::Paint(parse_paint(vals)?),
         Ty::Transition => Lit::Transition(parse_transition(vals)?),
         Ty::Presence => Lit::Presence(parse_presence(vals, true)?),
-        Ty::Tracks => Lit::Tracks(vals.iter().map(parse_track).collect::<Result<_, _>>()?),
+        Ty::Tracks => Lit::Tracks(tracks::of_values(vals)?),
         Ty::Names => Lit::Strs(vals.iter().filter_map(as_name).collect()),
         Ty::Spans => return Err("spans takes a read-only expression: spans={$spans}".into()),
     })

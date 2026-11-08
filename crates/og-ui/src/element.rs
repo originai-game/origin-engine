@@ -337,21 +337,61 @@ pub enum LayoutMode {
 pub enum Track {
     /// CSS px.
     Px(f32),
-    /// A share of the space the other tracks leave.
+    /// A share of the space the other tracks leave (CSS `minmax(auto, <n>fr)`).
     Fr(f32),
-    /// Its largest single-cell item.
+    /// Between its items' least and largest size, growing into free room
+    /// (CSS `auto`).
     #[default]
     Auto,
     /// Its content between `min` and `max` px.
     MinMax { min: f32, max: f32 },
     /// A fraction (0–1) of the grid's inner size.
     Percent(f32),
+    /// CSS `min-content`: its items' least size.
+    MinContent,
+    /// CSS `max-content`: its items' largest size.
+    MaxContent,
+    /// CSS `fit-content(<limit>)`: its items' largest size, no larger than
+    /// the limit (but at least their least size).
+    FitContent(Breadth),
+    /// CSS `minmax(<min>, <max>)` of any two breadths (an `fr` only as the max).
+    Range { min: Breadth, max: Breadth },
+}
+
+/// One side of a CSS track size (CSS Grid §7.2.3).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Breadth {
+    Px(f32),
+    /// A fraction (0–1) of the grid's inner size.
+    Percent(f32),
+    /// A flexible share (a max breadth only).
+    Fr(f32),
+    #[default]
+    Auto,
+    MinContent,
+    MaxContent,
 }
 
 impl Track {
     /// `n` tracks of `t` (CSS `repeat(n, t)`).
     pub fn repeat(n: usize, t: Track) -> Vec<Track> {
         vec![t; n]
+    }
+
+    /// Its min and max breadth and its `fit-content()` limit (CSS Grid
+    /// §7.2.3): `1fr` is `minmax(auto, 1fr)`, a fixed size both sides.
+    pub fn breadths(self) -> (Breadth, Breadth, Option<Breadth>) {
+        match self {
+            Track::Px(v) => (Breadth::Px(v), Breadth::Px(v), None),
+            Track::Fr(f) => (Breadth::Auto, Breadth::Fr(f), None),
+            Track::Auto => (Breadth::Auto, Breadth::Auto, None),
+            Track::MinMax { min, max } => (Breadth::Px(min), Breadth::Px(max.max(min)), None),
+            Track::Percent(p) => (Breadth::Percent(p), Breadth::Percent(p), None),
+            Track::MinContent => (Breadth::MinContent, Breadth::MinContent, None),
+            Track::MaxContent => (Breadth::MaxContent, Breadth::MaxContent, None),
+            Track::FitContent(l) => (Breadth::Auto, Breadth::MaxContent, Some(l)),
+            Track::Range { min, max } => (min, max, None),
+        }
     }
 }
 
@@ -365,13 +405,59 @@ pub enum GridFlow {
     Column,
 }
 
+/// What a grid axis's template is (CSS `grid-template-columns`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Template {
+    /// Its own tracks.
+    #[default]
+    Tracks,
+    /// CSS `subgrid`: the tracks its area spans in its parent grid.
+    Subgrid,
+    /// CSS `masonry`: items packed into the other axis's tracks, each where
+    /// the track is shortest.
+    Masonry,
+}
+
+/// A track list's `repeat(auto-fill | auto-fit, …)`: as many repetitions
+/// as fit the grid's definite size (at least one).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AutoRepeat {
+    /// The explicit track it goes before.
+    pub at: usize,
+    /// `auto-fit`: repeated tracks no item takes collapse to nothing.
+    pub fit: bool,
+    pub tracks: Vec<Track>,
+    /// The names of each of its lines (`tracks.len() + 1`).
+    pub names: Vec<Vec<String>>,
+    /// The names written right after it.
+    pub after: Vec<String>,
+}
+
+/// A grid axis's line names, auto repetition and kind beside its tracks.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Lines {
+    /// The names of each explicit line, 0 to the track count (empty: none).
+    /// With `repeat`, the entry at its `at` holds the names before it.
+    pub names: Vec<Vec<String>>,
+    pub repeat: Option<AutoRepeat>,
+    pub kind: Template,
+}
+
 /// A grid's tracks and areas.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GridSpec {
     pub columns: Vec<Track>,
     pub rows: Vec<Track>,
-    /// Rows (columns, with a column flow) added for items past the declared ones.
+    /// The tracks added past the declared ones, on either axis, where
+    /// `auto_columns`/`auto_rows` name none.
     pub auto_track: Track,
+    /// CSS `grid-auto-columns` and `grid-auto-rows`: the implicit tracks'
+    /// sizes, repeating.
+    pub auto_columns: Vec<Track>,
+    pub auto_rows: Vec<Track>,
+    /// Line names, auto repetition and subgrid or masonry, per axis
+    /// (columns, rows).
+    pub lines: [Lines; 2],
     /// `None`: the element's `gap`.
     pub column_gap: Option<f32>,
     pub row_gap: Option<f32>,
@@ -381,6 +467,65 @@ pub struct GridSpec {
     pub flow: GridFlow,
     /// Auto-placement back-fills holes left by spanning items.
     pub dense: bool,
+    /// CSS `justify-content` and `align-content` of its tracks (`None`:
+    /// `normal`, its `auto` tracks stretch into free room).
+    pub content: [Option<crate::layout::Align>; 2],
+    /// CSS `align-items` (`None`: `normal`, items stretch down their area).
+    pub align_items: Option<crate::layout::Cross>,
+}
+
+/// One end of a grid item's placement on an axis (CSS Grid §8.3).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum GridLine {
+    /// Auto-placed (or the numbers of [`GridPlace`]).
+    #[default]
+    Auto,
+    /// The `n`th line (negative: from the end), or the `n`th line called
+    /// `name`; `n` 0 with a name: the name alone (an area's `name-start`
+    /// or `name-end` line, else the first line called it).
+    Line(i32, String),
+    /// `span <n> [<name>]`: `n` tracks (or up to the `n`th line called
+    /// `name`) from the other end.
+    Span(u32, String),
+}
+
+impl GridLine {
+    /// CSS `<grid-line>`: `auto`, `<integer> [<name>]`, `<name>`, `span
+    /// [<integer>] [<name>]`.
+    pub fn parse(s: &str) -> Result<GridLine, String> {
+        let words: Vec<&str> = s.split_whitespace().collect();
+        let ident = |w: &str| {
+            w.chars()
+                .next()
+                .is_some_and(|c| c.is_alphabetic() || c == '_' || c == '-')
+                && !matches!(w, "auto" | "span")
+        };
+        let int = |w: &str| w.parse::<i32>().ok();
+        let how = || {
+            format!("'{s}' is not a grid line: auto, <n> [<name>], <name> or span [<n>] [<name>]")
+        };
+        let (span, rest) = match words.split_first() {
+            Some((&"span", rest)) => (true, rest),
+            _ => (false, words.as_slice()),
+        };
+        let (mut n, mut name) = (None, String::new());
+        for &w in rest {
+            match int(w) {
+                Some(v) if n.is_none() => n = Some(v),
+                None if ident(w) && name.is_empty() => name = w.to_string(),
+                _ => return Err(how()),
+            }
+        }
+        Ok(match (span, n) {
+            (false, _) if rest == ["auto"] => GridLine::Auto,
+            (false, Some(0)) => return Err("a grid line's number is not 0".into()),
+            (false, Some(v)) => GridLine::Line(v, name),
+            (false, None) if !name.is_empty() => GridLine::Line(0, name),
+            (true, Some(v)) if v > 0 => GridLine::Span(v as u32, name),
+            (true, None) if !name.is_empty() => GridLine::Span(1, name),
+            _ => return Err(how()),
+        })
+    }
 }
 
 /// Where an item sits in its parent grid (zero value: auto-placed, one cell).
@@ -395,6 +540,9 @@ pub struct GridPlace {
     pub row_span: u16,
     /// A named area of the grid (wins over the numbers).
     pub area: String,
+    /// CSS `grid-column-start`/`-end` and `grid-row-start`/`-end`, per axis
+    /// (columns, rows) as (start, end); either set wins over the numbers.
+    pub lines: [[GridLine; 2]; 2],
 }
 
 /// Which way a drag moves its element.

@@ -201,6 +201,12 @@ pub const STYLE: &[(&str, &str)] = &[
     ("area", "grid-area"),
     ("cell", "grid-column"),
     ("span", "grid-column"),
+    ("autoColumns", "grid-auto-columns"),
+    ("autoRows", "grid-auto-rows"),
+    ("columnStart", "grid-column-start"),
+    ("columnEnd", "grid-column-end"),
+    ("rowStart", "grid-row-start"),
+    ("rowEnd", "grid-row-end"),
     ("overlaps", "-og-overlaps"),
     ("motion", "transition"),
     ("layoutMotion", "-og-layout-transition"),
@@ -258,6 +264,19 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "justify-content" => vec!["safeJustify"],
         "align-items" | "align-self" => vec!["safeAlign"],
         "gap" => vec!["rowGap", "columnGap"],
+        "grid-column" => vec!["cell", "span", "columnStart", "columnEnd"],
+        "grid-row" => vec!["cell", "span", "rowStart", "rowEnd"],
+        "grid-area" => vec!["area", "columnStart", "columnEnd", "rowStart", "rowEnd"],
+        "grid-template" => vec!["columns", "rows", "areas"],
+        "grid" => vec![
+            "columns",
+            "rows",
+            "areas",
+            "autoColumns",
+            "autoRows",
+            "flow",
+            "dense",
+        ],
         "place-content" => vec!["alignContent", "align", "safeJustify"],
         "place-items" => vec!["cross", "justifyItems", "safeAlign"],
         "place-self" => vec!["alignSelf", "justifySelf", "safeAlign"],
@@ -339,7 +358,8 @@ fn conv(prop: &str) -> Conv {
         "textPathSide" => Conv::Kebab,
         "area" | "cue" => Conv::Ident,
         "areas" | "overlaps" => Conv::Strs,
-        "columns" | "rows" => Conv::Tracks,
+        "columns" | "rows" | "autoColumns" | "autoRows" => Conv::Tracks,
+        "columnStart" | "columnEnd" | "rowStart" | "rowEnd" => Conv::Raw,
         "motion" | "layoutMotion" => Conv::Transition,
         "enter" | "exit" => Conv::Presence,
         "pivot" => Conv::Origin,
@@ -379,7 +399,9 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Str => "\"<text>\"".into(),
         Conv::Ident => "<name>".into(),
         Conv::Strs => "\"<a>\" \"<b>\" …".into(),
-        Conv::Tracks => "120px 1fr auto 25% minmax(80px, 200px)".into(),
+        Conv::Tracks => {
+            "[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) | subgrid | masonry".into()
+        }
         Conv::Transition => {
             "none | <ms>ms [ease] | -og-spring(<ms>ms, <bounce>) | var(--motion-<name>)".into()
         }
@@ -420,6 +442,9 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if prop == "material" => "<material>(<n> …[, <colour>]) | none".into(),
         Conv::Raw if prop == "textPath" => {
             "none | path(\"<svg path data>\") | circle([<n>px])".into()
+        }
+        Conv::Raw if prop.ends_with("Start") || prop.ends_with("End") => {
+            "auto | <n> [<name>] | <name> | span [<n>] [<name>]".into()
         }
         Conv::Raw => "<n>px | <n>%".into(),
         Conv::Joint => return None,
@@ -1460,30 +1485,6 @@ fn transition_vals(t: &[Tok]) -> Result<Vec<Value>, String> {
     }
 }
 
-fn track_vals(t: &Tok) -> Result<Value, String> {
-    match t {
-        Tok::Func(f, _) if f == "var" => want_len(t),
-        Tok::Num(n, u) if u == "px" => number(n),
-        Tok::Num(n, u) if u == "fr" || u == "%" => Ok(Value::String(format!("{n}{u}"))),
-        Tok::Ident(a) if a == "auto" => Ok(Value::String("auto".into())),
-        Tok::Func(f, a) if f == "minmax" => match a.as_slice() {
-            [x, y] => {
-                let len = |v: &[Tok]| match v {
-                    [t] => want_len(t).map(|v| text_of(&v)),
-                    _ => Err("minmax(<min>px, <max>px)".to_string()),
-                };
-                Ok(Value::String(format!("minmax:{}:{}", len(x)?, len(y)?)))
-            }
-            _ => Err("minmax(<min>px, <max>px)".into()),
-        },
-        Tok::Func(f, _) if f == "repeat" => Err("write each track: `1fr 1fr 1fr`".into()),
-        t => Err(format!(
-            "'{}' is not a track: <n>px, <n>fr, auto, <n>%, minmax(<min>px, <max>px)",
-            describe(t)
-        )),
-    }
-}
-
 fn one(t: &[Tok], name: &str) -> Result<Tok, String> {
     match t {
         [v] => Ok(v.clone()),
@@ -1509,8 +1510,13 @@ fn grid_line(t: &[Tok]) -> Result<(Option<Value>, Option<Value>), String> {
 /// sets, in order. Sizes, grid lines and `grid-auto-flow` come back as
 /// parts the block joins ([`Joined`]).
 fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String> {
-    let t = tokens(value)?;
     let e = |key: &str, values: Vec<Value>| Part::Entry(key.to_string(), values);
+    if !value.contains("bind(")
+        && let Some(parts) = super::tracks::lower(name, value)
+    {
+        return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
+    }
+    let t = tokens(value)?;
     if t.is_empty() {
         return Err(format!("{name} has no value"));
     }
@@ -2218,7 +2224,10 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                         )),
                     })
                     .collect::<Result<_, _>>()?,
-                Conv::Tracks => t.iter().map(track_vals).collect::<Result<_, _>>()?,
+                Conv::Tracks => {
+                    super::tracks::parse(value)?;
+                    vec![Value::String(value.trim().to_string())]
+                }
                 Conv::Transition => transition_vals(&t)?,
                 Conv::Presence => {
                     let kind = want_ident(
@@ -2291,7 +2300,7 @@ fn alignment(name: &str, t: &[Tok]) -> Result<Vec<Part>, String> {
     let justify = name.starts_with("justify");
     let word = match (words, content) {
         (["auto"], _) if name.ends_with("-self") => return Ok(Vec::new()),
-        (["normal"], true) if justify => "flexStart",
+        (["normal"], true) if justify => "normal",
         (["normal"], true) => "stretch",
         (["normal" | "legacy"], false) => "stretch",
         (["stretch"], _) => "stretch",

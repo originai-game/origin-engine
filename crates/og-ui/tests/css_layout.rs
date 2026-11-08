@@ -18,6 +18,14 @@
 //!   `wrap-reverse` stacking lines from the top, a wrapping column that
 //!   does not wrap, or the row and column gaps swapped →
 //!   `flex_lays_out_as_css_flexbox_does`
+//! - `auto-fit` keeping its empty tracks (so a centred grid does not
+//!   centre its one item), a named, negative or spanning-to-a-name line
+//!   resolved to the wrong track, a `1fr` track sized below its item's
+//!   min-content (or the other `fr` not taking what is left), `auto`
+//!   tracks not stretching under `normal` (or stretching under `start`),
+//!   the `grid-template` areas or the `grid` auto-flow forms misread, a
+//!   subgrid sizing its own tracks, masonry placing in rows, or
+//!   `justify-items` ignored → `grid_lays_out_as_css_grid_does`
 
 use crate::html_text::{Doc, both};
 
@@ -160,5 +168,92 @@ fn flex_lays_out_as_css_flexbox_does() {
             (at("C2", "Col"), at("C3", "Col")),
             ((0.0, 20.0), (38.0, 0.0))
         );
+    });
+}
+
+#[test]
+fn grid_lays_out_as_css_grid_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Fill"><div id="F1"></div><div id="F2"></div><div id="F3"></div><div id="F4"></div></div>
+  <div id="Fit"><div id="T1"></div></div>
+  <div id="Named"><div id="N1"></div><div id="N2"></div><div id="N3"></div></div>
+  <div id="Fr"><div id="R1"></div><div id="R2"></div></div>
+  <div id="Auto"><div id="A1"></div><div id="A2"></div></div>
+  <div id="AutoStart"><div id="S1"></div><div id="S2"></div></div>
+  <div id="Areas"><div id="H"></div><div id="M"></div></div>
+  <div id="Flow"><div id="W1"></div><div id="W2"></div><div id="W3"></div></div>
+  <div id="Parent"><div id="Sub"><div id="U1"></div><div id="U2"></div><div id="U3"></div></div></div>
+  <div id="Mason"><div id="K1"></div><div id="K2"></div><div id="K3"></div></div>
+  <div id="Items"><div id="I1"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Fill, #Fit, #Named, #Fr, #Auto, #AutoStart, #Areas, #Flow, #Parent, #Sub, #Mason, #Items { display: grid; }
+#Fill { width: 320px; grid-template-columns: repeat(auto-fill, 100px); gap: 10px; }
+#Fill > div, #T1 { height: 5px; }
+#Fit { width: 320px; grid-template-columns: repeat(auto-fit, 100px); column-gap: 10px; justify-content: center; }
+#Named { width: 180px; grid-template-columns: [a] 50px [b] 60px [c] 70px [d]; }
+#Named > div { height: 5px; }
+#N1 { grid-column: b / d; }
+#N2 { grid-column: -2 / -1; }
+#N3 { grid-column-start: span 2; grid-column-end: c; }
+#Fr { width: 100px; grid-template-columns: 1fr 1fr; }
+#R1 { width: 80px; height: 5px; }
+#R2 { height: 5px; }
+#Auto, #AutoStart { width: 200px; grid-template-columns: auto 50px; }
+#AutoStart { justify-content: start; }
+#A1, #S1 { width: 20px; height: 5px; justify-self: start; }
+#A2, #S2 { height: 5px; }
+#Areas { width: 200px; grid-template: "h h" 30px "s m" 40px / 60px 1fr; }
+#H { grid-area: h; }
+#M { grid-area: m; }
+#Flow { width: 200px; grid: auto-flow 25px / 1fr 1fr; }
+#Parent { width: 180px; grid-template-columns: 40px 60px 80px; }
+#Sub { grid-column: 1 / 4; grid-template-columns: subgrid; }
+#Sub > div { height: 5px; }
+#Mason { width: 100px; grid-template-columns: 50px 50px; grid-template-rows: masonry; }
+#K1 { height: 30px; }
+#K2, #K3 { height: 10px; }
+#Items { width: 100px; grid-template-columns: 100px; justify-items: center; }
+#I1 { width: 20px; height: 5px; }
+</style>"#;
+    both(text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        // 320px holds three 100px tracks with 10px gaps.
+        assert_eq!(at("F3", "Fill"), (220.0, 0.0));
+        assert_eq!(at("F4", "Fill"), (0.0, 15.0));
+        assert_eq!(at("T1", "Fit").0, 110.0, "auto-fit's empty tracks collapse");
+        assert_eq!((at("N1", "Named").0, d.get("N1").width), (50.0, 130.0));
+        assert_eq!((at("N2", "Named").0, d.get("N2").width), (110.0, 70.0));
+        assert_eq!((at("N3", "Named").0, d.get("N3").width), (0.0, 110.0));
+        // The 1fr holding an 80px item keeps it; the other takes the rest.
+        assert_eq!((at("R2", "Fr").0, d.get("R2").width), (80.0, 20.0));
+        assert_eq!(at("A2", "Auto").0, 150.0, "normal stretches auto tracks");
+        assert_eq!(at("S2", "AutoStart").0, 20.0);
+        assert_eq!(wh(d, "H"), (200.0, 30.0));
+        assert_eq!(
+            (at("M", "Areas"), wh(d, "M")),
+            ((60.0, 30.0), (140.0, 40.0))
+        );
+        assert_eq!(
+            (at("W3", "Flow"), wh(d, "W3")),
+            ((0.0, 25.0), (100.0, 25.0))
+        );
+        assert_eq!(
+            (at("U2", "Sub").0, d.get("U3").width),
+            (40.0, 80.0),
+            "a subgrid takes its parent's tracks"
+        );
+        assert_eq!(
+            at("K3", "Mason"),
+            (50.0, 10.0),
+            "masonry packs the shortest track"
+        );
+        assert_eq!(d.get("Mason").height, 30.0);
+        assert_eq!(at("I1", "Items").0, 40.0);
     });
 }

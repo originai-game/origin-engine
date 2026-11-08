@@ -1228,49 +1228,37 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
                 extent = extent.max(w);
             }
             nodes[i].content_w = extent;
-        } else if let Some(g) = nodes[i].grid.clone() {
-            let offsets = |sizes: &[f32], gap: f32| {
-                let mut at = Vec::with_capacity(sizes.len() + 1);
-                let mut v = 0.0;
-                for s in sizes {
-                    at.push(v);
-                    v += s + gap;
-                }
-                at.push(v - gap);
-                at
-            };
-            let (cx, ry) = (offsets(&g.cols, g.col_gap), offsets(&g.rows, g.row_gap));
+        } else if nodes[i].grid.is_some() {
+            let areas = super::grid::areas_of(nodes, i);
+            let mut extent = 0.0f32;
             for (k, &c) in kids.iter().enumerate() {
-                let Some(&(col, row, cs, rs)) = g.cells.get(k) else {
+                let Some(Some((a, justify, align))) = areas.get(k).copied() else {
                     continue;
                 };
-                let span = |at: &[f32], sizes: &[f32], s: usize, n: usize, gap: f32| {
-                    let s = s.min(sizes.len());
-                    let e = (s + n).min(sizes.len());
-                    let len: f32 =
-                        sizes[s..e].iter().sum::<f32>() + gap * (e - s).saturating_sub(1) as f32;
-                    (at.get(s).copied().unwrap_or(0.0), len)
-                };
-                let (x0, cw) = span(&cx, &g.cols, col, cs, g.col_gap);
-                let (y0, rh) = span(&ry, &g.rows, row, rs, g.row_gap);
                 // Its margins inset its grid area; `auto` ones align it there
-                // (CSS Grid §11.2).
+                // (CSS Grid §11.2), else its `justify-self` and `align-self`.
                 let k = &nodes[c];
                 let [ml, mr] = k.margin_x;
                 let [mt, mb] = k.margin_sets.map(|(pos, neg)| pos + neg);
                 let cell = Rect::new(
-                    inner.x + x0 + ml,
-                    inner.y + y0 + mt,
-                    (cw - ml - mr).max(0.0),
-                    (rh - mt - mb).max(0.0),
+                    inner.x + a.x + ml,
+                    inner.y + a.y + mt,
+                    (a.width - ml - mr).max(0.0),
+                    (a.height - mt - mb).max(0.0),
                 );
                 let (w, h) = (k.w, k.h);
-                let (x, y) = place_in(&cell, w, h, &k.props.insets, align, cross);
+                let justify = match justify {
+                    Cross::Center => Align::Center,
+                    Cross::End => Align::End,
+                    _ => Align::Start,
+                };
+                let (x, y) = place_in(&cell, w, h, &k.props.insets, justify, align);
                 let y = auto_offset(k, 0, cell.height - h).map_or(y, |o| cell.y + o);
                 nodes[c].x = x;
                 nodes[c].y = y;
+                extent = extent.max(a.x + a.width);
             }
-            nodes[i].content_w = cx.last().copied().unwrap_or(0.0);
+            nodes[i].content_w = extent;
         }
         return;
     }

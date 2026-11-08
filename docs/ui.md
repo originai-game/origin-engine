@@ -327,7 +327,7 @@ open it are other elements); whether it is open is kept in snapshots.
 A box (`<div>` and the other block tags) lays out by its CSS `display`:
 `block`, the default, stacks its children top to bottom as a `<column>`
 does; `flex` lays them out as a `<row>` (`flex-direction: column` turns
-it); `grid` takes `grid-template-columns` and the rest as a `<grid>`;
+it); `grid` lays them out by CSS Grid, below;
 `none` hides it. Other elements' layout is their tag, so `display` on
 them takes only `none`. Text between a box's elements is an anonymous
 text element, as an HTML anonymous block box is; `i18n` on a box
@@ -622,6 +622,35 @@ lines (`normal` stretches them, as CSS's does), `justify-items` and
 `place-items` and `place-self` set both axes. `order` reorders flex and
 grid items (their reading order stays the document's), and `row-gap`,
 `column-gap` and a two-value `gap` space rows and columns apart.
+
+A `display: grid` box lays out by CSS Grid. `grid-template-columns` and
+`grid-template-rows` take track sizes (lengths, percentages, `fr`,
+`auto`, `min-content`, `max-content`, `fit-content(<length>)` and
+`minmax()` of any two), `[line names]`, `repeat(<n>, …)`, and one
+`repeat(auto-fill, …)` or `repeat(auto-fit, …)` of fixed sizes, which
+repeats as often as the box's width (or height) holds; `auto-fit`
+collapses the repeated tracks no item takes. They also take `subgrid`,
+which gives the box the tracks its area spans in its parent grid (and
+its items size those tracks), and `masonry`, which packs the items
+along that axis into the other axis's tracks, each into the track
+that is shortest so far. With `masonry`, an auto-placed item keeps the
+width of the track it is first given, so a masonry axis whose tracks
+differ in size may leave an item at that track's width.
+`grid-auto-columns` and `grid-auto-rows` size the implicit tracks
+(repeating, and backwards before the explicit grid), and
+`grid-template` and `grid` are their shorthands, with
+`grid-template-areas` strings, row sizes and the `auto-flow [dense]`
+forms. An item is placed by `grid-column-start`, `grid-column-end`,
+`grid-row-start`, `grid-row-end`, their shorthands `grid-column`,
+`grid-row` and `grid-area`, as a line number (negative counts from the
+end), a line name with an optional count, an area name (its
+`<area>-start` and `<area>-end` lines), or `span [<n>] [<name>]`. Lines
+past the grid add implicit tracks on either side. The tracks size by
+the CSS Grid track sizing algorithm: a `1fr` track holds its item's
+min-content, and under `normal` alignment its `auto` tracks share the
+room left. `justify-content` and `align-content` align the tracks,
+`justify-items`, `justify-self`, `align-items` and `align-self` align
+an item in its area, and `normal` and `stretch` fill the area.
 
 Kits use `@origingame/engine`, `@origingame/engine/ui-extensions`, and the
 public helpers in `@origingame/engine/ui-parts/hud` and

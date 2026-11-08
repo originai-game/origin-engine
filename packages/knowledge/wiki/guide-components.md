@@ -30,7 +30,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `margin-bottom:` | `<n>px \| <n>em \| <n>% \| auto \| calc(…)` | Space outside its bottom edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). Adjacent block margins collapse. |
 | `margin-left:` | `<n>px \| <n>em \| <n>% \| auto \| calc(…)` | Space outside its left edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). |
 | `gap:` | `<n>px` | Space between its children, CSS px. |
-| `justify-content:` | `start \| center \| end \| space-between \| space-around \| space-evenly \| stretch \| flex-start \| flex-end` | Where children sit along the main axis (`start` and `end` are the writing mode's sides, `flexStart` and `flexEnd` the line's). |
+| `justify-content:` | `start \| center \| end \| space-between \| space-around \| space-evenly \| stretch \| flex-start \| flex-end \| normal` | Where children sit along the main axis (`start` and `end` are the writing mode's sides, `flexStart` and `flexEnd` the line's; `normal`: a line's start, a grid's `auto` tracks stretched). |
 | `align-items:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where children sit across it. |
 | `flex-wrap:` | `wrap \| nowrap` | A row (or a column) breaks its children into lines. |
 | `wrap-reverse` | `bool` | Its lines stack from the far side (CSS `wrap-reverse`). |
@@ -98,12 +98,18 @@ What every kind takes: its box, layout, paint, motion and input.
 | `-og-anchor-at:` | `top-left \| top \| top-right \| left \| center \| right \| bottom-left \| bottom \| bottom-right` | The target's point it sits on. |
 | `-og-anchor-self:` | `top-left \| top \| top-right \| left \| center \| right \| bottom-left \| bottom \| bottom-right` | Its own point that sits there. |
 | `-og-hit-slop:` | `<n>px` | Extra pointer reach, CSS px. |
-| `grid-template-columns:` | `120px 1fr auto 25% minmax(80px, 200px)` | A grid's column tracks. |
-| `grid-template-rows:` | `120px 1fr auto 25% minmax(80px, 200px)` | A grid's row tracks. |
+| `grid-template-columns:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's column tracks (CSS `grid-template-columns`: sizes, `[line names]`, `repeat()`, `subgrid` or `masonry`). |
+| `grid-template-rows:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's row tracks (CSS `grid-template-rows`). |
 | `grid-template-areas:` | `"<a>" "<b>" …` | A grid's named areas, one string per row. |
 | `grid-auto-flow:` | `row \| column [dense]` | `flow`: How a grid auto-places. `dense`: A grid back-fills holes. |
 | `grid-area:` | `<name>` | The named grid area it takes. |
 | `grid-column:`, `grid-row:` | `<n> \| <n> / span <n> \| span <n>` | `cell`: Its grid column and row, 1-based. `span`: Columns and rows it spans. |
+| `grid-auto-columns:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's implicit column tracks, repeating (CSS `grid-auto-columns`). |
+| `grid-auto-rows:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's implicit row tracks, repeating (CSS `grid-auto-rows`). |
+| `grid-column-start:` | `auto \| <n> [<name>] \| <name> \| span [<n>] [<name>]` | Its first grid column line: `<n> [<name>]`, `<name>`, `span [<n>] [<name>]` or auto (CSS `grid-column-start`). |
+| `grid-column-end:` | `auto \| <n> [<name>] \| <name> \| span [<n>] [<name>]` | The grid column line it ends at (CSS `grid-column-end`). |
+| `grid-row-start:` | `auto \| <n> [<name>] \| <name> \| span [<n>] [<name>]` | Its first grid row line (CSS `grid-row-start`). |
+| `grid-row-end:` | `auto \| <n> [<name>] \| <name> \| span [<n>] [<name>]` | The grid row line it ends at (CSS `grid-row-end`). |
 | `-og-overlaps:` | `"<a>" "<b>" …` | Paths it overlaps on purpose. |
 | `match` | `name` | A shared-element key. |
 | `transition:` | `[<property>] <duration> [<timing-function>] [<delay>], …` | How its animatable values move when they change. |
@@ -615,6 +621,8 @@ Its own props, beside every element's:
 | Write | Value | What |
 |---|---|---|
 | `flex-direction:` | `row \| column \| row-reverse \| column-reverse` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
+| `colspan` | `number` | A table cell's columns (`<td colspan>`), 1 by default; CSS table layout reads it. |
+| `rowspan` | `number` | A table cell's rows (`<td rowspan>`), 1 by default, 0 to the end of its row group; CSS table layout reads it. |
 | `display:` | `block \| flex \| grid` | A box's layout (CSS `display`): `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks (`grid-template-columns`…). |
 | `-og-marker-type:` | `none \| disc \| circle \| square \| decimal \| lower-alpha \| upper-alpha \| lower-roman \| upper-roman` | An `<li>`'s marker, from the inherited `list-style-type` (`<ul>`: disc, nested circle then square; `<ol>`: decimal). |
 | `-og-marker-position:` | `outside \| inside` | Where an `<li>`'s marker sits, from the inherited `list-style-position`: `outside` hangs it before the item's start edge (the default), `inside` lays the item out as a row after it. |

@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "CSS Grid: track lists with line names, repeat() and repeat(auto-fill | auto-fit); min-content, max-content, fit-content() and minmax() of any two sizes, sized by the CSS track sizing algorithm; subgrid and masonry; grid-auto-columns and grid-auto-rows; the grid, grid-template and grid-area shorthands; grid-column-start, -end and grid-row-start, -end with line numbers, negative lines, line names, area names and named spans, and implicit tracks on either side. justify-content and align-content align a grid's tracks, and justify-items, justify-self, align-items and align-self align its items in their areas."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "UI document scoped CSS",
+      "change": "In a grid, justify-content aligns the tracks (CSS Box Alignment) instead of each item in its cell, and justify-content: normal leaves auto tracks to stretch into the free room.",
+      "fix": "To align items in their cells, write justify-items (or justify-self on the item).",
+      "find": [
+        "justify-content"
+      ]
+    }
+  ]
+}

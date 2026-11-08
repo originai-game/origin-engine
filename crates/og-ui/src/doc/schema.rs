@@ -404,9 +404,10 @@ pub const CORE_PROPS: &[PropSpec] = &[
             "spaceEvenly",
             "stretch",
             "flexStart",
-            "flexEnd"
+            "flexEnd",
+            "normal"
         ]),
-        "Where children sit along the main axis (`start` and `end` are the writing mode's sides, `flexStart` and `flexEnd` the line's)."
+        "Where children sit along the main axis (`start` and `end` are the writing mode's sides, `flexStart` and `flexEnd` the line's; `normal`: a line's start, a grid's `auto` tracks stretched)."
     ),
     p!(
         "cross",
@@ -753,8 +754,16 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Its own point that sits there."
     ),
     p!("hitSlop", Ty::Num, "Extra pointer reach, CSS px."),
-    p!("columns", Ty::Tracks, "A grid's column tracks."),
-    p!("rows", Ty::Tracks, "A grid's row tracks."),
+    p!(
+        "columns",
+        Ty::Tracks,
+        "A grid's column tracks (CSS `grid-template-columns`: sizes, `[line names]`, `repeat()`, `subgrid` or `masonry`)."
+    ),
+    p!(
+        "rows",
+        Ty::Tracks,
+        "A grid's row tracks (CSS `grid-template-rows`)."
+    ),
     p!(
         "areas",
         Ty::Names,
@@ -769,6 +778,36 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!("area", Ty::Name, "The named grid area it takes."),
     p!("cell", Ty::Num2, "Its grid column and row, 1-based."),
     p!("span", Ty::Num2, "Columns and rows it spans."),
+    p!(
+        "autoColumns",
+        Ty::Tracks,
+        "A grid's implicit column tracks, repeating (CSS `grid-auto-columns`)."
+    ),
+    p!(
+        "autoRows",
+        Ty::Tracks,
+        "A grid's implicit row tracks, repeating (CSS `grid-auto-rows`)."
+    ),
+    p!(
+        "columnStart",
+        Ty::Name,
+        "Its first grid column line: `<n> [<name>]`, `<name>`, `span [<n>] [<name>]` or auto (CSS `grid-column-start`)."
+    ),
+    p!(
+        "columnEnd",
+        Ty::Name,
+        "The grid column line it ends at (CSS `grid-column-end`)."
+    ),
+    p!(
+        "rowStart",
+        Ty::Name,
+        "Its first grid row line (CSS `grid-row-start`)."
+    ),
+    p!(
+        "rowEnd",
+        Ty::Name,
+        "The grid row line it ends at (CSS `grid-row-end`)."
+    ),
     p!("overlaps", Ty::Names, "Paths it overlaps on purpose."),
     p!("match", Ty::Name, "A shared-element key."),
     p!(

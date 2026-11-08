@@ -93,6 +93,7 @@ fn grid(v: &Value) -> GridSpec {
             _ => GridFlow::Row,
         },
         dense: v["dense"].as_bool().unwrap_or(false),
+        ..GridSpec::default()
     }
 }
 
@@ -103,6 +104,7 @@ fn place(v: &Value) -> GridPlace {
         column_span: u16_(v, "columnSpan"),
         row_span: u16_(v, "rowSpan"),
         area: string(&v["area"]),
+        ..GridPlace::default()
     }
 }
 

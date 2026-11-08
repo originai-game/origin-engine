@@ -14,9 +14,7 @@ use super::{
     Act, DocNode, Lit, NodeKind, Paint, PropValue, StateValue, UiDocument, When, parse_probe_value,
 };
 use crate::bind::{Env, Scope, number, set_path, text, truthy};
-use crate::element::{
-    Edges, GridFlow, GridPlace, GridSpec, LayoutMode, Position, Prop, Props, Track,
-};
+use crate::element::{Edges, GridFlow, GridPlace, GridSpec, LayoutMode, Position, Prop, Props};
 use crate::layout::{Align, Cross, Direction, Element, FontRole, Insets, NONE, Size, TextAlign};
 use crate::motion::{StateGroup, VisualState};
 use crate::style::Srgba;
@@ -39,7 +37,7 @@ enum V {
     Color(Srgba),
     Transition(crate::motion::Transition),
     Presence(crate::motion::PresenceSpec),
-    Tracks(Vec<Track>),
+    Tracks(super::tracks::TrackList),
     Strs(Vec<String>),
     Spans(Result<Vec<crate::TextSpan>, String>),
 }
@@ -244,11 +242,22 @@ fn cross_of(c: &str) -> Cross {
 fn grid_of(r: &Resolved) -> GridSpec {
     let tracks = |name: &str| match r.get(name) {
         Some(V::Tracks(t)) => t.clone(),
-        _ => Vec::new(),
+        _ => super::tracks::TrackList::default(),
+    };
+    let (columns, rows) = (tracks("columns"), tracks("rows"));
+    let auto = |name: &str| tracks(name).tracks;
+    // `normal` (and a stretch) leaves the tracks to fill the grid.
+    let content = |name: &str| {
+        r.str(name)
+            .filter(|a| !matches!(*a, "normal" | "stretch"))
+            .map(align_of)
     };
     GridSpec {
-        columns: tracks("columns"),
-        rows: tracks("rows"),
+        columns: columns.tracks,
+        rows: rows.tracks,
+        lines: [columns.lines, rows.lines],
+        auto_columns: auto("autoColumns"),
+        auto_rows: auto("autoRows"),
         areas: match r.get("areas") {
             Some(V::Strs(s)) => s.clone(),
             _ => Vec::new(),
@@ -261,6 +270,8 @@ fn grid_of(r: &Resolved) -> GridSpec {
         dense: r.flag("dense"),
         column_gap: r.num("columnGap"),
         row_gap: r.num("rowGap"),
+        content: [content("align"), content("alignContent")],
+        align_items: r.str("cross").map(cross_of),
         ..GridSpec::default()
     }
 }
@@ -1112,6 +1123,13 @@ impl Ui {
             column_span: pair("span").map_or(0, |c| c[0] as u16),
             row_span: pair("span").map_or(0, |c| c[1] as u16),
             area: r.str("area").unwrap_or_default().to_string(),
+            lines: [["columnStart", "columnEnd"], ["rowStart", "rowEnd"]].map(|axis| {
+                axis.map(|k| {
+                    r.str(k)
+                        .and_then(|v| crate::element::GridLine::parse(v).ok())
+                        .unwrap_or_default()
+                })
+            }),
         };
         if let Some(V::Strs(o)) = r.get("overlaps") {
             p.overlaps = o.clone();

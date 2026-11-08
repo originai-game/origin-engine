@@ -82,10 +82,10 @@ pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS, 
 pub use dress::{DressFrame, Dressing, Selector};
 pub mod text_path;
 pub use element::{
-    Affine, Cursor, Customize, Dismiss, DragAxis, DragSpec, DropSpec, Edges, FocusGroup,
-    GestureSpec, GridFlow, GridPlace, GridSpec, LayoutMode, LayoutStats, NavLinks, Orientation,
-    Overlap, Patch, PinchSpec, Position, Prop, Props, Query, Track, Transform, UserSelect, Values,
-    Variant,
+    Affine, AutoRepeat, Breadth, Cursor, Customize, Dismiss, DragAxis, DragSpec, DropSpec, Edges,
+    FocusGroup, GestureSpec, GridFlow, GridLine, GridPlace, GridSpec, LayoutMode, LayoutStats,
+    Lines, NavLinks, Orientation, Overlap, Patch, PinchSpec, Position, Prop, Props, Query,
+    Template, Track, Transform, UserSelect, Values, Variant,
 };
 pub use hud_layout::{HudEditInfo, HudEditorDesc, HudEditorResponse, HudPlacement};
 pub use id::{Id, ui_id, ui_idi};
