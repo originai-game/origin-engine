@@ -26,8 +26,9 @@ runner, the server, Desktop).
 |---|---|---|
 | `<version>/origin-engine-<version>-<target>.tar.gz` | one target's dist, its root directory `origin-engine-<version>-<target>/` | immutable |
 | `<version>/vfx/<pack>.tar.gz` | one downloadable effect pack, its root directory `<pack>/` (below) | immutable |
-| `<version>/manifest.json` | `{version, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx: {<pack>: {url, sha256, size, version, minEngine}}}` | immutable |
-| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`), manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
+| `<version>/manifest.json` | `{version, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx, ui, fonts, looks}`; the four pack sections are the pack catalogue (below) | immutable |
+| `<version>/previews/<kind>/<name>.webp` | one preview per catalogued pack, `<kind>` one of `vfx`, `ui`, `fonts`, `looks`, at most 960×540 | immutable |
+| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`), every preview's, manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
 | `latest/manifest.json` | the newest release (never a dev build) | no-cache |
 | `install.sh`, `install.ps1` | install the `og` launcher (`packages/launcher`) | no-cache |
 
@@ -77,6 +78,36 @@ downloadable pack's name. A pack is installed with `og vfx add <pack>`,
 which verifies the signed SHA256SUMS as the launcher does (below). The
 few bundled packs are kits' peers in `packages/engine/extensions/` and
 ship inside `engine/`.
+
+**The pack catalogue** (from 0.8.0; origin-agent's Engine page reads it,
+in Web and Desktop, and nothing else of the engine tree). `manifest.json`
+lists every pack the version offers, bundled or downloadable, in four
+sections keyed by pack name, one shape for every kind:
+
+```ts
+{ version, minEngine, title, description, tags: string[], size,
+  bundled: boolean, url?, sha256?, preview }
+```
+
+- `vfx`: every effect pack, bundled (`packages/engine/extensions/`) or
+  downloadable (`vfx/<pack>.tar.gz`, with `url` and `sha256`); `tags` are
+  its `extension.json` tags; the preview is its effect sheet's impact
+  frame.
+- `ui`: every UI style pack and kit (`templates/styles/<pack>/`,
+  `templates/ui-kit/`), with `kind: "style" | "kit"`; `tags` are the
+  style; the preview is the pack's reviewed reference sheet.
+- `fonts`: every font pack (`templates/fonts/<pack>/`); `tags` are the
+  scripts and languages it covers; the preview is a specimen of its script.
+- `looks`: every look of `knowledge/looks/catalogue.json` (which stays in
+  the package); the preview is its `previews/<slug>.webp`.
+
+`size` is the installed bytes; `preview` is the absolute https URL of
+`<version>/previews/<kind>/<name>.webp`. `title`, `description`, `tags`
+and `minEngine` come from each pack's own manifest (`extension.json`,
+`style.ogt`'s header, a font pack's `extension.json`, the look catalogue),
+never from a second list, and `release-dist.ts` refuses a pack without
+them or without a preview. A pack that is frozen (AGENTS.md) is listed
+with the tag `frozen`.
 
 **The release key** is a minisign (Ed25519) pair:
 

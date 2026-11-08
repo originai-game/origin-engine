@@ -119,6 +119,10 @@ Radiance Cascades were measured and not ported (`docs/design.md` §2.6).
   and labels default-only, retired kit and pack recommendations removed,
   the engine pin and mounted knowledge refreshed together, the Svelte and
   store APIs consumed once final.
+- The 0.8.0 release publishes the pack catalogue (`docs/release.md`
+  §The pack catalogue): `vfx`, `ui`, `fonts` and `looks` in
+  `manifest.json` with a preview per pack, for origin-agent's Engine page
+  (asked 2026-11-08); `release-dist.ts` builds it.
 
 ## Decided
 
