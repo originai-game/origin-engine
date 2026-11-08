@@ -42,6 +42,26 @@ pub struct TextSpanStyle {
     /// underline unless declared, focusable, its click answered by
     /// [`Ui::respond_links`].
     pub link: Option<String>,
+    /// Its font size, line height and tracking over its type step's (CSS
+    /// `font-size`, `line-height` in px, `letter-spacing` in em).
+    pub size: Option<f32>,
+    pub line_height: Option<f32>,
+    pub tracking_em: Option<f32>,
+    /// It is an inline picture, icon or action glyph (its one character the
+    /// placeholder U+FFFC), one em tall in the line.
+    pub atom: Option<InlineAtom>,
+}
+
+/// An inline object of a text (a document's `<img>`, `<icon>` or `<kbd
+/// data-action>` among its words).
+#[derive(Clone, Debug, PartialEq)]
+pub enum InlineAtom {
+    /// A picture the game registered (`UiDesc.images`).
+    Image(String),
+    /// An icon of the style's atlas.
+    Icon(String),
+    /// An action's glyph on the device used last.
+    Action(String),
 }
 
 impl Ui {
@@ -131,6 +151,45 @@ impl Ui {
                 }
                 if let Some(step) = style.step {
                     s.step = step;
+                }
+                if let Some(size) = style.size {
+                    s.step.size = size;
+                }
+                if let Some(line) = style.line_height {
+                    s.step.line_height = line;
+                }
+                if let Some(tracking) = style.tracking_em {
+                    s.step.tracking_em = tracking;
+                }
+                if let Some(atom) = &style.atom {
+                    s.text.clear();
+                    s.atom = match atom {
+                        InlineAtom::Image(name) => match self.images.get(name) {
+                            Some(im) => Some(crate::rich::Atom::Image(*im)),
+                            None => {
+                                self.warnings.push(format!(
+                                    "text: <img src=\"{name}\"> is no picture the game registered (UiDesc.images)"
+                                ));
+                                None
+                            }
+                        },
+                        InlineAtom::Icon(name) => match self.icons.find(name) {
+                            Some(k) => Some(crate::rich::Atom::Icon(k)),
+                            None => {
+                                self.warnings.push(format!(
+                                    "text: <icon name=\"{name}\"> is not in the icon atlas"
+                                ));
+                                None
+                            }
+                        },
+                        InlineAtom::Action(name) => match self.glyph(name) {
+                            Some(g) => match self.icons.find(&g.icon) {
+                                Some(k) => Some(crate::rich::Atom::Icon(k)),
+                                None => Some(crate::rich::Atom::Cap(g.text)),
+                            },
+                            None => None,
+                        },
+                    };
                 }
                 if let Some(font) = style.font {
                     s.font = font;

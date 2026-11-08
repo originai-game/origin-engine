@@ -115,7 +115,7 @@ pub struct RichTextResponse {
 }
 
 mod spans;
-pub use spans::{TextSpan, TextSpanStyle, TextSpanValue};
+pub use spans::{InlineAtom, TextSpan, TextSpanStyle, TextSpanValue};
 
 /// A unit lines break between: a span's word, space or CJK character.
 struct Unit {

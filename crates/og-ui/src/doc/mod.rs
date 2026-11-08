@@ -14,6 +14,7 @@ mod extern_element;
 pub(crate) mod lists;
 pub mod matching;
 pub mod media;
+pub(crate) mod mf2;
 pub(crate) mod motion;
 pub(crate) mod paint_css;
 pub mod schema;
@@ -476,6 +477,12 @@ pub struct InlineRun {
     /// Its link: an index into [`DocNode::links`], or `usize::MAX` for the
     /// `<a>` element's own `href`.
     pub link: Option<usize>,
+    /// The `<span part="name">` it is in: its span's name, which
+    /// `text::part(name)` rules style.
+    pub part: Option<String>,
+    /// An inline `<img>`, `<icon>` or `<kbd data-action>`: its text is the
+    /// placeholder U+FFFC.
+    pub atom: Option<crate::rich::InlineAtom>,
 }
 
 /// A prop of the document's contract (`props { gold number "…" }`).

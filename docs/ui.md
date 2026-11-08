@@ -119,6 +119,22 @@ Elements HTML has no name for (`column`, `row`, `stack`, `grid`, `panel`,
 `scroll`, the virtualised `list` and `cells`, `art`, `icon`, `tabs`,
 `badge`, `spacer`) keep their names.
 
+#### Inline objects, span parts and translated markup
+
+A text element's words may hold inline objects, each one em tall in the
+line: `<img src="coin" alt="">` (a picture the game registered,
+`UiDesc.images`), `<icon name="coin">` (the style's atlas) and
+`<kbd data-action="confirm"></kbd>` (the action's glyph on the device
+used last). Their attributes are literal. A `<span part="big">` names its
+run for `p::part(big) { … }` (any text element's `::part`), which takes
+`color`, `font`, `font-family`, `font-weight`, `font-style`,
+`text-decoration-line`, `-og-text-motion`, and the run's `font-size`
+(px), `line-height` (px, or a multiple of its font-size) and
+`letter-spacing` (em, or px of its font-size). A translated string
+(`i18n`) styles its runs with MessageFormat 2 markup: `{#b}…{/b}`
+(`strong`), `{#i}` (`em`), `{#u}`, `{#s}` (`del`) and `{#br/}`; `\{`
+escapes a brace.
+
 #### Glyphs and the `$ui` store
 
 `<kbd>Esc</kbd>` is a keycap. `<kbd data-action="jump"></kbd>` is the

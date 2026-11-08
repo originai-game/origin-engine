@@ -135,7 +135,9 @@ fn inline(node: &Node) -> bool {
     match node {
         Node::Text(..) | Node::Expression(..) => true,
         Node::Element { tag, attrs, .. } => match tag.as_str() {
-            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "br" | "span" => attrs.is_empty(),
+            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "br" => attrs.is_empty(),
+            // A plain span, or one naming its part for `text::part(name)`.
+            "span" => attrs.iter().all(|a| a.name == "part" && !a.bound),
             // SVG's run inside a `<text>`: its weight, style, decoration and fill.
             "tspan" => attrs
                 .iter()
@@ -1426,6 +1428,8 @@ impl Parser {
             strike: false,
             color: None,
             link,
+            part: None,
+            atom: None,
         };
         self.runs(nodes, &base, &mut runs, &mut links, translated)?;
         // No space at either end, as a CSS block trims its line.
@@ -1466,7 +1470,14 @@ impl Parser {
         };
         self.prop(i, "label", "text", value, at, "")?;
         if runs.iter().any(|r| {
-            r.bold || r.italic || r.underline || r.strike || r.color.is_some() || r.link.is_some()
+            r.bold
+                || r.italic
+                || r.underline
+                || r.strike
+                || r.color.is_some()
+                || r.link.is_some()
+                || r.part.is_some()
+                || r.atom.is_some()
         }) {
             self.doc.nodes[i].inline = runs;
             self.doc.nodes[i].links = links;
@@ -1520,6 +1531,14 @@ impl Parser {
                         "i" | "em" => inner.italic = true,
                         "u" => inner.underline = true,
                         "s" | "del" => inner.strike = true,
+                        "span" => {
+                            if let Some(a) = attrs.iter().find(|a| a.name == "part") {
+                                if !super::syntax::identifier(&a.value) {
+                                    return Err((a.at, "part names a span: an identifier".into()));
+                                }
+                                inner.part = Some(a.value.clone());
+                            }
+                        }
                         "br" => {
                             if !children.is_empty() {
                                 return Err((*at, "<br> is empty".into()));
@@ -1546,6 +1565,55 @@ impl Parser {
                         _ => {}
                     }
                     self.runs(children, &inner, out, links, translated)?;
+                }
+                // An inline object among the words: a picture, an icon, an
+                // action's glyph, one placeholder character in the text.
+                Node::Element {
+                    tag,
+                    attrs,
+                    children,
+                    at,
+                    ..
+                } if matches!(tag.as_str(), "img" | "icon" | "kbd")
+                    && children.is_empty()
+                    && !translated =>
+                {
+                    let literal = |names: &[&str]| {
+                        attrs
+                            .iter()
+                            .find(|a| names.contains(&a.name.as_str()))
+                            .filter(|a| !a.bound && !a.value.is_empty())
+                            .map(|a| a.value.clone())
+                    };
+                    let atom = match tag.as_str() {
+                        "img" => literal(&["src"]).map(crate::rich::InlineAtom::Image),
+                        "icon" => literal(&["name", "icon"]).map(crate::rich::InlineAtom::Icon),
+                        _ => literal(&["data-action"]).map(crate::rich::InlineAtom::Action),
+                    }
+                    .ok_or((
+                        *at,
+                        format!(
+                            "an inline <{tag}> names its {} literally",
+                            match tag.as_str() {
+                                "img" => "picture with src",
+                                "icon" => "icon with name",
+                                _ => "action with data-action",
+                            }
+                        ),
+                    ))?;
+                    if let Some(a) = attrs.iter().find(|a| {
+                        !matches!(
+                            a.name.as_str(),
+                            "src" | "alt" | "name" | "icon" | "data-action" | "class"
+                        )
+                    }) {
+                        return Err((a.at, format!("an inline <{tag}> takes no {}", a.name)));
+                    }
+                    out.push(InlineRun {
+                        text: Expr::Lit("\u{FFFC}".into()),
+                        atom: Some(atom),
+                        ..style.clone()
+                    });
                 }
                 Node::Element { tag, at, .. } if tag == "tspan" => {
                     return Err((

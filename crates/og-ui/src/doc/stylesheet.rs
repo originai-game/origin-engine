@@ -98,10 +98,11 @@ pub(super) fn apply(
                 let Some(condition) = matches(doc, elements, *i, parent, rule.at)? else {
                     continue;
                 };
-                if tag != "text" {
+                // A text element's spans: `text::part(name)`, `p::part(…)`.
+                if doc.nodes[*i].kind != NodeKind::Element("label") {
                     return Err((
                         rule.at,
-                        "text spans require a text::part(name) selector".into(),
+                        format!("<{tag}> has no text spans; ::part(name) selects a text element's"),
                     ));
                 }
                 let mut span = span.clone();

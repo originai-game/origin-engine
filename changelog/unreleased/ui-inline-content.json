@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "Inline <img src>, <icon name> and <kbd data-action> among a text's words; <span part=\"name\"> styled by any text element's ::part(name), which now also takes font-size, line-height and letter-spacing (the rich-text [size=…] of the markup, as CSS); MessageFormat 2 markup ({#b}…{/b}, {#i}, {#u}, {#s}, {#br/}) in translated strings."
+    }
+  ]
+}

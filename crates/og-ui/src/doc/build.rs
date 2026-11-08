@@ -613,6 +613,42 @@ impl Ui {
                 r.cascade.diagnostics.extend(cascade.diagnostics);
             }
         }
+        // A translated string's MessageFormat 2 markup (`{#b}…{/b}`) styles
+        // its runs as inline elements would.
+        if n.inline.is_empty()
+            && let Some(t) = r
+                .str("key")
+                .and_then(|k| b.env.translate(k))
+                .filter(|t| super::mf2::has_markup(t))
+        {
+            let mut spans = Vec::new();
+            let mut position = 0u32;
+            for run in super::mf2::runs(&t) {
+                let length = run.text.chars().count() as u32;
+                let span = crate::TextSpan {
+                    name: "inline".into(),
+                    position,
+                    length,
+                    properties: Default::default(),
+                };
+                position += length;
+                let on = |b: bool| b.then_some(true);
+                r.span_styles.push((
+                    span.clone(),
+                    crate::TextSpanStyle {
+                        bold: on(run.bold),
+                        italic: on(run.italic),
+                        underline: on(run.underline),
+                        strike: on(run.strike),
+                        ..Default::default()
+                    },
+                ));
+                spans.push(span);
+            }
+            if let Some((spec, _)) = schema::prop("spans") {
+                r.vals.push((spec, V::Spans(Ok(spans))));
+            }
+        }
         if !n.inline.is_empty() {
             // A text element's inline markup: one span per run, styled by
             // its elements (a run of an `<a href>` is a link).
@@ -631,28 +667,43 @@ impl Ui {
                 };
                 let length = text.chars().count() as u32;
                 let span = crate::TextSpan {
-                    name: "inline".into(),
+                    name: run.part.clone().unwrap_or_else(|| "inline".into()),
                     position,
                     length,
                     properties: Default::default(),
                 };
                 position += length;
-                let on = |b: bool| b.then_some(true);
-                r.span_styles.push((
-                    span.clone(),
-                    crate::TextSpanStyle {
-                        bold: on(run.bold),
-                        italic: on(run.italic),
-                        underline: on(run.underline),
-                        strike: on(run.strike),
-                        color: run.color.as_deref().and_then(|c| {
-                            let c = crate::svg::color(c).ok()?;
-                            Some(crate::paint::ColorRef::Literal(svg::srgba(c, 1.0)))
-                        }),
-                        link: run.link.map(inline_link),
-                        ..Default::default()
-                    },
-                ));
+                // A named span's `::part(name)` rules, under its elements'.
+                let mut style = if run.part.is_some() {
+                    let rules: Vec<_> = n
+                        .span_rules
+                        .iter()
+                        .filter(|rule| {
+                            applies(&rule.query, &mut media_reads)
+                                && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
+                        })
+                        .collect();
+                    let (style, cascade) =
+                        super::spans::resolve(&rules, &span, &r.cascade.computed, self.theme());
+                    r.cascade.reads.extend(cascade.reads);
+                    style
+                } else {
+                    crate::TextSpanStyle::default()
+                };
+                let on = |b: bool, was: Option<bool>| if b { Some(true) } else { was };
+                style.bold = on(run.bold, style.bold);
+                style.italic = on(run.italic, style.italic);
+                style.underline = on(run.underline, style.underline);
+                style.strike = on(run.strike, style.strike);
+                if let Some(c) = run.color.as_deref().and_then(|c| {
+                    let c = crate::svg::color(c).ok()?;
+                    Some(crate::paint::ColorRef::Literal(svg::srgba(c, 1.0)))
+                }) {
+                    style.color = Some(c);
+                }
+                style.link = run.link.map(inline_link).or(style.link);
+                style.atom = run.atom.clone();
+                r.span_styles.push((span.clone(), style));
                 spans.push(span);
             }
             if let Some((spec, _)) = schema::prop("spans") {

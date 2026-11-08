@@ -646,3 +646,44 @@ fn kbd_glyphs_follow_the_device_and_rebind() {
         }
     });
 }
+
+/// Rich inline content (G6): `<img>`, `<icon>` and `<kbd data-action>`
+/// among a paragraph's words draw as inline objects, a `<span part>` takes
+/// its `::part()` size, line height and tracking (doc/mf2.rs tests the
+/// translated markup). Ways it could fail: an inline object refused or
+/// drawn as text, a part's size ignored.
+#[test]
+fn text_holds_inline_objects_sized_parts_and_translated_markup() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <p id="Line">Press <kbd data-action="jump"></kbd> for <img src="coin" alt=""> <span part="big">gold</span></p>
+  <p id="Said">plain</p>
+</div>
+<style>
+p::part(big) { font-size: 40px; line-height: 48px; letter-spacing: 0.1em; }
+</style>"#;
+    let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
+    let line = doc.nodes.iter().find(|n| n.id == "Line").unwrap();
+    assert_eq!(line.inline.iter().filter(|r| r.atom.is_some()).count(), 2);
+    assert_eq!(
+        line.span_rules.len(),
+        1,
+        "p::part(big) styles the paragraph's span"
+    );
+    both(text, &[], |d| {
+        let line = d.get("Line");
+        assert!(line.text.starts_with("Press "), "{}", line.text);
+        assert!(!line.text.contains('<'), "no markup as text: {}", line.text);
+        // The 40 px part makes the line taller than the plain paragraph.
+        assert!(
+            line.height >= 47.0,
+            "the part's line height: {}",
+            line.height
+        );
+        assert!(d.get("Said").height < 40.0);
+    });
+    let refused_bound = refused(
+        r#"<meta name="component" content="t"><div><p>a <img src={$x} alt=""> b</p></div>"#,
+    );
+    assert!(refused_bound.contains("literally"), "{refused_bound}");
+}

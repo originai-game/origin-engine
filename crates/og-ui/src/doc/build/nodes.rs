@@ -280,7 +280,12 @@ impl Ui {
             if let Some(k) = r.str("key")
                 && let Some(s) = b.env.translate(k)
             {
-                return s;
+                // Its markup styles runs; the text is without it.
+                return if crate::doc::mf2::has_markup(&s) {
+                    crate::doc::mf2::plain(&s)
+                } else {
+                    s
+                };
             }
             r.str("text").unwrap_or_default().to_string()
         };

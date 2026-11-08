@@ -31,7 +31,18 @@ impl SpanRule {
             )* };
         }
         inherit!(
-            color, font, weight, bold, italic, underline, strike, outline, motion
+            color,
+            font,
+            weight,
+            bold,
+            italic,
+            underline,
+            strike,
+            outline,
+            motion,
+            size,
+            line_height,
+            tracking_em
         );
         if let Some(step) = &self.step {
             out.step = crate::style_file::ramp_step(&mut theme.type_ramp.clone(), step).copied();
@@ -97,6 +108,9 @@ pub(super) fn parse(selector: &str, body: &str) -> Result<SpanRule, String> {
             "font-weight"
                 | "font-style"
                 | "text-decoration-line"
+                | "font-size"
+                | "line-height"
+                | "letter-spacing"
                 | "-og-text-motion"
                 | "color"
                 | "font"
@@ -150,6 +164,47 @@ fn apply_body(rule: &mut SpanRule, body: &str) -> Result<(), String> {
                 rule.style.underline = Some(words.contains(&"underline"));
                 rule.style.strike = Some(words.contains(&"line-through"));
             }
+            // A span's size (CSS px), line height (px, or a multiple of its
+            // size) and tracking (em, or px of its size).
+            "font-size" => {
+                rule.style.size = Some(
+                    value
+                        .strip_suffix("px")
+                        .and_then(|v| v.trim().parse::<f32>().ok())
+                        .filter(|v| *v > 0.0)
+                        .ok_or("font-size takes <n>px")?,
+                );
+            }
+            "line-height" => {
+                let v = value.trim();
+                rule.style.line_height = Some(match v.strip_suffix("px") {
+                    Some(px) => px
+                        .trim()
+                        .parse::<f32>()
+                        .map_err(|_| "line-height takes <n>px or a number")?,
+                    None => {
+                        let k = v
+                            .parse::<f32>()
+                            .map_err(|_| "line-height takes <n>px or a number")?;
+                        k * rule.style.size.ok_or("a unitless line-height multiplies a span's font-size: write font-size first")?
+                    }
+                });
+            }
+            "letter-spacing" => {
+                let v = value.trim();
+                rule.style.tracking_em = Some(if let Some(em) = v.strip_suffix("em") {
+                    em.trim()
+                        .parse::<f32>()
+                        .map_err(|_| "letter-spacing takes <n>em or <n>px")?
+                } else if let Some(px) = v.strip_suffix("px") {
+                    px.trim().parse::<f32>().map_err(|_| "letter-spacing takes <n>em or <n>px")?
+                        / rule.style.size.ok_or("letter-spacing in px needs the span's font-size: write it first, or use em")?
+                } else if v == "normal" {
+                    0.0
+                } else {
+                    return Err("letter-spacing takes <n>em, <n>px or normal".into());
+                });
+            }
             "-og-text-motion" => {
                 rule.style.motion = Some(match value.as_str() {
                     "none" => crate::markup::SpanFx::None,
@@ -180,7 +235,7 @@ fn apply_body(rule: &mut SpanRule, body: &str) -> Result<(), String> {
             }
             _ => {
                 return Err(format!(
-                    "{name} does not style a text span; use color, font, font-family, font-weight, font-style, text-decoration-line or -og-text-motion"
+                    "{name} does not style a text span; use color, font, font-family, font-size, line-height, letter-spacing, font-weight, font-style, text-decoration-line or -og-text-motion"
                 ));
             }
         }
