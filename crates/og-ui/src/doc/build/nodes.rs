@@ -1101,6 +1101,9 @@ impl Ui {
                     let old = self.docs.last.insert((key, k), v.clone());
                     old.is_some_and(|o| o != v)
                 }
+                // The input pass fires these ([`super::pointer`]); the
+                // capabilities' controls fire the rest when they land.
+                _ => false,
             };
             if !go {
                 continue;

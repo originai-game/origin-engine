@@ -859,6 +859,9 @@ impl Parser {
                     "tap" => When::Tap,
                     "doubletap" => When::DoubleTap,
                     "longpress" => When::LongPress,
+                    other if let Some((_, w)) = When::EVENTS.iter().find(|(e, _)| *e == other) => {
+                        w.clone()
+                    }
                     action if self.doc.actions.iter().any(|(name, _)| name == action) => {
                         When::Action(action.into())
                     }
@@ -866,7 +869,7 @@ impl Parser {
                         return Err((
                             a.at,
                             format!(
-                                "unknown event {event}; use onclick/onchange/ontap, or declare an input action with <meta name=\"action:{event}\" content=\"Label\">"
+                                "unknown event {event}; use onclick, onchange, ontap, ondragstart, ondrop, onpointerdown, onwheel…, or declare an input action with <meta name=\"action:{event}\" content=\"Label\">"
                             ),
                         ));
                     }

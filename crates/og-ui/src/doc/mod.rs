@@ -336,6 +336,50 @@ pub enum When {
     Tap,
     DoubleTap,
     LongPress,
+    /// HTML's drag and drop (`draggable`): a drag of it starts or ends, a
+    /// drag moves over it, or one is dropped on it. Their events carry the
+    /// dragged element's and the target's row keys.
+    DragStart,
+    DragOver,
+    Drop,
+    DragEnd,
+    /// Pointer Events and `wheel`: a press, a move while over it or held,
+    /// a release, and the wheel over it; their events carry the point in
+    /// its box.
+    PointerDown,
+    PointerMove,
+    PointerUp,
+    Wheel,
+    /// A press held for its `data-hold` ms (`onhold`).
+    Hold,
+    /// A secondary press or long press asks for its menu (`oncontextmenu`).
+    ContextMenu,
+    /// A typewriter text finished revealing (`onrevealed`).
+    Revealed,
+    /// A popover or `<details>` opened or closed (`ontoggle`).
+    Toggle,
+    /// A `<dialog>` closed (`onclose`).
+    Close,
+}
+
+impl When {
+    /// The HTML event attribute (without `on`) a variant is written as.
+    pub(crate) const EVENTS: &[(&str, When)] = &[
+        ("dragstart", When::DragStart),
+        ("dragover", When::DragOver),
+        ("drop", When::Drop),
+        ("dragend", When::DragEnd),
+        ("pointerdown", When::PointerDown),
+        ("pointermove", When::PointerMove),
+        ("pointerup", When::PointerUp),
+        ("wheel", When::Wheel),
+        ("hold", When::Hold),
+        ("contextmenu", When::ContextMenu),
+        ("revealed", When::Revealed),
+        ("toggle", When::Toggle),
+        ("close", When::Close),
+    ];
+
 }
 
 #[derive(Clone, Debug, PartialEq)]
