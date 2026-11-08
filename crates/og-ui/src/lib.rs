@@ -32,6 +32,8 @@ pub(crate) mod edit;
 pub mod element;
 pub mod glyphs;
 pub mod hud_layout;
+mod input_type;
+pub use input_type::{InputMode, InputType};
 mod id;
 mod input;
 mod juice;

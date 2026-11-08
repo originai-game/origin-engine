@@ -282,6 +282,29 @@ pub(crate) struct EditDesc {
     pub line_height: f32,
     /// The text's box last frame (the control's rectangle less its padding).
     pub inner: Option<Rect>,
+    /// What it takes ([`crate::InputType`]): a password is laid out masked,
+    /// moves by words to its ends and never fills the clipboard or the kill
+    /// buffer; a number filters what is typed.
+    pub input_type: crate::InputType,
+    /// Laid out masked (a password not revealed).
+    pub masked: bool,
+}
+
+/// The character a secret text is drawn with in `m`: the bullet, else `*`.
+pub(crate) fn mask_char(m: &FontMetrics) -> char {
+    if m.has(crate::input_type::MASK) {
+        crate::input_type::MASK
+    } else {
+        '*'
+    }
+}
+
+/// `chars` as shown: each character masked in a secret text.
+pub(crate) fn shown(chars: &[char], mask: Option<char>) -> String {
+    match mask {
+        Some(m) => chars.iter().map(|_| m).collect(),
+        None => chars.iter().collect(),
+    }
 }
 
 /// The segment holding character `i` (UAX #29 words: og-i18n's
@@ -638,8 +661,29 @@ impl Ui {
         let mut click = self.state.click;
         // A drag past the edge scrolled the text this tick: it owns the scroll.
         let mut autoscrolled = false;
+        let secret = d.input_type == crate::InputType::Password;
         {
-            let m = &self.fonts.for_text(d.role, value).metrics;
+            let m = &self
+                .fonts
+                .for_text(d.role, if secret { "\u{2022}" } else { value.as_str() })
+                .metrics;
+            let mask = d.masked.then(|| mask_char(m));
+            // A secret text moves and selects by words as one word.
+            let word_left = |chars: &[char], k: usize| if secret { 0 } else { word_left(chars, k) };
+            let word_right = |chars: &[char], k: usize| {
+                if secret {
+                    chars.len()
+                } else {
+                    word_right(chars, k)
+                }
+            };
+            let word_at = |chars: &[char], k: usize| {
+                if secret {
+                    (0, chars.len())
+                } else {
+                    word_at(chars, k)
+                }
+            };
             let mut scroll = self.state.edit_scroll;
             let (size, tracking) = (d.size, d.tracking);
             // The text's lines now: (start, end, boxes, y from the text's top).
@@ -653,7 +697,7 @@ impl Ui {
                 ranges
                     .into_iter()
                     .map(|(a, b)| {
-                        let s: String = chars[a..b].iter().collect();
+                        let s = shown(&chars[a..b], mask);
                         (a, b, boxes(m, &s, dir, size, tracking))
                     })
                     .collect()
@@ -804,7 +848,7 @@ impl Ui {
             {
                 chars = value
                     .chars()
-                    .filter(|&c| d.multiline || c != '\n')
+                    .filter(|&c| (d.multiline || c != '\n') && d.input_type.accepts(c))
                     .take(if d.max_chars == 0 {
                         usize::MAX
                     } else {
@@ -820,7 +864,7 @@ impl Ui {
                 .input
                 .text
                 .chars()
-                .filter(|&c| d.multiline || c != '\n')
+                .filter(|&c| (d.multiline || c != '\n') && d.input_type.accepts(c))
                 .collect();
             if !typed.is_empty() {
                 let (a, b) = (caret.min(anchor), caret.max(anchor));
@@ -875,7 +919,7 @@ impl Ui {
                         .max_by_key(|g| g.index)
                         .map(|g| g.rtl)
                 };
-                let line: String = chars[*a..*b].iter().collect();
+                let line = shown(&chars[*a..*b], mask);
                 let run = if k < *b {
                     at(k - a)
                 } else if k > *a {
@@ -898,7 +942,7 @@ impl Ui {
                 if let Some((c, up)) = visual_step(bx, &chars[*a..*b], k - a, up, right) {
                     return (a + c, up);
                 }
-                let line: String = chars[*a..*b].iter().collect();
+                let line = shown(&chars[*a..*b], mask);
                 let rtl = og_i18n::paragraph_direction(&line, dir) == Direction::Rtl;
                 if right != rtl {
                     lines.get(li + 1).map_or((k, up), |l| (l.0, false))
@@ -1032,7 +1076,9 @@ impl Ui {
                         killing = true;
                         if from < to {
                             let taken: String = chars.drain(from..to).collect();
+                            // A secret text deletes without filling the kill buffer.
                             kill = match (chained, k) {
+                                _ if secret => kill,
                                 (false, _) => taken,
                                 (true, UiKey::KeyK) => kill + &taken,
                                 (true, _) => taken + &kill,
@@ -1054,7 +1100,10 @@ impl Ui {
                     UiKey::KeyY if emacs && !kill.is_empty() => {
                         chars.drain(a..b);
                         caret = a;
-                        for c in kill.chars().filter(|&c| d.multiline || c != '\n') {
+                        for c in kill
+                            .chars()
+                            .filter(|&c| (d.multiline || c != '\n') && d.input_type.accepts(c))
+                        {
                             if d.max_chars == 0 || chars.len() < d.max_chars as usize {
                                 chars.insert(caret, c);
                                 caret += 1;
@@ -1115,7 +1164,8 @@ impl Ui {
                     // Control+A and E under mac keys: the line's ends (emacs).
                     UiKey::KeyA if emacs => moved = Some(line_of(&chars, caret).0),
                     UiKey::KeyE if emacs => moved = Some(line_of(&chars, caret).1),
-                    UiKey::KeyC | UiKey::KeyX if shortcut && selected => {
+                    // A secret text is never copied or cut.
+                    UiKey::KeyC | UiKey::KeyX if shortcut && selected && !secret => {
                         clipboard = Some(chars[a..b].iter().collect::<String>());
                         if k == UiKey::KeyX {
                             chars.drain(a..b);

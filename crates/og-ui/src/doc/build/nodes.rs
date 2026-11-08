@@ -548,6 +548,12 @@ impl Ui {
                         bare: false,
                         tight: r.flag("tight"),
                         component: r.str("component").map(str::to_string),
+                        input_type: r
+                            .str("type")
+                            .and_then(crate::InputType::from_name)
+                            .unwrap_or_default(),
+                        inputmode: r.str("inputmode").and_then(crate::InputMode::from_name),
+                        autocomplete: r.str("autocomplete").unwrap_or_default().to_string(),
                     },
                 );
                 if resp.changed {

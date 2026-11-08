@@ -12,7 +12,10 @@
 // reader meets the field twice (the mirror's element and the textarea);
 // the textarea sits outside the dialog it belongs to; the name does not
 // follow when the tree arrives after the focus, or the field's text
-// changes; letting go leaves the textarea exposed or the field hidden.
+// changes; letting go leaves the textarea exposed or the field hidden;
+// a field's type, inputmode and autocomplete not reaching the element the
+// page's keyboard and autofill read, a password copied, an area taking the
+// one-line input.
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { Shell } from "../src/web/shell.ts";
 import type { A11yNode, A11yTree } from "../src/web/a11y.ts";
@@ -79,7 +82,8 @@ for (const order of ["the tree first", "the focus first"] as const) {
       await settle();
     }
     const area = doc.activeElement!;
-    expect(area.tagName).toBe("TEXTAREA");
+    // A one-line field takes the hidden input (an area the textarea).
+    expect(area.tagName).toBe("INPUT");
     // Chrome's rule: no aria-hidden on the focused element or above it.
     expect(exposed(area)).toBe(true);
     expect(area.getAttribute("aria-label")).toBe("Name");
@@ -121,4 +125,38 @@ test("a field focused before the mirror has it is named by its id until the tree
   shell.dispose();
   // Disposed: nothing of the shell stays in the document.
   expect(doc.all().filter((e) => e.tagName !== "CANVAS")).toEqual([]);
+});
+
+test("a field's type, inputmode and autocomplete reach the focused element; a password is never copied", async () => {
+  const { doc, worker, shell } = await start();
+  const focus = async (t: Partial<TextTarget>) => {
+    worker.say({ type: "text", target: { ...target, ...t } });
+    await settle();
+    return doc.activeElement!;
+  };
+  const pin = await focus({ type: "password", inputmode: "text", autocomplete: "current-password", secret: true });
+  expect([pin.tagName, pin.getAttribute("type"), pin.getAttribute("autocomplete"), pin.getAttribute("inputmode")]).toEqual([
+    "INPUT", "password", "current-password", null,
+  ]);
+  // The page's copy of a password puts nothing on the clipboard.
+  const copied: string[] = [];
+  const copy = new Event("copy", { cancelable: true }) as Event & { clipboardData: unknown };
+  copy.clipboardData = { setData: (_: string, v: string) => copied.push(v) };
+  pin.dispatchEvent(copy);
+  expect([copy.defaultPrevented, copied]).toEqual([true, []]);
+  // A number: a text input with the decimal keypad; the same element follows the next field.
+  const age = await focus({ type: "number", inputmode: "decimal", autocomplete: "", secret: false });
+  expect([age, age.getAttribute("type"), age.getAttribute("inputmode"), age.getAttribute("autocomplete")]).toEqual([pin, "text", "decimal", "off"]);
+  const find = await focus({ type: "search", inputmode: "search" });
+  expect([find.getAttribute("type"), find.getAttribute("enterkeyhint")]).toEqual(["search", "search"]);
+  // An area takes the textarea; the input steps out of a reader's way.
+  const notes = await focus({ multiline: true, type: "text", inputmode: "text" });
+  expect(notes.tagName).toBe("TEXTAREA");
+  expect([exposed(notes), exposed(pin)]).toEqual([true, false]);
+  // Autofill sets the input's value without beforeinput: it is taken as typed text and the input empties.
+  const mail = await focus({ multiline: false, type: "email", inputmode: "email", autocomplete: "email" });
+  (mail as unknown as { value: string }).value = "ada@example.org";
+  mail.dispatchEvent(new Event("input"));
+  expect((mail as unknown as { value: string }).value).toBe("");
+  shell.dispose();
 });

@@ -538,7 +538,17 @@ impl RetainedHost {
         for (state, enabled) in [
             (Disabled, flag("disabled")),
             (Checked, flag("checked")),
-            (Invalid, flag("invalid")),
+            // A field's text its `type` does not take is invalid too.
+            (
+                Invalid,
+                flag("invalid")
+                    || facts
+                        .get("type")
+                        .and_then(Value::as_str)
+                        .and_then(crate::InputType::from_name)
+                        .zip(facts.get("input").and_then(Value::as_str))
+                        .is_some_and(|(t, v)| t.mismatch(v)),
+            ),
             (
                 PlaceholderShown,
                 facts

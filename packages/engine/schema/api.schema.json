@@ -47976,6 +47976,21 @@
           ],
           "description": "The component its style dresses it as (`Poem`, `Search[large]`): its frame `<component>.frame`, its text `<component>.text` and its placeholder `<component>.placeholder`, in its states (focused, invalid, disabled); `ink` and `step` on the text parts set the text's colour and type step. Null: Field.",
           "default": null
+        },
+        "type": {
+          "type": "string",
+          "description": "What it takes, by HTML's `type` names: `text` (empty is text), `password` (drawn masked, never copied or cut, with a reveal toggle `<id>/Reveal` dressed `<component>.reveal[revealed]`), `number` (only a number's characters are typed), `email`, `url`, `tel`, `search`. A number, email or url whose text is not one is invalid, as `invalid` makes it.",
+          "default": ""
+        },
+        "inputmode": {
+          "type": "string",
+          "description": "The virtual keyboard a touch device shows (HTML `inputmode`: none, text, decimal, numeric, tel, search, email, url); empty: its type's.",
+          "default": ""
+        },
+        "autocomplete": {
+          "type": "string",
+          "description": "The page's autofill hint (HTML `autocomplete`: `username`, `current-password`, `new-password`, `one-time-code`, `off`…); empty: none.",
+          "default": ""
         }
       },
       "additionalProperties": false

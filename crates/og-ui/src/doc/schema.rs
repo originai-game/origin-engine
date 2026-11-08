@@ -702,6 +702,24 @@ pub const PROPS: &[PropSpec] = &[
         "Its text is wrong: the danger frame."
     ),
     p!(
+        "type",
+        Ty::Word(&crate::InputType::NAMES),
+        ["field"],
+        "What it takes, by HTML's names: `password` is drawn masked with a reveal toggle (`<component>.reveal[revealed]`) and never copied or cut; `number` takes only a number's characters; a `number`, `email` or `url` whose text is not one matches `:invalid`. Each picks its virtual keyboard."
+    ),
+    p!(
+        "inputmode",
+        Ty::Word(&crate::InputMode::NAMES),
+        ["field"],
+        "The virtual keyboard a touch device shows (HTML `inputmode`; `none`: the game shows its own); unset, its `type`'s."
+    ),
+    p!(
+        "autocomplete",
+        Ty::Name,
+        ["field"],
+        "The page's autofill hint (HTML `autocomplete`: `username`, `current-password`, `new-password`, `one-time-code`, `email`, `off`…)."
+    ),
+    p!(
         "tone",
         Ty::Word(&["neutral", "info", "success", "warn", "danger", "accent"]),
         ["badge"],

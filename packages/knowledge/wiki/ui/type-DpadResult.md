@@ -25,4 +25,4 @@ struct DpadResult {
 }
 ```
 
-<sub>Module `ui` line 1149</sub>
+<sub>Module `ui` line 1152</sub>

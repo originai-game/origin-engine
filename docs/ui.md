@@ -284,6 +284,33 @@ brackets and escaped text, speaker prefixes, Unicode offsets, wrapping,
 active-style changes, and reduced motion. Kits use this core text path,
 not a private renderer.
 
+### 2.3 Text input types
+
+`<field>` takes the HTML names `type`, `inputmode`, and `autocomplete`;
+`FieldDesc` carries the same three for TypeScript on both hosts. The types
+are `text`, `password`, `number`, `email`, `url`, `tel`, and `search`.
+Validity follows the HTML Living Standard: a valid floating-point number,
+its email expression, and an absolute URL with a host for special schemes.
+A nonempty text that fails its type matches `:invalid` and dresses the
+invalid frame. An empty field is never a mismatch. A number field types
+only digits, a sign, a point, and an exponent.
+
+A password is drawn masked with one bullet per character (`*` where the
+face lacks U+2022). The probe and the accessibility tree read the mask.
+Copy, cut, and the emacs kill buffer never take its text, and the host is
+given no selection for it. Word moves treat it as one word. Its reveal
+toggle `<id>/Reveal` sits at the field's end (start in RTL), dressed
+`<component>.reveal[revealed]` with a `reveal-icon` subpart. It is named
+Show password or Hide password and keeps the field's text focus when
+pressed. Revealed is UI state and survives save and restore.
+
+The host receives the type, the effective `inputmode` (unset: the type's
+own), `autocomplete`, and `secret` with the focused text target. The web
+shell stands a hidden `<input>` with those attributes behind a one-line
+field so phones show the requested keyboard and autofill reaches it; a
+text area keeps its `<textarea>`. A number uses a text input with the
+decimal keyboard.
+
 ## 3. Style contract
 
 ### 3.1 Tokens and literal values
@@ -663,7 +690,7 @@ Variable-height virtualization and localized number/date formatting
 needed by kits are core prerequisites,
 not invitations to private kit workarounds. Per-frame UI cost and its
 performance tests are independent measured work; this document claims no
-unmeasured performance budget has passed. Password fields, colour-blind
+unmeasured performance budget has passed. Colour-blind
 modes, live regions, and font packs require explicit core delivery before
 authors can claim support. Author knowledge belongs in guides, not shipped
 skills. No kit silently implements those missing facilities itself.

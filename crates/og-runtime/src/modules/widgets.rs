@@ -210,6 +210,14 @@ pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> Stri
             bare: d["bare"].as_bool().unwrap_or(false),
             tight: d["tight"].as_bool().unwrap_or(false),
             component: d["component"].as_str().map(str::to_string),
+            input_type: d["type"]
+                .as_str()
+                .and_then(og_ui::InputType::from_name)
+                .unwrap_or_default(),
+            inputmode: d["inputmode"]
+                .as_str()
+                .and_then(og_ui::InputMode::from_name),
+            autocomplete: d["autocomplete"].as_str().unwrap_or_default().to_string(),
         };
         ui.text_field(id.as_str(), &mut text, &fd)
     });

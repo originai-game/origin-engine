@@ -33,4 +33,4 @@ struct HudPlacement {
 }
 ```
 
-<sub>Module `ui` line 1629</sub>
+<sub>Module `ui` line 1632</sub>

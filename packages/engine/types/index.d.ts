@@ -24359,6 +24359,24 @@ export interface FieldDesc {
    * @default null
    */
   readonly component?: string | null;
+  /**
+   * What it takes, by HTML's `type` names: `text` (empty is text), `password` (drawn masked, never copied or cut, with a reveal toggle `<id>/Reveal` dressed `<component>.reveal[revealed]`), `number` (only a number's characters are typed), `email`, `url`, `tel`, `search`. A number, email or url whose text is not one is invalid, as `invalid` makes it.
+   *
+   * @default ""
+   */
+  readonly type?: string;
+  /**
+   * The virtual keyboard a touch device shows (HTML `inputmode`: none, text, decimal, numeric, tel, search, email, url); empty: its type's.
+   *
+   * @default ""
+   */
+  readonly inputmode?: string;
+  /**
+   * The page's autofill hint (HTML `autocomplete`: `username`, `current-password`, `new-password`, `one-time-code`, `off`…); empty: none.
+   *
+   * @default ""
+   */
+  readonly autocomplete?: string;
 }
 
 /**

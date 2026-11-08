@@ -13,6 +13,16 @@ impl Ui {
     /// shows underlined at the caret until it commits, Enter submits and
     /// Escape leaves. The text scrolls to keep the caret in view; the caret
     /// blinks by the tick (steady under reduced motion).
+    ///
+    /// Its [`crate::InputType`] (HTML `type`): a password is drawn masked
+    /// (a bullet per character), is never copied, cut or killed into the
+    /// kill buffer, moves and selects by words as one word, and has a
+    /// reveal toggle at its end (`Reveal`, `<component>.reveal[revealed]`,
+    /// a button named Show password or Hide password; a press or tap keeps
+    /// the field's focus, so it is no focus stop) whose state is a widget
+    /// memory, saved with the UI state; a number takes only a number's
+    /// characters; a number, an email or a url whose text is not one is
+    /// invalid (HTML's type mismatch), as `desc.invalid` makes it.
     pub fn text_field(
         &mut self,
         id: impl Into<Id>,
@@ -42,13 +52,27 @@ impl Ui {
         } else {
             sizes.control_md
         };
-        let i = self.leaf(
+        let secret = desc.input_type == crate::InputType::Password;
+        // A password's reveal toggle takes a square at the field's end:
+        // its text stops before it (the start side in right to left).
+        let reveal_w = if secret {
+            height.min(sizes.control_md)
+        } else {
+            0.0
+        };
+        let mut padding = Insets::xy(pad, 0.0);
+        if self.direction == og_i18n::Direction::Rtl {
+            padding.left += reveal_w;
+        } else {
+            padding.right += reveal_w;
+        }
+        let i = self.push(
             "field",
             id.into(),
             Element {
                 width: desc.width.unwrap_or(Size::grow()),
                 height: Size::Fixed(height),
-                padding: Insets::xy(pad, 0.0),
+                padding,
                 interactive: true,
                 radius: t.radius.control,
                 ..Element::default()
@@ -57,9 +81,11 @@ impl Ui {
         self.nodes[i].focusable = true;
         self.nodes[i].nav = true;
         let key = self.nodes[i].key;
+        let revealed = secret && self.reveal_toggle(i, base, reveal_w, height);
+        self.last_closed = i;
         let mut r = self.respond(key);
         if r.focused {
-            let inner = self.hit(key).map(|h| h.full.inset(&Insets::xy(pad, 0.0)));
+            let inner = self.hit(key).map(|h| h.full.inset(&padding));
             let e = self.edit(
                 key,
                 value,
@@ -71,6 +97,8 @@ impl Ui {
                     tracking: crate::layout::step_tracking(&step, value),
                     line_height: step.line_height,
                     inner,
+                    input_type: desc.input_type,
+                    masked: secret && !revealed,
                 },
             );
             r.changed = e.changed;
@@ -78,7 +106,15 @@ impl Ui {
             r.focused = self.state.focus == key;
         }
         let focused = r.focused;
+        let invalid = desc.invalid || desc.input_type.mismatch(value);
         let (shown, composition) = self.shown_text(value, focused);
+        let mask = (secret && !revealed).then(|| {
+            crate::edit::mask_char(&self.fonts.for_text(FontRole::Body, "\u{2022}").metrics)
+        });
+        let shown = match mask {
+            Some(m) => shown.chars().map(|_| m).collect(),
+            None => shown,
+        };
         let placeholder = shown.is_empty();
         let shown = if placeholder {
             desc.placeholder.clone()
@@ -86,7 +122,7 @@ impl Ui {
             shown
         };
         let disabled = self.nodes[i].disabled;
-        let ink = self.field_ink(base, focused, desc.invalid, disabled);
+        let ink = self.field_ink(base, focused, invalid, disabled);
         let (step, color) = if placeholder {
             (ink.placeholder_step, ink.placeholder)
         } else {
@@ -98,21 +134,145 @@ impl Ui {
         content.ellipsis = placeholder;
         let mut edit = self.edit_view(key, focused, value, composition, false);
         edit.placeholder = placeholder;
-        self.field_part(i, base, focused, desc.invalid, desc.bare);
+        if let Some(target) = self
+            .text_target
+            .as_mut()
+            .filter(|t| focused && t.rect.width > 0.0)
+        {
+            target.input_type = desc.input_type;
+            target.inputmode = desc.inputmode.unwrap_or(desc.input_type.default_mode());
+            target.autocomplete = desc.autocomplete.clone();
+            target.secret = secret;
+            if secret {
+                target.selection.clear();
+            }
+        }
+        self.field_part(i, base, focused, invalid, desc.bare);
+        // What the probe and a screen reader read: a password masked
+        // unless revealed (the mask, never the text).
+        let said = match mask {
+            Some(m) => value.chars().map(|_| m).collect(),
+            None => value.clone(),
+        };
         let n = &mut self.nodes[i];
         n.content = Content::Text(content);
         n.widget = Widget::Field(edit);
         n.probe_text = if value.is_empty() {
             desc.placeholder.clone()
         } else {
-            value.clone()
+            said.clone()
         };
         // A field is named by its label (the label before it in its row),
         // else its placeholder, else its id; the placeholder describes it,
         // and its value is its text.
         n.a11y.description = Some(desc.placeholder.clone());
-        n.a11y.value = Some(value.clone());
+        n.a11y.value = Some(said);
         r
+    }
+
+    /// A password field's reveal toggle (`<id>/Reveal`): a square button
+    /// at field `i`'s end, dressed `<component>.reveal[revealed]`, drawing
+    /// an eye (struck through while revealed: a press masks it again),
+    /// named Show password or Hide password. Answers whether the text
+    /// shows, after this tick's press.
+    fn reveal_toggle(&mut self, i: usize, base: crate::dress::PartRef, w: f32, h: f32) -> bool {
+        use std::f32::consts::FRAC_PI_2;
+        let field = self.nodes[i].key;
+        let memory = child_key(field, "reveal");
+        let mut revealed = self.has_anim(memory) && self.anim(memory).h == 1;
+        self.stack.push(i);
+        let j = self.leaf(
+            "button",
+            Id::from("Reveal"),
+            Element {
+                width: Size::Fixed(w),
+                height: Size::Fixed(h),
+                interactive: true,
+                radius: self.theme.radius.control,
+                ..Element::default()
+            },
+        );
+        self.stack.pop();
+        self.nodes[j].props.position = crate::element::Position::Absolute;
+        self.nodes[j].props.insets = crate::element::Edges {
+            end: Some(0.0),
+            top: Some(0.0),
+            ..Default::default()
+        };
+        // No focus stop of its own: a press gives the focus to the field
+        // around it (the caret stays, a phone's keyboard stays up), and a
+        // screen reader presses it by its button.
+        let r = self.respond(self.nodes[j].key);
+        if r.clicked && !self.nodes[i].disabled {
+            revealed = !revealed;
+        }
+        self.set_anim(
+            memory,
+            Anim {
+                h: u64::from(revealed),
+                ..Anim::default()
+            },
+        );
+        let p = self.theme.palette;
+        let part = crate::dress::PartRef {
+            part: "reveal",
+            ..base
+        }
+        .flag_if(revealed, "revealed")
+        .flag_if(r.hovered, "hover")
+        .flag_if(r.pressed, "pressed");
+        let icon = crate::dress::PartRef {
+            part: "reveal-icon",
+            class: None,
+            ..base
+        }
+        .flag_if(revealed, "revealed");
+        let color = if r.hovered { p.ink } else { p.ink_muted };
+        // An almond of two arcs, a pupil, and a stroke across while revealed.
+        let s = (w.min(h) * 0.5).max(8.0);
+        let (ew, eh) = (s * 0.9, s * 0.55);
+        let radius = (ew * ew / 4.0 + eh * eh / 4.0) / eh;
+        let half = ((ew / 2.0) / radius).clamp(-1.0, 1.0).asin();
+        let thick = (s * 0.09).max(1.0);
+        let n = &mut self.nodes[j];
+        n.el.part = Some(part);
+        n.shapes.clear();
+        for (dy, mid) in [
+            (radius - eh / 2.0, -FRAC_PI_2),
+            (eh / 2.0 - radius, FRAC_PI_2),
+        ] {
+            n.shapes.push(Shape::Arc {
+                part: icon,
+                frame: crate::layout::Frame::centered(0.0, dy, 2.0 * radius, 2.0 * radius),
+                start: mid - half,
+                sweep: 2.0 * half,
+                thickness: thick,
+                color,
+            });
+        }
+        let pupil = s * 0.26;
+        n.shapes.push(Shape::Rect {
+            frame: crate::layout::Frame::centered(0.0, 0.0, pupil, pupil),
+            radius: pupil,
+            color,
+        });
+        if revealed {
+            n.shapes.push(Shape::Bar {
+                part: icon,
+                frame: crate::layout::Frame::centered(0.0, 0.0, s * 1.05, thick),
+                angle: std::f32::consts::FRAC_PI_4,
+                color,
+            });
+        }
+        let label = if revealed {
+            "Hide password"
+        } else {
+            "Show password"
+        };
+        n.probe_text = label.into();
+        n.a11y.name = Some(label.into());
+        n.a11y.checked = Some(revealed);
+        revealed
     }
 
     /// A field's frame as a part (`Field.frame[focused][invalid]`): its ground moves
@@ -198,6 +358,8 @@ impl Ui {
                     tracking: crate::layout::step_tracking(&step, value),
                     line_height: lh,
                     inner,
+                    input_type: crate::InputType::Text,
+                    masked: false,
                 },
             );
             r.changed = e.changed;
@@ -332,6 +494,7 @@ impl Ui {
                 multiline,
                 selection: value.chars().skip(a).take(b - a).collect(),
                 composing: n > 0,
+                ..TextTarget::default()
             });
         }
         crate::layout::EditView {

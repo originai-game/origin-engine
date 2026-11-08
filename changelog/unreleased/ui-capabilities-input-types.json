@@ -1,0 +1,7 @@
+{
+  "added": [
+    { "member": "ui.FieldDesc.type", "summary": "A field's HTML `type`: password (masked, uncopyable, with a reveal toggle `<id>/Reveal` dressed `<component>.reveal[revealed]`), number (filters typed characters), email, url, tel and search. A number, email or url that is not one is invalid; documents write `<field type=\"password\">` and style it with `:invalid`." },
+    { "member": "ui.FieldDesc.inputmode", "summary": "The virtual keyboard a field asks for (HTML `inputmode`); unset, its type's. The web shell gives a one-line field a hidden <input> with it." },
+    { "member": "ui.FieldDesc.autocomplete", "summary": "A field's autofill hint (HTML `autocomplete`), passed to the page's input." }
+  ]
+}

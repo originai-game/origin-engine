@@ -15,6 +15,15 @@
 // selection, composing }` or null) and `copy` (text a copy took), which the
 // Worker forwards as `{ type: "text", target }` and `{ type: "copy", text }`.
 //
+// A one-line field takes an <input> instead, carrying the field's HTML
+// `type`, `inputmode` and `autocomplete` (docs/ui.md §2.3): so a phone
+// shows the keyboard the field asks for (a number's decimal pad, an email's
+// @ key, a password's secure keyboard without suggestions) and the page's
+// autofill and password manager meet a real password box. A number field is
+// a text input with the decimal keyboard (a number input refuses partial
+// text). A password's text is never copied or cut: the engine reports no
+// selection for it and the copy event puts nothing on the clipboard.
+//
 // For assistive technology the textarea is the field while it has the
 // focus: it is named after the field's node in the accessibility tree
 // (a11y.ts: its name, its placeholder as aria-placeholder, its text as the
@@ -37,6 +46,9 @@ export interface TextLabels {
 
 let entries = 0;
 
+/** The HTML `type` of a field (crates/og-ui's InputType). */
+export type TextInputType = "text" | "password" | "number" | "email" | "url" | "tel" | "search";
+
 /** The engine's focused text control, as the Worker reports it. */
 export interface TextTarget {
   /** The element's path in the UI. */
@@ -48,11 +60,25 @@ export interface TextTarget {
   selection: string;
   /** An input method is composing in it. */
   composing: boolean;
+  /** Its HTML `type` (an area's is text); absent: text. */
+  type?: TextInputType;
+  /** The virtual keyboard it asks for (HTML `inputmode`). */
+  inputmode?: string;
+  /** Its autofill hint (HTML `autocomplete`); empty: none. */
+  autocomplete?: string;
+  /** A password: never copied or cut. */
+  secret?: boolean;
 }
+
+/** An <input>'s `type` for a field's: a number takes a text input (a number input refuses partial text). */
+const inputType = (t: TextInputType | undefined): string => (t && t !== "number" ? t : "text");
 
 /** The hidden textarea that takes the page's text for the engine's focused field. */
 export class TextEntry {
-  readonly element: HTMLTextAreaElement;
+  /** The textarea a multi-line area takes. */
+  readonly area: HTMLTextAreaElement;
+  /** The input a one-line field takes. */
+  readonly line: HTMLInputElement;
   #canvas: HTMLCanvasElement;
   #send: (event: InjectedInput) => void;
   #target: TextTarget | null = null;
@@ -68,8 +94,21 @@ export class TextEntry {
     this.#canvas = canvas;
     this.#send = send;
     this.#labels = labels;
-    const area = canvas.ownerDocument.createElement("textarea");
-    area.id = `og-text-entry${entries++ ? `-${entries}` : ""}`;
+    const n = entries++;
+    this.area = this.#entry(canvas.ownerDocument.createElement("textarea"), `og-text-entry${n ? `-${n + 1}` : ""}`);
+    this.line = this.#entry(canvas.ownerDocument.createElement("input"), `og-text-line${n ? `-${n + 1}` : ""}`);
+    this.line.setAttribute("type", "text");
+  }
+
+  /** The element standing in for the focused control: the input for a field, the textarea for an area (and while none is focused). */
+  get element(): HTMLTextAreaElement | HTMLInputElement {
+    return this.#target && !this.#target.multiline ? this.line : this.area;
+  }
+
+  /** Sets up one of the two hidden elements: attributes, style and listeners. */
+  #entry<E extends HTMLTextAreaElement | HTMLInputElement>(area: E, id: string): E {
+    const canvas = this.#canvas;
+    area.id = id;
     area.setAttribute("aria-hidden", "true");
     area.setAttribute("autocomplete", "off");
     area.setAttribute("autocapitalize", "off");
@@ -97,7 +136,6 @@ export class TextEntry {
       height: "1px",
     } satisfies Partial<CSSStyleDeclaration>);
     canvas.ownerDocument.body.appendChild(area);
-    this.element = area;
     const on = <K extends keyof HTMLElementEventMap>(type: K, fn: (e: HTMLElementEventMap[K]) => void) => {
       area.addEventListener(type, fn as EventListener);
       this.#off.push(() => area.removeEventListener(type, fn as EventListener));
@@ -125,6 +163,8 @@ export class TextEntry {
       if (text) this.#send({ kind: "text", text: this.#target?.multiline ? text : text.replace(/\r?\n/g, " ") });
     });
     const copy = (e: ClipboardEvent) => {
+      // A password puts nothing on the clipboard, whatever the page selected.
+      if (this.#target?.secret) return e.preventDefault();
       const text = this.#target?.selection ?? "";
       if (!text) return;
       e.preventDefault();
@@ -133,11 +173,19 @@ export class TextEntry {
     };
     on("copy", copy);
     on("cut", copy);
+    // Autofill (a password manager) sets the value without beforeinput:
+    // what it put there is typed text, and the element empties again.
+    on("input", () => {
+      if (this.#composing || !area.value) return;
+      this.#send({ kind: "text", text: area.value });
+      area.value = "";
+    });
+    return area;
   }
 
-  /** Whether a key event's target is this textarea (the shell forwards its keys). */
+  /** Whether a key event's target is one of the hidden elements (the shell forwards its keys). */
   owns(target: EventTarget | null): boolean {
-    return target === this.element;
+    return target === this.area || target === this.line;
   }
 
   /** An input method is composing: its keys are not the game's. */
@@ -147,14 +195,16 @@ export class TextEntry {
 
   /** The engine's focused text control changed: follow it, focus or let go. */
   update(target: TextTarget | null): void {
-    const had = this.#target !== null;
+    const was = this.#target ? this.element : null;
     this.#target = target;
     const area = this.element;
+    if (was && was !== area && was.ownerDocument.activeElement === was) was.blur();
     if (!target) {
-      if (had && area.ownerDocument.activeElement === area) area.blur();
+      if (was && area.ownerDocument.activeElement === area) area.blur();
       this.relabel();
       return;
     }
+    this.#hint(area, target);
     // Named and visible to assistive technology before it takes the focus.
     this.relabel();
     const box = this.#canvas.getBoundingClientRect();
@@ -167,12 +217,24 @@ export class TextEntry {
       width: `${Math.max(1, w * sx)}px`,
       height: `${Math.max(1, h * sy)}px`,
     });
-    if (!had || area.ownerDocument.activeElement !== area) {
+    if (was !== area || area.ownerDocument.activeElement !== area) {
       area.focus({ preventScroll: true });
       // An empty commit tells the engine the page has a text stream now, so
       // a key's character and its typed text never both type.
       this.#send({ kind: "text", text: "" });
     }
+  }
+
+  /** The field's keyboard and autofill hints on its element. */
+  #hint(area: HTMLTextAreaElement | HTMLInputElement, target: TextTarget): void {
+    const set = (name: string, value: string | null) => {
+      if (value === null) area.removeAttribute(name);
+      else if (area.getAttribute(name) !== value) area.setAttribute(name, value);
+    };
+    if (area === this.line) set("type", inputType(target.type));
+    set("inputmode", target.inputmode && target.inputmode !== "text" ? target.inputmode : null);
+    set("autocomplete", target.autocomplete || "off");
+    set("enterkeyhint", target.type === "search" ? "search" : null);
   }
 
   /**
@@ -187,6 +249,10 @@ export class TextEntry {
       if (value === null) area.removeAttribute(name);
       else if (area.getAttribute(name) !== value) area.setAttribute(name, value);
     };
+    // The element not standing in stays out of a reader's way.
+    const other = area === this.line ? this.area : this.line;
+    for (const a of ["aria-label", "aria-placeholder", "aria-description", "aria-multiline"]) other.removeAttribute(a);
+    other.setAttribute("aria-hidden", "true");
     if (!target) {
       for (const a of ["aria-label", "aria-placeholder", "aria-description", "aria-multiline"]) set(a, null);
       set("aria-hidden", "true");
@@ -243,6 +309,7 @@ export class TextEntry {
   dispose(): void {
     for (const off of this.#off.splice(0)) off();
     this.#labels?.standIn(null, null);
-    this.element.remove();
+    this.area.remove();
+    this.line.remove();
   }
 }

@@ -290,6 +290,10 @@ fn text_entry(eng: &Engine) -> (Value, Option<String>) {
             "multiline": t.multiline,
             "selection": t.selection,
             "composing": t.composing,
+            "type": t.input_type.name(),
+            "inputmode": t.inputmode.name(),
+            "autocomplete": t.autocomplete,
+            "secret": t.secret,
         }),
         None => Value::Null,
     };

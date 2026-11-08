@@ -32,4 +32,4 @@ struct UiSounds {
 }
 ```
 
-<sub>Module `ui` line 486</sub>
+<sub>Module `ui` line 489</sub>

@@ -23,4 +23,4 @@ struct ActionHintsResult {
 }
 ```
 
-<sub>Module `ui` line 2402</sub>
+<sub>Module `ui` line 2405</sub>

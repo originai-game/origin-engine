@@ -771,6 +771,15 @@ pub struct TextTarget {
     pub selection: String,
     /// An input method is composing in it.
     pub composing: bool,
+    /// Its HTML `type` (`FieldDesc::input_type`; an area's is text).
+    pub input_type: crate::InputType,
+    /// The virtual keyboard it asks for (its `inputmode`, else its type's).
+    pub inputmode: crate::InputMode,
+    /// Its autofill hint (`autocomplete`); empty: none.
+    pub autocomplete: String,
+    /// A password: `selection` is always empty, and the host neither
+    /// copies nor cuts from it nor offers its text to anything else.
+    pub secret: bool,
 }
 
 impl UiFrame {
@@ -973,6 +982,16 @@ pub struct FieldDesc {
     /// placeholder `<component>.placeholder`, with its states (focused,
     /// invalid, disabled). `None`: `Field`.
     pub component: Option<String>,
+    /// What it takes (HTML `type`, [`crate::InputType`]): a password is
+    /// drawn masked with a reveal toggle (`<component>.reveal[revealed]`)
+    /// and never copied or cut; a number takes only a number's
+    /// characters; a number, email or url that is not one is invalid.
+    pub input_type: crate::InputType,
+    /// The virtual keyboard (HTML `inputmode`); `None`: the type's.
+    pub inputmode: Option<crate::InputMode>,
+    /// The page's autofill hint (HTML `autocomplete`: `username`,
+    /// `current-password`, `one-time-code`, `off`…); empty: none.
+    pub autocomplete: String,
 }
 
 /// How a multi-line text area looks ([`Ui::text_area`]).

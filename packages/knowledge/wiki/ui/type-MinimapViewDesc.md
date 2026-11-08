@@ -72,4 +72,4 @@ struct MinimapViewDesc {
 }
 ```
 
-<sub>Module `ui` line 6195</sub>
+<sub>Module `ui` line 6198</sub>

@@ -22,6 +22,8 @@ mod gfx;
 mod glyphs;
 #[path = "../hud_layout.rs"]
 mod hud_layout;
+#[path = "../input_types.rs"]
+mod input_types;
 #[path = "../kit_gfx.rs"]
 mod kit_gfx;
 #[path = "../layout.rs"]
