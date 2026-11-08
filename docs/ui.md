@@ -166,6 +166,36 @@ structural selectors keep for `:nth-child(n of li)`, so a keyed `{#each}`
 reorder or insert renumbers only the items whose place changed, in
 O(log n) per edit, with no pass of its own.
 
+#### Borders, shadows, outlines and overflow
+
+These follow CSS Backgrounds and Borders Level 3 and CSS Overflow Level 3
+on any element. `border` and `outline` take the shorthand (`2px dashed
+var(--accent)`) and the longhands: `border-{top,right,bottom,left}`,
+`border-width`/`-style`/`-color` with one to four sides, and
+`outline-width`/`-style`/`-color`/`-offset`. Styles are `none`, `hidden`,
+`solid`, `dashed`, `dotted`, `double`, `groove`, `ridge`, `inset` and
+`outset` (an outline takes `auto` in place of `hidden`); `currentColor` is
+the element's `color`. A border's width pads the box as `box-sizing:
+border-box` does; an outline takes no room and is drawn outside the border
+edge, grown by its offset, so `:focus-visible { outline: 2px solid
+var(--focus) }` replaces the core focus ring for that element. A uniform
+border follows `border-radius`; sides that differ are drawn as strips, and
+`inset`/`outset`/`groove`/`ridge` darken their shaded sides.
+`box-shadow` takes a comma list of `[inset] x y [blur [spread]] [color]`,
+the first listed on top, outer shadows under the background and inset ones
+over it.
+
+`overflow`, `overflow-x` and `overflow-y` take `visible`, `hidden`,
+`clip`, `scroll` and `auto`; as in CSS, `visible` beside a non-visible axis
+computes to `auto`. `auto` and `scroll` make the box scroll on that axis,
+`hidden` and `clip` clip its children to the padding box.
+`scrollbar-width: none` hides the bars of a scrolling box (`auto` and
+`thin` show them).
+
+A `display: block` box with an auto width fills its block parent's
+content width, as in CSS block flow, so a `<div>` inside a `<section>` is
+as wide as the section.
+
 Kits use `@origingame/engine`, `@origingame/engine/ui-extensions`, and the
 public helpers in `@origingame/engine/ui-parts/hud` and
 `@origingame/engine/ui-parts/screen`. Private source-path imports, unsafe

@@ -297,6 +297,14 @@ macro_rules! p {
     };
 }
 
+const BORDER_STYLES: &[&str] = &[
+    "none", "hidden", "solid", "dashed", "dotted", "double", "groove", "ridge", "inset", "outset",
+];
+const OUTLINE_STYLES: &[&str] = &[
+    "none", "auto", "solid", "dashed", "dotted", "double", "groove", "ridge", "inset", "outset",
+];
+const OVERFLOW: &[&str] = &["visible", "hidden", "clip", "scroll", "auto"];
+
 /// Every core prop, by kind group: the box, the element model (docs/ui.md
 /// §6.1), then each kind's own.
 pub const CORE_PROPS: &[PropSpec] = &[
@@ -334,6 +342,106 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!("background", Ty::Paint, "Its fill."),
     p!("radius", Ty::Num, "Its corner radius, CSS px."),
+    p!(
+        "borderTopWidth",
+        Ty::Num,
+        "Its top border's width, CSS px: room inside its box, as padding is."
+    ),
+    p!(
+        "borderTopStyle",
+        Ty::Word(BORDER_STYLES),
+        "Its top border's style (none draws nothing and takes no room)."
+    ),
+    p!(
+        "borderTopColor",
+        Ty::Paint,
+        "Its top border's colour (unset: its text colour)."
+    ),
+    p!(
+        "borderRightWidth",
+        Ty::Num,
+        "Its right border's width, CSS px: room inside its box, as padding is."
+    ),
+    p!(
+        "borderRightStyle",
+        Ty::Word(BORDER_STYLES),
+        "Its right border's style (none draws nothing and takes no room)."
+    ),
+    p!(
+        "borderRightColor",
+        Ty::Paint,
+        "Its right border's colour (unset: its text colour)."
+    ),
+    p!(
+        "borderBottomWidth",
+        Ty::Num,
+        "Its bottom border's width, CSS px: room inside its box, as padding is."
+    ),
+    p!(
+        "borderBottomStyle",
+        Ty::Word(BORDER_STYLES),
+        "Its bottom border's style (none draws nothing and takes no room)."
+    ),
+    p!(
+        "borderBottomColor",
+        Ty::Paint,
+        "Its bottom border's colour (unset: its text colour)."
+    ),
+    p!(
+        "borderLeftWidth",
+        Ty::Num,
+        "Its left border's width, CSS px: room inside its box, as padding is."
+    ),
+    p!(
+        "borderLeftStyle",
+        Ty::Word(BORDER_STYLES),
+        "Its left border's style (none draws nothing and takes no room)."
+    ),
+    p!(
+        "borderLeftColor",
+        Ty::Paint,
+        "Its left border's colour (unset: its text colour)."
+    ),
+    p!(
+        "outlineWidth",
+        Ty::Num,
+        "Its outline's width, CSS px, drawn outside its box and taking no room."
+    ),
+    p!(
+        "outlineStyle",
+        Ty::Word(OUTLINE_STYLES),
+        "Its outline's style; auto: the focus ring."
+    ),
+    p!(
+        "outlineColor",
+        Ty::Paint,
+        "Its outline's colour (unset: its text colour)."
+    ),
+    p!(
+        "outlineOffset",
+        Ty::Num,
+        "How far, CSS px, its outline stands off its box."
+    ),
+    p!(
+        "boxShadow",
+        Ty::Text,
+        "Its shadows, as CSS box-shadow: `[inset] <x> <y> [<blur> [<spread>]] [<colour>]`, comma-separated, the first on top."
+    ),
+    p!(
+        "overflowX",
+        Ty::Word(OVERFLOW),
+        "What its content past its left and right edges does: visible, hidden or clip (cut), scroll or auto (scrolls)."
+    ),
+    p!(
+        "overflowY",
+        Ty::Word(OVERFLOW),
+        "What its content past its top and bottom edges does: visible, hidden or clip (cut), scroll or auto (scrolls)."
+    ),
+    p!(
+        "scrollbarWidth",
+        Ty::Word(&["auto", "thin", "none"]),
+        "Its scroll bars: none hides them (it still scrolls)."
+    ),
     p!(
         "frame",
         Ty::Word(&[

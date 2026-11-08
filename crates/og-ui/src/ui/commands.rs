@@ -281,11 +281,7 @@ impl Ui {
             let n = &self.nodes[i];
             let world = n.world;
             let start = cmds.len();
-            let draw = self
-                .draws
-                .get(&i)
-                .or_else(|| self.part_draws.get(&i))
-                .cloned();
+            let draw = self.draw_of(i).cloned();
             let n = &self.nodes[i];
             if let Some(m) = self.world_marks(n.key) {
                 cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
@@ -301,6 +297,9 @@ impl Ui {
                 let mut out = d.enter(&theme, &placed(n));
                 if !marked(n) {
                     out.extend(d.strokes(&theme, &placed(n)));
+                }
+                if let Some(decor) = &n.decor {
+                    out.extend(decor.lines(&placed(n)));
                 }
                 out.into_iter().map(|c| (c, world)).collect()
             };
@@ -460,7 +459,7 @@ impl Ui {
                     cmds.extend(bars.into_iter().map(|c| (c, w)));
                 }
                 let w = self.nodes[j].world;
-                if let Some(d) = self.draws.get(&j).or_else(|| self.part_draws.get(&j)) {
+                if let Some(d) = self.draw_of(j) {
                     let at = placed(&self.nodes[j]);
                     let leave = if marked(&self.nodes[j]) {
                         d.leave(&theme, &at)

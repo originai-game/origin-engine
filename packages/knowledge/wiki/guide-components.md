@@ -24,6 +24,26 @@ What every kind takes: its box, layout, paint, motion and input.
 | `flex-wrap:` | `wrap \| nowrap` | A row breaks its children into lines. |
 | `background:` | `var(--<role>) \| #rrggbb[aa]` | Its fill. |
 | `border-radius:` | `<n>px` | Its corner radius, CSS px. |
+| `border-top-width:` | `<n>px` | Its top border's width, CSS px: room inside its box, as padding is. |
+| `border-top-style:` | `none \| hidden \| solid \| dashed \| dotted \| double \| groove \| ridge \| inset \| outset` | Its top border's style (none draws nothing and takes no room). |
+| `border-top-color:` | `var(--<role>) \| #rrggbb[aa]` | Its top border's colour (unset: its text colour). |
+| `border-right-width:` | `<n>px` | Its right border's width, CSS px: room inside its box, as padding is. |
+| `border-right-style:` | `none \| hidden \| solid \| dashed \| dotted \| double \| groove \| ridge \| inset \| outset` | Its right border's style (none draws nothing and takes no room). |
+| `border-right-color:` | `var(--<role>) \| #rrggbb[aa]` | Its right border's colour (unset: its text colour). |
+| `border-bottom-width:` | `<n>px` | Its bottom border's width, CSS px: room inside its box, as padding is. |
+| `border-bottom-style:` | `none \| hidden \| solid \| dashed \| dotted \| double \| groove \| ridge \| inset \| outset` | Its bottom border's style (none draws nothing and takes no room). |
+| `border-bottom-color:` | `var(--<role>) \| #rrggbb[aa]` | Its bottom border's colour (unset: its text colour). |
+| `border-left-width:` | `<n>px` | Its left border's width, CSS px: room inside its box, as padding is. |
+| `border-left-style:` | `none \| hidden \| solid \| dashed \| dotted \| double \| groove \| ridge \| inset \| outset` | Its left border's style (none draws nothing and takes no room). |
+| `border-left-color:` | `var(--<role>) \| #rrggbb[aa]` | Its left border's colour (unset: its text colour). |
+| `outline-width:` | `<n>px` | Its outline's width, CSS px, drawn outside its box and taking no room. |
+| `outline-style:` | `none \| auto \| solid \| dashed \| dotted \| double \| groove \| ridge \| inset \| outset` | Its outline's style; auto: the focus ring. |
+| `outline-color:` | `var(--<role>) \| #rrggbb[aa]` | Its outline's colour (unset: its text colour). |
+| `outline-offset:` | `<n>px` | How far, CSS px, its outline stands off its box. |
+| `box-shadow:` | `[inset] <x> <y> [<blur> [<spread>]] [<colour>], … \| none` | Its shadows, as CSS box-shadow: `[inset] <x> <y> [<blur> [<spread>]] [<colour>]`, comma-separated, the first on top. |
+| `overflow-x:` | `visible \| hidden \| clip \| scroll \| auto` | What its content past its left and right edges does: visible, hidden or clip (cut), scroll or auto (scrolls). |
+| `overflow-y:` | `visible \| hidden \| clip \| scroll \| auto` | What its content past its top and bottom edges does: visible, hidden or clip (cut), scroll or auto (scrolls). |
+| `scrollbar-width:` | `auto \| thin \| none` | Its scroll bars: none hides them (it still scrolls). |
 | `-og-frame:` | `panel \| card \| button \| button-hover \| button-pressed \| button-disabled \| field \| slot \| tooltip \| hud \| track \| fill` | The style frame its background takes. |
 | `aspect-ratio:` | `<number>` | Width over height (0: none). |
 | `interactive` | `bool` | It reports clicks (`on click`). |

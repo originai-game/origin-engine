@@ -24,6 +24,7 @@
 mod a11y;
 pub mod actions;
 pub mod bind;
+pub(crate) mod decor;
 pub mod doc;
 mod draw;
 mod draw_codec;

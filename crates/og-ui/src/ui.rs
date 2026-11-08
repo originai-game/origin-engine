@@ -516,6 +516,9 @@ pub struct Ui {
     /// What each part of this frame draws through the UI pass, by node
     /// (made at `end` from its dressing, or the tokens).
     pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// This frame's draws of elements with CSS box decorations: their
+    /// draw or dressing with the decorations over it.
+    pub(crate) decor_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
     /// Text a copy or cut took, for the host's clipboard ([`Ui::take_clipboard`]).
     pub(crate) clipboard: Option<String>,
     /// The keys of the text elements last painted with a selection.

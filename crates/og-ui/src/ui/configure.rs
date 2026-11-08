@@ -71,6 +71,7 @@ impl Ui {
             )),
             dress_set: false,
             part_draws: Default::default(),
+            decor_draws: Default::default(),
             clipboard: None,
             selected: Vec::new(),
             text_target: None,

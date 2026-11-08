@@ -4,6 +4,7 @@
 //! with its base string-table dependencies in an `og.UiDocument` blob.
 //! [`UiDocument::set_prop`] saves probe edits without rewriting other nodes.
 
+pub(crate) mod boxes;
 pub mod build;
 pub(crate) mod calc;
 pub mod catalogue;

@@ -47,6 +47,8 @@ enum Conv {
     /// A margin edge: `<n>px`, `<n>em` (of its own type step) or `0`, as
     /// px and em.
     Margin,
+    /// The CSS value as written, checked when it is read (`box-shadow`).
+    Raw,
     /// Written with its partner in one property (`translate: <x> <y>`,
     /// `scale: <x> <y>`, `-og-skew`, `grid-column`/`grid-row`,
     /// `grid-auto-flow`).
@@ -97,6 +99,26 @@ pub const STYLE: &[(&str, &str)] = &[
     ("direction", "flex-direction"),
     ("background", "background"),
     ("radius", "border-radius"),
+    ("borderTopWidth", "border-top-width"),
+    ("borderTopStyle", "border-top-style"),
+    ("borderTopColor", "border-top-color"),
+    ("borderRightWidth", "border-right-width"),
+    ("borderRightStyle", "border-right-style"),
+    ("borderRightColor", "border-right-color"),
+    ("borderBottomWidth", "border-bottom-width"),
+    ("borderBottomStyle", "border-bottom-style"),
+    ("borderBottomColor", "border-bottom-color"),
+    ("borderLeftWidth", "border-left-width"),
+    ("borderLeftStyle", "border-left-style"),
+    ("borderLeftColor", "border-left-color"),
+    ("outlineWidth", "outline-width"),
+    ("outlineStyle", "outline-style"),
+    ("outlineColor", "outline-color"),
+    ("outlineOffset", "outline-offset"),
+    ("boxShadow", "box-shadow"),
+    ("overflowX", "overflow-x"),
+    ("overflowY", "overflow-y"),
+    ("scrollbarWidth", "scrollbar-width"),
     ("frame", "-og-frame"),
     ("rive", "-og-frame"),
     ("backdrop", "-og-backdrop"),
@@ -167,9 +189,9 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "-og-control-size" => Some("size"),
         _ => None,
     };
-    let both: &[&str] = match name {
-        "margin" | "margin-block" => &["marginTop", "marginBottom"],
-        _ => &[],
+    let both: Vec<&'static str> = match name {
+        "margin" | "margin-block" => vec!["marginTop", "marginBottom"],
+        _ => super::boxes::longhands(name),
     };
     let target = match name {
         "grid-row" => "grid-column",
@@ -177,7 +199,7 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "min-height" | "max-height" => "height",
         _ => name,
     };
-    alias.into_iter().chain(both.iter().copied()).chain(
+    alias.into_iter().chain(both).chain(
         STYLE
             .iter()
             .filter_map(move |(prop, css)| (*css == target).then_some(*prop)),
@@ -188,6 +210,13 @@ fn conv(prop: &str) -> Conv {
     match prop {
         "width" | "height" => Conv::Size,
         "padding" => Conv::Insets,
+        p if p.starts_with("border") && p.ends_with("Width") => Conv::Len,
+        p if p.starts_with("border") && p.ends_with("Color") => Conv::Paint,
+        p if p.starts_with("border") && p.ends_with("Style") => Conv::Kebab,
+        "outlineWidth" | "outlineOffset" => Conv::Len,
+        "outlineColor" => Conv::Paint,
+        "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
+        "boxShadow" => Conv::Raw,
         "marginTop" | "marginBottom" => Conv::Margin,
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop" => Conv::Len,
         "aspect" | "opacity" | "z" | "scale" | "maxLines" => Conv::Num,
@@ -235,6 +264,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Size => "fit-content | stretch | <n>px | <n>% (min-/max- bounds)".into(),
         Conv::Insets => "1 to 4 lengths (top right bottom left)".into(),
         Conv::Margin => "<n>px | <n>em".into(),
+        Conv::Raw => "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into(),
         Conv::Bool(t, f) => format!("{t} | {f}"),
         Conv::Kebab => words
             .iter()
@@ -319,12 +349,6 @@ pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
         "right" => "write `inset-inline-end` (it mirrors right to left)",
         "font-size" | "font-weight" | "line-height" | "letter-spacing" => {
             "text takes a step of the style's type ramp: `font: var(--text-caption)`"
-        }
-        "box-shadow" | "border" | "border-color" | "border-width" | "outline" => {
-            "shadows and borders are the style's: name a part (`part frame`) or `-og-frame`, and dress it in the style pack"
-        }
-        "overflow" | "overflow-x" | "overflow-y" => {
-            "a scrolling element is `scroll Name {`; what clips is the style's"
         }
         "transform" => {
             "write each part as its own property: `translate: 0 -4px`, `scale: 1.05`, `rotate: 0.1rad`, `-og-skew`"
@@ -601,6 +625,7 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
         Conv::Var(ns) => Ok(format!("var(--{ns}-{})", kebab(&text_of(one()?)))),
         Conv::Str => Ok(quoted(&text_of(one()?))),
         Conv::Rive => Ok(format!("rive({})", quoted(&text_of(one()?)))),
+        Conv::Raw => Ok(text_of(one()?)),
         Conv::Ident => {
             let w = text_of(one()?);
             Ok(if is_ident(&w) { w } else { quoted(&w) })
@@ -1041,7 +1066,7 @@ fn want_var(t: &Tok, ns: &str) -> Result<String, String> {
     }
 }
 
-fn paint_vals(t: &[Tok]) -> Result<Vec<Value>, String> {
+pub(crate) fn paint_vals(t: &[Tok]) -> Result<Vec<Value>, String> {
     match t {
         [Tok::Hash(h)] => Ok(vec![Value::String(h.clone())]),
         [v @ Tok::Func(f, _)] if f == "var" => Ok(vec![
@@ -1347,6 +1372,14 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 e("marginBottom", margin_vals(bottom)?),
             ])
         }
+        n if super::boxes::longhands(n).len() > 1
+            || n == "box-shadow"
+            || n.ends_with("-width") && (n.starts_with("border-") || n == "outline-width")
+            || n.ends_with("-color") && (n.starts_with("border-") || n == "outline-color") =>
+        {
+            super::boxes::lower(n, value, &t)
+                .map(|parts| parts.into_iter().map(|(k, v)| e(k, v)).collect())
+        }
         "grid-column" | "grid-row" => {
             let (start, span) = grid_line(&t)?;
             let axis = if name == "grid-column" { 0 } else { 1 };
@@ -1477,7 +1510,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     _ => return Err("transform-origin: <x>% <y>%".into()),
                 },
                 Conv::Margin => margin_vals(&one(&t, name)?)?,
-                Conv::Size | Conv::Insets | Conv::Joint | Conv::Rive => {
+                Conv::Size | Conv::Insets | Conv::Joint | Conv::Rive | Conv::Raw => {
                     unreachable!("handled above")
                 }
             };

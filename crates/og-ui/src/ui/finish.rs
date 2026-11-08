@@ -801,6 +801,14 @@ impl Ui {
         let mut parts = self.orders.with(visit::feat::PART).to_vec();
         parts.extend(self.draws.keys().copied().filter(|&i| self.tree.has(i)));
         self.build_part_draws(&parts);
+        self.decor_draws.clear();
+        for k in 0..self.orders.with(visit::feat::DECOR).len() {
+            let i = self.orders.with(visit::feat::DECOR)[k];
+            if let Some(decor) = &self.nodes[i].decor {
+                let d = decor.over(self.draws.get(&i).or_else(|| self.part_draws.get(&i)));
+                self.decor_draws.insert(i, d);
+            }
+        }
         // Painted again where a node's drawing may have changed (every
         // node on a fresh frame).
         // The selection's ranges on its elements: those whose range

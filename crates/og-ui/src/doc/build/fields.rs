@@ -61,6 +61,107 @@ impl RenderFields {
 }
 
 impl Ui {
+    /// The CSS border, outline, shadows and overflow of an element, with
+    /// what they do to its box: a border's width pads it, an outline set
+    /// replaces the focus ring, a scrolling overflow scrolls it, and a
+    /// shadow takes its background under it.
+    fn box_decor(
+        &self,
+        r: &Resolved,
+        el: &mut Element,
+        kind: &str,
+    ) -> Option<crate::decor::BoxDecor> {
+        use crate::decor::{BoxDecor, Line, LineStyle, Shadow};
+        let theme = self.theme();
+        let current = r.color("color").unwrap_or(theme.palette.ink);
+        let mut d = BoxDecor::default();
+        for (k, side) in crate::doc::boxes::SIDES.iter().enumerate() {
+            let style = r
+                .str(&format!("border{side}Style"))
+                .and_then(LineStyle::from_css);
+            if let Some(style) = style {
+                let width = r.num(&format!("border{side}Width")).unwrap_or(3.0).max(0.0);
+                if width > 0.0 {
+                    d.borders[k] = Some(Line {
+                        width,
+                        style,
+                        color: r.color(&format!("border{side}Color")).unwrap_or(current),
+                    });
+                }
+            }
+        }
+        let w = |k: usize| d.borders[k].map_or(0.0, |b| b.width);
+        el.padding.top += w(0);
+        el.padding.right += w(1);
+        el.padding.bottom += w(2);
+        el.padding.left += w(3);
+        if let Some(style) = r.str("outlineStyle") {
+            // Any outline but `auto` is the element's own focus mark.
+            el.own_ring = style != "auto";
+            if let Some(style) = LineStyle::from_css(style) {
+                let width = r.num("outlineWidth").unwrap_or(3.0).max(0.0);
+                if width > 0.0 {
+                    d.outline = Some((
+                        Line {
+                            width,
+                            style,
+                            color: r.color("outlineColor").unwrap_or(current),
+                        },
+                        r.num("outlineOffset").unwrap_or(0.0),
+                    ));
+                }
+            }
+        }
+        if let Some(text) = r.str("boxShadow") {
+            for s in crate::doc::boxes::shadows(text).unwrap_or_default() {
+                let color = match s.color.as_deref() {
+                    None => Some(current),
+                    Some([og_core::ogt::Value::String(hex)]) => crate::style_file::parse_color(hex),
+                    Some([_, og_core::ogt::Value::Word(token)]) => theme.color(token),
+                    Some(_) => None,
+                };
+                if let Some(color) = color {
+                    d.shadows.push(Shadow {
+                        inset: s.inset,
+                        offset: s.offset,
+                        blur: s.blur,
+                        spread: s.spread,
+                        color,
+                    });
+                }
+            }
+            // Outer shadows go under the background: it is drawn with them.
+            if d.shadows.iter().any(|s| !s.inset) && el.part.is_none() && el.frame.is_none() {
+                d.background = el
+                    .background
+                    .take()
+                    .map(|c| crate::paint::Paint::Solid(crate::paint::ColorRef::Literal(c)));
+            }
+        }
+        // CSS Overflow 3: `visible` beside a scrolling or clipping axis
+        // computes to `auto`.
+        let (x, y) = (r.str("overflowX"), r.str("overflowY"));
+        if x.is_some() || y.is_some() {
+            let (mut x, mut y) = (x.unwrap_or("visible"), y.unwrap_or("visible"));
+            if x == "visible" && y != "visible" {
+                x = "auto";
+            }
+            if y == "visible" && x != "visible" {
+                y = "auto";
+            }
+            let scrolls = |a: &str| matches!(a, "auto" | "scroll");
+            if kind == "scroll" || schema::kind(kind).is_some_and(|k| k.container) {
+                el.scroll = scrolls(y);
+                el.scroll_x = scrolls(x);
+            }
+            d.clip = matches!(x, "hidden" | "clip") || matches!(y, "hidden" | "clip");
+        }
+        if r.str("scrollbarWidth") == Some("none") {
+            el.hide_bars = true;
+        }
+        (d != BoxDecor::default()).then_some(d)
+    }
+
     pub(super) fn apply_document_fields(&mut self, n: &DocNode, r: &Resolved, base: &RenderFields) {
         let i = base.index;
         self.nodes[i].el = base.element;
@@ -187,6 +288,16 @@ impl Ui {
                 el.block = initial == "box"
                     && el.direction == Direction::Column
                     && r.str("display") != Some("grid");
+                // A block-level box in a block's flow fills its width
+                // (CSS 2 §10.3.3: `width: auto`).
+                let parent = self.nodes[i].parent;
+                if base.kind == "box"
+                    && !r.has("width")
+                    && parent != crate::layout::NONE
+                    && self.nodes[parent].el.block
+                {
+                    el.width = Size::grow();
+                }
             }
         } else {
             for name in [
@@ -226,7 +337,9 @@ impl Ui {
                 el.width = r.size("width").unwrap_or(el.width);
             }
         }
+        let decor = self.box_decor(r, &mut el, base.kind);
         self.nodes[i].el = el;
+        self.nodes[i].decor = decor.map(Box::new);
         let mut props = Self::resolved_props(n, r);
         props.states = base.document_props.states.clone();
         props.state = base.document_props.state.clone();

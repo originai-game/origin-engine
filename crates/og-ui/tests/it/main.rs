@@ -6,6 +6,8 @@ mod gpu_tests;
 
 #[path = "../a11y.rs"]
 mod a11y;
+#[path = "../box_decor.rs"]
+mod box_decor;
 #[path = "../button_contrast.rs"]
 mod button_contrast;
 #[path = "../color_vision.rs"]

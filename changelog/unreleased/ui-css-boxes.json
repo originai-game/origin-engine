@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "UI documents: border, outline and box-shadow",
+      "summary": "Standard CSS borders and outlines on any element: the border and outline shorthands and their longhands (per-side width, style and colour, outline-offset), styles none, hidden, solid, dashed, dotted, double, groove, ridge, inset and outset, and currentColor. A border pads the box (border-box); an outline takes no room, so :focus-visible { outline: … } replaces the core focus ring. box-shadow takes a comma list of [inset] x y [blur [spread]] [colour], outer shadows under the background and inset ones over it."
+    },
+    {
+      "member": "UI documents: overflow and scrollbar-width",
+      "summary": "overflow, overflow-x and overflow-y take visible, hidden, clip, scroll and auto as CSS Overflow 3 defines them (visible beside a non-visible axis computes to auto); auto and scroll scroll that axis, hidden and clip clip the children. scrollbar-width: none hides a scrolling box's bars."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI documents: block width",
+      "summary": "A display: block box with an auto width fills its block parent's content width, as in CSS block flow, instead of shrinking to its content."
+    }
+  ]
+}

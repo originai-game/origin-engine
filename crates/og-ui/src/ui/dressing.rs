@@ -412,6 +412,15 @@ impl Ui {
     /// The parts of this frame drawn through the UI pass: every element
     /// with a part (or a version 1 frame) whose dressing has no atlas art,
     /// its draw made from its dressing or the tokens.
+    /// What element `i` draws with this frame: its decorated draw, its own
+    /// draw, or its part's dressing.
+    pub(crate) fn draw_of(&self, i: usize) -> Option<&crate::paint::ElementDraw> {
+        self.decor_draws
+            .get(&i)
+            .or_else(|| self.draws.get(&i))
+            .or_else(|| self.part_draws.get(&i))
+    }
+
     pub(super) fn build_part_draws(&mut self, order: &[usize]) {
         self.part_draws.clear();
         for &i in order {

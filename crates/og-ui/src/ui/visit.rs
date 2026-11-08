@@ -42,7 +42,9 @@ pub(crate) mod feat {
     pub const WORLD: u32 = 1 << 15;
     /// Rich text: painted afresh every frame.
     pub const RICH: u32 = 1 << 16;
-    pub const COUNT: usize = 17;
+    /// CSS box decorations (`Ui::build_part_draws` merges them).
+    pub const DECOR: u32 = 1 << 17;
+    pub const COUNT: usize = 18;
 }
 
 /// The features of node `n`.
@@ -107,6 +109,9 @@ pub(crate) fn features(n: &Node) -> u32 {
     }
     if matches!(n.content, Content::Rich(_)) {
         f |= feat::RICH;
+    }
+    if n.decor.is_some() {
+        f |= feat::DECOR;
     }
     f
 }

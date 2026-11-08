@@ -413,6 +413,9 @@ pub(crate) struct Node {
     pub locked: bool,
     /// Drawn after the background.
     pub shapes: Vec<Shape>,
+    /// A document's CSS border, outline, shadows and clip
+    /// ([`crate::decor::BoxDecor`]), painted over its draw.
+    pub decor: Option<Box<crate::decor::BoxDecor>>,
     /// Widget data its children read while they are built (a list's row
     /// height, a grid's cell size, the filler after the rows in view);
     /// never drawn, so a change to it repaints nothing.
@@ -538,6 +541,7 @@ impl Node {
             scope: false,
             locked: false,
             shapes: Vec::new(),
+            decor: None,
             aux: [0.0; 3],
             heading: false,
             a11y: crate::a11y::A11y::default(),

@@ -1,0 +1,330 @@
+//! CSS box decorations in documents: `border` and its longhands,
+//! `outline`, `box-shadow`, `overflow` and `scrollbar-width`, built both
+//! ways a document is (immediate and mounted).
+//!
+//! Ways these could fail, each covered below:
+//! - a border that takes no room (content under it), a side's width read
+//!   for another side, a width counted with `border-style: none`, an
+//!   outline that moves layout → `borders_pad_the_box_and_outlines_take_no_room`
+//! - a border drawn at the wrong edge or colour, `currentColor` not the
+//!   text colour, an outline not grown by its offset, a shadow drawn over
+//!   the background instead of under it, the first shadow not on top, a
+//!   bordered `<button>` losing its dressing →
+//!   `decorations_paint_in_css_order_over_any_draw`
+//! - a `<div>` that shrinks to its content instead of filling its block
+//!   container → `borders_pad_the_box_and_outlines_take_no_room`
+//! - `overflow: auto` not scrolling a box, or the shorthand's axes swapped
+//!   → `overflow_scrolls_and_clips`
+//! - a malformed value accepted → `bad_decorations_are_refused`
+
+use crate::html_text::both;
+use og_core::glam::Vec2;
+use og_render::{UiAlign, UiMode};
+use og_ui::*;
+
+fn lin(hex: &str) -> [f32; 4] {
+    og_ui::style_file::parse_color(hex).unwrap().linear()
+}
+
+fn close(a: [f32; 4], b: [f32; 4]) -> bool {
+    a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-3)
+}
+
+#[test]
+fn borders_pad_the_box_and_outlines_take_no_room() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="A"><div id="AK"></div></div>
+  <div id="B"><div id="BK"></div></div>
+  <div id="C"><div id="CK"></div></div>
+  <div id="D"><div id="DK"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Root div div { width: 10px; height: 10px; }
+#A { border: 4px solid #ff0000; padding: 6px; }
+#B { border-top: 2px solid; border-left: thick dashed var(--accent); }
+#C { outline: 3px solid; outline-offset: 2px; }
+#D { border-width: 9px; }
+</style>"#;
+    both(text, &[], |d| {
+        let off = |id: &str, kid: &str| {
+            let (a, k) = (d.get(id), d.get(kid));
+            (k.x - a.x, k.y - a.y, a.height)
+        };
+        assert_eq!(off("A", "AK"), (10.0, 10.0, 30.0));
+        // A block box fills its block container's width (width: auto),
+        // its border and padding inside it.
+        assert_eq!(d.get("A").width, 400.0);
+        // thick is 5px; only the top and left sides have a style.
+        assert_eq!(off("B", "BK"), (5.0, 2.0, 12.0));
+        assert_eq!(off("C", "CK"), (0.0, 0.0, 10.0));
+        // A width without a style draws nothing and takes no room.
+        assert_eq!(off("D", "DK"), (0.0, 0.0, 10.0));
+    });
+}
+
+/// Element `id`'s paint commands from the last frame, in order: those whose
+/// box or clip lies on its rectangle.
+fn shapes(ui: &Ui) -> Vec<og_render::UiShape> {
+    ui.frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Shape { shape, .. } => Some((**shape).clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn decorations_paint_in_css_order_over_any_draw() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="A"></div>
+  <p id="C">C</p>
+  <div id="S"></div>
+  <button id="Btn">Go</button>
+  <div id="G"></div>
+</div></div>
+<style>
+#Root { width: 400px; gap: 20px; }
+#G { width: 40px; height: 20px; border: 4px groove #808080; }
+#A { width: 50px; height: 30px; border: 4px solid #ff0000; }
+#C { margin: 0; width: 40px; height: 20px; color: #00ff00; outline: 3px dashed; outline-offset: 2px; }
+#S { width: 40px; height: 40px; background: #3366ff; box-shadow: 0 4px 12px #000000, inset 0 0 0 2px #ffffff; }
+#Btn { border: 2px solid #ffff00; }
+</style>"#;
+    both(text, &[], |d| {
+        let s = shapes(&d.ui);
+        let at = |id: &str| {
+            let e = d.get(id);
+            Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0)
+        };
+        let stroke = |sh: &og_render::UiShape| match sh.mode {
+            UiMode::Stroke(st) => Some(st),
+            _ => None,
+        };
+        // A: a 4px red line inside its box.
+        let a = s
+            .iter()
+            .find(|x| x.center == at("A") && stroke(x).is_some_and(|st| st.width == 4.0))
+            .expect("A's border");
+        assert_eq!(stroke(a).unwrap().align, UiAlign::Inside);
+        assert_eq!(a.half, Vec2::new(25.0, 15.0));
+        assert!(matches!(a.paint, og_render::UiPaint::Solid(c) if close(c, lin("#ff0000"))));
+        // C: its outline outside a box grown by the offset, in its text
+        // colour (currentColor), dashed.
+        let c = s
+            .iter()
+            .find(|x| x.center == at("C") && stroke(x).is_some_and(|st| st.width == 3.0))
+            .expect("C's outline");
+        let st = stroke(c).unwrap();
+        assert_eq!((st.align, st.dash), (UiAlign::Outside, [9.0, 9.0]));
+        assert_eq!(c.half, Vec2::new(22.0, 12.0));
+        assert!(matches!(c.paint, og_render::UiPaint::Solid(k) if close(k, lin("#00ff00"))));
+        // S: outer shadow, then its background, then the inset shadow.
+        let mine: Vec<&og_render::UiShape> = s.iter().filter(|x| x.center == at("S")).collect();
+        let shadow = mine
+            .iter()
+            .position(|x| matches!(x.mode, UiMode::Shadow { offset, blur, .. } if offset == Vec2::new(0.0, 4.0) && blur == 12.0))
+            .expect("S's drop shadow");
+        let fill = mine
+            .iter()
+            .position(|x| {
+                matches!(x.mode, UiMode::Fill)
+                    && matches!(x.paint, og_render::UiPaint::Solid(k) if close(k, lin("#3366ff")))
+            })
+            .expect("S's background, drawn with its shadows");
+        let inset = mine
+            .iter()
+            .position(|x| matches!(x.mode, UiMode::InnerShadow { spread, .. } if spread == 2.0))
+            .expect("S's inset shadow");
+        assert!(shadow < fill && fill < inset, "{shadow} {fill} {inset}");
+        // The button keeps its dressed plate under its border.
+        let btn: Vec<&og_render::UiShape> = s.iter().filter(|x| x.center == at("Btn")).collect();
+        assert!(
+            btn.iter()
+                .any(|x| stroke(x).is_some_and(|st| st.width == 2.0))
+        );
+        assert!(
+            btn.iter().any(|x| matches!(x.mode, UiMode::Fill))
+                || d.ui.frame().items.iter().any(|i| matches!(&i.cmd, DrawCmd::Quad { rect, .. } if rect.width == d.get("Btn").width)),
+            "the button's own plate"
+        );
+        // G: a groove is two half strips a side, the outer half of the top
+        // dark and its inner half light, the bottom the reverse.
+        let g = d.get("G");
+        let quads: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| match &i.cmd {
+                    DrawCmd::Quad { rect, color, .. } => Some((*rect, *color)),
+                    _ => None,
+                })
+                .collect();
+        let quad = |x: f32, y: f32, w: f32, h: f32| {
+            quads
+                .iter()
+                .find(|(r, _)| (r.x, r.y, r.width, r.height) == (g.x + x, g.y + y, w, h))
+                .map(|(_, c)| *c)
+                .unwrap_or_else(|| panic!("G's strip at {x},{y} {w}x{h} in {quads:?}"))
+        };
+        let (light, dark) = (lin("#808080"), lin("#404040"));
+        assert!(close(quad(0.0, 0.0, 40.0, 2.0), dark), "top outer half");
+        assert!(close(quad(0.0, 2.0, 40.0, 2.0), light), "top inner half");
+        assert!(
+            close(quad(0.0, 18.0, 40.0, 2.0), light),
+            "bottom outer half"
+        );
+        assert!(close(quad(0.0, 16.0, 40.0, 2.0), dark), "bottom inner half");
+    });
+}
+
+#[test]
+fn overflow_scrolls_and_clips() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Box"><div id="K1"></div><div id="K2"></div><div id="K3"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Box { height: 50px; overflow: hidden auto; scrollbar-width: none; }
+#Box div { height: 40px; }
+</style>"#;
+    both(text, &[], |d| {
+        let b = d.get("Box");
+        for wheel in [Vec2::new(0.0, 30.0), Vec2::new(30.0, 0.0)] {
+            d.step(InputFrame {
+                wheel,
+                ..InputFrame::hover(b.x + 10.0, b.y + 10.0)
+            });
+            for _ in 0..40 {
+                d.step(InputFrame::hover(b.x + 10.0, b.y + 10.0));
+            }
+        }
+        // overflow-y auto scrolls; overflow-x hidden does not.
+        let s = d.ui.scroll_state(&b.path).expect("a scroll container");
+        assert_eq!((s.offset_x, s.offset_y), (0.0, 30.0));
+        assert_eq!((s.view_height, s.content_height), (50.0, 120.0));
+    });
+}
+
+#[test]
+fn bad_decorations_are_refused() {
+    let err = |body: &str| {
+        UiDocument::parse(
+            "ui/t.svelte",
+            &format!("<meta name=\"component\" content=\"t\"><div id=\"A\"></div><style>#A {{ {body} }}</style>"),
+        )
+        .unwrap_err()
+        .join("\n")
+    };
+    assert!(err("border: 2px wavy red").contains("not a border width, style"));
+    assert!(err("box-shadow: 4px").contains("two to four lengths"));
+    assert!(err("box-shadow: 0 0 -2px #000").contains("blur is not negative"));
+    assert!(err("overflow: sideways").contains("not an overflow"));
+    assert!(err("outline: 1px hidden").contains("hidden"));
+}
+
+const PAGE: &str = r#"<meta name="component" content="t">
+<main id="Page">
+  <h2 i18n="h">Box decorations</h2>
+  <div class="grid">
+    <div class="card solid"><p i18n="a">Solid</p></div>
+    <div class="card dashed"><p i18n="b">Dashed</p></div>
+    <div class="card dotted"><p i18n="c">Dotted</p></div>
+    <div class="card double"><p i18n="d">Double</p></div>
+    <div class="card inset"><p i18n="e">Inset</p></div>
+    <div class="card groove"><p i18n="k">Groove</p></div>
+    <div class="card sides"><p i18n="f">Sides</p></div>
+    <div class="card raised"><p i18n="g">Shadow</p></div>
+    <div class="card outlined"><p i18n="h">Outline</p></div>
+    <div class="card clipped"><div class="spill"></div></div>
+  </div>
+  <button class="go" i18n="go">Continue</button>
+</main>
+<style>
+main { width: 100%; height: 100%; padding: 24px; gap: 16px; background: #4a5060; }
+.grid { display: grid; grid-template-columns: 110px 110px 110px; gap: 24px; }
+.card { height: 64px; padding: 8px; background: var(--panel); border-radius: 10px; }
+.card p { margin: 0; }
+.solid { border: 2px solid var(--accent); }
+.dashed { border: 3px dashed var(--danger); }
+.dotted { border: 2px dotted; }
+.double { border: 6px double var(--accent); }
+.inset { border: 4px inset var(--control-strong); border-radius: 0; }
+.groove { border: 6px groove var(--control-strong); border-radius: 0; }
+.sides { border-top: 6px solid var(--accent); border-left: 2px solid var(--danger); border-radius: 0; }
+.raised { box-shadow: 0 6px 16px #000000aa, inset 0 0 0 1px #ffffff33; }
+.outlined { outline: 2px solid var(--accent); outline-offset: 4px; }
+.clipped { overflow: hidden; }
+.spill { width: 160px; height: 90px; background: var(--danger); }
+.go { border: 2px solid var(--accent); }
+@media (width < 600px) { .grid { grid-template-columns: 110px 110px; } }
+</style>"#;
+
+#[test]
+#[ignore = "requires GPU"]
+fn box_decor_matches_its_reference_frames() {
+    use crate::support::*;
+    use og_render::*;
+    for (width, height) in [(1280u32, 720u32), (390, 844)] {
+        let mut scene = RenderScene::new();
+        let font = add_test_font(&mut scene);
+        let mut ui = ui_with_font(font);
+        ui.define_document(UiDocument::parse("ui/t.svelte", PAGE).unwrap());
+        ui.mount_document(
+            og_ui::reactive::SourceId::new("test", "t"),
+            "t",
+            Default::default(),
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap();
+        let vp = Viewport::new(width as f32, height as f32);
+        for _ in 0..3 {
+            ui.begin(InputFrame::default(), vp);
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
+            ui.end();
+        }
+        let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        scene.overlay = Some(overlay);
+        let bg = ui.theme().palette.backdrop.linear();
+        scene.environment.background =
+            Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
+        scene.post.tonemap = Tonemap::None;
+        let mut renderer = Renderer::new_blocking(&RenderDesc {
+            width,
+            height,
+            ..Default::default()
+        })
+        .expect("a headless adapter");
+        let stats = renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+        assert_eq!(stats.missing_glyphs, 0);
+        let image = renderer.read_offscreen().unwrap();
+        let name = format!("box-decor-{width}.png");
+        image::save_buffer(
+            out_dir().join(&name),
+            &image.pixels,
+            width,
+            height,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("references/metal")
+            .join(&name);
+        if std::env::var_os("OG_UI_CAPTURE").is_some() {
+            record_reference(&own, width, height, &image.pixels);
+        }
+        let expected = image::open(&own)
+            .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", own.display()))
+            .to_rgba8();
+        let (rmse, _) = compare(&image.pixels, expected.as_raw(), renderer.info(), &own)
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        println!("{name}: RMSE {rmse:.6}");
+    }
+}

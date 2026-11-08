@@ -1312,9 +1312,7 @@ impl Ui {
         // children to its shape (a map's view larger than its frame draws
         // only inside the frame).
         let clips = |j: usize| -> bool {
-            self.draws
-                .get(&j)
-                .or_else(|| self.part_draws.get(&j))
+            self.draw_of(j)
                 .is_some_and(|d| d.clip == crate::paint::Clip::Shape)
         };
         // Each node's is worked out once: the pairs below ask for the same

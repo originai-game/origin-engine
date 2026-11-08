@@ -446,11 +446,7 @@ impl Ui {
                         // note 3; r5 on cartoon's numerals). One hard drop, no
                         // more than 6 % of the size off (at least a pixel), so
                         // a badge's x3 keeps a tight shadow, not a second print.
-                        let own = self
-                            .draws
-                            .get(&i)
-                            .or_else(|| self.part_draws.get(&i))
-                            .is_some_and(|d| d.text.is_some());
+                        let own = self.draw_of(i).is_some_and(|d| d.text.is_some());
                         // A pixel face on a control's plate (a button, a tab,
                         // a chip) or on a shape its parent fills itself (a
                         // coin, a gem) takes no drop: a whole font pixel of it
