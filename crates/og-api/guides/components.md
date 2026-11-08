@@ -14,6 +14,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `width:` | `fit-content \| stretch \| <n>px \| <n>% (min-/max- bounds)` | Its width (fit by default). |
 | `height:` | `fit-content \| stretch \| <n>px \| <n>% (min-/max- bounds)` | Its height (fit by default). |
 | `padding:` | `1 to 4 lengths (top right bottom left)` | Space inside its edges, CSS px. |
+| `margin-top:` | `<n>px \| <n>em` | Space outside its top edge: CSS px and em of its type step. Adjacent block margins collapse. |
+| `margin-bottom:` | `<n>px \| <n>em` | Space outside its bottom edge: CSS px and em of its type step. Adjacent block margins collapse. |
 | `gap:` | `<n>px` | Space between its children, CSS px. |
 | `justify-content:` | `start \| center \| end \| space-between` | Where children sit along the main axis. |
 | `align-items:` | `start \| center \| end \| stretch \| baseline` | Where children sit across it. |

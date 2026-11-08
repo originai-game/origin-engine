@@ -407,8 +407,9 @@ impl Ui {
         let step = r
             .str("step")
             .and_then(|name| crate::style_file::ramp_step(&mut ramp, name).copied());
+        let em = step.map_or(self.theme.type_ramp.body.size, |s| s.size);
         let n = &mut self.nodes[i];
-        n.el = Self::box_of(&r, n.el);
+        n.el = Self::box_of(&r, n.el, em);
         if let Some(x) = r.num("x") {
             n.props.transform.x = x;
         }
@@ -646,8 +647,26 @@ impl Ui {
         r
     }
 
-    /// The box of an element from its props, over `base`.
-    fn box_of(r: &Resolved, mut el: Element) -> Element {
+    /// The size of an em for `r`'s element: its type step's, else the body's.
+    fn em_of(&self, r: &Resolved) -> f32 {
+        let mut ramp = self.theme.type_ramp;
+        let body = ramp.body.size;
+        r.str("step")
+            .and_then(|name| crate::style_file::ramp_step(&mut ramp, name))
+            .map_or(body, |s| s.size)
+    }
+
+    /// The box of an element from its props, over `base`; `em` sizes its
+    /// em margins.
+    fn box_of(r: &Resolved, mut el: Element, em: f32) -> Element {
+        for (name, edge) in [
+            ("marginTop", &mut el.margin_top),
+            ("marginBottom", &mut el.margin_bottom),
+        ] {
+            if let Some([px, ems]) = r.nums(name).and_then(|n| <&[f32; 2]>::try_from(n).ok()) {
+                *edge = px + ems * em;
+            }
+        }
         if let Some(s) = r.size("width") {
             el.width = s;
         }

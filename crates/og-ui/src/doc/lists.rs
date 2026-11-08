@@ -15,7 +15,8 @@ use super::variables;
 use serde_json::Value;
 
 /// The user-agent rules HTML's stylesheet gives these elements (and the
-/// headings' type steps), cascaded before every author rule.
+/// headings' type steps), cascaded before every author rule: list
+/// indents and markers, and the block margins (`margin: 0` resets them).
 pub(super) const UA_CSS: &str = "
 ul, ol { padding: 0 0 0 40px; }
 ul { --og-list-style-type: disc; }
@@ -26,12 +27,14 @@ li {
   -og-marker-type: var(--og-list-style-type, disc);
   -og-marker-position: var(--og-list-style-position, outside);
 }
-h1 { font: var(--text-xl3); }
-h2 { font: var(--text-xl); }
-h3 { font: var(--text-lg); }
-h4 { font: var(--text-body); }
-h5 { font: var(--text-sm); }
-h6 { font: var(--text-xs); }
+p, ul, ol { margin-block: 1em; }
+ul ul, ul ol, ol ul, ol ol { margin-block: 0; }
+h1 { font: var(--text-xl3); margin-block: 0.67em; }
+h2 { font: var(--text-xl); margin-block: 0.83em; }
+h3 { font: var(--text-lg); margin-block: 1em; }
+h4 { font: var(--text-body); margin-block: 1.33em; }
+h5 { font: var(--text-sm); margin-block: 1.67em; }
+h6 { font: var(--text-xs); margin-block: 2.33em; }
 ";
 
 const TYPES: [&str; 9] = [

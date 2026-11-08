@@ -162,8 +162,9 @@ impl Ui {
         // Widget-owned sizing is established above; document box overrides
         // replace their previous values, including when a declaration vanishes.
         let mut el = self.nodes[i].el;
+        let em = self.em_of(r);
         if schema::kind(base.kind).is_some_and(|kind| kind.container) {
-            el = Self::box_of(r, el);
+            el = Self::box_of(r, el, em);
             if !matches!(base.kind, "panel" | "scroll" | "list" | "cells") {
                 // A box is a column (CSS block), or a row as `display: flex`.
                 let initial = match (base.kind, r.str("display")) {
@@ -175,11 +176,17 @@ impl Ui {
                     "row" => Direction::Row,
                     _ => Direction::Column,
                 };
+                // A `display: block` box flows its children as CSS blocks.
+                el.block = initial == "box"
+                    && el.direction == Direction::Column
+                    && r.str("display") != Some("grid");
             }
         } else {
             for name in [
                 "height",
                 "padding",
+                "marginTop",
+                "marginBottom",
                 "gap",
                 "align",
                 "cross",
@@ -204,6 +211,7 @@ impl Ui {
                             ..Default::default()
                         },
                         el,
+                        em,
                     );
                 }
             }

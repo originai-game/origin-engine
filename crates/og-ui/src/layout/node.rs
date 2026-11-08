@@ -457,6 +457,13 @@ pub(crate) struct Node {
     pub x: f32,
     pub y: f32,
     pub content_h: f32,
+    /// Its outer top and bottom margins after collapsing (CSS 2 §8.3.1):
+    /// each the largest positive and the most negative margin of the set
+    /// that adjoins that edge, its own and those collapsed through it.
+    pub margin_sets: [(f32, f32); 2],
+    /// Its first child's top and its last child's bottom margin collapse
+    /// through its own edge: inside, that edge has none.
+    pub collapse_in: [bool; 2],
     /// The content's width (its children's extent), for horizontal scrolling.
     pub content_w: f32,
     pub lines: Vec<Line>,
@@ -562,6 +569,8 @@ impl Node {
             layout_size: [0.0; 2],
             layout_offset: [0.0; 2],
             layout_step: None,
+            margin_sets: [(0.0, 0.0); 2],
+            collapse_in: [false; 2],
             laid_xy: [f32::NAN; 2],
             laid_rect: Rect::default(),
             laid_clip: Rect::default(),
@@ -594,6 +603,8 @@ impl Node {
         self.rows.clone_from(&previous.rows);
         self.grid.clone_from(&previous.grid);
         self.layout_step = previous.layout_step;
+        self.margin_sets = previous.margin_sets;
+        self.collapse_in = previous.collapse_in;
     }
 
     /// The scroll range: how far the content overflows the inner height.

@@ -108,6 +108,101 @@ fn gaps(gap: f32, n: usize) -> f32 {
     gap * n.saturating_sub(1) as f32
 }
 
+/// A collapsing margin set (CSS 2 §8.3.1): its largest positive and its
+/// most negative margin; it spans their sum.
+type MarginSet = (f32, f32);
+
+fn margin_set(m: f32) -> MarginSet {
+    (m.max(0.0), m.min(0.0))
+}
+
+fn joined(a: MarginSet, b: MarginSet) -> MarginSet {
+    (a.0.max(b.0), a.1.min(b.1))
+}
+
+fn span(m: MarginSet) -> f32 {
+    m.0 + m.1
+}
+
+/// Node `i`'s collapsed outer margins, and whether its first child's top
+/// and last child's bottom margin collapse through its own edges: it is a
+/// CSS block in a block parent's flow (so no new formatting context), with
+/// no padding at that edge, and at the bottom no set height.
+fn collapse_margins(nodes: &mut [Node], i: usize) {
+    let n = &nodes[i];
+    let p = n.parent;
+    let in_block_flow = p != NONE
+        && p < nodes.len()
+        && nodes[p].el.block
+        && nodes[p].props.layout == LayoutMode::Flex
+        && nodes[p].children.contains(&i);
+    let through = in_block_flow
+        && n.el.block
+        && n.props.layout == LayoutMode::Flex
+        && matches!(n.content, Content::None)
+        && !n.el.scroll
+        && !n.el.scroll_x
+        && !n.children.is_empty();
+    let collapse_in = [
+        through && n.el.padding.top == 0.0,
+        through && n.el.padding.bottom == 0.0 && matches!(n.el.height, Size::Fit { .. }),
+    ];
+    let mut sets = [margin_set(n.el.margin_top), margin_set(n.el.margin_bottom)];
+    if collapse_in[0] {
+        sets[0] = joined(sets[0], nodes[n.children[0]].margin_sets[0]);
+    }
+    if collapse_in[1] {
+        let last = *n.children.last().expect("a child");
+        sets[1] = joined(sets[1], nodes[last].margin_sets[1]);
+    }
+    nodes[i].margin_sets = sets;
+    nodes[i].collapse_in = collapse_in;
+}
+
+/// The room a column's margins and gaps take around its children: before
+/// the first, between each pair, and after the last. A block's adjacent
+/// margins collapse; a flex column's add.
+fn column_spacing(nodes: &[Node], i: usize) -> (f32, Vec<f32>, f32) {
+    let n = &nodes[i];
+    let kids = &n.children;
+    let (Some(&first), Some(&last)) = (kids.first(), kids.last()) else {
+        return (0.0, Vec::new(), 0.0);
+    };
+    let between = kids
+        .windows(2)
+        .map(|w| {
+            let (a, b) = (nodes[w[0]].margin_sets[1], nodes[w[1]].margin_sets[0]);
+            n.el.gap
+                + if n.el.block {
+                    span(joined(a, b))
+                } else {
+                    span(a) + span(b)
+                }
+        })
+        .collect();
+    let lead = if n.collapse_in[0] {
+        0.0
+    } else {
+        span(nodes[first].margin_sets[0])
+    };
+    let trail = if n.collapse_in[1] {
+        0.0
+    } else {
+        span(nodes[last].margin_sets[1])
+    };
+    (lead, between, trail)
+}
+
+fn column_room(nodes: &[Node], i: usize) -> f32 {
+    let (lead, between, trail) = column_spacing(nodes, i);
+    lead + between.iter().sum::<f32>() + trail
+}
+
+/// The room a child's own vertical margins take across a row.
+fn cross_margins(n: &Node) -> f32 {
+    span(n.margin_sets[0]) + span(n.margin_sets[1])
+}
+
 /// A text's preferred width (its widest line) and the least it can take:
 /// its ellipsis, its longest word when it wraps, else all of it.
 fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
@@ -443,6 +538,7 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
 }
 
 pub(super) fn size_h(nodes: &mut [Node], i: usize) {
+    collapse_margins(nodes, i);
     let n = &nodes[i];
     let (pref, min) = match &n.content {
         Content::None if n.props.layout == LayoutMode::Stack => {
@@ -463,22 +559,28 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
         }
         Content::Image { .. } => (0.0, 0.0),
         Content::None => {
-            let k = n.children.len();
             let kids = || n.children.iter().map(|&c| &nodes[c]);
             match n.el.direction {
-                Direction::Column => (
-                    kids().map(|c| c.pref_h).sum::<f32>() + gaps(n.el.gap, k),
-                    kids().map(|c| c.min_h).sum::<f32>() + gaps(n.el.gap, k),
-                ),
+                Direction::Column => {
+                    let room = column_room(nodes, i);
+                    (
+                        kids().map(|c| c.pref_h).sum::<f32>() + room,
+                        kids().map(|c| c.min_h).sum::<f32>() + room,
+                    )
+                }
                 Direction::Row if !n.el.wrap || n.rows.is_empty() => (
-                    kids().map(|c| c.pref_h).fold(0.0, f32::max),
-                    kids().map(|c| c.min_h).fold(0.0, f32::max),
+                    kids()
+                        .map(|c| c.pref_h + cross_margins(c))
+                        .fold(0.0, f32::max),
+                    kids()
+                        .map(|c| c.min_h + cross_margins(c))
+                        .fold(0.0, f32::max),
                 ),
                 Direction::Row => {
                     let line_h = |s: usize, e: usize, f: &dyn Fn(&Node) -> f32| {
                         n.children[s..e]
                             .iter()
-                            .map(|&c| f(&nodes[c]))
+                            .map(|&c| f(&nodes[c]) + cross_margins(&nodes[c]))
                             .fold(0.0, f32::max)
                     };
                     let rows = n.rows.len();
@@ -563,7 +665,7 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
     }
     match el.direction {
         Direction::Column => {
-            let avail = inner - gaps(el.gap, kids.len());
+            let avail = inner - column_room(nodes, i);
             let sizes = main_sizes(nodes, &kids, false, inner, avail, !el.scroll);
             for (&c, h) in kids.iter().zip(sizes) {
                 nodes[c].h = h;
@@ -576,7 +678,7 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
                     n.el.height,
                     n.pref_h,
                     n.min_h,
-                    inner,
+                    (inner - cross_margins(n)).max(0.0),
                     el.cross == Cross::Stretch,
                 );
                 // A Fit child keeps its content height across a row.
@@ -591,9 +693,13 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
             let rows = nodes[i].rows.clone();
             for (s, e) in rows {
                 let line = &kids[s..e];
-                let line_h = line.iter().map(|&c| nodes[c].pref_h).fold(0.0, f32::max);
+                let line_h = line
+                    .iter()
+                    .map(|&c| nodes[c].pref_h + cross_margins(&nodes[c]))
+                    .fold(0.0, f32::max);
                 for &c in line {
                     let n = &nodes[c];
+                    let line_h = line_h - cross_margins(n);
                     let h = match n.el.height {
                         Size::Fixed(v) => v,
                         Size::Percent(p) => p * inner,
@@ -771,33 +877,40 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
                 }
                 let (start, between) = main_offsets(el.align, free, k);
                 let room = if el.wrap {
-                    line.iter().map(|&c| nodes[c].h).fold(0.0, f32::max)
+                    line.iter()
+                        .map(|&c| nodes[c].h + cross_margins(&nodes[c]))
+                        .fold(0.0, f32::max)
                 } else {
                     inner_h
                 };
                 let mut x = x0 + start;
                 for &c in line {
                     let (w, h) = (nodes[c].w, nodes[c].h);
+                    let (top, around) = (span(nodes[c].margin_sets[0]), cross_margins(&nodes[c]));
                     nodes[c].x = x;
-                    nodes[c].y = y0 + line_y + cross_offset(el.cross, room, h);
+                    nodes[c].y = y0 + line_y + top + cross_offset(el.cross, room - around, h);
                     x += w + el.gap + between;
                 }
                 line_y += room + el.gap;
             }
             Direction::Column => {
-                let used: f32 = line.iter().map(|&c| nodes[c].h).sum::<f32>() + gaps(el.gap, k);
+                let (lead, spacing, trail) = column_spacing(nodes, i);
+                let used: f32 = line.iter().map(|&c| nodes[c].h).sum::<f32>()
+                    + lead
+                    + spacing.iter().sum::<f32>()
+                    + trail;
                 let mut free = inner_h - used;
                 if el.scroll {
                     free = free.max(0.0);
                 }
                 let (start, between) = main_offsets(el.align, free, k);
-                let mut y = y0 + start;
-                for &c in line {
+                let mut y = y0 + start + lead;
+                for (j, &c) in line.iter().enumerate() {
                     let (w, h) = (nodes[c].w, nodes[c].h);
                     nodes[c].y = y;
                     nodes[c].x = x0
                         + cross_offset(el.cross, inner_w.max(if el.scroll_x { w } else { 0.0 }), w);
-                    y += h + el.gap + between;
+                    y += h + spacing.get(j).copied().unwrap_or(0.0) + between;
                 }
             }
         }

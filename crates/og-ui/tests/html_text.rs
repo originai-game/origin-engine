@@ -18,6 +18,11 @@
 //! - an `<a href>` not answering a click with a `link` event of its href, or
 //!   an inline `<a>` claiming the whole paragraph →
 //!   `links_send_their_href`
+//! - HTML's UA block margins missing, or vertical margins that add where
+//!   CSS 2 collapses them (adjacent siblings, a parent with its first or
+//!   last child), or collapse through padding, a set height or a flex
+//!   column, or stale after a keyed insert →
+//!   `block_margins_follow_the_ua_stylesheet_and_collapse`
 //! - a plain checkbox refused, `<label for>` not joining its checkbox (or
 //!   left drawn twice), a field not named by its label, a bare `<label>`
 //!   accepted → `checkboxes_and_labels_join_by_for`
@@ -326,6 +331,113 @@ div#Hidden { display: none; }
         internal.contains("<box> is not a core element; write <div>"),
         "{internal}"
     );
+}
+
+#[test]
+fn block_margins_follow_the_ua_stylesheet_and_collapse() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="A"></div>
+  <div id="B"></div>
+  <div id="C"></div>
+  <div id="Outer"><div id="Inner"></div></div>
+  <div id="Padded"><div id="Kid"></div></div>
+  <div id="Tall"><div id="Low"></div></div>
+  <div id="Flex"><div id="F1"></div><div id="F2"></div></div>
+  <p id="Reset" i18n="r">Reset</p>
+  <p id="P1" i18n="p">One</p>
+  <h1 id="H" i18n="h">Head</h1>
+  {#each $items as it (it.id)}<p>{it.id}</p>{/each}
+  <ul id="L"><li i18n="x">X</li></ul>
+</div></div>
+<style>
+#Root { padding: 10px; }
+#Root div { height: 20px; }
+#Root #Outer, #Root #Padded, #Root #Flex { height: fit-content; }
+#A { margin-bottom: 30px; }
+#B { margin-top: 10px; margin-bottom: -5px; }
+#C { margin-top: 15px; }
+#Outer { margin-top: 5px; }
+#Inner { margin: 25px 0 12px; }
+#Padded { padding: 4px 0 0 0; }
+#Kid { margin-top: 25px; }
+#Root #Tall { height: 60px; margin-top: 0; }
+#Low { margin-bottom: 40px; }
+#Flex { display: flex; flex-direction: column; margin-top: 7px; }
+#F1 { margin-bottom: 10px; }
+#F2 { margin-top: 10px; }
+#Reset { margin: 0; }
+</style>"#;
+    let items = json!([{"id": "a"}, {"id": "c"}]);
+    both(text, &[("items", items)], |d| {
+        let em = d.ui.theme().type_ramp.body.size;
+        let h1_em = d.ui.theme().type_ramp.xl3.size;
+        let bottom = |e: &UiElement| e.y + e.height;
+        let gap = |a: &str, b: &str| d.get(b).y - bottom(&d.get(a));
+        let root = d.get("Root");
+        // Root's padding keeps A's margin inside it; A has none on top.
+        assert_eq!(d.get("A").y - root.y, 10.0);
+        // Adjacent siblings: the larger positive margin wins…
+        assert_eq!(gap("A", "B"), 30.0);
+        // …and a negative one is added to it.
+        assert_eq!(gap("B", "C"), 10.0);
+        // A first child's margin collapses through its parent's top: Inner
+        // sits at Outer's edge, and Outer stands max(5, 25) below C.
+        assert_eq!(gap("C", "Outer"), 25.0);
+        assert_eq!(d.get("Inner").y, d.get("Outer").y);
+        // …and a last child's through an auto-height parent's bottom: Outer
+        // is Inner's height, and Inner's 12px sits below it.
+        assert_eq!(d.get("Outer").height, 20.0);
+        assert_eq!(gap("Outer", "Padded"), 12.0);
+        // Padding separates them: Kid's margin stays inside Padded.
+        assert_eq!(d.get("Kid").y - d.get("Padded").y, 4.0 + 25.0);
+        assert_eq!(d.get("Padded").height, 4.0 + 25.0 + 20.0);
+        // A set height stops the bottom collapse: Low's 40px stays inside.
+        assert_eq!(gap("Tall", "Flex"), 7.0);
+        // A flex column adds its children's margins and lets none out.
+        assert_eq!(gap("F1", "F2"), 20.0);
+        assert_eq!(d.get("F1").y, d.get("Flex").y);
+        // The UA gives <p> 1em top and bottom; `margin: 0` resets it.
+        assert_eq!(gap("Flex", "Reset"), 0.0);
+        assert_eq!(gap("Reset", "P1"), em);
+        // An h1's 0.67em is of its own (xl3) step, collapsed with P1's 1em.
+        // (Edges snap to whole pixels.)
+        assert!(
+            (gap("P1", "H") - 0.67 * h1_em).abs() <= 0.5 && 0.67 * h1_em > em,
+            "{} for 0.67 × {h1_em}",
+            gap("P1", "H")
+        );
+        // Adjacent paragraphs collapse to one em, a list's 1em with them,
+        // including after a keyed insert in the middle.
+        let paras = |d: &Doc| -> Vec<UiElement> {
+            d.ui.probe_elements()
+                .into_iter()
+                .filter(|e| ["a", "b", "c"].contains(&e.text.as_str()))
+                .collect()
+        };
+        assert_eq!(paras(d).len(), 2);
+        d.edit(
+            "items",
+            json!({"op": "insert", "row": {"id": "b"}, "before": "c"}),
+            json!([{"id": "a"}, {"id": "b"}, {"id": "c"}]),
+        );
+        let p = paras(d);
+        assert_eq!(
+            p.iter().map(|e| e.text.as_str()).collect::<Vec<_>>(),
+            ["a", "b", "c"]
+        );
+        assert!((p[0].y - bottom(&d.get("H")) - 0.67 * h1_em).abs() <= 0.5);
+        for w in p.windows(2) {
+            assert_eq!(
+                w[1].y - bottom(&w[0]),
+                em,
+                "{:?} → {:?}",
+                w[0].text,
+                w[1].text
+            );
+        }
+        assert_eq!(d.get("L").y - bottom(&p[2]), em);
+    });
 }
 
 fn steps(ids: &[&str]) -> Value {

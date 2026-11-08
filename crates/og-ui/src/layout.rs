@@ -337,6 +337,15 @@ pub struct Element {
     /// height and the width left to fit, as wide as the height times it
     /// (an image keeps its picture's proportions in a growing column).
     pub aspect: f32,
+    /// Its top and bottom margins (CSS `margin-top`, `margin-bottom`), CSS
+    /// px: room outside its box along its parent's column, or across its
+    /// parent's row. A stack or a grid places its children without them.
+    pub margin_top: f32,
+    pub margin_bottom: f32,
+    /// A CSS block box (`display: block`): its in-flow children's vertical
+    /// margins collapse with each other and, where no padding separates
+    /// them, with its own (CSS 2 §8.3.1).
+    pub block: bool,
 }
 
 impl Element {

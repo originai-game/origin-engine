@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: margin-top, margin-bottom, margin-block, margin",
+      "summary": "Vertical margins in px or em, with CSS 2 margin collapsing in display:block boxes (adjacent siblings, a parent with its first or last child). HTML's UA margins for <p>, <ul>, <ol> and <h1>–<h6>; margin:0 resets them. A horizontal margin is 0 or auto only."
+    }
+  ]
+}

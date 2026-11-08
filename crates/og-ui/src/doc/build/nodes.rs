@@ -131,7 +131,7 @@ impl Ui {
                     && let Some(&last) = Some(&self.last_closed)
                     && last != NONE
                 {
-                    let el = Ui::box_of(&rp, self.nodes[last].el);
+                    let el = Ui::box_of(&rp, self.nodes[last].el, self.em_of(&rp));
                     let props = self.props_of(b, n, self.nodes[last].key, &rp, &mut built);
                     self.nodes[last].el = el;
                     if props != Props::default() {

@@ -44,6 +44,9 @@ enum Conv {
     /// A Rive artboard's id as `rive("<file>.riv#<Artboard>")` (its
     /// property is `-og-frame`, which otherwise names a style part).
     Rive,
+    /// A margin edge: `<n>px`, `<n>em` (of its own type step) or `0`, as
+    /// px and em.
+    Margin,
     /// Written with its partner in one property (`translate: <x> <y>`,
     /// `scale: <x> <y>`, `-og-skew`, `grid-column`/`grid-row`,
     /// `grid-auto-flow`).
@@ -85,6 +88,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("width", "width"),
     ("height", "height"),
     ("padding", "padding"),
+    ("marginTop", "margin-top"),
+    ("marginBottom", "margin-bottom"),
     ("gap", "gap"),
     ("align", "justify-content"),
     ("cross", "align-items"),
@@ -160,13 +165,17 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "-og-control-size" => Some("size"),
         _ => None,
     };
+    let both: &[&str] = match name {
+        "margin" | "margin-block" => &["marginTop", "marginBottom"],
+        _ => &[],
+    };
     let target = match name {
         "grid-row" => "grid-column",
         "min-width" | "max-width" => "width",
         "min-height" | "max-height" => "height",
         _ => name,
     };
-    alias.into_iter().chain(
+    alias.into_iter().chain(both.iter().copied()).chain(
         STYLE
             .iter()
             .filter_map(move |(prop, css)| (*css == target).then_some(*prop)),
@@ -177,6 +186,7 @@ fn conv(prop: &str) -> Conv {
     match prop {
         "width" | "height" => Conv::Size,
         "padding" => Conv::Insets,
+        "marginTop" | "marginBottom" => Conv::Margin,
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop" => Conv::Len,
         "aspect" | "opacity" | "z" | "scale" | "maxLines" => Conv::Num,
         "rotate" => Conv::Angle,
@@ -220,6 +230,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Paint => "var(--<role>) | #rrggbb[aa]".into(),
         Conv::Size => "fit-content | stretch | <n>px | <n>% (min-/max- bounds)".into(),
         Conv::Insets => "1 to 4 lengths (top right bottom left)".into(),
+        Conv::Margin => "<n>px | <n>em".into(),
         Conv::Bool(t, f) => format!("{t} | {f}"),
         Conv::Kebab => words
             .iter()
@@ -292,9 +303,12 @@ pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
         "flex" | "flex-grow" | "flex-shrink" | "flex-basis" => {
             "write `width: stretch` (or `height`) to take the room left"
         }
-        "margin" | "margin-top" | "margin-bottom" | "margin-left" | "margin-right"
-        | "margin-inline" | "margin-block" => {
-            "og-ui has no margin: give the parent a `gap` or a `padding`"
+        "margin-left"
+        | "margin-right"
+        | "margin-inline"
+        | "margin-inline-start"
+        | "margin-inline-end" => {
+            "og-ui lays out vertical margins only: give the parent a `padding` or a `gap`, or centre with its `align-items`"
         }
         "float" | "clear" => "write `display` as the kind: a `row` or a `grid`",
         "left" => "write `inset-inline-start` (it mirrors right to left)",
@@ -544,6 +558,15 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
             v => Err(format!("'{}' is not an angle", text_of(v))),
         },
         Conv::Paint => paint_css(vals),
+        Conv::Margin => match vals {
+            [Value::Number(p), Value::Number(e)] => Ok(match (p.text(), e.text()) {
+                ("0", "0") => "0".into(),
+                (p, "0") => format!("{p}px"),
+                ("0", e) => format!("{e}em"),
+                (p, e) => format!("calc({p}px + {e}em)"),
+            }),
+            _ => Err(format!("{prop} takes px and em")),
+        },
         Conv::Insets => {
             let n: Vec<String> = vals.iter().map(px).collect::<Result<_, _>>()?;
             Ok(match n.as_slice() {
@@ -925,6 +948,16 @@ pub(crate) fn want_len(t: &Tok) -> Result<Value, String> {
     }
 }
 
+/// A margin edge as its px and em: `12px`, `0.67em` or `0`.
+fn margin_vals(t: &Tok) -> Result<Vec<Value>, String> {
+    let zero = || number("0");
+    match t {
+        Tok::Num(n, u) if u == "em" => Ok(vec![zero()?, number(n)?]),
+        Tok::Num(_, u) if u == "rem" => Err("a margin takes px or em, not rem".into()),
+        t => Ok(vec![want_len(t)?, zero()?]),
+    }
+}
+
 pub(crate) fn want_num(t: &Tok) -> Result<Value, String> {
     match t {
         Tok::Num(n, u) if u.is_empty() => number(n),
@@ -1283,6 +1316,33 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             };
             Ok(vec![e("padding", vals)])
         }
+        "margin" | "margin-block" => {
+            // Horizontal margins are not laid out: only 0 or auto (a
+            // reset's `margin: 0 auto`) passes for them.
+            let (top, bottom, sides) = match (name, t.as_slice()) {
+                ("margin", [a]) => (a, a, vec![a]),
+                ("margin-block", [a]) => (a, a, vec![]),
+                ("margin-block", [a, b]) => (a, b, vec![]),
+                ("margin", [v, h]) => (v, v, vec![h]),
+                ("margin", [top, h, b]) => (top, b, vec![h]),
+                ("margin", [top, r, b, l]) => (top, b, vec![r, l]),
+                _ => return Err(format!("{name} takes 1 to 4 lengths")),
+            };
+            for side in sides {
+                let zero = matches!(side, Tok::Ident(w) if w == "auto")
+                    || matches!(margin_vals(side).as_deref(), Ok([Value::Number(p), Value::Number(e)]) if p.text() == "0" && e.text() == "0");
+                if !zero {
+                    return Err(format!(
+                        "{name}: a horizontal margin must be 0 or auto; write `margin-block` for the vertical ones ({})",
+                        unsupported("margin-left").unwrap_or_default()
+                    ));
+                }
+            }
+            Ok(vec![
+                e("marginTop", margin_vals(top)?),
+                e("marginBottom", margin_vals(bottom)?),
+            ])
+        }
         "grid-column" | "grid-row" => {
             let (start, span) = grid_line(&t)?;
             let axis = if name == "grid-column" { 0 } else { 1 };
@@ -1412,6 +1472,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     }
                     _ => return Err("transform-origin: <x>% <y>%".into()),
                 },
+                Conv::Margin => margin_vals(&one(&t, name)?)?,
                 Conv::Size | Conv::Insets | Conv::Joint | Conv::Rive => {
                     unreachable!("handled above")
                 }

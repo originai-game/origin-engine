@@ -142,6 +142,23 @@ disc, circle or square is drawn as a shape on the first line (no font has
 to carry it); a number is text with CSS's suffix (`3.`, `iv.`), decimal
 outside the alphabetic and roman ranges.
 
+HTML's block margins come with them: `<p>`, `<ul>` and `<ol>` take 1em
+above and below (a list inside a list none), and `<h1>` to `<h6>` take
+0.67em, 0.83em, 1em, 1.33em, 1.67em and 2.33em of their own type step;
+`margin: 0` resets them. `margin-top`, `margin-bottom`, `margin-block` and
+`margin` take px or em (of the element's type step; an element with none
+uses the body step); a horizontal margin is 0 or `auto` only, since
+og-ui lays out vertical margins only. In a `display: block` box the
+vertical margins collapse as CSS 2 §8.3.1 says: two adjacent siblings'
+margins become the larger positive one plus the most negative one, and a
+block's first child's top margin (last child's bottom one) collapses
+through the block's own edge when no padding separates them and, at the
+bottom, the block's height is auto; scrolling, `display: flex` and
+`display: grid` boxes keep their children's margins inside. A flex
+column adds its children's margins along it, a flex row adds them across
+it, and a stack or grid places its children without them. An empty block
+does not collapse through itself.
+
 An item's number is its place among its `<li>` siblings, counted from the
 list's `start` (1, or the item count when `reversed`), or from the
 nearest earlier `<li value>`. It comes from the sibling index the

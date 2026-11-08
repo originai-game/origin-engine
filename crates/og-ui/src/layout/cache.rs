@@ -462,6 +462,9 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.scroll == b.scroll
         && a.scroll_x == b.scroll_x
         && a.aspect == b.aspect
+        && a.margin_top == b.margin_top
+        && a.margin_bottom == b.margin_bottom
+        && a.block == b.block
 }
 
 /// The content layout measures is equal (an ink may differ).

@@ -146,6 +146,10 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         scroll: d["scroll"].as_bool().unwrap_or(false),
         scroll_x: d["scrollX"].as_bool().unwrap_or(false),
         hide_bars: false,
+        // Margins are a document's (CSS); the builder's boxes have none.
+        margin_top: 0.0,
+        margin_bottom: 0.0,
+        block: false,
         fade: 0.0,
         fade_into: None,
         interactive: d["interactive"].as_bool().unwrap_or(false),

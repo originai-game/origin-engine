@@ -293,6 +293,16 @@ pub const PROPS: &[PropSpec] = &[
     p!("width", Ty::Size, "Its width (fit by default)."),
     p!("height", Ty::Size, "Its height (fit by default)."),
     p!("padding", Ty::Insets, "Space inside its edges, CSS px."),
+    p!(
+        "marginTop",
+        Ty::Num2,
+        "Space outside its top edge: CSS px and em of its type step. Adjacent block margins collapse."
+    ),
+    p!(
+        "marginBottom",
+        Ty::Num2,
+        "Space outside its bottom edge: CSS px and em of its type step. Adjacent block margins collapse."
+    ),
     p!("gap", Ty::Num, "Space between its children, CSS px."),
     p!(
         "align",

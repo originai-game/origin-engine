@@ -1515,6 +1515,7 @@ impl Ui {
                 }
             }
         }
+        let mut reflowed = Vec::new();
         // Children before parents: the reverse of a preorder of every tree.
         let mut order = Vec::new();
         for &r in &roots {
@@ -1529,6 +1530,11 @@ impl Ui {
                     k.unclean.push(i);
                     continue;
                 };
+                // Its children's margins collapse through their edges only
+                // in a block's flow: a change there is theirs too.
+                if a.el.block != b.el.block || a.props.layout != b.props.layout {
+                    reflowed.push(i);
+                }
                 let same_layout = crate::layout::el_layout_eq(&a.el, &b.el)
                     && crate::layout::content_layout_eq(&a.content, &b.content)
                     && crate::layout::props_layout_eq(&a.props, &b.props)
@@ -1558,10 +1564,16 @@ impl Ui {
                     k.clean[c]
                         || matches!(child.el.width, Size::Fixed(_))
                             && matches!(child.el.height, Size::Fixed(_))
+                            // Nor can they through its edge, unless a
+                            // child's top margin collapses through it.
+                            && (written[c] || !child.collapse_in[0])
                             && (!written[c]
                                 || k.prev.get(&c).is_some_and(|old| {
                                     child.el.width == old.el.width
                                         && child.el.height == old.el.height
+                                        && child.el.margin_top == old.el.margin_top
+                                        && child.el.margin_bottom == old.el.margin_bottom
+                                        && !old.collapse_in[0]
                                         && child.props.place == old.props.place
                                         && child.props.position == old.props.position
                                         && child.props.insets == old.props.insets
@@ -1570,6 +1582,14 @@ impl Ui {
                 });
             if !k.clean[i] {
                 k.unclean.push(i);
+            }
+        }
+        for i in reflowed {
+            for &c in &nodes[i].children {
+                if k.clean[c] {
+                    k.clean[c] = false;
+                    k.unclean.push(c);
+                }
             }
         }
         for &i in &self.emitted {
