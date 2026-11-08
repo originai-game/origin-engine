@@ -381,3 +381,96 @@ fn sensitivity_and_inversion_are_per_action_and_device_class() {
         .unwrap();
     assert!(!String::from_utf8_lossy(&map.save_state()).contains("senses"));
 }
+
+fn finger(action: og_input::PointerAction, id: u32, x: f32, y: f32) -> InjectedInput {
+    InjectedInput::Pointer {
+        action,
+        x,
+        y,
+        button: if action == og_input::PointerAction::Move {
+            og_input::PointerButton::None
+        } else {
+            og_input::PointerButton::Left
+        },
+        id,
+        movement_x: 0.0,
+        movement_y: 0.0,
+    }
+}
+
+/// On-screen controls the UI lays out feed actions as one more binding
+/// would: a stick from the zone's centre (not where the finger landed),
+/// a d-pad's eight ways, a button with its edges, each keeping the finger
+/// that started on it, none taking one that started elsewhere; and the
+/// zones, session state like the surface, survive a restore.
+///
+/// Ways it could fail: the stick read from the touch's start (a floating
+/// stick: zero on a press off-centre); y left screen-down; no rescale past
+/// the dead zone (a jump at its edge); a finger that slides off dropping
+/// the stick; a touch that starts elsewhere and slides over a button
+/// firing it; zones lost by a restore, or saved into the world hash.
+#[test]
+fn on_screen_controls_feed_their_actions() {
+    use og_input::PointerAction::{Down, Move, Up};
+    use og_input::{ControlZone, ZoneKind};
+    let defs = [
+        action("move", ActionKind::Axis2, vec![]),
+        action("dir", ActionKind::Axis2, vec![]),
+        action("jump", ActionKind::Button, vec![Binding::control("Space")]),
+    ];
+    let mut rig = Rig::new(&defs);
+    let zone = |action: &str, kind, x, y, size| ControlZone {
+        action: action.into(),
+        kind,
+        x,
+        y,
+        width: size,
+        height: size,
+        dead_zone: 0.0,
+    };
+    let zones = vec![
+        zone("move", ZoneKind::Stick, 0.0, 500.0, 200.0),
+        zone("dir", ZoneKind::Pad, 300.0, 500.0, 150.0),
+        zone("jump", ZoneKind::Button, 1000.0, 500.0, 100.0),
+    ];
+    let hash = rig.world.world_hash();
+    rig.map.lock().unwrap().set_zones(zones.clone());
+    assert_eq!(rig.world.world_hash(), hash, "zones are not world state");
+    // Off-centre: the stick reads at once, from the centre (100, 600).
+    rig.tick(&[finger(Down, 1, 150.0, 550.0)]);
+    let m = rig.state("move");
+    let k = (2f32.sqrt() / 2.0 - 0.15) / 0.85 / 2f32.sqrt();
+    assert!(close(m.vector.x, k) && close(m.vector.y, k), "{m:?}");
+    assert_eq!(m.device, Device::Touch);
+    // A touch that started elsewhere slides over the button: nothing.
+    rig.tick(&[
+        finger(Down, 2, 700.0, 100.0),
+        finger(Move, 2, 1050.0, 550.0),
+    ]);
+    assert!(!rig.state("jump").down);
+    // The stick's finger slides far off it: still its, clamped to 1.
+    rig.tick(&[
+        finger(Up, 2, 1050.0, 550.0),
+        finger(Move, 1, 400.0, 600.0),
+        finger(Down, 3, 1050.0, 550.0),
+    ]);
+    let m = rig.state("move");
+    assert!(close(m.vector.x, 1.0) && close(m.vector.y, 0.0), "{m:?}");
+    let j = rig.state("jump");
+    assert!(j.down && j.pressed, "{j:?}");
+    // Restored from a snapshot, the map keeps its zones.
+    let snap = rig.world.snapshot();
+    rig.world.restore(&snap).unwrap();
+    // Down and right of the pad's centre (375, 575): its diagonal.
+    rig.tick(&[finger(Up, 3, 1050.0, 550.0), finger(Down, 4, 435.0, 635.0)]);
+    let d = rig.state("dir");
+    assert_eq!((d.vector.x, d.vector.y), (1.0, -1.0), "{d:?}");
+    assert!(rig.state("jump").released);
+    // In the pad's middle: no direction.
+    rig.tick(&[finger(Move, 4, 380.0, 570.0)]);
+    assert_eq!(rig.state("dir").vector, og_core::glam::Vec2::ZERO);
+    // The UI's zones gone, nothing reads.
+    rig.map.lock().unwrap().set_zones(Vec::new());
+    rig.tick(&[]);
+    assert_eq!(rig.state("move").vector, og_core::glam::Vec2::ZERO);
+}

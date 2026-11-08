@@ -225,6 +225,7 @@ pub(crate) fn mount_back(
 ) -> Result<Mounted, String> {
     let shared = ui.clone();
     let feed = ui_world::Feed::of(world);
+    let zones_to = actions.clone();
     world
         .add_system(
             feed.desc(UI_END).write::<og_input::PauseIntent>(),
@@ -239,7 +240,13 @@ pub(crate) fn mount_back(
                     feed.before_end(ctx, &mut ui);
                     BUILDING.with(|b| b.set(None));
                     let frame = ui.end();
-                    (frame.warnings.clone(), frame.missing_glyphs.clone())
+                    let out = (frame.warnings.clone(), frame.missing_glyphs.clone());
+                    // The on-screen controls documents laid out feed their
+                    // actions from the next tick's sample (docs/ui.md §3.3).
+                    if let Some(zones) = ui.take_control_zones() {
+                        og_input::actions::lock(&zones_to).set_zones(zones);
+                    }
+                    out
                 };
                 if !warnings.is_empty() {
                     note_warnings(engine_id, warnings);

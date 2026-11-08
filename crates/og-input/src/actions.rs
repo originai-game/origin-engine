@@ -19,8 +19,8 @@
 //! action at its threshold and releases it under three quarters of it.
 
 use crate::control::{
-    Axis, Axis2, Control, Half, PadDeadzone, ReadOptions, Reader, Reading, Shape, Surface, Zone,
-    deadzone, deadzone2,
+    Axis, Axis2, Control, ControlZone, Half, PadDeadzone, ReadOptions, Reader, Reading, Shape,
+    Surface, Zone, ZoneKind, deadzone, deadzone2,
 };
 use crate::event::{GAMEPAD_BUTTONS, MAX_GAMEPADS};
 use crate::glyph::{Device, Glyph};
@@ -1098,6 +1098,8 @@ pub struct ActionMap {
     /// Session output and settings: never saved.
     rumble: Vec<Rumble>,
     surface: Surface,
+    /// The on-screen controls the UI lays out, input sources of actions.
+    zones: Vec<ControlZone>,
 }
 
 /// An [`ActionMap`] shared between its system, its state block and the API.
@@ -1236,6 +1238,15 @@ impl ActionMap {
     /// The device the player used last.
     pub fn device(&self) -> Device {
         self.device
+    }
+
+    /// The on-screen controls the UI laid out: each feeds its action, from
+    /// the next sample, as one more binding would. Session state, as the
+    /// surface is: never saved, kept by a restore.
+    pub fn set_zones(&mut self, zones: Vec<ControlZone>) {
+        if self.zones != zones {
+            self.zones = zones;
+        }
     }
 
     /// The play surface touch zones are fractions of (the host's viewport).
@@ -1395,6 +1406,7 @@ impl ActionMap {
         }
         let claims = self.claims();
         let contexts = self.contexts.clone();
+        let zones = &self.zones;
         let senses = &self.senses;
         for a in &mut self.actions {
             let sense = senses.get(&a.desc.name);
@@ -1411,6 +1423,22 @@ impl ActionMap {
             let mut best_len = 0.0f32;
             let mut any_pressed = false;
             if rank.is_some() && !capturing {
+                for z in zones.iter().filter(|z| z.action == a.desc.name) {
+                    let mut r = reader.read_zone(z);
+                    if a.desc.kind == ActionKind::Axis && z.kind == ZoneKind::Button {
+                        r.value.x = r.value.length();
+                    }
+                    any_pressed |= r.pressed;
+                    let len = match a.desc.kind {
+                        ActionKind::Axis2 => r.value.length(),
+                        ActionKind::Button => r.value.length(),
+                        ActionKind::Axis => r.value.x.abs(),
+                    };
+                    if len > best_len {
+                        best_len = len;
+                        best = r;
+                    }
+                }
                 for b in a.bindings() {
                     if b.is_empty() {
                         continue;
@@ -2306,6 +2334,7 @@ impl ActionMap {
         let mut out = ActionMap {
             rumble: self.rumble.clone(),
             surface: self.surface,
+            zones: self.zones.clone(),
             ..ActionMap::default()
         };
         for a in v["actions"].as_array().into_iter().flatten() {
@@ -2385,6 +2414,7 @@ impl og_ecs::StateBlock for ActionsBlock {
             None => ActionMap {
                 rumble: map.rumble.clone(),
                 surface: map.surface,
+                zones: map.zones.clone(),
                 ..ActionMap::default()
             },
         };

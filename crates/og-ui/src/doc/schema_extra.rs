@@ -6,6 +6,16 @@ use super::schema::{KindSpec, On, PropSpec, Ty};
 
 pub const KINDS: &[KindSpec] = &[
     KindSpec {
+        name: "joystick",
+        container: false,
+        doc: "A virtual stick (`<joystick action=\"move\">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px).",
+    },
+    KindSpec {
+        name: "dpad",
+        container: false,
+        doc: "A virtual d-pad (`<dpad action=\"move\">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px).",
+    },
+    KindSpec {
         name: "viewport",
         container: false,
         doc: "A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit=\"30deg 75deg 3m\" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene.",
@@ -41,6 +51,11 @@ pub(super) fn tags(kind: &str) -> Option<Vec<(String, String)>> {
             "viewport",
             "<viewport id=\"Preview\" src={$target} camera-orbit=\"30deg 75deg 3m\" bind:clientWidth={$w} onpointermove={orbit} />",
         ),
+        "joystick" => one(
+            "joystick",
+            "<joystick id=\"Stick\" action=\"move\" data-dead-zone=\"0.2\" customize />",
+        ),
+        "dpad" => one("dpad", "<dpad id=\"Pad\" action=\"move\" />"),
         "svg" => one(
             "svg",
             "<svg id=\"Name\" viewBox=\"0 0 40 40\">…</svg>",
@@ -129,6 +144,27 @@ macro_rules! svg {
 }
 
 pub const PROPS: &[PropSpec] = &[
+    PropSpec {
+        name: "action",
+        ty: Ty::Name,
+        on: On::Kinds(&["joystick", "dpad"]),
+        two_way: false,
+        doc: "The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it.",
+    },
+    PropSpec {
+        name: "dataDeadZone",
+        ty: Ty::Num,
+        on: On::Kinds(&["joystick"]),
+        two_way: false,
+        doc: "A stick's dead zone, a ratio of its radius (`data-dead-zone=\"0.2\"`; default 0.15): past it the value rises from 0.",
+    },
+    PropSpec {
+        name: "dataOgTouch",
+        ty: Ty::Name,
+        on: On::Kinds(&["button"]),
+        two_way: false,
+        doc: "A touch button (`<button data-og-touch=\"jump\">`): the input source of og-input's action `jump`, held while a touch that went down on it is held, whatever else is held (a thumb on the stick).",
+    },
     PropSpec {
         name: "viewportSrc",
         ty: Ty::Num,

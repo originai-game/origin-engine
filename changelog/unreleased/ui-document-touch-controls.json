@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <joystick>, <dpad> and touch buttons",
+      "summary": "<joystick action>, <dpad action> and <button data-og-touch> are input sources of og-input actions: their laid-out rects become the action map's zones, sampled from the touches that started on them in the tick (a stick from its centre past data-dead-zone, a d-pad eight ways, a button while held). @media takes pointer, any-pointer, hover and any-hover."
+    },
+    {
+      "member": "og-input: ActionMap.set_zones",
+      "summary": "On-screen control zones (ControlZone: an action, a stick, pad or button kind, a rect in surface CSS px) feed actions as one more binding; session state like the surface, kept across a restore and outside the world hash."
+    }
+  ]
+}

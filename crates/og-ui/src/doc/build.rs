@@ -450,6 +450,7 @@ impl Ui {
             height: vp.height,
             reduced_motion: self.theme().reduced_motion,
             color_vision: self.theme().color_vision,
+            coarse_pointer: vp.coarse_pointer,
         };
         let mut media_reads = super::media::Reads::default();
         let chain = super::container::chain(inherited);
@@ -1067,5 +1068,6 @@ mod nodes;
 mod retained;
 mod structure;
 mod svg;
+mod touch;
 mod viewport;
 pub use mount::{Built, DocEvent, DocHost, DocResponse, Edit};

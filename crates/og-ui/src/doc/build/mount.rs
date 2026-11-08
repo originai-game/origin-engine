@@ -113,6 +113,12 @@ pub struct DocHost {
         Option<crate::Srgba>,
         u64,
     )>,
+    /// The on-screen controls documents lay out (`<joystick action>`,
+    /// `<dpad action>`, `<button data-og-touch>`), by render key, their
+    /// rects filled from the frame's hits; `zones_changed`: og-input's
+    /// copy is stale ([`Ui::take_control_zones`]).
+    pub(crate) zones: BTreeMap<u64, og_input::ControlZone>,
+    pub(crate) zones_changed: bool,
     /// The Rive artboards elements can play, by id ([`Ui::define_rive`]).
     pub(crate) rive: BTreeMap<String, Arc<crate::rive::Artboard>>,
     /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.

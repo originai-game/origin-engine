@@ -230,6 +230,7 @@ Its own props, beside every element's:
 | `disabled` | `bool` | Takes no input. |
 | `autofocus` | `bool` | Takes the focus when it appears. |
 | `square` | `bool` | A square of the control height: an icon button. |
+| `data-og-touch` | `name` | A touch button (`<button data-og-touch="jump">`): the input source of og-input's action `jump`, held while a touch that went down on it is held, whatever else is held (a thumb on the stick). |
 
 ## 12. `<img>` (`image`): A texture (or a tint)
 
@@ -456,7 +457,30 @@ Its own props, beside every element's:
 | `high` | `number` | The bottom of the high region (HTML `high`; default `max`). |
 | `optimum` | `number` | The best value (HTML `optimum`; default the middle): its region is `optimum`, the next `suboptimum`, the far one `poor`. |
 
-## 28. `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene
+## 28. `<joystick>` (`joystick`): A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px)
+
+A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px). A leaf; text-bearing controls accept text content: `<joystick id="Stick" action="move" data-dead-zone="0.2" customize />`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `disabled` | `bool` | Takes no input. |
+| `action` | `name` | The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it. |
+| `data-dead-zone` | `number` | A stick's dead zone, a ratio of its radius (`data-dead-zone="0.2"`; default 0.15): past it the value rises from 0. |
+
+## 29. `<dpad>` (`dpad`): A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px)
+
+A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px). A leaf; text-bearing controls accept text content: `<dpad id="Pad" action="move" />`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `disabled` | `bool` | Takes no input. |
+| `action` | `name` | The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it. |
+
+## 30. `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene
 
 A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene. A leaf; text-bearing controls accept text content: `<viewport id="Preview" src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w} onpointermove={orbit} />`.
 
@@ -471,7 +495,7 @@ Its own props, beside every element's:
 | `client-width` | `number` | Svelte's `bind:clientWidth`: its laid-out width, CSS px, written when it changes (size its render target by it times the pixel ratio). Two-way only with an explicit bind: attribute. |
 | `client-height` | `number` | Svelte's `bind:clientHeight`: its laid-out height, CSS px. Two-way only with an explicit bind: attribute. |
 
-## 29. `<svg>` (`svg`): Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size)
+## 31. `<svg>` (`svg`): Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size)
 
 Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size). A container with nested children: `<svg id="Name" viewBox="0 0 40 40">…</svg>`.
 
@@ -501,7 +525,7 @@ Its own props, beside every element's:
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
 
-## 30. `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
+## 32. `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
 
 SVG's `<g>`: a transform and presentation attributes its shapes inherit. A container with nested children: `<g transform="rotate(-90 20 20)" stroke="var(--accent)">…</g>`.
 
@@ -531,7 +555,7 @@ Its own props, beside every element's:
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
 
-## 31. `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
+## 33. `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
 
 An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable. A leaf; text-bearing controls accept text content: `<path d={$line} fill="none" stroke="currentColor" />` or `<circle cx="20" cy="20" r="18" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset={1 - $ready} />` or `<rect x={b.x} y={40 - b.h} width="8" height={b.h} rx="2" />` or `<polygon points="0,0 10,0 5,8" /> (ellipse, line, polyline)`.
 
@@ -568,7 +592,7 @@ Its own props, beside every element's:
 | `y2` | `text` | SVG `y2`. |
 | `points` | `text` | A `<polyline>`'s or `<polygon>`'s points. |
 
-## 32. `<linearGradient>` (`svgDef`): An SVG definition (`<defs>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`): not drawn; shapes reference gradients with `url(#id)`
+## 34. `<linearGradient>` (`svgDef`): An SVG definition (`<defs>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`): not drawn; shapes reference gradients with `url(#id)`
 
 An SVG definition (`<defs>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`): not drawn; shapes reference gradients with `url(#id)`. A container with nested children: `<linearGradient id="Up" x2="0" y2="1"><stop offset="0" stop-color="#fff" />…</linearGradient> (radialGradient, defs)`.
 

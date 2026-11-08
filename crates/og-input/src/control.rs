@@ -328,6 +328,48 @@ pub struct Reader<'a> {
     pub surface: Surface,
 }
 
+/// What an on-screen control reads as ([`ControlZone::kind`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ZoneKind {
+    /// A stick: the finger's offset from the zone's centre over its
+    /// radius (half its smaller side), y up, past the dead zone.
+    #[default]
+    Stick,
+    /// A d-pad: the nearest of eight directions from the centre, each
+    /// part -1, 0 or 1 (a diagonal holds both), nothing in its middle.
+    Pad,
+    /// A button: 1 while a press that started on it is held.
+    Button,
+}
+
+/// An on-screen control the UI lays out (a document's `<joystick>`,
+/// `<dpad>` or touch `<button>`): an input source of one action, read like
+/// a binding from the presses that started on it. Its rect is the UI's,
+/// the play surface's CSS px; the UI hands the map its zones each frame
+/// ([`crate::ActionMap::set_zones`]), as the host hands it the surface.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ControlZone {
+    pub action: String,
+    pub kind: ZoneKind,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    /// A stick's dead zone as a ratio of its radius; 0: 0.15. Past it the
+    /// value is rescaled to rise from 0 (as `og.ui.joystick` answers).
+    pub dead_zone: f32,
+}
+
+impl ControlZone {
+    fn contains(&self, p: Vec2) -> bool {
+        p.x >= self.x && p.y >= self.y && p.x < self.x + self.width && p.y < self.y + self.height
+    }
+
+    fn centre(&self) -> Vec2 {
+        Vec2::new(self.x + self.width / 2.0, self.y + self.height / 2.0)
+    }
+}
+
 /// One control's reading this tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Reading {
@@ -380,6 +422,62 @@ impl Reader<'_> {
     fn touch_ids(&self) -> impl Iterator<Item = u32> + '_ {
         let first = if self.surface.coarse { 0 } else { 1 };
         first..MAX_POINTERS as u32
+    }
+
+    /// An on-screen control's reading: the first held press that started
+    /// on it (the mouse's too on a fine pointer, so it works at a desk).
+    pub fn read_zone(&self, z: &ControlZone) -> Reading {
+        let mut r = Reading::default();
+        let Some(id) = (0..MAX_POINTERS as u32)
+            .find(|&id| self.pointers.down(id) && z.contains(self.pointers.start(id)))
+        else {
+            return r;
+        };
+        let radius = (z.width.min(z.height) / 2.0).max(1.0);
+        let d = self.pointers.position(id) - z.centre();
+        let d = Vec2::new(d.x, -d.y) / radius;
+        r.value = match z.kind {
+            ZoneKind::Button => Vec2::new(1.0, 0.0),
+            ZoneKind::Stick => {
+                let len = d.length();
+                let dz = if z.dead_zone > 0.0 {
+                    z.dead_zone.min(0.95)
+                } else {
+                    0.15
+                };
+                if len <= dz {
+                    Vec2::ZERO
+                } else {
+                    d / len * ((len.min(1.0) - dz) / (1.0 - dz))
+                }
+            }
+            ZoneKind::Pad => {
+                // The middle is no direction (the UI's pad: 0.35 of an arm,
+                // a third of the pad); outside it, the nearest of eight.
+                if d.length() <= 0.35 / 1.5 {
+                    Vec2::ZERO
+                } else {
+                    // An axis counts past tan 22.5° of the other: the
+                    // nearest of eight 45° sectors, without trigonometry.
+                    const TAN_22_5: f32 = 0.414_213_57;
+                    let part = |a: f32, b: f32| {
+                        if a.abs() > TAN_22_5 * b.abs() {
+                            a.signum()
+                        } else {
+                            0.0
+                        }
+                    };
+                    Vec2::new(part(d.x, d.y), part(d.y, d.x))
+                }
+            }
+        };
+        r.pressed = self.pointers.is_pressed(id);
+        r.device = Some(if id == 0 && !self.surface.coarse {
+            Device::KeyboardMouse
+        } else {
+            Device::Touch
+        });
+        r
     }
 
     /// The analog value of a pad axis on `pad`, past its dead zone, y up.

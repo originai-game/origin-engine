@@ -742,7 +742,9 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "disabled",
         Ty::Bool,
-        ["button", "slider", "toggle", "field", "select", "details"],
+        [
+            "button", "slider", "toggle", "field", "select", "details", "joystick", "dpad"
+        ],
         "Takes no input."
     ),
     p!(

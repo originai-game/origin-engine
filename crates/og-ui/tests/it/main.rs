@@ -72,6 +72,8 @@ mod support;
 mod text;
 #[path = "../theme.rs"]
 mod theme;
+#[path = "../touch_controls.rs"]
+mod touch_controls;
 #[path = "../user_select.rs"]
 mod user_select;
 #[path = "../widgets.rs"]

@@ -783,6 +783,9 @@ impl Ui {
                 self.spacer(id.as_str(), s);
             }
             "divider" => self.divider(id.as_str(), r.flag("vertical")),
+            "joystick" | "dpad" => {
+                resp = self.build_touch_control(kind, id.as_str(), &r, &styled);
+            }
             other => {
                 self.warnings
                     .push(format!("{}:{}: '{other}' is not built", doc.source, n.line));
@@ -794,6 +797,9 @@ impl Ui {
             let fields = fields::RenderFields::capture(self, last, kind, resp, props, texture);
             self.apply_document_fields(n, &styled, &fields);
             self.note_render_fields(key, fields);
+            if styled.has("dataOgTouch") {
+                self.note_touch_button(&styled);
+            }
         }
         self.note_built(built);
         self.fire(b, n, key, &path, resp);

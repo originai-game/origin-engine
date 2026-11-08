@@ -60,6 +60,8 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
     match tag {
         "svg" => Some(Ok("svg")),
         "viewport" => Some(Ok("viewport")),
+        "joystick" => Some(Ok("joystick")),
+        "dpad" => Some(Ok("dpad")),
         "g" => svg_child("svgGroup"),
         t if SVG_SHAPES.contains(&t) => svg_child("svgShape"),
         "stop" => Some(

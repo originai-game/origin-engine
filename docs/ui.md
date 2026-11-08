@@ -442,6 +442,33 @@ direction }` into its scene through the pointer, for picking and orbiting.
 camera attributes reuse `<model-viewer>`'s names rather than `-og-` ones,
 because that component is the web's established vocabulary for a 3D view.
 
+On-screen controls are input sources of og-input's gameplay actions, so a
+touch layout drives the same `og.input` actions a keyboard or pad does.
+`<joystick action="move">` and `<dpad action="move">` are the native stick
+and d-pad, sized by their CSS width (128 px and 132 px by default, never
+under three touch targets). `<button data-og-touch="jump">` is a document
+button, styled by CSS, that feeds `jump`. Each control's laid-out rect goes to
+the action map as a zone after the frame, as the host hands it the play
+surface. The map samples the touches that started on a zone in the tick, so
+the actions stay deterministic and replay with the recorded input:
+- A stick reads from its centre over its radius, y up. Past `data-dead-zone`
+  (a ratio of the radius, default 0.15), the value rises from 0.
+- A d-pad reads eight ways, from -1 to 1 on each axis.
+- A button is held while its touch is held.
+
+A control keeps the finger that started on it, whatever else is held, so
+one thumb steers while another jumps. A finger that slides onto a control
+takes nothing. A disabled control, or one hidden by `display: none`, is no
+source. Hide them on a mouse with `@media (pointer: fine) { … display: none }`.
+`pointer`, `any-pointer`, `hover` and `any-hover` follow the host's coarse
+pointer. A held control is written again each tick while a touch holds it,
+and every control is written again on the tick a touch goes down. Otherwise
+they cost nothing, and an idle frame hands the map nothing new. `joystick`
+and `dpad` are not HTML elements; no web standard names an on-screen game
+control. `data-og-touch` takes the engine prefix because HTML leaves
+custom data on a standard element to `data-*`, and an og-input action is
+an engine concept.
+
 The authoring contract below also includes requirements whose TypeScript
 wiring remains pending:
 

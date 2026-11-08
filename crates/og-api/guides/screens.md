@@ -100,7 +100,8 @@ local styles and `og style new` remain available.
   Use CSS media conditions, for example
   `@media (width < 600px), (height < 600px) { ... }`.
   Supported features are `width`, `height`, `aspect-ratio`, `orientation`,
-  and `prefers-reduced-motion`. Use inclusive `min-`/`max-` bounds or
+  `prefers-reduced-motion`, and `pointer`/`any-pointer` (`coarse`, `fine`)
+  and `hover`/`any-hover` (`hover`, `none`), which follow a touch screen. Use inclusive `min-`/`max-` bounds or
   range comparisons, including `(600px <= width < 1024px)`.
   Commas and `or` mean alternatives; `and` intersects; `not` negates.
   Group mixed operators with parentheses. Nested `@media` rules intersect.
@@ -188,6 +189,12 @@ local styles and `og style new` remain available.
   bind:clientWidth={$w} bind:clientHeight={$h} onpointermove={orbit}
   onpointerdown={pick}>`: size the render target from `$w`×`$h` times the
   pixel ratio; the events carry `ray` for picking.
+- Touch controls feed og-input actions directly: `<joystick action="move">`,
+  `<dpad action="move">` and `<button data-og-touch="jump">` (a document
+  button CSS sizes and places). Game code reads `og.input.action("move")` as for
+  keys and pads; no handler is needed. Size them with CSS `width`, place
+  them with `position: absolute` and insets, and hide them with
+  `@media (pointer: fine) { #Stick { display: none } }`. A stick's dead zone is `data-dead-zone="0.2"`.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.

@@ -127,7 +127,7 @@ pub struct RetainedHost {
     viewport: Option<crate::doc::media::Context>,
     theme: Option<crate::Theme>,
     theme_epoch: u64,
-    media: [BTreeSet<MountedNode>; 4],
+    media: [BTreeSet<MountedNode>; 5],
     materializing: Option<Materialization>,
     built_tick: Option<u64>,
     /// Elements whose render nodes must be written again this frame.
@@ -194,6 +194,11 @@ impl std::fmt::Debug for RetainedHost {
 }
 
 impl RetainedHost {
+    /// Render key `key` belongs to a mounted element.
+    pub(crate) fn owns(&self, key: u64) -> bool {
+        self.owner_of.contains_key(&key)
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         self.registrations.is_empty()
     }
@@ -762,6 +767,7 @@ impl RetainedHost {
             height: ui.viewport.height,
             reduced_motion: ui.theme().reduced_motion,
             color_vision: ui.theme().color_vision,
+            coarse_pointer: ui.viewport.coarse_pointer,
         };
         if let Some(old) = self.viewport.replace(viewport) {
             for (axis, changed) in [
@@ -769,6 +775,7 @@ impl RetainedHost {
                 old.height != viewport.height,
                 old.reduced_motion != viewport.reduced_motion,
                 old.color_vision != viewport.color_vision,
+                old.coarse_pointer != viewport.coarse_pointer,
             ]
             .into_iter()
             .enumerate()
@@ -1040,6 +1047,7 @@ impl RetainedHost {
             reads.height,
             reads.reduced_motion,
             reads.color_vision,
+            reads.coarse_pointer,
         ]
         .into_iter()
         .enumerate()
@@ -1477,6 +1485,12 @@ impl RetainedHost {
         ];
         input.extend(s.pad_focus);
         input.extend(n.pad_activate);
+        // On-screen controls follow their further touches (og.Pointers):
+        // those a touch holds, and every one when a touch goes down.
+        input.extend(s.touch_owners.keys());
+        if ui.input.pointers.pressed != 0 {
+            input.extend(ui.docs.zones.keys());
+        }
         if n.back {
             // Back belongs to the topmost scope (a modal, an open list),
             // else to what holds the focus (a dialog in place).

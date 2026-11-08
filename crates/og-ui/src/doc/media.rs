@@ -9,6 +9,9 @@ pub struct Context {
     pub reduced_motion: bool,
     /// The player's colour vision setting (`-og-color-vision`).
     pub color_vision: og_render::ColorVision,
+    /// The primary pointer is coarse (a touch screen): `pointer: coarse`
+    /// and `hover: none`, else `pointer: fine` and `hover: hover`.
+    pub coarse_pointer: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -17,6 +20,7 @@ pub struct Reads {
     pub height: bool,
     pub reduced_motion: bool,
     pub color_vision: bool,
+    pub coarse_pointer: bool,
 }
 
 impl Reads {
@@ -25,6 +29,7 @@ impl Reads {
         self.height |= other.height;
         self.reduced_motion |= other.reduced_motion;
         self.color_vision |= other.color_vision;
+        self.coarse_pointer |= other.coarse_pointer;
     }
 }
 
@@ -75,6 +80,10 @@ pub enum Feature {
     /// `(-og-color-vision: <mode>)`; `None`, the boolean form: any mode
     /// but `none`.
     ColorVision(Option<og_render::ColorVision>),
+    /// `pointer`/`any-pointer` (`coarse`: true, `fine`: false) and
+    /// `hover`/`any-hover` (`none`: true, `hover`: false); `None`, the
+    /// boolean form, which every pointing device matches.
+    Coarse(Option<bool>),
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -156,6 +165,10 @@ impl Query {
                 Feature::ReducedMotion(value) => {
                     reads.reduced_motion = true;
                     context.reduced_motion == value
+                }
+                Feature::Coarse(value) => {
+                    reads.coarse_pointer = true;
+                    value.is_none_or(|v| v == context.coarse_pointer)
                 }
                 Feature::ColorVision(value) => {
                     reads.color_vision = true;
@@ -377,6 +390,9 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                 "orientation" => Ok(Query::All),
                 "prefers-reduced-motion" => Ok(Query::Feature(Feature::ReducedMotion(true))),
                 "-og-color-vision" => Ok(Query::Feature(Feature::ColorVision(None))),
+                "pointer" | "any-pointer" | "hover" | "any-hover" => {
+                    Ok(Query::Feature(Feature::Coarse(None)))
+                }
                 _ => Err(ParseError::custom(format!(
                     "unsupported boolean media feature {name}"
                 ))),
@@ -392,6 +408,22 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                             "unsupported -og-color-vision value {word}; use none, protanopia, deuteranopia or tritanopia"
                         ))
                     });
+            }
+            if matches!(
+                name.as_str(),
+                "pointer" | "any-pointer" | "hover" | "any-hover"
+            ) {
+                let word = input.expect_ident_cloned()?.to_ascii_lowercase();
+                let coarse = match (name.trim_start_matches("any-"), word.as_str()) {
+                    ("pointer", "coarse") | ("hover", "none") => true,
+                    ("pointer", "fine") | ("hover", "hover") => false,
+                    _ => {
+                        return Err(ParseError::custom(format!(
+                            "unsupported {name} value {word}; pointer takes coarse or fine, hover takes hover or none"
+                        )));
+                    }
+                };
+                return Ok(Query::Feature(Feature::Coarse(Some(coarse))));
             }
             if name == "orientation" || name == "prefers-reduced-motion" {
                 let word = input.expect_ident_cloned()?.to_ascii_lowercase();
@@ -451,6 +483,7 @@ mod tests {
             height: 400.0,
             reduced_motion: false,
             color_vision: og_render::ColorVision::Typical,
+            coarse_pointer: false,
         };
         for (source, expected) in [
             ("(600px >= width > 599.5px)", true),
@@ -487,6 +520,7 @@ mod tests {
                 height: 400.0,
                 reduced_motion: false,
                 color_vision: og_render::ColorVision::Typical,
+                coarse_pointer: false,
             },
             &mut reads
         ));
@@ -497,6 +531,7 @@ mod tests {
                 height: false,
                 reduced_motion: true,
                 color_vision: false,
+                coarse_pointer: false,
             }
         );
         let mut reads = Reads::default();
@@ -506,6 +541,7 @@ mod tests {
                 height: 300.0,
                 reduced_motion: false,
                 color_vision: og_render::ColorVision::Typical,
+                coarse_pointer: false,
             },
             &mut reads
         ));
@@ -516,8 +552,36 @@ mod tests {
                 height: true,
                 reduced_motion: false,
                 color_vision: false,
+                coarse_pointer: false,
             }
         );
+    }
+
+    #[test]
+    fn pointer_and_hover_follow_a_coarse_primary_pointer() {
+        for (coarse, source, expected) in [
+            (true, "(pointer: coarse)", true),
+            (true, "(any-pointer: fine)", false),
+            (true, "(hover: none)", true),
+            (true, "(hover)", true),
+            (false, "(pointer: coarse)", false),
+            (false, "(pointer: fine) and (hover: hover)", true),
+            (false, "not (any-hover: none)", true),
+        ] {
+            let mut reads = Reads::default();
+            let context = Context {
+                width: 600.0,
+                height: 400.0,
+                reduced_motion: false,
+                color_vision: og_render::ColorVision::Typical,
+                coarse_pointer: coarse,
+            };
+            let q = Query::parse(source).unwrap();
+            assert_eq!(q.matches(context, &mut reads), expected, "{source}");
+            assert!(reads.coarse_pointer && !reads.width, "{source}");
+        }
+        assert!(Query::parse("(pointer: none)").is_err());
+        assert!(Query::parse_container("(pointer: coarse)").is_err());
     }
 
     #[test]
