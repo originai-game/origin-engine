@@ -776,9 +776,13 @@ impl Parser {
                 Some("checkbox") => "toggle",
                 _ => "field",
             },
-            other => match renamed(other) {
-                Some(hint) => return Err((at, hint)),
-                None => other,
+            other => match super::extern_element::kind(other, self.parent_tag(parent)) {
+                Some(Ok(kind)) => kind,
+                Some(Err(hint)) => return Err((at, hint)),
+                None => match renamed(other) {
+                    Some(hint) => return Err((at, hint)),
+                    None => other,
+                },
             },
         };
         let component = tag.starts_with(char::is_uppercase);
@@ -1142,6 +1146,19 @@ impl Parser {
         Ok(i)
     }
     /// Whether the element nearest above `parent` (through blocks) is a list.
+    /// The selector tag of the element enclosing `parent` (itself, when it
+    /// is one), past blocks and other non-elements.
+    fn parent_tag(&self, mut parent: usize) -> Option<&str> {
+        while parent != NONE {
+            let n = &self.doc.nodes[parent];
+            match n.kind {
+                NodeKind::Element(_) | NodeKind::Use(_) => return n.selector_tag.as_deref(),
+                _ => parent = n.parent,
+            }
+        }
+        None
+    }
+
     fn in_list(&self, mut parent: usize) -> bool {
         while parent != NONE {
             let n = &self.doc.nodes[parent];

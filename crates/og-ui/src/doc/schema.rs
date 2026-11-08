@@ -4,6 +4,8 @@
 //! validates against it, the probe exports it (`dump_ui`'s `schema`), `ui:set`
 //! types its values by it, and the README's table is checked against it.
 
+use std::sync::LazyLock;
+
 /// A prop's value type, as a document line writes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ty {
@@ -101,7 +103,16 @@ pub struct KindSpec {
     pub doc: &'static str,
 }
 
-pub const KINDS: &[KindSpec] = &[
+/// Every element kind: the core's, then the document runtime's
+/// ([`super::schema_extra`]).
+pub static KINDS: LazyLock<Vec<KindSpec>> =
+    LazyLock::new(|| [CORE_KINDS, super::schema_extra::KINDS].concat());
+
+/// Every prop: the core's, then the document runtime's.
+pub static PROPS: LazyLock<Vec<PropSpec>> =
+    LazyLock::new(|| [CORE_PROPS, super::schema_extra::PROPS].concat());
+
+pub const CORE_KINDS: &[KindSpec] = &[
     KindSpec {
         name: "column",
         container: true,
@@ -286,9 +297,9 @@ macro_rules! p {
     };
 }
 
-/// Every prop, by kind group: the box, the element model (docs/ui.md
+/// Every core prop, by kind group: the box, the element model (docs/ui.md
 /// §6.1), then each kind's own.
-pub const PROPS: &[PropSpec] = &[
+pub const CORE_PROPS: &[PropSpec] = &[
     // The box.
     p!("width", Ty::Size, "Its width (fit by default)."),
     p!("height", Ty::Size, "Its height (fit by default)."),
@@ -1009,7 +1020,7 @@ pub fn to_json() -> serde_json::Value {
 /// README by this crate's tests, so the schema is described once).
 pub fn markdown() -> String {
     let mut out = String::from("| prop | value | on | what it does |\n|---|---|---|---|\n");
-    for p in PROPS {
+    for p in PROPS.iter() {
         let ty = match p.ty {
             Ty::Word(w) => w.join(" \\| "),
             t => t.name().to_string(),
