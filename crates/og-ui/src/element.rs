@@ -1417,8 +1417,8 @@ impl Ui {
 }
 
 impl Ui {
-    /// Which subtrees have the same layout inputs as last frame (docs/ui.md
-    /// §6.3), and the frame's counts: elements built and rebuilt.
+    /// Which nodes can reuse layout, stopping propagation at unchanged fixed
+    /// boxes, and the frame's counts: elements built and rebuilt.
     pub(crate) fn reuse_check(&mut self) {
         let k = &mut self.kept;
         let nodes = &self.nodes;
@@ -1464,8 +1464,24 @@ impl Ui {
             if !same {
                 rebuilt += 1;
             }
-            k.clean[i] =
-                !fresh && same_layout && a.children.iter().chain(&a.out).all(|&c| k.clean[c]);
+            k.clean[i] = !fresh
+                && same_layout
+                && a.children.iter().chain(&a.out).all(|&c| {
+                    k.clean[c]
+                        || k.prev.get(k.twin[c]).is_some_and(|old| {
+                            let child = &nodes[c];
+                            // A fixed box still lays out its dirty contents, but
+                            // those contents cannot change its parent's sizing.
+                            matches!(child.el.width, Size::Fixed(_))
+                                && matches!(child.el.height, Size::Fixed(_))
+                                && child.el.width == old.el.width
+                                && child.el.height == old.el.height
+                                && child.props.place == old.props.place
+                                && child.props.position == old.props.position
+                                && child.props.insets == old.props.insets
+                                && child.float == old.float
+                        })
+                });
         }
         self.stats = LayoutStats {
             elements: n as u32,

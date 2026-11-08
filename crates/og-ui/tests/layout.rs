@@ -165,6 +165,88 @@ fn rect(ui: &Ui, path: &str) -> [f32; 4] {
 }
 
 #[test]
+fn fixed_boxes_bound_layout_invalidation_but_fitting_boxes_propagate_it() {
+    let build = |ui: &mut Ui, fixed: bool, text: &str| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        for i in 0..12 {
+            ui.open(ui_idi("Ancestor", i), Element::column());
+        }
+        ui.open(
+            "Box",
+            Element {
+                width: Size::Fixed(140.0),
+                height: if fixed {
+                    Size::Fixed(100.0)
+                } else {
+                    Size::fit()
+                },
+                ..Element::column()
+            },
+        );
+        ui.label("Text", text, LabelDesc::default());
+        ui.close();
+        image(ui, "After", Size::Fixed(30.0), Size::Fixed(10.0));
+        for _ in 0..12 {
+            ui.close();
+        }
+        ui.end();
+    };
+    for fixed in [true, false] {
+        let mut cached = Ui::new(UiDesc::default());
+        build(&mut cached, fixed, "short");
+        let before = rect(&cached, "After");
+        let text = "one two three four five six seven eight nine ten eleven twelve";
+        build(&mut cached, fixed, text);
+        let mut fresh = Ui::new(UiDesc::default());
+        build(&mut fresh, fixed, text);
+        let geometry = |ui: &Ui| {
+            ui.frame()
+                .elements
+                .iter()
+                .map(|e| (e.path.clone(), [e.x, e.y, e.width, e.height]))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(geometry(&cached), geometry(&fresh));
+        assert!(rect(&cached, "Text")[3] > 20.0);
+        if fixed {
+            assert_eq!(rect(&cached, "After"), before);
+            assert!(cached.frame().stats.laid_out <= 2);
+        } else {
+            assert!(rect(&cached, "After")[1] > before[1]);
+            assert!(cached.frame().stats.laid_out > 12);
+        }
+    }
+}
+
+#[test]
+fn fixed_box_size_and_placement_changes_still_invalidate_the_parent() {
+    let mut ui = Ui::new(UiDesc::default());
+    for (x, width, height) in [(20.0, 30.0, 10.0), (80.0, 30.0, 10.0), (80.0, 70.0, 40.0)] {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+        ui.open_with(
+            "Child",
+            Element {
+                width: Size::Fixed(width),
+                height: Size::Fixed(height),
+                ..Element::default()
+            },
+            Props {
+                position: Position::Absolute,
+                insets: Edges {
+                    start: Some(x),
+                    top: Some(15.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+        ui.close();
+        ui.end();
+        assert_eq!(rect(&ui, "Child"), [x, 15.0, width, height]);
+    }
+}
+
+#[test]
 fn nested_rows_and_columns_lay_out_as_the_golden() {
     let mut ui = Ui::new(UiDesc::default());
     tree(&mut ui);

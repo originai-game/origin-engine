@@ -210,16 +210,16 @@ impl<V> Sweep for std::collections::HashMap<String, Vec<Kept<V>>> {
     }
 }
 
-/// Last frame's nodes and which of this frame's subtrees have the same
-/// layout inputs (docs/ui.md §2): a clean subtree given the same size
-/// keeps its layout (copied from last frame) instead of being laid out.
+/// Last frame's nodes and which nodes have unchanged layout inputs. A
+/// fixed-size child can isolate changed contents from its parent's inputs;
+/// the child still lays out even when the parent reuses its own layout.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct LayoutCache {
     /// Last frame's nodes, with their layout.
     pub prev: Vec<Node>,
     /// Per node of this frame: its twin in `prev` (NONE: new).
     pub twin: Vec<usize>,
-    /// Per node: its subtree's layout inputs are unchanged.
+    /// Per node: its own layout inputs and child size contributions are unchanged.
     pub clean: Vec<bool>,
     /// Fonts, theme, direction or pixel ratio changed: nothing is clean.
     pub epoch: u64,
@@ -261,7 +261,7 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
 }
 
 impl LayoutCache {
-    /// Node `i`'s twin when its subtree is clean.
+    /// Node `i`'s twin when its layout inputs are clean.
     fn clean_twin(&self, i: usize) -> Option<&Node> {
         if *self.clean.get(i)? {
             self.prev.get(*self.twin.get(i)?)
