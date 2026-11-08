@@ -5,21 +5,16 @@
 <meta name="fixture:default" content='{"size":28,"name":""}'>
 
 <div id="Spinner" role="progressbar" aria-busy="true" aria-label={name || t("component.spinner.name")} style:--size={size || 28}>
-  <svg id="Dots" viewBox="0 0 40 40">
-    <circle cx="20" cy="4" r="4" opacity="1"></circle>
-    <circle cx="31.31" cy="8.69" r="4" opacity="0.22"></circle>
-    <circle cx="36" cy="20" r="4" opacity="0.33"></circle>
-    <circle cx="31.31" cy="31.31" r="4" opacity="0.44"></circle>
-    <circle cx="20" cy="36" r="4" opacity="0.56"></circle>
-    <circle cx="8.69" cy="31.31" r="4" opacity="0.67"></circle>
-    <circle cx="4" cy="20" r="4" opacity="0.78"></circle>
-    <circle cx="8.69" cy="8.69" r="4" opacity="0.89"></circle>
+  <svg id="Ring" viewBox="0 0 40 40">
+    <circle id="Track" cx="20" cy="20" r="16" fill="none" stroke-width="4"></circle>
+    <circle id="Arc" cx="20" cy="20" r="16" fill="none" stroke-width="4" stroke-linecap="round" pathLength="1" stroke-dasharray="0.3 1" transform="rotate(-90 20 20)"></circle>
   </svg>
 </div>
 
 <style>
 #Spinner { width: calc(var(--size) * 1px); height: calc(var(--size) * 1px); }
-#Dots { width: stretch; height: stretch; animation: turn 800ms steps(8) infinite; }
-#Dots circle { fill: var(--ink); }
+#Ring { width: stretch; height: stretch; animation: turn 900ms linear infinite; }
+#Track { stroke: var(--control-strong); }
+#Arc { stroke: var(--ink); }
 @keyframes turn { from { rotate: 0deg; } to { rotate: 360deg; } }
 </style>
