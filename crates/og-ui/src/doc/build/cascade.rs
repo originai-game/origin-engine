@@ -40,6 +40,7 @@ pub(crate) fn resolve_values(
     inherited: &variables::Computed,
     theme: &crate::Theme,
     basis: Option<crate::doc::calc::Basis>,
+    attr: &dyn Fn(&str) -> Option<String>,
     mut applies: impl FnMut(&StyleRule) -> bool,
 ) -> Cascade {
     let mut out = Cascade::default();
@@ -93,6 +94,34 @@ pub(crate) fn resolve_values(
         .filter(|(name, _)| !name.starts_with("--"))
         .collect();
     declarations.sort_by_key(|(_, (priority, _, _))| *priority);
+    // The element's own type step sizes its font-relative units.
+    let basis = basis.map(|mut basis| {
+        let step = declarations
+            .iter()
+            .find(|(name, _)| *name == "font")
+            .and_then(|(_, (_, d, _))| {
+                d.value
+                    .substitute(&mut |n| match out.computed.get(n) {
+                        Some(v) => v.clone(),
+                        None => token(theme, n),
+                    })
+                    .ok()
+            })
+            .and_then(|v| {
+                let name = v
+                    .trim()
+                    .strip_prefix("var(--text-")?
+                    .strip_suffix(')')?
+                    .to_string();
+                let mut ramp = theme.type_ramp;
+                crate::style_file::ramp_step(&mut ramp, &css::camel(&name)).copied()
+            });
+        if let Some(step) = step {
+            basis.em = step.size;
+            basis.lh = step.line_height;
+        }
+        basis
+    });
     for (name, (_, declaration, line)) in declarations {
         for prop in css::targets(name) {
             if let Some((spec, _)) = schema::prop(prop) {
@@ -109,12 +138,18 @@ pub(crate) fn resolve_values(
                 None => token(theme, name),
             }
         });
-        // Viewport units and rem become px; math functions reduce once
-        // their variables are known.
+        // attr() takes the element's attribute; viewport, root and font
+        // units become px; math functions reduce once their variables are
+        // known.
         let value = value.and_then(|v| {
+            let v = if v.contains("attr(") {
+                crate::doc::calc::attr(&v, attr)?
+            } else {
+                v
+            };
             let v = match basis {
-                Some(basis) if crate::doc::calc::has_absolute(&v) => {
-                    let (v, read) = crate::doc::calc::absolute(&v, basis);
+                Some(basis) if crate::doc::calc::per_element(name, &v) => {
+                    let (v, read) = crate::doc::calc::absolute(&v, basis, name);
                     out.viewport_reads.width |= read.width;
                     out.viewport_reads.height |= read.height;
                     v
@@ -143,9 +178,10 @@ pub(crate) fn resolve(
     inherited: &variables::Computed,
     theme: &crate::Theme,
     basis: crate::doc::calc::Basis,
+    attr: &dyn Fn(&str) -> Option<String>,
     applies: impl FnMut(&StyleRule) -> bool,
 ) -> Cascade {
-    let mut out = resolve_values(rules, inline, inherited, theme, Some(basis), applies);
+    let mut out = resolve_values(rules, inline, inherited, theme, Some(basis), attr, applies);
     let mut body = String::new();
     // The winners stay with the cascade: the UI debugger names each one's
     // line (`Ui::debug_element`).

@@ -726,6 +726,14 @@ fn parse_size(vals: &[Value]) -> Result<Size, String> {
                 Some("min") => crate::CalcOp::Min,
                 Some("max") => crate::CalcOp::Max,
                 Some("clamp") => crate::CalcOp::Clamp,
+                Some("round") => crate::CalcOp::Round,
+                Some("roundUp") => crate::CalcOp::RoundUp,
+                Some("roundDown") => crate::CalcOp::RoundDown,
+                Some("roundToZero") => crate::CalcOp::RoundToZero,
+                Some("mod") => crate::CalcOp::Mod,
+                Some("rem") => crate::CalcOp::Rem,
+                Some("abs") => crate::CalcOp::Abs,
+                Some("hypot") => crate::CalcOp::Hypot,
                 _ => return Err(HOW.into()),
             };
             let mut c = crate::Calc {

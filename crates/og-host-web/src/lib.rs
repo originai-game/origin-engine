@@ -786,7 +786,7 @@ pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) ->
 }
 
 /// The play surface the UI lays out in: `{ width, height, dpr, safeArea?,
-/// coarsePointer?, reducedMotion?, highContrast?, reducedTransparency?,
+/// smallWidth?, smallHeight?, largeWidth?, largeHeight?, coarsePointer?, reducedMotion?, highContrast?, reducedTransparency?,
 /// macKeys? }` in CSS pixels (reducedMotion, highContrast and
 /// reducedTransparency the page's `prefers-reduced-motion`,
 /// `prefers-contrast` and `prefers-reduced-transparency`; macKeys an Apple

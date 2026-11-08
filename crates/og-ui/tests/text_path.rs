@@ -192,7 +192,7 @@ fn path_data_and_its_errors() {
             "arc flag",
         ),
         ("-og-text-path: circle(-3px);", "radius"),
-        ("-og-text-path-offset: 3em;", "<n>px or <n>%"),
+        ("-og-text-path-offset: 3deg;", "<n>px or <n>%"),
     ] {
         let doc = format!(
             "<meta name=\"component\" content=\"bad\">\n<p>x</p>\n<style>\np {{ {bad} }}\n</style>"

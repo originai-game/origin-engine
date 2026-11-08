@@ -387,7 +387,8 @@ pub(crate) fn native_keys(v: Viewport) -> Viewport {
 }
 
 /// The host's play surface: CSS pixels, device pixels per CSS pixel, the
-/// safe area, the pointer kind, the page's motion, contrast and
+/// safe area, the small and large viewports (`smallWidth`…`largeHeight`,
+/// the page's with the browser's controls shown and hidden), the pointer kind, the page's motion, contrast and
 /// transparency preferences and whether text controls take macOS's keys. The web host calls it when the canvas
 /// is sized; native hosts take the render target's size.
 pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
@@ -398,6 +399,8 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         height: num("height", 720.0).max(1.0),
         dpr: num("dpr", 1.0),
         safe_area: insets(&viewport["safeArea"]),
+        small: [num("smallWidth", 0.0), num("smallHeight", 0.0)],
+        large: [num("largeWidth", 0.0), num("largeHeight", 0.0)],
         coarse_pointer: viewport["coarsePointer"].as_bool().unwrap_or(false),
         reduced_motion: viewport["reducedMotion"].as_bool().unwrap_or(false),
         high_contrast: viewport["highContrast"].as_bool().unwrap_or(false),
@@ -422,6 +425,8 @@ fn viewport_json(v: &Viewport, hud_max_aspect: f32) -> Value {
         "hud": rect_json(&v.hud_rect(hud_max_aspect)),
         "width": v.width, "height": v.height, "dpr": v.dpr,
         "safeArea": { "left": v.safe_area.left, "top": v.safe_area.top, "right": v.safe_area.right, "bottom": v.safe_area.bottom },
+        "smallWidth": v.extremes()[0][0], "smallHeight": v.extremes()[0][1],
+        "largeWidth": v.extremes()[1][0], "largeHeight": v.extremes()[1][1],
         "coarsePointer": v.coarse_pointer,
         "reducedMotion": v.reduced_motion,
         "highContrast": v.high_contrast,

@@ -45384,7 +45384,27 @@
         },
         "safeArea": {
           "$ref": "#/$defs/Insets",
-          "description": "The device's unsafe margins (notch, home indicator); the root pads by them."
+          "description": "The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them."
+        },
+        "smallWidth": {
+          "type": "number",
+          "description": "The surface's width with the browser's own controls (address bar, toolbars) shown, as CSS's small viewport: what svw, svi and svmin read; vw and dvw read width. Omitted or 0 is width (native hosts have no such controls).",
+          "x-og-unit": "cssPx"
+        },
+        "smallHeight": {
+          "type": "number",
+          "description": "Its height with the browser's controls shown (CSS svh); omitted or 0 is height.",
+          "x-og-unit": "cssPx"
+        },
+        "largeWidth": {
+          "type": "number",
+          "description": "Its width with the browser's controls hidden (CSS lvw); omitted or 0 is width.",
+          "x-og-unit": "cssPx"
+        },
+        "largeHeight": {
+          "type": "number",
+          "description": "Its height with the browser's controls hidden (CSS lvh); omitted or 0 is height.",
+          "x-og-unit": "cssPx"
         },
         "coarsePointer": {
           "type": "boolean",

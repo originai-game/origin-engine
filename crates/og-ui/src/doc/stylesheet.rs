@@ -159,8 +159,9 @@ pub(super) fn apply(
                     .value
                     .substitute(&mut |_| None)
                     .map_err(|error| (rule.at, error))?;
-                // Viewport units and rem resolve when the element does.
-                if !super::calc::has_absolute(&value) {
+                // Viewport, root and font units, env() and attr() resolve
+                // when the element does.
+                if !super::calc::per_element(name, &value) {
                     let value = super::calc::reduce(&value).map_err(|error| (rule.at, error))?;
                     body.push_str(&format!("{name}: {value};"));
                 }

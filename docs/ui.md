@@ -376,19 +376,52 @@ height, and no children or only such empty blocks), and an empty `<p>`,
 collapses through itself: it is 0 tall, and its top and bottom margins
 join its neighbours' into one set, as CSS 2 §8.3.1 says.
 
-Lengths in `width`, `height` and the margins follow CSS Values 4: a
-`calc()` over `%`, px and em (em in margins), with `rem` and `vw`, `vh`,
-`vmin` and `vmax` turned into px when the element resolves, reduces to a
-linear sum (`calc((100% - 2 * 8px) / 2)` is `calc(50% - 8px)`), and layout
-resolves its percentage against the basis it already has for one: the
-parent's content width (or height), a grid area, the screen. `min()`,
-`max()` and `clamp()` over such sums, up to three, are evaluated at
-layout: `width: min(100%, 600px)`. A `var()` term (`calc(var(--w) * 100%
-- 20px)`) is substituted first, so a store bound with `style:--w` moves
-only its element; an element whose values read a viewport unit resolves
-again when the viewport resizes. Times, angles and plain numbers still
-take one unit per function; `calc(10px + 20ms)` is an error. Container
-units (`cqw`…) are refused for now.
+Lengths follow CSS Values 4. The physical units (`cm`, `mm`, `Q`, `in`,
+`pt`, `pc`) are px at 96px to the inch. The viewport units (`vw`, `vh`,
+`vi`, `vb`, `vmin`, `vmax`) and the dynamic forms (`dvh`…) read the
+play surface as it is now; the small forms (`svh`…) read it with the
+browser's own controls (address bar, toolbars) shown, and the large
+forms (`lvh`…) with them hidden (`Viewport.smallWidth` and the rest).
+The web shell measures both from the page's `100svh` and `100lvh`
+whenever the surface resizes, so `dvh` follows the visible viewport as
+a phone's bar collapses while `svh` and `lvh` hold; native hosts have
+no such controls, so there all three forms are the surface. `rem`, `rlh` and the root font units (`rch`, `rex`,
+`rcap`, `ric`) read the body type step. `em`, `lh`, `ch`, `ex`, `cap` and
+`ic` read the element's own step (`font: var(--text-*)`, else the body's)
+and the body face's measured `0` advance, ascent and water ideograph
+advance (`ex` is 0.5em, as CSS's fallback has it). All of these become px
+when the element resolves, except a margin's `em`, which its box keeps.
+`env(safe-area-inset-top)` and the other safe-area insets (`max` ones
+too) read the viewport's safe area, which the web shell measures from
+the page's own `env()` and native hosts pass in; any other name takes
+its fallback. A change to the safe area or to the small or large
+viewport re-resolves the elements that read them.
+`attr(data-size px, 4px)` reads the element's attribute (CSS Values 5):
+untyped, it is a string; `number`, a unit keyword or `type(…)` make it a
+number, and a missing or non-numeric attribute takes the fallback. HTML's
+`data-*` attributes are kept for this and for attribute selectors, and a
+bound one re-resolves its element when it changes.
+
+A `calc()` over lengths reduces to a linear sum of its `%`, px and em
+terms (`calc((100% - 2 * 8px) / 2)` is `calc(50% - 8px)`), and layout
+resolves the percentage against the basis it already has for one: the
+parent's content width (or height), a grid area, the screen. The other
+math functions of CSS Values 4 §10 evaluate as written: `round()` with
+its `nearest`, `up`, `down` and `to-zero` strategies, `mod()`, `rem()`,
+`abs()`, `sign()`, `sin()`, `cos()`, `tan()`, `asin()`, `acos()`,
+`atan()`, `atan2()`, `pow()`, `sqrt()`, `hypot()`, `log()` and `exp()`,
+with the constants `e`, `pi`, `infinity` and `NaN`; a NaN result is 0 and
+an infinite one the largest value, as CSS censors them. Times (`s`, `ms`)
+and angles (`deg`, `grad`, `rad`, `turn`) mix their units freely. When a
+function's lengths mix `%` with px, `min()`, `max()`, `clamp()`,
+`round()`, `mod()`, `rem()`, `abs()` and `hypot()` are evaluated at
+layout against the percentage's basis (`width: min(100%, 600px)`,
+`width: round(down, 50%, 40px)`); such a function stands alone as the
+value, and the others refuse mixed units. A `var()` term (`calc(var(--w)
+* 100% - 20px)`) is substituted first, so a store bound with `style:--w`
+moves only its element; an element whose values read a viewport unit
+resolves again when the viewport resizes. `calc(10px + 20ms)` is an
+error.
 
 An item's number is its place among its `<li>` siblings, counted from the
 list's `start` (1, or the item count when `reversed`), or from the

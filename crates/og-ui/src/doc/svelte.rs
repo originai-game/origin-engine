@@ -1555,6 +1555,11 @@ impl Parser {
                     format!("{} is not a field attribute; write {html}", a.name),
                 ));
             }
+            // HTML's custom data attributes (but the engine's reflected
+            // `data-og-*` ones): read by selectors and attr().
+            if a.name.starts_with("data-") && schema::prop(&property(&a.name)).is_none() {
+                continue;
+            }
             let model = a.name.strip_prefix("bind:");
             let mut name = match (internal, model.unwrap_or(&a.name)) {
                 ("field", "maxlength") => "maxChars".into(),

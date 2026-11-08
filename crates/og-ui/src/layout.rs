@@ -235,6 +235,18 @@ pub enum CalcOp {
     Max,
     /// The second length between the first and the third.
     Clamp,
+    /// `round()`: the first length to the nearest multiple of the second
+    /// (a tie upwards), up, down or towards zero (CSS Values 4 §10.3).
+    Round,
+    RoundUp,
+    RoundDown,
+    RoundToZero,
+    /// `mod()` (the second length's sign) and `rem()` (the first's).
+    Mod,
+    Rem,
+    Abs,
+    /// The square root of the sum of the squares.
+    Hypot,
 }
 
 /// Up to three lengths a CSS math function combines at layout.
@@ -260,6 +272,34 @@ impl Calc {
                 let [lo, v, hi] = self.args.map(|l| l.of(basis));
                 v.min(hi).max(lo)
             }
+            CalcOp::Round | CalcOp::RoundUp | CalcOp::RoundDown | CalcOp::RoundToZero => {
+                let [a, b, _] = self.args.map(|l| l.of(basis));
+                let b = if self.count < 2 { 1.0 } else { b.abs() };
+                if b == 0.0 {
+                    return 0.0;
+                }
+                let q = a / b;
+                b * match self.op {
+                    CalcOp::RoundUp => q.ceil(),
+                    CalcOp::RoundDown => q.floor(),
+                    CalcOp::RoundToZero => q.trunc(),
+                    _ => (q + 0.5).floor(),
+                }
+            }
+            CalcOp::Mod | CalcOp::Rem => {
+                let [a, b, _] = self.args.map(|l| l.of(basis));
+                if b == 0.0 {
+                    return 0.0;
+                }
+                let q = a / b;
+                a - b * if self.op == CalcOp::Mod {
+                    q.floor()
+                } else {
+                    q.trunc()
+                }
+            }
+            CalcOp::Abs => self.args[0].of(basis).abs(),
+            CalcOp::Hypot => v.map(|x| x * x).sum::<f32>().sqrt(),
         }
     }
 

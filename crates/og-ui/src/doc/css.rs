@@ -771,13 +771,15 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
                         )
                     };
                     let op = vals.get(1).map(text_of).unwrap_or_default();
+                    let k = n.len() / 2;
+                    let list = (0..k).map(sum).collect::<Vec<_>>().join(", ");
                     Ok(match op.as_str() {
                         "sum" => sum(0),
                         "clamp" => format!("clamp({}, {}, {})", sum(0), sum(1), sum(2)),
-                        op => {
-                            let k = n.len() / 2;
-                            format!("{op}({})", (0..k).map(sum).collect::<Vec<_>>().join(", "))
-                        }
+                        "roundUp" => format!("round(up, {list})"),
+                        "roundDown" => format!("round(down, {list})"),
+                        "roundToZero" => format!("round(to-zero, {list})"),
+                        op => format!("{op}({list})"),
                     })
                 }
                 _ => Err("a size".into()),
@@ -1047,6 +1049,14 @@ fn tokens_in(c: &[char], i: &mut usize, func: bool) -> Result<(Vec<Vec<Tok>>, bo
                 *i += 1;
             }
             let unit: String = c[us..*i].iter().collect();
+            // A physical length is px at 96px to the inch (CSS Values 4 §6.2).
+            let (n, unit) = match super::calc::physical(&unit) {
+                Some(k) => (
+                    super::calc::number(n.parse::<f64>().unwrap_or(0.0) * k),
+                    "px".to_string(),
+                ),
+                None => (n, unit),
+            };
             args.last_mut().unwrap().push(Tok::Num(n, unit));
         } else if ch.is_ascii_alphabetic() || matches!(ch, '-' | '_' | '$') {
             let start = *i;
@@ -1126,6 +1136,21 @@ fn margin_vals(t: &Tok) -> Result<Vec<Value>, String> {
 /// …`: `calc(100% - 12px)` → `calc sum 1 -12`, `min(100%, 600px)` → `calc
 /// min 1 0 0 600`.
 fn size_calc(name: &str, f: &str, args: &[Vec<Tok>]) -> Result<Vec<Value>, String> {
+    // `round(<strategy>, …)` names its strategy first.
+    let (op, args) = match (f, args.first().map(Vec::as_slice)) {
+        ("round", Some([Tok::Ident(s)])) => (
+            match s.as_str() {
+                "nearest" => "round",
+                "up" => "roundUp",
+                "down" => "roundDown",
+                "to-zero" => "roundToZero",
+                s => return Err(format!("{name}: '{s}' is not a rounding strategy")),
+            },
+            &args[1..],
+        ),
+        ("calc", _) => ("sum", args),
+        _ => (f, args),
+    };
     let lengths: Vec<[f64; 3]> = if f == "calc" {
         vec![want_lin(&Tok::Func(f.into(), args.to_vec()))?]
     } else {
@@ -1136,25 +1161,19 @@ fn size_calc(name: &str, f: &str, args: &[Vec<Tok>]) -> Result<Vec<Value>, Strin
             })
             .collect::<Result<_, _>>()?
     };
-    let count_ok = match f {
-        "calc" => lengths.len() == 1,
-        "clamp" => lengths.len() == 3,
-        _ => (1..=3).contains(&lengths.len()),
+    let (count, how) = match f {
+        "calc" | "abs" => (1..=1, "one length"),
+        "clamp" => (3..=3, "three lengths"),
+        "round" => (1..=2, "a length and its step"),
+        "mod" | "rem" => (2..=2, "two lengths"),
+        _ => (1..=3, "one to three lengths"),
     };
-    if !count_ok {
-        return Err(format!(
-            "{name}: {f}() takes {}",
-            if f == "clamp" {
-                "three lengths"
-            } else {
-                "one to three lengths"
-            }
-        ));
+    if !count.contains(&lengths.len()) {
+        return Err(format!("{name}: {f}() takes {how}"));
     }
     if lengths.iter().any(|l| l[2] != 0.0) {
         return Err(format!("{name} takes px and %, not em"));
     }
-    let op = if f == "calc" { "sum" } else { f };
     let mut out = vec![Value::Word("calc".into()), Value::Word(op.into())];
     for [pct, px, _] in lengths {
         out.push(number(&super::calc::number(pct))?);
@@ -1226,12 +1245,12 @@ fn want_angle(t: &Tok) -> Result<Value, String> {
         {
             number(n)
         }
-        Tok::Num(n, u) if u == "deg" || u == "turn" => {
+        Tok::Num(n, u) if u == "deg" || u == "turn" || u == "grad" => {
             let v: f64 = n.parse().map_err(|_| format!("'{n}' is not a number"))?;
-            let r = if u == "deg" {
-                v.to_radians()
-            } else {
-                v * std::f64::consts::TAU
+            let r = match u.as_str() {
+                "deg" => v.to_radians(),
+                "grad" => (v * 0.9).to_radians(),
+                _ => v * std::f64::consts::TAU,
             };
             Ok(Value::Number(
                 Number::from_f32(r as f32).map_err(|e| e.reason().to_string())?,
@@ -1656,7 +1675,18 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                         vec![Value::Word("percent".into()), number(&shift(n, -2))?]
                     }
                     Tok::Func(f, args)
-                        if matches!(f.as_str(), "calc" | "min" | "max" | "clamp") =>
+                        if matches!(
+                            f.as_str(),
+                            "calc"
+                                | "min"
+                                | "max"
+                                | "clamp"
+                                | "round"
+                                | "mod"
+                                | "rem"
+                                | "abs"
+                                | "hypot"
+                        ) =>
                     {
                         size_calc(name, f, args)?
                     }

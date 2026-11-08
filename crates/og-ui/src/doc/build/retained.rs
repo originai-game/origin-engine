@@ -128,6 +128,9 @@ pub struct RetainedHost {
     by_key: BTreeMap<u64, MountedNode>,
     interaction: [u64; 4],
     viewport: Option<crate::doc::media::Context>,
+    /// The safe area and the small and large viewports last build: a
+    /// change re-resolves what read the viewport (`env()`, `svh`, `lvh`).
+    surface: [f32; 8],
     theme: Option<crate::Theme>,
     theme_epoch: u64,
     media: [BTreeSet<MountedNode>; 5],
@@ -838,10 +841,16 @@ impl RetainedHost {
             color_vision: ui.theme().color_vision,
             coarse_pointer: ui.viewport.coarse_pointer,
         };
+        let [small, large] = ui.viewport.extremes();
+        let sa = ui.viewport.safe_area;
+        let surface = [
+            sa.top, sa.right, sa.bottom, sa.left, small[0], small[1], large[0], large[1],
+        ];
+        let moved = std::mem::replace(&mut self.surface, surface) != surface;
         if let Some(old) = self.viewport.replace(viewport) {
             for (axis, changed) in [
-                old.width != viewport.width,
-                old.height != viewport.height,
+                old.width != viewport.width || moved,
+                old.height != viewport.height || moved,
                 old.reduced_motion != viewport.reduced_motion,
                 old.color_vision != viewport.color_vision,
                 old.coarse_pointer != viewport.coarse_pointer,

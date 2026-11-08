@@ -302,6 +302,8 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
                     height: num("height", 720.0).max(1.0),
                     dpr: num("dpr", 1.0),
                     safe_area: insets(&v["safeArea"]),
+                    small: [num("smallWidth", 0.0), num("smallHeight", 0.0)],
+                    large: [num("largeWidth", 0.0), num("largeHeight", 0.0)],
                     coarse_pointer: v["coarsePointer"].as_bool().unwrap_or(false),
                     reduced_motion: v["reducedMotion"].as_bool().unwrap_or(false),
                     high_contrast: v["highContrast"].as_bool().unwrap_or(false),

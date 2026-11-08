@@ -97,6 +97,35 @@ fn calc_reduces_once_its_variables_are_known() {
         assert_eq!((d.get("B").width, d.get("B").height), (8.0, 7.0));
         assert_eq!(d.get("C").width, 150.0);
     });
+    // CSS Values 4 and 5: physical and font-relative units, the stepped
+    // functions layout evaluates against a percentage's basis, env() and
+    // attr() (bound, so a change re-resolves its element).
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="D" data-w="42"></div>
+  <div id="G" data-w="wide"></div>
+  <div id="H" data-w={$w}></div>
+  <div id="E"></div>
+  <p id="F">x</p>
+</div></div>
+<style>
+#Root { width: 300px; }
+#D { width: attr(data-w px, 5px); height: calc(env(safe-area-inset-top) + 2px); }
+#G { width: attr(data-w px, 5px); height: 1lh; }
+#H { width: calc(attr(data-w number, 1) * 1in); height: 4px; }
+#E { width: round(down, 50%, 40px); height: calc(1in / 8); }
+#F { font: var(--text-caption); width: 2em; height: calc(3pt * 4); }
+</style>"#;
+    both(text, &[("w", json!(2))], |d| {
+        assert_eq!((d.get("D").width, d.get("D").height), (42.0, 2.0));
+        assert_eq!(d.get("G").width, 5.0, "not a number: the fallback");
+        assert_eq!(d.get("G").height, 20.0, "1lh is the body step's line");
+        assert_eq!(d.get("H").width, 192.0);
+        set(d, "w", json!(1));
+        assert_eq!(d.get("H").width, 96.0);
+        assert_eq!((d.get("E").width, d.get("E").height), (120.0, 12.0));
+        assert_eq!((d.get("F").width, d.get("F").height), (26.0, 16.0));
+    });
     let mixed = UiDocument::parse(
         "ui/t.svelte",
         "<meta name=\"component\" content=\"t\"><div id=\"A\"></div><style>#A { width: calc(100% - 12ms); }</style>",

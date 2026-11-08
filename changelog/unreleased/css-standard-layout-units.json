@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "CSS Values 4 and 5 units and math: the physical units (cm, mm, Q, in, pt, pc), the small, large and dynamic viewport units (svh, lvw, dvmin and the rest, with vi and vb), the small and large ones read from the web shell's measure of the page's 100svh and 100lvh (new optional Viewport.smallWidth, smallHeight, largeWidth and largeHeight; the surface's own size on native hosts), the font-relative units ch, ex, cap, ic, lh and rlh with their root forms, and em in every length (not only margins). round() with its strategies, mod(), rem(), abs(), sign(), the trigonometric functions, pow(), sqrt(), hypot(), log() and exp(), with e, pi, infinity and NaN. grad joins the angles. env() takes the safe-area insets (a safe-area change re-resolves what reads them), and attr() reads an element's attribute, with HTML data-* attributes now kept for it and for attribute selectors. min(), max(), clamp(), round(), mod(), rem(), abs() and hypot() over % mixed with px are evaluated at layout."
+    }
+  ]
+}

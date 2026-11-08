@@ -13,7 +13,11 @@ The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) a
 | `width` | `number` | `0` | — | `cssPx` | — | Its width. |
 | `height` | `number` | `0` | — | `cssPx` | — | Its height. |
 | `dpr` | `number` | `1` | — | — | — | Device pixels per CSS pixel; rectangles snap to device pixels. |
-| `safeArea` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | The device's unsafe margins (notch, home indicator); the root pads by them. |
+| `safeArea` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them. |
+| `smallWidth` | `number` | `0` | — | `cssPx` | optional | The surface's width with the browser's own controls (address bar, toolbars) shown, as CSS's small viewport: what svw, svi and svmin read; vw and dvw read width. Omitted or 0 is width (native hosts have no such controls). |
+| `smallHeight` | `number` | `0` | — | `cssPx` | optional | Its height with the browser's controls shown (CSS svh); omitted or 0 is height. |
+| `largeWidth` | `number` | `0` | — | `cssPx` | optional | Its width with the browser's controls hidden (CSS lvw); omitted or 0 is width. |
+| `largeHeight` | `number` | `0` | — | `cssPx` | optional | Its height with the browser's controls hidden (CSS lvh); omitted or 0 is height. |
 | `coarsePointer` | `boolean` | `false` | — | — | — | A touch screen or another coarse pointer. |
 | `reducedMotion` | `boolean` | `false` | — | — | optional | The page prefers reduced motion (prefers-reduced-motion: reduce, from the web shell): the UI's theme only fades, whatever UiDesc.reducedMotion says. Omitted is false. |
 | `highContrast` | `boolean` | `false` | — | — | optional | The page prefers more contrast (prefers-contrast: more, from the web shell): the UI's theme is the high-contrast one, whatever UiDesc.contrast says. Omitted is false. |
@@ -35,7 +39,23 @@ struct Viewport {
   field dpr f32 "Device pixels per CSS pixel; rectangles snap to device pixels." {
     default 1
   }
-  field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them."
+  field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them."
+  field smallWidth f32 "The surface's width with the browser's own controls (address bar, toolbars) shown, as CSS's small viewport: what svw, svi and svmin read; vw and dvw read width. Omitted or 0 is width (native hosts have no such controls)." {
+    unit cssPx
+    optional true
+  }
+  field smallHeight f32 "Its height with the browser's controls shown (CSS svh); omitted or 0 is height." {
+    unit cssPx
+    optional true
+  }
+  field largeWidth f32 "Its width with the browser's controls hidden (CSS lvw); omitted or 0 is width." {
+    unit cssPx
+    optional true
+  }
+  field largeHeight f32 "Its height with the browser's controls hidden (CSS lvh); omitted or 0 is height." {
+    unit cssPx
+    optional true
+  }
   field coarsePointer bool "A touch screen or another coarse pointer."
   field reducedMotion bool "The page prefers reduced motion (prefers-reduced-motion: reduce, from the web shell): the UI's theme only fades, whatever UiDesc.reducedMotion says. Omitted is false." {
     optional true

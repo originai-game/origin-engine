@@ -24468,8 +24468,34 @@ export interface Viewport {
    * @default 1
    */
   readonly dpr: number;
-  /** The device's unsafe margins (notch, home indicator); the root pads by them. */
+  /**
+   * The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them.
+   */
   readonly safeArea: Insets;
+  /**
+   * The surface's width with the browser's own controls (address bar, toolbars) shown, as CSS's small viewport: what svw, svi and svmin read; vw and dvw read width. Omitted or 0 is width (native hosts have no such controls).
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly smallWidth?: number;
+  /**
+   * Its height with the browser's controls shown (CSS svh); omitted or 0 is height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly smallHeight?: number;
+  /**
+   * Its width with the browser's controls hidden (CSS lvw); omitted or 0 is width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly largeWidth?: number;
+  /**
+   * Its height with the browser's controls hidden (CSS lvh); omitted or 0 is height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly largeHeight?: number;
   /** A touch screen or another coarse pointer. */
   readonly coarsePointer: boolean;
   /**

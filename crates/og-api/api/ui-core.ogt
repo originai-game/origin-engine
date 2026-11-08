@@ -395,7 +395,23 @@ module ui {
     field dpr f32 "Device pixels per CSS pixel; rectangles snap to device pixels." {
       default 1
     }
-    field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them."
+    field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them."
+    field smallWidth f32 "The surface's width with the browser's own controls (address bar, toolbars) shown, as CSS's small viewport: what svw, svi and svmin read; vw and dvw read width. Omitted or 0 is width (native hosts have no such controls)." {
+      unit cssPx
+      optional true
+    }
+    field smallHeight f32 "Its height with the browser's controls shown (CSS svh); omitted or 0 is height." {
+      unit cssPx
+      optional true
+    }
+    field largeWidth f32 "Its width with the browser's controls hidden (CSS lvw); omitted or 0 is width." {
+      unit cssPx
+      optional true
+    }
+    field largeHeight f32 "Its height with the browser's controls hidden (CSS lvh); omitted or 0 is height." {
+      unit cssPx
+      optional true
+    }
     field coarsePointer bool "A touch screen or another coarse pointer."
     field reducedMotion bool "The page prefers reduced motion (prefers-reduced-motion: reduce, from the web shell): the UI's theme only fades, whatever UiDesc.reducedMotion says. Omitted is false." {
       optional true

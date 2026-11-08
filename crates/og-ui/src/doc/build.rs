@@ -519,16 +519,51 @@ impl Ui {
                 Some((name.clone(), text))
             })
             .collect();
+        let body = self.theme().type_ramp.body;
+        let face = &self.fonts().body.metrics;
+        let ratio = |s: &str| face.measure(s, 100.0) / 100.0;
+        let [small, large] = vp.extremes();
         let basis = super::calc::Basis {
             width: vp.width,
             height: vp.height,
-            rem: self.theme().type_ramp.body.size,
+            small,
+            large,
+            rem: body.size,
+            rlh: body.line_height,
+            ch: ratio("0"),
+            cap: face.ascender,
+            ic: ratio("\u{6C34}"),
+            safe: [
+                vp.safe_area.top,
+                vp.safe_area.right,
+                vp.safe_area.bottom,
+                vp.safe_area.left,
+            ],
+            ..Default::default()
         };
-        r.cascade = cascade::resolve(&n.rules, &inline, inherited, self.theme(), basis, |rule| {
-            applies(&rule.query, &mut media_reads)
-                && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
-                && rule.structure.as_ref().is_none_or(|s| structure(s))
-        });
+        // An attribute attr() reads, as its text.
+        let attr = |name: &str| {
+            let (_, e) = n.selector_attrs.iter().find(|(a, _)| a == name)?;
+            match b.eval(e) {
+                Value::String(s) => Some(s),
+                Value::Number(x) => Some(x.to_string()),
+                Value::Bool(x) => Some(x.to_string()),
+                _ => None,
+            }
+        };
+        r.cascade = cascade::resolve(
+            &n.rules,
+            &inline,
+            inherited,
+            self.theme(),
+            basis,
+            &attr,
+            |rule| {
+                applies(&rule.query, &mut media_reads)
+                    && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
+                    && rule.structure.as_ref().is_none_or(|s| structure(s))
+            },
+        );
         if let Some((kind, names)) =
             super::container::declared(&r.cascade.container, &mut r.cascade.diagnostics)
         {

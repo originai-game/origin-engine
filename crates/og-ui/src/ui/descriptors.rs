@@ -12,8 +12,16 @@ pub struct Viewport {
     pub height: f32,
     /// Device pixels per CSS pixel; rectangles snap to device pixels.
     pub dpr: f32,
-    /// The device's unsafe margins (notch, home indicator); the root pads by them.
+    /// The device's unsafe margins (notch, home indicator); the root pads
+    /// by them, and CSS `env(safe-area-inset-*)` reads them.
     pub safe_area: Insets,
+    /// The surface's size with the browser's own controls (address bar,
+    /// toolbars) shown and hidden, CSS's small and large viewports (CSS
+    /// Values 4 §6.1.2): what `svh` and `lvh` read, while `vh` and `dvh`
+    /// read `height`. 0: the surface's size (native hosts have no such
+    /// controls).
+    pub small: [f32; 2],
+    pub large: [f32; 2],
     /// A touch screen or other coarse pointer (raises controls to touch size).
     pub coarse_pointer: bool,
     /// The page prefers reduced motion (`prefers-reduced-motion: reduce`):
@@ -50,6 +58,8 @@ impl Default for Viewport {
             height: 720.0,
             dpr: 1.0,
             safe_area: Insets::default(),
+            small: [0.0; 2],
+            large: [0.0; 2],
             coarse_pointer: false,
             reduced_motion: false,
             high_contrast: false,
@@ -83,6 +93,8 @@ impl Viewport {
             width: self.width * k,
             height: self.height * k,
             dpr: self.dpr * unit,
+            small: self.small.map(|v| v * k),
+            large: self.large.map(|v| v * k),
             safe_area: Insets {
                 left: s.left * k,
                 top: s.top * k,
@@ -97,6 +109,17 @@ impl Viewport {
             ),
             ..*self
         }
+    }
+
+    /// Its small and large viewports' sizes (`small`, `large`, else its own).
+    pub fn extremes(&self) -> [[f32; 2]; 2] {
+        let or = |v: [f32; 2]| {
+            [
+                if v[0] > 0.0 { v[0] } else { self.width },
+                if v[1] > 0.0 { v[1] } else { self.height },
+            ]
+        };
+        [or(self.small), or(self.large)]
     }
 
     /// The size class of this surface.

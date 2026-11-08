@@ -13,7 +13,7 @@
 import { expect, test } from "bun:test";
 import { ASK_TIMEOUT_MS, PointerLockMachine } from "../src/web/pointer-lock.ts";
 import { LayoutLearner, readLayoutMap } from "../src/web/keyboard-layout.ts";
-import { watchPixelRatio } from "../src/web/shell.ts";
+import { viewportExtremes, watchPixelRatio } from "../src/web/shell.ts";
 import { layoutCanvas } from "../shell/page.ts";
 
 test("pointer lock: a click locks, Escape re-arms it and the next click locks again, raw where granted", () => {
@@ -149,4 +149,13 @@ test("a fill canvas is pillarboxed past aspect_max at 32:9 and letterboxed under
   // Inside the range (16:9) it fills; without one, 32:9 fills too.
   expect(layoutCanvas({ width: 1920, height: 1080 }, none, "fill", null, range)).toMatchObject({ left: 0, top: 0, width: 1920, height: 1080 });
   expect(layoutCanvas({ width: 3840, height: 1080 }, none, "fill", null)).toMatchObject({ width: 3840, height: 1080 });
+});
+
+test("viewport extremes: the canvas's svh and lvh move it by the page's bar, and a browser without the units sends none", () => {
+  // A phone with its address bar half shown: 100dvh 700, 100svh 600, 100lvh 760.
+  const page: Record<string, [number, number]> = { "100dvh": [390, 700], "100svh": [390, 600], "100lvh": [390, 760] };
+  const measure = (_w: string, h: string) => page[h];
+  // A canvas 30px shorter than the page (a fill under a 30px top bar).
+  expect(viewportExtremes(390, 670, measure)).toEqual({ smallWidth: 390, smallHeight: 570, largeWidth: 390, largeHeight: 730 });
+  expect(viewportExtremes(390, 670, () => undefined)).toEqual({});
 });

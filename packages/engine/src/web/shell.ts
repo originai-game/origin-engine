@@ -194,6 +194,40 @@ export function pixelSize(cssWidth: number, cssHeight: number, devicePixelRatio:
   return { width: Math.max(1, Math.round(cssWidth * dpr)), height: Math.max(1, Math.round(cssHeight * dpr)), dpr };
 }
 
+/**
+ * The play surface's size with the browser's own controls shown and hidden
+ * (CSS's small and large viewports, og-ui's `Viewport.small`/`large`): the
+ * canvas's `width`×`height` moved by how far the page's 100svw/100svh and
+ * 100lvw/100lvh are from its 100dvw/100dvh, which `measure` reads. Empty
+ * where the browser has no such units (the surface's own size then).
+ */
+export function viewportExtremes(
+  width: number,
+  height: number,
+  measure: (w: string, h: string) => [number, number] | undefined = measureViewport,
+): { smallWidth?: number; smallHeight?: number; largeWidth?: number; largeHeight?: number } {
+  const [d, s, l] = [measure("100dvw", "100dvh"), measure("100svw", "100svh"), measure("100lvw", "100lvh")];
+  if (!d || !s || !l || !(d[0] > 0 && d[1] > 0 && s[1] > 0 && l[1] > 0)) return {};
+  return {
+    smallWidth: Math.max(1, width - Math.max(0, d[0] - s[0])),
+    smallHeight: Math.max(1, height - Math.max(0, d[1] - s[1])),
+    largeWidth: width + Math.max(0, l[0] - d[0]),
+    largeHeight: height + Math.max(0, l[1] - d[1]),
+  };
+}
+
+/** The CSS px a fixed box of `w`×`h` takes on this page. */
+function measureViewport(w: string, h: string): [number, number] | undefined {
+  const doc = globalThis.document;
+  if (!doc?.body || !globalThis.CSS?.supports?.("height", "1dvh")) return undefined;
+  const probe = doc.createElement("div");
+  probe.style.cssText = `position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;width:${w};height:${h}`;
+  doc.body.appendChild(probe);
+  const r = probe.getBoundingClientRect();
+  probe.remove();
+  return [r.width, r.height];
+}
+
 /** The page's preferences og-ui follows, each with the viewport field it sets. */
 export const PAGE_PREFERENCES = [
   ["reducedMotion", "(prefers-reduced-motion: reduce)"],
@@ -807,6 +841,9 @@ export class Shell {
       height: cssHeight,
       dpr: size.dpr,
       ...(safeArea ? { safeArea } : {}),
+      // svh and lvh: as the browser's bar shows and hides, the canvas (dvh)
+      // follows it between these.
+      ...viewportExtremes(cssWidth, cssHeight),
       ...(covered ? { covered } : {}),
       coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false,
     };
