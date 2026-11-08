@@ -23,4 +23,4 @@ fn tick {
 }
 ```
 
-<sub>Module `ui` line 1722</sub>
+<sub>Module `ui` line 1725</sub>

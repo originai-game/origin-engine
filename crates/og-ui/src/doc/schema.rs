@@ -507,6 +507,21 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!("name", Ty::Text, "What a screen reader calls it."),
     p!(
+        "role",
+        Ty::Word(crate::a11y::ROLES),
+        "Its ARIA role, over its tag's (`status`, `alert`, `log` are live regions)."
+    ),
+    p!(
+        "ariaLive",
+        Ty::Word(&["off", "polite", "assertive"]),
+        "`aria-live`: a screen reader announces what changes in it, after what it is reading (`polite`) or at once (`assertive`); over its role's."
+    ),
+    p!(
+        "ariaAtomic",
+        Ty::Bool,
+        "`aria-atomic`: a live region announces its whole text when any of it changes, not only what changed; over its role's."
+    ),
+    p!(
         "part",
         Ty::Name,
         "Its part name a style dresses (`ShopCard.frame`); the document's `parts` lists them."

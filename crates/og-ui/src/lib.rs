@@ -73,7 +73,7 @@ mod virtualize;
 mod widgets;
 pub mod world;
 
-pub use a11y::{A11yNode, A11yTree, ROLES, Semantics};
+pub use a11y::{A11yNode, A11yTree, ANNOUNCEMENTS, Announcement, ROLES, Semantics};
 pub use actions::{ActionDesc, ActionHint, ActionTrigger, Device, Glyph};
 pub use doc::UiDocument;
 pub use doc::build::{DocEvent, DocResponse};

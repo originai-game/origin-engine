@@ -44,4 +44,4 @@ struct LootLabelDesc {
 }
 ```
 
-<sub>Module `ui` line 6733</sub>
+<sub>Module `ui` line 6736</sub>

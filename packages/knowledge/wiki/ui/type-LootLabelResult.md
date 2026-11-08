@@ -23,4 +23,4 @@ struct LootLabelResult {
 }
 ```
 
-<sub>Module `ui` line 6754</sub>
+<sub>Module `ui` line 6757</sub>

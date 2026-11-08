@@ -26325,7 +26325,7 @@ export interface A11yNode {
   /** The path of the nearest node above it in the tree; empty at the top. */
   readonly parent: string;
   /**
-   * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group, list, listitem, and the landmarks navigation, main, banner, contentinfo, complementary, article, region.
+   * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, log, dialog, tooltip, separator, group, list, listitem, and the landmarks navigation, main, banner, contentinfo, complementary, article, region.
    */
   readonly role: string;
   /**
@@ -26358,6 +26358,18 @@ export interface A11yNode {
   readonly valueNow: number | null;
   /** A heading's level, 1 to 6 (aria-level; <h1> to <h6>); null for anything else. */
   readonly level: number | null;
+  /**
+   * A live region's setting (aria-live, or its role's: status and log are polite, alert assertive): polite or assertive, empty for none. A screen reader announces what changes in it; the web mirror and the native tree speak it.
+   */
+  readonly live: string;
+  /**
+   * A live region that announces its whole text when any of it changes (aria-atomic, or its role's: status and alert); false for none.
+   */
+  readonly atomic: boolean;
+  /**
+   * A live region that announces as it appears (an alert, a toast); another region announces only what changes in it after it entered.
+   */
+  readonly notify: boolean;
   /**
    * Left edge of the whole element.
    *

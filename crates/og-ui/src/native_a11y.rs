@@ -25,7 +25,24 @@ pub struct Bridge {
     frame: Option<u64>,
     scale: [f64; 2],
     read: usize,
+    /// What the live regions announced and no host took yet
+    /// ([`Bridge::take_announcements`]); presentation, never checkpointed.
+    announcements: std::collections::VecDeque<crate::a11y::Announcement>,
+    /// Which of each priority's two voices spoke last.
+    spoke: [bool; 2],
 }
+
+/// The voices a screen reader hears the announcements in: hidden live
+/// nodes under the root, a polite pair and an assertive pair. Each
+/// announcement goes to the voice that did not speak last and silences the
+/// other, so the same words twice are heard twice (AccessKit's adapters
+/// announce a live node when its words change).
+const VOICES: [NodeId; 4] = [
+    NodeId(u64::MAX - 3),
+    NodeId(u64::MAX - 2),
+    NodeId(u64::MAX - 1),
+    NodeId(u64::MAX),
+];
 
 impl Bridge {
     /// Bounds are multiplied into the shared frame's physical pixel space.
@@ -36,20 +53,156 @@ impl Bridge {
     /// children of the records whose children changed
     /// (`Ui::semantic_shapes`).
     pub fn update(&mut self, ui: &Ui, scale: [f64; 2]) -> Option<TreeUpdate> {
+        fn node_words(n: &Node) -> String {
+            crate::a11y::words(n.label().unwrap_or(""), n.value().unwrap_or(""))
+        }
         let since = self.frame.filter(|_| self.scale == scale);
         let (changes, frame) = ui.semantic_changes(since);
         let shapes = ui.semantic_shapes(since);
         let initial = self.focus.is_none();
+        // Live regions announce what changed since the last update, never
+        // the first tree, a restored one or a new scope's.
+        let news = !initial && ui.semantic_news(since);
         self.read = 0;
-        let patched = changes
-            .zip(shapes)
-            .and_then(|(keys, shapes)| self.patched(ui, &keys, &shapes));
-        let (changed, focus) = match patched {
+        // The voices hang under the root outside the UI's tree: both
+        // paths read and compare the tree without them.
+        let mut voices: Vec<(NodeId, Node)> = VOICES
+            .iter()
+            .filter_map(|id| self.previous.remove(id).map(|n| (*id, n)))
+            .collect();
+        if let Some(root) = self.previous.get_mut(&ROOT) {
+            let kids: Vec<NodeId> = root
+                .children()
+                .iter()
+                .filter(|c| !VOICES.contains(c))
+                .copied()
+                .collect();
+            root.clear_children();
+            for kid in kids {
+                root.push_child(kid);
+            }
+        }
+        #[cfg(debug_assertions)]
+        let before = crate::ui::bounded::checking().then(|| self.clone());
+        // What each node said in the tree last sent, by element key: on
+        // the patched path the keys it reads (`None`: entering), on the
+        // whole tree's every node (one missing entered).
+        let mut said: std::collections::HashMap<u64, Option<String>> = Default::default();
+        let patched = match changes.zip(shapes) {
+            Some((keys, shapes)) => {
+                if news {
+                    for &key in &keys {
+                        let was = self.by_key.get(&key).and_then(|id| self.previous.get(id));
+                        said.insert(key, was.map(node_words));
+                    }
+                }
+                self.patched(ui, &keys, &shapes)
+            }
+            None => None,
+        };
+        let whole = patched.is_none();
+        let (mut changed, focus) = match patched {
             Some(patched) => patched,
-            None => self.full(ui, scale),
+            None => {
+                said.clear();
+                if news {
+                    for (id, n) in &self.previous {
+                        if let Some(&key) = self.key_of.get(id) {
+                            said.insert(key, Some(node_words(n)));
+                        }
+                    }
+                }
+                self.full(ui, scale)
+            }
+        };
+        let heard = |b: &Bridge,
+                     changed: &[(NodeId, Node)],
+                     said: &std::collections::HashMap<u64, Option<String>>,
+                     whole: bool| {
+            struct View<'a>(&'a Bridge, &'a Ui);
+            impl crate::a11y::LiveTree for View<'_> {
+                type Id = NodeId;
+                fn up(&self, id: NodeId) -> Option<NodeId> {
+                    self.0.parent_of.get(&id).copied().filter(|&p| p != ROOT)
+                }
+                fn live(&self, id: NodeId) -> (crate::a11y::Live, bool) {
+                    let role = match self.0.previous.get(&id).map(Node::role) {
+                        Some(Role::Status) => "status",
+                        Some(Role::Alert) => "alert",
+                        Some(Role::Log) => "log",
+                        _ => "",
+                    };
+                    let (live, atomic, _) = self
+                        .0
+                        .key_of
+                        .get(&id)
+                        .map(|&k| self.1.a11y_live(k))
+                        .unwrap_or_default();
+                    crate::a11y::live_of(role, live, atomic)
+                }
+                fn notifies(&self, id: NodeId) -> bool {
+                    let alert = self.0.previous.get(&id).map(Node::role) == Some(Role::Alert);
+                    let key = self.0.key_of.get(&id);
+                    alert || key.is_some_and(|&k| self.1.a11y_live(k).2)
+                }
+                fn hidden(&self, id: NodeId) -> bool {
+                    self.0.previous.get(&id).is_some_and(Node::is_hidden)
+                }
+                fn text(&self, id: NodeId) -> String {
+                    self.0.previous.get(&id).map(node_words).unwrap_or_default()
+                }
+                fn value(&self, id: NodeId) -> String {
+                    let n = self.0.previous.get(&id);
+                    n.and_then(Node::value).unwrap_or("").trim().to_owned()
+                }
+                fn kids(&self, id: NodeId) -> Vec<NodeId> {
+                    self.0
+                        .previous
+                        .get(&id)
+                        .map(|n| n.children().to_vec())
+                        .unwrap_or_default()
+                }
+            }
+            let candidates = changed.iter().filter_map(|(id, _)| {
+                let key = b.key_of.get(id)?;
+                match said.get(key) {
+                    Some(was) => Some((*id, was.clone())),
+                    None => whole.then_some((*id, None)),
+                }
+            });
+            crate::a11y::announce(&View(b, ui), candidates)
+        };
+        let new = if news {
+            heard(self, &changed, &said, whole)
+        } else {
+            Vec::new()
         };
         self.frame = Some(frame);
         self.scale = scale;
+        #[cfg(debug_assertions)]
+        if let Some(mut twin) = before {
+            // The whole tree read from the tree last sent announces what
+            // the incremental path did.
+            twin.ids = self.ids.clone();
+            let mut said = std::collections::HashMap::new();
+            if news {
+                for (id, n) in &twin.previous {
+                    if let Some(&key) = twin.key_of.get(id) {
+                        said.insert(key, Some(node_words(n)));
+                    }
+                }
+            }
+            let (twin_changed, _) = twin.full(ui, scale);
+            let twin_new = if news {
+                heard(&twin, &twin_changed, &said, true)
+            } else {
+                Vec::new()
+            };
+            assert_eq!(
+                twin_new, new,
+                "the screen reader's incremental tree announces other than the whole tree"
+            );
+        }
         #[cfg(debug_assertions)]
         if crate::ui::bounded::checking() {
             let mut twin = self.clone();
@@ -71,6 +224,62 @@ impl Bridge {
                 differ.is_empty() && twin_focus == focus,
                 "the screen reader's incremental tree differs from the whole tree: {differ:?}, focus {twin_focus:?} vs {focus:?}"
             );
+        }
+        // The voices speak this update's announcements and hang under the
+        // root again; the first update sends them, silent.
+        let fresh = voices.is_empty();
+        if fresh {
+            voices = VOICES
+                .iter()
+                .enumerate()
+                .map(|(i, &id)| {
+                    let mut voice = Node::new(if i < 2 { Role::Status } else { Role::Alert });
+                    voice.set_live(if i < 2 {
+                        accesskit::Live::Polite
+                    } else {
+                        accesskit::Live::Assertive
+                    });
+                    (id, voice)
+                })
+                .collect();
+        }
+        for assertive in [false, true] {
+            let words: Vec<&str> = new
+                .iter()
+                .filter(|a| a.assertive == assertive)
+                .map(|a| a.text.as_str())
+                .collect();
+            if words.is_empty() {
+                continue;
+            }
+            let p = usize::from(assertive);
+            self.spoke[p] = !self.spoke[p];
+            let on = 2 * p + usize::from(self.spoke[p]);
+            let off = 2 * p + usize::from(!self.spoke[p]);
+            voices[on].1.set_label(words.join(". "));
+            voices[on].1.set_value(words.join(". "));
+            voices[off].1.clear_label();
+            voices[off].1.clear_value();
+            for v in [on, off] {
+                changed.retain(|(id, _)| *id != VOICES[v]);
+                changed.push(voices[v].clone());
+            }
+        }
+        if fresh {
+            changed.extend(voices.iter().cloned());
+        }
+        crate::a11y::queue_announcements(&mut self.announcements, new);
+        self.previous.extend(voices);
+        if let Some(root) = self.previous.get_mut(&ROOT) {
+            for id in VOICES {
+                root.push_child(id);
+            }
+            let root = root.clone();
+            match changed.iter_mut().find(|(id, _)| *id == ROOT) {
+                Some(sent) => sent.1 = root,
+                None if fresh => changed.push((ROOT, root)),
+                None => {}
+            }
         }
         if changed.is_empty() && self.focus == Some(focus) {
             return None;
@@ -276,6 +485,15 @@ impl Bridge {
             .filter(|id| self.previous.contains_key(id))
             .unwrap_or(ROOT);
         Some((changed, focus))
+    }
+
+    /// Takes what the live regions announced since the last take, oldest
+    /// first (at most [`crate::ANNOUNCEMENTS`]; older ones are dropped).
+    /// The tree's voices already speak them to the screen reader; a host
+    /// takes them to speak them some other way (a text-to-speech
+    /// setting, a log).
+    pub fn take_announcements(&mut self) -> Vec<crate::a11y::Announcement> {
+        self.announcements.drain(..).collect()
     }
 
     /// How many accessibility records the last update read (tests and

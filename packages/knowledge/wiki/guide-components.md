@@ -53,6 +53,9 @@ What every kind takes: its box, layout, paint, motion and input.
 | `adjustable` | `bool` | With focusable: Left and Right step it while it has the focus instead of moving the focus. |
 | `visible` | `bool` | False leaves it (and its subtree) out of the tree. |
 | `aria-label` | `text` | What a screen reader calls it. |
+| `role` | `button \| link \| text \| heading \| image \| checkbox \| radio \| switch \| slider \| spinbutton \| textbox \| combobox \| listbox \| option \| tab \| tablist \| tabpanel \| radiogroup \| progressbar \| meter \| timer \| status \| alert \| log \| dialog \| alertdialog \| tooltip \| separator \| group \| region \| navigation \| toolbar \| menu \| menubar \| menuitem \| menuitemcheckbox \| menuitemradio \| list \| listitem \| tree \| treeitem \| table \| grid \| row \| rowheader \| columnheader \| cell \| gridcell \| figure \| scrollbar` | Its ARIA role, over its tag's (`status`, `alert`, `log` are live regions). |
+| `aria-live` | `off \| polite \| assertive` | `aria-live`: a screen reader announces what changes in it, after what it is reading (`polite`) or at once (`assertive`); over its role's. |
+| `aria-atomic` | `bool` | `aria-atomic`: a live region announces its whole text when any of it changes, not only what changed; over its role's. |
 | `part` | `name` | Its part name a style dresses (`ShopCard.frame`); the document's `parts` lists them. |
 | `translate:` | `<x>px [<y>px]` | `x`: Moved right after layout, CSS px. `y`: Moved down after layout, CSS px. |
 | `scale:` | `<both> \| <x> <y>` | `scale`: Both scales. `scaleX`: Its horizontal scale. `scaleY`: Its vertical scale. |

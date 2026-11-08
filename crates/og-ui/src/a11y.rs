@@ -82,6 +82,191 @@ pub(crate) struct A11y {
     pub range: Option<A11yRange>,
     /// A heading's level, 1 to 6 (`aria-level`; `<h1>`…`<h6>`).
     pub level: Option<u8>,
+    /// `aria-live` written on it, over its role's (`status` is polite,
+    /// `alert` assertive).
+    pub live: Option<Live>,
+    /// `aria-atomic` written on it, over its role's.
+    pub atomic: Option<bool>,
+    /// A notification (a toast): its region announces as it appears.
+    pub notify: bool,
+}
+
+/// How a live region's changes are announced (`aria-live`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Live {
+    #[default]
+    Off,
+    Polite,
+    Assertive,
+}
+
+impl Live {
+    pub fn parse(word: &str) -> Option<Self> {
+        match word {
+            "off" => Some(Live::Off),
+            "polite" => Some(Live::Polite),
+            "assertive" => Some(Live::Assertive),
+            _ => None,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Live::Off => "",
+            Live::Polite => "polite",
+            Live::Assertive => "assertive",
+        }
+    }
+}
+
+/// A node's live region setting and whether it is atomic: `aria-live` and
+/// `aria-atomic` written on it, else its role's (WAI-ARIA 1.2: `status`
+/// and `log` are polite, `alert` assertive; `status` and `alert` atomic).
+pub(crate) fn live_of(role: &str, live: Option<Live>, atomic: Option<bool>) -> (Live, bool) {
+    let (implied, whole) = match role {
+        "status" => (Live::Polite, true),
+        "alert" => (Live::Assertive, true),
+        "log" => (Live::Polite, false),
+        _ => (Live::Off, false),
+    };
+    (live.unwrap_or(implied), atomic.unwrap_or(whole))
+}
+
+/// What a live region says when its content changed: a screen reader
+/// speaks it after what it is reading (polite) or at once (assertive).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Announcement {
+    pub text: String,
+    pub assertive: bool,
+}
+
+/// Announcements a host has not taken yet are kept up to this many; older
+/// ones are dropped first (a host that never takes them holds no more).
+pub const ANNOUNCEMENTS: usize = 16;
+
+/// Appends `new` to `queue`, dropping the oldest past [`ANNOUNCEMENTS`].
+pub(crate) fn queue_announcements(
+    queue: &mut std::collections::VecDeque<Announcement>,
+    new: impl IntoIterator<Item = Announcement>,
+) {
+    for a in new {
+        if queue.len() == ANNOUNCEMENTS {
+            queue.pop_front();
+        }
+        queue.push_back(a);
+    }
+}
+
+/// The tree a host last sent, as announcing reads it: each node's parent,
+/// live setting, hidden state, own words and children.
+pub(crate) trait LiveTree {
+    type Id: Copy + Eq;
+    /// The node above it; `None` at the top.
+    fn up(&self, id: Self::Id) -> Option<Self::Id>;
+    fn live(&self, id: Self::Id) -> (Live, bool);
+    /// It announces as it appears (an alert, a toast); other regions
+    /// announce only what changes in them after.
+    fn notifies(&self, id: Self::Id) -> bool;
+    fn hidden(&self, id: Self::Id) -> bool;
+    /// Its name and value, as a screen reader says them ([`words`]).
+    fn text(&self, id: Self::Id) -> String;
+    /// Its value alone.
+    fn value(&self, id: Self::Id) -> String;
+    fn kids(&self, id: Self::Id) -> Vec<Self::Id>;
+}
+
+/// The announcements of one update (ARIA's default `aria-relevant`,
+/// `additions text`): each node in `changed` whose words differ from
+/// `before` (`None`: it entered) and that sits in a live region, itself or
+/// under one, says its words; an atomic region says its whole text
+/// instead, read from `tree`. A node with children says its value alone
+/// (its name labels them: a container's id, an `aria-label`). A region
+/// that enters with its content says nothing unless it notifies (ARIA
+/// announces a region's changes, not its arrival). Removals
+/// and emptied text say nothing, nor does a region with a hidden node on
+/// the way up. One announcement per region, in the order its first change
+/// comes. Reads the changed nodes, their ancestors and an atomic region's
+/// nodes: nothing else.
+pub(crate) fn announce<T: LiveTree>(
+    tree: &T,
+    changed: impl IntoIterator<Item = (T::Id, Option<String>)>,
+) -> Vec<Announcement> {
+    let say = |n: T::Id| {
+        if tree.kids(n).is_empty() {
+            tree.text(n)
+        } else {
+            tree.value(n)
+        }
+    };
+    let changed: Vec<(T::Id, Option<String>)> = changed.into_iter().collect();
+    let entered = |n: T::Id| changed.iter().any(|(id, was)| *id == n && was.is_none());
+    let mut regions: Vec<(T::Id, Live, bool, Vec<String>)> = Vec::new();
+    for (id, before) in changed.iter().cloned() {
+        if before.as_deref() == Some(tree.text(id).as_str()) {
+            continue;
+        }
+        let text = say(id);
+        if text.is_empty() {
+            continue;
+        }
+        // One walk up: the nearest live region, and no hidden node on the
+        // way to the top (a hidden region, or one under a hidden node).
+        let mut at = Some(id);
+        let mut region = None;
+        let mut hidden = false;
+        while let Some(n) = at {
+            if tree.hidden(n) {
+                hidden = true;
+                break;
+            }
+            if region.is_none() {
+                let (live, atomic) = tree.live(n);
+                if live != Live::Off {
+                    region = Some((n, live, atomic));
+                }
+            }
+            at = tree.up(n);
+        }
+        let Some((r, live, atomic)) = region.filter(|_| !hidden) else {
+            continue;
+        };
+        if entered(r) && !tree.notifies(r) {
+            continue;
+        }
+        match regions.iter_mut().find(|(id, ..)| *id == r) {
+            Some((.., texts)) => {
+                if !texts.contains(&text) {
+                    texts.push(text);
+                }
+            }
+            None => regions.push((r, live, atomic, vec![text])),
+        }
+    }
+    regions
+        .into_iter()
+        .map(|(r, live, atomic, texts)| {
+            let text = if atomic {
+                let mut words: Vec<String> = Vec::new();
+                let mut stack = vec![r];
+                while let Some(n) = stack.pop() {
+                    let t = say(n);
+                    if !t.is_empty() && words.last() != Some(&t) {
+                        words.push(t);
+                    }
+                    let mut kids = tree.kids(n);
+                    kids.reverse();
+                    stack.extend(kids);
+                }
+                words.join(" ")
+            } else {
+                texts.join(" ")
+            };
+            Announcement {
+                text,
+                assertive: live == Live::Assertive,
+            }
+        })
+        .collect()
 }
 
 /// A range's bounds and value (an unbounded stepper has a value alone).
@@ -116,6 +301,15 @@ pub struct A11yNode {
     pub value_now: Option<f32>,
     /// A heading's level, 1 to 6; `None` for none.
     pub level: Option<u8>,
+    /// A live region's setting, `polite` or `assertive` (`aria-live`, or
+    /// its role's: `status`, `log`, `alert`); empty for none.
+    pub live: String,
+    /// A live region that says its whole text when any of it changes
+    /// (`aria-atomic`, or its role's: `status`, `alert`).
+    pub atomic: bool,
+    /// A notification that announces as it appears (an alert, a toast);
+    /// another live region announces only what changes in it after.
+    pub notify: bool,
     /// Its bounds in CSS pixels (the whole element, also where a scroll
     /// container cuts it; `offscreen` then says so).
     pub x: f32,
@@ -150,9 +344,11 @@ impl A11yTree {
                 &n.name,
                 &n.description,
                 &n.value,
+                &n.live,
             ] {
                 h.write_str(s);
             }
+            h.write_u64(u64::from(n.atomic) | u64::from(n.notify) << 1);
             for v in [n.value_min, n.value_max, n.value_now] {
                 h.write_u64(v.map_or(u64::MAX, |v| u64::from(v.to_bits())));
             }
@@ -171,6 +367,83 @@ impl A11yTree {
         }
         h.write_str(&self.focused);
         h.finish()
+    }
+
+    /// What this tree's live regions announce against `before`, the tree a
+    /// host last sent (a page's mirror, which is sent whole when it
+    /// changed): as the native bridge announces (`native_a11y::Bridge`),
+    /// with each node's words compared by path. Call it only when the tree
+    /// changed and the change is news ([`crate::Ui::semantic_news`]).
+    pub fn announcements(&self, before: &A11yTree) -> Vec<Announcement> {
+        struct Tree<'a> {
+            nodes: &'a [A11yNode],
+            at: std::collections::HashMap<&'a str, usize>,
+            kids: Vec<Vec<usize>>,
+        }
+        impl LiveTree for Tree<'_> {
+            type Id = usize;
+            fn up(&self, id: usize) -> Option<usize> {
+                self.at.get(self.nodes[id].parent.as_str()).copied()
+            }
+            fn live(&self, id: usize) -> (Live, bool) {
+                let n = &self.nodes[id];
+                (Live::parse(&n.live).unwrap_or_default(), n.atomic)
+            }
+            fn notifies(&self, id: usize) -> bool {
+                self.nodes[id].notify
+            }
+            fn hidden(&self, id: usize) -> bool {
+                self.nodes[id].states.iter().any(|s| s == "hidden")
+            }
+            fn text(&self, id: usize) -> String {
+                words(&self.nodes[id].name, &self.nodes[id].value)
+            }
+            fn value(&self, id: usize) -> String {
+                self.nodes[id].value.trim().to_owned()
+            }
+            fn kids(&self, id: usize) -> Vec<usize> {
+                self.kids[id].clone()
+            }
+        }
+        let at: std::collections::HashMap<&str, usize> = self
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.path.as_str(), i))
+            .collect();
+        let mut kids = vec![Vec::new(); self.nodes.len()];
+        for (i, n) in self.nodes.iter().enumerate() {
+            if let Some(&p) = at.get(n.parent.as_str()) {
+                kids[p].push(i);
+            }
+        }
+        let old: std::collections::HashMap<&str, String> = before
+            .nodes
+            .iter()
+            .map(|n| (n.path.as_str(), words(&n.name, &n.value)))
+            .collect();
+        let tree = Tree {
+            nodes: &self.nodes,
+            at,
+            kids,
+        };
+        let changed = self.nodes.iter().enumerate().filter_map(|(i, n)| {
+            let was = old.get(n.path.as_str()).cloned();
+            (was.as_deref() != Some(tree.text(i).as_str())).then_some((i, was))
+        });
+        let changed: Vec<_> = changed.collect();
+        announce(&tree, changed)
+    }
+}
+
+/// A node's name and value as a screen reader says them, one after the
+/// other (a value that repeats the name is said once).
+pub(crate) fn words(name: &str, value: &str) -> String {
+    match (name.trim(), value.trim()) {
+        (n, "") => n.to_owned(),
+        ("", v) => v.to_owned(),
+        (n, v) if n == v => n.to_owned(),
+        (n, v) => format!("{n} {v}"),
     }
 }
 
@@ -207,6 +480,9 @@ pub(crate) fn role_of(kind: &str, n: &Node) -> &'static str {
         // its widget says otherwise.
         _ if n.nav => "button",
         _ if n.scrolls() => "group",
+        // A live region is a record even without a role of its own (an
+        // `aria-live` column).
+        _ if n.a11y.live.is_some_and(|l| l != Live::Off) => "group",
         _ => "",
     }
 }

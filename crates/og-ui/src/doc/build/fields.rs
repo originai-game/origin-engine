@@ -381,6 +381,15 @@ impl Ui {
         if n.level > 0 {
             self.nodes[i].a11y.level = Some(n.level);
         }
+        // `role`, `aria-live` and `aria-atomic` over the tag's.
+        if let Some(role) = r
+            .str("role")
+            .and_then(|r| crate::a11y::ROLES.iter().find(|&&k| k == r))
+        {
+            self.nodes[i].a11y.role = Some(role);
+        }
+        self.nodes[i].a11y.live = r.str("ariaLive").and_then(crate::a11y::Live::parse);
+        self.nodes[i].a11y.atomic = r.get("ariaAtomic").map(|_| r.flag("ariaAtomic"));
         // `aria-label` (or a `<label for>`) names it over what it shows.
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
             self.nodes[i].a11y.name = Some(name.to_string());

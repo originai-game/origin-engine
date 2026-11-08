@@ -12,7 +12,7 @@ One node of the accessibility tree: an element with a role (layout containers an
 |---|---|---|---|---|---|---|
 | `path` | `string` | `""` | — | — | — | Its path, as touch_move_to and og.ui.focus name it. |
 | `parent` | `string` | `""` | — | — | — | The path of the nearest node above it in the tree; empty at the top. |
-| `role` | `string` | `""` | — | — | — | Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group, list, listitem, and the landmarks navigation, main, banner, contentinfo, complementary, article, region. |
+| `role` | `string` | `""` | — | — | — | Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, log, dialog, tooltip, separator, group, list, listitem, and the landmarks navigation, main, banner, contentinfo, complementary, article, region. |
 | `name` | `string` | `""` | — | — | — | Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value). |
 | `description` | `string` | `""` | — | — | — | Read after the name (aria-description): a text field's placeholder when a label names it; empty for none. |
 | `value` | `string` | `""` | — | — | — | Its value as text (a slider's number, a progress's percent, a field's text); empty for none. |
@@ -21,6 +21,9 @@ One node of the accessibility tree: an element with a role (layout containers an
 | `valueMax` | `number \| null` | `null` | — | — | — | A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is. |
 | `valueNow` | `number \| null` | `null` | — | — | — | A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range. |
 | `level` | `number \| null` | `null` | — | — | — | A heading's level, 1 to 6 (aria-level; <h1> to <h6>); null for anything else. |
+| `live` | `string` | `""` | — | — | — | A live region's setting (aria-live, or its role's: status and log are polite, alert assertive): polite or assertive, empty for none. A screen reader announces what changes in it; the web mirror and the native tree speak it. |
+| `atomic` | `boolean` | `false` | — | — | — | A live region that announces its whole text when any of it changes (aria-atomic, or its role's: status and alert); false for none. |
+| `notify` | `boolean` | `false` | — | — | — | A live region that announces as it appears (an alert, a toast); another region announces only what changes in it after it entered. |
 | `x` | `number` | `0` | — | `cssPx` | — | Left edge of the whole element. |
 | `y` | `number` | `0` | — | `cssPx` | — | Top edge of the whole element. |
 | `width` | `number` | `0` | — | `cssPx` | — | Width. |
@@ -31,7 +34,7 @@ struct A11yNode {
   doc "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out)."
   field path String "Its path, as touch_move_to and og.ui.focus name it."
   field parent String "The path of the nearest node above it in the tree; empty at the top."
-  field role String "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group, list, listitem, and the landmarks navigation, main, banner, contentinfo, complementary, article, region."
+  field role String "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, log, dialog, tooltip, separator, group, list, listitem, and the landmarks navigation, main, banner, contentinfo, complementary, article, region."
   field name String "Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value)."
   field description String "Read after the name (aria-description): a text field's placeholder when a label names it; empty for none."
   field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
@@ -40,6 +43,9 @@ struct A11yNode {
   field valueMax Option.f32 "A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is."
   field valueNow Option.f32 "A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range."
   field level Option.u32 "A heading's level, 1 to 6 (aria-level; <h1> to <h6>); null for anything else."
+  field live String "A live region's setting (aria-live, or its role's: status and log are polite, alert assertive): polite or assertive, empty for none. A screen reader announces what changes in it; the web mirror and the native tree speak it."
+  field atomic bool "A live region that announces its whole text when any of it changes (aria-atomic, or its role's: status and alert); false for none."
+  field notify bool "A live region that announces as it appears (an alert, a toast); another region announces only what changes in it after it entered."
   field x f32 "Left edge of the whole element." {
     unit cssPx
   }

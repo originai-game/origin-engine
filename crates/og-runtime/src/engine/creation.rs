@@ -740,6 +740,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         ui_warned: BTreeSet::new(),
         a11y_mirror: options["a11y"].as_bool().unwrap_or(false),
         a11y_digest: 0,
+        a11y_sent: None,
         undeclared_logged: BTreeSet::new(),
         anim: Some(a.anim.clone()),
         anim_assets: Default::default(),

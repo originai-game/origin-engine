@@ -188,6 +188,9 @@ pub(crate) struct State {
     /// (`A11yTree::digest`; 0: none sent yet), so the mirror is sent the
     /// tree only when it changes.
     pub a11y_digest: u64,
+    /// The tree the last frame answer carried and the UI's semantic frame
+    /// then, which live regions announce against (`A11yTree::announcements`).
+    pub a11y_sent: Option<(u64, og_ui::A11yTree)>,
     /// Undeclared accesses already logged (`system access name`), so each is
     /// logged once per system (`api::undeclared`), and the calls handed a
     /// bare index for an entity (`api::live`), once per system and call.

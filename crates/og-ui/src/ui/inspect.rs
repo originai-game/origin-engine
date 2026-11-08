@@ -296,6 +296,7 @@ impl Ui {
         }
         let r = &n.screen;
         let range = crate::a11y::range_of(n);
+        let (live, atomic) = crate::a11y::live_of(role, n.a11y.live, n.a11y.atomic);
         if self.offscreen(i) {
             states.push("offscreen".to_owned());
         }
@@ -311,11 +312,26 @@ impl Ui {
             value_max: range.and_then(|r| r.max),
             value_now: range.map(|r| r.now),
             level: n.a11y.level,
+            live: live.name().to_owned(),
+            atomic: live != crate::a11y::Live::Off && atomic,
+            notify: live != crate::a11y::Live::Off && (n.a11y.notify || role == "alert"),
             x: r.x,
             y: r.y,
             width: r.width,
             height: r.height,
         })
+    }
+
+    /// The `aria-live` and `aria-atomic` written on the node `key` names
+    /// (what a screen reader's bridge reads for a node it already holds;
+    /// its role's setting is [`crate::a11y::live_of`]'s).
+    pub(crate) fn a11y_live(&self, key: u64) -> (Option<crate::a11y::Live>, Option<bool>, bool) {
+        self.tree
+            .by_key
+            .get(&key)
+            .and_then(|&i| self.nodes.get(i))
+            .map(|n| (n.a11y.live, n.a11y.atomic, n.a11y.notify))
+            .unwrap_or_default()
     }
 
     /// The accessibility record of the node `key` names on the last

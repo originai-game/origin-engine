@@ -769,6 +769,51 @@ In TypeScript, `textPath` is `{ data, radius, offset, percent, reverse }`;
 empty `data` is a circle, and data that does not parse keeps the text in
 lines. The reference frames are `text-path-1280` and `text-path-390`.
 
+#### Live regions
+
+`aria-live="polite"` or `"assertive"` makes an element a live region, as
+`role="status"` (polite), `role="log"` (polite) and `role="alert"`
+(assertive) do; `aria-live="off"` turns a role's off. A screen reader
+announces what changes in a region: politely after what it is reading, or
+assertively at once. This follows ARIA's default `aria-relevant` (`additions
+text`). A node that enters a region announces its words, and a node whose
+name or value changed announces its new words. Removals and emptied text
+announce nothing. A region that enters the tree already holding content
+(a pushed screen's status) announces nothing, because ARIA announces a
+region's changes, not its arrival; its later changes do announce. A
+notification announces as it appears: an `alert`, and a toast
+(`og.ui.toast`), whose node is marked `notify`. `aria-atomic="true"` (the default of `status` and
+`alert`) announces the region's whole text, in tree order, instead of only
+what changed. A region with a hidden node on the way up announces nothing.
+
+```svelte
+<text role="status">{$saved}</text>
+<column aria-live="polite" aria-atomic="true"><text>Gold</text><text>{$gold}</text></column>
+{#each $alerts as a (a.id)}<text role="alert">{a.text}</text>{/each}
+```
+
+The first tree a host reads announces nothing. Neither does the update
+after a restore (`Ui::restore_state`, which is presentation state, not
+news). A dialog opening or closing announces only what changed with it,
+such as a toast shown as it closes: the page's nodes stay in the tree with
+their words. Each change announces once, from the tree the host last sent. A host that falls behind
+hears what changed since its last read, once. On the native host the
+AccessKit bridge (`native_a11y::Bridge`) announces through two polite and
+two assertive hidden live nodes under its root. Each announcement goes to
+the voice that did not speak last, so the same words twice are heard twice.
+`Bridge::take_announcements` drains them, holding at most `ANNOUNCEMENTS`
+(16), and drops the oldest first. The web mirror writes the frame answer's
+`announce` list into the page's polite and assertive regions. Both work in
+publish builds. `og.ui.a11y()` gives each node `live` and `atomic`.
+
+Announcing reads only what the bridge already reads: the changed nodes,
+each one's ancestors up to its region (O(depth)), and an atomic region's
+nodes. An idle frame reads nothing. The web mirror compares the tree it
+sends with the one it sent before, only on frames where the tree changed.
+The queue is presentation only: it is never checkpointed and never enters
+`world_hash`. Under `OG_UI_CHECK_BOUNDED` the whole-tree twin of each
+update must announce the same as the incremental update.
+
 ### 2.4 Select, dialog, details and meter
 
 These four are core controls with HTML's elements and attributes; kits
@@ -1348,8 +1393,7 @@ Variable-height virtualization and localized number/date formatting
 needed by kits are core prerequisites,
 not invitations to private kit workarounds. Per-frame UI cost and its
 performance tests are independent measured work; this document claims no
-unmeasured performance budget has passed. Live regions
-require explicit core delivery before authors can claim support. Author knowledge belongs in guides, not shipped
+unmeasured performance budget has passed. Author knowledge belongs in guides, not shipped
 skills. No kit silently implements those missing facilities itself.
 
 The [gate rules](ci.md) own test lanes, locks, and toolchain policy.

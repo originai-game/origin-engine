@@ -33,4 +33,4 @@ fn menu {
 }
 ```
 
-<sub>Module `ui` line 2884</sub>
+<sub>Module `ui` line 2887</sub>

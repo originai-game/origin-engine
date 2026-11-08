@@ -239,7 +239,9 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
 }
 
 /// The UI's accessibility tree when it differs from the one the last frame
-/// answer carried (by [`og_ui::A11yTree::digest`]).
+/// answer carried (by [`og_ui::A11yTree::digest`]), with what its live
+/// regions announce against that one (`announce`: `[{text, assertive}]`;
+/// nothing for the first tree, after a restore or a scope change).
 fn a11y_changed(eng: &Engine) -> Option<Value> {
     if !eng.state.borrow().a11y_mirror {
         return None;
@@ -253,7 +255,19 @@ fn a11y_changed(eng: &Engine) -> Option<Value> {
         return None;
     }
     st.a11y_digest = digest;
-    Some(super::modules::a11y_json(tree, ui.frame().unit.max(1.0)))
+    let frame = ui.semantic_changes(None).1;
+    let announce: Vec<Value> = match &st.a11y_sent {
+        Some((since, sent)) if ui.semantic_news(Some(*since)) => tree
+            .announcements(sent)
+            .into_iter()
+            .map(|a| json!({ "text": a.text, "assertive": a.assertive }))
+            .collect(),
+        _ => Vec::new(),
+    };
+    st.a11y_sent = Some((frame, tree.clone()));
+    let mut json = super::modules::a11y_json(tree, ui.frame().unit.max(1.0));
+    json["announce"] = Value::from(announce);
+    Some(json)
 }
 
 /// The haptic patterns the UI played since the last frame answer.

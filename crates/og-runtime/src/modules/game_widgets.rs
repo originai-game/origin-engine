@@ -559,7 +559,7 @@ pub(crate) fn a11y_json(t: &og_ui::A11yTree, unit: f32) -> Value {
                 "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
                 "description": n.description, "value": n.value, "states": n.states,
                 "valueMin": n.value_min, "valueMax": n.value_max, "valueNow": n.value_now,
-                "level": n.level, "x": n.x * unit, "y": n.y * unit, "width": n.width * unit, "height": n.height * unit,
+                "level": n.level, "live": n.live, "atomic": n.atomic, "notify": n.notify, "x": n.x * unit, "y": n.y * unit, "width": n.width * unit, "height": n.height * unit,
             })
         })
         .collect();

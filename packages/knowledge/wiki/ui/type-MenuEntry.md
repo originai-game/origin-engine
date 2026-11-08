@@ -38,4 +38,4 @@ struct MenuEntry {
 }
 ```
 
-<sub>Module `ui` line 2074</sub>
+<sub>Module `ui` line 2077</sub>

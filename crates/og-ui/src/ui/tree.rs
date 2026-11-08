@@ -227,6 +227,10 @@ pub(crate) struct SemanticLog {
     /// reads the whole tree.
     floor: u64,
     full: u64,
+    /// One past the last frame whose changes are not news for a screen
+    /// reader (a restore): live regions say nothing for a bridge that last
+    /// read before it.
+    quiet: u64,
     entries: std::collections::VecDeque<(u64, u64)>,
     /// The nodes whose children changed, by frame (`0`: the frame's root):
     /// a bridge reads their children again, and only theirs.
@@ -251,6 +255,11 @@ impl SemanticLog {
         if self.full != self.frame + 1 {
             self.shapes.push_back((self.frame, key));
         }
+    }
+
+    /// This frame's changes are not news (a restore).
+    pub(crate) fn note_quiet(&mut self) {
+        self.quiet = self.frame + 1;
     }
 
     /// Every node may say something else this frame.
@@ -388,6 +397,16 @@ impl Ui {
     /// it has now read up to.
     pub fn semantic_changes(&self, since: Option<u64>) -> (Option<Vec<u64>>, u64) {
         (self.semantics.since(since), self.semantics.frame)
+    }
+
+    /// Whether what changed since a bridge last read at `since` is news
+    /// its live regions announce: false for its first read (`None`) and
+    /// after a restore ([`Ui::restore_state`]), which changes what nodes say
+    /// without anything happening. A scope change (a dialog opening or
+    /// closing) is news: the page's nodes stay in the tree with their
+    /// words, so only what changed with it (a toast) is heard.
+    pub fn semantic_news(&self, since: Option<u64>) -> bool {
+        since.is_some_and(|s| self.semantics.quiet <= s)
     }
 
     /// The nodes whose children may have changed since a bridge last read

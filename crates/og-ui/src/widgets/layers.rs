@@ -600,6 +600,7 @@ impl Ui {
                 },
             );
             self.stack.push(i);
+            self.nodes[i].a11y.notify = true;
             let mut f = fx(kind, e, distance, t.reduced_motion);
             f.inert = toast.leaving != 0;
             self.nodes[i].fx = Some(f);

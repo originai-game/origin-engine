@@ -12,8 +12,11 @@
 //   has the focus it is the field for assistive technology (named after
 //   the field's node): the field's own element is aria-hidden and its
 //   parent owns the textarea (`standIn`).
-// - Toasts are announced: a status node that appears is written into a
-//   polite live region, an alert into an assertive one.
+// - Live regions are announced as the engine says (og-ui's
+//   `A11yTree::announcements`, the tree's `announce`): what changed in an
+//   `aria-live` region, a status or an alert since the tree before is
+//   written into a polite or an assertive live region of the page. The
+//   mirrored nodes carry no aria-live of their own, so nothing is said twice.
 // - The DOM reaches the UI as input: a screen reader's click on an element
 //   is `{ kind: "a11y", action: "activate", path }` and its moving focus
 //   onto one is `focus`; `adjust` sends `increment`/`decrement` for an
@@ -57,6 +60,12 @@ export interface A11yNode {
   readonly valueMax?: number | null;
   /** A range's value as a number (aria-valuenow); null (or absent) for none. */
   readonly valueNow?: number | null;
+  /** A live region's setting, polite or assertive; empty (or absent) for none. */
+  readonly live?: string;
+  /** A live region that announces its whole text. */
+  readonly atomic?: boolean;
+  /** A notification that announces as it appears. */
+  readonly notify?: boolean;
   readonly x: number;
   readonly y: number;
   readonly width: number;
@@ -68,6 +77,14 @@ export interface A11yTree {
   readonly nodes: readonly A11yNode[];
   readonly focusOrder: readonly string[];
   readonly focused: string;
+  /** What the live regions announce against the tree sent before (frame answers only). */
+  readonly announce?: readonly Announcement[];
+}
+
+/** One live region announcement (og-ui `Announcement`). */
+export interface Announcement {
+  readonly text: string;
+  readonly assertive: boolean;
 }
 
 /** Roles whose `checked` state is reported either way. */
@@ -92,8 +109,6 @@ export class A11yMirror {
   readonly #assertive: HTMLDivElement;
   readonly #elements = new Map<string, HTMLElement>();
   #tree: A11yTree = { nodes: [], focusOrder: [], focused: "" };
-  /** Status and alert nodes already announced, by path and text. */
-  #announced = new Set<string>();
   /** The path this mirror last moved DOM focus to (its own focus events are not the reader's). */
   #focusing = "";
   /** The text field the text entry's textarea stands in for (text-input.ts), and the textarea. */
@@ -331,22 +346,16 @@ export class A11yMirror {
     }
   }
 
-  /** Status and alert nodes that appeared are said once through the live regions. */
+  /** The engine's announcements are said once through the live regions. */
   #announce(tree: A11yTree): void {
-    const now = new Set<string>();
-    for (const n of tree.nodes) {
-      if ((n.role !== "status" && n.role !== "alert") || !n.name) continue;
-      const key = `${n.path}\u0000${n.name}`;
-      now.add(key);
-      if (this.#announced.has(key)) continue;
-      const region = n.role === "alert" ? this.#assertive : this.#polite;
+    for (const a of tree.announce ?? []) {
+      const region = a.assertive ? this.#assertive : this.#polite;
       const line = region.ownerDocument.createElement("div");
-      line.textContent = n.name;
+      line.textContent = a.text;
       region.appendChild(line);
       // Keep the region short: a reader has said what was added.
       while (region.childElementCount > 3) region.firstElementChild?.remove();
     }
-    this.#announced = now;
   }
 
   /** The DOM focus follows the UI's focus. */

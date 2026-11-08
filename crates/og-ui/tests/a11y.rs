@@ -593,3 +593,386 @@ fn native_tree_reads_only_the_changed_nodes() {
         assert_eq!(names(&ui), expect);
     }
 }
+
+/// Live regions (`aria-live`, `role="status"`, `role="alert"`): a screen
+/// reader hears what changed in one, once, from the tree the bridge last
+/// sent. Ways it could fail, each covered below: the first tree, an idle
+/// tick or a restore announces; a text outside any region announces; a
+/// change announces twice or not at all; an atomic region says only what
+/// changed, or a plain one says all of it; an alert row's entry is not
+/// assertive, or a removal or a hidden region speaks; the same words
+/// twice are heard once (the voice did not change); the page's mirror
+/// (`A11yTree::announcements`) hears other than the native bridge; the
+/// queue grows without a host taking it. `OG_UI_CHECK_BOUNDED=1` also has
+/// every update's whole-tree twin announce the same.
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn live_regions_announce_each_change_once() {
+    use native_a11y::accesskit::{Live, Role};
+    use og_ui::reactive::{SourceId, wire};
+    use serde_json::{Value, json};
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(
+        UiDocument::parse(
+            "ui/news.svelte",
+            r#"<meta name="component" content="news">
+<column id="News">
+  <text id="Status" role="status">{$status}</text>
+  <column id="Feed" aria-live="polite">{#each $feed as row (row.id)}<text id="Line">{row.text}</text>{/each}</column>
+  <column id="Purse" aria-live="polite" aria-atomic="true"><text id="Label">Gold</text><text id="Gold">{$gold}</text></column>
+  <column id="Alerts">{#each $alerts as a (a.id)}<text id="Alert" role="alert">{a.text}</text>{/each}</column>
+  <column id="Shut" aria-live="assertive" hidden={$shut}><text id="Secret">{$secret}</text></column>
+  <text id="Plain">{$gold} coins</text>
+  {#if $unread}<text id="Unread" role="status">{$count}</text>{/if}
+  <dialog id="Ask" modal bind:open={$ask} aria-label="Quit?"><button id="Yes">Yes</button></dialog>
+  {#each $rows as row (row.id)}<button id="Row">{row.id}</button>{/each}
+</column>"#,
+        )
+        .unwrap(),
+    );
+    let apply = |ui: &mut Ui, command: Value| {
+        let reply =
+            wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
+        assert_eq!(reply[0]["ok"], true, "{reply}");
+    };
+    let source = |name: &str| SourceId::new("test", name);
+    let mut inputs = std::collections::BTreeMap::new();
+    for (name, initial) in [
+        ("status", json!("Ready")),
+        ("gold", json!("5")),
+        ("secret", json!("s0")),
+        ("shut", json!(false)),
+        ("ask", json!(false)),
+        ("unread", json!(false)),
+        ("count", json!("3 unread")),
+    ] {
+        apply(
+            &mut ui,
+            json!({"op": "signal", "source": source(name), "initial": initial}),
+        );
+        inputs.insert(name.to_string(), source(name));
+    }
+    let rows: Vec<Value> = (0..200).map(|i| json!({ "id": format!("r{i}") })).collect();
+    for (name, items) in [
+        ("feed", json!([{"id": "a", "text": "Ada joined"}])),
+        ("alerts", json!([])),
+        ("rows", json!(rows)),
+    ] {
+        apply(
+            &mut ui,
+            json!({"op": "collection", "source": source(name), "key": "id", "items": items}),
+        );
+        inputs.insert(name.to_string(), source(name));
+    }
+    ui.mount_document(
+        source("news"),
+        "news",
+        inputs,
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let step = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 900.0));
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+    };
+    let set = |ui: &mut Ui, name: &str, value: Value| {
+        apply(
+            ui,
+            json!({"op": "set", "source": source(name), "value": value}),
+        )
+    };
+    let said = |text: &str, assertive: bool| Announcement {
+        text: text.into(),
+        assertive,
+    };
+    step(&mut ui);
+    step(&mut ui);
+    let mut bridge = native_a11y::Bridge::default();
+    // The page's mirror, as og-runtime keeps it: the tree it last sent and
+    // the frame it last looked at.
+    let mut page: (Option<u64>, A11yTree) = (None, ui.a11y().clone());
+    // One update: the native bridge's announcements, checked against what
+    // the page's mirror hears from the tree it was last sent.
+    // The voice of each priority that spoke last: every announcement is
+    // spoken by the other one, so AccessKit hears a change even when the
+    // words repeat.
+    let mut last_voice: [Option<u64>; 2] = [None, None];
+    let mut heard = |ui: &Ui, bridge: &mut native_a11y::Bridge| {
+        let update = bridge.update(ui, [1.0, 1.0]);
+        let native = bridge.take_announcements();
+        for (id, n) in update.iter().flat_map(|u| &u.nodes) {
+            if id.0 > u64::MAX - 4 && n.value().is_some_and(|v| !v.is_empty()) {
+                let p = usize::from(n.live() == Some(Live::Assertive));
+                assert_ne!(
+                    last_voice[p],
+                    Some(id.0),
+                    "the voice that spoke last speaks again"
+                );
+                last_voice[p] = Some(id.0);
+            }
+        }
+        let tree = ui.a11y().clone();
+        let on_page = if tree != page.1 && ui.semantic_news(page.0) {
+            tree.announcements(&page.1)
+        } else {
+            Vec::new()
+        };
+        assert_eq!(
+            on_page, native,
+            "the page's mirror hears what the native tree does"
+        );
+        page = (Some(ui.semantic_changes(None).1), tree);
+        (update, native)
+    };
+    let (first, said_first) = heard(&ui, &mut bridge);
+    assert!(said_first.is_empty(), "the first tree announces nothing");
+    let first = first.expect("the whole tree");
+    let status = first
+        .nodes
+        .iter()
+        .find(|(_, n)| n.label() == Some("Ready"))
+        .expect("the status");
+    assert_eq!(status.1.role(), Role::Status);
+    assert_eq!(
+        status.1.live(),
+        None,
+        "content nodes carry no live setting of their own: the voices speak"
+    );
+    let voices: Vec<_> = first
+        .nodes
+        .iter()
+        .filter(|(id, n)| id.0 > u64::MAX - 4 && n.live().is_some() && n.value().is_none())
+        .collect();
+    assert_eq!(
+        voices.len(),
+        4,
+        "two polite and two assertive voices, silent"
+    );
+    step(&mut ui);
+    let (idle, nothing) = heard(&ui, &mut bridge);
+    assert!(
+        idle.is_none() && nothing.is_empty(),
+        "an idle tick announces nothing"
+    );
+    assert_eq!(bridge.read(), 0, "and reads no record");
+
+    // A bound status changes once and announces once, politely; the text
+    // outside any region is not heard.
+    set(&mut ui, "status", json!("Saved"));
+    step(&mut ui);
+    let (update, news) = heard(&ui, &mut bridge);
+    assert_eq!(news, [said("Saved", false)]);
+    assert!(bridge.read() < 12, "read {} records", bridge.read());
+    let voice = |update: &native_a11y::accesskit::TreeUpdate, live: Live| -> Vec<String> {
+        update
+            .nodes
+            .iter()
+            .filter(|(id, n)| id.0 > u64::MAX - 4 && n.live() == Some(live))
+            .filter_map(|(_, n)| n.value().map(str::to_owned))
+            .collect()
+    };
+    assert_eq!(
+        voice(&update.unwrap(), Live::Polite),
+        ["Saved"],
+        "a voice speaks it"
+    );
+    step(&mut ui);
+    assert!(heard(&ui, &mut bridge).1.is_empty(), "once");
+
+    // Atomic: the whole region; plain text beside it says nothing.
+    set(&mut ui, "gold", json!("6"));
+    step(&mut ui);
+    assert_eq!(heard(&ui, &mut bridge).1, [said("Gold 6", false)]);
+    // Not atomic: only the line that entered, not the lines already there.
+    apply(
+        &mut ui,
+        json!({"op": "insert", "source": source("feed"), "row": {"id": "b", "text": "Bo joined"}}),
+    );
+    step(&mut ui);
+    assert_eq!(heard(&ui, &mut bridge).1, [said("Bo joined", false)]);
+    // The same words twice in a row are heard twice.
+    apply(
+        &mut ui,
+        json!({"op": "insert", "source": source("feed"), "row": {"id": "c", "text": "Bo joined"}}),
+    );
+    step(&mut ui);
+    assert_eq!(heard(&ui, &mut bridge).1, [said("Bo joined", false)]);
+    // An alert row entering is assertive; its removal says nothing.
+    apply(
+        &mut ui,
+        json!({"op": "insert", "source": source("alerts"), "row": {"id": "x", "text": "Low health"}}),
+    );
+    step(&mut ui);
+    let (update, news) = heard(&ui, &mut bridge);
+    assert_eq!(news, [said("Low health", true)]);
+    assert_eq!(voice(&update.unwrap(), Live::Assertive), ["Low health"]);
+    apply(
+        &mut ui,
+        json!({"op": "remove", "source": source("alerts"), "key": "x"}),
+    );
+    step(&mut ui);
+    assert!(
+        heard(&ui, &mut bridge).1.is_empty(),
+        "a removal says nothing"
+    );
+    // The same words again are heard again: the other voice speaks them.
+    set(&mut ui, "status", json!("Ready"));
+    step(&mut ui);
+    assert_eq!(heard(&ui, &mut bridge).1, [said("Ready", false)]);
+    set(&mut ui, "status", json!("Saved"));
+    step(&mut ui);
+    let (update, news) = heard(&ui, &mut bridge);
+    assert_eq!(news, [said("Saved", false)]);
+    let update = update.unwrap();
+    let spoken: Vec<_> = update
+        .nodes
+        .iter()
+        .filter(|(id, _)| id.0 > u64::MAX - 4)
+        .map(|(id, n)| (id.0, n.value().map(str::to_owned)))
+        .collect();
+    assert_eq!(
+        spoken.len(),
+        2,
+        "one voice speaks, the other falls silent: {spoken:?}"
+    );
+    // A hidden region says nothing while hidden.
+    set(&mut ui, "shut", json!(true));
+    step(&mut ui);
+    assert!(heard(&ui, &mut bridge).1.is_empty());
+    set(&mut ui, "secret", json!("s1"));
+    step(&mut ui);
+    assert!(
+        heard(&ui, &mut bridge).1.is_empty(),
+        "a hidden region says nothing"
+    );
+    set(&mut ui, "shut", json!(false));
+    set(&mut ui, "secret", json!("s2"));
+    step(&mut ui);
+    assert!(
+        heard(&ui, &mut bridge).1.is_empty(),
+        "a region shown again arrives with its content: not news"
+    );
+    set(&mut ui, "secret", json!("s3"));
+    step(&mut ui);
+    assert_eq!(
+        heard(&ui, &mut bridge).1,
+        [said("s3", true)],
+        "its next change is"
+    );
+
+    // A modal dialog opening and closing changes the scope: the page's
+    // regions say nothing for it, but a status set as it closes is heard
+    // (a toast shown as a dialog closes).
+    for open in [true, false, true] {
+        set(&mut ui, "ask", json!(open));
+        step(&mut ui);
+        assert!(
+            heard(&ui, &mut bridge).1.is_empty(),
+            "the dialog open {open} is not news"
+        );
+    }
+    set(&mut ui, "ask", json!(false));
+    set(&mut ui, "status", json!("Quit cancelled"));
+    step(&mut ui);
+    assert_eq!(heard(&ui, &mut bridge).1, [said("Quit cancelled", false)]);
+
+    // A region that arrives already holding content says nothing (a
+    // pushed screen's status); its later changes are heard. An addition
+    // inside a region already there is heard (the feed, above).
+    set(&mut ui, "unread", json!(true));
+    step(&mut ui);
+    assert!(
+        heard(&ui, &mut bridge).1.is_empty(),
+        "a region's arrival is not news"
+    );
+    set(&mut ui, "count", json!("4 unread"));
+    step(&mut ui);
+    assert_eq!(heard(&ui, &mut bridge).1, [said("4 unread", false)]);
+
+    // A restore announces nothing, though what nodes say changed with it.
+    let saved = ui.save_state();
+    set(&mut ui, "status", json!("Loading"));
+    set(&mut ui, "gold", json!("9"));
+    step(&mut ui);
+    assert_eq!(
+        heard(&ui, &mut bridge).1,
+        [said("Loading", false), said("Gold 9", false)]
+    );
+    ui.restore_state(&saved).unwrap();
+    step(&mut ui);
+    let (update, news) = heard(&ui, &mut bridge);
+    assert!(update.is_some(), "the tree changed");
+    assert!(news.is_empty(), "a restore is not news: {news:?}");
+    set(&mut ui, "status", json!("Loaded"));
+    step(&mut ui);
+    assert_eq!(
+        heard(&ui, &mut bridge).1,
+        [said("Loaded", false)],
+        "news again after it"
+    );
+
+    // A host that never takes them holds the newest few.
+    for i in 0..ANNOUNCEMENTS + 4 {
+        set(&mut ui, "status", json!(format!("n{i}")));
+        step(&mut ui);
+        bridge.update(&ui, [1.0, 1.0]);
+    }
+    let kept = bridge.take_announcements();
+    assert_eq!(kept.len(), ANNOUNCEMENTS);
+    assert_eq!(
+        kept.last(),
+        Some(&said(&format!("n{}", ANNOUNCEMENTS + 3), false))
+    );
+    assert_eq!(kept[0], said("n4", false), "the oldest are dropped first");
+}
+
+/// The hidden state silences a live region, its own or an ancestor's
+/// (`A11yTree::announcements`, which the native bridge shares): a region
+/// that `visible false` takes out of the tree says nothing because its
+/// nodes left, but a host's tree can also carry `hidden` on a node.
+#[test]
+fn hidden_live_regions_say_nothing() {
+    let node = |path: &str, parent: &str, name: &str, live: &str, hidden: bool| A11yNode {
+        path: path.into(),
+        parent: parent.into(),
+        role: if live.is_empty() { "text" } else { "group" }.into(),
+        name: name.into(),
+        live: live.into(),
+        notify: false,
+        states: if hidden {
+            vec!["hidden".into()]
+        } else {
+            Vec::new()
+        },
+        ..Default::default()
+    };
+    let tree = |text: &str, region_hidden: bool, top_hidden: bool| A11yTree {
+        nodes: vec![
+            node("Top", "", "", "", top_hidden),
+            node("Top/R", "Top", "", "polite", region_hidden),
+            node("Top/R/T", "Top/R", text, "", false),
+        ],
+        ..Default::default()
+    };
+    let said = |after: &A11yTree, before: &A11yTree| -> Vec<String> {
+        after
+            .announcements(before)
+            .into_iter()
+            .map(|a| a.text)
+            .collect()
+    };
+    assert_eq!(
+        said(&tree("b", false, false), &tree("a", false, false)),
+        ["b"]
+    );
+    assert!(
+        said(&tree("b", true, false), &tree("a", true, false)).is_empty(),
+        "hidden region"
+    );
+    assert!(
+        said(&tree("b", false, true), &tree("a", false, true)).is_empty(),
+        "hidden ancestor"
+    );
+}

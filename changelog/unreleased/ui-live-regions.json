@@ -1,0 +1,10 @@
+{
+  "added": [
+    {"member":"A11yNode.live","summary":"Live regions: aria-live (polite, assertive, off), aria-atomic and role (status, log, alert) on document elements. A screen reader announces what enters or changes in a region once, from the tree its host last sent, and nothing for the first tree or a restore. Native hosts speak through AccessKit, and the web mirror speaks the frame answer's announce list, in publish builds too. A11yNode.live is the region's setting (docs/ui.md, Live regions)."},
+    {"member":"A11yNode.notify","summary":"A live region that announces as it appears (an alert, a toast); another region that enters with its content says nothing until it changes."},
+    {"member":"A11yNode.atomic","summary":"A live region that announces its whole text when any of it changes (aria-atomic, or its role's: status and alert)."}
+  ],
+  "fixed": [
+    {"member":"ui.a11y","summary":"The web mirror announces what og-ui's live regions say instead of only the status and alert nodes that appear, so an in-place status change is heard and the page and the native tree agree."}
+  ]
+}
