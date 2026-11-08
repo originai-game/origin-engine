@@ -308,9 +308,6 @@ pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
         }
         "visibility" => "write the attribute `visible false` (or `visible bind …`)",
         "background-color" | "background-image" => "write `background: var(--panel)` or `#rrggbb`",
-        "transition-duration" | "transition-timing-function" | "animation" => {
-            "write `transition: 200ms ease-out`, `-og-spring(300ms, 0.1)` or `var(--motion-ui)`; a timeline plays an animation"
-        }
         "inset-inline" | "inset" | "inset-block" => {
             "write each side: `top`, `bottom`, `inset-inline-start`, `inset-inline-end`"
         }

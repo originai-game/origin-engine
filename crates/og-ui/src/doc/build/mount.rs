@@ -96,6 +96,8 @@ pub struct DocHost {
     pub(crate) building: u32,
     /// The Rive artboards elements can play, by id ([`Ui::define_rive`]).
     pub(crate) rive: BTreeMap<String, Arc<crate::rive::Artboard>>,
+    /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.
+    pub(crate) keyframes: BTreeMap<String, Arc<crate::motion::css::Keyframes>>,
     /// What structural selectors of every defined document read.
     pub(crate) structure: crate::doc::matching::Profile,
     /// The instantiated sibling levels of the screen being built.
@@ -110,6 +112,15 @@ impl Ui {
     pub fn define_document(&mut self, doc: UiDocument) {
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
+        }
+        let prefix = format!("{}/", doc.name);
+        self.docs
+            .keyframes
+            .retain(|name, _| !name.starts_with(&prefix));
+        for (n, k) in &doc.keyframes {
+            self.docs
+                .keyframes
+                .insert(format!("{prefix}{n}"), Arc::new(k.clone()));
         }
         self.docs
             .structure

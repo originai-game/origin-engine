@@ -54,7 +54,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `grid-column:`, `grid-row:` | `<n> \| <n> / span <n> \| span <n>` | `cell`: Its grid column and row, 1-based. `span`: Columns and rows it spans. |
 | `-og-overlaps:` | `"<a>" "<b>" …` | Paths it overlaps on purpose. |
 | `match` | `name` | A shared-element key. |
-| `transition:` | `none \| <ms>ms [ease] \| -og-spring(<ms>ms, <bounce>) \| var(--motion-<name>)` | How its animatable values move when they change. |
+| `transition:` | `[<property>] <duration> [<timing-function>] [<delay>], …` | How its animatable values move when they change. |
 | `-og-layout-transition:` | `none \| <ms>ms [ease] \| -og-spring(<ms>ms, <bounce>) \| var(--motion-<name>)` | Moves from its old rectangle to its new one. |
 | `-og-enter:` | `<kind> [<distance>px] [<transition>]` | How it arrives. |
 | `-og-exit:` | `<kind> [<distance>px] [<transition>]` | How it leaves. |
@@ -77,7 +77,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `customize-key` | `name` | With customize: its name in the saved HUD layout (default: its path). |
 | `-og-reduced-motion:` | `fade \| none \| keep` | Its reduced-motion fallback. |
 
-Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines.
+Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).
 
 ## 2. `column`: Children top to bottom
 

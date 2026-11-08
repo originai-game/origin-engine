@@ -1,0 +1,16 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "transition and animation follow CSS Transitions and Animations Level 1: transition-property lists with per-property duration, delay and timing function, all, several animations per element with delay, iteration-count (including infinite), direction, fill-mode and play-state, and @keyframes with percentage stops and per-keyframe animation-timing-function. Rules choose animations through selectors, state and media. Motion runs on presentation ticks, is saved outside world_hash and restores exactly; reduced motion shows a finite animation's end and stops endless ones."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "UI document transition and animation",
+      "change": "CSS easing keywords in transition now use the CSS curves (ease-out is cubic-bezier(0, 0, 0.58, 1)), not the style's own curves. animation no longer requires forwards, a missing 0% or 100% keyframe takes the element's value, and conditional animations are allowed.",
+      "fix": "Recook documents. For the style's curves write the motion token, for example transition: opacity var(--motion-ui), or an explicit cubic-bezier(). Add forwards (or both) where an animation should hold its last keyframe."
+    }
+  ]
+}

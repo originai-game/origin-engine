@@ -50,6 +50,8 @@ struct Resolved {
     vals: Vec<(usize, V)>,
     cascade: cascade::Cascade,
     span_styles: Vec<(crate::TextSpan, crate::TextSpanStyle)>,
+    transitions: Vec<crate::motion::css::CssTransition>,
+    animations: Vec<crate::motion::css::CssAnimation>,
 }
 
 #[derive(Clone)]
@@ -403,6 +405,8 @@ impl Ui {
                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 && rule.structure.as_ref().is_none_or(|s| structure(s))
         });
+        (r.transitions, r.animations) =
+            super::motion::resolve(&r.cascade.motion, &b.doc.name, &mut r.cascade.diagnostics);
         sets.retain(|prop| !r.cascade.unset.contains(&prop.spec));
         sets.extend(&r.cascade.props);
         for p in sets {
@@ -644,6 +648,8 @@ impl Ui {
         if let Some(V::Transition(t)) = r.get("motion") {
             p.motion = Some(*t);
         }
+        p.transitions = r.transitions.clone();
+        p.animations = r.animations.clone();
         if let Some(V::Transition(t)) = r.get("layoutMotion") {
             p.layout_motion = Some(*t);
         }

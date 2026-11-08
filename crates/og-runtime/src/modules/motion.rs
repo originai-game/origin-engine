@@ -364,6 +364,9 @@ pub(crate) fn props(d: &Value) -> Props {
         customize: customize(&d["customize"]),
         motion: transition(&d["motion"]),
         layout_motion: transition(&d["layoutMotion"]),
+        // CSS transitions and animations come from documents only.
+        transitions: z.transitions,
+        animations: z.animations,
         enter: presence(&d["enter"], false),
         exit: presence(&d["exit"], true),
         states: states(&d["states"]),

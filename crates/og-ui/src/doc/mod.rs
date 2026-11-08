@@ -9,6 +9,7 @@ pub mod catalogue;
 pub mod css;
 pub mod matching;
 pub mod media;
+pub(crate) mod motion;
 pub mod schema;
 pub mod selectors;
 mod spans;
@@ -24,8 +25,8 @@ use crate::bind::{Expr, Format, Template};
 use crate::element::Prop;
 use crate::layout::Size;
 use crate::motion::{
-    Ease, Key, KeyEase, MotionToken, PresenceSpec, SpringSpec, StateTransition, Timeline,
-    TimelineTrack, Transition, TransitionKind,
+    Ease, MotionToken, PresenceSpec, SpringSpec, StateTransition, Timeline, Transition,
+    TransitionKind,
 };
 use crate::style::Srgba;
 use og_core::ogt::{Document, Number, Value};
@@ -410,6 +411,8 @@ pub struct UiDocument {
     pub actions: Vec<(String, String)>,
     /// Timelines by their own names (the UI defines them as `<doc>/<name>`).
     pub timelines: Vec<(String, Timeline)>,
+    /// Scoped `@keyframes` by name (the UI defines them as `<doc>/<name>`).
+    pub keyframes: Vec<(String, crate::motion::css::Keyframes)>,
     /// Viewmodels to preview and push it with (`ui:push:shop:rich`).
     pub fixtures: Vec<(String, serde_json::Value)>,
     pub nodes: Vec<DocNode>,

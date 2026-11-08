@@ -24,6 +24,7 @@ test("cooked documents render typed spans and preserve game translations on both
   <column id="Branch"><panel id="Nested"/></column>
   <panel id="Sibling"/>
   <panel id="Last"/>
+  <panel id="Anim"/>
 </column>
 <style>
 #Root { width: 600px; --size: 32px; --saved: var(--size); --ramp: var(--text-xl3); }
@@ -38,7 +39,10 @@ test("cooked documents render typed spans and preserve game translations on both
 }
 @media (width < 0px) { #Sibling { width: 101px; } }
 #Inherited + #Branch > panel:only-child { width: 66px; }
-#Root > panel:last-child:nth-child(7 of panel, text) { width: 77px; height: 12px; }
+#Root > panel:nth-last-child(2):nth-child(7 of panel, text) { width: 77px; height: 12px; }
+#Anim { width: 10px; height: 12px; transition: translate 90ms linear; animation: drift 100ms cubic-bezier(0.3, 0, 0.2, 1) 3 alternate both, nudge 50ms steps(2) infinite; }
+@keyframes drift { 40% { translate: 30px 0; animation-timing-function: linear; } to { translate: 50px 0; } }
+@keyframes nudge { from { rotate: 0rad; } to { rotate: 0.5rad; } }
 </style>`);
     writeFileSync(join(root, "assets/base.en.ogt"), 'type strings\nversion 1\n---\nlocale "en"\nstring "card.title" "Base title"\nstring "card.base" "Base fallback"\n');
     writeFileSync(join(root, "assets/game.en.ogt"), 'type strings\nversion 1\n---\nlocale "en"\nstring "card.title" "Game title"\n');
@@ -49,7 +53,8 @@ test("cooked documents render typed spans and preserve game translations on both
       return JSON.parse(new TextDecoder().decode(result.stdout));
     };
     const node = run("node");
-    expect(node).toMatchObject({ title: "Game title", base: "Base fallback", body: "A🦊B <b>C</b>", larger: true, restored: true, widths: [32, 66, 53, 77] });
+    expect(node).toMatchObject({ title: "Game title", base: "Base fallback", body: "A🦊B <b>C</b>", larger: true, restored: true, widths: [32, 66, 53, 77], animRestored: true });
+    expect((node as { animMoved: number }).animMoved).toBeGreaterThan(0);
     expect(run("web")).toEqual(node);
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -458,6 +458,7 @@ impl Ui {
         // The nodes that animate their layout, by node (FLIP is relative to
         // the nearest of them above).
         let mut flip_rel = vec![false; self.nodes.len()];
+        let mut css_events: Vec<UiEvent> = Vec::new();
         let mut starts: Vec<(u64, String)> = Vec::new();
         for &i in order {
             let key = self.nodes[i].key;
@@ -530,11 +531,20 @@ impl Ui {
                 m.seen.insert(key, now);
             }
             let motion = self.nodes[i].props.motion;
+            let css_transitions = self.nodes[i].props.transitions.clone();
             let mut row = target;
             for c in 0..CHANNELS {
                 let ck = channel_key(key, c);
                 let stepped = Prop::stepped(c);
-                let mut tr = moved_by[c].or(motion);
+                // A state group's own transition, then CSS `transition`.
+                let css = super::css::transition_for(&css_transitions, c)
+                    .filter(|_| moved_by[c].is_none());
+                let mut tr = moved_by[c].or(css.map(|t| t.transition)).or(motion);
+                // Whole ticks, rounded up; no delay is no tick.
+                let delay = css.filter(|t| t.delay_ms != 0.0).map_or(0, |t| {
+                    crate::style::Theme::ticks(t.delay_ms.abs(), tps) as i64
+                        * if t.delay_ms < 0.0 { -1 } else { 1 }
+                });
                 if reduced {
                     tr = tr.map(|t| match fallback {
                         Reduced::Keep => t,
@@ -561,7 +571,9 @@ impl Ui {
                         }
                         if ch.target != target[c] {
                             let (kind, mode) = pack(&tr.unwrap_or(Transition::Instant), &tokens);
-                            ch.retarget(target[c], kind, mode, now);
+                            // A negative delay starts partway through.
+                            let since = (now as i64 + delay).max(0);
+                            ch.retarget(target[c], kind, mode, since as u64);
                         }
                         row[c] = ch.step(now, tps, stepped);
                     }
@@ -609,6 +621,60 @@ impl Ui {
                         }
                     }
                 }
+            }
+            // CSS animations: over the channels' values, later entries win.
+            let animations = self.nodes[i].props.animations.clone();
+            for (index, a) in animations.iter().enumerate() {
+                let Some(frames) = self.docs.keyframes.get(&a.name).cloned() else {
+                    continue;
+                };
+                let nth = animations[..index]
+                    .iter()
+                    .filter(|b| b.name == a.name)
+                    .count() as u32;
+                let at = match m
+                    .css
+                    .iter()
+                    .position(|r| r.element == key && r.name == a.name && r.index == nth)
+                {
+                    Some(at) => at,
+                    None => {
+                        m.css.push(super::css::CssRun {
+                            element: key,
+                            index: nth,
+                            name: a.name.clone(),
+                            ticks: 0,
+                            stepped: now,
+                            last_ms: -a.delay_ms - 1e-3,
+                        });
+                        m.css.len() - 1
+                    }
+                };
+                let run = &mut m.css[at];
+                if run.stepped != now {
+                    run.stepped = now;
+                    if !a.paused {
+                        run.ticks += 1;
+                    }
+                }
+                let sample = a.sample(&frames, run.ticks, tps, &row, reduced);
+                for (c, v) in sample.values {
+                    row[c] = v;
+                }
+                if !(reduced && a.iterations.is_infinite()) {
+                    for kind in a.passed(&frames, run.last_ms, sample.active_ms) {
+                        if let EventKind::Sound { name, pitch } = kind {
+                            css_events.push(UiEvent {
+                                kind: "sound".into(),
+                                name: name.clone(),
+                                target: self.path_of(i),
+                                pitch: *pitch,
+                                ..UiEvent::default()
+                            });
+                        }
+                    }
+                }
+                run.last_ms = sample.active_ms;
             }
             if row != base {
                 write_values(&mut self.nodes[i], &row);
@@ -862,6 +928,15 @@ impl Ui {
         m.set_states.retain(|k, _| touched.contains(k));
         m.flip.retain(|k, _| present.contains_key(k));
         m.seen.retain(|k, _| present.contains_key(k));
+        // A CSS animation no element ran this tick ended with its element
+        // or its `animation-name`.
+        m.css.retain(|r| r.stepped == now);
+        for ev in &css_events {
+            if let Some(s) = crate::style_file::UiSound::from_name(&ev.name) {
+                self.sound(s);
+            }
+        }
+        events.extend(css_events);
         self.state.motion = m;
         self.events.extend(events);
         for (key, name) in starts {

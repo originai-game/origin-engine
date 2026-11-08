@@ -45,8 +45,8 @@ function element(id: string) {
   const dump: unknown = engine.probe.dump({ what: "ui" });
   if (!dump || typeof dump !== "object" || !("elements" in dump) || !Array.isArray(dump.elements)) throw new Error("missing UI dump");
   for (const item of dump.elements) {
-    if (item && typeof item === "object" && "id" in item && item.id === id && "text" in item && typeof item.text === "string" && "height" in item && typeof item.height === "number" && "width" in item && typeof item.width === "number") {
-      return { text: item.text, height: item.height, width: item.width };
+    if (item && typeof item === "object" && "id" in item && item.id === id && "text" in item && typeof item.text === "string" && "height" in item && typeof item.height === "number" && "width" in item && typeof item.width === "number" && "x" in item && typeof item.x === "number") {
+      return { text: item.text, height: item.height, width: item.width, x: item.x };
     }
   }
   throw new Error(`missing element ${id}`);
@@ -57,11 +57,13 @@ try {
   const rich = element("Rich"), plain = element("Plain");
   const saved = engine.world.snapshot();
   if (!saved.ok) throw new Error(saved.reason);
+  engine.advance(1);
+  const anim = element("Anim").x;
   engine.advance(3);
   const restored = engine.world.restore(saved.value);
   if (!restored.ok) throw new Error(restored.reason);
   engine.advance(1);
-  console.log(JSON.stringify({ title: element("Title").text, base: element("Base").text, body: rich.text, larger: rich.height > plain.height, restored: JSON.stringify(element("Rich")) === JSON.stringify(rich), widths: ["Inherited", "Nested", "Sibling", "Last"].map(id => element(id).width) }));
+  console.log(JSON.stringify({ title: element("Title").text, base: element("Base").text, body: rich.text, larger: rich.height > plain.height, restored: JSON.stringify(element("Rich")) === JSON.stringify(rich), widths: ["Inherited", "Nested", "Sibling", "Last"].map(id => element(id).width), animMoved: anim - element("Last").x, animX: anim, animRestored: element("Anim").x === anim }));
 } finally {
   engine.destroy();
 }

@@ -902,6 +902,10 @@ pub struct Props {
     pub customize: Option<Customize>,
     /// How its animatable values move when they change (`None`: at once).
     pub motion: Option<Transition>,
+    /// CSS `transition` entries: per-channel timing and delay, over `motion`.
+    pub transitions: Vec<crate::motion::css::CssTransition>,
+    /// CSS `animation` entries, in list order (later ones win per channel).
+    pub animations: Vec<crate::motion::css::CssAnimation>,
     /// Moves from its last laid-out rectangle to its new one (FLIP).
     pub layout_motion: Option<Transition>,
     pub enter: Option<PresenceSpec>,
@@ -947,6 +951,8 @@ impl Default for Props {
             cursor: Cursor::Auto,
             customize: None,
             motion: None,
+            transitions: Vec::new(),
+            animations: Vec::new(),
             layout_motion: None,
             enter: None,
             exit: None,
@@ -966,7 +972,11 @@ impl Props {
 
     /// Takes part in motion: something can animate it.
     pub(crate) fn animated(&self) -> bool {
-        self.motion.is_some() || !self.states.is_empty() || self.enter.is_some()
+        self.motion.is_some()
+            || !self.transitions.is_empty()
+            || !self.animations.is_empty()
+            || !self.states.is_empty()
+            || self.enter.is_some()
     }
 }
 

@@ -17,6 +17,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
                 parts: Vec::new(),
                 actions: Vec::new(),
                 timelines: Vec::new(),
+                keyframes: Vec::new(),
                 fixtures: Vec::new(),
                 nodes: Vec::new(),
                 root: NONE,
@@ -820,16 +821,16 @@ button.active { opacity: 1; }
                 "declare @keyframes",
             ),
             (
-                "<text id='T'/><style>#T { animation: fade 1s linear forwards; } @keyframes fade { 50% { opacity: 0; } to { opacity: 1; } }</style>",
-                "explicit from/0%",
+                "<text id='T'/><style>#T { animation: fade 1s linear forwards; } @keyframes fade { 150% { opacity: 0; } }</style>",
+                "percentage from 0% to 100%",
             ),
             (
                 "<text id='T'/><style>#T { animation: fade 1s cubic-bezier(2,0,1,1) forwards; } @keyframes fade { from { opacity: 0; } to { opacity: 1; } }</style>",
                 "CSS easing",
             ),
             (
-                "<text id='T'/><style>#T:hover { animation: fade 1s linear forwards; } @keyframes fade { from { opacity: 0; } to { opacity: 1; } }</style>",
-                "conditional animations",
+                "<text id='T'/><style>#T:hover { animation: fade 1s; } @keyframes fade { from { width: 10px; } }</style>",
+                "width cannot be animated in @keyframes",
             ),
         ] {
             let text = format!("<meta name='screen' content='test'>\n{body}");

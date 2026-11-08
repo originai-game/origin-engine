@@ -22,13 +22,27 @@ pub(super) fn apply(
     for (text, at) in styles {
         read_rules(text, *at, AtQuery::default(), &mut rules)?;
     }
-    let mut keyframes = std::collections::BTreeMap::new();
     for rule in &rules {
         if let Some(name) = rule.selector.strip_prefix("@keyframes ") {
-            if !syntax::identifier(name.trim()) {
+            let name = name.trim();
+            if !syntax::identifier(name) {
                 return Err((rule.at, "@keyframes needs a CSS identifier".into()));
             }
-            keyframes.insert(name.trim().to_string(), (rule.body.clone(), rule.body_at));
+            if rule.query != AtQuery::default() {
+                return Err((
+                    rule.at,
+                    format!(
+                        "@keyframes {name} inside @media: declare keyframes at the top level and choose the animation in a media rule"
+                    ),
+                ));
+            }
+            let mut frames = Vec::new();
+            read_rules(&rule.body, rule.body_at, AtQuery::default(), &mut frames)?;
+            let frames: Vec<_> = frames.into_iter().map(|f| (f.selector, f.body)).collect();
+            let parsed = super::motion::keyframes(&frames)
+                .map_err(|e| (rule.at, format!("@keyframes {name}: {e}")))?;
+            doc.keyframes.retain(|(n, _)| n != name);
+            doc.keyframes.push((name.to_string(), parsed));
         }
     }
     rules.retain(|rule| !rule.selector.starts_with("@keyframes "));
@@ -74,21 +88,18 @@ pub(super) fn apply(
             }
             continue;
         }
-        let declarations = variables::declarations(&rule.body).map_err(|e| (rule.at, e))?;
-        let animation = declarations
-            .iter()
-            .rev()
-            .find(|decl| decl.name == "animation")
-            .map(|decl| animation(&decl.source, &keyframes, rule.at))
-            .transpose()?;
-        let declarations: Vec<_> = declarations
-            .into_iter()
-            .filter(|d| d.name != "animation")
-            .collect();
+        let known: Vec<String> = doc.keyframes.iter().map(|(n, _)| n.clone()).collect();
+        let mut declarations = Vec::new();
+        for declaration in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
+            declarations.extend(
+                super::motion::expand(declaration, &|name| known.iter().any(|k| k == name))
+                    .map_err(|e| (rule.at, e))?,
+            );
+        }
         let mut body = String::new();
         for declaration in &declarations {
             let name = declaration.name.as_str();
-            if name.starts_with("--") {
+            if name.starts_with("--") || super::motion::longhand(name) {
                 continue;
             }
             if css::targets(name).next().is_none() {
@@ -153,22 +164,6 @@ pub(super) fn apply(
                 Expr::Lit(serde_json::Value::Bool(true)) => None,
                 c => Some(c),
             };
-            if let Some(timeline) = &animation {
-                if condition.is_some() || structure.is_some() || rule.query != AtQuery::default() {
-                    return Err((rule.at, "conditional animations are not supported; put the animation on a mounted element and control its presence with #if".into()));
-                }
-                let name = format!("css-animation-{}", i);
-                doc.timelines.retain(|(n, _)| *n != name);
-                doc.timelines.push((name.clone(), timeline.clone()));
-                doc.nodes[*i]
-                    .triggers
-                    .retain(|t| !matches!(&t.act, Act::Play(n) if n == &name));
-                doc.nodes[*i].triggers.push(Trigger {
-                    when: When::Appear,
-                    act: Act::Play(name),
-                    line: syntax::location(&doc.text, rule.at).0,
-                });
-            }
             doc.nodes[*i].rules.push(StyleRule {
                 query: rule.query.clone(),
                 condition,
@@ -180,142 +175,6 @@ pub(super) fn apply(
         }
     }
     Ok(())
-}
-
-fn animation(
-    value: &str,
-    definitions: &std::collections::BTreeMap<String, (String, usize)>,
-    at: usize,
-) -> Result<Timeline, Error> {
-    let mut words = value.split_whitespace();
-    let name = words.next().unwrap_or_default();
-    let duration = words.next().unwrap_or_default();
-    let ms = duration
-        .strip_suffix("ms")
-        .and_then(|n| n.parse::<f32>().ok())
-        .or_else(|| {
-            duration
-                .strip_suffix('s')
-                .and_then(|n| n.parse::<f32>().ok())
-                .map(|s| s * 1000.0)
-        })
-        .filter(|n| n.is_finite() && *n > 0.0)
-        .ok_or((
-            at,
-            "animation: <name> <positive duration in ms or s> <CSS easing> forwards".into(),
-        ))?;
-    let rest = words.collect::<Vec<_>>().join(" ");
-    let easing = rest.strip_suffix(" forwards").ok_or((at, "animations currently require forwards fill; write animation: <name> <duration> <CSS easing> forwards".into()))?;
-    let ease = Ease::from_css(easing).ok_or((
-        at,
-        "use a CSS easing keyword, cubic-bezier(x1,y1,x2,y2) or steps(count,position)".into(),
-    ))?;
-    let (body, base) = definitions.get(name).ok_or((
-        at,
-        format!("declare @keyframes {name} {{ … }} in this document"),
-    ))?;
-    let mut frames = Vec::new();
-    read_rules(body, *base, AtQuery::default(), &mut frames)?;
-    let mut timeline = Timeline {
-        duration_ms: ms,
-        ..Default::default()
-    };
-    for frame in frames.into_iter().flat_map(|frame| {
-        frame
-            .selector
-            .split(',')
-            .map(|selector| Rule {
-                selector: selector.trim().into(),
-                ..frame.clone()
-            })
-            .collect::<Vec<_>>()
-    }) {
-        let offset = match frame.selector.as_str() {
-            "from" => Some(0.0),
-            "to" => Some(1.0),
-            other => other
-                .strip_suffix('%')
-                .and_then(|n| n.trim().parse::<f32>().ok())
-                .map(|n| n / 100.0),
-        }
-        .filter(|n| n.is_finite() && (0.0..=1.0).contains(n))
-        .ok_or((
-            frame.at,
-            "keyframe selectors are from, to or percentages from 0% to 100%".into(),
-        ))?;
-        let declarations = css::split_decls(&frame.body).map_err(|e| (frame.at, e))?;
-        let mut body = String::new();
-        for (name, value) in declarations {
-            if name == "-og-sound" {
-                if !syntax::identifier(&value) {
-                    return Err((
-                        frame.at,
-                        "-og-sound names a style sound, for example error".into(),
-                    ));
-                }
-                timeline.events.push(crate::motion::TimelineEvent {
-                    at_ms: offset * ms,
-                    target: String::new(),
-                    kind: crate::motion::EventKind::Sound {
-                        name: value,
-                        pitch: 1.0,
-                    },
-                });
-            } else {
-                body.push_str(&format!("{name}: {value};"));
-            }
-        }
-        for entry in css::declarations(&body, 0).map_err(|e| (frame.at, e))? {
-            let prop = Prop::from_name(&entry.key).ok_or((
-                frame.at,
-                format!(
-                    "{} cannot be animated; use opacity, scale, rotate or translate",
-                    entry.key
-                ),
-            ))?;
-            let number = entry
-                .values
-                .first()
-                .and_then(Value::as_number)
-                .map(Number::as_f32)
-                .filter(|v| v.is_finite())
-                .ok_or((frame.at, "keyframes require finite scalar values".into()))?;
-            let index = timeline
-                .tracks
-                .iter()
-                .position(|t| t.prop == prop)
-                .unwrap_or_else(|| {
-                    timeline.tracks.push(TimelineTrack {
-                        target: String::new(),
-                        prop,
-                        keys: Vec::new(),
-                    });
-                    timeline.tracks.len() - 1
-                });
-            let keys = &mut timeline.tracks[index].keys;
-            keys.retain(|key| key.at_ms != offset * ms);
-            keys.push(Key {
-                at_ms: offset * ms,
-                value: number,
-                ease: KeyEase::Ease(ease),
-            });
-        }
-    }
-    for track in &mut timeline.tracks {
-        track.keys.sort_by(|a, b| a.at_ms.total_cmp(&b.at_ms));
-        if track.keys.first().is_none_or(|k| k.at_ms != 0.0)
-            || track.keys.last().is_none_or(|k| k.at_ms != ms)
-        {
-            return Err((
-                at,
-                "each animated property needs explicit from/0% and to/100% keyframes".into(),
-            ));
-        }
-    }
-    if timeline.tracks.is_empty() {
-        return Err((at, "@keyframes must animate at least one property".into()));
-    }
-    Ok(timeline)
 }
 
 fn read_rules(text: &str, base: usize, query: AtQuery, out: &mut Vec<Rule>) -> Result<(), Error> {

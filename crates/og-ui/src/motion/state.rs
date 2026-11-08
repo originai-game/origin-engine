@@ -175,6 +175,8 @@ pub(crate) struct MotionState {
     pub seen: IdMap<u64, u64>,
     pub gestures: IdMap<u64, Gesture>,
     pub bursts: Vec<BurstRun>,
+    /// Running CSS animations (saved beside the layer stack).
+    pub css: Vec<super::css::CssRun>,
 }
 
 /// The key of channel `c` of element `key`.

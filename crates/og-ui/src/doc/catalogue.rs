@@ -19,6 +19,9 @@ fn value(p: &PropSpec) -> String {
         Ty::Word(ws) => ws,
         _ => &[],
     };
+    if p.name == "motion" {
+        return "`[<property>] <duration> [<timing-function>] [<delay>], …`".into();
+    }
     let text = value_form(p.name, words).unwrap_or_else(|| match p.ty {
         Ty::Word(ws) => ws.join(" | "),
         t => t.name().to_string(),
@@ -92,7 +95,7 @@ pub fn markdown() -> String {
     out.push_str("## 1. Every element\n\nWhat every kind takes: its box, layout, paint, motion and input.\n\n");
     table(&mut out, &every);
     out.push_str(
-        "\nStyle interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines.\n",
+        "\nStyle interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).\n",
     );
     for (n, k) in KINDS.iter().filter(|k| k.name != "slot").enumerate() {
         let own: Vec<&PropSpec> = PROPS

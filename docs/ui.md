@@ -398,6 +398,21 @@ The `style:` directive accepts only bound CSS-token references, not raw
 numbers, colours, or arbitrary expressions. Other styling belongs in
 `<style>`. Title and game-over motion use standard CSS `animation` and
 `transition`, with semantic motion tokens and reduced-motion behaviour.
+`transition` and `animation` follow CSS Transitions and Animations Level 1:
+property lists with per-property duration, delay and timing function, `all`,
+several animations per element with delay, iteration count (including
+`infinite`), direction, fill mode and play state, and keyframes at percentage
+stops with per-keyframe timing functions. The shorthands expand into
+longhands at cook, so selectors, state and media choose an element's
+animations; an animation starts when its rule begins to match and ends when
+it stops. Motion runs on presentation ticks, never a clock, and is saved with
+the presentation state outside `world_hash`, so a restore continues exactly.
+Reduced motion shows a finite animation's end and stops endless ones;
+transitions use the element's reduced-motion fallback. Transitions and
+keyframes cover opacity, translate, scale, rotate, `-og-skew` and
+`border-radius`; transitions also cover background, color and z-index. Other
+properties, `var()` inside a shorthand, and unknown keyframes fail at cook
+with the property named.
 Scoped `@keyframes` can emit a style sound at a frame, such as
 `-og-sound: error` for game-over entrance feedback. The event records its
 playback rate; rate-valued fields use `playbackRate`, not `pitch`.
@@ -407,8 +422,7 @@ such as `none`, `power1.out`, and `back.out`, plus `cubic-bezier(...)` and
 `steps(...)`. Style tokens retain `EaseRole` indirection. CSS timing
 keywords belong to the CSS parser; shared timing does not make them GSAP
 names. Lexical custom properties and the cascade above are implemented.
-Standard CSS completion remains pending for container queries and
-property-level transitions and animations.
+Standard CSS completion remains pending for container queries.
 The supported subset in the component catalogue is not full CSS support.
 
 Core's native settlement hook publishes measured container content boxes

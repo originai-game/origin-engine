@@ -293,6 +293,9 @@ impl Ui {
         }
         // The layer stack, its viewmodels and the documents' states.
         let mut docs = self.docs_state();
+        if !s.motion.css.is_empty() {
+            docs["cssAnimations"] = serde_json::to_value(&s.motion.css).expect("finite CSS runs");
+        }
         if !s.virtual_lists.is_empty() {
             docs["virtualLists"] = serde_json::to_value(&s.virtual_lists).expect("finite extents");
         }
@@ -330,6 +333,10 @@ impl Ui {
             .ok_or_else(|| bad("truncated or malformed layer stack".into()))?;
         if r.at != bytes.len() {
             return Err(bad("trailing bytes".into()));
+        }
+        if let Some(runs) = docs.get("cssAnimations") {
+            s.motion.css = serde_json::from_value(runs.clone())
+                .map_err(|_| bad("malformed CSS animations".into()))?;
         }
         if let Some(lists) = docs.get("virtualLists") {
             s.virtual_lists = serde_json::from_value(lists.clone())

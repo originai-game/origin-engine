@@ -128,11 +128,20 @@ local styles and `og style new` remain available.
   and report their names. A winning declaration with an invalid value
   does not revive a lower-priority declaration. Unshadowed engine tokens
   resolve from the active style. `::part` declarations use the same cascade.
-- Declare motion with scoped `@keyframes` and
-  a rule such as `#Card { animation: reveal 300ms ease-out forwards; }`.
-  Frames need explicit 0% and
-  100% endpoints. One animation applies per element. Conditional animations
-  are not supported; mount animated elements with `{#if}` instead.
+- Transition values with standard CSS: `transition: opacity 120ms ease-out,
+  translate 200ms ease-out 50ms` or the longhands `transition-property`,
+  `-duration`, `-timing-function` and `-delay`; `all` covers every
+  animatable value, and a later entry wins for its property. The timing slot
+  also takes `-og-spring(300ms, 0.2)` and `var(--motion-ui)`.
+- Animate with scoped `@keyframes` and `animation` or its longhands
+  (`animation-name`, `-duration`, `-timing-function`, `-delay`,
+  `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`). An element
+  runs several animations; later ones win per value. Keyframes take `from`,
+  `to` and percentages; a missing 0% or 100% uses the element's own value,
+  and `animation-timing-function` inside a keyframe times the segment after
+  it. Rules choose animations like any property, so `#Card.open { animation:
+  … }` or `:hover` starts one and removing the match ends it. Reduced motion
+  shows a finite animation's end and stops endless ones.
   A keyframe's `-og-sound: error` emits the active style's named sound once
   when playback crosses that frame, at the recorded playback rate.
 - Bind structured rich text with `<text spans={$spans}>{$body}</text>`.

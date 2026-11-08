@@ -16,6 +16,8 @@ pub struct Cascade {
     pub props: Vec<crate::doc::PropSet>,
     pub unset: BTreeSet<usize>,
     pub(crate) values: Vec<(String, String, usize)>,
+    /// Winning transition and animation longhands, substituted.
+    pub(crate) motion: Vec<(String, String)>,
 }
 
 pub(crate) fn resolve_values(
@@ -95,7 +97,11 @@ pub fn resolve(
 ) -> Cascade {
     let mut out = resolve_values(rules, inherited, theme, applies);
     let mut body = String::new();
-    for (name, value, line) in out.values.drain(..) {
+    for (name, value, line) in std::mem::take(&mut out.values) {
+        if crate::doc::motion::longhand(&name) {
+            out.motion.push((name, value));
+            continue;
+        }
         let declaration = format!("{name}: {value};");
         match css::declarations(&declaration, line) {
             Ok(_) => body.push_str(&declaration),
