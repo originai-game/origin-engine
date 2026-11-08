@@ -725,7 +725,8 @@ Its own props, beside every element's:
 | `closedby` | `any \| closerequest \| none` | What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place. |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `modal` | `bool` | Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`). |
-| `-og-sheet-detents:` | `<n>% \| <n>px …` | `-og-sheet-detents: 40% 90%` on a modal `<dialog>`: a bottom sheet docked to the bottom at full width, dragged onto its detents (heights, `%` of the viewport's) and swiped down to close (writing `open` back). It opens at the first. No CSS standard has detents. |
+| `-og-sheet-detents:` | `<n>% \| <n>px …` | `-og-sheet-detents: 40% 90%` on a modal `<dialog>`: a sheet docked to its `-og-sheet-edge` (the bottom at full width by default), dragged onto its detents (depths, `%` of the viewport's height, or its width for a side sheet) and swiped off its edge to close (writing `open` back). It opens at the first. No CSS standard has detents. |
+| `-og-sheet-edge:` | `block-end \| inline-start \| inline-end` | `-og-sheet-edge: block-end \| inline-start \| inline-end` beside `-og-sheet-detents`: the edge the sheet docks to, in CSS's logical names, so the inline ones mirror right to left (`inline-end` is the right left to right, the left in Arabic); a side sheet is full height, its detents widths, and swipes off sideways. |
 
 ## 32. `<details>` (`details`): A disclosure (two-way `open`): its `<summary>` row, its content shown only while open
 

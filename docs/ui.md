@@ -950,8 +950,11 @@ is a fling aimed at its target, so it lives in the snapshotted fling.
 A modal `<dialog>` with
 `-og-sheet-detents: 40% 90%` is a bottom sheet: docked to the bottom at
 full width, as tall as its tallest detent, opened at its first, dragged
-onto its detents and swiped down to close, which writes `open` back. The
-detents are the engine prefix because no CSS standard has them.
+onto its detents and swiped down to close, which writes `open` back.
+`-og-sheet-edge: inline-start | inline-end` docks it to a side instead: full
+height, its detents widths, swiped off sideways; the edges are CSS's logical
+names, so they mirror right to left. The detents and edge are the engine
+prefix because no CSS standard has them.
 
 A `display: block` box with an auto width fills its block parent's
 content width, as in CSS block flow, so a `<div>` inside a `<section>` is

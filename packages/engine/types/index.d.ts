@@ -26174,94 +26174,6 @@ export interface MenuChoice {
 }
 
 /**
- * The edge a sheet slides in from; start and end follow the writing direction.
- * - `"bottom"`: The bottom (the default).
- * - `"end"`: The end side.
- * - `"start"`: The start side.
- */
-export type SheetEdge = "bottom" | "end" | "start";
-
-/**
- * A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface SheetDesc {
-  /**
-   * The edge it comes from.
-   *
-   * @default "bottom"
-   */
-  readonly edge?: SheetEdge;
-  /**
-   * A bottom sheet's rest heights, fractions of the room; empty is 0.5 and 0.92.
-   *
-   * @default []
-   */
-  readonly detents?: readonly number[];
-  /**
-   * The detent it rests at (keep SheetResult.detent).
-   *
-   * @default 0
-   */
-  readonly detent?: number;
-  /**
-   * A side sheet's width; 0 is 400.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly size?: number;
-  /**
-   * A title at its top; empty is none.
-   *
-   * @default ""
-   */
-  readonly title?: string;
-  /**
-   * A drag past the lowest detent, a swipe outwards, Back or the scrim close it.
-   *
-   * @default true
-   */
-  readonly dismissible?: boolean;
-  /**
-   * Dim what is behind it.
-   *
-   * @default true
-   */
-  readonly scrim?: boolean;
-  /**
-   * A bottom sheet's grab handle.
-   *
-   * @default true
-   */
-  readonly handle?: boolean;
-  /**
-   * A close button by the title; null is a side sheet's only.
-   *
-   * @default null
-   */
-  readonly closeButton?: boolean | null;
-  /**
-   * The close button's accessible name; empty is Close.
-   *
-   * @default ""
-   */
-  readonly closeLabel?: string;
-}
-
-/** What a sheet answered this tick. */
-export interface SheetResult {
-  /** The detent it rests at after this tick: keep it. */
-  readonly detent: number;
-  /** It asked to close: set open false. */
-  readonly dismissed: boolean;
-  /** It is on screen (open, or leaving). */
-  readonly visible: boolean;
-}
-
-/**
  * What a data view shows instead of its rows: loading, an error, or nothing.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -26310,7 +26222,6 @@ export interface DataStateDesc {
    */
   readonly loadingLabel?: string;
 }
-
 
 
 
@@ -39073,15 +38984,6 @@ export declare namespace og {
      * @param desc Entries.
      */
     function contextMenu(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice;
-    /**
-     * A sheet sliding in from the bottom (resting at detents, dragged) or a side.
-     *
-     * @param id Its id.
-     * @param open Whether it is open.
-     * @param desc Edge, detents and title.
-     * @param build Builds its body.
-     */
-    function sheet(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult;
     /**
      * Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §2, §3.1). Call it right after the element.
      *

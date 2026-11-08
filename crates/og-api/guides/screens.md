@@ -294,7 +294,9 @@ local styles and `og style new` remain available.
   `x`, `y`); the `node-graph` component zooms by it.
 - A carousel snaps with `scroll-snap-type: x mandatory` on its box and
   `scroll-snap-align: center` on each card. A bottom sheet is
-  `<dialog modal bind:open={$bag}>` with `-og-sheet-detents: 40% 90%`.
+  `<dialog modal bind:open={$bag}>` with `-og-sheet-detents: 40% 90%`;
+  `-og-sheet-edge: inline-end` makes it a side sheet (the right, the left
+  right to left) whose detents are widths.
 - Paint with standard CSS: `background: linear-gradient(160deg,
   var(--panel), #0000), #123`, `mask-image: linear-gradient(#000 70%,
   transparent)`, `clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)`,

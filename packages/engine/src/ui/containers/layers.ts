@@ -1,5 +1,5 @@
 // Floating containers (docs/ui.md §2, Containers and navigation): dialogs
-// and confirms, popovers, menus and context menus, and sheets. Each sits
+// and confirms, popovers, menus and context menus. Each sits
 // on the modal layer (a focus scope: focus moves in, stays in, and comes
 // back when it closes; Back and a press outside dismiss it unless locked)
 // and is placed by base.ts's floating(): beside its anchor, flipped and
@@ -7,7 +7,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, beside, byText, chevron, clamp, fit, flags, floating, floatingContent, frame, grow, kit, mark, over, paint, px, role, rtl, spring, still, surface, text, token, xy, type Placed, type Rgba, type Side,
+  all, beside, byText, chevron, clamp, fit, flags, floating, floatingContent, frame, grow, kit, mark, over, paint, px, role, rtl, surface, text, token, xy, type Placed, type Rgba, type Side,
 } from "./base.ts";
 
 // ── popover ─────────────────────────────────────────────────────────────
@@ -255,111 +255,4 @@ function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.M
   });
   kit.semantics({ role: "menu", name: desc.label ?? "" });
   return { chosen, hoveredPlain };
-}
-
-// ── sheet ───────────────────────────────────────────────────────────────
-
-/**
- * A sheet: a surface that slides in from an edge (bottom by default; end
- * or start for a side sheet) over a scrim. A bottom sheet rests at one of
- * its detents (fractions of the screen's height); dragging it (anywhere
- * that is not a control or a scroll container) follows the finger with
- * rubber past its ends, and a release settles on the detent its momentum
- * reaches, or dismisses it past the lowest when it can be dismissed. A
- * side sheet slides in from its edge and dismisses by a swipe outwards.
- */
-export function sheet(id: string, open: boolean, desc: Api.SheetDesc, build: Api.UiBuild): Api.SheetResult {
-  const { t, viewport, phone } = frame();
-  const edge = desc.edge ?? "bottom";
-  const vertical = edge === "bottom";
-  const flip = kit.frameDirection() === "rtl";
-  const physicalLeft = edge === "start" ? !flip : edge === "end" ? flip : false;
-  const sa = viewport.safeArea;
-  const availH = viewport.height - sa.top - (vertical ? 0 : sa.bottom) - (vertical ? t.xl : 2 * t.sm);
-  const detents = (desc.detents && desc.detents.length > 0 ? [...desc.detents] : [0.5, 0.92]).map((d) => clamp(d, 0.15, 1)).sort((a, b) => a - b);
-  const top = detents[detents.length - 1]!;
-  const H = Math.round(availH * top);
-  // The modal layer keeps its content within the gutters: a phone's sheet floats a gutter in from each side.
-  const inner = viewport.width - sa.left - sa.right - 2 * t.gutter;
-  const W = vertical ? Math.min(phone ? inner : 640, inner) : Math.min(desc.size ?? 400, inner - t.xl);
-  const dismissible = desc.dismissible ?? true;
-  const want = clamp(desc.detent ?? 0, 0, detents.length - 1);
-  // The offset (down, or outwards for a side sheet) of each detent from fully up.
-  const offsetOf = (k: number) => Math.round(H * (1 - detents[k]! / top));
-  const gone = vertical ? H + sa.bottom + 24 : W + 24;
-  let detent = want;
-  let dismissed = false;
-  const key = `${id}/Panel/Content`;
-  const ges = open ? kit.gesture(key) : null;
-  const held = kit.memory(`${id}~held`, 0);
-  if (ges && !ges.dragging && held !== 0) {
-    // Released: where its momentum carries it picks the detent, or past the lowest one, away.
-    const along = vertical ? ges.offsetY : physicalLeft ? -ges.offsetX : ges.offsetX;
-    const v = vertical ? ges.velocityY : physicalLeft ? -ges.velocityX : ges.velocityX;
-    const land = (vertical ? offsetOf(want) : 0) + kit.memory(`${id}~last`, along) + v * 0.18;
-    if (dismissible && land > (vertical ? offsetOf(0) + H * detents[0]! * 0.45 : W * 0.4)) dismissed = true;
-    else if (vertical) {
-      let best = 0;
-      for (let k = 1; k < detents.length; k++) if (Math.abs(offsetOf(k) - land) < Math.abs(offsetOf(best) - land)) best = k;
-      detent = best;
-    }
-  }
-  kit.remember(`${id}~held`, ges?.dragging ? 1 : 0);
-  kit.remember(`${id}~last`, ges?.dragging ? (vertical ? ges.offsetY : physicalLeft ? -ges.offsetX : ges.offsetX) : 0);
-  if (detent !== want) kit.feedback("select", -1);
-  const f = floating(id, open, { scrim: desc.scrim ?? true, locked: !dismissible, width: fit(), spring: "panel", transition: "fade" }, () => {
-    // Its own size, never the measured one: bounds are cut to the screen, and a sheet hangs past its edge.
-    if (vertical) return { x: (viewport.width - W) / 2, y: viewport.height - H - sa.bottom };
-    const x = physicalLeft ? sa.left : viewport.width - sa.right - W;
-    return { x, y: sa.top + t.sm };
-  }, () => {
-    floatingContent({
-      direction: "column",
-      width: px(W),
-      height: px(vertical ? H + sa.bottom : availH),
-      // A bottom sheet below its top detent hangs past the screen's edge: its content keeps to the
-      // part in view (the detent's height), so nothing it holds is ever off the screen.
-      padding: { left: t.lg, top: vertical ? t.sm : t.lg, right: t.lg, bottom: t.lg + (vertical ? sa.bottom + (open ? offsetOf(detent) : 0) : 0) },
-      gap: t.md,
-      cross: "stretch",
-      background: token("panelRaised"),
-      part: `Sheet.frame${flags(edge)}`,
-      partClass: "dialog",
-    }, () => {
-      if (vertical && (desc.handle ?? true)) {
-        kit.row("Handle", { width: grow(), height: px(20), align: "center", cross: "center" }, () => {
-          kit.open("Grabber", { width: px(36), height: px(5), radius: 3, background: token("lineStrong"), part: "Sheet.handle", partClass: "bar" });
-          kit.close();
-        });
-      }
-      if (desc.title) {
-        kit.row("Header", { width: grow(), gap: t.sm, cross: "center" }, () => {
-          text("Title", desc.title ?? "", { step: "xl", heading: true, width: grow() });
-          if (dismissible && (desc.closeButton ?? !vertical)) {
-            const r = surface("Close", { part: "Sheet.close", cls: "button", flags: ["quiet", "round"], fill: null, width: px(44), height: px(44), align: "center", cross: "center", semantics: { role: "button", name: desc.closeLabel || "Close" } }, () => mark("X", "cross", 16, role("inkMuted")));
-            if (r.clicked) dismissed = true;
-          }
-        });
-      }
-      kit.column("Body", { width: grow(), height: grow(), gap: t.sm, cross: "stretch" }, build);
-    });
-  }, (at) => {
-    // Its rest: the detent's offset (spring), away while it closes, and the drag on top of it.
-    const rest = !open || !at.measured ? gone : vertical ? offsetOf(detent) : 0;
-    const off = still() ? rest : kit.animate(`${id}~rest`, rest, spring("panel"));
-    const outward = vertical ? off : physicalLeft ? -off : off;
-    return {
-      transform: vertical ? { y: outward } : { x: outward },
-      drag: {
-        axis: vertical ? "y" : "x",
-        returnHome: true,
-        rubber: 0.55,
-        threshold: 6,
-        bounds: vertical ? { x: 0, y: -offsetOf(detent), width: 0, height: gone } : physicalLeft ? { x: -gone, y: 0, width: gone, height: 0 } : { x: 0, y: 0, width: gone, height: 0 },
-      },
-    };
-  });
-  if (f.dismissed) dismissed = true;
-  if (dismissed) kit.feedback("close", -1);
-  return { detent, dismissed, visible: f.visible };
 }

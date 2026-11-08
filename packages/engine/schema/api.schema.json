@@ -11978,9 +11978,6 @@
         "MenuEntry",
         "MenuDesc",
         "MenuChoice",
-        "SheetEdge",
-        "SheetDesc",
-        "SheetResult",
         "DataStateDesc",
         "UiProp",
         "LayoutMode",
@@ -13088,39 +13085,6 @@
             }
           ],
           "returns": "MenuChoice",
-          "publish": true,
-          "host": false
-        },
-        {
-          "name": "sheet",
-          "doc": "A sheet sliding in from the bottom (resting at detents, dragged) or a side.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "open",
-              "type": "bool",
-              "optional": false,
-              "doc": "Whether it is open."
-            },
-            {
-              "name": "desc",
-              "type": "SheetDesc",
-              "optional": false,
-              "doc": "Edge, detents and title."
-            },
-            {
-              "name": "build",
-              "type": "UiBuild",
-              "optional": false,
-              "doc": "Builds its body."
-            }
-          ],
-          "returns": "SheetResult",
           "publish": true,
           "host": false
         },
@@ -47439,123 +47403,6 @@
       "required": [
         "chosen",
         "dismissed"
-      ],
-      "additionalProperties": false
-    },
-    "SheetEdge": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "The edge a sheet slides in from; start and end follow the writing direction.",
-      "type": "string",
-      "enum": [
-        "bottom",
-        "end",
-        "start"
-      ],
-      "x-og-variants": {
-        "bottom": "The bottom (the default).",
-        "end": "The end side.",
-        "start": "The start side."
-      }
-    },
-    "SheetDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it.",
-      "type": "object",
-      "properties": {
-        "edge": {
-          "$ref": "#/$defs/SheetEdge",
-          "description": "The edge it comes from.",
-          "default": "bottom"
-        },
-        "detents": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "description": "A bottom sheet's rest heights, fractions of the room; empty is 0.5 and 0.92.",
-          "default": []
-        },
-        "detent": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "The detent it rests at (keep SheetResult.detent).",
-          "default": 0
-        },
-        "size": {
-          "type": "number",
-          "description": "A side sheet's width; 0 is 400.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "title": {
-          "type": "string",
-          "description": "A title at its top; empty is none.",
-          "default": ""
-        },
-        "dismissible": {
-          "type": "boolean",
-          "description": "A drag past the lowest detent, a swipe outwards, Back or the scrim close it.",
-          "default": true
-        },
-        "scrim": {
-          "type": "boolean",
-          "description": "Dim what is behind it.",
-          "default": true
-        },
-        "handle": {
-          "type": "boolean",
-          "description": "A bottom sheet's grab handle.",
-          "default": true
-        },
-        "closeButton": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A close button by the title; null is a side sheet's only.",
-          "default": null
-        },
-        "closeLabel": {
-          "type": "string",
-          "description": "The close button's accessible name; empty is Close.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "SheetResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "What a sheet answered this tick.",
-      "type": "object",
-      "properties": {
-        "detent": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "The detent it rests at after this tick: keep it."
-        },
-        "dismissed": {
-          "type": "boolean",
-          "description": "It asked to close: set open false."
-        },
-        "visible": {
-          "type": "boolean",
-          "description": "It is on screen (open, or leaving)."
-        }
-      },
-      "required": [
-        "detent",
-        "dismissed",
-        "visible"
       ],
       "additionalProperties": false
     },

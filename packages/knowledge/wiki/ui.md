@@ -149,14 +149,10 @@ module ui {
 | [`MenuEntry`](ui/type-MenuEntry.md) | desc struct |  | An entry of a menu. An entry whose `parent` names another's id sits in that entry's submenu. |
 | [`MenuDesc`](ui/type-MenuDesc.md) | desc struct |  | A menu hanging from an element, or at a point (a context menu). |
 | [`MenuChoice`](ui/type-MenuChoice.md) | struct |  | What a menu answered this tick. |
-| [`SheetEdge`](ui/type-SheetEdge.md) | enum |  | The edge a sheet slides in from; start and end follow the writing direction. |
-| [`SheetDesc`](ui/type-SheetDesc.md) | desc struct |  | A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it. |
-| [`SheetResult`](ui/type-SheetResult.md) | struct |  | What a sheet answered this tick. |
 | [`DataStateDesc`](ui/type-DataStateDesc.md) | desc struct |  | What a data view shows instead of its rows: loading, an error, or nothing. |
 | [`og.ui.popover`](ui/fn-popover.md) | function | `(id: string, open: boolean, desc: PopoverDesc, build: UiBuild): PopoverResult` | A popover beside an element with an arrow at it; Back or a press outside dismisses it. |
 | [`og.ui.menu`](ui/fn-menu.md) | function | `(id: string, open: boolean, desc?: MenuDesc): MenuChoice` | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. |
 | [`og.ui.contextMenu`](ui/fn-contextMenu.md) | function | `(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice` | A menu at a point: where a right press or a long press happened. |
-| [`og.ui.sheet`](ui/fn-sheet.md) | function | `(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult` | A sheet sliding in from the bottom (resting at detents, dragged) or a side. |
 | [`UiProp`](ui/type-UiProp.md) | enum |  | An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. |
 | [`LayoutMode`](ui/type-LayoutMode.md) | enum |  | How a container lays out its children. |
 | [`Position`](ui/type-Position.md) | enum |  | How an element is placed. |
@@ -359,7 +355,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 2458</sub>
+<sub>Module `ui` line 2410</sub>
 
 ```ogt
 column UiMaterial {
@@ -370,4 +366,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 2465</sub>
+<sub>Module `ui` line 2417</sub>

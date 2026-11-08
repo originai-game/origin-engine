@@ -178,6 +178,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("scrollbarColor", "scrollbar-color"),
     ("scrollbarGutter", "scrollbar-gutter"),
     ("sheetDetents", "-og-sheet-detents"),
+    ("sheetEdge", "-og-sheet-edge"),
     ("overflowX", "overflow-x"),
     ("overflowY", "overflow-y"),
     ("scrollbarWidth", "scrollbar-width"),
@@ -445,6 +446,7 @@ fn conv(prop: &str) -> Conv {
         | "scrollSnapType"
         | "scrollSnapAlign"
         | "sheetDetents"
+        | "sheetEdge"
         | "radiusTopLeft"
         | "radiusTopRight"
         | "radiusBottomRight"
@@ -570,6 +572,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         }
         Conv::Raw if prop == "scrollSnapAlign" => "none | start | center | end [<inline>]".into(),
         Conv::Raw if prop == "sheetDetents" => "<n>% | <n>px …".into(),
+        Conv::Raw if prop == "sheetEdge" => "block-end | inline-start | inline-end".into(),
         Conv::Raw if prop == "material" => {
             "<material>(<n> …[, <colour>]) | \"<ui-material asset>\" <n> … | none".into()
         }
@@ -1885,12 +1888,13 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             super::contain_css::check(n, value)?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }
-        "scroll-snap-type" | "scroll-snap-align" | "-og-sheet-detents" => {
+        "scroll-snap-type" | "scroll-snap-align" | "-og-sheet-detents" | "-og-sheet-edge" => {
             let prop = match name {
                 "scroll-snap-type" => super::paint_css::snap_type(value).map(|_| "scrollSnapType"),
                 "scroll-snap-align" => {
                     super::paint_css::snap_align(value).map(|_| "scrollSnapAlign")
                 }
+                "-og-sheet-edge" => super::build::gestures::sheet_edge(value).map(|_| "sheetEdge"),
                 _ => super::build::gestures::detents(value, 100.0).map(|_| "sheetDetents"),
             }?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])

@@ -27,13 +27,3 @@
     returns MenuChoice
   }
 
-  fn sheet {
-    doc "A sheet sliding in from the bottom (resting at detents, dragged) or a side."
-    host false
-    param id String "Its id."
-    param open bool "Whether it is open."
-    param desc SheetDesc "Edge, detents and title."
-    param build UiBuild "Builds its body."
-    returns SheetResult
-  }
-

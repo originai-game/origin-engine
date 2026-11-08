@@ -119,6 +119,17 @@
         "ScreenWipe",
         "WipeSide"
       ]
+    },
+    {
+      "member": "og.ui.sheet, og.ui.SheetDesc, og.ui.SheetResult, og.ui.SheetEdge",
+      "change": "The sheet builder is removed.",
+      "fix": "Write `<dialog modal bind:open={$open}>` in a document with `-og-sheet-detents: 40% 90%` for a bottom sheet; add `-og-sheet-edge: inline-start | inline-end` for a side sheet (full height, its detents widths, mirrored right to left). A drag past its edge, Back or the backdrop writes `open` false.",
+      "find": [
+        "og.ui.sheet(",
+        "SheetDesc",
+        "SheetResult",
+        "SheetEdge"
+      ]
     }
   ]
 }

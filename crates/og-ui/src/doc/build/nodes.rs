@@ -388,7 +388,14 @@ impl Ui {
                     }
                     if dialog.modal
                         && let Some(d) = r.str("sheetDetents")
-                        && self.sheet(id.as_str(), d, open)
+                        && self.sheet(
+                            id.as_str(),
+                            d,
+                            r.str("sheetEdge")
+                                .and_then(|e| super::gestures::sheet_edge(e).ok())
+                                .unwrap_or_default(),
+                            open,
+                        )
                     {
                         opened = Some(false);
                     }

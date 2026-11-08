@@ -8,8 +8,9 @@
 use super::*;
 use crate::element::{DragSpec, DropSpec};
 
-/// A `-og-sheet-detents` value's heights in CSS px (`%` of the viewport's
-/// height inside its safe area), in the order written.
+/// A `-og-sheet-detents` value's depths in CSS px (`%` of the viewport's
+/// height inside its safe area, or its width for a side sheet), in the
+/// order written.
 pub(crate) fn detents(text: &str, vh: f32) -> Result<Vec<f32>, String> {
     let out: Vec<f32> = text
         .split_whitespace()
@@ -32,37 +33,111 @@ pub(crate) fn detents(text: &str, vh: f32) -> Result<Vec<f32>, String> {
     Ok(out)
 }
 
+/// The edge a sheet docks to (`-og-sheet-edge`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum SheetEdge {
+    #[default]
+    BlockEnd,
+    InlineStart,
+    InlineEnd,
+}
+
+/// A `-og-sheet-edge` value.
+pub(crate) fn sheet_edge(text: &str) -> Result<SheetEdge, String> {
+    match text.trim() {
+        "block-end" | "bottom" => Ok(SheetEdge::BlockEnd),
+        "inline-start" => Ok(SheetEdge::InlineStart),
+        "inline-end" => Ok(SheetEdge::InlineEnd),
+        w => Err(format!(
+            "-og-sheet-edge: '{w}' is block-end, inline-start or inline-end"
+        )),
+    }
+}
+
 impl Ui {
     /// A modal `<dialog>` with `-og-sheet-detents`, just opened by
-    /// `open_dialog`: its backdrop docks the panel to the bottom at full
-    /// width, as tall as its tallest detent, and the panel drags along y
-    /// onto its detents (the first when it opens) and off the bottom to
+    /// `open_dialog`: its backdrop docks the panel to `edge` (the bottom at
+    /// full width, or the inline start or end at full height, mirrored right
+    /// to left), as deep as its deepest detent, and the panel drags across
+    /// that edge onto its detents (the first when it opens) and off it to
     /// close. Answers whether a swipe dismissed it.
-    pub(super) fn sheet(&mut self, id: &str, text: &str, open: bool) -> bool {
+    pub(super) fn sheet(&mut self, id: &str, text: &str, edge: SheetEdge, open: bool) -> bool {
         let panel = self.parent();
         let scrim = self.nodes[panel].parent;
+        let side = edge != SheetEdge::BlockEnd;
         let vh = self.viewport.height - self.viewport.safe_area.vertical();
-        let Ok(hs) = self::detents(text, vh) else {
+        let vw = self.viewport.width - self.viewport.safe_area.horizontal();
+        let room = if side { vw } else { vh };
+        let Ok(hs) = self::detents(text, room) else {
             return false;
         };
-        let max = hs.iter().copied().fold(0.0, f32::max).min(vh);
+        let max = hs.iter().copied().fold(0.0, f32::max).min(room);
         let min = hs.iter().copied().fold(max, f32::min);
+        // The inline end is the right left to right; the layout mirrors
+        // the dock, the drag's offset is the screen's.
+        let rtl = self.direction() == og_i18n::Direction::Rtl;
+        let sign = match edge {
+            SheetEdge::BlockEnd => 1.0,
+            SheetEdge::InlineEnd => {
+                if rtl {
+                    -1.0
+                } else {
+                    1.0
+                }
+            }
+            SheetEdge::InlineStart => {
+                if rtl {
+                    1.0
+                } else {
+                    -1.0
+                }
+            }
+        };
         {
             let s = &mut self.nodes[scrim].el;
-            s.align = crate::layout::Align::End;
             s.padding.bottom = 0.0;
             s.padding.left = 0.0;
             s.padding.right = 0.0;
+            if side {
+                s.padding.top = 0.0;
+                s.align = crate::layout::Align::Start;
+                s.cross = if edge == SheetEdge::InlineEnd {
+                    crate::layout::Cross::End
+                } else {
+                    crate::layout::Cross::Start
+                };
+            } else {
+                s.align = crate::layout::Align::End;
+            }
             let p = &mut self.nodes[panel].el;
-            p.width = Size::grow();
-            p.height = Size::Fixed(max);
+            if side {
+                p.width = Size::Fixed(max);
+                p.height = Size::grow();
+            } else {
+                p.width = Size::grow();
+                p.height = Size::Fixed(max);
+            }
         }
         let key = self.nodes[panel].key;
+        let at = |h: f32| sign * (max - h.min(max));
+        let travel = max - min;
+        let lo = if sign < 0.0 { -travel } else { 0.0 };
         self.nodes[panel].props.drag = Some(DragSpec {
-            axis: crate::element::DragAxis::Y,
-            bounds: Some(crate::layout::Rect::new(0.0, 0.0, 0.0, max - min)),
+            axis: if side {
+                crate::element::DragAxis::X
+            } else {
+                crate::element::DragAxis::Y
+            },
+            bounds: Some(if side {
+                crate::layout::Rect::new(lo, 0.0, travel, 0.0)
+            } else {
+                crate::layout::Rect::new(0.0, 0.0, 0.0, travel)
+            }),
             rubber: 0.55,
-            snap: hs.iter().map(|h| (0.0, max - h.min(max))).collect(),
+            snap: hs
+                .iter()
+                .map(|&h| if side { (at(h), 0.0) } else { (0.0, at(h)) })
+                .collect(),
             momentum: true,
             dismiss: Some(crate::element::Dismiss::default()),
             ..DragSpec::default()
@@ -71,7 +146,13 @@ impl Ui {
         let was = self.memory(&memo, 0.0) > 0.0;
         self.remember(&memo, f64::from(u8::from(open)));
         if open && !was {
-            self.seed_drag(key, og_core::glam::Vec2::new(0.0, max - hs[0].min(max)));
+            let first = at(hs[0]);
+            let start = if side {
+                og_core::glam::Vec2::new(first, 0.0)
+            } else {
+                og_core::glam::Vec2::new(0.0, first)
+            };
+            self.seed_drag(key, start);
             return false;
         }
         open && was && self.gesture_of(key).dismissed
@@ -259,5 +340,81 @@ mod tests {
         }
         let v = ui.reactive.execute(Command::Read { source: open }).unwrap();
         assert_eq!(v["value"], json!(false), "a swipe down closes the sheet");
+    }
+
+    /// `-og-sheet-edge: inline-end` docks the sheet to the right left to
+    /// right and to the left right to left, full height, opened at its
+    /// first detent (a width), and a swipe off that edge closes it.
+    ///
+    /// Ways it could fail: an end sheet on the right in Arabic too, a drag
+    /// that moves it the wrong way, or one that throws it off without
+    /// closing.
+    #[test]
+    fn side_sheets_dock_to_their_inline_edge_and_mirror() {
+        let doc = r#"<meta name="component" content="side">
+<div id="Root"><dialog id="Sheet" modal bind:open={$open}><p>Side</p></dialog></div>
+<style>#Sheet { -og-sheet-detents: 50% 80%; -og-sheet-edge: inline-end; }</style>"#;
+        for rtl in [false, true] {
+            let mut ui = Ui::new(UiDesc::default());
+            if rtl {
+                ui.set_direction(og_i18n::Direction::Rtl);
+            }
+            ui.define_document(UiDocument::parse("side.svelte", doc).unwrap());
+            let open = SourceId::new("test", "open");
+            ui.reactive
+                .execute(Command::Signal {
+                    source: open.clone(),
+                    initial: json!(true),
+                    readable: false,
+                })
+                .unwrap();
+            ui.mount_document(
+                SourceId::new("test", "side"),
+                "side",
+                BTreeMap::from([("open".to_string(), open.clone())]),
+                BTreeMap::new(),
+                &crate::bind::NoEnv,
+            )
+            .unwrap();
+            let idle = Vec2::new(200.0, 590.0);
+            for _ in 0..30 {
+                tick(&mut ui, idle, false, false, 0.0);
+            }
+            let panel = ui
+                .probe_elements()
+                .into_iter()
+                .find(|e| e.path.ends_with("Sheet/Panel"))
+                .unwrap();
+            // 80% of 400 wide, opened at 50%: 200 px of it on screen.
+            let shown = if rtl {
+                panel.x + panel.width
+            } else {
+                400.0 - panel.x
+            };
+            assert!((shown - 200.0).abs() < 2.0, "rtl {rtl}: {panel:?}");
+            assert!(panel.height > 590.0, "full height: {panel:?}");
+            let out = if rtl { -40.0 } else { 40.0 };
+            let from = Vec2::new(if rtl { 100.0 } else { 300.0 }, 300.0);
+            tick(&mut ui, from, true, false, 0.0);
+            for k in 1..=6 {
+                tick(
+                    &mut ui,
+                    from + Vec2::new(out * k as f32, 0.0),
+                    true,
+                    true,
+                    0.0,
+                );
+            }
+            tick(&mut ui, from + Vec2::new(out * 6.0, 0.0), false, true, 0.0);
+            for _ in 0..30 {
+                tick(&mut ui, idle, false, false, 0.0);
+            }
+            let v = ui.reactive.execute(Command::Read { source: open }).unwrap();
+            assert_eq!(
+                v["value"],
+                json!(false),
+                "rtl {rtl}: a swipe off its edge closes it"
+            );
+        }
     }
 }

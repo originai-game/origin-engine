@@ -257,25 +257,6 @@ test("menu: a press while it still eases in chooses (nothing waits for the open 
   expect(open).toBeFalse();
 });
 
-// ── sheet ───────────────────────────────────────────────────────────────
-
-test("sheet: a bottom sheet rests at its detent from the bottom edge and Back dismisses it", () => {
-  let open = true;
-  const engine = run(() => {
-    const r = og.ui.sheet("Shop", open, { title: "Shop", detents: [0.4, 0.9] }, () => og.ui.label("Line", "Wares", {}));
-    if (r.dismissed) open = false;
-  });
-  engine.advance(60);
-  const frame = byPath(engine, "Shop/Panel/Content")!;
-  expect(frame).toBeDefined();
-  // The visible top of the sheet sits near 60 % down (detent 0.4 of the room).
-  const handle = byPath(engine, "Content/Handle")!;
-  expect(handle.y).toBeGreaterThan(720 * 0.45);
-  expect(handle.y).toBeLessThan(720 * 0.7);
-  key(engine, "Escape");
-  expect(open).toBeFalse();
-});
-
 // ── data ────────────────────────────────────────────────────────────────
 
 // ── 200 % text ──────────────────────────────────────────────────────────
