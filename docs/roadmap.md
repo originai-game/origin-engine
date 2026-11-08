@@ -122,6 +122,15 @@ Radiance Cascades were measured and not ported (`docs/design.md` §2.6).
   packs, rpg and shooter kits, an art review stream), then the whole
   catalogue; 0.8.0 with the pack catalogue and the collected platform asks;
   the showcase page on the platform. Each is opened when the owner says so.
+- **One full performance pass before the 0.8.0 release, never alongside
+  development:** no stream measures while others build or land. It covers
+  `scripts/perf.sh` with UI counters and the idle breakdown, the rendering
+  budgets (first frame, crowds, FSR, GI) and the release size gate. It also
+  finishes the paused rendering work on local branches in macrunner's lanes:
+  `gi-screen` (a8b1bfa74, lane-30) needs one fix round on gi-room's non-TAA
+  artifacts and an art review; `gate-presentation` (ca1742634, lane-28) is
+  the quick presentation step. Crowds pass 2 and further FSR work were
+  cancelled.
 
 ## Open
 
