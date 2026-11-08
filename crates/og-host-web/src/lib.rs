@@ -1025,6 +1025,13 @@ pub fn og_web_textures_deferred() -> u32 {
     og_render::textures_deferred()
 }
 
+/// Font-pack faces the locale's chain still waits for (docs/ui.md §3.4):
+/// the Worker draws the first frame again until none is left.
+#[wasm_bindgen]
+pub fn og_web_fonts_pending() -> u32 {
+    og_runtime::fonts_pending()
+}
+
 /// Fork s70: the page's loading screen covers the canvas (on) or no longer
 /// does (off); a covered frame prepares without drawing (og-render
 /// `set_covered`).

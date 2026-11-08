@@ -161,6 +161,41 @@ fn find_dir() -> Option<PathBuf> {
     styles(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles"))
 }
 
+/// The directory the bundled font packs are read from (`templates/fonts`
+/// in a checkout, `fonts/` beside `styles/` in the engine package, or
+/// `OG_FONTS_DIR`); `None` when none was found.
+pub fn fonts_dir() -> Option<&'static Path> {
+    static DIR: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+    DIR.get_or_init(|| {
+        if let Some(d) = std::env::var_os("OG_FONTS_DIR") {
+            let d = PathBuf::from(d);
+            return d.is_dir().then_some(d);
+        }
+        let packs = |p: PathBuf| {
+            std::fs::read_dir(&p)
+                .ok()?
+                .flatten()
+                .any(|e| e.path().join("extension.json").is_file())
+                .then_some(p)
+        };
+        if let Some(pkg) = std::env::var_os("OG_ENGINE_PACKAGE").map(PathBuf::from)
+            && let Some(d) =
+                packs(pkg.join("../../templates/fonts")).or_else(|| packs(pkg.join("fonts")))
+        {
+            return Some(d);
+        }
+        if let Ok(exe) = std::env::current_exe() {
+            for sub in ["templates/fonts", "engine/fonts"] {
+                if let Some(d) = exe.ancestors().skip(1).find_map(|a| packs(a.join(sub))) {
+                    return Some(d);
+                }
+            }
+        }
+        packs(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/fonts"))
+    })
+    .as_deref()
+}
+
 /// The directory the built-in styles are read from; `None` when none was
 /// found (an engine package without its `styles/`).
 pub fn styles_dir() -> Option<&'static Path> {

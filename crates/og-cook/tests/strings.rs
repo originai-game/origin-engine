@@ -189,3 +189,119 @@ fn an_arabic_font_carries_its_joined_forms_and_its_file() {
         "layout data must not enable runtime rasterization"
     );
 }
+
+/// A font pack (docs/ui.md §3.4): its index names its languages, its faces'
+/// asset ids and what their cmaps cover; its faces cook to `.face.ogb`
+/// (the web reads them on demand) with their outlines for run-time glyphs
+/// and no atlas beyond a space; installing it changes nothing another font
+/// cooks.
+///
+/// Ways it could fail: the pack index pulls the faces into another font's
+/// stamp (every font re-cooks, its bytes or charset move); a face cooks a
+/// script's whole atlas (megabytes of payload); the face loses runtime or
+/// ships at boot; the coverage misses a character, so the runtime never
+/// loads the pack for it.
+#[test]
+fn a_font_pack_indexes_its_faces_and_leaves_other_fonts_alone() {
+    let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let display =
+        std::fs::read(repo.join("templates/styles/shared/ChakraPetch-BoldItalic.ttf")).unwrap();
+    let settings =
+        b"type import\nversion 1\n---\nfont {\n  charset latin punct\n  em_px 48\n  px_range 16\n}\n".to_vec();
+    let base = vec![
+        ("fonts/Display.ttf", display.clone()),
+        ("fonts/Display.ttf.ogt", settings.clone()),
+    ];
+    let mut with_pack = base.clone();
+    let pack = repo.join("templates/fonts/arabic");
+    let names: Vec<String> = std::fs::read_dir(&pack)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    let files: Vec<(String, Vec<u8>)> = names
+        .iter()
+        .map(|n| {
+            (
+                format!("fonts/arabic/{n}"),
+                std::fs::read(pack.join(n)).unwrap(),
+            )
+        })
+        .collect();
+    with_pack.extend(files.iter().map(|(p, b)| (p.as_str(), b.clone())));
+
+    let output = |root: &PathBuf, id: &str| {
+        Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .manifest()
+            .outputs()
+            .find(|o| o.id == id)
+            .cloned()
+            .unwrap_or_else(|| panic!("no output {id}"))
+    };
+    let alone = project("pack-alone", &base);
+    assert!(cook_project(&alone, &CookOptions::default()).unwrap().ok());
+    let root = project("pack", &with_pack);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+
+    // The other font: the same stamp, bytes and file; its charset as before.
+    let (a, b) = (
+        output(&alone, "fonts/Display.ttf"),
+        output(&root, "fonts/Display.ttf"),
+    );
+    assert_eq!(
+        (a.stamp, a.hash, a.bytes, &a.file),
+        (b.stamp, b.hash, b.bytes, &b.file)
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let font = bundle.load_font("fonts/Display.ttf").unwrap();
+    assert!(font.ttf.is_none(), "its run-time mode is its own (off)");
+    assert!(
+        !font
+            .glyphs
+            .iter()
+            .any(|g| (0x0600..0x0700).contains(&g.codepoint))
+    );
+
+    // The index.
+    let id = "fonts/arabic/extension.json";
+    let out = output(&root, id);
+    assert_eq!(out.ty, "og.FontPack");
+    let text = bundle
+        .font_pack_text(
+            id,
+            &std::fs::read(root.join("cooked").join(&out.file)).unwrap(),
+        )
+        .unwrap();
+    let index = og_i18n::FontPack::parse(&text).unwrap();
+    assert_eq!(index.name, "arabic");
+    assert!(index.languages.iter().any(|l| l == "ar") && index.languages.iter().any(|l| l == "fa"));
+    let face_id = "fonts/arabic/NotoSansArabic-Regular.ttf";
+    assert_eq!(index.faces, vec![face_id.to_string()]);
+    for c in ['ل', 'ی', '٣', 'ﻻ'] {
+        assert!(index.covers(c), "{c:?} U+{:04X}", c as u32);
+    }
+    assert!(!index.covers('あ') && !index.covers('ก'));
+
+    // The face: on demand, outlines kept, no atlas to speak of.
+    let face = output(&root, face_id);
+    assert_eq!(
+        face.file,
+        format!("{face_id}.{}", og_bundle::runtime::FONT_PACK_FACE)
+    );
+    let ttf = files.iter().find(|(p, _)| p == face_id).unwrap().1.len() as u64;
+    let font = bundle.load_font(face_id).unwrap();
+    assert_eq!(
+        font.ttf.as_ref().map(Vec::len),
+        Some(ttf as usize),
+        "drawn from outlines at run time"
+    );
+    // Budget: the face's own bytes plus 8 KB of header, metrics and the
+    // space's cell; the index within 2 KB for an alphabet.
+    assert!(
+        face.bytes <= ttf + 8 * 1024,
+        "{} cooked for a {ttf}-byte face",
+        face.bytes
+    );
+    assert!(out.bytes <= 2 * 1024, "index {} bytes", out.bytes);
+}

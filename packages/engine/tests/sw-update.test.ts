@@ -7,7 +7,7 @@ import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { preloadBundle } from "../src/web/worker.ts";
-import { streamGroupsOf } from "../src/node/web-build.ts";
+import { downloadsOf, serviceWorkerLists, streamGroupsOf } from "../src/node/web-build.ts";
 
 declare const Bun: { build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; outputs: Array<{ text(): Promise<string> }> }> };
 
@@ -20,7 +20,7 @@ test("publish keeps a shared file needed outside a streaming pack", () => {
   }
 });
 
-test("bundle preload fetches a shared file once but retains every texture id", async () => {
+test("bundle preload fetches a shared file once but retains every texture id, and leaves font-pack faces for later", async () => {
   const fetchBefore = globalThis.fetch;
   const fetched: string[] = [];
   const stored: string[] = [];
@@ -35,20 +35,36 @@ test("bundle preload fetches a shared file once but retains every texture id", a
         { id: "a.png", file: "a.png.ogb", type: "og.Texture" },
         { id: "stream.png", file: "a.png.ogb", type: "og.Texture", group: "later" },
         { id: "a.png#mips", file: "a.png.mips.ogb", type: "og.Texture" },
+        { id: "fonts/japanese/extension.json", file: "fonts/japanese/extension.json.ogb", type: "og.FontPack" },
+        { id: "fonts/japanese/NotoSansJP-Regular.ttf", file: "fonts/japanese/NotoSansJP-Regular.ttf.face.ogb", type: "og.Font" },
       ]),
       og_web_put_file: (path) => { stored.push(path); },
       og_web_fail_file: (path, reason) => { throw new Error(`${path}: ${reason}`); },
     }, "https://play.example", () => {});
-    expect(fetched).toEqual(["https://play.example/cooked/.cook.ogt", "https://play.example/cooked/a.png.ogb"]);
+    // The pack's index boots (it is a few hundred bytes); its face is fetched when the locale's chain needs it.
+    expect(fetched).toEqual(["https://play.example/cooked/.cook.ogt", "https://play.example/cooked/a.png.ogb", "https://play.example/cooked/fonts/japanese/extension.json.ogb"]);
     expect(stored).toEqual(fetched);
-    expect(result.files).toBe(1);
+    expect(result.files).toBe(2);
     expect(result.failed).toBe(0);
-    expect(result.streamed).toBe(2);
+    expect(result.streamed).toBe(3);
     expect(result.textures.map((t) => t.id)).toEqual(["z.png", "a.png"]);
     expect(result.textures[0]!.bytes).toBe(result.textures[1]!.bytes);
   } finally {
     globalThis.fetch = fetchBefore;
   }
+});
+
+test("a font pack's faces are cached when fetched, never precached nor counted in the boot", () => {
+  const face = "cooked/fonts/japanese/NotoSansJP-Regular.ttf.face.ogb";
+  const index = "cooked/fonts/japanese/extension.json.ogb";
+  const ui = "cooked/fonts/Display.ttf.ogb";
+  const lists = serviceWorkerLists(["cooked/.cook.ogt", ui, index, face], new Set());
+  expect(lists.lazy).toEqual([face]);
+  expect(lists.files).toEqual(["./", "cooked/.cook.ogt", ui, index]);
+  const row = (path: string, bytes: number) => ({ path, bytes, compressed: bytes, codec: "brotli-11" as const });
+  const d = downloadsOf([row(ui, 40_000), row(index, 300), row(face, 900_000)]);
+  expect(d.boot.single.cooked.bytes).toBe(40_300);
+  expect(d.later.fonts).toEqual({ files: 1, bytes: 900_000, compressed: 900_000 });
 });
 
 const SCOPE = "https://play.example/g/r/";

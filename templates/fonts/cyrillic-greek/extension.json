@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "kind": "font",
+  "name": "cyrillic-greek",
+  "version": "1.0.0",
+  "description": "Noto Sans Cyrillic, Cyrillic Supplement, Greek and Extended Greek",
+  "scripts": [
+    "Cyrl",
+    "Grek"
+  ],
+  "languages": [
+    "ru",
+    "uk",
+    "be",
+    "bg",
+    "sr",
+    "mk",
+    "kk",
+    "ky",
+    "mn",
+    "tg",
+    "el"
+  ],
+  "faces": [
+    "NotoSans-CyrillicGreek.ttf"
+  ]
+}

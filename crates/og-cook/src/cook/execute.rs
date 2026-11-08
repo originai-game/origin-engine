@@ -596,6 +596,7 @@ pub(super) fn run(
         Work::Dialogue(s, functions) => e6::cook_story(s, p.stamp, false, Some(functions)),
         Work::Quest(s) => e6::cook_story(s, p.stamp, true, None),
         Work::Strings(s) => e6::cook_strings(s, p.stamp),
+        Work::FontPack(s) => font_pack::cook(s, p.stamp),
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
         Work::MotionAction(s) => {
             anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))

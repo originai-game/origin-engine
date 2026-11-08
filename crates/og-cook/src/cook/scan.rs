@@ -124,6 +124,7 @@ pub(super) fn scan_with(
             "hex" | "gpl" => Kind::Palette,
             "efkproj" | "efkefc" => Kind::Vfx,
             "svelte" => Kind::Document,
+            "json" if font_pack::is_pack(rel, &read(rel, path)?) => Kind::FontPack,
             "ogt" => {
                 let text = String::from_utf8(read(rel, path)?)
                     .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;

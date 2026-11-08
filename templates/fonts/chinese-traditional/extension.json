@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "kind": "font",
+  "name": "chinese-traditional",
+  "version": "1.0.0",
+  "description": "Noto Sans TC: Big5 symbols and level 1 hanzi (5,401), bopomofo",
+  "scripts": [
+    "Hant"
+  ],
+  "languages": [
+    "zh-Hant",
+    "zh-TW",
+    "zh-HK",
+    "zh-MO"
+  ],
+  "faces": [
+    "NotoSansTC-Regular.ttf"
+  ]
+}

@@ -16,6 +16,15 @@ struct State {
     /// Font paths of the active chain, as last applied to the UI.
     fonts: Vec<String>,
     warned: BTreeSet<String>,
+    /// The bundle's font packs (docs/ui.md §3.4), read once it is open
+    /// (`None`: not yet).
+    packs: Option<Vec<og_i18n::FontPack>>,
+    /// Packs loaded beyond the locale's own: a frame drew a character only
+    /// they cover. Kept across locale changes.
+    loaded: Vec<String>,
+    /// Pack faces of the chain still being fetched (the web reads a pack's
+    /// faces on demand, not at boot): the chain is applied again as they land.
+    pending: Vec<String>,
 }
 
 thread_local! {
@@ -91,12 +100,26 @@ pub(crate) fn request(engine: u32, locale: &str) {
 /// Applies the active locale to the UI: its fonts first, then the other
 /// tables', each loaded from the bundle; and its direction.
 fn apply(eng: &Engine) -> Result<(), String> {
+    let locale = language(eng.id);
     let (paths, direction) = with(eng.id, |s| {
         let mut paths: Vec<String> = s
             .catalog
             .active()
             .map(|t| t.fonts.clone())
             .unwrap_or_default();
+        // The locale's own font pack after the table's own fonts, then the
+        // packs a frame needed; no game code names them.
+        let packs = s.packs.as_deref().unwrap_or_default();
+        let own = og_i18n::font_pack::for_locale(packs, &locale).map(|p| p.name.clone());
+        for name in own.iter().chain(&s.loaded) {
+            for p in packs.iter().filter(|p| &p.name == name) {
+                for f in &p.faces {
+                    if !paths.contains(f) {
+                        paths.push(f.clone());
+                    }
+                }
+            }
+        }
         for l in s.catalog.locales() {
             let mut c = s.catalog.clone();
             c.request(&[&l]);
@@ -111,7 +134,15 @@ fn apply(eng: &Engine) -> Result<(), String> {
         (paths, s.catalog.direction())
     });
     let mut chain = Vec::with_capacity(paths.len());
+    let mut pending = Vec::new();
+    let mut drawn = Vec::with_capacity(paths.len());
     for p in &paths {
+        let id = og_bundle::runtime::asset_id(p);
+        if eng.assets.borrow().pending(id) {
+            pending.push(p.clone());
+            continue;
+        }
+        drawn.push(p.clone());
         let i = super::assets::load_font(eng, p).map_err(|e| format!("font '{p}': {e}"))?;
         chain.push(super::modules::ui_font(
             eng,
@@ -129,8 +160,123 @@ fn apply(eng: &Engine) -> Result<(), String> {
         ui.set_direction(direction);
         ui.set_locale(&tag(eng.id));
     }
-    with(eng.id, |s| s.fonts = paths);
+    with(eng.id, |s| {
+        s.fonts = drawn;
+        s.pending = pending;
+    });
     Ok(())
+}
+
+/// Reads the bundle's font packs once it is open and applies the locale's
+/// chain with them: the first UI frame of a game with packs installed
+/// draws in them with no call of its own. Cheap after the first time.
+pub(crate) fn ensure_packs(eng: &Engine) {
+    if let Some(waiting) = with(eng.id, |s| s.packs.as_ref().map(|_| s.pending.clone())) {
+        // A pack face fetched since: the chain takes it.
+        let landed = {
+            let assets = eng.assets.borrow();
+            waiting
+                .iter()
+                .any(|p| !assets.pending(og_bundle::runtime::asset_id(p)))
+        };
+        if landed && let Err(e) = apply(eng) {
+            note(eng.id, format!("font packs: {e}"));
+        }
+        return;
+    }
+    let packs = {
+        let assets = eng.assets.borrow();
+        let Some(i) = assets.default_bundle else {
+            return;
+        };
+        if assets.entries[i].status != super::assets::Status::Ready {
+            return;
+        }
+        let ids: Vec<String> = match &assets.entries[i].payload {
+            super::assets::Payload::Bundle { bundle, .. } => bundle
+                .manifest()
+                .assets
+                .iter()
+                .filter(|a| a.kind == "font-pack")
+                .flat_map(|a| a.outputs.iter().map(|o| o.id.clone()))
+                .collect(),
+            _ => Vec::new(),
+        };
+        let mut packs = Vec::new();
+        for id in ids {
+            let read = assets.blob(&id).and_then(|(bytes, bundle)| {
+                bundle
+                    .font_pack_text(&id, bytes.bytes())
+                    .map_err(|e| e.to_string())
+            });
+            match read.and_then(|t| og_i18n::FontPack::parse(&t)) {
+                Ok(p) => packs.push(p),
+                Err(e) => note(eng.id, format!("font pack {id}: {e}")),
+            }
+        }
+        packs
+    };
+    let any = !packs.is_empty();
+    with(eng.id, |s| s.packs = Some(packs));
+    if any && let Err(e) = apply(eng) {
+        note(eng.id, format!("font packs: {e}"));
+    }
+}
+
+/// Of the characters a frame drew that their faces lack, those an
+/// installed pack not yet in the chain covers load that pack (the
+/// locale's CJK forms first) and are answered as drawn from next frame;
+/// the rest are returned, still missing.
+pub(crate) fn resolve_missing(
+    eng: &Engine,
+    missing: Vec<(og_render::FontHandle, Vec<char>)>,
+) -> Vec<(og_render::FontHandle, Vec<char>)> {
+    let locale = language(eng.id);
+    let (out, added) = with(eng.id, |s| {
+        let Some(packs) = s.packs.as_deref().filter(|p| !p.is_empty()) else {
+            return (missing, false);
+        };
+        let own = og_i18n::font_pack::for_locale(packs, &locale).map(|p| p.name.clone());
+        let order = og_i18n::font_pack::fallback_order(packs, &locale);
+        // Packs this frame loads: their characters draw from the next one.
+        let mut fresh: Vec<String> = Vec::new();
+        let mut out = Vec::new();
+        for (face, chars) in missing {
+            let mut left = Vec::new();
+            for c in chars {
+                // Only a pack not yet in the chain answers it; one already in
+                // it lacks the outline after all (a cmap entry, no glyph).
+                let pack = order
+                    .iter()
+                    .map(|&i| &packs[i])
+                    .filter(|p| Some(&p.name) != own.as_ref())
+                    .find(|p| p.covers(c));
+                match pack {
+                    Some(p) if !s.loaded.contains(&p.name) => {
+                        s.loaded.push(p.name.clone());
+                        fresh.push(p.name.clone());
+                    }
+                    Some(p) if fresh.contains(&p.name) => {}
+                    _ => left.push(c),
+                }
+            }
+            if !left.is_empty() {
+                out.push((face, left));
+            }
+        }
+        (out, !fresh.is_empty())
+    });
+    if added && let Err(e) = apply(eng) {
+        note(eng.id, format!("font packs: {e}"));
+    }
+    out
+}
+
+/// Pack faces every engine's chain still waits for: the web Worker draws
+/// the first frame again until none is left, so a boot never shows a
+/// locale's text missing while its pack is fetched.
+pub fn fonts_pending() -> u32 {
+    STATES.with(|s| s.borrow().values().map(|st| st.pending.len() as u32).sum())
 }
 
 pub fn og_i18n_load(world: u32, path: String) -> String {

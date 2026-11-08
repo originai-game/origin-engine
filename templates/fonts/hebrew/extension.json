@@ -1,0 +1,18 @@
+{
+  "format": 1,
+  "kind": "font",
+  "name": "hebrew",
+  "version": "1.0.0",
+  "description": "Noto Sans Hebrew with its points",
+  "scripts": [
+    "Hebr"
+  ],
+  "languages": [
+    "he",
+    "iw",
+    "yi"
+  ],
+  "faces": [
+    "NotoSansHebrew-Regular.ttf"
+  ]
+}

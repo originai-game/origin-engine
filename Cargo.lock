@@ -3002,6 +3002,7 @@ dependencies = [
  "og-probe",
  "og-render",
  "og-story",
+ "og-tests",
  "og-tilemap",
  "og-timeline",
  "og-tween",

@@ -195,13 +195,16 @@ Read a phone layout at 390×844 and a desktop one at 1920×1080.
 ## 6. Languages and fonts
 
 - Every create-block language needs its string table
-  (`assets/strings/<lang>.ogt`) and a font chain that covers its script;
-  the default fonts cover Latin only. CJK, Arabic and Hebrew fonts and
-  their licences ship in the engine's locale resources: copy the ones the
-  game needs into `assets/`, name them in the table's fonts line, and load
-  the table with og.i18n. `og check` warns while one is missing.
-- Load only the font chains of the languages in use; a CJK font is
-  megabytes and delays the first frame.
+  (`assets/strings/<lang>.ogt`) and a font that covers its script. Fonts
+  ship as one pack per script (`og font list`): `og create --lang`
+  installs the packs of its languages, `og font add <pack>` adds one
+  later, and og.i18n chains them with no code: the locale's own pack
+  first, another pack loaded the first frame its characters are drawn
+  (a player's name in another script). `og check` warns while a
+  language has neither a pack nor a table with its own fonts line.
+- A pack's glyphs are drawn from its outlines when first shown and the
+  web fetches its face only when needed, so installing a pack costs the
+  download of a language in use, not the boot.
 - `og i18n extract --check` lists missing keys per table; run it before
   each build.
 - Size boxes for the pseudo-locale (40 % longer) and check a CJK and a

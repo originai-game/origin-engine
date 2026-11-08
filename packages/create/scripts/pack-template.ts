@@ -42,6 +42,11 @@ const stylesTarget = join(pkg, "styles");
 rmSync(stylesTarget, { recursive: true, force: true });
 cpSync(join(pkg, "../../templates/styles"), stylesTarget, { recursive: true, filter });
 
+// The font packs, installed by a project's languages (docs/ui.md §3.4).
+const fontsTarget = join(pkg, "fonts");
+rmSync(fontsTarget, { recursive: true, force: true });
+cpSync(join(pkg, "../../templates/fonts"), fontsTarget, { recursive: true, filter: (path) => filter(path) && !path.endsWith(".py") });
+
 // Locale resources remain available independently of creation choices.
 const localesTarget = join(pkg, "locales");
 rmSync(localesTarget, { recursive: true, force: true });

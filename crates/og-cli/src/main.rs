@@ -159,6 +159,12 @@ commands:
                       the texels near the key still drawn (pockets the border does not reach;
                       --holes keys them too, as a sheet's `key ... holes`);
                       --out writes the measured frames side by side (a sheet: its packed texture)
+  font add <pack|directory> [project]
+                      a font pack (one per script: latin, cyrillic-greek, arabic, hebrew,
+                      devanagari, thai, japanese, korean, chinese-traditional,
+                      chinese-simplified) into assets/fonts/<pack>; og.i18n puts the
+                      active locale's pack in the font chain, the others load on demand
+  font list [project] the bundled and installed font packs, with their languages
   vfx add <pack|directory> [project] [--any-engine]
                       copy an effect pack (`kind vfx`: type vfx and type vfx2d effects,
                       emitters, effect materials and their textures) into the game's
@@ -361,6 +367,8 @@ fn main() -> ExitCode {
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),
         ["vfx", "add", rest @ ..] => ui::extensions::add(rest, "vfx"),
+        ["font", "add", rest @ ..] => ui::extensions::add(rest, "font"),
+        ["font", "list", rest @ ..] => ui::extensions::list_fonts(rest),
         ["vfx", "import", rest @ ..] => vfx_import::run(rest),
         ["frame", rest @ ..] => frame::run(rest),
         [] => {

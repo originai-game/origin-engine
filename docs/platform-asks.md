@@ -208,9 +208,10 @@ translations, cameras, multiplayer or music.
 
 `profile` remains an optional runtime/build setting in project.ogt, omitted
 by the skeleton. `create.view` records intent and does not replace it.
-Languages do not install font chains: `og check` and og-i18n warn about
-missing tables and fonts, and the agent installs and loads them before
-rendering localized text. The lint does not prove glyph coverage.
+Languages install their script's font pack (docs/ui.md §3.4), which
+og.i18n chains with no code; `og check` warns about a language with no
+pack or table fonts, and og-i18n about missing tables. The lint does not
+prove glyph coverage; the missing-glyph warning names what a frame lacks.
 
 Changes after creation need the corresponding authored source/settings
 update; `--force` is not an update API. `artBrief`, `readLook`, `presetLook`

@@ -306,6 +306,7 @@ export interface WebExtras {
   og_web_upload_budget?(bytes: number): void;
   /** Fork s63: the textures still drawn from their stand-ins after the last frame. */
   og_web_textures_deferred?(): number;
+  og_web_fonts_pending?(): number;
   /** Fork s70: the page's loading screen covers the canvas: frames prepare without drawing (og-render set_covered). */
   og_web_covered?(on: boolean): void;
   /** `og render`'s every-frame capture (development builds): the display frame drawn last as RGBA8 rows at the canvas's size; empty until its readback lands. */
@@ -529,6 +530,7 @@ export interface Fetched {
  * nor are the chunks of a sound cooked in chunks, which the engine reads
  * through the fetcher ahead of the playheads, nor a streamed video's units
  * (og.VideoStream), which og.load.video asks the fetcher for, nor a
+ * font pack's faces, which the locale's chain asks the fetcher for, nor a
  * streamed texture's whole chain (`<id>#mips`, `texture { stream true }`):
  * the bundle carries its mip tail as `<id>`, and the engine reads `#mips`
  * through the fetcher when the texture is big on screen. The engine asks for at most
@@ -556,7 +558,9 @@ export async function preloadBundle(
   if (!Array.isArray(all)) throw new Error(`${manifestPath}: ${all.error}`);
   // A long sound's chunks (og.SoundChunk) are fetched as its playheads near
   // them, a streamed texture's whole chain (`#mips`) when it is big on screen.
-  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && !o.id.endsWith("#mips"));
+  // A font pack's faces (`<id>.face.ogb`, docs/ui.md §3.4) when the
+  // locale's chain or a frame's text first needs them.
+  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && !o.id.endsWith("#mips") && !o.file.endsWith(".face.ogb"));
   const files = [...new Set(listed.map((o) => o.file))];
   let fetched = 0;
   let failed = 0;
@@ -1297,8 +1301,8 @@ export function startWorker(game: GameToken): void {
   };
   /** While the first frame waits for the platform's first answers (settle.ts): a resize then draws nothing yet. */
   let settling = false;
-  /** Textures still drawn from their stand-ins (s63). */
-  const texturesWaiting = () => (glueRef?.og_web_textures_deferred?.() ?? 0) > 0;
+  /** Textures still drawn from their stand-ins (s63), or font-pack faces the locale's chain still fetches. */
+  const texturesWaiting = () => (glueRef?.og_web_textures_deferred?.() ?? 0) > 0 || (glueRef?.og_web_fonts_pending?.() ?? 0) > 0;
   /** Whether the last frame drew less than the scene: pipelines compiling or draws skipped for them (s60), textures waiting (s63). */
   const frameWaits = () => pipelines.takeSkipped() > 0 || pipelines.compiling() > 0 || texturesWaiting();
   /** The first frame drawn again behind the gate until it draws the whole scene: how often, since when, the most pipelines compiling. */

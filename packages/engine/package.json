@@ -53,6 +53,7 @@
     "vendor",
     "knowledge",
     "styles",
+    "fonts",
     "extensions",
     "!extensions/*/preview",
     "ui-sheet",

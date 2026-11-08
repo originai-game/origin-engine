@@ -76,6 +76,9 @@ physics3d = ["og-physics/physics3d"]
 # tests/stream_release.rs cooks a small project with streaming groups.
 og-cook = { path = "../og-cook" }
 ttf-parser = "=0.25.1"
+# tests/font_packs.rs compares its frames under og-tests' tolerance.
+og-tests = { path = "../og-tests" }
+image = { workspace = true }
 
 [[test]]
 name = "tests"

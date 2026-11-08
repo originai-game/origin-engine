@@ -315,6 +315,20 @@ impl Assets {
         }
     }
 
+    /// Whether a cooked output's file is still being fetched (the web
+    /// reads some on demand: a font pack's faces). Asking starts the fetch.
+    pub(crate) fn pending(&self, id: &str) -> bool {
+        let Ok((bundle, dir)) = self.bundle_for(id) else {
+            return false;
+        };
+        match bundle.output(id) {
+            Ok(out) if out.group.is_none() => {
+                matches!(read(&format!("{dir}/{}", out.file)), Fetch::Pending)
+            }
+            _ => false,
+        }
+    }
+
     /// The streaming group of a cooked output (`None`: loaded at boot).
     pub(crate) fn group_of(&self, id: &str) -> Option<String> {
         let (bundle, _) = self.bundle_for(id).ok()?;

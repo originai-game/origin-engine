@@ -43,6 +43,11 @@ pub use uncooked::UncookedGltf;
 /// The manifest's file name inside `cooked/`.
 pub const MANIFEST: &str = ".cook.ogt";
 
+/// The cooked file suffix of a font pack's face (`<id>.face.ogb`, docs/ui.md
+/// §3.4): the web boot leaves these out and the engine reads one when the
+/// locale's chain or a frame's text first needs it.
+pub const FONT_PACK_FACE: &str = "face.ogb";
+
 /// Why a load was refused. Converts into `og_core::Error` for the API.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LoadError {
@@ -1644,6 +1649,18 @@ impl Bundle {
 // ── E6: string tables ────────────────────────────────────────────────────
 
 impl Bundle {
+    /// The index text of a font pack blob (`og.FontPack`); parse it with
+    /// og-i18n's `FontPack::parse`.
+    pub fn font_pack_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+        let blob = self.blob::<format::FontPack>(id, bytes)?;
+        let meta = one::<format::FontPackMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        text.get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .map(str::to_string)
+            .ok_or_else(|| invalid(&blob, "the font pack index is cut short or not UTF-8"))
+    }
+
     /// The validated text of a string table blob (`og.Strings`); parse it
     /// with og-i18n's `StringTable::parse`.
     pub fn strings_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {

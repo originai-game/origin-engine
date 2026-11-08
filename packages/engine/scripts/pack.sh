@@ -119,6 +119,16 @@ for pack in "$here"/../../templates/styles/*/; do
     (cd "$here/styles/$name" && tar -xf -)
 done
 [ -f "$here/styles/shared/LICENSES.md" ] || { echo "pack: shared style assets were not copied into styles/" >&2; exit 1; }
+# The font packs (templates/fonts: one directory per script, its faces,
+# import settings, manifest and licence) ship as files in fonts/, which
+# og font add and og create --lang install from; the copy is ignored by Git.
+rm -rf "$here/fonts"
+mkdir -p "$here/fonts"
+for pack in "$here"/../../templates/fonts/*/; do
+  [ -f "$pack/extension.json" ] || continue
+  cp -R "$pack" "$here/fonts/$(basename "$pack")"
+done
+cp "$here/../../templates/fonts/LICENSES.md" "$here/fonts/LICENSES.md"
 # The on-demand sheet project is data, not a gate or a hard-coded runtime template.
 rm -rf "$here/ui-sheet"
 mkdir -p "$here/ui-sheet"

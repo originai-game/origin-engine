@@ -25,5 +25,24 @@ export function localeScript(tag: string): LocaleScript {
   return "other";
 }
 
+/** A font pack's manifest as far as language matching goes (its `extension.json`). */
+export interface FontPackLanguages {
+  readonly name: string;
+  readonly languages: readonly string[];
+}
+
+/**
+ * The pack a language is written in (docs/ui.md §3.4): the one naming the
+ * tag itself, else its language; Chinese by script, so `zh-TW` takes the
+ * traditional pack and never the simplified one. `undefined`: none ships.
+ */
+export function fontPackFor(tag: string, packs: readonly FontPackLanguages[]): string | undefined {
+  const t = canonicalTag(tag);
+  const lang = languageOf(t);
+  const names = (want: string) => packs.find((p) => p.languages.some((l) => canonicalTag(l) === want))?.name;
+  if (lang === "zh") return names(localeScript(t) === "hant" ? "zh-Hant" : "zh-Hans");
+  return names(t) ?? names(lang);
+}
+
 /** Right to left (og-i18n's `direction_of_locale`). */
 export const isRtl = (tag: string) => ["ar", "he", "iw", "fa", "ur", "ps", "sd", "yi", "dv", "ug", "ckb"].includes(languageOf(tag));

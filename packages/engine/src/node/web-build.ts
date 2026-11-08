@@ -339,6 +339,8 @@ export interface Downloads {
     readonly chunks: DownloadSum;
     /** Streamed textures' whole chains (`<id>#mips`), fetched when a texture is big on screen. */
     readonly mips: DownloadSum;
+    /** Font packs' faces (`<id>.face.ogb`), fetched when the locale or a frame's text needs them. */
+    readonly fonts: DownloadSum;
     /** The AudioWorklet, fetched on the first gesture. */
     readonly worklet: DownloadSum;
     /** Streamed videos' AV1 units (`<id>#stream`), fetched by og.load.video. */
@@ -372,7 +374,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
   const add = (...parts: DownloadSum[]): DownloadSum => parts.reduce((a, b) => ({ files: a.files + b.files, bytes: a.bytes + b.bytes, compressed: a.compressed + b.compressed }), { files: 0, bytes: 0, compressed: 0 });
   const isPack = (p: string) => /^cooked\/stream\/[^/]+\.ogb$/.test(p) || p === MOTION_MODEL;
   const isVideo = (p: string) => p.startsWith("cooked/") && VIDEO_STREAM.test(p);
-  const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !TEXTURE_MIPS.test(p) && !isVideo(p));
+  const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !TEXTURE_MIPS.test(p) && !FONT_FACE.test(p) && !isVideo(p));
   const shell = sum((p) => /^(index\.html|play\.js|game\.js)$/.test(p));
   const basis = sum((p) => /^basis\/basis_transcoder\.(js|wasm)$/.test(p));
   const page = (engine: DownloadSum): DownloadBoot => ({ ...add(engine, cooked, shell, basis), engine, cooked, shell, basis });
@@ -383,6 +385,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
       packs: sum(isPack),
       chunks: sum((p) => SOUND_CHUNK.test(p)),
       mips: sum((p) => TEXTURE_MIPS.test(p)),
+      fonts: sum((p) => FONT_FACE.test(p)),
       worklet: sum((p) => p === "audio-worklet.js"),
       videos: sum(isVideo),
       av1: sum((p) => p.startsWith("av1/")),
@@ -401,7 +404,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
  * rendition, never both) and the fallback decoder.
  */
 export function serviceWorkerLists(paths: readonly string[], packs: ReadonlySet<string>): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
-  const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || TEXTURE_MIPS.test(f) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
+  const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || TEXTURE_MIPS.test(f) || FONT_FACE.test(f) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
   // A content-hashed file's plain copy is fetched by no page, so it is not precached.
   const aliases = aliasesOf(paths);
   const precache = paths.filter((f) => !NOT_PRECACHED.test(f) && !onDemand(f) && !aliases.has(f));
@@ -425,6 +428,7 @@ export function downloadLines(d: Downloads, codec: SizeRow["codec"]): string {
     d.later.packs.files ? `${d.later.packs.files} streaming packs ${d.later.packs.compressed} B (as their groups load)` : "",
     d.later.chunks.files ? `${d.later.chunks.files} sound chunks ${d.later.chunks.compressed} B (ahead of their playheads)` : "",
     d.later.mips.files ? `${d.later.mips.files} texture mip chains ${d.later.mips.compressed} B (when big on screen)` : "",
+    d.later.fonts.files ? `${d.later.fonts.files} font-pack faces ${d.later.fonts.compressed} B (when the locale or its text needs them)` : "",
     d.later.worklet.files ? `the audio worklet ${d.later.worklet.compressed} B (first gesture)` : "",
     d.later.pwa.files ? `the service worker and icons ${d.later.pwa.compressed} B` : "",
   ].filter(Boolean);
@@ -738,6 +742,8 @@ const MOTION_MODEL = "cooked/motion/model.ogb";
 const SOUND_CHUNK = /^cooked\/.*\.chunk\d+\.ogb$/;
 /** A streamed texture's whole chain (og-cook's `<id>#mips`; its tail `<id>` boots): fetched when the texture is big on screen, cached then. */
 const TEXTURE_MIPS = /^cooked\/.*[.#]mips\.ogb$/;
+/** A font pack's face (og-cook's `<id>.face.ogb`, docs/ui.md §3.4): fetched when the locale's chain or a frame's text first needs it, cached then. */
+const FONT_FACE = /^cooked\/.*\.face\.ogb$/;
 
 /**
  * Why `out` may not be wiped for a build, or null. A build replaces its
@@ -887,7 +893,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const wasmBytes = statSync(join(out, served("origin-engine_bg.wasm"))).size;
   const firstGroup = walk(join(out, "cooked")).filter((f) => {
     const path = relative(out, f).split("\\").join("/");
-    return !packs.has(path) && !SOUND_CHUNK.test(path) && !TEXTURE_MIPS.test(path) && !VIDEO_STREAM.test(path);
+    return !packs.has(path) && !SOUND_CHUNK.test(path) && !TEXTURE_MIPS.test(path) && !FONT_FACE.test(path) && !VIDEO_STREAM.test(path);
   });
   const cookedBytes = firstGroup.filter((f) => !f.endsWith(".cook.ogt")).reduce((n, f) => n + statSync(f).size, 0);
   // The build id a crash report names: the bundles whose stacks the maps resolve.

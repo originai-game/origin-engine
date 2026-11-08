@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "kind": "font",
+  "name": "devanagari",
+  "version": "1.0.0",
+  "description": "Noto Sans Devanagari with its conjuncts: Hindi, Marathi, Nepali, Sanskrit",
+  "scripts": [
+    "Deva"
+  ],
+  "languages": [
+    "hi",
+    "mr",
+    "ne",
+    "sa"
+  ],
+  "faces": [
+    "NotoSansDevanagari-Regular.ttf"
+  ]
+}

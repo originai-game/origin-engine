@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "kind": "font",
+  "name": "thai",
+  "version": "1.0.0",
+  "description": "Noto Sans Thai with its marks",
+  "scripts": [
+    "Thai"
+  ],
+  "languages": [
+    "th"
+  ],
+  "faces": [
+    "NotoSansThai-Regular.ttf"
+  ]
+}

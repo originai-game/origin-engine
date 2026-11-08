@@ -16,9 +16,11 @@ with the chosen preset, mood and UI pack, named by the manifest's top-level
 `look`. It generates no gameplay or art, and changes no publish settings.
 The agent builds the game with the engine API and skills after creation.
 `profile` remains an optional runtime/build setting, omitted here;
-`create.view` does not replace it. Requested languages need authored tables
-and installed font chains; `og check` warns when these are missing for CJK
-and supported RTL languages.
+`create.view` does not replace it. Each requested language installs its
+script's font pack under `assets/fonts/<pack>/` with its licence (docs/ui.md
+§3.4), which og.i18n chains with no generated code; the languages still need
+authored string tables. `og check` warns about a language with no font for
+its script.
 
 ## Options and return value
 

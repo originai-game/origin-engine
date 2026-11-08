@@ -4,11 +4,13 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CREATION_CHOICES, creationBlock, inferCreationChoices, parseCreationInput } from "./choices.ts";
 import type { CreationChoices, CreationInput } from "./choices.ts";
+import { fontPackFor } from "./languages.ts";
+import type { FontPackLanguages } from "./languages.ts";
 
 export { CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput } from "./choices.ts";
 export type { CreationChoices, CreationInput } from "./choices.ts";
-export { canonicalTag, isRtl, localeScript } from "./languages.ts";
-export type { LocaleScript } from "./languages.ts";
+export { canonicalTag, fontPackFor, isRtl, localeScript } from "./languages.ts";
+export type { FontPackLanguages, LocaleScript } from "./languages.ts";
 export { PSEUDO_LOCALE, pseudoMessage, pseudoTable } from "./pseudo-locale.ts";
 export { ART_KINDS, ART_RESOURCES, artBrief, authoredArt, colourName, MOODS, parseLook, parsePalette, presetLook, readLook, styleArtBriefs } from "./brief.ts";
 export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, AuthoredArt, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, Mood, PaletteColour, ReadLookOptions, StyleArtBrief, StyleArtRequests } from "./brief.ts";
@@ -48,6 +50,15 @@ export interface Style {
   readonly premise: Readonly<Record<string, string>>;
   readonly look: { readonly presetReady: boolean; readonly support: string; readonly profiles: readonly Profile[]; readonly views: readonly string[]; readonly mood: string; readonly missing: readonly string[] };
   readonly ui: string;
+}
+
+/** The font packs: templates/fonts in a checkout, the package's fonts/ once packed. */
+export function fontPacksDir(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (const candidate of [join(here, "..", "..", "..", "templates", "fonts"), join(here, "..", "fonts")]) {
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(`no font packs next to ${here}; reinstall the engine distribution`);
 }
 
 export function catalogueFile(): string {
@@ -143,6 +154,15 @@ export function create(options: CreateOptions): Created {
     }
   }
   copy(template, dir);
+  // The font packs its languages are written in, as `og font add` installs
+  // them (assets/fonts/<pack>/); og.i18n puts them in the fallback chain.
+  const packs = fontPacksDir();
+  const available = readdirSync(packs, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && existsSync(join(packs, e.name, "extension.json")))
+    .map((e) => ({ dir: join(packs, e.name), ...(JSON.parse(readFileSync(join(packs, e.name, "extension.json"), "utf8")) as FontPackLanguages) }));
+  for (const name of new Set(choices.lang.map((l) => fontPackFor(l, available)).filter((n) => n !== undefined))) {
+    copy(available.find((p) => p.name === name)!.dir, join(dir, "assets", "fonts", name));
+  }
   const look = `looks/${id}.ogt`;
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
   writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\nmood ${JSON.stringify(choices.mood)}\nui ${JSON.stringify(choices.ui)}\n`);

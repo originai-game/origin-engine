@@ -30,7 +30,7 @@
 //!   the looks built on it.
 
 pub use super::look_assets::{BUILTINS, MOOD_LAYERS, PRESETS};
-pub use super::look_styles::{StyleFile, style_licences, styles, styles_dir};
+pub use super::look_styles::{StyleFile, fonts_dir, style_licences, styles, styles_dir};
 use super::{CookError, Source};
 use crate::format::{self, BlobKind};
 use crate::look::{LookFile, MAX_EXTENDS, hex_to_linear};

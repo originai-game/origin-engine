@@ -27,6 +27,15 @@ pub struct Manifest {
     pub tags: Option<VfxTags>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keywords: Option<Vec<String>>,
+    /// A font pack's ISO 15924 scripts (`Arab`, `Hans`), the language tags
+    /// it is the face of, and its faces' files, first first (docs/ui.md
+    /// §3.4). Only a font pack has them, and it has all three.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scripts: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub languages: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub faces: Option<Vec<String>>,
 }
 
 /// A vfx pack's tags: its style and dimension, and the union of its
@@ -127,7 +136,7 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
     .map_err(|e| format!("{}: {e}", path.display()))?;
     let m = &manifest;
     if m.format != 1
-        || !matches!(m.kind.as_str(), "kit" | "style" | "vfx")
+        || !matches!(m.kind.as_str(), "kit" | "style" | "vfx" | "font")
         || !m.name.starts_with(|c: char| c.is_ascii_lowercase())
         || !m
             .name
@@ -147,6 +156,18 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         || m.keywords
             .as_ref()
             .is_some_and(|k| !k.iter().all(|w| lower_word(w)))
+        || (m.kind == "font") != (m.scripts.is_some() || m.languages.is_some() || m.faces.is_some())
+        || (m.kind == "font"
+            && [&m.scripts, &m.languages, &m.faces]
+                .iter()
+                .any(|v| v.as_ref().is_none_or(|v| v.is_empty())))
+        || m.scripts.as_ref().is_some_and(|s| {
+            !s.iter().all(|s| {
+                s.len() == 4
+                    && s.starts_with(|c: char| c.is_ascii_uppercase())
+                    && s[1..].bytes().all(|c| c.is_ascii_lowercase())
+            })
+        })
     {
         return Err(format!(
             "{}: invalid extension manifest (docs/ui.md §5)",
@@ -161,6 +182,7 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         .chain(m.entry.as_deref())
         .chain(m.types.as_deref())
         .chain((m.kind == "style").then_some("style.ogt"))
+        .chain(m.faces.iter().flatten().map(String::as_str))
     {
         if !relative(file) || !all.iter().any(|p| p == Path::new(file)) {
             return Err(format!(
@@ -195,9 +217,13 @@ pub fn discover(project: &Path) -> Result<Vec<Extension>, String> {
     if let Some(styles) = og_cook::cook::look::styles_dir() {
         roots.push((styles.to_path_buf(), false));
     }
+    if let Some(fonts) = og_cook::cook::look::fonts_dir() {
+        roots.push((fonts.to_path_buf(), false));
+    }
     roots.push((project.join("assets/ui-kits"), true));
     roots.push((project.join("assets/styles"), true));
     roots.push((project.join("assets/vfx"), true));
+    roots.push((project.join("assets/fonts"), true));
     let mut extensions = BTreeMap::new();
     for (root, installed) in roots {
         if !root.exists() {
@@ -239,6 +265,7 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
     let family = match extension.manifest.kind.as_str() {
         "kit" => "ui-kits",
         "style" => "styles",
+        "font" => "fonts",
         _ => "vfx",
     };
     let target = project
@@ -422,6 +449,34 @@ pub fn list(args: &[&str]) -> ExitCode {
                     println!("  {}/{}", m.name, doc.trim_end_matches(".svelte"));
                 }
             }
+        }
+        Ok(())
+    })();
+    outcome(result)
+}
+
+/// `og font list`: each bundled and installed font pack, its languages and
+/// whether the game has it.
+pub fn list_fonts(args: &[&str]) -> ExitCode {
+    let result = (|| {
+        let project = match args {
+            [] => ".",
+            [p] => p,
+            _ => return Err("usage: og font list [project]".into()),
+        };
+        for e in discover(Path::new(project))?
+            .into_iter()
+            .filter(|e| e.manifest.kind == "font")
+        {
+            let m = &e.manifest;
+            println!(
+                "{:<20} {} ({}) — {}; {}",
+                m.name,
+                m.version,
+                if e.installed { "installed" } else { "bundled" },
+                m.languages.as_deref().unwrap_or_default().join(" "),
+                m.description
+            );
         }
         Ok(())
     })();

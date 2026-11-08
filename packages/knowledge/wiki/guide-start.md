@@ -28,9 +28,10 @@ The choices made at creation sit in project.ogt's `create` block: `genre`,
   the block so it stays the record of the brief.
 - `look`, `mood` and `ui` are also written into `assets/looks/<id>.ogt`,
   which project.ogt's `look` names; that file is real configuration
-  (looks §1). `lang` is a promise the game keeps: each language needs a
-  string table and an installed font chain (screens §6); `og check` warns
-  while a CJK or right-to-left language has none.
+  (looks §1). `lang` installs each language's font pack, which og.i18n
+  chains with no code; each language still needs its string table
+  (screens §6). `og check` warns while a language has no font for its
+  script.
 
 <a id="guide-start-2"></a>
 ### `start §2` The order of work

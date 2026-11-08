@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { artBrief, audioBrief, authoredArt, create, CREATION_CHOICES, creationSchema, inferCreationChoices, MOODS, parseCreationInput, pickStyle, presetLook, pseudoMessage, readCatalogue, resolveCreationChoices, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
+import { artBrief, audioBrief, authoredArt, create, CREATION_CHOICES, fontPackFor, fontPacksDir, creationSchema, inferCreationChoices, MOODS, parseCreationInput, pickStyle, presetLook, pseudoMessage, readCatalogue, resolveCreationChoices, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 
 const pkg = join(import.meta.dir, "..");
 const scratch = realpathSync(mkdtempSync(join(tmpdir(), "og-create-")));
@@ -22,6 +22,7 @@ test("no-prompt creation uses source choices even with an outdated packed catalo
   const checkout = join(scratch, "checkout");
   const source = join(checkout, "packages/create");
   for (const part of ["bin", "template"]) cpSync(join(pkg, part), join(source, part), { recursive: true });
+  cpSync(fontPacksDir(), join(checkout, "templates/fonts"), { recursive: true });
   mkdirSync(join(source, "looks"), { recursive: true });
   mkdirSync(join(checkout, "packages/knowledge/looks"), { recursive: true });
   const catalogue = readFileSync(join(pkg, "../knowledge/looks/catalogue.json"), "utf8");
@@ -49,15 +50,18 @@ test("packing and creating leave the source skeleton unchanged", () => {
 test("creation choices write manifest and look configuration, never gameplay", () => {
   const defaults = create({ dir: join(scratch, "default"), id: "same", name: "Same" });
   expect(defaults.choices).toEqual(resolveCreationChoices(""));
-  const expected = [".gitattributes", ".gitignore", "assets/.gitkeep", "assets/looks/same.ogt", "package.json", "project.ogt", "src/main.ts", "tests/smoke.og.ts", "tsconfig.json"];
-  expect(files(defaults.dir)).toEqual(expected);
+  // Each language installs its font pack whole, as `og font add` does (docs/ui.md §3.4).
+  const pack = (name: string) => files(join(fontPacksDir(), name)).filter((f) => !f.endsWith(".py")).map((f) => `assets/fonts/${name}/${f}`);
+  const skeleton = [".gitattributes", ".gitignore", "assets/.gitkeep", "assets/looks/same.ogt", "package.json", "project.ogt", "src/main.ts", "tests/smoke.og.ts", "tsconfig.json"];
+  expect(files(defaults.dir)).toEqual([...skeleton, ...pack("latin")].sort());
+  const expected = [...skeleton, ...pack("japanese"), ...pack("latin"), ...pack("arabic")].sort();
   expect(read("default/src/main.ts")).toBe('import { og } from "@origingame/engine";\n\nexport default og.game({});\n');
   for (const [i, view] of CREATION_CHOICES.view.entries()) {
     const dir = `choice-${i}`;
     const r = cli(dir, "--id", "same", "--name", "Same", "--genre", "arena", "--view", view, "--look", "16bit-pixel", "--mood", "cold", "--ui", "default", "--platform", "phone-portrait", "--input", "gamepad", "--players", "online-lockstep", "--lang", "ja,en,ar", "--music", "folk");
     expect(r.code, r.err).toBe(0);
     expect(files(join(scratch, dir))).toEqual(expected);
-    for (const f of expected.filter(f => f !== "project.ogt" && f !== "assets/looks/same.ogt")) expect(read(dir, f)).toBe(read("default", f));
+    for (const f of skeleton.filter(f => f !== "project.ogt" && f !== "assets/looks/same.ogt")) expect(read(dir, f)).toBe(read("default", f));
     expect(read(dir, "assets/looks/same.ogt")).toBe('type look\nversion 1\n---\nextends "16bit-pixel"\nmood "cold"\nui "default"\n');
     const manifest = read(dir, "project.ogt");
     expect(manifest.slice(0, manifest.indexOf("create {"))).toBe(read("default/project.ogt").split("create {")[0]);
@@ -65,6 +69,17 @@ test("creation choices write manifest and look configuration, never gameplay", (
     expect(manifest).toMatch(/^look "looks\/same.ogt"$/m);
     expect(manifest).not.toMatch(/^profile |orientation|dpr_cap/m);
   }
+});
+
+test("a language takes the font pack written in it; Chinese by script", () => {
+  const packs = [{ name: "latin", languages: ["en", "vi"] }, { name: "chinese-simplified", languages: ["zh", "zh-Hans", "zh-CN"] }, { name: "chinese-traditional", languages: ["zh-Hant", "zh-TW", "zh-HK"] }, { name: "arabic", languages: ["ar", "fa"] }];
+  expect(fontPackFor("en-GB", packs)).toBe("latin");
+  expect(fontPackFor("fa_IR", packs)).toBe("arabic");
+  expect(fontPackFor("zh", packs)).toBe("chinese-simplified");
+  expect(fontPackFor("zh-TW", packs)).toBe("chinese-traditional");
+  expect(fontPackFor("zh-Hant-HK", packs)).toBe("chinese-traditional");
+  expect(fontPackFor("zh-SG", packs)).toBe("chinese-simplified");
+  expect(fontPackFor("th", packs)).toBeUndefined();
 });
 
 test("names are escaped, defaults are stable, and refusal leaves the destination untouched", () => {
@@ -162,7 +177,8 @@ test("the packed package creates the same skeleton and briefs from its own prese
   expect(existsSync(join(scratch, "packed/.og"))).toBeFalse();
   expect(existsSync(join(scratch, "packed/loop"))).toBeFalse();
   expect(read("packed/src/main.ts")).toBe(readFileSync(join(pkg, "template/src/main.ts"), "utf8"));
-  expect(readdirSync(join(scratch, "packed/assets"))).toEqual([".gitkeep", "looks"]);
+  expect(readdirSync(join(scratch, "packed/assets")).sort()).toEqual([".gitkeep", "fonts", "looks"]);
+  expect(readdirSync(join(scratch, "packed/assets/fonts"))).toEqual(["latin"]);
   const brief = Bun.spawnSync(["bun", join(installed, "bin/brief.ts"), "sprite", "a bat", "--look", "monochrome-pixel", "--json"], { cwd: scratch });
   expect(brief.exitCode, new TextDecoder().decode(brief.stderr)).toBe(0);
   const parsed = JSON.parse(new TextDecoder().decode(brief.stdout));

@@ -29,6 +29,7 @@ mod environment;
 mod fbx;
 mod flipbook;
 mod font;
+mod font_pack;
 mod fracture;
 mod fracture_cache;
 mod fx_field;
@@ -141,6 +142,8 @@ enum Kind {
     Quest,
     NavMesh,
     Strings,
+    /// A font pack's `extension.json` (`kind font`, docs/ui.md §3.4).
+    FontPack,
     Rig,
     MotionAction,
     Terrain,
@@ -183,6 +186,7 @@ impl Kind {
             Kind::Quest => "quest",
             Kind::NavMesh => "navmesh",
             Kind::Strings => "strings",
+            Kind::FontPack => "font-pack",
             Kind::Rig => "rig",
             Kind::MotionAction => "motion-action",
             Kind::Terrain => "terrain",
@@ -329,6 +333,7 @@ enum Work<'a> {
     Quest(&'a Source),
     NavMesh(&'a Source),
     Strings(&'a Source),
+    FontPack(&'a Source),
     Rig(&'a Source),
     MotionAction(&'a Source),
     Terrain(&'a Source),
@@ -865,6 +870,13 @@ pub fn cook_project_with_texture_cache(
     let options = &with_contract;
     // Streaming groups (phase 3): every scene's, read before anything cooks.
     let (groups, group_of) = plan_groups(&sources, &known, &mut early_errors);
+    // Font packs' faces (docs/ui.md §3.4): cooked as fonts by their own
+    // settings, to `<id>.face.ogb`, which the web reads on demand.
+    let pack_faces: BTreeSet<String> = sources
+        .iter()
+        .filter(|s| s.kind == Kind::FontPack)
+        .flat_map(font_pack::faces)
+        .collect();
     let schemas: BTreeMap<String, Schema> = options
         .schemas
         .iter()
@@ -1606,6 +1618,12 @@ pub fn cook_project_with_texture_cache(
                 let st = stamp(&[b"strings", &hash]);
                 outs.push((s.rel.clone(), format::Strings::NAME, st, Work::Strings(s)));
             }
+            Kind::FontPack => {
+                // The stamp covers its faces' bytes: their cmaps are the coverage.
+                let deps = font_pack::dependencies(s);
+                let st = stamp(&[b"font-pack 1", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::FontPack::NAME, st, Work::FontPack(s)));
+            }
             Kind::Rig => {
                 let st = stamp(&[b"rig", &hash]);
                 outs.push((s.rel.clone(), format::Rig::NAME, st, Work::Rig(s)));
@@ -1851,7 +1869,11 @@ pub fn cook_project_with_texture_cache(
             }
         }
         for (id, ty, st, work) in outs {
-            let file = output_file(&id);
+            let file = if pack_faces.contains(&id) {
+                format!("{id}.{}", og_bundle::runtime::FONT_PACK_FACE)
+            } else {
+                output_file(&id)
+            };
             // Up to date: the manifest's stamp and file agree, and the file
             // still holds the type and schema version the loader expects
             // today (a schema change without a cooker bump would otherwise

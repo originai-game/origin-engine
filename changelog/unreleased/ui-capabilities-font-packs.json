@@ -1,0 +1,10 @@
+{
+  "added": [
+    { "member": "og font", "summary": "Fonts ship as packs, one per script (latin, cyrillic-greek, arabic, hebrew, devanagari, thai, japanese, korean, chinese-simplified, chinese-traditional), each an extension.json of kind font with its faces and licence. `og font list` names them and `og font add <pack>` installs one under assets/fonts/<pack>/." },
+    { "member": "og create", "summary": "--lang installs the font pack of each language's script (Chinese by script), with no generated code." },
+    { "member": "i18n", "summary": "og.i18n chains installed font packs with no code: the locale's own pack, then a pack loaded the first frame its characters are drawn. Pack faces draw from outlines at run time and the web fetches them on demand." }
+  ],
+  "fixed": [
+    { "member": "og check", "summary": "The locale-fonts warning accepts an installed font pack and covers Devanagari, Thai, Cyrillic and Greek languages too." }
+  ]
+}

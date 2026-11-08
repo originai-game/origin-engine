@@ -229,6 +229,9 @@ pub(crate) fn mount_back(
         .add_system(
             feed.desc(UI_END).write::<og_input::PauseIntent>(),
             move |ctx| {
+                if let Ok(eng) = engine(engine_id) {
+                    crate::i18n::ensure_packs(&eng);
+                }
                 let (warnings, missing) = {
                     let mut ui = shared.lock();
                     docs::end_of_frame(engine_id, &mut ui, ctx)?;
@@ -243,10 +246,13 @@ pub(crate) fn mount_back(
                 }
                 // The characters the frame's texts draw that their faces lack,
                 // found by og-ui on the CPU: the same with a renderer or none.
+                // A character an installed font pack covers loads that pack
+                // instead (docs/ui.md §3.4): it draws from the next frame.
                 if !missing.is_empty()
                     && let Ok(eng) = engine(engine_id)
                 {
                     let missing = crate::glyphs::unjudged(&mut eng.render.borrow_mut(), &missing);
+                    let missing = crate::i18n::resolve_missing(&eng, missing);
                     crate::glyphs::warn_missing(&eng, ctx.time().tick, missing);
                 }
                 Ok(())

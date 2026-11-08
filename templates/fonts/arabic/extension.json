@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "kind": "font",
+  "name": "arabic",
+  "version": "1.0.0",
+  "description": "Noto Sans Arabic: Arabic with its joining forms and digits, Persian, Urdu",
+  "scripts": [
+    "Arab"
+  ],
+  "languages": [
+    "ar",
+    "fa",
+    "ur",
+    "ps",
+    "sd",
+    "ug",
+    "ckb"
+  ],
+  "faces": [
+    "NotoSansArabic-Regular.ttf"
+  ]
+}

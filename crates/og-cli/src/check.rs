@@ -937,9 +937,26 @@ fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
         .iter()
         .filter_map(|v| v.as_str())
         .filter(|tag| {
+            // Scripts a style's face does not draw: each needs a pack or
+            // a table's own fonts.
             matches!(
                 og_i18n::locale::language(tag).as_str(),
-                "zh" | "ja" | "ko" | "ar" | "he" | "fa" | "ur"
+                "zh" | "ja"
+                    | "ko"
+                    | "ar"
+                    | "fa"
+                    | "ur"
+                    | "he"
+                    | "yi"
+                    | "hi"
+                    | "mr"
+                    | "ne"
+                    | "th"
+                    | "ru"
+                    | "uk"
+                    | "bg"
+                    | "sr"
+                    | "el"
             )
         })
         .collect();
@@ -959,6 +976,29 @@ fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
             if ty.is_dir() {
                 dirs.push(path);
             } else if ty.is_file()
+                && path.file_name().is_some_and(|n| n == "extension.json")
+                && let Some(m) = std::fs::read(&path)
+                    .ok()
+                    .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+                    .filter(|m| m["kind"] == "font")
+            {
+                // An installed font pack (docs/ui.md §3.4): og.i18n chains it.
+                let dir = path.parent().unwrap_or(&assets);
+                let faces = m["faces"].as_array().cloned().unwrap_or_default();
+                if !faces.is_empty()
+                    && faces
+                        .iter()
+                        .all(|f| f.as_str().is_some_and(|f| dir.join(f).is_file()))
+                {
+                    available.extend(
+                        m["languages"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|l| l.as_str().map(og_i18n::locale::canonical)),
+                    );
+                }
+            } else if ty.is_file()
                 && path.extension().is_some_and(|e| e == "ogt")
                 && let Some(table) = std::fs::read_to_string(path)
                     .ok()
@@ -976,7 +1016,7 @@ fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
         return;
     }
     let message = format!(
-        "{}: no matching locale table with an installed font chain. Copy the matching fonts and licences from the engine's locales resources, declare their asset IDs in the string table's fonts line, and load the table with og.i18n (`og api show screens`, §6). Verify rendered glyphs; a create.lang choice does not install or activate fonts.",
+        "{}: no font pack and no locale table with a font chain is installed for it. Install the pack with `og font add <pack>` (`og font list` names them; og.i18n chains an installed pack with no code), or declare a table's own fonts in its fonts line. Verify rendered glyphs.",
         missing.join(", ")
     );
     let text = if json {

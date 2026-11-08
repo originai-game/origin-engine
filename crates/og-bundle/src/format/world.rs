@@ -405,6 +405,27 @@ impl BlobKind for Strings {
     }
 }
 
+row!(
+    /// The root of a font pack blob (a font pack's `extension.json`,
+    /// docs/ui.md §3.4).
+    FontPackMeta, "og.FontPack", 1 {
+        /// Bytes of the index text in `text`.
+        text_bytes: u32,
+        /// Its faces.
+        faces: u32,
+    }
+);
+
+/// The font pack blob: `text` holds og-i18n's `FontPack` index the cook
+/// made from the manifest and its faces' cmaps.
+pub struct FontPack;
+impl BlobKind for FontPack {
+    const NAME: &'static str = "og.FontPack";
+    fn schemas() -> Vec<Schema> {
+        vec![FontPackMeta::schema()]
+    }
+}
+
 // ── depth S2: timelines ──────────────────────────────────────────────────
 
 row!(

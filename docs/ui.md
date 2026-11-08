@@ -497,6 +497,40 @@ Authored packs are not required to equal generator output. Art requests
 use the [art contract](art.md); the
 [art-review guide](../crates/og-api/guides/art-review.md) owns review advice.
 
+### 3.4 Font packs
+
+Fonts ship as packs, like the UI packs: one directory per script under
+`templates/fonts/` (`latin`, `cyrillic-greek`, `arabic`, `hebrew`,
+`devanagari`, `thai`, `japanese`, `korean`, `chinese-simplified`,
+`chinese-traditional`), each an `extension.json` of kind `font` naming its
+`scripts`, `languages` and `faces`, the faces with their import settings,
+and their licence. `og font list` names them; `og font add <pack>` installs
+one under `assets/fonts/<pack>/`; `og create --lang` installs the packs of
+its languages (Chinese by script: `zh-TW` takes the traditional pack) with
+no generated code. `templates/fonts/make-packs.py` makes them from
+google/fonts; `templates/fonts/LICENSES.md` lists each face's source and
+licence.
+
+The cook writes each pack's index (`og.FontPack`: its languages, face ids
+and the code points their cmaps map) beside the faces, which cook as fonts
+by their own settings to `<id>.face.ogb`. A pack face cooks no atlas (its
+space alone) and draws every glyph from its outlines when first shown
+(`runtime true`), so it costs about its file's size: Arabic 178 KB, Latin
+127 KB, Japanese 1.35 MB, Simplified 1.42 MB, Traditional 2.04 MB; an
+index is under 2 KB for an alphabet and under 40 KB for a CJK pack. A pack
+changes no other font's cooked bytes, charset or run-time mode.
+
+og.i18n chains the active table's own fonts, then the locale's pack, then
+the packs a frame needed, then the other tables' fonts. A frame that draws
+a character only an uninstalled-in-chain pack covers loads that pack (the
+locale's CJK forms first; a Chinese locale never takes the other script's
+pack first) and draws it from the next frame; it is not warned of as
+missing. A character no pack covers is still named by the missing-glyph
+warning. The web boot leaves `.face.ogb` files out of its preload and the
+service worker caches them when fetched; the first frame waits for the
+locale's own pack (`og_web_fonts_pending`). On Metal a frame that loads two
+packs costs 13–24 ms against a 4–6 ms steady frame, once per pack.
+
 ## 4. Shipped catalogue
 
 Core default UI is the only creation `ui` choice during the rebuild.
@@ -705,7 +739,7 @@ needed by kits are core prerequisites,
 not invitations to private kit workarounds. Per-frame UI cost and its
 performance tests are independent measured work; this document claims no
 unmeasured performance budget has passed. Colour-blind
-modes, live regions, and font packs require explicit core delivery before
+modes and live regions require explicit core delivery before
 authors can claim support. Author knowledge belongs in guides, not shipped
 skills. No kit silently implements those missing facilities itself.
 
