@@ -367,6 +367,7 @@ pub fn og_ui_open_world_panel(id: String, desc: Option<String>) -> String {
                 )
             }),
             element: box_element(&theme, &d),
+            projected: d["projected"].as_bool().unwrap_or(false),
         };
         ui.open_world_panel(id.as_str(), desc)
     })

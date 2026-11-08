@@ -730,12 +730,15 @@ impl W<'_> {
                 w.f32(*expand);
                 w.rect(rect);
             }
+            // A ground's quad is the frame's, not the element's: a frozen
+            // drawing keeps none (it leaves where it was laid out, unseen).
             DrawCmd::EndLayer {
                 geometry: g,
                 rect,
                 opacity,
                 blend,
                 clip,
+                ground: _,
             } => {
                 w.u8(6);
                 match g {
@@ -824,6 +827,7 @@ impl R<'_> {
                     opacity: r.f32()?,
                     blend: *BLENDS.get(r.u8()? as usize)?,
                     clip: r.rect()?,
+                    ground: None,
                 }
             }
             _ => return None,

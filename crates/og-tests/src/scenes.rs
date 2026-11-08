@@ -199,6 +199,7 @@ pub const SCENES: &[&str] = &[
     "ui-paints",
     "ui-effects",
     "ui-layers",
+    "ui-ground",
     "ui-text-effects",
     "ui-world",
     "ui-panel",
@@ -1665,6 +1666,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "ui-effects" => |g, _| {
             g.scene = crate::ui_scenes::effects();
+            Ok(())
+        },
+        "ui-ground" => |g, _| {
+            g.scene = crate::ui_scenes::ground();
             Ok(())
         },
         "ui-layers" => |g, _| {

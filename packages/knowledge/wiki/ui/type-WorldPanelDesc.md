@@ -23,6 +23,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `gap` | `number` | `0` | — | `cssPx` | — | Space between children. |
 | `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space inside its edges. |
 | `background` | `Paint \| null` | `null` | — | — | — | Its fill; null draws none (the target clears to transparent). |
+| `projected` | `boolean` | `false` | — | — | — | Drawn by the UI itself onto where its quad is seen (a ground decal under a unit, a sign over a door) in a band under the screen's elements, instead of into target: no render target or mesh. Inert: no ray reaches it and its controls take no focus. Not drawn while a corner of its quad is behind the camera. |
 
 ```ogt
 struct WorldPanelDesc {
@@ -57,6 +58,7 @@ struct WorldPanelDesc {
   }
   field padding Insets "Space inside its edges."
   field background Option.Paint "Its fill; null draws none (the target clears to transparent)."
+  field projected bool "Drawn by the UI itself onto where its quad is seen (a ground decal under a unit, a sign over a door) in a band under the screen's elements, instead of into target: no render target or mesh. Inert: no ray reaches it and its controls take no focus. Not drawn while a corner of its quad is behind the camera."
 }
 ```
 

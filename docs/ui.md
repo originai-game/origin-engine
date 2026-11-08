@@ -571,6 +571,23 @@ it as on the screen; without `entity` or `at` it takes no rays. `world`
 is a boolean attribute on HTML's `panel` kind because no web standard
 draws a box into a texture.
 
+`<ground>` lays a box flat in the world: `<ground entity={u.entity}
+size="3 3" rotation="0 45 0"><svg viewBox="0 0 40 40">…</svg></ground>`.
+It is laid out at its CSS size and drawn by the UI itself onto the
+horizontal plane `size` world units across at the entity's (or `at`'s)
+height, seen in perspective, under the screen's elements and the world's
+mass elements: a selection ring, a range marker, a target decal. The
+camera moving moves only its quad (`UiFrame.grounds`), read after the tick
+and never fed back into the world: the frame's commands, bindings and
+layout stay as they were (0 bindings, 0 reconciled, the layer root laid
+out as every layer is). Its offscreen layer is sized from the size it is
+seen at, rounded to a power of two and capped at 2048 px. It is inert: no
+ray reaches it and its controls take no focus. While a corner is behind
+the camera it is not drawn. The plane is flat at the entity's height;
+draping it over terrain (a decal) is a follow-up. `ground` is not an HTML
+element; no web standard lays a box onto a 3D plane. Hosts get the same
+member as `WorldPanelDesc.projected`.
+
 An anchor or world panel stands outside the screen's tree, in a world
 layer of its own, but its layer is keyed by the element's own path: the
 nodes in it have the keys and paths (`test:term/Terminal/Row/Run`) they

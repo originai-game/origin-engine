@@ -1113,6 +1113,7 @@ impl ElementDraw {
                 opacity: self.opacity,
                 blend: self.blend,
                 clip: at.clip,
+                ground: None,
             });
         }
         out

@@ -11,6 +11,11 @@ pub const KINDS: &[KindSpec] = &[
         doc: "A box held over a world point (`<anchor entity={u.entity} offset=\"0 2 0\">`): placed every tick from the camera and the entity's pose, its children laid out as a column; `occlusion`, `declutter`, `clamp=\"edge\"`, `priority`, `max-distance`, `scale-at`.",
     },
     KindSpec {
+        name: "ground",
+        container: true,
+        doc: "A box laid flat in the world (`<ground entity={u.entity} size=\"3 3\">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation=\"0 45 0\"` turns it. Inert.",
+    },
+    KindSpec {
         name: "joystick",
         container: false,
         doc: "A virtual stick (`<joystick action=\"move\">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px).",
@@ -75,6 +80,10 @@ pub(super) fn tags(kind: &str) -> Option<Vec<(String, String)>> {
             "<anchor entity={u.entity} offset=\"0 2.1 0\" occlusion=\"fade\" declutter=\"stack\" clamp=\"edge\">…</anchor>",
         ),
         "dpad" => one("dpad", "<dpad id=\"Pad\" action=\"move\" />"),
+        "ground" => one(
+            "ground",
+            "<ground entity={u.entity} size=\"3 3\"><svg viewBox=\"0 0 40 40\">…</svg></ground>",
+        ),
         "svg" => one(
             "svg",
             "<svg id=\"Name\" viewBox=\"0 0 40 40\">…</svg>",
@@ -195,28 +204,28 @@ pub const PROPS: &[PropSpec] = &[
     PropSpec {
         name: "worldSize",
         ty: Ty::Text,
-        on: On::Kinds(&["panel"]),
+        on: On::Kinds(&["panel", "ground"]),
         two_way: false,
         doc: "A world panel's quad, `width height` world units (default 1 1).",
     },
     PropSpec {
         name: "worldRotation",
         ty: Ty::Text,
-        on: On::Kinds(&["panel"]),
+        on: On::Kinds(&["panel", "ground"]),
         two_way: false,
         doc: "A world panel's turn, degrees about x, y and z (`0 30 0`); facing +z unturned.",
     },
     PropSpec {
         name: "entity",
         ty: Ty::Num,
-        on: On::Kinds(&["anchor", "panel"]),
+        on: On::Kinds(&["anchor", "panel", "ground"]),
         two_way: false,
         doc: "The entity it follows, by its bits (`entity={u.entity}`): its world pose as the host hands it in.",
     },
     PropSpec {
         name: "worldAt",
         ty: Ty::Text,
-        on: On::Kinds(&["anchor", "panel"]),
+        on: On::Kinds(&["anchor", "panel", "ground"]),
         two_way: false,
         doc: "`at=\"x y z\"`: a world point it follows, without an entity.",
     },

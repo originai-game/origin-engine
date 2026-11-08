@@ -459,8 +459,71 @@ impl Ui {
 
     pub(super) fn world_panels(&mut self) {
         let mut hits = Vec::new();
+        let mut grounds = Vec::new();
         for p in &self.world.panels {
             let key = self.nodes[p.node].key;
+            if p.desc.projected {
+                // Drawn by the UI onto where its quad is seen this tick: the
+                // brackets are the same every tick (the quad goes in the
+                // frame, `UiFrame::grounds`), so a moving camera relevels
+                // and rebuilds nothing. Inert: no ray, no focus.
+                self.nodes[p.node].sampled.inert = true;
+                let all = Rect::new(-1e9, -1e9, 2e9, 2e9);
+                self.world.marks.insert(
+                    key,
+                    Marks {
+                        enter: vec![DrawCmd::BeginLayer {
+                            material: og_render::UiMaterial::Plain,
+                            params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                            mask: None,
+                            expand: 0.0,
+                            rect: Rect::default(),
+                        }],
+                        leave: vec![DrawCmd::EndLayer {
+                            geometry: None,
+                            rect: self.nodes[p.node].rect,
+                            opacity: 1.0,
+                            blend: og_render::UiBlend::Normal,
+                            clip: all,
+                            ground: Some(key),
+                        }],
+                    },
+                );
+                if let (Some(view), Some((t, rotation, size))) = (self.world.view, p.desc.quad)
+                    && let Some((center, q)) = self.world.pose_of(t)
+                {
+                    let (vp, unit) = (self.viewport, self.unit.max(1e-6));
+                    let q = q * rotation;
+                    let (hx, hy) = (size.x / 2.0, size.y / 2.0);
+                    // Top left, top right, bottom right, bottom left; none
+                    // when one is behind the eye (its projection would wrap).
+                    let corners: Option<Vec<Vec2>> = [(-hx, hy), (hx, hy), (hx, -hy), (-hx, -hy)]
+                        .iter()
+                        .map(|&(x, y)| {
+                            let (sx, sy, _) = view.project(
+                                center + q * Vec3::new(x, y, 0.0),
+                                vp.width,
+                                vp.height,
+                            )?;
+                            Some(Vec2::new(sx, sy) * unit)
+                        })
+                        .collect();
+                    if let Some(c) = corners {
+                        let r = self.nodes[p.node].rect;
+                        grounds.push(crate::GroundQuad {
+                            key,
+                            rect: Rect::new(
+                                r.x * unit,
+                                r.y * unit,
+                                r.width * unit,
+                                r.height * unit,
+                            ),
+                            corners: [c[0], c[1], c[2], c[3]],
+                        });
+                    }
+                }
+                continue;
+            }
             if let Some(target) = p.desc.target {
                 self.world.marks.insert(
                     key,
@@ -486,6 +549,7 @@ impl Ui {
             }
         }
         self.world.last_panels = hits;
+        self.world.grounds = grounds;
     }
 
     pub(super) fn world_metas(&mut self) {
@@ -624,6 +688,7 @@ fn meta_cmds(kind: &MetaKind, screen: Rect, alpha: f32) -> Vec<DrawCmd> {
                     opacity: alpha,
                     blend: og_render::UiBlend::Normal,
                     clip: screen,
+                    ground: None,
                 },
             ]
         }

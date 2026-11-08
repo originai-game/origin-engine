@@ -530,6 +530,14 @@ pub const UI_MATERIAL_PARAMS: usize = 4;
 /// draws after the scene). The target is an
 /// [`crate::TargetFormat::Rgba16Float`] one: linear, as a lit `map` or an
 /// unlit `emissiveMap` reads it.
+///
+/// With a `quad` (a world panel the UI draws itself: a ground decal, a
+/// sign) the layer draws offscreen at `rect` wherever that is, and its
+/// composite lays `rect` onto the screen quadrilateral `quad` through the
+/// projective map between them, as a plane seen in perspective: `rect`'s
+/// top left, top right, bottom right and bottom left corners land on
+/// `quad`'s four points, CSS px. Its target is sized from the size it is
+/// seen at (capped), not from `rect`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiLayer {
     pub capture: [i32; 2],
@@ -538,6 +546,50 @@ pub struct UiLayer {
     pub params: [[f32; 4]; UI_MATERIAL_PARAMS],
     pub mask: Option<UiMask>,
     pub target: Option<TextureHandle>,
+    pub quad: Option<[Vec2; 4]>,
+}
+
+/// The largest side of a projected layer's target, device pixels.
+pub const UI_QUAD_LAYER_MAX: u32 = 2048;
+
+/// The 3×3 map (rows) from the unit square's `(u, v, 1)` to `quad`'s
+/// points in homogeneous coordinates: (0,0), (1,0), (1,1), (0,1) to its
+/// first to fourth point (Heckbert's square-to-quad). `None`: the quad is
+/// degenerate (three points on a line).
+pub fn square_to_quad(quad: &[Vec2; 4]) -> Option<[[f32; 3]; 3]> {
+    let [p0, p1, p2, p3] = quad.map(|p| p.as_dvec2());
+    let s = p0 - p1 + p2 - p3;
+    let d1 = p1 - p2;
+    let d2 = p3 - p2;
+    let den = d1.x * d2.y - d2.x * d1.y;
+    if den.abs() < 1e-9 {
+        return None;
+    }
+    let g = (s.x * d2.y - d2.x * s.y) / den;
+    let h = (d1.x * s.y - s.x * d1.y) / den;
+    let m = [
+        [p1.x - p0.x + g * p1.x, p3.x - p0.x + h * p3.x, p0.x],
+        [p1.y - p0.y + g * p1.y, p3.y - p0.y + h * p3.y, p0.y],
+        [g, h, 1.0],
+    ];
+    Some(m.map(|r| r.map(|v| v as f32)))
+}
+
+/// The inverse of a 3×3 map (rows); `None` when it is singular.
+pub fn invert3(m: &[[f32; 3]; 3]) -> Option<[[f32; 3]; 3]> {
+    let m = m.map(|r| r.map(f64::from));
+    let c =
+        |r0: usize, c0: usize, r1: usize, c1: usize| m[r0][c0] * m[r1][c1] - m[r0][c1] * m[r1][c0];
+    let a = [
+        [c(1, 1, 2, 2), -c(0, 1, 2, 2), c(0, 1, 1, 2)],
+        [-c(1, 0, 2, 2), c(0, 0, 2, 2), -c(0, 0, 1, 2)],
+        [c(1, 0, 2, 1), -c(0, 0, 2, 1), c(0, 0, 1, 1)],
+    ];
+    let det = m[0][0] * a[0][0] + m[0][1] * a[1][0] + m[0][2] * a[2][0];
+    if det.abs() < 1e-12 {
+        return None;
+    }
+    Some(a.map(|r| r.map(|v| (v / det) as f32)))
 }
 
 /// An outline around overlay text, drawn from its font's distance field.

@@ -148,13 +148,17 @@ pub enum DrawCmd {
         rect: Rect,
     },
     /// The layer's composite: `geometry` over `rect` (`None`: the layer's
-    /// whole rectangle), at `opacity` with `blend`.
+    /// whole rectangle), at `opacity` with `blend`. With `ground`, the
+    /// world panel of that key the UI draws itself: the layer is laid onto
+    /// the quad its panel is seen at this tick ([`UiFrame::emit`] reads it
+    /// from the frame), and nowhere when it has none (behind the camera).
     EndLayer {
         geometry: Option<UiGeometry>,
         rect: Rect,
         opacity: f32,
         blend: UiBlend,
         clip: Rect,
+        ground: Option<u64>,
     },
     /// World-space UI's commands (`crate::world`): occlusion brackets,
     /// mass elements and particles, a world panel's target.
@@ -515,7 +519,8 @@ enum Entry {
         end: Box<(DrawCmd, Affine)>,
         bounds: Rect,
     },
-    /// A world panel: its items drawn into its target.
+    /// A world panel's items drawn into its target, or a ground's laid
+    /// onto its quad: a space of their own that levels nothing in this one.
     Panel {
         begin: Box<(DrawCmd, Affine)>,
         items: Vec<DrawItem>,
@@ -566,6 +571,7 @@ fn collect(
                         opacity: 1.0,
                         blend: UiBlend::Normal,
                         clip: Rect::new(-1e9, -1e9, 2e9, 2e9),
+                        ground: None,
                     },
                     Affine::IDENTITY,
                 ));
@@ -575,6 +581,23 @@ fn collect(
                     let r = bounds.outset(*expand);
                     *rect = r;
                     bounds = r;
+                }
+                if let (
+                    DrawCmd::EndLayer {
+                        ground: Some(_), ..
+                    },
+                    _,
+                ) = &end
+                {
+                    // Laid onto a quad that moves with the camera, in the
+                    // grounds' band under the screen's levels (`emit`): it
+                    // levels nothing here, so a moving camera levels nothing.
+                    entries.push(Entry::Panel {
+                        begin: Box::new((begin, m)),
+                        items,
+                        end: Box::new(end),
+                    });
+                    continue;
                 }
                 if let (DrawCmd::EndLayer { clip, .. }, _) = &end {
                     bounds = bounds.intersect(clip);
@@ -1502,11 +1525,16 @@ fn shifted(item: &DrawItem, d: Vec2) -> DrawItem {
     out
 }
 
+/// How far under a frame's level 0 its grounds' composites draw: under the
+/// world frame's mass elements ([`crate::WorldFrame::emit`], one under).
+const GROUND_BELOW: i32 = 2;
+
 pub(crate) fn emit(
     items: &[DrawItem],
     desc: &EmitDesc,
     overlay: &mut Overlay,
     shift: &dyn Fn(u64) -> Option<Vec2>,
+    grounds: &[crate::GroundQuad],
 ) {
     // The anchored elements open (`WorldCmd::Anchor`): each one's shift.
     let mut anchors: Vec<Vec2> = Vec::new();
@@ -1603,6 +1631,7 @@ pub(crate) fn emit(
                         params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
                         mask: None,
                         target: Some(*target),
+                        quad: None,
                     });
                     spaces.push(Space {
                         base,
@@ -1640,6 +1669,7 @@ pub(crate) fn emit(
                     params: *params,
                     mask: mask.clone(),
                     target: None,
+                    quad: None,
                 });
                 spaces.push(Space {
                     base,
@@ -1652,6 +1682,7 @@ pub(crate) fn emit(
                 opacity,
                 blend,
                 clip,
+                ground,
             } => {
                 let Some(done) = spaces.pop() else {
                     continue;
@@ -1659,6 +1690,37 @@ pub(crate) fn emit(
                 let Some(k) = done.layer else {
                     continue;
                 };
+                if let Some(key) = ground {
+                    // Laid onto where its panel is seen, under the screen's
+                    // levels and the world frame's mass elements; nowhere
+                    // when it is not seen (no layer composited is drawn).
+                    let [lx, ly, lw, lh] = overlay.ui.layers[k as usize].rect;
+                    let Some(q) = grounds
+                        .iter()
+                        .find(|g| g.key == *key)
+                        .and_then(|g| g.corners_of(Rect::new(lx, ly, lw, lh)))
+                    else {
+                        continue;
+                    };
+                    overlay.ui.layers[k as usize].quad = Some(q);
+                    let (lo, hi) = q
+                        .iter()
+                        .fold((q[0], q[0]), |(lo, hi), p| (lo.min(*p), hi.max(*p)));
+                    let c = clips.index(overlay, clip);
+                    let mut s = rect_shape(
+                        Rect::new(lo.x, lo.y, hi.x - lo.x, hi.y - lo.y).outset(1.0),
+                        0.0,
+                        [1.0; 4],
+                    );
+                    s.paint = UiPaint::Layer(k);
+                    s.opacity = *opacity;
+                    s.blend = *blend;
+                    overlay
+                        .ui
+                        .shapes
+                        .push(placed(s, desc.layer - GROUND_BELOW, c));
+                    continue;
+                }
                 let parent = spaces.last().map_or(desc.layer, |s| s.base);
                 let [lx, ly, lw, lh] = overlay.ui.layers[k as usize].rect;
                 // A composite's shape is the element's, under its map; the
@@ -2096,6 +2158,7 @@ mod levels {
             opacity: 1.0,
             blend: UiBlend::Normal,
             clip: ALL,
+            ground: None,
         }
     }
 
@@ -2369,6 +2432,7 @@ mod levels {
             },
             &mut overlay,
             &|_| None,
+            &[],
         );
         let ui = &overlay.ui;
         assert_eq!(ui.time, 2.5);

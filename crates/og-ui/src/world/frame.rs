@@ -344,6 +344,7 @@ impl Ui {
         w.metas.clear();
         w.immediate.clear();
         w.marks.clear();
+        w.grounds.clear();
         w.pointed = None;
         let Some(view) = w.view else {
             return;

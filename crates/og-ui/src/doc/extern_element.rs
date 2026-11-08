@@ -128,6 +128,7 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
         "viewport" => Some(Ok("viewport")),
         "joystick" => Some(Ok("joystick")),
         "anchor" => Some(Ok("anchor")),
+        "ground" => Some(Ok("ground")),
         "dpad" => Some(Ok("dpad")),
         "g" => svg_child("svgGroup"),
         "tspan" => Some(Err(
@@ -167,6 +168,15 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
 pub(super) fn property(kind: &str, attr: &str) -> Option<String> {
     if kind == "viewport" && attr == "src" {
         return Some("viewportSrc".into());
+    }
+    if kind == "ground" {
+        let p = match attr {
+            "at" => "worldAt",
+            "size" => "worldSize",
+            "rotation" => "worldRotation",
+            _ => return None,
+        };
+        return Some(p.into());
     }
     if kind == "panel" {
         let p = match attr {

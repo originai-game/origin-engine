@@ -711,6 +711,10 @@ pub struct UiFrame {
     /// ([`crate::Cursor`]; never `Auto`): the web shell sets the canvas's
     /// CSS cursor from it.
     pub cursor: crate::Cursor,
+    /// Where this tick's grounds are seen: each world panel the UI lays
+    /// onto the screen itself, no render target ([`crate::DrawCmd::EndLayer`]'s
+    /// `ground`). A panel behind the camera has none and is not drawn.
+    pub grounds: Vec<crate::GroundQuad>,
 }
 
 /// What [`Ui::edit_marks`] draws one line's marks from.
@@ -776,7 +780,7 @@ impl UiFrame {
     /// (`RenderScene::overlay`), in CSS pixels: make it with the viewport's
     /// size and `dpr` (`og_render::Overlay::new(vp.width, vp.height, vp.dpr)`).
     pub fn emit(&self, desc: &EmitDesc, overlay: &mut Overlay) {
-        emit(&self.items, desc, overlay, &|_| None);
+        emit(&self.items, desc, overlay, &|_| None, &self.grounds);
     }
 
     /// [`UiFrame::emit`] with each anchored element ([`crate::WorldCmd::Anchor`])
@@ -791,7 +795,13 @@ impl UiFrame {
     ) {
         // The shift is in units (the frame's viewport); the items in CSS px.
         let unit = self.unit.max(1.0);
-        emit(&self.items, desc, overlay, &|k| shift(k).map(|d| d * unit));
+        emit(
+            &self.items,
+            desc,
+            overlay,
+            &|k| shift(k).map(|d| d * unit),
+            &self.grounds,
+        );
     }
 }
 

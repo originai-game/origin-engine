@@ -620,6 +620,38 @@ pub(crate) fn build<'a>(
             }
             continue;
         }
+        if let Some(q) = layers[k as usize].quad {
+            // Drawn wherever its rect is, at the size it is seen at: the
+            // longest edge's stretch over the rect's, in device pixels,
+            // rounded up to a power of two of the screen's scale (a camera
+            // that moves resizes it seldom) and capped.
+            if w > 0.0 && h > 0.0 && composite_target(k).is_some() {
+                let stretch = ((q[1] - q[0]).length().max((q[2] - q[3]).length()) / w)
+                    .max((q[3] - q[0]).length().max((q[2] - q[1]).length()) / h);
+                let dpr = target.scale.max(1e-6);
+                let cap = crate::ui::UI_QUAD_LAYER_MAX as f32 / w.max(h);
+                let mut p = 1.0f32;
+                while p < stretch && p < 64.0 {
+                    p *= 2.0;
+                }
+                while p / 2.0 >= stretch && p > 1.0 / 64.0 {
+                    p /= 2.0;
+                }
+                let s = (dpr * p).min(cap).max(1.0 / w.max(h));
+                plans.push(LayerPlan {
+                    index: k,
+                    origin: [x, y],
+                    size: (
+                        ((w * s).ceil() as u32).max(1),
+                        ((h * s).ceil() as u32).max(1),
+                    ),
+                    rect: [x, y, w, h],
+                    scale: s,
+                    target: None,
+                });
+            }
+            continue;
+        }
         let s = target.scale.max(1e-6);
         let x0 = (x * s).floor().clamp(0.0, target.width as f32);
         let y0 = (y * s).floor().clamp(0.0, target.height as f32);

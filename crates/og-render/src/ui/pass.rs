@@ -24,6 +24,9 @@ struct LayerParams {
     params: [[f32; 4]; super::UI_MATERIAL_PARAMS],
     info: [f32; 4],
     mask_uv: [f32; 4],
+    /// A projected layer's map from the screen (CSS px) to its uv, rows
+    /// (`info.w` 1): the inverse of its rect's map onto its quad.
+    quad: [[f32; 4]; 3],
 }
 
 /// The shape family's pipelines for one target format.
@@ -989,7 +992,17 @@ impl UiRenderer {
                 params: layer.params,
                 info: [builtin, 0.0, 0.0, 0.0],
                 mask_uv: [0.0, 0.0, 1.0, 1.0],
+                quad: [[0.0; 4]; 3],
             };
+            if let Some(m) = layer
+                .quad
+                .as_ref()
+                .and_then(super::square_to_quad)
+                .and_then(|m| super::invert3(&m))
+            {
+                params.info[3] = 1.0;
+                params.quad = m.map(|r| [r[0], r[1], r[2], 0.0]);
+            }
             let mut mask_view = None;
             match &layer.mask {
                 Some(UiMask::Gradient(_)) => {

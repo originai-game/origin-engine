@@ -9,10 +9,13 @@ struct LayerParams {
   rect: vec4<f32>,
   params: array<vec4<f32>, 4>,
   // x: the built-in material, y: mask (0 none, 1 gradient, 2 image), z:
-  // the mask's gradient.
+  // the mask's gradient, w: 1 for a layer laid onto a quad (`quad`).
   info: vec4<f32>,
   // The mask image's uv rectangle.
   mask_uv: vec4<f32>,
+  // A projected layer's map from the screen (CSS px, homogeneous) to its
+  // uv, rows: a plane seen in perspective.
+  quad: array<vec4<f32>, 3>,
 };
 @group(1) @binding(0) var layer_tex: texture_2d<f32>;
 @group(1) @binding(1) var layer_sampler: sampler;
@@ -78,13 +81,32 @@ fn value_noise(p: vec2<f32>) -> f32 {
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
+// The uv over the layer's rectangle of the screen point `css`: straight,
+// or through a projected layer's map.
+fn layer_uv(css: vec2<f32>) -> vec2<f32> {
+  if (layer_params.info.w > 0.5) {
+    let q = layer_params.quad;
+    let h = vec3<f32>(css, 1.0);
+    let w = dot(q[2].xyz, h);
+    return vec2<f32>(dot(q[0].xyz, h), dot(q[1].xyz, h)) / w;
+  }
+  let r = layer_params.rect;
+  return (css - r.xy) / max(r.zw, vec2<f32>(1e-4));
+}
+
 fn composite(in: UiOut, c: vec4<f32>) -> vec4<f32> {
   let s = instances[in.instance];
   let px = local_px(in.local);
-  let cov = clamp(0.5 - shape_distance(s, in.local).x / px, 0.0, 1.0);
+  var cov = clamp(0.5 - shape_distance(s, in.local).x / px, 0.0, 1.0);
   let r = layer_params.rect;
   let css = css_of(in.position.xy);
-  let uv = (css - r.xy) / max(r.zw, vec2<f32>(1e-4));
+  let uv = layer_uv(css);
+  if (layer_params.info.w > 0.5) {
+    // Inside the quad, its edges smoothed over a device pixel: the uv's
+    // distance to the unit square's border over its change per pixel.
+    let edge = min(uv, vec2<f32>(1.0) - uv) / max(fwidth(uv), vec2<f32>(1e-6));
+    cov = cov * clamp(0.5 + min(edge.x, edge.y), 0.0, 1.0);
+  }
   var mask = 1.0;
   let mk = u32(layer_params.info.y);
   if (mk == 1u) {
@@ -107,6 +129,10 @@ fn material_input(in: UiOut) -> MaterialInput {
   m.pixel = css - r.xy;
   m.size = r.zw;
   m.uv = m.pixel / max(r.zw, vec2<f32>(1e-4));
+  if (layer_params.info.w > 0.5) {
+    m.uv = layer_uv(css);
+    m.pixel = m.uv * r.zw;
+  }
   m.time = frame.origin.z;
   return m;
 }

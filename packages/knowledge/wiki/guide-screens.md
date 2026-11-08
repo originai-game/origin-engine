@@ -212,7 +212,9 @@ local styles and `og style new` remain available.
   and put a working screen on a mesh with `<panel id="Terminal" world
   entity={$console} size="3 2" src={$screen}>`: the game shows the render
   target `src` on a plane `size` world units across, and pointer rays
-  that meet it press its buttons.
+  that meet it press its buttons. Lay a selection ring under a unit with
+  `<ground entity={u.entity} size="2 2"><svg viewBox="0 0 40 40">…</svg></ground>`:
+  drawn flat on the ground in perspective, inert.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.

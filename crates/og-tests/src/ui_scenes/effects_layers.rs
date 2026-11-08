@@ -341,6 +341,7 @@ pub fn layers() -> RenderScene {
                 params,
                 mask,
                 target: None,
+                quad: None,
             });
             let n = o.ui.layers.len() as u32 - 1;
             o.ui.shapes.push(UiShape {
@@ -528,6 +529,7 @@ pub fn blur_detail(radius: f32) -> RenderScene {
             params,
             mask: None,
             target: None,
+            quad: None,
         });
         o.ui.shapes.push(UiShape {
             layer: 50,
@@ -552,6 +554,73 @@ pub fn blur_detail(radius: f32) -> RenderScene {
             paint: solid([0.0; 4]),
             layer: 1,
             ..UiShape::rect(right, 0.0, [1.0; 4])
+        });
+    })
+}
+
+/// Where `ui-ground`'s layer lands: a 400×400 square seen as a plane tilted
+/// away, its far edge (top) narrower than its near one.
+pub const GROUND_QUAD: [Vec2; 4] = [
+    Vec2::new(500.0, 260.0),
+    Vec2::new(780.0, 260.0),
+    Vec2::new(1040.0, 660.0),
+    Vec2::new(240.0, 660.0),
+];
+
+/// `ui-ground` (docs/ui.md §1): a layer drawn off the screen (a checker of
+/// 8×8 squares, 50 px each, and a ring) laid onto [`GROUND_QUAD`] through
+/// the projective map, as a document's `<ground>` is: rows farther away
+/// are thinner, and nothing is drawn outside the quad.
+pub fn ground() -> RenderScene {
+    overlay_scene(|_, o| {
+        let (x0, y0) = (100_000.0, 0.0);
+        for j in 0..8 {
+            for i in 0..8 {
+                let c = if (i + j) % 2 == 0 {
+                    rgb(240, 180, 60)
+                } else {
+                    rgb(40, 90, 200)
+                };
+                o.ui.shapes.push(UiShape {
+                    layer: 10,
+                    ..UiShape::rect(
+                        [x0 + i as f32 * 50.0, y0 + j as f32 * 50.0, 50.0, 50.0],
+                        0.0,
+                        c,
+                    )
+                });
+            }
+        }
+        o.ui.shapes.push(UiShape {
+            layer: 11,
+            ..shape(
+                UiGeometry::Arc {
+                    start: 0.0,
+                    sweep: std::f32::consts::TAU,
+                    thickness: 20.0,
+                    cap: UiCap::Round,
+                },
+                [x0 + 100.0, y0 + 100.0, 200.0, 200.0],
+                solid(rgb(250, 250, 250)),
+            )
+        });
+        o.ui.layers.push(UiLayer {
+            capture: [10, 19],
+            rect: [x0, y0, 400.0, 400.0],
+            material: UiMaterial::Plain,
+            params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+            mask: None,
+            target: None,
+            quad: Some(GROUND_QUAD),
+        });
+        // The composite covers the quad's bounds; the quad cuts it.
+        o.ui.shapes.push(UiShape {
+            layer: 50,
+            ..shape(
+                rect([0.0; 4], UiCorner::Round),
+                [240.0, 260.0, 800.0, 400.0],
+                UiPaint::Layer(0),
+            )
         });
     })
 }

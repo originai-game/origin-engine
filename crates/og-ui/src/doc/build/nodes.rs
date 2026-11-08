@@ -258,7 +258,7 @@ impl Ui {
         if kind == "anchor" {
             return self.build_anchor(b, n, &r, props, path, key, built, build_children);
         }
-        if kind == "panel" && r.flag("world") {
+        if kind == "ground" || (kind == "panel" && r.flag("world")) {
             return self.build_world_panel(b, n, &r, props, path, key, built, build_children);
         }
         if svg::KINDS.contains(&kind) {

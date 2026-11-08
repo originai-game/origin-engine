@@ -489,6 +489,7 @@ pub fn panel() -> RenderScene {
         params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
         mask: None,
         target: Some(target.color),
+        quad: None,
     });
     let mut put = |s: UiShape| {
         o.ui.shapes.push(UiShape { layer: 200, ..s });

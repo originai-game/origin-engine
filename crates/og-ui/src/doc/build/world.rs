@@ -86,10 +86,14 @@ fn three(r: &Resolved, prop: &str, what: &str) -> Result<Option<Vec3>, String> {
 /// The world panel `r` describes (`<panel world entity size rotation
 /// src>`): the box `el` laid out at its CSS size, shown on a quad `size`
 /// world units across turned by `rotation` (degrees about x, y, z).
+///
+/// A `ground` lies flat: facing up (its top away from a camera south of
+/// it), `rotation`'s y turning it about the vertical; the UI draws it.
 pub(super) fn panel_desc(
     r: &Resolved,
     el: Element,
     texture: Option<og_render::TextureHandle>,
+    ground: bool,
 ) -> Result<WorldPanelDesc, String> {
     let px = |s: Size, d: f32| match s {
         Size::Fixed(v) => v,
@@ -121,7 +125,10 @@ pub(super) fn panel_desc(
         }
         None => og_core::glam::Vec2::ONE,
     };
-    let turn = three(r, "worldRotation", "rotation")?.unwrap_or(Vec3::ZERO);
+    let mut turn = three(r, "worldRotation", "rotation")?.unwrap_or(Vec3::ZERO);
+    if ground {
+        turn.x -= 90.0;
+    }
     let rotation = og_core::glam::Quat::from_euler(
         og_core::glam::EulerRot::YXZ,
         turn.y.to_radians(),
@@ -134,6 +141,7 @@ pub(super) fn panel_desc(
         height: px(el.height, 320.0).max(1.0),
         quad: target.map(|t| (t, rotation, size)),
         element: el,
+        projected: ground,
     })
 }
 
@@ -164,7 +172,8 @@ impl Ui {
         let texture = r
             .num("viewportSrc")
             .and_then(|h| b.env.texture(f64::from(h)));
-        let desc = match panel_desc(r, el, texture) {
+        let ground = matches!(n.kind, NodeKind::Element("ground"));
+        let desc = match panel_desc(r, el, if ground { None } else { texture }, ground) {
             Ok(d) => d,
             Err(e) => {
                 self.warnings

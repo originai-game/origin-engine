@@ -38747,6 +38747,12 @@ export interface WorldPanelDesc {
    * @default null
    */
   readonly background?: Paint | null;
+  /**
+   * Drawn by the UI itself onto where its quad is seen (a ground decal under a unit, a sign over a door) in a band under the screen's elements, instead of into target: no render target or mesh. Inert: no ray reaches it and its controls take no focus. Not drawn while a corner of its quad is behind the camera.
+   *
+   * @default false
+   */
+  readonly projected?: boolean;
 }
 
 /** What the pointer does on a world panel this tick. */

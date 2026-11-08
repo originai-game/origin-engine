@@ -13,6 +13,8 @@
 //!   stripes, the blend modes and opacity.
 //! - `ui-layers`: a clip to a circle and to a rounded panel, a gradient
 //!   mask, the built-in materials and a custom one.
+//! - `ui-ground`: a layer laid onto a quadrilateral in perspective (a
+//!   document's `<ground>`).
 //! - `ui-text-effects`: text outline in, out and across, a gradient fill
 //!   and stacked shadows.
 //! - `ui-glass-*` (§5.3): flat glass's weights, hairline, shadows, the
@@ -37,7 +39,7 @@ mod glass;
 mod paths;
 mod text_world;
 
-pub use effects_layers::{blur_detail, effects, layers};
+pub use effects_layers::{GROUND_QUAD, blur_detail, effects, ground, layers};
 pub use glass::{GlassInk, GlassScene, glass_scene};
 pub use paths::{heart, paths, star};
 pub use text_world::*;

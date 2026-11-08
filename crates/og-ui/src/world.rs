@@ -316,6 +316,12 @@ pub struct WorldPanelDesc {
     pub quad: Option<(WorldTarget, Quat, Vec2)>,
     /// Its box (background, padding, direction); its size is the panel's.
     pub element: Element,
+    /// Drawn by the UI itself onto where its quad is seen (a ground decal,
+    /// a sign), in a band under the screen's elements, instead of into
+    /// `target`: no render target or mesh. Inert: no ray reaches it, and
+    /// its controls take no focus. Not drawn while a corner of its quad is
+    /// behind the camera.
+    pub projected: bool,
 }
 
 impl Default for WorldPanelDesc {
@@ -326,6 +332,7 @@ impl Default for WorldPanelDesc {
             height: 320.0,
             quad: None,
             element: Element::column(),
+            projected: false,
         }
     }
 }
@@ -442,6 +449,35 @@ pub struct AnchorPoint {
     pub clamped: bool,
 }
 
+/// A world panel the UI draws itself, as seen this tick: its layout `rect`
+/// and where that rect's top left, top right, bottom right and bottom left
+/// corners land on the screen, CSS px (the quad its plane is seen as).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GroundQuad {
+    pub key: u64,
+    pub rect: Rect,
+    pub corners: [Vec2; 4],
+}
+
+impl GroundQuad {
+    /// Where the part `r` of the rect lands, its corners in the same order:
+    /// through the plane's projective map, as the rect's own corners do.
+    pub fn corners_of(&self, r: Rect) -> Option<[Vec2; 4]> {
+        let m = og_render::square_to_quad(&self.corners)?;
+        let at = |x: f32, y: f32| {
+            let u = (x - self.rect.x) / self.rect.width.max(1e-6);
+            let v = (y - self.rect.y) / self.rect.height.max(1e-6);
+            let w = m[2][0] * u + m[2][1] * v + m[2][2];
+            Vec2::new(
+                m[0][0] * u + m[0][1] * v + m[0][2],
+                m[1][0] * u + m[1][1] * v + m[1][2],
+            ) / w
+        };
+        let (x1, y1) = (r.x + r.width, r.y + r.height);
+        Some([at(r.x, r.y), at(x1, r.y), at(x1, y1), at(r.x, y1)])
+    }
+}
+
 /// Mass elements of a frame that no element owns: the templates' pools and
 /// this tick's immediate instances, emitted under the screen's elements.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -540,6 +576,8 @@ pub(crate) struct WorldUi {
     /// their element was built again ([`Ui::keep_world_anchors`]).
     /// Each with the key of the in-flow element that owns it.
     pub kept: BTreeMap<u64, (WorldAnchorDesc, u64)>,
+    /// This tick's projected panels as seen ([`crate::UiFrame::grounds`]).
+    pub grounds: Vec<GroundQuad>,
     /// Mounted documents' world panels by key, with the rect each was laid
     /// out in, kept for rays and placement as anchors are.
     kept_panels: BTreeMap<u64, (WorldPanelDesc, Rect, u64)>,

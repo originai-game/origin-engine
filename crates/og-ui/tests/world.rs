@@ -329,6 +329,95 @@ fn a_document_world_panel_takes_a_press_while_it_is_not_rebuilt() {
     );
 }
 
+/// A `<ground>` lies flat at its point, drawn by the UI onto where its
+/// plane is seen: the camera moving moves its quad (`UiFrame::grounds`)
+/// and nothing else. It is inert, and behind the camera it is not drawn.
+///
+/// Ways it could fail: the quad written into the commands (every tick
+/// relevels and repaints the screen), the ground rebuilt or laid out per
+/// tick, a press reaching its button, or a quad wrapped from behind the eye.
+#[test]
+fn a_document_ground_follows_the_camera_and_builds_nothing() {
+    let mut ui = ui();
+    let doc = r#"<meta name="component" content="sel">
+<div id="Root">
+<button id="Out" onclick={out}>Out</button>
+<ground id="Ring" at="0 0 0" size="3 3">
+  <div id="Mark"><button id="In" onclick={inside}>In</button></div>
+</ground>
+</div>
+<style>#Ring { width: 200px; height: 200px; align-items: center; justify-content: center; }</style>"#;
+    ui.define_document(UiDocument::parse("sel.svelte", doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "sel"),
+        "sel",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let look = |eye: Vec3, at: Vec3| WorldView::look_at(eye, at, Vec3::Y, 50.0, W / H, 0.1, 100.0);
+    let tick = |ui: &mut Ui, v: WorldView, i: InputFrame| {
+        ui.begin(i, vp());
+        ui.set_world_view(Some(v));
+        ui.end().stats
+    };
+    let above = look(Vec3::new(0.0, 5.0, 6.0), Vec3::ZERO);
+    for _ in 0..3 {
+        tick(&mut ui, above, InputFrame::default());
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let quad = |ui: &Ui| ui.frame().grounds.first().map(|g| g.corners);
+    let q = quad(&ui).expect("a ground seen from above");
+    // Its far edge (top) is above and narrower than its near one.
+    assert!(q[0].y < q[3].y && q[1].y < q[2].y, "{q:?}");
+    assert!((q[1].x - q[0].x) < (q[2].x - q[3].x), "{q:?}");
+    let centre = (q[0] + q[1] + q[2] + q[3]) / 4.0;
+    assert!((centre.x - W / 2.0).abs() < 2.0, "{q:?}");
+    let idle = tick(&mut ui, above, InputFrame::default());
+    let items = ui.frame().items.clone();
+    // Laid out: the layer's root alone, as every layer each tick.
+    assert_eq!(
+        (idle.bindings, idle.reconciled, idle.laid_out),
+        (0, 0, 1),
+        "{idle:?}"
+    );
+    // The camera moves: the quad moves, the commands stay as they were.
+    let moved = tick(
+        &mut ui,
+        look(Vec3::new(2.0, 4.0, 6.0), Vec3::ZERO),
+        InputFrame::default(),
+    );
+    assert_eq!(
+        (moved.bindings, moved.reconciled, moved.laid_out),
+        (0, 0, 1),
+        "{moved:?}"
+    );
+    assert_eq!(moved.painted, idle.painted, "{moved:?} vs {idle:?}");
+    assert_ne!(quad(&ui), Some(q));
+    assert!(
+        ui.frame().items == items,
+        "the frame's commands moved with the camera"
+    );
+    // Inert: a press where it is seen reaches what is behind it, not its button.
+    ui.take_doc_events();
+    for i in [
+        input(centre, true, true, false),
+        input(centre, false, false, true),
+    ] {
+        tick(&mut ui, above, i);
+    }
+    let events = ui.take_doc_events();
+    assert!(!events.iter().any(|e| e.name == "inside"), "{events:?}");
+    // Behind the camera: not drawn.
+    tick(
+        &mut ui,
+        look(Vec3::new(0.0, 1.0, -1.0), Vec3::new(0.0, 1.0, -10.0)),
+        InputFrame::default(),
+    );
+    assert_eq!(quad(&ui), None);
+}
+
 /// §15.1: a HUD plus 2,000 mass elements and 100 anchored elements in
 /// ≤ 1 ms of CPU a tick (build, lay out, place and record). A measurement
 /// for the reference machines, not the orb: `cargo test -p og-ui --release

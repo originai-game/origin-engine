@@ -1096,6 +1096,7 @@ fn glitch_layer(
         opacity: 1.0,
         blend: og_render::UiBlend::Normal,
         clip,
+        ground: None,
     };
     (begin, end)
 }

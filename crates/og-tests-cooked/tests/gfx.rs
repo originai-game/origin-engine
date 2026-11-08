@@ -74,6 +74,7 @@ references! {
     tilemap => "tilemap-lit",
     ui_shapes => "ui-shapes",
     ui_paths => "ui-paths",
+    ui_ground => "ui-ground",
     ui_glass => "ui-glass-dialog",
     hooks => "hooks-planar",
     views => "views-split",

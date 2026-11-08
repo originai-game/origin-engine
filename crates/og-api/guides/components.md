@@ -486,7 +486,20 @@ Its own props, beside every element's:
 | `max-distance` | `number` | `max-distance`: hidden past this many world units, fading over its last tenth. |
 | `world-scale-at` | `number` | `scale-at="10"`: scaled 1 at this distance, larger nearer and smaller farther (0.5 to 2). |
 
-## 29. `<joystick>` (`joystick`): A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px)
+## 29. `<ground>` (`ground`): A box laid flat in the world (`<ground entity={u.entity} size="3 3">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation="0 45 0"` turns it. Inert
+
+A box laid flat in the world (`<ground entity={u.entity} size="3 3">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation="0 45 0"` turns it. Inert. A container with nested children: `<ground entity={u.entity} size="3 3"><svg viewBox="0 0 40 40">…</svg></ground>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `world-size` | `text` | A world panel's quad, `width height` world units (default 1 1). |
+| `world-rotation` | `text` | A world panel's turn, degrees about x, y and z (`0 30 0`); facing +z unturned. |
+| `entity` | `number` | The entity it follows, by its bits (`entity={u.entity}`): its world pose as the host hands it in. |
+| `world-at` | `text` | `at="x y z"`: a world point it follows, without an entity. |
+
+## 30. `<joystick>` (`joystick`): A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px)
 
 A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px). A leaf; text-bearing controls accept text content: `<joystick id="Stick" action="move" data-dead-zone="0.2" customize />`.
 
@@ -498,7 +511,7 @@ Its own props, beside every element's:
 | `action` | `name` | The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it. |
 | `data-dead-zone` | `number` | A stick's dead zone, a ratio of its radius (`data-dead-zone="0.2"`; default 0.15): past it the value rises from 0. |
 
-## 30. `<dpad>` (`dpad`): A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px)
+## 31. `<dpad>` (`dpad`): A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px)
 
 A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px). A leaf; text-bearing controls accept text content: `<dpad id="Pad" action="move" />`.
 
@@ -509,7 +522,7 @@ Its own props, beside every element's:
 | `disabled` | `bool` | Takes no input. |
 | `action` | `name` | The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it. |
 
-## 31. `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene
+## 32. `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene
 
 A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene. A leaf; text-bearing controls accept text content: `<viewport id="Preview" src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w} onpointermove={orbit} />`.
 
@@ -524,7 +537,7 @@ Its own props, beside every element's:
 | `client-width` | `number` | Svelte's `bind:clientWidth`: its laid-out width, CSS px, written when it changes (size its render target by it times the pixel ratio). Two-way only with an explicit bind: attribute. |
 | `client-height` | `number` | Svelte's `bind:clientHeight`: its laid-out height, CSS px. Two-way only with an explicit bind: attribute. |
 
-## 32. `<svg>` (`svg`): Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size)
+## 33. `<svg>` (`svg`): Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size)
 
 Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size). A container with nested children: `<svg id="Name" viewBox="0 0 40 40">…</svg>`.
 
@@ -562,7 +575,7 @@ Its own props, beside every element's:
 | `y2` | `text` | SVG `y2`. |
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
-## 33. `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
+## 34. `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
 
 SVG's `<g>`: a transform and presentation attributes its shapes inherit. A container with nested children: `<g transform="rotate(-90 20 20)" stroke="var(--accent)">…</g>`.
 
@@ -601,7 +614,7 @@ Its own props, beside every element's:
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 
-## 34. `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
+## 35. `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
 
 An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable. A leaf; text-bearing controls accept text content: `<path d={$line} fill="none" stroke="currentColor" />` or `<circle cx="20" cy="20" r="18" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset={1 - $ready} />` or `<rect x={b.x} y={40 - b.h} width="8" height={b.h} rx="2" />` or `<polygon points="0,0 10,0 5,8" /> (ellipse, line, polyline)`.
 
@@ -643,7 +656,7 @@ Its own props, beside every element's:
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
-## 35. `<svgText>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`
+## 36. `<svgText>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`
 
 SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`. A leaf; text-bearing controls accept text content: `<svgText id="Name">…</svgText>`.
 
@@ -681,7 +694,7 @@ Its own props, beside every element's:
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
 
-## 36. `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
+## 37. `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
 
 SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height. A container with nested children: `<use href="#Coin" x={i * 12} y="0" width="10" height="10" />`.
 
@@ -721,7 +734,7 @@ Its own props, beside every element's:
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
 
-## 37. `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
+## 38. `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
 
 An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent. A container with nested children: `<linearGradient id="Up" x2="0" y2="1"><stop offset="0" stop-color="#fff" />…</linearGradient> (radialGradient, defs)` or `<symbol id="Coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></symbol> (clipPath, mask, pattern, title)`.
 

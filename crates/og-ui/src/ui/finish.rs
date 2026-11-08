@@ -900,6 +900,7 @@ impl Ui {
             focus_paths,
             text_input: self.text_target.take(),
             events: std::mem::take(&mut self.events),
+            grounds: std::mem::take(&mut self.world.grounds),
             stats: LayoutStats {
                 laid_out: self.kept.laid_out,
                 ..self.stats

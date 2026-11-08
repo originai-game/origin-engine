@@ -67082,6 +67082,11 @@
           ],
           "description": "Its fill; null draws none (the target clears to transparent).",
           "default": null
+        },
+        "projected": {
+          "type": "boolean",
+          "description": "Drawn by the UI itself onto where its quad is seen (a ground decal under a unit, a sign over a door) in a band under the screen's elements, instead of into target: no render target or mesh. Inert: no ray reaches it and its controls take no focus. Not drawn while a corner of its quad is behind the camera.",
+          "default": false
         }
       },
       "additionalProperties": false
