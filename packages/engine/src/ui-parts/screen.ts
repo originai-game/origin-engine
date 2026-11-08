@@ -14,5 +14,4 @@ export { accent, artSlot, btn, chevron, clamp, coinFill, countdown, eyebrow, fil
 export { nameText, stepSize, tps } from "../ui/feedback/core.ts";
 export { inputField } from "../ui/controls/fields.ts";
 export { dropdown } from "../ui/controls/natives.ts";
-export { holdButton } from "../ui/controls/buttons.ts";
 export { formatNumber } from "../ui/data/format.ts";

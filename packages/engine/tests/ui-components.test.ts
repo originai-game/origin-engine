@@ -90,14 +90,13 @@ test("tabBar: the bumper steps to the next enabled tab, skipping a disabled one,
   expect(byPath(engine, "Panel/Body")?.text).toBe("Panel 1");
 });
 
-test("tabBar and actionHints: the bumpers and hints show the device's glyphs, following it live (keyboard, Xbox, PlayStation, Switch)", () => {
-  // Wrong: fixed Q and E caps, or a hint that keeps the text it was given when the player picks up a pad.
+test("tabBar: the bumpers show the device's glyphs, following it live (keyboard, Xbox, PlayStation, Switch)", () => {
+  // Wrong: fixed Q and E caps that stay when the player picks up a pad.
   let device: Api.UiDevice = "keyboardMouse";
   const sys = defineSystem(`UcBuild${systems++}`, {}, (_q, _t, world: World) => {
     og.ui.setDevice(world, device);
     og.ui.anchor("Root", { anchor: "center", direction: "column", width: { kind: "fixed", px: 640 } } as never, () => {
       og.ui.tabBar("Tabs", { tabs: [{ label: "Gear" }, { label: "Skills" }], selected: 0 }, () => {});
-      og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: "Select", text: "Given", icon: "key.given" }, { action: "back", hint: "Back" }, { action: "gameOwn", hint: "Own", text: "F", icon: "key.f" }] });
     });
   });
   const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, {});
@@ -105,21 +104,18 @@ test("tabBar and actionHints: the bumpers and hints show the device's glyphs, fo
   const engine = r.value;
   // A cap's text, or for a drawn symbol (PlayStation's face buttons) the name the cap gives it.
   const cap = (p: string) => byPath(engine, `${p}/Glyph/Text`)?.text ?? (byPath(engine, `${p}/Glyph/Symbol`) ? byPath(engine, `${p}/Glyph`)?.name : undefined);
-  const caps = () => ["Prev", "Next", "Hint#0", "Hint#1", "Hint#2"].map(cap);
+  const caps = () => ["Prev", "Next"].map(cap);
   const expected: Array<[Api.UiDevice, Array<string | undefined>]> = [
-    ["keyboardMouse", ["Q", "E", "Enter", "Esc", "F"]],
-    ["xbox", ["LB", "RB", "A", "B", "F"]],
-    ["playstation", ["L1", "R1", "×", "○", "F"]],
-    ["switch", ["L", "R", "B", "A", "F"]],
-    ["keyboardMouse", ["Q", "E", "Enter", "Esc", "F"]],
+    ["keyboardMouse", ["Q", "E"]],
+    ["xbox", ["LB", "RB"]],
+    ["playstation", ["L1", "R1"]],
+    ["switch", ["L", "R"]],
+    ["keyboardMouse", ["Q", "E"]],
   ];
   for (const [d, want] of expected) {
     device = d;
     engine.advance(4);
     expect([d, ...caps()]).toEqual([d, ...want]);
-    // Wrong: × ○ set as text, which a style's font may not have (tofu); they are drawn, never text.
-    const drawn = d === "playstation";
-    expect([d, !!byPath(engine, "Hint#0/Glyph/Symbol"), !!byPath(engine, "Hint#0/Glyph/Text")]).toEqual([d, drawn, !drawn]);
   }
 });
 
@@ -594,7 +590,6 @@ test("150 % text: the containers and navigation components grow with the text an
   const nav = () => {
     og.ui.tabBar("Tabs", { tabs: [{ label: "Equipment" }, { label: "Skills" }, { label: "Codex" }] }, () => {});
     og.ui.accordion("Faq", { sections: [{ title: "Rules", subtitle: "How a round is played" }], expanded: [0] }, () => og.ui.label("Text", "Each round lasts three minutes.", {}));
-    og.ui.actionHints("Hints", { hints: [{ action: "confirm", text: "Select" }, { action: "back", text: "Back" }, { action: "details", text: "Hold to sell", hold: true, progress: 0.4 }] });
     og.ui.tabBar("Pills", { tabs: [{ label: "Daily" }, { label: "Weekly" }, { label: "Season" }], selected: 1, variant: "pill", fill: true, bumpers: false }, () => {});
     og.ui.menu("Menu", true, { at: { x: 40, y: 40 }, entries: [{ id: "copy", label: "Copy", shortcut: "Ctrl+C" }, { id: "compare", label: "Compare", shortcut: "C" }, { id: "sort", label: "Sort by" }, { id: "destroy", label: "Destroy", danger: true }, { id: "n", label: "Name", parent: "sort" }] });
   };
@@ -654,35 +649,6 @@ test("150 % text: the containers and navigation components grow with the text an
     }
   }
 }, 60_000);
-
-test("actionHints: under a finger a bar across the bottom that reaches into the safe area and answers its room; content kept above it meets none of it", () => {
-  // Wrong: a floating bar over the page's last rows, or one whose room leaves out the safe area.
-  let room = 0;
-  const sys = defineSystem(`UcBuild${systems++}`, {}, () => {
-    const vp = og.ui.frameViewport();
-    // A page from the safe area's top to the bar's room: what a screen does with the answer.
-    og.ui.anchor("Page", { anchor: "top", margin: 0, width: { kind: "grow" }, height: { kind: "fixed", px: Math.max(0, vp.height - vp.safeArea.top - room) } } as never, () => og.ui.label("Last", "The page's last line", {}));
-    room = og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: "Select" }, { action: "back", hint: "Back" }, { action: "details", hint: "Hold to sell", hold: true, progress: 0.5 }] }).height;
-  });
-  const created = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, {});
-  if (!created.ok) throw new Error(created.reason);
-  const engine = created.value;
-  og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } } as never);
-  engine.advance(12);
-  const bar = byPath(engine, "Hints")!;
-  expect(bar.y + bar.height).toBeCloseTo(844, 0);
-  expect(bar.width).toBeCloseTo(390, 0);
-  expect(room).toBeCloseTo(844 - bar.y, 0);
-  // Its buttons sit above the home indicator, each a whole target.
-  for (const k of [0, 1, 2]) {
-    const h = byPath(engine, `Hint#${k}`)!;
-    expect(h.y + h.height).toBeLessThanOrEqual(844 - 34 + 0.5);
-    expect(Math.min(h.width, h.height)).toBeGreaterThanOrEqual(43.5);
-  }
-  const page = elements(engine).filter((e) => e.path === "Page" || e.path.startsWith("Page/"));
-  expect(page.length).toBeGreaterThan(0);
-  expect(page.filter((e) => e.y + e.height > bar.y + 0.5).map((e) => e.path)).toEqual([]);
-});
 
 // ── formats ─────────────────────────────────────────────────────────────
 

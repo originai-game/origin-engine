@@ -55,11 +55,3 @@
     returns TabBarResult
   }
 
-  fn actionHints {
-    doc "The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons."
-    host false
-    param id String "Its id."
-    param desc ActionHintsDesc "The hints and the edge."
-    returns ActionHintsResult
-  }
-

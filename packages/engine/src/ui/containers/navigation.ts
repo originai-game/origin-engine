@@ -1,5 +1,5 @@
-// Navigation (docs/ui.md §2): tabs with bumpers, pagination and the action
-// bar (the carousel, breadcrumbs and radial wheel are component documents
+// Navigation (docs/ui.md §2): tabs with bumpers (the action bar is the
+// action-hints component document, as are the carousel, breadcrumbs and radial wheel
 // in src/ui/components). Each draws its parts as the style dresses them
 // (`Tabs.tab[selected]`) and asks for UI actions
 // (tabPrev, tabNext, confirm, back), never keys (docs/ui.md §2.1).
@@ -211,71 +211,4 @@ function bumper(id: string, action: "tabPrev" | "tabNext", onPress: () => void):
 function deviceGlyph(action: string): { text: string; icon: string } | null {
   const g = kit.frameGlyph(action);
   return g && g.text ? { text: g.text, icon: g.icon } : null;
-}
-
-// ── action bar ──────────────────────────────────────────────────────────
-
-/**
- * The action bar (docs/ui.md §2.1): the actions the top layer accepts,
- * each its glyph on the device used last (a key cap, a pad's face button,
- * a bumper's pill) and its hint, at a safe-area edge. The hints come from
- * og.ui.actionBar (the top screen document's `actions`), or `hints` given
- * here. On touch, where there are no glyphs, each hint is a button. A
- * press on a hint fires its action as the control would; a hold shows its
- * progress ring filling.
- */
-export function actionHints(id: string, desc: Api.ActionHintsDesc): Api.ActionHintsResult {
-  const { t, touch, viewport } = frame();
-  const hints = desc.hints ?? [];
-  let pressed: string | null = null;
-  const sa = viewport.safeArea;
-  // Under a finger a bar of buttons across the bottom, reaching into the safe area under it (its
-  // buttons above the home indicator); elsewhere hints at an edge.
-  const docked = touch && (desc.anchor === undefined || desc.anchor.startsWith("bottom"));
-  const where: Api.Anchor = docked ? "bottom" : desc.anchor ?? "bottomRight";
-  const right = where.endsWith("Right");
-  // Within the screen: hints that do not fit on one line (a phone, a large text size) wrap.
-  const maxW = Math.max(120, viewport.width - sa.left - sa.right - 2 * t.gutter);
-  const cap = 26;
-  // Room around a cap for a hold's ring (see glyphCap), at the text size.
-  const ringRoom = byText(Math.max(2, Math.round(cap * 0.1)) * 2);
-  kit.anchor(id, {
-    anchor: where,
-    direction: "column",
-    ...(docked ? { margin: 0, offsetY: sa.bottom, width: px(viewport.width) } : { width: fit(0, maxW) }),
-    padding: docked ? { left: sa.left + t.gutter, top: t.sm, right: sa.right + t.gutter, bottom: sa.bottom + t.sm } : xy(t.md, t.xs),
-    background: desc.background === false ? null : token("hud"),
-    radius: docked ? 0 : t.control,
-    frame: "hud",
-  }, () => kit.row("Row", { width: grow(), gap: touch ? t.sm : t.lg, cross: "center", align: docked ? "center" : right ? "end" : where.endsWith("Left") ? "start" : "center", wrap: true }, () => {
-    hints.forEach((h, k) => {
-      // The device's glyph for a UI action it knows, live; the hint's own text and icon otherwise.
-      const glyph = (h.action ? deviceGlyph(h.action) : null) ?? { text: h.text ?? "", icon: h.icon ?? "" };
-      const r = surface(kit.idi("Hint", k), {
-        part: "ActionBar.hint",
-        cls: "chip",
-        flags: [h.hold ? "hold" : "", touch ? "touch" : ""],
-        fill: touch ? role("control") : null,
-        washBy: touch ? 0.14 : 0.1,
-        pressScale: 0.96,
-        // Keys and pads reach it too (a hint is a button wherever it shows).
-        focusable: true,
-        // As tall as its cap and the ring a hold draws round it: the cap never spills out.
-        height: fit(touch ? 44 : 36),
-        padding: xy(touch ? t.md : t.xs, touch ? t.xxs : ringRoom / 2),
-        gap: t.sm,
-        semantics: { role: "button", name: h.hint ?? h.action ?? "", ...(glyph.text && !touch ? { description: glyph.text } : {}) },
-      }, () => {
-        if (!touch && glyph.text) glyphCap("Glyph", glyph, cap, h.hold ? clamp(h.progress ?? 0, 0, 1) : 0);
-        // The body's 16 px at 1080p, never smaller: a hint is read in play.
-        text("Hint", h.hint ?? h.action ?? "", { step: "base", nowrap: !touch });
-      });
-      if (r.clicked) pressed = h.action ?? null;
-    });
-  }));
-  kit.semantics({ role: "toolbar", name: desc.label || "Actions" });
-  // The room it took from its edge last tick, safe area included: a screen keeps its content clear of it.
-  const b = kit.bounds(id);
-  const height = b ? Math.max(0, where.startsWith("bottom") ? viewport.height - b.y : where.startsWith("top") ? b.y + b.height : 0) : 0;
-  return { pressed, height };
 }

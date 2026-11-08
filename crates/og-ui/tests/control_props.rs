@@ -969,6 +969,23 @@ fn titles_and_popovers_show_against_their_controls() {
     });
 }
 
+/// The width of the `::-og-hold` fill drawn this frame (red in the test's
+/// style), or 0.
+fn hold_fill_width(d: &Doc) -> f32 {
+    d.ui.frame()
+        .items
+        .iter()
+        .find_map(|i| match &i.cmd {
+            DrawCmd::Quad { rect, color, .. }
+                if color[0] > 0.9 && color[1] < 0.05 && color[2] < 0.05 =>
+            {
+                Some(rect.width)
+            }
+            _ => None,
+        })
+        .unwrap_or(0.0)
+}
+
 /// HTML's core controls beyond the switch: a plain checkbox is a box with a
 /// check (`indeterminate` a dash), radios share a `bind:group`, a number
 /// input with `-og-stepper: buttons` steps, `<menu>` holds menu items, and
@@ -995,6 +1012,7 @@ fn core_controls_choose_step_hold_and_report() {
 <style>
 .stepper { -og-stepper: buttons; }
 #Page { gap: 8px; padding: 8px; }
+#Buy::-og-hold { background: #ff0000; }
 </style>"#;
     let stores = [
         ("box", json!(false)),
@@ -1033,6 +1051,7 @@ fn core_controls_choose_step_hold_and_report() {
     let buy = d.get("Buy");
     let at = Vec2::new(buy.x + buy.width / 2.0, buy.y + buy.height / 2.0);
     let mut holds = Vec::new();
+    let mut fills = Vec::new();
     for tick in 0..40 {
         d.step(InputFrame {
             pointer: at,
@@ -1045,6 +1064,7 @@ fn core_controls_choose_step_hold_and_report() {
             holds.push(tick);
         }
         d.events.clear();
+        fills.push(hold_fill_width(d));
     }
     d.step(InputFrame {
         pointer: at,
@@ -1053,7 +1073,15 @@ fn core_controls_choose_step_hold_and_report() {
         ..InputFrame::default()
     });
     assert_eq!(holds.len(), 1, "one hold per press: {holds:?}");
-    assert!(holds[0] >= 15, "not before 300 ms: {holds:?}");
+    assert!((15..20).contains(&holds[0]), "at 300 ms: {holds:?}");
+    // The `::-og-hold` fill grows from the start edge across the button
+    // while held, full at the hold, and leaves with the press.
+    assert!(
+        fills[2] > 0.0 && fills[2] < fills[10] && fills[10] < buy.width,
+        "the fill grows: {fills:?}"
+    );
+    assert!((fills[30] - buy.width).abs() < 1.0, "full at the hold: {fills:?}");
+    assert_eq!(hold_fill_width(d), 0.0, "released, no fill");
     // A secondary press asks for the context menu; a primary one does not.
     let events = d.click("Buy");
     assert!(!events.iter().any(|e| e.name == "more"));

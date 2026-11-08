@@ -24,7 +24,7 @@ decal for bullet holes	og.Decal
 box geometry for a cube mesh	og.render.boxGeometry
 partical emitter	og.ParticleSystem | og.load.emitter
 make text bigger for accessibility	UiDesc | og.ui.configure
-hold the button down to delete a save	og.ui.holdButton
+hold the button down to delete a save	components §1 | components §11
 short message popup that goes away on its own	og.ui.toast
 weapon wheel chosen with the right stick	screens §7
 on-screen virtual joystick for mobile	components §37

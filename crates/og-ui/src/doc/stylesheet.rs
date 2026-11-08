@@ -1175,17 +1175,20 @@ fn rule_props(entries: &[og_core::ogt::Entry], kind: &str) -> Result<Vec<PropSet
 
 /// The pseudo-elements that are boxes of their own (CSS Pseudo-Elements 4
 /// §3, CSS Positioned Layout 4's `::backdrop`, the customizable select's
-/// `::picker(select)`), by their name in [`DocNode::pseudo`].
-const BOXES: [(&str, &str); 4] = [
+/// `::picker(select)`, and the engine's `::-og-hold`, the fill a
+/// `data-hold` press grows), by their name in [`DocNode::pseudo`].
+const BOXES: [(&str, &str); 5] = [
     ("::before", "before"),
     ("::after", "after"),
     ("::backdrop", "backdrop"),
     ("::picker(select)", "picker"),
+    ("::-og-hold", "hold"),
 ];
 
 /// Whether `node`, an element of `kind`, draws `pseudo` as a box: a box
 /// element's `::before` and `::after` (a text element's join its text as
-/// runs), a dialog's `::backdrop`, a select's `::picker(select)`.
+/// runs), a dialog's `::backdrop`, a select's `::picker(select)`, a
+/// `data-hold` element's `::-og-hold`.
 fn holds(pseudo: &str, kind: &str, node: &DocNode) -> bool {
     match pseudo {
         "before" | "after" => {
@@ -1194,6 +1197,7 @@ fn holds(pseudo: &str, kind: &str, node: &DocNode) -> bool {
         }
         "backdrop" => kind == "dialog",
         "picker" => kind == "select",
+        "hold" => node.props.iter().any(|p| p.name() == "dataHold"),
         _ => false,
     }
 }
@@ -1292,8 +1296,8 @@ fn pseudo_element(rule: &mut Rule) -> Result<(), (usize, String)> {
     let (mut body, mut own) = (String::new(), String::new());
     for d in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
         let important = if d.important { " !important" } else { "" };
-        let generated =
-            !matches!(pseudo, "backdrop" | "picker") && super::generated::allows(pseudo, &d.name);
+        let generated = !matches!(pseudo, "backdrop" | "picker" | "hold")
+            && super::generated::allows(pseudo, &d.name);
         if generated {
             body.push_str(&format!(
                 "{}: {}{important};",

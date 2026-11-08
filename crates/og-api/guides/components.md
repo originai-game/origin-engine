@@ -167,7 +167,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `aria-current` | `page \| step \| location \| date \| time \| true \| false` | The current item in a set (`aria-current`): a pagination's page, a breadcrumb's last, a wizard's step. |
 | `data-og-instant` | `bool` | Its first entrance is settled (`data-og-instant`): the screen a game opens on, which the web draws behind its play gate. Later entrances play. |
 | `-og-reduced-motion:` | `fade \| none \| keep` | Its reduced-motion fallback. |
-| `data-hold` | `number` | How long a press is held before `onhold` fires, in ms (`data-hold`; default 500). |
+| `data-hold` | `number` | How long a press is held before `onhold` fires, in ms (`data-hold`; default 500). While it is held a fill grows across the element from its start edge, drawn over its background and under its content and coloured by `::-og-hold { background }` (else the style's primary at a third); with `data-action`, holding that action holds it too. |
 | `display:` | `block \| inline \| inline-block \| flow-root \| list-item \| flex \| inline-flex \| grid \| inline-grid \| table \| inline-table \| contents \| table-row-group \| table-header-group \| table-footer-group \| table-row \| table-cell \| table-caption \| table-column \| table-column-group` | Its CSS `display`. On a box its layout: `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks, `table` (and its parts) as a table, `flowRoot` a block whose children's margins stay inside, `contents` no box at all (its children are its parent's). On any element `inline…` puts it in lines beside its inline-level siblings. |
 | `vertical-align:` | `baseline \| top \| middle \| bottom \| text-top \| text-bottom \| sub \| super` | CSS `vertical-align`: where an inline-level element sits in its line, and a table cell's content in its row (`middle` by default). |
 | `caption-side:` | `top \| bottom` | CSS `caption-side`: a table caption above (default) or below its table. |
@@ -385,6 +385,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
+| `data-action` | `name` | On `<kbd>`, the action whose glyph it shows on the device used last (its key, its pad button, or its touch icon); it follows the device live. On a `<button data-hold>`, the action whose hold holds it as a press does. |
 | `text` | `text` | What it says. |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `variant` | `secondary \| primary \| quiet \| danger \| ghost` | The button's role. |
@@ -402,7 +403,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `data-action` | `name` | The action whose glyph it shows on the device used last (its key, its pad button, or its touch icon); it follows the device live. |
+| `data-action` | `name` | On `<kbd>`, the action whose glyph it shows on the device used last (its key, its pad button, or its touch icon); it follows the device live. On a `<button data-hold>`, the action whose hold holds it as a press does. |
 | `glyph-device` | `text` | The device it draws for (bound to `$ui.device` by the parser: a device change rebuilds it). |
 | `data-og-rebind` | `bool` | A press captures the next key as its binding (`bind:value`), Escape cancels. |
 | `binding` | `text` | With dataOgRebind: the key code it captured (`bind:value`), written back. Two-way only with an explicit bind: attribute. |

@@ -567,6 +567,7 @@ impl Ui {
                 self.write_back(b, n, "open", json!(open));
             }
             self.popover_invoker(b, &r, key, resp);
+            self.hold(key, n, &r, self.last_closed);
             self.fire(b, n, key, &path, resp);
             return Some(path);
         }
@@ -1263,6 +1264,7 @@ impl Ui {
         }
         self.popover_invoker(b, &styled, key, resp);
         self.note_built(built);
+        self.hold(key, n, &styled, last);
         self.fire(b, n, key, &path, resp);
         Some(path)
     }
@@ -1630,34 +1632,72 @@ impl Ui {
         self.remember(&off_key, if done { 1.0 } else { f64::from(u8::from(off)) });
     }
 
-    /// Whether a press held on `key` reached its `data-hold` ms this tick
-    /// (once per press). The count is widget memory: in snapshots, and the
-    /// element builds each tick while it moves.
-    fn held(&mut self, key: u64, n: &DocNode) -> bool {
-        let ms = n
-            .props
-            .iter()
-            .rev()
-            .find(|p| p.name() == "dataHold")
-            .and_then(|p| match p.value {
-                PropValue::Lit(Lit::Num(ms)) => Some(ms),
-                _ => None,
-            })
-            .unwrap_or(500.0);
+    /// A `data-hold` (or `onhold`) element's hold this tick: counts the
+    /// ticks it has been held (a press on it; Enter, Space or a pad's A
+    /// while it has the focus; or its `data-action`'s input down) and
+    /// whether the count reached its `data-hold` ms (default 500), then
+    /// draws its fill (`::-og-hold`) from its start edge across the share
+    /// reached, over its background and under its content. The count is
+    /// widget memory: in snapshots, and the element builds each tick while
+    /// it moves.
+    fn hold(&mut self, key: u64, n: &DocNode, r: &Resolved, at: usize) {
+        let fill = r.has("dataHold") || n.props.iter().any(|p| p.name() == "dataHold");
+        if !fill && !n.triggers.iter().any(|t| t.when == When::Hold) {
+            return;
+        }
+        let ms = r.num("dataHold").unwrap_or(500.0);
         let need = ((ms * self.ticks_per_second as f32 / 1000.0).ceil() as u64).max(1);
+        let focused = self.state.focus == key
+            && (self
+                .input
+                .keys_held
+                .iter()
+                .any(|k| matches!(*k, "Enter" | "NumpadEnter" | "Space"))
+                || self.input.gamepad.held & crate::input::GamepadFrame::A != 0);
+        let pressing = (self.input.down && self.state.active == key)
+            || focused
+            || r.str("dataAction").is_some_and(|a| self.action_down(a));
         let memory = crate::id::child_key(key, "~hold");
-        let pressing = self.input.down && self.state.active == key;
         let ticks = if pressing { self.anim(memory).h + 1 } else { 0 };
         if pressing || self.has_anim(memory) {
             self.set_anim(
                 memory,
                 crate::ui::Anim {
                     h: ticks,
+                    t: need,
                     ..Default::default()
                 },
             );
         }
-        ticks == need
+        let frac = (ticks as f32 / need as f32).min(1.0);
+        if !fill || frac <= 0.0 || at >= self.nodes.len() || self.nodes[at].key != key {
+            return;
+        }
+        // `::-og-hold`'s box (a pseudo-element node) colours it.
+        let color = r
+            .pseudo
+            .iter()
+            .find(|(w, ..)| *w == "hold")
+            .and_then(|(_, _, p)| p.color("background"))
+            .unwrap_or_else(|| self.theme.palette.primary.fade(0.33));
+        let frame = if self.direction() == og_i18n::Direction::Rtl {
+            crate::layout::Frame::left(1.0 - frac, 1.0)
+        } else {
+            crate::layout::Frame::left(0.0, frac)
+        };
+        let radius = self.nodes[at].el.radius;
+        self.nodes[at].shapes.push(crate::layout::Shape::Rect {
+            frame,
+            radius,
+            color,
+        });
+    }
+
+    /// Whether the press [`Self::hold`] counted on `key` reached its
+    /// `data-hold` ms this tick (once per press).
+    fn held(&mut self, key: u64, _n: &DocNode) -> bool {
+        let a = self.anim(crate::id::child_key(key, "~hold"));
+        a.h > 0 && a.h == a.t
     }
 
     /// Fires a node's triggers for what happened to it this tick.

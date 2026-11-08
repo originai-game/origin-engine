@@ -11998,9 +11998,6 @@
         "TabItem",
         "TabBarDesc",
         "TabBarResult",
-        "ActionHint",
-        "ActionHintsDesc",
-        "ActionHintsResult",
         "DataStateDesc",
         "GraphNodeState",
         "GraphNodeShape",
@@ -12013,8 +12010,6 @@
         "EmitterPreset",
         "EmitterDesc",
         "EffectLayerDesc",
-        "HoldButtonDesc",
-        "HoldResult",
         "LabelSide",
         "ToggleSwitchDesc",
         "SwitchResult",
@@ -13390,27 +13385,6 @@
           "host": false
         },
         {
-          "name": "actionHints",
-          "doc": "The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "ActionHintsDesc",
-              "optional": true,
-              "doc": "The hints and the edge."
-            }
-          ],
-          "returns": "ActionHintsResult",
-          "publish": true,
-          "host": false
-        },
-        {
           "name": "nodeGraph",
           "doc": "A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts.\nEach node is a circle, rounded square, hexagon, diamond or triangle; a node with a team (a sector map's allied and hostile systems) is filled in its side's colour, a sided node with no icon showing no letters (its shape and colour mark it). Its state shows by its ring and a mark.\nParts: Graph.frame (its ground's texture on <id>/Window/View/Canvas), Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out.",
           "params": [
@@ -13497,33 +13471,6 @@
             }
           ],
           "returns": "Void",
-          "publish": true,
-          "host": false
-        },
-        {
-          "name": "holdButton",
-          "doc": "A hold-to-confirm button: held (a press on it, a touch), it fills from its start edge over holdMs, ticking up in pitch, and confirms with the style's confirm sound and a pop; let go early, it drains back. Keys and pads take its toggle alternative (XAG 107: activate starts it, it runs by itself, activate again or moving the focus stops it), as the pointer does with toggle. Its progress is UI state (in snapshots). Parts: `HoldButton.base[<variant>][holding][hover|pressed|focused|disabled]`, `HoldButton.fill`. Role button, its fill as its value (percent). Probe: `<id>`, `<id>/Button`, `<id>/Button/Label`, `<id>/Button/Fill`.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "label",
-              "type": "String",
-              "optional": false,
-              "doc": "Its label."
-            },
-            {
-              "name": "desc",
-              "type": "HoldButtonDesc",
-              "optional": true,
-              "doc": "Its role, time and alternative."
-            }
-          ],
-          "returns": "HoldResult",
           "publish": true,
           "host": false
         },
@@ -48895,109 +48842,6 @@
       ],
       "additionalProperties": false
     },
-    "ActionHint": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A hint of the action bar: an action, its glyph on the device in use and what it does.",
-      "type": "object",
-      "properties": {
-        "action": {
-          "type": "string",
-          "description": "The action's name (answered when the hint is pressed).",
-          "default": ""
-        },
-        "hint": {
-          "type": "string",
-          "description": "What it does (`Buy`, `Back`).",
-          "default": ""
-        },
-        "icon": {
-          "type": "string",
-          "description": "The glyph's icon, for an action with no glyph on the device in use (a UI action's own glyph, og.ui.frameGlyph, follows the device live and wins).",
-          "default": ""
-        },
-        "text": {
-          "type": "string",
-          "description": "The glyph as text (`Enter`, `A`, `LB`), with the same fallback as icon.",
-          "default": ""
-        },
-        "hold": {
-          "type": "boolean",
-          "description": "It fires on a hold: a ring fills.",
-          "default": false
-        },
-        "progress": {
-          "type": "number",
-          "description": "How far the hold has gone.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-unit": "ratio"
-        }
-      },
-      "additionalProperties": false
-    },
-    "ActionHintsDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "The action bar (docs/ui.md §2.1): the actions the top layer accepts, each its glyph and its hint, at an edge.",
-      "type": "object",
-      "properties": {
-        "hints": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ActionHint"
-          },
-          "description": "The hints, as og.ui.actionBar answers them.",
-          "default": []
-        },
-        "anchor": {
-          "$ref": "#/$defs/Anchor",
-          "description": "The edge it sits on.",
-          "default": "bottomRight"
-        },
-        "background": {
-          "type": "boolean",
-          "description": "A HUD backing behind it.",
-          "default": true
-        },
-        "label": {
-          "type": "string",
-          "description": "What a screen reader calls it; empty is Actions.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "ActionHintsResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "What the action bar answered this tick.",
-      "type": "object",
-      "properties": {
-        "pressed": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The action of the hint pressed (a touch, a click): act as if the control fired."
-        },
-        "height": {
-          "type": "number",
-          "description": "The room it takes from its edge of the screen, the safe area under it included (as laid out last tick): a scrolling screen pads its content's end by it, so nothing hides under the bar. Under a finger it is a bar of buttons across the bottom.",
-          "x-og-unit": "cssPx"
-        }
-      },
-      "required": [
-        "pressed",
-        "height"
-      ],
-      "additionalProperties": false
-    },
     "DataStateDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -49611,101 +49455,6 @@
           "default": []
         }
       },
-      "additionalProperties": false
-    },
-    "HoldButtonDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A hold-to-confirm button.",
-      "type": "object",
-      "properties": {
-        "variant": {
-          "$ref": "#/$defs/ButtonVariant",
-          "description": "Its role (danger for a destructive confirm).",
-          "default": "danger"
-        },
-        "size": {
-          "$ref": "#/$defs/ControlSize",
-          "description": "Its height.",
-          "default": "medium"
-        },
-        "holdMs": {
-          "type": "number",
-          "description": "How long the hold takes.",
-          "default": 1200,
-          "minimum": 100,
-          "x-og-unit": "ms"
-        },
-        "icon": {
-          "type": "string",
-          "description": "An icon before the label.",
-          "default": ""
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "Shown but inert.",
-          "default": false
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null fits the label.",
-          "default": null
-        },
-        "toggle": {
-          "type": "boolean",
-          "description": "The hold's toggle alternative for the pointer and touch too (XAG 107): a tap starts the fill, which runs on by itself; a second tap stops it. Keys and pads always work so (Enter, Space or A start it, again stops it, moving the focus away stops it).",
-          "default": false
-        },
-        "holdingLabel": {
-          "type": "string",
-          "description": "What it says while it fills (`Keep holding…`); empty keeps its label.",
-          "default": ""
-        },
-        "hint": {
-          "type": "string",
-          "description": "A line under it, what to do (`Hold to delete`); empty for none.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "HoldResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "A hold button's state after this tick.",
-      "type": "object",
-      "properties": {
-        "response": {
-          "$ref": "#/$defs/Response",
-          "description": "What happened to it."
-        },
-        "confirmed": {
-          "type": "boolean",
-          "description": "The hold completed this tick: do the thing."
-        },
-        "holding": {
-          "type": "boolean",
-          "description": "It is filling."
-        },
-        "progress": {
-          "type": "number",
-          "description": "How full it is, 0 to 1 (it drains back when let go).",
-          "x-og-unit": "ratio"
-        }
-      },
-      "required": [
-        "response",
-        "confirmed",
-        "holding",
-        "progress"
-      ],
       "additionalProperties": false
     },
     "LabelSide": {

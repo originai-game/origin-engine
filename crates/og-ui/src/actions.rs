@@ -168,6 +168,16 @@ impl Ui {
         self.actions.fired.iter().any(|a| a == name)
     }
 
+    /// The action's input is down this tick (held, before or past any hold).
+    pub(crate) fn action_down(&self, name: &str) -> bool {
+        self.actions
+            .defs
+            .iter()
+            .position(|d| d.name == name)
+            .and_then(|k| self.actions.states.get(k))
+            .is_some_and(|s| s.down)
+    }
+
     /// A hold action is held (its press past the hold, or its toggle on).
     pub fn action_held(&self, name: &str) -> bool {
         let Some(k) = self.actions.defs.iter().position(|d| d.name == name) else {

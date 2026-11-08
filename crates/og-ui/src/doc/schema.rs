@@ -1076,8 +1076,8 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "dataAction",
         Ty::Name,
-        ["kbd"],
-        "The action whose glyph it shows on the device used last (its key, its pad button, or its touch icon); it follows the device live."
+        ["kbd", "button"],
+        "On `<kbd>`, the action whose glyph it shows on the device used last (its key, its pad button, or its touch icon); it follows the device live. On a `<button data-hold>`, the action whose hold holds it as a press does."
     ),
     p!(
         "glyphDevice",
@@ -1467,7 +1467,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "dataHold",
         Ty::Num,
-        "How long a press is held before `onhold` fires, in ms (`data-hold`; default 500)."
+        "How long a press is held before `onhold` fires, in ms (`data-hold`; default 500). While it is held a fill grows across the element from its start edge, drawn over its background and under its content and coloured by `::-og-hold { background }` (else the style's primary at a third); with `data-action`, holding that action holds it too."
     ),
     p!(
         "checked",

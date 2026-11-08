@@ -125,52 +125,6 @@ test("every control: on a coarse pointer each target a finger presses is at leas
   }
 });
 
-test("holdButton: letting go early confirms nothing and drains; holding the whole time confirms once; the toggle alternative confirms on a second press", () => {
-  // Wrong: confirming on the press (no hold), on release before it filled, or twice.
-  let confirmed = 0;
-  let progress = 0;
-  const engine = run(() => {
-    const r = og.ui.holdButton("Delete", "Delete save", { variant: "danger", holdMs: 600 });
-    if (r.confirmed) confirmed++;
-    progress = r.progress;
-  });
-  const b = find(engine, (e) => e.name.startsWith("Delete save"))!;
-  engine.probe.commands(`0:touch_move_to:${b.path};0.05:touch_start;0.3:touch_end`);
-  engine.advance(14);
-  expect(progress).toBeGreaterThan(0);
-  expect(confirmed).toBe(0);
-  engine.advance(60);
-  expect(progress).toBe(0);
-  engine.probe.commands(`0:touch_move_to:${b.path};0.05:touch_start;1.0:touch_end`);
-  engine.advance(70);
-  expect(confirmed).toBe(1);
-  // The alternative (XAG 107): a tap starts the fill, which runs on by itself; a second tap stops it.
-  let alt = 0;
-  let altProgress = 0;
-  const e2 = run(() => {
-    const r = og.ui.holdButton("Delete", "Delete save", { variant: "danger", toggle: true, holdMs: 600 });
-    if (r.confirmed) alt++;
-    altProgress = r.progress;
-  });
-  const b2 = find(e2, (e) => e.name.startsWith("Delete save"))!;
-  tap(e2, b2.path);
-  expect(altProgress).toBeGreaterThan(0);
-  tap(e2, b2.path);
-  e2.advance(60);
-  expect(alt).toBe(0);
-  expect(altProgress).toBe(0);
-  tap(e2, b2.path);
-  e2.advance(60);
-  expect(alt).toBe(1);
-  // A key starts it the same way (the button never needs holding Enter).
-  focusOn(e2, "Button");
-  key(e2, "Enter");
-  e2.advance(60);
-  expect(alt).toBe(2);
-});
-
-// ── toggles and choices ─────────────────────────────────────────────────
-
 test("toggleSwitch: the whole row takes the tap; the state is the game's", () => {
   // Wrong: only the knob taking the tap, or the component keeping its own state (game state ignored).
   let on = false;
@@ -250,7 +204,6 @@ test("dropdown: a tap opens the list with the focus on the chosen option, a tap 
 
 /** The controls a settings or a shop screen holds, labelled through `l` (the pseudo-locale's longer words). */
 function gallery(l: (s: string) => string): void {
-  og.ui.holdButton("Hold", l("Delete save"), { hint: l("Hold to delete") });
   og.ui.toggleSwitch("Music", true, { label: l("Music"), description: l("Background tracks"), width: { kind: "grow" } as never });
   og.ui.numberStepper("Players", 2, { label: l("Players"), min: 1, max: 8 });
   og.ui.inputField("Name", "", { label: l("Hero name"), placeholder: l("Type a name"), helper: l("Shown to other players") });

@@ -176,9 +176,6 @@ module ui {
 | [`TabItem`](ui/type-TabItem.md) | desc struct |  | A tab. |
 | [`TabBarDesc`](ui/type-TabBarDesc.md) | desc struct |  | Tabs over the panel the game builds for the selected one. |
 | [`TabBarResult`](ui/type-TabBarResult.md) | struct |  | What a tab bar answered this tick. |
-| [`ActionHint`](ui/type-ActionHint.md) | desc struct |  | A hint of the action bar: an action, its glyph on the device in use and what it does. |
-| [`ActionHintsDesc`](ui/type-ActionHintsDesc.md) | desc struct |  | The action bar (docs/ui.md §2.1): the actions the top layer accepts, each its glyph and its hint, at an edge. |
-| [`ActionHintsResult`](ui/type-ActionHintsResult.md) | struct |  | What the action bar answered this tick. |
 | [`DataStateDesc`](ui/type-DataStateDesc.md) | desc struct |  | What a data view shows instead of its rows: loading, an error, or nothing. |
 | [`GraphNodeState`](ui/type-GraphNodeState.md) | enum |  | A graph node's state, shown by its ring and a mark as well as its colour. |
 | [`GraphNodeShape`](ui/type-GraphNodeShape.md) | enum |  | A graph node's outline. |
@@ -192,7 +189,6 @@ module ui {
 | [`og.ui.contextMenu`](ui/fn-contextMenu.md) | function | `(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice` | A menu at a point: where a right press or a long press happened. |
 | [`og.ui.sheet`](ui/fn-sheet.md) | function | `(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult` | A sheet sliding in from the bottom (resting at detents, dragged) or a side. |
 | [`og.ui.tabBar`](ui/fn-tabBar.md) | function | `(id: string, desc: TabBarDesc, build: UiItemBuild): TabBarResult` | Tabs with a sliding indicator and bumpers over the panel of the selected one. |
-| [`og.ui.actionHints`](ui/fn-actionHints.md) | function | `(id: string, desc?: ActionHintsDesc): ActionHintsResult` | The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons. |
 | [`og.ui.nodeGraph`](ui/fn-nodeGraph.md) | function | `(id: string, desc?: NodeGraphDesc): NodeGraphResult` | A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts. |
 | [`ViewFrameDesc`](ui/type-ViewFrameDesc.md) | desc struct |  | A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad. |
 | [`ViewFrameResult`](ui/type-ViewFrameResult.md) | struct |  | A view frame's turn, tilt and zoom after this tick's input, and its viewport's answer. |
@@ -202,9 +198,6 @@ module ui {
 | [`og.ui.emitter`](ui/fn-emitter.md) | function | `(id: string, desc?: EmitterDesc): void` | An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. |
 | [`EffectLayerDesc`](ui/type-EffectLayerDesc.md) | desc struct |  | A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`. |
 | [`og.ui.effectLayer`](ui/fn-effectLayer.md) | function | `(id: string, desc: EffectLayerDesc, build: UiBuild): void` | A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hi… |
-| [`HoldButtonDesc`](ui/type-HoldButtonDesc.md) | desc struct |  | A hold-to-confirm button. |
-| [`HoldResult`](ui/type-HoldResult.md) | struct |  | A hold button's state after this tick. |
-| [`og.ui.holdButton`](ui/fn-holdButton.md) | function | `(id: string, label: string, desc?: HoldButtonDesc): HoldResult` | A hold-to-confirm button: held (a press on it, a touch), it fills from its start edge over holdMs, ticking up in pitch, and confirms with the style's confirm sound and a pop; let go early, it drains … |
 | [`LabelSide`](ui/type-LabelSide.md) | enum |  | Which side of a switch or a check its label sits. |
 | [`ToggleSwitchDesc`](ui/type-ToggleSwitchDesc.md) | desc struct |  | A switch: its label, description and states. |
 | [`SwitchResult`](ui/type-SwitchResult.md) | struct |  | A switch's or a check's state after this tick. |
@@ -436,7 +429,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 3248</sub>
+<sub>Module `ui` line 3165</sub>
 
 ```ogt
 column UiMaterial {
@@ -447,4 +440,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 3255</sub>
+<sub>Module `ui` line 3172</sub>

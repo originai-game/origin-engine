@@ -26803,96 +26803,6 @@ export interface TabBarResult {
 }
 
 /**
- * A hint of the action bar: an action, its glyph on the device in use and what it does.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ActionHint {
-  /**
-   * The action's name (answered when the hint is pressed).
-   *
-   * @default ""
-   */
-  readonly action?: string;
-  /**
-   * What it does (`Buy`, `Back`).
-   *
-   * @default ""
-   */
-  readonly hint?: string;
-  /**
-   * The glyph's icon, for an action with no glyph on the device in use (a UI action's own glyph, og.ui.frameGlyph, follows the device live and wins).
-   *
-   * @default ""
-   */
-  readonly icon?: string;
-  /**
-   * The glyph as text (`Enter`, `A`, `LB`), with the same fallback as icon.
-   *
-   * @default ""
-   */
-  readonly text?: string;
-  /**
-   * It fires on a hold: a ring fills.
-   *
-   * @default false
-   */
-  readonly hold?: boolean;
-  /**
-   * How far the hold has gone.
-   *
-   * @default 0
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly progress?: number;
-}
-
-/**
- * The action bar (docs/ui.md §2.1): the actions the top layer accepts, each its glyph and its hint, at an edge.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ActionHintsDesc {
-  /**
-   * The hints, as og.ui.actionBar answers them.
-   *
-   * @default []
-   */
-  readonly hints?: readonly ActionHint[];
-  /**
-   * The edge it sits on.
-   *
-   * @default "bottomRight"
-   */
-  readonly anchor?: Anchor;
-  /**
-   * A HUD backing behind it.
-   *
-   * @default true
-   */
-  readonly background?: boolean;
-  /**
-   * What a screen reader calls it; empty is Actions.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-}
-
-/** What the action bar answered this tick. */
-export interface ActionHintsResult {
-  /** The action of the hint pressed (a touch, a click): act as if the control fired. */
-  readonly pressed: string | null;
-  /**
-   * The room it takes from its edge of the screen, the safe area under it included (as laid out last tick): a scrolling screen pads its content's end by it, so nothing hides under the bar. Under a finger it is a bar of buttons across the bottom.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly height: number;
-}
-
-/**
  * What a data view shows instead of its rows: loading, an error, or nothing.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -27172,7 +27082,6 @@ export interface NodeGraphResult {
 
 
 
-
 /**
  * A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad.
  *
@@ -27412,87 +27321,6 @@ export interface EffectLayerDesc {
    * @default []
    */
   readonly params?: readonly number[];
-}
-
-
-/**
- * A hold-to-confirm button.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface HoldButtonDesc {
-  /**
-   * Its role (danger for a destructive confirm).
-   *
-   * @default "danger"
-   */
-  readonly variant?: ButtonVariant;
-  /**
-   * Its height.
-   *
-   * @default "medium"
-   */
-  readonly size?: ControlSize;
-  /**
-   * How long the hold takes.
-   *
-   * @default 1200
-   * @range 100..
-   * @unit ms (milliseconds)
-   */
-  readonly holdMs?: number;
-  /**
-   * An icon before the label.
-   *
-   * @default ""
-   */
-  readonly icon?: string;
-  /**
-   * Shown but inert.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-  /**
-   * Its width; null fits the label.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * The hold's toggle alternative for the pointer and touch too (XAG 107): a tap starts the fill, which runs on by itself; a second tap stops it. Keys and pads always work so (Enter, Space or A start it, again stops it, moving the focus away stops it).
-   *
-   * @default false
-   */
-  readonly toggle?: boolean;
-  /**
-   * What it says while it fills (`Keep holding…`); empty keeps its label.
-   *
-   * @default ""
-   */
-  readonly holdingLabel?: string;
-  /**
-   * A line under it, what to do (`Hold to delete`); empty for none.
-   *
-   * @default ""
-   */
-  readonly hint?: string;
-}
-
-/** A hold button's state after this tick. */
-export interface HoldResult {
-  /** What happened to it. */
-  readonly response: Response;
-  /** The hold completed this tick: do the thing. */
-  readonly confirmed: boolean;
-  /** It is filling. */
-  readonly holding: boolean;
-  /**
-   * How full it is, 0 to 1 (it drains back when let go).
-   *
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly progress: number;
 }
 
 
@@ -41202,13 +41030,6 @@ export declare namespace og {
      */
     function tabBar(id: string, desc: TabBarDesc, build: UiItemBuild): TabBarResult;
     /**
-     * The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons.
-     *
-     * @param id Its id.
-     * @param desc The hints and the edge.
-     */
-    function actionHints(id: string, desc?: ActionHintsDesc): ActionHintsResult;
-    /**
      * A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts.
      * Each node is a circle, rounded square, hexagon, diamond or triangle; a node with a team (a sector map's allied and hostile systems) is filled in its side's colour, a sided node with no icon showing no letters (its shape and colour mark it). Its state shows by its ring and a mark.
      * Parts: Graph.frame (its ground's texture on <id>/Window/View/Canvas), Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out.
@@ -41239,14 +41060,6 @@ export declare namespace og {
      * @param build Builds what it draws.
      */
     function effectLayer(id: string, desc: EffectLayerDesc, build: UiBuild): void;
-    /**
-     * A hold-to-confirm button: held (a press on it, a touch), it fills from its start edge over holdMs, ticking up in pitch, and confirms with the style's confirm sound and a pop; let go early, it drains back. Keys and pads take its toggle alternative (XAG 107: activate starts it, it runs by itself, activate again or moving the focus stops it), as the pointer does with toggle. Its progress is UI state (in snapshots). Parts: `HoldButton.base[<variant>][holding][hover|pressed|focused|disabled]`, `HoldButton.fill`. Role button, its fill as its value (percent). Probe: `<id>`, `<id>/Button`, `<id>/Button/Label`, `<id>/Button/Fill`.
-     *
-     * @param id Its id.
-     * @param label Its label.
-     * @param desc Its role, time and alternative.
-     */
-    function holdButton(id: string, label: string, desc?: HoldButtonDesc): HoldResult;
     /**
      * A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Toggle.track[on|off][hover|pressed|focused|disabled]`, `Toggle.knob[on]`, `Toggle.row[hover|pressed|focused|disabled]` (the whole row, which takes the press). Role switch, checked when on. Probe: `<id>` (its label as name), `<id>/Track`, `<id>/Track/Knob`.
      *
