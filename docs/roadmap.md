@@ -131,6 +131,11 @@ Radiance Cascades were measured and not ported (`docs/design.md` §2.6).
   artifacts and an art review; `gate-presentation` (ca1742634, lane-28) is
   the quick presentation step. Crowds pass 2 and further FSR work were
   cancelled.
+- **Mobile (the owner, 2026-11-08):** the current CSS round delivers
+  `svh`/`lvh`/`dvh` and `env(safe-area-inset-*)` on both hosts; the UI
+  pilot accepts every kit at 390 px wide and by touch as well as at 1280;
+  before 0.8.0 the whole UI catalogue runs on at least one real iPhone and
+  one real Android phone.
 
 ## Open
 
