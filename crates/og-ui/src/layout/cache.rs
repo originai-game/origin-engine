@@ -84,7 +84,14 @@ pub(crate) struct TextCache {
     made: u32,
     /// What the last swept frame made ([`crate::Ui::text_measurements`]).
     measured: u32,
+    /// The kept strings past which the next sweep runs.
+    limit: usize,
 }
+
+/// Frames a measurement no frame used is kept for.
+const SWEEP_AGE: u64 = 60;
+/// The fewest kept strings a sweep leaves room for.
+const SWEEP_MIN: usize = 256;
 
 /// The kept value of `text` under `key`, or `measure`'s, kept.
 fn kept<V: Clone>(
@@ -156,23 +163,18 @@ impl TextCache {
         )
     }
 
-    /// Keeps `t`'s measurements through this frame's sweep: a node that
-    /// kept its layout (docs/ui.md §2) did not measure, but still uses them.
-    fn touch(&mut self, t: &TextContent) {
-        let frame = self.frame;
-        if let Some(list) = self.widths.get_mut(&t.text) {
-            list.iter_mut().for_each(|k| k.frame = frame);
-        }
-        if let Some(list) = self.lines.get_mut(&t.text) {
-            list.iter_mut().for_each(|k| k.frame = frame);
-        }
-    }
-
-    /// Ends a frame: what it did not measure goes.
+    /// Ends a frame. A node that keeps its layout measures nothing and
+    /// reads none of this (its lines are its own), so what no frame used
+    /// for a while goes, once the cache has grown to twice what it kept at
+    /// its last sweep: the cost follows the measurements made.
     pub(crate) fn sweep(&mut self) {
         let frame = self.frame;
-        for map in [&mut self.widths as &mut dyn Sweep, &mut self.lines] {
-            map.sweep(frame);
+        let size = self.widths.len() + self.lines.len();
+        if size > self.limit {
+            for map in [&mut self.widths as &mut dyn Sweep, &mut self.lines] {
+                map.sweep(frame.saturating_sub(SWEEP_AGE));
+            }
+            self.limit = (2 * (self.widths.len() + self.lines.len())).max(SWEEP_MIN);
         }
         self.frame += 1;
         self.measured = std::mem::take(&mut self.made);
@@ -202,9 +204,10 @@ trait Sweep {
 }
 
 impl<V> Sweep for std::collections::HashMap<String, Vec<Kept<V>>> {
+    /// Drops what was last used before `frame`.
     fn sweep(&mut self, frame: u64) {
         self.retain(|_, list| {
-            list.retain(|k| k.frame == frame);
+            list.retain(|k| k.frame >= frame);
             !list.is_empty()
         });
     }
@@ -237,6 +240,31 @@ pub(crate) struct LayoutCache {
     pub query_roots: Option<std::collections::BTreeSet<usize>>,
     /// Nodes whose laid-out size changed since they were last laid out.
     pub resized: Vec<usize>,
+    /// Lay out every node this frame (a fresh frame, or the bounded
+    /// walk's check): no subtree is left out.
+    pub full: bool,
+    /// Per node: layout reaches its children this frame (it is on a dirty
+    /// path, or in a subtree laid out whole); `visiting` lists them.
+    pub visit: Vec<bool>,
+    pub visiting: Vec<usize>,
+    /// Per node: laid out this frame (`laid` lists them, once each).
+    pub laid_mark: Vec<bool>,
+    pub laid: Vec<usize>,
+    /// Nodes laid out whole every frame: what the frame moves after
+    /// layout (a baseline row, an anchored or screen-placed element, a
+    /// placement's box) is made again from their layout, never on top of
+    /// last frame's.
+    pub forced: std::collections::BTreeSet<usize>,
+    /// Last frame's scroll containers: their offsets move their children.
+    pub scrollers: Vec<usize>,
+    /// Nodes whose children are derived again this frame (a child left).
+    pub rederive: Vec<usize>,
+    /// Nodes whose placement box was restored this frame.
+    pub restored: Vec<usize>,
+    /// Nodes `clean` holds false for (set true again next frame).
+    pub unclean: Vec<usize>,
+    /// Asks for `full` on every frame (the bounded walk's check).
+    pub whole: bool,
 }
 
 /// What the frame changes about a node's drawing without writing it again:
@@ -294,6 +322,90 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
 impl LayoutCache {
     fn is_clean(&self, i: usize) -> bool {
         self.clean.get(i).copied().unwrap_or(false)
+    }
+
+    /// Whether layout reaches node `i`'s children this frame.
+    pub(crate) fn visits(&self, i: usize) -> bool {
+        self.full || self.visit.get(i).copied().unwrap_or(false)
+    }
+
+    /// Marks `i` and its ancestors as reached; with `whole`, its subtree too.
+    pub(crate) fn reach(&mut self, nodes: &[Node], i: usize, whole: bool) {
+        if self.visit.len() < nodes.len() {
+            self.visit.resize(nodes.len(), false);
+        }
+        if whole {
+            let mut stack = vec![i];
+            while let Some(j) = stack.pop() {
+                if !self.visit[j] {
+                    self.visit[j] = true;
+                    self.visiting.push(j);
+                }
+                stack.extend_from_slice(&nodes[j].ordered_children);
+            }
+        }
+        let mut j = i;
+        while j != NONE && j < nodes.len() {
+            if self.visit[j] && j != i {
+                break;
+            }
+            if !self.visit[j] {
+                self.visit[j] = true;
+                self.visiting.push(j);
+            }
+            j = nodes[j].parent;
+        }
+    }
+
+    /// Forgets last frame's reached nodes.
+    pub(crate) fn unreach(&mut self) {
+        for i in std::mem::take(&mut self.visiting) {
+            if let Some(v) = self.visit.get_mut(i) {
+                *v = false;
+            }
+        }
+        for i in std::mem::take(&mut self.laid) {
+            if let Some(v) = self.laid_mark.get_mut(i) {
+                *v = false;
+            }
+        }
+    }
+
+    /// The preorder of `root`'s tree that layout starts from: every node
+    /// it reaches, with its children.
+    pub(crate) fn walk(&self, nodes: &[Node], root: usize) -> Vec<usize> {
+        let mut order = Vec::new();
+        let mut stack = vec![root];
+        while let Some(i) = stack.pop() {
+            order.push(i);
+            if self.visits(i) {
+                stack.extend(nodes[i].ordered_children.iter().rev());
+            }
+        }
+        order
+    }
+
+    /// Node `order[k]` lays out its children this frame after all (another
+    /// size, place or clip than its kept layout's): they follow it in the
+    /// walk, each as a subtree of its own.
+    fn open(&self, nodes: &[Node], order: &mut Vec<usize>, opened: &mut Vec<usize>, k: usize) {
+        let i = order[k];
+        if self.visits(i) || opened.contains(&i) || nodes[i].ordered_children.is_empty() {
+            return;
+        }
+        opened.push(i);
+        order.splice(k + 1..k + 1, nodes[i].ordered_children.iter().copied());
+    }
+
+    /// Records that node `i` was laid out this frame.
+    fn lay(&mut self, i: usize) {
+        if self.laid_mark.len() <= i {
+            self.laid_mark.resize(i + 1, false);
+        }
+        if !self.laid_mark[i] {
+            self.laid_mark[i] = true;
+            self.laid.push(i);
+        }
     }
 }
 
@@ -363,12 +475,13 @@ pub(crate) fn layout(
             return;
         }
     }
-    let order = preorder(nodes, root);
+    // The nodes this call lays out: the dirty paths and their children
+    // (`LayoutCache::visit`), opened further where a clean subtree is
+    // given another size, moved or clipped otherwise.
+    let mut order = kept.walk(nodes, root);
+    let mut opened: Vec<usize> = Vec::new();
     for &i in order.iter().rev() {
         if kept.is_clean(i) {
-            if let Content::Text(t) = &nodes[i].content {
-                measure.texts.touch(t);
-            }
             continue;
         }
         size_w(nodes, i, measure);
@@ -387,8 +500,9 @@ pub(crate) fn layout(
     let same_w = |nodes: &[Node], kept: &LayoutCache, i: usize| {
         kept.is_clean(i) && nodes[i].layout_size[0] == nodes[i].w
     };
-    let kids_of = |n: &Node| all_children(n);
-    for &i in &order {
+    let mut k = 0;
+    while k < order.len() {
+        let i = order[k];
         if same_w(nodes, kept, i) {
             // An auto-fit text keeps the step its lines were broken at.
             let step = nodes[i].layout_step;
@@ -397,10 +511,12 @@ pub(crate) fn layout(
             {
                 a.step = step;
             }
-            continue;
+        } else {
+            kept.laid_out += 1;
+            distribute_w(nodes, i, measure);
+            kept.open(nodes, &mut order, &mut opened, k);
         }
-        kept.laid_out += 1;
-        distribute_w(nodes, i, measure);
+        k += 1;
     }
     for &i in order.iter().rev() {
         if same_w(nodes, kept, i) {
@@ -420,26 +536,39 @@ pub(crate) fn layout(
     let same_wh = |nodes: &[Node], kept: &LayoutCache, i: usize| {
         same_w(nodes, kept, i) && nodes[i].layout_size[1] == nodes[i].h
     };
-    for &i in &order {
-        if same_wh(nodes, kept, i) {
-            continue;
+    let mut k = 0;
+    while k < order.len() {
+        let i = order[k];
+        if !same_wh(nodes, kept, i) {
+            distribute_h(nodes, i);
+            kept.open(nodes, &mut order, &mut opened, k);
         }
-        distribute_h(nodes, i);
+        k += 1;
     }
     nodes[root].x = area.x;
     nodes[root].y = area.y;
-    for &i in &order {
+    let mut k = 0;
+    while k < order.len() {
+        let i = order[k];
         if !nodes[i].scrolls() && same_wh(nodes, kept, i) {
-            for c in kids_of(&nodes[i]) {
+            for &c in &nodes[i].ordered_children.clone() {
                 nodes[c].x = nodes[i].x + nodes[c].layout_offset[0];
                 nodes[c].y = nodes[i].y + nodes[c].layout_offset[1];
             }
-            continue;
+            // Children left out keep their places while it keeps its own.
+            if [nodes[i].x, nodes[i].y] != nodes[i].laid_xy {
+                kept.open(nodes, &mut order, &mut opened, k);
+            }
+        } else {
+            position(nodes, i, scroll);
+            kept.open(nodes, &mut order, &mut opened, k);
         }
-        position(nodes, i, scroll);
+        k += 1;
     }
     nodes[root].clip = clip;
-    for &i in &order {
+    let mut k = 0;
+    while k < order.len() {
+        let i = order[k];
         let n = &nodes[i];
         let rect = Rect::new(n.x, n.y, n.w, n.h);
         let (parent_clip, src) = if n.parent == NONE || i == root {
@@ -447,14 +576,21 @@ pub(crate) fn layout(
         } else {
             let p = &nodes[n.parent];
             if p.el.scroll || p.el.scroll_x {
-                (p.clip.intersect(&p.rect), n.parent)
+                (p.laid_clip.intersect(&p.laid_rect), n.parent)
             } else {
-                (p.clip, p.clip_src)
+                (p.laid_clip, p.clip_src)
             }
         };
+        if parent_clip != nodes[i].laid_clip || src != nodes[i].clip_src {
+            kept.open(nodes, &mut order, &mut opened, k);
+        }
         nodes[i].clip = parent_clip;
+        nodes[i].laid_clip = parent_clip;
         nodes[i].clip_src = src;
         nodes[i].rect = rect.snapped(dpr);
+        nodes[i].laid_rect = nodes[i].rect;
+        nodes[i].laid_xy = [nodes[i].x, nodes[i].y];
+        kept.lay(i);
         if nodes[i].layout_size != [nodes[i].w, nodes[i].h] {
             kept.resized.push(i);
         }
@@ -476,12 +612,13 @@ pub(crate) fn layout(
                 height: (nodes[i].h - nodes[i].el.padding.vertical()).max(0.0),
             },
         );
+        k += 1;
     }
 }
 
 #[cfg(test)]
 mod text_cache {
-    use super::{Content, Rect};
+    use super::{Content, Rect, SWEEP_AGE, SWEEP_MIN};
     use crate::{Fonts, InputFrame, LabelDesc, Size, Ui, UiDesc, UiFont, Viewport};
 
     /// One frame of three labels (a wrapping one at `width`, one cut with
@@ -574,7 +711,7 @@ mod text_cache {
     }
 
     #[test]
-    fn an_unchanged_text_is_measured_once_and_a_gone_one_is_dropped() {
+    fn an_unchanged_text_is_measured_once_and_gone_ones_are_dropped() {
         let mut ui = fresh();
         frame(&mut ui, 120.0, 1);
         // Each label's widths and lines.
@@ -582,10 +719,18 @@ mod text_cache {
         assert_eq!(first, 6, "{:?}", ui.texts);
         frame(&mut ui, 120.0, 1);
         assert_eq!(ui.texts.len(), first, "the same frame keeps what it had");
-        // A new count measures the new text; the old one goes at the sweep.
-        frame(&mut ui, 120.0, 2);
-        assert_eq!(ui.texts.len(), first);
-        assert!(ui.texts.lines.contains_key("score 2"));
+        // A count that changes every frame leaves its old texts behind; they
+        // go once the cache has doubled, so it stays bounded.
+        for count in 2..2000 {
+            frame(&mut ui, 120.0, count);
+            assert_eq!(ui.text_measurements(), 2, "frame {count}");
+        }
+        assert!(
+            ui.texts.len() <= 2 * (SWEEP_MIN + 2 * SWEEP_AGE as usize),
+            "{}",
+            ui.texts.len()
+        );
+        assert!(ui.texts.lines.contains_key("score 1999"));
         assert!(!ui.texts.lines.contains_key("score 1"));
         // New fonts forget every measurement.
         let fonts = ui.fonts().clone();

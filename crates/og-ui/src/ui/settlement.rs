@@ -173,9 +173,12 @@ impl Ui {
                 self.nodes[parent].out = out;
                 self.nodes[parent].children = flow;
             }
+            // Its subtree and the path to it are laid out again.
+            self.kept.reach(&self.nodes, i, true);
             let mut at = i;
             loop {
                 self.kept.clean[at] = false;
+                self.kept.unclean.push(at);
                 let parent = self.nodes[at].parent;
                 if parent == NONE {
                     roots.insert(at);

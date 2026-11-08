@@ -84,6 +84,32 @@ impl Ui {
             &[settlement::ContainerMeasurement],
         ) -> Result<Vec<usize>, settlement::SettlementError>,
     ) -> Result<&UiFrame, settlement::SettlementError> {
+        #[cfg(debug_assertions)]
+        if self.building && !self.kept.whole && bounded::checking() {
+            let mut twin = self.clone();
+            twin.kept.whole = true;
+            let whole = twin.end_frame(&mut resolve).is_ok();
+            let bounded = self.end_frame(&mut resolve).map(|_| ());
+            assert_eq!(
+                whole,
+                bounded.is_ok(),
+                "the bounded frame settled otherwise"
+            );
+            if bounded.is_ok() {
+                bounded::compare(self, &twin);
+            }
+            return bounded.map(|()| &self.frame);
+        }
+        self.end_frame(&mut resolve)
+    }
+
+    fn end_frame(
+        &mut self,
+        resolve: &mut impl FnMut(
+            &mut Ui,
+            &[settlement::ContainerMeasurement],
+        ) -> Result<Vec<usize>, settlement::SettlementError>,
+    ) -> Result<&UiFrame, settlement::SettlementError> {
         if !self.building {
             self.warnings
                 .push("end without begin: call ui.begin() at the start of the tick".into());
@@ -106,6 +132,7 @@ impl Ui {
             if let Some((width, height, padding)) = self.nodes[i].authored_box.take() {
                 let el = &mut self.nodes[i].el;
                 (el.width, el.height, el.padding) = (width, height, padding);
+                self.kept.restored.push(i);
             }
         }
         // Breakpoint and orientation variants (docs/ui.md §2), before
@@ -114,7 +141,24 @@ impl Ui {
         self.apply_variants();
         self.apply_part_appearances();
         // Hidden slots (a closed dialog, a finished transition) take no room.
-        for i in 0..self.nodes.len() {
+        // A node's lists follow from its built children and their own
+        // props: derived again where those were written or a child left.
+        let whole = self.kept.whole
+            || self.kept.epoch != self.kept.prev_epoch
+            || self.kept.sig != Some((self.theme, self.direction, self.viewport.dpr()));
+        let derive: Vec<usize> = if whole {
+            (0..self.nodes.len()).collect()
+        } else {
+            let mut d: Vec<usize> = std::iter::once(0)
+                .chain(self.emitted.iter().flat_map(|&i| [i, self.nodes[i].parent]))
+                .chain(self.kept.rederive.iter().copied())
+                .filter(|&i| i < self.nodes.len())
+                .collect();
+            d.sort_unstable();
+            d.dedup();
+            d
+        };
+        for i in derive {
             if self.nodes[i].hidden {
                 continue;
             }
@@ -136,8 +180,21 @@ impl Ui {
         for k in 0..self.emitted.len() {
             self.prepare_layout_node(self.emitted[k]);
         }
-        for i in 0..self.nodes.len() {
-            self.apply_gutter(i);
+        // A gutter follows its node's props and last frame's scroll range.
+        if whole {
+            for i in 0..self.nodes.len() {
+                self.apply_gutter(i);
+            }
+        } else {
+            for k in 0..self.emitted.len() {
+                self.apply_gutter(self.emitted[k]);
+            }
+            for k in 0..self.kept.scrollers.len() {
+                let i = self.kept.scrollers[k];
+                if i < self.nodes.len() {
+                    self.apply_gutter(i);
+                }
+            }
         }
         self.reuse_check();
         let mut floating: Vec<usize> = self
@@ -411,7 +468,7 @@ impl Ui {
                     &mut self.kept,
                 );
             }
-            match self.settle_layout_queries(&mut settlement, layout_inputs, &mut resolve) {
+            match self.settle_layout_queries(&mut settlement, layout_inputs, &mut *resolve) {
                 Ok(true) => {}
                 Ok(false) => break,
                 Err(error) => {
@@ -428,6 +485,7 @@ impl Ui {
         for &f in &self.floating {
             order.extend(preorder(&self.nodes, f));
         }
+        self.stats.elements = order.len() as u32;
         self.align_baselines(&order);
         self.place_anchored(&order);
         for &i in &order {
@@ -436,13 +494,17 @@ impl Ui {
         if self.direction == og_i18n::Direction::Rtl {
             // Right to left: the whole layout mirrored about the surface's
             // centre, and with it each transform (moves and turns the other way).
-            for &i in &order {
+            // A node layout left out is mirrored as it was last frame.
+            for k in 0..self.kept.laid.len() {
+                let i = self.kept.laid[k];
                 let r = &mut self.nodes[i].rect;
                 r.x = vp.width - r.x - r.width;
                 // Its clip too (a scroll container's box, laid out left to right): unmirrored, it
                 // would cut away the content of a scroller off the surface's centre line.
                 let c = &mut self.nodes[i].clip;
                 c.x = vp.width - c.x - c.width;
+            }
+            for &i in &order {
                 let t = self.nodes[i].sampled.transform;
                 if !t.is_identity() {
                     self.nodes[i].sampled.transform = t.mirrored();
@@ -491,6 +553,11 @@ impl Ui {
             *v = v.clamp(0.0, self.nodes[present[k]].max_scroll_x());
         }
         // Each scroll container's ranges and bar lengths, as drawn.
+        self.kept.scrollers = order
+            .iter()
+            .copied()
+            .filter(|&i| self.nodes[i].scrolls())
+            .collect();
         let min_bar = self.theme.space.xl;
         self.state.scroll_info = IdMap::from_iter(
             order
@@ -892,13 +959,20 @@ impl Ui {
 
     /// [`UiFrame::missing_glyphs`] of a frame's commands: read from each
     /// face's metrics on the CPU, so a run with no renderer warns as one
-    /// with a GPU does.
+    /// with a GPU does. Commands kept from last frame (`kept_spans`) were
+    /// read when they were painted.
     fn missing_glyphs(
         &mut self,
         cmds: &[(DrawCmd, Affine)],
     ) -> Vec<(og_render::FontHandle, Vec<char>)> {
         let mut out: Vec<(og_render::FontHandle, Vec<char>)> = Vec::new();
-        for (c, _) in cmds {
+        let kept = std::mem::take(&mut self.kept_spans);
+        let mut spans = kept.iter().peekable();
+        for (at, (c, _)) in cmds.iter().enumerate() {
+            while spans.next_if(|r| r.end <= at).is_some() {}
+            if spans.peek().is_some_and(|r| r.contains(&at)) {
+                continue;
+            }
             let c = match c {
                 DrawCmd::StyledText { text, .. } => &**text,
                 c => c,
@@ -923,6 +997,7 @@ impl Ui {
                 }
             }
         }
+        self.kept_spans = kept;
         out
     }
 }

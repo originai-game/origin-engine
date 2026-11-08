@@ -60,6 +60,11 @@ impl Ui {
         }
         let old = &self.nodes[i];
         self.render_slots.remove(&(old.key, old.parent));
+        // Its parent derives its children without it.
+        if old.parent != NONE {
+            self.kept.rederive.push(old.parent);
+        }
+        self.kept.forced.remove(&i);
         let mut vacant = Node::new(0, String::new(), NONE, Element::default());
         vacant.hidden = true;
         let old = std::mem::replace(&mut self.nodes[i], vacant);

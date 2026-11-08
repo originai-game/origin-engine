@@ -1085,9 +1085,13 @@ impl Ui {
             }
             n.rect.x += dx;
             n.rect.y += dy;
+            n.laid_rect.x += dx;
+            n.laid_rect.y += dy;
             if n.clip_src != NONE && inside.contains(&n.clip_src) {
                 n.clip.x += dx;
                 n.clip.y += dy;
+                n.laid_clip.x += dx;
+                n.laid_clip.y += dy;
             }
         }
     }
@@ -1193,7 +1197,9 @@ impl Ui {
                 ));
                 continue;
             };
-            let tr = self.nodes[t].rect;
+            // Its target's box before a right-to-left mirror, as laid out
+            // this frame or kept from the last.
+            let tr = self.nodes[t].laid_rect;
             let n = &self.nodes[i];
             let (ax, ay) = p.anchor_at.fractions();
             let (ox, oy) = p.anchor_self.fractions();
@@ -1452,17 +1458,72 @@ impl Ui {
         k.sig = Some(sig);
         k.fresh = fresh;
         k.laid_out = 0;
+        k.full = fresh || k.whole;
+        k.unreach();
         // A retained node not written this frame keeps its own inputs.
-        k.clean = vec![!fresh; n];
+        if k.full {
+            k.clean = vec![!fresh; n];
+            k.unclean.clear();
+        } else {
+            k.clean.resize(n, true);
+            for i in std::mem::take(&mut k.unclean) {
+                if let Some(c) = k.clean.get_mut(i) {
+                    *c = true;
+                }
+            }
+        }
         let mut written = vec![false; n];
         let mut rebuilt = 0u32;
         for &i in &self.emitted {
             written[i] = true;
         }
+        // What may lay out otherwise than last frame: the nodes written
+        // again, the parents of written and removed ones, every layer and
+        // scroll container, a container query's reader, and the subtrees
+        // layout moves after it places them; with their ancestors. Every
+        // other node keeps its layout, so the walk leaves it out.
+        let roots: Vec<usize> = std::iter::once(0)
+            .chain(self.floating.iter().copied())
+            .collect();
+        if !k.full {
+            let mut sources: Vec<usize> = Vec::with_capacity(self.emitted.len() * 2);
+            for &i in &self.emitted {
+                sources.push(i);
+                sources.push(nodes[i].parent);
+            }
+            sources.extend(std::mem::take(&mut k.rederive));
+            sources.extend(roots.iter().copied());
+            sources.extend(k.scrollers.iter().copied());
+            for &i in &self.emitted {
+                let a = &nodes[i];
+                let moved = a.props.position == Position::Anchored
+                    || a.props.position == Position::Screen
+                    || a.props.variants.iter().any(|v| v.when.container)
+                    || (a.el.cross == crate::layout::Cross::Baseline
+                        && a.el.direction == crate::layout::Direction::Row);
+                if moved {
+                    k.forced.insert(i);
+                } else {
+                    k.forced.remove(&i);
+                }
+            }
+            let restored = std::mem::take(&mut k.restored);
+            for i in sources {
+                if i < n {
+                    k.reach(nodes, i, false);
+                }
+            }
+            let forced: Vec<usize> = k.forced.iter().copied().collect();
+            for i in forced.into_iter().chain(restored) {
+                if i < n && nodes[i].key != 0 {
+                    k.reach(nodes, i, true);
+                }
+            }
+        }
         // Children before parents: the reverse of a preorder of every tree.
-        let mut order = preorder(nodes, 0);
-        for &f in &self.floating {
-            order.extend(preorder(nodes, f));
+        let mut order = Vec::new();
+        for &r in &roots {
+            order.extend(k.walk(nodes, r));
         }
         for &i in order.iter().rev() {
             let a = &nodes[i];
@@ -1470,6 +1531,7 @@ impl Ui {
                 let Some(b) = k.prev.get(&i) else {
                     rebuilt += 1;
                     k.clean[i] = false;
+                    k.unclean.push(i);
                     continue;
                 };
                 let same_layout = crate::layout::el_layout_eq(&a.el, &b.el)
@@ -1511,6 +1573,9 @@ impl Ui {
                                         && child.float == old.float
                                 }))
                 });
+            if !k.clean[i] {
+                k.unclean.push(i);
+            }
         }
         for &i in &self.emitted {
             if let Some(previous) = k.prev.get(&i) {
@@ -1518,7 +1583,6 @@ impl Ui {
             }
         }
         self.stats = LayoutStats {
-            elements: order.len() as u32,
             rebuilt,
             bindings: self.docs.retained.evaluated as u32,
             reconciled: self.docs.retained.reconciled as u32,

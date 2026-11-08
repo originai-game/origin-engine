@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "A frame lays out only the paths to what changed: the nodes written again, the parents of written and removed ones, layers, scroll containers and container-query readers, and their ancestors. A clean subtree is reached only when it gets another size, place or clip. Baseline rows and anchored, screen-placed and resized-box elements are laid out whole every frame, so what the frame moves after layout is never applied twice. Missing glyphs are read only from newly painted commands, and kept text measurements are swept when the cache doubles instead of every frame."
+    }
+  ]
+}

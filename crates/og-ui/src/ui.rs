@@ -1,5 +1,7 @@
 //! The immediate-mode context: build a tree every tick, read responses back.
 
+#[cfg(debug_assertions)]
+mod bounded;
 mod build;
 mod commands;
 mod configure;
@@ -445,6 +447,8 @@ pub struct Ui {
     pub(crate) warnings: Vec<String>,
     /// The (face, character) pairs [`UiFrame::missing_glyphs`] named.
     pub(crate) glyphs_missed: std::collections::BTreeSet<(og_render::FontHandle, char)>,
+    /// This frame's command ranges kept from last frame's paint, in order.
+    pub(crate) kept_spans: Vec<std::ops::Range<usize>>,
     pub(crate) building: bool,
     pub(crate) state: State,
     pub(crate) frame: UiFrame,

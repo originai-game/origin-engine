@@ -120,11 +120,18 @@ impl Ui {
             };
             n.screen = n.world.map_rect(&r);
         }
+        // A transformed scroll container's clip moves with it: made from
+        // the clip layout gave (mirrored right to left), so a node layout
+        // left out is not moved twice.
+        let mirror = (self.direction == og_i18n::Direction::Rtl).then_some(self.viewport.width);
         for &i in order {
             let src = self.nodes[i].clip_src;
             if src != NONE && !self.nodes[src].world.is_identity() {
                 let w = self.nodes[src].world;
-                let c = self.nodes[i].clip;
+                let mut c = self.nodes[i].laid_clip;
+                if let Some(width) = mirror {
+                    c.x = width - c.x - c.width;
+                }
                 self.nodes[i].clip = w.map_rect(&c);
             }
         }
@@ -158,6 +165,7 @@ impl Ui {
             Default::default(),
         );
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
+        self.kept_spans.clear();
         let mut written = vec![false; self.nodes.len()];
         for &i in &self.emitted {
             written[i] = true;
@@ -255,10 +263,19 @@ impl Ui {
                     d.style_text(&theme, &mut local, grid);
                 }
                 next.insert(self.nodes[i].key, (background, local.clone(), sig));
+                let kept_at = same[i].then_some(local.len());
                 let mut local = local.into_iter().map(|c| (c, world));
+                let from = cmds.len();
                 cmds.extend(local.by_ref().take(background));
+                let behind = cmds.len();
                 cmds.extend(over_background(self));
+                let over = cmds.len();
                 cmds.extend(local);
+                // Kept commands were read for missing glyphs when painted.
+                if kept_at.is_some() {
+                    self.kept_spans.push(from..behind);
+                    self.kept_spans.push(over..cmds.len());
+                }
             } else {
                 cmds.extend(over_background(self));
             }
@@ -379,6 +396,8 @@ impl Ui {
                         nj.rect,
                         nj.clip,
                     );
+                    // Every later command moves one place: no span is kept.
+                    self.kept_spans.retain(|r| r.end <= first);
                     cmds.insert(first, (begin, nj.world));
                     cmds.push((end, nj.world));
                 }

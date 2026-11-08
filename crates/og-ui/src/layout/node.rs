@@ -472,6 +472,12 @@ pub(crate) struct Node {
     pub layout_size: [f32; 2],
     pub layout_offset: [f32; 2],
     pub layout_step: Option<TypeStep>,
+    /// What layout last gave it before the frame moved it (a right-to-left
+    /// mirror, a transformed scroller's clip): its place, its box (with a
+    /// baseline or anchor shift) and its clip.
+    pub laid_xy: [f32; 2],
+    pub laid_rect: Rect,
+    pub laid_clip: Rect,
 }
 
 impl Node {
@@ -556,6 +562,9 @@ impl Node {
             layout_size: [0.0; 2],
             layout_offset: [0.0; 2],
             layout_step: None,
+            laid_xy: [f32::NAN; 2],
+            laid_rect: Rect::default(),
+            laid_clip: Rect::default(),
         }
     }
 
@@ -568,6 +577,9 @@ impl Node {
         self.y = previous.y;
         self.layout_size = previous.layout_size;
         self.layout_offset = previous.layout_offset;
+        self.laid_xy = previous.laid_xy;
+        self.laid_rect = previous.laid_rect;
+        self.laid_clip = previous.laid_clip;
         if !clean {
             return;
         }
