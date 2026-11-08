@@ -841,13 +841,14 @@ const CARD_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout 
     attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32x4],
 };
 
-/// What a chunk was built from: the scatter, its terrain's placement and
-/// data, the mesh and material, and the chunk's place.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct ChunkKey {
+/// What a scatter's chunks were built from, the same for all of them: its
+/// terrain's data and placement, the placement's parameters, the layers
+/// and the mesh.
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct ScatterKey {
     data: usize,
-    /// The data's revision, and for a streamed terrain the tiles under the chunk.
-    source: (u64, Vec<usize>),
+    /// The data's revision.
+    revision: u64,
     /// The placement's parameters: the scatter's, the scatters' placed
     /// before it and, when a rule reads it, the water's (as bits).
     params: Vec<u32>,
@@ -857,6 +858,53 @@ struct ChunkKey {
     origin: [u32; 3],
     layers: Vec<u32>,
     mesh: usize,
+}
+
+/// A [`ScatterKey`] its chunks' keys share, hashed once. A frame keeps the
+/// one of the frame before while its scatter's is the same
+/// (`Scatters::shared`), so the keys a frame looks up mostly compare by
+/// pointer; any two compare by value, as the key did when every chunk
+/// carried its own copy.
+#[derive(Clone, Debug)]
+struct SharedKey {
+    key: Arc<ScatterKey>,
+    hash: u64,
+}
+
+impl SharedKey {
+    fn new(key: ScatterKey) -> Self {
+        use std::hash::{Hash, Hasher};
+        // Fixed keys: equal keys hash the same in every map.
+        let mut h = std::hash::DefaultHasher::new();
+        key.hash(&mut h);
+        SharedKey {
+            key: Arc::new(key),
+            hash: h.finish(),
+        }
+    }
+}
+
+impl PartialEq for SharedKey {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.key, &other.key) || (self.hash == other.hash && self.key == other.key)
+    }
+}
+
+impl Eq for SharedKey {}
+
+impl std::hash::Hash for SharedKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
+    }
+}
+
+/// What a chunk was built from: its scatter's [`ScatterKey`] and the
+/// chunk's place.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct ChunkKey {
+    scatter: SharedKey,
+    /// For a streamed terrain, the tiles under the chunk.
+    under: Vec<usize>,
     chunk: (u32, u32),
     /// Placed on the GPU (`scatter_place.rs`).
     gpu: bool,
@@ -1027,6 +1075,9 @@ pub(crate) struct ScatterRenderer {
     slots: u64,
     group: wgpu::BindGroup,
     chunks: HashMap<ChunkKey, Chunk>,
+    /// Per scatter (its index in the scene's), the [`SharedKey`] its
+    /// chunks were last looked up by.
+    shared: Vec<Option<SharedKey>>,
     frame: u64,
     /// Chunks built for the last frame.
     pub built: u32,
@@ -1200,6 +1251,7 @@ impl ScatterRenderer {
             slots: 4,
             group,
             chunks: HashMap::new(),
+            shared: Vec::new(),
             frame: 0,
             built: 0,
             last_tick: None,
@@ -1812,6 +1864,7 @@ impl ScatterRenderer {
                 cull.prepare(device, queue, &[]);
             }
             self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
+            self.shared.clear();
             return ScatterBatches {
                 scatters: batches,
                 impostors,
@@ -1821,6 +1874,7 @@ impl ScatterRenderer {
         let (sources, revisions) = scene.terrain_sources();
         let mut budget = CHUNKS_PER_FRAME;
         let mut gpu_budget = GPU_CHUNKS_PER_FRAME;
+        self.shared.resize(scene.scatters.len(), None);
         // Each scatter's terrain draw and parameters: what places before it.
         let placing: Vec<(usize, TerrainScatter)> = scene
             .scatters
@@ -1917,6 +1971,28 @@ impl ScatterRenderer {
                 })
                 .map(f32::to_bits)
                 .collect();
+            // Its chunks' shared key: the last frame's while it is the same.
+            let scatter_key = ScatterKey {
+                data: di,
+                revision: revisions[di],
+                params,
+                transform,
+                origin,
+                layers,
+                mesh: d.mesh.index(),
+            };
+            let kept = self.shared[si]
+                .as_ref()
+                .filter(|k| *k.key == scatter_key)
+                .cloned();
+            let shared = match kept {
+                Some(k) => k,
+                None => {
+                    let k = SharedKey::new(scatter_key);
+                    self.shared[si] = Some(k.clone());
+                    k
+                }
+            };
             let settle = !t.fade_in;
             let streamed = matches!(source, TerrainSource::Stream { .. });
             let tiles = match source {
@@ -2003,13 +2079,8 @@ impl ScatterRenderer {
                         .collect(),
                 };
                 let key_of = |under: Vec<usize>, gpu: bool| ChunkKey {
-                    data: di,
-                    source: (revisions[di], under),
-                    params: params.clone(),
-                    transform,
-                    origin,
-                    layers: layers.clone(),
-                    mesh: d.mesh.index(),
+                    scatter: shared.clone(),
+                    under,
                     chunk: (cx, cz),
                     gpu,
                 };
@@ -2770,5 +2841,43 @@ mod tests {
             near > share + 0.25,
             "a kept copy's neighbours are kept {near} of the time, the field {share}"
         );
+    }
+
+    /// Chunk keys compare by what the chunk was built from, not by the
+    /// shared copy a frame made of it: a key from another, equal copy finds
+    /// the kept chunk (a scatter changed and changed back, or placed at
+    /// another index), and any difference finds none.
+    #[test]
+    fn chunk_keys_compare_by_value() {
+        let scatter = |params: Vec<u32>| ScatterKey {
+            data: 0,
+            revision: 3,
+            params,
+            transform: [0; 16],
+            origin: [0; 3],
+            layers: vec![1, 2],
+            mesh: 4,
+        };
+        let key = |s: &SharedKey| ChunkKey {
+            scatter: s.clone(),
+            under: Vec::new(),
+            chunk: (1, 2),
+            gpu: false,
+        };
+        let a = SharedKey::new(scatter(vec![5, 6]));
+        let mut chunks = HashMap::new();
+        chunks.insert(key(&a), ());
+        let b = SharedKey::new(scatter(vec![5, 6]));
+        assert!(
+            chunks.contains_key(&key(&b)),
+            "an equal key of another copy"
+        );
+        let c = SharedKey::new(scatter(vec![5, 7]));
+        assert!(!chunks.contains_key(&key(&c)), "other parameters");
+        let gpu = ChunkKey {
+            gpu: true,
+            ..key(&a)
+        };
+        assert!(!chunks.contains_key(&gpu), "placed the other way");
     }
 }

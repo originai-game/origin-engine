@@ -207,6 +207,75 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
 /// field's spring and pressure add a little), differently from tick to
 /// tick and from copy to copy. Strength 0 and sway 0 draw what no wind
 /// draws.
+/// A scatter's chunks are kept while what placed them holds and built again
+/// when it changes: a second frame builds none, another seed builds every
+/// chunk again, back at the first seed its kept chunks are drawn again
+/// (none built), and another slope range of the layer builds them again.
+#[test]
+#[ignore = "requires GPU"]
+fn scatter_chunks_are_built_again_only_when_what_placed_them_changes() {
+    let mut scene = RenderScene::new();
+    let h = scene.add_terrain(TerrainData::flat(Vec2::splat(1024.0), 257, 257));
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer::default()],
+        cast_shadows: false,
+        ..Terrain::new(h)
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let material = scene.add_material(Material::default());
+    scene.scatters.push(og_render::ScatterDraw {
+        terrain: 0,
+        mesh: cube,
+        material,
+        scatter: TerrainScatter {
+            density: 0.03,
+            distance: 90.0,
+            scale: [3.0, 3.0],
+            seed: 5,
+            ..TerrainScatter::default()
+        },
+        cast_shadows: false,
+        impostor: None,
+        impostor_distance: 0.0,
+    });
+    scene.light.cast_shadows = false;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 100.0, 0.001),
+        target: Vec3::ZERO,
+        near: 1.0,
+        far: 500.0,
+        projection: Projection::Orthographic { height: 200.0 },
+        ..Default::default()
+    };
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut built = |scene: &RenderScene| {
+        r.render(scene, &RenderTarget::Offscreen)
+            .expect("render")
+            .scatter_built
+    };
+    let first = built(&scene);
+    assert!(first >= 4, "{first}");
+    assert_eq!(built(&scene), 0, "a second frame builds nothing");
+    scene.scatters[0].scatter.seed = 6;
+    assert_eq!(
+        built(&scene),
+        first,
+        "another seed builds every chunk again"
+    );
+    scene.scatters[0].scatter.seed = 5;
+    assert_eq!(
+        built(&scene),
+        0,
+        "back at the first seed its chunks are kept"
+    );
+    scene.terrains[0].layers[0].slope = [0.0, 45.0];
+    assert_eq!(
+        built(&scene),
+        first,
+        "another slope range builds every chunk again"
+    );
+}
+
 #[test]
 #[ignore = "requires GPU"]
 fn wind_sways_scattered_copies_downwind() {

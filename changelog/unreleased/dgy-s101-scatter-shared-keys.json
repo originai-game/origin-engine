@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: scattered copies (og.TerrainScatter)",
+      "summary": "A scatter's chunks share one key of what placed them, hashed once a frame, instead of each chunk cloning the scatter's parameters, layers and tiles into two keys and hashing them up to four times every frame. Keys still compare by value, so what is built and drawn does not change. A garden of 1072 cells: scatter prepare 258 -> 102 ms per 10 s, of which hashing 148 -> 29 ms."
+    }
+  ]
+}
