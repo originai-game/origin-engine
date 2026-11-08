@@ -270,6 +270,7 @@ Its own props, beside every element's:
 | `value` | `number` | Its value (a slider writes it back). Two-way only with an explicit bind: attribute. |
 | `min` | `number` | The range's low end. |
 | `max` | `number` | The range's high end. |
+| `show-value` | `bool` | Show the slider's value readout (default true); false when an adjacent label supplies units. |
 | `step` | `number` | Snap to multiples of this (0: continuous). |
 
 ## 17. `toggle`: A switch with a label (two-way `checked`)

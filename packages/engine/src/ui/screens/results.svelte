@@ -3,14 +3,14 @@
 <meta name="prop:won" content="bool" data-doc="The player won.">
 <meta name="prop:grade" content="string" data-doc="The grade (S, A, B …; empty: none).">
 <meta name="prop:title" content="string" data-doc="The result's line (Victory, Stage clear).">
-<meta name="prop:stats" content="list" data-doc="The stats: { name, value, best (bool) }.">
+<meta name="prop:stats" content="list" data-doc="The stats: { name, value, best (bool), format (number or percent; defaults to number) }.">
 <meta name="prop:level" content="number" data-doc="The level after the match.">
 <meta name="prop:xp" content="number" data-doc="Progress to the next level after the match, 0 to 1.">
 <meta name="prop:gained" content="number" data-doc="XP gained.">
 <meta name="prop:rewards" content="list" data-doc="The rewards: { name, amount, texture }.">
 <meta name="prop:tab" content="string" data-doc="summary, graphs or board.">
 <meta name="action:confirm" content="Continue">
-<meta name="fixture:default" content="{&quot;gained&quot;:1240,&quot;grade&quot;:&quot;A&quot;,&quot;level&quot;:18,&quot;rewards&quot;:[{&quot;amount&quot;:320,&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Gold&quot;,&quot;texture&quot;:0},{&quot;amount&quot;:1,&quot;id&quot;:&quot;item-1&quot;,&quot;name&quot;:&quot;Crate&quot;,&quot;texture&quot;:0}],&quot;stats&quot;:[{&quot;best&quot;:true,&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Score&quot;,&quot;value&quot;:48210},{&quot;best&quot;:false,&quot;id&quot;:&quot;item-1&quot;,&quot;name&quot;:&quot;Kills&quot;,&quot;value&quot;:14},{&quot;best&quot;:false,&quot;id&quot;:&quot;item-2&quot;,&quot;name&quot;:&quot;Accuracy&quot;,&quot;value&quot;:0.62}],&quot;tab&quot;:&quot;summary&quot;,&quot;title&quot;:&quot;Victory&quot;,&quot;won&quot;:true,&quot;xp&quot;:0.45}">
+<meta name="fixture:default" content="{&quot;gained&quot;:1240,&quot;grade&quot;:&quot;A&quot;,&quot;level&quot;:18,&quot;rewards&quot;:[{&quot;amount&quot;:320,&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Gold&quot;,&quot;texture&quot;:0},{&quot;amount&quot;:1,&quot;id&quot;:&quot;item-1&quot;,&quot;name&quot;:&quot;Crate&quot;,&quot;texture&quot;:0}],&quot;stats&quot;:[{&quot;best&quot;:true,&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Score&quot;,&quot;value&quot;:48210},{&quot;best&quot;:false,&quot;id&quot;:&quot;item-1&quot;,&quot;name&quot;:&quot;Kills&quot;,&quot;value&quot;:14},{&quot;best&quot;:false,&quot;format&quot;:&quot;percent&quot;,&quot;id&quot;:&quot;item-2&quot;,&quot;name&quot;:&quot;Accuracy&quot;,&quot;value&quot;:0.62}],&quot;tab&quot;:&quot;summary&quot;,&quot;title&quot;:&quot;Victory&quot;,&quot;won&quot;:true,&quot;xp&quot;:0.45}">
 
 <column id="Results">
   <column id="Panel">
@@ -35,7 +35,7 @@
               <text id="Name">{s.name}</text>
               <badge id="Best" tone="accent" hidden={!(s.best)}>{t("screen.results.best")}</badge>
               <spacer id="Node19"></spacer>
-              <text id="StatValue">{t("screen.results.StatValue", { value: formatNumber(s.value) })}</text>
+              <text id="StatValue">{t("screen.results.StatValue", { format: s.format, value: s.format == 'percent' ? s.value * 100 : s.value })}</text>
             </row>
           {/each}
         </column>

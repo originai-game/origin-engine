@@ -84,11 +84,11 @@
 #Row:hover { scale: 1.01; }
 #Row:active { scale: 0.99; }
 #Row:focus-visible { scale: 1.01; }
-#RowRank { width: 56px; font: var(--text-lg); }
+#RowRank { min-width: 56px; white-space: nowrap; font: var(--text-lg); }
 #Avatar { width: 36px; height: 36px; }
 #RowName { width: stretch; line-clamp: 1; text-overflow: ellipsis; }
 #Me { width: stretch; padding: 10px; gap: 12px; align-items: center; background: var(--panel-raised); -og-frame: card; }
-#MeRank { width: 56px; font: var(--text-lg); }
+#MeRank { min-width: 56px; white-space: nowrap; font: var(--text-lg); }
 #MeName { width: stretch; line-clamp: 1; text-overflow: ellipsis; }
 #MeScore { font: var(--text-lg); }
 </style>

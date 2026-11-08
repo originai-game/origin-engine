@@ -51,3 +51,11 @@ Do not carry sibling-local engine IDs into CSS selectors. A translated UI
 also includes interpolated units and counts: use named ICU parameters, not
 translated labels surrounding English string concatenation. Validate these
 contracts at cook time and test the rejected forms.
+
+## Reference equality is not visual review
+
+Inspect each new or changed reference at readable resolution before committing.
+Use populated screen fixtures, and label placeholder coverage separately. When
+a contact sheet suggests a defect, inspect the full-size frame and its draw
+commands before diagnosing it: the save/load Back label was present in both the
+capture and reference, despite appearing absent in the scaled contact sheet.

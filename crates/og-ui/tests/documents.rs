@@ -81,6 +81,85 @@ fn tick(ui: &mut Ui, input: InputFrame) {
 }
 
 #[test]
+fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
+    struct Messages(std::collections::BTreeMap<String, String>, Value);
+    impl bind::Env for Messages {
+        fn translate(&self, key: &str) -> Option<String> {
+            self.0.get(key).cloned()
+        }
+        fn lookup(&self, root: &str) -> Option<Value> {
+            self.1.get(root.trim_start_matches('$')).cloned()
+        }
+    }
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../packages/engine/src/ui/screens");
+    let mut failures = Vec::new();
+    for name in ["leaderboard", "results", "calibration", "save-load"] {
+        let source = std::fs::read_to_string(root.join(format!("{name}.svelte"))).unwrap();
+        let doc = UiDocument::parse(name, &source).unwrap();
+        let mut vm = doc.fixtures[0].1.clone();
+        if name == "calibration" {
+            vm["step"] = json!("offset");
+        }
+        if name == "results" {
+            let stats = vm["stats"].as_array_mut().unwrap();
+            stats.push(json!({"id":"fraction", "name":"Ratio", "value":0.375}));
+            stats.push(
+                json!({"id":"percentage", "name":"Completion", "format":"percent", "value":0.125}),
+            );
+        }
+        let table = og_i18n::StringTable::parse(
+            &std::fs::read_to_string(root.join(format!("{name}.en.ogt"))).unwrap(),
+        )
+        .unwrap();
+        let env = Messages(
+            table
+                .entries
+                .into_iter()
+                .map(|(k, (v, _))| (k, v))
+                .collect(),
+            vm.clone(),
+        );
+        for width in [390.0, 1280.0] {
+            let mut scene = og_render::RenderScene::new();
+            let mut ui = ui_with_font(add_test_font(&mut scene));
+            ui.define_document(doc.clone());
+            ui.push_screen(name, vm.clone()).unwrap();
+            for _ in 0..30 {
+                ui.begin(InputFrame::default(), Viewport::new(width, 844.0));
+                ui.build_layers(&env);
+                ui.end();
+            }
+            let lines: Vec<_> = ui
+                .frame()
+                .items
+                .iter()
+                .filter_map(|item| {
+                    if let DrawCmd::Text { text, .. } = &item.cmd {
+                        Some(text.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            let valid = match name {
+                "leaderboard" => lines.contains(&"1284th") && !lines.contains(&"1284t"),
+                "results" => ["62%", "48,210", "0.375", "12.5%"]
+                    .iter()
+                    .all(|value| lines.contains(value)),
+                "calibration" => lines.contains(&"24 ms") && !lines.contains(&"24"),
+                "save-load" => lines.contains(&"Back"),
+                _ => unreachable!(),
+            };
+            if !valid {
+                failures.push(format!("{name}/{width}: {lines:?}"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
 fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
     let source = r#"<meta name="screen" content="cascade" data-layer="hud">
 <column id="Root" class="parent">

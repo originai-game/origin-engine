@@ -148,7 +148,16 @@ fn core_documents_preserve_screen_pixels() {
                     .sum();
                 let rmse = (sum / (f64::from(width) * f64::from(height) * 3.0)).sqrt() / 255.0;
                 println!("conversion {name} {case} {width}x{height}: RMSE {rmse:.8}");
-                if reference.as_raw() != &image.pixels {
+                if reference.as_raw() != &image.pixels
+                    && std::env::var_os("OG_UI_CAPTURE").is_some()
+                {
+                    record_reference(
+                        &reference_dir("metal").join("documents").join(&filename),
+                        width,
+                        height,
+                        &image.pixels,
+                    );
+                } else if reference.as_raw() != &image.pixels {
                     failures.push(format!("{name}/{case}/{width}: {rmse:.8}"));
                 }
             }

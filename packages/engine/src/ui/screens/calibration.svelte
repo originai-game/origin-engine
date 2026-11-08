@@ -29,7 +29,7 @@
         <text id="Taps">{t("screen.calibration.Taps", { taps: $taps })}</text>
       </row>
       <row id="Manual">
-        <slider id="ManualValue" min="-200" max="200" step="1" bind:value={$offset}></slider>
+        <slider id="ManualValue" min="-200" max="200" step="1" show-value="false" bind:value={$offset}></slider>
         <text id="Ms">{t("screen.calibration.Ms", { offset: $offset })}</text>
       </row>
     </column>

@@ -7,6 +7,13 @@ run `cargo`.
 
 ## Landing: a merge queue
 
+Reference equality proves equivalence, not visual correctness. Inspect every
+new or re-recorded frame before committing it, including phone layouts and
+non-default states. Populate screen fixtures with their supplied content and
+art; keep missing-art cases as explicit placeholder tests. A reference that
+records clipping, incorrect values or broken layout is a defect, even when
+the comparison passes.
+
 Authors land their heads with `scripts/land.sh`. Start with a clean,
 committed branch. The command rebases onto fetched main and runs
 `check.sh quick` outside any landing lock, so several landers' gates

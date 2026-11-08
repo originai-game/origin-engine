@@ -608,6 +608,12 @@ pub const PROPS: &[PropSpec] = &[
     p!("min", Ty::Num, ["slider"], "The range's low end."),
     p!("max", Ty::Num, ["slider"], "The range's high end."),
     p!(
+        "showValue",
+        Ty::Bool,
+        ["slider"],
+        "Show the slider's value readout (default true); false when an adjacent label supplies units."
+    ),
+    p!(
         "stepBy",
         Ty::Num,
         ["slider"],

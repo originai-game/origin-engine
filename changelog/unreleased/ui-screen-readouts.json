@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Core screen readouts",
+      "summary": "Leaderboard ranks size to their formatted text without wrapping. Results use explicit per-stat number/percent presentation through the string table instead of rounding every stat to an integer. Calibration shows one offset value with units; slider documents expose show-value for adjacent readouts."
+    }
+  ]
+}

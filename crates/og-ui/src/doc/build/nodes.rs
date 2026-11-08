@@ -434,6 +434,7 @@ impl Ui {
                         max: r.num("max").unwrap_or(1.0),
                         step: r.num("stepBy").unwrap_or(0.0),
                         label: text_of(&r, b),
+                        show_value: !r.has("showValue") || r.flag("showValue"),
                         width: r.size("width"),
                         ..crate::widgets::ValueSliderDesc::default()
                     },
