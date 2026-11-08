@@ -316,6 +316,7 @@ fn effect_shade(f: EffectFragment, surface: texture_2d<f32>) -> vec4<f32> {
   h.eye = frame.view_pos.xyz;
   h.front = 1.0;
   h.origin = frame.origin.xyz;
+  h.wind = frame.foliage_wind[0][0];
   let p = shader_params();
   c = surface_color(h, p, c);
   c = vec4<f32>(c.rgb + surface_emissive(h, p, vec3<f32>(0.0)), c.a);

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "material shader hooks: h.wind",
+      "summary": "A material shader's hooks read og.Wind as the frame draws it: `h.wind`, xyz where it blows (horizontal, normalised), w its strength (0 without og.Wind). It is the same in the lit, prepass and shadow passes, and the previous drawn frame's where the prepass evaluates the previous position for motion vectors. A game whose own shaders sway with one wind sets og.Wind once instead of a shader parameter on every material. A garden of 1072 cells while it gusts, per 10 s: setShaderParam calls 328,860 -> 54,327, writeBuffer calls 279,918 -> 5,640, Renderer::sync 341 -> 25 ms."
+    }
+  ]
+}

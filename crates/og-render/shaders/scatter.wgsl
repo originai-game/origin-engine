@@ -35,6 +35,7 @@ fn scatter_hook(in: ScatterOut, front: bool) -> Hook {
   h.origin = frame.origin.xyz;
   h.eye = frame.view_pos.xyz;
   h.front = select(-1.0, 1.0, front);
+  h.wind = frame.foliage_wind[0][0];
   hook_front = h.front;
   return h;
 }
@@ -59,6 +60,7 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   h.origin = frame.origin.xyz;
   h.eye = frame.view_pos.xyz;
   h.front = 1.0;
+  h.wind = frame.foliage_wind[0][0];
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);
   o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, world), size > 0.0 && o.fade > 0.0);
   o.world = world.xyz;
@@ -71,6 +73,7 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   let prev_sway = scatter_sway(v.position, i.m3, scale, true);
   h.world = (model * vec4<f32>(v.position, 1.0)).xyz + prev_sway;
   h.time = frame.time.w;
+  h.wind = frame.foliage_wind[1][0];
   let previous = h.world + vertex_offset(h, previous_shader_params());
   o.prev_clip = mul_point(scatter.prev_view_proj, vec4<f32>(previous, 1.0));
   return o;

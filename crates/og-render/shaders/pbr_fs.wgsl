@@ -164,6 +164,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   hook.origin = frame.origin.xyz;
   hook.eye = frame.view_pos.xyz;
   hook.front = hook_front;
+  hook.wind = frame.foliage_wind[0][0];
   let params = shader_params();
   let base = surface_color(hook, params, look_tint(material.base_color * base_sample * in.color, in.look));
   var dissolve = vec4<f32>(0.0);

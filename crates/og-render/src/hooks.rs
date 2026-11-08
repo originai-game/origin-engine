@@ -8,7 +8,7 @@
 //! // Every hook sees the fragment (or vertex) and the shader's parameters.
 //! struct Hook { world: vec3<f32>, local: vec3<f32>, normal: vec3<f32>,
 //!               uv: vec2<f32>, color: vec4<f32>, time: f32, eye: vec3<f32>,
-//!               front: f32, origin: vec3<f32> }
+//!               front: f32, origin: vec3<f32>, wind: vec4<f32> }
 //! fn vertex_offset(h: Hook, p: Params) -> vec3<f32>              // world-space offset (0)
 //! fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> // base colour and alpha (c)
 //! fn surface_normal(h: Hook, p: Params, n: vec3<f32>) -> vec3<f32> // world normal (n)
@@ -23,7 +23,10 @@
 //! the camera is kilometres from the world's zero; add it for a pattern
 //! laid in the world); `h.front` +1 on a triangle's front face and -1
 //! on its back (three.js's `gl_FrontFacing`; the lit normal `n` is already turned
-//! towards the eye, which differs from it for normals bent away from the face). An alpha below the material's `alphaTest`
+//! towards the eye, which differs from it for normals bent away from the face); `h.wind` og.Wind as the
+//! frame draws it (`foliage::FoliageWind`'s first row, which every pass already has): xyz where it
+//! blows (horizontal, normalised), w its `strength` (0 without og.Wind), the previous drawn frame's
+//! where the prepass evaluates the previous position. An alpha below the material's `alphaTest`
 //! discards the fragment (a dissolve). The hooks apply to static and
 //! skinned meshes alike, and the shadow passes and the depth prepass see
 //! the mesh where `vertex_offset` moved it and cut where `surface_color`'s
@@ -217,6 +220,7 @@ const HOOK_STRUCT: &str = "struct Hook {
   eye: vec3<f32>,
   front: f32,
   origin: vec3<f32>,
+  wind: vec4<f32>,
 };
 // The fragment's facing (+1 front, -1 back), set by the fragment entry points
 // that know it; 1 elsewhere (vertex stages, shadow passes).

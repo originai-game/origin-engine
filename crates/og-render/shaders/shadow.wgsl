@@ -111,6 +111,8 @@ fn shadow_hook(o: VsOut) -> Hook {
   h.origin = shadow_pass.time.yzw;
   h.eye = vec3<f32>(0.0);
   h.front = 1.0;
+  // The casters' current wind (shadow_pass.wgsl): no motion here.
+  h.wind = shadow_pass.foliage_wind[0];
   return h;
 }
 
