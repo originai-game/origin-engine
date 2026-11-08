@@ -775,7 +775,7 @@ export function measureFrame(frame: UiFrameSnapshot, cell: UiCell, opts: Measure
   });
 
   // The element count.
-  add("elements", { paths: ["(frame)"], rect: null, value: f.stats.elements, unit: "elements", detail: `${f.draws} draw commands`, prop: "the screen's structure (og.ui.list virtualises long lists)" });
+  add("elements", { paths: ["(frame)"], rect: null, value: f.stats.elements, unit: "elements", detail: `${f.draws} draw commands`, prop: "the screen's structure (a document's <list> virtualises long lists)" });
   return out;
 }
 

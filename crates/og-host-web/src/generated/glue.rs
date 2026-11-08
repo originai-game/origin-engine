@@ -2134,11 +2134,6 @@ pub fn og_ui_open(id: String, desc: Option<String>) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_open_panel(id: String, desc: Option<String>) {
-    <Host as UiApi>::og_ui_open_panel(&Host, id, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_open_scroll(&Host, id, desc)
 }
@@ -2174,11 +2169,6 @@ pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_progress(id: String, value: f64, desc: Option<String>) {
-    <Host as UiApi>::og_ui_progress(&Host, id, value, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_text_field(&Host, id, value, desc)
 }
@@ -2191,11 +2181,6 @@ pub fn og_ui_text_area(id: String, value: String, desc: Option<String>) -> Strin
 #[wasm_bindgen]
 pub fn og_ui_tooltip(text: String) {
     <Host as UiApi>::og_ui_tooltip(&Host, text)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_breakpoint() -> String {
-    <Host as UiApi>::og_ui_breakpoint(&Host)
 }
 
 #[wasm_bindgen]
@@ -2331,11 +2316,6 @@ pub fn og_ui_divider(id: String, vertical: bool) {
 #[wasm_bindgen]
 pub fn og_ui_spacer(id: String, size: String) {
     <Host as UiApi>::og_ui_spacer(&Host, id, size)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_key_value(id: String, key: String, value: String, mono: bool) {
-    <Host as UiApi>::og_ui_key_value(&Host, id, key, value, mono)
 }
 
 #[wasm_bindgen]
@@ -2519,11 +2499,6 @@ pub fn og_ui_burst(desc: Option<String>) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_shake(desc: Option<String>) {
-    <Host as UiApi>::og_ui_shake(&Host, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_screen_transition(&Host, id, screen, desc)
 }
@@ -2664,11 +2639,6 @@ pub fn og_ui_semantics(desc: Option<String>) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_part_attr(key: String, value: String) -> bool {
-    <Host as UiApi>::og_ui_part_attr(&Host, key, value)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_set_draw(desc: Option<String>) {
     <Host as UiApi>::og_ui_set_draw(&Host, desc)
 }
@@ -2721,11 +2691,6 @@ pub fn og_ui_scene_viewport(id: String, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_ui_screen(name: String, vm: Option<String>) -> String {
     <Host as UiApi>::og_ui_screen(&Host, name, vm)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_component(id: String, name: String, props: Option<String>) -> String {
-    <Host as UiApi>::og_ui_component(&Host, id, name, props)
 }
 
 #[wasm_bindgen]

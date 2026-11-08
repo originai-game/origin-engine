@@ -32,4 +32,4 @@ fn richText {
 }
 ```
 
-<sub>Module `ui` line 686</sub>
+<sub>Module `ui` line 641</sub>

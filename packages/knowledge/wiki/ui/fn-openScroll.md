@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.openScroll`
 
-Open a vertical scroll container, closed by close(): og.ui.scroll without the callback.
+Open a vertical scroll container, closed by close().
 
 ```ts
 og.ui.openScroll(id: string, desc?: ScrollDesc): void
@@ -23,11 +23,11 @@ Binding symbol `og_ui_open_scroll` · publish builds: kept
 
 ```ogt
 fn openScroll {
-  doc "Open a vertical scroll container, closed by close(): og.ui.scroll without the callback."
+  doc "Open a vertical scroll container, closed by close()."
   param id String "Its id."
   param desc ScrollDesc "Its size and spacing."
   returns Void
 }
 ```
 
-<sub>Module `ui` line 611</sub>
+<sub>Module `ui` line 585</sub>

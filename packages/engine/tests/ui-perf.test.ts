@@ -36,7 +36,7 @@ function card(k: number): void {
   og.ui.label("Name", `Item ${k}`);
   og.ui.label("Price", `${100 + k * 25} gold`);
   og.ui.badge("Rarity", ["Common", "Rare", "Epic"][k % 3]!, "primary");
-  og.ui.progress("Stock", (k % 10) / 10);
+  og.ui.meter("Stock", k % 10, 10);
   og.ui.close();
   og.ui.props({
     transform: { scaleX: lifted ? 1.05 : 1, scaleY: lifted ? 1.05 : 1 },
@@ -46,7 +46,7 @@ function card(k: number): void {
 }
 
 function menu(): void {
-  og.ui.panel("Shop", {} as Api.PanelDesc, () => {
+  og.ui.column("Shop", {}, () => {
     og.ui.row("Header", {}, () => {
       og.ui.label("Title", "Shop");
       for (const t of ["Weapons", "Armour", "Potions", "Gems"]) og.ui.button(t, t);

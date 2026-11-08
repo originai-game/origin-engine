@@ -1,5 +1,5 @@
 // The game widget set's host calls (IDL module `ui`, crates/og-ui) and the
-// TypeScript sugar over them: anchor, transition, modal, list and grid take
+// TypeScript sugar over them: anchor, transition and modal take
 // a build callback and close what they open even when it throws. The
 // components (../ui) are written against `kit`, which is og.ui with these
 // members added.
@@ -45,7 +45,6 @@ function within(open: () => void, build: () => void, close: () => void): void {
 }
 
 export const widgets = {
-  breakpoint: (): Api.Breakpoint => abi().og_ui_breakpoint() as Api.Breakpoint,
   frameViewport: (): Api.Viewport => parsedOnce("viewport", abi().og_ui_frame_viewport()),
   frameTheme: (): Api.UiTheme => parsedOnce("theme", abi().og_ui_frame_theme()),
   framePointer: (): Api.UiPointer => parse(abi().og_ui_frame_pointer()),
@@ -76,21 +75,14 @@ export const widgets = {
   scrollState: (path: string): Api.ScrollState | null => parse(abi().og_ui_scroll_state(path)),
   openList: (id: string, desc?: Api.ListDesc): Api.ListRange => parse(abi().og_ui_open_list(id, json(desc))),
   openGrid: (id: string, desc?: Api.GridDesc): Api.ListRange => parse(abi().og_ui_open_grid(id, json(desc))),
-  openKeyedList: (id: string, keys: readonly string[], desc?: Api.ListDesc): Api.ListRange =>
-    parse(abi().og_ui_open_list(id, json({ ...desc, keys }))),
-  openKeyedGrid: (id: string, keys: readonly string[], desc?: Api.GridDesc): Api.ListRange =>
-    parse(abi().og_ui_open_grid(id, json({ ...desc, keys }))),
   listItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_list_item(index, selected)),
   gridItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_grid_item(index, selected)),
   closeList: (): Api.Response => parse(abi().og_ui_close_list()),
   dragging: (id: string): number | null => parse(abi().og_ui_dragging(id)),
-  list: (id: string, desc: Api.ListDesc, build: Api.UiItemBuild): Api.ListResult => items(id, desc, build, false),
-  grid: (id: string, desc: Api.GridDesc, build: Api.UiItemBuild): Api.ListResult => items(id, desc, build, true),
   chip: (id: string, text: string, desc?: Api.ChipDesc): Api.Response => parse(abi().og_ui_chip(id, text, json(desc))),
   badge: (id: string, text: string, tone: Api.Tone): void => abi().og_ui_badge(id, text, tone),
   divider: (id: string, vertical: boolean): void => abi().og_ui_divider(id, vertical),
   spacer: (id: string, size: Api.Size | null): void => abi().og_ui_spacer(id, JSON.stringify(size ?? null)),
-  keyValue: (id: string, key: string, value: string, mono: boolean): void => abi().og_ui_key_value(id, key, value, mono),
   skeleton: (id: string, desc?: Api.SkeletonDesc): void => abi().og_ui_skeleton(id, json(desc)),
   spinner: (id: string, size: number): void => abi().og_ui_spinner(id, size),
   icon: (id: string, name: string, desc?: Api.IconDesc): void => abi().og_ui_icon(id, name, json(desc)),
@@ -144,7 +136,6 @@ export const widgets = {
   meta: (id: string, desc?: Api.MetaDesc): void => abi().og_ui_meta(id, json(desc)),
   sceneViewport: (id: string, desc?: Api.SceneViewportDesc): Api.SceneViewportInfo =>
     parse(abi().og_ui_scene_viewport(id, json(desc))),
-  shake: (desc?: Api.ShakeDesc): void => abi().og_ui_shake(json(desc)),
   screenTransition: (id: string, screen: string, desc?: Api.ScreenTransitionDesc): Api.ScreenTransitionResult =>
     parse(abi().og_ui_screen_transition(id, screen, json(desc))),
   previewViewport: (world: Api.World, viewport: Api.Viewport | null): void =>
@@ -171,8 +162,6 @@ export const widgets = {
   layoutStats: (): Api.UiLayoutStats => parse(abi().og_ui_layout_stats()),
   // Documents, the layer stack, actions and glyphs (docs/ui.md §2.1, §2.1, §2.1).
   screen: (name: string, vm?: unknown): Api.UiDocResponse => parse(abi().og_ui_screen(name, json(vm))),
-  component: (id: string, name: string, props?: unknown): Api.UiDocResponse =>
-    parse(abi().og_ui_component(id, name, json(props))),
   openSlot: (path: string): boolean => abi().og_ui_open_slot(path),
   push: (world: Api.World, screen: string, vm?: unknown): Api.Result<number> =>
     parse(abi().og_ui_push(worldId(world), screen, json(vm))),
@@ -198,33 +187,6 @@ export const widgets = {
     parse(abi().og_ui_set_prop(worldId(world), path, prop, value)),
   saveEdits: (world: Api.World): Api.Result<readonly string[]> => parse(abi().og_ui_save_edits(worldId(world))),
 };
-
-/** og.ui.list / og.ui.grid: open, build the items in view, collect clicks and drops, close. */
-function items(id: string, desc: Api.ListDesc | Api.GridDesc, build: Api.UiItemBuild, grid: boolean): Api.ListResult {
-  const range = grid ? widgets.openGrid(id, desc as Api.GridDesc) : widgets.openList(id, desc as Api.ListDesc);
-  const selected = desc.selected ?? null;
-  let clicked: number | null = null;
-  let dropFrom: number | null = null;
-  let dropTo: number | null = null;
-  try {
-    for (let i = range.first; i < range.last; i++) {
-      const r = grid ? widgets.gridItem(i, i === selected) : widgets.listItem(i, i === selected);
-      if (r.clicked) clicked = i;
-      if (r.dropped !== null && r.dropped !== undefined) {
-        dropFrom = r.dropped;
-        dropTo = i;
-      }
-      try {
-        build(i);
-      } finally {
-        base.close();
-      }
-    }
-  } finally {
-    widgets.closeList();
-  }
-  return { clicked, dropFrom, dropTo };
-}
 
 /** og.ui as the templates use it: the core calls and the widget set. */
 export const kit = { ...base, ...widgets };

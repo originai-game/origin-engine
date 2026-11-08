@@ -12,24 +12,6 @@ pub fn og_ui_open(id: String, desc: Option<String>) {
     });
 }
 
-pub fn og_ui_open_panel(id: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.openPanel", |ui| {
-        let t = *ui.theme();
-        let p = PanelDesc {
-            row: d["row"].as_bool().unwrap_or(false),
-            width: size_or(&d["width"], Size::fit()),
-            height: size_or(&d["height"], Size::fit()),
-            padding: d["padding"].is_object().then(|| insets(&d["padding"])),
-            gap: d["gap"].as_f64().map(|g| g as f32),
-            align: align(&d["align"]),
-            cross: cross(&d["cross"]),
-            background: paint(&t, &d["background"]),
-        };
-        ui.open_panel(id.as_str(), p)
-    });
-}
-
 pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
     let d = desc_of(desc);
     with_ui("og.ui.openScroll", |ui| {
@@ -185,19 +167,6 @@ pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
     json!({ "zoom": zoom, "centerX": x, "centerY": y }).to_string()
 }
 
-pub fn og_ui_progress(id: String, value: f64, desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.progress", |ui| {
-        ui.progress(
-            id.as_str(),
-            value as f32,
-            ProgressDesc {
-                width: size(&d["width"]),
-            },
-        )
-    });
-}
-
 pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let mut text = value;
@@ -284,17 +253,6 @@ pub fn og_ui_burst(desc: Option<String>) {
             radius: f(&d, "radius", 0.0),
             duration_ms: f(&d, "durationMs", 0.0),
             delay_ms: f(&d, "delayMs", 0.0),
-        })
-    });
-}
-
-pub fn og_ui_shake(desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.shake", |ui| {
-        ui.shake(og_ui::ShakeDesc {
-            amount: f(&d, "amount", 0.0),
-            duration_ms: f(&d, "durationMs", 0.0),
-            sound: d["sound"].as_bool().unwrap_or(false),
         })
     });
 }

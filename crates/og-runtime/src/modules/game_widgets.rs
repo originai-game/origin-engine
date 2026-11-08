@@ -1,10 +1,5 @@
 use super::*;
 
-pub fn og_ui_breakpoint() -> String {
-    let b = with_ui("og.ui.breakpoint", |ui| ui.breakpoint()).unwrap_or_default();
-    b.name().to_string()
-}
-
 pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
     let d = desc_of(desc);
     with_ui("og.ui.openAnchor", |ui| {
@@ -132,9 +127,6 @@ fn range_json(r: ListRange) -> String {
 pub fn og_ui_open_list(id: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let r = with_ui("og.ui.openList", |ui| {
-        let changed: Vec<String> =
-            serde_json::from_value(d["changedKeys"].clone()).unwrap_or_default();
-        ui.invalidate_keyed_items(id.as_str(), &changed);
         let desc = ListDesc {
             count: idx(&d["count"]).unwrap_or(0),
             row_height: f(&d, "rowHeight", 0.0),
@@ -143,12 +135,7 @@ pub fn og_ui_open_list(id: String, desc: Option<String>) -> String {
             height: size(&d["height"]),
             padding: insets(&d["padding"]),
         };
-        if let Some(keys) = d.get("keys") {
-            let keys: Vec<String> = serde_json::from_value(keys.clone()).unwrap_or_default();
-            ui.open_keyed_list(id.as_str(), &keys, desc)
-        } else {
-            ui.open_list(id.as_str(), desc)
-        }
+        ui.open_list(id.as_str(), desc)
     });
     range_json(r.unwrap_or_default())
 }
@@ -156,9 +143,6 @@ pub fn og_ui_open_list(id: String, desc: Option<String>) -> String {
 pub fn og_ui_open_grid(id: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let r = with_ui("og.ui.openGrid", |ui| {
-        let changed: Vec<String> =
-            serde_json::from_value(d["changedKeys"].clone()).unwrap_or_default();
-        ui.invalidate_keyed_items(id.as_str(), &changed);
         let desc = GridDesc {
             count: idx(&d["count"]).unwrap_or(0),
             cell_width: f(&d, "cellWidth", 0.0),
@@ -169,12 +153,7 @@ pub fn og_ui_open_grid(id: String, desc: Option<String>) -> String {
             height: size(&d["height"]),
             padding: insets(&d["padding"]),
         };
-        if let Some(keys) = d.get("keys") {
-            let keys: Vec<String> = serde_json::from_value(keys.clone()).unwrap_or_default();
-            ui.open_keyed_grid(id.as_str(), &keys, desc)
-        } else {
-            ui.open_grid(id.as_str(), desc)
-        }
+        ui.open_grid(id.as_str(), desc)
     });
     range_json(r.unwrap_or_default())
 }
@@ -224,12 +203,6 @@ pub fn og_ui_divider(id: String, vertical: bool) {
 pub fn og_ui_spacer(id: String, s: String) {
     let v = parse(Some(&s)).unwrap_or(Value::Null);
     with_ui("og.ui.spacer", |ui| ui.spacer(id.as_str(), size(&v)));
-}
-
-pub fn og_ui_key_value(id: String, key: String, value: String, mono: bool) {
-    with_ui("og.ui.keyValue", |ui| {
-        ui.key_value(id.as_str(), &key, &value, mono)
-    });
 }
 
 pub fn og_ui_skeleton(id: String, desc: Option<String>) {
@@ -475,10 +448,6 @@ pub fn og_ui_feedback(event: String, rise: f64) {
 
 pub fn og_ui_set_haptics(intensity: f64) {
     with_ui("og.ui.setHaptics", |ui| ui.set_haptics(intensity as f32));
-}
-
-pub fn og_ui_part_attr(key: String, value: String) -> bool {
-    with_ui("og.ui.partAttr", |ui| ui.part_attr(&key, &value)).unwrap_or(false)
 }
 
 pub fn og_ui_set_navigation(on: bool) {

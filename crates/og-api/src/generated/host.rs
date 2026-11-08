@@ -971,8 +971,6 @@ pub trait UiApi: Wire {
     fn og_ui_theme(&self, world: u32) -> String;
     /// `og.ui.open`
     fn og_ui_open(&self, id: String, desc: Option<String>);
-    /// `og.ui.openPanel`
-    fn og_ui_open_panel(&self, id: String, desc: Option<String>);
     /// `og.ui.openScroll`
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>);
     /// `og.ui.close`
@@ -987,16 +985,12 @@ pub trait UiApi: Wire {
     fn og_ui_image(&self, id: String, desc: Option<String>);
     /// `og.ui.zoomView`
     fn og_ui_zoom_view(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.progress`
-    fn og_ui_progress(&self, id: String, value: f64, desc: Option<String>);
     /// `og.ui.textField`
     fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String;
     /// `og.ui.textArea`
     fn og_ui_text_area(&self, id: String, value: String, desc: Option<String>) -> String;
     /// `og.ui.tooltip`
     fn og_ui_tooltip(&self, text: String);
-    /// `og.ui.breakpoint`
-    fn og_ui_breakpoint(&self) -> String;
     /// `og.ui.framePointer`
     fn og_ui_frame_pointer(&self) -> String;
     /// `og.ui.frameCursor`
@@ -1051,8 +1045,6 @@ pub trait UiApi: Wire {
     fn og_ui_divider(&self, id: String, vertical: bool);
     /// `og.ui.spacer`
     fn og_ui_spacer(&self, id: String, size: String);
-    /// `og.ui.keyValue`
-    fn og_ui_key_value(&self, id: String, key: String, value: String, mono: bool);
     /// `og.ui.skeleton`
     fn og_ui_skeleton(&self, id: String, desc: Option<String>);
     /// `og.ui.spinner`
@@ -1125,8 +1117,6 @@ pub trait UiApi: Wire {
     fn og_ui_counter(&self, id: String, value: f64, desc: Option<String>) -> f64;
     /// `og.ui.burst`
     fn og_ui_burst(&self, desc: Option<String>);
-    /// `og.ui.shake`
-    fn og_ui_shake(&self, desc: Option<String>);
     /// `og.ui.screenTransition`
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String;
     /// `og.ui.previewViewport`
@@ -1183,8 +1173,6 @@ pub trait UiApi: Wire {
     fn og_ui_layout_stats(&self) -> String;
     /// `og.ui.semantics`
     fn og_ui_semantics(&self, desc: Option<String>) -> bool;
-    /// `og.ui.partAttr`
-    fn og_ui_part_attr(&self, key: String, value: String) -> bool;
     /// `og.ui.setDraw`
     fn og_ui_set_draw(&self, desc: Option<String>);
     /// `og.ui.openWorldAnchor`
@@ -1207,8 +1195,6 @@ pub trait UiApi: Wire {
     fn og_ui_scene_viewport(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.screen`
     fn og_ui_screen(&self, name: String, vm: Option<String>) -> String;
-    /// `og.ui.component`
-    fn og_ui_component(&self, id: String, name: String, props: Option<String>) -> String;
     /// `og.ui.openSlot`
     fn og_ui_open_slot(&self, path: String) -> bool;
     /// `og.ui.push`
@@ -1925,7 +1911,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_viewport",
     "og_ui_theme",
     "og_ui_open",
-    "og_ui_open_panel",
     "og_ui_open_scroll",
     "og_ui_close",
     "og_ui_rich_text",
@@ -1933,11 +1918,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_button",
     "og_ui_image",
     "og_ui_zoom_view",
-    "og_ui_progress",
     "og_ui_text_field",
     "og_ui_text_area",
     "og_ui_tooltip",
-    "og_ui_breakpoint",
     "og_ui_frame_pointer",
     "og_ui_frame_cursor",
     "og_ui_frame_viewport",
@@ -1965,7 +1948,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_badge",
     "og_ui_divider",
     "og_ui_spacer",
-    "og_ui_key_value",
     "og_ui_skeleton",
     "og_ui_spinner",
     "og_ui_icon",
@@ -2002,7 +1984,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_tick",
     "og_ui_counter",
     "og_ui_burst",
-    "og_ui_shake",
     "og_ui_screen_transition",
     "og_ui_preview_viewport",
     "og_ui_toggle_switch",
@@ -2031,7 +2012,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_overlaps",
     "og_ui_layout_stats",
     "og_ui_semantics",
-    "og_ui_part_attr",
     "og_ui_set_draw",
     "og_ui_open_world_anchor",
     "og_ui_open_world_panel",
@@ -2043,7 +2023,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_meta",
     "og_ui_scene_viewport",
     "og_ui_screen",
-    "og_ui_component",
     "og_ui_open_slot",
     "og_ui_push",
     "og_ui_pop",

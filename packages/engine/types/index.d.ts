@@ -24119,62 +24119,6 @@ export interface ButtonDesc {
 }
 
 /**
- * A card: panel, the panel radius, padded and spaced by the style.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface PanelDesc {
-  /**
-   * Lay children left to right (the default is top to bottom).
-   *
-   * @default false
-   */
-  readonly row?: boolean;
-  /**
-   * Its width; null fits the content.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height; null fits the content.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Space inside; null is space.lg on every side.
-   *
-   * @default null
-   */
-  readonly padding?: Insets | null;
-  /**
-   * Space between children; null is space.md.
-   *
-   * @default null
-   */
-  readonly gap?: number | null;
-  /**
-   * Where children sit along the main axis.
-   *
-   * @default "start"
-   */
-  readonly align?: Align;
-  /**
-   * Where children sit across it.
-   *
-   * @default "start"
-   */
-  readonly cross?: Cross;
-  /**
-   * Its fill; null is panel.
-   *
-   * @default null
-   */
-  readonly background?: Paint | null;
-}
-
-/**
  * Which ways a scroll container scrolls.
  * - `"vertical"`: Up and down (the default).
  * - `"horizontal"`: Left and right.
@@ -24359,20 +24303,6 @@ export interface ZoomResult {
   readonly centerX: number;
   /** The middle of what it shows, as a fraction of the picture's height (0.5 at rest). */
   readonly centerY: number;
-}
-
-/**
- * A progress bar.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ProgressDesc {
-  /**
-   * Its width; null grows into the free space.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
 }
 
 /**
@@ -24956,9 +24886,6 @@ export type UiBuild = () => void;
 
 
 
-
-
-
 /**
  * How a rich text paragraph draws: its defaults, which its markup's spans override.
  *
@@ -25028,7 +24955,6 @@ export interface TextSpan {
    */
   readonly properties: Readonly<Record<string, string | number | boolean>>;
 }
-
 
 
 
@@ -25514,12 +25440,6 @@ export interface ListDesc {
    * @default null
    */
   readonly selected?: number | null;
-  /**
-   * For openKeyedList: keys patched this tick whose old measurements must be discarded.
-   *
-   * @default []
-   */
-  readonly changedKeys?: readonly string[];
 }
 
 /** The rows (or cells) to build this tick: first up to, not including, last. */
@@ -25528,16 +25448,6 @@ export interface ListRange {
   readonly first: number;
   /** One past the last index. */
   readonly last: number;
-}
-
-/** What happened in a list or grid this tick. */
-export interface ListResult {
-  /** The row or cell pressed (or activated) this tick. */
-  readonly clicked: number | null;
-  /** A drag and drop ended: the index it started on. */
-  readonly dropFrom: number | null;
-  /** And the index it was released over. */
-  readonly dropTo: number | null;
 }
 
 /**
@@ -25606,12 +25516,6 @@ export interface GridDesc {
    * @default null
    */
   readonly selected?: number | null;
-  /**
-   * For openKeyedGrid: keys patched this tick whose old measurements must be discarded.
-   *
-   * @default []
-   */
-  readonly changedKeys?: readonly string[];
 }
 
 /**
@@ -26084,7 +25988,6 @@ export interface SkeletonDesc {
  */
 export type UiItemBuild = (index: number) => void;
 
-
 /** The primary pointer as the UI reads it this tick. */
 export interface UiPointer {
   /**
@@ -26177,11 +26080,6 @@ export interface ScrollState {
    */
   readonly contentHeight: number;
 }
-
-
-
-
-
 
 
 
@@ -26578,37 +26476,6 @@ export interface BurstDesc {
    * @unit ms (milliseconds)
    */
   readonly delayMs?: number;
-}
-
-
-/**
- * A shake of an element: three sideways swings decaying to rest.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ShakeDesc {
-  /**
-   * The first swing; 0 is the style's motion.shake, else 6.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly amount?: number;
-  /**
-   * How long it takes to come to rest; 0 is motion.duration.slow.
-   *
-   * @default 0
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly durationMs?: number;
-  /**
-   * Also play the style's error sound, as a refused press does.
-   *
-   * @default false
-   */
-  readonly sound?: boolean;
 }
 
 
@@ -38406,7 +38273,6 @@ export interface SemanticsDesc {
 
 
 
-
 /**
  * What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point.
  *
@@ -39699,7 +39565,6 @@ export interface UiActionHint {
   /** It is a hold. */
   readonly hold: boolean;
 }
-
 
 
 
@@ -46458,7 +46323,7 @@ export declare namespace og {
      */
     function style(world: World, path: string): Result<Style>;
     /**
-     * Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §3.2; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.
+     * Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §3.2; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.screen and og.ui.push name a screen and a document's own markup names a component by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.
      *
      * @param world The world whose UI uses it.
      * @param path The asset id, such as `ui/shop.ogt`.
@@ -48450,14 +48315,7 @@ export declare namespace og {
      */
     function open(id: string, desc?: ElementDesc): void;
     /**
-     * Open a card, closed by close(): og.ui.panel without the callback.
-     *
-     * @param id Its id.
-     * @param desc Its layout and look.
-     */
-    function openPanel(id: string, desc?: PanelDesc): void;
-    /**
-     * Open a vertical scroll container, closed by close(): og.ui.scroll without the callback.
+     * Open a vertical scroll container, closed by close().
      *
      * @param id Its id.
      * @param desc Its size and spacing.
@@ -48487,22 +48345,6 @@ export declare namespace og {
      * @returns Its response, for an interactive column.
      */
     function column(id: string, desc: ElementDesc, build: UiBuild): Response;
-    /**
-     * A card built by `build`: openPanel(id, desc), build(), close().
-     *
-     * @param id Its id.
-     * @param desc Its layout and look.
-     * @param build Makes its children.
-     */
-    function panel(id: string, desc: PanelDesc, build: UiBuild): void;
-    /**
-     * A vertical scroll container built by `build`: openScroll(id, desc), build(), close().
-     *
-     * @param id Its id.
-     * @param desc Its size and spacing.
-     * @param build Makes its children.
-     */
-    function scroll(id: string, desc: ScrollDesc, build: UiBuild): void;
     /**
      * A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
      *
@@ -48542,14 +48384,6 @@ export declare namespace og {
      */
     function zoomView(id: string, desc?: ZoomViewDesc): ZoomResult;
     /**
-     * A track filled to a fraction.
-     *
-     * @param id Its id.
-     * @param value How full it is, from 0 to 1.
-     * @param desc Its width.
-     */
-    function progress(id: string, value: number, desc?: ProgressDesc): void;
-    /**
      * One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
      *
      * @param id Its id.
@@ -48578,10 +48412,6 @@ export declare namespace og {
      * @param index The index.
      */
     function idi(name: string, index: number): string;
-    /**
-     * The size class of the play surface of the frame being built (desktop outside a frame).
-     */
-    function breakpoint(): Breakpoint;
     /**
      * The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts.
      */
@@ -48715,22 +48545,6 @@ export declare namespace og {
      */
     function openGrid(id: string, desc?: GridDesc): ListRange;
     /**
-     * Open a variable-height list. Ordered unique keys determine row identity and count; rowHeight estimates unbuilt rows. Build listItem(i), its content and close() for first..last, then closeList(). Measurements follow keys through edits; scroll anchors to the item in view. Keyboard/gamepad navigation builds offscreen rows. Measurements and scroll restore with the UI snapshot.
-     *
-     * @param id Its id.
-     * @param keys Ordered persistent keys, never recycled indexes.
-     * @param desc The viewport, gap and estimated height; count is ignored.
-     */
-    function openKeyedList(id: string, keys: readonly string[], desc?: ListDesc): ListRange;
-    /**
-     * Open a variable-height grid with persistent keys. Each row occupies its tallest cell; cellHeight estimates unbuilt cells. Build gridItem(i), content and close() for first..last, then closeList(). Keys, anchoring, focus and snapshots follow openKeyedList.
-     *
-     * @param id Its id.
-     * @param keys Ordered persistent unique keys.
-     * @param desc Columns, viewport and estimated cell height; count is ignored.
-     */
-    function openKeyedGrid(id: string, keys: readonly string[], desc?: GridDesc): ListRange;
-    /**
      * Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.
      *
      * @param index Its index.
@@ -48752,22 +48566,6 @@ export declare namespace og {
      * @param id The list's or grid's id.
      */
     function dragging(id: string): number | null;
-    /**
-     * A virtualised list built by `build(index)` for the rows in view.
-     *
-     * @param id Its id.
-     * @param desc Row count, size and the selected row.
-     * @param build Makes one row's content.
-     */
-    function list(id: string, desc: ListDesc, build: UiItemBuild): ListResult;
-    /**
-     * A virtualised grid built by `build(index)` for the cells in view.
-     *
-     * @param id Its id.
-     * @param desc Cell count, size, columns and the selected cell.
-     * @param build Makes one cell's content.
-     */
-    function grid(id: string, desc: GridDesc, build: UiItemBuild): ListResult;
     /**
      * A chip: a control-filled tag; selected inverts to ink. For filters and tags.
      *
@@ -48798,15 +48596,6 @@ export declare namespace og {
      * @param size Its size along both axes; null grows into the free space.
      */
     function spacer(id: string, size: Size | null): void;
-    /**
-     * A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts.
-     *
-     * @param id Its id.
-     * @param key The key.
-     * @param value The value.
-     * @param mono The value in the monospaced font (prices, ids).
-     */
-    function keyValue(id: string, key: string, value: string, mono: boolean): void;
     /**
      * A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion).
      *
@@ -49036,12 +48825,6 @@ export declare namespace og {
      * @param desc Count, ink, reach and timing.
      */
     function burst(desc?: BurstDesc): void;
-    /**
-     * Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set.
-     *
-     * @param desc Amount, duration and sound.
-     */
-    function shake(desc?: ShakeDesc): void;
     /**
      * A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.
      *
@@ -49903,14 +49686,6 @@ export declare namespace og {
      */
     function semantics(desc?: SemanticsDesc): boolean;
     /**
-     * Gives the element open now (a grid's cell, a panel, a card) a selector attribute its style dresses by: partAttr("rarity", "epic") in a bag's cell makes it `Slot.frame[rarity=epic]`, so a style that dresses the tier recolours the cell's own frame (one stroke, never a second). Call it right after the element opens, inside it.
-     *
-     * @param key The attribute's name (rarity, tone, team).
-     * @param value Its value (epic, success).
-     * @returns Whether the style dresses this part by the attribute (for any of its values, `Slot.frame[rarity=rare]` answers for every tier): false, its values draw alike, and a caller that wants a mark draws its own.
-     */
-    function partAttr(key: string, value: string): boolean;
-    /**
      * Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §3.3). Call it right after the element's open or control; immediate mode, so every tick it is drawn.
      *
      * @param desc What it draws with.
@@ -49991,14 +49766,6 @@ export declare namespace og {
      * @param vm Its viewmodel: an object (null keeps the one it has).
      */
     function screen<S extends ScreenName>(name: S, vm?: ScreenProps<S> | null): ScreenResponse<S>;
-    /**
-     * Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props.
-     *
-     * @param id The instance's root id.
-     * @param name The component's name; a name `og ui types` declared types its props and events.
-     * @param props Its props: an object.
-     */
-    function component<C extends ComponentName>(id: string, name: C, props?: ComponentProps<C> | null): ComponentResponse<C>;
     /**
      * Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick.
      *

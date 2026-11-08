@@ -274,7 +274,7 @@ pub struct Function {
     /// `None` inherits the container's publish flag.
     pub publish: Option<bool>,
     /// `false`: implemented by the TypeScript runtime over other members
-    /// (sugar such as `og.ui.panel`), so it has no binding symbol and no
+    /// (sugar such as `og.ui.column`), so it has no binding symbol and no
     /// host trait method.
     pub host: bool,
     pub line: usize,

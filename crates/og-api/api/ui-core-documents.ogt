@@ -94,17 +94,6 @@
     returns ScreenResponse.S
   }
 
-  fn component {
-    doc "Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props."
-    generic C ComponentName
-    param id String "The instance's root id."
-    param name C "The component's name; a name `og ui types` declared types its props and events."
-    param props Option.ComponentProps.C "Its props: an object." {
-      optional true
-    }
-    returns ComponentResponse.C
-  }
-
   fn openSlot {
     doc "Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick."
     param path String "Its full path, or `<screen>/<slot id>`."

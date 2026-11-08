@@ -273,19 +273,6 @@ module ui {
     field square bool "A square of the control height with no side padding: an icon button or a one-glyph label (`+`). Overrides width."
   }
 
-  struct PanelDesc {
-    doc "A card: panel, the panel radius, padded and spaced by the style."
-    desc true
-    field row bool "Lay children left to right (the default is top to bottom)."
-    field width Option.Size "Its width; null fits the content."
-    field height Option.Size "Its height; null fits the content."
-    field padding Option.Insets "Space inside; null is space.lg on every side."
-    field gap Option.f32 "Space between children; null is space.md."
-    field align Align "Where children sit along the main axis."
-    field cross Cross "Where children sit across it."
-    field background Option.Paint "Its fill; null is panel."
-  }
-
   enum ScrollAxes {
     doc "Which ways a scroll container scrolls."
     variant vertical "Up and down (the default)."
@@ -349,12 +336,6 @@ module ui {
     field zoom f32 "Its zoom: 1 shows the whole picture, 2 half of it each way."
     field centerX f32 "The middle of what it shows, as a fraction of the picture's width (0.5 at rest)."
     field centerY f32 "The middle of what it shows, as a fraction of the picture's height (0.5 at rest)."
-  }
-
-  struct ProgressDesc {
-    doc "A progress bar."
-    desc true
-    field width Option.Size "Its width; null grows into the free space."
   }
 
   struct FieldDesc {
@@ -601,15 +582,8 @@ module ui {
     returns Void
   }
 
-  fn openPanel {
-    doc "Open a card, closed by close(): og.ui.panel without the callback."
-    param id String "Its id."
-    param desc PanelDesc "Its layout and look."
-    returns Void
-  }
-
   fn openScroll {
-    doc "Open a vertical scroll container, closed by close(): og.ui.scroll without the callback."
+    doc "Open a vertical scroll container, closed by close()."
     param id String "Its id."
     param desc ScrollDesc "Its size and spacing."
     returns Void
@@ -636,25 +610,6 @@ module ui {
     param desc ElementDesc "Its layout and look; direction is column."
     param build UiBuild "Makes its children."
     returns Response "Its response, for an interactive column."
-  }
-
-  fn panel {
-    doc "A card built by `build`: openPanel(id, desc), build(), close()."
-    host false
-    param id String "Its id."
-    param desc PanelDesc "Its layout and look."
-    param build UiBuild "Makes its children."
-    returns Void
-  }
-
-  fn scroll {
-    doc "A vertical scroll container built by `build`: openScroll(id, desc), build(), close()."
-    aliases "scroll view, ScrollRect, Godot ScrollContainer, scrollable list"
-    host false
-    param id String "Its id."
-    param desc ScrollDesc "Its size and spacing."
-    param build UiBuild "Makes its children."
-    returns Void
   }
 
   struct RichTextDesc {
@@ -720,14 +675,6 @@ module ui {
     param id String "Its id."
     param desc ZoomViewDesc "The picture, its size and zoom limits."
     returns ZoomResult
-  }
-
-  fn progress {
-    doc "A track filled to a fraction."
-    param id String "Its id."
-    param value f32 "How full it is, from 0 to 1."
-    param desc ProgressDesc "Its width."
-    returns Void
   }
 
   fn textField {
@@ -973,20 +920,12 @@ module ui {
     field height Option.Size "Its height (it scrolls inside); null grows."
     field padding Insets "Space inside."
     field selected Option.u32 "The selected row (controlStrong), for og.ui.list."
-    field changedKeys List.String "For openKeyedList: keys patched this tick whose old measurements must be discarded."
   }
 
   struct ListRange {
     doc "The rows (or cells) to build this tick: first up to, not including, last."
     field first u32 "The first index."
     field last u32 "One past the last index."
-  }
-
-  struct ListResult {
-    doc "What happened in a list or grid this tick."
-    field clicked Option.u32 "The row or cell pressed (or activated) this tick."
-    field dropFrom Option.u32 "A drag and drop ended: the index it started on."
-    field dropTo Option.u32 "And the index it was released over."
   }
 
   struct GridDesc {
@@ -1010,7 +949,6 @@ module ui {
     field height Option.Size "Its height; null grows."
     field padding Insets "Space inside."
     field selected Option.u32 "The selected cell, for og.ui.grid."
-    field changedKeys List.String "For openKeyedGrid: keys patched this tick whose old measurements must be discarded."
   }
 
   struct ToastDesc {
@@ -1187,11 +1125,6 @@ module ui {
   callback UiItemBuild {
     doc "Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it."
     param index u32 "Its index."
-  }
-
-  fn breakpoint {
-    doc "The size class of the play surface of the frame being built (desktop outside a frame)."
-    returns Breakpoint
   }
 
   struct UiPointer {
@@ -1379,24 +1312,6 @@ module ui {
     returns ListRange
   }
 
-  fn openKeyedList {
-    doc "Open a variable-height list. Ordered unique keys determine row identity and count; rowHeight estimates unbuilt rows. Build listItem(i), its content and close() for first..last, then closeList(). Measurements follow keys through edits; scroll anchors to the item in view. Keyboard/gamepad navigation builds offscreen rows. Measurements and scroll restore with the UI snapshot."
-    host false
-    param id String "Its id."
-    param keys List.String "Ordered persistent keys, never recycled indexes."
-    param desc ListDesc "The viewport, gap and estimated height; count is ignored."
-    returns ListRange
-  }
-
-  fn openKeyedGrid {
-    doc "Open a variable-height grid with persistent keys. Each row occupies its tallest cell; cellHeight estimates unbuilt cells. Build gridItem(i), content and close() for first..last, then closeList(). Keys, anchoring, focus and snapshots follow openKeyedList."
-    host false
-    param id String "Its id."
-    param keys List.String "Ordered persistent unique keys."
-    param desc GridDesc "Columns, viewport and estimated cell height; count is ignored."
-    returns ListRange
-  }
-
   fn listItem {
     doc "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`."
     param index u32 "Its index."
@@ -1420,24 +1335,6 @@ module ui {
     doc "The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer."
     param id String "The list's or grid's id."
     returns Option.u32
-  }
-
-  fn list {
-    doc "A virtualised list built by `build(index)` for the rows in view."
-    host false
-    param id String "Its id."
-    param desc ListDesc "Row count, size and the selected row."
-    param build UiItemBuild "Makes one row's content."
-    returns ListResult
-  }
-
-  fn grid {
-    doc "A virtualised grid built by `build(index)` for the cells in view."
-    host false
-    param id String "Its id."
-    param desc GridDesc "Cell count, size, columns and the selected cell."
-    param build UiItemBuild "Makes one cell's content."
-    returns ListResult
   }
 
   fn chip {
@@ -1467,15 +1364,6 @@ module ui {
     doc "Empty space."
     param id String "Its id."
     param size Option.Size "Its size along both axes; null grows into the free space."
-    returns Void
-  }
-
-  fn keyValue {
-    doc "A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts."
-    param id String "Its id."
-    param key String "The key."
-    param value String "The value."
-    param mono bool "The value in the monospaced font (prices, ids)."
     returns Void
   }
 
@@ -1859,26 +1747,6 @@ module ui {
   fn burst {
     doc "Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion."
     param desc BurstDesc "Count, ink, reach and timing."
-    returns Void
-  }
-
-  struct ShakeDesc {
-    doc "A shake of an element: three sideways swings decaying to rest."
-    desc true
-    field amount f32 "The first swing; 0 is the style's motion.shake, else 6." {
-      unit cssPx
-      min 0
-    }
-    field durationMs f32 "How long it takes to come to rest; 0 is motion.duration.slow." {
-      unit ms
-      min 0
-    }
-    field sound bool "Also play the style's error sound, as a refused press does."
-  }
-
-  fn shake {
-    doc "Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set."
-    param desc ShakeDesc "Amount, duration and sound."
     returns Void
   }
 

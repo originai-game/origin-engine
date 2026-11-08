@@ -377,24 +377,6 @@ pub fn og_ui_screen(name: String, vm: Option<String>) -> String {
     .unwrap_or_else(|| response(Default::default()))
 }
 
-pub fn og_ui_component(id: String, name: String, props: Option<String>) -> String {
-    let Some(e) = building() else {
-        return response(Default::default());
-    };
-    let env = env(e);
-    let mut props = vm_of(props);
-    if props.is_null() {
-        props = Value::Object(Map::new());
-    }
-    with_ui("og.ui.component", |ui| {
-        let r = ui.component(&id, &name, &mut props, &env);
-        let mut v: Value = serde_json::from_str(&response(r)).unwrap_or(Value::Null);
-        v["props"] = props;
-        v.to_string()
-    })
-    .unwrap_or_else(|| response(Default::default()))
-}
-
 pub fn og_ui_open_slot(path: String) -> bool {
     with_ui("og.ui.openSlot", |ui| ui.open_slot(&path)).unwrap_or(false)
 }

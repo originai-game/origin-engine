@@ -2077,9 +2077,7 @@ export const ui = Object.freeze({
   viewport: (world: WorldImpl) => parse(abi().og_ui_viewport(world.id)),
   theme: (world: WorldImpl) => parse(abi().og_ui_theme(world.id)),
   open: (id: string, desc?: unknown) => abi().og_ui_open(id, json(desc)),
-  openPanel: (id: string, desc?: unknown) => abi().og_ui_open_panel(id, json(desc)),
   setDraw: (desc?: unknown) => abi().og_ui_set_draw(json(desc)),
-  partAttr: (key: string, value: string): boolean => abi().og_ui_part_attr(key, value),
   semantics: (desc?: unknown): boolean => abi().og_ui_semantics(json(desc)),
   frameDirection: (): "ltr" | "rtl" => abi().og_ui_frame_direction() as "ltr" | "rtl",
   frameCursor: (): Api.Cursor => abi().og_ui_frame_cursor() as Api.Cursor,
@@ -2093,17 +2091,10 @@ export const ui = Object.freeze({
     within(() => abi().og_ui_open(id, JSON.stringify({ ...(desc ?? {}), direction: "row" })), build),
   column: (id: string, desc: Record<string, unknown> | undefined, build: () => void) =>
     within(() => abi().og_ui_open(id, JSON.stringify({ ...(desc ?? {}), direction: "column" })), build),
-  panel: (id: string, desc: unknown, build: () => void): void => {
-    within(() => abi().og_ui_open_panel(id, json(desc)), build);
-  },
-  scroll: (id: string, desc: unknown, build: () => void): void => {
-    within(() => abi().og_ui_open_scroll(id, json(desc)), build);
-  },
   label: (id: string, text: string, desc?: unknown) => abi().og_ui_label(id, text, json(desc)),
   richText: (id: string, markup: string, desc?: unknown) => parse(abi().og_ui_rich_text(id, markup, json(desc))),
   button: (id: string, text: string, desc?: unknown) => parse(abi().og_ui_button(id, text, json(desc))),
   image: (id: string, desc?: unknown) => abi().og_ui_image(id, json(desc)),
-  progress: (id: string, value: number, desc?: unknown) => abi().og_ui_progress(id, value, json(desc)),
   textField: (id: string, value: string, desc?: unknown) => parse(abi().og_ui_text_field(id, value, json(desc))),
   textArea: (id: string, value: string, desc?: unknown) => parse(abi().og_ui_text_area(id, value, json(desc))),
   tooltip: (text: string) => abi().og_ui_tooltip(text),

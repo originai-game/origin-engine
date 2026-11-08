@@ -6654,7 +6654,7 @@
         },
         {
           "name": "document",
-          "doc": "Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §3.2; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.",
+          "doc": "Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §3.2; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.screen and og.ui.push name a screen and a document's own markup names a component by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.",
           "params": [
             {
               "name": "world",
@@ -11597,13 +11597,11 @@
         "ElementDesc",
         "LabelDesc",
         "ButtonDesc",
-        "PanelDesc",
         "ScrollAxes",
         "ScrollDesc",
         "ImageDesc",
         "ZoomViewDesc",
         "ZoomResult",
-        "ProgressDesc",
         "FieldDesc",
         "TextAreaDesc",
         "Response",
@@ -11636,7 +11634,6 @@
         "SpotlightDesc",
         "ListDesc",
         "ListRange",
-        "ListResult",
         "GridDesc",
         "ToastDesc",
         "ChipDesc",
@@ -11665,7 +11662,6 @@
         "A11yTree",
         "CounterDesc",
         "BurstDesc",
-        "ShakeDesc",
         "ScreenWipe",
         "WipeSide",
         "ScreenTransitionDesc",
@@ -12097,28 +12093,8 @@
           "publish": true
         },
         {
-          "name": "openPanel",
-          "doc": "Open a card, closed by close(): og.ui.panel without the callback.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "PanelDesc",
-              "optional": true,
-              "doc": "Its layout and look."
-            }
-          ],
-          "returns": "Void",
-          "publish": true
-        },
-        {
           "name": "openScroll",
-          "doc": "Open a vertical scroll container, closed by close(): og.ui.scroll without the callback.",
+          "doc": "Open a vertical scroll container, closed by close().",
           "params": [
             {
               "name": "id",
@@ -12197,60 +12173,6 @@
           ],
           "returns": "Response",
           "returnsDoc": "Its response, for an interactive column.",
-          "publish": true,
-          "host": false
-        },
-        {
-          "name": "panel",
-          "doc": "A card built by `build`: openPanel(id, desc), build(), close().",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "PanelDesc",
-              "optional": false,
-              "doc": "Its layout and look."
-            },
-            {
-              "name": "build",
-              "type": "UiBuild",
-              "optional": false,
-              "doc": "Makes its children."
-            }
-          ],
-          "returns": "Void",
-          "publish": true,
-          "host": false
-        },
-        {
-          "name": "scroll",
-          "doc": "A vertical scroll container built by `build`: openScroll(id, desc), build(), close().",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "ScrollDesc",
-              "optional": false,
-              "doc": "Its size and spacing."
-            },
-            {
-              "name": "build",
-              "type": "UiBuild",
-              "optional": false,
-              "doc": "Makes its children."
-            }
-          ],
-          "returns": "Void",
           "publish": true,
           "host": false
         },
@@ -12373,32 +12295,6 @@
           "publish": true
         },
         {
-          "name": "progress",
-          "doc": "A track filled to a fraction.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "value",
-              "type": "f32",
-              "optional": false,
-              "doc": "How full it is, from 0 to 1."
-            },
-            {
-              "name": "desc",
-              "type": "ProgressDesc",
-              "optional": true,
-              "doc": "Its width."
-            }
-          ],
-          "returns": "Void",
-          "publish": true
-        },
-        {
           "name": "textField",
           "doc": "One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.",
           "params": [
@@ -12484,13 +12380,6 @@
           "returns": "String",
           "publish": true,
           "host": false
-        },
-        {
-          "name": "breakpoint",
-          "doc": "The size class of the play surface of the frame being built (desktop outside a frame).",
-          "params": [],
-          "returns": "Breakpoint",
-          "publish": true
         },
         {
           "name": "framePointer",
@@ -12856,60 +12745,6 @@
           "publish": true
         },
         {
-          "name": "openKeyedList",
-          "doc": "Open a variable-height list. Ordered unique keys determine row identity and count; rowHeight estimates unbuilt rows. Build listItem(i), its content and close() for first..last, then closeList(). Measurements follow keys through edits; scroll anchors to the item in view. Keyboard/gamepad navigation builds offscreen rows. Measurements and scroll restore with the UI snapshot.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "keys",
-              "type": "List<String>",
-              "optional": false,
-              "doc": "Ordered persistent keys, never recycled indexes."
-            },
-            {
-              "name": "desc",
-              "type": "ListDesc",
-              "optional": true,
-              "doc": "The viewport, gap and estimated height; count is ignored."
-            }
-          ],
-          "returns": "ListRange",
-          "publish": true,
-          "host": false
-        },
-        {
-          "name": "openKeyedGrid",
-          "doc": "Open a variable-height grid with persistent keys. Each row occupies its tallest cell; cellHeight estimates unbuilt cells. Build gridItem(i), content and close() for first..last, then closeList(). Keys, anchoring, focus and snapshots follow openKeyedList.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "keys",
-              "type": "List<String>",
-              "optional": false,
-              "doc": "Ordered persistent unique keys."
-            },
-            {
-              "name": "desc",
-              "type": "GridDesc",
-              "optional": true,
-              "doc": "Columns, viewport and estimated cell height; count is ignored."
-            }
-          ],
-          "returns": "ListRange",
-          "publish": true,
-          "host": false
-        },
-        {
           "name": "listItem",
           "doc": "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.",
           "params": [
@@ -12969,60 +12804,6 @@
           ],
           "returns": "Option<u32>",
           "publish": true
-        },
-        {
-          "name": "list",
-          "doc": "A virtualised list built by `build(index)` for the rows in view.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "ListDesc",
-              "optional": false,
-              "doc": "Row count, size and the selected row."
-            },
-            {
-              "name": "build",
-              "type": "UiItemBuild",
-              "optional": false,
-              "doc": "Makes one row's content."
-            }
-          ],
-          "returns": "ListResult",
-          "publish": true,
-          "host": false
-        },
-        {
-          "name": "grid",
-          "doc": "A virtualised grid built by `build(index)` for the cells in view.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "GridDesc",
-              "optional": false,
-              "doc": "Cell count, size, columns and the selected cell."
-            },
-            {
-              "name": "build",
-              "type": "UiItemBuild",
-              "optional": false,
-              "doc": "Makes one cell's content."
-            }
-          ],
-          "returns": "ListResult",
-          "publish": true,
-          "host": false
         },
         {
           "name": "chip",
@@ -13111,38 +12892,6 @@
               "type": "Option<Size>",
               "optional": false,
               "doc": "Its size along both axes; null grows into the free space."
-            }
-          ],
-          "returns": "Void",
-          "publish": true
-        },
-        {
-          "name": "keyValue",
-          "doc": "A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "key",
-              "type": "String",
-              "optional": false,
-              "doc": "The key."
-            },
-            {
-              "name": "value",
-              "type": "String",
-              "optional": false,
-              "doc": "The value."
-            },
-            {
-              "name": "mono",
-              "type": "bool",
-              "optional": false,
-              "doc": "The value in the monospaced font (prices, ids)."
             }
           ],
           "returns": "Void",
@@ -13776,20 +13525,6 @@
               "type": "BurstDesc",
               "optional": true,
               "doc": "Count, ink, reach and timing."
-            }
-          ],
-          "returns": "Void",
-          "publish": true
-        },
-        {
-          "name": "shake",
-          "doc": "Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set.",
-          "params": [
-            {
-              "name": "desc",
-              "type": "ShakeDesc",
-              "optional": true,
-              "doc": "Amount, duration and sound."
             }
           ],
           "returns": "Void",
@@ -16351,27 +16086,6 @@
           "publish": true
         },
         {
-          "name": "partAttr",
-          "doc": "Gives the element open now (a grid's cell, a panel, a card) a selector attribute its style dresses by: partAttr(\"rarity\", \"epic\") in a bag's cell makes it `Slot.frame[rarity=epic]`, so a style that dresses the tier recolours the cell's own frame (one stroke, never a second). Call it right after the element opens, inside it.",
-          "params": [
-            {
-              "name": "key",
-              "type": "String",
-              "optional": false,
-              "doc": "The attribute's name (rarity, tone, team)."
-            },
-            {
-              "name": "value",
-              "type": "String",
-              "optional": false,
-              "doc": "Its value (epic, success)."
-            }
-          ],
-          "returns": "bool",
-          "returnsDoc": "Whether the style dresses this part by the attribute (for any of its values, `Slot.frame[rarity=rare]` answers for every tier): false, its values draw alike, and a caller that wants a mark draws its own.",
-          "publish": true
-        },
-        {
           "name": "setDraw",
           "doc": "Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §3.3). Call it right after the element's open or control; immediate mode, so every tick it is drawn.",
           "params": [
@@ -16598,38 +16312,6 @@
             }
           ],
           "returns": "ScreenResponse<S>",
-          "publish": true
-        },
-        {
-          "name": "component",
-          "doc": "Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props.",
-          "generics": [
-            {
-              "name": "C",
-              "bound": "ComponentName"
-            }
-          ],
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "The instance's root id."
-            },
-            {
-              "name": "name",
-              "type": "C",
-              "optional": false,
-              "doc": "The component's name; a name `og ui types` declared types its props and events."
-            },
-            {
-              "name": "props",
-              "type": "Option<ComponentProps<C>>",
-              "optional": true,
-              "doc": "Its props: an object."
-            }
-          ],
-          "returns": "ComponentResponse<C>",
           "publish": true
         },
         {
@@ -47621,90 +47303,6 @@
       },
       "additionalProperties": false
     },
-    "PanelDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A card: panel, the panel radius, padded and spaced by the style.",
-      "type": "object",
-      "properties": {
-        "row": {
-          "type": "boolean",
-          "description": "Lay children left to right (the default is top to bottom).",
-          "default": false
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null fits the content.",
-          "default": null
-        },
-        "height": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its height; null fits the content.",
-          "default": null
-        },
-        "padding": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Insets"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Space inside; null is space.lg on every side.",
-          "default": null
-        },
-        "gap": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Space between children; null is space.md.",
-          "default": null
-        },
-        "align": {
-          "$ref": "#/$defs/Align",
-          "description": "Where children sit along the main axis.",
-          "default": "start"
-        },
-        "cross": {
-          "$ref": "#/$defs/Cross",
-          "description": "Where children sit across it.",
-          "default": "start"
-        },
-        "background": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Paint"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its fill; null is panel.",
-          "default": null
-        }
-      },
-      "additionalProperties": false
-    },
     "ScrollAxes": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -48000,27 +47598,6 @@
         "centerX",
         "centerY"
       ],
-      "additionalProperties": false
-    },
-    "ProgressDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A progress bar.",
-      "type": "object",
-      "properties": {
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null grows into the free space.",
-          "default": null
-        }
-      },
       "additionalProperties": false
     },
     "FieldDesc": {
@@ -49713,14 +49290,6 @@
           ],
           "description": "The selected row (controlStrong), for og.ui.list.",
           "default": null
-        },
-        "changedKeys": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "For openKeyedList: keys patched this tick whose old measurements must be discarded.",
-          "default": []
         }
       },
       "additionalProperties": false
@@ -49747,59 +49316,6 @@
       "required": [
         "first",
         "last"
-      ],
-      "additionalProperties": false
-    },
-    "ListResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "What happened in a list or grid this tick.",
-      "type": "object",
-      "properties": {
-        "clicked": {
-          "anyOf": [
-            {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 4294967295
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The row or cell pressed (or activated) this tick."
-        },
-        "dropFrom": {
-          "anyOf": [
-            {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 4294967295
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A drag and drop ended: the index it started on."
-        },
-        "dropTo": {
-          "anyOf": [
-            {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 4294967295
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "And the index it was released over."
-        }
-      },
-      "required": [
-        "clicked",
-        "dropFrom",
-        "dropTo"
       ],
       "additionalProperties": false
     },
@@ -49891,14 +49407,6 @@
           ],
           "description": "The selected cell, for og.ui.grid.",
           "default": null
-        },
-        "changedKeys": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "For openKeyedGrid: keys patched this tick whose old measurements must be discarded.",
-          "default": []
         }
       },
       "additionalProperties": false
@@ -51101,34 +50609,6 @@
           "default": 0,
           "minimum": 0,
           "x-og-unit": "ms"
-        }
-      },
-      "additionalProperties": false
-    },
-    "ShakeDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A shake of an element: three sideways swings decaying to rest.",
-      "type": "object",
-      "properties": {
-        "amount": {
-          "type": "number",
-          "description": "The first swing; 0 is the style's motion.shake, else 6.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "durationMs": {
-          "type": "number",
-          "description": "How long it takes to come to rest; 0 is motion.duration.slow.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "ms"
-        },
-        "sound": {
-          "type": "boolean",
-          "description": "Also play the style's error sound, as a refused press does.",
-          "default": false
         }
       },
       "additionalProperties": false

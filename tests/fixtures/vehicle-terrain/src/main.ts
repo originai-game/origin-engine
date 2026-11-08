@@ -202,8 +202,9 @@ const Chase = defineSystem("Chase", { reads: [og.Transform], writes: [og.Camera]
 /** The HUD: the speed, bottom right. */
 const Hud = defineSystem("Hud", { reads: [Drive] }, (_q, _t, world) => {
   const d = must(world.resource(Drive));
+  const theme = og.ui.theme(world);
   og.ui.column("Hud", { width: GROW, height: GROW, padding: { left: 24, top: 24, right: 24, bottom: 24 }, align: "end", cross: "end" }, () =>
-    og.ui.panel("Speed", { padding: { left: 16, top: 10, right: 16, bottom: 10 } }, () => {
+    og.ui.column("Speed", { padding: { left: 16, top: 10, right: 16, bottom: 10 }, gap: theme.space.md, background: { token: "panel" }, radius: theme.radius.panel, frame: "card" }, () => {
       og.ui.label("Value", `${Math.round(d.kmh)}`, { step: "displaySm", font: "mono", nowrap: true });
       og.ui.label("Unit", "km/h", { step: "meta", color: { token: "inkMuted" } });
     }),

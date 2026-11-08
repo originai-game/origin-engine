@@ -11,7 +11,7 @@ struct Disk;
 impl Hooks for Disk {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
         if call.kind == 0 && call.id == 1 {
-            og_runtime::og_ui_open_panel("Swatch".into(), Some(json!({ "width": { "kind": "fixed", "px": 64 }, "height": { "kind": "fixed", "px": 64 } }).to_string()));
+            og_runtime::og_ui_open("Swatch".into(), Some(json!({ "frame": "card", "background": { "token": "panel" }, "width": { "kind": "fixed", "px": 64 }, "height": { "kind": "fixed", "px": 64 } }).to_string()));
             og_runtime::og_ui_close();
         }
         Ok(String::new())

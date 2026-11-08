@@ -244,7 +244,7 @@ test("a restored snapshot continues the simulation exactly", () => {
 const Clicks = defineResource("MdClicks", { n: u32(), value: f32() });
 const Panel = defineSystem("MdPanel", { writes: [Clicks] }, (_q, _t, world) => {
   const c = must(world.resource(Clicks));
-  og.ui.panel("Box", { padding: { left: 10, top: 10, right: 10, bottom: 10 } }, () => {
+  og.ui.column("Box", { padding: { left: 10, top: 10, right: 10, bottom: 10 } }, () => {
     og.ui.label("Hello", `clicks ${c.n}`);
     if (og.ui.button("Go", "Go", { variant: "primary" }).clicked) c.n += 1;
   });

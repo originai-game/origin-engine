@@ -419,8 +419,8 @@ fn vfx_add_downloads_a_signed_pack_and_refuses_anything_else() {
 
 /// `og check` types each screen and component from its document (`og ui
 /// types`): a viewmodel against the props, a list's items as its fixtures
-/// show them, the events' names (a used component's included), a
-/// component's props; a name no document has stays untyped; an edit to a
+/// show them, the events' names (a used component's included); a name
+/// no document has stays untyped; an edit to a
 /// document retypes the next check.
 ///
 /// Ways it could fail: the engine's string overload chosen before the
@@ -462,7 +462,6 @@ for (const e of og.ui.screen("shop", null).events) {
   if (e.kind === "back" && e.name === "closeShop") {}
   if (e.kind === "emit" && e.name === "buyy") {}
 }
-og.ui.component("b", "Badge", { value: "no" });
 export default og.game({});
 "#,
     )
@@ -478,13 +477,13 @@ export default og.game({});
             .map(|d| (d["line"].as_u64().unwrap(), d["code"].as_u64().unwrap()))
             .collect()
     };
-    // The string gold, the item's unknown field, the misspelt event and
-    // the component's string prop; nothing else.
-    assert_eq!(errors(), [(3, 2322), (4, 2353), (9, 2367), (11, 2322)]);
+    // The string gold, the item's unknown field and the misspelt event;
+    // nothing else.
+    assert_eq!(errors(), [(3, 2322), (4, 2353), (9, 2367)]);
     std::fs::write(dir.join("assets/ui/shop.svelte"), shop("string")).unwrap();
     assert_eq!(
         errors(),
-        [(2, 2322), (4, 2322), (4, 2353), (9, 2367), (11, 2322)],
+        [(2, 2322), (4, 2322), (4, 2353), (9, 2367)],
         "gold is a string now: the numbers are the wrong ones"
     );
 }

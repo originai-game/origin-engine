@@ -1206,9 +1206,6 @@ impl UiApi for NodeHost {
     fn og_ui_open(&self, id: String, desc: Option<String>) {
         rt::og_ui_open(id, desc)
     }
-    fn og_ui_open_panel(&self, id: String, desc: Option<String>) {
-        rt::og_ui_open_panel(id, desc)
-    }
     fn og_ui_set_draw(&self, desc: Option<String>) {
         rt::og_ui_set_draw(desc)
     }
@@ -1275,9 +1272,6 @@ impl UiApi for NodeHost {
     fn og_ui_image(&self, id: String, desc: Option<String>) {
         rt::og_ui_image(id, desc)
     }
-    fn og_ui_progress(&self, id: String, value: f64, desc: Option<String>) {
-        rt::og_ui_progress(id, value, desc)
-    }
     fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String {
         rt::og_ui_text_field(id, value, desc)
     }
@@ -1286,9 +1280,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_tooltip(&self, text: String) {
         rt::og_ui_tooltip(text)
-    }
-    fn og_ui_breakpoint(&self) -> String {
-        rt::og_ui_breakpoint()
     }
     fn og_ui_frame_theme(&self) -> String {
         rt::og_ui_frame_theme()
@@ -1326,9 +1317,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_burst(&self, desc: Option<String>) {
         rt::og_ui_burst(desc)
-    }
-    fn og_ui_shake(&self, desc: Option<String>) {
-        rt::og_ui_shake(desc)
     }
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String {
         rt::og_ui_screen_transition(id, screen, desc)
@@ -1384,9 +1372,6 @@ impl UiApi for NodeHost {
     fn og_ui_spacer(&self, id: String, size: String) {
         rt::og_ui_spacer(id, size)
     }
-    fn og_ui_key_value(&self, id: String, key: String, value: String, mono: bool) {
-        rt::og_ui_key_value(id, key, value, mono)
-    }
     fn og_ui_skeleton(&self, id: String, desc: Option<String>) {
         rt::og_ui_skeleton(id, desc)
     }
@@ -1437,9 +1422,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_feedback(&self, event: String, rise: f64) {
         rt::og_ui_feedback(event, rise)
-    }
-    fn og_ui_part_attr(&self, key: String, value: String) -> bool {
-        rt::og_ui_part_attr(key, value)
     }
     fn og_ui_set_haptics(&self, intensity: f64) {
         rt::og_ui_set_haptics(intensity)
@@ -1562,9 +1544,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_screen(&self, name: String, vm: Option<String>) -> String {
         rt::og_ui_screen(name, vm)
-    }
-    fn og_ui_component(&self, id: String, name: String, props: Option<String>) -> String {
-        rt::og_ui_component(id, name, props)
     }
     fn og_ui_open_slot(&self, path: String) -> bool {
         rt::og_ui_open_slot(path)

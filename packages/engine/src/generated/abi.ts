@@ -857,8 +857,6 @@ export interface HostAbi<A, V> {
   og_ui_theme(world: number): string;
   /** `og.ui.open` */
   og_ui_open(id: string, desc: string | undefined): void;
-  /** `og.ui.openPanel` */
-  og_ui_open_panel(id: string, desc: string | undefined): void;
   /** `og.ui.openScroll` */
   og_ui_open_scroll(id: string, desc: string | undefined): void;
   /** `og.ui.close` */
@@ -873,16 +871,12 @@ export interface HostAbi<A, V> {
   og_ui_image(id: string, desc: string | undefined): void;
   /** `og.ui.zoomView` */
   og_ui_zoom_view(id: string, desc: string | undefined): string;
-  /** `og.ui.progress` */
-  og_ui_progress(id: string, value: number, desc: string | undefined): void;
   /** `og.ui.textField` */
   og_ui_text_field(id: string, value: string, desc: string | undefined): string;
   /** `og.ui.textArea` */
   og_ui_text_area(id: string, value: string, desc: string | undefined): string;
   /** `og.ui.tooltip` */
   og_ui_tooltip(text: string): void;
-  /** `og.ui.breakpoint` */
-  og_ui_breakpoint(): string;
   /** `og.ui.framePointer` */
   og_ui_frame_pointer(): string;
   /** `og.ui.frameCursor` */
@@ -937,8 +931,6 @@ export interface HostAbi<A, V> {
   og_ui_divider(id: string, vertical: boolean): void;
   /** `og.ui.spacer` */
   og_ui_spacer(id: string, size: string): void;
-  /** `og.ui.keyValue` */
-  og_ui_key_value(id: string, key: string, value: string, mono: boolean): void;
   /** `og.ui.skeleton` */
   og_ui_skeleton(id: string, desc: string | undefined): void;
   /** `og.ui.spinner` */
@@ -1011,8 +1003,6 @@ export interface HostAbi<A, V> {
   og_ui_counter(id: string, value: number, desc: string | undefined): number;
   /** `og.ui.burst` */
   og_ui_burst(desc: string | undefined): void;
-  /** `og.ui.shake` */
-  og_ui_shake(desc: string | undefined): void;
   /** `og.ui.screenTransition` */
   og_ui_screen_transition(id: string, screen: string, desc: string | undefined): string;
   /** `og.ui.previewViewport` */
@@ -1069,8 +1059,6 @@ export interface HostAbi<A, V> {
   og_ui_layout_stats(): string;
   /** `og.ui.semantics` */
   og_ui_semantics(desc: string | undefined): boolean;
-  /** `og.ui.partAttr` */
-  og_ui_part_attr(key: string, value: string): boolean;
   /** `og.ui.setDraw` */
   og_ui_set_draw(desc: string | undefined): void;
   /** `og.ui.openWorldAnchor` */
@@ -1093,8 +1081,6 @@ export interface HostAbi<A, V> {
   og_ui_scene_viewport(id: string, desc: string | undefined): string;
   /** `og.ui.screen` */
   og_ui_screen(name: string, vm: string | undefined): string;
-  /** `og.ui.component` */
-  og_ui_component(id: string, name: string, props: string | undefined): string;
   /** `og.ui.openSlot` */
   og_ui_open_slot(path: string): boolean;
   /** `og.ui.push` */
@@ -1754,7 +1740,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_viewport",
   "og_ui_theme",
   "og_ui_open",
-  "og_ui_open_panel",
   "og_ui_open_scroll",
   "og_ui_close",
   "og_ui_rich_text",
@@ -1762,11 +1747,9 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_button",
   "og_ui_image",
   "og_ui_zoom_view",
-  "og_ui_progress",
   "og_ui_text_field",
   "og_ui_text_area",
   "og_ui_tooltip",
-  "og_ui_breakpoint",
   "og_ui_frame_pointer",
   "og_ui_frame_cursor",
   "og_ui_frame_viewport",
@@ -1794,7 +1777,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_badge",
   "og_ui_divider",
   "og_ui_spacer",
-  "og_ui_key_value",
   "og_ui_skeleton",
   "og_ui_spinner",
   "og_ui_icon",
@@ -1831,7 +1813,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_tick",
   "og_ui_counter",
   "og_ui_burst",
-  "og_ui_shake",
   "og_ui_screen_transition",
   "og_ui_preview_viewport",
   "og_ui_toggle_switch",
@@ -1860,7 +1841,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_overlaps",
   "og_ui_layout_stats",
   "og_ui_semantics",
-  "og_ui_part_attr",
   "og_ui_set_draw",
   "og_ui_open_world_anchor",
   "og_ui_open_world_panel",
@@ -1872,7 +1852,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_meta",
   "og_ui_scene_viewport",
   "og_ui_screen",
-  "og_ui_component",
   "og_ui_open_slot",
   "og_ui_push",
   "og_ui_pop",

@@ -38,8 +38,8 @@ use widgets::desc_of;
 pub(crate) use widgets::emit;
 pub use widgets::{
     og_ui_burst, og_ui_button, og_ui_close, og_ui_counter, og_ui_image, og_ui_label, og_ui_open,
-    og_ui_open_panel, og_ui_open_scroll, og_ui_progress, og_ui_rich_text, og_ui_screen_transition,
-    og_ui_shake, og_ui_text_area, og_ui_text_field, og_ui_tooltip, og_ui_zoom_view,
+    og_ui_open_scroll, og_ui_rich_text, og_ui_screen_transition, og_ui_text_area, og_ui_text_field,
+    og_ui_tooltip, og_ui_zoom_view,
 };
 mod controls;
 pub use controls::{
@@ -51,26 +51,26 @@ use crate::{art, assets, extract, ui_draw};
 pub(crate) use game_widgets::a11y_json;
 use game_widgets::ui_of;
 pub use game_widgets::{
-    og_ui_a11y, og_ui_action_button, og_ui_back, og_ui_badge, og_ui_bounds, og_ui_breakpoint,
-    og_ui_chip, og_ui_close_list, og_ui_close_modal, og_ui_cooldown, og_ui_dialogue,
-    og_ui_dismiss_toast, og_ui_divider, og_ui_dpad, og_ui_dragging, og_ui_feedback, og_ui_focus,
-    og_ui_grid_item, og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_layout_editor, og_ui_hud_reset,
-    og_ui_hud_select, og_ui_hud_step, og_ui_icon, og_ui_joystick, og_ui_key_value, og_ui_list_item,
-    og_ui_memory, og_ui_meter, og_ui_minimap, og_ui_navigate, og_ui_open_anchor, og_ui_open_grid,
-    og_ui_open_list, og_ui_open_modal, og_ui_open_transition, og_ui_part_attr,
-    og_ui_preview_viewport, og_ui_remember, og_ui_scroll_state, og_ui_set_haptics,
-    og_ui_set_hud_edit, og_ui_set_hud_layout, og_ui_set_hud_player, og_ui_set_navigation,
-    og_ui_set_players, og_ui_set_virtual_cursor, og_ui_skeleton, og_ui_spacer, og_ui_spinner,
-    og_ui_spotlight, og_ui_tick, og_ui_toast, og_ui_virtual_cursor,
+    og_ui_a11y, og_ui_action_button, og_ui_back, og_ui_badge, og_ui_bounds, og_ui_chip,
+    og_ui_close_list, og_ui_close_modal, og_ui_cooldown, og_ui_dialogue, og_ui_dismiss_toast,
+    og_ui_divider, og_ui_dpad, og_ui_dragging, og_ui_feedback, og_ui_focus, og_ui_grid_item,
+    og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_layout_editor, og_ui_hud_reset, og_ui_hud_select,
+    og_ui_hud_step, og_ui_icon, og_ui_joystick, og_ui_list_item, og_ui_memory, og_ui_meter,
+    og_ui_minimap, og_ui_navigate, og_ui_open_anchor, og_ui_open_grid, og_ui_open_list,
+    og_ui_open_modal, og_ui_open_transition, og_ui_preview_viewport, og_ui_remember,
+    og_ui_scroll_state, og_ui_set_haptics, og_ui_set_hud_edit, og_ui_set_hud_layout,
+    og_ui_set_hud_player, og_ui_set_navigation, og_ui_set_players, og_ui_set_virtual_cursor,
+    og_ui_skeleton, og_ui_spacer, og_ui_spinner, og_ui_spotlight, og_ui_tick, og_ui_toast,
+    og_ui_virtual_cursor,
 };
 
 pub(crate) mod docs;
 pub use docs::{
     og_load_document, og_ui_action, og_ui_action_bar, og_ui_action_held, og_ui_clear,
-    og_ui_component, og_ui_define_action, og_ui_device, og_ui_doc_events, og_ui_document_schema,
-    og_ui_frame_glyph, og_ui_game_input, og_ui_glyph, og_ui_layers, og_ui_open_slot, og_ui_paused,
-    og_ui_pop, og_ui_push, og_ui_replace, og_ui_save_edits, og_ui_screen, og_ui_screen_vm,
-    og_ui_set_device, og_ui_set_prop,
+    og_ui_define_action, og_ui_device, og_ui_doc_events, og_ui_document_schema, og_ui_frame_glyph,
+    og_ui_game_input, og_ui_glyph, og_ui_layers, og_ui_open_slot, og_ui_paused, og_ui_pop,
+    og_ui_push, og_ui_replace, og_ui_save_edits, og_ui_screen, og_ui_screen_vm, og_ui_set_device,
+    og_ui_set_prop,
 };
 mod motion;
 /// og.ui's world-space members (docs/ui.md §1).
@@ -95,9 +95,9 @@ use og_ui::{
     CooldownDesc, Cross, DensityMode, DialogueDesc, Direction, DpadDesc, Element, FieldDesc,
     FontRole, Fonts, GridDesc, IconAtlas, IconDesc, ImageDesc, InputFrame, Insets, JoystickDesc,
     LabelDesc, ListDesc, ListRange, MapMarker, MeterDesc, MeterKind, MinimapDesc, ModalDesc, Nav,
-    PanelDesc, Presence, ProgressDesc, Response, Scheme, ScrollDesc, SharedUi, Size, SkeletonDesc,
-    SpotlightDesc, Srgba, StylePart, TextAlign, Theme, ToastDesc, Tone, TransitionDesc,
-    TransitionKind, TypeStep, Ui, UiDesc, UiFont, Viewport,
+    Presence, Response, Scheme, ScrollDesc, SharedUi, Size, SkeletonDesc, SpotlightDesc, Srgba,
+    StylePart, TextAlign, Theme, ToastDesc, Tone, TransitionDesc, TransitionKind, TypeStep, Ui,
+    UiDesc, UiFont, Viewport,
 };
 use serde_json::{Map, Value, json};
 use std::cell::Cell;

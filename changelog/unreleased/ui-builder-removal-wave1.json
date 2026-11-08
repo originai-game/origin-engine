@@ -1,0 +1,46 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.panel, og.ui.openPanel, og.ui.PanelDesc",
+      "change": "The card builders are removed: authored UI is a document (`.svelte`) with named stores, mounted with og.ui.scope(world, id).",
+      "fix": "Write the card as a `<panel>` element in a document and bind its contents to a store (`scope.writable`). Code that still builds by hand opens a column with og.ui.open(id, { direction: \"column\", background: { token: \"panel\" }, radius: og.ui.theme(world).radius.panel, frame: \"card\", gap: og.ui.theme(world).space.md, padding }) and closes it.",
+      "find": ["og.ui.panel", "og.ui.openPanel", "PanelDesc"]
+    },
+    {
+      "member": "og.ui.scroll",
+      "change": "The callback shorthand for a scroll container is removed; og.ui.openScroll stays.",
+      "fix": "Write a `<scroll>` element in a document, or call og.ui.openScroll(id, desc), build the children and og.ui.close().",
+      "find": ["og.ui.scroll"]
+    },
+    {
+      "member": "og.ui.list, og.ui.grid, og.ui.ListResult",
+      "change": "The callback builders for virtualised lists and grids, and their result type, are removed; openList, openGrid, listItem, gridItem and closeList stay.",
+      "fix": "Write a `<list>` (or `<cells>`) in a document whose child is a keyed `{#each $rows as row (row.id)}` over a `scope.collection`; clicks and drops come back through og.ui.docEvents. Code that builds by hand loops openList/openGrid's range with listItem/gridItem, close() and closeList().",
+      "find": ["og.ui.list", "og.ui.grid", "ListResult"]
+    },
+    {
+      "member": "og.ui.progress, og.ui.ProgressDesc",
+      "change": "The progress bar builder is removed (og.story.progress is unchanged).",
+      "fix": "Write `<progress value={$loaded}>` in a document with the fraction in a writable store, or draw a gauge with og.ui.meter(id, value, max).",
+      "find": ["og.ui.progress", "ProgressDesc"]
+    },
+    {
+      "member": "og.ui.keyValue",
+      "change": "The one-row key and value builder is removed (og.ui.keyValueRows stays).",
+      "fix": "Write a row of two labels in a document (the key muted, the value at the end), or use og.ui.keyValueRows.",
+      "find": ["og.ui.keyValue"]
+    },
+    {
+      "member": "og.ui.breakpoint",
+      "change": "The function is removed; the Breakpoint enum stays, and og.ui.frameViewport().breakpoint and og.ui.viewport(world).breakpoint still answer it.",
+      "fix": "Lay a document out per size class with `@media` in its `<style>`; code reads og.ui.frameViewport().breakpoint.",
+      "find": ["og.ui.breakpoint"]
+    },
+    {
+      "member": "og.ui.shake, og.ui.ShakeDesc",
+      "change": "The element shake builder is removed (og.camera.shake is unchanged).",
+      "fix": "Declare the shake as `@keyframes` on `translate` in the document's `<style>` and toggle it with `class:shake={$wrong}` from a store.",
+      "find": ["og.ui.shake", "ShakeDesc"]
+    }
+  ]
+}
