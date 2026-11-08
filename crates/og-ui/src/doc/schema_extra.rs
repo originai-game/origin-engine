@@ -6,6 +6,11 @@ use super::schema::{KindSpec, On, PropSpec, Ty};
 
 pub const KINDS: &[KindSpec] = &[
     KindSpec {
+        name: "viewport",
+        container: false,
+        doc: "A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit=\"30deg 75deg 3m\" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene.",
+    },
+    KindSpec {
         name: "svg",
         container: true,
         doc: "Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size).",
@@ -32,6 +37,10 @@ pub const KINDS: &[KindSpec] = &[
 pub(super) fn tags(kind: &str) -> Option<Vec<(String, String)>> {
     let one = |tag: &str, example: &str| Some(vec![(tag.to_string(), example.to_string())]);
     match kind {
+        "viewport" => one(
+            "viewport",
+            "<viewport id=\"Preview\" src={$target} camera-orbit=\"30deg 75deg 3m\" bind:clientWidth={$w} onpointermove={orbit} />",
+        ),
         "svg" => one(
             "svg",
             "<svg id=\"Name\" viewBox=\"0 0 40 40\">…</svg>",
@@ -120,6 +129,48 @@ macro_rules! svg {
 }
 
 pub const PROPS: &[PropSpec] = &[
+    PropSpec {
+        name: "viewportSrc",
+        ty: Ty::Num,
+        on: On::Kinds(&["viewport"]),
+        two_way: false,
+        doc: "The render target its camera draws into (`src={$target}`, the target's colour texture handle).",
+    },
+    PropSpec {
+        name: "cameraOrbit",
+        ty: Ty::Text,
+        on: On::Kinds(&["viewport"]),
+        two_way: false,
+        doc: "`<model-viewer>`'s camera-orbit: yaw, pitch from straight up, and distance from its target (`30deg 75deg 3m`; default `0deg 75deg 3m`), for its pointer events' rays.",
+    },
+    PropSpec {
+        name: "cameraTarget",
+        ty: Ty::Text,
+        on: On::Kinds(&["viewport"]),
+        two_way: false,
+        doc: "`<model-viewer>`'s camera-target: the point it orbits (`0m 1m 0m`, the default).",
+    },
+    PropSpec {
+        name: "fieldOfView",
+        ty: Ty::Text,
+        on: On::Kinds(&["viewport"]),
+        two_way: false,
+        doc: "`<model-viewer>`'s field-of-view, vertical (`50deg`, the default).",
+    },
+    PropSpec {
+        name: "clientWidth",
+        ty: Ty::Num,
+        on: On::Kinds(&["viewport"]),
+        two_way: true,
+        doc: "Svelte's `bind:clientWidth`: its laid-out width, CSS px, written when it changes (size its render target by it times the pixel ratio).",
+    },
+    PropSpec {
+        name: "clientHeight",
+        ty: Ty::Num,
+        on: On::Kinds(&["viewport"]),
+        two_way: true,
+        doc: "Svelte's `bind:clientHeight`: its laid-out height, CSS px.",
+    },
     PropSpec {
         name: "draggable",
         ty: Ty::Bool,

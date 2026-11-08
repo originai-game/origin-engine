@@ -79,6 +79,18 @@ impl RetainedHost {
         let (x, y) = (lx - rect.x, ly - rect.y);
         extra.insert("x".into(), json!(x));
         extra.insert("y".into(), json!(y));
+        // A viewport's events carry the ray into its scene.
+        if e.document.nodes[e.index].kind == NodeKind::Element("viewport")
+            && let Some(r) = &e.resolved
+            && let Some(view) =
+                super::super::viewport::camera(&r.values, rect.width / rect.height.max(1.0))
+        {
+            let (o, d) = view.ray(x, y, rect.width, rect.height);
+            extra.insert(
+                "ray".into(),
+                json!({ "origin": [o.x, o.y, o.z], "direction": [d.x, d.y, d.z] }),
+            );
+        }
         let mut b = e.build(env, Arc::default());
         b.event(&e.path, "emit", &action, Value::Object(extra));
         events.extend(b.events);
@@ -267,7 +279,13 @@ mod tests {
         assert_eq!(down.len(), 1, "{down:?}");
         assert_eq!(down[0].0, "press");
         // The board's box starts at (20, 12).
-        assert_eq!((down[0].2["x"].as_f64(), down[0].2["y"].as_f64()), (Some(f64::from(from.x) - 20.0), Some(f64::from(from.y) - 12.0)));
+        assert_eq!(
+            (down[0].2["x"].as_f64(), down[0].2["y"].as_f64()),
+            (
+                Some(f64::from(from.x) - 20.0),
+                Some(f64::from(from.y) - 12.0)
+            )
+        );
         let mut all = Vec::new();
         for k in 1..=8 {
             let p = from + (to - from) * (k as f32 / 8.0);

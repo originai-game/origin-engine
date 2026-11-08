@@ -1067,4 +1067,5 @@ mod nodes;
 mod retained;
 mod structure;
 mod svg;
+mod viewport;
 pub use mount::{Built, DocEvent, DocHost, DocResponse, Edit};

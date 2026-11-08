@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <viewport>",
+      "summary": "A camera's render target in the layout (the native scene viewport): src names the target, camera-orbit, camera-target and field-of-view (model-viewer's names) place its camera, bind:clientWidth and bind:clientHeight write its laid-out size, and its pointer events carry the ray into its scene."
+    }
+  ]
+}

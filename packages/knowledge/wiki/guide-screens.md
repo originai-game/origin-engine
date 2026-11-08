@@ -190,6 +190,10 @@ local styles and `og style new` remain available.
   event's value is `{ dragged, target, x, y }` (row keys and the point).
   `onpointerdown`, `onpointermove`, `onpointerup` and `onwheel` work on any
   element and bubble to the nearest handler.
+- A 3D preview is `<viewport src={$target} camera-orbit={`${$yaw}deg 75deg 3m`}
+  bind:clientWidth={$w} bind:clientHeight={$h} onpointermove={orbit}
+  onpointerdown={pick}>`: size the render target from `$w`×`$h` times the
+  pixel ratio; the events carry `ray` for picking.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.

@@ -379,7 +379,6 @@ impl When {
         ("toggle", When::Toggle),
         ("close", When::Close),
     ];
-
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -250,6 +250,9 @@ impl Ui {
             self.build_container(container);
         }
         let props = self.props_of(b, n, key, &r, &mut built);
+        if kind == "viewport" {
+            return self.build_viewport(b, n, id.as_str(), &r, props, path, key, built);
+        }
         if svg::KINDS.contains(&kind) {
             return self.build_svg(
                 b,
@@ -1044,7 +1047,7 @@ impl Ui {
     }
 
     /// A control's two-way prop: its binding's path takes the new value.
-    fn write_back(&mut self, b: &mut Build<'_>, n: &DocNode, prop: &str, v: Value) {
+    pub(super) fn write_back(&mut self, b: &mut Build<'_>, n: &DocNode, prop: &str, v: Value) {
         let bound = n.props.iter().rev().find(|p| p.name() == prop);
         if let Some(p) = bound
             && let PropValue::Model(path) | PropValue::Bind(crate::bind::Expr::Path(path), _) =
@@ -1143,7 +1146,7 @@ impl Ui {
 }
 
 /// Whether `n`'s `prop` reads a store (`bind:` or `{$x}`) rather than a literal.
-fn bound(n: &DocNode, prop: &str) -> bool {
+pub(super) fn bound(n: &DocNode, prop: &str) -> bool {
     n.props
         .iter()
         .rev()

@@ -59,6 +59,7 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
     };
     match tag {
         "svg" => Some(Ok("svg")),
+        "viewport" => Some(Ok("viewport")),
         "g" => svg_child("svgGroup"),
         t if SVG_SHAPES.contains(&t) => svg_child("svgShape"),
         "stop" => Some(
@@ -80,6 +81,9 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
 /// an SVG attribute (SVG's names would collide with the core's `x`,
 /// `width`, `fill`…). `None`: the core's mapping.
 pub(super) fn property(kind: &str, attr: &str) -> Option<String> {
+    if kind == "viewport" && attr == "src" {
+        return Some("viewportSrc".into());
+    }
     let svg = match kind {
         "svg" => matches!(attr, "viewBox") || PRESENTATION.contains(&attr),
         "svgGroup" => attr == "transform" || PRESENTATION.contains(&attr),

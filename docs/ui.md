@@ -398,6 +398,20 @@ pointer and a drop's target, so they cost nothing as the tree grows. An
 element with a pointer handler can be under the pointer, so like any
 hovered control it is written again each tick while hovered.
 
+`<viewport>` shows a camera's render target in the layout, sized by CSS like
+an image. It is the native scene viewport (`og.ui.sceneViewport`). `src={$target}`
+names the target's colour texture. The camera is written as
+`<model-viewer>` writes one: `camera-orbit="30deg 75deg 3m"` (yaw, pitch
+from straight up, distance), `camera-target="0m 1m 0m"` and
+`field-of-view="50deg"`, each bindable. Svelte's `bind:clientWidth` and
+`bind:clientHeight` write its laid-out size when it changes, so the game
+sizes the target by them times the pixel ratio. Its pointer events
+(`onpointerdown`, `onpointermove`, `onwheel`) also carry `ray`, `{ origin,
+direction }` into its scene through the pointer, for picking and orbiting.
+`viewport` is not an HTML element. It is named for what it shows, and its
+camera attributes reuse `<model-viewer>`'s names rather than `-og-` ones,
+because that component is the web's established vocabulary for a 3D view.
+
 The authoring contract below also includes requirements whose TypeScript
 wiring remains pending:
 
