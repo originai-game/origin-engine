@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI contract",
+      "summary": "Document landed lexical CSS variables, cascade and selector semantics, native layout settlement, and bounded missing-art placeholders. Keep CSS queries, motion completion, sibling and structural selectors, and retained mounting explicitly pending."
+    }
+  ]
+}

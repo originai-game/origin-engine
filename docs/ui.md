@@ -301,11 +301,31 @@ in `crates/og-ui/src/style_file/css.rs`. Document CSS lives in
 Parser support for a literal does not override the authoring rule above.
 
 A document's `<style>` controls appearance and layout; attributes control
-content and behaviour. Selectors are scoped to the document, ordered by
-specificity then source order, and never affect unrelated mounts.
-Element, ID, class, descendant, child, attribute, and supported control
-pseudo-class selectors use the same reflected properties. Named
-breakpoints use `@media phone`; safe-area values use the supported CSS
+content and behaviour. Declarations win by `!important`, selector
+specificity, then source order. Rules are document-scoped and never affect
+unrelated mounts. Parsed selectors support element, ID, class, attribute,
+descendant and child matching, plus `:not()`, `:is()`, and `:where()`.
+`:where()` has zero specificity; `:not()` and `:is()` take the highest
+specificity of their arguments. Sibling combinators (`+`, `~`), structural
+pseudo-classes, and `:has()` are rejected for now. CSS head 4 adds sibling
+combinators and structural pseudo-classes; it does not promise `:has()`.
+
+The ten state selectors are `:hover`, `:active`, `:focus`, `:focus-visible`,
+`:focus-within`, `:disabled`, `:checked`, `:selected`, `:invalid`, and
+`:placeholder-shown`. An ancestor selector reads that ancestor's own
+interaction identity, not the styled child's state.
+
+Custom properties are lexical and inherit through instantiated parents,
+including component mounts. Recursive `var()` supports fallbacks, even an
+empty fallback. Values resolve on the declaring element before inheritance:
+overriding `--a` in a child does not recompute inherited `--b: var(--a)`.
+Cycles invalidate participating properties and report their names. An
+invalid winning declaration does not revive a lower-priority declaration.
+Unshadowed engine tokens resolve against the active style, and `::part`
+declarations use the same cascade. These rules do not relax the kit's
+token-only rule (§3.1).
+
+Named breakpoints use `@media phone`; safe-area values use the supported CSS
 `env(safe-area-inset-*)` spellings. Svelte `class:` directives select
 states; they do not introduce a second styling language.
 The `style:` directive accepts only bound CSS-token references, not raw
@@ -320,14 +340,28 @@ CPU motion, GPU mass elements, and camera timing share `Ease`: GSAP names
 such as `none`, `power1.out`, and `back.out`, plus `cubic-bezier(...)` and
 `steps(...)`. Style tokens retain `EaseRole` indirection. CSS timing
 keywords belong to the CSS parser; shared timing does not make them GSAP
-names. Standard CSS completion remains pending in three heads: cascade
-and selectors, media and container queries, then transitions and animations.
+names. Lexical custom properties and the cascade above are implemented.
+Standard CSS completion remains pending for media and container queries,
+transitions and animations, and sibling and structural selectors.
 The supported subset in the component catalogue is not full CSS support.
+
+Core's native settlement hook publishes measured container content boxes
+before effects, hit testing, and paint. First measurements include zero
+dimensions; unchanged measurements do not notify again. Changed query
+styles relayout their roots and dependent floating placement in the same
+frame, with safe-area geometry included. Repeated geometry states produce
+an error rather than publish an intermediate frame. This hook is landed;
+the CSS query adapter and retained second head are still pending.
 
 Core parts keep their existing names and meanings. Each kit documents its
 additional parts with its own API, so packs can dress them without private
 imports. A missing custom dressing uses the readable core token fallback.
 It is not permission to leave a required state unfinished.
+
+Missing art uses a small mark fitted to the slot's shorter side and capped
+at 32 UI units, centred in a quiet token-defined well. It does not stretch
+into a large decorative frame. The `icon` and `placeholder` parts remain
+available for styling; missing art does not erase the slot's identity.
 
 Hover, pressed, focus-visible, selected, disabled, and selected+disabled
 are distinct requirements. A selected item can also have focus; selection
