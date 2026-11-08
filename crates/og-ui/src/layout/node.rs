@@ -413,7 +413,9 @@ pub(crate) struct Node {
     pub locked: bool,
     /// Drawn after the background.
     pub shapes: Vec<Shape>,
-    /// Widget data its children read (a list's row height, a grid's cell size).
+    /// Widget data its children read while they are built (a list's row
+    /// height, a grid's cell size, the filler after the rows in view);
+    /// never drawn, so a change to it repaints nothing.
     pub aux: [f32; 3],
     /// A heading label: the style's flourish frames it.
     pub heading: bool,

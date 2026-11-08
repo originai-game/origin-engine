@@ -366,7 +366,6 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.pad_rings == b.pad_rings
         && a.heading == b.heading
         && a.disabled == b.disabled
-        && a.aux == b.aux
         && a.scale == b.scale
         && a.sampled == b.sampled
         && a.el == b.el
