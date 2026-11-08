@@ -723,6 +723,8 @@ pub struct Renderer {
     /// in while dynamic ones are drawn over it.
     shadow_cache: shadow_cache::ShadowCache,
     shadow_cache_maps: Vec<Option<CachedShadow>>,
+    /// What the cache keys each sorted instance on, kept across frames.
+    shadow_hashes: shadow_cache::InstanceHashes,
     /// A second water surface asked for a planar reflection the renderer
     /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
     /// said so once.

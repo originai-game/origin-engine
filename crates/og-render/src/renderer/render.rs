@@ -91,6 +91,8 @@ impl Renderer {
             mut spheres,
             submission,
             mut sphere_box,
+            serial: sorted_serial,
+            changed: sorted_changed,
             ..
         } = sorted_instances;
         // The debris layer's instances are culled by everywhere their
@@ -955,22 +957,21 @@ impl Renderer {
             let swaying =
                 wind(scene.wind.as_ref()) || wind(self.previous_wind.as_ref().map(|w| &w.0));
             let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
-            let hashes: Vec<u64> = transforms
-                .iter()
-                .zip(&submission)
-                .map(|(t, &i)| {
-                    let inst = &scene.instances[i as usize];
+            // Hashed again only where an instance or its mesh's or
+            // material's revision changed (shadow_cache.rs `InstanceHashes`).
+            let hashes = self.shadow_hashes.update(
+                (sorted as usize).min(submission.len()),
+                (sorted_serial, sorted_changed.as_deref()),
+                meshes.iter().map(|m| m.revision),
+                materials.iter().map(|m| m.revision),
+                |k| {
+                    let inst = &scene.instances[submission[k] as usize];
                     let (mesh, material) = (inst.mesh.index(), inst.material.index());
                     let revisions = [meshes[mesh].revision, materials[material].revision];
-                    shadow_cache::hash_words(
-                        bytemuck::cast_slice::<_, u32>(std::slice::from_ref(t))
-                            .iter()
-                            .copied()
-                            .chain([inst.sway.to_bits(), mesh as u32, material as u32])
-                            .chain(bytemuck::cast_slice::<_, u32>(&revisions).iter().copied()),
-                    )
-                })
-                .collect();
+                    let hash = shadow_cache::instance_hash(&transforms[k], inst, revisions);
+                    (hash, (mesh as u32, material as u32))
+                },
+            );
             // A batch drawing debris that may still move is redrawn each
             // frame: the GPU moves it where the CPU cannot see.
             let debris_moving = crate::debris::moving(scene);
@@ -995,7 +996,7 @@ impl Renderer {
                 scene.instances.len(),
                 &info,
                 &submission[..sorted as usize],
-                &hashes,
+                hashes,
                 &spheres,
             )
         };
