@@ -28,7 +28,7 @@ All streams run on macrunner and report to the coordinator thread
 
 | Stream | Thread | Scope |
 |---|---|---|
-| Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Lazy diagnostics and retained paint reuse, TS builder removal, both-host proof, perf after-numbers |
+| Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Persistent tree index and paint reuse of clean subtrees (idle cost still scales with nodes), virtual-row scroll, dirty-only a11y bridge, TS builder removal, field replacement, both-host proof, perf after-numbers |
 | og-ui generic capabilities | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | HTML element names, select/dialog/details/meter, colour-blind modes, live regions, selectable text, run-time colour emoji, split screen, UI debugger and `dump_ui:motion`, text on a path, untested components, UI perf budgets |
 | Presentation checkpoints and og.motion | [T-01a1b99f-1445](https://ampcode.com/threads/T-01a1b99f-1445-70df-9528-b3bc997e0683) | og.motion poses identical on every host, Chrome WebGPU restore check, session forking |
 | Rendering performance | [T-01a1b99f-2748](https://ampcode.com/threads/T-01a1b99f-2748-7173-98de-af62ac91012f) | FSR 3.1, GI probes, crowds at 50k, first frame |
@@ -46,7 +46,9 @@ All streams run on macrunner and report to the coordinator thread
 - **Retained core:** named stores, `GameDesc.ui`, presentation checkpoint
   and recorded intents (cc6000c29); mounts, topology, keyed virtual rows,
   settlement, stable slots (1167a7566 to 0b6ba3af3); only changed mounted
-  elements are written each frame (dc8a7b38b).
+  elements are written each frame (dc8a7b38b); the last frame inspected
+  on demand with retained paint reused (909c1bb79); layout only along the
+  paths to what changed (9909569fe).
 - **og-ui capabilities:** input types, `inputmode`, `autocomplete` and
   password reveal (4d8b785b9); ten Noto font packs loaded per script on
   demand (84d8ec3e2).
@@ -78,12 +80,12 @@ Each must be met before 0.8.0.
 
 | Item | Now | Target | Stream |
 |---|---|---|---|
-| FSR 3.1 | accumulation cheaper (seven dispatches, 12 bytes a pixel stored, history in 8 fetches): +0.65–1.04 ms over TAAU at 1080p in the thin scene (was +0.71–1.16), 0.90–1.23 ms under it on grass (M4 Pro); the rest is the six passes before the accumulation | cheaper accumulate | rendering |
+| FSR 3.1 | accumulation cheaper (seven dispatches, 12 bytes a pixel stored, history in 8 fetches, 2929a46): +0.65–1.04 ms over TAAU at 1080p in the thin scene (was +0.71–1.16), 0.90–1.23 ms under it on grass (M4 Pro); the rest is the six passes before the accumulation | at most TAAU + 0.5 ms on thin geometry at every scale, fsr::compare within 0.05 dB, grass not regressed (fused pre-passes, f16 where `shader-f16` exists) | rendering |
 | GI probes | main pass 3.70 ms; `both` 12.70 ms; screen GI 0.65 of the path-traced reference | ceiling 0.72–0.80, cheaper | rendering |
 | First frame | terrain 7–12 s on DX12; Pixel 14–17 s | the shader compile budget | rendering |
 | Crowds at 50k | 24.35 ms a frame | prepass and main pass reduced | rendering |
 | Presentation checkpoints | og.motion poses differ from native in the last bits on the web; a web tick waits for a late batch | byte-identical on every host | checkpoints |
-| UI per-frame cost | idle 1.229 ms, one label 1.254 ms (median, 2560×1440) | follows the change, not the tree | retained UI |
+| UI per-frame cost | idle 1.229 ms, one label 1.254 ms (median, 2560×1440); indicative idle now 0.303 ms, still scaling with node count; scroll-1000 0.53 ms against 0.29 immediate | follows the change, not the tree | retained UI |
 | Watercolour look | reads as oil | a watercolour primitive (Bousseau, MNPR) | with the art review, after the pilot opens |
 | Distant impostors | no own shadow, the view from below, no sway | — | with the art review |
 | Wasm, determinism and browser tiers of the latest features | measured before a release | — | release |
