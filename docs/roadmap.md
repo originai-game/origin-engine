@@ -32,7 +32,6 @@ All streams run on macrunner and report to the coordinator thread
 | og-ui document surface | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | UA block margins, the extern-element hook, bound custom properties, props on existing tags (`border`, `box-shadow`, `outline`, `overflow`), content in buttons, ARIA, device glyphs, inline img/icon/kbd, tooltips and popover, the missing core controls, component documents ([gap brief](https://ampcode.com/artifacts/ui-document-surface-gap-brief-builder-removal-8f5316ab-4604-49d8-8477-6d267aa6ef55)) |
 | UI document runtime, graphics and world | [T-01a1bad4-0793](https://ampcode.com/threads/T-01a1bad4-0793-740e-aa3f-5dd65b6b3396) | Mounted documents as layers, snippets as content, inline SVG, drag and drop, `<viewport>`, touch controls, world panels, mass, particles in CSS |
 | og-ui features | [T-01a1bad4-117c](https://ampcode.com/threads/T-01a1bad4-117c-709c-bedb-133a6e3d515b) | Colour-blind modes, selectable text, text on a path, colour emoji, live regions, UI debugger and `dump_ui:motion`, split screen, untested components and perf budgets |
-| Presentation checkpoints and og.motion | [T-01a1b99f-1445](https://ampcode.com/threads/T-01a1b99f-1445-70df-9528-b3bc997e0683) | og.motion on a fixed-order CPU kernel across lanes (int8 next), GPU as an opt-in for presentation-only crowds |
 | Rendering performance | [T-01a1b99f-2748](https://ampcode.com/threads/T-01a1b99f-2748-7173-98de-af62ac91012f) | FSR 3.1, GI probes, crowds at 50k, first frame |
 
 ## Landed this round (2026-11-07 to 2026-11-08)
@@ -69,7 +68,10 @@ All streams run on macrunner and report to the coordinator thread
   pitch and wave rows were stale since aea4a0f15 (no bounds remain; the
   wave plays past 15 s). Restore checked byte-identical in Chrome WebGPU
   (3dee686b6); the web `renderFrame` readback fixed (dc6ca86c1);
-  `og run --forks N` (d0d9a3dde).
+  `og run --forks N` (d0d9a3dde). og.motion runs on the GPU by default
+  with no held tick; captures wait for due results; no cross-host pose
+  claim; the CPU backend is an opt-in (fb115a7ca, bdc60e28a). The
+  checkpoints stream is complete.
 - **Invariants and `og explore`:** incremental default invariants, `$`
   path values, `require`, the per-tick `probe.assertionEvents` stream on
   node and web, `RestoreDesc.session`, the `intent:` command and
@@ -96,7 +98,6 @@ Each must be met before 0.8.0.
 | GI probes | main pass 3.70 ms; `both` 12.70 ms; screen GI 0.65 of the path-traced reference | ceiling 0.72–0.80, cheaper | rendering |
 | First frame | DX12 cold driver cache (RTX 5060): terrain-near 1.59 s (was 10.46), gltf-reference 0.95 s, materials 1.09 s; lit pipelines are made as the variant for the frame's features first (pipeline_features.rs), the full one in the background; each pipeline compiled alone (cold DXC and driver, one compile worker; terrain-near, gltf-reference, materials) is at most 0.43 s but one, terrain lit at 0.79 s (its layers' taps looped, 0.86 before), the one exception, its pass not split for 0.8.0; a warm driver cache saves about a third (terrain-near 1.16 s); Pixel 14–17 s, not remeasured | terrain-near setup and first frame at most 2.0 s, no pipeline compiled alone above 0.5 s, cold driver cache | rendering |
 | Crowds at 50k | 16.40 ms a frame median (was 20.88 on the same main, 24.35 at the last record; prepass 8.75 → 5.73 ms, main 8.68 → 7.39 ms, M4 Pro): skinning reads only weighted joints | at most 12 ms a frame median (M4 Pro, perf_crowd_50k), reference frames unmoved; skinning once a frame tried | rendering |
-| Presentation checkpoints | og.motion poses differ from native in the last bits on the web; a web tick waits for a late batch; the CPU kernel is exact on both hosts but costs 1.8 ms a character a tick on one thread | byte-identical on every host; at least 64 characters natively, 32 on the web with lanes, 8 on one web thread, within 2 ms a tick a thread | checkpoints |
 | UI per-frame cost | baseline idle 1.229 ms, one label 1.254 ms (median, 2560×1440); indicative now idle 0.026 ms, one label 0.160 ms, scroll-1000 about 0.39 ms against 0.29 immediate | follows the change, not the tree | retained UI |
 | Watercolour look | reads as oil | a watercolour primitive (Bousseau, MNPR) | with the art review, after the pilot opens |
 | Distant impostors | no own shadow, the view from below, no sway | — | with the art review |
@@ -106,6 +107,21 @@ Deferred by the owner: UI text scale at 200 %, accessibility beyond
 AccessKit, the overlay's GPU cost, SSSR and FSR follow-ups, W7 (CPU FFT
 band for buoyancy), wgpu 31 (unpublished). Ray tracing is a non-goal;
 Radiance Cascades were measured and not ported (`docs/design.md` §2.6).
+
+## TODO (the owner, 2026-11-08: opened later, not now)
+
+- **Screenshots and recordings for agents:** UI elements and entities
+  marked with numbered boxes on a capture, with a JSON map to path and
+  source line (Set-of-Mark); key frames picked by event (visual change,
+  input, assertion, screen change) with a synced timeline JSON; perceptual
+  diff heat maps (NVIDIA FLIP, BSD) with the worst regions cropped and
+  enlarged; captures sized for the model (long side 1280, crops apart). A
+  platform ask for video summarised by a video model, the engine supplying
+  the video, key frames and timeline.
+- **After the UI infrastructure lands:** the UI pilot (clean and fantasy
+  packs, rpg and shooter kits, an art review stream), then the whole
+  catalogue; 0.8.0 with the pack catalogue and the collected platform asks;
+  the showcase page on the platform. Each is opened when the owner says so.
 
 ## Open
 
