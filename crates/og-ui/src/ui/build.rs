@@ -1,5 +1,16 @@
 use super::*;
 
+/// What one retained element wrote and used as it was emitted.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Owned {
+    /// Its own node and its widget's internal nodes, in write order.
+    pub slots: Vec<usize>,
+    /// The widget memories it read or wrote.
+    pub memories: Vec<u64>,
+    /// A memory it wrote changed: it is in motion and builds again next frame.
+    pub moved: bool,
+}
+
 impl Ui {
     pub(super) fn write_node(&mut self, node: Node, kind: (&'static str, bool)) -> usize {
         let identity = (node.key, node.parent);
@@ -19,30 +30,90 @@ impl Ui {
             self.nodes.push(node);
             self.kinds.push(kind);
             self.slot_present.push(false);
+            self.persistent.push(false);
             self.render_slots.insert(identity, i);
             i
         };
         self.slot_present[i] = true;
         self.emitted.push(i);
+        // A rewritten node sets its draw and layer again as it builds.
+        self.draws.remove(&i);
+        self.dressable.remove(&i);
+        if self.persistent[i] {
+            self.floating.retain(|&f| f != i);
+        }
+        self.persistent[i] = match self.owning.last_mut() {
+            Some(owned) => {
+                owned.slots.push(i);
+                true
+            }
+            None => false,
+        };
         i
     }
 
+    /// Vacates slot `i` after the frame that last drew it: its identity is
+    /// free for a new node, its slot for reuse from the next frame on.
+    fn vacate(&mut self, i: usize) {
+        if self.kinds[i].0 == "vacant" {
+            return;
+        }
+        let old = &self.nodes[i];
+        self.render_slots.remove(&(old.key, old.parent));
+        let mut vacant = Node::new(0, String::new(), NONE, Element::default());
+        vacant.hidden = true;
+        let old = std::mem::replace(&mut self.nodes[i], vacant);
+        self.kept.prev.entry(i).or_insert(old);
+        self.prev_kinds.entry(i).or_insert(self.kinds[i]);
+        self.kinds[i] = ("vacant", false);
+        self.draws.remove(&i);
+        self.dressable.remove(&i);
+        self.free_slots.push(i);
+    }
+
     pub(super) fn retire_nodes(&mut self) {
-        for &i in &self.retiring {
-            if self.slot_present[i] {
+        for k in 0..self.retiring.len() {
+            let i = self.retiring[k];
+            if self.slot_present[i] || self.persistent[i] {
                 continue;
             }
-            let old = &self.nodes[i];
-            self.render_slots.remove(&(old.key, old.parent));
-            let mut vacant = Node::new(0, String::new(), NONE, Element::default());
-            vacant.hidden = true;
-            let old = std::mem::replace(&mut self.nodes[i], vacant);
-            self.kept.prev.entry(i).or_insert(old);
-            self.prev_kinds.entry(i).or_insert(self.kinds[i]);
-            self.kinds[i] = ("vacant", false);
-            self.free_slots.push(i);
+            self.vacate(i);
         }
         self.retiring.clear();
+    }
+
+    /// Retires slots a retained element owned and no longer writes: they
+    /// leave this frame's tree and are vacated with the frame's other
+    /// retired slots, never reused inside it.
+    pub(crate) fn retire_owned(&mut self, slots: &[usize]) {
+        for &i in slots {
+            if !self.persistent[i] {
+                continue;
+            }
+            self.persistent[i] = false;
+            self.slot_present[i] = false;
+            self.floating.retain(|&f| f != i);
+            self.retiring.push(i);
+        }
+    }
+
+    /// The slot the node `key` under `parent` was last written to.
+    pub(crate) fn render_slot(&self, key: u64, parent: usize) -> Option<usize> {
+        self.render_slots.get(&(key, parent)).copied()
+    }
+
+    /// Whether slot `i` still holds the retained node `key` under `parent`.
+    pub(crate) fn holds(&self, i: usize, key: u64, parent: usize) -> bool {
+        self.persistent.get(i).copied().unwrap_or(false)
+            && self.nodes[i].key == key
+            && self.nodes[i].parent == parent
+    }
+
+    /// Puts a retained node that was not emitted again back under the open
+    /// element, with its subtree as it stands.
+    pub(crate) fn reattach(&mut self, i: usize) {
+        let parent = self.parent();
+        self.nodes[parent].built_children.push(i);
     }
 
     pub(crate) fn previous_node(&self, i: usize) -> Option<&Node> {
@@ -132,8 +203,13 @@ impl Ui {
             ));
             local = renamed;
         }
+        let in_place = self.in_place == Some((key, parent));
         let index = self.write_node(Node::new(key, local, parent, el), (kind, anonymous));
-        self.nodes[parent].children.push(index);
+        if in_place {
+            self.in_place = None;
+        } else {
+            self.nodes[parent].built_children.push(index);
+        }
         index
     }
 

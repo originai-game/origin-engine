@@ -348,6 +348,12 @@ impl Ui {
         self.restore_docs_state(&docs).map_err(bad)?;
         self.state = s;
         self.kept = Default::default();
+        // The restored mounts emit afresh; the nodes they owned retire
+        // unless the next frame writes them again.
+        let owned: Vec<usize> = (0..self.persistent.len())
+            .filter(|&i| self.persistent[i])
+            .collect();
+        self.retire_owned(&owned);
         Ok(())
     }
 }

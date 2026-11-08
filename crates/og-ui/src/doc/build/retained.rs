@@ -59,6 +59,21 @@ struct ElementInstance {
     theme_epoch: u64,
     children: Vec<Child>,
     bindings: Vec<BindingId>,
+    /// Its render node and the parent it was written under, while it has one.
+    slot: Option<usize>,
+    parent_slot: usize,
+    /// Its own node and its widget's internal nodes: what it owns in the
+    /// render tree and retires when it stops writing them.
+    owned: Vec<usize>,
+    /// The render keys of those nodes and of its links, for input routing.
+    keys: Vec<u64>,
+    /// Its probe record, render fields and art slots.
+    record: super::mount::DocRecord,
+    memories: Vec<u64>,
+    /// Built again every frame: it plays Rive, hosts a code slot, answers
+    /// named actions, or its widget memories are in motion.
+    volatile: bool,
+    materialization: Materialization,
 }
 
 #[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -92,8 +107,24 @@ pub struct RetainedHost {
     media: [BTreeSet<MountedNode>; 3],
     materializing: Option<Materialization>,
     built_tick: Option<u64>,
+    /// Elements whose render nodes must be written again this frame.
+    emit: BTreeSet<MountedNode>,
+    /// Elements built every frame ([`ElementInstance::volatile`]).
+    volatile: BTreeSet<MountedNode>,
+    /// The element that owns each render key (its nodes', its links').
+    owner_of: std::collections::HashMap<u64, MountedNode>,
+    /// The widget memories mounted elements keep while they are not built.
+    memories: std::collections::HashMap<u64, u32>,
+    /// Last frame's interaction keys (hover, press, focus, activation).
+    input: Vec<u64>,
+    /// What every element's nodes depend on beyond its own inputs.
+    signature: Option<Signature>,
+    /// Virtual containers and the scroll offset they were emitted at.
+    scrollers: BTreeMap<MountedNode, f32>,
     pub evaluated: usize,
     pub resolved: usize,
+    /// Elements whose render nodes were written this frame.
+    pub reconciled: usize,
     /// Structural-selector work since the last refresh.
     pub css: CssWork,
     profiles: BTreeMap<String, crate::doc::matching::Profile>,
@@ -109,6 +140,19 @@ pub struct CssWork {
     /// Structural selectors evaluated, and elements visited for them.
     pub selectors: usize,
     pub candidates: usize,
+}
+
+/// The frame-wide inputs of every element's emission: a change emits all.
+#[derive(Clone, Debug, PartialEq)]
+struct Signature {
+    viewport: crate::Viewport,
+    unit: f32,
+    direction: og_i18n::Direction,
+    locale: String,
+    style: String,
+    dress: usize,
+    players: u32,
+    nav_on: bool,
 }
 
 impl std::fmt::Debug for RetainedHost {
@@ -305,10 +349,20 @@ impl RetainedHost {
         for root in roots {
             self.topology.remove(&root).expect("live mount root");
         }
-        for node in self.elements.keys().filter(|node| &node.mount == mount) {
+        let removed: Vec<_> = self
+            .elements
+            .keys()
+            .filter(|node| &node.mount == mount)
+            .cloned()
+            .collect();
+        for node in removed {
             ui.state.virtual_lists.remove(&node.key);
+            self.release_element(ui, &node);
         }
         self.elements.retain(|node, _| &node.mount != mount);
+        self.emit.retain(|node| &node.mount != mount);
+        self.volatile.retain(|node| &node.mount != mount);
+        self.scrollers.retain(|node, _| &node.mount != mount);
         self.each.retain(|node, _| &node.mount != mount);
         self.branches.retain(|node, _| &node.mount != mount);
         self.collections.retain(|_, readers| {
@@ -390,6 +444,18 @@ impl RetainedHost {
             theme_epoch: self.theme_epoch,
             children: Vec::new(),
             bindings: Vec::new(),
+            slot: None,
+            parent_slot: NONE,
+            owned: Vec::new(),
+            keys: Vec::new(),
+            record: Default::default(),
+            memories: Vec::new(),
+            volatile: matches!(node.kind, NodeKind::Element("slot"))
+                || node
+                    .triggers
+                    .iter()
+                    .any(|trigger| matches!(trigger.when, When::Action(_))),
+            materialization,
         };
         let properties = node
             .props
@@ -473,6 +539,12 @@ impl RetainedHost {
         }
         self.elements.get_mut(&identity).unwrap().children = children;
         self.dirty.insert(identity.clone());
+        if self.elements[&identity].volatile {
+            self.volatile.insert(identity.clone());
+        }
+        if let Some(parent) = parent {
+            self.emit.insert(parent.clone());
+        }
         Ok(Child::Element(identity))
     }
 
@@ -687,6 +759,7 @@ impl RetainedHost {
             }
         }
         self.consume_selector_changes(ui)?;
+        self.resolve_invalidated_styles();
         while let Some(node) = self.dirty.pop_first() {
             self.elements.get_mut(&node).unwrap().style_dirty = true;
             if self.topology.node(&node).unwrap().materialization != Materialization::Deferred {
@@ -694,6 +767,52 @@ impl RetainedHost {
             }
         }
         Ok(())
+    }
+
+    /// Materialized nodes in invalidated style intervals resolve before they
+    /// draw; deferred rows keep their interval until they materialize.
+    fn resolve_invalidated_styles(&mut self) {
+        for (parent, range) in self.topology.take_style_invalidations() {
+            let virtual_rows = parent.as_ref().and_then(|parent| {
+                let element = self.elements.get(parent)?;
+                matches!(
+                    element.document.nodes[element.index].kind,
+                    NodeKind::Element("list" | "cells")
+                )
+                .then_some(element.children.first())
+                .flatten()
+            });
+            let stale: Vec<MountedNode> = match virtual_rows {
+                Some(Child::Each(each)) => {
+                    let each = &self.each[each];
+                    each.materialized
+                        .iter()
+                        .filter_map(|key| each.rows.get(key))
+                        .flatten()
+                        .filter_map(|child| match child {
+                            Child::Element(identity) => Some(identity.clone()),
+                            _ => None,
+                        })
+                        .filter(|identity| {
+                            self.topology
+                                .position(identity)
+                                .is_some_and(|at| range.contains(&at))
+                        })
+                        .collect()
+                }
+                _ => self
+                    .topology
+                    .children(parent.as_ref(), range)
+                    .filter(|identity| {
+                        self.topology
+                            .node(identity)
+                            .is_some_and(|node| node.materialization != Materialization::Deferred)
+                    })
+                    .cloned()
+                    .collect(),
+            };
+            self.dirty.extend(stale);
+        }
     }
 
     fn sync_interaction(&mut self, ui: &mut Ui) -> Result<(), String> {
@@ -856,6 +975,7 @@ impl RetainedHost {
             probe,
         };
         self.elements.get_mut(identity).unwrap().resolved = Some(resolved);
+        self.emit.insert(identity.clone());
         self.elements.get_mut(identity).unwrap().style_dirty = false;
         self.elements.get_mut(identity).unwrap().theme_epoch = self.theme_epoch;
         self.topology.set_text(identity, text)?;
@@ -877,13 +997,13 @@ impl RetainedHost {
         events: &mut Vec<DocEvent>,
         writes: &mut Vec<(BindingContext, String, Value)>,
     ) -> Result<(), String> {
-        let identity = match child {
-            Child::Element(identity) => identity,
+        match child {
+            Child::Element(identity) => self.emit_element(ui, identity, false, env, events, writes),
             Child::Branch(identity) => {
                 for child in self.branches[identity].children.clone() {
                     self.emit(ui, &child, env, events, writes)?;
                 }
-                return Ok(());
+                Ok(())
             }
             Child::Each(identity) => {
                 let each = &self.each[identity];
@@ -898,13 +1018,34 @@ impl RetainedHost {
                 for child in children {
                     self.emit(ui, &child, env, events, writes)?;
                 }
-                return Ok(());
+                Ok(())
             }
+        }
+    }
+
+    /// Writes element `identity`'s render node under the open element, or,
+    /// when nothing it is built from changed, puts the node it already has
+    /// back without visiting its subtree. `in_place`: the node is written
+    /// again into the slot its parent already lists (its parent is not
+    /// built this frame).
+    fn emit_element(
+        &mut self,
+        ui: &mut Ui,
+        identity: &MountedNode,
+        in_place: bool,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) -> Result<(), String> {
+        let materialization = if in_place {
+            self.elements[identity].materialization
+        } else {
+            self.materializing.unwrap_or(Materialization::Visible)
         };
-        self.topology.set_materialization(
-            identity,
-            self.materializing.unwrap_or(Materialization::Visible),
-        )?;
+        if self.topology.node(identity).unwrap().materialization != materialization {
+            self.topology
+                .set_materialization(identity, materialization)?;
+        }
         if self.dirty.remove(identity)
             || self.elements[identity].style_dirty
             || self.elements[identity].theme_epoch != self.theme_epoch
@@ -912,7 +1053,29 @@ impl RetainedHost {
         {
             self.resolve(ui, identity, env)?;
         }
+        let parent_slot = ui.parent();
+        let element = &self.elements[identity];
+        if !in_place
+            && !element.volatile
+            && !self.emit.contains(identity)
+            && let Some(slot) = element.slot
+            && ui.holds(slot, identity.key, parent_slot)
+        {
+            ui.reattach(slot);
+            return Ok(());
+        }
+        self.emit.remove(identity);
+        self.reconciled += 1;
         let e = self.elements[identity].clone();
+        if e.slot.is_some() {
+            // Built before and not since retired: not appearing.
+            ui.docs.seen.insert(identity.key);
+        }
+        if in_place {
+            ui.in_place = Some((identity.key, parent_slot));
+        }
+        ui.owning.push(Default::default());
+        ui.docs.capture.push(Default::default());
         let resolved = e.resolved.as_ref().expect("resolved mount");
         let mut b = e.build(env, resolved.values.cascade.computed.clone());
         let mut result = Ok(());
@@ -925,13 +1088,293 @@ impl RetainedHost {
                     .try_for_each(|child| self.emit(ui, child, env, events, writes))
             };
         });
+        ui.in_place = None;
+        let owned = ui.owning.pop().expect("pushed");
+        let record = ui.docs.capture.pop().expect("pushed");
         events.extend(b.events);
         writes.extend(
             b.writes
                 .into_iter()
                 .map(|(path, value)| (e.context.clone(), path, value)),
         );
+        let slot = owned
+            .slots
+            .iter()
+            .copied()
+            .find(|&i| ui.nodes[i].key == identity.key && ui.nodes[i].parent == parent_slot);
+        let mut retired: Vec<usize> = e.owned.clone();
+        let mut kept = owned.slots.clone();
+        kept.sort_unstable();
+        retired.retain(|i| kept.binary_search(i).is_err());
+        ui.retire_owned(&retired);
+        for key in &e.keys {
+            self.owner_of.remove(key);
+        }
+        let mut keys = Vec::with_capacity(owned.slots.len());
+        for &i in &owned.slots {
+            let node = &ui.nodes[i];
+            keys.push(node.key);
+            keys.extend(node.links.iter().map(|l| crate::id::child_key(node.key, l)));
+        }
+        for key in &keys {
+            self.owner_of.insert(*key, identity.clone());
+        }
+        self.forget_memories(&e.memories);
+        for &key in &owned.memories {
+            *self.memories.entry(key).or_default() += 1;
+        }
+        let volatile = owned.moved
+            || resolved.values.str("rive").is_some()
+            || matches!(e.document.nodes[e.index].kind, NodeKind::Element("slot"))
+            || e.document.nodes[e.index]
+                .triggers
+                .iter()
+                .any(|trigger| matches!(trigger.when, When::Action(_)));
+        if volatile {
+            self.volatile.insert(identity.clone());
+        } else {
+            self.volatile.remove(identity);
+        }
+        let element = self.elements.get_mut(identity).unwrap();
+        element.slot = slot;
+        element.parent_slot = parent_slot;
+        element.owned = owned.slots;
+        element.keys = keys;
+        element.record = record;
+        element.memories = owned.memories;
+        element.volatile = volatile;
+        element.materialization = materialization;
+        if slot.is_none() {
+            // Not shown (`visible` false): its descendants' nodes go too.
+            for child in e.children.clone() {
+                self.release(ui, &child);
+            }
+        }
         result
+    }
+
+    /// Writes again, into the slots they hold, the elements whose parents
+    /// were not built this frame: their ancestors' nodes stay as they are.
+    fn emit_in_place(
+        &mut self,
+        ui: &mut Ui,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) -> Result<(), String> {
+        let mut pending: Vec<(usize, MountedNode)> = self
+            .emit
+            .iter()
+            .filter(|identity| {
+                self.elements.get(*identity).is_some_and(|e| {
+                    e.slot
+                        .is_some_and(|slot| ui.holds(slot, identity.key, e.parent_slot))
+                })
+            })
+            .map(|identity| {
+                let mut depth = 0;
+                let mut at = self.topology.parent(identity);
+                while let Some(parent) = at {
+                    depth += 1;
+                    at = self.topology.parent(parent);
+                }
+                (depth, identity.clone())
+            })
+            .collect();
+        pending.sort();
+        for (_, identity) in pending {
+            if !self.emit.contains(&identity) {
+                continue;
+            }
+            let element = &self.elements[&identity];
+            let Some(slot) = element.slot else { continue };
+            let parent = element.parent_slot;
+            if !ui.holds(slot, identity.key, parent) {
+                continue;
+            }
+            ui.stack.push(parent);
+            let result = self.emit_element(ui, &identity, true, env, events, writes);
+            ui.stack.pop();
+            result?;
+        }
+        Ok(())
+    }
+
+    fn forget_memories(&mut self, keys: &[u64]) {
+        for key in keys {
+            if let Some(count) = self.memories.get_mut(key) {
+                *count -= 1;
+                if *count == 0 {
+                    self.memories.remove(key);
+                }
+            }
+        }
+    }
+
+    /// Retires the render nodes of `child` and everything under it: it left
+    /// the render tree (removed, hidden, scrolled out of a virtual list).
+    fn release(&mut self, ui: &mut Ui, child: &Child) {
+        match child {
+            Child::Element(identity) => {
+                if self.elements[identity].slot.is_none()
+                    && self.elements[identity].owned.is_empty()
+                {
+                    return;
+                }
+                self.release_element(ui, identity);
+                for child in self.elements[identity].children.clone() {
+                    self.release(ui, &child);
+                }
+            }
+            Child::Branch(identity) => {
+                for child in self.branches[identity].children.clone() {
+                    self.release(ui, &child);
+                }
+            }
+            Child::Each(identity) => {
+                let each = &self.each[identity];
+                let children: Vec<_> = each
+                    .rows
+                    .values()
+                    .flatten()
+                    .chain(&each.empty)
+                    .cloned()
+                    .collect();
+                for child in children {
+                    self.release(ui, &child);
+                }
+            }
+        }
+    }
+
+    /// Retires one element's own render nodes (not its descendants').
+    fn release_element(&mut self, ui: &mut Ui, identity: &MountedNode) {
+        let Some(element) = self.elements.get_mut(identity) else {
+            return;
+        };
+        let owned = std::mem::take(&mut element.owned);
+        let keys = std::mem::take(&mut element.keys);
+        let memories = std::mem::take(&mut element.memories);
+        element.slot = None;
+        element.record = Default::default();
+        ui.retire_owned(&owned);
+        for key in keys {
+            self.owner_of.remove(&key);
+        }
+        self.forget_memories(&memories);
+        self.volatile.remove(identity);
+        self.scrollers.remove(identity);
+    }
+
+    /// The retained elements' records, mounted ones in tree order.
+    pub(crate) fn records(&self) -> impl Iterator<Item = &super::mount::DocRecord> {
+        let mut order = Vec::new();
+        for root in self.roots.values() {
+            self.collect_rendered(root, &mut order);
+        }
+        order
+            .into_iter()
+            .map(|identity| &self.elements[identity].record)
+    }
+
+    fn collect_rendered<'a>(&'a self, child: &'a Child, out: &mut Vec<&'a MountedNode>) {
+        match child {
+            Child::Element(identity) => {
+                let element = &self.elements[identity];
+                if element.slot.is_none() {
+                    return;
+                }
+                out.push(identity);
+                for child in &element.children {
+                    self.collect_rendered(child, out);
+                }
+            }
+            Child::Branch(identity) => {
+                for child in &self.branches[identity].children {
+                    self.collect_rendered(child, out);
+                }
+            }
+            Child::Each(identity) => {
+                let each = &self.each[identity];
+                for key in &each.order {
+                    for child in &each.rows[key] {
+                        self.collect_rendered(child, out);
+                    }
+                }
+                for child in &each.empty {
+                    self.collect_rendered(child, out);
+                }
+            }
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn record(&self, key: u64) -> Option<&super::mount::DocRecord> {
+        let identity = self.by_key.get(&key)?;
+        Some(&self.elements.get(identity)?.record)
+    }
+
+    pub(crate) fn record_mut(&mut self, key: u64) -> Option<&mut super::mount::DocRecord> {
+        let identity = self.by_key.get(&key)?;
+        Some(&mut self.elements.get_mut(identity)?.record)
+    }
+
+    /// A widget memory a mounted element keeps while it is not built.
+    pub(crate) fn keeps_memory(&self, key: u64) -> bool {
+        self.memories.contains_key(&key)
+    }
+
+    /// Marks what this frame's interaction, clock and frame-wide inputs
+    /// require to be built again, before anything is emitted.
+    fn mark_frame(&mut self, ui: &mut Ui) {
+        let signature = Signature {
+            viewport: ui.viewport,
+            unit: ui.unit,
+            direction: ui.direction,
+            locale: ui.locale.clone(),
+            style: ui.style_name.clone(),
+            dress: std::sync::Arc::as_ptr(&ui.dress) as usize,
+            players: ui.players,
+            nav_on: ui.nav_on,
+        };
+        if self.signature.as_ref() != Some(&signature) {
+            self.signature = Some(signature);
+            self.emit.extend(self.elements.keys().cloned());
+        }
+        let s = &ui.state;
+        let n = &ui.nav;
+        let mut input = vec![
+            s.hot,
+            if ui.input.down { s.active } else { 0 },
+            s.focus,
+            n.activate,
+            n.tapped,
+            n.double_tapped,
+            n.long_pressed,
+            n.spin.0,
+        ];
+        input.extend(s.pad_focus);
+        input.extend(n.pad_activate);
+        input.retain(|&key| key != 0);
+        for key in input.iter().chain(&self.input) {
+            if let Some(owner) = self.owner_of.get(key) {
+                self.emit.insert(owner.clone());
+            }
+        }
+        self.input = input;
+        for (identity, offset) in &self.scrollers {
+            if ui.state.scroll.get(&identity.key).copied().unwrap_or(0.0) != *offset {
+                self.emit.insert(identity.clone());
+            }
+        }
+        // Nodes whose laid-out size moved: their widgets read last frame's
+        // geometry (a narrow button, a list measuring its rows).
+        for slot in std::mem::take(&mut ui.kept.resized) {
+            if let Some(owner) = self.owner_of.get(&ui.nodes[slot].key) {
+                self.emit.insert(owner.clone());
+            }
+        }
+        self.emit.extend(self.volatile.iter().cloned());
     }
 }
 
@@ -1030,6 +1473,8 @@ impl Ui {
         }
         let mut result = host.refresh(self, env);
         if result.is_ok() {
+            host.mark_frame(self);
+            host.reconciled = 0;
             let mut events = Vec::new();
             let mut writes = Vec::new();
             for root in host.roots.values().cloned().collect::<Vec<_>>() {
@@ -1037,6 +1482,11 @@ impl Ui {
                     result = Err(error);
                     break;
                 }
+            }
+            if result.is_ok()
+                && let Err(error) = host.emit_in_place(self, env, &mut events, &mut writes)
+            {
+                result = Err(error);
             }
             self.docs.queued.extend(events);
             for (context, path, value) in writes {
@@ -1147,6 +1597,85 @@ mod tests {
                 assert_eq!(events[0].path, path);
             }
         }
+    }
+
+    /// A mounted grid of labels: idle ticks evaluate and write nothing,
+    /// one patched row field evaluates its one binding and writes its one
+    /// element, and that label shows the new text.
+    #[test]
+    fn mounted_frames_write_only_what_changed() {
+        let mut ui = Ui::new(UiDesc::default());
+        let mut doc =
+            String::from("<meta name=\"component\" content=\"grid\">\n<row id=\"Screen\">");
+        let mut inputs = BTreeMap::new();
+        for column in 0..4 {
+            let source = SourceId::new("test", &format!("c{column}"));
+            ui.reactive
+                .execute(Command::Collection {
+                    source: source.clone(),
+                    key: "id".into(),
+                    items: (0..25)
+                        .map(|row| {
+                            json!({"id": format!("r{row}"), "text": format!("Cell {column}:{row}")})
+                                .as_object()
+                                .unwrap()
+                                .clone()
+                        })
+                        .collect(),
+                })
+                .unwrap();
+            inputs.insert(format!("c{column}"), source);
+            doc.push_str(&format!(
+                "<column id=\"Column{column}\" width=\"128\" height=\"900\">{{#each $c{column} as cell (cell.id)}}<text id=\"Cell{column}\">{{cell.text}}</text>{{/each}}</column>"
+            ));
+        }
+        doc.push_str("</row>");
+        ui.define_document(UiDocument::parse("grid.svelte", &doc).unwrap());
+        ui.mount_document(
+            SourceId::new("test", "grid"),
+            "grid",
+            inputs,
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let tick = |ui: &mut Ui| {
+            ui.begin(InputFrame::default(), Viewport::new(1280.0, 960.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end().stats
+        };
+        // The first frames lay everything out and settle sizes.
+        for _ in 0..3 {
+            tick(&mut ui);
+        }
+        let idle = tick(&mut ui);
+        assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+        ui.reactive
+            .execute(Command::Patch {
+                source: SourceId::new("test", "c2"),
+                key: "r19".into(),
+                fields: json!({"text": "Value 7"}).as_object().unwrap().clone(),
+            })
+            .unwrap();
+        let changed = tick(&mut ui);
+        assert_eq!(
+            (changed.bindings, changed.reconciled),
+            (1, 1),
+            "{changed:?}"
+        );
+        let text = |ui: &Ui| {
+            ui.probe_elements()
+                .into_iter()
+                .find(|e| e.path == "test:grid/Column2/Cell2#r19")
+                .unwrap()
+                .text
+        };
+        assert_eq!(text(&ui), "Value 7");
+        // Its size moved: written once more for widgets that read their
+        // last layout, then idle again.
+        tick(&mut ui);
+        let idle = tick(&mut ui);
+        assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+        assert_eq!(text(&ui), "Value 7");
     }
 
     #[test]

@@ -365,8 +365,17 @@ pub(crate) struct Node {
     pub id: String,
     pub parent: usize,
     pub children: Vec<usize>,
+    /// Its children as built or reattached, hidden ones included: what the
+    /// frame derives `children`, `ordered_children` and `out` from, so a
+    /// retained node that is not built again derives the same lists.
+    pub built_children: Vec<usize>,
     /// Sibling order before the flow/out-of-flow partition, independent of slots.
     pub ordered_children: Vec<usize>,
+    /// The scroll gutter added to its right padding (`Ui::apply_gutter`).
+    pub gutter: f32,
+    /// Its authored width, height and padding while placement replaced
+    /// them for one frame (`Ui::layout_mutated`).
+    pub authored_box: Option<(Size, Size, Insets)>,
     pub el: Element,
     pub content: Content,
     pub widget: Widget,
@@ -487,7 +496,10 @@ impl Node {
             id,
             parent,
             children: Vec::new(),
+            built_children: Vec::new(),
             ordered_children: Vec::new(),
+            gutter: 0.0,
+            authored_box: None,
             el,
             content: Content::None,
             widget: Widget::None,

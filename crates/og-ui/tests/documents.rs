@@ -432,8 +432,8 @@ fn keyed_document_rows_keep_identity_after_reorder_and_build_the_empty_branch() 
     tick(&mut ui, InputFrame::default());
     let paths: Vec<_> = ui
         .doc_built()
-        .iter()
-        .map(|e| e.path.as_str())
+        .into_iter()
+        .map(|e| e.path)
         .filter(|path| path.contains("Row#"))
         .collect();
     assert_eq!(paths, ["rows/Root/Row#shield", "rows/Root/Row#sword"]);

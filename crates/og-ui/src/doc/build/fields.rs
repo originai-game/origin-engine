@@ -14,7 +14,7 @@ pub(crate) struct RenderFields {
     amounts: (f32, f32),
     press: f32,
     texture: Option<og_render::TextureHandle>,
-    art: Option<usize>,
+    art: Option<String>,
 }
 
 impl RenderFields {
@@ -41,7 +41,7 @@ impl RenderFields {
                 _ => 0.0,
             },
             texture,
-            art: (kind == "art").then(|| ui.docs.arts.len() - 1),
+            art: (kind == "art").then(|| ui.last_art_path()),
         }
     }
 }
@@ -114,14 +114,15 @@ impl Ui {
                 },
             ),
             "art" => {
-                let art = base.art.expect("art render fields");
-                let path = self.docs.arts[art].0.clone();
+                let path = base.art.clone().expect("art render fields");
                 let spec = crate::slot::SlotSpec::from_props(
                     &path,
                     |name| r.str(name).map(str::to_string),
                     |name| r.nums(name).map(<[f32]>::to_vec),
                 );
-                self.docs.arts[art].1 = spec.clone();
+                if let Some(slot) = self.art_slot_mut(&path) {
+                    *slot = spec.clone();
+                }
                 self.apply_art(
                     i,
                     &crate::widgets::ArtDesc {
@@ -358,7 +359,11 @@ mod tests {
                         &build.inherited,
                         &mut |_| false,
                     );
-                    (node.node, values, patched.docs.render_fields[&key].clone())
+                    (
+                        node.node,
+                        values,
+                        patched.render_fields(key).unwrap().clone(),
+                    )
                 })
                 .collect();
             patched.watch_layout_container(patched.nodes[0].key);

@@ -117,6 +117,9 @@ pub struct Topology {
     /// so filtered ranks need no scan of unchanged siblings.
     filters: usize,
     filter_list: Vec<Vec<super::selectors::Selector>>,
+    /// Style intervals invalidated since the renderer last took them: it
+    /// resolves the materialized nodes among them before they are drawn.
+    invalidated: Vec<(Option<MountedNode>, Range<usize>)>,
 }
 
 impl Topology {
@@ -377,6 +380,7 @@ impl Topology {
         }
         self.work.style_intervals += 1;
         self.style_epoch += 1;
+        self.invalidated.push((parent.cloned(), range.start..end));
         let (left, rest) = self.split(self.root(p), range.start);
         let (middle, right) = self.split(rest, end - range.start);
         if let Some(i) = middle {
@@ -693,6 +697,11 @@ impl Topology {
     /// Every live identity, in no particular order.
     pub fn identities(&self) -> impl Iterator<Item = &MountedNode> {
         self.identities.keys()
+    }
+
+    /// The style intervals invalidated since the last call.
+    pub fn take_style_invalidations(&mut self) -> Vec<(Option<MountedNode>, Range<usize>)> {
+        std::mem::take(&mut self.invalidated)
     }
 
     pub fn take_changes(&mut self) -> Vec<SiblingChange> {

@@ -218,8 +218,10 @@ impl Ui {
                     (background, local) = (*b, c.clone());
                     self.stats.kept_commands += 1;
                 } else if world.is_identity() {
+                    self.stats.painted += 1;
                     background = self.node_commands(i, &mut local, &snap);
                 } else if let Some(inv) = world.invert() {
+                    self.stats.painted += 1;
                     // Drawn in its layout box: its screen clip taken there.
                     let screen_clip = n.clip;
                     self.nodes[i].clip = inv.map_rect(&screen_clip);

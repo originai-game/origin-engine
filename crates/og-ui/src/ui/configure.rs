@@ -28,6 +28,10 @@ impl Ui {
             emitted: Vec::new(),
             retiring: Vec::new(),
             slot_present: Vec::new(),
+            persistent: Vec::new(),
+            owning: Vec::new(),
+            in_place: None,
+            layout_mutated: Vec::new(),
             built: Default::default(),
             anonymous: Default::default(),
             stack: Vec::new(),
@@ -260,6 +264,9 @@ impl Ui {
     /// The widget memory of `key`, marked as used this frame.
     pub(crate) fn anim(&mut self, key: u64) -> Anim {
         self.touched.insert(key);
+        if let Some(owned) = self.owning.last_mut() {
+            owned.memories.push(key);
+        }
         self.state.anims.get(&key).copied().unwrap_or_default()
     }
 
@@ -269,7 +276,11 @@ impl Ui {
 
     pub(crate) fn set_anim(&mut self, key: u64, a: Anim) {
         self.touched.insert(key);
-        self.state.anims.insert(key, a);
+        let old = self.state.anims.insert(key, a);
+        if let Some(owned) = self.owning.last_mut() {
+            owned.memories.push(key);
+            owned.moved |= old != Some(a);
+        }
     }
 
     /// The key the next element with this id would get under the open element.
@@ -463,9 +474,13 @@ impl Ui {
         self.built.clear();
         self.anonymous.clear();
         self.stack.clear();
-        self.floating.clear();
-        self.draws.clear();
-        self.dressable.clear();
+        self.owning.clear();
+        self.in_place = None;
+        // Retained slots keep their layers and draws until written again.
+        let persistent = &self.persistent;
+        self.floating.retain(|&f| persistent[f]);
+        self.draws.retain(|&i, _| persistent[i]);
+        self.dressable.retain(|&i| persistent[i]);
         self.warnings.clear();
         self.last_closed = NONE;
         self.building = true;

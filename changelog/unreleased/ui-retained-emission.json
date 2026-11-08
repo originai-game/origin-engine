@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui.mountDocument",
+      "summary": "Mounted documents keep their render nodes between ticks: a tick writes again only the elements whose bindings, styles, structure, interaction or widget motion changed, and the rest stay in the tree without being visited (an idle tick evaluates no binding and writes no element; one changed label writes one element)."
+    }
+  ]
+}

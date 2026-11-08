@@ -1006,6 +1006,13 @@ pub struct LayoutStats {
     pub laid_out: u32,
     /// Elements whose draw commands were kept from the last tick.
     pub kept_commands: u32,
+    /// Bindings of mounted documents evaluated this tick.
+    pub bindings: u32,
+    /// Mounted elements whose render nodes were written this tick; the
+    /// rest kept theirs without being visited.
+    pub reconciled: u32,
+    /// Nodes whose draw commands were made this tick.
+    pub painted: u32,
 }
 
 // ── The element model's part of the frame ──────────────────────────────────
@@ -1041,7 +1048,8 @@ impl Ui {
         let vp = self.viewport;
         let bp = vp.breakpoint();
         let portrait = vp.height >= vp.width;
-        for i in 0..self.nodes.len() {
+        for k in 0..self.emitted.len() {
+            let i = self.emitted[k];
             if self.nodes[i].props.variants.is_empty() {
                 continue;
             }
@@ -1444,48 +1452,64 @@ impl Ui {
         k.sig = Some(sig);
         k.fresh = fresh;
         k.laid_out = 0;
-        k.clean = vec![false; n];
+        // A retained node not written this frame keeps its own inputs.
+        k.clean = vec![!fresh; n];
+        let mut written = vec![false; n];
         let mut rebuilt = 0u32;
-        // Emission order, unlike slot order, puts children after parents.
-        for &i in self.emitted.iter().rev() {
+        for &i in &self.emitted {
+            written[i] = true;
+        }
+        // Children before parents: the reverse of a preorder of every tree.
+        let mut order = preorder(nodes, 0);
+        for &f in &self.floating {
+            order.extend(preorder(nodes, f));
+        }
+        for &i in order.iter().rev() {
             let a = &nodes[i];
-            let Some(b) = k.prev.get(&i) else {
-                rebuilt += 1;
-                continue;
+            let same_layout = if written[i] {
+                let Some(b) = k.prev.get(&i) else {
+                    rebuilt += 1;
+                    k.clean[i] = false;
+                    continue;
+                };
+                let same_layout = crate::layout::el_layout_eq(&a.el, &b.el)
+                    && crate::layout::content_layout_eq(&a.content, &b.content)
+                    && crate::layout::props_layout_eq(&a.props, &b.props)
+                    && a.float == b.float
+                    && a.float == Float::None
+                    && a.children == b.children
+                    && a.out == b.out;
+                let same = same_layout
+                    && a.el == b.el
+                    && a.content == b.content
+                    && a.widget == b.widget
+                    && a.shapes == b.shapes
+                    && a.props == b.props;
+                if !same {
+                    rebuilt += 1;
+                }
+                same_layout
+            } else {
+                a.float == Float::None && !a.props.variants.iter().any(|v| v.when.container)
             };
-            let same_layout = crate::layout::el_layout_eq(&a.el, &b.el)
-                && crate::layout::content_layout_eq(&a.content, &b.content)
-                && crate::layout::props_layout_eq(&a.props, &b.props)
-                && a.float == b.float
-                && a.float == Float::None
-                && a.children == b.children
-                && a.out == b.out;
-            let same = same_layout
-                && a.el == b.el
-                && a.content == b.content
-                && a.widget == b.widget
-                && a.shapes == b.shapes
-                && a.props == b.props;
-            if !same {
-                rebuilt += 1;
-            }
             k.clean[i] = !fresh
                 && same_layout
                 && a.children.iter().chain(&a.out).all(|&c| {
+                    let child = &nodes[c];
+                    // A fixed box still lays out its dirty contents, but
+                    // those contents cannot change its parent's sizing.
                     k.clean[c]
-                        || k.prev.get(&c).is_some_and(|old| {
-                            let child = &nodes[c];
-                            // A fixed box still lays out its dirty contents, but
-                            // those contents cannot change its parent's sizing.
-                            matches!(child.el.width, Size::Fixed(_))
-                                && matches!(child.el.height, Size::Fixed(_))
-                                && child.el.width == old.el.width
-                                && child.el.height == old.el.height
-                                && child.props.place == old.props.place
-                                && child.props.position == old.props.position
-                                && child.props.insets == old.props.insets
-                                && child.float == old.float
-                        })
+                        || matches!(child.el.width, Size::Fixed(_))
+                            && matches!(child.el.height, Size::Fixed(_))
+                            && (!written[c]
+                                || k.prev.get(&c).is_some_and(|old| {
+                                    child.el.width == old.el.width
+                                        && child.el.height == old.el.height
+                                        && child.props.place == old.props.place
+                                        && child.props.position == old.props.position
+                                        && child.props.insets == old.props.insets
+                                        && child.float == old.float
+                                }))
                 });
         }
         for &i in &self.emitted {
@@ -1494,10 +1518,11 @@ impl Ui {
             }
         }
         self.stats = LayoutStats {
-            elements: self.emitted.len() as u32,
+            elements: order.len() as u32,
             rebuilt,
-            laid_out: 0,
-            kept_commands: 0,
+            bindings: self.docs.retained.evaluated as u32,
+            reconciled: self.docs.retained.reconciled as u32,
+            ..LayoutStats::default()
         };
     }
 }

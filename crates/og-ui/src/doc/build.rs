@@ -323,8 +323,8 @@ impl Ui {
         {
             return;
         }
-        for i in 0..self.nodes.len() {
-            self.apply_part_appearance(i);
+        for k in 0..self.emitted.len() {
+            self.apply_part_appearance(self.emitted[k]);
         }
     }
 

@@ -30,7 +30,24 @@ impl Ui {
         if key == 0 {
             return None;
         }
-        self.previous_nodes().find(|n| n.key == key).map(|n| n.rect)
+        self.previous_child(key)
+            .map(|i| self.nodes[i].rect)
+            .or_else(|| self.previous_nodes().find(|n| n.key == key).map(|n| n.rect))
+    }
+
+    /// The node `key` laid out last frame under the open element, before
+    /// it is written again: a retained list keeps its slot and its rows'.
+    fn previous_child(&self, key: u64) -> Option<usize> {
+        let parent = self.parent();
+        self.nodes[parent]
+            .built_children
+            .iter()
+            .copied()
+            .find(|&c| self.nodes[c].key == key && self.nodes[c].parent == parent)
+            .or_else(|| {
+                let i = self.render_slot(key, parent)?;
+                (self.nodes[i].key == key && self.kinds[i].0 != "vacant").then_some(i)
+            })
     }
 
     /// Opens a virtualised list (a scroll column) and answers which rows to
@@ -138,21 +155,33 @@ impl Ui {
         grid: bool,
     ) -> (ListRange, f32, f32) {
         let prefix = if grid { "Cell#" } else { "Row#" };
-        let measurements: Vec<_> = self
-            .previous_nodes()
-            .filter_map(|n| {
-                let parent = self.previous_node(n.parent)?;
-                if parent.key != container {
-                    return None;
-                }
-                let key =
-                    n.id.strip_prefix(prefix)?
-                        .replace("%23", "#")
-                        .replace("%2F", "/")
-                        .replace("%25", "%");
-                Some((key, n.rect.height))
-            })
-            .collect();
+        let row = |n: &crate::layout::Node| {
+            let key =
+                n.id.strip_prefix(prefix)?
+                    .replace("%23", "#")
+                    .replace("%2F", "/")
+                    .replace("%25", "%");
+            Some((key, n.rect.height))
+        };
+        // Its rows as laid out last frame: the container's own children,
+        // which it still holds before it is written again.
+        let measurements: Vec<_> = match self.previous_child(container) {
+            Some(list) => self.nodes[list]
+                .ordered_children
+                .iter()
+                .filter_map(|&c| row(&self.nodes[c]))
+                .collect(),
+            None => self
+                .previous_nodes()
+                .filter_map(|n| {
+                    let parent = self.previous_node(n.parent)?;
+                    if parent.key != container {
+                        return None;
+                    }
+                    row(n)
+                })
+                .collect(),
+        };
         let old = self.state.scroll.get(&container).copied().unwrap_or(0.0);
         let v = self.state.virtual_lists.entry(container).or_default();
         v.grid = grid;

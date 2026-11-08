@@ -142,6 +142,7 @@ impl RetainedHost {
         let start = self
             .block_start(&self.elements[&parent].children, id, 0)
             .expect("mounted structural child");
+        self.emit.insert(parent.clone());
         let mut branch = self.branches.remove(id).unwrap();
         let result = if enabled {
             self.compile_branch_children(ui, &branch, env)
@@ -424,6 +425,12 @@ impl RetainedHost {
             }
             Child::Element(id) => {
                 let parent = self.topology.parent(&id).cloned();
+                if let Some(parent) = &parent {
+                    self.emit.insert(parent.clone());
+                }
+                self.release_element(ui, &id);
+                self.emit.remove(&id);
+                self.volatile.remove(&id);
                 let element = self.elements.remove(&id).expect("mounted element");
                 for child in element.children {
                     self.remove_child(ui, child);
@@ -494,6 +501,7 @@ impl RetainedHost {
                     continue;
                 }
                 let start = self.each_start(&id);
+                self.emit.insert(self.each[&id].parent.clone());
                 let mut each = self.each.remove(&id).unwrap();
                 let result = self.edit_each(ui, &mut each, &edit, start, env);
                 each.revision = change.revision;

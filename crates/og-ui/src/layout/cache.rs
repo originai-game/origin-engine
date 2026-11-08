@@ -235,6 +235,8 @@ pub(crate) struct LayoutCache {
     pub cmds: crate::id::KeyMap<(usize, Vec<crate::DrawCmd>)>,
     pub measurements: crate::ui::settlement::Measurements,
     pub query_roots: Option<std::collections::BTreeSet<usize>>,
+    /// Nodes whose laid-out size changed since they were last laid out.
+    pub resized: Vec<usize>,
 }
 
 /// Everything an element's own commands are made from is as last frame
@@ -423,6 +425,9 @@ pub(crate) fn layout(
         nodes[i].clip = parent_clip;
         nodes[i].clip_src = src;
         nodes[i].rect = rect.snapped(dpr);
+        if nodes[i].layout_size != [nodes[i].w, nodes[i].h] {
+            kept.resized.push(i);
+        }
         nodes[i].layout_size = [nodes[i].w, nodes[i].h];
         nodes[i].layout_offset = if nodes[i].parent == NONE || i == root {
             [0.0; 2]

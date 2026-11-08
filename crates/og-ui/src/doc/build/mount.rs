@@ -61,9 +61,21 @@ pub struct Built {
     pub states: Vec<(String, String)>,
 }
 
+/// What one retained element registered as it was emitted: its probe
+/// record, render fields and art slots. It lives with the element and is
+/// replaced only when the element is emitted again.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct DocRecord {
+    pub built: Vec<Built>,
+    pub render_fields: Vec<(u64, super::fields::RenderFields)>,
+    pub arts: Vec<(String, crate::slot::SlotSpec)>,
+}
+
 /// The documents a UI knows and what their mounts keep between ticks.
 #[derive(Clone, Debug, Default)]
 pub struct DocHost {
+    /// The records of the retained elements being emitted, innermost last.
+    pub(crate) capture: Vec<DocRecord>,
     pub(crate) retained: super::retained::RetainedHost,
     /// By name.
     pub(crate) docs: BTreeMap<String, Arc<UiDocument>>,
@@ -311,14 +323,103 @@ impl Ui {
         std::mem::take(&mut self.docs.queued)
     }
 
-    /// What documents built this tick (the probe's `dump_ui`).
-    pub fn doc_built(&self) -> &[Built] {
-        &self.docs.built
+    /// What documents built this tick (the probe's `dump_ui`): the
+    /// immediate documents' elements, then the mounted ones' in tree order.
+    pub fn doc_built(&self) -> Vec<Built> {
+        let mut out = self.docs.built.clone();
+        out.extend(
+            self.docs
+                .retained
+                .records()
+                .flat_map(|r| r.built.iter().cloned()),
+        );
+        out
     }
 
     /// The art slots documents declared this tick, by path.
-    pub fn art_slots(&self) -> &[(String, crate::slot::SlotSpec)] {
-        &self.docs.arts
+    pub fn art_slots(&self) -> Vec<(String, crate::slot::SlotSpec)> {
+        let mut out = self.docs.arts.clone();
+        out.extend(
+            self.docs
+                .retained
+                .records()
+                .flat_map(|r| r.arts.iter().cloned()),
+        );
+        out
+    }
+
+    pub(crate) fn note_built(&mut self, built: Built) {
+        match self.docs.capture.last_mut() {
+            Some(record) => record.built.push(built),
+            None => self.docs.built.push(built),
+        }
+    }
+
+    pub(crate) fn note_render_fields(&mut self, key: u64, fields: super::fields::RenderFields) {
+        match self.docs.capture.last_mut() {
+            Some(record) => record.render_fields.push((key, fields)),
+            None => {
+                self.docs.render_fields.insert(key, fields);
+            }
+        }
+    }
+
+    pub(crate) fn note_art(&mut self, path: String, spec: crate::slot::SlotSpec) {
+        match self.docs.capture.last_mut() {
+            Some(record) => record.arts.push((path, spec)),
+            None => self.docs.arts.push((path, spec)),
+        }
+    }
+
+    /// The art slot registered last.
+    pub(crate) fn last_art(&self) -> &crate::slot::SlotSpec {
+        &self.last_art_entry().1
+    }
+
+    pub(crate) fn last_art_path(&self) -> String {
+        self.last_art_entry().0.clone()
+    }
+
+    fn last_art_entry(&self) -> &(String, crate::slot::SlotSpec) {
+        match self.docs.capture.last() {
+            Some(record) => record.arts.last(),
+            None => self.docs.arts.last(),
+        }
+        .expect("an art slot was registered")
+    }
+
+    /// The art slot `path`'s spec, where it was registered.
+    pub(crate) fn art_slot_mut(&mut self, path: &str) -> Option<&mut crate::slot::SlotSpec> {
+        let key = crate::id::key_of_path(path);
+        let docs = &mut self.docs;
+        if let Some((_, spec)) = docs
+            .capture
+            .iter_mut()
+            .rev()
+            .flat_map(|r| r.arts.iter_mut())
+            .find(|(p, _)| p == path)
+        {
+            return Some(spec);
+        }
+        if let Some((_, spec)) = docs.arts.iter_mut().find(|(p, _)| p == path) {
+            return Some(spec);
+        }
+        docs.retained
+            .record_mut(key)
+            .and_then(|r| r.arts.iter_mut().find(|(p, _)| p == path))
+            .map(|(_, spec)| spec)
+    }
+
+    /// The render fields element `key` was emitted with.
+    #[cfg(test)]
+    pub(crate) fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
+        self.docs.render_fields.get(&key).or_else(|| {
+            self.docs
+                .retained
+                .record(key)
+                .and_then(|r| r.render_fields.iter().find(|(k, _)| *k == key))
+                .map(|(_, fields)| fields)
+        })
     }
 
     /// The probe's edits in effect.
@@ -491,5 +592,8 @@ impl Ui {
         d.slots.clear();
         d.arts.clear();
         d.render_fields.clear();
+        d.retained.evaluated = 0;
+        d.retained.resolved = 0;
+        d.retained.reconciled = 0;
     }
 }

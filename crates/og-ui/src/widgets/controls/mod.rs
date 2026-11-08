@@ -323,7 +323,14 @@ impl Ui {
         if n.el.direction != Direction::Row {
             return None;
         }
-        let &last = n.children.last()?;
+        // Written again in place, the control already stands among its
+        // siblings: the label before is the one just ahead of it.
+        let kids = &n.built_children;
+        let end = self
+            .in_place
+            .and_then(|(key, _)| kids.iter().position(|&c| self.nodes[c].key == key))
+            .unwrap_or(kids.len());
+        let &last = kids[..end].last()?;
         (self.kinds.get(last)?.0 == "label").then(|| self.nodes[last].probe_text.clone())
     }
 

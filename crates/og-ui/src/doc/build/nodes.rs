@@ -283,7 +283,7 @@ impl Ui {
                         self.build_virtual(b, n, kind, &id, &r, props, &path);
                     }
                     b.inherited = inherited;
-                    self.docs.built.push(built);
+                    self.note_built(built);
                     self.fire(b, n, key, &path, resp);
                     return Some(path);
                 }
@@ -303,7 +303,7 @@ impl Ui {
             let fields =
                 fields::RenderFields::capture(self, self.parent(), kind, resp, props, None);
             self.apply_document_fields(n, &r, &fields);
-            self.docs.render_fields.insert(key, fields);
+            self.note_render_fields(key, fields);
             if let Some(id) = r.str("rive") {
                 let at = self.parent();
                 self.play_rive(at, id, &path);
@@ -314,7 +314,7 @@ impl Ui {
                 let short = format!("{}/{}", b.mount, n.id);
                 self.docs.slots.entry(short).or_insert(at);
             }
-            self.docs.built.push(built);
+            self.note_built(built);
             let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
             build_children(self, b, None);
             b.inherited = inherited;
@@ -376,12 +376,7 @@ impl Ui {
                 // An art slot: its art fitted by its spec, or the style's
                 // placeholder for its kind (docs/ui.md §3.3).
                 self.art_spec(&path, &r);
-                let spec = self
-                    .docs
-                    .arts
-                    .last()
-                    .map(|(_, s)| s.clone())
-                    .expect("pushed");
+                let spec = self.last_art().clone();
                 texture = r.handle("texture").and_then(|h| b.env.texture(h));
                 self.art(
                     id.as_str(),
@@ -587,9 +582,9 @@ impl Ui {
         if last != NONE && last < self.nodes.len() {
             let fields = fields::RenderFields::capture(self, last, kind, resp, props, texture);
             self.apply_document_fields(n, &styled, &fields);
-            self.docs.render_fields.insert(key, fields);
+            self.note_render_fields(key, fields);
         }
-        self.docs.built.push(built);
+        self.note_built(built);
         self.fire(b, n, key, &path, resp);
         Some(path)
     }
@@ -732,7 +727,7 @@ impl Ui {
             |p| r.str(p).map(str::to_string),
             |p| r.nums(p).map(<[f32]>::to_vec),
         );
-        self.docs.arts.push((path.to_string(), s));
+        self.note_art(path.to_string(), s);
     }
 
     /// A control's two-way prop: its binding's path takes the new value.

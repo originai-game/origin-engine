@@ -133,7 +133,9 @@ impl Ui {
                 e.detail.insert("rules".into(), Value::Array(rules));
             }
         }
-        if self.docs.built.is_empty()
+        let doc_built = self.doc_built();
+        let doc_arts = self.art_slots();
+        if doc_built.is_empty()
             && self.frame().motion.is_empty()
             && self.docs.layers.layers.is_empty()
         {
@@ -146,24 +148,16 @@ impl Ui {
             .iter()
             .map(|l| l.screen.clone())
             .collect();
-        let built: std::collections::BTreeMap<&str, &crate::doc::build::Built> = self
-            .docs
-            .built
-            .iter()
-            .map(|b| (b.path.as_str(), b))
-            .collect();
+        let built: std::collections::BTreeMap<&str, &crate::doc::build::Built> =
+            doc_built.iter().map(|b| (b.path.as_str(), b)).collect();
         let motion: std::collections::BTreeMap<&str, &crate::motion::MotionDump> = self
             .frame()
             .motion
             .iter()
             .map(|m| (m.path.as_str(), m))
             .collect();
-        let arts: std::collections::BTreeMap<&str, &crate::slot::SlotSpec> = self
-            .docs
-            .arts
-            .iter()
-            .map(|(p, s)| (p.as_str(), s))
-            .collect();
+        let arts: std::collections::BTreeMap<&str, &crate::slot::SlotSpec> =
+            doc_arts.iter().map(|(p, s)| (p.as_str(), s)).collect();
         for e in &mut out {
             let d = &mut e.detail;
             let first = e.path.split('/').next().unwrap_or("");

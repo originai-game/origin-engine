@@ -4,6 +4,16 @@ use super::*;
 /// grows to it on each side it is shorter (Apple's HIG 44 pt).
 pub(crate) const TOUCH_TARGET: f32 = 44.0;
 
+/// Keeps node `i`'s authored box before placement replaces it for this
+/// frame (restored at the next `end`).
+fn authored_box(nodes: &mut [Node], mutated: &mut Vec<usize>, i: usize) {
+    let n = &mut nodes[i];
+    if n.authored_box.is_none() {
+        n.authored_box = Some((n.el.width, n.el.height, n.el.padding));
+        mutated.push(i);
+    }
+}
+
 impl Ui {
     /// Normalize freshly assigned presentation before measurement. Call once
     /// after replacing fields, not on already prepared scroll padding.
@@ -31,14 +41,22 @@ impl Ui {
                 _ => {}
             }
         }
-        if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
-            let key = node.key;
-            let gutter = self.bar_gutter(key);
-            if gutter > 0.0 {
-                self.nodes[i].el.padding.right += gutter;
-            }
-        }
         crate::layout::snap_pixel_text(&mut self.nodes[i..i + 1], &self.fonts);
+    }
+
+    /// A vertical scroller's bar gutter on its right padding, as its last
+    /// frame's range needs it: replaced, never added again, so a retained
+    /// scroller that is not built again keeps one gutter.
+    pub(crate) fn apply_gutter(&mut self, i: usize) {
+        let node = &self.nodes[i];
+        let gutter = if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
+            self.bar_gutter(node.key)
+        } else {
+            0.0
+        };
+        let node = &mut self.nodes[i];
+        node.el.padding.right += gutter - node.gutter;
+        node.gutter = gutter;
     }
 
     /// The minimum touch target in og-ui units (44 CSS px) on a touch
@@ -82,8 +100,17 @@ impl Ui {
         self.build_toasts();
         self.retire_nodes();
         self.building = false;
+        // A retained node placement resized last frame lays out from its
+        // authored box again (a written node is authored afresh).
+        for i in std::mem::take(&mut self.layout_mutated) {
+            if let Some((width, height, padding)) = self.nodes[i].authored_box.take() {
+                let el = &mut self.nodes[i].el;
+                (el.width, el.height, el.padding) = (width, height, padding);
+            }
+        }
         // Breakpoint and orientation variants (docs/ui.md §2), before
-        // anything is laid out.
+        // anything is laid out: on the nodes written this frame (a retained
+        // node keeps what they set; a new viewport emits it again).
         self.apply_variants();
         self.apply_part_appearances();
         // Hidden slots (a closed dialog, a finished transition) take no room.
@@ -91,29 +118,26 @@ impl Ui {
             if self.nodes[i].hidden {
                 continue;
             }
-            let kids = std::mem::take(&mut self.nodes[i].children);
-            let kept: Vec<usize> = kids
-                .into_iter()
-                .filter(|&c| !self.nodes[c].hidden)
-                .collect();
-            self.nodes[i].ordered_children = kept.clone();
-            self.nodes[i].children = kept;
-            // Out of the flow (absolute, anchored): laid out against the box.
-            if self.nodes[i]
-                .children
+            let kept: Vec<usize> = self.nodes[i]
+                .built_children
                 .iter()
-                .any(|&c| self.nodes[c].props.out_of_flow())
-            {
-                let kids = std::mem::take(&mut self.nodes[i].children);
-                let (out, flow): (Vec<usize>, Vec<usize>) = kids
-                    .into_iter()
-                    .partition(|&c| self.nodes[c].props.out_of_flow());
-                self.nodes[i].children = flow;
-                self.nodes[i].out = out;
-            }
+                .copied()
+                .filter(|&c| !self.nodes[c].hidden && self.nodes[c].parent == i)
+                .collect();
+            // Out of the flow (absolute, anchored): laid out against the box.
+            let (out, flow): (Vec<usize>, Vec<usize>) = kept
+                .iter()
+                .partition(|&&c| self.nodes[c].props.out_of_flow());
+            let n = &mut self.nodes[i];
+            n.ordered_children = kept;
+            n.children = flow;
+            n.out = out;
+        }
+        for k in 0..self.emitted.len() {
+            self.prepare_layout_node(self.emitted[k]);
         }
         for i in 0..self.nodes.len() {
-            self.prepare_layout_node(i);
+            self.apply_gutter(i);
         }
         self.reuse_check();
         let mut floating: Vec<usize> = self
@@ -225,6 +249,7 @@ impl Ui {
                     }
                     for &(g, placed) in &spots {
                         layout_inputs.remember(g, &self.nodes[g]);
+                        authored_box(&mut self.nodes, &mut self.layout_mutated, g);
                         self.nodes[g].el.width = Size::Fixed(placed.width);
                         self.nodes[g].el.height = Size::Fixed(placed.height);
                         layout(
@@ -260,6 +285,7 @@ impl Ui {
                 if float == Float::Modal {
                     // The backdrop covers the surface; the safe area pads its content.
                     layout_inputs.remember(f, &self.nodes[f]);
+                    authored_box(&mut self.nodes, &mut self.layout_mutated, f);
                     self.nodes[f].el.width = Size::Fixed(vp.width);
                     self.nodes[f].el.height = Size::Fixed(vp.height);
                     if self.nodes[f].backdrop {
@@ -344,6 +370,7 @@ impl Ui {
                     continue;
                 }
                 layout_inputs.remember(f, &self.nodes[f]);
+                authored_box(&mut self.nodes, &mut self.layout_mutated, f);
                 self.nodes[f].el.width = Size::Fixed(w);
                 self.nodes[f].el.height = Size::Fixed(h);
                 layout(
@@ -370,6 +397,7 @@ impl Ui {
                 }
                 let r = crate::layout::on_screen(&self.nodes[i], &screen);
                 layout_inputs.remember(i, &self.nodes[i]);
+                authored_box(&mut self.nodes, &mut self.layout_mutated, i);
                 self.nodes[i].el.width = Size::Fixed(r.width);
                 self.nodes[i].el.height = Size::Fixed(r.height);
                 layout(
@@ -516,8 +544,13 @@ impl Ui {
             self.state.active = 0;
         }
         let touched = std::mem::take(&mut self.touched);
-        self.state.anims.retain(|k, _| touched.contains(k));
-        self.state.screens.retain(|k, _| touched.contains(k));
+        let retained = &self.docs.retained;
+        self.state
+            .anims
+            .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
+        self.state
+            .screens
+            .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
         self.touched = touched;
 
         // Scopes: the nearest scope around each node, by walking the order.

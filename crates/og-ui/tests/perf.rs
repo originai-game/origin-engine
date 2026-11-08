@@ -492,3 +492,176 @@ fn perf_ui_change_budgets() {
         );
     }
 }
+
+/// The authored path of `perf_ui_change_budgets`: the same three surfaces as
+/// Svelte documents over named stores, mounted once and driven only by store
+/// writes and input, with the tick's executed work. Idle writes nothing; one
+/// label patches one row's field each tick; the list scrolls by the wheel.
+/// `row-999` scrolls a 1,000-row list to its last row and back with the
+/// focus held on row 999 by key.
+#[test]
+#[ignore = "perf: run on the reference machines in release"]
+fn perf_ui_retained_change_budgets() {
+    use og_ui::reactive::{SourceId, wire};
+    use serde_json::json;
+    use std::collections::BTreeMap;
+    release_only();
+    let apply = |ui: &mut Ui, commands: serde_json::Value| {
+        let reply = wire::decode(&ui.apply_reactive(&wire::encode(&commands).unwrap())).unwrap();
+        assert!(
+            reply.as_array().unwrap().iter().all(|r| r["ok"] == true),
+            "{reply}"
+        );
+    };
+    for scenario in ["idle", "one-label", "scroll-1000", "row-999"] {
+        let mut scene = og_render::RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let mut inputs = BTreeMap::new();
+        let list = scenario == "scroll-1000" || scenario == "row-999";
+        let text = if list {
+            let rows: Vec<_> = (0..1000)
+                .map(|row| json!({"id": format!("r{row}"), "label": format!("Inventory item {row}")}))
+                .collect();
+            let source = SourceId::new("perf", "items");
+            apply(
+                &mut ui,
+                json!([{"op":"collection","source":source,"key":"id","items":rows}]),
+            );
+            inputs.insert("items".to_owned(), source);
+            // row-999 fits the screen (its last row on it); scroll-1000 is
+            // perf_ui_change_budgets' list.
+            let (width, height) = if scenario == "row-999" {
+                (1200, 600)
+            } else {
+                (2560, 1440)
+            };
+            format!(
+                r#"<meta name="component" content="perf">
+<list id="Rows" row-height="24" width="{width}" height="{height}">
+{{#each $items as item (item.id)}}<button id="Name" height="24">{{item.label}}</button>{{/each}}
+</list>"#
+            )
+        } else {
+            let mut doc =
+                String::from("<meta name=\"component\" content=\"perf\">\n<row id=\"Screen\">\n");
+            for column in 0..20 {
+                let rows: Vec<_> = (0..50)
+                    .map(|row| json!({"id": format!("Label{row}"), "text": format!("Cell {column}:{row}")}))
+                    .collect();
+                let source = SourceId::new("perf", &format!("c{column}"));
+                apply(
+                    &mut ui,
+                    json!([{"op":"collection","source":source,"key":"id","items":rows}]),
+                );
+                inputs.insert(format!("c{column}"), source);
+                doc.push_str(&format!(
+                    "<column id=\"Column{column}\" width=\"128\" height=\"1440\">{{#each $c{column} as cell (cell.id)}}<text id=\"Cell{column}\">{{cell.text}}</text>{{/each}}</column>\n"
+                ));
+            }
+            doc.push_str("</row>");
+            doc
+        };
+        ui.define_document(UiDocument::parse("perf.svelte", &text).unwrap());
+        ui.mount_document(
+            SourceId::new("perf", "screen"),
+            "perf",
+            inputs,
+            &bind::NoEnv,
+        )
+        .unwrap();
+        let mut samples = Vec::new();
+        let mut max_first = 0usize;
+        let mut commands = 0;
+        let mut work = Vec::new();
+        let mut parts: [Vec<f64>; 3] = Default::default();
+        let far = "perf:screen/Row#r999/Name#r999".to_owned();
+        let total = WARM + TICKS;
+        for tick in 0..total {
+            let start = std::time::Instant::now();
+            if scenario == "one-label" && tick > 0 {
+                apply(
+                    &mut ui,
+                    json!([{"op":"patch","source":SourceId::new("perf","c7"),"key":"Label19","fields":{"text":format!("Value {tick}")}}]),
+                );
+            }
+            let wheel = match scenario {
+                "scroll-1000" if tick > 0 => 24.0,
+                // Down to the end in the first half, back in the second.
+                "row-999" if tick > 0 => {
+                    if tick < total / 2 {
+                        960.0
+                    } else {
+                        -960.0
+                    }
+                }
+                _ => 0.0,
+            };
+            ui.begin(
+                InputFrame {
+                    pointer_inside: true,
+                    pointer: og_core::glam::Vec2::new(50.0, 80.0),
+                    wheel: og_core::glam::Vec2::new(0.0, wheel),
+                    ..InputFrame::default()
+                },
+                Viewport::new(2560.0, 1440.0),
+            );
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
+            let built = start.elapsed().as_secs_f64() * 1000.0;
+            if scenario == "row-999" && ui.probe_elements().iter().any(|e| e.path == far) {
+                ui.set_focus(&far);
+            }
+            let t = std::time::Instant::now();
+            ui.end();
+            let ended = t.elapsed().as_secs_f64() * 1000.0;
+            let t = std::time::Instant::now();
+            let mut overlay = Overlay::new(2560.0, 1440.0, 1.0);
+            ui.frame().emit(&EmitDesc::default(), &mut overlay);
+            std::hint::black_box(&overlay);
+            let recorded = t.elapsed().as_secs_f64() * 1000.0;
+            commands = ui.frame().items.len();
+            if list {
+                max_first = max_first.max(
+                    ui.probe_elements()
+                        .iter()
+                        .filter_map(|e| e.path.rsplit_once("/Name#r").map(|(_, r)| r))
+                        .filter_map(|r| r.parse::<usize>().ok())
+                        .max()
+                        .unwrap_or(0),
+                );
+            }
+            if tick >= WARM {
+                samples.push(built + ended + recorded);
+                for (p, v) in parts.iter_mut().zip([built, ended, recorded]) {
+                    p.push(v);
+                }
+                work.push(ui.frame().stats);
+            }
+        }
+        assert!(commands > 0);
+        match scenario {
+            "scroll-1000" => assert!(max_first > 100, "the measured list must actually scroll"),
+            "row-999" => {
+                assert!(max_first >= 999, "reached row {max_first}");
+                assert_eq!(ui.focus_path(0), far, "focus held on row 999 by key");
+            }
+            _ => {}
+        }
+        samples.sort_by(f64::total_cmp);
+        for p in &mut parts {
+            p.sort_by(f64::total_cmp);
+        }
+        let last = work.last().copied().unwrap_or_default();
+        let max = |f: fn(&LayoutStats) -> u32| work.iter().map(f).max().unwrap_or(0);
+        println!(
+            "perf ui retained {scenario}: median {:.3} ms, p95 {:.3} ms (build {:.3}, end {:.3}, record {:.3}); {} elements, {commands} commands, deepest row {max_first}; last tick {last:?}; max laid out {}, max rebuilt {}",
+            samples[samples.len() / 2],
+            samples[samples.len() * 95 / 100],
+            parts[0][parts[0].len() / 2],
+            parts[1][parts[1].len() / 2],
+            parts[2][parts[2].len() / 2],
+            last.elements,
+            max(|s| s.laid_out),
+            max(|s| s.rebuilt),
+        );
+    }
+}

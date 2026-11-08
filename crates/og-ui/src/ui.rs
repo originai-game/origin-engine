@@ -420,6 +420,18 @@ pub struct Ui {
     pub(crate) emitted: Vec<usize>,
     retiring: Vec<usize>,
     slot_present: Vec<bool>,
+    /// Per slot: owned by a retained element, so it lives across frames
+    /// until its owner retires it (`retire_owned`), not for one frame.
+    pub(crate) persistent: Vec<bool>,
+    /// The slots each retained element being emitted writes: its own node
+    /// and its widget's internal nodes, innermost element last.
+    pub(crate) owning: Vec<build::Owned>,
+    /// A retained element re-emitted into the slot it already holds in its
+    /// parent's children: `(key, parent)` of the push that must not append.
+    pub(crate) in_place: Option<(u64, usize)>,
+    /// Slots whose box placement replaced (floating sizes, a modal's safe
+    /// padding): their authored box comes back before the next layout.
+    pub(crate) layout_mutated: Vec<usize>,
     /// This frame's element keys under a parent, which a repeated id
     /// would take again (`Ui::push` renames it), and the anonymous
     /// elements of each kind under each parent: kept as built, so a

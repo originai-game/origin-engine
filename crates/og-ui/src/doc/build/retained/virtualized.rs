@@ -78,7 +78,16 @@ impl RetainedHost {
         self.each.get_mut(id).unwrap().materialized = visible;
         for child in leaving {
             self.dematerialize(&child)?;
+            self.release(ui, &child);
         }
+        self.scrollers.insert(
+            element.context.node.clone(),
+            ui.state
+                .scroll
+                .get(&element.context.node.key)
+                .copied()
+                .unwrap_or(0.0),
+        );
         let result = (|| {
             if count == 0 {
                 for child in &empty {
