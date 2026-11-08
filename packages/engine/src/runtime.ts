@@ -1542,25 +1542,6 @@ export interface LogLine {
   readonly text: string;
 }
 
-/**
- * The build's module-state findings (src/node/module-state.ts) as warnings:
- * state in a JS module is outside the world snapshot and the presentation
- * checkpoint, so a restore, a rollback or a capture fork does not bring it back.
- */
-function moduleStateWarnings(): LogLine[] {
-  const found = (globalThis as { __og_module_state?: { location: string; name: string; kind: string }[] }).__og_module_state ?? [];
-  const seen = new Set<string>();
-  const lines: LogLine[] = [];
-  for (const s of found) {
-    const key = `${s.location} ${s.name}`;
-    if (seen.has(key)) continue; // a hot reload's bundle lists its files again
-    seen.add(key);
-    const what = s.kind === "const" ? `module-scope const '${s.name}' is mutated` : `module-scope ${s.kind} '${s.name}' is written`;
-    lines.push({ tick: 0, warning: true, text: `${s.location}: ${what}; it lives outside the world snapshot and the presentation checkpoint, so a restore, a rollback or a capture fork does not bring it back: keep it in a component or a resource` });
-  }
-  return lines;
-}
-
 /** Start a new bundle's declarations before importing it again (hot reload). */
 export function beginBundle(): void {
   abi().og_host_begin_bundle();
@@ -1744,14 +1725,9 @@ export class Engine {
     return parse(abi().og_engine_take_outputs(this.id));
   }
 
-  #stateWarned = false;
-
-  /** Log lines since the last call; the first call also has a warning for each module-scope variable the game writes, outside a publish build. */
+  /** Log lines since the last call. */
   takeLog(): LogLine[] {
-    const lines = parse<LogLine[]>(abi().og_engine_take_log(this.id));
-    if (this.#stateWarned || publishBuild === true) return lines;
-    this.#stateWarned = true;
-    return [...moduleStateWarnings(), ...lines];
+    return parse<LogLine[]>(abi().og_engine_take_log(this.id));
   }
 
   /** The world hash, hex: equal hashes mean equal worlds. */

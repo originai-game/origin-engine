@@ -1,7 +1,8 @@
-// The dev check for state outside the world (docs/design.md §2.4,
-// src/node/module-state.ts): a dev run's warnings name each module-scope
-// variable the game writes, and leave alone what it only reads, a local of
-// the same shape and the text of a string or comment.
+// The check for state outside the world (docs/design.md §2.4,
+// crates/og-cli/src/module_state.rs): og check fails on each module-scope
+// variable the game writes from a function, by file, line and name, and
+// leaves alone what it only reads, a local of the same name and the text
+// of a string or comment; og run stops on it as on a type error.
 import { expect, test } from "bun:test";
 import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,7 +14,7 @@ declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: n
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
-test("a dev run names the module-scope variables the game writes, by file, line and name", () => {
+test("og check fails on the module-scope variables the game writes, by file, line and name, and og run stops", () => {
   const dir = mkdtempSync(join(tmpdir(), "og-module-state-"));
   try {
     cpSync(join(repo, "packages", "create", "template"), dir, { recursive: true });
@@ -33,13 +34,15 @@ test("a dev run names the module-scope variables the game writes, by file, line 
       `export default og.game({ systems: [count] });`,
       ``,
     ].join("\n"));
+    const check = Bun.spawnSync([ogBin(), "check", dir, "--json"], { cwd: repo });
+    expect(check.exitCode).not.toBe(0);
+    const event = JSON.parse(new TextDecoder().decode(check.stdout).trim().split("\n")[0]!) as { ok: boolean; diagnostics: { file: string; line: number; code: number; message: string }[] };
+    const found = event.diagnostics.filter((d) => d.code === 9101).map((d) => `${d.file}:${d.line} ${/module-scope (\w+) '(\w+)'/.exec(d.message)?.slice(1).join(" ")}`);
+    expect(found).toEqual(["src/main.ts:10 let ticks", "src/main.ts:11 const seen"]);
     cookProject(dir, repo);
-    const r = Bun.spawnSync([ogBin(), "run", "--headless", dir, "--no-check", "--commands", "0.1:quit", "--json"], { cwd: repo });
-    const out = new TextDecoder().decode(r.stdout);
-    if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr) + out);
-    const { warnings } = JSON.parse(out.trim().split("\n").pop()!) as { warnings: string[] };
-    const found = warnings.filter((w) => w.includes("module-scope")).map((w) => /(src\/main\.ts:\d+): module-scope (\w+) '(\w+)'/.exec(w)?.slice(1).join(" "));
-    expect(found).toEqual(["src/main.ts:2 let ticks", "src/main.ts:3 const seen"]);
+    const run = Bun.spawnSync([ogBin(), "run", "--headless", dir, "--commands", "0.1:quit"], { cwd: repo });
+    expect(run.exitCode).not.toBe(0);
+    expect(new TextDecoder().decode(run.stderr)).toContain("OG9101");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

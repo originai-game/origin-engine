@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "og check",
+      "change": "A game file's module-scope let or var written from a function, or a module-scope container ([], {}, new Map, new Set, a typed array) mutated from one, is now an og check error (OG9101) instead of a warning in the first log: state in a JS module is outside the world snapshot and the presentation checkpoint, so a restore, a rollback or a fork does not bring it back. og run, og test and og build stop on it as on a type error. The check parses and resolves names (a local shadowing a module name is its own; a write as the module loads is not state); playtests and tests are not checked.",
+      "fix": "Keep the state in a component or a resource, or derive it again where it is needed (og.load answers the same handles for a path loaded before). --no-check runs anyway.",
+      "find": ["OG9101"]
+    }
+  ]
+}

@@ -28,6 +28,7 @@ mod frame;
 mod i18n;
 mod lockstep_lint;
 mod migrate;
+mod module_state;
 mod prefab;
 mod probe;
 mod project;

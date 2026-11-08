@@ -905,7 +905,8 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
         eprintln!("og check: {n}");
     }
     let target = Target::of(p, Some(package))?;
-    let report = checker.check(&target, default_checkers())?;
+    let mut report = checker.check(&target, default_checkers())?;
+    module_state(p, &mut report);
     if json {
         println!("{}", report.json());
     } else {
@@ -1072,6 +1073,29 @@ fn lockstep_lint(p: &Project, json: bool, to_stderr: bool) {
     }
 }
 
+/// The module-scope state check (`module_state`) over the game's sources
+/// beside the entry: each finding an error of the report, as a type error
+/// is, so `og check` fails and `og run`, `og test` and `og build` stop.
+fn module_state(p: &Project, report: &mut Report) {
+    let dir = p.entry.parent().unwrap_or(&p.root);
+    for (file, f) in crate::module_state::check(&p.root, dir) {
+        let message = f.message();
+        report.raw.push_str(&format!(
+            "{file}({},{}): error OG{}: {message}\n",
+            f.line,
+            f.col,
+            crate::module_state::CODE
+        ));
+        report.diagnostics.push(Diagnostic {
+            file: Some(file),
+            line: Some(f.line),
+            col: Some(f.col),
+            code: crate::module_state::CODE,
+            message,
+        });
+    }
+}
+
 /// `gate`, and `Err` on a type error as well: what stops a bundle.
 pub fn require(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     let report = gate(p, package, json)?;
@@ -1084,7 +1108,7 @@ pub fn require(p: &Project, package: &Path, json: bool) -> Result<Report, String
 
 pub fn refusal(report: &Report) -> String {
     format!(
-        "{} type error(s); fix them or pass --no-check",
+        "{} error(s) in the check; fix them or pass --no-check",
         report.diagnostics.len()
     )
 }
@@ -1171,10 +1195,13 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(n) = note {
         eprintln!("og check: {n}");
     }
-    let report = match checker.check(&target, checkers.unwrap_or_else(default_checkers)) {
+    let mut report = match checker.check(&target, checkers.unwrap_or_else(default_checkers)) {
         Ok(r) => r,
         Err(e) => return fail(e),
     };
+    if let Some(p) = &project {
+        module_state(p, &mut report);
+    }
     if json {
         println!("{}", report.json());
     } else {

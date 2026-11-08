@@ -226,7 +226,7 @@ pub fn uses_lockstep(src: &str) -> bool {
 
 /// The game's source files: `.ts` and `.tsx` under `dir`, sorted, without
 /// `node_modules`, dot directories and `.d.ts` files.
-fn sources(dir: &Path, out: &mut Vec<PathBuf>) {
+pub(crate) fn sources(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };

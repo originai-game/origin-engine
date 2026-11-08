@@ -664,7 +664,7 @@ pub fn run(args: &[&str]) -> ExitCode {
                         let checked = match (check["ok"].as_bool(), check["errors"].as_u64()) {
                             _ if checks.is_none() => String::new(),
                             (Some(true), _) => format!("; check ok {} ms", check["ms"]),
-                            (Some(false), Some(n)) => format!("; check: {n} type error(s)"),
+                            (Some(false), Some(n)) => format!("; check: {n} error(s)"),
                             (Some(false), None) => "; check failed".into(),
                             _ => "; check pending".into(),
                         };

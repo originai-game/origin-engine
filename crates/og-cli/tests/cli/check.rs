@@ -350,7 +350,7 @@ fn run_test_and_build_stop_on_a_type_error_before_bundling() {
             "og {cmd:?}: {t}"
         );
         assert!(
-            t.contains("1 type error(s); fix them or pass --no-check"),
+            t.contains("1 error(s) in the check; fix them or pass --no-check"),
             "og {cmd:?}: {t}"
         );
         assert!(

@@ -24,7 +24,6 @@ import { isBuiltin } from "node:module";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { placeAssertions } from "./assert-sites.ts";
-import { moduleState, moduleStateLine } from "./module-state.ts";
 
 declare const Bun: {
   build(o: {
@@ -175,18 +174,15 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
           return undefined;
         });
       }
-      // og.assert's places (src/node/assert-sites.ts) and, outside a minified
-      // (publish) build, the module-scope state check (src/node/module-state.ts),
-      // in the game's own files only; a playtest's own file drives the run and is not checked.
+      // og.assert's places (src/node/assert-sites.ts), in the game's own files only.
       const project = projectRoot(absEntry);
       build.onLoad({ filter: /\.[cm]?[jt]sx?$/, namespace: "file" }, (a) => {
         if (!a.path.startsWith(project + sep) || a.path.includes(`${sep}node_modules${sep}`) || a.path.startsWith(ENGINE_ROOT + sep)) return undefined;
         const text = readFileSync(a.path, "utf8");
         const file = relative(project, a.path).split(sep).join("/");
-        const state = minify || /\.(og|test)\.[cm]?[jt]sx?$/.test(file) ? "" : moduleStateLine(moduleState(text, file));
-        if (!text.includes("og.assert.") && state === "") return undefined;
+        if (!text.includes("og.assert.")) return undefined;
         const loader = /\.[cm]?tsx$/.test(a.path) ? "tsx" : /\.[cm]?ts$/.test(a.path) ? "ts" : /x$/.test(a.path) ? "jsx" : "js";
-        return { contents: (text.includes("og.assert.") ? placeAssertions(text, file) : text) + state, loader };
+        return { contents: placeAssertions(text, file), loader };
       });
       // The bundle's entry: the game's own (og:game, native) or the worker that
       // starts it (og:worker, web), each giving its og.game() token the og.assert

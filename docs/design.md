@@ -285,14 +285,16 @@ cancellable `og dev` checks use the stateless path.
     Terrain tiles fade in by the frame's seconds; a capture draws every
     resident tile settled.
 - Game state in a JS module is in neither the world snapshot nor the
-  presentation checkpoint, so a restore, a rollback or a capture fork does
-  not bring it back. Outside a publish build the build scans the game's
-  own files (packages/engine/src/node/module-state.ts) and the engine's
-  first log warns of each module-scope `let`/`var` that is written and
-  each module-scope container that is mutated, by file, line and name;
-  such state belongs in a component or a resource. A scan, not a proof: a
-  local shadowing a module name is reported as it, and state a closure
-  keeps inside a function is not seen.
+  presentation checkpoint, so a restore, a rollback, a fork or a
+  capture-only run does not bring it back. `og check` fails on it (OG9101,
+  `crates/og-cli/src/module_state.rs`), so `og run`, `og test` and
+  `og build` stop as on a type error: each module-scope `let`/`var` a
+  function writes and each module-scope container (`[]`, `{}`, `new Map`,
+  a typed array, ...) a function mutates, by file, line and name. The
+  source is parsed and its names resolved (oxc's semantic model): a local
+  shadowing a module name is its own, and a write as the module loads is
+  not state. Playtests and tests are not checked. State a closure keeps
+  inside a function, or one kept on an imported object, is not seen.
 
 ### 2.5 Scenes and assets
 

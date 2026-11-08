@@ -11,7 +11,7 @@
 // `penumbra:R` shows one light of sourceRadius R behind one wall, far from
 // the farm.
 import { og, defineResource, defineSystem, u32, f32 } from "@origingame/engine";
-import type { FlipbookInfo, World } from "@origingame/engine";
+import type { World } from "@origingame/engine";
 import { MAP, PROPS } from "./art.ts";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
@@ -43,13 +43,12 @@ function vfx2d(_world: World, _name: "dust", _at: { x: number; y: number }): voi
   // og.vfx.spawn(world, { asset: must(og.load.vfx(world, `fx/${name}.ogt`)), position: { ...at, z: 0 } });
 }
 
-let sheet: FlipbookInfo | null = null;
-
 type Opts = { shadow?: number; castShadow?: boolean; flipX?: boolean; glow?: number };
 
 /** A prop of the packed sheet standing on its feet at (x, y), sorted by y. */
 function prop(world: World, name: keyof typeof PROPS, x: number, y: number, opts: Opts = {}): void {
-  const s = sheet!;
+  // The same handles every call (og.load answers a path once loaded).
+  const s = must(og.load.flipbook(world, "props/props.ogt"));
   const e = must(world.spawn({ position: { x, y, z: 0 } }));
   must(world.insert(e, og.Sprite, { width: PROPS[name].w * TEX, height: PROPS[name].h * TEX, sortY: true, ...opts }));
   must(world.insert(e, og.Flipbook, { sheet: s.sheet, clip: og.anim.clip(s, name), playing: false }));
@@ -70,7 +69,6 @@ function lamp(world: World, x: number, y: number): void {
 const CROPS = [["parsnip_2", "cauliflower", "parsnip_1", "pumpkin"], ["wheat_a", "wheat_b", "sunflower", "tomato"], ["parsnip_0", "parsnip_1", "cauliflower", "tomato"]] as const;
 
 function build(world: World): void {
-  sheet = must(og.load.flipbook(world, "props/props.ogt"));
   const map = must(og.load.tilemap(world, "tiles/farm-map.ogt"));
   const ground = must(world.spawn({ name: "farm", position: { x: 0, y: MAP.h, z: 0 } }));
   must(world.insert(ground, og.Tilemap, { map: map.map, layer: -10, collision: false }));
