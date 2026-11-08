@@ -853,6 +853,14 @@ pub fn og_node_scripted_frames(engine: u32, on: bool) {
     og_runtime::set_scripted_frames(engine, on);
 }
 
+/// `og run --capture-only`: frames step the ticks and draw nothing; the
+/// script's screenshots and frame checks are probe captures, the PNGs a
+/// run drawing every frame takes (og-runtime's `set_capture_only`).
+#[napi(js_name = "og_node_capture_only")]
+pub fn og_node_capture_only(engine: u32, on: bool) {
+    og_runtime::set_capture_only(engine, on);
+}
+
 thread_local! {
     static SERVERS: RefCell<std::collections::BTreeMap<u32, og_probe::server::ProbeServer>> =
         const { RefCell::new(std::collections::BTreeMap::new()) };

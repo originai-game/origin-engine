@@ -1366,10 +1366,20 @@ impl TerrainSource {
     }
 }
 
-/// Seconds a streamed tile takes to fade in over its parent
-/// ([`crate::RenderScene::frame_seconds`]): twelve frames at 60 Hz, as
-/// long at 30 or 144.
+/// Seconds of tick time a streamed tile takes to fade in over its parent:
+/// twelve ticks at 60 Hz, whatever the display's rate.
 const FADE_SECONDS: f32 = 0.2;
+/// The most ticks one frame steps the fades by; after a longer gap (ticks
+/// stepped without frames, a capture-only run) every resident tile is in.
+const FADE_CATCH_UP: u64 = 64;
+
+/// [`TerrainRenderer::save`]: each resident tile's fade (data index, tile,
+/// fade, the tile data's identity) and the tick the fades last stepped at.
+#[derive(Clone, Default)]
+pub(crate) struct TerrainSave {
+    fades: Vec<(usize, u32, f32, usize)>,
+    tick: Option<u64>,
+}
 
 /// One resident tile: its index and data, and how far it has faded in.
 struct SlotTile {
@@ -1463,6 +1473,10 @@ pub(crate) struct TerrainRenderer {
     indices: Option<(wgpu::Buffer, Vec<(u32, RingRanges)>)>,
     scene: u64,
     datas: Vec<Option<GpuData>>,
+    /// The tick the streamed tiles' fades last stepped at.
+    fade_tick: Option<u64>,
+    /// The fades a restore brought back, for tiles uploaded at the next sync.
+    restored: Option<TerrainSave>,
     slots: Vec<Slot>,
     generations: u64,
     max_layers: u32,

@@ -1238,6 +1238,7 @@ impl Renderer {
             cache: SceneCache::default(),
             frame_index: 0,
             phase_base: 0,
+            saves: Default::default(),
             pipeline_disk,
             desc_particles: desc.particles,
             desc_culling: desc.culling,

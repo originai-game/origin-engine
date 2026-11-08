@@ -218,6 +218,9 @@ pub(crate) struct DisplayState {
     /// it draws at the configured quality and is no sample of automatic
     /// quality, whose controller is kept for the next display frame.
     pub scripted: bool,
+    /// Capture-only: the host's frames step the ticks and draw nothing;
+    /// what is seen is a probe capture's ([`set_capture_only`]).
+    pub capture_only: bool,
     /// The render scale and preset steps the last frame drew with.
     pub scale: f32,
     pub step: u8,
@@ -364,6 +367,18 @@ pub(crate) fn max_fps(rs: &RenderState) -> u32 {
 pub fn set_scripted_frames(id: u32, on: bool) {
     if let Ok(eng) = engine(id) {
         eng.render.borrow_mut().display.scripted = on;
+    }
+}
+
+/// Capture-only frames (a script's or a harness's run that reads frames
+/// only through the probe's captures): a frame steps its ticks, and with
+/// them every presentation state stepped by the tick (og.motion, the
+/// particles' histories), but draws nothing. A capture is a function of
+/// the world and the presentation checkpoint (docs/design.md §2.4), so its
+/// PNG is the one a run drawing every frame captures. Host-only.
+pub fn set_capture_only(id: u32, on: bool) {
+    if let Ok(eng) = engine(id) {
+        eng.render.borrow_mut().display.capture_only = on;
     }
 }
 

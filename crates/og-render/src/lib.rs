@@ -779,6 +779,8 @@ pub struct Renderer {
     /// `frame_index` at the last [`Renderer::render_capture`]: the
     /// temporal phase ([`Renderer::phase`]) counts from it.
     phase_base: u64,
+    /// The frame histories kept for world snapshots (`renderer/history.rs`).
+    saves: renderer::history::Saves,
     /// Compiled pipelines kept across runs (`pipeline_cache.rs`), when kept.
     pipeline_disk: Option<pipeline_cache::DiskCache>,
     /// Where particles simulate ([`RenderDesc::particles`]).

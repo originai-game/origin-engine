@@ -307,6 +307,48 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
     Ok(())
 }
 
+/// The streamed terrains' presentation state, for a presentation
+/// checkpoint: the streamer's and the tiles the renderer holds of each.
+#[derive(Clone, Default)]
+pub(crate) struct TerrainCheckpoint {
+    stream: super::terrain_stream::StreamCheckpoint,
+    held: Vec<(
+        og_render::TerrainHandle,
+        og_core::IdMap<u32, std::sync::Arc<og_render::TerrainTile>>,
+    )>,
+}
+
+pub(crate) fn checkpoint(rs: &RenderState) -> TerrainCheckpoint {
+    TerrainCheckpoint {
+        stream: rs.terrain.streamer.checkpoint(),
+        held: rs
+            .terrain
+            .loaded
+            .iter()
+            .filter_map(|t| Some((t.render, rs.scene.terrain_tiles(t.render)?.clone())))
+            .collect(),
+    }
+}
+
+pub(crate) fn restore(rs: &mut RenderState, c: &TerrainCheckpoint) {
+    rs.terrain.streamer.restore(&c.stream);
+    for (handle, tiles) in &c.held {
+        let now: Vec<u32> = rs
+            .scene
+            .terrain_tiles(*handle)
+            .map(|t| t.keys().copied().collect())
+            .unwrap_or_default();
+        for t in now {
+            if !tiles.contains_key(&t) {
+                rs.scene.set_terrain_tile(*handle, t, None);
+            }
+        }
+        for (&t, tile) in tiles.iter() {
+            rs.scene.set_terrain_tile(*handle, t, Some(tile.clone()));
+        }
+    }
+}
+
 /// Every terrain an engine loaded, by load index, and the og.Terrain
 /// layout extraction reads.
 #[derive(Default)]

@@ -105,11 +105,6 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     {
         let mut rs = eng.render.borrow_mut();
         rs.capture_ms = 0.0;
-        // What eases over the player's seconds (a terrain tile's fade-in)
-        // follows the host's frames, paused or not.
-        if elapsed_ms.is_finite() && elapsed_ms >= 0.0 {
-            rs.scene.frame_seconds = (elapsed_ms / 1000.0).min(0.25) as f32;
-        }
     }
     let t0 = rprobe::now_ms();
     let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
@@ -132,7 +127,12 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // (RenderSettings.interpolate), or at the tick on a tick boundary.
     let after = eng.state.borrow().accumulator_ms;
     let alpha = super::interpolate::frame_alpha(before, after, tick_ms, ticks < due);
-    let rendered = match render(&eng, alpha) {
+    let capture_only = eng.render.borrow().display.capture_only;
+    let rendered = match if capture_only {
+        Ok(false)
+    } else {
+        render(&eng, alpha)
+    } {
         Ok(r) => r,
         Err(e) => return refuse(e),
     };

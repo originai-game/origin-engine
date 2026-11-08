@@ -365,6 +365,8 @@ impl TerrainRenderer {
             indices: None,
             scene: 0,
             datas: Vec::new(),
+            fade_tick: None,
+            restored: None,
             slots: Vec::new(),
             generations: 0,
             max_layers: device.limits().max_texture_array_layers.min(256),
@@ -554,6 +556,41 @@ impl TerrainRenderer {
         }
     }
 
+    /// Each resident tile's fade and the tick they last stepped at, for a
+    /// presentation checkpoint (`renderer/history.rs`).
+    pub(crate) fn save(&self) -> TerrainSave {
+        let mut fades = Vec::new();
+        for (i, d) in self.datas.iter().enumerate() {
+            for st in d.iter().flat_map(|d| d.slots.iter().flatten()) {
+                fades.push((i, st.tile, st.fade, Arc::as_ptr(&st.data) as usize));
+            }
+        }
+        TerrainSave {
+            fades,
+            tick: self.fade_tick,
+        }
+    }
+
+    /// Brings back [`TerrainRenderer::save`]'s fades: a tile resident now
+    /// with the same data takes its saved fade, and one the save did not
+    /// hold is drawn in (it arrived on another branch).
+    pub(crate) fn restore(&mut self, saved: &TerrainSave) {
+        for (i, d) in self.datas.iter_mut().enumerate() {
+            for st in d.iter_mut().flat_map(|d| d.slots.iter_mut().flatten()) {
+                let data = Arc::as_ptr(&st.data) as usize;
+                st.fade = saved
+                    .fades
+                    .iter()
+                    .find(|f| f.0 == i && f.1 == st.tile && f.3 == data)
+                    .map_or(1.0, |f| f.2);
+            }
+        }
+        self.fade_tick = saved.tick;
+        // Tiles the save held that are not resident now take their fade
+        // when they are uploaded again (the next sync).
+        self.restored = Some(saved.clone());
+    }
+
     /// Brings every drawn data's slots to this frame's tiles: the tiles
     /// each terrain wants around the camera (made from a field in memory,
     /// or taken from those handed over), uploaded into free slots, the
@@ -574,6 +611,18 @@ impl TerrainRenderer {
         }
         self.uploads = 0;
         self.resident = 0;
+        // The ticks the fades step this frame: those since the last frame
+        // stepped them (none on the tick already drawn, a tick back, or the
+        // first frame); past [`FADE_CATCH_UP`] every tile is in.
+        let elapsed = match self.fade_tick {
+            Some(t) if scene.tick >= t => scene.tick - t,
+            _ => 0,
+        };
+        let settle_all = elapsed > FADE_CATCH_UP;
+        let fade_ticks = elapsed.min(FADE_CATCH_UP);
+        if !self.settled {
+            self.fade_tick = Some(scene.tick);
+        }
         let (sources, revisions) = scene.terrain_sources();
         self.datas.resize_with(sources.len(), || None);
         // Each data's wanted tiles, over every terrain drawing it, best first.
@@ -748,6 +797,46 @@ impl TerrainRenderer {
                     st.fade = 1.0;
                 }
             }
+            // The resident tiles' fades step once a tick since the last
+            // frame, each once its parent has fully faded in, before this
+            // frame's arrivals: a tile's fade is a function of the ticks
+            // since it arrived, never of the frames drawn (docs/design.md
+            // §2.4). A capture draws them settled and steps nothing.
+            if !self.settled {
+                let per_tick = 1.0 / (scene.tick_rate.max(1e-3) * FADE_SECONDS);
+                for _ in 0..fade_ticks {
+                    let parents_in: Vec<bool> = gpu
+                        .slots
+                        .iter()
+                        .map(|s| match s {
+                            Some(st) => layout.parent(st.tile).is_none_or(|p| {
+                                gpu.by_tile
+                                    .get(&p)
+                                    .and_then(|&ps| gpu.slots[ps].as_ref())
+                                    .is_some_and(|ps| ps.fade >= 1.0)
+                            }),
+                            None => false,
+                        })
+                        .collect();
+                    for (s, parent_in) in gpu.slots.iter_mut().zip(parents_in) {
+                        if let Some(st) = s
+                            && st.fade < 1.0
+                            && parent_in
+                        {
+                            // The last step's rounding is not left short of whole.
+                            st.fade += per_tick;
+                            if st.fade >= 1.0 - 1e-4 {
+                                st.fade = 1.0;
+                            }
+                        }
+                    }
+                }
+                if settle_all {
+                    for st in gpu.slots.iter_mut().flatten() {
+                        st.fade = 1.0;
+                    }
+                }
+            }
             for (tile, data) in &target {
                 if gpu.by_tile.contains_key(tile) {
                     continue;
@@ -756,43 +845,23 @@ impl TerrainRenderer {
                     break;
                 };
                 Self::upload_tile(queue, &gpu, slot as u32, data);
+                let ptr = Arc::as_ptr(data) as usize;
+                let fade = self
+                    .restored
+                    .as_ref()
+                    .and_then(|r| {
+                        r.fades
+                            .iter()
+                            .find(|f| f.0 == i && f.1 == *tile && f.3 == ptr)
+                    })
+                    .map_or(fresh_fade, |f| f.2);
                 gpu.slots[slot] = Some(SlotTile {
                     tile: *tile,
                     data: data.clone(),
-                    fade: fresh_fade,
+                    fade,
                 });
                 gpu.by_tile.insert(*tile, slot);
                 self.uploads += 1;
-            }
-            // Fades advance once their parent has fully faded in.
-            let parents_in: Vec<bool> = gpu
-                .slots
-                .iter()
-                .map(|s| match s {
-                    Some(st) => layout.parent(st.tile).is_none_or(|p| {
-                        gpu.by_tile
-                            .get(&p)
-                            .and_then(|&ps| gpu.slots[ps].as_ref())
-                            .is_some_and(|ps| ps.fade >= 1.0)
-                    }),
-                    None => false,
-                })
-                .collect();
-            for (s, parent_in) in gpu.slots.iter_mut().zip(parents_in) {
-                if let Some(st) = s
-                    && st.fade < 1.0
-                    && parent_in
-                    && !self.settled
-                {
-                    // A frame's step, at most a quarter of the fade (a
-                    // hitch does not pop a tile in); the last step's
-                    // rounding is not left short of whole.
-                    let step = (scene.frame_seconds / FADE_SECONDS).clamp(0.0, 0.25);
-                    st.fade += step;
-                    if st.fade >= 1.0 - 1e-4 {
-                        st.fade = 1.0;
-                    }
-                }
             }
             let mut table = vec![0.0f32; MAX_TERRAIN_TILES as usize];
             for (s, st) in gpu.slots.iter().enumerate() {
@@ -808,6 +877,9 @@ impl TerrainRenderer {
             gpu.drawn = true;
             self.resident += gpu.by_tile.len() as u32;
             self.datas[i] = Some(gpu);
+        }
+        if !self.settled {
+            self.restored = None;
         }
         Ok(())
     }

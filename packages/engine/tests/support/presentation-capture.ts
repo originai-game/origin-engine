@@ -12,12 +12,17 @@
 //             --restore-at, the snapshot of --rollback ticks back restored
 //             and those ticks played again; the world and presentation
 //             hashes they reach must be the first pass's
+//   display   the display's own frames, not captures: a frame on every tick
+//             from --fork-at to --ticks, then another branch of 24 ticks
+//             from the fork's snapshot without the inputs, the fork restored
+//             and the same ticks drawn again; every frame must be the first
+//             pass's byte for byte (`checked`, `mismatches`)
 //   ticks     a display frame on every tick, and each tick's world and
 //             presentation hash (`ticks`, from tick 1), then `dump_motion`
 //             (`motion`): what the web's run of the same project must reach
 //             (tests/web/motion-ticks.ts)
 //
-//   bun tests/support/presentation-capture.ts --project <dir> --mode every|capture|restore|synctest|ticks
+//   bun tests/support/presentation-capture.ts --project <dir> --mode every|capture|restore|synctest|display|ticks
 //       --ticks N [--restore-at A] [--fork-at R] [--rollback K] [--size WxH]
 //       [--inputs "tick:action[:args];..."] [--out <file.png>]
 //
@@ -166,7 +171,43 @@ else if (mode === "restore") {
   if (!f.ok) throw new Error(f.reason);
   const dump = engine.takeOutputs().find((o) => o.action === "dump_motion");
   extra = { ticks: each, motion: dump ? JSON.parse(dump.data) : null };
-} else throw new Error(`--mode is every, capture, restore, synctest or ticks, not ${mode}`);
+} else if (mode === "display") {
+  // The display's own frames, not captures: drawn on every tick from
+  // --fork-at to --ticks, then again after another branch and a restore
+  // of the fork's snapshot; each tick's frame must be the first pass's.
+  stepTo(forkAt, true);
+  const fork = probe.snapshot() as Snap;
+  const pass = (): Uint8Array[] => {
+    const frames: Uint8Array[] = [];
+    while (tick() < ticks) {
+      stepTo(tick() + 1, true);
+      frames.push(Uint8Array.from(native().og_node_render_frame(engine.id)));
+    }
+    return frames;
+  };
+  const a = pass();
+  probe.restore(fork.id);
+  const kept = new Map(inputs);
+  inputs.clear();
+  stepTo(Math.min(ticks, forkAt + 24), true);
+  for (const [k, v] of kept) inputs.set(k, v);
+  probe.restore(fork.id);
+  const b = pass();
+  // Each tick whose frame differs: the pixels that differ and the largest channel difference.
+  const mismatches = a.flatMap((x, i) => {
+    const y = b[i]!;
+    let pixels = 0;
+    let max = 0;
+    for (let p = 0; p < x.length; p += 4) {
+      let d = 0;
+      for (let c = 0; c < 4; c++) d = Math.max(d, Math.abs(x[p + c]! - y[p + c]!));
+      if (d > 0) pixels++;
+      max = Math.max(max, d);
+    }
+    return pixels === 0 && x.length === y.length ? [] : [`tick ${forkAt + i + 1}: ${pixels} px, max ${max}`];
+  });
+  extra = { checked: a.length, mismatches };
+} else throw new Error(`--mode is every, capture, restore, synctest, ticks or display, not ${mode}`);
 const frame = shot();
 if (out) writeFileSync(out, frame.png);
 const presentation = (probe.snapshot() as Snap).presentation;

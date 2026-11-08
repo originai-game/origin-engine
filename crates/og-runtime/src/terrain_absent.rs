@@ -184,3 +184,12 @@ impl SeabedGrid {
         Vec::new()
     }
 }
+
+#[derive(Clone, Default)]
+pub(crate) struct TerrainCheckpoint;
+
+pub(crate) fn checkpoint(_rs: &RenderState) -> TerrainCheckpoint {
+    TerrainCheckpoint
+}
+
+pub(crate) fn restore(_rs: &mut RenderState, _c: &TerrainCheckpoint) {}

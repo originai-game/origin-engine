@@ -597,8 +597,8 @@ pub(crate) struct Presenter {
     pub palettes: IdMap<u64, Vec<Mat4>>,
     /// The palettes of the tick stepped before [`Presenter::stepped`], with
     /// that tick: what a display frame between the two blends from
-    /// ([`Presenter::drawn`]). Display only, so outside the checkpoint and
-    /// its hash.
+    /// ([`Presenter::drawn`]). In the checkpoint (a display frame after a
+    /// restore blends as the run's did), outside the hash (display only).
     previous: Option<(u64, IdMap<u64, Vec<Mat4>>)>,
     /// Only palettes made from generated frames this render, never fallback.
     generated: BTreeSet<u64>,
@@ -680,6 +680,7 @@ impl Presenter {
             clock: self.clock,
             stepped: self.stepped,
             held: self.held,
+            previous: self.previous.clone(),
             motion: ready.map(|r| r.motion.clone()),
             outstanding: ready.and_then(|r| outstanding(r)),
         }
@@ -709,7 +710,7 @@ impl Presenter {
         r.queued = c.outstanding.clone();
         self.agents = c.agents.clone();
         self.palettes = c.palettes.clone();
-        self.previous = None;
+        self.previous = c.previous.clone();
         self.generated = c.generated.clone();
         self.clock = c.clock;
         self.stepped = c.stepped;
@@ -786,6 +787,7 @@ pub(crate) struct MotionCheckpoint {
     clock: Option<f64>,
     stepped: Option<u64>,
     held: Option<Held>,
+    previous: Option<(u64, IdMap<u64, Vec<Mat4>>)>,
     motion: Option<Motion>,
     outstanding: Option<(Batch, u64)>,
 }

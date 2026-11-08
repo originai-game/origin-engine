@@ -141,12 +141,6 @@ pub struct RenderScene {
     pub tick: u64,
     /// Ticks per second (the fixed step of particles and trails).
     pub tick_rate: f32,
-    /// Real seconds since the host's previous frame (its display's frame
-    /// interval, ticks or none: paused worlds still draw), for what eases
-    /// over seconds of the player's time whatever the frame rate and
-    /// never feeds the tick: a streamed terrain tile's fade-in. Default
-    /// one sixtieth.
-    pub frame_seconds: f32,
     /// A display frame drawn between the last two ticks (render
     /// interpolation): its alpha, 0 at the tick before `tick` and 1 at
     /// `tick`, as the blended transforms are drawn; `None` draws `tick`.

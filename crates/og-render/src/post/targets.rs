@@ -62,8 +62,12 @@ impl Persistent {
                     width,
                     height,
                     HDR_FORMAT,
-                    // FSR 3.1 writes it from compute (fsr.rs).
-                    attach_bind | wgpu::TextureUsages::STORAGE_BINDING,
+                    // FSR 3.1 writes it from compute (fsr.rs); copied for a
+                    // presentation checkpoint (renderer/history.rs).
+                    attach_bind
+                        | wgpu::TextureUsages::STORAGE_BINDING
+                        | wgpu::TextureUsages::COPY_SRC
+                        | wgpu::TextureUsages::COPY_DST,
                 )
                 .create_view(&Default::default())
             })
@@ -88,7 +92,9 @@ impl Persistent {
         {
             return false;
         }
-        let usage = wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST;
+        let usage = wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST;
         self.gi = Some((
             (width, height),
             [0, 1].map(|_| {
@@ -121,8 +127,12 @@ impl Persistent {
                     width,
                     height,
                     HDR_FORMAT,
-                    // FSR 3.1 writes it from compute (fsr.rs).
-                    attach_bind | wgpu::TextureUsages::STORAGE_BINDING,
+                    // FSR 3.1 writes it from compute (fsr.rs); copied for a
+                    // presentation checkpoint (renderer/history.rs).
+                    attach_bind
+                        | wgpu::TextureUsages::STORAGE_BINDING
+                        | wgpu::TextureUsages::COPY_SRC
+                        | wgpu::TextureUsages::COPY_DST,
                 )
                 .create_view(&Default::default())
             })
@@ -146,7 +156,11 @@ fn smaa_history(
                 width,
                 height,
                 format,
-                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                // Copied for a presentation checkpoint (renderer/history.rs).
+                wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::COPY_DST,
             )
             .create_view(&Default::default())
         })

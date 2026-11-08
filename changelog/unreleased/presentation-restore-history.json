@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"og run --capture-only","summary":"Draws no display frame, only the captures the commands ask for, each from the tick-stepped presentation state, so its PNGs equal a run that draws every frame. Refuses --realtime, --watch and --port."}
+  ],
+  "fixed": [
+    {"member":"probe restore","summary":"A presentation checkpoint now restores the display's whole frame history (TAA, SMAA, GI, SSR and FSR histories, the wind field, trample, the frame parity and phase, the previous camera, time, wind and sway), the interpolation pair, og.motion's previous palettes, the skinned palettes and the terrain streamer with its tiles, so display frames after a restore equal the uninterrupted run's byte for byte."},
+    {"member":"og.Terrain streaming","summary":"Tiles fade in by presentation ticks rather than frame seconds, and a requested tile is handed a fixed 4 ticks after its request, so what streams in and how far it has faded is a function of the tick on every host."}
+  ]
+}

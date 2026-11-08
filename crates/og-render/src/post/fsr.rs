@@ -11,6 +11,7 @@
 //! it.
 
 use super::*;
+use crate::renderer::history::GpuCopy;
 use glam::{Mat4, Vec2};
 
 /// The passes in dispatch order, with their entry points and modules.
@@ -256,7 +257,11 @@ fn texture(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format,
-        usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+        // Copied for a presentation checkpoint (renderer/history.rs).
+        usage: wgpu::TextureUsages::STORAGE_BINDING
+            | wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     })
 }
@@ -273,7 +278,9 @@ fn buffer(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
         size: size.max(16),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     })
 }
@@ -380,6 +387,35 @@ impl State {
         }
     }
 
+    /// Everything FSR carries from frame to frame, for a checkpoint's copy.
+    fn resources(&self) -> (Vec<&wgpu::Texture>, Vec<&wgpu::Buffer>) {
+        let views = [
+            &self.dilated_depth,
+            &self.dilated_motion,
+            &self.farthest_depth,
+            &self.farthest_depth_mip1,
+            &self.shading_change,
+            &self.dilated_reactive,
+            &self.luma_instability,
+            &self.spd_mips,
+        ];
+        let textures = views
+            .into_iter()
+            .chain(&self.luma)
+            .chain(&self.accumulation)
+            .chain(&self.luma_history)
+            .chain(&self.history)
+            .map(wgpu::TextureView::texture)
+            .collect();
+        let buffers = vec![
+            &self.reconstructed_depth,
+            &self.new_locks,
+            &self.luma_partials,
+            &self.frame_info,
+        ];
+        (textures, buffers)
+    }
+
     fn bytes(&self) -> u64 {
         let views = [
             &self.dilated_depth,
@@ -454,6 +490,15 @@ struct Recorded {
 /// A frame's jitter, render size and output size.
 type Previous = (Vec2, (u32, u32), (u32, u32));
 
+/// [`FsrPasses::save`]: the state's copy at its output size, and the counters.
+pub(crate) struct FsrSave {
+    gpu: Option<((u32, u32), GpuCopy)>,
+    index: u64,
+    previous: Option<Previous>,
+    frame_index: u64,
+    last_tick: Option<u64>,
+}
+
 pub(crate) struct FsrPasses {
     device: wgpu::Device,
     uniform: wgpu::Buffer,
@@ -527,6 +572,54 @@ impl FsrPasses {
         self.previous = None;
         self.recorded = None;
         self.last_tick = None;
+    }
+
+    /// What FSR carries to the next frame, copied for a presentation
+    /// checkpoint (`renderer/history.rs`): its counters and its state.
+    pub(crate) fn save(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> FsrSave {
+        FsrSave {
+            gpu: self.state.as_ref().map(|s| {
+                let (t, b) = s.resources();
+                (s.upscale, GpuCopy::of(device, encoder, &t, &b))
+            }),
+            index: self.index,
+            previous: self.previous,
+            frame_index: self.frame_index,
+            last_tick: self.last_tick,
+        }
+    }
+
+    /// Brings back [`FsrPasses::save`]'s state; without it (none saved, or
+    /// the output resized since) the next FSR frame starts afresh.
+    /// True when the state is the saved one (or neither has one).
+    pub(crate) fn restore(&mut self, encoder: &mut wgpu::CommandEncoder, saved: &FsrSave) -> bool {
+        let back = match (&saved.gpu, &self.state) {
+            (Some((upscale, copy)), Some(s)) if *upscale == s.upscale => {
+                let (t, b) = s.resources();
+                copy.back(encoder, &t, &b)
+            }
+            _ => false,
+        };
+        if back {
+            self.index = saved.index;
+            self.previous = saved.previous;
+            self.frame_index = saved.frame_index;
+            self.last_tick = saved.last_tick;
+            true
+        } else {
+            let none = saved.gpu.is_none() && self.state.is_none();
+            self.release();
+            none
+        }
+    }
+
+    /// GPU bytes a save of FSR holds.
+    pub(crate) fn saved_bytes(saved: &FsrSave) -> u64 {
+        saved.gpu.as_ref().map_or(0, |(_, c)| c.bytes())
     }
 
     /// Makes the state for the frame's output, writes its uniform and its

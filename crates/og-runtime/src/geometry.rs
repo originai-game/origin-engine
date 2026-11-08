@@ -218,6 +218,28 @@ impl GeoState {
     pub(crate) fn put_hierarchy(&mut self, h: Hierarchy) {
         self.hierarchy = h;
     }
+
+    /// The record and its hierarchy, for a presentation checkpoint: what
+    /// a display frame after a restore blends from and a raycast between
+    /// ticks reads, as the snapshot's tick started.
+    pub(crate) fn record_checkpoint(&self) -> RecordCheckpoint {
+        RecordCheckpoint {
+            record: self.record.clone(),
+            hierarchy: self.hierarchy.clone(),
+        }
+    }
+
+    pub(crate) fn restore_record(&mut self, c: &RecordCheckpoint) {
+        self.record = c.record.clone();
+        self.hierarchy = c.hierarchy.clone();
+    }
+}
+
+/// [`GeoState::record_checkpoint`].
+#[derive(Clone, Default)]
+pub(crate) struct RecordCheckpoint {
+    record: Option<(u64, Record)>,
+    hierarchy: Hierarchy,
 }
 
 /// The drawn og.Mesh rows of the last tick start, kept while the columns
@@ -301,6 +323,7 @@ struct Drawn {
 /// drawn mesh's world matrix each tick was a tenth of a frame of the
 /// reference scene on the retired WebGL2 tier
 /// (the former test sample
+#[derive(Clone)]
 enum Record {
     /// The og.Mesh rows (shared with the next tick's while they hold) and
     /// the og.Model parts.

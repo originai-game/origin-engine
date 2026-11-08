@@ -4,7 +4,7 @@
 //
 //   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
-//       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
+//       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render] [--capture-only]
 //       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>]
 //       [--trace <out.json> [--trace-append]] [--room ws://127.0.0.1:P/<room>] [--json]
 //       [--restore <world.save>] [--handoff <world.save>]
@@ -51,6 +51,7 @@ import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { attachRenderer, loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
+import { decodePng } from "./png.ts";
 import { nativePlatform, readFake } from "./platform.ts";
 import { Trace, unixMs, type TraceDocument } from "../trace.ts";
 import { beginBundle, boundHost, createEngine, fixedClock, type Engine, type GameToken, type Result } from "../runtime.ts";
@@ -95,6 +96,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     let realtime = false;
     let watchFile: string | undefined;
     let render = true;
+    let captureOnly = false;
     let asJson = false;
     let requireChecked = false;
     let audioOut = "null";
@@ -131,6 +133,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       } else if (a === "--realtime") realtime = true;
       else if (a === "--watch") watchFile = resolve(next());
       else if (a === "--no-render") render = false;
+      else if (a === "--capture-only") captureOnly = true;
       else if (a === "--json") asJson = true;
       else if (a === "--require-checked") requireChecked = true;
       else if (a === "--audio") audioOut = next();
@@ -159,6 +162,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     if (seed !== undefined && (!Number.isInteger(seed) || seed < 0)) fail("--seed takes a whole number");
     if (clock !== undefined && !(Number.isFinite(clock) && clock > 0)) fail("--clock takes UTC milliseconds since 1970, such as 1767225600000");
     if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535)) fail("--port takes 0 (a free port) to 65535");
+    if (captureOnly && (realtime || watchFile !== undefined || port !== undefined)) fail("--capture-only draws no display frame: it is for a script's run, not --realtime, --watch or --port");
 
     // --trace: the Chrome trace (src/trace.ts), continuing og's prelude (the cook) when appending.
     const trace = tracePath
@@ -265,18 +269,33 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     if (!created.ok) fail(`${entry}: ${created.reason}`);
     const engine: Engine = created.value;
     cleanup.push(() => engine.destroy());
+    // The tick's capture as the failure capture's frame.rgba: width and height (u32 LE), then RGBA8 rows.
+    const captureRgba = (): Uint8Array => {
+      const c = (engine.probe as unknown as { capture(w: number, h: number): { png: string } | null }).capture(0, 0);
+      if (!c) return new Uint8Array();
+      const img = decodePng(Uint8Array.from(atob(c.png), (ch) => ch.charCodeAt(0)));
+      const out = new Uint8Array(8 + img.rgba.length);
+      new DataView(out.buffer).setUint32(0, img.width, true);
+      new DataView(out.buffer).setUint32(4, img.height, true);
+      out.set(img.rgba, 8);
+      return out;
+    };
     if (failureCapture) captureFailureCandidate = () => {
       mkdirSync(failureCapture, { recursive: true });
       writeFileSync(join(failureCapture, "world.json"), JSON.stringify(engine.probe.dump({ what: "world" })));
       const snapshot = engine.world.snapshot();
       if (snapshot.ok) writeFileSync(join(failureCapture, "world.ogsave"), snapshot.value);
-      // Read the frame that actually ran, without another draw or replay.
-      // The harness encodes it only if its later assertions fail.
-      writeFileSync(join(failureCapture, "frame.rgba"), extras.og_node_render_frame(engine.id, true));
+      // Read the frame that actually ran, without another draw or replay
+      // (capture-only draws none: the tick's capture, the frame a run
+      // drawing every frame captures). The harness encodes it only if its
+      // later assertions fail.
+      writeFileSync(join(failureCapture, "frame.rgba"), captureOnly ? captureRgba() : extras.og_node_render_frame(engine.id, true));
     };
     // Without --realtime every frame is the script's (elapsed is one tick): its time is the machine's load, not a
     // display's, so automatic quality must not read it, or the same script draws at another render scale per run.
     if (!realtime) extras.og_node_scripted_frames(engine.id, true);
+    // --capture-only: the frames step the ticks and draw nothing; screenshots and frame checks are captures.
+    if (captureOnly) extras.og_node_capture_only(engine.id, true);
     if (tracePath) {
       extras.og_node_trace(engine.id, true);
       extras.og_node_trace(BEFORE_ENGINE, false);

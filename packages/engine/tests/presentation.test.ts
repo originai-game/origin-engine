@@ -18,7 +18,13 @@ import { gpuTest } from "./support/gpu.ts";
 // - a restore that changes the simulation (terrain edits replayed into
 //   physics) → the world hashes
 // - presentation state not stepped deterministically under rollback → the SyncTest
+// - a restore that brings back the world but not the display's frame history
+//   (TAA's, the previous camera and objects for motion vectors, the jitter's
+//   phase, interpolation, the streamed terrain tiles and their fades) → the
+//   display forks, which compare every display frame after a restore with
+//   the uninterrupted run's
 import { expect } from "bun:test";
+import { createHash } from "node:crypto";
 import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -82,6 +88,31 @@ gpuTest("SyncTest: four ticks rolled back and played again on every tick of the 
   expect(sync.checked).toBe(47);
 }, 120_000);
 
+/** Display frames after a fork: every one the uninterrupted run's, byte for byte. */
+function displayFork(project: string, args: string[], checked: number): void {
+  const r = run(project, "display", args);
+  expect(r.mismatches).toEqual([]);
+  expect(r.checked).toBe(checked);
+}
+
+gpuTest("vehicle-terrain's display frames after a fork mid-slide are the uninterrupted run's (TAA, motion vectors)", () => {
+  const project = join(repo, "tests", "fixtures", "vehicle-terrain");
+  cookProject(project, repo);
+  displayFork(project, [...DRIVE, "--fork-at", "110"], 46);
+}, 120_000);
+
+gpuTest("terrain-stream's display frames after a fork before its tiles stream in are the uninterrupted run's (tile arrival, fades)", () => {
+  const project = join(repo, "tests", "fixtures", "terrain-stream");
+  cookProject(project, repo);
+  displayFork(project, ["--ticks", "110", "--fork-at", "20", "--size", "960x540"], 90);
+}, 120_000);
+
+gpuTest("motion-feet's display frames after a fork mid-course are the uninterrupted run's (og.motion's Presenter)", () => {
+  const project = join(repo, "tests", "fixtures", "motion-feet");
+  cookProject(project, repo);
+  displayFork(project, ["--ticks", "360", "--fork-at", "300", "--size", "640x360"], 60);
+}, 120_000);
+
 // og.motion steps by the tick (crates/og-runtime/src/motion/present.rs):
 // its batches are taken at a fixed tick and the model is waited for when
 // an agent first needs it, so the poses drawn never depend on how fast the
@@ -115,3 +146,27 @@ gpuTest("og.motion draws the same frames and feet on two runs of motion-feet, on
     rmSync(dir, { recursive: true, force: true });
   }
 }, 180_000);
+
+// og run --capture-only draws no display frame, only the captures its
+// commands ask for; each is a function of the tick-stepped presentation
+// state, so its PNGs are the bytes of a run that draws every frame.
+gpuTest("og run --capture-only screenshots vehicle-terrain with the bytes of a run that draws every frame", () => {
+  const project = join(repo, "tests", "fixtures", "vehicle-terrain");
+  cookProject(project, repo);
+  const dir = mkdtempSync(join(tmpdir(), "og-capture-only-"));
+  const shots = ["0.5", "1.3", "2.1"];
+  const sha = (b: Uint8Array): string => createHash("sha256").update(b).digest("hex");
+  const commands = `${shots.map((t, i) => `${t}:screenshot:s${i}.png`).join(";")};2.2:quit`;
+  const runOnce = (out: string, extra: string[]): Uint8Array[] => {
+    const r = Bun.spawnSync([ogBin(), "run", "--headless", project, "--size", "640x360", "--commands", commands, "--out", out, ...extra], { cwd: repo });
+    if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr));
+    return shots.map((_, i) => readFileSync(join(out, `s${i}.png`)));
+  };
+  try {
+    const drawn = runOnce(join(dir, "drawn"), []);
+    const only = runOnce(join(dir, "only"), ["--capture-only"]);
+    for (let i = 0; i < shots.length; i++) expect(sha(only[i]!)).toBe(sha(drawn[i]!));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 120_000);

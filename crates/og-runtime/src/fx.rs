@@ -1645,6 +1645,46 @@ pub(crate) fn crowd_model(
     true
 }
 
+/// Per-object motion's state (`FxState`'s last two ticks and what the last
+/// display frame drew), kept by a presentation checkpoint: the first frame
+/// after a restore moves its objects from where the saved run's frame
+/// before drew them, so TAA and motion blur reproject as that run did.
+#[derive(Clone, Default)]
+pub(crate) struct MotionCheckpoint {
+    tick: u64,
+    current: Vec<((u64, u32), Mat4)>,
+    previous: Vec<((u64, u32), Mat4)>,
+    drawn: Vec<((u64, u32), Mat4)>,
+    drawn_joints: IdMap<u64, Vec<Mat4>>,
+    drawn_weights: BTreeMap<(u64, usize), [f32; og_render::MAX_MORPH_TARGETS]>,
+    drawn_deformed: BTreeMap<(u64, usize), (Mat4, og_render::DeformedVertices)>,
+}
+
+impl FxState {
+    pub(crate) fn motion_checkpoint(&self) -> MotionCheckpoint {
+        MotionCheckpoint {
+            tick: self.tick,
+            current: self.current.clone(),
+            previous: self.previous.clone(),
+            drawn: self.drawn.clone(),
+            drawn_joints: self.drawn_joints.clone(),
+            drawn_weights: self.drawn_weights.clone(),
+            drawn_deformed: self.drawn_deformed.clone(),
+        }
+    }
+
+    pub(crate) fn restore_motion(&mut self, c: &MotionCheckpoint) {
+        self.tick = c.tick;
+        self.current.clone_from(&c.current);
+        self.previous.clone_from(&c.previous);
+        self.previous_by_key = None;
+        self.drawn.clone_from(&c.drawn);
+        self.drawn_joints.clone_from(&c.drawn_joints);
+        self.drawn_weights.clone_from(&c.drawn_weights);
+        self.drawn_deformed.clone_from(&c.drawn_deformed);
+    }
+}
+
 /// Whether the renderer resolved TAA, whose motion vectors want the
 /// previous frame's transforms and joints whatever the post effects.
 pub(crate) fn taa(rs: &RenderState) -> bool {
@@ -1706,10 +1746,15 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
         fx.drawn_deformed.clear();
         return;
     }
-    joints(scene, atmo, fx);
-    if !interp.display && !taa {
+    // A capture (every extraction but a display frame's) draws the tick as
+    // a still frame: its warm-up redraws one scene, so its instances and
+    // joints move with nothing but the blur's tick before, and the frames
+    // the display drew (or did not draw: `og run --capture-only`) neither
+    // reach it nor are moved by it (docs/design.md §2.4).
+    if !interp.display {
         return;
     }
+    joints(scene, atmo, fx);
     let from_drawn = if blur {
         interp.drawn.is_some() && !scene.previous_transforms.is_empty()
     } else {

@@ -52,6 +52,7 @@ use bytemuck::{Pod, Zeroable};
 use glam::Mat4;
 
 use crate::AoResolution;
+use crate::renderer::history::GpuCopy;
 use crate::renderer::{sampler_entry, uniform_entry};
 
 const SSR_WGSL: &str = wgsl!("ssr.wgsl");
@@ -241,6 +242,18 @@ fn texture(
 }
 
 impl Targets {
+    /// What the temporal pass carries to the next frame: the history,
+    /// its meta, spread and fast mean, both of each pair.
+    fn history_resources(&self) -> Vec<&wgpu::Texture> {
+        self.history
+            .iter()
+            .chain(&self.meta)
+            .chain(&self.spread)
+            .chain(&self.fast)
+            .map(wgpu::TextureView::texture)
+            .collect()
+    }
+
     fn new(device: &wgpu::Device, size: (u32, u32), divisor: u32) -> Targets {
         let ray_size = (size.0.div_ceil(divisor), size.1.div_ceil(divisor));
         let hiz = texture(
@@ -289,6 +302,21 @@ impl Targets {
             }),
             guide: view("ssr guide", ray_size, FORMAT),
         }
+    }
+}
+
+/// [`SsrRenderer::save`]: the targets' size and divisor, the copy of
+/// their accumulation, and the frame that wrote it.
+pub(crate) struct SsrSave {
+    size: (u32, u32),
+    divisor: u32,
+    copy: GpuCopy,
+    history: Option<(u64, Mat4)>,
+}
+
+impl SsrSave {
+    pub(crate) fn bytes(&self) -> u64 {
+        self.copy.bytes()
     }
 }
 
@@ -357,6 +385,44 @@ impl SsrRenderer {
         self.history = None;
         self.generation += 1;
         true
+    }
+
+    /// The accumulation a frame hands the next, copied for a presentation
+    /// checkpoint (`renderer/history.rs`); `None` without targets.
+    pub(crate) fn save(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Option<SsrSave> {
+        let t = self.targets.as_ref()?;
+        Some(SsrSave {
+            size: t.size,
+            divisor: t.divisor,
+            copy: GpuCopy::of(device, encoder, &t.history_resources(), &[]),
+            history: self.history,
+        })
+    }
+
+    /// Brings back [`SsrRenderer::save`]'s accumulation into the same
+    /// targets; true when it came back or neither had one (the history
+    /// starts afresh otherwise).
+    pub(crate) fn restore(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        saved: Option<&SsrSave>,
+    ) -> bool {
+        self.history = None;
+        match (saved, &self.targets) {
+            (None, _) => true,
+            (Some(s), Some(t)) if s.size == t.size && s.divisor == t.divisor => {
+                let back = s.copy.back(encoder, &t.history_resources(), &[]);
+                if back {
+                    self.history = s.history;
+                }
+                back
+            }
+            _ => false,
+        }
     }
 
     /// Forgets the history (a resize, a new scene, a readback).

@@ -13,6 +13,7 @@
 //! and nothing reads it back). Without compute it never runs and nothing
 //! is pressed.
 
+use crate::renderer::history::GpuCopy;
 use glam::{DVec2, IVec2, Vec3};
 
 /// Cells a side, and a cell (m): 64 m across.
@@ -64,6 +65,20 @@ struct Gpu {
     store: wgpu::ComputePipeline,
     group: wgpu::BindGroup,
     uniform: wgpu::Buffer,
+    /// The map's state and its step, kept for a presentation checkpoint's copy.
+    buffers: [wgpu::Buffer; 2],
+}
+
+/// [`Trample::save`].
+pub(crate) struct TrampleSave {
+    copy: Option<GpuCopy>,
+    last: Option<(u64, IVec2)>,
+}
+
+impl TrampleSave {
+    pub(crate) fn bytes(&self) -> u64 {
+        self.copy.as_ref().map_or(0, GpuCopy::bytes)
+    }
 }
 
 /// The map: its GPU state, and the tick and grid it last stepped at.
@@ -80,6 +95,45 @@ pub(crate) struct Trample {
 }
 
 impl Trample {
+    /// The map as the last frame left it, copied for a presentation
+    /// checkpoint (`renderer/history.rs`).
+    pub(crate) fn save(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> TrampleSave {
+        TrampleSave {
+            copy: self.gpu.as_ref().map(|g| {
+                GpuCopy::of(
+                    device,
+                    encoder,
+                    &[&self._texture],
+                    &[&g.buffers[0], &g.buffers[1]],
+                )
+            }),
+            last: self.last,
+        }
+    }
+
+    /// Brings back [`Trample::save`]'s map; true when it came back (or
+    /// neither had one), else the map starts again.
+    pub(crate) fn restore(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        saved: &TrampleSave,
+    ) -> bool {
+        let back = match (&saved.copy, &self.gpu) {
+            (Some(c), Some(g)) => {
+                c.back(encoder, &[&self._texture], &[&g.buffers[0], &g.buffers[1]])
+            }
+            (None, None) => true,
+            (None, Some(_)) => saved.last.is_none(),
+            (Some(_), None) => false,
+        };
+        self.last = if back { saved.last } else { None };
+        back
+    }
+
     pub(crate) fn new(device: &wgpu::Device, compute: bool) -> Trample {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("grass trample"),
@@ -93,7 +147,10 @@ impl Trample {
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba32Float,
             usage: if compute {
-                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING
+                wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::STORAGE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::COPY_DST
             } else {
                 wgpu::TextureUsages::TEXTURE_BINDING
             },
@@ -187,7 +244,10 @@ impl Trample {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
                 size: cells,
-                usage: wgpu::BufferUsages::STORAGE,
+                // Copied for a presentation checkpoint (renderer/history.rs).
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             })
         };
@@ -229,6 +289,7 @@ impl Trample {
             store: pipeline("store"),
             group,
             uniform,
+            buffers: [state, scratch],
         });
         self.gpu.as_ref()
     }

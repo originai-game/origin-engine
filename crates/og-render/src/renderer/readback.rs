@@ -188,15 +188,15 @@ impl Renderer {
     /// frame at once, and frames of the same scene are drawn, the last kept:
     /// under TAA one cycle of its jitter, which converges a still frame;
     /// [`CAPTURE_WARMUP`] where GI or reflections accumulate without it;
-    /// one otherwise. Afterwards the history
-    /// starts afresh again and the adapted exposure is put back, so the
-    /// frames the display draws next go on from neither.
+    /// one otherwise. Afterwards the display's frame history is put back
+    /// (`history.rs`), so the frames the display draws next go on from the
+    /// frame before the capture, as if it had not been taken.
     pub fn render_capture(
         &mut self,
         scene: &RenderScene,
         target: &RenderTarget,
     ) -> Result<FrameStats, RenderError> {
-        let kept = self.save_state();
+        let kept = self.take_frames();
         self.forget_frames();
         self.phase_base = self.frame_index;
         self.post.forget_exposure();
@@ -215,8 +215,7 @@ impl Renderer {
             stats = self.render(scene, target);
         }
         self.terrain.settled = false;
-        self.forget_frames();
-        self.restore_state(kept);
+        self.put_frames(&kept);
         stats
     }
 
@@ -229,41 +228,11 @@ impl Renderer {
     }
 
     /// Everything a frame carries from the frame before it, forgotten.
-    fn forget_frames(&mut self) {
+    pub(super) fn forget_frames(&mut self) {
         self.reset_history();
         self.prev_view_proj = None;
         self.previous_time = None;
         self.previous_sway.clear();
         self.previous_wind = None;
-    }
-
-    /// Keeps the renderer's state that belongs to the world's time (the
-    /// adapted exposure of [`Exposure::Auto`] with adapt speeds, and the
-    /// tick it was adapted to) for a world snapshot; [`Renderer::restore_state`]
-    /// with the answer brings it back, so frames after a restore are the
-    /// frames the snapshot's world would have drawn. Kept on the GPU (no
-    /// readback): the last 64 saves are kept.
-    pub fn save_state(&mut self) -> RendererState {
-        let mut encoder = Encoder::untimed(self.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
-                label: Some("save state"),
-            },
-        ));
-        let exposure = self.post.save_exposure(&mut encoder);
-        self.queue.submit(Some(encoder.finish()));
-        RendererState { exposure }
-    }
-
-    /// Brings back what [`Renderer::save_state`] kept; state no longer kept
-    /// starts afresh (the next adapted frame takes the metered exposure).
-    pub fn restore_state(&mut self, state: RendererState) {
-        let mut encoder = Encoder::untimed(self.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
-                label: Some("restore state"),
-            },
-        ));
-        self.post.restore_exposure(&mut encoder, state.exposure);
-        self.queue.submit(Some(encoder.finish()));
-        self.views.stale = true;
     }
 }

@@ -15,9 +15,19 @@ const sample = defineSystem("SampleTerrain", { reads: [og.Terrain], writes: [Sam
   must(world.resource(Sample)).height = ground.height;
 });
 
+// The camera dives from far above into the valley, so finer tiles stream
+// in and fade over their parents as it comes down (the presentation
+// checkpoint's terrain fade: packages/engine/tests/presentation.test.ts).
+const fly = defineSystem("Fly", { writes: [og.Camera] }, (_query, time, world) => {
+  const camera = must(world.resource(og.Camera));
+  const k = Math.max(0, 1 - time.tick / 120);
+  camera.position = { x: 2962, y: 21 + 2400 * k * k, z: 64 + 1200 * k * k };
+  camera.quaternion = og.transform.lookAt(camera.position, { x: 2992, y: 1, z: -16 });
+});
+
 export default og.game({
   resources: [Sample],
-  systems: [sample],
+  systems: [sample, fly],
   start(world) {
     const info = must(og.terrain.load(world, "terrain/valley.ogt"));
     const entity = must(world.spawn({ name: "terrain", position: { x: 3000, y: 0, z: 0 } }));

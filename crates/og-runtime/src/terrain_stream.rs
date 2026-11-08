@@ -6,8 +6,11 @@
 //! worker thread; on the web the host's DecompressionStream inflates them
 //! and the engine's thread finishes them within a time budget), keeps the
 //! decoded ones in a cache of twice the terrain's tile budget, and hands
-//! the renderer at most [`NEW_PER_FRAME`] new tiles a frame, each after its
-//! parent. A capture settles first: every wanted tile is decoded and shown
+//! the renderer at most [`NEW_PER_FRAME`] new tiles a tick, each after its
+//! parent, [`LATENCY_TICKS`] after it was asked for: a tile not decoded by
+//! then is waited for (natively) or decoded here (the web), so what the
+//! display draws is a function of the ticks, never of the decode timing,
+//! and a presentation checkpoint keeps it ([`Streamer::checkpoint`]). A capture settles first: every wanted tile is decoded and shown
 //! at once, so captured frames do not depend on decode timing. So does the
 //! first frame that draws a terrain (`terrain::extract`): no frame draws a
 //! terrain before its tiles arrived, which auto exposure would meter.
@@ -25,6 +28,9 @@ use std::sync::Arc;
 /// New tiles handed to the renderer per frame (each is one upload of about
 /// 160 KiB with its mips): what keeps a fast camera from a hitch.
 pub(crate) const NEW_PER_FRAME: usize = 8;
+/// Ticks between a tile's request and its hand-over: what a worker decodes
+/// a tile in at 60 Hz, so the wait at its due tick is rare.
+const LATENCY_TICKS: u64 = 4;
 /// Tiles decoding at once.
 const IN_FLIGHT: usize = 8;
 /// Milliseconds a frame may spend finishing inflated tiles on the engine's
@@ -53,6 +59,7 @@ pub(crate) struct StreamStats {
     pub handed: u32,
 }
 
+#[derive(Clone)]
 struct Cached {
     tile: Arc<TerrainTile>,
     used: u64,
@@ -98,7 +105,15 @@ struct Inflating {
 
 #[derive(Default)]
 pub(crate) struct Streamer {
+    /// The tick of the last update (the cache's recency is counted in it).
     frame: u64,
+    /// Each tile asked for and not handed yet: the tick it was asked at.
+    requested: BTreeMap<Key, u64>,
+    /// The tick tiles were last handed at, and how many then.
+    handed_at: (u64, usize),
+    /// Decodes a restore dropped (another branch's): their results are
+    /// thrown away when they land.
+    dropped: BTreeSet<Key>,
     cache: BTreeMap<Key, Cached>,
     in_flight: BTreeSet<Key>,
     inflating: BTreeMap<Key, Inflating>,
@@ -177,6 +192,9 @@ impl Streamer {
     fn store(&mut self, key: Key, tile: Result<TerrainTile, String>, notes: &mut Vec<String>) {
         self.in_flight.remove(&key);
         match tile {
+            // A tile decoded again (asked for before a restore brought it
+            // back) keeps the cached one, which the renderer may hold.
+            Ok(_) if self.cache.contains_key(&key) => {}
             Ok(t) => {
                 self.stats.decoded += 1;
                 self.cache.insert(
@@ -214,16 +232,27 @@ impl Streamer {
                         .iter()
                         .filter(|k| !self.inflating.contains_key(k))
                         .count();
-                    for _ in done.len()..native {
+                    let mut mine = done
+                        .iter()
+                        .filter(|(k, _)| !self.dropped.contains(k))
+                        .count();
+                    while mine < native {
                         match w.done.recv() {
-                            Ok(r) => done.push(r),
+                            Ok(r) => {
+                                if !self.dropped.contains(&r.0) {
+                                    mine += 1;
+                                }
+                                done.push(r);
+                            }
                             Err(_) => break,
                         }
                     }
                 }
             }
             for (key, tile) in done {
-                self.store(key, tile, notes);
+                if !self.dropped.remove(&key) {
+                    self.store(key, tile, notes);
+                }
             }
         }
         let start = hooks.map_or(0.0, |h| h.now_ms());
@@ -293,13 +322,19 @@ impl Streamer {
         hooks: Option<&dyn super::Hooks>,
         notes: &mut Vec<String>,
     ) {
-        self.frame += 1;
+        let tick = scene.tick;
+        self.frame = tick;
+        if self.handed_at.0 != tick {
+            self.handed_at = (tick, 0);
+        }
         let t0 = hooks.map_or(0.0, |h| h.now_ms());
         let cooked: IdMap<usize, CookedTerrain> =
             IdMap::from_iter(drawn.iter().map(|d| (d.index, d.cooked.clone())));
         self.collect(&cooked, hooks, false, notes);
-        let mut handed = 0usize;
+        let mut handed = self.handed_at.1;
+        let handed_before = handed;
         let mut waiting = 0u32;
+        let mut asked: BTreeSet<Key> = BTreeSet::new();
         let mut keep: BTreeSet<Key> = BTreeSet::new();
         let mut budget_tiles = 0usize;
         for d in drawn {
@@ -322,7 +357,12 @@ impl Streamer {
             // Ask for what is missing, best first.
             for &t in &wanted {
                 let key = (d.index, t);
-                if self.cache.contains_key(&key) || self.in_flight.contains(&key) {
+                asked.insert(key);
+                if self.cache.contains_key(&key) {
+                    continue;
+                }
+                self.requested.entry(key).or_insert(tick);
+                if self.in_flight.contains(&key) {
                     continue;
                 }
                 if settle {
@@ -337,8 +377,23 @@ impl Streamer {
                     }
                 }
             }
-            if settle {
+            // What is due and not decoded yet: waited for, then decoded here.
+            let due = |k: &Key, r: &BTreeMap<Key, u64>| {
+                r.get(k).is_some_and(|&at| tick >= at + LATENCY_TICKS)
+            };
+            let late = wanted.iter().any(|&t| {
+                let key = (d.index, t);
+                !self.cache.contains_key(&key) && due(&key, &self.requested)
+            });
+            if settle || late {
                 self.collect(&cooked, hooks, true, notes);
+            }
+            for &t in &wanted {
+                let key = (d.index, t);
+                if !self.cache.contains_key(&key) && (settle || due(&key, &self.requested)) {
+                    let tile = d.cooked.tile(t).map_err(|e| e.to_string());
+                    self.store(key, tile, notes);
+                }
             }
             // Hand over what has arrived, parents first.
             let held = scene.terrain_tiles(d.render).cloned().unwrap_or_default();
@@ -346,7 +401,12 @@ impl Streamer {
             for &t in &wanted {
                 let key = (d.index, t);
                 let parent_shown = layout.parent(t).is_none_or(|p| shown.contains(&p));
-                let Some(c) = self.cache.get_mut(&key) else {
+                let ready = settle
+                    || self
+                        .requested
+                        .get(&key)
+                        .is_none_or(|&at| tick >= at + LATENCY_TICKS);
+                let Some(c) = self.cache.get_mut(&key).filter(|_| ready) else {
                     waiting += 1;
                     continue;
                 };
@@ -363,6 +423,7 @@ impl Streamer {
                     _ if settle || handed < NEW_PER_FRAME => {
                         scene.set_terrain_tile(d.render, t, Some(c.tile.clone()));
                         shown.insert(t);
+                        self.requested.remove(&key);
                         handed += 1;
                     }
                     _ => waiting += 1,
@@ -373,6 +434,11 @@ impl Streamer {
                     scene.set_terrain_tile(d.render, *t, None);
                 }
             }
+        }
+        self.requested.retain(|k, _| asked.contains(k));
+        // A capture's settled tiles are not the display's hand-overs.
+        if !settle {
+            self.handed_at.1 = handed;
         }
         // The cache keeps twice the tile budgets, least recently used out first.
         let limit = budget_tiles * 2 + 16;
@@ -400,7 +466,45 @@ impl Streamer {
             cached_bytes: self.cache.values().map(|c| tile_bytes(&c.tile)).sum(),
             decoded: self.stats.decoded,
             worst_frame_ms: self.stats.worst_frame_ms.max(ms),
-            handed: handed as u32,
+            handed: (handed - handed_before) as u32,
         };
     }
+
+    /// What decides the tiles handed from here on, for a presentation
+    /// checkpoint: the cache (the decoded tiles are shared, not copied),
+    /// the requests and the tick's hand-overs.
+    pub(crate) fn checkpoint(&self) -> StreamCheckpoint {
+        StreamCheckpoint {
+            frame: self.frame,
+            cache: self.cache.clone(),
+            requested: self.requested.clone(),
+            handed_at: self.handed_at,
+        }
+    }
+
+    pub(crate) fn restore(&mut self, c: &StreamCheckpoint) {
+        self.frame = c.frame;
+        self.cache.clone_from(&c.cache);
+        self.requested.clone_from(&c.requested);
+        self.handed_at = c.handed_at;
+        // What is decoding now was asked for on the branch left behind.
+        let native: Vec<Key> = self
+            .in_flight
+            .iter()
+            .filter(|k| !self.inflating.contains_key(k))
+            .copied()
+            .collect();
+        self.dropped.extend(native);
+        self.in_flight.clear();
+        self.inflating.clear();
+    }
+}
+
+/// [`Streamer::checkpoint`].
+#[derive(Clone, Default)]
+pub(crate) struct StreamCheckpoint {
+    frame: u64,
+    cache: BTreeMap<Key, Cached>,
+    requested: BTreeMap<Key, u64>,
+    handed_at: (u64, usize),
 }

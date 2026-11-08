@@ -31,9 +31,20 @@ struct Checkpoint {
     particles: IdMap<u64, Arc<og_render::ParticleHistory>>,
     /// og.motion's drawn agents and the model's queued work.
     motion: crate::motion::present::MotionCheckpoint,
-    /// The renderer's ([`super::RenderBackend::save_state`]).
+    /// The renderer's ([`super::RenderBackend::save_state`]): its frame
+    /// history.
     renderer: u64,
     ui: Option<UiCheckpoint>,
+    /// Render interpolation's: og.Camera's pose, the snaps and og-anim's
+    /// poses as the snapshot's tick started, and the transforms then (the
+    /// raycast record's).
+    interp: super::interpolate::InterpCheckpoint,
+    record: super::geometry::RecordCheckpoint,
+    /// Per-object motion: what the frame before drew, which the next
+    /// frame's motion vectors move from.
+    objects: super::fx::MotionCheckpoint,
+    /// The streamed terrains' tiles: requested, decoded and held.
+    terrain: super::terrain::TerrainCheckpoint,
 }
 
 /// Portable UI presentation state, carried beside the simulation snapshot.
@@ -89,6 +100,7 @@ pub(crate) struct Checkpoints {
 /// The presentation state now, as a checkpoint for a snapshot: its id.
 pub(crate) fn save(rs: &mut RenderState) -> u64 {
     let renderer = rs.backend.as_mut().map_or(0, |b| b.save_state());
+    let terrain = super::terrain::checkpoint(rs);
     let c = &mut rs.checkpoints;
     c.next += 1;
     c.kept.push_back((
@@ -98,6 +110,10 @@ pub(crate) fn save(rs: &mut RenderState) -> u64 {
             motion: rs.motion.checkpoint(),
             renderer,
             ui: rs.ui.as_ref().map(UiCheckpoint::save),
+            interp: rs.interp.checkpoint(),
+            record: rs.geo.record_checkpoint(),
+            objects: rs.fx.motion_checkpoint(),
+            terrain,
         },
     ));
     while c.kept.len() > KEPT {
@@ -115,37 +131,31 @@ pub(crate) fn validate_restore(rs: &RenderState, id: u64) -> Result<(), String> 
     Ok(())
 }
 
-/// Brings back checkpoint `id` with the snapshot it was taken with; 0, or
-/// one no longer kept, starts the presentation state afresh. Interpolation
-/// starts afresh either way: the restored tick's display frames draw the
-/// tick (their blend reads the tick before's world, which no snapshot
-/// holds).
+/// Brings back checkpoint `id` with the snapshot it was taken with, so the
+/// frames after it are the uninterrupted run's; 0, or one no longer kept,
+/// starts the presentation state afresh (the restored tick's display
+/// frames then draw the tick: their blend reads the tick before's
+/// transforms, which only a checkpoint holds).
 pub(crate) fn restore(rs: &mut RenderState, id: u64) {
-    let kept = rs
-        .checkpoints
-        .kept
-        .iter()
-        .find(|(k, _)| *k == id)
-        .map(|(_, c)| {
-            (
-                c.particles.clone(),
-                c.motion.clone(),
-                c.renderer,
-                c.ui.clone(),
-            )
-        });
+    let kept = rs.checkpoints.kept.iter().position(|(k, _)| *k == id);
     match kept {
-        Some((particles, motion, renderer, ui)) => {
-            rs.particle_history = particles;
-            rs.motion.restore(&motion);
+        Some(at) => {
+            let (k, c) = rs.checkpoints.kept.remove(at).expect("found");
+            rs.particle_history = c.particles.clone();
+            rs.motion.restore(&c.motion);
             if let Some(b) = rs.backend.as_mut() {
-                b.restore_state(renderer);
+                b.restore_state(c.renderer);
             }
-            if let (Some(saved), Some(current)) = (ui, &rs.ui) {
+            if let (Some(saved), Some(current)) = (&c.ui, &rs.ui) {
                 saved
                     .restore(current)
                     .expect("presentation checkpoint preflight passed");
             }
+            rs.interp.restore(&c.interp);
+            rs.geo.restore_record(&c.record);
+            rs.fx.restore_motion(&c.objects);
+            super::terrain::restore(rs, &c.terrain);
+            rs.checkpoints.kept.insert(at, (k, c));
         }
         None => {
             rs.particle_history = Default::default();
@@ -153,9 +163,10 @@ pub(crate) fn restore(rs: &mut RenderState, id: u64) {
             if let Some(b) = rs.backend.as_mut() {
                 b.restore_state(0);
             }
+            rs.interp.forget();
+            rs.fx.restore_motion(&Default::default());
         }
     }
-    rs.interp.forget();
 }
 
 /// The presentation hash: FNV-1a over the state a checkpoint keeps that the

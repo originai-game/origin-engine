@@ -24,6 +24,7 @@
 //! Without compute (`RenderCapabilities.compute` false) the field never
 //! runs and every tier keeps og.Wind's analytic lean, as before.
 
+use crate::renderer::history::GpuCopy;
 use glam::{DVec2, IVec2, Vec3};
 
 /// wind_field.wgsl, after wind_common.wgsl.
@@ -165,6 +166,22 @@ struct Gpu {
     group: wgpu::BindGroup,
     uniform: wgpu::Buffer,
     slots: u64,
+    /// The field's state (velocity, lean, pressure and their steps), kept
+    /// for a presentation checkpoint's copy.
+    buffers: [wgpu::Buffer; 7],
+}
+
+/// [`WindFieldSim::save`].
+pub(crate) struct WindSave {
+    copy: Option<GpuCopy>,
+    last: Option<(u64, [IVec2; 2])>,
+    drive: Option<Drive>,
+}
+
+impl WindSave {
+    pub(crate) fn bytes(&self) -> u64 {
+        self.copy.as_ref().map_or(0, GpuCopy::bytes)
+    }
 }
 
 /// The field: its GPU state, and what it last stepped.
@@ -215,7 +232,10 @@ impl WindFieldSim {
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba16Float,
             usage: if compute {
-                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING
+                wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::STORAGE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::COPY_DST
             } else {
                 wgpu::TextureUsages::TEXTURE_BINDING
             },
@@ -322,7 +342,10 @@ impl WindFieldSim {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
                 size,
-                usage: wgpu::BufferUsages::STORAGE,
+                // Copied for a presentation checkpoint (renderer/history.rs).
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             })
         };
@@ -372,6 +395,7 @@ impl WindFieldSim {
             group,
             uniform,
             slots,
+            buffers,
         });
         self.gpu.as_ref()
     }
@@ -499,6 +523,47 @@ impl WindFieldSim {
         queue.write_buffer(&uniform, 0, &bytes);
         self.steps = count as u32;
         self.last = Some((scene.tick, cells));
+    }
+
+    /// The field as the last frame left it, copied for a presentation
+    /// checkpoint (`renderer/history.rs`): its buffers and lean (when
+    /// made), the tick and cells it last stepped and its drive.
+    pub(crate) fn save(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> WindSave {
+        WindSave {
+            copy: self.gpu.as_ref().map(|g| {
+                let buffers: Vec<&wgpu::Buffer> = g.buffers.iter().collect();
+                GpuCopy::of(device, encoder, &[&self._lean], &buffers)
+            }),
+            last: self.last,
+            drive: self.drive,
+        }
+    }
+
+    /// Brings back [`WindFieldSim::save`]'s field; true when it came back
+    /// (or neither had one). Otherwise the field starts again, as after a
+    /// jump back.
+    pub(crate) fn restore(&mut self, encoder: &mut wgpu::CommandEncoder, saved: &WindSave) -> bool {
+        let back = match (&saved.copy, &self.gpu) {
+            (Some(c), Some(g)) => {
+                let buffers: Vec<&wgpu::Buffer> = g.buffers.iter().collect();
+                c.back(encoder, &[&self._lean], &buffers)
+            }
+            (None, None) => true,
+            (None, Some(_)) => saved.last.is_none(),
+            (Some(_), None) => false,
+        };
+        if back {
+            self.last = saved.last;
+            self.drive = saved.drive;
+        } else {
+            self.last = None;
+            self.drive = None;
+        }
+        back
     }
 
     /// Records this frame's steps, before any pass that reads the field.

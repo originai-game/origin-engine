@@ -747,16 +747,16 @@ pub struct RgbaImage {
 /// [`RendererState::from_id`] carry it through a host's snapshot as a u64).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct RendererState {
-    pub(crate) exposure: u64,
+    pub(crate) id: u64,
 }
 
 impl RendererState {
     /// The number a host keeps with its snapshot (0: nothing kept).
     pub fn id(self) -> u64 {
-        self.exposure
+        self.id
     }
 
     pub fn from_id(id: u64) -> RendererState {
-        RendererState { exposure: id }
+        RendererState { id }
     }
 }

@@ -60,7 +60,7 @@ pub(crate) struct InterpState {
 }
 
 /// A skeleton's pose as a tick left it.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Pose {
     palette: Vec<Mat4>,
     weights: Vec<f32>,
@@ -111,6 +111,39 @@ impl InterpState {
     pub(crate) fn forget(&mut self) {
         self.stale = true;
     }
+
+    /// What a display frame after the snapshot's tick blends with, for a
+    /// presentation checkpoint (the transforms are the raycast record's,
+    /// kept beside it).
+    pub(crate) fn checkpoint(&self) -> InterpCheckpoint {
+        InterpCheckpoint {
+            camera: self.camera,
+            snaps: self.snaps.clone(),
+            camera_snap: self.camera_snap,
+            stale: self.stale,
+            poses: self.poses.clone(),
+        }
+    }
+
+    pub(crate) fn restore(&mut self, c: &InterpCheckpoint) {
+        self.camera = c.camera;
+        self.snaps = c.snaps.clone();
+        self.camera_snap = c.camera_snap;
+        self.stale = c.stale;
+        self.poses = c.poses.clone();
+        self.active = None;
+        self.drawn = None;
+    }
+}
+
+/// [`InterpState::checkpoint`].
+#[derive(Clone, Default)]
+pub(crate) struct InterpCheckpoint {
+    camera: Option<(u64, Vec3, Quat)>,
+    snaps: IdMap<u64, u64>,
+    camera_snap: Option<u64>,
+    stale: bool,
+    poses: IdMap<u64, Pose>,
 }
 
 /// og.Camera's position and unit rotation.

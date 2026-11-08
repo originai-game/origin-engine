@@ -218,12 +218,21 @@ cancellable `og dev` checks use the stateless path.
     it has not drawn. A frame reads this state and never advances it.
   - *Checkpointed beside the world.* A probe snapshot keeps the
     presentation state with it (the particle histories and the
-    renderer's `save_state`, the adapted auto exposure), outside
-    `world_hash`; the snapshot reports a presentation hash of it
-    (`SnapshotInfo.presentation`, per host and backend, since what it
-    holds is float state of one renderer), with og.motion's Presenter
-    state below. A restore brings the checkpoint back and drops the
-    interpolation pair: the first frame after a restore draws the tick.
+    renderer's `save_state`, the interpolation pair, the extracted
+    record and hierarchy, the skinned palettes and the terrain streamer
+    with its held tiles), outside `world_hash`; the snapshot reports a
+    presentation hash of it (`SnapshotInfo.presentation`, per host and
+    backend, since what it holds is float state of one renderer), with
+    og.motion's Presenter state below. `save_state`
+    (`og-render/src/renderer/history.rs`) copies the display's frame
+    history on the GPU: the TAA, SMAA and GI histories, SSR, FSR, the wind
+    field and trample, with the frame parity and phase, the previous
+    camera, time, wind and sway, the drawn origin and the terrain fades;
+    it keeps 64 saves within 768 MiB, the newest always. A restore brings
+    the checkpoint back whole, so the display frames after it equal the
+    uninterrupted run's byte for byte; a checkpoint the renderer no longer
+    holds (`Restored::Afresh`) restarts the history and the interpolation
+    pair, and the first frame draws the tick.
   - *Frame history, per effect* (og-render's `Renderer::render_capture`,
     which every capture goes through). TAA, GI and SSR accumulation, the
     previous camera (motion vectors), time, wind and sway are reset before
@@ -282,8 +291,14 @@ cancellable `og dev` checks use the stateless path.
     between ticks blends each agent's palette from the tick before's at
     alpha, as og-anim's (translation and scale lerped, rotation slerped);
     captures and the probe draw the tick, and the blend steps nothing.
-    Terrain tiles fade in by the frame's seconds; a capture draws every
-    resident tile settled.
+    Terrain tiles fade in by presentation ticks since they arrived (a tile
+    more than 64 ticks behind is in), and the streamer hands a requested
+    tile a fixed 4 ticks after its request, decoding it in place if the
+    worker is late, so what streams in is a function of the tick; a
+    capture draws every resident tile settled.
+  - *Capture-only.* `og run --capture-only` draws no display frame: only
+    the captures the commands ask for, each from the presentation state
+    stepped by the tick, so its PNGs equal a run that draws every frame.
 - Game state in a JS module is in neither the world snapshot nor the
   presentation checkpoint, so a restore, a rollback, a fork or a
   capture-only run does not bring it back. `og check` fails on it (OG9101,

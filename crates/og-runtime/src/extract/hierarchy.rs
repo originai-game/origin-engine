@@ -10,7 +10,7 @@ use super::*;
 /// row: extraction asks it for every drawn entity on every frame, so a
 /// lookup is an index, not a tree walk (owed row 50: 20,000 meshes spent
 /// most of their frame in the maps this replaced).
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Hierarchy {
     /// Per entity index: the entity's bits and what is known of its
     /// matrices, apart from them (`data`), so a read where nothing moved
@@ -54,6 +54,7 @@ pub struct Hierarchy {
 
 /// What a display frame between two ticks blends with
 /// ([`Hierarchy::set_blend`]).
+#[derive(Clone)]
 pub(crate) struct Blend {
     /// The transforms as the last tick started.
     pub prev: Hierarchy,
@@ -136,7 +137,7 @@ pub(crate) fn blend(a: Mat4, b: Mat4, t: f32, snap_sq: f32) -> Mat4 {
 /// archetype of `columns`, whether its entities and columns are those the
 /// slots were last brought to (unchanged by every read since), and whether
 /// a read since found the parents changed.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Pending {
     still: Vec<bool>,
     reparented: bool,

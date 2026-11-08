@@ -132,7 +132,7 @@ pub use destruction2d::{
 };
 pub use display::{
     lose_device, og_render_display, og_render_reset_display, og_render_set_display,
-    set_display_interval, set_fullscreen, set_mouse_report, set_power_preference,
+    set_capture_only, set_display_interval, set_fullscreen, set_mouse_report, set_power_preference,
     set_scripted_frames,
 };
 pub use engine::{
