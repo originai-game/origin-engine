@@ -32,7 +32,7 @@ pub(crate) enum Mode {
 }
 
 /// A popover's key in its mount: ids are unique in a document.
-fn popover_key(mount: &str, id: &str) -> u64 {
+pub(super) fn popover_key(mount: &str, id: &str) -> u64 {
     crate::id::key_of_path(&format!("{mount}#{id}~popover"))
 }
 

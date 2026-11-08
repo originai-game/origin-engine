@@ -98,6 +98,8 @@ pub struct DocHost {
     pub(crate) happened: Vec<crate::doc::When>,
     /// The popovers documents name, by their key in their mount.
     pub(crate) popovers: BTreeMap<u64, super::popover::PopoverLink>,
+    /// The id the last `#fragment` link named: CSS `:target`.
+    pub(crate) target: Option<String>,
     /// The `$ui` store's value as last published.
     pub(crate) ui_store: Option<Value>,
     /// This tick's builds, slots and art slots.

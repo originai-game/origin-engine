@@ -1190,6 +1190,9 @@ impl Ui {
                 Some(k) => n.links.get(k).cloned().unwrap_or_default(),
                 None => r.str("href").unwrap_or_default().to_string(),
             };
+            if let Some(id) = href.strip_prefix('#') {
+                self.docs.target = (!id.is_empty()).then(|| id.to_string());
+            }
             b.event(path, "link", &href, Value::Null);
         }
     }

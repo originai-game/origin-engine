@@ -100,19 +100,25 @@ local styles and `og style new` remain available.
   arbitrary calls, `$state`, `$effect`, and raw HTML are errors.
 - Style reactive state with `class:active={$step == 'brightness'}` and
   `.active` rules. The selector grammar includes types, IDs, classes,
-  attributes, descendant, child and sibling (`+`, `~`) combinators, `:not()`,
-  `:is()`, and `:where()`. `:where()` contributes zero specificity. `:not()`
-  and `:is()` take the highest specificity of their arguments. `:has()`
-  fails cooking.
+  attributes (`=`, `~=`, `|=`, `^=`, `$=`, `*=`, with `i`/`s`), descendant,
+  child and sibling (`+`, `~`) combinators, `:not()`, `:is()`, `:where()` and
+  `:has()`. `:where()` contributes zero specificity. `:not()`, `:is()` and
+  `:has()` take the highest specificity of their arguments.
 - Structural selectors read the instantiated rows, after `{#if}` and keyed
   `{#each}`: `.row:nth-child(odd)`, `:nth-child(2n of .gem)`,
-  `:nth-last-child(2)`, `:first-child`, `:last-child`, `:only-child`,
-  `:empty`, and `.item + .item` separators all follow reorders, inserts and
-  removals. Rows of a `list` restyle when they scroll into view.
-  Interaction selectors name `:hover`, `:active`, `:focus`,
-  `:focus-visible`, `:focus-within`, `:disabled`, `:checked`, `:selected`,
-  `:invalid`, and `:placeholder-shown`. Ancestor selectors read that
-  ancestor's interaction identity, not the styled child's state.
+  `:nth-last-child(2)`, `:first-child`, `:last-child`, `:only-child`, the
+  `-of-type` forms, `:empty`, `.card:has(> .hot)` and `.item + .item`
+  separators all follow reorders, inserts and removals. Rows of a `list`
+  restyle when they scroll into view.
+  State selectors name `:hover`, `:active`, `:focus`, `:focus-visible`,
+  `:focus-within`, `:disabled`, `:enabled`, `:checked`, `:selected`,
+  `:indeterminate`, `:default`, `:invalid`, `:valid`, `:user-invalid`,
+  `:required`, `:optional`, `:read-only`, `:read-write`, `:in-range`,
+  `:out-of-range`, `:placeholder-shown`, `:open`, `:modal`,
+  `:popover-open` and `:target`; also `:lang()`, `:dir()`, `:state(name)`
+  (from `state:name={…}`), `:defined`, `:scope` and `:any-link`. Ancestor
+  selectors read that ancestor's interaction identity, not the styled
+  child's state.
   Use CSS media conditions, for example
   `@media (width < 600px), (height < 600px) { ... }`.
   Supported features are `width`, `height`, `aspect-ratio`, `orientation`,

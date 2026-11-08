@@ -768,6 +768,17 @@ impl super::matching::Tree for Topology {
     fn has_children(&self, id: &MountedNode) -> bool {
         self.child_count(Some(id)) > 0
     }
+
+    fn children(&self, id: &MountedNode) -> Vec<MountedNode> {
+        Topology::children(self, Some(id), 0..usize::MAX)
+            .cloned()
+            .collect()
+    }
+
+    fn following(&self, id: &MountedNode) -> Option<MountedNode> {
+        let at = Topology::position(self, id)? + 1;
+        self.child_at(Topology::parent(self, id), at).cloned()
+    }
 }
 
 pub struct Children<'a> {

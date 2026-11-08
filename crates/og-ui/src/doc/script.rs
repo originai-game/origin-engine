@@ -198,8 +198,15 @@ pub(super) fn substitute(expr: &mut Expr, scope: &BTreeMap<String, Expr>) -> Res
                 substitute(v, scope)?;
             }
         }
-        Expr::Not(a) | Expr::Neg(a) | Expr::Format(_, a) | Expr::HasToken(a, _) => {
-            substitute(a, scope)?
+        Expr::Not(a)
+        | Expr::Neg(a)
+        | Expr::Format(_, a)
+        | Expr::HasToken(a, _)
+        | Expr::AttrTest(a, _) => substitute(a, scope)?,
+        Expr::Lang(a, _) | Expr::Dir(a, _) => {
+            if let Some(a) = a {
+                substitute(a, scope)?;
+            }
         }
         Expr::Bin(_, a, b) => {
             substitute(a, scope)?;

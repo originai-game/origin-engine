@@ -1501,6 +1501,17 @@ impl Parser {
             if internal == "box" && a.name == "i18n" {
                 continue;
             }
+            // Selector facts only: `:lang()`, `:dir()`, `[data-…]` and
+            // `:state(name)` (CSS custom states, `state:name={…}`).
+            if matches!(a.name.as_str(), "lang" | "dir")
+                || (a.name.starts_with("data-") && !a.name.starts_with("data-og-"))
+                || a.name.strip_prefix("state:").is_some_and(identifier)
+            {
+                if a.bound {
+                    expression(&a.value, a.at)?;
+                }
+                continue;
+            }
             // Read as selector facts: a label's control, a list's numbering.
             if (label_for.is_some() && a.name == "for")
                 || (tag == "ol" && matches!(a.name.as_str(), "start" | "reversed"))

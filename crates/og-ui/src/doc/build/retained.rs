@@ -127,6 +127,10 @@ pub struct RetainedHost {
     inherited: BTreeMap<(MountedNode, String), BTreeSet<MountedNode>>,
     by_key: BTreeMap<u64, MountedNode>,
     interaction: [u64; 4],
+    /// Popover elements by their popover key, for `:popover-open`.
+    popover_nodes: BTreeMap<u64, MountedNode>,
+    /// The `:target` element last applied, and the fragment it was for.
+    target: (Option<String>, Vec<MountedNode>),
     viewport: Option<crate::doc::media::Context>,
     /// The safe area and the small and large viewports last build: a
     /// change re-resolves what read the viewport (`env()`, `svh`, `lvh`).
@@ -720,7 +724,7 @@ impl RetainedHost {
         element: &ElementInstance,
         env: &dyn Env,
     ) -> Result<(), String> {
-        use crate::bind::InteractionState::{Checked, Disabled, Invalid, PlaceholderShown};
+        use crate::bind::InteractionState::*;
         let identity = &element.context.node;
         let build = element.build(env, Arc::default());
         let node = &element.document.nodes[element.index];
@@ -795,10 +799,71 @@ impl RetainedHost {
                 .unwrap_or_default()
                 .to_owned(),
         )?;
+        let kind = match node.kind {
+            NodeKind::Element(kind) => kind,
+            _ => "",
+        };
+        // HTML's form-associated elements: they are enabled or disabled,
+        // valid or invalid; text fields are read-write unless readonly.
+        let form = matches!(
+            kind,
+            "button" | "field" | "slider" | "toggle" | "radio" | "select" | "color"
+        );
+        let disabled = flag("disabled");
+        let invalid = flag("invalid") || field_invalid;
+        let range = match (
+            num("value").or_else(|| {
+                facts
+                    .get("input")
+                    .and_then(Value::as_str)
+                    .and_then(|v| v.trim().parse().ok())
+            }),
+            num("min"),
+            num("max"),
+        ) {
+            (Some(v), min, max)
+                if kind == "slider" || (kind == "field" && (min.is_some() || max.is_some())) =>
+            {
+                Some(min.is_none_or(|m| v >= m) && max.is_none_or(|m| v <= m))
+            }
+            _ => None,
+        };
+        let editable = kind == "field" && !flag("readonly") && !disabled;
+        let open = flag("open");
+        if facts.contains_key("popover") {
+            let key = super::popover::popover_key(&build.mount, &node.id);
+            self.popover_nodes.insert(key, identity.clone());
+        }
+        let authored = |name: &str| {
+            node.selector_attrs
+                .iter()
+                .any(|(a, e)| a == name && !matches!(e, crate::bind::Expr::Lit(Value::Bool(false))))
+        };
         for (state, enabled) in [
-            (Disabled, flag("disabled")),
+            (Disabled, disabled),
+            (Enabled, form && !disabled),
             (Checked, flag("checked")),
-            (Invalid, flag("invalid") || field_invalid),
+            (Invalid, invalid),
+            (Valid, form && !invalid),
+            // After the player changed it: a field with text it refuses.
+            (
+                UserInvalid,
+                invalid
+                    && facts
+                        .get("input")
+                        .and_then(Value::as_str)
+                        .is_some_and(|v| !v.is_empty()),
+            ),
+            (Required, flag("required")),
+            (Optional, form && !flag("required")),
+            (ReadWrite, editable),
+            (ReadOnly, !editable),
+            (InRange, range == Some(true)),
+            (OutOfRange, range == Some(false)),
+            (Indeterminate, flag("indeterminate")),
+            (Default, authored("checked") || authored("selected")),
+            (Open, open),
+            (Modal, open && flag("modal")),
             (
                 PlaceholderShown,
                 facts
@@ -811,6 +876,16 @@ impl RetainedHost {
                         .is_none_or(str::is_empty),
             ),
         ] {
+            // The states HTML always had here; the rest only when a rule of
+            // the element's document reads them.
+            if !matches!(state, Disabled | Checked | Invalid | PlaceholderShown)
+                && !self
+                    .profile(ui, &element.document.name)
+                    .reads
+                    .contains(&state)
+            {
+                continue;
+            }
             if self
                 .topology
                 .node(identity)
@@ -1015,7 +1090,9 @@ impl RetainedHost {
     }
 
     fn sync_interaction(&mut self, ui: &mut Ui) -> Result<(), String> {
-        use crate::bind::InteractionState::{Active, Focus, FocusVisible, FocusWithin, Hover};
+        use crate::bind::InteractionState::{
+            Active, Focus, FocusVisible, FocusWithin, Hover, PopoverOpen, Target,
+        };
         let next = [
             ui.state.hot,
             if ui.input.down { ui.state.active } else { 0 },
@@ -1037,6 +1114,54 @@ impl RetainedHost {
                     ui.reactive.graph.interaction_changed(node, state);
                 }
             }
+        }
+        let shown: Vec<(MountedNode, bool)> = self
+            .popover_nodes
+            .iter()
+            .filter(|(_, node)| self.topology.node(node).is_some())
+            .map(|(key, node)| {
+                (
+                    node.clone(),
+                    ui.docs.popovers.get(key).is_some_and(|l| l.shown),
+                )
+            })
+            .collect();
+        self.popover_nodes
+            .retain(|_, node| self.topology.node(node).is_some());
+        for (node, open) in shown {
+            if self
+                .topology
+                .node(&node)
+                .unwrap()
+                .states
+                .contains(&PopoverOpen)
+                != open
+            {
+                self.topology.set_state(&node, PopoverOpen, open)?;
+                ui.reactive.graph.interaction_changed(&node, PopoverOpen);
+            }
+        }
+        if self.target.0 != ui.docs.target {
+            let old = std::mem::take(&mut self.target.1);
+            let id = ui.docs.target.clone();
+            let new: Vec<MountedNode> = match &id {
+                Some(id) => self
+                    .elements
+                    .iter()
+                    .filter(|(_, e)| e.id == *id || e.document.nodes[e.index].id == *id)
+                    .map(|(node, _)| node.clone())
+                    .collect(),
+                None => Vec::new(),
+            };
+            for (nodes, enabled) in [(&old, false), (&new, true)] {
+                for node in nodes {
+                    if self.topology.node(node).is_some() {
+                        self.topology.set_state(node, Target, enabled)?;
+                        ui.reactive.graph.interaction_changed(node, Target);
+                    }
+                }
+            }
+            self.target = (id, new);
         }
         if previous[2] != next[2] {
             for (key, enabled) in [(previous[2], false), (next[2], true)] {

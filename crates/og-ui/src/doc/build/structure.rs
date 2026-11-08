@@ -17,6 +17,9 @@ pub(crate) struct Entry {
     attributes: BTreeMap<String, Value>,
     text: String,
     children: bool,
+    /// Its instantiated element children, listed while a document has
+    /// `:has()` rules.
+    kids: Vec<Entry>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -30,11 +33,45 @@ pub(crate) struct Level {
 
 struct Levels<'a>(&'a [Level]);
 
-impl Tree for Levels<'_> {
-    type Id = (usize, usize);
+/// An entry of a level, then a path down its listed children.
+type At = (usize, usize, Vec<usize>);
 
-    fn facts(&self, &(level, index): &Self::Id) -> Facts<'_> {
-        let e = &self.0[level].entries[index];
+impl Levels<'_> {
+    fn entry(&self, (level, index, path): &At) -> &Entry {
+        let mut e = &self.0[*level].entries[*index];
+        for &k in path {
+            e = &e.kids[k];
+        }
+        e
+    }
+
+    /// The element's siblings.
+    fn siblings(&self, at: &At) -> &[Entry] {
+        match at.2.split_last() {
+            None => &self.0[at.0].entries,
+            Some((_, up)) => &self.entry(&(at.0, at.1, up.to_vec())).kids,
+        }
+    }
+
+    fn index(at: &At) -> usize {
+        at.2.last().copied().unwrap_or(at.1)
+    }
+
+    fn sibling(at: &At, k: usize) -> At {
+        let mut at = at.clone();
+        match at.2.last_mut() {
+            Some(last) => *last = k,
+            None => at.1 = k,
+        }
+        at
+    }
+}
+
+impl Tree for Levels<'_> {
+    type Id = At;
+
+    fn facts(&self, at: &At) -> Facts<'_> {
+        let e = self.entry(at);
         Facts {
             document: &e.document,
             node: e.node,
@@ -44,24 +81,33 @@ impl Tree for Levels<'_> {
         }
     }
 
-    fn parent(&self, &(level, _): &Self::Id) -> Option<Self::Id> {
+    fn parent(&self, (level, index, path): &At) -> Option<At> {
+        if let Some((_, up)) = path.split_last() {
+            return Some((*level, *index, up.to_vec()));
+        }
         let up = level.checked_sub(1)?;
-        Some((up, self.0[up].current?))
+        Some((up, self.0[up].current?, Vec::new()))
     }
 
-    fn previous(&self, &(level, index): &Self::Id) -> Option<Self::Id> {
-        Some((level, index.checked_sub(1)?))
+    fn previous(&self, at: &At) -> Option<At> {
+        Some(Self::sibling(at, Self::index(at).checked_sub(1)?))
     }
 
-    fn position(&self, &(level, index): &Self::Id) -> (usize, usize) {
-        (index, self.0[level].entries.len())
+    fn following(&self, at: &At) -> Option<At> {
+        let k = Self::index(at) + 1;
+        (k < self.siblings(at).len()).then(|| Self::sibling(at, k))
     }
 
-    fn filtered(&self, &(level, index): &Self::Id, filter: &[Selector]) -> (usize, usize) {
+    fn position(&self, at: &At) -> (usize, usize) {
+        (Self::index(at), self.siblings(at).len())
+    }
+
+    fn filtered(&self, at: &At, filter: &[Selector]) -> (usize, usize) {
+        let index = Self::index(at);
         let mut before = 0;
         let mut total = 0;
-        for k in 0..self.0[level].entries.len() {
-            if matching::filter_matches(&self.facts(&(level, k)), filter) {
+        for k in 0..self.siblings(at).len() {
+            if matching::filter_matches(&self.facts(&Self::sibling(at, k)), filter) {
                 total += 1;
                 before += usize::from(k < index);
             }
@@ -69,8 +115,19 @@ impl Tree for Levels<'_> {
         (before, total)
     }
 
-    fn has_children(&self, &(level, index): &Self::Id) -> bool {
-        self.0[level].entries[index].children
+    fn has_children(&self, at: &At) -> bool {
+        let e = self.entry(at);
+        e.children || !e.kids.is_empty()
+    }
+
+    fn children(&self, at: &At) -> Vec<At> {
+        (0..self.entry(at).kids.len())
+            .map(|k| {
+                let mut child = at.clone();
+                child.2.push(k);
+                child
+            })
+            .collect()
     }
 }
 
@@ -166,7 +223,7 @@ impl Ui {
             &Levels(levels),
             doc,
             selector,
-            &(top, current),
+            &(top, current, Vec::new()),
             &mut MatchWork::default(),
         )
     }
@@ -177,7 +234,7 @@ impl Ui {
         match levels
             .len()
             .checked_sub(1)
-            .and_then(|top| Some((top, levels[top].current?)))
+            .and_then(|top| Some((top, levels[top].current?, Vec::new())))
         {
             Some(at) => crate::doc::lists::ordinal(&Levels(levels), &at, filter, item_values),
             None => 1,
@@ -216,6 +273,7 @@ impl Ui {
             attributes: selector_facts(n, |e| b.eval(e)),
             text,
             children: false,
+            kids: Vec::new(),
         }
     }
 
@@ -233,10 +291,15 @@ impl Ui {
             match &n.kind {
                 NodeKind::Element(_) | NodeKind::Use(_) => {
                     let mut entry = self.entry(b, doc, c);
-                    if self.docs.structure.empty && matches!(n.kind, NodeKind::Element(_)) {
+                    let structure = &self.docs.structure;
+                    if (structure.empty || structure.has) && matches!(n.kind, NodeKind::Element(_))
+                    {
                         let mut inner = Level::default();
                         self.instantiate(b, doc, &n.children, &mut inner, false);
                         entry.children = !inner.entries.is_empty();
+                        if self.docs.structure.has {
+                            entry.kids = inner.entries;
+                        }
                     }
                     level.entries.push(entry);
                 }

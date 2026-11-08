@@ -1528,12 +1528,19 @@ content and behaviour. Declarations win by `!important`, selector
 specificity, then source order. Rules are document-scoped and never affect
 unrelated mounts. Parsed selectors support element, ID, class, attribute,
 descendant, child, adjacent (`+`) and general (`~`) sibling matching, plus
-`:not()`, `:is()`, and `:where()`. `:where()` has zero specificity; `:not()`
-and `:is()` take the highest specificity of their arguments.
+`:not()`, `:is()`, `:where()` and `:has()`. `:where()` has zero specificity;
+`:not()`, `:is()` and `:has()` take the highest specificity of their
+arguments. Attribute selectors take every Selectors 4 operator (`=`, `~=`,
+`|=`, `^=`, `$=`, `*=`) and the `i` and `s` flags; HTML's case-insensitive
+attributes (`type`, `lang`, `dir`…) compare case-insensitively unless `s`
+is given. `lang`, `dir`, `data-*` and `state:name={…}` are selector-only
+attributes.
 
 Structural pseudo-classes are `:first-child`, `:last-child`, `:only-child`,
-`:nth-child(an+b [of S])`, `:nth-last-child(an+b [of S])`, and `:empty`.
-`of S` takes compound selectors and adds their highest specificity. Siblings
+`:nth-child(an+b [of S])`, `:nth-last-child(an+b [of S])`, `:first-of-type`,
+`:last-of-type`, `:only-of-type`, `:nth-of-type(an+b)`,
+`:nth-last-of-type(an+b)`, `:empty` and `:has()`. `of S` takes compound
+selectors and adds their highest specificity. Siblings
 and positions are those of the instantiated element tree, after `{#if}`,
 keyed `{#each}`, snippets and components; structural blocks are not
 siblings. `:empty` means no instantiated element children and no text.
@@ -1541,13 +1548,26 @@ Retained mounts match on the logical sibling order, never render slots.
 An edit invalidates only the sibling interval it can affect, in O(log n)
 per interval. Virtualized rows outside the materialized range restyle when
 they materialize, so a front insert restyles only visible and overscan rows.
-Structural selectors cannot select `::part` spans. `:has()` and other
-pseudo-classes fail at cook with the selector named.
+`:has(<relative selectors>)` takes a leading `>`, `+` or `~` and does not
+nest. A change under an element restyles only its ancestors whose own facts
+match a `:has()` compound, the earlier siblings a `:has(+ …)` or `:has(~ …)`
+reaches, and, for a `:has()` before the subject (`.a:has(.b) > .c`), the
+descendants of such an anchor whose own facts can be the subject.
+Structural selectors cannot select `::part` spans.
 
-The ten state selectors are `:hover`, `:active`, `:focus`, `:focus-visible`,
-`:focus-within`, `:disabled`, `:checked`, `:selected`, `:invalid`, and
-`:placeholder-shown`. An ancestor selector reads that ancestor's own
-interaction identity, not the styled child's state.
+The state selectors are `:hover`, `:active`, `:focus`, `:focus-visible`,
+`:focus-within`, `:disabled`, `:enabled`, `:checked`, `:selected`,
+`:indeterminate`, `:default`, `:invalid`, `:valid`, `:user-invalid`,
+`:required`, `:optional`, `:read-only`, `:read-write`, `:in-range`,
+`:out-of-range`, `:placeholder-shown`, `:open` (an open `<details>` or
+`<dialog>`), `:modal`, `:popover-open` and `:target` (the element whose id
+the last `#fragment` link named). `:enabled`, `:valid` and `:optional`
+match form controls; `:read-write` matches editable text fields. An
+ancestor selector reads that ancestor's own interaction identity, not the
+styled child's state. `:lang()` (RFC 4647 ranges) and `:dir(ltr|rtl)` read
+the nearest `lang` or `dir`, else the locale; `:state(name)` reads the
+element's `state:name`; `:defined` matches every element, `:scope` the root
+and `:any-link` an `<a href>`.
 
 Custom properties are lexical and inherit through instantiated parents,
 including component mounts. Recursive `var()` supports fallbacks, even an

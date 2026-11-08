@@ -9,7 +9,7 @@ use crate::doc::topology::{FactChange, SiblingChange};
 use std::ops::Range;
 
 impl RetainedHost {
-    fn profile(&mut self, ui: &Ui, document: &str) -> &Profile {
+    pub(super) fn profile(&mut self, ui: &Ui, document: &str) -> &Profile {
         self.profiles.entry(document.to_owned()).or_insert_with(|| {
             ui.docs
                 .docs
@@ -41,6 +41,80 @@ impl RetainedHost {
         if range.start < range.end {
             self.css.intervals += 1;
             self.topology.invalidate_styles(parent, range)?;
+        }
+        Ok(())
+    }
+
+    /// `:has()`: the elements whose descendants or later siblings include
+    /// `node` (its ancestors, and each one's earlier siblings a sibling
+    /// `:has()` reaches) restyle when a subject compound has it; when a
+    /// `:has()` is before the subject, only the descendants of a possible
+    /// anchor that can be the subject do. Nothing else can change a match.
+    fn stale_has(&mut self, profile: &Profile, node: Option<&MountedNode>) -> Result<(), String> {
+        if !profile.has {
+            return Ok(());
+        }
+        let mut at = node.cloned();
+        while let Some(n) = at {
+            let parent = self.topology.parent(&n).cloned();
+            let facts = crate::doc::matching::Tree::facts(&self.topology, &n);
+            let anchor = crate::doc::matching::filter_matches(&facts, &profile.has_anchors);
+            let contexts: Vec<_> = profile
+                .has_context
+                .iter()
+                .filter(|c| {
+                    crate::doc::matching::filter_matches(&facts, std::slice::from_ref(&c.anchor))
+                })
+                .collect();
+            if let Some(k) = self.topology.position(&n) {
+                if anchor {
+                    self.stale(parent.as_ref(), k..k + 1)?;
+                }
+                if profile.has_siblings > 0 {
+                    self.stale(parent.as_ref(), k.saturating_sub(profile.has_siblings)..k)?;
+                }
+            }
+            for context in contexts {
+                self.stale_subjects(&n, context)?;
+            }
+            at = parent;
+        }
+        Ok(())
+    }
+
+    /// The descendants of `anchor` down to the context's depth whose own
+    /// facts can be its subject.
+    fn stale_subjects(
+        &mut self,
+        anchor: &MountedNode,
+        context: &crate::doc::matching::HasContext,
+    ) -> Result<(), String> {
+        let mut level = vec![anchor.clone()];
+        let mut depth = 0;
+        let mut hits = Vec::new();
+        while !level.is_empty() && depth < context.depth {
+            depth += 1;
+            let mut next = Vec::new();
+            for parent in &level {
+                for (k, child) in self
+                    .topology
+                    .children(Some(parent), 0..usize::MAX)
+                    .enumerate()
+                {
+                    let facts = crate::doc::matching::Tree::facts(&self.topology, child);
+                    if crate::doc::matching::filter_matches(
+                        &facts,
+                        std::slice::from_ref(&context.subject),
+                    ) {
+                        hits.push((parent.clone(), k));
+                    }
+                    next.push(child.clone());
+                }
+            }
+            level = next;
+        }
+        for (parent, k) in hits {
+            self.stale(Some(&parent), k..k + 1)?;
         }
         Ok(())
     }
@@ -140,6 +214,13 @@ impl RetainedHost {
                 self.stale(parent, count - 1..count)?;
             }
         }
+        // The parent's and ancestors' `:has()`, and earlier siblings'
+        // `:has(+ …)` over the changed range.
+        self.stale_has(&profile, parent)?;
+        if profile.has_siblings > 0 {
+            let low = change.old_range.start.min(change.new_range.start);
+            self.stale(parent, low.saturating_sub(profile.has_siblings)..low)?;
+        }
         if profile.empty
             && (change.old_count == 0) != (change.new_count == 0)
             && let Some(parent) = parent
@@ -180,6 +261,8 @@ impl RetainedHost {
         let parent = parent.as_ref();
         let count = self.topology.child_count(parent);
         self.stale(parent, at..at + 1)?;
+        let node = node.clone();
+        self.stale_has(&profile, Some(&node))?;
         if profile.next {
             self.stale(parent, at + 1..(at + 2).min(count))?;
         }
@@ -190,7 +273,7 @@ impl RetainedHost {
             self.stale(parent, 0..at)?;
         }
         if profile.ancestors {
-            self.stale(Some(node), 0..usize::MAX)?;
+            self.stale(Some(&node), 0..usize::MAX)?;
         }
         Ok(())
     }
@@ -520,5 +603,92 @@ mod tests {
         for i in end {
             assert_eq!(styles(&ui, &list, i..i + 1)[0], all[i], "row {i}");
         }
+    }
+
+    /// `:has()` follows a descendant's class and `:first-of-type` the
+    /// typed order; a flip in one of 200 rows restyles that row's own
+    /// chain, not the list.
+    #[test]
+    fn has_and_of_type_follow_facts_with_bounded_restyle() {
+        let mut ui = Ui::new(UiDesc::default());
+        let body = r#"<column id="Root">{#each $rows as row (row.id)}<div id="Card" class="card"><text id="Label" class:hot={$extra == row.id}>{row.label}</text></div>{/each}<button id="Tail">t</button><text id="After">a</text></column>
+<style>
+  .card:has(> .hot) { width: 50px; }
+  #Root:has(.hot) > text:first-of-type { height: 7px; }
+  div:last-of-type { opacity: 0.5; }
+</style>"#;
+        ui.define_document(
+            UiDocument::parse(
+                "has.svelte",
+                &format!("<meta name=\"component\" content=\"has\">{body}"),
+            )
+            .unwrap(),
+        );
+        let source = SourceId::new("test", "rows");
+        let extra = SourceId::new("test", "extra");
+        let keys: Vec<String> = (0..200).map(|i| format!("r{i}")).collect();
+        let keys: Vec<&str> = keys.iter().map(String::as_str).collect();
+        ui.reactive
+            .execute(Command::Collection {
+                source: source.clone(),
+                key: "id".into(),
+                items: rows(&keys),
+            })
+            .unwrap();
+        ui.reactive
+            .execute(Command::Signal {
+                source: extra.clone(),
+                initial: json!(""),
+                readable: false,
+            })
+            .unwrap();
+        ui.mount_document(
+            SourceId::new("test", "has"),
+            "has",
+            BTreeMap::from([("rows".into(), source), ("extra".into(), extra.clone())]),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        // The mount's ancestor-selector cascade settles over two ticks.
+        tick(&mut ui, 0.0);
+        tick(&mut ui, 0.0);
+        tick(&mut ui, 0.0);
+        assert_eq!(
+            ui.docs.retained.resolved, 0,
+            "an idle tick restyles nothing"
+        );
+        let root = root(&ui);
+        let value = |ui: &Ui, i: usize, prop: &str| {
+            let host = &ui.docs.retained;
+            let id = host.topology.child_at(Some(&root), i).unwrap();
+            let v = &host.elements[id].resolved.as_ref().unwrap().values;
+            match prop {
+                "width" => v.size("width").map(|s| format!("{s:?}")),
+                "height" => v.size("height").map(|s| format!("{s:?}")),
+                _ => v.num(prop).map(|n| n.to_string()),
+            }
+        };
+        let px = |n: f32| Some(format!("{:?}", Size::px(n)));
+        assert_eq!(value(&ui, 7, "width"), None);
+        assert_eq!(value(&ui, 201, "height"), None);
+        assert_eq!(value(&ui, 199, "opacity").as_deref(), Some("0.5"));
+        assert_eq!(value(&ui, 198, "opacity"), None);
+        ui.reactive
+            .execute(Command::Set {
+                source: extra.clone(),
+                value: json!("r7"),
+                force: false,
+            })
+            .unwrap();
+        tick(&mut ui, 0.0);
+        let resolved = ui.docs.retained.resolved;
+        assert_eq!(value(&ui, 7, "width"), px(50.0));
+        assert_eq!(value(&ui, 8, "width"), None);
+        // The first <text> child of Root is "After", past the <button>.
+        assert_eq!(value(&ui, 201, "height"), px(7.0));
+        // The label, its card and the root's chain, and what the root's
+        // restyle reaches: not the 200 cards.
+        assert!(resolved < 20, "restyled {resolved}");
     }
 }

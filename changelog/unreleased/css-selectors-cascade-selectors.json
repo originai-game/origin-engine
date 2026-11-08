@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "Document CSS selectors: :has(), :nth-of-type()/:nth-last-of-type(), :first-/last-/only-of-type, :lang(), :dir(), :state(), the form, open, popover and :target states, :defined, :scope, :any-link, and the ~= |= ^= $= *= attribute operators with i and s flags. lang, dir, data-* and state:name are selector attributes."
+    }
+  ]
+}

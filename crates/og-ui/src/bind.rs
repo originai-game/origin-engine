@@ -42,6 +42,28 @@ pub enum InteractionState {
     Selected,
     Invalid,
     PlaceholderShown,
+    /// A form control that is not disabled (`:enabled`).
+    Enabled,
+    Required,
+    /// A form control without `required` (`:optional`).
+    Optional,
+    ReadOnly,
+    ReadWrite,
+    /// A form control whose value its constraints accept (`:valid`).
+    Valid,
+    /// Invalid after the player changed it and left it (`:user-invalid`).
+    UserInvalid,
+    InRange,
+    OutOfRange,
+    Indeterminate,
+    /// Checked or selected by default (`:default`).
+    Default,
+    /// A `<details>` or `<dialog>` that is open, a `<select>` showing its list (`:open`).
+    Open,
+    PopoverOpen,
+    Modal,
+    /// The element a `#fragment` link activated last (`:target`).
+    Target,
 }
 
 /// What the host gives a binding beyond its viewmodel.
@@ -201,6 +223,125 @@ pub fn text(v: &Value) -> String {
     }
 }
 
+/// The operator of a CSS attribute selector with a value (Selectors 4 §6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AttrOp {
+    /// `=`
+    Equals,
+    /// `~=`: one of its whitespace-separated words.
+    Includes,
+    /// `|=`: the value, or the value then `-`.
+    Dash,
+    /// `^=`
+    Prefix,
+    /// `$=`
+    Suffix,
+    /// `*=`
+    Substring,
+}
+
+/// An attribute selector's value test: `[name op "value" i]`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AttrTest {
+    pub op: AttrOp,
+    pub value: String,
+    /// ASCII case-insensitive (the `i` flag, or an HTML attribute whose
+    /// values compare so).
+    pub insensitive: bool,
+}
+
+impl AttrTest {
+    pub fn test(&self, actual: &str) -> bool {
+        let (a, v) = if self.insensitive {
+            (actual.to_ascii_lowercase(), self.value.to_ascii_lowercase())
+        } else {
+            (actual.to_string(), self.value.clone())
+        };
+        match self.op {
+            AttrOp::Equals => a == v,
+            AttrOp::Includes => {
+                !v.is_empty()
+                    && !v.contains(|c: char| c.is_ascii_whitespace())
+                    && a.split_ascii_whitespace().any(|w| w == v)
+            }
+            AttrOp::Dash => a == v || a.strip_prefix(&v).is_some_and(|r| r.starts_with('-')),
+            AttrOp::Prefix => !v.is_empty() && a.starts_with(&v),
+            AttrOp::Suffix => !v.is_empty() && a.ends_with(&v),
+            AttrOp::Substring => !v.is_empty() && a.contains(&v),
+        }
+    }
+}
+
+/// Whether language `tag` matches a `:lang()` range: RFC 4647 extended
+/// filtering, case-insensitive, `*` matching any subtag.
+pub fn lang_matches(range: &str, tag: &str) -> bool {
+    let range: Vec<String> = range.split('-').map(str::to_ascii_lowercase).collect();
+    let tag: Vec<String> = tag
+        .replace('_', "-")
+        .split('-')
+        .map(str::to_ascii_lowercase)
+        .collect();
+    if range.is_empty() || tag.is_empty() || tag[0].is_empty() {
+        return false;
+    }
+    if range[0] != "*" && range[0] != tag[0] {
+        return false;
+    }
+    let (mut r, mut t) = (1, 1);
+    while r < range.len() {
+        if range[r] == "*" {
+            r += 1;
+            continue;
+        }
+        if t >= tag.len() {
+            return false;
+        }
+        if range[r] == tag[t] {
+            r += 1;
+            t += 1;
+        } else if tag[t].len() == 1 {
+            return false;
+        } else {
+            t += 1;
+        }
+    }
+    true
+}
+
+/// Whether a language is written right to left: its script subtag when
+/// it has one, else its language's usual script.
+pub fn rtl_language(tag: &str) -> bool {
+    let parts: Vec<String> = tag
+        .replace('_', "-")
+        .split('-')
+        .map(str::to_ascii_lowercase)
+        .collect();
+    if let Some(script) = parts.iter().skip(1).find(|p| p.len() == 4) {
+        return matches!(
+            script.as_str(),
+            "arab" | "hebr" | "thaa" | "syrc" | "nkoo" | "adlm" | "rohg" | "mand" | "samr"
+        );
+    }
+    matches!(
+        parts.first().map(String::as_str),
+        Some(
+            "ar" | "he"
+                | "iw"
+                | "fa"
+                | "ur"
+                | "ps"
+                | "sd"
+                | "ug"
+                | "yi"
+                | "dv"
+                | "ckb"
+                | "ku"
+                | "syr"
+                | "nqo"
+        )
+    )
+}
+
 // ── expressions ────────────────────────────────────────────────────────────
 
 /// A binding expression (see the module docs).
@@ -214,6 +355,14 @@ pub enum Expr {
         state: InteractionState,
     },
     HasToken(Box<Expr>, String),
+    /// A CSS attribute selector's value test on the value's text; null
+    /// (an absent attribute) never matches.
+    AttrTest(Box<Expr>, AttrTest),
+    /// `:lang(…)` on a language tag; `None` reads the locale ([`Env::language`]).
+    Lang(Option<Box<Expr>>, Vec<String>),
+    /// `:dir(rtl)` (true) or `:dir(ltr)` on a `dir` value; `None`, or a
+    /// value other than ltr or rtl, reads the locale's direction.
+    Dir(Option<Box<Expr>>, bool),
     Translate(Box<Expr>, Vec<(String, Expr)>),
     Format(Format, Box<Expr>),
     Not(Box<Expr>),
@@ -492,7 +641,16 @@ impl Expr {
                     value.paths(out);
                 }
             }
-            Expr::Not(a) | Expr::Neg(a) | Expr::Format(_, a) | Expr::HasToken(a, _) => a.paths(out),
+            Expr::Not(a)
+            | Expr::Neg(a)
+            | Expr::Format(_, a)
+            | Expr::HasToken(a, _)
+            | Expr::AttrTest(a, _) => a.paths(out),
+            Expr::Lang(a, _) | Expr::Dir(a, _) => {
+                if let Some(a) = a {
+                    a.paths(out);
+                }
+            }
             Expr::Bin(_, a, b) => {
                 a.paths(out);
                 b.paths(out);
@@ -519,6 +677,26 @@ impl Expr {
                     .split_ascii_whitespace()
                     .any(|value| value == token),
             ),
+            Expr::AttrTest(value, test) => Value::Bool(match value.eval(scope) {
+                Value::Null => false,
+                value => test.test(&text(&value)),
+            }),
+            Expr::Lang(value, ranges) => {
+                let tag = value
+                    .as_ref()
+                    .map(|v| text(&v.eval(scope)))
+                    .unwrap_or_else(|| scope.env.language().to_string());
+                Value::Bool(ranges.iter().any(|r| lang_matches(r, &tag)))
+            }
+            Expr::Dir(value, rtl) => {
+                let written = value.as_ref().map(|v| text(&v.eval(scope)));
+                let is_rtl = match written.as_deref() {
+                    Some("rtl") => true,
+                    Some("ltr") => false,
+                    _ => rtl_language(scope.env.language()),
+                };
+                Value::Bool(is_rtl == *rtl)
+            }
             Expr::Translate(key, params) => {
                 let key = text(&key.eval(scope));
                 let message = scope.env.translate(&key).unwrap_or_else(|| key.clone());
