@@ -5,8 +5,9 @@
 // a Lanczos-2 slice over the 3x3 samples nearest (its jitter walks the
 // slices over the frames), the history rectified into the samples' variance
 // box unless locks or luma instability vouch for it, and the two blended
-// by their weights in a reversibly tonemapped YCoCg. Writes the internal
-// history (rgb, lock in a) and the output; the output's alpha (the
+// by their weights in a reversibly tonemapped YCoCg. Writes the output,
+// which is also next frame's history colour (the engine's TAA history),
+// and the lock; the output's alpha (the
 // engine's tone-mapped fraction, post.wgsl `tonemapped`) is the current
 // frame's, blended with the previous output's along the motion as the
 // colour is and clamped to the current samples' range, as taa.wgsl does.
@@ -14,7 +15,7 @@
 
 @group(0) @binding(1) var dilated_reactive_tex: texture_2d<f32>;
 @group(0) @binding(2) var dilated_motion_tex: texture_2d<f32>;
-@group(0) @binding(3) var history_tex: texture_2d<f32>;
+@group(0) @binding(3) var lock_tex: texture_2d<f32>;
 @group(0) @binding(4) var farthest_depth_mip1_tex: texture_2d<f32>;
 @group(0) @binding(5) var color_tex: texture_2d<f32>;
 @group(0) @binding(6) var luma_instability_tex: texture_2d<f32>;
@@ -22,7 +23,7 @@
 @group(0) @binding(8) var<storage, read_write> new_locks: array<f32>;
 @group(0) @binding(9) var linear_clamp: sampler;
 @group(0) @binding(10) var previous_output_tex: texture_2d<f32>;
-@group(0) @binding(11) var history_out: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(11) var lock_out: texture_storage_2d<r32float, write>;
 @group(0) @binding(12) var output: texture_storage_2d<rgba16float, write>;
 
 fn exposure() -> f32 { return exposure_of(frame_info); }
@@ -92,8 +93,16 @@ fn box_variance(d: ptr<function, Data>) {
   (*d).clipping_box = b;
 }
 
-fn load_history(p: vec2<i32>) -> vec4<f32> {
-  return textureLoad(history_tex, p, 0);
+fn load_history(p: vec2<i32>) -> vec3<f32> {
+  return textureLoad(previous_output_tex, p, 0).rgb;
+}
+
+// The history at `p` (previous_output_tex) with its texel coordinates in
+// `x` and `y`, `t` of the way from x.x to x.y (and y.x to y.y): one
+// filtered fetch for two (or four) texels at their weights' ratio.
+fn history_between(x: vec2<i32>, tx: f32, y: vec2<i32>, ty: f32) -> vec3<f32> {
+  let at = vec2<f32>(mix(f32(x.x), f32(x.y), tx), mix(f32(y.x), f32(y.y), ty)) + 0.5;
+  return textureSampleLevel(previous_output_tex, linear_clamp, at / vec2<f32>(previous_upscale_size()), 0.0).rgb;
 }
 
 // ClampCoord of ffx_fsr3upscaler_sample.h.
@@ -115,43 +124,43 @@ fn lanczos2_weights(t: f32) -> vec4<f32> {
   return select(w, vec4<f32>(1.0), abs(x) < vec4<f32>(EPSILON));
 }
 
-struct HistoryRow {
-  weighted: vec4<f32>,
-  // The middle two texels' extents (the deringing box's part of the row).
-  lo: vec4<f32>,
-  hi: vec4<f32>,
-};
-
-// One of the 4x4's rows, `dy` from `ip`: its four texels weighted by `wx`
-// (written out per row: naga's guarded loops are not unrolled on Metal).
-fn history_row(ip: vec2<i32>, dy: i32, size: vec2<i32>, wx: vec4<f32>) -> HistoryRow {
-  let c0 = load_history(clamp_coord(ip, vec2<i32>(-1, dy), size));
-  let c1 = load_history(clamp_coord(ip, vec2<i32>(0, dy), size));
-  let c2 = load_history(clamp_coord(ip, vec2<i32>(1, dy), size));
-  let c3 = load_history(clamp_coord(ip, vec2<i32>(2, dy), size));
-  return HistoryRow(wx.x * c0 + wx.y * c1 + wx.z * c2 + wx.w * c3, min(c1, c2), max(c1, c2));
-}
-
 // HistorySample: DeclareCustomTextureSample with the reference Lanczos2
-// over FetchHistorySamples' 4x4, deringed to the middle 2x2. The kernel is
-// separable and each row's weights are the same, so they are made once
-// per axis (8 kernel evaluations, not AMD's 20 of the same values).
-fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec4<f32> {
+// over FetchHistorySamples' 4x4, deringed to the middle 2x2, read from the
+// engine's previous output (which holds FSR's history colour, written
+// once a frame). The kernel is separable, so its weights are made once
+// per axis; the middle 2x2 is loaded (for the deringing box too), each
+// edge's middle pair (two positive weights) is one filtered fetch at their
+// ratio, and the corners (together at most 1/64 of the weight, at a half-texel offset
+// on both axes) are left
+// out and the sum renormalised: 8 fetches, not 16.
+fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec3<f32> {
   var px = uv * vec2<f32>(size) - 0.5;
   let f = fract(px);
   px = clamp(px, vec2<f32>(0.0), vec2<f32>(size - 1));
   let ip = vec2<i32>(floor(px));
   let wx = lanczos2_weights(f.x);
   let wy = lanczos2_weights(f.y);
-  let r0 = history_row(ip, -1, size, wx);
-  let r1 = history_row(ip, 0, size, wx);
-  let r2 = history_row(ip, 1, size, wx);
-  let r3 = history_row(ip, 2, size, wx);
-  var c = wy.x * r0.weighted + wy.y * r1.weighted + wy.z * r2.weighted + wy.w * r3.weighted;
-  let lo = min(r1.lo, r2.lo);
-  let hi = max(r1.hi, r2.hi);
-  c /= dot(wx, vec4<f32>(1.0)) * dot(wy, vec4<f32>(1.0));
-  return clamp(c, lo, hi);
+  let lo = clamp_coord(ip, vec2<i32>(-1), size);
+  let mid0 = clamp_coord(ip, vec2<i32>(0), size);
+  let mid1 = clamp_coord(ip, vec2<i32>(1), size);
+  let hi = clamp_coord(ip, vec2<i32>(2), size);
+  let c11 = load_history(mid0);
+  let c21 = load_history(vec2<i32>(mid1.x, mid0.y));
+  let c12 = load_history(vec2<i32>(mid0.x, mid1.y));
+  let c22 = load_history(mid1);
+  let mx = wx.y + wx.z;
+  let my = wy.y + wy.z;
+  let xs = vec2<i32>(mid0.x, mid1.x);
+  let ys = vec2<i32>(mid0.y, mid1.y);
+  let top = history_between(xs, wx.z / mx, vec2<i32>(lo.y), 0.0);
+  let bottom = history_between(xs, wx.z / mx, vec2<i32>(hi.y), 0.0);
+  let left = history_between(vec2<i32>(lo.x), 0.0, ys, wy.z / my);
+  let right = history_between(vec2<i32>(hi.x), 0.0, ys, wy.z / my);
+  let c = wy.y * (wx.y * c11 + wx.z * c21) + wy.z * (wx.y * c12 + wx.z * c22)
+    + mx * (wy.x * top + wy.w * bottom)
+    + my * (wx.x * left + wx.w * right);
+  let total = mx * my + mx * (wy.x + wy.w) + my * (wx.x + wx.w);
+  return clamp(c / total, min(min(c11, c21), min(c12, c22)), max(max(c11, c21), max(c12, c22)));
 }
 
 fn prepared_color(p: vec2<i32>) -> vec3<f32> {
@@ -185,8 +194,11 @@ fn init_params(hr: vec2<i32>) -> Params {
 
 fn reproject_history_color(p: Params, d: ptr<function, Data>) {
   let h = history_sample(p.reprojected_hr_uv, previous_upscale_size());
-  (*d).history_color = rgb_to_ycocg(h.rgb * delta_pre_exposure() * exposure());
-  (*d).lock = h.w;
+  (*d).history_color = rgb_to_ycocg(h * delta_pre_exposure() * exposure());
+  // The lock beside it, bilinear (AMD's rides in the history's alpha
+  // through the same Lanczos and deringing, whose result lies in the
+  // middle 2x2's range as a bilinear one does).
+  (*d).lock = bilinear_r(lock_tex, p.reprojected_hr_uv);
 }
 
 fn update_lock_status(p: Params, d: ptr<function, Data>) {
@@ -359,7 +371,7 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>, @builtin(workgroup_id) wg: v
   rectify_history(p, &d);
   let alpha = accumulate(&d);
   let color = max(d.history_color / exposure(), vec3<f32>(0.0));
-  textureStore(history_out, hr, vec4<f32>(color, d.lock));
+  textureStore(lock_out, hr, vec4<f32>(d.lock, 0.0, 0.0, 0.0));
 
   // The engine's alpha: the current frame's (bilinear at the jittered
   // place), with the previous output's along the motion.
@@ -378,5 +390,10 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>, @builtin(workgroup_id) wg: v
     a = mix(a_hist, a_cur, alpha);
   }
   textureStore(output, hr, vec4<f32>(color, a));
-  new_locks[u32(hr.y) * u32(upscale_size().x) + u32(hr.x)] = 0.0;
+  // Cleared where the reactivity pass set one (few pixels): no store
+  // for the rest.
+  let li_ = u32(hr.y) * u32(upscale_size().x) + u32(hr.x);
+  if (new_locks[li_] != 0.0) {
+    new_locks[li_] = 0.0;
+  }
 }

@@ -78,7 +78,7 @@ Each must be met before 0.8.0.
 
 | Item | Now | Target | Stream |
 |---|---|---|---|
-| FSR 3.1 | +0.23–1.87 ms over TAAU at 1080p | cheaper accumulate | rendering |
+| FSR 3.1 | accumulation cheaper (seven dispatches, 12 bytes a pixel stored, history in 8 fetches): +0.65–1.04 ms over TAAU at 1080p in the thin scene (was +0.71–1.16), 0.90–1.23 ms under it on grass (M4 Pro); the rest is the six passes before the accumulation | cheaper accumulate | rendering |
 | GI probes | main pass 3.70 ms; `both` 12.70 ms; screen GI 0.65 of the path-traced reference | ceiling 0.72–0.80, cheaper | rendering |
 | First frame | terrain 7–12 s on DX12; Pixel 14–17 s | the shader compile budget | rendering |
 | Crowds at 50k | 24.35 ms a frame | prepass and main pass reduced | rendering |

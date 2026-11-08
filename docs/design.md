@@ -656,7 +656,7 @@ the logic tests and the probe's CPU description of a frame.
   is a quality field (`RenderSettings.upscaler`): TAAU, or AMD FidelityFX
   Super Resolution 3.1's upscaler ported to WGSL in fp32 without subgroups
   (MIT, `third_party/fidelityfx/`), which takes the `taa` pass's place with
-  its eight compute passes (depth-reconstructed disocclusion, thin-feature
+  its seven compute passes (depth-reconstructed disocclusion, thin-feature
   locks, luma instability, Lanczos accumulation, the OIT coverage as its
   reactive mask) and its RCAS in `taa-sharpen`'s; its state is sized to the
   output. §11 compares the two and gives the presets'
@@ -2710,12 +2710,13 @@ host and tier.
   `taaSharpen`'s pass.
 - **FSR 3.1** (`fsr_*.wgsl`, `post/fsr.rs`): AMD FidelityFX Super
   Resolution 3.1.6's upscaler, ported to WGSL (MIT,
-  `third_party/fidelityfx/`, whose README lists every deviation): eight
-  compute passes for dilated depth and motion with depth-reconstructed
-  disocclusion, a luma pyramid and auto exposure, shading-change
-  detection, reactivity and thin-feature locks, luma instability, and
-  the accumulation (Lanczos-2 upsample and history, variance-box
-  rectification in a reversibly tonemapped YCoCg), then RCAS
+  `third_party/fidelityfx/`, whose README lists every deviation): seven
+  compute dispatches for dilated depth and motion with depth-reconstructed
+  disocclusion, a luma pyramid and auto exposure (two), shading-change
+  detection (two), reactivity with thin-feature locks and luma
+  instability, and the accumulation (Lanczos-2 upsample and history,
+  variance-box rectification in a reversibly tonemapped YCoCg, the
+  history's colour read from the engine's previous output), then RCAS
   (`taaSharpen`'s strength). Transparent surfaces feed its reactive mask
   through the order-independent transparency's coverage.
 
@@ -2731,9 +2732,10 @@ beat neither of the two, so none is ported.
 ### 11.2 The choice
 
 FSR 3.1 is the better picture whenever the camera or an object moves, and
-steadier everywhere; TAAU is cheaper (FSR costs about 1 ms to 2 ms more at
-1080p and 1440p), converges faster after a cut and is as good on grass
-and particles. So:
+steadier everywhere; TAAU is mostly cheaper (FSR costs about 0.65 ms to
+1.05 ms more at 1080p on thin geometry, though 0.9 ms to 1.2 ms less on
+dense grass), converges faster after a cut and is as good on grass and
+particles. So:
 
 - **Default and medium: TAAU.** The default is also every native run's
   resolve at render scale 1 (`og run`, `og test`, the references).

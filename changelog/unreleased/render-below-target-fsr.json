@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "RenderSettings.upscaler (fsr3)",
+      "summary": "FSR 3.1 costs less: its accumulation reads the history's colour from the engine's previous output instead of a copy of its own (the pass writes 12 bytes a pixel, not 20), reads that history in 8 fetches instead of 16, and the luma instability runs inside the reactivity pass (seven dispatches, not eight). The picture is the same within 0.05 dB against a 4-samples-a-pixel ground truth."
+    }
+  ]
+}

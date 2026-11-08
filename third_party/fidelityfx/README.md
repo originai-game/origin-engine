@@ -61,5 +61,24 @@ Halton sequence are `ffxFsr3UpscalerGetJitterPhaseCount` and
   one thread per level-0 texel (16x16 a group). The output matches the
   looped form to within float reordering: at most 0.006 levels of 255
   on average per channel, with a few pixels up to 29.
+- **Luma instability in the reactivity pass.** AMD's luma instability
+  is a pass of its own that reads the dilated reactive masks back
+  bilinearly at the jittered place; here the reactivity pass keeps the
+  luma history and its instability from the pixel's own masks as it
+  writes them, a sub-pixel apart, saving the pass and its reads.
+- **The history's colour is the engine's previous output.** AMD keeps
+  an internal history (colour, lock in alpha) beside the output it
+  writes; the engine's output already persists as its TAA history (the
+  same colour), so the accumulation writes the output once and keeps only
+  the lock, in an `r32float` of its own, read back bilinearly (AMD's
+  rides the colour's Lanczos and deringing; either stays in the middle
+  2x2's range). The new locks are cleared only where the reactivity pass
+  set one. The pass's stores fall from 20 to 12 bytes a pixel.
+- **The history read in 8 fetches.** The reference Lanczos-2 over the
+  4x4, deringed to the middle 2x2, reads the middle 2x2 as loads (the
+  deringing box needs them), each edge's middle pair, whose weights are
+  both positive, as one filtered fetch at their ratio, and leaves out the
+  four corners (together at most 1/64 of the weight, at a half-texel
+  offset on both axes), renormalising the rest.
 - Frame generation, the debug view and the auto-generated reactive and T&C
   masks are not ported.

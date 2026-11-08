@@ -8,7 +8,11 @@
 // independent transparency's: one minus its revealage (oit.rs), at most
 // `fsr.misc.y` (AMD's guidance: reactive values near 1 are for what has no
 // history at all); none without OIT. There is no transparency and
-// composition mask. Prepended by fullscreen.wgsl and fsr_common.wgsl.
+// composition mask. The same pass keeps the luma history and its
+// instability (ffx_fsr3upscaler_luma_instability.h), which AMD runs as a
+// pass of its own reading these masks back bilinearly at the jittered
+// place; here it takes the pixel's own, a sub-pixel apart, and saves the
+// pass and its reads. Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
 @group(0) @binding(1) var dilated_motion_tex: texture_2d<f32>;
 @group(0) @binding(2) var dilated_depth_tex: texture_2d<f32>;
@@ -22,6 +26,9 @@
 @group(0) @binding(10) var dilated_reactive_out: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(11) var accumulation_out: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(12) var<storage, read_write> new_locks: array<f32>;
+@group(0) @binding(13) var luma_history_tex: texture_2d<f32>;
+@group(0) @binding(14) var luma_history_out: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(15) var luma_instability_out: texture_storage_2d<r32float, write>;
 
 fn exposure() -> f32 { return exposure_of(frame_info); }
 
@@ -196,6 +203,53 @@ fn update_accumulation(p: vec2<i32>, uv: vec2<f32>, mv: vec2<f32>, disocclusion:
   return accumulation;
 }
 
+// One earlier frame of ComputeLumaInstabilityFactor's three (written out:
+// naga's guarded loops are not unrolled on Metal): its similarity counts
+// where the luma moved the same way from it as from the last frame.
+fn similar_frame(max_similarity: f32, current: f32, diff0: f32, earlier: f32) -> f32 {
+  if (sign(diff0) == sign(current - earlier)) {
+    return max(max_similarity, min_divided_by_max(current, earlier));
+  }
+  return max_similarity;
+}
+
+// The luma instability: each render pixel keeps its luma over the last
+// four frames, and where a well-accumulated pixel's luma returns to an
+// earlier frame's (flickering rather than changing) it is unstable, so the
+// accumulation trusts its history over the clamp. `masks` are the pixel's
+// dilated reactive, disocclusion, shading change and accumulation.
+fn update_luma_instability(p: vec2<i32>, uv: vec2<f32>, mv: vec2<f32>, masks: vec4<f32>) {
+  var instability = 0.0;
+  var history = vec4<f32>(0.0);
+  let uv_cur_j = uv + jitter() / vec2<f32>(render_size());
+  let uv_prev_j = uv + previous_jitter() / vec2<f32>(previous_render_size());
+  let reprojected = uv_prev_j + mv;
+  if (is_uv_inside(reprojected) & (saturate(masks[ACCUMULATION]) > 0.9)) {
+    let current = bilinear_r(current_luma_tex, clamp_uv(uv_cur_j, render_size(), max_render_size())) * exposure();
+    let reprojected_hw = clamp_uv(reprojected, previous_render_size(), max_render_size());
+    history = textureSampleLevel(luma_history_tex, linear_clamp, reprojected_hw, 0.0) * delta_pre_exposure() * exposure();
+    // ComputeLumaInstabilityFactor (the farthest depth it is handed is
+    // unused upstream too).
+    var unstable = 0.0;
+    let diff0 = current - history[0];
+    let similarity0 = min_divided_by_max_or(current, history[0], 1.0);
+    var max_similarity = similarity0;
+    if (similarity0 < 1.0) {
+      max_similarity = similar_frame(max_similarity, current, diff0, history.y);
+      max_similarity = similar_frame(max_similarity, current, diff0, history.z);
+      max_similarity = similar_frame(max_similarity, current, diff0, history.w);
+      unstable = f32(max_similarity > similarity0);
+    }
+    history = vec4<f32>(current, history.x, history.y, history.z) / exposure();
+    instability = unstable * f32(history.w != 0.0);
+    let velocity_weight = 1.0 - saturate(get_4k_velocity(mv) / 20.0);
+    instability *= velocity_weight * (1.0 - saturate(masks[DISOCCLUSION])) * (1.0 - saturate(masks[REACTIVE]))
+      * (1.0 - saturate(masks[SHADING_CHANGE]));
+  }
+  textureStore(luma_history_out, p, history);
+  textureStore(luma_instability_out, p, vec4<f32>(instability, 0.0, 0.0, 0.0));
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
   let p = vec2<i32>(id.xy);
@@ -214,7 +268,9 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
   let final_reactiveness = max(motion_divergence, 0.0);
   let accumulation = update_accumulation(p, uv, mv, disocclusion, shading_change);
 
-  textureStore(dilated_reactive_out, p, vec4<f32>(final_reactiveness, disocclusion, shading_change, accumulation));
+  let masks = vec4<f32>(final_reactiveness, disocclusion, shading_change, accumulation);
+  textureStore(dilated_reactive_out, p, masks);
+  update_luma_instability(p, uv, mv, masks);
 
   let lock_strength = compute_thin_feature_confidence(p);
   if (lock_strength > 1.0 / 100.0) {

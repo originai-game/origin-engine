@@ -348,17 +348,26 @@ fn cost() {
                     println!("passes\t{label}\t{}", all.join(", "));
                 }
                 resolve.push(pass("taa") + pass("taa-sharpen"));
+                if std::env::var("OG_FSR_COST_RAW").is_ok() {
+                    let all = frame.passes.iter().map(|p| p.ms()).sum::<f64>();
+                    println!(
+                        "raw\t{label}\t{:.4}\t{all:.4}",
+                        pass("taa") + pass("taa-sharpen")
+                    );
+                }
                 total.push(frame.passes.iter().map(|p| p.ms()).sum::<f64>());
             }
         }
-        let median = |v: &mut Vec<f64>| {
+        let at = |v: &mut Vec<f64>, q: f64| {
             v.sort_by(f64::total_cmp);
-            v[v.len() / 2]
+            v[((v.len() - 1) as f64 * q).round() as usize]
         };
         println!(
-            "cost\t{w}x{h}\t{scale}\t{label}\tresolve {:.3} ms\tframe {:.3} ms\t({} frames)",
-            median(&mut resolve),
-            median(&mut total),
+            "cost\t{w}x{h}\t{scale}\t{label}\tresolve {:.3} ms (p95 {:.3})\tframe {:.3} ms (p95 {:.3})\t({} frames)",
+            at(&mut resolve, 0.5),
+            at(&mut resolve, 0.95),
+            at(&mut total, 0.5),
+            at(&mut total, 0.95),
             resolve.len()
         );
     }
