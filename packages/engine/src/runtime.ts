@@ -2093,10 +2093,8 @@ export const ui = Object.freeze({
     within(() => abi().og_ui_open(id, JSON.stringify({ ...(desc ?? {}), direction: "column" })), build),
   label: (id: string, text: string, desc?: unknown) => abi().og_ui_label(id, text, json(desc)),
   richText: (id: string, markup: string, desc?: unknown) => parse(abi().og_ui_rich_text(id, markup, json(desc))),
-  button: (id: string, text: string, desc?: unknown) => parse(abi().og_ui_button(id, text, json(desc))),
   image: (id: string, desc?: unknown) => abi().og_ui_image(id, json(desc)),
   textField: (id: string, value: string, desc?: unknown) => parse(abi().og_ui_text_field(id, value, json(desc))),
   textArea: (id: string, value: string, desc?: unknown) => parse(abi().og_ui_text_area(id, value, json(desc))),
-  tooltip: (text: string) => abi().og_ui_tooltip(text),
   idi: (name: string, index: number) => `${name}#${index}`,
 });

@@ -11,4 +11,3 @@
 // version; a rename or a changed signature is a breaking changelog entry.
 
 export { BLACK, TAU, WHITE, a11y, absolute, anchorOf, apply, arc, artTile, box, bp, chip, claimAnnouncement, clamp01, close, countdown, drop, easeBack, easeOut, edge, ellipseShape, fillDraw, fitLevel, fixed, formatNumber, frame, glow, groups, hudPlace, hudRoom, hueOf, icon, inkOn, inner, innerGlow, keyId, kit, leaf, lit, luminance, minText, mix, msToTicks, now, open, paintRgba, pct, pop, pulse, px, radial, reduced, role, rtl, sel, shapeOf, shrunk, socketRim, solid, sound, spring, springTo, stepSize, stroke, teamColor, text, textScale, ticksToMs, token, trackDraw, ts, tsFit, type Props, type Rgba, u, ut, vgrad } from "../ui/hud/core.ts";
-export { objectiveTracker } from "../ui/hud/nav.ts";

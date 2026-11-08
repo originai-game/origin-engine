@@ -6,7 +6,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  byText, chevron, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, over, px, overProps, parentOf, rememberPath, role, rtl, spring, still, surface, text, token, xy,
+  byText, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, over, px, overProps, parentOf, rememberPath, role, rtl, spring, still, surface, text, token, xy,
 } from "./base.ts";
 
 import { edge } from "./panels.ts";
@@ -211,59 +211,6 @@ function bumper(id: string, action: "tabPrev" | "tabNext", onPress: () => void):
 function deviceGlyph(action: string): { text: string; icon: string } | null {
   const g = kit.frameGlyph(action);
   return g && g.text ? { text: g.text, icon: g.icon } : null;
-}
-
-// ── pagination ──────────────────────────────────────────────────────────
-
-/**
- * Pagination: previous and next, the first and last pages, the pages
- * around the current one and ellipses between (1 … 4 5 6 … 20); on a
- * phone a compact `4 / 20` between the arrows. The tabPrev and tabNext
- * actions page while `bumpers` is set.
- */
-export function pagination(id: string, desc: Api.PaginationDesc): Api.PageResult {
-  const { t, phone } = frame();
-  const pages = Math.max(1, desc.pages ?? 1);
-  let page = clamp(desc.page ?? 0, 0, pages - 1);
-  const before = page;
-  if (desc.bumpers) {
-    if (kit.action("tabPrev")) page = Math.max(0, page - 1);
-    if (kit.action("tabNext")) page = Math.min(pages - 1, page + 1);
-  }
-  const compact = desc.compact ?? phone;
-  const around = desc.siblings ?? 1;
-  const list: number[] = [];
-  if (!compact) {
-    for (let k = 0; k < pages; k++) {
-      if (k === 0 || k === pages - 1 || Math.abs(k - page) <= around) list.push(k);
-      else if (list[list.length - 1] !== -1) list.push(-1);
-    }
-  }
-  kit.row(id, { gap: t.xxs, cross: "center", width: desc.width ?? null, align: "center" }, () => {
-    const prev = surface("Prev", { part: "Pagination.step", cls: "button", fill: null, disabled: page === 0, width: px(44), height: px(44), align: "center", cross: "center", semantics: { role: "button", name: desc.prevLabel || "Previous page" } }, () => chevron("Chevron", "back", 16, role(page === 0 ? "inkFaint" : "ink")));
-    if (prev.clicked) page = Math.max(0, page - 1);
-    if (compact) {
-      text("Count", `${page + 1} / ${pages}`, { step: "sm", font: "mono", nowrap: true });
-      kit.semantics({ role: "status", name: `${page + 1} / ${pages}` });
-    } else {
-      list.forEach((k, j) => {
-        if (k === -1) {
-          text(kit.idi("Gap", j), "…", { step: "sm", color: "inkFaint" });
-          return;
-        }
-        const on = k === page;
-        const r = surface(kit.idi("Page", k), { part: "Pagination.page", cls: "button", flags: [on ? "current" : ""], selected: on, fill: null, selectedFill: role("primary"), width: fit(40), height: fit(40), padding: xy(t.xs, 0), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
-          text("Number", `${k + 1}`, { step: "sm", font: "mono", color: on ? "onPrimary" : "ink", nowrap: true });
-        });
-        if (r.clicked) page = k;
-      });
-    }
-    const next = surface("Next", { part: "Pagination.step", cls: "button", fill: null, disabled: page === pages - 1, width: px(44), height: px(44), align: "center", cross: "center", semantics: { role: "button", name: desc.nextLabel || "Next page" } }, () => chevron("Chevron", "forward", 16, role(page === pages - 1 ? "inkFaint" : "ink")));
-    if (next.clicked) page = Math.min(pages - 1, page + 1);
-  });
-  kit.semantics({ role: "navigation", name: desc.label || "Pagination", value: `${page + 1} / ${pages}` });
-  if (page !== before) kit.feedback("select", -1);
-  return { page, changed: page !== before };
 }
 
 // ── action bar ──────────────────────────────────────────────────────────

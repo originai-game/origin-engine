@@ -27,11 +27,12 @@ test cooks every one from its fixture at desktop and phone sizes.
 |---|---|
 | Ability bars, cooldowns and buffs | `ability-bar`, `ability-slot`, `cooldown`, `status-grid` |
 | Meters and resource bars | `stat-bar`, `orb-meter`, `radial-meter` |
-| Progress and loading placeholders | `progress-bar`, `progress-ring`, `skeleton-group` |
+| Progress and loading placeholders | `progress-bar`, `progress-ring`, `skeleton-group`, `spinner` |
 | Timers and scores | `hud-timer`, `star-bar` |
 | Navigation (minimap, compass) | `minimap`, `minimap-view`, `compass` |
 | Menus and layout (radial menu, split view, carousel, breadcrumbs) | `radial-menu`, `split-view`, `carousel`, `breadcrumbs` |
-| Charts | `chart` |
+| Charts and map overlays | `chart`, `overlay-bar` |
+| Data views (inventories, level selects) | `data-grid` |
 | Buttons and badges (hero button, touch action, ribbon) | `hero-button`, `action-button`, `ribbon` |
 | World tags over units and items | `nameplate`, `waypoint`, `loot-label`, `speech-bubble`, `interaction-prompt` |
 | Ground marks (selection, telegraphs, paths, placement) | `selection-ring`, `telegraph`, `path-line`, `placement-ghost` |

@@ -246,7 +246,7 @@ const Panel = defineSystem("MdPanel", { writes: [Clicks] }, (_q, _t, world) => {
   const c = must(world.resource(Clicks));
   og.ui.column("Box", { padding: { left: 10, top: 10, right: 10, bottom: 10 } }, () => {
     og.ui.label("Hello", `clicks ${c.n}`);
-    if (og.ui.button("Go", "Go", { variant: "primary" }).clicked) c.n += 1;
+    if (og.ui.row("Go", { interactive: true, focusable: true, padding: { left: 12, top: 8, right: 12, bottom: 8 } }, () => og.ui.label("Label", "Go")).clicked) c.n += 1;
   });
 });
 
@@ -255,7 +255,7 @@ test("a UI tree built by a system is clicked through the command channel and dum
   engine.advance(2);
   const tree = engine.probe.dump({ what: "ui" }) as unknown as { elements: Array<{ id: string; parent: string; text: string; width: number }> };
   const ids = tree.elements.map((e) => `${e.parent}/${e.id}`);
-  expect(ids).toEqual(["/Box", "Box/Hello", "Box/Go"]);
+  expect(ids).toEqual(["/Box", "Box/Hello", "Box/Go", "Go/Label"]);
   expect(tree.elements[2]!.width).toBeGreaterThan(0);
   const report = engine.probe.commands("0:touch_move_to:Box/Go;0.05:touch_start;0.1:touch_end;0.2:move_to_text:clicks 1;0.3:touch_start;0.35:touch_end") as unknown as { warnings: string[] };
   expect(report.warnings).toEqual([]);
@@ -264,8 +264,8 @@ test("a UI tree built by a system is clicked through the command channel and dum
   const after = engine.probe.dump({ what: "ui" }) as unknown as { elements: Array<{ id: string; text: string }> };
   expect(after.elements.find((e) => e.id === "Hello")!.text).toBe("clicks 1");
   // Calls outside a frame do nothing and say so.
-  og.ui.button("Stray", "Stray");
-  expect(engine.takeLog().some((l) => l.text.includes("og.ui.button was called outside a system"))).toBeTrue();
+  og.ui.label("Stray", "Stray");
+  expect(engine.takeLog().some((l) => l.text.includes("og.ui.label was called outside a system"))).toBeTrue();
 });
 
 test("the UI's interaction state is world state: a restore replays a held press", () => {

@@ -1,14 +1,3 @@
-  fn card {
-    doc "A card over a body the game builds. Answers its response (clicked when interactive)."
-    doc "Its corners: a badge at the top end, a number plate at the top start, a cost disc at the bottom end; each mirrors right to left."
-    doc "Parts: Card.frame[selected][<variant>], Card.media[placeholder], Card.number, Card.cost. Accessibility: a button (interactive) or group named by its eyebrow, title and subtitle, else its text; the number and the cost are read as text. Probe ids: <id>/Media, <id>/Body (with a cost and media, the disc at <id>/Media/Cost/Text; with a cost and no media, the game's body in <id>/Body/Content and the disc at <id>/Body/Cost/Text), <id>/Number/Text, <id>/Badge, <id>/Selected."
-    host false
-    param id String "Its id."
-    param desc CardDesc "Variant, media, titles and state."
-    param build UiBuild "Builds its body."
-    returns Response
-  }
-
   fn accordion {
     doc "Sections whose headers open and close their bodies; the sections under one move on the panel spring."
     host false
@@ -16,26 +5,6 @@
     param desc AccordionDesc "Sections and the open ones."
     param build UiItemBuild "Builds an open section's body by its index."
     returns AccordionResult
-  }
-
-  fn dialog {
-    doc "A dialog on the modal layer: tone mark, message, body and actions."
-    host false
-    param id String "Its id."
-    param open bool "Whether it is open."
-    param desc DialogDesc "Title, message, tone and actions."
-    param build UiBuild "Builds its body under the message."
-    returns DialogResult
-  }
-
-  fn confirm {
-    doc "A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone)."
-    aliases "confirmation dialog, are you sure, yes or no prompt, alert, quit prompt"
-    host false
-    param id String "Its id."
-    param open bool "Whether it is open."
-    param desc ConfirmationDesc "Message and labels."
-    returns ConfirmResult
   }
 
   fn popover {
@@ -84,14 +53,6 @@
     param desc TabBarDesc "Tabs and the selected one."
     param build UiItemBuild "Builds the selected tab's panel by its index."
     returns TabBarResult
-  }
-
-  fn pagination {
-    doc "Previous, next and the pages around the current one."
-    host false
-    param id String "Its id."
-    param desc PaginationDesc "Pages and the current one."
-    returns PageResult
   }
 
   fn actionHints {

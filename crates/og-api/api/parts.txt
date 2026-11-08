@@ -31,11 +31,8 @@ ui-containers-functions.ogt
 ui-data-functions.ogt
 ui-core-foundations.ogt
 ui-controls.ogt
-ui-patterns.ogt
 ui-core-motion.ogt
 ui-feedback.ogt
-ui-hud.ogt
-ui-world.ogt
 ui-core-draw.ogt
 ui-world-primitives.ogt
 ui-reactive.ogt

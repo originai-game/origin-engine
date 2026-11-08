@@ -1,6 +1,7 @@
-//! og.ui's world-space members through the engine (`docs/ui.md` §1): the
-//! UI's end hands og-ui the tick's og.Camera and the pose of the entity an
-//! anchor sits on, so the anchor lands where og.camera.worldToScreen puts
+//! og.ui's world-space UI through the engine (`docs/ui.md` §1): the UI's
+//! end hands og-ui the tick's og.Camera and the pose of the entity an
+//! anchor (a document's `<anchor entity>`, built through og-ui's
+//! `Ui::world_anchor`) sits on, so the anchor lands where og.camera.worldToScreen puts
 //! that entity and follows the camera when it moves; mass elements a system
 //! spawns are counted and age out with the ticks.
 //!
@@ -13,9 +14,10 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_camera_world_to_screen, og_engine_create, og_engine_frame,
     og_engine_write_resource, og_game_game, og_host_begin_bundle, og_system_define_system,
-    og_ui_close, og_ui_define_mass, og_ui_label, og_ui_mass_count, og_ui_open_world_anchor,
-    og_ui_spawn_mass, og_world_spawn, set_hooks,
+    og_ui_close, og_ui_define_mass, og_ui_label, og_ui_mass_count, og_ui_spawn_mass,
+    og_world_spawn, set_hooks, shared_ui,
 };
+use og_ui::{Anchor, AnchorInfo, WorldAnchorDesc, WorldTarget};
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -27,7 +29,7 @@ struct Seen {
     entity: Cell<f64>,
     spawn: Cell<bool>,
     template: Cell<u32>,
-    infos: RefCell<Vec<Value>>,
+    infos: RefCell<Vec<AnchorInfo>>,
     counts: RefCell<Vec<u32>>,
 }
 
@@ -55,16 +57,16 @@ impl Hooks for Host {
             s.counts
                 .borrow_mut()
                 .push(og_ui_mass_count(s.template.get()));
-            let desc = json!({
-                "target": { "entity": s.entity.get() },
-                "pivot": "center",
-            });
-            let info = og_ui_open_world_anchor("Tag".into(), Some(desc.to_string()));
+            let desc = WorldAnchorDesc {
+                target: WorldTarget::Entity(s.entity.get() as u64),
+                pivot: Anchor::Center,
+                ..WorldAnchorDesc::default()
+            };
+            let ui = shared_ui(call.engine).expect("the engine's UI");
+            let info = ui.lock().open_world_anchor("Tag", desc);
             og_ui_label("Name".into(), "Brenna".into(), None);
             og_ui_close();
-            s.infos
-                .borrow_mut()
-                .push(serde_json::from_str(&info).unwrap());
+            s.infos.borrow_mut().push(info);
         }
         Ok(String::new())
     }
@@ -125,30 +127,29 @@ fn an_entity_anchor_follows_the_ticks_camera_and_mass_elements_age_out() {
     let (sx, sy) = screen(e);
     // Built a tick after it was placed: the last info is where the end
     // before put it.
-    let info = seen.infos.borrow().last().cloned().unwrap();
-    assert_eq!(info["inView"], json!(true), "{info}");
+    let info = *seen.infos.borrow().last().unwrap();
+    assert!(info.in_view, "{info:?}");
     assert!(
-        (info["distance"].as_f64().unwrap() - 26.25f64.sqrt()).abs() < 0.05,
-        "{info}"
+        (f64::from(info.distance) - 26.25f64.sqrt()).abs() < 0.05,
+        "{info:?}"
     );
     assert!(
-        (info["x"].as_f64().unwrap() - sx).abs() < 0.5
-            && (info["y"].as_f64().unwrap() - sy).abs() < 0.5,
-        "{info} against worldToScreen ({sx}, {sy})"
+        (f64::from(info.x) - sx).abs() < 0.5 && (f64::from(info.y) - sy).abs() < 0.5,
+        "{info:?} against worldToScreen ({sx}, {sy})"
     );
     // The camera moves right: the anchor moves left with the entity's image.
     camera(e, 2.0);
     step();
     step();
     let (mx, _) = screen(e);
-    let moved = seen.infos.borrow().last().cloned().unwrap();
+    let moved = *seen.infos.borrow().last().unwrap();
     assert!(
         mx < sx - 50.0,
         "the camera did not move the point: {sx} -> {mx}"
     );
     assert!(
-        (moved["x"].as_f64().unwrap() - mx).abs() < 0.5,
-        "{moved} did not follow the camera to {mx}"
+        (f64::from(moved.x) - mx).abs() < 0.5,
+        "{moved:?} did not follow the camera to {mx}"
     );
     // 25 numbers spawned on the first tick, alive for their 10 ticks.
     for _ in 0..10 {

@@ -1,4 +1,4 @@
-// og.ui.celebration and og.ui.starRating: the celebration set (docs/ui.md
+// og.ui.celebration: the celebration set (docs/ui.md
 // §6, Appendix E "Celebrations (confetti, banners, podium, level up)").
 // Read against Candy Crush and Royal Match's results (three stars landing
 // in turn, the middle one larger, a burst and a rising pitch each), Diablo
@@ -7,7 +7,7 @@
 // are the UI's own, seeded, so a replay throws the same.
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, box, clamp01, easeBack, easeOut, frame, groups, kit, leaf, lit, msToTicks, now, pct, px, radial, reduced, role, sel, solid, sound, stroke, text, token, glow, vgrad, fill as fillText, ts, apply, fitWidth, claimAnnouncement } from "./core.ts";
+import { a11y, absolute, box, clamp01, easeBack, easeOut, frame, groups, kit, leaf, lit, msToTicks, now, pct, px, radial, reduced, role, sel, solid, sound, stroke, text, token, glow, ts, apply, fitWidth, claimAnnouncement } from "./core.ts";
 
 const DURATION_MS: Record<Api.CelebrationKind, number> = { confetti: 3000, burst: 1000, levelUp: 2600, fireworks: 3500 };
 
@@ -155,54 +155,4 @@ export function celebration(id: string, desc: Api.CelebrationDesc = {}): void {
     });
   });
   apply({ inert: true, a11y: a11y("status", [desc.title ?? "Level up", desc.value].filter((v) => v).join(" ")), ...g });
-}
-
-export function starRating(id: string, desc: Api.StarRatingDesc = {}): void {
-  const max = Math.max(1, desc.max || 3);
-  const earned = Math.min(max, desc.earned ?? 0);
-  const base = desc.size || 48;
-  const t = now();
-  const stagger = msToTicks(desc.staggerMs || 320);
-  const land = msToTicks(380);
-  const reveal = desc.revealAt;
-  const gold = role("gold");
-  const still = reduced();
-  const name = fillText(desc.name ?? "{earned} of {max} stars", { earned, max });
-  box(id, { direction: "row", gap: Math.round(base * 0.16), cross: "end" }, undefined, () => {
-    for (let i = 0; i < max; i++) {
-      const middle = max === 3 && i === 1;
-      const size = Math.round(middle ? base * 1.25 : base);
-      const lift = middle ? -base * 0.18 : 0;
-      const at = reveal === undefined || reveal === null ? -1e9 : reveal + i * stagger;
-      const age = t - at;
-      const isEarned = i < earned;
-      const shown = isEarned && age >= 0;
-      const x = clamp01(age / land);
-      const landing = shown && x < 1;
-      if (isEarned && age === land) kit.feedback("reward", i);
-      const starShape: Api.DrawShape = { kind: "polygon", sides: 5, inner: 0.48, rounding: size * 0.06 };
-      box(kit.idi("Star", i), { width: px(size), height: px(size), align: "center", cross: "center" }, undefined, () => {
-        leaf("Socket", { width: px(size), height: px(size), part: sel("StarRating", "socket") }, {
-          shape: starShape,
-          fills: [solid(token("well"))],
-          strokes: [stroke(2, token("line"), "inside")],
-          effects: [{ kind: "innerShadow", offset: { x: 0, y: 2 }, blur: 4, spread: 0, color: token("shadow", 0.5) }],
-        }, absolute({ start: 0, top: 0 }));
-        if (shown) {
-          const s = still ? 1 : landing ? 2.2 - 1.2 * easeBack(x, 2) : 1;
-          const r = still ? 0 : landing ? -0.7 * (1 - easeOut(x)) : 0;
-          leaf("Earned", { width: px(size), height: px(size), part: sel("StarRating", "star", "earned") }, {
-            shape: starShape,
-            fills: [vgrad([[0, lit({ r: 1, g: 0.95, b: 0.65, a: 1 })], [0.5, lit(gold)], [1, lit({ r: gold.r * 0.85, g: gold.g * 0.65, b: gold.b * 0.35, a: 1 })]])],
-            strokes: [stroke(2, lit({ r: gold.r * 0.6, g: gold.g * 0.45, b: gold.b * 0.2, a: 1 }), "inside")],
-            effects: [glow(landing ? 18 : 8, lit(gold, landing ? 0.8 : 0.45))],
-          }, absolute({ start: 0, top: 0 }, { transform: { scaleX: s, scaleY: s, rotate: r }, opacity: still ? x : clamp01(x * 4), z: 1 }));
-          kit.particles({ burst: 14, fire: age === land, colors: [lit(gold), token("highlight")], travelMin: size * 0.5, travelMax: size * 1.3, shape: "diamond", size: { x: 5, y: 5 }, endScale: 0.2 });
-        }
-      }, {
-        transform: { y: lift },
-        ...groups({ star: !isEarned ? "empty" : landing || age < 0 ? "landing" : "earned" }, { star: ["empty", "landing", "earned"] }),
-      });
-    }
-  }, { a11y: a11y("image", name) });
 }

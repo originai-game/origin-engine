@@ -175,19 +175,6 @@ export function inkOn(c: Rgba): Rgba {
   return luminance(c) > 0.36 ? { r: 0.06, g: 0.06, b: 0.08, a: 1 } : { r: 1, g: 1, b: 1, a: 1 };
 }
 
-/** The palette role a tone draws in. */
-export function toneRole(tone: Api.Tone | undefined, neutral: Api.ThemeColor = "primary"): Api.ThemeColor {
-  switch (tone) {
-    case "success": return "success";
-    case "warn": return "warn";
-    case "danger": return "danger";
-    case "info": return "info";
-    case "primary": return "primary";
-    case "inverse": return "ink";
-    default: return neutral;
-  }
-}
-
 const RARITY_FALLBACK: Record<string, string> = {
   common: "#b8bec7", uncommon: "#4cc35a", rare: "#3d8bff", epic: "#a64dff", legendary: "#ff9a1f", mythic: "#ff3d6e",
 };
@@ -233,10 +220,6 @@ export function vgrad(stops: Array<[number, Paint]>, angle = 0): Api.Fill {
 
 export function radial(stops: Array<[number, Paint]>, cx = 0.5, cy = 0.5, rx = 0.5, ry = 0.5): Api.Fill {
   return { kind: "gradient", type: "radial", from: { x: cx, y: cy }, to: { x: rx, y: ry }, stops: stops.map(([offset, color]) => ({ offset, color })) };
-}
-
-export function conic(stops: Array<[number, Paint]>, start = -Math.PI / 2): Api.Fill {
-  return { kind: "gradient", type: "conic", from: { x: 0.5, y: 0.5 }, to: { x: start, y: 0 }, stops: stops.map(([offset, color]) => ({ offset, color })) };
 }
 
 export function stroke(width: number, paint: Paint, align: Api.StrokeAlign = "inside", more: Partial<Api.Stroke> = {}): Api.Stroke {
@@ -544,11 +527,6 @@ export function pop(sinceTicks: number, amount = 0.18, ms = 320): number {
 
 /** Ease out cubic. */
 export const easeOut = (x: number): number => 1 - (1 - clamp01(x)) ** 3;
-/** Ease in-out cubic. */
-export const easeInOut = (x: number): number => {
-  const t = clamp01(x);
-  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
-};
 /** Ease out back: arrives past its end and settles. */
 export const easeBack = (x: number, s = 1.7): number => {
   const t = clamp01(x) - 1;
@@ -720,11 +698,6 @@ export function shortTime(seconds: number, tenths = true): string {
  * the tick it is made and the next, on the same surface height.
  */
 const BANDS = new Map<string, { tick: number; top: number; height: number }>();
-
-/** Claims the strip from `top` (screen px) to the bottom of the screen under `name`. */
-export function claimBand(name: string, top: number): void {
-  BANDS.set(name, { tick: kit.tick(), top, height: frame().viewport.height });
-}
 
 /** The tick a banner or level-up last announced on (BANNER_TICK.at), per surface height. */
 const BANNER_TICK = { at: -1e9, height: 0 };

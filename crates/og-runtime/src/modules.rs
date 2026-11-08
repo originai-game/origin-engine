@@ -29,35 +29,31 @@ pub use ui_desc::{
     og_ui_scroll_into_view, og_ui_seconds, og_ui_set_focus, og_ui_theme, og_ui_viewport,
 };
 use ui_desc::{
-    align, cross, customize, element, f, frame_part, idx, insets, opt_f, paint, rect_json,
-    response, size, size_or, tone, transition_kind, ui_rect, uv_of,
+    align, cross, customize, element, f, frame_part, insets, opt_f, paint, rect_json, response,
+    size, size_or, tone, transition_kind, ui_rect, uv_of,
 };
 pub(crate) use ui_desc::{anchor_of, step, texture_of, ui_engine, with_ui};
 mod widgets;
 use widgets::desc_of;
 pub(crate) use widgets::emit;
 pub use widgets::{
-    og_ui_burst, og_ui_button, og_ui_close, og_ui_counter, og_ui_image, og_ui_label, og_ui_open,
-    og_ui_open_scroll, og_ui_rich_text, og_ui_screen_transition, og_ui_text_area, og_ui_text_field,
-    og_ui_tooltip, og_ui_zoom_view,
+    og_ui_burst, og_ui_close, og_ui_image, og_ui_label, og_ui_open, og_ui_open_scroll,
+    og_ui_rich_text, og_ui_screen_transition, og_ui_text_area, og_ui_text_field, og_ui_zoom_view,
 };
 mod controls;
-pub use controls::{
-    og_ui_dropdown, og_ui_number_stepper, og_ui_segmented, og_ui_toggle_switch, og_ui_value_slider,
-};
+pub use controls::{og_ui_dropdown, og_ui_number_stepper, og_ui_toggle_switch};
 mod game_widgets;
 use crate::{art, assets, extract, ui_draw};
 pub(crate) use game_widgets::a11y_json;
 use game_widgets::ui_of;
 pub use game_widgets::{
-    og_ui_a11y, og_ui_back, og_ui_badge, og_ui_bounds, og_ui_close_list, og_ui_close_modal,
-    og_ui_dismiss_toast, og_ui_divider, og_ui_feedback, og_ui_focus, og_ui_grid_item,
-    og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_layout_editor, og_ui_hud_reset, og_ui_hud_select,
-    og_ui_hud_step, og_ui_icon, og_ui_list_item, og_ui_memory, og_ui_navigate, og_ui_open_anchor,
-    og_ui_open_grid, og_ui_open_list, og_ui_open_modal, og_ui_preview_viewport, og_ui_remember,
-    og_ui_scroll_state, og_ui_set_haptics, og_ui_set_hud_edit, og_ui_set_hud_layout,
-    og_ui_set_hud_player, og_ui_set_navigation, og_ui_set_players, og_ui_set_virtual_cursor,
-    og_ui_skeleton, og_ui_spacer, og_ui_spinner, og_ui_tick, og_ui_toast, og_ui_virtual_cursor,
+    og_ui_a11y, og_ui_back, og_ui_badge, og_ui_bounds, og_ui_close_modal, og_ui_dismiss_toast,
+    og_ui_divider, og_ui_feedback, og_ui_focus, og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_reset,
+    og_ui_hud_select, og_ui_hud_step, og_ui_icon, og_ui_memory, og_ui_navigate, og_ui_open_anchor,
+    og_ui_open_modal, og_ui_preview_viewport, og_ui_remember, og_ui_scroll_state,
+    og_ui_set_haptics, og_ui_set_hud_edit, og_ui_set_hud_layout, og_ui_set_hud_player,
+    og_ui_set_navigation, og_ui_set_players, og_ui_set_virtual_cursor, og_ui_spacer, og_ui_spinner,
+    og_ui_tick, og_ui_toast, og_ui_virtual_cursor,
 };
 
 pub(crate) mod docs;
@@ -86,10 +82,9 @@ use og_physics::{
     ShapeCastDesc, ShapeDesc,
 };
 use og_ui::{
-    Align, Anchor, AnchorDesc, ButtonDesc, ButtonVariant, ControlSize, Cross, DensityMode,
-    Direction, Element, FieldDesc, FontRole, Fonts, GridDesc, IconAtlas, IconDesc, ImageDesc,
-    InputFrame, Insets, LabelDesc, ListDesc, ListRange, ModalDesc, Nav, Response, Scheme,
-    ScrollDesc, SharedUi, Size, SkeletonDesc, Srgba, StylePart, TextAlign, Theme, ToastDesc, Tone,
+    Align, Anchor, AnchorDesc, Cross, DensityMode, Direction, Element, FieldDesc, FontRole, Fonts,
+    IconAtlas, IconDesc, ImageDesc, InputFrame, Insets, LabelDesc, ModalDesc, Nav, Response,
+    Scheme, ScrollDesc, SharedUi, Size, Srgba, StylePart, TextAlign, Theme, ToastDesc, Tone,
     TransitionKind, TypeStep, Ui, UiDesc, UiFont, Viewport,
 };
 use serde_json::{Map, Value, json};

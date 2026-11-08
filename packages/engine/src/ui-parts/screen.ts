@@ -12,9 +12,7 @@
 
 export { accent, artSlot, btn, chevron, clamp, coinFill, countdown, eyebrow, fill, firstRoom, fit, fitStep, flags, floating, floatingContent, frame, glow, grouped, grow, hex, inkFor, inkOn, inside, isPhone, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps, paint, parentOf, pct, pips, pointer, priceTag, px, radial, rarityColor, rarityPips, recallPath, rememberPath, rememberRoom, role, rtl, safeHeight, safeWidth, scrimFill, shadow, solid, spring, st, still, surface, symbol, teamColor, text, timerChip, timerRing, token, type Mut, type Rgba, type SymbolKind, type TimeWords, u, vgrad, vstate, xy } from "../ui/patterns/core.ts";
 export { nameText, stepSize, tps } from "../ui/feedback/core.ts";
-export { cornerTag, plainText } from "../ui/patterns/rewards.ts";
 export { inputField } from "../ui/controls/fields.ts";
-export { dropdown, valueSlider } from "../ui/controls/natives.ts";
+export { dropdown } from "../ui/controls/natives.ts";
 export { holdButton } from "../ui/controls/buttons.ts";
-export { chart } from "../ui/data/charts.ts";
 export { formatNumber } from "../ui/data/format.ts";

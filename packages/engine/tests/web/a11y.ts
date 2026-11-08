@@ -1,13 +1,13 @@
 // The accessibility mirror in headless Chrome (src/web/a11y.ts): the dev
 // web export of tests/fixtures/a11y (a settings dialog and a pause dialog
-// built from og.ui's controls) on a 1280×720 canvas, driven one tick and
+// in a document) on a 1280×720 canvas, driven one tick and
 // one render per `frame` call as reference.ts drives it, on its settings
 // dialog. Checked:
 //
 // - The DOM mirror is og.ui.a11y()'s tree: one element per node, in tree
 //   order, nested under its parent, each at its node's bounds over the
 //   canvas, with its role, name, value and states as ARIA (the settings
-//   dialog, the section tabs (a segmented control) with Audio chosen, the Master slider at
+//   dialog, the section tabs (radios) with Audio chosen, the Master slider at
 //   100 %, the Mute switch unchecked, the Done button), and Chrome's own
 //   accessibility tree reads them as a screen reader would.
 // - A screen reader's adjust gesture on the Master slider (mirrored as a
@@ -167,7 +167,7 @@ try {
   const find = (role: string, name: string) => dom.find((d) => d.role === role && (d.label === name || d.text === name));
   const dialog = find("dialog", "Settings");
   check(!!dialog && dialog.attrs["aria-modal"] === "true", "the settings dialog: role dialog, named Settings, modal", dialog);
-  // The section tabs are a segmented control: a radio group of radios.
+  // The section tabs are radios.
   const audio = find("radio", "Audio");
   check(audio?.attrs["aria-checked"] === "true" && find("radio", "Graphics")?.attrs["aria-checked"] === "false", "the section tabs: Audio chosen, Graphics not", { audio, graphics: find("radio", "Graphics") });
   const master = find("slider", "Master");

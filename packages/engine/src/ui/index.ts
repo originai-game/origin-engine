@@ -3,40 +3,22 @@
 // Every member is declared in crates/og-api/api/ui.ogt (module `ui`) as a
 // `host false` function written here over public og.ui calls only.
 
-import { accordion, card } from "./containers/panels.ts";
-import { confirm, contextMenu, dialog, menu, popover, sheet } from "./containers/layers.ts";
-import { actionHints, pagination, tabBar } from "./containers/navigation.ts";
-import { dataGrid, dataList, table } from "./data/table.ts";
-import { nodeGraph, tree } from "./data/tree.ts";
-import { chart } from "./data/charts.ts";
-import { keyValueRows, statCompare } from "./data/rows.ts";
-import { calendar } from "./data/calendar.ts";
+import { accordion } from "./containers/panels.ts";
+import { contextMenu, menu, popover, sheet } from "./containers/layers.ts";
+import { actionHints, tabBar } from "./containers/navigation.ts";
+import { nodeGraph } from "./data/tree.ts";
 import { foundations } from "./foundations/index.ts";
 import { controls } from "./controls/index.ts";
-import { patterns } from "./patterns/index.ts";
 
 export const components = Object.freeze({
-  card,
   accordion,
-  dialog,
-  confirm,
   popover,
   menu,
   contextMenu,
   sheet,
   tabBar,
-  pagination,
   actionHints,
-  dataList,
-  dataGrid,
-  table,
-  tree,
   nodeGraph,
-  chart,
-  keyValueRows,
-  statCompare,
-  calendar,
   ...foundations,
   ...controls,
-  ...patterns,
 });

@@ -1209,9 +1209,6 @@ impl UiApi for NodeHost {
     fn og_ui_set_draw(&self, desc: Option<String>) {
         rt::og_ui_set_draw(desc)
     }
-    fn og_ui_open_world_anchor(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_open_world_anchor(id, desc)
-    }
     fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> String {
         rt::og_ui_define_mass(name, desc)
     }
@@ -1239,20 +1236,11 @@ impl UiApi for NodeHost {
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>) {
         rt::og_ui_label(id, text, desc)
     }
-    fn og_ui_button(&self, id: String, text: String, desc: Option<String>) -> String {
-        rt::og_ui_button(id, text, desc)
-    }
     fn og_ui_toggle_switch(&self, id: String, on: bool, desc: Option<String>) -> String {
         rt::og_ui_toggle_switch(id, on, desc)
     }
-    fn og_ui_value_slider(&self, id: String, value: f64, desc: Option<String>) -> String {
-        rt::og_ui_value_slider(id, value, desc)
-    }
     fn og_ui_number_stepper(&self, id: String, value: f64, desc: Option<String>) -> String {
         rt::og_ui_number_stepper(id, value, desc)
-    }
-    fn og_ui_segmented(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_segmented(id, desc)
     }
     fn og_ui_dropdown(&self, id: String, desc: Option<String>) -> String {
         rt::og_ui_dropdown(id, desc)
@@ -1265,9 +1253,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_text_area(&self, id: String, value: String, desc: Option<String>) -> String {
         rt::og_ui_text_area(id, value, desc)
-    }
-    fn og_ui_tooltip(&self, text: String) {
-        rt::og_ui_tooltip(text)
     }
     fn og_ui_frame_theme(&self) -> String {
         rt::og_ui_frame_theme()
@@ -1300,9 +1285,6 @@ impl UiApi for NodeHost {
     fn og_ui_scroll_into_view(&self, path: String, center: bool) {
         rt::og_ui_scroll_into_view(path, center)
     }
-    fn og_ui_counter(&self, id: String, value: f64, desc: Option<String>) -> f64 {
-        rt::og_ui_counter(id, value, desc)
-    }
     fn og_ui_burst(&self, desc: Option<String>) {
         rt::og_ui_burst(desc)
     }
@@ -1324,21 +1306,6 @@ impl UiApi for NodeHost {
     fn og_ui_scroll_state(&self, path: String) -> String {
         rt::og_ui_scroll_state(path)
     }
-    fn og_ui_open_list(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_open_list(id, desc)
-    }
-    fn og_ui_open_grid(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_open_grid(id, desc)
-    }
-    fn og_ui_list_item(&self, index: u32, selected: bool) -> String {
-        rt::og_ui_list_item(index, selected)
-    }
-    fn og_ui_grid_item(&self, index: u32, selected: bool) -> String {
-        rt::og_ui_grid_item(index, selected)
-    }
-    fn og_ui_close_list(&self) -> String {
-        rt::og_ui_close_list()
-    }
     fn og_ui_badge(&self, id: String, text: String, tone: String) {
         rt::og_ui_badge(id, text, tone)
     }
@@ -1347,9 +1314,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_spacer(&self, id: String, size: String) {
         rt::og_ui_spacer(id, size)
-    }
-    fn og_ui_skeleton(&self, id: String, desc: Option<String>) {
-        rt::og_ui_skeleton(id, desc)
     }
     fn og_ui_spinner(&self, id: String, size: f64) {
         rt::og_ui_spinner(id, size)
@@ -1416,9 +1380,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_hud_reset(&self, key: String) {
         rt::og_ui_hud_reset(key)
-    }
-    fn og_ui_hud_layout_editor(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_hud_layout_editor(id, desc)
     }
     fn og_ui_focus(&self, pad: u32) -> String {
         rt::og_ui_focus(pad)

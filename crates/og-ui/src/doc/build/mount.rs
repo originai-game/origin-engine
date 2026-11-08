@@ -287,7 +287,7 @@ impl Ui {
     ) -> DocResponse {
         let Some(doc) = self.docs.docs.get(name).cloned() else {
             self.warnings.push(format!(
-                "og.ui.component: no document named '{name}' (load its .ogt with og.load.document)"
+                "Ui::component: no document named '{name}' (load its .ogt with og.load.document)"
             ));
             return DocResponse::default();
         };
@@ -350,7 +350,7 @@ impl Ui {
             }
             _ => {
                 self.warnings.push(format!(
-                    "og.ui.openSlot: no slot '{path}' this tick (mount the document first; slots: {})",
+                    "Ui::open_slot: no slot '{path}' this tick (mount the document first; slots: {})",
                     self.docs.slots.keys().cloned().collect::<Vec<_>>().join(", ")
                 ));
                 false

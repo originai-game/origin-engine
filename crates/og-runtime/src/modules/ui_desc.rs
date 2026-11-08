@@ -633,10 +633,6 @@ pub(super) fn transition_kind(v: &Value) -> Option<TransitionKind> {
     })
 }
 
-pub(super) fn idx(v: &Value) -> Option<u32> {
-    v.as_u64().map(|n| n as u32)
-}
-
 pub(super) fn rect_json(r: &og_ui::Rect) -> Value {
     json!({ "x": r.x, "y": r.y, "width": r.width, "height": r.height })
 }

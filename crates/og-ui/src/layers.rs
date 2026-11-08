@@ -500,7 +500,7 @@ impl Ui {
             .any(|l| l.screen == screen && l.mount.is_none())
             && let Err(e) = self.push_screen(screen, Value::Null)
         {
-            self.warnings.push(format!("og.ui.screen: {e}"));
+            self.warnings.push(format!("Ui::screen: {e}"));
             return DocResponse::default();
         }
         if !vm.is_null() {

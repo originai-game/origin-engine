@@ -5,9 +5,8 @@
 
 use super::*;
 use og_ui::{
-    ChoiceIndexResult, ControlSize, DropdownDesc, DropdownOption, LabelSide, NumberStepperDesc,
-    SegmentItem, SegmentedDesc, SliderMark, SwitchResult, ToggleSwitchDesc, ValueFormat,
-    ValueSliderDesc,
+    ControlSize, DropdownDesc, DropdownOption, LabelSide, NumberStepperDesc, SwitchResult,
+    ToggleSwitchDesc, ValueFormat,
 };
 
 fn text(v: &Value) -> String {
@@ -47,10 +46,6 @@ fn switch(r: SwitchResult) -> String {
     json!({ "response": response(r.response), "on": r.on, "changed": r.changed }).to_string()
 }
 
-fn choice(r: ChoiceIndexResult) -> String {
-    json!({ "selected": r.selected, "changed": r.changed, "focused": r.focused }).to_string()
-}
-
 pub fn og_ui_toggle_switch(id: String, on: bool, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let desc = ToggleSwitchDesc {
@@ -73,68 +68,6 @@ pub fn og_ui_toggle_switch(id: String, on: bool, desc: Option<String>) -> String
         on,
         ..SwitchResult::default()
     }))
-}
-
-pub fn og_ui_segmented(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let desc = SegmentedDesc {
-        items: items(&d["items"])
-            .iter()
-            .map(|o| SegmentItem {
-                label: text(&o["label"]),
-                icon: text(&o["icon"]),
-                disabled: flag(&o["disabled"]),
-                aria_label: text(&o["ariaLabel"]),
-            })
-            .collect(),
-        selected: d["selected"].as_i64().map_or(0, |n| n as i32),
-        size: control_size(&d["size"]),
-        equal: d["equal"].as_bool().unwrap_or(true),
-        width: size(&d["width"]),
-        label: text(&d["label"]),
-        disabled: flag(&d["disabled"]),
-    };
-    let r = with_ui("og.ui.segmented", |ui| ui.segmented(id.as_str(), &desc));
-    choice(r.unwrap_or(ChoiceIndexResult {
-        selected: desc.selected,
-        changed: false,
-        focused: -1,
-    }))
-}
-
-pub fn og_ui_value_slider(id: String, value: f64, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let z = ValueSliderDesc::default();
-    let desc = ValueSliderDesc {
-        min: num(&d["min"]).unwrap_or(z.min),
-        max: num(&d["max"]).unwrap_or(z.max),
-        step: num(&d["step"]).unwrap_or(0.0).max(0.0),
-        label: text(&d["label"]),
-        show_value: d["showValue"].as_bool().unwrap_or(true),
-        format: format(&d["format"]),
-        ticks: flag(&d["ticks"]),
-        marks: items(&d["marks"])
-            .iter()
-            .map(|m| SliderMark {
-                value: num(&m["value"]).unwrap_or(0.0),
-                label: text(&m["label"]),
-            })
-            .collect(),
-        origin: num(&d["origin"]),
-        disabled: flag(&d["disabled"]),
-        width: size(&d["width"]),
-        bubble: d["bubble"].as_bool().unwrap_or(true),
-    };
-    let v = value as f32;
-    let r = with_ui("og.ui.valueSlider", |ui| {
-        ui.value_slider(id.as_str(), v, &desc)
-    })
-    .unwrap_or(og_ui::ValueSliderResult {
-        value: v,
-        ..og_ui::ValueSliderResult::default()
-    });
-    json!({ "response": response(r.response), "value": r.value, "changed": r.changed, "committed": r.committed })
-        .to_string()
 }
 
 pub fn og_ui_number_stepper(id: String, value: f64, desc: Option<String>) -> String {

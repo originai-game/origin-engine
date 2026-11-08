@@ -11,10 +11,6 @@ import type * as Api from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { checkFrame, measureScale, pseudo, type UiCell, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
-import { bindingControls, deviceSlots } from "../src/ui/controls/bindings.ts";
-import { formatValue, snap } from "../src/ui/controls/base.ts";
-import { filterSuggestions, fold } from "../src/ui/controls/fields.ts";
-import { kanaMark, layoutRows, toKatakana } from "../src/ui/controls/keyboard.ts";
 import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
@@ -81,73 +77,16 @@ function focusOn(engine: Engine, end: string): void {
   expectFocus(engine, end);
 }
 
-// ── the pure parts ──────────────────────────────────────────────────────
-
-test("values: snapping counts steps from min, formats follow the step, percent and word labels", () => {
-  // Wrong: snapping to multiples of the step from 0 (min 0.25, step 0.5 lands on 0.5, not 0.75).
-  expect(snap(0.8, 0.25, 2, 0.5)).toBeCloseTo(0.75, 6);
-  expect(snap(9, 0, 5, 1)).toBe(5);
-  expect(formatValue(0.5, { step: 0.05 })).toBe("0.50");
-  expect(formatValue(3, { step: 1, unit: " m" })).toBe("3 m");
-  expect(formatValue(0.42, { percent: true })).toBe("42%");
-});
-
-test("search: suggestions match ignoring case and accents, the prefix ones first, then the shorter", () => {
-  // Wrong: an accented `Élan` missed by `el`, or a mid-word match ranked over a prefix.
-  expect(fold("Élan")).toBe("elan");
-  expect(filterSuggestions(["Steel", "Élan", "Elm", "Bell"], "el", 3)).toEqual(["Elm", "Élan", "Bell"]);
-});
-
-test("keyboard: the kana marks voice, half-voice and shrink and cycle back; katakana is offered", () => {
-  // Wrong: は taking ゛ twice into ぱ, or ば unable to take ゜.
-  expect(kanaMark("は", "voice")).toBe("ば");
-  expect(kanaMark("ば", "voice")).toBe("は");
-  expect(kanaMark("ば", "semi")).toBe("ぱ");
-  expect(kanaMark("つ", "small")).toBe("っ");
-  expect(kanaMark("ん", "voice")).toBeNull();
-  expect(toKatakana("ゆうしゃ")).toBe("ユウシャ");
-  // Every layout ends with its action row, and kana is offered only when asked.
-  expect(layoutRows("letters", false, false).flat().some((k) => k.kind === "layout" && k.to === "kana")).toBeFalse();
-  expect(layoutRows("letters", false, true).flat().some((k) => k.kind === "layout" && k.to === "kana")).toBeTrue();
-  expect(layoutRows("letters", true, false)[0]![0]).toEqual({ kind: "char", ch: "Q" });
-  // A masked number (a PIN) takes digits only; an open one keeps its sign and point.
-  const chars = (digits: boolean) => layoutRows("numeric", false, false, digits).flat().flatMap((k) => (k.kind === "char" ? [k.ch] : []));
-  expect(chars(true).sort().join("")).toBe("0123456789");
-  expect(chars(false)).toContain("-");
-});
-
-test("bindings: a device shows its own bindings by their index among the action's, then empty slots past the end", () => {
-  // Wrong: a pad slot numbered from 0 on the pad (it would overwrite the key binding), or a composite read as unbound.
-  const bs: Api.InputBinding[] = [{ control: "KeyW" }, { control: "pad.a" }, { up: "KeyI", left: "KeyJ", down: "KeyK", right: "KeyL" }];
-  expect(bindingControls(bs[2]!)).toEqual(["KeyI", "KeyJ", "KeyK", "KeyL"]);
-  expect(deviceSlots(bs, true, 2)).toEqual([{ slot: 1, binding: bs[1]! }, { slot: 3, binding: null }]);
-  expect(deviceSlots(bs, false, 2).map((s) => s.slot)).toEqual([0, 2]);
-});
-
 // ── foundations ─────────────────────────────────────────────────────────
 
-test("foundations: roles read as headings, art waits as a busy image, counts past 99 cap", () => {
-  // Wrong: a title a screen reader reads as plain text, a missing texture drawn as nothing, or `120` overflowing its pill.
+test("foundations: an effect layer shows what it holds; a view frame turns by a key and drops its hint", () => {
+  // Wrong: an effect layer that hides its content, or a view frame that ignores its keys.
   let yaw = 0;
   const engine = run(() => {
-    og.ui.text("Title", "Inventory", { role: "title" });
-    og.ui.text("Body", "Twelve slots free", { tone: "muted" });
-    og.ui.iconMark("Mail", "mail", { badge: "120", label: "Mail" });
-    og.ui.artSlot("Hero", { kind: "portrait", aspect: 0.75, loading: true, label: "Hero portrait", width: { kind: "fixed", px: 120 } as never });
-    og.ui.shapeBox("Gem", { kind: "diamond", fill: "primary", glow: "primary" } as never);
-    og.ui.space("Gap", { step: "lg" });
     og.ui.emitter("Sparks", { preset: "sparkle" } as never);
     og.ui.effectLayer("Shine", { material: "shine", sweep: true } as never, () => og.ui.label("Inner", "Legendary", {}));
     yaw = og.ui.viewFrame("Preview", { yaw, label: "Character preview", hint: "Drag to turn", height: { kind: "fixed", px: 160 } as never }).yaw;
   });
-  expect(find(engine, (e) => e.text === "Inventory")!.role).toBe("heading");
-  expect(find(engine, (e) => e.text === "99+")).toBeDefined();
-  const art = find(engine, (e) => e.role === "image" && e.name === "Hero portrait")!;
-  expect(art.states).toContain("busy");
-  expect(art.height).toBeCloseTo(160, 0);
-  // A portrait without art waits as a figure (head and shoulders), not a symbol on a grey box.
-  expect(find(engine, (e) => e.path.endsWith("Hero/Head"))).toBeDefined();
-  expect(find(engine, (e) => e.path.endsWith("Hero/Placeholder")) === undefined).toBeTrue();
   expect(find(engine, (e) => e.text === "Legendary")).toBeDefined();
   // The viewport turns by a key step once focused, and its hint goes away.
   expect(find(engine, (e) => e.text === "Drag to turn")).toBeDefined();
@@ -160,42 +99,10 @@ test("foundations: roles read as headings, art waits as a busy image, counts pas
 
 // ── buttons ─────────────────────────────────────────────────────────────
 
-test("pushButton: two taps and Enter press it; a disabled one with a reason takes the focus but never fires", () => {
-  // Wrong: the disabled button firing on Enter, or skipping the focus so its reason cannot be read.
-  let fired = 0;
-  let dead = 0;
-  const engine = run(() => {
-    if (og.ui.pushButton("Play", "Play", { variant: "primary", icon: "play", badge: "3" }).clicked) fired++;
-    if (og.ui.pushButton("Shop", "Shop", { disabled: true, disabledReason: "Reach level 5" }).clicked) dead++;
-  });
-  const b = find(engine, (e) => e.role === "button" && e.name === "Play")!;
-  expect(b).toBeDefined();
-  tap(engine, b.path);
-  tap(engine, b.path);
-  expect(fired).toBe(2);
-  focusOn(engine, "Play");
-  key(engine, "Enter");
-  expect(fired).toBe(3);
-  const shop = find(engine, (e) => e.name === "Shop")!;
-  expect(shop.disabled).toBeTrue();
-  focusOn(engine, "Shop");
-  key(engine, "Enter");
-  tap(engine, shop.path);
-  expect(dead).toBe(0);
-});
-
 test("every control: on a coarse pointer each target a finger presses is at least 44 px (or reaches it by its hit slop)", () => {
-  // Wrong: a 28 px icon button or stepper arrow a thumb misses.
-  const taps: Record<string, number> = {};
-  const hit = (name: string, r: { clicked: boolean }) => {
-    if (r.clicked) taps[name] = (taps[name] ?? 0) + 1;
-  };
+  // Wrong: a 28 px stepper arrow or clear button a thumb misses.
   const engine = run(() => {
-    hit("Close", og.ui.iconButton("Close", "cross", { label: "Close", size: "small" }));
-    hit("Small", og.ui.pushButton("Small", "Small", { size: "small" }));
     og.ui.toggleSwitch("Switch", false, { label: "Switch" });
-    og.ui.segmented("Seg", { label: "Seg", items: [{ label: "A" }, { label: "B" }], size: "small" });
-    og.ui.valueSlider("Slider", 0.5, { label: "Slider" });
     og.ui.numberStepper("Step", 1, { label: "Step" });
     og.ui.inputField("Field", "", { label: "Field", clearable: true });
     og.ui.dropdown("Drop", { label: "Drop", options: [{ label: "A" }] });
@@ -216,9 +123,6 @@ test("every control: on a coarse pointer each target a finger presses is at leas
     engine.probe.commands("0:touch_end");
     engine.advance(6);
   }
-  // And the icon button is 44 px itself.
-  const close = find(engine, (e) => e.name === "Close")!;
-  expect(Math.min(close.width, close.height)).toBeGreaterThanOrEqual(44);
 });
 
 test("holdButton: letting go early confirms nothing and drains; holding the whole time confirms once; the toggle alternative confirms on a second press", () => {
@@ -282,66 +186,7 @@ test("toggleSwitch: the whole row takes the tap; the state is the game's", () =>
   expect(on).toBeTrue();
 });
 
-test("segmented: a tap selects a segment, the bumpers do not (it is not a tab bar), Left and Right step", () => {
-  let sel = 0;
-  const engine = run(() => {
-    sel = og.ui.segmented("View", { label: "View", selected: sel, items: [{ label: "Grid" }, { label: "List" }, { label: "Map" }] }).selected;
-  });
-  tap(engine, byPath(engine, "Item#2")!.path);
-  expect(sel).toBe(2);
-  focusOn(engine, "Item#2");
-  key(engine, "ArrowLeft");
-  expect(sel).toBe(1);
-});
-
 // ── ranges ──────────────────────────────────────────────────────────────
-
-test("valueSlider: keys step it and commit, a drag follows the finger and commits on release, RTL runs from the right", () => {
-  // Wrong: a drag that commits every tick, or a slider that fills from the left in RTL.
-  for (const dir of ["ltr", "rtl"] as const) {
-    let v = 0.5;
-    let commits = 0;
-    const engine = run(() => {
-      const r = og.ui.valueSlider("Volume", v, { label: "Volume", min: 0, max: 1, step: 0.1, format: { percent: true } as never });
-      v = r.value;
-      if (r.committed) commits++;
-    }, 640, dir === "rtl" ? kit : undefined);
-    if (dir === "rtl") {
-      const loaded = og.i18n.load(engine.world, "strings/ar.ogt");
-      if (!loaded.ok) throw new Error(loaded.reason);
-      og.i18n.setLocale(engine.world, "ar-EG");
-      engine.advance(6);
-    }
-    const s = find(engine, (e) => e.role === "slider")!;
-    expect(s.value).toBe("50%");
-    focusOn(engine, s.path.split("/").pop()!);
-    key(engine, dir === "rtl" ? "ArrowLeft" : "ArrowRight");
-    expect(`${dir} ${v.toFixed(2)}`).toBe(`${dir} 0.60`);
-    expect(commits).toBe(1);
-    // Drag the knob to the track's far end.
-    const track = byPath(engine, "Track")!;
-    const end = dir === "rtl" ? track.x + 2 : track.x + track.width - 2;
-    engine.probe.commands(`0:touch_move_to:${s.path};0.05:touch_start;0.1:touch_move:${Math.round(end)},${Math.round(track.y + track.height / 2)};0.2:touch_move:${Math.round(end)},${Math.round(track.y + track.height / 2)};0.3:touch_end`);
-    engine.advance(30);
-    expect(v).toBeCloseTo(1, 5);
-    expect(commits).toBe(2);
-  }
-});
-
-test("rangeSlider: the knobs never cross and keep the minimum gap", () => {
-  let lo = 20;
-  let hi = 40;
-  const engine = run(() => {
-    const r = og.ui.rangeSlider("Price", lo, hi, { label: "Price", min: 0, max: 100, step: 5, minGap: 10 });
-    lo = r.low;
-    hi = r.high;
-  });
-  const low = find(engine, (e) => e.role === "slider" && e.name.includes("Minimum"))!;
-  focusOn(engine, low.path.split("/").pop()!);
-  for (let i = 0; i < 6; i++) key(engine, "ArrowRight");
-  expect(lo).toBe(30);
-  expect(hi).toBe(40);
-});
 
 test("numberStepper: the buttons step to the bounds and disable there; typed text is not needed", () => {
   // Wrong: going past max, or leaving + enabled at max.
@@ -376,26 +221,6 @@ test("inputField: an error marks it invalid with its message described, the clea
   expect(value).toBe("");
 });
 
-test("searchBox: typing shows matching suggestions, Down walks them, Enter chooses one", () => {
-  // Wrong: Down leaving the suggestions closed, or Enter submitting the query instead of the focused suggestion.
-  let q = "";
-  let chosen = null as string | null;
-  const engine = run(() => {
-    const r = og.ui.searchBox("Find", q, { suggestions: ["Iron sword", "Iron shield", "Oak bow"], filter: true });
-    q = r.query;
-    if (r.chosen !== null) chosen = r.chosen;
-  });
-  focusOn(engine, "Field");
-  engine.probe.commands("0:type:iro");
-  engine.advance(10);
-  expect(q).toBe("iro");
-  expect(find(engine, (e) => e.text === "Oak bow") === undefined).toBeTrue();
-  key(engine, "ArrowDown");
-  key(engine, "ArrowDown");
-  key(engine, "Enter");
-  expect(chosen).toBe("Iron shield");
-});
-
 test("dropdown: a tap opens the list with the focus on the chosen option, a tap on another chooses and closes, Back closes", () => {
   let sel = 1;
   let open = false;
@@ -421,146 +246,20 @@ test("dropdown: a tap opens the list with the focus on the chosen option, a tap 
   expect(sel).toBe(2);
 });
 
-// ── key bindings ────────────────────────────────────────────────────────
-
-test("keyBindingRow: a press waits for a key, a free key lands at once, a used one asks and Swap trades them", () => {
-  // Wrong: the capture's key also moving the focus, a conflict applied without asking, or Swap leaving both on one key.
-  const out: { r?: Api.KeyBindingResult } = {};
-  const engine = run((world) => {
-    out.r = og.ui.keyBindingRow(world, "Jump", { action: "jump", device: "keyboardMouse" });
-    og.ui.keyBindingRow(world, "Crouch", { action: "crouch", device: "keyboardMouse" });
-  }, 640, undefined, (world) => {
-    og.input.defineAction(world, { name: "jump", label: "Jump", bindings: [{ control: "Space" }, { control: "pad.a" }] });
-    og.input.defineAction(world, { name: "crouch", label: "Crouch", bindings: [{ control: "KeyC" }] });
-  });
-  const slot = byPath(engine, "Jump/Main/Bound/Slots/Slot#0")!;
-  expect(slot.name).toContain("Jump");
-  tap(engine, slot.path);
-  expect(out.r!.capturing).toBeTrue();
-  expect(find(engine, (e) => e.text.startsWith("Press a key"))).toBeDefined();
-  // A free key lands.
-  key(engine, "KeyJ");
-  engine.advance(4);
-  const jump = () => og.input.actions(engine.world).find((a) => a.name === "jump")!;
-  expect(jump().bindings[0]!.control).toBe("KeyJ");
-  expect(out.r!.capturing).toBeFalse();
-  // Crouch's key asks.
-  tap(engine, byPath(engine, "Jump/Main/Bound/Slots/Slot#0")!.path);
-  key(engine, "KeyC");
-  engine.advance(4);
-  expect(out.r!.conflict).toBeTrue();
-  expect(find(engine, (e) => e.role === "alert")).toBeDefined();
-  expect(jump().bindings[0]!.control).toBe("KeyJ");
-  tap(engine, byPath(engine, "Jump/Conflict/Swap")!.path);
-  expect(jump().bindings[0]!.control).toBe("KeyC");
-  expect(og.input.actions(engine.world).find((a) => a.name === "crouch")!.bindings[0]!.control).toBe("KeyJ");
-  // Rebound, it offers a reset.
-  tap(engine, byPath(engine, "Jump/Main/Bound/Reset")!.path);
-  expect(jump().bindings[0]!.control).toBe("Space");
-});
-
-test("keyBindingRow: Escape cancels a capture and the focus stays on the slot", () => {
-  const out: { r?: Api.KeyBindingResult } = {};
-  const engine = run((world) => {
-    out.r = og.ui.keyBindingRow(world, "Jump", { action: "jump", device: "keyboardMouse" });
-  }, 640, undefined, (world) => {
-    og.input.defineAction(world, { name: "jump", label: "Jump", bindings: [{ control: "Space" }] });
-  });
-  focusOn(engine, "Slot#0");
-  key(engine, "Enter");
-  expect(out.r!.capturing).toBeTrue();
-  key(engine, "Escape");
-  engine.advance(4);
-  expect(out.r!.capturing).toBeFalse();
-  expect(og.input.actions(engine.world)[0]!.bindings[0]!.control).toBe("Space");
-  expectFocus(engine, "Slot#0");
-});
-
-// ── the on-screen keyboard ──────────────────────────────────────────────
-
-// A keyboard's test is CPU-bound and nothing else: ~60 ticks of ~70 keys on
-// the dev (-O0) host, no sleep and no wall-clock wait. 1.2–2.3 s idle; a gate
-// at load 23 ran the kana one 6× slower (10.4 s when it took 114 ticks), so
-// the limit leaves that headroom twice over.
-const KEYBOARD_MS = 30_000;
-
-test("onScreenKeyboard: taps type at the caret, shift types one capital, backspace erases, Done submits", () => {
-  let value = "";
-  let submitted = false;
-  const engine = run(() => {
-    const r = og.ui.onScreenKeyboard("Kb", true, { value, title: "Name your hero" });
-    value = r.value;
-    if (r.submitted) submitted = true;
-  });
-  const keyNamed = (n: string) => find(engine, (e) => e.role === "button" && e.name === n)!;
-  tap(engine, keyNamed("Shift").path);
-  tap(engine, keyNamed("A").path);
-  tap(engine, keyNamed("b").path);
-  tap(engine, keyNamed("c").path);
-  tap(engine, keyNamed("Backspace").path);
-  expect(value).toBe("Ab");
-  tap(engine, keyNamed("Done").path);
-  expect(submitted).toBeTrue();
-}, KEYBOARD_MS);
-
-test("onScreenKeyboard: kana compose underlined until a candidate commits; a pad walks the keys and the bumpers move the caret", () => {
-  // Wrong: kana going straight into the text (no composition), or the katakana candidate missing.
-  let value = "";
-  let comp = "";
-  const engine = run(() => {
-    const r = og.ui.onScreenKeyboard("Kb", true, { value, layout: "kana", kana: true });
-    value = r.value;
-    comp = r.composition;
-  });
-  const keyNamed = (n: string) => find(engine, (e) => e.role === "button" && e.name === n)!;
-  tap(engine, keyNamed("ゆ").path);
-  tap(engine, keyNamed("う").path);
-  expect(comp).toBe("ゆう");
-  expect(value).toBe("");
-  tap(engine, find(engine, (e) => e.role === "button" && e.name === "ユウ")!.path);
-  expect(value).toBe("ユウ");
-  expect(comp).toBe("");
-  // The pad: the d-pad walks the keys (the focus shows), A types the focused one, a bumper moves the caret.
-  pad(engine, "down");
-  expect(focused(engine)).toContain("/Keys/Row#");
-  const typed = find(engine, (e) => e.states.includes("focused"))!.name;
-  pad(engine, "a");
-  expect(comp).toBe(typed);
-  // Enter commits the composition at the caret; LB moves the caret back one and Y erases before it.
-  tap(engine, keyNamed("Done").path);
-  expect(value).toBe(`ユウ${typed}`);
-  pad(engine, "leftBumper");
-  pad(engine, "y");
-  expect(value).toBe(`ユ${typed}`);
-}, KEYBOARD_MS);
-
 // ── every breakpoint, direction, locale and text size ──────────────────
 
 /** The controls a settings or a shop screen holds, labelled through `l` (the pseudo-locale's longer words). */
-function gallery(l: (s: string) => string, world: Api.World): void {
-  og.ui.pushButton("Play", l("Continue"), { variant: "primary", icon: "play", badge: "3" });
-  og.ui.row("Buttons", { gap: 8, wrap: true }, () => {
-    og.ui.pushButton("Ghost", l("Credits"), { variant: "ghost" });
-    og.ui.pushButton("Danger", l("Delete"), { variant: "danger" });
-    og.ui.iconButton("Close", "cross", { label: l("Close") });
-  });
+function gallery(l: (s: string) => string): void {
   og.ui.holdButton("Hold", l("Delete save"), { hint: l("Hold to delete") });
   og.ui.toggleSwitch("Music", true, { label: l("Music"), description: l("Background tracks"), width: { kind: "grow" } as never });
-  og.ui.segmented("View", { label: l("View"), selected: 0, items: [{ label: l("Grid") }, { label: l("List") }] });
-  og.ui.valueSlider("Volume", 0.6, { label: l("Volume"), format: { percent: true } as never });
-  og.ui.rangeSlider("Price", 20, 60, { label: l("Price"), min: 0, max: 100, step: 5 });
   og.ui.numberStepper("Players", 2, { label: l("Players"), min: 1, max: 8 });
   og.ui.inputField("Name", "", { label: l("Hero name"), placeholder: l("Type a name"), helper: l("Shown to other players") });
   og.ui.dropdown("Lang", { label: l("Language"), selected: 0, options: [{ label: "English" }, { label: "日本語" }] });
-  og.ui.keyBindingRow(world, "Jump", { action: "jump", device: "keyboardMouse" });
 }
-const defineJump = (world: Api.World) => {
-  og.input.defineAction(world, { name: "jump", label: "Jump", bindings: [{ control: "Space" }] });
-};
 
-test("right to left and the pseudo-locale: rows run from the right, slider fills from the right, the longer labels overlap nothing", () => {
+test("right to left and the pseudo-locale: rows run from the right, the longer labels overlap nothing", () => {
   // Wrong: a control placing its parts by physical left, or a fixed width its longer label overflows.
-  const engine = run((w) => gallery(pseudo, w), 640, kit, defineJump);
+  const engine = run(() => gallery(pseudo), 640, kit);
   const overlaps = () => (og.ui.overlaps() as unknown as Array<{ path: string; other: string }>).filter((o) => !/Popup|Thumb|Fill|Badge/.test(o.path + o.other));
   expect(overlaps()).toEqual([]);
   const loaded = og.i18n.load(engine.world, "strings/ar.ogt");
@@ -570,12 +269,6 @@ test("right to left and the pseudo-locale: rows run from the right, slider fills
   const x = (end: string) => byPath(engine, end)!.x;
   // A switch row: the label at the start (right), the track at the end (left).
   expect(x("Music/Track")).toBeLessThan(x("Music/Text/Label"));
-  expect(x("View/Strip/Track/Item#0")).toBeGreaterThan(x("View/Strip/Track/Item#1"));
-  // The volume's fill (60 %) runs from the rail's right end, half a knob in from the track's edge.
-  const track = byPath(engine, "Volume/Track")!;
-  const fill = find(engine, (e) => e.path.startsWith(track.path + "/") && /Fill$/.test(e.path))!;
-  expect(track.x + track.width - (fill.x + fill.width)).toBeLessThan(16);
-  expect(fill.x - track.x).toBeGreaterThan(track.width * 0.3);
   expect(overlaps()).toEqual([]);
 });
 
@@ -585,7 +278,7 @@ test("150 % text: every control grows with the text and cuts none of it, on a de
   for (const [bp, w, h, coarse] of [["desktop", 1920, 2400, false], ["phonePortrait", 390, 2400, true]] as const) {
     const frames: UiFrameSnapshot[] = [];
     for (const scale of [1, 1.5]) {
-      const engine = run((wd) => gallery((s) => s, wd), Math.min(640, w - 32), kit, defineJump);
+      const engine = run(() => gallery((s) => s), Math.min(640, w - 32), kit);
       og.ui.previewViewport(engine.world, { width: w, height: h, dpr: 1, coarsePointer: coarse, breakpoint: bp } as never);
       const font = og.load.font(engine.world, "fonts/NotoSansSC-Regular-subset.ttf");
       if (!font.ok) throw new Error(font.reason);
@@ -595,7 +288,7 @@ test("150 % text: every control grows with the text and cuts none of it, on a de
       engine.destroy();
     }
     const cell: UiCell = { screen: "controls", breakpoint: bp, locale: "", style: "", scale: 150, highContrast: false };
-    expect(frames[1]!.texts.find((x) => x.text === "Volume")!.size).toBeCloseTo(frames[0]!.texts.find((x) => x.text === "Volume")!.size * 1.5, 1);
+    expect(frames[1]!.texts.find((x) => x.text === "Players")!.size).toBeCloseTo(frames[0]!.texts.find((x) => x.text === "Players")!.size * 1.5, 1);
     // At 150 % no text is cut, and every text is drawn at 150 % of its size (within 5 %).
     const cuts = checkFrame(frames[1]!, cell).filter((f) => f.rule === "text-cut").map((f) => `${f.paths.join(" × ")}: ${f.measured}`);
     const short = measureScale(frames[0]!, frames[1]!, cell).filter((m) => m.value < 0.95 * 150).map((m) => `${m.paths.join(" × ")}: ${m.detail}`);

@@ -317,8 +317,13 @@ impl Hooks for Tagger {
             let t = f64::from(og_world_get_tick(w));
             let at = json!({ "position": { "x": 0.1 * t, "y": 0, "z": 0 } }).to_string();
             value(og_world_set(w, e, "og.Transform".into(), at));
-            let desc = json!({ "target": { "entity": e }, "pivot": "center" });
-            og_runtime::og_ui_open_world_anchor("Tag".into(), Some(desc.to_string()));
+            let desc = og_ui::WorldAnchorDesc {
+                target: og_ui::WorldTarget::Entity(e as u64),
+                pivot: og_ui::Anchor::Center,
+                ..og_ui::WorldAnchorDesc::default()
+            };
+            let ui = og_runtime::shared_ui(w).expect("the engine's UI");
+            ui.lock().open_world_anchor("Tag", desc);
             let block = json!({ "width": { "kind": "fixed", "px": 40 }, "height": { "kind": "fixed", "px": 20 }, "background": { "color": { "r": 1, "g": 0, "b": 0 } } });
             og_runtime::og_ui_open("Block".into(), Some(block.to_string()));
             og_runtime::og_ui_close();

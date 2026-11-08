@@ -91,32 +91,6 @@ pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> Stri
     json!({ "response": response(r.response), "link": r.link, "hovered": r.hovered }).to_string()
 }
 
-pub fn og_ui_button(id: String, text: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.button", |ui| {
-        let b = ButtonDesc {
-            variant: match d["variant"].as_str() {
-                Some("primary") => ButtonVariant::Primary,
-                Some("quiet") => ButtonVariant::Quiet,
-                Some("danger") => ButtonVariant::Danger,
-                Some("ghost") => ButtonVariant::Ghost,
-                _ => ButtonVariant::Secondary,
-            },
-            size: match d["size"].as_str() {
-                Some("small") => ControlSize::Small,
-                Some("large") => ControlSize::Large,
-                _ => ControlSize::Medium,
-            },
-            disabled: d["disabled"].as_bool().unwrap_or(false),
-            width: size(&d["width"]),
-            autofocus: d["autofocus"].as_bool().unwrap_or(false),
-            square: d["square"].as_bool().unwrap_or(false),
-        };
-        ui.button(id.as_str(), &text, b)
-    });
-    response(r.unwrap_or_default()).to_string()
-}
-
 pub fn og_ui_image(id: String, desc: Option<String>) {
     let d = desc_of(desc);
     let texture = d["texture"].as_f64().and_then(|t| {
@@ -215,34 +189,6 @@ pub fn og_ui_text_area(id: String, value: String, desc: Option<String>) -> Strin
     json!({ "response": response(r.unwrap_or_default()), "value": text }).to_string()
 }
 
-pub fn og_ui_counter(id: String, value: f64, desc: Option<String>) -> f64 {
-    let d = desc_of(desc);
-    with_ui("og.ui.counter", |ui| {
-        let t = *ui.theme();
-        let c = og_ui::CounterDesc {
-            step: d["step"].as_str().and_then(|s| step(&t, s)),
-            font: d["font"]
-                .as_str()
-                .and_then(FontRole::from_name)
-                .unwrap_or(FontRole::Body),
-            color: paint(&t, &d["color"]),
-            align: match d["align"].as_str() {
-                Some("center") => TextAlign::Center,
-                Some("end") => TextAlign::End,
-                _ => TextAlign::Start,
-            },
-            width: size_or(&d["width"], Size::fit()),
-            duration_ms: f(&d, "durationMs", 0.0),
-            from: d["from"].as_f64(),
-            decimals: d["decimals"].as_u64().unwrap_or(0).min(9) as u32,
-            prefix: d["prefix"].as_str().unwrap_or_default().to_string(),
-            suffix: d["suffix"].as_str().unwrap_or_default().to_string(),
-        };
-        ui.counter(id.as_str(), value, &c)
-    })
-    .unwrap_or(value)
-}
-
 pub fn og_ui_burst(desc: Option<String>) {
     let d = desc_of(desc);
     with_ui("og.ui.burst", |ui| {
@@ -294,10 +240,6 @@ pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>)
     });
     json!({ "shown": r.shown, "covering": r.covering, "revealing": r.revealing, "cover": r.cover })
         .to_string()
-}
-
-pub fn og_ui_tooltip(text: String) {
-    with_ui("og.ui.tooltip", |ui| ui.tooltip(&text));
 }
 
 // ── ui: drawing over the frame ──────────────────────────────────────────────

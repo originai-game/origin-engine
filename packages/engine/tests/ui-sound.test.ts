@@ -1,6 +1,6 @@
 // UI sounds start in the tick of the input that caused them (og-runtime's
 // og.ui.sound runs before og.audio): `og run --audio` on a game of one
-// og.ui.button with hover and press sounds (written here, its blips made
+// document button with hover and press sounds (written here, its blips made
 // here) renders the mix to a WAV, and each blip's first sample lies inside
 // its input's tick. The WAV holds every tick of the run, tick k (counting from 1) as
 // frames (k - 1)·800 .. k·800 at 48 kHz and 60 Hz; a `dump_pulse` beside an
@@ -36,11 +36,7 @@ tick 60
 seed 1
 `;
 
-const MAIN = `import { og, defineSystem } from "@origingame/engine";
-
-const Menu = defineSystem("Menu", {}, () => {
-  og.ui.button("Play", "Play", { variant: "primary" });
-});
+const MAIN = `import { og } from "@origingame/engine";
 
 export default og.game({
   start(world) {
@@ -51,9 +47,18 @@ export default og.game({
       sounds[e] = s.value;
     }
     og.ui.configure(world, { sounds: sounds as never });
+    const menu = og.load.document(world, "ui/menu.svelte");
+    if (!menu.ok) throw new Error(menu.reason);
   },
-  systems: [Menu],
+  ui(world) {
+    const mounted = og.ui.scope(world, "menu").mount("menu", "menu", {});
+    if (!mounted.ok) throw new Error(mounted.reason);
+  },
 });
+`;
+
+const MENU = `<meta name="component" content="menu">
+<column id="Menu"><button id="Play" variant="primary">Play</button></column>
 `;
 
 /** A 40 ms blip: 16-bit mono PCM at 44.1 kHz, every sample loud. */
@@ -96,7 +101,9 @@ test("a UI sound's first sample lies in the tick of its input", () => {
   rmSync(work, { recursive: true, force: true });
   mkdirSync(join(game, "src"), { recursive: true });
   mkdirSync(join(game, "assets", "audio"), { recursive: true });
+  mkdirSync(join(game, "assets", "ui"), { recursive: true });
   writeFileSync(join(game, "project.ogt"), PROJECT);
+  writeFileSync(join(game, "assets", "ui", "menu.svelte"), MENU);
   writeFileSync(join(game, "src", "main.ts"), MAIN);
   writeFileSync(join(game, "assets", "audio", "ui-hover.wav"), blip(880));
   writeFileSync(join(game, "assets", "audio", "ui-press.wav"), blip(440));

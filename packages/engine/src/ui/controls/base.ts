@@ -30,11 +30,6 @@ export type Interaction = "normal" | "hover" | "pressed" | "focused" | "disabled
 
 const IX = new Set<Interaction>(["normal", "hover", "pressed", "focused", "disabled"]);
 
-/** The interaction state the part remembered under `key` was in last tick. */
-export function interactionOf(key: string): Interaction {
-  return interactionAt(recallPath(key));
-}
-
 /** The interaction state of the element at `path` last tick. */
 function interactionAt(p: string): Interaction {
   if (!p) return "normal";
@@ -227,14 +222,6 @@ export function control(id: string, d: ControlDesc, build: (ix: Interaction) => 
   return { r: disabled ? { ...r, clicked: false, pressed: false, adjust: 0 } : r, path, ix };
 }
 
-/** A two-state group (`selection`: off, on) whose values a style's motion moves between. */
-export function twoState(name: string, on: boolean, off: Api.PropValue[], onValues: Api.PropValue[]): { group: Api.StateGroup; value: Api.StateValue } {
-  return {
-    group: { name, states: [{ name: "off", values: off, onEnter: "", onExit: "" }, { name: "on", values: onValues, onEnter: "", onExit: "" }], transitions: [] },
-    value: { group: name, state: on ? "on" : "off" },
-  };
-}
-
 /** The `validity` group (valid, invalid): an invalid field shakes once as it turns invalid. */
 export function validity(invalid: boolean): { group: Api.StateGroup; value: Api.StateValue } {
   return {
@@ -377,57 +364,6 @@ export function drawn(id: string, name: string, size: number, color: Rgba, weigh
     default: kit.setDraw({ shape: { kind: "ellipse" }, fills: fill });
   }
   kit.close();
-}
-
-/** A number as a control shows it: its decimals by the step (0.25 → 2), grouped, a true minus, a unit after. */
-export function formatValue(value: number, d: { step?: number; decimals?: number; unit?: string; percent?: boolean } = {}): string {
-  if (!Number.isFinite(value)) return "—";
-  if (d.percent) return `${Math.round(value * 100)}%`;
-  const dec = d.decimals ?? decimalsOf(d.step ?? 0);
-  const abs = Math.abs(value);
-  const fixed = abs.toFixed(dec);
-  const [int, frac] = fixed.split(".");
-  const grouped = (int ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  const neg = value < 0 && Number(fixed) !== 0;
-  return `${neg ? "\u2212" : ""}${grouped}${frac ? `.${frac}` : ""}${d.unit ? d.unit : ""}`;
-}
-
-/** How many decimals a step needs: 1 → 0, 0.5 → 1, 0.05 → 2; continuous (0) shows 2. */
-export function decimalsOf(step: number): number {
-  if (!(step > 0)) return 2;
-  for (let k = 0; k <= 6; k++) if (Math.abs(Math.round(step * 10 ** k) - step * 10 ** k) < 1e-6) return k;
-  return 6;
-}
-
-/** `value` snapped to `step` from `min` and kept in range. */
-export function snap(value: number, min: number, max: number, step: number): number {
-  const lo = Math.min(min, max);
-  const hi = Math.max(min, max);
-  let v = clamp(value, lo, hi);
-  if (step > 0) v = clamp(lo + Math.round((v - lo) / step) * step, lo, hi);
-  // A step of 0.1 lands on 0.30000000000000004 otherwise.
-  return Number(v.toFixed(Math.min(10, decimalsOf(step) + 2)));
-}
-
-/** The gesture on an element by path, or null before it was built. */
-export function gestureAt(path: string): Api.GestureInfo | null {
-  return path ? (kit.gesture(path) as Api.GestureInfo) : null;
-}
-
-/**
- * Where the pointer is across an element's box last tick, 0 to 1 from its
- * start (the writing direction's), or null when it is not over it and no
- * press it began is held.
- */
-export function pointerAcross(path: string, held: boolean): { x: number; y: number } | null {
-  const b = path ? kit.bounds(path) : null;
-  const p = kit.framePointer() as Api.UiPointer;
-  if (!b) return null;
-  const inside = p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
-  if (!inside && !held) return null;
-  const x = clamp((p.x - b.x) / Math.max(1, b.width), 0, 1);
-  const y = clamp((p.y - b.y) / Math.max(1, b.height), 0, 1);
-  return { x: rtl() ? 1 - x : x, y };
 }
 
 /** The label above a control and its helper or error line below: a field's frame, shared. */

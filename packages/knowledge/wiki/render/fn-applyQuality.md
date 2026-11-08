@@ -6,7 +6,7 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.render.applyQuality`
 
-Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page (og.ui.settingsTree), and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:
+Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page, and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:
 
 | Field | low | medium | high |
 |---|---|---|---|
@@ -41,7 +41,7 @@ Binding symbol `og_render_apply_quality` · publish builds: kept
 
 ```ogt
 fn applyQuality {
-  doc "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page (og.ui.settingsTree), and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:"
+  doc "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page, and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:"
   doc "| Field | low | medium | high |"
   doc "|---|---|---|---|"
   doc "| rectShadows | false | true | true |"

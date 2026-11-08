@@ -36,7 +36,7 @@ const Tick = defineSystem("CheckpointInput", { reads: [Confirm], writes: [Intent
   // Exercise the core control while the template parser is being replaced.
   // Simulation consumes the recorded input event, never the control response.
   if (show) {
-    const response = og.ui.button("Confirm", "Confirm", { width: { kind: "fixed", px: 160 } });
+    const response = og.ui.row("Confirm", { interactive: true, focusable: true, width: { kind: "fixed", px: 160 } }, () => og.ui.label("Label", "Confirm"));
     hovered ||= response.hovered;
     focused ||= response.focused;
     if (response.clicked && emit) {

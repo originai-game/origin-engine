@@ -1,5 +1,5 @@
 // The game widget set's host calls (IDL module `ui`, crates/og-ui) and the
-// TypeScript sugar over them: anchor and modal take a build
+// TypeScript sugar over them: anchor takes a build
 // callback and close what they open even when it throws. The
 // components (../ui) are written against `kit`, which is og.ui with these
 // members added.
@@ -57,22 +57,11 @@ export const widgets = {
     within(() => abi().og_ui_open_anchor(id, json(desc)), build, () => abi().og_ui_close()),
   openModal: (id: string, open: boolean, desc?: Api.ModalDesc): Api.ModalResult => parse(abi().og_ui_open_modal(id, open, json(desc))),
   closeModal: (): void => abi().og_ui_close_modal(),
-  modal: (id: string, open: boolean, desc: Api.ModalDesc, build: Api.UiBuild): Api.ModalResult => {
-    const r = parse<Api.ModalResult>(abi().og_ui_open_modal(id, open, json(desc)));
-    within(() => {}, () => { if (r.visible) build(); }, () => abi().og_ui_close_modal());
-    return r;
-  },
   bounds: (path: string): Api.UiRect | null => parse(abi().og_ui_bounds(path)),
   scrollState: (path: string): Api.ScrollState | null => parse(abi().og_ui_scroll_state(path)),
-  openList: (id: string, desc?: Api.ListDesc): Api.ListRange => parse(abi().og_ui_open_list(id, json(desc))),
-  openGrid: (id: string, desc?: Api.GridDesc): Api.ListRange => parse(abi().og_ui_open_grid(id, json(desc))),
-  listItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_list_item(index, selected)),
-  gridItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_grid_item(index, selected)),
-  closeList: (): Api.Response => parse(abi().og_ui_close_list()),
   badge: (id: string, text: string, tone: Api.Tone): void => abi().og_ui_badge(id, text, tone),
   divider: (id: string, vertical: boolean): void => abi().og_ui_divider(id, vertical),
   spacer: (id: string, size: Api.Size | null): void => abi().og_ui_spacer(id, JSON.stringify(size ?? null)),
-  skeleton: (id: string, desc?: Api.SkeletonDesc): void => abi().og_ui_skeleton(id, json(desc)),
   spinner: (id: string, size: number): void => abi().og_ui_spinner(id, size),
   icon: (id: string, name: string, desc?: Api.IconDesc): void => abi().og_ui_icon(id, name, json(desc)),
   zoomView: (id: string, desc?: Api.ZoomViewDesc): Api.ZoomResult => parse(abi().og_ui_zoom_view(id, json(desc))),
@@ -95,17 +84,12 @@ export const widgets = {
   hudSelect: (key: string): void => abi().og_ui_hud_select(key),
   hudStep: (scale: number, opacity: number): void => abi().og_ui_hud_step(scale, opacity),
   hudReset: (key: string): void => abi().og_ui_hud_reset(key),
-  hudLayoutEditor: (id: string, desc?: Api.HudEditorDesc): Api.HudEditorResult =>
-    parse(abi().og_ui_hud_layout_editor(id, json(desc))),
   a11y: (): Api.A11yTree => parse(abi().og_ui_a11y()),
   memory: (id: string, initial: number): number => abi().og_ui_memory(id, initial),
   remember: (id: string, value: number): void => abi().og_ui_remember(id, value),
   tick: (): number => abi().og_ui_tick(),
-  counter: (id: string, value: number, desc?: Api.CounterDesc): number => abi().og_ui_counter(id, value, json(desc)),
   burst: (desc?: Api.BurstDesc): void => abi().og_ui_burst(json(desc)),
   // World-space UI (docs/ui.md §1, §3.3).
-  openWorldAnchor: (id: string, desc?: Api.WorldAnchorDesc): Api.AnchorInfo =>
-    parse(abi().og_ui_open_world_anchor(id, json(desc))),
   defineMass: (name: string, desc?: Api.MassTemplateDesc): Api.Result<number> => parse(abi().og_ui_define_mass(name, json(desc))),
   spawnMass: (template: number, instances: Api.MassInstance[]): void =>
     abi().og_ui_spawn_mass(template, JSON.stringify(instances)),

@@ -205,14 +205,6 @@ export function socketRim(id: string, side: number, radius: number, corner: Api.
 
 export type Level = "normal" | "low" | "critical" | "empty";
 
-/** A meter's level by its fraction. */
-export function levelOf(frac: number, low: number, critical: number): Level {
-  if (frac <= 0) return "empty";
-  if (frac < critical) return "critical";
-  if (frac < low) return "low";
-  return "normal";
-}
-
 /** The paint's colour as sRGB (a token resolved from the frame's style). */
 export function paintRgba(p: Api.Paint | null | undefined, fallback: Rgba): Rgba {
   if (!p) return fallback;

@@ -14,10 +14,7 @@ use og_render::{
     UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOcclusion,
     UiParticleShape,
 };
-use og_ui::{
-    AnchorScale, Declutter, EdgeClamp, EmitFrom, MetaDesc, MetaKind, ParticlesDesc, ViewportDesc,
-    WorldAnchorDesc, WorldOcclusion, WorldTarget, WorldView,
-};
+use og_ui::{EmitFrom, MetaDesc, MetaKind, ParticlesDesc, ViewportDesc, WorldOcclusion, WorldView};
 
 /// What the UI's end reads to place world-space UI.
 pub(crate) struct Feed {
@@ -104,35 +101,8 @@ fn v2(v: &Value, d: Vec2) -> Vec2 {
 
 use og_core::glam::Vec2;
 
-fn target(v: &Value) -> WorldTarget {
-    match v["entity"].as_f64() {
-        Some(e) if e > 0.0 && e.fract() == 0.0 => WorldTarget::Entity(e as u64),
-        _ => WorldTarget::Point(vec3(&v["point"], Vec3::ZERO)),
-    }
-}
-
 fn linear(theme: &Theme, v: &Value, d: [f32; 4]) -> [f32; 4] {
     paint(theme, v).map_or(d, |c| c.linear())
-}
-
-fn direction(v: &Value) -> Direction {
-    match v.as_str() {
-        Some("row") => Direction::Row,
-        _ => Direction::Column,
-    }
-}
-
-fn box_element(theme: &Theme, d: &Value) -> Element {
-    Element {
-        direction: direction(&d["direction"]),
-        gap: f(d, "gap", 0.0),
-        padding: insets(&d["padding"]),
-        align: align(&d["align"]),
-        cross: cross(&d["cross"]),
-        background: paint(theme, &d["background"]),
-        radius: f(d, "radius", 0.0),
-        ..Element::column()
-    }
 }
 
 fn occlusion(d: &Value) -> WorldOcclusion {
@@ -142,52 +112,6 @@ fn occlusion(d: &Value) -> WorldOcclusion {
         },
         Some("hide") => WorldOcclusion::Hide,
         _ => WorldOcclusion::None,
-    }
-}
-
-fn anchor_desc(theme: &Theme, d: &Value) -> WorldAnchorDesc {
-    WorldAnchorDesc {
-        target: target(&d["target"]),
-        offset: vec3(&d["offset"], Vec3::ZERO),
-        screen_offset: Vec2::new(f(d, "screenOffsetX", 0.0), f(d, "screenOffsetY", 0.0)),
-        pivot: anchor_of(&d["pivot"]).unwrap_or(Anchor::Bottom),
-        element: box_element(theme, d),
-        scale: match d["scale"].as_str() {
-            Some("distance") => AnchorScale::Distance {
-                reference: f(d, "reference", 10.0).max(1e-3),
-                min: f(d, "minScale", 0.25).max(0.0),
-                max: f(d, "maxScale", 2.0).max(0.0),
-            },
-            _ => AnchorScale::Constant,
-        },
-        occlusion: occlusion(d),
-        lod: d["lod"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .filter_map(|x| x.as_f64())
-                    .map(|x| x as f32)
-                    .collect()
-            })
-            .unwrap_or_default(),
-        max_distance: f(d, "maxDistance", 0.0).max(0.0),
-        declutter: match d["declutter"].as_str() {
-            Some("shift") => Declutter::Shift,
-            Some("stack") => Declutter::Stack,
-            Some("hide") => Declutter::Hide,
-            _ => Declutter::None,
-        },
-        priority: d["priority"].as_i64().unwrap_or(0) as i32,
-        clamp: d["clamp"].is_object().then(|| {
-            let c = &d["clamp"];
-            EdgeClamp {
-                margin: f(c, "margin", 24.0).max(0.0),
-                arrow: paint(theme, &c["arrow"]),
-                arrow_size: f(c, "arrowSize", 14.0).max(0.0),
-            }
-        }),
-        fade_ticks: d["fadeTicks"].as_u64().unwrap_or(0) as u32,
-        contain: d["contain"].as_bool().unwrap_or(false),
     }
 }
 
@@ -321,25 +245,7 @@ fn instances(theme: &Theme, text: &str) -> Vec<UiMassInstance> {
         .collect()
 }
 
-fn anchor_info_json(a: &og_ui::AnchorInfo) -> String {
-    json!({
-        "inView": a.in_view, "onScreen": a.on_screen, "clamped": a.clamped, "lod": a.lod,
-        "distance": a.distance, "x": a.x, "y": a.y, "angle": a.angle, "scale": a.scale,
-        "alpha": a.alpha,
-    })
-    .to_string()
-}
-
 // ── og.ui's members ─────────────────────────────────────────────────────────
-
-pub fn og_ui_open_world_anchor(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let info = with_ui("og.ui.openWorldAnchor", |ui| {
-        let theme = *ui.theme();
-        ui.open_world_anchor(id.as_str(), anchor_desc(&theme, &d))
-    });
-    anchor_info_json(&info.unwrap_or_default())
-}
 
 pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {
     let d = desc_of(desc);

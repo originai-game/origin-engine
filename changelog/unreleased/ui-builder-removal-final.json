@@ -1,0 +1,100 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.button, og.ui.pushButton, og.ui.iconButton, og.ui.ButtonDesc, og.ui.PushButtonDesc, og.ui.IconButtonDesc",
+      "change": "The button builders are removed.",
+      "fix": "Write `<button variant=\"primary\" onclick={play}>Play</button>` in a document (an icon button is `<button aria-label=\"Close\"><icon icon=\"close\"></icon></button>`) and read its press from og.ui.docEvents.",
+      "find": ["og.ui.button", "og.ui.pushButton", "og.ui.iconButton", "ButtonDesc", "PushButtonDesc", "IconButtonDesc"]
+    },
+    {
+      "member": "og.ui.text, og.ui.TextBlockDesc, og.ui.TextRole, og.ui.TextTone",
+      "change": "The text-in-a-role builder is removed.",
+      "fix": "Write `<h1>`–`<h6>`, `<p>`, `<small>` or `<span>` in a document and pick its step and ink in its `<style>` (`font: var(--text-xl)`, `color: var(--ink-muted)`).",
+      "find": ["og.ui.text(", "TextBlockDesc", "TextRole", "TextTone"]
+    },
+    {
+      "member": "og.ui.tooltip",
+      "change": "The plain tooltip builder is removed.",
+      "fix": "Write `title=\"Starts a new run\"` on the element in a document; a rich one is a `popover=\"hint\"` with `interestfor`.",
+      "find": ["og.ui.tooltip("]
+    },
+    {
+      "member": "og.ui.skeleton, og.ui.SkeletonDesc",
+      "change": "The loading placeholder builder is removed.",
+      "fix": "Set `aria-busy={$loading}` on the element in a document, or eject the `skeleton-group` component document.",
+      "find": ["og.ui.skeleton(", "SkeletonDesc"]
+    },
+    {
+      "member": "og.ui.openList, og.ui.openGrid, og.ui.listItem, og.ui.gridItem, og.ui.closeList, og.ui.ListDesc, og.ui.GridDesc, og.ui.ListRange",
+      "change": "The virtualised list and grid builders are removed.",
+      "fix": "Write `<list row-height=\"48\">` or `<cells cell-width=\"64\">` in a document with a keyed `{#each $rows as row (row.id)}` over a scope.collection; only the rows in view are built.",
+      "find": ["og.ui.openList", "og.ui.openGrid", "og.ui.listItem", "og.ui.gridItem", "og.ui.closeList", "ListDesc", "GridDesc", "ListRange"]
+    },
+    {
+      "member": "og.ui.modal",
+      "change": "The modal dialog builder is removed (og.ui.openModal and og.ui.closeModal stay for the remaining TypeScript layers).",
+      "fix": "Write `<dialog modal closedby=\"any\" bind:open={$open} aria-label=\"Settings\">` in a document; dismissing it writes `open` false back.",
+      "find": ["og.ui.modal("]
+    },
+    {
+      "member": "og.ui.counter, og.ui.CounterDesc",
+      "change": "The counting number builder is removed.",
+      "fix": "Write `<p count={$score}>` in a document, with `-og-count-duration` and `-og-count-decimals` in its `<style>`.",
+      "find": ["og.ui.counter", "CounterDesc"]
+    },
+    {
+      "member": "og.ui.hudLayoutEditor, og.ui.HudEditorDesc, og.ui.HudEditorResult",
+      "change": "The HUD layout editor builder is removed.",
+      "fix": "Push the hud-editor screen document (`og ui eject hud-editor`); og.ui.setHudEdit still turns the edit mode on.",
+      "find": ["og.ui.hudLayoutEditor", "HudEditorDesc", "HudEditorResult"]
+    },
+    {
+      "member": "og.ui.iconMark, og.ui.space, og.ui.artSlot, og.ui.shapeBox, og.ui.IconMarkDesc, og.ui.IconPlate, og.ui.SpaceDesc, og.ui.SpaceStep, og.ui.ArtSlotDesc, og.ui.ArtFit, og.ui.ArtMask, og.ui.ShapeBoxDesc, og.ui.ShapePreset",
+      "change": "The icon mark, spacing, art slot and shape box foundations are removed.",
+      "fix": "In a document write `<icon icon=\"mail\">` (a count beside it is a `<span>`), a gap or `<spacer>`, `<art>` for a piece of art with its placeholder, and an inline `<svg>` with `filter: drop-shadow(…)` for a shape.",
+      "find": ["og.ui.iconMark", "og.ui.space(", "og.ui.artSlot", "og.ui.shapeBox", "IconMarkDesc", "SpaceDesc", "ArtSlotDesc", "ShapeBoxDesc", "ShapePreset"]
+    },
+    {
+      "member": "og.ui.card, og.ui.dialog, og.ui.confirm, og.ui.pagination, og.ui.dataList, og.ui.table, og.ui.tree, og.ui.keyValueRows, og.ui.statCompare, og.ui.calendar, og.ui.notifications, og.ui.banner, og.ui.starRating, og.ui.subtitles, og.ui.objectiveTracker, og.ui.settingsTree",
+      "change": "The container, data and feedback components that screen documents replace are removed, with their descs and results (CardDesc, DialogDesc, ConfirmationDesc, PaginationDesc, DataListDesc, TableDesc, TableColumn, TreeDesc, KeyValueRowsDesc, StatCompareDesc, CalendarDesc, NotificationsDesc, NotificationItem, BannerDesc, StarRatingDesc, SubtitlesDesc, ObjectiveTrackerDesc, SettingsTreeDesc, SettingEntry and the rest).",
+      "fix": "Eject the document and mount it with a scope's stores: `og ui eject card` (also `confirm` for a dialog, `pagination`, `data-list`, `table`, `tree`, `key-values`, `calendar`, `notifications`, `banner`, `star-rating`, `subtitles`, `objective-tracker`, `settings`); a stat comparison is a `table` or `key-values` with a delta column.",
+      "find": ["og.ui.card", "og.ui.dialog(", "og.ui.confirm", "og.ui.pagination", "og.ui.dataList", "og.ui.table", "og.ui.tree", "og.ui.keyValueRows", "og.ui.statCompare", "og.ui.calendar", "og.ui.notifications", "og.ui.banner", "og.ui.starRating", "og.ui.subtitles", "og.ui.objectiveTracker", "og.ui.settingsTree"]
+    },
+    {
+      "member": "og.ui.countBadge, og.ui.CountBadgeDesc",
+      "change": "The count badge builder is removed.",
+      "fix": "Use og.ui.badge, or a `<span class=\"badge\">{$unread}</span>` in a document.",
+      "find": ["og.ui.countBadge", "CountBadgeDesc"]
+    },
+    {
+      "member": "og.ui.valueSlider, og.ui.rangeSlider, og.ui.segmented, og.ui.searchBox, og.ui.ValueSliderDesc, og.ui.ValueSliderResult, og.ui.SliderMark, og.ui.RangeSliderDesc, og.ui.RangeResult, og.ui.SegmentedDesc, og.ui.SegmentItem, og.ui.ChoiceIndexResult, og.ui.SearchBoxDesc, og.ui.SearchResult",
+      "change": "The slider, range slider, segmented control and search box builders are removed.",
+      "fix": "In a document: `<input type=\"range\" bind:value={$volume}>`; `<input type=\"range\" low={$min} high={$max}>` for two knobs; tabs as `<label><input type=\"radio\" bind:group={$view}>Grid</label>`; `<input list=\"names\">` with a `<datalist id=\"names\">` for suggestions.",
+      "find": ["og.ui.valueSlider", "og.ui.rangeSlider", "og.ui.segmented", "og.ui.searchBox", "ValueSliderDesc", "RangeSliderDesc", "SegmentedDesc", "SearchBoxDesc", "SliderMark"]
+    },
+    {
+      "member": "og.ui.keyBindingRow, og.ui.onScreenKeyboard, og.ui.KeyBindingRowDesc, og.ui.KeyBindingResult, og.ui.KeyboardDesc, og.ui.KeyboardLayout, og.ui.KeyboardResult",
+      "change": "The key binding row and on-screen keyboard builders are removed.",
+      "fix": "Write `<kbd data-action=\"jump\" data-og-rebind>` in a document for a rebindable binding; a text `<input>` a pad focuses opens the on-screen keyboard by itself.",
+      "find": ["og.ui.keyBindingRow", "og.ui.onScreenKeyboard", "KeyBindingRowDesc", "KeyboardDesc"]
+    },
+    {
+      "member": "og.ui.chart, og.ui.dataGrid, og.ui.overlayBar, og.ui.ChartDesc, og.ui.ChartKind, og.ui.ChartSeries, og.ui.ChartResult, og.ui.DataGridDesc, og.ui.DataListResult, og.ui.OverlayBarDesc, og.ui.OverlayBarResult, og.ui.MapOverlay",
+      "change": "The chart, data grid and map overlay bar builders are removed.",
+      "fix": "Eject the `chart`, `data-grid` or `overlay-bar` component document (`og ui eject data-grid`) and hand it its rows as a keyed collection.",
+      "find": ["og.ui.chart", "og.ui.dataGrid", "og.ui.overlayBar", "ChartDesc", "DataGridDesc", "OverlayBarDesc"]
+    },
+    {
+      "member": "og.ui.openWorldAnchor, og.ui.WorldAnchorDesc, og.ui.WorldTarget, og.ui.AnchorInfo, og.ui.AnchorScaleMode, og.ui.Declutter, og.ui.EdgeClampDesc",
+      "change": "The world anchor builder is removed.",
+      "fix": "Write `<anchor entity={$unit} offset=\"0 2 0\" occlusion=\"fade\" declutter=\"stack\" clamp=\"edge\">…</anchor>` in a document.",
+      "find": ["og.ui.openWorldAnchor", "WorldAnchorDesc", "WorldTarget", "AnchorInfo"]
+    },
+    {
+      "member": "@origingame/engine/ui-parts/hud: objectiveTracker; @origingame/engine/ui-parts/screen: valueSlider, chart, cornerTag, plainText",
+      "change": "The kit helper modules no longer re-export the removed components.",
+      "fix": "Use the documents in a kit's screens (`og ui eject objective-tracker`, `og ui eject chart`, `<input type=\"range\">`), and `<span>` for a corner tag or a plain text.",
+      "find": ["ui-parts/hud", "ui-parts/screen", "cornerTag", "plainText"]
+    }
+  ]
+}

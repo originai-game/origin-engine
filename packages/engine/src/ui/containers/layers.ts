@@ -7,101 +7,8 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, beside, byText, chevron, clamp, fit, flags, floating, floatingContent, frame, grow, kit, mark, over, paint, px, role, rtl, spring, still,
-  surface, text, token, xy,
-  type Placed, type Rgba, type Side,
+  all, beside, byText, chevron, clamp, fit, flags, floating, floatingContent, frame, grow, kit, mark, over, paint, px, role, rtl, spring, still, surface, text, token, xy, type Placed, type Rgba, type Side,
 } from "./base.ts";
-
-// ── dialog and confirm ──────────────────────────────────────────────────
-
-const TONE_INK: Record<string, Api.ThemeColor> = { info: "info", success: "success", warn: "warn", danger: "danger", neutral: "inkMuted", primary: "primary", accent: "highlight" };
-const TONE_MARK: Record<string, "plus" | "tick" | "cross" | "dot"> = { info: "dot", success: "tick", warn: "dot", danger: "cross", neutral: "dot", primary: "dot", accent: "dot" };
-
-/**
- * A dialog: a title, a tone mark (info, success, warning, danger: an icon
- * as well as a colour), a message in rich text, a body the game builds and
- * a row of actions. On a desktop the actions sit at the end, the primary
- * last; on a phone they stack full width, the primary first. Back and the
- * backdrop dismiss it unless locked.
- */
-export function dialog(id: string, open: boolean, desc: Api.DialogDesc, build: Api.UiBuild): Api.DialogResult {
-  const { t, phone, viewport } = frame();
-  const actions = desc.actions ?? [];
-  let action: string | null = null;
-  const width = desc.width ?? px(Math.min(desc.wide ? 640 : 460, viewport.width - 2 * t.gutter));
-  const m = kit.modal(id, open, { title: desc.title ?? "", locked: desc.locked ?? false, width, transition: desc.transition ?? null }, () => {
-    const tone = desc.tone && desc.tone !== "neutral" ? desc.tone : null;
-    kit.row("Message", { width: grow(), gap: t.md, cross: "start" }, () => {
-      if (tone) toneMark("Tone", tone, 36);
-      kit.column("Text", { width: grow(), gap: t.sm }, () => {
-        if (desc.message) kit.richText("Body", desc.message, { step: "reading", color: token("inkMuted"), width: grow() });
-        build();
-      });
-    });
-    if (actions.length > 0) {
-      const ordered = phone ? [...actions].sort((a, b) => rank(b) - rank(a)) : [...actions].sort((a, b) => rank(a) - rank(b));
-      const stack = phone || actions.length > 3;
-      kit.open("Actions", { direction: stack ? "column" : "row", width: grow(), gap: t.sm, align: "end", cross: stack ? "stretch" : "center", padding: { left: 0, top: t.sm, right: 0, bottom: 0 } });
-      for (const a of ordered) {
-        const r = kit.button(a.id ?? "", a.label ?? a.id ?? "", { variant: a.variant ?? "secondary", disabled: a.disabled ?? false, width: stack ? grow() : null, autofocus: a.autofocus ?? false, size: phone ? "large" : "medium" }) as Api.Response;
-        if (r.clicked) action = a.id ?? null;
-      }
-      kit.close();
-    }
-  }) as Api.ModalResult;
-  if (action !== null) kit.feedback(action === (desc.cancelId ?? "cancel") ? "cancel" : "confirm", -1);
-  return { action, dismissed: m.dismissed, visible: m.visible };
-}
-
-/** Buttons by weight: quiet, secondary, danger, primary (the primary last in a row, first in a stack). */
-function rank(a: Api.DialogAction): number {
-  return { quiet: 0, ghost: 1, secondary: 1, danger: 2, primary: 3 }[a.variant ?? "secondary"] ?? 1;
-}
-
-/** A tone's mark: a tinted disc with a shape in it, so the tone is never colour alone (XAG 103). */
-export function toneMark(id: string, tone: string, size: number): void {
-  const ink = role(TONE_INK[tone] ?? "info");
-  kit.open(id, { width: px(size), height: px(size), align: "center", cross: "center", radius: size / 2, background: paint(ink, 0.16), part: `Dialog.tone${flags("round", `tone=${tone}`)}`, partClass: "avatar" });
-  if (tone === "warn") {
-    // An exclamation: a bar and a dot.
-    kit.column("Bang", { gap: size * 0.08, cross: "center" }, () => {
-      kit.open("Bar", { width: px(size * 0.1), height: px(size * 0.32), radius: size * 0.05, background: paint(ink) });
-      kit.close();
-      kit.open("Dot", { width: px(size * 0.12), height: px(size * 0.12), radius: size * 0.06, background: paint(ink) });
-      kit.close();
-    });
-  } else if (tone === "info") {
-    kit.column("I", { gap: size * 0.08, cross: "center" }, () => {
-      kit.open("Dot", { width: px(size * 0.12), height: px(size * 0.12), radius: size * 0.06, background: paint(ink) });
-      kit.close();
-      kit.open("Bar", { width: px(size * 0.1), height: px(size * 0.3), radius: size * 0.05, background: paint(ink) });
-      kit.close();
-    });
-  } else {
-    mark("Mark", TONE_MARK[tone] ?? "dot", size * 0.5, ink, Math.max(2, size / 14));
-  }
-  kit.close();
-}
-
-/**
- * A confirmation: a dialog with a message, Cancel and the action (in the
- * danger variant for something that cannot be undone). Back and the
- * backdrop cancel; the action button takes the focus only when it is safe.
- */
-export function confirm(id: string, open: boolean, desc: Api.ConfirmationDesc): Api.ConfirmResult {
-  const danger = desc.danger ?? false;
-  const r = dialog(id, open, {
-    title: desc.title ?? "",
-    message: desc.message ?? "",
-    tone: danger ? "danger" : desc.tone ?? "neutral",
-    locked: desc.locked ?? false,
-    actions: [
-      { id: "cancel", label: desc.cancelLabel || "Cancel", variant: "secondary", autofocus: danger },
-      { id: "confirm", label: desc.confirmLabel || "Confirm", variant: danger ? "danger" : "primary", autofocus: !danger },
-    ],
-  }, () => {});
-  return { confirmed: r.action === "confirm", cancelled: r.action === "cancel" || r.dismissed };
-}
 
 // ── popover ─────────────────────────────────────────────────────────────
 
@@ -456,4 +363,3 @@ export function sheet(id: string, open: boolean, desc: Api.SheetDesc, build: Api
   if (dismissed) kit.feedback("close", -1);
   return { detent, dismissed, visible: f.visible };
 }
-

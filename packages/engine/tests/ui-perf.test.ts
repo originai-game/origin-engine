@@ -51,7 +51,7 @@ function menu(): void {
   og.ui.column("Shop", {}, () => {
     og.ui.row("Header", {}, () => {
       og.ui.label("Title", "Shop");
-      for (const t of ["Weapons", "Armour", "Potions", "Gems"]) og.ui.button(t, t);
+      for (const t of ["Weapons", "Armour", "Potions", "Gems"]) og.ui.row(t, { interactive: true, focusable: true }, () => og.ui.label("Label", t));
     });
     og.ui.open("Cards", { gap: 8 } as Api.ElementDesc);
     for (let k = 0; k < 48; k++) card(k);

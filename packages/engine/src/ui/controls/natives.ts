@@ -20,14 +20,6 @@ export function toggleSwitch(id: string, on: boolean, desc?: Api.ToggleSwitchDes
   return parse(abi().og_ui_toggle_switch(id, on, json(desc)));
 }
 
-export function segmented(id: string, desc?: Api.SegmentedDesc): Api.ChoiceIndexResult {
-  return parse(abi().og_ui_segmented(id, json(desc)));
-}
-
-export function valueSlider(id: string, value: number, desc?: Api.ValueSliderDesc): Api.ValueSliderResult {
-  return parse(abi().og_ui_value_slider(id, value, json(desc)));
-}
-
 export function numberStepper(id: string, value: number, desc?: Api.NumberStepperDesc): Api.NumberResult {
   return parse(abi().og_ui_number_stepper(id, value, json(desc)));
 }

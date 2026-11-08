@@ -262,17 +262,6 @@ module ui {
     field fitMin Option.TypeStepName "Auto-fit: where the text does not fit its width (one line with nowrap, else its words and maxLines), it takes the ramp's smaller sizes, largest first, down to this step, keeping its own step's tracking and features; at the smallest, ellipsis cuts what still does not fit. Null keeps its step. A translation longer than the source (German on a button) shrinks instead of wrapping or overflowing."
   }
 
-  struct ButtonDesc {
-    doc "A button's look."
-    desc true
-    field variant ButtonVariant "The look."
-    field size ControlSize "The control height."
-    field disabled bool "Neutral and inert."
-    field width Option.Size "Its width; null fits the label."
-    field autofocus bool "Take the focus when it appears (it was not on screen the tick before) and no dialog is open: what opens takes the focus, so a menu's first item answers Enter and the pad's A from its first tick."
-    field square bool "A square of the control height with no side padding: an icon button or a one-glyph label (`+`). Overrides width."
-  }
-
   enum ScrollAxes {
     doc "Which ways a scroll container scrolls."
     variant vertical "Up and down (the default)."
@@ -666,15 +655,6 @@ module ui {
     returns Void
   }
 
-  fn button {
-    doc "A button with a label; `clicked` is a press and a release inside it. The probe reads its label."
-    aliases "click, press, Unity Button, Godot Button, HTML button"
-    param id String "Its id."
-    param text String "The label."
-    param desc ButtonDesc "Variant, size, disabled and width."
-    returns Response
-  }
-
   fn image {
     doc "A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other."
     param id String "Its id."
@@ -703,12 +683,6 @@ module ui {
     param value String "The text from game state."
     param desc TextAreaDesc "Placeholder, width, rows and length limit."
     returns FieldResult
-  }
-
-  fn tooltip {
-    doc "A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. The probe reads its text."
-    param text String "The text."
-    returns Void
   }
 
   fn idi {
@@ -889,52 +863,6 @@ module ui {
     field dismissed bool "Back or a press on the backdrop asked to close it: set your open flag false."
   }
 
-  struct ListDesc {
-    doc "A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row."
-    desc true
-    field count u32 "How many rows there are."
-    field rowHeight f32 "Every row's height; 0 is the density's row height." {
-      unit cssPx
-      min 0
-    }
-    field gap f32 "Space between rows." {
-      unit cssPx
-    }
-    field width Option.Size "Its width; null fits."
-    field height Option.Size "Its height (it scrolls inside); null grows."
-    field padding Insets "Space inside."
-    field selected Option.u32 "The selected row (controlStrong), for og.ui.list."
-  }
-
-  struct ListRange {
-    doc "The rows (or cells) to build this tick: first up to, not including, last."
-    field first u32 "The first index."
-    field last u32 "One past the last index."
-  }
-
-  struct GridDesc {
-    doc "A virtualised grid of equal cells (inventories, level select), scrolling vertically."
-    desc true
-    field count u32 "How many cells there are."
-    field cellWidth f32 "A cell's width; 0 is 64 (never under the 44 px touch target). With columns set and a width other than fit, the cells share the grid's width instead, as wide as it allows (never under the touch target), and keep their height." {
-      unit cssPx
-      min 0
-    }
-    field cellHeight f32 "A cell's height; 0 is its width." {
-      unit cssPx
-      min 0
-    }
-    field columns u32 "Cells across, exactly, whatever the width: a fit grid is that many cells of cellWidth, any other the cells share; 0 is as many cells of cellWidth as fit."
-    field gap f32 "Space between cells; 0 is space.sm." {
-      unit cssPx
-      min 0
-    }
-    field width Option.Size "Its width; null fits (exactly the columns when columns is set)."
-    field height Option.Size "Its height; null grows."
-    field padding Insets "Space inside."
-    field selected Option.u32 "The selected cell, for og.ui.grid."
-  }
-
   struct ToastDesc {
     doc "A toast's tone and time."
     desc true
@@ -956,17 +884,6 @@ module ui {
     field secondary Option.String "A second atlas icon, overlaid in the same em square: author the two silhouettes as separate named layers. Null draws one layer."
     field secondaryTint Option.Paint "The second layer's ink; null is accent."
     field label Option.String "What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table."
-  }
-
-  struct SkeletonDesc {
-    doc "A skeleton: the neutral fill standing in for content that is loading."
-    desc true
-    field width Option.Size "Its width; null grows."
-    field height f32 "A line's height; 0 is the body size." {
-      unit cssPx
-      min 0
-    }
-    field lines u32 "Stacked lines; 0 or 1 is one, the last of several is shorter."
   }
 
   callback UiItemBuild {
@@ -1074,17 +991,6 @@ module ui {
     returns Void
   }
 
-  fn modal {
-    doc "A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`."
-    aliases "modal dialog, popup window, overlay window, Unity modal"
-    host false
-    param id String "Its id."
-    param open bool "Whether it should be open."
-    param desc ModalDesc "Title, width and dismissal rules."
-    param build UiBuild "Makes its content."
-    returns ModalResult
-  }
-
   fn bounds {
     doc "Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it."
     param path String "The id or path."
@@ -1119,39 +1025,6 @@ module ui {
     returns Option.ScrollState
   }
 
-  fn openList {
-    doc "Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList()."
-    param id String "Its id."
-    param desc ListDesc "Row count and size."
-    returns ListRange
-  }
-
-  fn openGrid {
-    doc "Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList()."
-    param id String "Its id."
-    param desc GridDesc "Cell count, size and columns."
-    returns ListRange
-  }
-
-  fn listItem {
-    doc "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`."
-    param index u32 "Its index."
-    param selected bool "Drawn selected (controlStrong)."
-    returns Response
-  }
-
-  fn gridItem {
-    doc "Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). Drops answer `dropped` as listItem's."
-    param index u32 "Its index."
-    param selected bool "Drawn selected (controlStrong with a primary bar)."
-    returns Response
-  }
-
-  fn closeList {
-    doc "Close a list or grid opened with openList or openGrid."
-    returns Response
-  }
-
   fn badge {
     doc "A badge: a small status tag in its tone."
     param id String "Its id."
@@ -1171,13 +1044,6 @@ module ui {
     doc "Empty space."
     param id String "Its id."
     param size Option.Size "Its size along both axes; null grows into the free space."
-    returns Void
-  }
-
-  fn skeleton {
-    doc "A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion)."
-    param id String "Its id."
-    param desc SkeletonDesc "Width, line height and lines."
     returns Void
   }
 
@@ -1297,7 +1163,7 @@ module ui {
   }
 
   fn setHudEdit {
-    doc "Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. Build og.ui.hudLayoutEditor for steps, Next, Reset and Done."
+    doc "Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done."
     param on bool "On or off."
     returns Void
   }
@@ -1343,30 +1209,6 @@ module ui {
     doc "Puts an element back where it was laid out: its key, empty for the selected one, `*` for every one."
     param key String "Its key, empty or `*`."
     returns Void
-  }
-
-  struct HudEditorDesc {
-    doc "The HUD edit mode's panel; empty labels take English ones (pass the locale's)."
-    desc true
-    field title String "Its title; empty is Edit HUD."
-    field sizeLabel String "The size steps' label; empty is Size."
-    field opacityLabel String "The opacity steps' label; empty is Opacity."
-    field nextLabel String "Next's label; empty is Next."
-    field resetLabel String "Reset's label; empty is Reset."
-    field doneLabel String "Done's label; empty is Done."
-  }
-
-  struct HudEditorResult {
-    doc "What the HUD editor's buttons did this tick."
-    field done bool "Done was pressed: the edit mode is off from the next tick."
-    field changed bool "A step or a reset changed the layout this tick."
-  }
-
-  fn hudLayoutEditor {
-    doc "The HUD edit mode's panel (docs/ui.md §2.1): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selected) and Done, which turns the edit mode off. Build it where it fits, while og.ui.hudEdit().on; presses on it edit nothing behind it. Its children are `Title`, `Selected`, `Size/Less`, `Size/More`, `Opacity/Less`, `Opacity/More`, `Actions/Next`, `Actions/Reset`, `Actions/Done`."
-    param id String "Its id."
-    param desc HudEditorDesc "Its labels."
-    returns HudEditorResult
   }
 
   fn focus {
@@ -1453,32 +1295,6 @@ module ui {
   fn tick {
     doc "Frames the UI has built: its clock, for animations by the tick."
     returns u32
-  }
-
-  struct CounterDesc {
-    doc "A number that counts to its value."
-    desc true
-    field step Option.TypeStepName "The type step; null is body."
-    field font FontRole "Which font: mono (the numeric role) for counts in a row, display for a big score."
-    field color Option.Paint "The ink; null is ink."
-    field align TextAlign "How it aligns in its width."
-    field width Option.Size "Its width; null fits the text."
-    field durationMs f32 "How long a change takes to count; 0 is 900 ms." {
-      unit ms
-      min 0
-    }
-    field from Option.f64 "Where the first count starts; null starts at the value (no count)."
-    field decimals u32 "Digits after the point."
-    field prefix String "Text before the number."
-    field suffix String "Text after the number."
-  }
-
-  fn counter {
-    doc "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a style with motion.pop bumps it when it lands. Scores, currency, rewards."
-    param id String "Its id."
-    param value f64 "The value to count to."
-    param desc CounterDesc "Look, duration, start and format."
-    returns f64 "The number shown this tick."
   }
 
   struct BurstDesc {

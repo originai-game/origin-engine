@@ -5,7 +5,7 @@
 // lifting under the pointer and the focus and sinking as it is pressed.
 
 import type * as Api from "@origingame/engine";
-import { cornerBadge } from "../foundations/media.ts";
+
 import {
   byText, clamp, contrast, control, defineTimelines, frame, glyphCap, glyphIcon, kit, mix, over, paint, keepPath, ownPath, pct, px, role, rtl, still, text, TOUCH, xy,
 } from "./base.ts";
@@ -103,59 +103,12 @@ function buttonBase(
   }, () => build(col.ink, m));
 }
 
-export function pushButton(id: string, label: string, desc: Api.PushButtonDesc = {}): Api.Response {
-  const loading = desc.loading ?? false;
-  const disabled = (desc.disabled ?? false) || loading;
-  const reason = desc.disabled ? desc.disabledReason ?? "" : "";
-  const built = buttonBase(id, {
-    ...(desc.variant ? { variant: desc.variant } : {}),
-    ...(desc.size ? { size: desc.size } : {}),
-    disabled,
-    hoverable: reason.length > 0,
-    ...(desc.selected !== undefined && desc.selected ? { selected: true } : {}),
-    width: desc.width ?? null,
-    flags: loading ? ["loading"] : [],
-    semantics: { name: label, busy: loading, ...(reason ? { description: reason } : {}) },
-  }, (ink, m) => {
-    const size = byText(m.icon);
-    if (loading) kit.spinner("Spinner", size);
-    else if (desc.icon) glyphIcon("Icon", desc.icon, size, ink);
-    text("Label", label, { step: m.step, color: ink, nowrap: true, ellipsis: true, align: "center" });
-    if (desc.iconEnd) glyphIcon("IconEnd", desc.iconEnd, size, ink);
-    if (desc.badge) cornerBadge("Badge", desc.badge, false, size);
-  });
-  const tip = reason || desc.tooltip || "";
-  if (tip) kit.tooltip(tip);
-  autofocus(id, built.path, desc.autofocus ?? false);
-  if (built.r.clicked && desc.variant === "primary") kit.feedback("confirm", -1);
-  return built.r;
-}
-
 /** Take the focus the first tick it appears (what opens takes the focus), once. */
 function autofocus(id: string, path: string, on: boolean): void {
   if (!on) return;
   const seen = kit.memory(`${id}~seen`, 0);
   if (seen === 0 && path) kit.setFocus(path);
   kit.remember(`${id}~seen`, 1);
-}
-
-export function iconButton(id: string, icon: string, desc: Api.IconButtonDesc = {}): Api.Response {
-  const label = desc.label ?? "";
-  const built = buttonBase(id, {
-    variant: desc.variant ?? "quiet",
-    ...(desc.size ? { size: desc.size } : {}),
-    disabled: desc.disabled ?? false,
-    ...(desc.selected ? { selected: true } : {}),
-    square: true,
-    round: desc.round ?? false,
-    flags: ["icon"],
-    semantics: { name: label || icon },
-  }, (ink, m) => {
-    glyphIcon("Icon", icon, byText(m.icon + 2), desc.selected && (desc.variant ?? "quiet") === "quiet" ? role("primary") : ink);
-    cornerBadge("Badge", desc.badge ?? "", desc.dot ?? false, m.icon);
-  });
-  if (label) kit.tooltip(label);
-  return built.r;
 }
 
 /** A width that holds the longest of `labels` at a type step: an em a CJK character, 0.6 of one others (generous for proportional faces). */
@@ -264,4 +217,3 @@ export function holdButton(id: string, label: string, desc: Api.HoldButtonDesc =
   kit.remember(`${id}~t`, now);
   return { response: r, confirmed, holding, progress: p };
 }
-

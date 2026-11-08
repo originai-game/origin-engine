@@ -8,122 +8,10 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, byText, chevron, fit, flags, over, frame, grow, kit, lastInteraction, px, role, rtl, spring, surface, text, token, xy,
+  chevron, fit, flags, over, frame, grow, kit, px, role, rtl, spring, surface, text, token, xy,
 } from "./base.ts";
 
 // ── card ────────────────────────────────────────────────────────────────
-
-const CARD_CLASS: Record<string, string> = { raised: "card", flat: "panel", outlined: "panel", inset: "slot" };
-const CARD_FILL: Record<string, Api.ThemeColor> = { raised: "panelRaised", flat: "panel", outlined: "panel", inset: "well" };
-
-/**
- * A card: a framed surface with an optional media slot (art the game
- * fills, or a placeholder drawn from the style), an eyebrow, a title, a
- * subtitle and a corner badge over a body the game builds. Interactive
- * cards lift under the pointer and the focus, sink when pressed, and take
- * keys and pads; a selected card is ringed in the focus ink.
- */
-export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Response {
-  const { t } = frame();
-  const variant = desc.variant ?? "raised";
-  const selected = desc.selected ?? false;
-  const disabled = desc.disabled ?? false;
-  const fillRole = CARD_FILL[variant] ?? "panelRaised";
-  const pad = desc.padding ?? t.lg;
-  const line = (step: string, px0: number): number => frame().theme.typeRamp[step]?.lineHeight ?? byText(px0);
-  // The corner marks: small beside the art (a number plate a caption's line tall, a cost disc a large numeral's).
-  const plateH = line("sm", 20) + 4;
-  const disc = Math.max(byText(28), line("lg", 26) + 6);
-  const content = (): void => {
-    if (desc.eyebrow) text("Eyebrow", desc.eyebrow, { step: "caption", color: "inkMuted", width: grow() });
-    if (desc.title) text("Title", desc.title, { step: "lg", heading: true, width: grow() });
-    if (desc.subtitle) text("Subtitle", desc.subtitle, { step: "sm", color: "inkMuted", width: grow() });
-    if (desc.title || desc.subtitle || desc.eyebrow) kit.spacer("Gap", px(t.xs));
-    build();
-  };
-  const body = (): void => {
-    // With art the cost disc sits on the art's bottom end corner (the number plate's opposite), so the body's
-    // text keeps the card's whole width: a narrow card in a script without spaces wrapped its effect short of it.
-    const costDisc = (): void => {
-      kit.open("Cost", { direction: "column", width: px(disc), height: px(disc), align: "center", cross: "center", part: "Card.cost", partClass: "badge" });
-      kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("well") }], strokes: [{ width: 1.5, align: "inside", paint: { kind: "solid", color: token("lineStrong") } }] });
-      text("Text", desc.cost ?? "", { step: "lg", font: "rounded", nowrap: true });
-      kit.close();
-      over({ insets: { bottom: t.sm, end: t.sm }, z: 2 });
-    };
-    if (desc.media) media("Media", desc.media, t.panel, !!desc.badge, desc.cost ? costDisc : undefined);
-    // With no media the number plate stands over the body's top: the body starts under it.
-    const padding = desc.number && !desc.media ? { ...all(pad), top: t.sm + plateH + t.xs } : all(pad);
-    if (desc.cost && !desc.media) {
-      // With no art the cost disc beside the body at its bottom end, so the game's text wraps short of it.
-      kit.row("Body", { width: grow(), padding, gap: t.sm, cross: "end" }, () => {
-        kit.column("Content", { width: grow(), gap: t.xs }, content);
-        kit.open("Cost", { direction: "column", width: px(disc), height: px(disc), align: "center", cross: "center", part: "Card.cost", partClass: "badge" });
-        kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("well") }], strokes: [{ width: 1.5, align: "inside", paint: { kind: "solid", color: token("lineStrong") } }] });
-        text("Text", desc.cost ?? "", { step: "lg", font: "rounded", nowrap: true });
-        kit.close();
-      });
-    } else kit.column("Body", { width: grow(), padding, gap: t.xs }, content);
-    if (desc.badge) {
-      kit.badge("Badge", desc.badge, desc.badgeTone ?? "primary");
-      over({ insets: { top: t.sm, end: t.sm }, z: 2 });
-    }
-    if (desc.number) {
-      kit.open("Number", { direction: "row", width: fit(plateH, plateH * 3), height: px(plateH), align: "center", cross: "center", padding: xy(t.xs, 0), part: "Card.number", partClass: "badge" });
-      kit.setDraw({ shape: { kind: "rect", radii: [4, 4, 4, 4] }, fills: [{ kind: "solid", color: token("panelRaised", 0.92) }], strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: token("lineStrong") } }] });
-      text("Text", desc.number, { step: "sm", font: "display", nowrap: true });
-      kit.close();
-      over({ insets: { top: t.sm, start: t.sm }, z: 2 });
-    }
-    if (selected) ring("Selected");
-  };
-  const part = `Card.frame${flags(selected && "selected", variant)}`;
-  // A fixed width is the card at 100 % text: it grows with the player's text size, as far as the room it
-  // is given (a card in a slot of its own 100 % width stays in the slot, its words wrapping inside it).
-  const base = desc.width?.kind === "fixed" ? desc.width.px ?? 0 : 0;
-  const width = base > 0 ? grow(base, Math.max(base, byText(base))) : desc.width ?? null;
-  if (desc.interactive) {
-    const r = surface(id, {
-      part: "Card.frame",
-      cls: CARD_CLASS[variant] ?? "card",
-      flags: [selected ? "selected" : "", variant],
-      selected,
-      fill: role(fillRole),
-      washBy: 0.07,
-      // Lifts under the pointer and the focus, sinks while pressed: the style's ui spring.
-      lift: -4,
-      pressScale: 0.95,
-      disabled,
-      direction: "column",
-      width,
-      height: desc.height ?? null,
-      cross: "stretch",
-      radius: t.panel,
-      semantics: { role: "button", selected, ...(desc.title ? { name: [desc.eyebrow, desc.title, desc.subtitle].filter(Boolean).join(", ") } : {}) },
-      // Over its neighbours while it lifts.
-      props: { z: lastInteraction(id).hovered || lastInteraction(id).focused ? 1 : 0 },
-    }, body);
-    return r;
-  }
-  kit.open(id, {
-    direction: "column",
-    width,
-    height: desc.height ?? null,
-    cross: "stretch",
-    radius: t.panel,
-    background: token(fillRole),
-    part,
-    partClass: CARD_CLASS[variant] ?? "card",
-  });
-  let r: Api.Response;
-  try {
-    body();
-  } finally {
-    r = kit.close() as Api.Response;
-  }
-  kit.semantics({ role: "group", ...(desc.title ? { name: desc.title } : {}) });
-  return r;
-}
 
 /**
  * A ring just inside an element's edge in the focus ink (a selected card or cell), drawn over its content, taking no
@@ -134,31 +22,6 @@ export function ring(id: string, width = 2, ink: Api.ThemeColor = "focus", part?
   kit.setDraw({ shape: { kind: "rect" }, strokes: [{ width, align: "inside", paint: { kind: "solid", color: token(ink) } }] });
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 3 });
-}
-
-/** A media slot: the game's texture covering the slot at its aspect around its focal point, or a placeholder drawn from the style and the slot's kind (never a grey box). */
-export function media(id: string, m: Api.CardMedia, radius: number, badged = false, corner?: () => void): void {
-  const aspect = m.aspect && m.aspect > 0 ? m.aspect : 16 / 9;
-  // Under a corner badge the placeholder's mark sits low in the slot, clear of the badge.
-  const low = badged && !m.texture;
-  kit.open(id, { direction: "column", width: grow(), aspect, align: low ? "end" : "center", cross: "center", padding: low ? { left: 0, top: 0, right: 0, bottom: frame().t.md } : all(0), part: `Card.media${flags(!m.texture && "placeholder")}`, partClass: "slot" });
-  const shape: Api.DrawShape = { kind: "rect", radii: [radius, radius, 0, 0] };
-  if (m.texture) {
-    kit.setDraw({ shape, fills: [{ kind: "image", texture: m.texture, fit: "cover", focal: m.focal ?? { x: 0.5, y: 0.5 } }] });
-  } else {
-    kit.setDraw({
-      shape,
-      fills: [
-        { kind: "gradient", type: "linear", from: { x: 0, y: 0 }, to: { x: 1, y: 1 }, stops: [{ offset: 0, color: token("primarySoft") }, { offset: 1, color: token("well") }] },
-        { kind: "gradient", type: "radial", from: { x: 0.5, y: 0.4 }, to: { x: 0.65, y: 0.65 }, stops: [{ offset: 0, color: token("sheen", 0.45) }, { offset: 1, color: token("sheen", 0) }] },
-      ],
-    });
-    kit.icon("Kind", m.icon || "image", { size: 32, tint: token("inkFaint"), label: "" });
-  }
-  // A mark the card pins to the art (its cost disc), laid out with it.
-  corner?.();
-  kit.close();
-  if (m.label) kit.semantics({ role: "image", name: m.label });
 }
 
 /** A fade over a scrolling view's edge (`k` its strength, 0 to 1) into the surface it sits on: more lies that way. */

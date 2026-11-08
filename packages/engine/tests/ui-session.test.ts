@@ -18,7 +18,7 @@ test.skipIf(process.platform === "win32")("UI checks share a host without sharin
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "UI Session"\nentry "main.ts"\nseed 83\n');
   const source = `import {og,defineSystem} from "@origingame/engine";
 let starts=0;
-const Menu=defineSystem("Menu",{},()=>{og.ui.button("Play","Play");});
+const Menu=defineSystem("Menu",{},()=>{og.ui.label("Play","Play");});
 export default og.game({systems:[Menu],start(){if(++starts!==1)throw new Error("cell state leaked");console.log(JSON.stringify({uiHost:process.pid}));}});`;
   writeFileSync(join(root, "main.ts"), source);
   const env = { ...process.env, OG_ENGINE_PACKAGE: resolve(import.meta.dir!, ".."), OG_RENDERER: "none", OG_SESSION: "1" };

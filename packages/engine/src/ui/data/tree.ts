@@ -4,90 +4,11 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  byText, chevron, target, wrapRow, clamp, fit, flags, frame, grow, kit, lastGesture, mark, over, overProps, px, recallPath, rememberPath, role, rtl, spring, still, surface, text, token, xy,
+  byText, target, clamp, fit, flags, frame, grow, kit, lastGesture, mark, over, overProps, px, recallPath, rememberPath, role, rtl, spring, still, surface, text, token, xy,
 } from "../containers/base.ts";
 import { edge } from "../containers/panels.ts";
 import { lit, mix, teamColor } from "../feedback/core.ts";
 import { decimalNumber } from "./format.ts";
-
-// ── tree ────────────────────────────────────────────────────────────────
-
-/**
- * A tree: items (`id`, `parent`, `label`, `icon`, `badge`) shown as
- * indented rows under their parents; an item with children opens and
- * closes by its chevron or by a press of it (Enter, Space and the pad's A
- * on the focused row), and the arrows walk the rows. The visible rows are virtualised, so a
- * codex of thousands of entries costs a screenful. Answers the item
- * chosen and the expanded set, to keep in game state.
- */
-export function tree(id: string, desc: Api.TreeDesc): Api.TreeResult {
-  const { t, phone } = frame();
-  const items = desc.items ?? [];
-  let expanded = [...(desc.expanded ?? [])];
-  const open = new Set(expanded);
-  let chosen: string | null = null;
-  let toggled: string | null = null;
-  // The visible rows, depth first, under open parents only.
-  const kids = new Map<string, Api.TreeItem[]>();
-  for (const it of items) {
-    const p = it.parent ?? "";
-    let l = kids.get(p);
-    if (!l) kids.set(p, (l = []));
-    l.push(it);
-  }
-  const rows: Array<{ it: Api.TreeItem; depth: number; branch: boolean; last: boolean }> = [];
-  const walk = (p: string, depth: number): void => {
-    const l = kids.get(p) ?? [];
-    l.forEach((it, k) => {
-      const branch = (kids.get(it.id ?? "")?.length ?? 0) > 0;
-      rows.push({ it, depth, branch, last: k === l.length - 1 });
-      if (branch && open.has(it.id ?? "")) walk(it.id ?? "", depth + 1);
-    });
-  };
-  walk("", 0);
-  const rowH = wrapRow(desc.rowHeight ?? (phone ? 44 : 36));
-  const indent = desc.indent ?? 20;
-  kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, cross: "stretch", part: "Tree.frame", partClass: "panel" });
-  try {
-    const r = kit.openList("Rows", { count: rows.length, rowHeight: rowH, width: grow(), height: desc.height ? grow() : null, padding: xy(0, 0) }) as Api.ListRange;
-    for (let v = r.first; v < r.last; v++) {
-      const { it, depth, branch } = rows[v]!;
-      const key = it.id ?? "";
-      const isOpen = open.has(key);
-      const sel = desc.selected === key;
-      const resp = kit.listItem(v, sel) as Api.Response;
-      try {
-        kit.row("Line", { width: grow(), height: grow(), padding: { left: t.xs + depth * indent, top: 0, right: t.sm, bottom: 0 }, gap: t.xs, cross: "center", part: `Tree.item${flags(sel && "selected", branch && (isOpen ? "expanded" : "collapsed"))}`, partClass: "slot" }, () => {
-          if (branch) {
-            const tr = surface("Toggle", { part: "Tree.toggle", cls: "chip", fill: null, focusable: false, width: px(target(28)), height: px(target(28)), align: "center", cross: "center", semantics: { role: frame().touch ? "button" : "image", name: isOpen ? "Collapse" : "Expand" } }, () => {
-              chevron("Chevron", "forward", 14, role("inkMuted"), { group: "expansion", current: isOpen ? "expanded" : "collapsed", turns: { collapsed: 0, expanded: 1 } });
-            });
-            if (tr.clicked) toggled = key;
-          } else kit.spacer("Toggle", px(target(28)));
-          if (it.icon) kit.icon("Icon", it.icon, { size: 18, tint: token(sel ? "primary" : "inkMuted"), label: "" });
-          text("Label", it.label ?? "", { step: "sm", maxLines: 2, ellipsis: true, width: grow(), color: it.disabled ? "inkFaint" : "ink" });
-          if (it.badge) kit.badge("Badge", it.badge, it.badgeTone ?? "neutral");
-        });
-      } finally {
-        kit.close();
-      }
-      kit.semantics({ role: "treeitem", name: it.label ?? "", selected: sel, ...(branch ? { expanded: isOpen } : {}), value: `level ${depth + 1}`, disabled: it.disabled ?? false });
-      if (resp.clicked && !it.disabled) {
-        if (branch && desc.toggleOnPress !== false) toggled = key;
-        chosen = key;
-      }
-    }
-    kit.closeList();
-    kit.semantics({ role: "tree", name: desc.label ?? "" });
-  } finally {
-    kit.close();
-  }
-  if (toggled !== null) {
-    expanded = open.has(toggled) ? expanded.filter((k) => k !== toggled) : [...expanded, toggled];
-    kit.feedback(open.has(toggled) ? "close" : "open", -1);
-  } else if (chosen !== null) kit.feedback("select", -1);
-  return { chosen, toggled, expanded };
-}
 
 // ── graph ───────────────────────────────────────────────────────────────
 

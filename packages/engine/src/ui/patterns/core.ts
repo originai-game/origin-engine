@@ -327,7 +327,7 @@ export const FIGURE_KINDS: ReadonlySet<string> = new Set(["portrait", "bust", "c
  * from it), a light at the focal point, and the kind's silhouette standing
  * on it: a figure for a portrait, bust, character or key art, else the
  * kind's symbol, both sized to the slot (its size as laid out last tick).
- * og.ui.artSlot draws it for the figure kinds, with its frame's stroke.
+ * artSlot draws it for the figure kinds, with its frame's stroke.
  */
 export function placeholderArt(s: Slot, tier: Rgba | null, radii: [number, number, number, number], strokes?: Api.Stroke[]): void {
   if (s.kind === "body") {
@@ -618,14 +618,6 @@ export function hairline(id: string, vertical = false): void {
   kit.close();
 }
 
-/** A count badge on the corner of what was just opened (a stack, unread). */
-export function cornerCount(id: string, s: string, corner: "bottomEnd" | "topEnd" = "bottomEnd", tone: Api.ThemeColor = "ink"): void {
-  const { t } = frame();
-  kit.open(id, { direction: "row", padding: xy(t.xxs + 1, 0), radius: 4, background: token("shadow", 0.78), part: "Count.badge", partClass: "badge" });
-  text("Text", s, { step: "caption", color: tone, nowrap: true, font: "mono" });
-  kit.close();
-}
-
 /** Whether a breakpoint is a phone's (either orientation). */
 export function isPhone(): boolean {
   return frame().phone;
@@ -734,27 +726,6 @@ export function coinFill(g: number, grow = 1.4): { g: number; step: Api.TypeStep
     if (up) step = up;
   }
   return { g: Math.max(Math.round(g * Math.min(grow, k)), Math.ceil((th.typeRamp[step]?.size ?? 0) / 0.62)), step };
-}
-
-/**
- * `px0`'s step (st), or the largest smaller one no taller than `box` CSS px:
- * a number inside a badge that grows less than the text does (a cost gem at
- * 200 % text keeps its digits inside it).
- */
-export function stIn(px0: number, box: number): Api.TypeStepName {
-  const ramp = frame().theme.typeRamp;
-  const want = st(px0);
-  if ((ramp[want]?.size ?? 0) <= box) return want;
-  let best: Api.TypeStepName = "xs";
-  let bestSize = 0;
-  for (const s of STEPS) {
-    const size = ramp[s]?.size ?? 0;
-    if (size <= box && size > bestSize) {
-      best = s;
-      bestSize = size;
-    }
-  }
-  return best;
 }
 
 /**

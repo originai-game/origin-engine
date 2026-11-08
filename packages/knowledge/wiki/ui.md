@@ -46,7 +46,6 @@ module ui {
 | [`ArrowClaim`](ui/type-ArrowClaim.md) | desc struct |  | Which arrows a focused element claims (ElementDesc.arrows); none by default. |
 | [`ElementDesc`](ui/type-ElementDesc.md) | desc struct |  | A container: its layout and its look. |
 | [`LabelDesc`](ui/type-LabelDesc.md) | desc struct |  | How a label draws its text. |
-| [`ButtonDesc`](ui/type-ButtonDesc.md) | desc struct |  | A button's look. |
 | [`ScrollAxes`](ui/type-ScrollAxes.md) | enum |  | Which ways a scroll container scrolls. |
 | [`ScrollDesc`](ui/type-ScrollDesc.md) | desc struct |  | A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); … |
 | [`ImageDesc`](ui/type-ImageDesc.md) | desc struct |  | A texture region, or a solid rectangle without a texture. |
@@ -77,12 +76,10 @@ module ui {
 | [`TextSpan`](ui/type-TextSpan.md) | struct |  | A named attribute range in plain text for a store and the Svelte text spans binding. |
 | [`og.ui.richText`](ui/fn-richText.md) | function | `(id: string, markup: string, desc?: RichTextDesc): RichTextResult` | A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a … |
 | [`og.ui.label`](ui/fn-label.md) | function | `(id: string, text: string, desc?: LabelDesc): void` | MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. |
-| [`og.ui.button`](ui/fn-button.md) | function | `(id: string, text: string, desc?: ButtonDesc): Response` | A button with a label; `clicked` is a press and a release inside it. |
 | [`og.ui.image`](ui/fn-image.md) | function | `(id: string, desc?: ImageDesc): void` | A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other. |
 | [`og.ui.zoomView`](ui/fn-zoomView.md) | function | `(id: string, desc?: ZoomViewDesc): ZoomResult` | A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans; Tab or a pad focuses it,… |
 | [`og.ui.textField`](ui/fn-textField.md) | function | `(id: string, value: string, desc?: FieldDesc): FieldResult` | One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text … |
 | [`og.ui.textArea`](ui/fn-textArea.md) | function | `(id: string, value: string, desc?: TextAreaDesc): FieldResult` | Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, a triple click selecting the line between its breaks, t… |
-| [`og.ui.tooltip`](ui/fn-tooltip.md) | function | `(text: string): void` | A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. |
 | [`og.ui.idi`](ui/fn-idi.md) | function | `(name: string, index: number): string` | The id of the index-th of several siblings of one name: `idi("Slot", 3)` is `Slot#3`. |
 | [`Anchor`](ui/type-Anchor.md) | enum |  | A point of the safe area an anchored group sits at. |
 | [`TransitionKind`](ui/type-TransitionKind.md) | enum |  | How a transition moves its content in and out. |
@@ -98,12 +95,8 @@ module ui {
 | [`AnchorDesc`](ui/type-AnchorDesc.md) | desc struct |  | An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls). |
 | [`ModalDesc`](ui/type-ModalDesc.md) | desc struct |  | A dialog: a scrim over everything and a centred panel. |
 | [`ModalResult`](ui/type-ModalResult.md) | struct |  | A dialog's answer this tick. |
-| [`ListDesc`](ui/type-ListDesc.md) | desc struct |  | A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row. |
-| [`ListRange`](ui/type-ListRange.md) | struct |  | The rows (or cells) to build this tick: first up to, not including, last. |
-| [`GridDesc`](ui/type-GridDesc.md) | desc struct |  | A virtualised grid of equal cells (inventories, level select), scrolling vertically. |
 | [`ToastDesc`](ui/type-ToastDesc.md) | desc struct |  | A toast's tone and time. |
 | [`IconDesc`](ui/type-IconDesc.md) | desc struct |  | An icon's size, ink and name. |
-| [`SkeletonDesc`](ui/type-SkeletonDesc.md) | desc struct |  | A skeleton: the neutral fill standing in for content that is loading. |
 | [`UiItemBuild`](ui/type-UiItemBuild.md) | callback |  | Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it. |
 | [`UiPointer`](ui/type-UiPointer.md) | struct |  | The primary pointer as the UI reads it this tick. |
 | [`og.ui.framePointer`](ui/fn-framePointer.md) | function | `(): UiPointer` | The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangle… |
@@ -120,19 +113,12 @@ module ui {
 | [`og.ui.anchor`](ui/fn-anchor.md) | function | `(id: string, desc: AnchorDesc, build: UiBuild): void` | An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls. |
 | [`og.ui.openModal`](ui/fn-openModal.md) | function | `(id: string, open: boolean, desc?: ModalDesc): ModalResult` | Open a dialog, closed by closeModal(); build its content only while the answer is visible. |
 | [`og.ui.closeModal`](ui/fn-closeModal.md) | function | `(): void` | Close a dialog opened with openModal (its panel and backdrop). |
-| [`og.ui.modal`](ui/fn-modal.md) | function | `(id: string, open: boolean, desc: ModalDesc, build: UiBuild): ModalResult` | A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. |
 | [`og.ui.bounds`](ui/fn-bounds.md) | function | `(path: string): UiRect \| null` | Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it. |
 | [`ScrollState`](ui/type-ScrollState.md) | struct |  | A scroll container as the last frame laid it out (og.ui.scrollState). |
 | [`og.ui.scrollState`](ui/fn-scrollState.md) | function | `(path: string): ScrollState \| null` | A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scro… |
-| [`og.ui.openList`](ui/fn-openList.md) | function | `(id: string, desc?: ListDesc): ListRange` | Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList(). |
-| [`og.ui.openGrid`](ui/fn-openGrid.md) | function | `(id: string, desc?: GridDesc): ListRange` | Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList(). |
-| [`og.ui.listItem`](ui/fn-listItem.md) | function | `(index: number, selected: boolean): Response` | Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). |
-| [`og.ui.gridItem`](ui/fn-gridItem.md) | function | `(index: number, selected: boolean): Response` | Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). |
-| [`og.ui.closeList`](ui/fn-closeList.md) | function | `(): Response` | Close a list or grid opened with openList or openGrid. |
 | [`og.ui.badge`](ui/fn-badge.md) | function | `(id: string, text: string, tone: Tone): void` | A badge: a small status tag in its tone. |
 | [`og.ui.divider`](ui/fn-divider.md) | function | `(id: string, vertical: boolean): void` | A hairline in the border colour across its parent. |
 | [`og.ui.spacer`](ui/fn-spacer.md) | function | `(id: string, size: Size \| null): void` | Empty space. |
-| [`og.ui.skeleton`](ui/fn-skeleton.md) | function | `(id: string, desc?: SkeletonDesc): void` | A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion). |
 | [`og.ui.spinner`](ui/fn-spinner.md) | function | `(id: string, size: number): void` | A loading spinner: eight dots around a circle, the bright one turning by the tick. |
 | [`og.ui.icon`](ui/fn-icon.md) | function | `(id: string, name: string, desc?: IconDesc): void` | An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. |
 | [`og.ui.toast`](ui/fn-toast.md) | function | `(world: World, text: string, desc?: ToastDesc): number` | Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. |
@@ -154,9 +140,6 @@ module ui {
 | [`og.ui.hudSelect`](ui/fn-hudSelect.md) | function | `(key: string): void` | Selects an element to edit by its key (empty: none). |
 | [`og.ui.hudStep`](ui/fn-hudStep.md) | function | `(scale: number, opacity: number): void` | Steps the selected element's size and opacity: each -1, 0 or +1 step (a tenth larger or smaller, a tenth more or less opaque), within its limits. |
 | [`og.ui.hudReset`](ui/fn-hudReset.md) | function | `(key: string): void` | Puts an element back where it was laid out: its key, empty for the selected one, `*` for every one. |
-| [`HudEditorDesc`](ui/type-HudEditorDesc.md) | desc struct |  | The HUD edit mode's panel; empty labels take English ones (pass the locale's). |
-| [`HudEditorResult`](ui/type-HudEditorResult.md) | struct |  | What the HUD editor's buttons did this tick. |
-| [`og.ui.hudLayoutEditor`](ui/fn-hudLayoutEditor.md) | function | `(id: string, desc?: HudEditorDesc): HudEditorResult` | The HUD edit mode's panel (docs/ui.md §2.1): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selec… |
 | [`og.ui.focus`](ui/fn-focus.md) | function | `(pad: number): string` | The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none. |
 | [`A11yNode`](ui/type-A11yNode.md) | struct |  | One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out). |
 | [`A11yTree`](ui/type-A11yTree.md) | struct |  | The last frame's accessibility tree, built from the same nodes the UI draws and takes input on. |
@@ -167,8 +150,6 @@ module ui {
 | [`og.ui.memory`](ui/fn-memory.md) | function | `(id: string, initial: number): number` | A number the UI keeps for an id under the open element (a component's tab, a count-up's start tick), in snapshots like the rest of the UI state. |
 | [`og.ui.remember`](ui/fn-remember.md) | function | `(id: string, value: number): void` | Set a number memory (see memory). |
 | [`og.ui.tick`](ui/fn-tick.md) | function | `(): number` | Frames the UI has built: its clock, for animations by the tick. |
-| [`CounterDesc`](ui/type-CounterDesc.md) | desc struct |  | A number that counts to its value. |
-| [`og.ui.counter`](ui/fn-counter.md) | function | `(id: string, value: number, desc?: CounterDesc): number` | A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a style with motion.pop bumps it when it lands. |
 | [`BurstDesc`](ui/type-BurstDesc.md) | desc struct |  | Rays and sparks thrown from an element. |
 | [`og.ui.burst`](ui/fn-burst.md) | function | `(desc?: BurstDesc): void` | Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. |
 | [`ScreenWipe`](ui/type-ScreenWipe.md) | enum |  | How a screen transition covers the old screen and reveals the new one. |
@@ -177,18 +158,9 @@ module ui {
 | [`ScreenTransitionResult`](ui/type-ScreenTransitionResult.md) | struct |  | Where a screen transition is this tick. |
 | [`og.ui.screenTransition`](ui/fn-screenTransition.md) | function | `(id: string, screen: string, desc?: ScreenTransitionDesc): ScreenTransitionResult` | A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). |
 | [`og.ui.previewViewport`](ui/fn-previewViewport.md) | function | `(world: World, viewport: Viewport \| null): void` | Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. |
-| [`CardVariant`](ui/type-CardVariant.md) | enum |  | How a card stands off what it sits on. |
-| [`CardMedia`](ui/type-CardMedia.md) | desc struct |  | A card's media slot: art the game fills, or a placeholder drawn from the style when it has none. |
-| [`CardDesc`](ui/type-CardDesc.md) | desc struct |  | A card: media, an eyebrow, a title, a subtitle and a corner badge over a body the game builds. |
 | [`AccordionSection`](ui/type-AccordionSection.md) | desc struct |  | A section of an accordion: its header's title, subtitle and badge. |
 | [`AccordionDesc`](ui/type-AccordionDesc.md) | desc struct |  | An accordion: sections whose headers open and close their bodies. |
 | [`AccordionResult`](ui/type-AccordionResult.md) | struct |  | What an accordion answered this tick. |
-| [`DialogTone`](ui/type-DialogTone.md) | enum |  | A dialog's tone, shown by a mark as well as its colour. |
-| [`DialogAction`](ui/type-DialogAction.md) | desc struct |  | A button of a dialog. |
-| [`DialogDesc`](ui/type-DialogDesc.md) | desc struct |  | A dialog: a title, a tone mark, a message, a body the game builds and a row of actions. |
-| [`DialogResult`](ui/type-DialogResult.md) | struct |  | What a dialog answered this tick. |
-| [`ConfirmResult`](ui/type-ConfirmResult.md) | struct |  | A confirm dialog's answer this tick. |
-| [`ConfirmationDesc`](ui/type-ConfirmationDesc.md) | desc struct |  | A confirmation: a message, Cancel and the action. |
 | [`FloatSide`](ui/type-FloatSide.md) | enum |  | Where a floating surface hangs off what it belongs to; start and end follow the writing direction. |
 | [`FloatAlign`](ui/type-FloatAlign.md) | enum |  | How a floating surface lines up with what it belongs to. |
 | [`PopoverDesc`](ui/type-PopoverDesc.md) | desc struct |  | A popover beside an element, flipped where there is no room and kept on screen, with an arrow at the element. |
@@ -204,76 +176,24 @@ module ui {
 | [`TabItem`](ui/type-TabItem.md) | desc struct |  | A tab. |
 | [`TabBarDesc`](ui/type-TabBarDesc.md) | desc struct |  | Tabs over the panel the game builds for the selected one. |
 | [`TabBarResult`](ui/type-TabBarResult.md) | struct |  | What a tab bar answered this tick. |
-| [`PaginationDesc`](ui/type-PaginationDesc.md) | desc struct |  | Previous and next, the first and last pages and the pages around the current one. |
-| [`PageResult`](ui/type-PageResult.md) | struct |  | What pagination answered this tick. |
 | [`ActionHint`](ui/type-ActionHint.md) | desc struct |  | A hint of the action bar: an action, its glyph on the device in use and what it does. |
 | [`ActionHintsDesc`](ui/type-ActionHintsDesc.md) | desc struct |  | The action bar (docs/ui.md §2.1): the actions the top layer accepts, each its glyph and its hint, at an edge. |
 | [`ActionHintsResult`](ui/type-ActionHintsResult.md) | struct |  | What the action bar answered this tick. |
 | [`DataStateDesc`](ui/type-DataStateDesc.md) | desc struct |  | What a data view shows instead of its rows: loading, an error, or nothing. |
-| [`DataListDesc`](ui/type-DataListDesc.md) | desc struct |  | A virtualised list with its empty, loading and error states. |
-| [`DataListResult`](ui/type-DataListResult.md) | struct |  | What a data list or grid answered this tick. |
-| [`DataGridDesc`](ui/type-DataGridDesc.md) | desc struct |  | A virtualised grid of equal cells with its empty, loading and error states. |
-| [`NumberFormat`](ui/type-NumberFormat.md) | enum |  | How a number reads in a data view. |
-| [`TableColumn`](ui/type-TableColumn.md) | desc struct |  | A column of a table: the row field it shows and how. |
-| [`TableDesc`](ui/type-TableDesc.md) | desc struct |  | A sortable, filterable table of rows by columns; only the rows in view are built. |
-| [`TableResult`](ui/type-TableResult.md) | struct |  | What a table answered this tick: keep the sort and the filter. |
-| [`TreeItem`](ui/type-TreeItem.md) | desc struct |  | An item of a tree; an item whose `parent` names another's id sits under it. |
-| [`TreeDesc`](ui/type-TreeDesc.md) | desc struct |  | A tree of expandable items; the visible rows are virtualised. |
-| [`TreeResult`](ui/type-TreeResult.md) | struct |  | What a tree answered this tick. |
 | [`GraphNodeState`](ui/type-GraphNodeState.md) | enum |  | A graph node's state, shown by its ring and a mark as well as its colour. |
 | [`GraphNodeShape`](ui/type-GraphNodeShape.md) | enum |  | A graph node's outline. |
 | [`GraphNode`](ui/type-GraphNode.md) | desc struct |  | A node of a graph, at a position in the graph's own units. |
 | [`GraphLink`](ui/type-GraphLink.md) | desc struct |  | A link between two nodes. |
 | [`NodeGraphDesc`](ui/type-NodeGraphDesc.md) | desc struct |  | A pan-and-zoom graph of nodes and links: skill and tech trees, run maps, flowcharts. |
 | [`NodeGraphResult`](ui/type-NodeGraphResult.md) | struct |  | What a graph answered this tick. |
-| [`ChartKind`](ui/type-ChartKind.md) | enum |  | What a chart draws. |
-| [`ChartSeries`](ui/type-ChartSeries.md) | desc struct |  | A series of a chart: its name and a value a category. |
-| [`ChartDesc`](ui/type-ChartDesc.md) | desc struct |  | A chart: line, area, bar, radar, pie or donut, with axes, a legend, a tooltip and its states. |
-| [`ChartResult`](ui/type-ChartResult.md) | struct |  | What a chart answered this tick. |
-| [`KeyValueRow`](ui/type-KeyValueRow.md) | desc struct |  | A row of key-value rows. |
-| [`KeyValueRowsDesc`](ui/type-KeyValueRowsDesc.md) | desc struct |  | Key-value rows: a stat sheet, an item's properties. |
-| [`StatCompareRow`](ui/type-StatCompareRow.md) | desc struct |  | A stat compared: its value now and the value it would take. |
-| [`StatCompareDesc`](ui/type-StatCompareDesc.md) | desc struct |  | Stat-compare rows: an equip screen's comparison, each change a signed delta with a mark. |
-| [`CalendarMark`](ui/type-CalendarMark.md) | desc struct |  | Something on a day: a dot in a tone, or a claimed tick for a login calendar. |
-| [`CalendarDesc`](ui/type-CalendarDesc.md) | desc struct |  | A month grid of days: today, a selected day, a range, marks, and days that cannot be chosen. |
-| [`CalendarResult`](ui/type-CalendarResult.md) | struct |  | What a calendar answered this tick. |
-| [`og.ui.card`](ui/fn-card.md) | function | `(id: string, desc: CardDesc, build: UiBuild): Response` | A card over a body the game builds. |
 | [`og.ui.accordion`](ui/fn-accordion.md) | function | `(id: string, desc: AccordionDesc, build: UiItemBuild): AccordionResult` | Sections whose headers open and close their bodies; the sections under one move on the panel spring. |
-| [`og.ui.dialog`](ui/fn-dialog.md) | function | `(id: string, open: boolean, desc: DialogDesc, build: UiBuild): DialogResult` | A dialog on the modal layer: tone mark, message, body and actions. |
-| [`og.ui.confirm`](ui/fn-confirm.md) | function | `(id: string, open: boolean, desc?: ConfirmationDesc): ConfirmResult` | A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone). |
 | [`og.ui.popover`](ui/fn-popover.md) | function | `(id: string, open: boolean, desc: PopoverDesc, build: UiBuild): PopoverResult` | A popover beside an element with an arrow at it; Back or a press outside dismisses it. |
 | [`og.ui.menu`](ui/fn-menu.md) | function | `(id: string, open: boolean, desc?: MenuDesc): MenuChoice` | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. |
 | [`og.ui.contextMenu`](ui/fn-contextMenu.md) | function | `(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice` | A menu at a point: where a right press or a long press happened. |
 | [`og.ui.sheet`](ui/fn-sheet.md) | function | `(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult` | A sheet sliding in from the bottom (resting at detents, dragged) or a side. |
 | [`og.ui.tabBar`](ui/fn-tabBar.md) | function | `(id: string, desc: TabBarDesc, build: UiItemBuild): TabBarResult` | Tabs with a sliding indicator and bumpers over the panel of the selected one. |
-| [`og.ui.pagination`](ui/fn-pagination.md) | function | `(id: string, desc?: PaginationDesc): PageResult` | Previous, next and the pages around the current one. |
 | [`og.ui.actionHints`](ui/fn-actionHints.md) | function | `(id: string, desc?: ActionHintsDesc): ActionHintsResult` | The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons. |
-| [`og.ui.dataList`](ui/fn-dataList.md) | function | `(id: string, desc: DataListDesc, build: UiItemBuild): DataListResult` | A virtualised list with its empty, loading and error states. |
-| [`og.ui.dataGrid`](ui/fn-dataGrid.md) | function | `(id: string, desc: DataGridDesc, build: UiItemBuild): DataListResult` | A virtualised grid of cells with its empty, loading and error states. |
-| [`og.ui.table`](ui/fn-table.md) | function | `(id: string, desc?: TableDesc): TableResult` | A sortable, filterable table; only the rows in view are built, so 10,000 rows and more stay within budget. |
-| [`og.ui.tree`](ui/fn-tree.md) | function | `(id: string, desc?: TreeDesc): TreeResult` | A tree of expandable items, virtualised. |
 | [`og.ui.nodeGraph`](ui/fn-nodeGraph.md) | function | `(id: string, desc?: NodeGraphDesc): NodeGraphResult` | A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts. |
-| [`og.ui.chart`](ui/fn-chart.md) | function | `(id: string, desc?: ChartDesc): ChartResult` | A line, area, bar, radar, pie or donut chart. |
-| [`og.ui.keyValueRows`](ui/fn-keyValueRows.md) | function | `(id: string, desc?: KeyValueRowsDesc): void` | Key-value rows: labels at the start, values at the end. |
-| [`og.ui.statCompare`](ui/fn-statCompare.md) | function | `(id: string, desc?: StatCompareDesc): void` | Stat-compare rows: current, new and the signed change with its mark. |
-| [`og.ui.calendar`](ui/fn-calendar.md) | function | `(id: string, desc?: CalendarDesc): CalendarResult` | A month grid of days. |
-| [`TextRole`](ui/type-TextRole.md) | enum |  | A text's role in the hierarchy (docs/ui.md §3.1): its type step, font and weight come from the style's type tokens for the role. |
-| [`TextTone`](ui/type-TextTone.md) | enum |  | A text's ink by meaning. |
-| [`TextBlockDesc`](ui/type-TextBlockDesc.md) | desc struct |  | How a text block reads: its role, tone and how it fits. |
-| [`og.ui.text`](ui/fn-text.md) | function | `(id: string, value: string, desc?: TextBlockDesc): void` | Text in a role (docs/ui.md §2, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines wi… |
-| [`IconPlate`](ui/type-IconPlate.md) | enum |  | What an icon sits on. |
-| [`IconMarkDesc`](ui/type-IconMarkDesc.md) | desc struct |  | An icon's size, tone, plate and badge. |
-| [`og.ui.iconMark`](ui/fn-iconMark.md) | function | `(id: string, name: string, desc?: IconMarkDesc): void` | An icon of the style's set (og.ui.icon) in a tone, on a plate, with a badge or a dot: the foundation every icon in a control is. |
-| [`ArtFit`](ui/type-ArtFit.md) | enum |  | How art fills its slot. |
-| [`ArtMask`](ui/type-ArtMask.md) | enum |  | What art is cut to. |
-| [`ArtSlotDesc`](ui/type-ArtSlotDesc.md) | desc struct |  | An art slot (docs/ui.md §3.3): where a generated or authored image goes, and what it shows until it is there. |
-| [`og.ui.artSlot`](ui/fn-artSlot.md) | function | `(id: string, desc?: ArtSlotDesc): void` | An image or art slot: the texture fitted and cut as its desc says, fading in when it arrives (the style's enter motion; at once under reduced motion); until then a placeholder drawn from the style (a… |
-| [`ShapePreset`](ui/type-ShapePreset.md) | enum |  | A decorative shape. |
-| [`ShapeBoxDesc`](ui/type-ShapeBoxDesc.md) | desc struct |  | A decorative shape: its outline, fill, stroke and glow, in the style's colours. |
-| [`og.ui.shapeBox`](ui/fn-shapeBox.md) | function | `(id: string, desc?: ShapeBoxDesc): void` | A decorative shape drawn by the UI pass (docs/ui.md §3.3) in the style's colours: a pip, a gem, a star, a ring, a backdrop blob. |
-| [`SpaceStep`](ui/type-SpaceStep.md) | enum |  | A step of the style's spacing scale. |
-| [`SpaceDesc`](ui/type-SpaceDesc.md) | desc struct |  | Empty space by the style's scale. |
-| [`og.ui.space`](ui/fn-space.md) | function | `(id: string, desc?: SpaceDesc): void` | Empty space of a step of the style's spacing scale (so a style's density moves every gap at once), or all the room left. |
 | [`ViewFrameDesc`](ui/type-ViewFrameDesc.md) | desc struct |  | A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad. |
 | [`ViewFrameResult`](ui/type-ViewFrameResult.md) | struct |  | A view frame's turn, tilt and zoom after this tick's input, and its viewport's answer. |
 | [`og.ui.viewFrame`](ui/fn-viewFrame.md) | function | `(id: string, desc?: ViewFrameDesc): ViewFrameResult` | A viewport in a frame (docs/ui.md §3.3, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with … |
@@ -282,10 +202,6 @@ module ui {
 | [`og.ui.emitter`](ui/fn-emitter.md) | function | `(id: string, desc?: EmitterDesc): void` | An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. |
 | [`EffectLayerDesc`](ui/type-EffectLayerDesc.md) | desc struct |  | A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`. |
 | [`og.ui.effectLayer`](ui/fn-effectLayer.md) | function | `(id: string, desc: EffectLayerDesc, build: UiBuild): void` | A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hi… |
-| [`PushButtonDesc`](ui/type-PushButtonDesc.md) | desc struct |  | A button: its role, size, icons, badge and states. |
-| [`og.ui.pushButton`](ui/fn-pushButton.md) | function | `(id: string, label: string, desc?: PushButtonDesc): Response` | A button (docs/ui.md §2, Controls): primary, secondary, ghost (outlined), quiet (text) or danger, small, medium or large, with icons, a badge, a loading spinner and a disabled reason. |
-| [`IconButtonDesc`](ui/type-IconButtonDesc.md) | desc struct |  | An icon button: an icon, its name and a badge. |
-| [`og.ui.iconButton`](ui/fn-iconButton.md) | function | `(id: string, icon: string, desc?: IconButtonDesc): Response` | An icon button: a square (or round) button of the control height around one icon, named by its label (its tooltip, and what a screen reader says), with a badge or a dot. |
 | [`HoldButtonDesc`](ui/type-HoldButtonDesc.md) | desc struct |  | A hold-to-confirm button. |
 | [`HoldResult`](ui/type-HoldResult.md) | struct |  | A hold button's state after this tick. |
 | [`og.ui.holdButton`](ui/fn-holdButton.md) | function | `(id: string, label: string, desc?: HoldButtonDesc): HoldResult` | A hold-to-confirm button: held (a press on it, a touch), it fills from its start edge over holdMs, ticking up in pitch, and confirms with the style's confirm sound and a pop; let go early, it drains … |
@@ -293,21 +209,10 @@ module ui {
 | [`ToggleSwitchDesc`](ui/type-ToggleSwitchDesc.md) | desc struct |  | A switch: its label, description and states. |
 | [`SwitchResult`](ui/type-SwitchResult.md) | struct |  | A switch's or a check's state after this tick. |
 | [`og.ui.toggleSwitch`](ui/fn-toggleSwitch.md) | function | `(id: string, on: boolean, desc?: ToggleSwitchDesc): SwitchResult` | A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the who… |
-| [`ChoiceIndexResult`](ui/type-ChoiceIndexResult.md) | struct |  | A choice control's state after this tick. |
-| [`SliderMark`](ui/type-SliderMark.md) | struct |  | A labelled point on a slider's track. |
 | [`ValueFormat`](ui/type-ValueFormat.md) | desc struct |  | How a control shows a number. |
-| [`ValueSliderDesc`](ui/type-ValueSliderDesc.md) | desc struct |  | A slider: range, step, label, readout, ticks and marks. |
-| [`ValueSliderResult`](ui/type-ValueSliderResult.md) | struct |  | A slider's value after this tick. |
-| [`og.ui.valueSlider`](ui/fn-valueSlider.md) | function | `(id: string, value: number, desc?: ValueSliderDesc): ValueSliderResult` | A slider: a track, a fill from min (or from an origin, both ways) and a knob. |
-| [`RangeSliderDesc`](ui/type-RangeSliderDesc.md) | desc struct |  | A range slider: two knobs on one track. |
-| [`RangeResult`](ui/type-RangeResult.md) | struct |  | A range slider's values after this tick. |
-| [`og.ui.rangeSlider`](ui/fn-rangeSlider.md) | function | `(id: string, low: number, high: number, desc?: RangeSliderDesc): RangeResult` | A range slider: two knobs on one track and the fill between them. |
 | [`NumberStepperDesc`](ui/type-NumberStepperDesc.md) | desc struct |  | A number stepper: minus, the value and plus. |
 | [`NumberResult`](ui/type-NumberResult.md) | struct |  | A stepper's value after this tick. |
 | [`og.ui.numberStepper`](ui/fn-numberStepper.md) | function | `(id: string, value: number, desc?: NumberStepperDesc): NumberResult` | A number stepper: minus, the value and plus. |
-| [`SegmentItem`](ui/type-SegmentItem.md) | desc struct |  | One segment of a segmented control. |
-| [`SegmentedDesc`](ui/type-SegmentedDesc.md) | desc struct |  | A segmented control: its segments and layout. |
-| [`og.ui.segmented`](ui/fn-segmented.md) | function | `(id: string, desc?: SegmentedDesc): ChoiceIndexResult` | A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). |
 | [`DropdownOption`](ui/type-DropdownOption.md) | desc struct |  | One option of a dropdown. |
 | [`DropdownDesc`](ui/type-DropdownDesc.md) | desc struct |  | A dropdown: its options, label and states. |
 | [`DropdownResult`](ui/type-DropdownResult.md) | struct |  | A dropdown's state after this tick. |
@@ -317,28 +222,6 @@ module ui {
 | [`og.ui.inputField`](ui/fn-inputField.md) | function | `(id: string, value: string, desc?: InputFieldDesc): InputResult` | A text field (og.ui.textField's editing: IME, selection, clipboard, undo) in a framed row with a label above, an icon, a suffix, a clear button and a helper, error or counter line below. |
 | [`InputAreaDesc`](ui/type-InputAreaDesc.md) | desc struct |  | A text area with its label, helper, error and counter. |
 | [`og.ui.inputArea`](ui/fn-inputArea.md) | function | `(id: string, value: string, desc?: InputAreaDesc): InputResult` | A text area (og.ui.textArea's editing) framed as inputField is, with its label, helper, error and counter. |
-| [`SearchBoxDesc`](ui/type-SearchBoxDesc.md) | desc struct |  | A search box and its suggestions. |
-| [`SearchResult`](ui/type-SearchResult.md) | struct |  | A search box's state after this tick. |
-| [`og.ui.searchBox`](ui/fn-searchBox.md) | function | `(id: string, query: string, desc?: SearchBoxDesc): SearchResult` | A search box with suggestions: a field with a lens, a clear button and, while it has the focus and something matches, a list of suggestions under it (recent searches while it is empty) whose matching… |
-| [`KeyBindingRowDesc`](ui/type-KeyBindingRowDesc.md) | desc struct |  | A controls screen's row for one action: its name, its bindings on a device, and their capture. |
-| [`KeyBindingResult`](ui/type-KeyBindingResult.md) | struct |  | What a key-binding row did this tick. |
-| [`og.ui.keyBindingRow`](ui/fn-keyBindingRow.md) | function | `(world: World, id: string, desc?: KeyBindingRowDesc): KeyBindingResult` | A key-binding row (the settings tree's controls page, docs/ui.md §2): the action's name and a slot per binding on a device (keyboard and mouse, or a pad, the device used last by default) showing its … |
-| [`KeyboardLayout`](ui/type-KeyboardLayout.md) | enum |  | An on-screen keyboard's keys. |
-| [`KeyboardDesc`](ui/type-KeyboardDesc.md) | desc struct |  | An on-screen keyboard: what it edits and how it types. |
-| [`KeyboardResult`](ui/type-KeyboardResult.md) | struct |  | What an on-screen keyboard did this tick. |
-| [`og.ui.onScreenKeyboard`](ui/fn-onScreenKeyboard.md) | function | `(id: string, open: boolean, desc?: KeyboardDesc): KeyboardResult` | An on-screen keyboard for pads and touch (docs/ui.md §2: search and names with a pad): a panel at the screen's bottom with the text being typed and its caret, a candidate bar while composing, and key… |
-| [`MapOverlay`](ui/type-MapOverlay.md) | desc struct |  | One of the map's data overlays (Traffic, Power, Land value), with its legend's ramp. |
-| [`OverlayBarDesc`](ui/type-OverlayBarDesc.md) | desc struct |  | A city or strategy map's overlay picker: the overlays, the one shown and its legend. |
-| [`OverlayBarResult`](ui/type-OverlayBarResult.md) | struct |  | What the player asked for this tick. |
-| [`og.ui.overlayBar`](ui/fn-overlayBar.md) | function | `(id: string, desc?: OverlayBarDesc): OverlayBarResult` | A map's overlay picker (Cities: Skylines' info views, Civilization's lenses): a row of round buttons, each its overlay's art, the shown one lit with its name, and over the bar the shown overlay's leg… |
-| [`SettingsCustomBuild`](ui/type-SettingsCustomBuild.md) | callback |  | Builds a custom settings entry's control inside its row: ui calls made inside nest under it. |
-| [`SettingKind`](ui/type-SettingKind.md) | enum |  | What a settings entry is: the control its row draws. |
-| [`SettingEntry`](ui/type-SettingEntry.md) | desc struct |  | One entry of a settings page, as data: a game adds, drops or reorders entries without touching the pattern. |
-| [`SettingsPage`](ui/type-SettingsPage.md) | desc struct |  | One page of the settings tree: a tab, and its entries in order. |
-| [`SettingChange`](ui/type-SettingChange.md) | struct |  | One entry changed by the player this tick. |
-| [`SettingsTreeDesc`](ui/type-SettingsTreeDesc.md) | desc struct |  | The settings as a tree of pages and typed entries, the pending state, and the confirm countdown. |
-| [`SettingsTreeResult`](ui/type-SettingsTreeResult.md) | struct |  | What the player asked for this tick, for the game to apply to its settings. |
-| [`og.ui.settingsTree`](ui/fn-settingsTree.md) | function | `(world: World, id: string, desc: SettingsTreeDesc, custom: SettingsCustomBuild): SettingsTreeResult` | A game's settings as data (docs/ui.md §2, roadmap G1-7): the title, the pages as tabs (the tab actions step them), the shown page's entries as rows, each its name (a changed one marked) and its contr… |
 | [`UiProp`](ui/type-UiProp.md) | enum |  | An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. |
 | [`LayoutMode`](ui/type-LayoutMode.md) | enum |  | How a container lays out its children. |
 | [`Position`](ui/type-Position.md) | enum |  | How an element is placed. |
@@ -430,15 +313,7 @@ module ui {
 | [`og.ui.motionEvents`](ui/fn-motionEvents.md) | function | `(): readonly UiMotionEvent[]` | The UI's motion events of the last frame: sounds, haptics, bursts, state changes, callbacks, ends, dismissals, drops and snaps. |
 | [`og.ui.overlaps`](ui/fn-overlaps.md) | function | `(): readonly UiOverlap[]` | The last frame's undeclared overlaps between elements (docs/ui.md §2), with both paths. |
 | [`og.ui.layoutStats`](ui/fn-layoutStats.md) | function | `(): UiLayoutStats` | What the last frame built, rebuilt, laid out and kept. |
-| [`NotificationVariant`](ui/type-NotificationVariant.md) | enum |  | What a notification is, which sets its look, sound and default time. |
 | [`Rarity`](ui/type-Rarity.md) | enum |  | A loot tier (the style's rarity colours, each paired with its pips so no tier is told by colour alone). |
-| [`NotificationItem`](ui/type-NotificationItem.md) | desc struct |  | One notification of a stack, as the game's viewmodel holds it. |
-| [`NotificationsDesc`](ui/type-NotificationsDesc.md) | desc struct |  | A stack of notifications (toasts) anchored in the safe area. |
-| [`NotificationsResult`](ui/type-NotificationsResult.md) | struct |  | What a notification stack answered this tick. |
-| [`og.ui.notifications`](ui/fn-notifications.md) | function | `(id: string, desc?: NotificationsDesc): NotificationsResult` | A notification stack (toasts, achievements, rewards, invites): cards anchored in the safe area, newest nearest the anchor's edge, that enter on the style's enter spring from that edge, reflow on its … |
-| [`BadgeKind`](ui/type-BadgeKind.md) | enum |  | What a count badge shows. |
-| [`CountBadgeDesc`](ui/type-CountBadgeDesc.md) | desc struct |  | A count badge on the corner of the container it is built in (a tab, an inventory icon, a mailbox button). |
-| [`og.ui.countBadge`](ui/fn-countBadge.md) | function | `(id: string, desc?: CountBadgeDesc): void` | A count badge: a small pill on a corner of the open container, outset by half its height so it straddles the edge, with a ring in the ground colour that cuts it from what it sits on. |
 | [`TooltipStat`](ui/type-TooltipStat.md) | desc struct |  | A row of a tooltip's stats, with an optional comparison. |
 | [`TooltipLink`](ui/type-TooltipLink.md) | desc struct |  | What a keyword link in a tooltip's body opens: a nested tooltip of its own. |
 | [`TooltipCardDesc`](ui/type-TooltipCardDesc.md) | desc struct |  | A rich tooltip card beside its trigger. |
@@ -447,24 +322,9 @@ module ui {
 | [`Notation`](ui/type-Notation.md) | enum |  | How a number is written. |
 | [`NumberFormatDesc`](ui/type-NumberFormatDesc.md) | desc struct |  | How og.ui.formatNumber and the counters write a number. |
 | [`og.ui.formatNumber`](ui/fn-formatNumber.md) | function | `(value: number, format?: NumberFormatDesc): string` | A number written in a notation: grouped, compact, idle letters, scientific or engineering, with a sign, prefix and suffix and the locale's separators, and past 1e308 through its exponent. |
-| [`BannerKind`](ui/type-BannerKind.md) | enum |  | What a banner announces, which sets its look and timing. |
-| [`BannerDesc`](ui/type-BannerDesc.md) | desc struct |  | A full-width announcement. |
-| [`BannerResult`](ui/type-BannerResult.md) | struct |  | Where a banner is. |
-| [`og.ui.banner`](ui/fn-banner.md) | function | `(id: string, desc?: BannerDesc): BannerResult` | A full-width announcement: a wave or round band that slams in with a squash and a shake, a title card that fades up over a rule that draws out from its centre, a victory band with a burst and confett… |
 | [`CelebrationKind`](ui/type-CelebrationKind.md) | enum |  | Which celebration plays. |
 | [`CelebrationDesc`](ui/type-CelebrationDesc.md) | desc struct |  | A celebration effect. |
 | [`og.ui.celebration`](ui/fn-celebration.md) | function | `(id: string, desc?: CelebrationDesc): void` | A celebration: confetti over the whole screen, a burst from the container it is built in, a level-up flourish centred on the screen, or fireworks. |
-| [`StarRatingDesc`](ui/type-StarRatingDesc.md) | desc struct |  | A row of stars earned. |
-| [`og.ui.starRating`](ui/fn-starRating.md) | function | `(id: string, desc?: StarRatingDesc): void` | Stars earned: empty sockets, each earned star landing in turn from large with a turn and an overshoot (emphasis spring), a burst of sparks as it lands and a pitch rising star by star; the middle star… |
-| [`SubtitleSize`](ui/type-SubtitleSize.md) | enum |  | The subtitle text size (XAG 104: the player chooses). |
-| [`SubtitleSettings`](ui/type-SubtitleSettings.md) | desc struct |  | The player's subtitle settings (XAG 104), from a settings screen. |
-| [`SubtitleLine`](ui/type-SubtitleLine.md) | desc struct |  | A line of dialogue or a sound caption showing now. |
-| [`SubtitlesDesc`](ui/type-SubtitlesDesc.md) | desc struct |  | The subtitles showing now. |
-| [`og.ui.subtitles`](ui/fn-subtitles.md) | function | `(id: string, desc?: SubtitlesDesc): void` | Subtitles and captions to the Xbox Accessibility Guidelines' 104: centred at the bottom of the safe area, at most two lines of at most about 42 characters each across 70 % of the width (the box wraps… |
-| [`ObjectiveStep`](ui/type-ObjectiveStep.md) | desc struct |  | A step of an objective. |
-| [`ObjectiveQuest`](ui/type-ObjectiveQuest.md) | desc struct |  | An objective in the tracker. |
-| [`ObjectiveTrackerDesc`](ui/type-ObjectiveTrackerDesc.md) | desc struct |  | The objective tracker. |
-| [`og.ui.objectiveTracker`](ui/fn-objectiveTracker.md) | function | `(id: string, desc?: ObjectiveTrackerDesc): void` | An objective tracker to the bar of open worlds and MMOs: each objective's title by its icon with its distance and a countdown, its steps as boxes that tick with a pop when done (dimmed after), counts… |
 | [`VectorArt`](ui/type-VectorArt.md) | handle |  | A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill. |
 | [`UiMaterial`](ui/type-UiMaterial.md) | handle |  | A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through. |
 | [`VectorArt()`](#column-VectorArt) | column kind |  | A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill. |
@@ -506,14 +366,7 @@ module ui {
 | [`SemanticsDesc`](ui/type-SemanticsDesc.md) | desc struct |  | What a component tells the accessibility tree about an element it built from containers (docs/ui.md §2): a role other than its kind's, a name, a value and states. |
 | [`og.ui.semantics`](ui/fn-semantics.md) | function | `(desc?: SemanticsDesc): boolean` | Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). |
 | [`og.ui.setDraw`](ui/fn-setDraw.md) | function | `(desc?: DrawDesc): void` | Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glow… |
-| [`WorldTarget`](ui/type-WorldTarget.md) | desc struct |  | What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point. |
-| [`AnchorScaleMode`](ui/type-AnchorScaleMode.md) | enum |  | How an anchored element's size follows its distance from the camera. |
 | [`WorldOcclusion`](ui/type-WorldOcclusion.md) | enum |  | What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU. |
-| [`Declutter`](ui/type-Declutter.md) | enum |  | How an anchored element that overlaps one of higher priority (or as high and nearer) resolves. |
-| [`EdgeClampDesc`](ui/type-EdgeClampDesc.md) | desc struct |  | Edge clamping for a waypoint or a ping: off the screen or behind the camera it stays inside the safe area, on the edge toward its point, with an arrow pointing there. |
-| [`WorldAnchorDesc`](ui/type-WorldAnchorDesc.md) | desc struct |  | An element anchored in the world (docs/ui.md §1): laid out at its own size and placed each tick on its target's point projected with the tick's camera. |
-| [`AnchorInfo`](ui/type-AnchorInfo.md) | struct |  | Where an anchored element stands: its distance and level of detail from this tick's camera, the rest as last tick placed it. |
-| [`og.ui.openWorldAnchor`](ui/fn-openWorldAnchor.md) | function | `(id: string, desc?: WorldAnchorDesc): AnchorInfo` | Open an element anchored in the world, closed by close(): its children are an ordinary subtree (labels, bars, icons, buttons) laid out at its own size, then projected, scaled, depth tested, declutter… |
 | [`MassKind`](ui/type-MassKind.md) | enum |  | What a mass element template draws. |
 | [`MassSpace`](ui/type-MassSpace.md) | enum |  | Where a mass element's position is. |
 | [`ParticleShape`](ui/type-ParticleShape.md) | enum |  | A particle's shape. |
@@ -582,7 +435,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 5009</sub>
+<sub>Module `ui` line 3212</sub>
 
 ```ogt
 column UiMaterial {
@@ -593,4 +446,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 5016</sub>
+<sub>Module `ui` line 3219</sub>

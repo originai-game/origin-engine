@@ -1,29 +1,17 @@
-// The controls (docs/ui.md §2): buttons, toggles and choices, ranges,
-// fields, pickers, the key-binding row and the on-screen keyboard, merged
-// into og.ui by the package entry. Each is declared in
-// crates/og-api/api/ui-controls.ogt; those built here are `host false`, the
-// rest are og-ui's native controls (natives.ts).
+// The controls (docs/ui.md §2): the hold button, the switch, the stepper,
+// the dropdown and the text fields, merged into og.ui by the package entry.
+// Each is declared in crates/og-api/api/ui-controls.ogt; those built here
+// are `host false`, the rest are og-ui's native controls (natives.ts).
 
-import { keyBindingRow } from "./bindings.ts";
-import { holdButton, iconButton, pushButton } from "./buttons.ts";
-import { inputArea, inputField, searchBox } from "./fields.ts";
-import { onScreenKeyboard } from "./keyboard.ts";
-import { dropdown, numberStepper, segmented, toggleSwitch, valueSlider } from "./natives.ts";
-import { rangeSlider } from "./ranges.ts";
+import { holdButton } from "./buttons.ts";
+import { inputArea, inputField } from "./fields.ts";
+import { dropdown, numberStepper, toggleSwitch } from "./natives.ts";
 
 export const controls = Object.freeze({
-  pushButton,
-  iconButton,
   holdButton,
   toggleSwitch,
-  segmented,
-  valueSlider,
-  rangeSlider,
   numberStepper,
   inputField,
   inputArea,
-  searchBox,
   dropdown,
-  keyBindingRow,
-  onScreenKeyboard,
 });

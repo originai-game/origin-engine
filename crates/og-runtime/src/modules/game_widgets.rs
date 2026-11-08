@@ -76,58 +76,6 @@ pub fn og_ui_scroll_state(path: String) -> String {
     .to_string()
 }
 
-fn range_json(r: ListRange) -> String {
-    json!({ "first": r.first, "last": r.last }).to_string()
-}
-
-pub fn og_ui_open_list(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.openList", |ui| {
-        let desc = ListDesc {
-            count: idx(&d["count"]).unwrap_or(0),
-            row_height: f(&d, "rowHeight", 0.0),
-            gap: f(&d, "gap", 0.0),
-            width: size_or(&d["width"], Size::fit()),
-            height: size(&d["height"]),
-            padding: insets(&d["padding"]),
-        };
-        ui.open_list(id.as_str(), desc)
-    });
-    range_json(r.unwrap_or_default())
-}
-
-pub fn og_ui_open_grid(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.openGrid", |ui| {
-        let desc = GridDesc {
-            count: idx(&d["count"]).unwrap_or(0),
-            cell_width: f(&d, "cellWidth", 0.0),
-            cell_height: f(&d, "cellHeight", 0.0),
-            columns: idx(&d["columns"]).unwrap_or(0),
-            gap: f(&d, "gap", 0.0),
-            width: size_or(&d["width"], Size::fit()),
-            height: size(&d["height"]),
-            padding: insets(&d["padding"]),
-        };
-        ui.open_grid(id.as_str(), desc)
-    });
-    range_json(r.unwrap_or_default())
-}
-
-pub fn og_ui_list_item(index: u32, selected: bool) -> String {
-    response(with_ui("og.ui.listItem", |ui| ui.list_item(index, selected)).unwrap_or_default())
-        .to_string()
-}
-
-pub fn og_ui_grid_item(index: u32, selected: bool) -> String {
-    response(with_ui("og.ui.gridItem", |ui| ui.grid_item(index, selected)).unwrap_or_default())
-        .to_string()
-}
-
-pub fn og_ui_close_list() -> String {
-    response(with_ui("og.ui.closeList", |ui| ui.close_list()).unwrap_or_default()).to_string()
-}
-
 pub fn og_ui_badge(id: String, text: String, t: String) {
     let tn = tone(&Value::String(t));
     with_ui("og.ui.badge", |ui| ui.badge(id.as_str(), &text, tn));
@@ -140,20 +88,6 @@ pub fn og_ui_divider(id: String, vertical: bool) {
 pub fn og_ui_spacer(id: String, s: String) {
     let v = parse(Some(&s)).unwrap_or(Value::Null);
     with_ui("og.ui.spacer", |ui| ui.spacer(id.as_str(), size(&v)));
-}
-
-pub fn og_ui_skeleton(id: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.skeleton", |ui| {
-        ui.skeleton(
-            id.as_str(),
-            SkeletonDesc {
-                width: size(&d["width"]),
-                height: f(&d, "height", 0.0),
-                lines: idx(&d["lines"]).unwrap_or(0),
-            },
-        )
-    });
 }
 
 pub fn og_ui_spinner(id: String, s: f64) {
@@ -312,24 +246,6 @@ pub fn og_ui_hud_step(scale: i32, opacity: i32) {
 
 pub fn og_ui_hud_reset(key: String) {
     with_ui("og.ui.hudReset", |ui| ui.hud_reset(&key));
-}
-
-pub fn og_ui_hud_layout_editor(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let s = |k: &str| d[k].as_str().unwrap_or_default().to_owned();
-    let desc = og_ui::HudEditorDesc {
-        title: s("title"),
-        size_label: s("sizeLabel"),
-        opacity_label: s("opacityLabel"),
-        next_label: s("nextLabel"),
-        reset_label: s("resetLabel"),
-        done_label: s("doneLabel"),
-    };
-    let r = with_ui("og.ui.hudLayoutEditor", |ui| {
-        ui.hud_layout_editor(id.as_str(), &desc)
-    })
-    .unwrap_or_default();
-    json!({ "done": r.done, "changed": r.changed }).to_string()
 }
 
 pub fn og_ui_focus(pad: u32) -> String {

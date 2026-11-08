@@ -72,16 +72,6 @@ export function byText(h: number): number {
 }
 
 /**
- * A virtual row's height that holds two lines of small text once the
- * player's text size grows (a label that wraps rather than cuts), and `h`
- * scaled with the text before that.
- */
-export function wrapRow(h: number): number {
-  const k = Math.max(1, frame().theme.textScale ?? 1);
-  return k > 1 ? Math.max(byText(h), Math.round(2 * 20 * k + 12)) : h;
-}
-
-/**
  * A pointer target's side: at least 44 CSS px under a finger (a coarse
  * pointer) whatever its visual (a dot, a crumb), `fine` under a mouse.
  */
@@ -107,22 +97,6 @@ export function rememberPath(key: string, path: string): void {
 }
 export function recallPath(key: string): string {
   return paths.get(key) ?? "";
-}
-
-/**
- * The frame's pointer from the centre of a part as it was laid out last
- * tick (by the key its path was remembered under): for a component that
- * hit-tests a round shape by angle and radius (a pie, a wheel). Null when
- * the pointer is off the surface or the part was not there.
- */
-export function pointerFrom(key: string): { dx: number; dy: number; d: number; x: number; y: number; down: boolean } | null {
-  const p = recallPath(key);
-  const b = p ? kit.bounds(p) : null;
-  const at = kit.framePointer() as Api.UiPointer;
-  if (!b || !at.inside) return null;
-  const dx = at.x - (b.x + b.width / 2);
-  const dy = at.y - (b.y + b.height / 2);
-  return { dx, dy, d: Math.hypot(dx, dy), x: at.x, y: at.y, down: at.down };
 }
 
 /** The gesture on a part last tick, by the key its path was remembered under. */
@@ -387,48 +361,6 @@ export function text(id: string, value: string, d: { step?: Api.TypeStepName; co
     ...(d.width ? { width: d.width } : {}),
     ...(d.maxLines ? { maxLines: d.maxLines } : {}),
     ...(d.fitMin ? { fitMin: d.fitMin } : {}),
-  });
-}
-
-/**
- * Text that fits a `width` × `height` box whole, its words never split (a
- * hub's name, a narrow cell): the largest of `steps` at which every word
- * fits the width and the words, packed greedily, take at most `maxLines`
- * lines within the height; the smallest step otherwise. Each word is its
- * own unwrapped label in a wrapping row (`Word#i`), so a line breaks only
- * between words. Word widths are last tick's per pixel of type size (a
- * word not yet drawn guesses 0.6 em a character).
- */
-export function wholeWords(id: string, value: string, d: { width: number; height: number; maxLines: number; steps: Api.TypeStepName[]; color?: Api.ThemeColor; heading?: boolean; align?: "start" | "center" }): void {
-  const ramp = frame().theme.typeRamp as Record<string, Api.TypeStep>;
-  const words = value.split(/\s+/).filter((w) => w.length > 0);
-  const perPx = words.map((w) => kit.memory(`~ww:${w}`, 0) || w.length * 0.6);
-  const fits = (s: Api.TypeStepName): boolean => {
-    const step = ramp[s];
-    if (!step) return false;
-    const space = step.size * 0.3;
-    let lines = 1;
-    let line = 0;
-    for (const k of perPx) {
-      const w = k * step.size;
-      if (w > d.width) return false;
-      if (line > 0 && line + space + w > d.width) {
-        lines++;
-        line = w;
-      } else line += (line > 0 ? space : 0) + w;
-    }
-    return lines <= d.maxLines && lines * step.lineHeight <= d.height + 0.5;
-  };
-  const chosen = d.steps.find(fits) ?? d.steps[d.steps.length - 1]!;
-  const size = ramp[chosen]?.size ?? 16;
-  kit.open(id, { direction: "row", wrap: true, width: px(d.width), align: d.align ?? "center", cross: "center", gap: Math.round(size * 0.3) });
-  words.forEach((w, i) => text(kit.idi("Word", i), w, { step: chosen, nowrap: true, ...(d.color ? { color: d.color } : {}), ...(d.heading ? { heading: true } : {}) }));
-  kit.close();
-  const row = kit.lastPath();
-  kit.semantics({ role: "text", name: value });
-  words.forEach((w, i) => {
-    const b = kit.bounds(`${row}/${kit.idi("Word", i)}`);
-    if (b && b.width > 0) kit.remember(`~ww:${w}`, b.width / size);
   });
 }
 

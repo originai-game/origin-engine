@@ -865,8 +865,6 @@ export interface HostAbi<A, V> {
   og_ui_rich_text(id: string, markup: string, desc: string | undefined): string;
   /** `og.ui.label` */
   og_ui_label(id: string, text: string, desc: string | undefined): void;
-  /** `og.ui.button` */
-  og_ui_button(id: string, text: string, desc: string | undefined): string;
   /** `og.ui.image` */
   og_ui_image(id: string, desc: string | undefined): void;
   /** `og.ui.zoomView` */
@@ -875,8 +873,6 @@ export interface HostAbi<A, V> {
   og_ui_text_field(id: string, value: string, desc: string | undefined): string;
   /** `og.ui.textArea` */
   og_ui_text_area(id: string, value: string, desc: string | undefined): string;
-  /** `og.ui.tooltip` */
-  og_ui_tooltip(text: string): void;
   /** `og.ui.framePointer` */
   og_ui_frame_pointer(): string;
   /** `og.ui.frameCursor` */
@@ -907,24 +903,12 @@ export interface HostAbi<A, V> {
   og_ui_bounds(path: string): string;
   /** `og.ui.scrollState` */
   og_ui_scroll_state(path: string): string;
-  /** `og.ui.openList` */
-  og_ui_open_list(id: string, desc: string | undefined): string;
-  /** `og.ui.openGrid` */
-  og_ui_open_grid(id: string, desc: string | undefined): string;
-  /** `og.ui.listItem` */
-  og_ui_list_item(index: number, selected: boolean): string;
-  /** `og.ui.gridItem` */
-  og_ui_grid_item(index: number, selected: boolean): string;
-  /** `og.ui.closeList` */
-  og_ui_close_list(): string;
   /** `og.ui.badge` */
   og_ui_badge(id: string, text: string, tone: string): void;
   /** `og.ui.divider` */
   og_ui_divider(id: string, vertical: boolean): void;
   /** `og.ui.spacer` */
   og_ui_spacer(id: string, size: string): void;
-  /** `og.ui.skeleton` */
-  og_ui_skeleton(id: string, desc: string | undefined): void;
   /** `og.ui.spinner` */
   og_ui_spinner(id: string, size: number): void;
   /** `og.ui.icon` */
@@ -959,8 +943,6 @@ export interface HostAbi<A, V> {
   og_ui_hud_step(scale: number, opacity: number): void;
   /** `og.ui.hudReset` */
   og_ui_hud_reset(key: string): void;
-  /** `og.ui.hudLayoutEditor` */
-  og_ui_hud_layout_editor(id: string, desc: string | undefined): string;
   /** `og.ui.focus` */
   og_ui_focus(pad: number): string;
   /** `og.ui.a11y` */
@@ -977,8 +959,6 @@ export interface HostAbi<A, V> {
   og_ui_remember(id: string, value: number): void;
   /** `og.ui.tick` */
   og_ui_tick(): number;
-  /** `og.ui.counter` */
-  og_ui_counter(id: string, value: number, desc: string | undefined): number;
   /** `og.ui.burst` */
   og_ui_burst(desc: string | undefined): void;
   /** `og.ui.screenTransition` */
@@ -987,12 +967,8 @@ export interface HostAbi<A, V> {
   og_ui_preview_viewport(world: number, viewport: string): void;
   /** `og.ui.toggleSwitch` */
   og_ui_toggle_switch(id: string, on: boolean, desc: string | undefined): string;
-  /** `og.ui.valueSlider` */
-  og_ui_value_slider(id: string, value: number, desc: string | undefined): string;
   /** `og.ui.numberStepper` */
   og_ui_number_stepper(id: string, value: number, desc: string | undefined): string;
-  /** `og.ui.segmented` */
-  og_ui_segmented(id: string, desc: string | undefined): string;
   /** `og.ui.dropdown` */
   og_ui_dropdown(id: string, desc: string | undefined): string;
   /** `og.ui.props` */
@@ -1035,8 +1011,6 @@ export interface HostAbi<A, V> {
   og_ui_semantics(desc: string | undefined): boolean;
   /** `og.ui.setDraw` */
   og_ui_set_draw(desc: string | undefined): void;
-  /** `og.ui.openWorldAnchor` */
-  og_ui_open_world_anchor(id: string, desc: string | undefined): string;
   /** `og.ui.defineMass` */
   og_ui_define_mass(name: string, desc: string | undefined): string;
   /** `og.ui.spawnMass` */
@@ -1712,12 +1686,10 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_close",
   "og_ui_rich_text",
   "og_ui_label",
-  "og_ui_button",
   "og_ui_image",
   "og_ui_zoom_view",
   "og_ui_text_field",
   "og_ui_text_area",
-  "og_ui_tooltip",
   "og_ui_frame_pointer",
   "og_ui_frame_cursor",
   "og_ui_frame_viewport",
@@ -1733,15 +1705,9 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_close_modal",
   "og_ui_bounds",
   "og_ui_scroll_state",
-  "og_ui_open_list",
-  "og_ui_open_grid",
-  "og_ui_list_item",
-  "og_ui_grid_item",
-  "og_ui_close_list",
   "og_ui_badge",
   "og_ui_divider",
   "og_ui_spacer",
-  "og_ui_skeleton",
   "og_ui_spinner",
   "og_ui_icon",
   "og_ui_toast",
@@ -1759,7 +1725,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_hud_select",
   "og_ui_hud_step",
   "og_ui_hud_reset",
-  "og_ui_hud_layout_editor",
   "og_ui_focus",
   "og_ui_a11y",
   "og_ui_feedback",
@@ -1768,14 +1733,11 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_memory",
   "og_ui_remember",
   "og_ui_tick",
-  "og_ui_counter",
   "og_ui_burst",
   "og_ui_screen_transition",
   "og_ui_preview_viewport",
   "og_ui_toggle_switch",
-  "og_ui_value_slider",
   "og_ui_number_stepper",
-  "og_ui_segmented",
   "og_ui_dropdown",
   "og_ui_props",
   "og_ui_define_timeline",
@@ -1797,7 +1759,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_layout_stats",
   "og_ui_semantics",
   "og_ui_set_draw",
-  "og_ui_open_world_anchor",
   "og_ui_define_mass",
   "og_ui_spawn_mass",
   "og_ui_mass_count",

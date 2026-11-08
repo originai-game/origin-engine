@@ -538,8 +538,8 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       add("text-truncated", {
         paths: [path],
         measured: `"${e.text.slice(0, 40)}" drawn as "${t.text.slice(0, 40)}"${pseudo}`,
-        prop: `${path}: og.ui.tooltip after it, or its width`,
-        fix: "give it a tooltip (og.ui.tooltip right after the control) or room for the whole text; a tooltip cannot be seen in the frame data yet, so check that one exists",
+        prop: `${path}: a title= on it, or its width`,
+        fix: "give it a tooltip (title= on the element) or room for the whole text; a tooltip cannot be seen in the frame data yet, so check that one exists",
       });
     }
   }
@@ -673,7 +673,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       paths: [paths[i]!],
       measured: `a custom ${e.role} (${e.kind || "container"}) with no visual states`,
       prop: `${paths[i]!}: states (a \`press\` group: og.ui.props({ states }))`,
-      fix: "give it hover and press states (§7.3), or build it from og.ui.button",
+      fix: "give it hover and press states (§7.3), or make it a document <button>",
     });
   }
 

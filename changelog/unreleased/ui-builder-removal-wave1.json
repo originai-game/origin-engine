@@ -26,8 +26,8 @@
     },
     {
       "member": "og.ui.keyValue",
-      "change": "The one-row key and value builder is removed (og.ui.keyValueRows stays).",
-      "fix": "Write a row of two labels in a document (the key muted, the value at the end), or use og.ui.keyValueRows.",
+      "change": "The one-row key and value builder is removed.",
+      "fix": "Write a row of two labels in a document (the key muted, the value at the end), or eject the key-values screen document.",
       "find": ["og.ui.keyValue"]
     },
     {

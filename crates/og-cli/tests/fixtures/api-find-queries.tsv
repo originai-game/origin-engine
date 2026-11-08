@@ -24,12 +24,12 @@ decal for bullet holes	og.Decal
 box geometry for a cube mesh	og.render.boxGeometry
 partical emitter	og.ParticleSystem | og.load.emitter
 make text bigger for accessibility	UiDesc | og.ui.configure
-ask are you sure you want to quit	og.ui.confirm
+hold the button down to delete a save	og.ui.holdButton
 short message popup that goes away on its own	og.ui.toast
 weapon wheel chosen with the right stick	screens §7
 on-screen virtual joystick for mobile	components §33
-subtitles and captions	og.ui.subtitles
-tooltp when hovering an item	og.ui.tooltip
+plus and minus buttons to pick how many players	og.ui.numberStepper
+on off switch for the music	og.ui.toggleSwitch
 make the hand reach for the door handle	og.IkChain
 hair and tail that jiggle when the character moves	og.SpringBone
 sprite sheet animation	og.Flipbook

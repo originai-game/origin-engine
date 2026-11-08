@@ -4,11 +4,5 @@
       "member": "ui documents",
       "summary": "HTML and CSS for the core controls: a range's list and <datalist> ticks and labels, -og-fill-origin and disabled; a checkbox caption placed in source order, flex-direction: row-reverse on its label, a <small> description, -og-control-size and disabled on switches and tabs; dialog closedby (HTML defaults: closerequest for a modal, none in place) and appearance: none; aria-invalid on select and input; select::picker(select) { max-height }; object-view-box: inset() and -og-uv on <img>; <small> as text; data-og-instant settles an element's first entrance."
     }
-  ],
-  "fixed": [
-    {
-      "member": "ui.valueSlider",
-      "summary": "A mark without a label draws its tick, as SliderMark documents."
-    }
   ]
 }

@@ -86,7 +86,7 @@
     },
     {
       "member": "og.ui.progressBar, og.ui.progressRing, og.ui.skeletonGroup, og.ui.ribbon, og.ui.ProgressBarDesc, og.ui.ProgressRingDesc, og.ui.ProgressStyle, og.ui.SkeletonGroupDesc, og.ui.SkeletonShape, og.ui.UiRibbonDesc",
-      "change": "The progress bar, progress ring, loading skeleton and corner ribbon builders are removed (og.ui.banner stays).",
+      "change": "The progress bar, progress ring, loading skeleton and corner ribbon builders are removed.",
       "fix": "Write `<progress value={$loaded}>` in a document, or eject the `progress-bar`, `progress-ring`, `skeleton-group` or `ribbon` component document.",
       "find": ["og.ui.progressBar", "og.ui.progressRing", "og.ui.skeletonGroup", "og.ui.ribbon", "ProgressBarDesc", "ProgressRingDesc", "ProgressStyle", "SkeletonGroupDesc", "SkeletonShape", "UiRibbonDesc"]
     },

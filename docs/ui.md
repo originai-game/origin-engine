@@ -736,8 +736,8 @@ control. `data-og-touch` takes the engine prefix because HTML leaves
 custom data on a standard element to `data-*`, and an og-input action is
 an engine concept.
 
-`<anchor>` holds a box over a world point. It is the native world anchor
-(`og.ui.openWorldAnchor`), its children laid out as a column:
+`<anchor>` holds a box over a world point. It is the native world anchor,
+its children laid out as a column:
 `<anchor entity={u.entity} offset="0 2.1 0" occlusion="fade"
 declutter="stack" clamp="edge">…</anchor>`. `entity` follows an entity's
 pose as the host hands it in; `at="x y z"` names a fixed point instead.

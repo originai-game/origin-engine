@@ -311,7 +311,7 @@ pub(crate) fn frame_alpha(before: f64, after: f64, tick_ms: f64, held: bool) -> 
     Some((after / tick_ms).clamp(0.0, 1.0) as f32)
 }
 
-/// How far each anchored UI element (og.ui.openWorldAnchor) moves on a
+/// How far each anchored UI element (a document's `<anchor>`) moves on a
 /// frame between ticks, CSS px: its point projected with the drawn camera
 /// at its entity's drawn place, less where the tick's camera put it at the
 /// tick, so a nameplate stays on the entity it names

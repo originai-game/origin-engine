@@ -259,7 +259,7 @@ fn a_grid_out_of_view_builds_only_its_own_rows() {
                     },
                 );
                 ui.close();
-                // As og.ui.dataGrid builds it: a frame of a fixed height, the
+                // As a data grid builds it: a frame of a fixed height, the
                 // grid growing to fill it.
                 ui.open(
                     "Frame",
