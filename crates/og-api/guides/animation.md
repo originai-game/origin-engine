@@ -161,6 +161,45 @@ the call as GSAP's immediateRender can do. A system calling `from` must
 declare read access to the target component. Captured spans survive
 snapshot/restore and repeats; a later write cannot change the destination.
 
+## 6. GSAP timelines
+
+`og.tween.timeline(world, vars)` answers a timeline whose builders chain as
+GSAP's do. Targets are entities, and each call tweens one numeric field
+(`field` and `to`, as `og.tween.to`):
+
+```ts
+const tl = og.tween.timeline(world, { defaults: { duration: 0.4, ease: "power2.out" }, onComplete: "intro.done" });
+tl.from(title, { component: og.Sprite, field: "opacity", from: [0] })
+  .to(cards, { field: "position.y", to: [0], stagger: { each: 0.06, from: "center" } }, "<0.1")
+  .addLabel("settled")
+  .call("sfx.whoosh", "settled-=0.2")
+  .to(door, { field: "position.x", keyframes: [{ to: [1] }, { to: [3], ease: "back.out" }] }, "settled");
+```
+
+- Position is GSAP's: seconds, `"<"` and `">"` (the start and end of what
+  was added last), `"+=1"` and `"-=0.5"` (from the end), a label or
+  `"label+=0.2"`, `"<50%"` (half way through the last addition) and
+  `"-=25%"` (a quarter of what is inserted). None appends.
+- `stagger` is seconds or `{ each | amount, from, grid, ease }`; `from` is
+  `start`, `center`, `end`, `edges`, `random` or an index. `random` is a
+  seeded shuffle of the world's og.Rng, so replays agree.
+- `keyframes` replace `to` with steps; repeat and yoyo apply to the whole.
+- Controls: `play`, `pause`, `resume`, `reverse`, `restart`, `seek`,
+  `progress`, `timeScale`, `time`, `duration`, `isActive`, `kill`. They move
+  the playhead; the values are written in the next `og.tween` run.
+- Callbacks are event names, not functions: `onStart`, `onUpdate`,
+  `onComplete`, `onRepeat` and `.call(name)` send og.TweenEvent, which a
+  system reads in the next tick. A seek sends none.
+- A timeline renders from its playhead: reverse writes every field back to
+  its start, and a seek reaches the values playing there would. A child
+  is written only when its time changes, so a finished tween hands its
+  field back to the game.
+- A refused builder call adds nothing and its reason is `tl.error`; the
+  call still answers `tl`. A completed timeline stays until `kill()`
+  (or `autoKill: true`), so it can be reversed or restarted.
+- `tl.add(handle)` nests an `og.tween.to`, a sequence, a parallel group
+  or another timeline; it stops running on its own.
+
 The cutscene timeline stays a multi-track asset, not a GSAP root timeline:
 camera, captions, audio, animation, events and nested tracks retain their
 ownership and seek rules. It shares the engine's easing curves, but keeps

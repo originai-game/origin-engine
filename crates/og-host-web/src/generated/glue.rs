@@ -1484,6 +1484,111 @@ pub fn og_anim_skeleton2d_boxes(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_tween_timeline_get_tween(tween_timeline: u32) -> f64 {
+    <Host as TweenApi>::og_tween_timeline_get_tween(&Host, tween_timeline)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_get_error(tween_timeline: u32) -> String {
+    <Host as TweenApi>::og_tween_timeline_get_error(&Host, tween_timeline)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_to(tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_to(&Host, tween_timeline, targets, vars, position)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_from(tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_from(&Host, tween_timeline, targets, vars, position)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_from_to(tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_from_to(&Host, tween_timeline, targets, vars, position)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_set(tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_set(&Host, tween_timeline, targets, vars, position)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_call(tween_timeline: u32, name: String, position: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_call(&Host, tween_timeline, name, position)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_add_label(tween_timeline: u32, label: String, position: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_add_label(&Host, tween_timeline, label, position)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_add(tween_timeline: u32, child: String, position: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_add(&Host, tween_timeline, child, position)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_play(tween_timeline: u32, from: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_play(&Host, tween_timeline, from)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_pause(tween_timeline: u32, at: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_pause(&Host, tween_timeline, at)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_resume(tween_timeline: u32) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_resume(&Host, tween_timeline)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_reverse(tween_timeline: u32, from: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_reverse(&Host, tween_timeline, from)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_restart(tween_timeline: u32) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_restart(&Host, tween_timeline)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_seek(tween_timeline: u32, position: String) -> u32 {
+    <Host as TweenApi>::og_tween_timeline_seek(&Host, tween_timeline, position)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_progress(tween_timeline: u32, value: Option<f64>) -> f64 {
+    <Host as TweenApi>::og_tween_timeline_progress(&Host, tween_timeline, value)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_time(tween_timeline: u32) -> f64 {
+    <Host as TweenApi>::og_tween_timeline_time(&Host, tween_timeline)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_duration(tween_timeline: u32) -> f64 {
+    <Host as TweenApi>::og_tween_timeline_duration(&Host, tween_timeline)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_time_scale(tween_timeline: u32, value: Option<f64>) -> f64 {
+    <Host as TweenApi>::og_tween_timeline_time_scale(&Host, tween_timeline, value)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_is_active(tween_timeline: u32) -> bool {
+    <Host as TweenApi>::og_tween_timeline_is_active(&Host, tween_timeline)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline_kill(tween_timeline: u32) -> bool {
+    <Host as TweenApi>::og_tween_timeline_kill(&Host, tween_timeline)
+}
+
+#[wasm_bindgen]
 pub fn og_tween_to(world: u32, desc: Option<String>) -> String {
     <Host as TweenApi>::og_tween_to(&Host, world, desc)
 }
@@ -1506,6 +1611,11 @@ pub fn og_tween_sequence(world: u32, steps: String, desc: Option<String>) -> Str
 #[wasm_bindgen]
 pub fn og_tween_parallel(world: u32, tweens: String, desc: Option<String>) -> String {
     <Host as TweenApi>::og_tween_parallel(&Host, world, tweens, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_timeline(world: u32, desc: Option<String>) -> u32 {
+    <Host as TweenApi>::og_tween_timeline(&Host, world, desc)
 }
 
 #[wasm_bindgen]

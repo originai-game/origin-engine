@@ -231,6 +231,8 @@ pub(crate) struct Handles {
     pub frame_queries: Table<(u32, QueryRec)>,
     pub world_queries: Table<(u32, QueryRec)>,
     pub streams: Table<(u32, Rng)>,
+    /// og.tween.timeline's objects (the timelines are og.tween's state).
+    pub timelines: Table<crate::feel::TimelineRef>,
     /// Spatial indexes (world.spatial), retired with the views.
     pub spatial: Table<(u32, og_ecs::SpatialHash)>,
 }

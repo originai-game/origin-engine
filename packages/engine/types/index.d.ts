@@ -19044,6 +19044,9 @@ export interface Skeleton2DBox {
 // Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
 // Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.
 // Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).
+// Timelines are GSAP's: `const tl = og.tween.timeline(world, { defaults: { duration: 0.4, ease: "back.out" }, repeat: 1, yoyo: true })`, then `tl.to(enemies, { field: "position.y", to: 2, stagger: { each: 0.05, from: "center" } }).to(door, { field: "position.x", to: 3 }, "<0.1").call("door.open").addLabel("out", "+=0.5")`. Targets are entities and one numeric field per call (`field` and `to`, as og.tween.to), not JavaScript objects; vectors take one value per lane. Position is GSAP's: seconds, `"<"` (the start of what was added last), `">"` (its end), `"+=1"` and `"-=0.5"` (from the timeline's end), a label, `"label+=0.2"`, `"<50%"` (half way through what was added last) and `"-=25%"` (a quarter of what is inserted); none appends at the end. A label a position names that does not exist is added at the end.
+// A timeline renders from its playhead, never accumulated: play, pause, reverse, seek, progress and timeScale move it, and what they change is written in the next og.tween run (this tick, from a system before it). A child is written only when its own time changes, so a finished tween leaves its field to the game. from and fromTo write their start values on the timeline's first render, before their time (GSAP's immediateRender). A timeline stays when it completes (og.TweenCompleted is sent), so it can be reversed, restarted or extended, until kill() or `autoKill`. A refused call (a dead entity, a field that is not numeric, bad position text) adds nothing and its reason is the timeline's `error`; the call still answers the timeline, so chains read as GSAP's.
+// Callbacks are names, not closures: `onStart`, `onUpdate`, `onComplete` and `onRepeat` on a tween or the timeline, and `.call(name)`, send og.TweenEvent with that name, read by a system in the tick after. A seek or progress jump sends none. Timelines are world state: snapshots and restore cover the whole timeline, its playhead, labels and captured values, and a `random` stagger shuffles from the world's og.Rng seed (a fork: the main stream does not move; a system needs og.Rng among its reads).
 
 /**
  * A running tween or group.
@@ -19311,6 +19314,446 @@ export interface TweenCompleted {
 }
 
 /**
+ * A timeline callback: a call crossed, or a tween or timeline started, updated, completed or repeated (read in the tick after).
+ *
+ * The payload of the `TweenEvent` event (token `og.TweenEvent`).
+ */
+export interface TweenEvent {
+  /** The timeline (TweenTimeline.tween). */
+  readonly tween: Tween;
+  /** The tween's target; 0 for the timeline's own callbacks and calls. */
+  readonly entity: Entity;
+  /** The name the callback was given (at most 63 bytes). */
+  readonly name: string;
+  /** How far through its cycle it is, 0 to 1. */
+  readonly progress: number;
+  /** The timeline's tag. */
+  readonly tag: number;
+}
+
+/**
+ * What a timeline's tweens take when they leave it out (GSAP's `defaults`).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TweenDefaults {
+  /**
+   * The component; null is og.Transform.
+   *
+   * @default null
+   */
+  readonly component?: AnyComponent | null;
+  /**
+   * Seconds per cycle.
+   *
+   * @default 0.3
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * The curve.
+   *
+   * @default "power1.out"
+   */
+  readonly ease?: Ease;
+}
+
+/**
+ * How a timeline plays (og.tween.timeline).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TimelineDesc {
+  /**
+   * What its tweens take when they leave it out.
+   *
+   * @default {}
+   */
+  readonly defaults?: TweenDefaults;
+  /**
+   * Extra cycles of the whole timeline: 0 once, -1 forever.
+   *
+   * @default 0
+   * @range -1..
+   */
+  readonly repeat?: number;
+  /**
+   * Every other cycle plays backwards.
+   *
+   * @default false
+   */
+  readonly yoyo?: boolean;
+  /**
+   * Seconds held between cycles.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly repeatDelay?: number;
+  /**
+   * Created paused: play() starts it. Its from() values are still written.
+   *
+   * @default false
+   */
+  readonly paused?: boolean;
+  /**
+   * Playback rate: 2 twice as fast, 0.5 half.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly timeScale?: number;
+  /**
+   * Removed when it completes, instead of staying to be reversed or restarted.
+   *
+   * @default false
+   */
+  readonly autoKill?: boolean;
+  /**
+   * Advance by real ticks, ignoring Time.scale and hit stop (UI motion).
+   *
+   * @default false
+   */
+  readonly unscaled?: boolean;
+  /**
+   * A number of yours, carried by og.TweenCompleted and og.TweenEvent.
+   *
+   * @default 0
+   */
+  readonly tag?: number;
+  /**
+   * The og.TweenEvent sent when the playhead leaves the start.
+   *
+   * @default null
+   */
+  readonly onStart?: string | null;
+  /**
+   * The og.TweenEvent sent every run the playhead moves.
+   *
+   * @default null
+   */
+  readonly onUpdate?: string | null;
+  /**
+   * The og.TweenEvent sent when it reaches its end going forward.
+   *
+   * @default null
+   */
+  readonly onComplete?: string | null;
+  /**
+   * The og.TweenEvent sent when a cycle begins again.
+   *
+   * @default null
+   */
+  readonly onRepeat?: string | null;
+}
+
+/**
+ * GSAP's stagger object: each target's start offset by its distance from `from`.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StaggerDesc {
+  /**
+   * Seconds between neighbours.
+   *
+   * @default null
+   * @unit s (seconds of simulation time)
+   */
+  readonly each?: number | null;
+  /**
+   * Seconds over all of them (wins over each).
+   *
+   * @default null
+   * @unit s (seconds of simulation time)
+   */
+  readonly amount?: number | null;
+  /**
+   * `start` (null), `center`, `end`, `edges` (both ends first), `random` (a seeded shuffle), or a target's index.
+   *
+   * @default null
+   */
+  readonly from?: string | number | null;
+  /**
+   * `[rows, columns]`: distances measured on that grid.
+   *
+   * @default null
+   */
+  readonly grid?: readonly number[] | null;
+  /**
+   * Distributes the offsets through a curve.
+   *
+   * @default "none"
+   */
+  readonly ease?: Ease;
+}
+
+/**
+ * One step of a tween's keyframes: from where the step before ended to `to`.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TweenKeyframe {
+  /**
+   * The value at the step's end.
+   *
+   * @default []
+   */
+  readonly to?: readonly number[];
+  /**
+   * Seconds; null takes the tween's.
+   *
+   * @default null
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number | null;
+  /**
+   * The curve; null takes the tween's.
+   *
+   * @default null
+   */
+  readonly ease?: Ease | null;
+  /**
+   * Seconds after the step before.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly delay?: number;
+}
+
+/**
+ * One timeline tween of one field of every target (TweenTimeline.to, from, fromTo and set): GSAP's vars, with the field named.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TimelineTweenVars {
+  /**
+   * The component; null takes the timeline's defaults, else og.Transform.
+   *
+   * @default null
+   */
+  readonly component?: AnyComponent | null;
+  /**
+   * The numeric field or lane, as in TweenDesc.
+   *
+   * @default ""
+   */
+  readonly field?: string;
+  /**
+   * The end value (to, fromTo, set); one for every lane, or one per lane.
+   *
+   * @default null
+   */
+  readonly to?: readonly number[] | null;
+  /**
+   * The start value (from, fromTo).
+   *
+   * @default null
+   */
+  readonly from?: readonly number[] | null;
+  /**
+   * `to` is added to the start value.
+   *
+   * @default false
+   */
+  readonly relative?: boolean;
+  /**
+   * Seconds per cycle; null takes the timeline's defaults.
+   *
+   * @default null
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number | null;
+  /**
+   * Seconds added to its position.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly delay?: number;
+  /**
+   * The curve; null takes the timeline's defaults.
+   *
+   * @default null
+   */
+  readonly ease?: Ease | null;
+  /**
+   * Extra cycles: 0 once, -1 forever.
+   *
+   * @default 0
+   * @range -1..
+   */
+  readonly repeat?: number;
+  /**
+   * Every other cycle plays backwards.
+   *
+   * @default false
+   */
+  readonly yoyo?: boolean;
+  /**
+   * Seconds held between cycles.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly repeatDelay?: number;
+  /**
+   * Several targets start one after another: seconds between them, or a StaggerDesc.
+   *
+   * @default null
+   */
+  readonly stagger?: number | StaggerDesc | null;
+  /**
+   * Steps played in order instead of `to` (repeat and yoyo then apply to the whole).
+   *
+   * @default null
+   */
+  readonly keyframes?: readonly TweenKeyframe[] | null;
+  /**
+   * The og.TweenEvent sent when it starts (per target).
+   *
+   * @default null
+   */
+  readonly onStart?: string | null;
+  /**
+   * The og.TweenEvent sent every run it is written.
+   *
+   * @default null
+   */
+  readonly onUpdate?: string | null;
+  /**
+   * The og.TweenEvent sent when it ends.
+   *
+   * @default null
+   */
+  readonly onComplete?: string | null;
+  /**
+   * The og.TweenEvent sent when a cycle begins again.
+   *
+   * @default null
+   */
+  readonly onRepeat?: string | null;
+}
+
+/**
+ * A GSAP timeline (og.tween.timeline): build it with to, from, fromTo, set, call, addLabel and add, each placed by a position and answering the timeline so calls chain; control it with play, pause, reverse, seek, progress, timeScale and kill.
+ */
+export interface TweenTimeline {
+  /**
+   * Its handle: og.TweenCompleted and og.TweenEvent carry it, og.tween.cancel and active take it.
+   */
+  readonly tween: Tween;
+  /** Why the last refused call added nothing; null when none was refused. */
+  readonly error: string | null;
+  /**
+   * Tween a field of every target to `vars.to` (or through `vars.keyframes`), from its value when the tween starts.
+   *
+   * @param targets An entity or several (staggered by vars.stagger).
+   * @param vars The field, the values and the timing.
+   * @param position Where: seconds or GSAP's position text; null appends.
+   */
+  to(targets: Entity | readonly Entity[], vars?: TimelineTweenVars, position?: number | string): TweenTimeline;
+  /**
+   * Tween from `vars.from` to each target's value at this call (read now: a system needs read access to the component). The start value is written on the timeline's first render.
+   *
+   * @param targets An entity or several.
+   * @param vars The field, the start value and the timing.
+   * @param position Where.
+   */
+  from(targets: Entity | readonly Entity[], vars?: TimelineTweenVars, position?: number | string): TweenTimeline;
+  /**
+   * Tween from `vars.from` to `vars.to`; both are required. The start value is written on the timeline's first render.
+   *
+   * @param targets An entity or several.
+   * @param vars The field, both values and the timing.
+   * @param position Where.
+   */
+  fromTo(targets: Entity | readonly Entity[], vars?: TimelineTweenVars, position?: number | string): TweenTimeline;
+  /**
+   * Set a field of every target to `vars.to` when the playhead reaches the position (a tween of no duration; going back before it restores the value it found).
+   *
+   * @param targets An entity or several.
+   * @param vars The field and the value.
+   * @param position Where.
+   */
+  set(targets: Entity | readonly Entity[], vars?: TimelineTweenVars, position?: number | string): TweenTimeline;
+  /**
+   * Send og.TweenEvent `name` when the playhead crosses the position, forwards or backwards (GSAP's call, named instead of a function).
+   *
+   * @param name The event's name (at most 63 bytes).
+   * @param position Where.
+   */
+  call(name: string, position?: number | string): TweenTimeline;
+  /**
+   * Name a time, for positions (`"label"`, `"label+=0.5"`) and seek.
+   *
+   * @param label The label.
+   * @param position Where; null is the end.
+   */
+  addLabel(label: string, position?: number | string): TweenTimeline;
+  /**
+   * Nest a running tween, sequence, parallel group or timeline (its `tween` handle) at the position: it stops running on its own and plays as part of this one. A string adds a label.
+   *
+   * @param child The handle to nest, or a label.
+   * @param position Where.
+   */
+  add(child: Tween | string, position?: number | string): TweenTimeline;
+  /**
+   * Play forwards, from a time or label when given.
+   *
+   * @param from Where to start.
+   */
+  play(from?: number | string): TweenTimeline;
+  /**
+   * Hold the playhead, at a time or label when given.
+   *
+   * @param at Where to hold.
+   */
+  pause(at?: number | string): TweenTimeline;
+  /** Play on in the direction it had. */
+  resume(): TweenTimeline;
+  /**
+   * Play backwards towards the start, from a time or label when given.
+   *
+   * @param from Where to start.
+   */
+  reverse(from?: number | string): TweenTimeline;
+  /** Play forwards from the start (callbacks fire again). */
+  restart(): TweenTimeline;
+  /**
+   * Jump the playhead to a time or label without sending callbacks; it keeps playing or holding.
+   *
+   * @param position Seconds or a label.
+   */
+  seek(position: number | string): TweenTimeline;
+  /**
+   * How far through its cycle the playhead is, 0 to 1; given a value, jumps there first (without callbacks).
+   *
+   * @param value The progress to jump to.
+   */
+  progress(value?: number): number;
+  /** The playhead's time within its cycle, in seconds. */
+  time(): number;
+  /** One cycle, in seconds: where its last child ends. */
+  duration(): number;
+  /**
+   * The playback rate; given a value, sets it first (2 twice as fast, 0 holds).
+   *
+   * @param value The new rate, 0 or more.
+   */
+  timeScale(value?: number): number;
+  /** Whether it is running and not paused. */
+  isActive(): boolean;
+  /** Stop and remove it where it is (no events); its fields keep their values. */
+  kill(): boolean;
+}
+
+/**
  * Squash and stretch: the entity's og.Transform.scale jumps to rest times impact and eases back to rest.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -19390,6 +19833,7 @@ export interface FlashDesc {
    */
   readonly ease?: Ease;
 }
+
 
 
 
@@ -39014,9 +39458,16 @@ export declare namespace og {
   /** A tween or group ended on its own (read in the tick after). */
   const TweenCompleted: EventType<TweenCompleted>;
   /**
+   * A timeline callback: a call crossed, or a tween or timeline started, updated, completed or repeated (read in the tick after).
+   */
+  const TweenEvent: EventType<TweenEvent>;
+  /**
    * Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
    * Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.
    * Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).
+   * Timelines are GSAP's: `const tl = og.tween.timeline(world, { defaults: { duration: 0.4, ease: "back.out" }, repeat: 1, yoyo: true })`, then `tl.to(enemies, { field: "position.y", to: 2, stagger: { each: 0.05, from: "center" } }).to(door, { field: "position.x", to: 3 }, "<0.1").call("door.open").addLabel("out", "+=0.5")`. Targets are entities and one numeric field per call (`field` and `to`, as og.tween.to), not JavaScript objects; vectors take one value per lane. Position is GSAP's: seconds, `"<"` (the start of what was added last), `">"` (its end), `"+=1"` and `"-=0.5"` (from the timeline's end), a label, `"label+=0.2"`, `"<50%"` (half way through what was added last) and `"-=25%"` (a quarter of what is inserted); none appends at the end. A label a position names that does not exist is added at the end.
+   * A timeline renders from its playhead, never accumulated: play, pause, reverse, seek, progress and timeScale move it, and what they change is written in the next og.tween run (this tick, from a system before it). A child is written only when its own time changes, so a finished tween leaves its field to the game. from and fromTo write their start values on the timeline's first render, before their time (GSAP's immediateRender). A timeline stays when it completes (og.TweenCompleted is sent), so it can be reversed, restarted or extended, until kill() or `autoKill`. A refused call (a dead entity, a field that is not numeric, bad position text) adds nothing and its reason is the timeline's `error`; the call still answers the timeline, so chains read as GSAP's.
+   * Callbacks are names, not closures: `onStart`, `onUpdate`, `onComplete` and `onRepeat` on a tween or the timeline, and `.call(name)`, send og.TweenEvent with that name, read by a system in the tick after. A seek or progress jump sends none. Timelines are world state: snapshots and restore cover the whole timeline, its playhead, labels and captured values, and a `random` stagger shuffles from the world's og.Rng seed (a fork: the main stream does not move; a system needs og.Rng among its reads).
    */
   namespace tween {
     /**
@@ -39060,6 +39511,14 @@ export declare namespace og {
      */
     function parallel(world: World, tweens: readonly TweenDesc[], desc?: TweenGroupDesc): Result<Tween>;
     /**
+     * A GSAP timeline: tweens, calls, labels and nested timelines placed on its own clock, played, paused, reversed and sought as one. It starts playing in this tick's og.tween run unless paused.
+     *
+     * @param world The world.
+     * @param desc Defaults, repeat, yoyo, paused, callbacks.
+     * @returns Refused settings are reported in its `error`; it still answers the timeline.
+     */
+    function timeline(world: World, desc?: TimelineDesc): TweenTimeline;
+    /**
      * Stop a tween where it is (no event).
      *
      * @param world The world.
@@ -39068,7 +39527,7 @@ export declare namespace og {
      */
     function cancel(world: World, tween: Tween): boolean;
     /**
-     * Stop every tween of an entity (no events), say before starting a new reaction.
+     * Stop every tween of an entity (no events), say before starting a new reaction. A timeline drops its tweens of the entity and plays on.
      *
      * @param world The world.
      * @param entity The entity.

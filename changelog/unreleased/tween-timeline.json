@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og.tween.timeline",
+      "summary": "GSAP-shaped timelines: `og.tween.timeline(world, { defaults, repeat, yoyo, repeatDelay, paused, timeScale, autoKill })` answers a TweenTimeline whose to, from, fromTo, set, call, addLabel and add chain and take GSAP's position (seconds, `<`, `>`, `+=n`, `-=n`, labels, `label+=n`, `<50%`). Tweens take `stagger` (seconds or `{ each | amount, from: start|center|end|edges|random|index, grid, ease }`), `keyframes`, `repeatDelay` and callbacks; play, pause, resume, reverse, restart, seek, progress, timeScale and kill control it. It renders from its playhead and is world state, restored whole (guide animation §6). og.tween.cancelEntity drops a timeline's tweens of the entity and lets it play on."
+    },
+    {
+      "member": "og.TweenEvent",
+      "summary": "A timeline's named callbacks (`onStart`, `onUpdate`, `onComplete`, `onRepeat`, `.call(name)`) as an event a system reads: its timeline, target entity, name, progress and tag."
+    }
+  ]
+}

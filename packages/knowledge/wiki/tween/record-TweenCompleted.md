@@ -25,4 +25,4 @@ event TweenCompleted {
 }
 ```
 
-<sub>Module `tween` line 112</sub>
+<sub>Module `tween` line 115</sub>

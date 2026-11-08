@@ -6,7 +6,7 @@ Module [`tween`](../tween.md) · [index](../index.md)
 
 ### `og.tween.cancelEntity`
 
-Stop every tween of an entity (no events), say before starting a new reaction.
+Stop every tween of an entity (no events), say before starting a new reaction. A timeline drops its tweens of the entity and plays on.
 
 ```ts
 og.tween.cancelEntity(world: World, entity: Entity): number
@@ -23,11 +23,11 @@ Binding symbol `og_tween_cancel_entity` · publish builds: kept
 
 ```ogt
 fn cancelEntity {
-  doc "Stop every tween of an entity (no events), say before starting a new reaction."
+  doc "Stop every tween of an entity (no events), say before starting a new reaction. A timeline drops its tweens of the entity and plays on."
   param world World "The world."
   param entity Entity "The entity."
   returns u32 "How many stopped."
 }
 ```
 
-<sub>Module `tween` line 209</sub>
+<sub>Module `tween` line 462</sub>

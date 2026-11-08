@@ -15,7 +15,7 @@ import { gpuTest } from "./support/gpu.ts";
 // differently.
 import { beforeAll, expect, test } from "bun:test";
 import { og, defineResource, defineSystem, f32, u32, SHAPE_BOX } from "@origingame/engine";
-import type { World } from "@origingame/engine";
+import type { Entity, World } from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { decodeCapture, pixel, type Image } from "./support/png.ts";
@@ -167,6 +167,63 @@ test("from captures before delay; fromTo and repeat keep explicit spans through 
   expect(x()).toBe(2);
   expect(og.tween.active(w, repeated)).toBe(false);
   engine.destroy();
+});
+
+// The GSAP timeline through TypeScript: builders chain and answer the
+// timeline, a refused call is its error, positions place children, a
+// stagger spreads targets, seek and reverse land on the playhead, and the
+// named callbacks reach a system. Ways it could fail: a builder answers a
+// result instead of the timeline; `"<"` read as the timeline's end; a
+// refusal that still adds a child; a random stagger that differs between
+// two worlds of one seed.
+const heard: string[] = [];
+const Hear = defineSystem("FtHear", { reads: [og.TweenEvent] }, (_q, _time, world) => {
+  for (const e of world.events(og.TweenEvent)) heard.push(e.name);
+});
+
+test("og.tween.timeline chains GSAP positions, staggers, seeks, reverses and names its callbacks", () => {
+  const offsets = () => {
+    const engine = start(og.game({ seed: 3, systems: [Hear] }));
+    const w = engine.world;
+    const es = [0, 1, 2, 3].map(() => must(w.spawn({ position: { x: 0, y: 0, z: 0 } })));
+    const pos = (e: Entity) => must(w.get(e, og.Transform)).position;
+    const tl = og.tween.timeline(w, { defaults: { duration: 0.5, ease: "none" }, onComplete: "done" });
+    const chained = tl
+      .to(es, { field: "position.x", to: [1], stagger: 0.25 })
+      .to(es[0]!, { field: "position.y", to: [2], onComplete: "lifted" }, "<")
+      .call("half", 1)
+      .to(es[0]!, { field: "nope", to: [1] });
+    expect(chained).toBe(tl);
+    expect(tl.error).toContain("no field 'nope'");
+    expect(tl.duration()).toBeCloseTo(1.25, 6);
+    engine.advance(30);
+    expect([pos(es[0]!).x, pos(es[1]!).x, pos(es[2]!).x, pos(es[0]!).y].map((v) => Math.round(v * 1e4) / 1e4)).toEqual([1, 0.5, 0, 2]);
+    tl.pause(0.25);
+    engine.advance(1);
+    expect(pos(es[0]!).x).toBeCloseTo(0.5, 5);
+    expect(pos(es[1]!).x).toBe(0);
+    tl.play();
+    engine.advance(70);
+    expect(es.map((e) => pos(e).x)).toEqual([1, 1, 1, 1]);
+    expect(tl.isActive()).toBe(false);
+    tl.reverse();
+    engine.advance(80);
+    expect(es.map((e) => pos(e).x)).toEqual([0, 0, 0, 0]);
+    // "lifted" fires each time play passes the y tween's end (again after the seek back).
+    const names = heard.splice(0);
+    expect(names).toContain("lifted");
+    expect(names.filter((n) => n !== "lifted")).toEqual(["half", "done", "half"]);
+    // A random stagger is the world's: two worlds of one seed agree.
+    const r = og.tween.timeline(w).to(es, { field: "position.z", to: [1], duration: 0.1, stagger: { each: 0.1, from: "random" } });
+    expect(r.error).toBeNull();
+    engine.advance(12);
+    const zs = es.map((e) => Math.round(pos(e).z * 1e4));
+    engine.destroy();
+    return zs;
+  };
+  const a = offsets();
+  expect(a).toEqual(offsets());
+  expect(new Set(a).size).toBeGreaterThan(1);
 });
 
 test("invalid timing functions return their text and validation rules", () => {

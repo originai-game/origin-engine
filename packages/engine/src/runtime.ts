@@ -1985,7 +1985,50 @@ export const tween = Object.freeze({
   active: (world: WorldImpl, t: number) => abi().og_tween_active(world.id, t),
   squash: (world: WorldImpl, desc?: unknown) => parse(abi().og_tween_squash(world.id, json(desc))),
   flash: (world: WorldImpl, desc?: unknown) => parse(abi().og_tween_flash(world.id, json(desc))),
+  timeline: (world: WorldImpl, desc?: unknown) => tweenTimeline(abi().og_tween_timeline(world.id, json(desc))),
 });
+
+/** A TweenTimeline: its builders answer the timeline itself, so calls chain as GSAP's. */
+function tweenTimeline(h: number): object {
+  const a = abi;
+  const at = (position: unknown) => json(position);
+  const tl: Record<string, unknown> = {};
+  const chain = (_: number) => tl;
+  Object.defineProperties(tl, {
+    tween: { enumerable: true, get: () => a().og_tween_timeline_get_tween(h) },
+    error: { enumerable: true, get: () => parse<string | null>(a().og_tween_timeline_get_error(h)) },
+  });
+  Object.assign(tl, {
+    to: (targets: unknown, vars?: unknown, position?: unknown) =>
+      chain(a().og_tween_timeline_to(h, JSON.stringify(targets), json(vars), at(position))),
+    from: (targets: unknown, vars?: unknown, position?: unknown) =>
+      chain(a().og_tween_timeline_from(h, JSON.stringify(targets), json(vars), at(position))),
+    fromTo: (targets: unknown, vars?: unknown, position?: unknown) =>
+      chain(a().og_tween_timeline_from_to(h, JSON.stringify(targets), json(vars), at(position))),
+    set: (targets: unknown, vars?: unknown, position?: unknown) =>
+      chain(a().og_tween_timeline_set(h, JSON.stringify(targets), json(vars), at(position))),
+    call: (name: string, position?: unknown) => chain(a().og_tween_timeline_call(h, name, at(position))),
+    addLabel: (label: string, position?: unknown) => chain(a().og_tween_timeline_add_label(h, label, at(position))),
+    // A timeline object nests by its handle, as GSAP's tl.add(child) does.
+    add: (child: unknown, position?: unknown) => {
+      const c = typeof child === "object" && child !== null && "tween" in child ? (child as { tween: number }).tween : child;
+      return chain(a().og_tween_timeline_add(h, JSON.stringify(c), at(position)));
+    },
+    play: (from?: unknown) => chain(a().og_tween_timeline_play(h, at(from))),
+    pause: (atTime?: unknown) => chain(a().og_tween_timeline_pause(h, at(atTime))),
+    resume: () => chain(a().og_tween_timeline_resume(h)),
+    reverse: (from?: unknown) => chain(a().og_tween_timeline_reverse(h, at(from))),
+    restart: () => chain(a().og_tween_timeline_restart(h)),
+    seek: (position: unknown) => chain(a().og_tween_timeline_seek(h, JSON.stringify(position))),
+    progress: (value?: number) => a().og_tween_timeline_progress(h, value),
+    time: () => a().og_tween_timeline_time(h),
+    duration: () => a().og_tween_timeline_duration(h),
+    timeScale: (value?: number) => a().og_tween_timeline_time_scale(h, value),
+    isActive: () => a().og_tween_timeline_is_active(h),
+    kill: () => a().og_tween_timeline_kill(h),
+  });
+  return Object.freeze(tl);
+}
 
 export const tilemap = Object.freeze({
   setTile: (world: WorldImpl, desc?: unknown) => parse(abi().og_tilemap_set_tile(world.id, json(desc))),

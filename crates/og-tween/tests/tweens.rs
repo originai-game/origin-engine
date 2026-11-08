@@ -444,3 +444,246 @@ fn a_snapshot_mid_tween_restores_running_tweens() {
         assert_eq!(body(&r, e), body(&w, e));
     }
 }
+
+fn events(w: &World) -> Vec<String> {
+    w.pending_events::<TweenEvent>()
+        .unwrap()
+        .iter()
+        .map(|e| e.name.as_str().to_string())
+        .collect()
+}
+
+/// GSAP's position grammar and stagger distribution, on values worked out
+/// by hand. Ways it could fail: `<` and `>` read the timeline's end instead
+/// of the last insertion; a percentage after `<` taken of the inserted
+/// child instead of the recent one (or the reverse for `-=`); a missing
+/// label not added at the end; center, edges and grid distances measured
+/// from the wrong origin; amount spread per gap instead of overall.
+#[test]
+fn timeline_positions_and_staggers_follow_gsap() {
+    let t = Target {
+        entity: 0,
+        component: 0,
+        offset: 0,
+        lane: Lane::F32,
+        lanes: 1,
+    };
+    let tween = |at: f64, d: f32| Child::new(at, Item::Tween(Leaf::new(t, vec![1.0]).duration(d)));
+    let mut tl = Timeline::default();
+    tl.insert(vec![tween(0.0, 1.0)]);
+    assert_eq!(tl.resolve(None, 0.5), Ok(1.0));
+    tl.insert(vec![tween(1.0, 0.5)]);
+    let mut at = |p: &str, inserting: f64| {
+        tl.resolve(Some(&Position::Text(p.into())), inserting)
+            .unwrap()
+    };
+    assert_eq!(at("<", 9.0), 1.0);
+    assert_eq!(at(">", 9.0), 1.5);
+    assert_eq!(at("<50%", 9.0), 1.25);
+    assert_eq!(at(">-0.5", 9.0), 1.0);
+    assert_eq!(at("-=25%", 2.0), 1.0);
+    assert_eq!(at("+=1", 9.0), 2.5);
+    assert_eq!(at("intro", 9.0), 1.5);
+    assert_eq!(at("intro+=0.2", 9.0), 1.7);
+    assert_eq!(at("<+=50%", 2.0), 2.0);
+    assert!(
+        tl.resolve(Some(&Position::Text("+=x".into())), 0.0)
+            .is_err()
+    );
+    let near = |a: Vec<f64>, b: &[f64]| {
+        a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-6) && a.len() == b.len()
+    };
+    let mut ordered = |n: usize| (0..n).collect::<Vec<_>>();
+    let s = |from| Stagger {
+        from,
+        ..Stagger::each(0.1)
+    };
+    assert!(near(
+        s(StaggerFrom::Center).offsets(5, &mut ordered),
+        &[0.2, 0.1, 0.0, 0.1, 0.2]
+    ));
+    assert!(near(
+        s(StaggerFrom::Edges).offsets(5, &mut ordered),
+        &[0.0, 0.1, 0.2, 0.1, 0.0]
+    ));
+    assert!(near(
+        s(StaggerFrom::End).offsets(3, &mut ordered),
+        &[0.2, 0.1, 0.0]
+    ));
+    let amount = Stagger {
+        amount: Some(1.0),
+        ..Stagger::each(0.1)
+    };
+    assert!(near(
+        amount.offsets(5, &mut ordered),
+        &[0.0, 0.25, 0.5, 0.75, 1.0]
+    ));
+    let grid = Stagger {
+        grid: Some([2, 3]),
+        from: StaggerFrom::Index(0),
+        ..Stagger::each(1.0)
+    };
+    let r2 = 2f64.sqrt();
+    let r5 = 5f64.sqrt();
+    assert!(near(
+        grid.offsets(6, &mut ordered),
+        &[0.0, 1.0, 2.0, 1.0, r2, r5]
+    ));
+    let mut shuffled = |_: usize| vec![2, 0, 1];
+    assert!(near(
+        s(StaggerFrom::Random).offsets(3, &mut shuffled),
+        &[0.1, 0.2, 0.0]
+    ));
+}
+
+/// A timeline renders from its playhead: from() values before their time,
+/// eased values on the way, every write undone in reverse, the same values
+/// after a seek as after playing there, repeat with yoyo, named callbacks,
+/// and a snapshot that resumes identically. Ways it could fail: values
+/// accumulated per tick (a seek or reverse lands elsewhere); a finished
+/// tween rewritten every tick; a call fired twice or not on the way back;
+/// a yoyo cycle that does not turn; a restore that loses the playhead or
+/// the captured starts.
+#[test]
+fn timelines_render_from_their_playhead_and_restore_whole() {
+    let build = |w: &World, t: &TweenSystem, e: Entity| {
+        let mut tl = Timeline::default();
+        let mut fade = Child::new(
+            0.0,
+            Item::Tween(
+                Leaf::new(target(w, e, "opacity"), vec![0.0])
+                    .duration(0.5)
+                    .ease(Ease::Linear),
+            ),
+        );
+        fade.on.complete = Some("faded".into());
+        let slide = Child::new(
+            0.25,
+            Item::Tween(
+                Leaf::new(target(w, e, "position.x"), vec![5.0])
+                    .duration(0.5)
+                    .ease(Ease::Linear),
+            ),
+        );
+        let mut drop = Child::new(
+            0.75,
+            Item::Tween(
+                Leaf::new(target(w, e, "position.z"), vec![3.0])
+                    .from(vec![9.0])
+                    .duration(0.25)
+                    .ease(Ease::Linear),
+            ),
+        );
+        drop.immediate = true;
+        tl.insert(vec![
+            fade,
+            slide,
+            drop,
+            Child::new(0.5, Item::Call("mid".into())),
+        ]);
+        t.start(Node::Timeline(Box::new(tl)), false, 7).unwrap()
+    };
+    let (mut w, t, e) = setup();
+    let h = build(&w, &t, e);
+    steps(&mut w, 1);
+    let b = body(&w, e);
+    let dt = 1.0f32 / 60.0;
+    assert!((b.opacity - (1.0 - dt / 0.5)).abs() < 1e-5, "{b:?}");
+    assert_eq!(
+        (b.position.x, b.position.z),
+        (1.0, 9.0),
+        "from() writes before its time"
+    );
+    let mut names = Vec::new();
+    for _ in 0..59 {
+        steps(&mut w, 1);
+        names.extend(events(&w));
+    }
+    let b = body(&w, e);
+    assert!(
+        b.opacity.abs() < 1e-5
+            && (b.position.x - 5.0).abs() < 1e-4
+            && (b.position.z - 3.0).abs() < 1e-4,
+        "{b:?}"
+    );
+    assert_eq!(names, ["faded", "mid"]);
+    assert_eq!(
+        completed(&w)
+            .iter()
+            .map(|c| (c.tween, c.tag))
+            .collect::<Vec<_>>(),
+        [(h, 7)]
+    );
+    // A finished timeline leaves its fields to the game.
+    w.insert(e, Body { opacity: 0.5, ..b }).unwrap();
+    steps(&mut w, 2);
+    assert_eq!(body(&w, e).opacity, 0.5);
+    // Seek mid-way in a second world: the same bits as playing there.
+    let (mut w2, t2, e2) = setup();
+    let h2 = build(&w2, &t2, e2);
+    let (mut w3, t3, e3) = setup();
+    build(&w3, &t3, e3);
+    steps(&mut w3, 37);
+    let total = t3.with_timeline(h2, |tl| tl.total_time()).unwrap();
+    t2.with_timeline(h2, |tl| {
+        tl.paused = true;
+        tl.seek_total(total);
+    });
+    steps(&mut w2, 1);
+    assert_eq!(body(&w2, e2), body(&w3, e3));
+    // Reverse: back through the call, every field to its start.
+    t.with_timeline(h, |tl| tl.reversed = true);
+    let mut names = Vec::new();
+    for _ in 0..70 {
+        steps(&mut w, 1);
+        names.extend(events(&w));
+    }
+    let b = body(&w, e);
+    assert_eq!(
+        (b.opacity, b.position.x, b.position.z),
+        (1.0, 1.0, 9.0),
+        "{b:?}"
+    );
+    assert_eq!(names, ["mid"]);
+    // Repeat once with yoyo: at 0.75 s the second cycle is half way back.
+    let (mut w, t, e) = setup();
+    let mut tl = Timeline::default();
+    tl.repeat = 1;
+    tl.yoyo = true;
+    tl.on.repeat = Some("again".into());
+    tl.insert(vec![Child::new(
+        0.0,
+        Item::Tween(
+            Leaf::new(target(&w, e, "opacity"), vec![0.0])
+                .duration(0.5)
+                .ease(Ease::Linear),
+        ),
+    )]);
+    let h = t.start(Node::Timeline(Box::new(tl)), false, 0).unwrap();
+    let mut names = Vec::new();
+    for _ in 0..45 {
+        steps(&mut w, 1);
+        names.extend(events(&w));
+    }
+    assert!(
+        (body(&w, e).opacity - 0.5).abs() < 1e-4,
+        "{:?}",
+        body(&w, e)
+    );
+    assert_eq!(names, ["again"]);
+    // A snapshot here resumes identically in a fresh world.
+    let snap = w.snapshot();
+    let (mut r, rt, _) = setup();
+    r.restore(&snap).unwrap();
+    assert_eq!(
+        rt.with_timeline(h, |tl| tl.total_time()),
+        t.with_timeline(h, |tl| tl.total_time())
+    );
+    for _ in 0..30 {
+        steps(&mut w, 1);
+        steps(&mut r, 1);
+        assert_eq!(r.world_hash(), w.world_hash());
+    }
+    assert_eq!(body(&w, e).opacity, 1.0);
+    assert!(!t.with_timeline(h, |tl| tl.is_active()).unwrap());
+}

@@ -5,7 +5,7 @@ use super::*;
 // ── tweens ─────────────────────────────────────────────────────────────────
 
 /// A token or schema name of a component.
-fn token_name(v: &Value) -> Option<String> {
+pub(super) fn token_name(v: &Value) -> Option<String> {
     match v {
         Value::String(s) => Some(s.clone()),
         Value::Object(o) => o.get("name").and_then(|n| n.as_str()).map(str::to_string),
@@ -14,7 +14,7 @@ fn token_name(v: &Value) -> Option<String> {
 }
 
 /// The schema id index and schema of a component, by name.
-fn component_schema(eng: &Engine, name: &str) -> Result<(u32, og_core::Schema), String> {
+pub(super) fn component_schema(eng: &Engine, name: &str) -> Result<(u32, og_core::Schema), String> {
     let st = eng.state.borrow();
     let layout = st
         .layouts
@@ -29,7 +29,7 @@ fn component_schema(eng: &Engine, name: &str) -> Result<(u32, og_core::Schema), 
     Ok((index as u32, layout.schema()))
 }
 
-fn entity_of(v: &Value) -> Result<u64, String> {
+pub(super) fn entity_of(v: &Value) -> Result<u64, String> {
     let e = v.as_f64().ok_or("desc.entity is the entity to tween")?;
     if e <= 0.0 || e.fract() != 0.0 {
         return Err(format!("{e} is not an entity"));
@@ -39,7 +39,7 @@ fn entity_of(v: &Value) -> Result<u64, String> {
 
 /// Whether `e` is alive and has component `index` (inside a system too:
 /// archetype membership needs no declaration).
-fn has(eng: &Engine, e: u64, index: u32) -> Result<bool, String> {
+pub(super) fn has(eng: &Engine, e: u64, index: u32) -> Result<bool, String> {
     let id = SchemaId::from_index(index);
     let ent = Entity::from_bits(e);
     let types = with_world(
@@ -62,7 +62,7 @@ fn has(eng: &Engine, e: u64, index: u32) -> Result<bool, String> {
     Ok(types.contains(&id))
 }
 
-fn ease_of(v: &Value, default: Ease) -> Result<Ease, String> {
+pub(super) fn ease_of(v: &Value, default: Ease) -> Result<Ease, String> {
     match v.as_str() {
         None => Ok(default),
         Some(n) => Ease::from_text(n).ok_or_else(|| {
@@ -74,7 +74,7 @@ fn ease_of(v: &Value, default: Ease) -> Result<Ease, String> {
     }
 }
 
-fn floats(v: &Value, what: &str) -> Result<Vec<f32>, String> {
+pub(super) fn floats(v: &Value, what: &str) -> Result<Vec<f32>, String> {
     match v {
         Value::Number(n) => Ok(vec![n.as_f64().unwrap_or(0.0) as f32]),
         Value::Array(a) => a
@@ -245,6 +245,8 @@ fn hold_first_tick(node: Node, tick: f32) -> Node {
             }
             Node::Group(g)
         }
+        // Presets are leaves and groups.
+        timeline @ Node::Timeline(_) => timeline,
     }
 }
 

@@ -149,7 +149,13 @@ pub use feel::{
     og_tilemap_set_tile, og_time_group_dt, og_time_hit_stop, og_time_set_group_scale,
     og_time_set_scale, og_tween_active, og_tween_cancel, og_tween_cancel_entity, og_tween_flash,
     og_tween_from, og_tween_from_to, og_tween_parallel, og_tween_sequence, og_tween_squash,
-    og_tween_to,
+    og_tween_timeline, og_tween_timeline_add, og_tween_timeline_add_label, og_tween_timeline_call,
+    og_tween_timeline_duration, og_tween_timeline_from, og_tween_timeline_from_to,
+    og_tween_timeline_get_error, og_tween_timeline_get_tween, og_tween_timeline_is_active,
+    og_tween_timeline_kill, og_tween_timeline_pause, og_tween_timeline_play,
+    og_tween_timeline_progress, og_tween_timeline_restart, og_tween_timeline_resume,
+    og_tween_timeline_reverse, og_tween_timeline_seek, og_tween_timeline_set,
+    og_tween_timeline_time, og_tween_timeline_time_scale, og_tween_timeline_to, og_tween_to,
 };
 pub use geometry::{
     og_debug_arrow, og_debug_axes, og_debug_box, og_debug_clear, og_debug_enabled, og_debug_line,

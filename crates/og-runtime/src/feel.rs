@@ -34,6 +34,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 mod draw;
 mod tiles;
+mod timelines;
 mod tweens;
 pub(crate) mod vcam;
 
@@ -42,6 +43,8 @@ use draw::facing_byte;
 pub(crate) use draw::*;
 pub use tiles::*;
 use tiles::{TileBlock, tilemap_system};
+pub(crate) use timelines::TimelineRef;
+pub use timelines::*;
 pub use tweens::*;
 
 pub(crate) const TILEMAP_SYSTEM: &str = "og.tilemap";
@@ -49,7 +52,8 @@ pub(crate) const CAMERA_SYSTEM: &str = "og.camera";
 pub(crate) const SPRITE_SYSTEM: &str = "og.sprite";
 
 /// Records og-anim and og-tween register themselves (strings, or adopted).
-pub(crate) const REGISTERED_BY_FEEL: &[&str] = &["og.FlipbookEvent", "og.Skeleton2DEvent"];
+pub(crate) const REGISTERED_BY_FEEL: &[&str] =
+    &["og.FlipbookEvent", "og.Skeleton2DEvent", "og.TweenEvent"];
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())

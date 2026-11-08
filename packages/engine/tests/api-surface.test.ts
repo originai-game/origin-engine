@@ -84,6 +84,7 @@ function owners(): Record<string, object> {
     Game: game,
     Rng: rng,
     RngStream: rng.fork("surface"),
+    TweenTimeline: og.tween.timeline(world),
     Input: must(world.resource(og.Input)),
     Pointers: must(world.resource(og.Pointers)),
     Gamepad: must(world.resource(og.Gamepad)),

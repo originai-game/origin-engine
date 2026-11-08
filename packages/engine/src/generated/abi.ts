@@ -597,6 +597,48 @@ export interface HostAbi<A, V> {
   og_anim_rig2d_info(world: number, rig: number): string;
   /** `og.anim.skeleton2dBoxes` */
   og_anim_skeleton2d_boxes(world: number, entity: number): string;
+  /** `TweenTimeline.tween` */
+  og_tween_timeline_get_tween(tween_timeline: number): number;
+  /** `TweenTimeline.error` */
+  og_tween_timeline_get_error(tween_timeline: number): string;
+  /** `TweenTimeline.to` */
+  og_tween_timeline_to(tween_timeline: number, targets: string, vars: string | undefined, position: string | undefined): number;
+  /** `TweenTimeline.from` */
+  og_tween_timeline_from(tween_timeline: number, targets: string, vars: string | undefined, position: string | undefined): number;
+  /** `TweenTimeline.fromTo` */
+  og_tween_timeline_from_to(tween_timeline: number, targets: string, vars: string | undefined, position: string | undefined): number;
+  /** `TweenTimeline.set` */
+  og_tween_timeline_set(tween_timeline: number, targets: string, vars: string | undefined, position: string | undefined): number;
+  /** `TweenTimeline.call` */
+  og_tween_timeline_call(tween_timeline: number, name: string, position: string | undefined): number;
+  /** `TweenTimeline.addLabel` */
+  og_tween_timeline_add_label(tween_timeline: number, label: string, position: string | undefined): number;
+  /** `TweenTimeline.add` */
+  og_tween_timeline_add(tween_timeline: number, child: string, position: string | undefined): number;
+  /** `TweenTimeline.play` */
+  og_tween_timeline_play(tween_timeline: number, from: string | undefined): number;
+  /** `TweenTimeline.pause` */
+  og_tween_timeline_pause(tween_timeline: number, at: string | undefined): number;
+  /** `TweenTimeline.resume` */
+  og_tween_timeline_resume(tween_timeline: number): number;
+  /** `TweenTimeline.reverse` */
+  og_tween_timeline_reverse(tween_timeline: number, from: string | undefined): number;
+  /** `TweenTimeline.restart` */
+  og_tween_timeline_restart(tween_timeline: number): number;
+  /** `TweenTimeline.seek` */
+  og_tween_timeline_seek(tween_timeline: number, position: string): number;
+  /** `TweenTimeline.progress` */
+  og_tween_timeline_progress(tween_timeline: number, value: number | undefined): number;
+  /** `TweenTimeline.time` */
+  og_tween_timeline_time(tween_timeline: number): number;
+  /** `TweenTimeline.duration` */
+  og_tween_timeline_duration(tween_timeline: number): number;
+  /** `TweenTimeline.timeScale` */
+  og_tween_timeline_time_scale(tween_timeline: number, value: number | undefined): number;
+  /** `TweenTimeline.isActive` */
+  og_tween_timeline_is_active(tween_timeline: number): boolean;
+  /** `TweenTimeline.kill` */
+  og_tween_timeline_kill(tween_timeline: number): boolean;
   /** `og.tween.to` */
   og_tween_to(world: number, desc: string | undefined): string;
   /** `og.tween.from` */
@@ -607,6 +649,8 @@ export interface HostAbi<A, V> {
   og_tween_sequence(world: number, steps: string, desc: string | undefined): string;
   /** `og.tween.parallel` */
   og_tween_parallel(world: number, tweens: string, desc: string | undefined): string;
+  /** `og.tween.timeline` */
+  og_tween_timeline(world: number, desc: string | undefined): number;
   /** `og.tween.cancel` */
   og_tween_cancel(world: number, tween: number): boolean;
   /** `og.tween.cancelEntity` */
@@ -1552,11 +1596,33 @@ export const SYMBOLS: readonly string[] = [
   "og_anim_mirror",
   "og_anim_rig2d_info",
   "og_anim_skeleton2d_boxes",
+  "og_tween_timeline_get_tween",
+  "og_tween_timeline_get_error",
+  "og_tween_timeline_to",
+  "og_tween_timeline_from",
+  "og_tween_timeline_from_to",
+  "og_tween_timeline_set",
+  "og_tween_timeline_call",
+  "og_tween_timeline_add_label",
+  "og_tween_timeline_add",
+  "og_tween_timeline_play",
+  "og_tween_timeline_pause",
+  "og_tween_timeline_resume",
+  "og_tween_timeline_reverse",
+  "og_tween_timeline_restart",
+  "og_tween_timeline_seek",
+  "og_tween_timeline_progress",
+  "og_tween_timeline_time",
+  "og_tween_timeline_duration",
+  "og_tween_timeline_time_scale",
+  "og_tween_timeline_is_active",
+  "og_tween_timeline_kill",
   "og_tween_to",
   "og_tween_from",
   "og_tween_from_to",
   "og_tween_sequence",
   "og_tween_parallel",
+  "og_tween_timeline",
   "og_tween_cancel",
   "og_tween_cancel_entity",
   "og_tween_active",

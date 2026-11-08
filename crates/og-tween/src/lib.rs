@@ -17,13 +17,15 @@
 mod codec;
 pub mod presets;
 mod spring;
+mod timeline;
 
 pub use og_core::ease::{EASE_NAMES, EASES, Ease, StepPosition};
 pub use spring::{Spring, SpringState};
+pub use timeline::{Callbacks, Child, Item, Position, Stagger, StaggerFrom, Timeline};
 
 use og_core::IdMap;
 use og_core::reflect::FieldType;
-use og_core::{Error, ErrorKind, Reflect, Result, Schema};
+use og_core::{Error, ErrorKind, Reflect, Result, Schema, Str64};
 use og_ecs::{Entity, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use std::any::Any;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -42,6 +44,24 @@ pub struct TweenCompleted {
     /// The entity of its (first) target.
     pub entity: u64,
     /// The tag it was started with.
+    pub tag: u32,
+}
+
+/// A timeline's callback (`onStart`, `onUpdate`, `onComplete`,
+/// `onRepeat`, `.call`), by the name it was given: a system reads them as
+/// any event, in the tick after.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.TweenEvent")]
+pub struct TweenEvent {
+    /// The timeline's handle.
+    pub tween: u64,
+    /// The tween's target entity (0 for the timeline's own and a call's).
+    pub entity: u64,
+    /// The name the callback was given.
+    pub name: Str64,
+    /// How far through it is (its cycle), 0 to 1.
+    pub progress: f32,
+    /// The timeline's tag.
     pub tag: u32,
 }
 
@@ -201,6 +221,8 @@ pub struct Leaf {
     pub loops: i32,
     /// Odd cycles play backwards.
     pub yoyo: bool,
+    /// Seconds held between cycles (GSAP's `repeatDelay`).
+    pub repeat_delay: f32,
     // Running state (in the state block).
     pub(crate) elapsed: f64,
     pub(crate) started: bool,
@@ -256,6 +278,7 @@ impl Leaf {
             ease: Ease::QuadOut,
             loops: 0,
             yoyo: false,
+            repeat_delay: 0.0,
             elapsed: 0.0,
             started: false,
             start: Vec::new(),
@@ -288,12 +311,20 @@ impl Leaf {
         self
     }
 
+    /// Seconds held between cycles.
+    pub fn repeat_delay(mut self, s: f32) -> Leaf {
+        self.repeat_delay = s;
+        self
+    }
+
     /// Seconds from start to end, delay included; infinite for `loops -1`.
     pub fn length(&self) -> f32 {
         if self.loops < 0 {
             return f32::INFINITY;
         }
-        self.delay + self.duration * (self.loops as f32 + 1.0)
+        self.delay
+            + self.duration * (self.loops as f32 + 1.0)
+            + self.repeat_delay * self.loops as f32
     }
 
     /// Whether `elapsed` reached the end (within a microsecond, so a tween
@@ -307,7 +338,9 @@ impl Leaf {
         self.started && self.at_end()
     }
 
-    fn check(&self) -> Result<()> {
+    /// Refuses an invalid ease, values of the wrong length or non-finite
+    /// times.
+    pub fn check(&self) -> Result<()> {
         if !self.ease.is_valid() {
             return Err(invalid("ease needs finite bezier controls with x in 0..=1, or positive steps (jump-none needs at least 2)".into()));
         }
@@ -320,9 +353,10 @@ impl Leaf {
         }
         if !(self.duration.is_finite() && self.duration >= 0.0)
             || !(self.delay.is_finite() && self.delay >= 0.0)
+            || !(self.repeat_delay.is_finite() && self.repeat_delay >= 0.0)
         {
             return Err(invalid(
-                "duration and delay are finite seconds, 0 or more".into(),
+                "duration, delay and repeatDelay are finite seconds, 0 or more".into(),
             ));
         }
         if self.loops < -1 {
@@ -357,6 +391,11 @@ impl Leaf {
                 },
                 1.0,
             )
+        } else if self.repeat_delay > 0.0 {
+            // Each cycle is its duration, then the hold at its end.
+            let cycle = d + self.repeat_delay;
+            let k = (t / cycle).floor();
+            (k, ((t - k * cycle) / d).min(1.0))
         } else {
             let k = (t / d).floor();
             (k, (t - k * d) / d)
@@ -401,6 +440,8 @@ pub enum GroupKind {
 pub enum Node {
     Leaf(Leaf),
     Group(Group),
+    /// A GSAP-shaped timeline (`og.tween.timeline`).
+    Timeline(Box<Timeline>),
 }
 
 /// Tweens run one after another or together, the whole repeated `loops` times.
@@ -431,6 +472,7 @@ impl Node {
         match self {
             Node::Leaf(l) => l.target.entity,
             Node::Group(g) => g.children.first().map_or(0, |c| c.target.entity),
+            Node::Timeline(t) => t.entity(),
         }
     }
 
@@ -438,6 +480,15 @@ impl Node {
         match self {
             Node::Leaf(l) => vec![l],
             Node::Group(g) => g.children.iter().collect(),
+            Node::Timeline(t) => t.leaves(),
+        }
+    }
+
+    fn leaves_mut(&mut self) -> Vec<&mut Leaf> {
+        match self {
+            Node::Leaf(l) => vec![l],
+            Node::Group(g) => g.children.iter_mut().collect(),
+            Node::Timeline(t) => t.leaves_mut(),
         }
     }
 }
@@ -473,10 +524,12 @@ fn lock(m: &Mutex<State>) -> MutexGuard<'_, State> {
 /// possible targets), with its state block.
 pub fn install(world: &mut World, components: &[String]) -> Result<TweenSystem> {
     world.register::<TweenCompleted>()?;
+    world.register::<TweenEvent>()?;
     let shared = Arc::new(Mutex::new(State::default()));
     let mut desc = SystemDesc::new(SYSTEM_NAME);
     desc.writes = components.to_vec();
     desc.writes.push(TweenCompleted::NAME.to_string());
+    desc.writes.push(TweenEvent::NAME.to_string());
     let s = shared.clone();
     world.add_system(desc, move |ctx| run(ctx, &s))?;
     world.add_state_block(SYSTEM_NAME, Box::new(TweenState(shared.clone())))?;
@@ -520,12 +573,40 @@ impl TweenSystem {
     }
 
     /// Stops every tween with a target on `entity` (no events); how many.
+    /// A timeline loses its tweens of the entity and plays on.
     pub fn cancel_entity(&self, entity: u64) -> u32 {
         let mut st = lock(&self.shared);
+        let mut n = 0;
+        for r in st.running.values_mut() {
+            if let Node::Timeline(t) = &mut r.node {
+                n += t.drop_entity(entity);
+            }
+        }
         let before = st.running.len();
-        st.running
-            .retain(|_, r| !r.node.leaves().iter().any(|l| l.target.entity == entity));
-        (before - st.running.len()) as u32
+        st.running.retain(|_, r| {
+            matches!(r.node, Node::Timeline(_))
+                || !r.node.leaves().iter().any(|l| l.target.entity == entity)
+        });
+        n + (before - st.running.len()) as u32
+    }
+
+    /// Runs `f` on running timeline `handle`; `None` when it is not one.
+    /// What `f` changes is rendered in the next run of `og.tween`.
+    pub fn with_timeline<R>(&self, handle: u64, f: impl FnOnce(&mut Timeline) -> R) -> Option<R> {
+        match lock(&self.shared)
+            .running
+            .get_mut(&handle)
+            .map(|r| &mut r.node)
+        {
+            Some(Node::Timeline(t)) => Some(f(t)),
+            _ => None,
+        }
+    }
+
+    /// Takes a running tween, group or timeline out to nest it in a
+    /// timeline (`.add`): it stops running on its own, without an event.
+    pub fn take(&self, handle: u64) -> Option<Node> {
+        lock(&self.shared).running.remove(&handle).map(|r| r.node)
     }
 
     pub fn is_active(&self, handle: u64) -> bool {
@@ -536,6 +617,50 @@ impl TweenSystem {
     pub fn count(&self) -> usize {
         lock(&self.shared).running.len()
     }
+}
+
+/// Captures a leaf's start and end from its target's current value (its
+/// first write); `false` when the target is gone.
+fn begin_leaf(ctx: &SystemContext<'_>, leaf: &mut Leaf) -> bool {
+    let Some(bytes) = target_bytes(ctx, leaf) else {
+        return false;
+    };
+    let Some(current) = leaf.target.read(&bytes) else {
+        return false;
+    };
+    leaf.start = match &leaf.from {
+        Some(f) => leaf.widen(f),
+        None => current,
+    };
+    let to = leaf.widen(&leaf.to);
+    leaf.end = if leaf.relative {
+        leaf.start.iter().zip(&to).map(|(a, b)| a + b).collect()
+    } else {
+        to
+    };
+    leaf.started = true;
+    true
+}
+
+fn target_bytes(ctx: &SystemContext<'_>, leaf: &Leaf) -> Option<Vec<u8>> {
+    let e = Entity::from_bits(leaf.target.entity);
+    let id = SchemaId::from_index(leaf.target.component);
+    if ctx.is_alive(e) {
+        ctx.get_bytes(e, id).ok()
+    } else {
+        None
+    }
+}
+
+/// Writes `value` into a leaf's target; `false` when it is gone.
+fn write_leaf(ctx: &SystemContext<'_>, leaf: &Leaf, value: &[f32]) -> Result<bool> {
+    let Some(mut bytes) = target_bytes(ctx, leaf) else {
+        return Ok(false);
+    };
+    leaf.target.write(&mut bytes, value);
+    let e = Entity::from_bits(leaf.target.entity);
+    ctx.set_bytes(e, SchemaId::from_index(leaf.target.component), &bytes)?;
+    Ok(true)
 }
 
 /// Advances a leaf by `dt` and writes its value; `Ok(true)` when it has
@@ -549,42 +674,56 @@ fn step_leaf(ctx: &SystemContext<'_>, leaf: &mut Leaf, dt: f32, alive: &mut bool
     if waiting && leaf.from.is_none() {
         return Ok(false);
     }
-    let e = Entity::from_bits(leaf.target.entity);
-    let id = SchemaId::from_index(leaf.target.component);
-    let bytes = if ctx.is_alive(e) {
-        ctx.get_bytes(e, id).ok()
-    } else {
-        None
-    };
-    let Some(mut bytes) = bytes else {
+    if !leaf.started && !begin_leaf(ctx, leaf) {
         *alive = false;
         return Ok(false);
-    };
-    if !leaf.started {
-        let Some(current) = leaf.target.read(&bytes) else {
-            *alive = false;
-            return Ok(false);
-        };
-        leaf.start = match &leaf.from {
-            Some(f) => leaf.widen(f),
-            None => current,
-        };
-        let to = leaf.widen(&leaf.to);
-        leaf.end = if leaf.relative {
-            leaf.start.iter().zip(&to).map(|(a, b)| a + b).collect()
-        } else {
-            to
-        };
-        leaf.started = true;
     }
     let value = if waiting {
         leaf.start.clone()
     } else {
         leaf.value()
     };
-    leaf.target.write(&mut bytes, &value);
-    ctx.set_bytes(e, id, &bytes)?;
+    if !write_leaf(ctx, leaf, &value)? {
+        *alive = false;
+        return Ok(false);
+    }
     Ok(!waiting && leaf.at_end())
+}
+
+/// A timeline's reads, writes and callbacks in one run of `og.tween`.
+struct WorldIo<'a, 'b> {
+    ctx: &'a SystemContext<'b>,
+    tween: u64,
+    tag: u32,
+    events: &'a mut Vec<TweenEvent>,
+    error: Option<Error>,
+}
+
+impl timeline::Io for WorldIo<'_, '_> {
+    fn begin(&mut self, leaf: &mut Leaf) -> bool {
+        begin_leaf(self.ctx, leaf)
+    }
+
+    fn write(&mut self, leaf: &Leaf, value: &[f32]) {
+        if let Err(e) = write_leaf(self.ctx, leaf, value) {
+            self.error.get_or_insert(e);
+        }
+    }
+
+    fn fire(&mut self, name: &Option<String>, entity: u64, progress: f32) {
+        let Some(name) = name.as_deref().filter(|n| !n.is_empty()) else {
+            return;
+        };
+        // Names are checked when they are given (at most 63 bytes).
+        let name = Str64::new(name).unwrap_or_default();
+        self.events.push(TweenEvent {
+            tween: self.tween,
+            entity,
+            name,
+            progress,
+            tag: self.tag,
+        });
+    }
 }
 
 /// Advances a group; `Ok(true)` when its last run ended.
@@ -638,6 +777,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<State>) -> Result<()> {
     let mut st = lock(shared);
     let mut ended: Vec<u64> = Vec::new();
     let mut completed: Vec<TweenCompleted> = Vec::new();
+    let mut events: Vec<TweenEvent> = Vec::new();
     for (&handle, r) in st.running.iter_mut() {
         let entity = r.node.entity();
         // A scaled tween also runs at its target's time group's pace.
@@ -650,6 +790,30 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<State>) -> Result<()> {
         let done = match &mut r.node {
             Node::Leaf(l) => step_leaf(ctx, l, dt, &mut alive)?,
             Node::Group(g) => step_group(ctx, g, dt, &mut alive)?,
+            Node::Timeline(t) => {
+                let mut io = WorldIo {
+                    ctx,
+                    tween: handle,
+                    tag: r.tag,
+                    events: &mut events,
+                    error: None,
+                };
+                let done = t.step(&mut io, dt);
+                if let Some(e) = io.error {
+                    return Err(e);
+                }
+                // A timeline stays when it completes (to be reversed,
+                // restarted or extended) unless it auto-kills.
+                if done && !t.auto_kill {
+                    completed.push(TweenCompleted {
+                        tween: handle,
+                        entity,
+                        tag: r.tag,
+                    });
+                    continue;
+                }
+                done
+            }
         };
         if !alive {
             ended.push(handle);
@@ -666,6 +830,9 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<State>) -> Result<()> {
         st.running.remove(&h);
     }
     drop(st);
+    for e in events {
+        ctx.send(e)?;
+    }
     for c in completed {
         ctx.send(c)?;
     }
@@ -696,10 +863,7 @@ impl StateBlock for TweenState {
     /// og.Transform.position, og.Camera.position) moves with it.
     fn shift(&mut self, s: &og_ecs::Shift) {
         for r in lock(&self.0).running.values_mut() {
-            match &mut r.node {
-                Node::Leaf(l) => l.shift(s),
-                Node::Group(g) => g.children.iter_mut().for_each(|l| l.shift(s)),
-            }
+            r.node.leaves_mut().into_iter().for_each(|l| l.shift(s));
         }
     }
 }

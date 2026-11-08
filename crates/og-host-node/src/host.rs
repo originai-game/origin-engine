@@ -1051,6 +1051,111 @@ impl TweenApi for NodeHost {
     fn og_tween_flash(&self, world: u32, desc: Option<String>) -> String {
         rt::og_tween_flash(world, desc)
     }
+    fn og_tween_timeline(&self, world: u32, desc: Option<String>) -> u32 {
+        rt::og_tween_timeline(world, desc)
+    }
+    fn og_tween_timeline_get_tween(&self, tween_timeline: u32) -> f64 {
+        rt::og_tween_timeline_get_tween(tween_timeline)
+    }
+    fn og_tween_timeline_get_error(&self, tween_timeline: u32) -> String {
+        rt::og_tween_timeline_get_error(tween_timeline)
+    }
+    fn og_tween_timeline_to(
+        &self,
+        tween_timeline: u32,
+        targets: String,
+        vars: Option<String>,
+        position: Option<String>,
+    ) -> u32 {
+        rt::og_tween_timeline_to(tween_timeline, targets, vars, position)
+    }
+    fn og_tween_timeline_from(
+        &self,
+        tween_timeline: u32,
+        targets: String,
+        vars: Option<String>,
+        position: Option<String>,
+    ) -> u32 {
+        rt::og_tween_timeline_from(tween_timeline, targets, vars, position)
+    }
+    fn og_tween_timeline_from_to(
+        &self,
+        tween_timeline: u32,
+        targets: String,
+        vars: Option<String>,
+        position: Option<String>,
+    ) -> u32 {
+        rt::og_tween_timeline_from_to(tween_timeline, targets, vars, position)
+    }
+    fn og_tween_timeline_set(
+        &self,
+        tween_timeline: u32,
+        targets: String,
+        vars: Option<String>,
+        position: Option<String>,
+    ) -> u32 {
+        rt::og_tween_timeline_set(tween_timeline, targets, vars, position)
+    }
+    fn og_tween_timeline_call(
+        &self,
+        tween_timeline: u32,
+        name: String,
+        position: Option<String>,
+    ) -> u32 {
+        rt::og_tween_timeline_call(tween_timeline, name, position)
+    }
+    fn og_tween_timeline_add_label(
+        &self,
+        tween_timeline: u32,
+        label: String,
+        position: Option<String>,
+    ) -> u32 {
+        rt::og_tween_timeline_add_label(tween_timeline, label, position)
+    }
+    fn og_tween_timeline_add(
+        &self,
+        tween_timeline: u32,
+        child: String,
+        position: Option<String>,
+    ) -> u32 {
+        rt::og_tween_timeline_add(tween_timeline, child, position)
+    }
+    fn og_tween_timeline_play(&self, tween_timeline: u32, from: Option<String>) -> u32 {
+        rt::og_tween_timeline_play(tween_timeline, from)
+    }
+    fn og_tween_timeline_pause(&self, tween_timeline: u32, at: Option<String>) -> u32 {
+        rt::og_tween_timeline_pause(tween_timeline, at)
+    }
+    fn og_tween_timeline_resume(&self, tween_timeline: u32) -> u32 {
+        rt::og_tween_timeline_resume(tween_timeline)
+    }
+    fn og_tween_timeline_reverse(&self, tween_timeline: u32, from: Option<String>) -> u32 {
+        rt::og_tween_timeline_reverse(tween_timeline, from)
+    }
+    fn og_tween_timeline_restart(&self, tween_timeline: u32) -> u32 {
+        rt::og_tween_timeline_restart(tween_timeline)
+    }
+    fn og_tween_timeline_seek(&self, tween_timeline: u32, position: String) -> u32 {
+        rt::og_tween_timeline_seek(tween_timeline, position)
+    }
+    fn og_tween_timeline_progress(&self, tween_timeline: u32, value: Option<f64>) -> f64 {
+        rt::og_tween_timeline_progress(tween_timeline, value)
+    }
+    fn og_tween_timeline_time(&self, tween_timeline: u32) -> f64 {
+        rt::og_tween_timeline_time(tween_timeline)
+    }
+    fn og_tween_timeline_duration(&self, tween_timeline: u32) -> f64 {
+        rt::og_tween_timeline_duration(tween_timeline)
+    }
+    fn og_tween_timeline_time_scale(&self, tween_timeline: u32, value: Option<f64>) -> f64 {
+        rt::og_tween_timeline_time_scale(tween_timeline, value)
+    }
+    fn og_tween_timeline_is_active(&self, tween_timeline: u32) -> bool {
+        rt::og_tween_timeline_is_active(tween_timeline)
+    }
+    fn og_tween_timeline_kill(&self, tween_timeline: u32) -> bool {
+        rt::og_tween_timeline_kill(tween_timeline)
+    }
 }
 
 impl TilemapApi for NodeHost {

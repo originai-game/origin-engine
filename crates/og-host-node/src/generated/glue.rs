@@ -1779,6 +1779,132 @@ pub fn og_anim_skeleton2d_boxes(env: Env, world: u32, entity: f64) -> String {
     <Host as AnimApi>::og_anim_skeleton2d_boxes(&Host, world, entity)
 }
 
+#[napi(js_name = "og_tween_timeline_get_tween")]
+pub fn og_tween_timeline_get_tween(env: Env, tween_timeline: u32) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_get_tween(&Host, tween_timeline)
+}
+
+#[napi(js_name = "og_tween_timeline_get_error")]
+pub fn og_tween_timeline_get_error(env: Env, tween_timeline: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_get_error(&Host, tween_timeline)
+}
+
+#[napi(js_name = "og_tween_timeline_to")]
+pub fn og_tween_timeline_to(env: Env, tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_to(&Host, tween_timeline, targets, vars, position)
+}
+
+#[napi(js_name = "og_tween_timeline_from")]
+pub fn og_tween_timeline_from(env: Env, tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_from(&Host, tween_timeline, targets, vars, position)
+}
+
+#[napi(js_name = "og_tween_timeline_from_to")]
+pub fn og_tween_timeline_from_to(env: Env, tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_from_to(&Host, tween_timeline, targets, vars, position)
+}
+
+#[napi(js_name = "og_tween_timeline_set")]
+pub fn og_tween_timeline_set(env: Env, tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_set(&Host, tween_timeline, targets, vars, position)
+}
+
+#[napi(js_name = "og_tween_timeline_call")]
+pub fn og_tween_timeline_call(env: Env, tween_timeline: u32, name: String, position: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_call(&Host, tween_timeline, name, position)
+}
+
+#[napi(js_name = "og_tween_timeline_add_label")]
+pub fn og_tween_timeline_add_label(env: Env, tween_timeline: u32, label: String, position: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_add_label(&Host, tween_timeline, label, position)
+}
+
+#[napi(js_name = "og_tween_timeline_add")]
+pub fn og_tween_timeline_add(env: Env, tween_timeline: u32, child: String, position: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_add(&Host, tween_timeline, child, position)
+}
+
+#[napi(js_name = "og_tween_timeline_play")]
+pub fn og_tween_timeline_play(env: Env, tween_timeline: u32, from: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_play(&Host, tween_timeline, from)
+}
+
+#[napi(js_name = "og_tween_timeline_pause")]
+pub fn og_tween_timeline_pause(env: Env, tween_timeline: u32, at: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_pause(&Host, tween_timeline, at)
+}
+
+#[napi(js_name = "og_tween_timeline_resume")]
+pub fn og_tween_timeline_resume(env: Env, tween_timeline: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_resume(&Host, tween_timeline)
+}
+
+#[napi(js_name = "og_tween_timeline_reverse")]
+pub fn og_tween_timeline_reverse(env: Env, tween_timeline: u32, from: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_reverse(&Host, tween_timeline, from)
+}
+
+#[napi(js_name = "og_tween_timeline_restart")]
+pub fn og_tween_timeline_restart(env: Env, tween_timeline: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_restart(&Host, tween_timeline)
+}
+
+#[napi(js_name = "og_tween_timeline_seek")]
+pub fn og_tween_timeline_seek(env: Env, tween_timeline: u32, position: String) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_seek(&Host, tween_timeline, position)
+}
+
+#[napi(js_name = "og_tween_timeline_progress")]
+pub fn og_tween_timeline_progress(env: Env, tween_timeline: u32, value: Option<f64>) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_progress(&Host, tween_timeline, value)
+}
+
+#[napi(js_name = "og_tween_timeline_time")]
+pub fn og_tween_timeline_time(env: Env, tween_timeline: u32) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_time(&Host, tween_timeline)
+}
+
+#[napi(js_name = "og_tween_timeline_duration")]
+pub fn og_tween_timeline_duration(env: Env, tween_timeline: u32) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_duration(&Host, tween_timeline)
+}
+
+#[napi(js_name = "og_tween_timeline_time_scale")]
+pub fn og_tween_timeline_time_scale(env: Env, tween_timeline: u32, value: Option<f64>) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_time_scale(&Host, tween_timeline, value)
+}
+
+#[napi(js_name = "og_tween_timeline_is_active")]
+pub fn og_tween_timeline_is_active(env: Env, tween_timeline: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_is_active(&Host, tween_timeline)
+}
+
+#[napi(js_name = "og_tween_timeline_kill")]
+pub fn og_tween_timeline_kill(env: Env, tween_timeline: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline_kill(&Host, tween_timeline)
+}
+
 #[napi(js_name = "og_tween_to")]
 pub fn og_tween_to(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1807,6 +1933,12 @@ pub fn og_tween_sequence(env: Env, world: u32, steps: String, desc: Option<Strin
 pub fn og_tween_parallel(env: Env, world: u32, tweens: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as TweenApi>::og_tween_parallel(&Host, world, tweens, desc)
+}
+
+#[napi(js_name = "og_tween_timeline")]
+pub fn og_tween_timeline(env: Env, world: u32, desc: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_timeline(&Host, world, desc)
 }
 
 #[napi(js_name = "og_tween_cancel")]

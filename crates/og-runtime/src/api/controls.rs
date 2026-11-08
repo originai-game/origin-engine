@@ -112,7 +112,7 @@ fn with_rng<T>(world: u32, refused: T, f: impl FnOnce(&mut Rng) -> T) -> T {
 /// Reads the world's Rng resource without moving it: a fork derives a
 /// stream from the seed alone, so a system with og.Rng among its reads may
 /// fork (the parent is untouched and the child is the same on every host).
-fn read_rng<T>(world: u32, f: impl FnOnce(&Rng) -> T) -> Option<T> {
+pub(crate) fn read_rng<T>(world: u32, f: impl FnOnce(&Rng) -> T) -> Option<T> {
     if let Some(frame) = running(world) {
         // SAFETY: the frame is published while its system runs.
         let ctx = unsafe { frame.ctx() };

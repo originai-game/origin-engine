@@ -679,6 +679,48 @@ pub trait AnimApi: Wire {
 
 /// `tween`: packages/knowledge/wiki/tween.md.
 pub trait TweenApi: Wire {
+    /// `TweenTimeline.tween`
+    fn og_tween_timeline_get_tween(&self, tween_timeline: u32) -> f64;
+    /// `TweenTimeline.error`
+    fn og_tween_timeline_get_error(&self, tween_timeline: u32) -> String;
+    /// `TweenTimeline.to`
+    fn og_tween_timeline_to(&self, tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32;
+    /// `TweenTimeline.from`
+    fn og_tween_timeline_from(&self, tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32;
+    /// `TweenTimeline.fromTo`
+    fn og_tween_timeline_from_to(&self, tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32;
+    /// `TweenTimeline.set`
+    fn og_tween_timeline_set(&self, tween_timeline: u32, targets: String, vars: Option<String>, position: Option<String>) -> u32;
+    /// `TweenTimeline.call`
+    fn og_tween_timeline_call(&self, tween_timeline: u32, name: String, position: Option<String>) -> u32;
+    /// `TweenTimeline.addLabel`
+    fn og_tween_timeline_add_label(&self, tween_timeline: u32, label: String, position: Option<String>) -> u32;
+    /// `TweenTimeline.add`
+    fn og_tween_timeline_add(&self, tween_timeline: u32, child: String, position: Option<String>) -> u32;
+    /// `TweenTimeline.play`
+    fn og_tween_timeline_play(&self, tween_timeline: u32, from: Option<String>) -> u32;
+    /// `TweenTimeline.pause`
+    fn og_tween_timeline_pause(&self, tween_timeline: u32, at: Option<String>) -> u32;
+    /// `TweenTimeline.resume`
+    fn og_tween_timeline_resume(&self, tween_timeline: u32) -> u32;
+    /// `TweenTimeline.reverse`
+    fn og_tween_timeline_reverse(&self, tween_timeline: u32, from: Option<String>) -> u32;
+    /// `TweenTimeline.restart`
+    fn og_tween_timeline_restart(&self, tween_timeline: u32) -> u32;
+    /// `TweenTimeline.seek`
+    fn og_tween_timeline_seek(&self, tween_timeline: u32, position: String) -> u32;
+    /// `TweenTimeline.progress`
+    fn og_tween_timeline_progress(&self, tween_timeline: u32, value: Option<f64>) -> f64;
+    /// `TweenTimeline.time`
+    fn og_tween_timeline_time(&self, tween_timeline: u32) -> f64;
+    /// `TweenTimeline.duration`
+    fn og_tween_timeline_duration(&self, tween_timeline: u32) -> f64;
+    /// `TweenTimeline.timeScale`
+    fn og_tween_timeline_time_scale(&self, tween_timeline: u32, value: Option<f64>) -> f64;
+    /// `TweenTimeline.isActive`
+    fn og_tween_timeline_is_active(&self, tween_timeline: u32) -> bool;
+    /// `TweenTimeline.kill`
+    fn og_tween_timeline_kill(&self, tween_timeline: u32) -> bool;
     /// `og.tween.to`
     fn og_tween_to(&self, world: u32, desc: Option<String>) -> String;
     /// `og.tween.from`
@@ -689,6 +731,8 @@ pub trait TweenApi: Wire {
     fn og_tween_sequence(&self, world: u32, steps: String, desc: Option<String>) -> String;
     /// `og.tween.parallel`
     fn og_tween_parallel(&self, world: u32, tweens: String, desc: Option<String>) -> String;
+    /// `og.tween.timeline`
+    fn og_tween_timeline(&self, world: u32, desc: Option<String>) -> u32;
     /// `og.tween.cancel`
     fn og_tween_cancel(&self, world: u32, tween: f64) -> bool;
     /// `og.tween.cancelEntity`
@@ -1723,11 +1767,33 @@ pub const SYMBOLS: &[&str] = &[
     "og_anim_mirror",
     "og_anim_rig2d_info",
     "og_anim_skeleton2d_boxes",
+    "og_tween_timeline_get_tween",
+    "og_tween_timeline_get_error",
+    "og_tween_timeline_to",
+    "og_tween_timeline_from",
+    "og_tween_timeline_from_to",
+    "og_tween_timeline_set",
+    "og_tween_timeline_call",
+    "og_tween_timeline_add_label",
+    "og_tween_timeline_add",
+    "og_tween_timeline_play",
+    "og_tween_timeline_pause",
+    "og_tween_timeline_resume",
+    "og_tween_timeline_reverse",
+    "og_tween_timeline_restart",
+    "og_tween_timeline_seek",
+    "og_tween_timeline_progress",
+    "og_tween_timeline_time",
+    "og_tween_timeline_duration",
+    "og_tween_timeline_time_scale",
+    "og_tween_timeline_is_active",
+    "og_tween_timeline_kill",
     "og_tween_to",
     "og_tween_from",
     "og_tween_from_to",
     "og_tween_sequence",
     "og_tween_parallel",
+    "og_tween_timeline",
     "og_tween_cancel",
     "og_tween_cancel_entity",
     "og_tween_active",

@@ -240,6 +240,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "fromTo",
             "sequence",
             "parallel",
+            "timeline",
             "cancel",
             "cancelEntity",
             "active",

@@ -8402,7 +8402,7 @@
     },
     {
       "name": "tween",
-      "doc": "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.\nRunning tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.\nFeel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).",
+      "doc": "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.\nRunning tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.\nFeel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).\nTimelines are GSAP's: `const tl = og.tween.timeline(world, { defaults: { duration: 0.4, ease: \"back.out\" }, repeat: 1, yoyo: true })`, then `tl.to(enemies, { field: \"position.y\", to: 2, stagger: { each: 0.05, from: \"center\" } }).to(door, { field: \"position.x\", to: 3 }, \"<0.1\").call(\"door.open\").addLabel(\"out\", \"+=0.5\")`. Targets are entities and one numeric field per call (`field` and `to`, as og.tween.to), not JavaScript objects; vectors take one value per lane. Position is GSAP's: seconds, `\"<\"` (the start of what was added last), `\">\"` (its end), `\"+=1\"` and `\"-=0.5\"` (from the timeline's end), a label, `\"label+=0.2\"`, `\"<50%\"` (half way through what was added last) and `\"-=25%\"` (a quarter of what is inserted); none appends at the end. A label a position names that does not exist is added at the end.\nA timeline renders from its playhead, never accumulated: play, pause, reverse, seek, progress and timeScale move it, and what they change is written in the next og.tween run (this tick, from a system before it). A child is written only when its own time changes, so a finished tween leaves its field to the game. from and fromTo write their start values on the timeline's first render, before their time (GSAP's immediateRender). A timeline stays when it completes (og.TweenCompleted is sent), so it can be reversed, restarted or extended, until kill() or `autoKill`. A refused call (a dead entity, a field that is not numeric, bad position text) adds nothing and its reason is the timeline's `error`; the call still answers the timeline, so chains read as GSAP's.\nCallbacks are names, not closures: `onStart`, `onUpdate`, `onComplete` and `onRepeat` on a tween or the timeline, and `.call(name)`, send og.TweenEvent with that name, read by a system in the tick after. A seek or progress jump sends none. Timelines are world state: snapshots and restore cover the whole timeline, its playhead, labels and captured values, and a `random` stagger shuffles from the world's og.Rng seed (a fork: the main stream does not move; a system needs og.Rng among its reads).",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -8414,6 +8414,12 @@
         "TweenFromDesc",
         "TweenGroupDesc",
         "TweenCompleted",
+        "TweenEvent",
+        "TweenDefaults",
+        "TimelineDesc",
+        "StaggerDesc",
+        "TweenKeyframe",
+        "TimelineTweenVars",
         "SquashDesc",
         "FlashDesc"
       ],
@@ -8535,6 +8541,27 @@
           "publish": true
         },
         {
+          "name": "timeline",
+          "doc": "A GSAP timeline: tweens, calls, labels and nested timelines placed on its own clock, played, paused, reversed and sought as one. It starts playing in this tick's og.tween run unless paused.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "TimelineDesc",
+              "optional": true,
+              "doc": "Defaults, repeat, yoyo, paused, callbacks."
+            }
+          ],
+          "returns": "TweenTimeline",
+          "returnsDoc": "Refused settings are reported in its `error`; it still answers the timeline.",
+          "publish": true
+        },
+        {
           "name": "cancel",
           "doc": "Stop a tween where it is (no event).",
           "params": [
@@ -8557,7 +8584,7 @@
         },
         {
           "name": "cancelEntity",
-          "doc": "Stop every tween of an entity (no events), say before starting a new reaction.",
+          "doc": "Stop every tween of an entity (no events), say before starting a new reaction. A timeline drops its tweens of the entity and plays on.",
           "params": [
             {
               "name": "world",
@@ -8639,7 +8666,316 @@
           "publish": true
         }
       ],
-      "interfaces": [],
+      "interfaces": [
+        {
+          "name": "TweenTimeline",
+          "doc": "A GSAP timeline (og.tween.timeline): build it with to, from, fromTo, set, call, addLabel and add, each placed by a position and answering the timeline so calls chain; control it with play, pause, reverse, seek, progress, timeScale and kill.",
+          "members": [
+            {
+              "name": "tween",
+              "prop": "Tween",
+              "doc": "Its handle: og.TweenCompleted and og.TweenEvent carry it, og.tween.cancel and active take it.",
+              "publish": true
+            },
+            {
+              "name": "error",
+              "prop": "Option<String>",
+              "doc": "Why the last refused call added nothing; null when none was refused.",
+              "publish": true
+            },
+            {
+              "name": "to",
+              "doc": "Tween a field of every target to `vars.to` (or through `vars.keyframes`), from its value when the tween starts.",
+              "params": [
+                {
+                  "name": "targets",
+                  "type": "OneOf<Entity,List<Entity>>",
+                  "optional": false,
+                  "doc": "An entity or several (staggered by vars.stagger)."
+                },
+                {
+                  "name": "vars",
+                  "type": "TimelineTweenVars",
+                  "optional": true,
+                  "doc": "The field, the values and the timing."
+                },
+                {
+                  "name": "position",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where: seconds or GSAP's position text; null appends."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "from",
+              "doc": "Tween from `vars.from` to each target's value at this call (read now: a system needs read access to the component). The start value is written on the timeline's first render.",
+              "params": [
+                {
+                  "name": "targets",
+                  "type": "OneOf<Entity,List<Entity>>",
+                  "optional": false,
+                  "doc": "An entity or several."
+                },
+                {
+                  "name": "vars",
+                  "type": "TimelineTweenVars",
+                  "optional": true,
+                  "doc": "The field, the start value and the timing."
+                },
+                {
+                  "name": "position",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "fromTo",
+              "doc": "Tween from `vars.from` to `vars.to`; both are required. The start value is written on the timeline's first render.",
+              "params": [
+                {
+                  "name": "targets",
+                  "type": "OneOf<Entity,List<Entity>>",
+                  "optional": false,
+                  "doc": "An entity or several."
+                },
+                {
+                  "name": "vars",
+                  "type": "TimelineTweenVars",
+                  "optional": true,
+                  "doc": "The field, both values and the timing."
+                },
+                {
+                  "name": "position",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "set",
+              "doc": "Set a field of every target to `vars.to` when the playhead reaches the position (a tween of no duration; going back before it restores the value it found).",
+              "params": [
+                {
+                  "name": "targets",
+                  "type": "OneOf<Entity,List<Entity>>",
+                  "optional": false,
+                  "doc": "An entity or several."
+                },
+                {
+                  "name": "vars",
+                  "type": "TimelineTweenVars",
+                  "optional": true,
+                  "doc": "The field and the value."
+                },
+                {
+                  "name": "position",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "call",
+              "doc": "Send og.TweenEvent `name` when the playhead crosses the position, forwards or backwards (GSAP's call, named instead of a function).",
+              "params": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The event's name (at most 63 bytes)."
+                },
+                {
+                  "name": "position",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "addLabel",
+              "doc": "Name a time, for positions (`\"label\"`, `\"label+=0.5\"`) and seek.",
+              "params": [
+                {
+                  "name": "label",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The label."
+                },
+                {
+                  "name": "position",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where; null is the end."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "add",
+              "doc": "Nest a running tween, sequence, parallel group or timeline (its `tween` handle) at the position: it stops running on its own and plays as part of this one. A string adds a label.",
+              "params": [
+                {
+                  "name": "child",
+                  "type": "OneOf<Tween,String>",
+                  "optional": false,
+                  "doc": "The handle to nest, or a label."
+                },
+                {
+                  "name": "position",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "play",
+              "doc": "Play forwards, from a time or label when given.",
+              "params": [
+                {
+                  "name": "from",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where to start."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "pause",
+              "doc": "Hold the playhead, at a time or label when given.",
+              "params": [
+                {
+                  "name": "at",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where to hold."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "resume",
+              "doc": "Play on in the direction it had.",
+              "params": [],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "reverse",
+              "doc": "Play backwards towards the start, from a time or label when given.",
+              "params": [
+                {
+                  "name": "from",
+                  "type": "OneOf<f64,String>",
+                  "optional": true,
+                  "doc": "Where to start."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "restart",
+              "doc": "Play forwards from the start (callbacks fire again).",
+              "params": [],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "seek",
+              "doc": "Jump the playhead to a time or label without sending callbacks; it keeps playing or holding.",
+              "params": [
+                {
+                  "name": "position",
+                  "type": "OneOf<f64,String>",
+                  "optional": false,
+                  "doc": "Seconds or a label."
+                }
+              ],
+              "returns": "TweenTimeline",
+              "publish": true
+            },
+            {
+              "name": "progress",
+              "doc": "How far through its cycle the playhead is, 0 to 1; given a value, jumps there first (without callbacks).",
+              "params": [
+                {
+                  "name": "value",
+                  "type": "f64",
+                  "optional": true,
+                  "doc": "The progress to jump to."
+                }
+              ],
+              "returns": "f64",
+              "publish": true
+            },
+            {
+              "name": "time",
+              "doc": "The playhead's time within its cycle, in seconds.",
+              "params": [],
+              "returns": "f64",
+              "publish": true
+            },
+            {
+              "name": "duration",
+              "doc": "One cycle, in seconds: where its last child ends.",
+              "params": [],
+              "returns": "f64",
+              "publish": true
+            },
+            {
+              "name": "timeScale",
+              "doc": "The playback rate; given a value, sets it first (2 twice as fast, 0 holds).",
+              "params": [
+                {
+                  "name": "value",
+                  "type": "f64",
+                  "optional": true,
+                  "doc": "The new rate, 0 or more."
+                }
+              ],
+              "returns": "f64",
+              "publish": true
+            },
+            {
+              "name": "isActive",
+              "doc": "Whether it is running and not paused.",
+              "params": [],
+              "returns": "bool",
+              "publish": true
+            },
+            {
+              "name": "kill",
+              "doc": "Stop and remove it where it is (no events); its fields keep their values.",
+              "params": [],
+              "returns": "bool",
+              "publish": true
+            }
+          ]
+        }
+      ],
       "callbacks": []
     },
     {
@@ -38320,6 +38656,509 @@
         "entity",
         "tag"
       ],
+      "additionalProperties": false
+    },
+    "TweenEvent": {
+      "x-og-kind": "event",
+      "x-og-module": "tween",
+      "description": "A timeline callback: a call crossed, or a tween or timeline started, updated, completed or repeated (read in the tick after).",
+      "type": "object",
+      "properties": {
+        "tween": {
+          "$ref": "#/$defs/Tween",
+          "description": "The timeline (TweenTimeline.tween)."
+        },
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The tween's target; 0 for the timeline's own callbacks and calls."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name the callback was given (at most 63 bytes)."
+        },
+        "progress": {
+          "type": "number",
+          "description": "How far through its cycle it is, 0 to 1."
+        },
+        "tag": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The timeline's tag."
+        }
+      },
+      "required": [
+        "tween",
+        "entity",
+        "name",
+        "progress",
+        "tag"
+      ],
+      "additionalProperties": false
+    },
+    "TweenDefaults": {
+      "x-og-kind": "desc",
+      "x-og-module": "tween",
+      "description": "What a timeline's tweens take when they leave it out (GSAP's `defaults`).",
+      "type": "object",
+      "properties": {
+        "component": {
+          "anyOf": [
+            {
+              "x-og-type": "AnyComponent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The component; null is og.Transform.",
+          "default": null
+        },
+        "duration": {
+          "type": "number",
+          "description": "Seconds per cycle.",
+          "default": 0.3,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "ease": {
+          "$ref": "#/$defs/Ease",
+          "description": "The curve.",
+          "default": "power1.out"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TimelineDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "tween",
+      "description": "How a timeline plays (og.tween.timeline).",
+      "type": "object",
+      "properties": {
+        "defaults": {
+          "$ref": "#/$defs/TweenDefaults",
+          "description": "What its tweens take when they leave it out.",
+          "default": {}
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Extra cycles of the whole timeline: 0 once, -1 forever.",
+          "default": 0,
+          "minimum": -1
+        },
+        "yoyo": {
+          "type": "boolean",
+          "description": "Every other cycle plays backwards.",
+          "default": false
+        },
+        "repeatDelay": {
+          "type": "number",
+          "description": "Seconds held between cycles.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Created paused: play() starts it. Its from() values are still written.",
+          "default": false
+        },
+        "timeScale": {
+          "type": "number",
+          "description": "Playback rate: 2 twice as fast, 0.5 half.",
+          "default": 1,
+          "minimum": 0
+        },
+        "autoKill": {
+          "type": "boolean",
+          "description": "Removed when it completes, instead of staying to be reversed or restarted.",
+          "default": false
+        },
+        "unscaled": {
+          "type": "boolean",
+          "description": "Advance by real ticks, ignoring Time.scale and hit stop (UI motion).",
+          "default": false
+        },
+        "tag": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A number of yours, carried by og.TweenCompleted and og.TweenEvent.",
+          "default": 0
+        },
+        "onStart": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The og.TweenEvent sent when the playhead leaves the start.",
+          "default": null
+        },
+        "onUpdate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The og.TweenEvent sent every run the playhead moves.",
+          "default": null
+        },
+        "onComplete": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The og.TweenEvent sent when it reaches its end going forward.",
+          "default": null
+        },
+        "onRepeat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The og.TweenEvent sent when a cycle begins again.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "StaggerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "tween",
+      "description": "GSAP's stagger object: each target's start offset by its distance from `from`.",
+      "type": "object",
+      "properties": {
+        "each": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds between neighbours.",
+          "default": null,
+          "x-og-unit": "s"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds over all of them (wins over each).",
+          "default": null,
+          "x-og-unit": "s"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`start` (null), `center`, `end`, `edges` (both ends first), `random` (a seeded shuffle), or a target's index.",
+          "default": null
+        },
+        "grid": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`[rows, columns]`: distances measured on that grid.",
+          "default": null
+        },
+        "ease": {
+          "$ref": "#/$defs/Ease",
+          "description": "Distributes the offsets through a curve.",
+          "default": "none"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TweenKeyframe": {
+      "x-og-kind": "desc",
+      "x-og-module": "tween",
+      "description": "One step of a tween's keyframes: from where the step before ended to `to`.",
+      "type": "object",
+      "properties": {
+        "to": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "The value at the step's end.",
+          "default": []
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds; null takes the tween's.",
+          "default": null,
+          "x-og-unit": "s"
+        },
+        "ease": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ease"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The curve; null takes the tween's.",
+          "default": null
+        },
+        "delay": {
+          "type": "number",
+          "description": "Seconds after the step before.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TimelineTweenVars": {
+      "x-og-kind": "desc",
+      "x-og-module": "tween",
+      "description": "One timeline tween of one field of every target (TweenTimeline.to, from, fromTo and set): GSAP's vars, with the field named.",
+      "type": "object",
+      "properties": {
+        "component": {
+          "anyOf": [
+            {
+              "x-og-type": "AnyComponent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The component; null takes the timeline's defaults, else og.Transform.",
+          "default": null
+        },
+        "field": {
+          "type": "string",
+          "description": "The numeric field or lane, as in TweenDesc.",
+          "default": ""
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The end value (to, fromTo, set); one for every lane, or one per lane.",
+          "default": null
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The start value (from, fromTo).",
+          "default": null
+        },
+        "relative": {
+          "type": "boolean",
+          "description": "`to` is added to the start value.",
+          "default": false
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds per cycle; null takes the timeline's defaults.",
+          "default": null,
+          "x-og-unit": "s"
+        },
+        "delay": {
+          "type": "number",
+          "description": "Seconds added to its position.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "ease": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ease"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The curve; null takes the timeline's defaults.",
+          "default": null
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Extra cycles: 0 once, -1 forever.",
+          "default": 0,
+          "minimum": -1
+        },
+        "yoyo": {
+          "type": "boolean",
+          "description": "Every other cycle plays backwards.",
+          "default": false
+        },
+        "repeatDelay": {
+          "type": "number",
+          "description": "Seconds held between cycles.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "stagger": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/$defs/StaggerDesc"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Several targets start one after another: seconds between them, or a StaggerDesc.",
+          "default": null
+        },
+        "keyframes": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/TweenKeyframe"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Steps played in order instead of `to` (repeat and yoyo then apply to the whole).",
+          "default": null
+        },
+        "onStart": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The og.TweenEvent sent when it starts (per target).",
+          "default": null
+        },
+        "onUpdate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The og.TweenEvent sent every run it is written.",
+          "default": null
+        },
+        "onComplete": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The og.TweenEvent sent when it ends.",
+          "default": null
+        },
+        "onRepeat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The og.TweenEvent sent when a cycle begins again.",
+          "default": null
+        }
+      },
       "additionalProperties": false
     },
     "SquashDesc": {
