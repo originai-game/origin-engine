@@ -507,6 +507,7 @@ impl Parser {
             level: 0,
             inline: Vec::new(),
             links: Vec::new(),
+            custom: Vec::new(),
         });
         index
     }
@@ -885,8 +886,29 @@ impl Parser {
                 });
                 continue;
             }
+            if let Some(name) = a
+                .name
+                .strip_prefix("style:")
+                .filter(|n| n.starts_with("--"))
+            {
+                // A bound custom property: the data a rule's var() reads.
+                if name.len() < 3
+                    || !name[2..]
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'))
+                {
+                    return Err((a.at, format!("{name} is not a custom property name")));
+                }
+                let value = if a.bound {
+                    expression(&a.value, a.at)?
+                } else {
+                    Expr::Lit(serde_json::Value::String(a.value.clone()))
+                };
+                self.doc.nodes[i].custom.push((name.to_string(), value));
+                continue;
+            }
             if a.name.starts_with("style:") || a.name == "style" {
-                return Err((a.at, "declare layout and appearance in scoped <style>; style directives require a CSS token binding".into()));
+                return Err((a.at, "declare layout and appearance in scoped <style>; bind data to it with a custom property, style:--fill={$hp / $max}, read as var(--fill)".into()));
             }
             // A block's key translates its anonymous text.
             if internal == "box" && a.name == "i18n" {

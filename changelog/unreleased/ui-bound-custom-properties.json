@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: style:--name={expression}",
+      "summary": "Bound CSS custom properties: an element's inline custom property, set from store data, which rules read with var() and children inherit (style:--fill={$hp / $max}). A store change re-resolves that element only; null leaves var()'s fallback."
+    },
+    {
+      "member": "UI documents: calc(), min(), max(), clamp()",
+      "summary": "CSS math functions, reduced once their var()s are known (at cook, or when the element resolves): width: calc(var(--fill) * 100%), animation-delay: calc(var(--i) * 80ms). Every term of one function takes one unit."
+    }
+  ]
+}

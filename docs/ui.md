@@ -553,6 +553,25 @@ Unshadowed engine tokens resolve against the active style, and `::part`
 declarations use the same cascade. These rules do not relax the kit's
 token-only rule (§3.1).
 
+Data reaches the cascade through bound custom properties, Svelte's
+`style:--name={expression}` directive (or a literal `style:--name="4px"`).
+It is an inline declaration on its element: it beats every rule but an
+`!important` one and inherits like any custom property, so a child reads
+it with `var()`. A number is written plain (`0.5`), a string as is; `null`
+leaves the property unset, so `var(--fill, 0)`'s fallback applies. The
+expression is one of the element's attributes, so a store change
+re-resolves that element (and the children that inherit from it) and
+nothing else. Only custom properties take a `style:` directive; `style`
+and `style:width` are refused.
+
+`calc()`, `min()`, `max()` and `clamp()` reduce once their `var()`s are
+known: at cook for constant values, when the element resolves otherwise.
+`width: calc(var(--fill) * 100%)` and `animation-delay: calc(var(--i) *
+80ms)` work; `+` and `-` need spaces around them, `*` and `/` take a plain
+number on one side, and `s`, `rad` and `turn` convert to `ms` and `deg`.
+og-ui reduces them before layout, so every term of one function takes one
+unit: `calc(100% - 12px)` is refused (give the parent a padding instead).
+
 Media rules use standard conditions, such as
 `@media (width < 600px), (height < 600px)`. Supported features are `width`,
 `height`, `aspect-ratio`, `orientation`, `prefers-reduced-motion` and

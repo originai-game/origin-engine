@@ -159,6 +159,7 @@ pub(super) fn apply(
                 let value = declaration
                     .value
                     .substitute(&mut |_| None)
+                    .and_then(|v| super::calc::reduce(&v))
                     .map_err(|error| (rule.at, error))?;
                 body.push_str(&format!("{name}: {value};"));
             }

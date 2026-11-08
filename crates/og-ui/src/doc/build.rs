@@ -495,7 +495,24 @@ impl Ui {
                 sets.extend(props.iter());
             }
         }
-        r.cascade = cascade::resolve(&n.rules, inherited, self.theme(), |rule| {
+        // Bound custom properties: a value a rule reads with var(); null
+        // (or a list) leaves the property unset, so var()'s fallback holds.
+        // Their expressions are the element's attributes too, so a change
+        // re-resolves the element as an attribute selector's does.
+        let inline: Vec<(String, String)> = n
+            .custom
+            .iter()
+            .filter_map(|(name, e)| {
+                let text = match b.eval(e) {
+                    Value::String(s) => s,
+                    Value::Number(x) => x.to_string(),
+                    Value::Bool(x) => x.to_string(),
+                    _ => return None,
+                };
+                Some((name.clone(), text))
+            })
+            .collect();
+        r.cascade = cascade::resolve(&n.rules, &inline, inherited, self.theme(), |rule| {
             applies(&rule.query, &mut media_reads)
                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 && rule.structure.as_ref().is_none_or(|s| structure(s))

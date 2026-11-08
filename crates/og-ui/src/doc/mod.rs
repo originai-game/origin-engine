@@ -5,6 +5,7 @@
 //! [`UiDocument::set_prop`] saves probe edits without rewriting other nodes.
 
 pub mod build;
+pub(crate) mod calc;
 pub mod catalogue;
 pub mod container;
 pub mod css;
@@ -405,6 +406,10 @@ pub struct DocNode {
     pub inline: Vec<InlineRun>,
     /// The literal `href`s of its inline `<a>`s, by [`InlineRun::link`].
     pub links: Vec<String>,
+    /// Its `style:--name={value}` custom properties, in order: inline
+    /// declarations that win over every rule but an `!important` one and
+    /// inherit like any custom property.
+    pub custom: Vec<(String, Expr)>,
 }
 
 /// One run of a text element's inline content.

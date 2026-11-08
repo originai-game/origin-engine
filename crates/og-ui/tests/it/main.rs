@@ -10,6 +10,8 @@ mod a11y;
 mod button_contrast;
 #[path = "../color_vision.rs"]
 mod color_vision;
+#[path = "../custom_properties.rs"]
+mod custom_properties;
 #[path = "../documents.rs"]
 mod documents;
 #[path = "../dressing.rs"]

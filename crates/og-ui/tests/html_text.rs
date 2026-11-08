@@ -36,9 +36,9 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use support::*;
 
-/// One document, built either way.
-struct Doc {
-    ui: Ui,
+/// One document, built either way (other document tests share it).
+pub(crate) struct Doc {
+    pub(crate) ui: Ui,
     name: String,
     /// Mounted with these stores; `None`: built immediately from `vm`.
     mounted: bool,
@@ -48,7 +48,7 @@ struct Doc {
 }
 
 impl Doc {
-    fn new(text: &str, stores: &[(&str, Value)], mounted: bool) -> Doc {
+    pub(crate) fn new(text: &str, stores: &[(&str, Value)], mounted: bool) -> Doc {
         let mut ui = ui_with_font(test_font_metrics());
         let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
         let name = doc.name.clone();
@@ -96,7 +96,7 @@ impl Doc {
     }
 
     /// A store: a list is a keyed collection (by `id`).
-    fn store(&mut self, name: &str, value: Value) {
+    pub(crate) fn store(&mut self, name: &str, value: Value) {
         let source = SourceId::new("test", name);
         self.apply(match &value {
             Value::Array(items) => {
@@ -108,7 +108,7 @@ impl Doc {
 
     /// A keyed edit of list store `name`: `op` on a mounted collection,
     /// the whole list `after` in an immediate viewmodel.
-    fn edit(&mut self, name: &str, mut op: Value, after: Value) {
+    pub(crate) fn edit(&mut self, name: &str, mut op: Value, after: Value) {
         if self.mounted {
             op["source"] = json!(SourceId::new("test", name));
             self.apply(op);
@@ -119,7 +119,7 @@ impl Doc {
         self.step(InputFrame::default());
     }
 
-    fn step(&mut self, input: InputFrame) {
+    pub(crate) fn step(&mut self, input: InputFrame) {
         self.ui.begin(input, Viewport::new(800.0, 900.0));
         if self.mounted {
             self.ui
@@ -134,14 +134,14 @@ impl Doc {
         self.events.extend(self.ui.take_doc_events());
     }
 
-    fn el(&self, id: &str) -> Option<UiElement> {
+    pub(crate) fn el(&self, id: &str) -> Option<UiElement> {
         self.ui
             .probe_elements()
             .into_iter()
             .find(|e| e.id == id || e.path.ends_with(&format!("/{id}")))
     }
 
-    fn get(&self, id: &str) -> UiElement {
+    pub(crate) fn get(&self, id: &str) -> UiElement {
         self.el(id)
             .unwrap_or_else(|| panic!("no {id} (mounted: {})", self.mounted))
     }
@@ -214,7 +214,7 @@ fn id_text(id: &str) -> &str {
     }
 }
 
-fn both(text: &str, stores: &[(&str, Value)], check: impl Fn(&mut Doc)) {
+pub(crate) fn both(text: &str, stores: &[(&str, Value)], check: impl Fn(&mut Doc)) {
     for mounted in [false, true] {
         check(&mut Doc::new(text, stores, mounted));
     }

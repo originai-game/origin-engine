@@ -24,8 +24,12 @@ pub struct Cascade {
     pub container_reads: BTreeSet<u64>,
 }
 
+/// `inline` are the element's own custom properties (`style:--name`),
+/// which win over every rule but an `!important` one, as an HTML `style`
+/// attribute's declarations do.
 pub(crate) fn resolve_values(
     rules: &[StyleRule],
+    inline: &[(String, String)],
     inherited: &variables::Computed,
     theme: &crate::Theme,
     mut applies: impl FnMut(&StyleRule) -> bool,
@@ -48,7 +52,7 @@ pub(crate) fn resolve_values(
             }
         }
     }
-    let specified: BTreeMap<_, _> = winners
+    let mut specified: BTreeMap<_, _> = winners
         .iter()
         .filter(|(name, _)| name.starts_with("--"))
         .map(|(name, (_, declaration, _))| {
@@ -56,6 +60,20 @@ pub(crate) fn resolve_values(
             (name.to_string(), declaration.value.clone())
         })
         .collect();
+    for (name, value) in inline {
+        if winners
+            .get(name.as_str())
+            .is_some_and(|((important, ..), ..)| *important)
+        {
+            continue;
+        }
+        match variables::Value::parse(value) {
+            Ok(value) => {
+                specified.insert(name.clone(), value);
+            }
+            Err(error) => out.diagnostics.push(format!("style:{name}: {error}")),
+        }
+    }
     let (computed, diagnostics, inherited_reads) =
         variables::compute(inherited, &specified, &mut |name| token(theme, name));
     out.diagnostics.extend(diagnostics);
@@ -83,6 +101,14 @@ pub(crate) fn resolve_values(
                 None => token(theme, name),
             }
         });
+        // Math functions reduce once their variables are known.
+        let value = value.and_then(|v| {
+            if crate::doc::calc::has_math(&v) {
+                crate::doc::calc::reduce(&v)
+            } else {
+                Ok(v)
+            }
+        });
         match value {
             Ok(value) => out.values.push((name.into(), value, line)),
             Err(error) => out
@@ -95,11 +121,12 @@ pub(crate) fn resolve_values(
 
 pub fn resolve(
     rules: &[StyleRule],
+    inline: &[(String, String)],
     inherited: &variables::Computed,
     theme: &crate::Theme,
     applies: impl FnMut(&StyleRule) -> bool,
 ) -> Cascade {
-    let mut out = resolve_values(rules, inherited, theme, applies);
+    let mut out = resolve_values(rules, inline, inherited, theme, applies);
     let mut body = String::new();
     for (name, value, line) in std::mem::take(&mut out.values) {
         if crate::doc::motion::longhand(&name) {
