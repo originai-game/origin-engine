@@ -28,9 +28,11 @@ All streams run on macrunner and report to the coordinator thread
 
 | Stream | Thread | Scope |
 |---|---|---|
-| Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Persistent tree index and paint reuse of clean subtrees (idle cost still scales with nodes), virtual-row scroll, dirty-only a11y bridge, TS builder removal, field replacement, both-host proof, perf after-numbers |
-| og-ui generic capabilities | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | HTML element names, select/dialog/details/meter, colour-blind modes, live regions, selectable text, run-time colour emoji, split screen, UI debugger and `dump_ui:motion`, text on a path, untested components, UI perf budgets |
-| Presentation checkpoints and og.motion | [T-01a1b99f-1445](https://ampcode.com/threads/T-01a1b99f-1445-70df-9528-b3bc997e0683) | og.motion poses identical on every host, Chrome WebGPU restore check, session forking |
+| Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Wave 1 of builder removal, field replacement, both-host proofs, one-label and scroll-1000 cost, final perf.sh numbers; the final builder removal once the document gaps land |
+| og-ui document surface | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | UA block margins, the extern-element hook, bound custom properties, props on existing tags (`border`, `box-shadow`, `outline`, `overflow`), content in buttons, ARIA, device glyphs, inline img/icon/kbd, tooltips and popover, the missing core controls, component documents ([gap brief](https://ampcode.com/artifacts/ui-document-surface-gap-brief-builder-removal-8f5316ab-4604-49d8-8477-6d267aa6ef55)) |
+| UI document runtime, graphics and world | [T-01a1bad4-0793](https://ampcode.com/threads/T-01a1bad4-0793-740e-aa3f-5dd65b6b3396) | Mounted documents as layers, snippets as content, inline SVG, drag and drop, `<viewport>`, touch controls, world panels, mass, particles in CSS |
+| og-ui features | [T-01a1bad4-117c](https://ampcode.com/threads/T-01a1bad4-117c-709c-bedb-133a6e3d515b) | Colour-blind modes, selectable text, text on a path, colour emoji, live regions, UI debugger and `dump_ui:motion`, split screen, untested components and perf budgets |
+| Presentation checkpoints and og.motion | [T-01a1b99f-1445](https://ampcode.com/threads/T-01a1b99f-1445-70df-9528-b3bc997e0683) | og.motion on a fixed-order CPU kernel across lanes (int8 next), GPU as an opt-in for presentation-only crowds |
 | Rendering performance | [T-01a1b99f-2748](https://ampcode.com/threads/T-01a1b99f-2748-7173-98de-af62ac91012f) | FSR 3.1, GI probes, crowds at 50k, first frame |
 
 ## Landed this round (2026-11-07 to 2026-11-08)
@@ -48,16 +50,26 @@ All streams run on macrunner and report to the coordinator thread
   settlement, stable slots (1167a7566 to 0b6ba3af3); only changed mounted
   elements are written each frame (dc8a7b38b); the last frame inspected
   on demand with retained paint reused (909c1bb79); layout only along the
-  paths to what changed (9909569fe).
+  paths to what changed (9909569fe); unchanged subtrees' paint reused and
+  scrolled rows kept (9b5a0368e); moved subtrees' paint moved, not
+  repainted (ec2553603); the native a11y bridge reads only changed nodes,
+  with landmark roles and heading levels (60cedfade); finish and paint
+  visit only what changed (0392bec45, a189aa88f).
 - **og-ui capabilities:** input types, `inputmode`, `autocomplete` and
   password reveal (4d8b785b9); ten Noto font packs loaded per script on
-  demand (84d8ec3e2).
+  demand (84d8ec3e2); HTML element names in documents (a050fc383); core
+  `<select>`, `<dialog>` with `::backdrop`, `<details>`, `<meter>`
+  (f0c02b795, 3a798e95f); `<p>`, `<span>`, headings, `<div>` and the
+  landmarks, lists with CSS markers, `<a href>`, `<label for>`
+  (61fb46e22).
 - **Checkpoints:** module-scope state fails `og check` as OG9101
   (bf1fd9440); a presentation checkpoint restores the display's whole frame
   history (TAA, SMAA, GI, SSR, FSR, terrain streaming), and
   `og run --capture-only` draws a still frame (1fac50487). The og.motion
   pitch and wave rows were stale since aea4a0f15 (no bounds remain; the
-  wave plays past 15 s).
+  wave plays past 15 s). Restore checked byte-identical in Chrome WebGPU
+  (3dee686b6); the web `renderFrame` readback fixed (dc6ca86c1);
+  `og run --forks N` (d0d9a3dde).
 - **Invariants and `og explore`:** incremental default invariants, `$`
   path values, `require`, the per-tick `probe.assertionEvents` stream on
   node and web, `RestoreDesc.session`, the `intent:` command and
@@ -84,8 +96,8 @@ Each must be met before 0.8.0.
 | GI probes | main pass 3.70 ms; `both` 12.70 ms; screen GI 0.65 of the path-traced reference | ceiling 0.72–0.80, cheaper | rendering |
 | First frame | DX12 cold driver cache (RTX 5060): terrain-near 4.64 s (was 10.46), terrain-tiling 4.07 s (was 5.60); pipelines compile on a pool of workers, started when the frame knows it draws them; the terrain lit pipeline alone takes 3.4 s (its fragment stage 1.9 s in DXC); Pixel 14–17 s, not remeasured | terrain-near setup and first frame at most 2.0 s, no pipeline above 0.5 s, cold driver cache: the terrain lit shader split by feature | rendering |
 | Crowds at 50k | 16.40 ms a frame median (was 20.88 on the same main, 24.35 at the last record; prepass 8.75 → 5.73 ms, main 8.68 → 7.39 ms, M4 Pro): skinning reads only weighted joints | at most 12 ms a frame median (M4 Pro, perf_crowd_50k), reference frames unmoved; skinning once a frame tried | rendering |
-| Presentation checkpoints | og.motion poses differ from native in the last bits on the web; a web tick waits for a late batch | byte-identical on every host | checkpoints |
-| UI per-frame cost | idle 1.229 ms, one label 1.254 ms (median, 2560×1440); indicative idle now 0.303 ms, still scaling with node count; scroll-1000 0.53 ms against 0.29 immediate | follows the change, not the tree | retained UI |
+| Presentation checkpoints | og.motion poses differ from native in the last bits on the web; a web tick waits for a late batch; the CPU kernel is exact on both hosts but costs 1.8 ms a character a tick on one thread | byte-identical on every host; at least 64 characters natively, 32 on the web with lanes, 8 on one web thread, within 2 ms a tick a thread | checkpoints |
+| UI per-frame cost | baseline idle 1.229 ms, one label 1.254 ms (median, 2560×1440); indicative now idle 0.026 ms, one label 0.160 ms, scroll-1000 about 0.39 ms against 0.29 immediate | follows the change, not the tree | retained UI |
 | Watercolour look | reads as oil | a watercolour primitive (Bousseau, MNPR) | with the art review, after the pilot opens |
 | Distant impostors | no own shadow, the view from below, no sway | — | with the art review |
 | Wasm, determinism and browser tiers of the latest features | measured before a release | — | release |
