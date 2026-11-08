@@ -496,6 +496,15 @@ impl ShapeKind {
                 } else {
                     line.extend(p.iter().skip(1));
                 }
+                // A closed line that ends where it starts closes itself:
+                // the repeated point would be a joint of no length, whose
+                // miter has no direction (a spike).
+                if (*closed || *filled)
+                    && line.len() > 2
+                    && (line[0] - line[line.len() - 1]).length() < 1e-4
+                {
+                    line.pop();
+                }
                 og_render::UiGeometry::Polyline {
                     points: line,
                     closed: *closed || *filled,
@@ -592,6 +601,14 @@ pub struct ElementDraw {
     /// clipped to its clip (and to its box when the artboard cuts its
     /// content to its frame).
     pub rive: Option<RiveDraw>,
+    /// Stroked shapes of its own beyond its shape's outline, drawn with its
+    /// strokes in order (an SVG shape's subpaths, a border's sides).
+    pub outlines: Vec<(ShapeKind, Stroke)>,
+    /// A view box `[min x, min y, width, height]` its shapes, outlines and
+    /// gradients are written in (an inline SVG's user space), fitted into
+    /// its box when it is drawn as SVG's `xMidYMid meet` fits it: stroke
+    /// widths and dashes scale with it. `None`: CSS px from its top left.
+    pub view_box: Option<[f32; 4]>,
 }
 
 /// A playing artboard as an element's draw. Two are equal when they play
@@ -627,6 +644,8 @@ impl Default for ElementDraw {
             layer: None,
             text: None,
             rive: None,
+            outlines: Vec::new(),
+            view_box: None,
         }
     }
 }
@@ -652,8 +671,84 @@ impl ElementDraw {
                 .any(|e| matches!(e, Effect::LayerBlur { .. }))
     }
 
+    /// The view box's fit in `at`'s box: its scale and the box point
+    /// (CSS px from the box's top left) its centre lands on.
+    fn fit(&self, at: &Placed) -> Option<(f32, Vec2, Vec2)> {
+        let [_, _, w, h] = self.view_box?;
+        let k = (at.rect.width / w.max(1e-6)).min(at.rect.height / h.max(1e-6));
+        let vb = self.view_box?;
+        Some((
+            k,
+            Vec2::new(vb[0] + vb[2] * 0.5, vb[1] + vb[3] * 0.5),
+            Vec2::new(at.rect.width, at.rect.height) * 0.5,
+        ))
+    }
+
+    /// `kind`'s geometry placed in `at`, through the view box when it has one.
+    fn geometry(&self, kind: &ShapeKind, at: &Placed) -> og_render::UiGeometry {
+        let size = [at.rect.width, at.rect.height];
+        let Some((k, mid, half)) = self.fit(at) else {
+            return kind.geometry(at.radius, size);
+        };
+        match kind {
+            ShapeKind::Path {
+                points,
+                closed,
+                filled,
+                curves,
+                fill_rule,
+                contours,
+                width,
+                cap,
+                join,
+            } => ShapeKind::Path {
+                points: points
+                    .iter()
+                    .map(|p| ((Vec2::from(*p) - mid) * k + half).into())
+                    .collect(),
+                closed: *closed,
+                filled: *filled,
+                curves: *curves,
+                fill_rule: *fill_rule,
+                contours: contours.clone(),
+                width: width * k,
+                cap: *cap,
+                join: *join,
+            }
+            .geometry(at.radius, size),
+            other => other.geometry(at.radius, size),
+        }
+    }
+
+    /// A paint resolved for `at`: a gradient written in view-box units
+    /// becomes fractions of the box.
+    fn paint(&self, paint: &Paint, theme: &Theme, at: &Placed) -> og_render::UiPaint {
+        let mut out = paint.resolve(theme);
+        if let (Some((k, mid, half)), og_render::UiPaint::Gradient(g)) = (self.fit(at), &mut out) {
+            let size = Vec2::new(at.rect.width, at.rect.height).max(Vec2::splat(1e-6));
+            g.from = ((g.from - mid) * k + half) / size;
+            g.to = match g.kind {
+                GradientKind::Linear => ((g.to - mid) * k + half) / size,
+                _ => g.to * k / size,
+            };
+        }
+        out
+    }
+
     fn shape(
         &self,
+        at: &Placed,
+        paint: og_render::UiPaint,
+        mode: og_render::UiMode,
+        opacity: f32,
+        blend: Blend,
+    ) -> DrawCmd {
+        self.shape_of(&self.shape, at, paint, mode, opacity, blend)
+    }
+
+    fn shape_of(
+        &self,
+        kind: &ShapeKind,
         at: &Placed,
         paint: og_render::UiPaint,
         mode: og_render::UiMode,
@@ -663,9 +758,7 @@ impl ElementDraw {
         let r = at.rect;
         DrawCmd::Shape {
             shape: Box::new(og_render::UiShape {
-                geometry: self
-                    .shape
-                    .geometry(at.radius, [at.rect.width, at.rect.height]),
+                geometry: self.geometry(kind, at),
                 center: Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0),
                 half: Vec2::new(r.width / 2.0, r.height / 2.0),
                 transform: [1.0, 0.0, 0.0, 1.0],
@@ -821,7 +914,7 @@ impl ElementDraw {
                 });
                 continue;
             }
-            out.push(self.shape(at, f.resolve(theme), o, opacity, blend));
+            out.push(self.shape(at, self.paint(f, theme, at), o, opacity, blend));
         }
         for e in &self.effects {
             let (mode, color) = match e {
@@ -894,9 +987,7 @@ impl ElementDraw {
         }
         let r = at.rect;
         vec![DrawCmd::PushClip {
-            geometry: self
-                .shape
-                .geometry(at.radius, [at.rect.width, at.rect.height]),
+            geometry: self.geometry(&self.shape, at),
             center: (r.x + r.width / 2.0, r.y + r.height / 2.0),
             half: (r.width / 2.0, r.height / 2.0),
         }]
@@ -935,17 +1026,27 @@ impl ElementDraw {
         } else {
             (self.opacity * at.alpha, self.blend)
         };
+        // Widths and dashes in view-box units scale with its fit (uniform:
+        // `meet` scales both axes alike).
+        let k = self.fit(at).map_or(1.0, |(k, ..)| k);
+        let mode = |s: &Stroke| {
+            og_render::UiMode::Stroke(og_render::UiStroke {
+                width: s.width * k,
+                align: s.align,
+                dash: s.dash.map(|d| d * k),
+                dash_offset: s.dash_offset * k,
+                dash_cap: s.dash_cap,
+            })
+        };
         for s in &self.strokes {
-            out.push(self.shape(
+            out.push(self.shape(at, self.paint(&s.paint, theme, at), mode(s), opacity, blend));
+        }
+        for (kind, s) in &self.outlines {
+            out.push(self.shape_of(
+                kind,
                 at,
-                s.paint.resolve(theme),
-                og_render::UiMode::Stroke(og_render::UiStroke {
-                    width: s.width,
-                    align: s.align,
-                    dash: s.dash,
-                    dash_offset: s.dash_offset,
-                    dash_cap: s.dash_cap,
-                }),
+                self.paint(&s.paint, theme, at),
+                mode(s),
                 opacity,
                 blend,
             ));

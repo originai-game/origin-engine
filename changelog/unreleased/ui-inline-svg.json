@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "UI documents: inline SVG",
+      "summary": "<svg viewBox> with <g>, <path>, <rect>, <circle>, <ellipse>, <line>, <polyline>, <polygon>, gradients and <stop> in documents; every attribute binds, SVG's presentation properties are attributes or CSS and inherit, the view box fits the box as xMidYMid meet with strokes and dashes scaled, pathLength makes stroke-dashoffset a fraction. Each shape is one retained element drawn as an analytic path: a changed attribute draws that shape again, nothing else."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI polylines",
+      "summary": "Miter joints no longer leave a half-covered seam on the bisector (visible at every joint of a flattened curve), and a closed line that ends at its start no longer draws a miter spike there."
+    }
+  ]
+}

@@ -658,6 +658,11 @@ impl Ui {
                 .insert(super::container::CHAIN.to_string());
         }
         r.cascade.container_reads = container_reads;
+        if let NodeKind::Element(kind) = n.kind
+            && svg::KINDS.contains(&kind)
+        {
+            svg::inherit(kind, &mut r);
+        }
         if recording {
             let cached = b.recording.borrow_mut().take().unwrap_or_default();
             r.replay = Some(Arc::new(containers::Replay { cached, decisions }));
@@ -1059,4 +1064,5 @@ mod mount;
 mod nodes;
 mod retained;
 mod structure;
+mod svg;
 pub use mount::{Built, DocEvent, DocHost, DocResponse, Edit};

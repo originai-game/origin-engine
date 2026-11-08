@@ -20,6 +20,8 @@ pub struct Cascade {
     pub(crate) motion: Vec<(String, String)>,
     /// Winning container-name and container-type, substituted.
     pub(crate) container: Vec<(String, String)>,
+    /// Winning SVG presentation properties (`fill`, `stroke`…), substituted.
+    pub(crate) svg: Vec<(String, String)>,
     /// Query containers whose settled size the matched rules depend on.
     pub container_reads: BTreeSet<u64>,
 }
@@ -135,6 +137,10 @@ pub fn resolve(
         }
         if crate::doc::container::longhand(&name) {
             out.container.push((name, value));
+            continue;
+        }
+        if crate::doc::extern_element::svg_longhand(&name) {
+            out.svg.push((name, value));
             continue;
         }
         let declaration = format!("{name}: {value};");

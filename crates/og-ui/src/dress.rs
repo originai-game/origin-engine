@@ -1193,6 +1193,8 @@ impl Resolved {
             layer,
             text: None,
             rive: None,
+            outlines: Vec::new(),
+            view_box: None,
         }
     }
 }

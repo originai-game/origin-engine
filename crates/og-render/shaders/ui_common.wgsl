@@ -577,7 +577,12 @@ fn joint_cut(p: vec2<f32>, j: vec2<f32>, d0: vec2<f32>, d1: vec2<f32>, hw: f32, 
     return dd;
   }
   let m = normalize(t);
-  let bis = select(-dot(p - j, m), dot(p - j, m), end);
+  // Each segment reaches a little past the bisector, so the two overlap
+  // there instead of each fading to half coverage on it (a seam at every
+  // joint of a flattened curve); the miter's own cut below still bounds
+  // the outer corner.
+  let overlap = min(0.5 * hw, 1.0);
+  let bis = select(-dot(p - j, m), dot(p - j, m), end) - overlap;
   let n0 = vec2<f32>(-d0.y, d0.x);
   let n1 = vec2<f32>(-d1.y, d1.x);
   let nm = n0 + n1;

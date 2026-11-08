@@ -30,6 +30,8 @@ mod html_controls;
 mod html_text;
 #[path = "../hud_layout.rs"]
 mod hud_layout;
+#[path = "../inline_svg.rs"]
+mod inline_svg;
 #[path = "../input_types.rs"]
 mod input_types;
 #[path = "../kit_gfx.rs"]

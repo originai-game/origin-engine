@@ -250,6 +250,20 @@ impl Ui {
             self.build_container(container);
         }
         let props = self.props_of(b, n, key, &r, &mut built);
+        if svg::KINDS.contains(&kind) {
+            return self.build_svg(
+                b,
+                n,
+                kind,
+                id.as_str(),
+                &r,
+                props,
+                path,
+                key,
+                built,
+                build_children,
+            );
+        }
         let t = self.theme;
         let text_of = |r: &Resolved, b: &Build<'_>| -> String {
             if let Some(k) = r.str("key")
@@ -1044,7 +1058,7 @@ impl Ui {
     }
 
     /// Fires a node's triggers for what happened to it this tick.
-    fn fire(
+    pub(super) fn fire(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,

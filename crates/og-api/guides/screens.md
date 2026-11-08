@@ -173,6 +173,12 @@ local styles and `og style new` remain available.
   `<Card title={item.name}>{#snippet body()}<p>{item.desc}</p>{/snippet}</Card>`,
   rendered in `Card` with `{@render body?.()}`. Pass content to a mount by
   reference: `scope.mount("pause", "pause", inputs, { side: "game#pauseSide" })`.
+- Draw rings, bars, charts and badges with inline SVG, binding attributes
+  to stores: `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18"
+  fill="none" stroke="var(--accent)" pathLength="1" stroke-dasharray="1 1"
+  stroke-dashoffset={1 - $ready}/></svg>`. Size the `<svg>` with CSS; its
+  view box scales to fit, strokes with it. Gradients are
+  `<linearGradient id>` and `fill="url(#id)"`.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.

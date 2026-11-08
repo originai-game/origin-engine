@@ -350,6 +350,35 @@ cannot declare a view transition. Shared-element morphs
 (`view-transition-name`, `::view-transition-old(card)`) are refused for now
 and are a follow-up.
 
+Inline SVG draws data-bound vector graphics in a document: `<svg viewBox>`
+with `<g>`, `<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`,
+`<polyline>`, `<polygon>`, and `<defs>`, `<linearGradient>`,
+`<radialGradient>` and `<stop>`. Every attribute can bind
+(`d={$series.path}`, `stroke-dashoffset={1 - $ready}`,
+`{#each $bars as b (b.id)}<rect height={b.h}/>{/each}`), and SVG's
+presentation properties (`fill`, `stroke`, `stroke-width`,
+`stroke-dasharray`, `stroke-dashoffset`, `stroke-linecap`,
+`stroke-linejoin`, `stroke-miterlimit`, `fill-rule` and the opacities) are
+attributes or CSS (`#Ring circle { stroke: var(--accent); }`), inherited
+down the tree as SVG inherits them. `transform`, `pathLength` (a ring with
+`pathLength="1"` takes its progress as `stroke-dashoffset`), `url(#id)`
+gradients with `gradientUnits`, `gradientTransform` and `href`, and
+`currentColor` (the style's ink) work as in browsers. A paint also takes a
+style colour, `var(--accent)`, which the cook's vectors cannot.
+
+An `<svg>` is a box of its CSS `width` and `height` (default: its view
+box's size); the view box fits it as `xMidYMid meet`, so stroke widths and
+dashes scale with it, as in browsers. Each shape is one element: its fill
+is an analytic path in og-render's UI pass and its subpaths are its stroked
+outlines, so a shape whose bound attribute changes is drawn again and
+nothing else is, and a box that only resizes places the same draws again.
+The parser is the cook's (`og_ui::svg`, shared with `type vector`); text,
+`<use>`, clips, masks, filters and patterns are refused with the element
+named. A dash array takes one dash and one gap. Cost: re-tessellating one
+dashed ring as a cooked vector takes 438 µs and 840 vertices; changing a
+bound attribute on one of 64 inline rings costs 69–150 µs of the frame
+(dev profile), and unchanged shapes cost nothing.
+
 The authoring contract below also includes requirements whose TypeScript
 wiring remains pending:
 

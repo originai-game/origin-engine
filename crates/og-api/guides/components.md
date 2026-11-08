@@ -432,3 +432,139 @@ Its own props, beside every element's:
 | `low` | `number` | The top of the low region (HTML `low`; default `min`). |
 | `high` | `number` | The bottom of the high region (HTML `high`; default `max`). |
 | `optimum` | `number` | The best value (HTML `optimum`; default the middle): its region is `optimum`, the next `suboptimum`, the far one `poor`. |
+
+## 28. `<svg>` (`svg`): Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size)
+
+Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size). A container with nested children: `<svg id="Name" viewBox="0 0 40 40">…</svg>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `viewBox` | `text` | SVG `viewBox`: the user space `min-x min-y width height` its box shows. |
+| `fill` | `text` | SVG `fill`: a colour, `var(--role)`, `currentColor` (the style's ink), `url(#gradient)` or `none`. |
+| `fill-opacity` | `text` | SVG `fill-opacity`. |
+| `fill-rule` | `text` | SVG `fill-rule`: nonzero or evenodd. |
+| `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
+| `stroke-opacity` | `text` | SVG `stroke-opacity`. |
+| `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
+| `stroke-linecap` | `text` | SVG `stroke-linecap`. |
+| `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
+| `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
+| `x` | `text` | SVG `x`. |
+| `y` | `text` | SVG `y`. |
+| `cx` | `text` | SVG `cx`. |
+| `cy` | `text` | SVG `cy`. |
+| `r` | `text` | SVG `r`. |
+| `x1` | `text` | SVG `x1`. |
+| `y1` | `text` | SVG `y1`. |
+| `x2` | `text` | SVG `x2`. |
+| `y2` | `text` | SVG `y2`. |
+
+## 29. `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
+
+SVG's `<g>`: a transform and presentation attributes its shapes inherit. A container with nested children: `<g transform="rotate(-90 20 20)" stroke="var(--accent)">…</g>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `transform` | `text` | SVG `transform` (matrix, translate, scale, rotate, skewX, skewY); on a gradient, `gradientTransform`. |
+| `fill` | `text` | SVG `fill`: a colour, `var(--role)`, `currentColor` (the style's ink), `url(#gradient)` or `none`. |
+| `fill-opacity` | `text` | SVG `fill-opacity`. |
+| `fill-rule` | `text` | SVG `fill-rule`: nonzero or evenodd. |
+| `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
+| `stroke-opacity` | `text` | SVG `stroke-opacity`. |
+| `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
+| `stroke-linecap` | `text` | SVG `stroke-linecap`. |
+| `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
+| `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
+| `x` | `text` | SVG `x`. |
+| `y` | `text` | SVG `y`. |
+| `cx` | `text` | SVG `cx`. |
+| `cy` | `text` | SVG `cy`. |
+| `r` | `text` | SVG `r`. |
+| `x1` | `text` | SVG `x1`. |
+| `y1` | `text` | SVG `y1`. |
+| `x2` | `text` | SVG `x2`. |
+| `y2` | `text` | SVG `y2`. |
+
+## 30. `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
+
+An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable. A leaf; text-bearing controls accept text content: `<path d={$line} fill="none" stroke="currentColor" />` or `<circle cx="20" cy="20" r="18" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset={1 - $ready} />` or `<rect x={b.x} y={40 - b.h} width="8" height={b.h} rx="2" />` or `<polygon points="0,0 10,0 5,8" /> (ellipse, line, polyline)`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `transform` | `text` | SVG `transform` (matrix, translate, scale, rotate, skewX, skewY); on a gradient, `gradientTransform`. |
+| `fill` | `text` | SVG `fill`: a colour, `var(--role)`, `currentColor` (the style's ink), `url(#gradient)` or `none`. |
+| `fill-opacity` | `text` | SVG `fill-opacity`. |
+| `fill-rule` | `text` | SVG `fill-rule`: nonzero or evenodd. |
+| `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
+| `stroke-opacity` | `text` | SVG `stroke-opacity`. |
+| `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
+| `stroke-linecap` | `text` | SVG `stroke-linecap`. |
+| `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
+| `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
+| `pathLength` | `text` | SVG `pathLength`: the length its dashes and offset measure the outline in (`pathLength="1"` makes `stroke-dashoffset` a fraction). |
+| `d` | `text` | A `<path>`'s path data. |
+| `x` | `text` | SVG `x`. |
+| `y` | `text` | SVG `y`. |
+| `width` | `text` | A `<rect>`'s `width`. |
+| `height` | `text` | A `<rect>`'s `height`. |
+| `rx` | `text` | SVG `rx`. |
+| `ry` | `text` | SVG `ry`. |
+| `cx` | `text` | SVG `cx`. |
+| `cy` | `text` | SVG `cy`. |
+| `r` | `text` | SVG `r`. |
+| `x1` | `text` | SVG `x1`. |
+| `y1` | `text` | SVG `y1`. |
+| `x2` | `text` | SVG `x2`. |
+| `y2` | `text` | SVG `y2`. |
+| `points` | `text` | A `<polyline>`'s or `<polygon>`'s points. |
+
+## 31. `<linearGradient>` (`svgDef`): An SVG definition (`<defs>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`): not drawn; shapes reference gradients with `url(#id)`
+
+An SVG definition (`<defs>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`): not drawn; shapes reference gradients with `url(#id)`. A container with nested children: `<linearGradient id="Up" x2="0" y2="1"><stop offset="0" stop-color="#fff" />…</linearGradient> (radialGradient, defs)`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `transform` | `text` | SVG `transform` (matrix, translate, scale, rotate, skewX, skewY); on a gradient, `gradientTransform`. |
+| `fill` | `text` | SVG `fill`: a colour, `var(--role)`, `currentColor` (the style's ink), `url(#gradient)` or `none`. |
+| `fill-opacity` | `text` | SVG `fill-opacity`. |
+| `fill-rule` | `text` | SVG `fill-rule`: nonzero or evenodd. |
+| `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
+| `stroke-opacity` | `text` | SVG `stroke-opacity`. |
+| `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
+| `stroke-linecap` | `text` | SVG `stroke-linecap`. |
+| `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
+| `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
+| `x` | `text` | SVG `x`. |
+| `y` | `text` | SVG `y`. |
+| `cx` | `text` | SVG `cx`. |
+| `cy` | `text` | SVG `cy`. |
+| `r` | `text` | SVG `r`. |
+| `x1` | `text` | SVG `x1`. |
+| `y1` | `text` | SVG `y1`. |
+| `x2` | `text` | SVG `x2`. |
+| `y2` | `text` | SVG `y2`. |
+| `fx` | `text` | A radial gradient's `fx`. |
+| `fy` | `text` | A radial gradient's `fy`. |
+| `offset` | `text` | A `<stop>`'s `offset`. |
+| `stop-color` | `text` | A `<stop>`'s `stop-color`. |
+| `stop-opacity` | `text` | A `<stop>`'s `stop-opacity`. |
+| `gradientUnits` | `text` | A gradient's `gradientUnits`. |
+| `gradientTransform` | `text` | A gradient's `gradientTransform`. |
+| `spreadMethod` | `text` | A gradient's `spreadMethod`. |
+| `href` | `text` | A gradient's `href`: the gradient it takes its stops from. |

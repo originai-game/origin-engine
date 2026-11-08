@@ -136,6 +136,7 @@ pub(super) fn apply(
             if name.starts_with("--")
                 || super::motion::longhand(name)
                 || super::container::longhand(name)
+                || super::extern_element::svg_longhand(name)
             {
                 continue;
             }

@@ -720,6 +720,8 @@ impl Reader<'_> {
             layer: self.layer(&d["layer"]),
             text: Reader::text(&d["text"]),
             rive: None,
+            outlines: Vec::new(),
+            view_box: None,
         }
     }
 }
