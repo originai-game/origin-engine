@@ -293,6 +293,13 @@ pub(crate) struct LayoutCache {
     pub prev_len: usize,
     /// What last frame's levelling decided (`None`: level afresh).
     pub levels: Option<crate::draw::Levels>,
+    /// The animated nodes still moving after the motion pass (visited
+    /// again next tick), each visited node's state groups, and the
+    /// widgets' channels stepped since the pass last read them
+    /// (`Ui::run_motion`, `Ui::animate_key`).
+    pub motion_moving: Vec<usize>,
+    pub motion_groups: crate::id::KeyMap<Vec<u64>>,
+    pub widget_channels: Vec<u64>,
 }
 
 /// What the frame changes about a node's drawing without writing it again:

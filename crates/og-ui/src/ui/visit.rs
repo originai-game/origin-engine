@@ -277,32 +277,37 @@ impl Ui {
     /// What this frame may change, before its passes: the nodes written,
     /// laid out or put back, those that entered a tree or whose parent's
     /// children changed, those the frame's own passes wrote last frame,
-    /// and those a pass moves every frame (motion, drags, shared
-    /// elements, world anchors, layers). Each is sampled again.
-    pub(super) fn frame_seeds(&self) -> Vec<usize> {
+    /// those still moving after last frame's motion, and those a pass
+    /// moves every frame (drags, shared elements, world anchors, layers);
+    /// and of them, those whose style may change (`restyle`): sampled
+    /// again and moved by motion. A node only laid out or moved among its
+    /// siblings keeps its sampled style (made from what was written).
+    pub(super) fn frame_seeds(&self) -> (Vec<usize>, Vec<usize>) {
         let o = &self.orders;
-        let mut seeds: Vec<usize> = self
+        let mut restyle: Vec<usize> = self
             .emitted
             .iter()
-            .chain(&self.kept.laid)
             .chain(&o.wrote_last)
-            .chain(o.with(feat::ANIMATED))
+            .chain(&self.kept.motion_moving)
             .chain(o.with(feat::GESTURE))
             .chain(o.with(feat::MATCH))
             .chain(o.with(feat::WORLD))
-            .chain(&self.floating)
             .copied()
             .collect();
         for &k in &self.tree.moved_keys {
-            seeds.extend(self.tree.by_key.get(&k).copied());
+            restyle.extend(self.tree.by_key.get(&k).copied());
         }
+        let mut seeds = restyle.clone();
+        seeds.extend(self.kept.laid.iter().chain(&self.floating));
         for &p in &self.tree.restructured {
             seeds.extend_from_slice(&self.nodes[p].ordered_children);
         }
-        seeds.retain(|&i| i < self.nodes.len() && self.tree.has(i));
-        seeds.sort_unstable();
-        seeds.dedup();
-        seeds
+        for list in [&mut restyle, &mut seeds] {
+            list.retain(|&i| i < self.nodes.len() && self.tree.has(i));
+            list.sort_unstable();
+            list.dedup();
+        }
+        (seeds, restyle)
     }
 
     /// Visits the nodes from `seeds` down in drawing order: `step` makes

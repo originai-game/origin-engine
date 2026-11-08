@@ -40,6 +40,41 @@ pub(super) fn compare(ui: &Ui, twin: &Ui) {
         "{}",
         at("hits")
     );
+    // Motion state: the same channels with the same values. The whole
+    // frame steps every animated node, the bounded one leaves a settled
+    // one unvisited, so when a channel was last stepped is not compared.
+    let (mu, mt) = (&ui.state.motion, &twin.state.motion);
+    for (k, c) in &mu.channels {
+        let mut c = *c;
+        let mut w = *mt
+            .channels
+            .get(k)
+            .unwrap_or_else(|| panic!("{}: channel {k} kept: {c:?}", at("motion state")));
+        (c.stepped, w.stepped) = (0, 0);
+        assert_eq!(c, w, "{}: channel {k}", at("motion state"));
+    }
+    assert_eq!(
+        mu.channels.len(),
+        mt.channels.len(),
+        "{}: a channel forgotten",
+        at("motion state")
+    );
+    let sorted = |m: &crate::motion::state::MotionState| {
+        let mut groups: Vec<_> = m
+            .groups
+            .iter()
+            .map(|(k, g)| (*k, format!("{g:?}")))
+            .collect();
+        groups.sort_unstable();
+        let mut set: Vec<_> = m.set_states.iter().map(|(k, s)| (*k, s.clone())).collect();
+        set.sort_unstable();
+        let mut seen: Vec<_> = m.seen.iter().map(|(k, t)| (*k, *t)).collect();
+        seen.sort_unstable();
+        let mut flip: Vec<_> = m.flip.iter().map(|(k, r)| (*k, format!("{r:?}"))).collect();
+        flip.sort_unstable();
+        format!("{groups:?}\n{set:?}\n{seen:?}\n{flip:?}\n{:?}", m.css)
+    };
+    assert_eq!(sorted(mu), sorted(mt), "{}", at("motion state"));
     let mut order = preorder(&twin.nodes, 0);
     for &f in &twin.floating {
         order.extend(preorder(&twin.nodes, f));

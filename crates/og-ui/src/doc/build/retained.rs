@@ -1758,7 +1758,8 @@ mod tests {
                 "<column id=\"Column{column}\" width=\"128\" height=\"900\">{{#each $c{column} as cell (cell.id)}}<text id=\"Cell{column}\">{{cell.text}}</text>{{/each}}</column>"
             ));
         }
-        doc.push_str("</row>");
+        // Every cell animates its opacity: settled, none is visited.
+        doc.push_str("</row><style>text { transition: opacity 200ms; }</style>");
         ui.define_document(UiDocument::parse("grid.svelte", &doc).unwrap());
         ui.mount_document(
             SourceId::new("test", "grid"),
@@ -1778,8 +1779,14 @@ mod tests {
         }
         let idle = tick(&mut ui);
         assert_eq!(
-            (idle.bindings, idle.reconciled, idle.laid_out, idle.painted),
-            (0, 0, 0, 0),
+            (
+                idle.bindings,
+                idle.reconciled,
+                idle.laid_out,
+                idle.painted,
+                idle.animated
+            ),
+            (0, 0, 0, 0, 0),
             "{idle:?}"
         );
         ui.reactive
@@ -1790,9 +1797,10 @@ mod tests {
             })
             .unwrap();
         let changed = tick(&mut ui);
+        // Motion visits only the label written, not its moved siblings.
         assert_eq!(
-            (changed.bindings, changed.reconciled),
-            (1, 1),
+            (changed.bindings, changed.reconciled, changed.animated),
+            (1, 1, 1),
             "{changed:?}"
         );
         let text = |ui: &Ui| {
@@ -1807,7 +1815,11 @@ mod tests {
         // last layout, then idle again.
         tick(&mut ui);
         let idle = tick(&mut ui);
-        assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+        assert_eq!(
+            (idle.bindings, idle.reconciled, idle.animated),
+            (0, 0, 0),
+            "{idle:?}"
+        );
         assert_eq!(text(&ui), "Value 7");
     }
 

@@ -194,7 +194,7 @@ pub(crate) fn name_hash(name: &str) -> u64 {
     crate::id::child_key(0x6d6f_7469_6f6e, name)
 }
 
-const CHANNEL_NAMES: [&str; crate::element::CHANNELS + 6] = [
+pub(crate) const CHANNEL_NAMES: [&str; crate::element::CHANNELS + 6] = [
     "~x", "~y", "~sx", "~sy", "~rot", "~kx", "~ky", "~opacity", "~radius", "~bgr", "~bgg", "~bgb",
     "~bga", "~inkr", "~inkg", "~inkb", "~inka", "~z", "~inert", "~flipx", "~flipy", "~flipsx",
     "~flipsy", "~gx", "~gy",

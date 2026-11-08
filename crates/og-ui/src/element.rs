@@ -1013,6 +1013,9 @@ pub struct LayoutStats {
     pub reconciled: u32,
     /// Nodes whose draw commands were made this tick.
     pub painted: u32,
+    /// Animated nodes the motion pass visited this tick (written ones and
+    /// those still moving); the rest kept their values unvisited.
+    pub animated: u32,
 }
 
 // ── The element model's part of the frame ──────────────────────────────────

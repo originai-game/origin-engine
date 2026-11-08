@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "The motion pass visits only the animated elements a frame may change (written, laid out, entered, or still moving last tick: a channel off its target or waiting out a delay, a play, a CSS animation, a layout motion), not every element that declares a transition, state group or animation; a settled element keeps its values unvisited. What it forgets is read from those elements, the elements that left the trees and the widget channels stepped lately, instead of scanning all motion state, so an idle screen of animated elements does no motion work. `LayoutStats.animated` counts the elements visited."
+    }
+  ]
+}

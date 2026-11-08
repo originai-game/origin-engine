@@ -498,8 +498,14 @@ impl Ui {
         let anchored = self.orders.with(visit::feat::ANCHORED).to_vec();
         self.place_anchored(&anchored);
         // What may change this frame (`visit`): every node on a fresh one.
-        let seeds = (!whole).then(|| self.frame_seeds());
-        let sampled: &[usize] = seeds.as_deref().unwrap_or(&order);
+        let (mut seeds, restyle) = match whole {
+            true => (None, None),
+            false => {
+                let (seeds, restyle) = self.frame_seeds();
+                (Some(seeds), Some(restyle))
+            }
+        };
+        let sampled: &[usize] = restyle.as_deref().unwrap_or(&order);
         for &i in sampled {
             self.nodes[i].sample_style();
         }
@@ -526,12 +532,16 @@ impl Ui {
         self.apply_shakes(&order);
         let staggered = self.orders.with(visit::feat::STAGGER).to_vec();
         self.apply_stagger(&staggered);
-        self.run_motion();
+        let animated = self.run_motion(restyle.as_deref());
+        self.stats.animated = animated.len() as u32;
+        // What motion wrote is placed and painted again.
+        if let Some(seeds) = seeds.as_mut() {
+            seeds.extend_from_slice(&animated);
+        }
         self.apply_bursts(&order);
         self.world_place();
         self.orders.pre = order;
         // Drawn and hit in z order among siblings.
-        let animated = self.orders.with(visit::feat::ANIMATED).to_vec();
         self.update_draw_order(&animated);
         #[cfg(debug_assertions)]
         if bounded::checking() {

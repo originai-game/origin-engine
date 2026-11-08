@@ -512,7 +512,13 @@ fn perf_ui_retained_change_budgets() {
             "{reply}"
         );
     };
-    for scenario in ["idle", "one-label", "scroll-1000", "row-999"] {
+    for scenario in [
+        "idle",
+        "idle-animated",
+        "one-label",
+        "scroll-1000",
+        "row-999",
+    ] {
         let mut scene = og_render::RenderScene::new();
         let mut ui = ui_with_font(add_test_font(&mut scene));
         let mut inputs = BTreeMap::new();
@@ -558,6 +564,10 @@ fn perf_ui_retained_change_budgets() {
                 ));
             }
             doc.push_str("</row>");
+            // Every label animates its opacity: settled, none is visited.
+            if scenario == "idle-animated" {
+                doc.push_str("<style>text { transition: opacity 200ms; }</style>");
+            }
             doc
         };
         ui.define_document(UiDocument::parse("perf.svelte", &text).unwrap());
@@ -643,6 +653,12 @@ fn perf_ui_retained_change_budgets() {
             "row-999" => {
                 assert!(max_first >= 999, "reached row {max_first}");
                 assert_eq!(ui.focus_path(0), far, "focus held on row 999 by key");
+            }
+            "idle" | "idle-animated" => {
+                let busy = work.iter().find(|s| {
+                    (s.bindings, s.reconciled, s.laid_out, s.painted, s.animated) != (0, 0, 0, 0, 0)
+                });
+                assert!(busy.is_none(), "an idle tick worked: {busy:?}");
             }
             _ => {}
         }

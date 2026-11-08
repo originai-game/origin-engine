@@ -246,8 +246,14 @@ impl Ui {
     }
 
     /// The tick's motion: on the nodes that animate, drag or match
-    /// (`visit::feat`), and those a play this tick drives.
-    pub(crate) fn run_motion(&mut self) {
+    /// (`visit::feat`), and those a play this tick drives. On a bounded
+    /// frame only the animated nodes it may change (`seeds`: written, laid
+    /// out, entered, or still moving last tick) are visited, and what is
+    /// forgotten is read from them, the nodes that left the trees and the
+    /// widgets' channels stepped lately; on a whole frame every animated
+    /// node, and everything. Answers the animated nodes it visited.
+    pub(crate) fn run_motion(&mut self, seeds: Option<&[usize]>) -> Vec<usize> {
+        let whole = seeds.is_none();
         let now = self.state.tick;
         let tps = self.ticks_per_second;
         let tokens = self.theme.motion;
@@ -462,7 +468,21 @@ impl Ui {
         let mut css_events: Vec<UiEvent> = Vec::new();
         let mut starts: Vec<(u64, String)> = Vec::new();
         // The nodes that animate, and those a play drives, in preorder.
-        let mut animating = self.orders.with(feat::ANIMATED).to_vec();
+        let mut animating: Vec<usize> = match seeds.filter(|_| !whole) {
+            Some(seeds) => seeds
+                .iter()
+                .copied()
+                .filter(|&i| {
+                    self.tree.has(i)
+                        && self
+                            .orders
+                            .feat
+                            .get(i)
+                            .is_some_and(|f| f & feat::ANIMATED != 0)
+                })
+                .collect(),
+            None => self.orders.with(feat::ANIMATED).to_vec(),
+        };
         animating.extend(
             overrides
                 .iter()
@@ -470,6 +490,12 @@ impl Ui {
         );
         animating.sort_unstable_by_key(|&i| self.orders.pre_pos[i]);
         animating.dedup();
+        let visited = animating.clone();
+        // Visited nodes still moving: visited next tick too.
+        let mut moving = Vec::new();
+        if whole {
+            self.kept.motion_groups.clear();
+        }
         for i in animating {
             let key = self.nodes[i].key;
             let props = &self.nodes[i].props;
@@ -478,6 +504,11 @@ impl Ui {
             if !animated && props.layout_motion.is_none() {
                 continue;
             }
+            // A play, a CSS animation and a layout motion move it on their
+            // own; a channel off its target (or waiting out a delay) too.
+            let mut busy =
+                has_override || !props.animations.is_empty() || props.layout_motion.is_some();
+            let mut node_groups = Vec::new();
             let fallback = props.reduced.unwrap_or(tokens.reduced);
             let base = read_values(&self.nodes[i]);
             let mut target = base;
@@ -488,6 +519,7 @@ impl Ui {
                 let cur = self.state_of(i, g, &m);
                 let gk = group_key(key, &g.name);
                 touched.insert(gk);
+                node_groups.push(gk);
                 let prev = m.groups.get(&gk).map(|s| s.state.clone());
                 let changed = prev.as_ref().is_some_and(|p| *p != cur);
                 if prev.is_none() || changed {
@@ -586,6 +618,7 @@ impl Ui {
                             ch.retarget(target[c], kind, mode, since as u64);
                         }
                         row[c] = ch.step(now, tps, stepped);
+                        busy |= !ch.settled() || now < ch.since;
                     }
                     None => {
                         if let Some(v) = ov {
@@ -623,6 +656,7 @@ impl Ui {
                             ch.retarget(target[c], kind, mode, now + delay);
                             ch.stepped = now.saturating_sub(1);
                             row[c] = ch.step(now, tps, stepped);
+                            busy |= !ch.settled() || now < ch.since;
                             m.channels.insert(ck, ch);
                             touched.insert(ck);
                         } else if tr.is_some() || moved_by[c].is_some() || !groups.is_empty() {
@@ -753,6 +787,22 @@ impl Ui {
                     }
                 }
                 self.nodes[i].flip = out;
+            }
+            if busy {
+                moving.push(i);
+            }
+            // The groups it no longer has are forgotten (on a whole tick,
+            // with everything untouched, below).
+            if !whole && let Some(old) = self.kept.motion_groups.get(&key) {
+                for gk in old.iter().filter(|gk| !node_groups.contains(gk)) {
+                    m.groups.remove(gk);
+                    m.set_states.remove(gk);
+                }
+            }
+            if node_groups.is_empty() {
+                self.kept.motion_groups.remove(&key);
+            } else {
+                self.kept.motion_groups.insert(key, node_groups);
             }
         }
 
@@ -930,12 +980,82 @@ impl Ui {
 
         // Keep what was used; drop the memory of elements that are gone.
         // A channel nobody stepped this tick belongs to something gone.
-        m.channels
-            .retain(|k, c| touched.contains(k) || c.stepped >= now);
-        m.groups.retain(|k, _| touched.contains(k));
-        m.set_states.retain(|k, _| touched.contains(k));
-        m.flip.retain(|k, _| self.tree.by_key.contains_key(k));
-        m.seen.retain(|k, _| self.tree.by_key.contains_key(k));
+        if whole {
+            // What lives only by being stepped (a widget's own channels,
+            // `animate_key`) is read again next tick.
+            let mut stepped = Vec::new();
+            m.channels.retain(|k, c| {
+                let touched = touched.contains(k);
+                if !touched && c.stepped >= now {
+                    stepped.push(*k);
+                }
+                touched || c.stepped >= now
+            });
+            self.kept.widget_channels = stepped;
+            m.groups.retain(|k, _| touched.contains(k));
+            m.set_states.retain(|k, _| touched.contains(k));
+            m.flip.retain(|k, _| self.tree.by_key.contains_key(k));
+            m.seen.retain(|k, _| self.tree.by_key.contains_key(k));
+        } else {
+            // A widget's channel nothing stepped this tick is forgotten,
+            // as the whole frame forgets it.
+            let mut lately = std::mem::take(&mut self.kept.widget_channels);
+            lately.sort_unstable();
+            lately.dedup();
+            lately.retain(|k| match m.channels.get(k) {
+                Some(_) if touched.contains(k) => false,
+                Some(c) if c.stepped < now => {
+                    m.channels.remove(k);
+                    false
+                }
+                Some(_) => true,
+                None => false,
+            });
+            self.kept.widget_channels = lately;
+            // What left the trees is forgotten whole.
+            for &key in &self.tree.moved_keys {
+                if self.tree.by_key.contains_key(&key) {
+                    continue;
+                }
+                for c in 0..CHANNEL_NAMES.len() {
+                    let ck = channel_key(key, c);
+                    if !touched.contains(&ck)
+                        && m.channels.get(&ck).is_some_and(|ch| ch.stepped < now)
+                    {
+                        m.channels.remove(&ck);
+                    }
+                }
+                for gk in self.kept.motion_groups.remove(&key).unwrap_or_default() {
+                    m.groups.remove(&gk);
+                    m.set_states.remove(&gk);
+                }
+                m.flip.remove(&key);
+                m.seen.remove(&key);
+            }
+            // Of what stayed, only a node the frame wrote (one that stopped
+            // animating among them) or visited can have stopped using a
+            // channel or group.
+            let written = seeds.unwrap_or_default().iter().chain(&visited);
+            for &i in written.filter(|&&i| i < self.nodes.len()) {
+                let key = self.nodes[i].key;
+                for c in 0..CHANNEL_NAMES.len() {
+                    let ck = channel_key(key, c);
+                    if !touched.contains(&ck)
+                        && m.channels.get(&ck).is_some_and(|ch| ch.stepped < now)
+                    {
+                        m.channels.remove(&ck);
+                    }
+                }
+                if !visited.contains(&i)
+                    && let Some(old) = self.kept.motion_groups.remove(&key)
+                {
+                    for gk in old {
+                        m.groups.remove(&gk);
+                        m.set_states.remove(&gk);
+                    }
+                }
+            }
+        }
         // A CSS animation no element ran this tick ended with its element
         // or its `animation-name`.
         m.css.retain(|r| r.stepped == now);
@@ -946,6 +1066,7 @@ impl Ui {
         }
         events.extend(css_events);
         self.state.motion = m;
+        self.kept.motion_moving = moving;
         self.events.extend(events);
         for (key, name) in starts {
             self.start_play(
@@ -958,6 +1079,7 @@ impl Ui {
                 PlayDesc::default(),
             );
         }
+        visited
     }
 
     /// Queues a play on element `key` (flattened at the next `end`).
@@ -1186,6 +1308,7 @@ impl Ui {
             transition
         };
         let (kind, mode) = pack(&t, &tokens);
+        self.kept.widget_channels.push(key);
         let ch = self.state.motion.channels.entry(key).or_insert_with(|| {
             let mut c = Channel::at(from.unwrap_or(target), now.saturating_sub(1));
             c.stepped = now.saturating_sub(1);
