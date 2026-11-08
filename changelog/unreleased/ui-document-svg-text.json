@@ -7,6 +7,10 @@
     {
       "member": "og-ui: Props.view_place (ViewPlace)",
       "summary": "An out-of-flow element placed at a point of its parent's view box, laid out unscaled and scaled by the fit about its anchor (layout's own channel beside flip, gesture and custom; not the sampled transform)."
+    },
+    {
+      "member": "UI documents: SVG clip-rule",
+      "summary": "A <clipPath>'s shapes cut by their clip-rule, nonzero or evenodd (a mask's by fill-rule), so an evenodd ring clips its hole; one clip's shapes take one rule."
     }
   ]
 }

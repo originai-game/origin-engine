@@ -444,8 +444,10 @@ Definitions are referenced by `#id`, as in browsers:
   SVG masks). One rect, circle or ellipse under an axis-aligned transform
   clips as a box; any other clip, of paths, polygons or turned shapes,
   cuts by the paths' own analytic coverage (the coverage a path fill
-  draws with, read from the same band tables): the union of its shapes,
-  nonzero. `clip-rule` is not read yet.
+  draws with, read from the same band tables): its shapes as one path,
+  by their `clip-rule` (a mask's by `fill-rule`), nonzero or evenodd. The
+  shapes of one clip take one rule; two evenodd shapes that overlap cut a
+  hole where they do.
 - `fill="url(#id)"` naming a `<pattern>` tiles its shapes over a rect,
   circle or ellipse, with `patternUnits`, `patternTransform` and
   `viewBox`, cut by the shape (a path by its own outline). The tiles of

@@ -146,6 +146,7 @@ const SVG_ATTRS: &[(&str, &str)] = &[
     ("spreadMethod", "svgSpreadMethod"),
     ("href", "svgHref"),
     ("clip-path", "svgClipPath"),
+    ("clip-rule", "svgClipRule"),
     ("mask", "svgMask"),
     ("clipPathUnits", "svgClipPathUnits"),
     ("maskContentUnits", "svgMaskContentUnits"),
@@ -453,6 +454,11 @@ pub const PROPS: &[PropSpec] = &[
         "svgMask",
         PAINTED,
         "SVG `mask=\"url(#id)\"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape)."
+    ),
+    svg!(
+        "svgClipRule",
+        SHAPES,
+        "SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole)."
     ),
     svg!("svgClipPathUnits", DEFS, "A clip path's `clipPathUnits`."),
     svg!("svgMaskContentUnits", DEFS, "A mask's `maskContentUnits`."),

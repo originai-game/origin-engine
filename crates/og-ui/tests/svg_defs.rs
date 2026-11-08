@@ -118,6 +118,31 @@ fn a_path_clip_cuts_to_the_path() {
     );
 }
 
+/// `clip-rule="evenodd"` on a ring of two same-way circles cuts its hole:
+/// red on the ring, the backdrop at the centre.
+///
+/// Fails when the rule is read as nonzero (the centre red) or the ring
+/// is cut away too.
+#[test]
+#[ignore = "requires GPU"]
+fn an_evenodd_clip_cuts_a_ring() {
+    const RING: &str = r##"<meta name="component" content="defs">
+<svg id="Art" viewBox="0 0 100 100">
+  <defs><clipPath id="Ring"><path clip-rule="evenodd" d="M10 50 A40 40 0 1 1 90 50 A40 40 0 1 1 10 50 Z M30 50 A20 20 0 1 1 70 50 A20 20 0 1 1 30 50 Z"/></clipPath></defs>
+  <g clip-path="url(#Ring)"><rect x="0" y="0" width="100" height="100" fill="#ff0000"/></g>
+</svg>
+<style>#Art { width: 200px; height: 200px; }</style>"##;
+    let (pixels, _) = render(RING, 200, 200);
+    let at = |x: usize, y: usize| {
+        let i = (y * 200 + x) * 4;
+        [pixels[i], pixels[i + 1], pixels[i + 2]]
+    };
+    let red = |p: [u8; 3]| p[0] > 200 && p[1] < 60 && p[2] < 60;
+    assert!(red(at(40, 100)), "on the ring: {:?}", at(40, 100));
+    assert!(!red(at(100, 100)), "in the hole: {:?}", at(100, 100));
+    assert!(!red(at(4, 4)), "outside: {:?}", at(4, 4));
+}
+
 #[test]
 #[ignore = "requires GPU"]
 fn svg_defs_match_their_reference_frames() {

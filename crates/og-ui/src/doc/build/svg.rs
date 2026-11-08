@@ -265,13 +265,13 @@ fn basic_box<'a>(
 }
 
 /// Paths' subpaths as one filled path (its contours), for a clip.
-fn filled(parts: Vec<(Vec<[f32; 2]>, bool)>) -> ShapeKind {
+fn filled(parts: Vec<(Vec<[f32; 2]>, bool)>, fill_rule: crate::paint::FillRule) -> ShapeKind {
     ShapeKind::Path {
         points: parts.iter().flat_map(|(p, _)| p.iter().copied()).collect(),
         closed: true,
         filled: true,
         curves: true,
-        fill_rule: crate::paint::FillRule::NonZero,
+        fill_rule,
         contours: parts.iter().map(|(p, _)| p.len() as u32).collect(),
         width: 0.0,
         cap: crate::paint::Cap::Butt,
@@ -341,6 +341,38 @@ fn cut(doc: &UiDocument, r: &Resolved, t: &Affine, vb: [f32; 4]) -> Result<Optio
             return Ok(Some(Cut::Box(shape, rect)));
         }
     }
+    // `clip-rule` (a clip's shapes) or `fill-rule` (a mask's): the cut's
+    // rule when every shape takes it, else nonzero. The shapes are one
+    // path, so two evenodd shapes that overlap cut a hole where they do.
+    let rule_attr = if tags[0] == "mask" {
+        "fill-rule"
+    } else {
+        "clip-rule"
+    };
+    let rules: Vec<bool> = shapes
+        .iter()
+        .map(|(_, attrs, _)| {
+            match attrs
+                .iter()
+                .find(|(k, _)| k == rule_attr)
+                .map(|(_, v)| v.trim())
+            {
+                None | Some("nonzero") => Ok(false),
+                Some("evenodd") => Ok(true),
+                Some(v) => Err(format!("{rule_attr} \"{v}\" is nonzero or evenodd")),
+            }
+        })
+        .collect::<Result<_, _>>()?;
+    if rules.iter().any(|&e| e) && !rules.iter().all(|&e| e) {
+        return Err(format!(
+            "#{id}: its shapes mix nonzero and evenodd {rule_attr}; give them one rule"
+        ));
+    }
+    let rule = if rules.first() == Some(&true) {
+        crate::paint::FillRule::EvenOdd
+    } else {
+        crate::paint::FillRule::NonZero
+    };
     let mut parts = Vec::new();
     for (tag, attrs, own) in &shapes {
         let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
@@ -356,7 +388,7 @@ fn cut(doc: &UiDocument, r: &Resolved, t: &Affine, vb: [f32; 4]) -> Result<Optio
             parts.extend(subpaths(&local.transformed(&t.then(own))));
         }
     }
-    Ok(Some(Cut::Shape(filled(parts))))
+    Ok(Some(Cut::Shape(filled(parts, rule))))
 }
 
 /// A pattern's tiles under a shape of local bounds `bbox` and transform
@@ -467,7 +499,7 @@ fn pattern(
                 parts.extend(subpaths(&local.transformed(&to)));
             }
         }
-        out.push((filled(parts), paint));
+        out.push((filled(parts, crate::paint::FillRule::NonZero), paint));
     }
     Ok(out)
 }
