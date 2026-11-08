@@ -24,6 +24,7 @@ mod dev;
 mod device;
 mod doctor;
 mod doctor_project;
+mod explore;
 mod frame;
 mod i18n;
 mod lockstep_lint;
@@ -84,6 +85,16 @@ commands:
                       (and its save every K ticks, default 30), or replay a trace with this engine
                       and report the first divergent tick with the keyframe's diff; compare exits
                       0 the same, 3 diverged
+  explore [project] [--seconds S] [--ticks N] [--memory MB] [--jobs N] [--seed S] [--horizon T]
+      [--out DIR] [--web auto|on|off] [--first] [--no-shrink] [--json]
+                      search the game's states from snapshots (Go-Explore: an archive of cells from
+                      reflection, returns by restore, bursts of its actions and intents) for invariant
+                      violations, systems that throw and the sometimes/reachable/each sites it reaches;
+                      each finding is shrunk to a minimal input script, replayed to the same world
+                      hash in a fresh og run and on the web host, and written as a repro and a bun:test
+                      playtest beside report.json in --out (default <project>/og-out/explore); defaults
+                      60 s, 200000 ticks, 256 MB of snapshots, 1 job, horizon 3600 ticks; --first
+                      stops at the first violation or error; the explore guide: og api show explore
   render [project] --commands \"t:action[:args];...\" | --timeline <name> [--fps F] [--from S] [--to S]
       [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS]
       [--jobs N] [--seed S] [--json] [--no-check]
@@ -345,6 +356,7 @@ fn main() -> ExitCode {
         ["run", rest @ ..] => run::run(rest),
         ["session", rest @ ..] => session::run(rest),
         ["replay", rest @ ..] => replay::run(rest),
+        ["explore", rest @ ..] => explore::run(rest),
         ["render", rest @ ..] => render::run(rest),
         ["compare", rest @ ..] => compare::run(rest),
         ["migrate", rest @ ..] => migrate::run(rest),
