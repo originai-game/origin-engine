@@ -1134,3 +1134,50 @@ fn container_queries_restyle_lists_grids_and_rive_frames_before_paint() {
     assert!(rive_objects(&ui) > 0, "the chest plays again");
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
+
+/// An element with a trigger on an action is built in a frame the action
+/// fires, not every frame: idle frames build nothing, and a fired action
+/// reaches its listener, written in its layer's context although its
+/// ancestors are not built.
+#[test]
+fn action_listeners_build_only_when_their_action_fires() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut doc = String::from(
+        r#"<meta name="screen" content="pad" data-layer="hud">
+<meta name="action:confirm" content="Buy">
+<column id="Pad">
+  <button id="Buy" onconfirm={buy}>Buy</button>
+"#,
+    );
+    for i in 0..40 {
+        doc.push_str(&format!("  <text id=\"Line{i}\">Line {i}</text>\n"));
+    }
+    doc.push_str("</column>\n");
+    ui.define_document(UiDocument::parse("pad.svelte", &doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "pad"),
+        "pad",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let frame = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), viewport());
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        let emitted: Vec<String> = ui
+            .take_doc_events()
+            .into_iter()
+            .filter(|e| e.kind == "emit")
+            .map(|e| e.name)
+            .collect();
+        (ui.frame().stats.reconciled, emitted)
+    };
+    frame(&mut ui);
+    frame(&mut ui);
+    assert_eq!(frame(&mut ui), (0, vec![]), "an idle frame builds nothing");
+    ui.fire_action("confirm");
+    assert_eq!(frame(&mut ui), (1, vec!["buy".to_string()]));
+    assert_eq!(frame(&mut ui), (0, vec![]));
+}

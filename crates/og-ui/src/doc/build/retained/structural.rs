@@ -443,6 +443,10 @@ impl RetainedHost {
                 self.release_element(ui, &id);
                 self.emit.remove(&id);
                 self.volatile.remove(&id);
+                self.on_action.retain(|_, listeners| {
+                    listeners.remove(&id);
+                    !listeners.is_empty()
+                });
                 let element = self.elements.remove(&id).expect("mounted element");
                 for child in element.children {
                     self.remove_child(ui, child);

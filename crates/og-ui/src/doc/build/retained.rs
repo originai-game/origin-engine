@@ -134,6 +134,19 @@ pub struct RetainedHost {
     emit: BTreeSet<MountedNode>,
     /// Elements built every frame ([`ElementInstance::volatile`]).
     volatile: BTreeSet<MountedNode>,
+    /// The elements with a trigger on each action: built in a frame the
+    /// action fires, not every frame.
+    on_action: BTreeMap<String, BTreeSet<MountedNode>>,
+    /// The actions fired this frame whose listeners are marked, and the
+    /// elements built this frame (kept while any element listens): an
+    /// action a trigger fires while building reaches the listeners not yet
+    /// built ([`RetainedHost::emit_fired`]).
+    fired: usize,
+    built_now: BTreeSet<MountedNode>,
+    /// This frame's layer context of each mount emitted (whether its layer
+    /// takes UI actions, the layer's serial): an element written in place
+    /// after the layers' frames closed is written in its own.
+    contexts: BTreeMap<SourceId, (bool, u32)>,
     /// The element that owns each render key (its nodes', its links').
     owner_of: std::collections::HashMap<u64, MountedNode>,
     /// The widget memories mounted elements keep while they are not built.
@@ -407,6 +420,10 @@ impl RetainedHost {
         self.elements.retain(|node, _| &node.mount != mount);
         self.emit.retain(|node| &node.mount != mount);
         self.volatile.retain(|node| &node.mount != mount);
+        self.on_action.retain(|_, listeners| {
+            listeners.retain(|node| &node.mount != mount);
+            !listeners.is_empty()
+        });
         self.scrollers.retain(|node, _| &node.mount != mount);
         self.each.retain(|node, _| &node.mount != mount);
         self.branches.retain(|node, _| &node.mount != mount);
@@ -535,11 +552,7 @@ impl RetainedHost {
             keys: Vec::new(),
             record: Default::default(),
             memories: Vec::new(),
-            volatile: matches!(node.kind, NodeKind::Element("slot"))
-                || node
-                    .triggers
-                    .iter()
-                    .any(|trigger| matches!(trigger.when, When::Action(_))),
+            volatile: matches!(node.kind, NodeKind::Element("slot")),
             materialization,
         };
         let properties = node
@@ -632,6 +645,14 @@ impl RetainedHost {
         self.dirty.insert(identity.clone());
         if self.elements[&identity].volatile {
             self.volatile.insert(identity.clone());
+        }
+        for trigger in &doc.nodes[index].triggers {
+            if let When::Action(action) = &trigger.when {
+                self.on_action
+                    .entry(action.clone())
+                    .or_default()
+                    .insert(identity.clone());
+            }
         }
         if let Some(parent) = parent {
             self.emit.insert(parent.clone());
@@ -1186,6 +1207,9 @@ impl RetainedHost {
         }
         self.emit.remove(identity);
         self.reconciled += 1;
+        if !self.on_action.is_empty() {
+            self.built_now.insert(identity.clone());
+        }
         let e = self.elements[identity].clone();
         if e.slot.is_some() {
             // Built before and not since retired: not appearing.
@@ -1247,11 +1271,7 @@ impl RetainedHost {
         }
         let volatile = owned.moved
             || resolved.values.str("rive").is_some()
-            || matches!(e.document.nodes[e.index].kind, NodeKind::Element("slot"))
-            || e.document.nodes[e.index]
-                .triggers
-                .iter()
-                .any(|trigger| matches!(trigger.when, When::Action(_)));
+            || matches!(e.document.nodes[e.index].kind, NodeKind::Element("slot"));
         if volatile {
             self.volatile.insert(identity.clone());
         } else {
@@ -1320,9 +1340,13 @@ impl RetainedHost {
             if !ui.holds(slot, identity.key, parent) {
                 continue;
             }
+            let outer = (ui.docs.accepts, ui.docs.building);
+            let (accepts, building) = self.contexts.get(&identity.mount).copied().unwrap_or(outer);
+            (ui.docs.accepts, ui.docs.building) = (accepts, building);
             ui.stack.push(parent);
             let result = self.emit_element(ui, &identity, true, env, events, writes);
             ui.stack.pop();
+            (ui.docs.accepts, ui.docs.building) = outer;
             result?;
         }
         Ok(())
@@ -1524,6 +1548,41 @@ impl RetainedHost {
             }
         }
         self.emit.extend(self.volatile.iter().cloned());
+        self.built_now.clear();
+        self.fired = 0;
+        self.mark_fired(ui);
+    }
+
+    /// Marks the listeners of the actions fired since the last mark.
+    fn mark_fired(&mut self, ui: &Ui) {
+        // Whether a listener's layer takes input is the build's question
+        // (`docs.accepts`): every listener of a fired action is built.
+        let fired = &ui.actions.fired;
+        for action in &fired[self.fired.min(fired.len())..] {
+            for listener in self.on_action.get(action).into_iter().flatten() {
+                if !self.built_now.contains(listener) {
+                    self.emit.insert(listener.clone());
+                }
+            }
+        }
+        self.fired = fired.len();
+    }
+
+    /// Builds the listeners of actions that triggers fired while this
+    /// frame was built and that are not built yet, as every listener after
+    /// the trigger in the frame reacts.
+    fn emit_fired(
+        &mut self,
+        ui: &mut Ui,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) -> Result<(), String> {
+        while ui.actions.fired.len() > self.fired {
+            self.mark_fired(ui);
+            self.emit_in_place(ui, env, events, writes)?;
+        }
+        Ok(())
     }
 }
 
@@ -1668,6 +1727,7 @@ impl Ui {
         if result.is_ok() {
             host.mark_frame(self);
             host.reconciled = 0;
+            host.contexts.clear();
             let mut events = Vec::new();
             let mut writes = Vec::new();
             for (mount, root) in host
@@ -1692,6 +1752,8 @@ impl Ui {
                 if matches!(frame, Some(None)) {
                     continue;
                 }
+                host.contexts
+                    .insert(mount.clone(), (self.docs.accepts, self.docs.building));
                 let emitted = host.emit(self, &root, env, &mut events, &mut writes);
                 if let Some(Some(frame)) = frame {
                     let doc = &self.docs.docs[&host.registrations[&mount].document];
@@ -1704,7 +1766,9 @@ impl Ui {
                 }
             }
             if result.is_ok()
-                && let Err(error) = host.emit_in_place(self, env, &mut events, &mut writes)
+                && let Err(error) = host
+                    .emit_in_place(self, env, &mut events, &mut writes)
+                    .and_then(|()| host.emit_fired(self, env, &mut events, &mut writes))
             {
                 result = Err(error);
             }

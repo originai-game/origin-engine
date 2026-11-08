@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"A document element with an action trigger (`onconfirm={buy}`) is built only in a frame its action fires, not every frame, and its trigger now fires on a mounted screen whose ancestors are not rebuilt that frame: such elements are written in their own layer's context, so the layer's input and serial apply."}
+  ]
+}
