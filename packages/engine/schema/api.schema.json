@@ -47829,6 +47829,19 @@
           ],
           "description": "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
         },
+        "player": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The split screen region (ElementProps.player) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed."
+        },
         "focusedBy": {
           "type": "integer",
           "minimum": 0,
@@ -47878,6 +47891,7 @@
         "submitted",
         "dropped",
         "pad",
+        "player",
         "focusedBy",
         "adjust",
         "adjustY",
@@ -59683,6 +59697,20 @@
             }
           ],
           "description": "Its text set along a path instead of in lines (CSS -og-text-path); null is in lines.",
+          "default": null
+        },
+        "player": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A split screen region: player k's view (0 to 3). Pad k's focus moves only among the controls inside it, its first move lands at the region's centre, and a press inside it reports k (Response.player). Controls outside every region belong to the pads without one; null is in no region.",
           "default": null
         },
         "userSelect": {

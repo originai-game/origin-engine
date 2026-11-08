@@ -1,0 +1,6 @@
+{
+  "added": [
+    {"member":"ui.ElementProps.player","summary":"Split screen: player=\"k\" (ElementProps.player, Props::player) makes an element's subtree player k's region. Pad k's focus moves only inside it, its first move lands at its centre, and controls outside every region stay the pads' without one (docs/ui.md 2.5)."},
+    {"member":"ui.Response.player","summary":"The split screen region a control was pressed or clicked in; null outside every region."}
+  ]
+}

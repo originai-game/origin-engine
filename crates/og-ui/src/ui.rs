@@ -69,6 +69,9 @@ pub struct Response {
     /// The gamepad whose A pressed it this tick (0 to 3); `None` when the
     /// pointer or the keyboard did, or nothing.
     pub pad: Option<u32>,
+    /// The player whose split screen region it is in, on the frame it was
+    /// pressed or clicked (`Props::player`); `None` outside every region.
+    pub player: Option<u32>,
     /// Bit `k`: pad `k`'s focus is on it (pad 0's is `focused`; pads 1 to 3
     /// while [`Ui::set_players`] allows them).
     pub focused_by: u32,
@@ -154,6 +157,8 @@ pub(crate) struct Hit {
     pub group: u64,
     /// The nearest element at or around it that recognises gestures (0: none).
     pub gesture: u64,
+    /// The split screen region it is in: player `k`'s is `k + 1` (0: none).
+    pub player: u8,
 }
 
 impl Hit {
@@ -597,7 +602,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 20;
+const STATE_VERSION: u32 = 21;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,

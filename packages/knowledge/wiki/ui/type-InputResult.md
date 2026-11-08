@@ -10,7 +10,7 @@ A text field's state after this tick.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | The field's response (focused while it is edited, submitted on Enter). |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, player: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | The field's response (focused while it is edited, submitted on Enter). |
 | `value` | `string` | `""` | — | — | — | The text, to keep and pass back. |
 | `changed` | `boolean` | `false` | — | — | — | The text changed this tick. |
 | `submitted` | `boolean` | `false` | — | — | — | Enter was pressed in it. |
@@ -27,4 +27,4 @@ struct InputResult {
 }
 ```
 
-<sub>Module `ui` line 3873</sub>
+<sub>Module `ui` line 3874</sub>

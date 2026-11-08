@@ -911,6 +911,32 @@ region HTML's rules put the value in, `Meter.fill[region=optimum]`,
 warn and danger), over `Meter.track`. `low` and `high` clamp into the
 range and `optimum` defaults to its middle. Role meter with its range.
 
+### 2.5 Split screen
+
+Local multiplayer turns pads 1 to 3 on with `og.ui.setPlayers(n)`. Each pad
+then moves a focus of its own (`Response.focusedBy`, bit `k`) and presses
+with A (`Response.pad`). A split screen gives each player a region of the
+screen: `player="k"` on an element (`ElementProps.player`, Rust
+`Props::player`) makes its subtree player `k`'s view, from 0 to 3. Each region
+can be its own `og.ui` scene viewport.
+
+- Pad `k`'s focus moves only among the controls inside player `k`'s region.
+  Pad 0's focus is also the keyboard's and the pointer's. Its first move
+  lands on the control nearest the region's centre.
+- Controls outside every region, such as a shared pause button or a lobby
+  bar, belong to the pads that have no region. While a dialog is open, every
+  pad also reaches the dialog's controls.
+- A control pressed or clicked inside a region reports the player in
+  `Response.player`. Outside every region it is null, and so it is on the
+  ticks the control is not pressed. The pointer can press anywhere; the
+  response still names the region it pressed in.
+- On a screen with no region, nothing changes: every pad sees every control.
+
+Each hit carries its region as one byte. The region is inherited down the tree
+the way the focus group is, so it is computed when a node's ancestry changes,
+not each frame. The UI state saves it from state version 21; older states
+upgrade with no region.
+
 ## 3. Style contract
 
 ### 3.1 Tokens and literal values

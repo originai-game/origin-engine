@@ -507,6 +507,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!("name", Ty::Text, "What a screen reader calls it."),
     p!(
+        "player",
+        Ty::Num,
+        "A split screen's region: player 0 to 3's view. That player's pad focus moves only inside it, and what is pressed inside it says the player."
+    ),
+    p!(
         "role",
         Ty::Word(crate::a11y::ROLES),
         "Its ARIA role, over its tag's (`status`, `alert`, `log` are live regions)."

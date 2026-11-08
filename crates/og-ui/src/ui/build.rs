@@ -291,12 +291,20 @@ impl Ui {
                 focused_by |= 2 << k;
             }
         }
+        let pressed = s.active == key && self.input.down;
+        let clicked = (s.active == key && self.input.released && s.hot == key && !s.tap.taken)
+            || (self.nav.activate == key && key != 0)
+            || by_pad.is_some();
+        // Read only on the frames it is pressed: the hits are a list.
+        let player = (pressed || clicked)
+            .then(|| self.hit(key).map(|h| h.player).filter(|&p| p != 0))
+            .flatten()
+            .map(|p| u32::from(p) - 1);
         Response {
             hovered,
-            pressed: s.active == key && self.input.down,
-            clicked: (s.active == key && self.input.released && s.hot == key && !s.tap.taken)
-                || (self.nav.activate == key && key != 0)
-                || by_pad.is_some(),
+            player,
+            pressed,
+            clicked,
             focused: s.focus == key,
             pad,
             focused_by,

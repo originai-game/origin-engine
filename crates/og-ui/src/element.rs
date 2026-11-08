@@ -964,6 +964,12 @@ pub struct Props {
     pub nav: NavLinks,
     /// Its focusable controls are one focus group.
     pub focus_group: Option<FocusGroup>,
+    /// A split screen's region: player `k`'s view (0 to 3). Pad `k`'s focus
+    /// moves only among the controls inside it (pad 0's is the keyboard's
+    /// and the pointer's), its first move lands at its centre, and what is
+    /// pressed inside it says `k` ([`crate::Response::player`]). The
+    /// controls outside every region are the pads' without one.
+    pub player: Option<u8>,
     /// Tap, double tap and long press on it.
     pub gestures: Option<GestureSpec>,
     /// The pointer's shape over it and its subtree.
@@ -999,6 +1005,7 @@ pub struct Props {
 impl Default for Props {
     fn default() -> Props {
         Props {
+            player: None,
             transform: Transform::IDENTITY,
             opacity: 1.0,
             z: 0,

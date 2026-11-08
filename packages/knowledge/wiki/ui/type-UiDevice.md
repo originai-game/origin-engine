@@ -31,4 +31,4 @@ enum UiDevice {
 }
 ```
 
-<sub>Module `ui` line 7986</sub>
+<sub>Module `ui` line 7988</sub>

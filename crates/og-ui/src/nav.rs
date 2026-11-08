@@ -410,6 +410,23 @@ impl Ui {
             .collect()
     }
 
+    /// Pad `pad`'s focusable controls (0: the keyboard's and the
+    /// pointer's), in reading order: on a split screen, those inside its
+    /// player's region (`Props::player`), and with a shared dialog open the
+    /// dialog's too; without a region of its own, those outside every
+    /// region. The same as [`Self::focusables`] on a screen with none.
+    pub(crate) fn focusables_of(&self, pad: usize) -> Vec<Hit> {
+        let own = pad as u8 + 1;
+        let mut cands = self.focusables();
+        if cands.iter().all(|h| h.player == 0) {
+            return cands;
+        }
+        let region = cands.iter().any(|h| h.player == own);
+        let dialog = self.state.scope != 0;
+        cands.retain(|h| h.player == own || (h.player == 0 && (!region || dialog)));
+        cands
+    }
+
     /// An assistive technology's requests (og-input's `og.A11yAction`,
     /// [`InputFrame::a11y`]): each names a control by its path in the last
     /// frame's accessibility tree. Focus moves there (with the ring, as
@@ -665,7 +682,7 @@ impl Ui {
                 }
                 _ => {}
             }
-            let cands = self.focusables();
+            let cands = self.focusables_of(0);
             if cands.is_empty() {
                 continue;
             }
@@ -781,17 +798,19 @@ impl Ui {
                     }
                     _ => {}
                 }
-                let cands = self.focusables();
+                let cands = self.focusables_of(k);
                 if cands.is_empty() {
                     continue;
                 }
                 let current = cands.iter().position(|h| h.key == focus);
                 let next = match (nav, current) {
                     // A pad's first move lands on the control nearest the
-                    // surface's centre (where a shared screen's choices are),
-                    // not on the first control of the reading order.
+                    // centre of its region, or of the surface (where a shared
+                    // screen's choices are), not on the first control of the
+                    // reading order.
                     (_, None) => {
-                        let (cx, cy) = (self.viewport.width / 2.0, self.viewport.height / 2.0);
+                        let (cx, cy) = region_centre(&cands)
+                            .unwrap_or((self.viewport.width / 2.0, self.viewport.height / 2.0));
                         let d = |h: &Hit| {
                             let (x, y) = h.full.center();
                             (x - cx) * (x - cx) + (y - cy) * (y - cy)
@@ -911,4 +930,17 @@ impl Ui {
             *off = off.max(0.0);
         }
     }
+}
+
+/// The centre of the controls of a split screen region (`cands` all in
+/// one, `Hit::player`), by their bounds; `None` outside any.
+fn region_centre(cands: &[Hit]) -> Option<(f32, f32)> {
+    let mut it = cands.iter().filter(|h| h.player != 0).map(|h| h.full);
+    let first = it.next()?;
+    let b = it.fold(first, |a, r| {
+        let (x0, y0) = (a.x.min(r.x), a.y.min(r.y));
+        let (x1, y1) = (a.right().max(r.right()), a.bottom().max(r.bottom()));
+        Rect::new(x0, y0, x1 - x0, y1 - y0)
+    });
+    Some(b.center())
 }

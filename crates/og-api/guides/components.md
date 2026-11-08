@@ -51,6 +51,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `adjustable` | `bool` | With focusable: Left and Right step it while it has the focus instead of moving the focus. |
 | `visible` | `bool` | False leaves it (and its subtree) out of the tree. |
 | `aria-label` | `text` | What a screen reader calls it. |
+| `player` | `number` | A split screen's region: player 0 to 3's view. That player's pad focus moves only inside it, and what is pressed inside it says the player. |
 | `role` | `button \| link \| text \| heading \| image \| checkbox \| radio \| switch \| slider \| spinbutton \| textbox \| combobox \| listbox \| option \| tab \| tablist \| tabpanel \| radiogroup \| progressbar \| meter \| timer \| status \| alert \| log \| dialog \| alertdialog \| tooltip \| separator \| group \| region \| navigation \| toolbar \| menu \| menubar \| menuitem \| menuitemcheckbox \| menuitemradio \| list \| listitem \| tree \| treeitem \| table \| grid \| row \| rowheader \| columnheader \| cell \| gridcell \| figure \| scrollbar` | Its ARIA role, over its tag's (`status`, `alert`, `log` are live regions). |
 | `aria-live` | `off \| polite \| assertive` | `aria-live`: a screen reader announces what changes in it, after what it is reading (`polite`) or at once (`assertive`); over its role's. |
 | `aria-atomic` | `bool` | `aria-atomic`: a live region announces its whole text when any of it changes, not only what changed; over its role's. |

@@ -160,6 +160,8 @@ pub(crate) struct Orders {
     pub owner_of: Vec<u64>,
     pub group_of: Vec<u64>,
     pub gesture_of: Vec<u64>,
+    /// Per slot: the split screen region around it (`Hit::player`).
+    pub player_of: Vec<u8>,
     /// Per slot: whether its text can be selected (`user-select` as used:
     /// its own, else its parent's; never `Auto`).
     pub select_of: Vec<crate::element::UserSelect>,
@@ -213,6 +215,7 @@ impl Ui {
             o.owner_of.resize(n, 0);
             o.group_of.resize(n, 0);
             o.gesture_of.resize(n, 0);
+            o.player_of.resize(n, 0);
             o.select_of.resize(n, crate::element::UserSelect::None);
             o.hit_of.resize(n, Vec::new());
             o.warn_of.resize(n, None);
@@ -393,11 +396,12 @@ impl Ui {
         // A layer takes its anchor's group and recogniser where the
         // anchor is drawn before it (one drawn after has none yet).
         let up = if n.parent == NONE { n.anchor } else { n.parent };
-        let (pg, pr) = if up == NONE || up >= nodes.len() || o.pos[up] > o.pos[i] {
-            (0, 0)
+        let (pg, pr, pp) = if up == NONE || up >= nodes.len() || o.pos[up] > o.pos[i] {
+            (0, 0, 0)
         } else {
-            (o.group_of[up], o.gesture_of[up])
+            (o.group_of[up], o.gesture_of[up], o.player_of[up])
         };
+        let player = n.props.player.map_or(pp, |k| k.min(3) + 1);
         let group = if n.props.focus_group.is_some() {
             n.key
         } else {
@@ -430,8 +434,9 @@ impl Ui {
             o.group_of[i],
             o.gesture_of[i],
             o.select_of[i],
+            o.player_of[i],
         );
-        let new = (scope, scroller, owner, group, gesture, select);
+        let new = (scope, scroller, owner, group, gesture, select, player);
         (
             o.scope_of[i],
             o.scroller_of[i],
@@ -439,6 +444,7 @@ impl Ui {
             o.group_of[i],
             o.gesture_of[i],
             o.select_of[i],
+            o.player_of[i],
         ) = new;
         old != new
     }
@@ -575,6 +581,7 @@ impl Ui {
                     clip: n.clip,
                     group: o.group_of[i],
                     gesture: o.gesture_of[i],
+                    player: o.player_of[i],
                 }
             };
             if outside || (visible.is_empty() && !r.is_empty()) {
@@ -608,6 +615,7 @@ impl Ui {
                         clip: n.clip,
                         group: o.group_of[i],
                         gesture: o.gesture_of[i],
+                        player: o.player_of[i],
                     });
                 }
             }

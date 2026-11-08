@@ -23,4 +23,4 @@ struct ChartResult {
 }
 ```
 
-<sub>Module `ui` line 2706</sub>
+<sub>Module `ui` line 2707</sub>

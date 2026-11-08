@@ -10,7 +10,7 @@ What a rich text's links did this tick.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | Its links together: hovered while one is, clicked when one was. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, player: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | Its links together: hovered while one is, clicked when one was. |
 | `link` | `string \| null` | `null` | — | — | — | The link clicked this tick: its `[link=…]` id. |
 | `hovered` | `string \| null` | `null` | — | — | — | The link under the pointer. |
 
@@ -23,4 +23,4 @@ struct RichTextResult {
 }
 ```
 
-<sub>Module `ui` line 637</sub>
+<sub>Module `ui` line 638</sub>

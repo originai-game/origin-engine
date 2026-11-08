@@ -30,4 +30,4 @@ fn navigate {
 }
 ```
 
-<sub>Module `ui` line 1487</sub>
+<sub>Module `ui` line 1488</sub>

@@ -24456,6 +24456,10 @@ export interface Response {
    */
   readonly pad: number | null;
   /**
+   * The split screen region (ElementProps.player) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed.
+   */
+  readonly player: number | null;
+  /**
    * Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads).
    */
   readonly focusedBy: number;
@@ -33481,6 +33485,12 @@ export interface ElementProps {
    * @default null
    */
   readonly textPath?: TextPathSpec | null;
+  /**
+   * A split screen region: player k's view (0 to 3). Pad k's focus moves only among the controls inside it, its first move lands at the region's centre, and a press inside it reports k (Response.player). Controls outside every region belong to the pads without one; null is in no region.
+   *
+   * @default null
+   */
+  readonly player?: number | null;
   /**
    * Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's.
    *

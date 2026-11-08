@@ -132,6 +132,88 @@ fn pads_beyond_the_first_move_their_own_focus_and_press() {
     assert_eq!(rig.ui.focus_path(1), "");
 }
 
+/// A split screen: two `Props::player` regions side by side and a shared
+/// button outside both. Pads 1 and 2 each move only inside their own region
+/// (their first move lands at its centre) and a press says whose region it
+/// was in; pad 0 (no region) reaches only the shared button. Ways it could
+/// fail: a pad's focus crosses into the other player's view, the shared
+/// controls are lost, or the response names the wrong player.
+#[test]
+fn split_screen_regions_confine_each_pads_focus() {
+    #[derive(Default)]
+    struct Split {
+        presses: Vec<(String, Option<u32>)>,
+    }
+    let build = &mut |ui: &mut Ui, s: &mut Split| {
+        ui.set_players(3);
+        ui.open("Screen", Element::row());
+        for k in 1..3u8 {
+            ui.open_with(
+                ui_idi("View", u32::from(k)),
+                Element {
+                    gap: 8.0,
+                    ..Element::column()
+                },
+                Props {
+                    player: Some(k),
+                    ..Props::default()
+                },
+            );
+            for b in 0..3 {
+                let name = format!("P{k}B{b}");
+                let r = ui.button(name.as_str(), &name, ButtonDesc::default());
+                if r.clicked {
+                    s.presses.push((name, r.player));
+                }
+            }
+            ui.close();
+        }
+        let r = ui.button("Quit", "Quit", ButtonDesc::default());
+        if r.clicked {
+            s.presses.push(("Quit".into(), r.player));
+        }
+        ui.close();
+    };
+    let mut rig = Rig::new(Split::default());
+    rig.idle(2, build);
+    // Pad 1 lands on its region's centre, then runs right and down: it
+    // stays in view 1.
+    rig.step(pad(1, GamepadFrame::DOWN), build);
+    assert_eq!(rig.ui.focus_path(1), "Screen/View#1/P1B1");
+    for _ in 0..3 {
+        rig.step(pad(1, GamepadFrame::RIGHT), build);
+        rig.step(pad(1, GamepadFrame::DOWN), build);
+    }
+    assert!(
+        rig.ui.focus_path(1).starts_with("Screen/View#1/"),
+        "{}",
+        rig.ui.focus_path(1)
+    );
+    // Pad 2 lands in view 2 and runs left: it stays there.
+    rig.step(pad(2, GamepadFrame::UP), build);
+    assert_eq!(rig.ui.focus_path(2), "Screen/View#2/P2B1");
+    for _ in 0..3 {
+        rig.step(pad(2, GamepadFrame::LEFT), build);
+    }
+    assert!(
+        rig.ui.focus_path(2).starts_with("Screen/View#2/"),
+        "{}",
+        rig.ui.focus_path(2)
+    );
+    // Pad 0 has no region: only the shared button.
+    rig.step(pad(0, GamepadFrame::DOWN), build);
+    rig.step(pad(0, GamepadFrame::LEFT), build);
+    assert_eq!(rig.ui.focus_path(0), "Screen/Quit");
+    rig.step(pad(1, GamepadFrame::A), build);
+    rig.step(pad(2, GamepadFrame::A), build);
+    rig.step(pad(0, GamepadFrame::A), build);
+    rig.idle(1, build);
+    let who: Vec<_> = rig.state.presses.iter().map(|p| p.1).collect();
+    assert_eq!(who, vec![Some(1), Some(2), None], "{:?}", rig.state.presses);
+    assert!(rig.state.presses[0].0.starts_with("P1"));
+    assert!(rig.state.presses[1].0.starts_with("P2"));
+}
+
 /// A UI state saved at version 12 (before each hit carried its focusable
 /// owner) upgrades to this version with the owners unset, restores, and the
 /// next frame fills them: a press on the item focuses its grid again.
@@ -171,7 +253,7 @@ fn a_version_12_state_upgrades_and_restores() {
     // before the layer stack.
     let u32_at =
         |b: &[u8], at: usize| u32::from_le_bytes(b[at..at + 4].try_into().unwrap()) as usize;
-    assert_eq!(u32_at(&now, 0), 20);
+    assert_eq!(u32_at(&now, 0), 21);
     let scrolls = u32_at(&now, 44);
     let hits_at = 48 + scrolls * 12;
     let hits = u32_at(&now, hits_at);
@@ -188,8 +270,10 @@ fn a_version_12_state_upgrades_and_restores() {
         zeroed.extend_from_slice(&[0; 8]);
         let tail = 24 + 16 + 16;
         v12.extend_from_slice(&now[at + head + 8..at + head + 8 + tail]);
-        zeroed.extend_from_slice(&now[at + head + 8..at + head + 8 + tail + 16]);
-        at += head + 8 + tail + 16;
+        // Version 14's group and recogniser (16) and version 21's split
+        // screen region (1) are kept in the upgrade, empty.
+        zeroed.extend_from_slice(&now[at + head + 8..at + head + 8 + tail + 16 + 1]);
+        at += head + 8 + tail + 16 + 1;
     }
     zeroed.extend_from_slice(&now[at..]);
     // The layer stack is the last string: its length, then its JSON.

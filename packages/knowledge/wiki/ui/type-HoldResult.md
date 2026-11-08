@@ -10,7 +10,7 @@ A hold button's state after this tick.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, player: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | What happened to it. |
 | `confirmed` | `boolean` | `false` | — | — | — | The hold completed this tick: do the thing. |
 | `holding` | `boolean` | `false` | — | — | — | It is filling. |
 | `progress` | `number` | `0` | — | `ratio` | — | How full it is, 0 to 1 (it drains back when let go). |
@@ -27,4 +27,4 @@ struct HoldResult {
 }
 ```
 
-<sub>Module `ui` line 3503</sub>
+<sub>Module `ui` line 3504</sub>

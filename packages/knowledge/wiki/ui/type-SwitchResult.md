@@ -10,7 +10,7 @@ A switch's or a check's state after this tick.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, player: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | What happened to it. |
 | `on` | `boolean` | `false` | — | — | — | Its state, to keep and pass back. |
 | `changed` | `boolean` | `false` | — | — | — | It changed this tick. |
 
@@ -23,4 +23,4 @@ struct SwitchResult {
 }
 ```
 
-<sub>Module `ui` line 3541</sub>
+<sub>Module `ui` line 3542</sub>

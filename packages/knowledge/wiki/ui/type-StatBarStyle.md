@@ -27,4 +27,4 @@ enum StatBarStyle {
 }
 ```
 
-<sub>Module `ui` line 5798</sub>
+<sub>Module `ui` line 5800</sub>

@@ -393,6 +393,10 @@ impl Ui {
         if n.level > 0 {
             self.nodes[i].a11y.level = Some(n.level);
         }
+        // A split screen's region (`Props::player`).
+        if let Some(k) = r.num("player") {
+            self.nodes[i].props.player = Some(k.clamp(0.0, 3.0) as u8);
+        }
         // `role`, `aria-live` and `aria-atomic` over the tag's.
         if let Some(role) = r
             .str("role")

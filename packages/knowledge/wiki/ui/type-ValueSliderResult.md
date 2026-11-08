@@ -10,7 +10,7 @@ A slider's value after this tick.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, player: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 }` | — | — | — | What happened to it. |
 | `value` | `number` | `0` | — | — | — | The value, to keep and pass back. |
 | `changed` | `boolean` | `false` | — | — | — | It changed this tick. |
 | `committed` | `boolean` | `false` | — | — | — | A drag ended, or a key or pad step landed: when to save or apply a costly setting. |
@@ -25,4 +25,4 @@ struct ValueSliderResult {
 }
 ```
 
-<sub>Module `ui` line 3664</sub>
+<sub>Module `ui` line 3665</sub>

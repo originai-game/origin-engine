@@ -45,6 +45,7 @@ impl Ui {
             rect(&mut b, &h.clip);
             u64_(&mut b, h.group);
             u64_(&mut b, h.gesture);
+            b.push(h.player);
         }
         u64_(&mut b, s.tick);
         b.push(
@@ -421,7 +422,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11..=19 => {
+            11..=20 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -446,7 +447,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 19"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 20"
             ))),
         }
     }
@@ -544,6 +545,8 @@ impl Reader<'_> {
             } else {
                 (0, 0)
             };
+            // Each hit's split screen region came in at version 21.
+            let player = if version >= 21 { self.u8()? } else { 0 };
             s.hits.push(Hit {
                 key,
                 rect,
@@ -557,6 +560,7 @@ impl Reader<'_> {
                 clip,
                 group,
                 gesture,
+                player,
             });
         }
         s.tick = self.u64()?;
@@ -1009,11 +1013,14 @@ mod tests {
             clip: Rect::new(0.0, 0.0, 100.0, 100.0),
             group: 0x1111_1111_1111_1111,
             gesture: 0x2222_2222_2222_2222,
+            player: 0,
         }];
         let v14 = ui.save_state();
         // Version 13 had no group and recogniser per hit…
         let mut ids = 0x1111_1111_1111_1111u64.to_le_bytes().to_vec();
         ids.extend_from_slice(&0x2222_2222_2222_2222u64.to_le_bytes());
+        // (and no split screen region, which came in at 21)
+        ids.push(0);
         let at = v14
             .windows(ids.len())
             .position(|w| w == ids.as_slice())

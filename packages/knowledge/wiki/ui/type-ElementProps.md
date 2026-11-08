@@ -37,6 +37,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `gestures` | `GestureSpec \| null` | `null` | — | — | — | Tap, double tap and long press on it. |
 | `cursor` | `Cursor` | `"auto"` | — | — | — | The pointer's shape over it and its subtree; auto takes its parent's. |
 | `textPath` | `TextPathSpec \| null` | `null` | — | — | — | Its text set along a path instead of in lines (CSS -og-text-path); null is in lines. |
+| `player` | `number \| null` | `null` | — | — | — | A split screen region: player k's view (0 to 3). Pad k's focus moves only among the controls inside it, its first move lands at the region's centre, and a press inside it reports k (Response.player). Controls outside every region belong to the pads without one; null is in no region. |
 | `userSelect` | `UserSelect` | `"auto"` | — | — | — | Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's. |
 | `customize` | `Customize \| null` | `null` | — | — | — | The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout). |
 | `motion` | `Transition \| null` | `null` | — | — | — | How its animatable values move when they change; null is at once. |
@@ -83,6 +84,7 @@ struct ElementProps {
   field gestures Option.GestureSpec "Tap, double tap and long press on it."
   field cursor Cursor "The pointer's shape over it and its subtree; auto takes its parent's."
   field textPath Option.TextPathSpec "Its text set along a path instead of in lines (CSS -og-text-path); null is in lines."
+  field player Option.u32 "A split screen region: player k's view (0 to 3). Pad k's focus moves only among the controls inside it, its first move lands at the region's centre, and a press inside it reports k (Response.player). Controls outside every region belong to the pads without one; null is in no region."
   field userSelect UserSelect "Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's."
   field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout)."
   field motion Option.Transition "How its animatable values move when they change; null is at once."
@@ -96,4 +98,4 @@ struct ElementProps {
 }
 ```
 
-<sub>Module `ui` line 4810</sub>
+<sub>Module `ui` line 4811</sub>

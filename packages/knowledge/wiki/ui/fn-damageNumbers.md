@@ -34,4 +34,4 @@ fn damageNumbers {
 }
 ```
 
-<sub>Module `ui` line 6467</sub>
+<sub>Module `ui` line 6469</sub>
