@@ -9,7 +9,15 @@ case "${1:-}" in --help|-h|--list) exec python3 scripts/gate/run.py "$@" ;; esac
 og_temp_prepare "$OG_ROOT"
 # Admission is shared, not a machine-wide work lock. Only this checkout's
 # outputs are exclusive. GPU ownership is acquired by rendering children.
-og_admission_acquire shared "gate $* ($PWD)"
+# A landing's recheck holds the landing queue: it is named so a measurement
+# yields to it, takes the cores of a lone gate, and every other gate runs at
+# a lower priority (nice 10) so the recheck is not slowed by first passes.
+if [ -n "${OG_LANDING_RECHECK:-}" ]; then
+  og_admission_acquire shared "landing recheck: gate $* ($PWD)"
+else
+  renice -n 10 -p $$ >/dev/null 2>&1 || true
+  og_admission_acquire shared "gate $* ($PWD)"
+fi
 og_lock_acquire "$OG_TARGET_DIR" "gate $* ($PWD)"
 export OG_TARGET_DIR
 export OG_GATE_TREE="$(og_worktree_tree)"
@@ -19,7 +27,7 @@ export OG_GATE_TREE="$(og_worktree_tree)"
 if [ -z "${OG_GATE_THREADS:-}" ]; then
   og_cores="$(sysctl -n hw.perflevel0.logicalcpu 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || nproc)"
   og_gates=0
-  for og_gate in "$og_gpu_root/admission/active/"*; do
+  [ -n "${OG_LANDING_RECHECK:-}" ] || for og_gate in "$og_gpu_root/admission/active/"*; do
     if [ -d "$og_gate" ] && og_owner_alive "$og_gate"; then og_gates=$((og_gates + 1)); fi
   done
   [ "$og_gates" -gt 0 ] || og_gates=1

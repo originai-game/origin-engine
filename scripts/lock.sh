@@ -40,7 +40,7 @@ og_temp_prepare() {
 og_gpu_root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
 og_gpu_impl() {
   cat <<'OG_GPU_IMPL'
-og_gpu_lock_version=7
+og_gpu_lock_version=8
 
 # Process birth, not command text, identifies an owner after PID reuse.
 # Keep the human-readable owner file compatible with older lanes.
@@ -105,6 +105,11 @@ og_admission_acquire() {
     og_lock_dirs="$og_lock_dirs $og_admission_root/active/$$"
     rm -rf "$og_admission_root/og-gate.lock"
   else
+    # A drain that waits for busy lanes would hold every new gate out while
+    # it waits. It yields at once to a waiting landing recheck, and after
+    # OG_MEASURE_DRAIN seconds (default 120) to anyone: it releases the
+    # entrance and queues again behind the gates that were waiting.
+    og_admission_since="$(date +%s)"
     while :; do
       og_admission_readers=0
       for og_admission_active in "$og_admission_root/active/"*; do
@@ -117,6 +122,15 @@ og_admission_acquire() {
         fi
       done
       [ "$og_admission_readers" -gt 0 ] || break
+      if grep -qs ' landing recheck' "$og_admission_root/og-wait/"*.ticket ||
+         [ "$(( $(date +%s) - og_admission_since ))" -ge "${OG_MEASURE_DRAIN:-120}" ]; then
+        printf 'measurement admission: yielding to waiting gates (%s active)\n' "$og_admission_readers" >&2
+        rm -rf "$og_admission_root/og-gate.lock"
+        sleep "${OG_MEASURE_BACKOFF:-5}"
+        og_lock_acquire "$og_admission_root" "$2" || return 1
+        og_admission_since="$(date +%s)"
+        continue
+      fi
       printf 'measurement admission: draining %s active gate(s)\n' "$og_admission_readers" >&2
       sleep 1
     done

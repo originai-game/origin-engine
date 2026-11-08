@@ -164,6 +164,45 @@ while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt
         self.assertEqual(sorted(self.run_git(self.remote, 'log', '-3', '--format=%s').splitlines()),
                          ['first', 'second', 'third'])
 
+    def test_waiting_lander_lands_in_the_batch(self):
+        # b rechecks at the head of the queue; c and d pass quick meanwhile.
+        # c then leads and stacks d, so d lands without a gate of its own.
+        repos = {'b': self.b}
+        for name in ('c', 'd'):
+            repos[name] = self.root / name
+            self.run_git(self.a, 'worktree', 'add', '-b', name, str(repos[name]))
+        (self.a / 'Cargo.toml').write_text('upstream\n')
+        self.commit(self.a, 'upstream')
+        for name, repo in repos.items():
+            (repo / 'scripts' / name).write_text(name + '\n')
+            self.commit(repo, name)
+        (self.root / 'b.allow').write_text('1\n')
+        jobs = {name: self.start(repo) for name, repo in repos.items()}
+        for name in jobs:
+            self.ready(name)
+        self.run_git(self.a, 'push', 'origin', 'main')
+        (self.root / 'b.go').touch()
+        deadline = time.monotonic() + 15
+        while self.calls('b') < 2:
+            self.assertLess(time.monotonic(), deadline, 'b never rechecked')
+            time.sleep(0.05)
+        for name in ('c', 'd'):
+            (self.root / f'{name}.go').touch()
+        while len(list((self.a / '.git/og-landing/batch').iterdir())) < 2:
+            self.assertLess(time.monotonic(), deadline, 'c and d never offered')
+            time.sleep(0.05)
+        (self.root / 'b.allow').write_text('1\n1\n')
+        self.finish(jobs['b'])
+        out = {name: self.finish(jobs[name]) for name in ('c', 'd')}
+        batched = [name for name in out if 'landed in a batch' in out[name]]
+        self.assertEqual(len(batched), 1, out)
+        lead = ({'c', 'd'} - set(batched)).pop()
+        self.assertEqual((self.calls('b'), self.calls(lead), self.calls(batched[0])), (2, 2, 1))
+        self.assertEqual(self.run_git(self.remote, 'log', '-4', '--format=%s').splitlines(),
+                         [batched[0], lead, 'b', 'upstream'])
+        self.assertEqual(self.run_git(repos[batched[0]], 'rev-parse', 'HEAD'), self.run_git(self.remote, 'rev-parse', 'main'))
+        self.assertEqual(self.run_git(repos[lead], 'symbolic-ref', '--short', 'HEAD'), lead)
+
     def test_failed_gate_never_pushes(self):
         (self.a / 'first').write_text('first')
         self.commit(self.a, 'first')

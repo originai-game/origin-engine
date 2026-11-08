@@ -27,7 +27,22 @@ touches common build inputs or generated/drift-checked files. Otherwise it
 rebases and runs quick once more at the head of the queue; per-step input
 records skip unaffected work. Main cannot move during that recheck, so a
 landing gates at most twice. Waiting landers queue behind it instead of
-racing it. A push rejected because a writer outside the queue moved main
+racing it.
+
+The recheck is batched. A lander whose first quick passed offers its head
+in `og-landing/batch/` while it waits. The head of the queue, before its
+recheck, stacks every live offer in order onto its rebased head (a detached
+checkout, generated-only conflicts regenerated as below), runs one quick on
+the stack and pushes it. Each stacked lander finds a marker in
+`og-landing/landed/` when its turn comes, moves its branch to its landed
+commit and exits without gating again. An offer that does not rebase
+cleanly is left out and lands on its own; a stack that fails quick falls
+back to rechecking the head's branch alone. Main is still pushed only after
+quick passed on exactly the pushed tree.
+
+The recheck has priority. `land.sh` runs it with `OG_LANDING_RECHECK=1`:
+`check.sh` gives it a lone gate's cores, every other `check.sh` lowers itself
+to nice 10, and a measurement draining admission yields to it (below). A push rejected because a writer outside the queue moved main
 stops with a message to run the command again.
 Conflicts confined to the IDL's generated directories
 (`og_idl::OUTPUT_DIRS`, including declarations and wiki) or the generated UI
@@ -336,6 +351,9 @@ still shares compiled dependencies between lanes (§The compiler cache).
 Each checkout holds its own target lock. Gates briefly register shared
 admission and then execute concurrently, without a machine-wide CPU lock.
 Exclusive admission closes the entrance and drains active gates for perf.
+The drain never holds the entrance long: it yields at once when a landing
+recheck waits, and after `OG_MEASURE_DRAIN` seconds (default 120) to every
+waiting gate, then queues again.
 It is separate from GPU ownership: nothing holds GPU slots while waiting
 for a child gate. Rendering steps acquire a FIFO slot;
 single-slot and all-slot requests share the queue. Owners are identified

@@ -29,6 +29,7 @@ case "$2" in
   all) og_gpu_acquire_all "$1" ;;
   shared) og_admission_acquire shared "$1" ;;
   exclusive) og_admission_acquire exclusive "$1" ;;
+  recheck) og_admission_acquire shared "landing recheck: $1" ;;
 esac
 echo "$1" >> "$ROOT/order"
 touch "$ROOT/$1.acquired"
@@ -60,7 +61,7 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
             job = subprocess.Popen(['sh', str(self.script), name, kind], stdout=log, stderr=log,
                                    env=dict(os.environ, LOCK=str(LOCK), ROOT=str(self.root),
                                             OG_GPU_ROOT=str(self.root / 'gpu'), OG_GPU_SLOTS=str(slots),
-                                            OG_LOCK_OWNER=''))
+                                            OG_LOCK_OWNER='', OG_MEASURE_BACKOFF='0'))
         self.jobs.append(job)
         self.named[name] = job
         return job
@@ -156,6 +157,22 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
         self.release('measurement', exclusive)
         self.acquired('later')
         self.release('later', later)
+
+    def test_measurement_yields_to_landing_recheck(self):
+        # A draining measurement must not hold a landing's recheck behind
+        # busy lanes; it lets the recheck in and measures after it.
+        first = self.start('first', 'shared')
+        self.acquired('first')
+        exclusive = self.start('measurement', 'exclusive')
+        barrier = self.root / 'gpu' / 'admission' / 'og-gate.lock' / 'owner'
+        self.wait(lambda: barrier.exists() and barrier.read_text().startswith(f'{self.pid(exclusive)} '))
+        recheck = self.start('recheck', 'recheck')
+        self.acquired('recheck')
+        self.release('first', first)
+        self.assertFalse((self.root / 'measurement.acquired').exists())
+        self.release('recheck', recheck)
+        self.acquired('measurement')
+        self.release('measurement', exclusive)
 
     def test_dead_reader_and_measurement_do_not_block_admission(self):
         reader = self.start('reader', 'shared')
