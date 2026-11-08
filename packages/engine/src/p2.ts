@@ -101,6 +101,7 @@ export const motion = Object.freeze({
   react: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_react(world.id, entity, json(desc))),
   status: (world: W, entity: number) => parse(abi().og_motion_status(world.id, entity)),
   capabilities: (world: W) => parse(abi().og_motion_capabilities(world.id)),
+  setBackend: (world: W, backend: string) => parse(abi().og_motion_set_backend(world.id, backend)),
   presentation: (world: W, entity: number) => parse(abi().og_motion_presentation(world.id, entity)),
   poses: () => parse(abi().og_motion_poses()),
 });
