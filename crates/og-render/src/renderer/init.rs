@@ -1220,6 +1220,7 @@ impl Renderer {
             previous_sway: Vec::new(),
             shadow_cache: Default::default(),
             shadow_cache_maps: Vec::new(),
+            shadow_hashes: Default::default(),
             warned_planar: false,
             fx_groups: None,
             mips,

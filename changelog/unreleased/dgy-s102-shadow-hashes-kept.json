@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: cached static shadows",
+      "summary": "The static shadow cache keeps each instance's hash across frames and hashes again only the instances that moved or changed (their transform, sway, own material, or their mesh's or material's revision), instead of hashing every sorted instance every frame. The hash is unchanged, so every decision of the cache is the one a full pass gives. Frames do not change. A garden of 1072 cells: the per-frame hashing 127 -> 0 ms per 10 s, keeping the hashes 24 ms."
+    }
+  ]
+}

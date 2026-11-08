@@ -166,6 +166,107 @@ pub(crate) fn hash_words(words: impl IntoIterator<Item = u32>) -> u64 {
     h
 }
 
+/// What a sorted instance's shadow is drawn from, as [`ShadowCache::split`]
+/// reads it: its GPU transform, sway, mesh and material, and the mesh's and
+/// material's `revisions`, hashed.
+pub(crate) fn instance_hash(
+    t: &crate::instances::GpuTransform,
+    inst: &crate::Instance,
+    revisions: [u64; 2],
+) -> u64 {
+    let (mesh, material) = (inst.mesh.index(), inst.material.index());
+    hash_words(
+        bytemuck::cast_slice::<_, u32>(std::slice::from_ref(t))
+            .iter()
+            .copied()
+            .chain([inst.sway.to_bits(), mesh as u32, material as u32])
+            .chain(bytemuck::cast_slice::<_, u32>(&revisions).iter().copied()),
+    )
+}
+
+/// Each sorted instance's [`instance_hash`], kept across frames: a frame
+/// hashes again the instances [`crate::instances::Sorted::changed`] lists
+/// and those whose mesh's or material's revision moved, and every one after
+/// a fresh sort or an update it missed. Each hash is the one hashing them
+/// all would give.
+#[derive(Debug, Default)]
+pub(crate) struct InstanceHashes {
+    hashes: Vec<u64>,
+    /// Per sorted instance, the mesh and material its hash read.
+    read: Vec<(u32, u32)>,
+    /// Every mesh's and material's revision, as the hashes read them.
+    meshes: Vec<u64>,
+    materials: Vec<u64>,
+    /// The update of the sorted instances the hashes are of.
+    serial: Option<u64>,
+}
+
+/// Brings `kept` to `now`; per index whether it differed (a new index
+/// did), `None` when none did.
+fn moved(kept: &mut Vec<u64>, now: impl ExactSizeIterator<Item = u64>) -> Option<Vec<bool>> {
+    let len = now.len();
+    kept.truncate(len);
+    let mut out: Option<Vec<bool>> = None;
+    for (i, r) in now.enumerate() {
+        match kept.get_mut(i) {
+            Some(k) if *k == r => continue,
+            Some(k) => *k = r,
+            None => kept.push(r),
+        }
+        out.get_or_insert_with(|| vec![false; len])[i] = true;
+    }
+    out
+}
+
+impl InstanceHashes {
+    /// The hashes of `n` sorted instances, from `sorted`'s update (its
+    /// `serial` and `changed`): `hash(k)` is the k-th one's with the mesh
+    /// and material it read; `meshes` and `materials` give every mesh's
+    /// and material's revision.
+    pub(crate) fn update(
+        &mut self,
+        n: usize,
+        (serial, changed): (u64, Option<&[u32]>),
+        meshes: impl ExactSizeIterator<Item = u64>,
+        materials: impl ExactSizeIterator<Item = u64>,
+        mut hash: impl FnMut(usize) -> (u64, (u32, u32)),
+    ) -> &[u64] {
+        let mesh_moved = moved(&mut self.meshes, meshes);
+        let material_moved = moved(&mut self.materials, materials);
+        let follows = self.serial == Some(serial.wrapping_sub(1)) && self.hashes.len() == n;
+        self.serial = Some(serial);
+        match changed.filter(|_| follows) {
+            None => {
+                self.hashes.clear();
+                self.read.clear();
+                for k in 0..n {
+                    let (h, r) = hash(k);
+                    self.hashes.push(h);
+                    self.read.push(r);
+                }
+            }
+            Some(changed) => {
+                let mut put = |s: &mut Self, k: usize| (s.hashes[k], s.read[k]) = hash(k);
+                for &k in changed {
+                    put(self, k as usize);
+                }
+                if mesh_moved.is_some() || material_moved.is_some() {
+                    let stale = |(m, t): (u32, u32)| {
+                        mesh_moved.as_ref().is_some_and(|v| v[m as usize])
+                            || material_moved.as_ref().is_some_and(|v| v[t as usize])
+                    };
+                    for k in 0..n {
+                        if stale(self.read[k]) {
+                            put(self, k);
+                        }
+                    }
+                }
+            }
+        }
+        &self.hashes
+    }
+}
+
 /// A layer's view: its shadow pass uniform's view, light and projection
 /// (not its clock: a material shader's batch is dynamic instead), the
 /// scene's origin and the map's side.
@@ -592,5 +693,98 @@ mod tests {
         let split = w.cache.split(1, &swaying, &[0], &[1], &w.spheres[..1]);
         assert!(!split.any_static && split.dynamic == vec![true]);
         assert_eq!(split.dirty.len(), 2, "both leave the cache");
+    }
+
+    /// Kept across frames, the instance hashes are the ones hashing every
+    /// instance gives, after each change they read: a transform, a look, a
+    /// sway the GPU transform does not show, an own material the sort does
+    /// not see (an alias), a mesh's and a material's revision, a new order,
+    /// and an update the hashes missed.
+    #[test]
+    fn kept_instance_hashes_are_a_full_passes() {
+        use crate::instances::SortedInstances;
+        let mut scene = crate::RenderScene::new();
+        let meshes = [0, 1].map(|_| scene.add_mesh(crate::MeshData::default()));
+        let materials = [0, 1, 2].map(|_| scene.add_material(crate::Material::default()));
+        for i in 0..60u32 {
+            let m = Mat4::from_translation(Vec3::new(i as f32, 0.0, 0.0));
+            scene.add_instance(meshes[(i % 2) as usize], materials[(i % 2) as usize], m);
+        }
+        assert!(scene.alias_material(materials[2], materials[1]));
+        let info = |_: usize| (Some((Vec3::ZERO, Vec3::splat(0.5))), false);
+        let mut revisions = (vec![1u64; 2], vec![1u64; 3]);
+        let mut sorted = SortedInstances::default();
+        let mut kept = InstanceHashes::default();
+        // One frame: the kept hashes, a full pass's, and how many changed.
+        let mut frame =
+            |scene: &crate::RenderScene, revisions: &(Vec<u64>, Vec<u64>), hashed: bool| {
+                let s = sorted
+                    .update(scene, 2, info, 3, |_, _| None, |_| false, |_| false)
+                    .unwrap();
+                let hash = |k: usize| {
+                    let inst = &scene.instances[s.submission[k] as usize];
+                    let (m, t) = (inst.mesh.index(), inst.material.index());
+                    let h = instance_hash(&s.transforms[k], inst, [revisions.0[m], revisions.1[t]]);
+                    (h, (m as u32, t as u32))
+                };
+                let n = s.transforms.len();
+                let full: Vec<u64> = (0..n).map(|k| hash(k).0).collect();
+                let got = if hashed {
+                    let (m, t) = (revisions.0.iter().copied(), revisions.1.iter().copied());
+                    kept.update(n, (s.serial, s.changed.as_deref()), m, t, hash)
+                        .to_vec()
+                } else {
+                    full.clone()
+                };
+                let changed = s.changed.as_ref().map(Vec::len);
+                sorted.restore(s.transforms, s.spheres);
+                (got == full, changed)
+            };
+        assert_eq!(frame(&scene, &revisions, true), (true, None), "the first");
+        assert_eq!(
+            frame(&scene, &revisions, true),
+            (true, Some(0)),
+            "unchanged"
+        );
+        scene.instances[3].transform.w_axis.y = 2.0;
+        assert_eq!(frame(&scene, &revisions, true), (true, Some(1)), "moved");
+        scene.instances[4].fx.flash = 0.5;
+        assert_eq!(frame(&scene, &revisions, true), (true, Some(1)), "flashed");
+        // Its GPU transform carries max(sway, 0): both 0.
+        scene.instances[5].sway = -1.0;
+        assert_eq!(frame(&scene, &revisions, true), (true, Some(1)), "sway");
+        // Drawn in the same batches: the sort keeps its place.
+        scene.instances[7].material = materials[2];
+        assert_eq!(
+            frame(&scene, &revisions, true),
+            (true, Some(1)),
+            "aliased material"
+        );
+        revisions.0[1] += 1;
+        assert_eq!(
+            frame(&scene, &revisions, true),
+            (true, Some(0)),
+            "a mesh's revision"
+        );
+        revisions.1[2] += 1;
+        assert_eq!(
+            frame(&scene, &revisions, true),
+            (true, Some(0)),
+            "a material's revision"
+        );
+        scene.instances.swap(0, 1);
+        assert_eq!(
+            frame(&scene, &revisions, true),
+            (true, None),
+            "another order"
+        );
+        // A frame that sorted and failed before hashing: the next hashes all.
+        scene.instances[9].transform.w_axis.z = 1.0;
+        assert_eq!(frame(&scene, &revisions, false), (true, Some(1)));
+        assert_eq!(
+            frame(&scene, &revisions, true),
+            (true, Some(0)),
+            "after a missed update"
+        );
     }
 }

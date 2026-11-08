@@ -173,6 +173,15 @@ pub(crate) struct SortedInstances {
     probes: Vec<(Vec3, Vec3)>,
     /// The boxes changed since the last sort.
     probes_moved: bool,
+    /// Per sorted instance, its own material's index and its sway (as
+    /// bits) as last seen: with its GPU transform, what the static shadow
+    /// cache hashes of it ([`Sorted::changed`]).
+    looks: Vec<(u32, u32)>,
+    /// The sorted instances whose GPU transform or look the last refresh
+    /// found changed.
+    changed: Vec<u32>,
+    /// Counts the updates ([`Sorted::serial`]).
+    serial: u64,
 }
 
 /// What [`SortedInstances::update`] lends a frame.
@@ -185,6 +194,12 @@ pub(crate) struct Sorted {
     pub submission: Vec<u32>,
     /// The box of `spheres` as [`fold_box`] folds it.
     pub sphere_box: Option<(Vec3, Vec3)>,
+    /// The update's number: one more than the update before.
+    pub serial: u64,
+    /// The sorted instances (indices into `transforms`) whose GPU
+    /// transform, own material or sway changed since the update before;
+    /// `None` when they were sorted afresh (any of them may have).
+    pub changed: Option<Vec<u32>>,
 }
 
 /// What the sort needs of a mesh: its local bounds as (centre, half
@@ -221,6 +236,12 @@ pub(crate) fn fold_box(
     (lo.x <= hi.x).then_some((lo, hi))
 }
 
+/// An instance's own material and its sway (as bits): what the static
+/// shadow cache hashes of it besides its GPU transform and mesh.
+fn look(inst: &Instance) -> (u32, u32) {
+    (inst.material.index() as u32, inst.sway.to_bits())
+}
+
 fn same_bits(a: &Mat4, b: &Mat4) -> bool {
     bytemuck::cast_ref::<Mat4, [u32; 16]>(a) == bytemuck::cast_ref::<Mat4, [u32; 16]>(b)
 }
@@ -254,6 +275,7 @@ impl SortedInstances {
         skip: impl Fn(usize) -> bool,
     ) -> Result<Sorted, RenderError> {
         let instances = &scene.instances;
+        self.serial = self.serial.wrapping_add(1);
         // The submission's keys against the last frame's (and kept for the
         // next), each checked against the scene's resources on the way.
         let mut same = self.scene == scene.id() && self.keys.len() == instances.len();
@@ -303,7 +325,8 @@ impl SortedInstances {
         self.skipped = skipped;
         self.probes_moved = false;
         // An instance that moved into another probe's box sorts again.
-        if !same || self.refresh(scene, &mesh).is_none() {
+        let rebuilt = !same || self.refresh(scene, &mesh).is_none();
+        if rebuilt {
             self.rebuild(scene, &mesh, &dequant, &array);
         }
         Ok(Sorted {
@@ -312,6 +335,8 @@ impl SortedInstances {
             spheres: std::mem::take(&mut self.spheres),
             submission: self.order.clone(),
             sphere_box: self.sphere_box,
+            serial: self.serial,
+            changed: (!rebuilt).then(|| std::mem::take(&mut self.changed)),
         })
     }
 
@@ -366,6 +391,7 @@ impl SortedInstances {
         self.matrices.clear();
         self.spheres.clear();
         self.transforms.clear();
+        self.looks.clear();
         self.runs.clear();
         self.meshes.clear();
         for &i in &order {
@@ -412,6 +438,7 @@ impl SortedInstances {
             let run = self.runs.last().expect("pushed above");
             self.transforms.push(run_transform(&m, inst, run));
             self.matrices.push(m);
+            self.looks.push(look(inst));
             self.order.push(i as u32);
         }
         self.sphere_box = fold_box(None, self.spheres.iter().copied());
@@ -428,6 +455,7 @@ impl SortedInstances {
     ) -> Option<usize> {
         let instances = &scene.instances;
         let mut changed = 0;
+        self.changed.clear();
         for run in &self.runs {
             let bounds = mesh_info(run.mesh).0;
             for k in run.first as usize..(run.first + run.count) as usize {
@@ -436,8 +464,17 @@ impl SortedInstances {
                 if same_bits(m, &self.matrices[k]) {
                     // An array run's layer, whether an instance receives
                     // shadows and its look may change on their own.
-                    self.transforms[k].layer = run_layer(inst, run);
-                    self.transforms[k].fx = fx_bits(&inst.fx);
+                    let (layer, fx, seen) = (run_layer(inst, run), fx_bits(&inst.fx), look(inst));
+                    let t = &mut self.transforms[k];
+                    if layer.to_bits() != t.layer.to_bits()
+                        || fx.map(f32::to_bits) != t.fx.map(f32::to_bits)
+                        || seen != self.looks[k]
+                    {
+                        self.looks[k] = seen;
+                        self.changed.push(k as u32);
+                    }
+                    t.layer = layer;
+                    t.fx = fx;
                     continue;
                 }
                 self.spheres[k] = world_sphere(m, bounds);
@@ -448,6 +485,8 @@ impl SortedInstances {
                 }
                 self.transforms[k] = run_transform(m, inst, run);
                 self.matrices[k] = *m;
+                self.looks[k] = look(inst);
+                self.changed.push(k as u32);
                 changed += 1;
             }
         }
