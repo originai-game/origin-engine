@@ -1,6 +1,6 @@
 // og.assert (IDL `assert`): the game's assertions, recorded into the run's
 // report beside the world, never in it. A call that passes after its first
-// is a Map lookup here, with no call into the engine: the engine hears of a
+// is a Map lookup here, with one call into the engine per system call: the engine hears of a
 // site's first call in a report, each violation, and its first firing.
 //
 // The build (src/node/build.ts) writes each `og.assert.<kind>(` call in the
@@ -27,7 +27,8 @@ interface Declared {
 /** One engine's report, as far as this runtime knows it. */
 interface Report {
   epoch: number;
-  tick: number;
+  /** The dispatch the epoch was read in. */
+  call: object | null;
   /** The sites (and each's buckets) the engine has heard of in this report. */
   readonly seen: Set<string>;
   /** Those it has heard fire. */
@@ -61,15 +62,19 @@ function send(engine: number, record: unknown): number {
   return abi()!.og_assert_record(engine, text);
 }
 
-/** The engine's report, its epoch refreshed once a tick (the probe's take starts a new one between ticks). */
-function reportOf(engine: number, world: object, tick: number): Report {
+/**
+ * The engine's report, its epoch refreshed once a system call (the probe's take starts a new one
+ * between calls). Not once a tick: after a take and a restore a tick's number comes again, and a
+ * report keyed by it would keep the sites the taken report had heard of.
+ */
+function reportOf(engine: number, world: object, call: object, tick: number): Report {
   let r = reports.get(world);
   if (!r) {
-    r = { epoch: -1, tick: -1, seen: new Set(), fired: new Set(), declared: 0 };
+    r = { epoch: -1, call: null, seen: new Set(), fired: new Set(), declared: 0 };
     reports.set(world, r);
   }
-  if (r.tick !== tick) {
-    r.tick = tick;
+  if (r.call !== call) {
+    r.call = call;
     const epoch = abi()!.og_assert_record(engine, "null");
     if (epoch !== r.epoch) {
       r.epoch = epoch;
@@ -88,7 +93,7 @@ function reportOf(engine: number, world: object, tick: number): Report {
 function assert(kind: Kind, location: unknown, name: string, condition: boolean, key: string, details: unknown): void {
   const call = currentCall();
   if (call === null || isPublishBuild() !== false || abi() === null) return;
-  const r = reportOf(call.engine, call.world, call.tick);
+  const r = reportOf(call.engine, call.world, call, call.tick);
   const site = `${kind}\u0000${typeof location === "string" ? location : ""}\u0000${name}\u0000${key}`;
   const held = !!condition;
   const violated = (kind === "always" && !held) || kind === "unreachable";

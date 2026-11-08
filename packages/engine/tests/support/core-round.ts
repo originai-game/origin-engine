@@ -23,6 +23,9 @@
 //               its rolls, the story's variables and the world's hash
 //   latency     og.audio.outputLatency: 0 headless, then (web) what the
 //               Worker reports for an AudioContext's latency
+//   assert      og.assert's every kind, a default invariant's violation (a
+//               field past its range) and a command-channel invariant over
+//               12 ticks: the report, the per-tick stream and the hash
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -182,6 +185,57 @@ if (which === "rng") {
   engine.advance(12);
   out.seen = seen.map((e) => ({ ...e, at: Math.round(e.at * 1e4) / 1e4 }));
   out.hash = host === "publish" ? "" : engine.hash();
+} else if (which === "assert") {
+  const Gauge = defineResource("CrGauge", { level: u32(0, { min: 0, max: 8 }), spent: f64(0) });
+  const Fill = defineSystem("CrFill", { writes: [Gauge] }, (_q, time, world) => {
+    const g = world.resource(Gauge);
+    if (!g.ok) return;
+    const v = g.value;
+    // Tick 9 overfills the gauge: level 9 is past its range of 0..8.
+    v.level = Math.min(time.tick, 9);
+    v.spent += 0.5;
+    og.assert.always(v.spent <= 4, "spends at most four", { spent: v.spent });
+    og.assert.sometimes(v.level >= 3, "fills to three");
+    if (time.tick === 5) og.assert.reachable("the fifth tick");
+    if (time.tick === 7) og.assert.unreachable("the seventh tick");
+    og.assert.each(v.level % 3, v.level > 0, "each third holds");
+  });
+  const engine = start(
+    og.game({
+      tick: 60,
+      resources: [Gauge],
+      systems: [Fill],
+      facts: (world) => {
+        const g = world.resource(Gauge);
+        return { level: g.ok ? g.value.level : -1, cap: 6 };
+      },
+    }),
+  );
+  // A playtest invariant with a path value: level <= cap fails once level reaches 7.
+  engine.probe.commands("0:invariant:state:level<=$cap");
+  const stream: unknown[] = [];
+  const drain = () => (engine.probe.assertionEvents() as unknown as { events: Array<Record<string, unknown>> }).events.map((x) => ({ tick: x.tick, outcome: x.outcome, kind: x.kind, name: x.name, key: x.key ?? null, field: x.field ?? null, value: x.value ?? null }));
+  let last = "";
+  for (let i = 0; i < 12; i++) {
+    if (i === 11) {
+      const s = engine.world.snapshot();
+      if (!s.ok) throw new Error(s.reason);
+      last = s.value;
+    }
+    engine.advance(1);
+    stream.push(...drain());
+  }
+  const report = engine.probe.assertions(true) as unknown as { violations: Array<Record<string, unknown>>; sites: Array<Record<string, unknown>> };
+  // The last tick again in a new report: its tick number comes again, and the game's sites are
+  // heard of afresh (og explore replays a trace this way).
+  const back = engine.world.restore(last);
+  if (!back.ok) throw new Error(back.reason);
+  engine.advance(1);
+  out.again = drain();
+  out.stream = stream;
+  out.violations = report.violations.map((v) => ({ kind: v.kind, origin: v.origin, name: v.name, tick: v.tick, value: v.value ?? null }));
+  out.sites = report.sites.map((s) => ({ kind: s.kind, name: s.name, ran: s.ran, fired: s.fired })).sort((a, b) => `${a.kind}${a.name}`.localeCompare(`${b.kind}${b.name}`));
+  out.hash = engine.hash();
 } else if (which === "story") {
   const fnv = (text: string): string => {
     let h = 0xcbf29ce484222325n;

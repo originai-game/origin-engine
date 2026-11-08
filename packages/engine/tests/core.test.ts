@@ -19,6 +19,11 @@
 // - og.audio.outputLatency is not 0 headless, or the web Worker's report of
 //   an AudioContext's latency (and its prime) does not reach it, or a later
 //   report does not move it → "og.audio.outputLatency …"
+// - og.assert's report, the default invariants or a command-channel
+//   invariant differ between the hosts, the per-tick stream loses or
+//   reorders an event, or after a take and a restore the game's sites are
+//   not heard of again when a tick's number comes again → "og.assert, the
+//   default invariants and the per-tick stream …"
 // - `og test` forgets the store between a playtest's processes when asked to
 //   keep it, keeps it when not, ignores a step's clock, or never runs the
 //   `then` steps → "og test keeps the local store across a playtest's
@@ -189,6 +194,35 @@ test.skipIf(STALE_WASM)("og.platform.now and the answers' time follow the host's
     expect(r.systemSkewMs).toBeLessThan(5000);
   }
   expect(web.fixed).toEqual(node.fixed);
+}, 120_000);
+
+type Asserted = { stream: unknown[]; again: unknown[]; violations: unknown[]; sites: unknown[]; hash: string };
+
+test.skipIf(STALE_WASM)("og.assert, the default invariants and the per-tick stream report alike on both hosts", () => {
+  const node = run<Asserted>("node", "assert");
+  const web = run<Asserted>("web", "assert");
+  const e = (tick: number, outcome: string, kind: string, name: string, extra: { key?: string; field?: string; value?: number } = {}) => ({ tick, outcome, kind, name, key: extra.key ?? null, field: extra.field ?? null, value: extra.value ?? null });
+  // A game call carries the tick its system ran in; an invariant checked after the tick, the tick after it.
+  expect(node.stream).toEqual([
+    e(1, "fired", "each", "each third holds", { key: "1" }),
+    e(2, "fired", "each", "each third holds", { key: "2" }),
+    e(3, "fired", "sometimes", "fills to three"),
+    e(3, "fired", "each", "each third holds", { key: "0" }),
+    e(5, "fired", "reachable", "the fifth tick"),
+    e(7, "violated", "unreachable", "the seventh tick"),
+    e(8, "violated", "always", "invariant state:level<=$cap", { value: 7 }),
+    e(8, "violated", "always", "spends at most four"),
+    e(10, "violated", "always", "in range CrGauge.level", { field: "level", value: 9 }),
+  ]);
+  // Tick 11 again after the report was taken: every site it reaches is new to the new report.
+  expect(node.again).toEqual([
+    e(11, "violated", "always", "spends at most four"),
+    e(11, "fired", "sometimes", "fills to three"),
+    e(11, "fired", "each", "each third holds", { key: "0" }),
+    e(12, "violated", "always", "in range CrGauge.level", { field: "level", value: 9 }),
+    e(12, "violated", "always", "invariant state:level<=$cap", { value: 9 }),
+  ]);
+  expect(web).toEqual({ ...node, host: "web" } as Asserted);
 }, 120_000);
 
 test("og test keeps the local store across a playtest's processes with store: keep, and each its own clock", () => {

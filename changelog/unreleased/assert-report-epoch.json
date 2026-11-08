@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "assert",
+      "summary": "After the probe's report is taken (assertions(true)) and the world restored to a tick whose number comes again, og.assert's sometimes, reachable and each sites are reported to the new report again; they were taken for already heard of when the restored tick's number matched the last call's, so a replay in the same engine missed them."
+    }
+  ]
+}
