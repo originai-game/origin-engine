@@ -113,6 +113,10 @@ local styles and `og style new` remain available.
   (from `state:name={…}`), `:defined`, `:scope` and `:any-link`. Ancestor
   selectors read that ancestor's interaction identity, not the styled
   child's state.
+  Rules nest (`.card { &:hover { … } .title { … } @media (…) { … } }`),
+  and stylesheets take `@layer`, `@supports`, `@scope`, `@import`,
+  `@starting-style` and `@property`, with `inherit`, `initial`, `unset`,
+  `revert` and `revert-layer` on every property.
   Use CSS media conditions, for example
   `@media (width < 600px), (height < 600px) { ... }`.
   Supported features are `width`, `height`, `aspect-ratio`, `orientation`,

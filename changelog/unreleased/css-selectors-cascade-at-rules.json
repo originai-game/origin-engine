@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "Document CSS nests rules and takes @layer, @supports, @scope, @import (cooked into the document blob), @starting-style, @property, @font-face, @counter-style and @position-try; inherit, initial, unset, revert and revert-layer work on every property."
+    }
+  ]
+}

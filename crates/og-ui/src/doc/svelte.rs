@@ -5,7 +5,11 @@ use std::collections::BTreeSet;
 mod directives;
 mod html;
 
-pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>> {
+pub(super) fn parse(
+    source: &str,
+    text: &str,
+    imports: Vec<(String, String)>,
+) -> Result<UiDocument, Vec<String>> {
     let run = || -> Result<UiDocument, Error> {
         let nodes = syntax::parse(text)?;
         let mut p = Parser {
@@ -24,6 +28,10 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
                 keyframe_rules: Vec::new(),
                 fixtures: Vec::new(),
                 derived: Vec::new(),
+                sheet: at_rules::Sheet {
+                    imports,
+                    ..Default::default()
+                },
                 nodes: Vec::new(),
                 root: NONE,
                 warnings: Vec::new(),
@@ -125,6 +133,8 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
         for (i, declarations) in std::mem::take(&mut p.inline_styles) {
             let line = p.doc.nodes[i].line;
             p.doc.nodes[i].rules.push(StyleRule {
+                layer: u32::MAX,
+                starting: false,
                 query: AtQuery::default(),
                 condition: None,
                 structure: None,
@@ -1501,17 +1511,6 @@ impl Parser {
             if internal == "box" && a.name == "i18n" {
                 continue;
             }
-            // Selector facts only: `:lang()`, `:dir()`, `[data-…]` and
-            // `:state(name)` (CSS custom states, `state:name={…}`).
-            if matches!(a.name.as_str(), "lang" | "dir")
-                || (a.name.starts_with("data-") && !a.name.starts_with("data-og-"))
-                || a.name.strip_prefix("state:").is_some_and(identifier)
-            {
-                if a.bound {
-                    expression(&a.value, a.at)?;
-                }
-                continue;
-            }
             // Read as selector facts: a label's control, a list's numbering.
             if (label_for.is_some() && a.name == "for")
                 || (tag == "ol" && matches!(a.name.as_str(), "start" | "reversed"))
@@ -1658,6 +1657,20 @@ impl Parser {
             }
             if a.name == "hidden" {
                 name = "visible".into();
+            }
+            // Selector facts only: `:lang()`, `:dir()`, `[data-…]` and
+            // `:state(name)` (CSS custom states, `state:name={…}`).
+            if !component
+                && model.is_none()
+                && schema::prop(&name).is_none()
+                && (matches!(a.name.as_str(), "lang" | "dir")
+                    || a.name.starts_with("data-")
+                    || a.name.strip_prefix("state:").is_some_and(identifier))
+            {
+                if a.bound {
+                    expression(&a.value, a.at)?;
+                }
+                continue;
             }
             let value = if model.is_some() {
                 let expr = expression(&a.value, a.at)?;

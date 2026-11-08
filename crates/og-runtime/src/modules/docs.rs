@@ -123,14 +123,19 @@ fn hash_of(eng: &Engine, id: &str) -> u64 {
 
 /// Reads, parses and registers a document; answers it.
 fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
-    let text = {
+    let (text, imports) = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(id)?;
-        bundle
-            .document_text(id, bytes.bytes())
-            .map_err(|e| e.to_string())?
+        (
+            bundle
+                .document_text(id, bytes.bytes())
+                .map_err(|e| e.to_string())?,
+            bundle
+                .document_imports(id, bytes.bytes())
+                .map_err(|e| e.to_string())?,
+        )
     };
-    let doc = UiDocument::parse(id, &text).map_err(|e| e.join("\n"))?;
+    let doc = UiDocument::parse_with_imports(id, &text, imports).map_err(|e| e.join("\n"))?;
     let tables = doc
         .strings
         .iter()

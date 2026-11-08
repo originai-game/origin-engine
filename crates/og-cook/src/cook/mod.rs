@@ -1476,7 +1476,20 @@ pub fn cook_project_with_texture_cache(
             Kind::Document => {
                 let text = String::from_utf8_lossy(&s.bytes);
                 let mut dependencies = Vec::new();
-                if let Err(errors) = og_ui::UiDocument::parse(&s.rel, &text).and_then(|doc| {
+                let imports = match execute::document_imports(s, &text) {
+                    Ok(imports) => imports,
+                    Err(e) => {
+                        early_errors.push((s.rel.clone(), "document", e));
+                        continue;
+                    }
+                };
+                for (path, css) in &imports {
+                    dependencies.push(format!(
+                        "@import {path}={:016x}",
+                        hash_bytes(css.as_bytes())
+                    ));
+                }
+                if let Err(errors) = og_ui::UiDocument::parse_with_imports(&s.rel, &text, imports).and_then(|doc| {
                     doc.validate_tokens(&document_themes)?;
                     for id in &doc.strings {
                         let table = sources.iter().find(|source| source.rel == *id && source.kind == Kind::Strings)

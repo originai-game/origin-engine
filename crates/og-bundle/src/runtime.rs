@@ -863,6 +863,22 @@ impl Bundle {
             .map_err(|_| invalid(&blob, "the document text is not UTF-8"))
     }
 
+    /// The stylesheets a UI document blob's `@import`s name, by the path
+    /// written (for `UiDocument::parse_with_imports`); none for a document
+    /// without.
+    pub fn document_imports(
+        &self,
+        id: &str,
+        bytes: &[u8],
+    ) -> Result<Vec<(String, String)>, LoadError> {
+        let blob = self.blob::<format::Document>(id, bytes)?;
+        match blob.raw_opt("imports") {
+            None => Ok(Vec::new()),
+            Some(raw) => serde_json::from_slice(raw)
+                .map_err(|_| invalid(&blob, "the document's imports are malformed")),
+        }
+    }
+
     /// Decodes a sound blob (the QOA or Opus stays encoded until
     /// [`CookedSound::decode`]).
     pub fn sound(&self, id: &str, bytes: &[u8]) -> Result<CookedSound, LoadError> {

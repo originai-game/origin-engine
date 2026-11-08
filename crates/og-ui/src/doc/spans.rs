@@ -248,6 +248,8 @@ pub(crate) fn resolve(
         .iter()
         .filter(|rule| rule.matches(span))
         .map(|rule| super::StyleRule {
+            layer: u32::MAX,
+            starting: false,
             structure: None,
             query: AtQuery::default(),
             condition: None,

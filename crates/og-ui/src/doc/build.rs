@@ -63,6 +63,8 @@ struct Resolved {
     smil: bool,
     /// Its `transform` and 3D properties ([`crate::transform3d`]).
     space3d: Option<Arc<crate::transform3d::Space3d>>,
+    /// `@starting-style` declarations that differ from its style.
+    starting: String,
 }
 
 #[derive(Clone)]
@@ -303,6 +305,44 @@ fn anchor_of(s: &str) -> crate::layout::Anchor {
         "bottomRight" => BottomRight,
         _ => TopLeft,
     }
+}
+
+/// `@starting-style` as an entrance: each animatable value it sets that
+/// a CSS transition moves, starting there.
+fn starting_presence(r: &Resolved) -> Option<crate::motion::PresenceSpec> {
+    if r.starting.is_empty() {
+        return None;
+    }
+    let mut values = Vec::new();
+    let mut transition = None;
+    for entry in super::css::declarations(&r.starting, 0).ok()? {
+        let Some(prop) = crate::element::Prop::from_name(&entry.key) else {
+            continue;
+        };
+        let Some(t) = prop
+            .channels()
+            .iter()
+            .find_map(|&c| crate::motion::css::transition_for(&r.transitions, c))
+        else {
+            continue;
+        };
+        let Some(v) = entry
+            .values
+            .first()
+            .and_then(og_core::ogt::Value::as_number)
+            .map(og_core::ogt::Number::as_f32)
+        else {
+            continue;
+        };
+        transition.get_or_insert((t.transition, t.delay_ms));
+        values.push((prop, v));
+    }
+    let (transition, delay_ms) = transition?;
+    Some(crate::motion::PresenceSpec {
+        values,
+        transition,
+        delay_ms: delay_ms.max(0.0),
+    })
 }
 
 /// One mount's build: the document, its viewmodel and the item variables in scope.
@@ -593,19 +633,46 @@ impl Ui {
                 _ => None,
             }
         };
-        r.cascade = cascade::resolve(
-            &n.rules,
-            &inline,
+        let options = cascade::Options {
+            inline: &inline,
             inherited,
-            self.theme(),
-            basis,
-            &attr,
-            |rule| {
-                applies(&rule.query, &mut media_reads)
-                    && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
-                    && rule.structure.as_ref().is_none_or(|s| structure(s))
-            },
-        );
+            theme: self.theme(),
+            basis: Some(basis),
+            attr: &attr,
+            sheet: Some(&b.doc.sheet),
+            starting: false,
+            carry: self.docs.wide_keywords,
+        };
+        let mut rule_applies = |rule: &super::StyleRule| {
+            applies(&rule.query, &mut media_reads)
+                && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
+                && rule.structure.as_ref().is_none_or(|s| structure(s))
+        };
+        r.cascade = cascade::resolve(&n.rules, &options, &mut rule_applies);
+        // `@starting-style`: the values this element's first style moves
+        // from, through its CSS transitions, as an entrance does.
+        if n.rules.iter().any(|rule| rule.starting) {
+            let start = cascade::values_with(
+                &n.rules,
+                &cascade::Options {
+                    starting: true,
+                    carry: false,
+                    ..options
+                },
+                &mut rule_applies,
+            );
+            r.starting = start
+                .values
+                .iter()
+                .filter(|(name, value, _)| {
+                    !r.cascade
+                        .values
+                        .iter()
+                        .any(|(n, v, _)| n == name && v == value)
+                })
+                .map(|(name, value, _)| format!("{name}: {value};"))
+                .collect();
+        }
         if let Some((kind, names)) =
             super::container::declared(&r.cascade.container, &mut r.cascade.diagnostics)
         {
@@ -1156,6 +1223,8 @@ impl Ui {
         }
         if let Some(V::Presence(e)) = r.get("enter") {
             p.enter = Some(e.clone());
+        } else if let Some(e) = starting_presence(r) {
+            p.enter = Some(e);
         }
         if let Some(V::Presence(e)) = r.get("exit") {
             p.exit = Some(e.clone());

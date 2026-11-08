@@ -400,8 +400,9 @@ pub(super) fn run(
         Work::Document(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a document is text (UTF-8)".into()))?;
-            let doc =
-                og_ui::UiDocument::parse(&s.rel, text).map_err(|e| CookError(e.join("\n")))?;
+            let imports = document_imports(s, text).map_err(CookError)?;
+            let doc = og_ui::UiDocument::parse_with_imports(&s.rel, text, imports.clone())
+                .map_err(|e| CookError(e.join("\n")))?;
             let mut w = og_blob::BlobWriter::new(
                 format::Document::type_hash(),
                 format::Document::schema_version(),
@@ -415,6 +416,10 @@ pub(super) fn run(
                 format::row_hash::<format::DocumentMeta>(),
             )
             .raw("text", text.as_bytes().to_vec(), 16);
+            if !imports.is_empty() {
+                let bytes = serde_json::to_vec(&imports).expect("strings serialize");
+                w.raw("imports", bytes, 16);
+            }
             let slots = doc
                 .nodes
                 .iter()
@@ -712,6 +717,30 @@ pub(super) fn read_beside(s: &Source, rel: &str) -> Result<String, String> {
         return Ok(text);
     }
     read_sibling(s, rel)
+}
+
+/// The stylesheets a document's `@import`s name, read from beside it
+/// (and theirs, from beside them), by the path each was written as.
+pub(super) fn document_imports(s: &Source, text: &str) -> Result<Vec<(String, String)>, String> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    let mut pending: Vec<(String, String)> = og_ui::UiDocument::imports(text)
+        .into_iter()
+        .map(|p| (s.rel.clone(), p))
+        .collect();
+    while let Some((from, path)) = pending.pop() {
+        if out.iter().any(|(p, _)| *p == path) {
+            continue;
+        }
+        let rel = og_ui::doc::at_rules::resolve(&from, &path);
+        let css = read_sibling(s, &rel).map_err(|e| format!("@import \"{path}\" ({rel}): {e}"))?;
+        pending.extend(
+            og_ui::UiDocument::imports(&css)
+                .into_iter()
+                .map(|p| (rel.clone(), p)),
+        );
+        out.push((path, css));
+    }
+    Ok(out)
 }
 
 pub(super) fn read_sibling(s: &Source, rel: &str) -> Result<String, String> {

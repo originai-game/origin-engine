@@ -221,3 +221,48 @@ fn an_installed_kit_cooks_its_documents_and_not_its_sheet() {
             .is_err()
     );
 }
+
+/// A document's `@import` is read from beside it (with the imports of the
+/// imported sheet) into its blob, and an edit to the stylesheet re-cooks
+/// the document. Ways it could fail: the runtime parsing the text without
+/// the stylesheet (it refuses the `@import`), or a stale blob after the
+/// sheet changed.
+#[test]
+fn imported_stylesheets_ride_in_the_document_blob() {
+    let source = SCREEN.replace(
+        "</column>\n",
+        "</column>\n<style>@import \"theme/base.css\";</style>\n",
+    );
+    let root = project(
+        "imports",
+        &[
+            ("ui/shop.svelte", &source),
+            (
+                "ui/theme/base.css",
+                "@import \"tokens.css\";\n#Gold { opacity: 0.5; }",
+            ),
+            ("ui/theme/tokens.css", "#Shop { --tone: 1; }"),
+        ],
+    );
+    let cooked = |root: &PathBuf| {
+        let report = cook_project(root, &CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let out = bundle.output("ui/shop.svelte").unwrap();
+        let bytes = std::fs::read(root.join("cooked").join(&out.file)).unwrap();
+        let text = bundle.document_text("ui/shop.svelte", &bytes).unwrap();
+        let imports = bundle.document_imports("ui/shop.svelte", &bytes).unwrap();
+        og_ui::UiDocument::parse_with_imports("ui/shop.svelte", &text, imports.clone()).unwrap();
+        imports
+    };
+    let imports = cooked(&root);
+    let paths: Vec<_> = imports.iter().map(|(p, _)| p.as_str()).collect();
+    assert_eq!(paths, ["theme/base.css", "tokens.css"]);
+    std::fs::write(
+        root.join("assets/ui/theme/tokens.css"),
+        "#Shop { --tone: 2; }",
+    )
+    .unwrap();
+    let imports = cooked(&root);
+    assert!(imports[1].1.contains("--tone: 2"), "{imports:?}");
+}

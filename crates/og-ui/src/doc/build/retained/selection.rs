@@ -691,4 +691,105 @@ mod tests {
         // restyle reaches: not the 200 cards.
         assert!(resolved < 20, "restyled {resolved}");
     }
+
+    /// Layers (with `!important` reversed), nesting, `@supports`, `@scope`,
+    /// `revert-layer`, `inherit` and a non-inheriting `@property`, read off
+    /// the resolved elements.
+    #[test]
+    fn layers_nesting_scope_supports_and_wide_keywords_cascade() {
+        let mut ui = Ui::new(UiDesc::default());
+        let text = r#"<meta name="component" content="cascade">
+<column id="Root" class="theme">
+  <div id="Card" class="card"><text id="Title" class="title">t</text></div>
+  <div id="Other" class="card other"><text id="Note">n</text></div>
+</column>
+<style>
+  @import "theme/base.css" layer(base) supports(display: grid) (width > 10px);
+  @layer base, top;
+  @layer top {
+    .card { width: 30px; opacity: 0.8 !important; }
+    .other { width: 50px; }
+  }
+  @layer base { .card { width: 10px; height: 4px; opacity: 0.9 !important; } }
+  .card {
+    &.other { height: 9px; }
+    .title { opacity: 0.5; }
+  }
+  #Other { width: 70px; width: revert-layer; }
+  #Note { width: inherit; }
+  @scope (.other) { text { opacity: 0.25; } }
+  @supports (display: grid) and (not (frobnicate: 1)) { #Root { opacity: 0.75; } }
+  @supports (frobnicate: 1) { #Root { opacity: 0.1; } }
+  @supports selector(:has(> .x)) { #Root { height: 3px; } }
+  @property --gap { syntax: "<length>"; inherits: false; initial-value: 7px; }
+  .theme { --gap: 3px; }
+  #Title { height: var(--gap); }
+</style>"#;
+        let imports = vec![(
+            "theme/base.css".to_string(),
+            "#Root { width: 40px; } .theme { height: 99px; }".to_string(),
+        )];
+        assert_eq!(UiDocument::imports(text), ["theme/base.css"]);
+        ui.define_document(
+            UiDocument::parse_with_imports("cascade.svelte", text, imports).unwrap(),
+        );
+        let missing = UiDocument::parse("cascade.svelte", text)
+            .unwrap_err()
+            .join("\n");
+        assert!(missing.contains("@import \"theme/base.css\""), "{missing}");
+        ui.mount_document(
+            SourceId::new("test", "cascade"),
+            "cascade",
+            BTreeMap::new(),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        tick(&mut ui, 0.0);
+        let host = &ui.docs.retained;
+        let get = |id: &str| {
+            let e = host
+                .elements
+                .values()
+                .find(|e| e.document.nodes[e.index].id == id)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{id}: {:?}",
+                        host.elements.values().map(|e| &e.id).collect::<Vec<_>>()
+                    )
+                });
+            e.resolved.as_ref().unwrap().values.clone()
+        };
+        let px = |n: f32| Some(Size::px(n));
+        let (root, card, other) = (get("Root"), get("Card"), get("Other"));
+        let (title, note) = (get("Title"), get("Note"));
+        assert_eq!(card.size("width"), px(30.0), "the later layer wins");
+        assert_eq!(
+            card.num("opacity"),
+            Some(0.9),
+            "an important earlier layer wins"
+        );
+        assert_eq!(card.size("height"), px(4.0));
+        assert_eq!(other.size("height"), px(9.0), "&.other nests");
+        assert_eq!(
+            other.size("width"),
+            px(50.0),
+            "revert-layer falls to the layers"
+        );
+        assert_eq!(note.size("width"), px(50.0), "inherit takes the parent's");
+        assert_eq!(title.num("opacity"), Some(0.5), "a relative nested rule");
+        assert_eq!(
+            note.num("opacity"),
+            Some(0.25),
+            "@scope reaches its subtree"
+        );
+        assert_eq!(title.size("height"), px(7.0), "--gap does not inherit");
+        assert_eq!(root.num("opacity"), Some(0.75));
+        assert_eq!(
+            root.size("height"),
+            px(3.0),
+            "unlayered beats the imported layer"
+        );
+        assert_eq!(root.size("width"), px(40.0), "the import's rule applies");
+    }
 }

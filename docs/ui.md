@@ -1569,6 +1569,30 @@ the nearest `lang` or `dir`, else the locale; `:state(name)` reads the
 element's `state:name`; `:defined` matches every element, `:scope` the root
 and `:any-link` an `<a href>`.
 
+Rules nest (CSS Nesting): a nested rule's `&` is its parent's selector
+(written in place for one compound, else `:is(parent)`), and one without
+`&` is relative to it; `@media`, `@container`, `@supports`, `@layer`,
+`@scope` and `@starting-style` nest inside a rule and apply its selector.
+`@layer` orders cascade layers (statements, blocks, anonymous and nested
+layers, a layer's sublayers before its own rules): unlayered rules beat
+every layer, a later layer beats an earlier one, and `!important` reverses
+that order; the user-agent rules are below every layer. `@supports` holds
+when the cascade takes the declaration as written (`(display: grid)`) or
+the selector (`selector(:has(> a))`). `@scope (root) to (limit)` matches
+in the root's subtree above the limit; the root adds no specificity.
+`@import "x.css" [layer(name)] [supports(…)] [media];` comes before the
+rules; the cook reads the file from beside the document (and its own
+imports) into the document blob. `@starting-style` gives an element's
+first style the values its CSS transitions start from (the animatable
+properties `@keyframes` takes). `@property` registers a custom property's
+syntax, inheritance and initial value; a value that does not match its
+syntax takes the initial value. `@font-face`, `@counter-style` and
+`@position-try` are read into the document's sheet (fonts, counters and
+anchor positioning use them). `inherit`, `initial`, `unset`, `revert` and
+`revert-layer` work on every property: `inherit` takes the parent's
+winning value, `revert` rolls back to the user-agent rules and
+`revert-layer` to the layers below the declaration's.
+
 Custom properties are lexical and inherit through instantiated parents,
 including component mounts. Recursive `var()` supports fallbacks, even an
 empty fallback. Values resolve on the declaring element before inheritance:

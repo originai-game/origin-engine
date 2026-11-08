@@ -11,13 +11,13 @@ use crate::motion::css::{
 };
 use crate::motion::{Ease, MotionToken, SpringSpec, Transition};
 
-const TRANSITION: [&str; 4] = [
+pub(crate) const TRANSITION: [&str; 4] = [
     "transition-property",
     "transition-duration",
     "transition-timing-function",
     "transition-delay",
 ];
-const ANIMATION: [&str; 8] = [
+pub(crate) const ANIMATION: [&str; 8] = [
     "animation-name",
     "animation-duration",
     "animation-timing-function",

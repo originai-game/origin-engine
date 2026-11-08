@@ -98,6 +98,9 @@ pub struct DocHost {
     pub(crate) happened: Vec<crate::doc::When>,
     /// The popovers documents name, by their key in their mount.
     pub(crate) popovers: BTreeMap<u64, super::popover::PopoverLink>,
+    /// Some defined document writes a CSS-wide keyword on a property, so
+    /// elements carry their winners to their children's `inherit`.
+    pub(crate) wide_keywords: bool,
     /// The id the last `#fragment` link named: CSS `:target`.
     pub(crate) target: Option<String>,
     /// The `$ui` store's value as last published.
@@ -178,6 +181,15 @@ impl Ui {
         self.docs
             .structure
             .merge(&crate::doc::matching::Profile::of_document(&doc));
+        self.docs.wide_keywords |= doc.nodes.iter().any(|n| {
+            n.rules.iter().flat_map(|r| &r.declarations).any(|d| {
+                !d.name.starts_with("--")
+                    && matches!(
+                        crate::doc::stylesheet::wide_keyword(&d.source),
+                        Some("inherit" | "unset" | "revert" | "revert-layer")
+                    )
+            })
+        });
         let mut retained = std::mem::take(&mut self.docs.retained);
         retained.document_replaced(self, &doc.name);
         self.docs.retained = retained;

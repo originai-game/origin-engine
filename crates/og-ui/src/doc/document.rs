@@ -61,7 +61,36 @@ impl UiDocument {
     ///
     /// Documents use scriptless Svelte markup and scoped CSS (docs/ui.md §3.2).
     pub fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>> {
-        super::svelte::parse(source, text)
+        super::svelte::parse(source, text, Vec::new())
+    }
+
+    /// [`UiDocument::parse`] with the stylesheets its `@import`s name, by
+    /// the path written ([`UiDocument::imports`] lists them).
+    pub fn parse_with_imports(
+        source: &str,
+        text: &str,
+        imports: Vec<(String, String)>,
+    ) -> Result<UiDocument, Vec<String>> {
+        super::svelte::parse(source, text, imports)
+    }
+
+    /// The paths a stylesheet's `@import`s name, as written: what the cook
+    /// reads from beside the document (relative to `source`, through
+    /// [`super::at_rules::resolve`]) before [`UiDocument::parse_with_imports`].
+    pub fn imports(css: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut rest = css;
+        while let Some(at) = rest.find("@import") {
+            rest = &rest[at + 7..];
+            let path = rest.trim_start();
+            let path = path.strip_prefix("url(").unwrap_or(path).trim_start();
+            if let Some(q) = path.chars().next().filter(|c| *c == '"' || *c == '\'')
+                && let Some(end) = path[1..].find(q)
+            {
+                out.push(path[1..1 + end].to_string());
+            }
+        }
+        out
     }
 
     /// The same document, whatever its lines and text.

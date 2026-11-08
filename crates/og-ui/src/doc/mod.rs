@@ -4,6 +4,7 @@
 //! with its base string-table dependencies in an `og.UiDocument` blob.
 //! [`UiDocument::set_prop`] saves probe edits without rewriting other nodes.
 
+pub mod at_rules;
 pub(crate) mod boxes;
 pub mod build;
 pub(crate) mod calc;
@@ -22,7 +23,7 @@ mod schema_extra;
 mod script;
 pub mod selectors;
 mod spans;
-mod stylesheet;
+pub(crate) mod stylesheet;
 mod svelte;
 mod syntax;
 pub(crate) mod text_css;
@@ -280,6 +281,14 @@ pub struct StyleDeclaration {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct StyleRule {
+    /// Its cascade layer's rank: 0 for the user-agent sheet, the layer's
+    /// place in [`at_rules::Sheet::layers`] plus one, `u32::MAX` unlayered.
+    /// Normal declarations of a higher rank win; `!important` ones of a
+    /// lower rank.
+    pub layer: u32,
+    /// Inside `@starting-style`: it applies only to an element's first
+    /// style, as the values its transitions start from.
+    pub starting: bool,
     pub query: AtQuery,
     pub condition: Option<Expr>,
     /// A sibling or structural selector, matched on the instantiated tree
@@ -557,6 +566,8 @@ pub struct UiDocument {
     pub fixtures: Vec<(String, serde_json::Value)>,
     /// The script's `$derived` values, in order: names the whole tree reads.
     pub derived: Vec<(String, Expr)>,
+    /// Its stylesheets' descriptor at-rules, layers and imports.
+    pub sheet: at_rules::Sheet,
     pub nodes: Vec<DocNode>,
     pub root: usize,
     /// Author diagnostics that publish promotes to errors.
