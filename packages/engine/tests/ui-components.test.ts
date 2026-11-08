@@ -68,48 +68,6 @@ function key(engine: Engine, code: string): void {
   engine.advance(8);
 }
 
-// ── visual states ───────────────────────────────────────────────────────
-
-test("states: parts move through §7.3 state groups (selection, interaction, expansion) a style's motion runs", () => {
-  // Wrong: a part animated by the component's own tween (no group, so a style's motion and the probe's forceState never reach it).
-  let open: number[] = [];
-  // Read inside the tick (og.ui answers the UI being built): each watched path's groups.
-  const watched: Array<[path: string, group: string]> = [];
-  let seen = new Map<string, string>();
-  const engine = run(() => {
-    open = og.ui.accordion("Faq", { sections: [{ title: "Rules" }], expanded: open }, () => og.ui.label("Text", "Body", {})).expanded.slice();
-    seen = new Map(watched.map(([p, g]) => [`${p}:${g}`, og.ui.visualState(p, g)]));
-  });
-  const path = (end: string) => byPath(engine, end)!.path;
-  for (const [end, groups] of [["Section#0/Header", ["expansion"]], ["Section#0/Header/Chevron", ["expansion"]]] as const) {
-    for (const g of groups) watched.push([path(end), g]);
-  }
-  engine.advance(1);
-  const vs = (end: string, group: string) => seen.get(`${path(end)}:${group}`);
-  expect([vs("Section#0/Header", "expansion"), vs("Section#0/Header/Chevron", "expansion")]).toEqual(["collapsed", "collapsed"]);
-  tap(engine, "Section#0/Header");
-  expect(open).toEqual([0]);
-  expect([vs("Section#0/Header", "expansion"), vs("Section#0/Header/Chevron", "expansion")]).toEqual(["expanded", "expanded"]);
-});
-
-// ── accordion ───────────────────────────────────────────────────────────
-
-test("accordion: a tap opens a section and says expanded; single closes the other", () => {
-  // Wrong: a body built while closed, a header that does not say its state, single that keeps two open.
-  let open: number[] = [0];
-  const engine = run(() => {
-    open = og.ui.accordion("Faq", { sections: [{ title: "Rules" }, { title: "Scoring", subtitle: "How points add up" }, { title: "Credits" }], expanded: open, single: true }, (i) => og.ui.label("Text", `Body ${i}`, {})).expanded.slice();
-  });
-  const header = (i: number) => find(engine, (e) => e.path.endsWith(`Section#${i}/Header`))!;
-  expect(header(0).states).toContain("expanded");
-  expect(header(1).states).toContain("collapsed");
-  expect(elements(engine).filter((e) => e.id === "Body").length).toBe(1);
-  tap(engine, "Section#1/Header");
-  expect(open).toEqual([1]);
-  expect(header(1).states).toContain("expanded");
-  expect(find(engine, (e) => e.path.endsWith("Section#1/Body"))?.name).toBe("Scoring");
-});
-
 // ── menus ───────────────────────────────────────────────────────────────
 
 test("menu: entries take menu roles, a tap chooses, a submenu opens beside its row and chooses", () => {
@@ -463,8 +421,6 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
   expect(find(engine, (e) => e.path.endsWith("Skills/Window/FadeStart"))).toBeDefined();
 });
 
-// ── direction, locale ───────────────────────────────────────────────────
-
 // ── 200 % text ──────────────────────────────────────────────────────────
 
 test("150 % text: the containers and navigation components grow with the text and cut none of it, on a desktop and a phone", () => {
@@ -472,11 +428,10 @@ test("150 % text: the containers and navigation components grow with the text an
   // player's largest text size it clips, or a text drawn at a fixed size the scale never reaches.
   const ui = native() as unknown as { og_node_ui_frame(id: number): string };
   const nav = () => {
-    og.ui.accordion("Faq", { sections: [{ title: "Rules", subtitle: "How a round is played" }], expanded: [0] }, () => og.ui.label("Text", "Each round lasts three minutes.", {}));
     og.ui.menu("Menu", true, { at: { x: 40, y: 40 }, entries: [{ id: "copy", label: "Copy", shortcut: "Ctrl+C" }, { id: "compare", label: "Compare", shortcut: "C" }, { id: "sort", label: "Sort by" }, { id: "destroy", label: "Destroy", danger: true }, { id: "n", label: "Name", parent: "sort" }] });
   };
   // Tall surfaces: everything is laid out on screen, nothing scrolled away.
-  for (const [bp, w, h, coarse, build, probe] of [["desktop", 1280, 2400, false, nav, "Rules"], ["phonePortrait", 390, 2400, true, nav, "Rules"]] as const) {
+  for (const [bp, w, h, coarse, build, probe] of [["desktop", 1280, 2400, false, nav, "Copy"], ["phonePortrait", 390, 2400, true, nav, "Copy"]] as const) {
     const frames: UiFrameSnapshot[] = [];
     for (const scale of [1, 1.5]) {
       const engine = run(build, Math.min(640, w - 32), kit);

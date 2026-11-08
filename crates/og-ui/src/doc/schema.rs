@@ -1697,6 +1697,12 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Its `<summary>`'s text; empty is `Details`. Written as the first child, `<summary>…</summary>`."
     ),
     p!(
+        "exclusive",
+        Ty::Name,
+        ["details"],
+        "HTML `name` on a `<details>`, an exclusive accordion: of the disclosures in a document sharing it, one is open at once, and opening one closes the others (its open state written back)."
+    ),
+    p!(
         "low",
         Ty::Num,
         ["meter", "slider"],

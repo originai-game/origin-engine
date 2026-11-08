@@ -1,12 +1,3 @@
-  fn accordion {
-    doc "Sections whose headers open and close their bodies; the sections under one move on the panel spring."
-    host false
-    param id String "Its id."
-    param desc AccordionDesc "Sections and the open ones."
-    param build UiItemBuild "Builds an open section's body by its index."
-    returns AccordionResult
-  }
-
   fn popover {
     doc "A popover beside an element with an arrow at it; Back or a press outside dismisses it."
     host false

@@ -153,9 +153,6 @@ module ui {
 | [`ScreenTransitionResult`](ui/type-ScreenTransitionResult.md) | struct |  | Where a screen transition is this tick. |
 | [`og.ui.screenTransition`](ui/fn-screenTransition.md) | function | `(id: string, screen: string, desc?: ScreenTransitionDesc): ScreenTransitionResult` | A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). |
 | [`og.ui.previewViewport`](ui/fn-previewViewport.md) | function | `(world: World, viewport: Viewport \| null): void` | Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. |
-| [`AccordionSection`](ui/type-AccordionSection.md) | desc struct |  | A section of an accordion: its header's title, subtitle and badge. |
-| [`AccordionDesc`](ui/type-AccordionDesc.md) | desc struct |  | An accordion: sections whose headers open and close their bodies. |
-| [`AccordionResult`](ui/type-AccordionResult.md) | struct |  | What an accordion answered this tick. |
 | [`FloatSide`](ui/type-FloatSide.md) | enum |  | Where a floating surface hangs off what it belongs to; start and end follow the writing direction. |
 | [`FloatAlign`](ui/type-FloatAlign.md) | enum |  | How a floating surface lines up with what it belongs to. |
 | [`PopoverDesc`](ui/type-PopoverDesc.md) | desc struct |  | A popover beside an element, flipped where there is no room and kept on screen, with an arrow at the element. |
@@ -174,7 +171,6 @@ module ui {
 | [`GraphLink`](ui/type-GraphLink.md) | desc struct |  | A link between two nodes. |
 | [`NodeGraphDesc`](ui/type-NodeGraphDesc.md) | desc struct |  | A pan-and-zoom graph of nodes and links: skill and tech trees, run maps, flowcharts. |
 | [`NodeGraphResult`](ui/type-NodeGraphResult.md) | struct |  | What a graph answered this tick. |
-| [`og.ui.accordion`](ui/fn-accordion.md) | function | `(id: string, desc: AccordionDesc, build: UiItemBuild): AccordionResult` | Sections whose headers open and close their bodies; the sections under one move on the panel spring. |
 | [`og.ui.popover`](ui/fn-popover.md) | function | `(id: string, open: boolean, desc: PopoverDesc, build: UiBuild): PopoverResult` | A popover beside an element with an arrow at it; Back or a press outside dismisses it. |
 | [`og.ui.menu`](ui/fn-menu.md) | function | `(id: string, open: boolean, desc?: MenuDesc): MenuChoice` | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. |
 | [`og.ui.contextMenu`](ui/fn-contextMenu.md) | function | `(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice` | A menu at a point: where a right press or a long press happened. |
@@ -402,7 +398,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 2875</sub>
+<sub>Module `ui` line 2834</sub>
 
 ```ogt
 column UiMaterial {
@@ -413,4 +409,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 2882</sub>
+<sub>Module `ui` line 2841</sub>

@@ -6,7 +6,6 @@ import type * as Api from "@origingame/engine";
 import {
   byText, target, clamp, fit, flags, frame, grow, kit, lastGesture, mark, over, overProps, px, recallPath, rememberPath, role, rtl, spring, still, surface, text, token, xy,
 } from "../containers/base.ts";
-import { edge } from "../containers/panels.ts";
 import { lit, mix, teamColor } from "../feedback/core.ts";
 import { decimalNumber } from "./format.ts";
 
@@ -300,4 +299,26 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
   kit.remember("~k", k);
   if (chosen !== null) kit.feedback("select", -1);
   return { chosen, zoom, changed: zoom !== (desc.zoom ?? 1) };
+}
+
+/** A fade over a scrolling view's edge (`k` its strength, 0 to 1) into the surface it sits on: more lies that way. */
+function edge(id: string, start: boolean, k: number, horizontal: boolean, size: number, ink: Api.ThemeColor): void {
+  if (k < 0.01) return;
+  kit.open(id, { width: horizontal ? px(size) : grow(), height: horizontal ? grow() : px(size) });
+  kit.setDraw({
+    fills: [{
+      kind: "gradient",
+      type: "linear",
+      // Opaque at the outer side: the start inset is the right under a right-to-left locale.
+      from: horizontal ? { x: start !== rtl() ? 0 : 1, y: 0.5 } : { x: 0.5, y: start ? 0 : 1 },
+      to: horizontal ? { x: start !== rtl() ? 1 : 0, y: 0.5 } : { x: 0.5, y: start ? 1 : 0 },
+      stops: [{ offset: 0, color: token(ink, k) }, { offset: 1, color: token(ink, 0) }],
+    }],
+  });
+  kit.close();
+  over({
+    insets: horizontal ? (start ? { start: 0, top: 0, bottom: 0 } : { end: 0, top: 0, bottom: 0 }) : start ? { start: 0, end: 0, top: 0 } : { start: 0, end: 0, bottom: 0 },
+    inert: true,
+    z: 3,
+  });
 }

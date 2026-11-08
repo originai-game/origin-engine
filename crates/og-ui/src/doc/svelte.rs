@@ -1657,6 +1657,7 @@ impl Parser {
                 ("field", "maxlength") => "maxChars".into(),
                 ("field", "minlength") => "minChars".into(),
                 ("field", "rows") if tag == "textarea" => "lines".into(),
+                ("details", "name") => "exclusive".into(),
                 (_, other) => super::extern_element::property(internal, other)
                     .unwrap_or_else(|| property(other)),
             };

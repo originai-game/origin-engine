@@ -704,6 +704,19 @@ impl RetainedHost {
                     .insert(identity.clone());
             }
         }
+        // An exclusive `<details name>` closes as another of its name opens.
+        if let Some(PropValue::Lit(Lit::Str(name))) = doc.nodes[index]
+            .props
+            .iter()
+            .rev()
+            .find(|p| p.name() == "exclusive")
+            .map(|p| &p.value)
+        {
+            self.on_action
+                .entry(super::nodes::details_action(name))
+                .or_default()
+                .insert(identity.clone());
+        }
         // `<tabs>` steps on the bumpers (`tabPrev`, `tabNext`).
         if matches!(doc.nodes[index].kind, NodeKind::Element("tabs")) {
             for action in ["tabPrev", "tabNext"] {

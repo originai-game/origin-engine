@@ -771,6 +771,7 @@ Its own props, beside every element's:
 | `disabled` | `bool` | Takes no input. |
 | `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
 | `summary` | `text` | Its `<summary>`'s text; empty is `Details`. Written as the first child, `<summary>…</summary>`. |
+| `name` | `name` | HTML `name` on a `<details>`, an exclusive accordion: of the disclosures in a document sharing it, one is open at once, and opening one closes the others (its open state written back). |
 
 <a id="guide-components-33"></a>
 ### `components §33` `<div>`, `<nav>`, `<ul>`, `<ol>` (`box`): A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker

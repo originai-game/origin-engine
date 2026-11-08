@@ -11977,9 +11977,6 @@
         "WipeSide",
         "ScreenTransitionDesc",
         "ScreenTransitionResult",
-        "AccordionSection",
-        "AccordionDesc",
-        "AccordionResult",
         "FloatSide",
         "FloatAlign",
         "PopoverDesc",
@@ -13132,33 +13129,6 @@
           ],
           "returns": "Void",
           "publish": true
-        },
-        {
-          "name": "accordion",
-          "doc": "Sections whose headers open and close their bodies; the sections under one move on the panel spring.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "AccordionDesc",
-              "optional": false,
-              "doc": "Sections and the open ones."
-            },
-            {
-              "name": "build",
-              "type": "UiItemBuild",
-              "optional": false,
-              "doc": "Builds an open section's body by its index."
-            }
-          ],
-          "returns": "AccordionResult",
-          "publish": true,
-          "host": false
         },
         {
           "name": "popover",
@@ -47768,131 +47738,6 @@
         "covering",
         "revealing",
         "cover"
-      ],
-      "additionalProperties": false
-    },
-    "AccordionSection": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A section of an accordion: its header's title, subtitle and badge.",
-      "type": "object",
-      "properties": {
-        "title": {
-          "type": "string",
-          "description": "The header's title.",
-          "default": ""
-        },
-        "subtitle": {
-          "type": "string",
-          "description": "A line under it; empty is none.",
-          "default": ""
-        },
-        "badge": {
-          "type": "string",
-          "description": "A badge at the header's end; empty is none.",
-          "default": ""
-        },
-        "badgeTone": {
-          "$ref": "#/$defs/Tone",
-          "description": "The badge's tone.",
-          "default": "neutral"
-        },
-        "disabled": {
-          "type": "boolean",
-          "description": "The header is shown but does not open.",
-          "default": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "AccordionDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "An accordion: sections whose headers open and close their bodies.",
-      "type": "object",
-      "properties": {
-        "sections": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/AccordionSection"
-          },
-          "description": "The sections, in order.",
-          "default": []
-        },
-        "expanded": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 4294967295
-          },
-          "description": "The open sections' indices (keep AccordionResult.expanded).",
-          "default": []
-        },
-        "single": {
-          "type": "boolean",
-          "description": "Opening one closes the others.",
-          "default": false
-        },
-        "dividers": {
-          "type": "boolean",
-          "description": "Hairlines between sections.",
-          "default": true
-        },
-        "gap": {
-          "type": "number",
-          "description": "Space between sections.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "width": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Size"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Its width; null grows.",
-          "default": null
-        }
-      },
-      "additionalProperties": false
-    },
-    "AccordionResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "What an accordion answered this tick.",
-      "type": "object",
-      "properties": {
-        "toggled": {
-          "anyOf": [
-            {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 4294967295
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The section whose header was pressed."
-        },
-        "expanded": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 4294967295
-          },
-          "description": "The open sections after this tick: keep them and pass them back."
-        }
-      },
-      "required": [
-        "toggled",
-        "expanded"
       ],
       "additionalProperties": false
     },

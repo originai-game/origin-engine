@@ -26144,98 +26144,6 @@ export interface ScreenTransitionResult {
 
 
 /**
- * A section of an accordion: its header's title, subtitle and badge.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface AccordionSection {
-  /**
-   * The header's title.
-   *
-   * @default ""
-   */
-  readonly title?: string;
-  /**
-   * A line under it; empty is none.
-   *
-   * @default ""
-   */
-  readonly subtitle?: string;
-  /**
-   * A badge at the header's end; empty is none.
-   *
-   * @default ""
-   */
-  readonly badge?: string;
-  /**
-   * The badge's tone.
-   *
-   * @default "neutral"
-   */
-  readonly badgeTone?: Tone;
-  /**
-   * The header is shown but does not open.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-}
-
-/**
- * An accordion: sections whose headers open and close their bodies.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface AccordionDesc {
-  /**
-   * The sections, in order.
-   *
-   * @default []
-   */
-  readonly sections?: readonly AccordionSection[];
-  /**
-   * The open sections' indices (keep AccordionResult.expanded).
-   *
-   * @default []
-   */
-  readonly expanded?: readonly number[];
-  /**
-   * Opening one closes the others.
-   *
-   * @default false
-   */
-  readonly single?: boolean;
-  /**
-   * Hairlines between sections.
-   *
-   * @default true
-   */
-  readonly dividers?: boolean;
-  /**
-   * Space between sections.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gap?: number;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-}
-
-/** What an accordion answered this tick. */
-export interface AccordionResult {
-  /** The section whose header was pressed. */
-  readonly toggled: number | null;
-  /** The open sections after this tick: keep them and pass them back. */
-  readonly expanded: readonly number[];
-}
-
-/**
  * Where a floating surface hangs off what it belongs to; start and end follow the writing direction.
  * - `"below"`: Below it (the default).
  * - `"above"`: Above it.
@@ -26818,7 +26726,6 @@ export interface NodeGraphResult {
   /** The zoom changed this tick. */
   readonly changed: boolean;
 }
-
 
 
 
@@ -40240,14 +40147,6 @@ export declare namespace og {
      * @param viewport The surface to lay out for; null returns to the host's.
      */
     function previewViewport(world: World, viewport: Viewport | null): void;
-    /**
-     * Sections whose headers open and close their bodies; the sections under one move on the panel spring.
-     *
-     * @param id Its id.
-     * @param desc Sections and the open ones.
-     * @param build Builds an open section's body by its index.
-     */
-    function accordion(id: string, desc: AccordionDesc, build: UiItemBuild): AccordionResult;
     /**
      * A popover beside an element with an arrow at it; Back or a press outside dismisses it.
      *

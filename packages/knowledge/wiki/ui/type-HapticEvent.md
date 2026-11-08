@@ -19,4 +19,4 @@ struct HapticEvent {
 }
 ```
 
-<sub>Module `ui` line 2406</sub>
+<sub>Module `ui` line 2365</sub>

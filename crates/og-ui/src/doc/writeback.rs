@@ -113,6 +113,7 @@ pub(super) fn edit(
         "maxChars" => "maxlength",
         "minChars" => "minlength",
         "lines" => "rows",
+        "exclusive" => "name",
         _ => prop,
     };
     let attribute = format!("{name}=\"{}\"", escaped(&literal));
@@ -123,7 +124,10 @@ pub(super) fn edit(
             || (prop == "current" && tag == "select" && name == "value")
             || matches!(
                 (prop, name),
-                ("maxChars", "maxlength") | ("minChars", "minlength") | ("lines", "rows")
+                ("maxChars", "maxlength")
+                    | ("minChars", "minlength")
+                    | ("lines", "rows")
+                    | ("exclusive", "name")
             )
     }) {
         text.replace_range(attr.at..attr.end, &attribute);

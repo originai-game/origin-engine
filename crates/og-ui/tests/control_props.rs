@@ -1493,3 +1493,43 @@ fn search_clears_and_field_adornments_compose() {
     d.step(InputFrame::default());
     assert_eq!(d.get("Count").text, "5/20", "the count follows the text");
 }
+
+/// `<details name>`, HTML's exclusive accordion: of the disclosures sharing
+/// a name one is open at once; opening one closes the other, which writes
+/// back, while a disclosure of another name stays as it is.
+///
+/// Ways it could fail: the name read as a screen reader's label, two open
+/// at once, the closed one's store left true, or an unrelated one closed.
+#[test]
+fn details_name_is_an_exclusive_accordion() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <details id="Rules" name="faq" summary="Rules" bind:open={$rules}><p id="RulesBody">x</p></details>
+  <details id="Score" name="faq" summary="Scoring"><p id="ScoreBody">y</p></details>
+  <details id="Other" summary="Other" open><p id="OtherBody">z</p></details>
+</div>
+<style>#Page { gap: 8px; padding: 8px; }</style>"#;
+    let d = &mut Doc::new(text, &[("rules", json!(true))], true);
+    assert!(d.el("RulesBody").is_some() && d.el("ScoreBody").is_none());
+    assert_ne!(
+        d.a11y("Score").name,
+        "faq",
+        "name is the group, not a label"
+    );
+    let summary = |d: &Doc, id: &str, text: &str| {
+        d.ui.probe_elements()
+            .into_iter()
+            .find(|e| e.path.contains(&format!("/{id}/")) && e.text == text)
+            .unwrap_or_else(|| panic!("{id}'s summary"))
+    };
+    let s = summary(d, "Score", "Scoring");
+    d.click_at(Vec2::new(s.x + s.width / 2.0, s.y + s.height / 2.0));
+    assert!(d.el("ScoreBody").is_some(), "Scoring opens");
+    assert!(d.el("RulesBody").is_none(), "and Rules closes");
+    assert_eq!(d.read("rules"), json!(false), "its store says so");
+    assert!(d.el("OtherBody").is_some(), "another name is left open");
+    let s = summary(d, "Rules", "Rules");
+    d.click_at(Vec2::new(s.x + s.width / 2.0, s.y + s.height / 2.0));
+    assert!(d.el("RulesBody").is_some() && d.el("ScoreBody").is_none());
+    assert_eq!(d.read("rules"), json!(true));
+}

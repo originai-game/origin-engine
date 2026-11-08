@@ -394,7 +394,17 @@ impl Ui {
                     }
                 }
                 "details" => {
-                    let open = open_now(self);
+                    let mut open = open_now(self);
+                    // An exclusive accordion (`<details name>`): the open one
+                    // of its name in this mount is widget memory; another
+                    // open one closes.
+                    let group = r
+                        .str("exclusive")
+                        .filter(|g| !g.is_empty())
+                        .map(|g| crate::id::child_key(crate::id::child_key(0, &b.mount), g));
+                    let holder = group.map_or(0, |g| self.anim(g).h);
+                    let closing = open && holder != 0 && holder != key;
+                    open &= !closing;
                     let out = self.open_details(
                         id.as_str(),
                         &crate::widgets::DetailsDesc {
@@ -405,8 +415,31 @@ impl Ui {
                         },
                     );
                     shows_content = out.open;
-                    if out.toggled {
+                    if out.toggled || closing {
                         opened = Some(out.open);
+                    }
+                    if let Some(g) = group {
+                        let now = if out.open {
+                            key
+                        } else if holder == key {
+                            0
+                        } else {
+                            holder
+                        };
+                        if now != holder || (out.open && !self.has_anim(g)) {
+                            self.set_anim(
+                                g,
+                                crate::ui::Anim {
+                                    h: now,
+                                    ..Default::default()
+                                },
+                            );
+                        }
+                        // The others of its name build again next tick, and close.
+                        if out.toggled && out.open {
+                            let name = r.str("exclusive").unwrap_or_default();
+                            self.actions.pending.push(details_action(name));
+                        }
                     }
                 }
                 "button" => {
@@ -1882,4 +1915,10 @@ pub(super) fn bound(n: &DocNode, prop: &str) -> bool {
         .rev()
         .find(|p| p.name() == prop)
         .is_some_and(|p| !matches!(p.value, PropValue::Lit(_)))
+}
+
+/// The internal action an exclusive `<details name>` fires as it opens,
+/// which the others of its name listen to (they close).
+pub(crate) fn details_action(name: &str) -> String {
+    format!("~details/{name}")
 }

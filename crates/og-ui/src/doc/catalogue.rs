@@ -108,6 +108,7 @@ fn written(p: &PropSpec) -> String {
                 "maxChars" => "maxlength".into(),
                 "minChars" => "minlength".into(),
                 "lines" => "rows".into(),
+                "exclusive" => "name".into(),
                 "multiline" => "<textarea>".into(),
                 "key" => "i18n".into(),
                 "name" => "aria-label".into(),
