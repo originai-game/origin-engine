@@ -106,6 +106,17 @@ impl Ui {
     /// listbox of options. Probe: `<id>/Trigger`,
     /// `<id>.list/List/Option#i`.
     pub fn dropdown(&mut self, id: impl Into<Id>, desc: &DropdownDesc) -> DropdownResult {
+        self.dropdown_marked(id, desc, !desc.error.is_empty())
+    }
+
+    /// [`Ui::dropdown`], its trigger marked invalid without an error line
+    /// (a document's `aria-invalid`, its message written beside it).
+    pub(crate) fn dropdown_marked(
+        &mut self,
+        id: impl Into<Id>,
+        desc: &DropdownDesc,
+        invalid: bool,
+    ) -> DropdownResult {
         let id = id.into();
         let key = id.as_str().to_owned();
         let t = self.theme;
@@ -113,7 +124,6 @@ impl Ui {
         let before = desc.selected;
         let mut selected = before;
         let disabled = desc.disabled;
-        let invalid = !desc.error.is_empty();
         let mut open = self.memory(&format!("{key}~open"), 0.0) > 0.0 && !disabled;
         let was_open = open;
         let touch = self.touch_frame();

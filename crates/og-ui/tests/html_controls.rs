@@ -42,7 +42,7 @@ pub(crate) const FORM: &str = r#"<meta name="component" content="form">
   <details id="Lit"><summary>Literal</summary><text id="LitBody">Shown text</text></details>
   <meter id="Hp" value={$hp} min="0" max="100" low="25" high="75" optimum="90" />
   <dialog id="Ask" modal bind:open={$ask} aria-label="Quit?"><button id="Yes">Yes</button><button id="No">No</button></dialog>
-  <dialog id="Note" bind:open={$note} aria-label="Note"><button id="Ok">Ok</button></dialog>
+  <dialog id="Note" bind:open={$note} closedby="closerequest" aria-label="Note"><button id="Ok">Ok</button></dialog>
   <select id="Pick" bind:value={$choice}>
     <optgroup label="Warm">
       <option value="r">Red</option>

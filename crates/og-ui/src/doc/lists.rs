@@ -35,6 +35,7 @@ h3 { font: var(--text-lg); margin-block: 1em; }
 h4 { font: var(--text-body); margin-block: 1.33em; }
 h5 { font: var(--text-sm); margin-block: 1.67em; }
 h6 { font: var(--text-xs); margin-block: 2.33em; }
+small { font: var(--text-sm); }
 ";
 
 const TYPES: [&str; 9] = [

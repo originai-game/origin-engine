@@ -51,7 +51,7 @@ pub(crate) struct Doc {
     pub(crate) ui: Ui,
     name: String,
     /// Mounted with these stores; `None`: built immediately from `vm`.
-    mounted: bool,
+    pub(crate) mounted: bool,
     vm: Value,
     /// An immediate build's events, collected tick by tick.
     events: Vec<DocEvent>,
@@ -99,7 +99,7 @@ impl Doc {
         d
     }
 
-    fn apply(&mut self, command: Value) {
+    fn apply(&mut self, command: Value) -> Value {
         let reply = wire::decode(
             &self
                 .ui
@@ -107,6 +107,17 @@ impl Doc {
         )
         .unwrap();
         assert_eq!(reply[0]["ok"], true, "{reply}");
+        reply[0]["value"].clone()
+    }
+
+    /// Store `name`'s value now: what a control wrote back to it.
+    pub(crate) fn read(&mut self, name: &str) -> Value {
+        if self.mounted {
+            self.apply(json!({"op": "read", "source": SourceId::new("test", name)}))["value"]
+                .clone()
+        } else {
+            self.vm[format!("${name}")].clone()
+        }
     }
 
     /// A store: a list is a keyed collection (by `id`).
@@ -171,7 +182,7 @@ impl Doc {
             .unwrap_or_else(|| panic!("no {id} (mounted: {})", self.mounted))
     }
 
-    fn a11y(&self, path_end: &str) -> A11yNode {
+    pub(crate) fn a11y(&self, path_end: &str) -> A11yNode {
         self.ui
             .a11y()
             .nodes
@@ -181,7 +192,7 @@ impl Doc {
             .unwrap_or_else(|| panic!("no a11y node {path_end}"))
     }
 
-    fn click_at(&mut self, at: Vec2) -> Vec<DocEvent> {
+    pub(crate) fn click_at(&mut self, at: Vec2) -> Vec<DocEvent> {
         let mut events = std::mem::take(&mut self.events);
         events.clear();
         for (pressed, released) in [(true, false), (false, true)] {
@@ -201,7 +212,7 @@ impl Doc {
         events
     }
 
-    fn click(&mut self, id: &str) -> Vec<DocEvent> {
+    pub(crate) fn click(&mut self, id: &str) -> Vec<DocEvent> {
         let e = self.get(id);
         self.click_at(Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0))
     }

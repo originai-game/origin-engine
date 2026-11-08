@@ -18,7 +18,7 @@
   <text heading="true">Light</text>
   <text>Intensity</text>
   <input type="range" value="0.8" min="0" max="1" step="0.1" />
-  <label><input type="checkbox" switch checked="true"> Cast shadows</label>
+  <label>Cast shadows <input type="checkbox" switch checked="true"></label>
 </column>
 {/snippet}
 {#snippet cataloguePanelCatalogue()}

@@ -187,8 +187,16 @@ pub(super) fn apply(
             };
             let mut props = Vec::new();
             for e in &entries {
-                let (spec, p) = schema::prop(&e.key)
-                    .ok_or((rule.at, format!("unknown CSS target {}", e.key)))?;
+                // `flex-direction` is a box's layout and a checkbox's
+                // label's caption side: each element takes its own.
+                let key = e.key.as_str();
+                if (key == "direction" && kind == "toggle")
+                    || (key == "labelDirection" && kind != "toggle")
+                {
+                    continue;
+                }
+                let (spec, p) =
+                    schema::prop(key).ok_or((rule.at, format!("unknown CSS target {}", e.key)))?;
                 if !p.applies(kind) {
                     return Err((
                         rule.at,
@@ -325,47 +333,62 @@ fn matches(
     })
 }
 
-/// `<dialog>::backdrop { background: … }`, CSS's pseudo-element for a
-/// modal's scrim: the rule becomes the dialog's own `-og-backdrop`, so it
-/// cascades (states, variables, media) as any declaration does.
+/// The pseudo-elements a control draws itself, and the declarations each
+/// takes as the control's own property: `dialog::backdrop { background }`
+/// (a modal's scrim) and `select::picker(select) { max-height }` (the
+/// open list, CSS's customizable select).
+const PSEUDO: &[(&str, &[(&str, &str)])] = &[
+    ("::backdrop", &[("background", "-og-backdrop")]),
+    (
+        "::picker(select)",
+        &[("max-height", "-og-picker-max-height")],
+    ),
+];
+
+/// A rule on a pseudo-element of [`PSEUDO`] becomes the element's own
+/// declarations, so it cascades (states, variables, media) as any does.
 fn backdrop(rule: &mut Rule) -> Result<(), (usize, String)> {
     let selectors: Vec<&str> = rule.selector.split(',').map(str::trim).collect();
-    let on = selectors
+    let Some(&(pseudo, takes)) = PSEUDO
         .iter()
-        .filter(|s| s.ends_with("::backdrop"))
-        .count();
-    if on == 0 {
+        .find(|(p, _)| selectors.iter().any(|s| s.ends_with(p)))
+    else {
         return Ok(());
-    }
-    if on != selectors.len() {
+    };
+    if !selectors.iter().all(|s| s.ends_with(pseudo)) {
         return Err((
             rule.at,
             format!(
-                "{}: write ::backdrop rules apart from the element's own",
+                "{}: write {pseudo} rules apart from the element's own",
                 rule.selector
             ),
         ));
     }
     let mut body = String::new();
     for d in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
-        if d.name != "background" {
+        let Some((_, own)) = takes.iter().find(|(css, _)| *css == d.name) else {
             return Err((
                 rule.at,
                 format!(
-                    "::backdrop takes background (the scrim's fill), not {}",
+                    "{pseudo} takes {}, not {}",
+                    takes
+                        .iter()
+                        .map(|(css, _)| *css)
+                        .collect::<Vec<_>>()
+                        .join(", "),
                     d.name
                 ),
             ));
-        }
+        };
         body.push_str(&format!(
-            "-og-backdrop: {}{};",
+            "{own}: {}{};",
             d.source,
             if d.important { " !important" } else { "" }
         ));
     }
     rule.selector = selectors
         .iter()
-        .map(|s| s.trim_end_matches("::backdrop"))
+        .map(|s| s.trim_end_matches(pseudo))
         .collect::<Vec<_>>()
         .join(", ");
     rule.body = body;

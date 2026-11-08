@@ -100,6 +100,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("cross", "align-items"),
     ("wrap", "flex-wrap"),
     ("direction", "flex-direction"),
+    ("labelDirection", "flex-direction"),
     ("background", "background"),
     ("radius", "border-radius"),
     ("borderTopWidth", "border-top-width"),
@@ -186,6 +187,11 @@ pub const STYLE: &[(&str, &str)] = &[
     ("tint", "-og-tint"),
     ("cue", "-og-cue"),
     ("fit", "object-fit"),
+    ("uv", "object-view-box"),
+    ("uv", "-og-uv"),
+    ("appearance", "appearance"),
+    ("fillOrigin", "-og-fill-origin"),
+    ("pickerMaxHeight", "-og-picker-max-height"),
 ];
 
 /// Reflected fields affected even when a winning declaration is invalid.
@@ -228,18 +234,18 @@ fn conv(prop: &str) -> Conv {
         "outlineWidth" | "outlineOffset" => Conv::Len,
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
-        "boxShadow" => Conv::Raw,
+        "boxShadow" | "uv" => Conv::Raw,
         "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
-        "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop" => Conv::Len,
-        "aspect" | "opacity" | "z" | "scale" | "maxLines" => Conv::Num,
+        "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop"
+        | "pickerMaxHeight" => Conv::Len,
+        "aspect" | "opacity" | "z" | "scale" | "maxLines" | "fillOrigin" => Conv::Num,
         "rotate" => Conv::Angle,
         "background" | "backdrop" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => {
             Conv::Paint
         }
         "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
-        | "textAlign" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect" => {
-            Conv::Kebab
-        }
+        | "textAlign" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
+        | "appearance" | "labelDirection" => Conv::Kebab,
         "wrap" => Conv::Bool("wrap", "nowrap"),
         "centerX" | "centerY" | "onScene" => Conv::Bool("true", "false"),
         "uppercase" => Conv::Bool("uppercase", "none"),
@@ -302,6 +308,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Presence => "<kind> [<distance>px] [<transition>]".into(),
         Conv::Origin => "<x>% <y>%".into(),
         Conv::Rive => "rive(\"<file>.riv#<Artboard>\")".into(),
+        Conv::Raw if prop == "uv" => "inset(<t>% <r>% <b>% <l>%) | -og-uv: <u0> <v0> <u1> <v1>".into(),
         Conv::Raw if prop == "textPath" => {
             "none | path(\"<svg path data>\") | circle([<n>px])".into()
         }
@@ -1569,6 +1576,66 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 "textPathOffset",
                 vec![Value::String(value.trim().to_owned())],
             )])
+        }
+        "object-view-box" => {
+            // CSS's inset() of the texture, in percentages: the box's
+            // u0 v0 u1 v1 (px need the texture's size, which the box lacks).
+            let [Tok::Func(f, args)] = t.as_slice() else {
+                return Err("object-view-box: none | inset(<t>% [<r>% [<b>% [<l>%]]])".into());
+            };
+            if f != "inset" {
+                return Err(format!("object-view-box takes inset(…), not {f}(…)"));
+            }
+            let pct: Vec<f64> = args
+                .iter()
+                .flatten()
+                .map(|v| match v {
+                    Tok::Num(n, u) if u == "%" => n
+                        .parse::<f64>()
+                        .map(|n| n / 100.0)
+                        .map_err(|_| format!("'{n}%' is not a number")),
+                    Tok::Num(n, _) if n.parse::<f64>() == Ok(0.0) => Ok(0.0),
+                    v => Err(format!(
+                        "object-view-box: inset() takes percentages of the image, not '{}'",
+                        describe(v)
+                    )),
+                })
+                .collect::<Result<_, _>>()?;
+            let [top, right, bottom, left] = match pct[..] {
+                [a] => [a; 4],
+                [v, h] => [v, h, v, h],
+                [top, h, b] => [top, h, b, h],
+                [top, r, b, l] => [top, r, b, l],
+                _ => return Err("inset() takes 1 to 4 percentages".into()),
+            };
+            if left + right >= 1.0 || top + bottom >= 1.0 {
+                return Err("object-view-box: inset() leaves none of the image".into());
+            }
+            Ok(vec![e(
+                "uv",
+                [left, top, 1.0 - right, 1.0 - bottom]
+                    .into_iter()
+                    .map(|v| {
+                        let s = format!("{v:.6}");
+                        number(s.trim_end_matches('0').trim_end_matches('.'))
+                    })
+                    .collect::<Result<_, _>>()?,
+            )])
+        }
+        "-og-uv" => {
+            let n: Vec<Value> = t.iter().map(want_num).collect::<Result<_, _>>()?;
+            if n.len() != 4 {
+                return Err("-og-uv: <u0> <v0> <u1> <v1>, fractions of the texture".into());
+            }
+            Ok(vec![e("uv", n)])
+        }
+        "flex-direction" => {
+            let w = camel(want_ident(&one(&t, name)?, "a direction")?);
+            let both = vec![Value::Word(w)];
+            Ok(vec![
+                e("direction", both.clone()),
+                e("labelDirection", both),
+            ])
         }
         "grid-auto-flow" => {
             let mut out = Vec::new();

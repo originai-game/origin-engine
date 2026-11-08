@@ -8,7 +8,7 @@
   <text>Selected: health bar</text>
   <text>Scale</text>
   <input type="range" value="1" min="0.5" max="1.5" step="0.1" />
-  <label><input type="checkbox" switch checked="true"> Snap to safe area</label>
+  <label>Snap to safe area <input type="checkbox" switch checked="true"></label>
   <row id="FixtureActions">
     <button variant="quiet">Reset layout</button>
     <button variant="primary">Done</button>

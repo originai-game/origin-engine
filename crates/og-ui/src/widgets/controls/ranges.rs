@@ -478,7 +478,16 @@ impl Ui {
         let f = (v - min) / span;
         let origin = desc.origin.map_or(min, |o| o.clamp(lo, hi));
         let of = (origin - min) / span;
-        let ticks = tick_fractions(min, max, step, desc.ticks);
+        // The step's ticks, and one at each mark (a `<datalist>` option):
+        // an unlabelled mark is a tick only.
+        let mut ticks = tick_fractions(min, max, step, desc.ticks);
+        for m in &desc.marks {
+            let f = ((m.value - min) / span).clamp(0.0, 1.0);
+            if !ticks.iter().any(|t| (t - f).abs() < 1e-4) {
+                ticks.push(f);
+            }
+        }
+        ticks.sort_by(f32::total_cmp);
         // Unlabelled, it is named by the label before it in its row, else by its id.
         let name = Some(if desc.label.is_empty() {
             label_before.unwrap_or_else(|| key.clone())

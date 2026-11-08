@@ -357,6 +357,9 @@ impl Ui {
                 &ModalDesc {
                     width: desc.width,
                     backdrop: desc.backdrop,
+                    locked: desc.closedby == ClosedBy::None,
+                    ignore_backdrop: desc.closedby != ClosedBy::Any,
+                    bare: desc.bare,
                     ..ModalDesc::default()
                 },
             );
@@ -381,7 +384,8 @@ impl Ui {
             visible: open,
             dismissed: false,
         };
-        if open && inside && self.nav.back {
+        let closes = matches!(desc.closedby, ClosedBy::Any | ClosedBy::CloseRequest);
+        if open && inside && closes && self.nav.back {
             self.nav.back = false;
             r.dismissed = true;
         }
@@ -406,20 +410,28 @@ impl Ui {
             Element {
                 direction: Direction::Column,
                 width: desc.width.unwrap_or_default(),
-                padding: Insets::all(t.space.xl),
+                padding: if desc.bare {
+                    Insets::default()
+                } else {
+                    Insets::all(t.space.xl)
+                },
                 gap: t.space.md,
-                background: Some(t.palette.panel_raised),
-                radius: t.radius.panel,
-                frame: Some(crate::style_file::StylePart::Panel),
-                part: crate::dress::PartRef::parse(
-                    if open {
-                        "Dialog.panel[open]"
-                    } else {
-                        "Dialog.panel"
-                    },
-                    crate::tokens::ElementClass::Panel,
-                )
-                .ok(),
+                background: (!desc.bare).then_some(t.palette.panel_raised),
+                radius: if desc.bare { 0.0 } else { t.radius.panel },
+                frame: (!desc.bare).then_some(crate::style_file::StylePart::Panel),
+                part: (!desc.bare)
+                    .then(|| {
+                        crate::dress::PartRef::parse(
+                            if open {
+                                "Dialog.panel[open]"
+                            } else {
+                                "Dialog.panel"
+                            },
+                            crate::tokens::ElementClass::Panel,
+                        )
+                        .ok()
+                    })
+                    .flatten(),
                 interactive: true,
                 ..Element::default()
             },

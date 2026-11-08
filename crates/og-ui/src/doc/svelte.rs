@@ -28,6 +28,8 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
             selectors: Vec::new(),
             styles: Vec::new(),
             label_fors: Vec::new(),
+            datalists: Vec::new(),
+            list_fors: Vec::new(),
         };
         for node in &nodes {
             match node {
@@ -59,6 +61,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
             return Err((0, "add one root UI element".into()));
         }
         p.join_labels()?;
+        p.join_lists()?;
         super::extern_element::finish(&mut p.doc, &mut p.selectors).map_err(|e| (0, e))?;
         super::stylesheet::apply(&mut p.doc, &p.selectors, &p.styles)?;
         let mut errors = Vec::new();
@@ -95,6 +98,7 @@ pub(super) fn property(name: &str) -> String {
         "step" => "stepBy".into(),
         "i18n" => "key".into(),
         "alt" | "aria-label" => "name".into(),
+        "aria-invalid" => "invalid".into(),
         "src" => "texture".into(),
         "tabindex" => "tabIndex".into(),
         other => css::camel(other),
@@ -329,6 +333,11 @@ struct Parser {
     /// `<label for>`s, joined to their controls once the tree is read:
     /// (the label's node, the control's id, where `for` is written).
     label_fors: Vec<(usize, String, usize)>,
+    /// `<datalist>`s by id: their options' values and labels.
+    datalists: Vec<(String, Vec<(String, String)>)>,
+    /// Ranges' `list`s, joined to their datalists once the tree is read:
+    /// (the range's node, the datalist's id, where `list` is written).
+    list_fors: Vec<(usize, String, usize)>,
 }
 impl Parser {
     fn line(&self, at: usize) -> usize {
@@ -622,6 +631,58 @@ impl Parser {
             "summary" => {
                 return Err((at, "<summary> is the first child of a <details>".into()));
             }
+            "datalist" => {
+                // HTML renders none: its options are the values a range's
+                // `list` marks.
+                let Some(id) = attrs.iter().find(|a| a.name == "id" && !a.bound) else {
+                    return Err((
+                        at,
+                        "a <datalist> needs a literal id, which a range's list names".into(),
+                    ));
+                };
+                if let Some(a) = attrs.iter().find(|a| a.name != "id") {
+                    return Err((
+                        a.at,
+                        format!("a <datalist> takes only an id, not {}", a.name),
+                    ));
+                }
+                if !self.ids.insert(id.value.clone()) {
+                    return Err((
+                        id.at,
+                        format!(
+                            "duplicate id '{}'; IDs must be unique within a document",
+                            id.value
+                        ),
+                    ));
+                }
+                let options = select_options(children)?;
+                if let Some(o) = options
+                    .iter()
+                    .find(|o| o.value.trim().parse::<f32>().is_err())
+                {
+                    return Err((
+                        at,
+                        format!(
+                            "a range's <datalist> lists numbers; '{}' is not one",
+                            o.value
+                        ),
+                    ));
+                }
+                // An option labelled only by its value is a tick without text.
+                let marks = options
+                    .into_iter()
+                    .map(|o| {
+                        let label = if o.label == o.value {
+                            String::new()
+                        } else {
+                            o.label
+                        };
+                        (o.value.trim().to_string(), label)
+                    })
+                    .collect();
+                self.datalists.push((id.value.clone(), marks));
+                return Ok(self.push(NodeKind::If(Expr::Lit(false.into())), parent, at));
+            }
             "select" => {
                 let options = select_options(children)?;
                 let i = self.element_node(tag, attrs, &[], at, parent)?;
@@ -709,9 +770,11 @@ impl Parser {
         // A label around a checkbox is the checkbox, its text the caption
         // (HTML's implicit label association).
         if tag == "label" {
+            // A `<small>` in it is the checkbox's description line.
+            let small = |c: &Node| matches!(c, Node::Element { tag, .. } if tag == "small");
             let controls: Vec<&Node> = children
                 .iter()
-                .filter(|c| matches!(c, Node::Element { .. }))
+                .filter(|c| matches!(c, Node::Element { .. }) && !small(c))
                 .collect();
             if let [
                 Node::Element {
@@ -733,6 +796,36 @@ impl Parser {
                     .filter(|c| !matches!(c, Node::Element { .. }))
                     .cloned()
                     .collect();
+                // HTML lays the two out in source order: a caption written
+                // after the checkbox sits after it.
+                let input_at = children
+                    .iter()
+                    .position(|c| matches!(c, Node::Element { tag, .. } if tag == "input"));
+                let text_at = children.iter().position(|c| match c {
+                    Node::Text(t, _) => !t.trim().is_empty(),
+                    Node::Expression(..) => true,
+                    _ => false,
+                });
+                let after = matches!((input_at, text_at), (Some(i), Some(t)) if i < t);
+                let mut description = None;
+                for c in children.iter().filter(|c| small(c)) {
+                    let Node::Element {
+                        attrs: small_attrs,
+                        children: inner,
+                        at: small_at,
+                        ..
+                    } = c
+                    else {
+                        continue;
+                    };
+                    if description.is_some() || !small_attrs.is_empty() {
+                        return Err((
+                            *small_at,
+                            "a checkbox's <label> takes one plain <small>, its description".into(),
+                        ));
+                    }
+                    description = text_value(inner, *small_at)?.map(|d| (d, *small_at));
+                }
                 // The two are one node: the label's attributes (an id, a
                 // class) are the checkbox's, and one set on both is refused.
                 let mut merged = inner_attrs.clone();
@@ -748,7 +841,21 @@ impl Parser {
                     }
                     merged.push(a.clone());
                 }
-                return self.element("input", &merged, &caption, *inner_at, parent);
+                let i = self.element("input", &merged, &caption, *inner_at, parent)?;
+                if after {
+                    self.prop(
+                        i,
+                        "toggle",
+                        "side",
+                        PropValue::Lit(Lit::Str("end".into())),
+                        *inner_at,
+                        "",
+                    )?;
+                }
+                if let Some(((value, source), at)) = description {
+                    self.prop(i, "toggle", "description", value, at, &source)?;
+                }
+                return Ok(i);
             }
         }
         let label_for = match attrs.iter().find(|a| a.name == "for") {
@@ -766,7 +873,9 @@ impl Parser {
         let internal = match tag {
             // SVG's text: placed in its view box (extern_element).
             "text" if super::extern_element::in_svg(self.parent_tag(parent)) => "svgText",
-            "text" | "p" | "span" | "a" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => "label",
+            "text" | "p" | "span" | "small" | "a" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
+                "label"
+            }
             "label" if label_for.is_some() => "label",
             "div" | "section" | "header" | "footer" | "nav" | "main" | "aside" | "article"
             | "ul" | "ol" | "li" => "box",
@@ -936,6 +1045,18 @@ impl Parser {
                 {
                     return Err((a.at, format!("{} takes an integer", a.name)));
                 }
+                continue;
+            }
+            // A range's ticks: the `<datalist>` it names, joined once the
+            // tree is read.
+            if tag == "input" && a.name == "list" {
+                if internal != "slider" {
+                    return Err((a.at, "list marks a range's ticks; a text input's suggestions (a combobox) are not supported yet".into()));
+                }
+                if a.bound || a.value.is_empty() {
+                    return Err((a.at, "list names a <datalist> by its literal id".into()));
+                }
+                self.list_fors.push((i, a.value.clone(), a.at));
                 continue;
             }
             // An input's type chose its kind; a checkbox's `switch` is how
@@ -1401,6 +1522,25 @@ impl Parser {
         Ok(())
     }
 
+    /// Joins each range's `list` to the `<datalist>` its id names: its
+    /// options are the range's marks.
+    fn join_lists(&mut self) -> Result<(), Error> {
+        for (range, id, at) in std::mem::take(&mut self.list_fors) {
+            let Some((_, marks)) = self.datalists.iter().find(|(d, _)| *d == id) else {
+                return Err((
+                    at,
+                    format!("list=\"{id}\" names no <datalist>; write <datalist id=\"{id}\">"),
+                ));
+            };
+            let strs = |v: Vec<String>| PropValue::Lit(Lit::Strs(v));
+            let values = strs(marks.iter().map(|m| m.0.clone()).collect());
+            let labels = strs(marks.iter().map(|m| m.1.clone()).collect());
+            self.prop(range, "slider", "markValues", values, at, "")?;
+            self.prop(range, "slider", "markLabels", labels, at, "")?;
+        }
+        Ok(())
+    }
+
     /// Joins each `<label for>` to the control its id names: a checkbox
     /// takes the label's text as its caption and the label goes, as the
     /// wrapping form does; any other control keeps the label beside it
@@ -1436,6 +1576,17 @@ impl Parser {
                         return Err((at, format!("#{id} has a caption already; write it once")));
                     }
                     self.doc.nodes[target].props.extend(text);
+                    // Source order: a label written after its checkbox
+                    // puts the caption after the switch.
+                    if target < label {
+                        let line = self.line(at);
+                        self.doc.nodes[target].props.push(PropSet {
+                            spec: schema::prop("side").expect("side is a prop").0,
+                            value: PropValue::Lit(Lit::Str("end".into())),
+                            line,
+                            source: String::new(),
+                        });
+                    }
                     let parent = self.doc.nodes[label].parent;
                     if parent != NONE {
                         self.doc.nodes[parent].children.retain(|&c| c != label);

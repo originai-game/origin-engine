@@ -43,7 +43,7 @@ fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
         <meta name="component" content="retained">
         <column id="Root" gap="12">
             <text id="Title">{$title}</text>
-            <label><input type="checkbox" switch id="Choice" checked={$enabled} width={$enabled ? 300 : 240}> Enable captions</label>
+            <label>Enable captions <input type="checkbox" switch id="Choice" checked={$enabled} width={$enabled ? 300 : 240}></label>
             <text id="Details">Captions follow the selected language.</text>
         </column>
         <style>

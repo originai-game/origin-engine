@@ -228,7 +228,7 @@ impl Ui {
                         .filter(|n| n.len() == 2 && n[1] > 0.0)
                         .map_or(r.num("aspect").unwrap_or(0.0), |n| n[0] / n[1]),
                     label: base.text.clone(),
-                    ..Default::default()
+                    uv: r.nums("uv").and_then(|n| <[f32; 4]>::try_from(n).ok()),
                 },
             ),
             "icon" => {
@@ -362,6 +362,18 @@ impl Ui {
         self.nodes[i].el = el;
         self.nodes[i].decor = decor.map(Box::new);
         let mut props = Self::resolved_props(n, r);
+        if r.flag("dataOgInstant") {
+            // `data-og-instant`: its first entrance lands settled (the
+            // screen behind the web's play gate); the motion state then
+            // knows it, so a later build does not replay it, and a later
+            // entrance (after it left) plays.
+            if self.docs.entered.insert(self.nodes[i].key)
+                && let Some(e) = props.enter.as_mut()
+            {
+                e.transition = crate::motion::Transition::Instant;
+                e.delay_ms = 0.0;
+            }
+        }
         props.states = base.document_props.states.clone();
         props.state = base.document_props.state.clone();
         if props != Props::default() {
@@ -445,6 +457,15 @@ impl Resolved {
         }
     }
 
+    /// Its `-og-control-size`.
+    pub(crate) fn control_size(&self) -> ControlSize {
+        match self.str("size") {
+            Some("small") => ControlSize::Small,
+            Some("large") => ControlSize::Large,
+            _ => ControlSize::Medium,
+        }
+    }
+
     pub(super) fn button_desc(&self) -> ButtonDesc {
         ButtonDesc {
             variant: match self.str("variant") {
@@ -454,11 +475,7 @@ impl Resolved {
                 Some("ghost") => ButtonVariant::Ghost,
                 _ => ButtonVariant::Secondary,
             },
-            size: match self.str("size") {
-                Some("small") => ControlSize::Small,
-                Some("large") => ControlSize::Large,
-                _ => ControlSize::Medium,
-            },
+            size: self.control_size(),
             disabled: self.flag("disabled"),
             width: self.size("width"),
             autofocus: self.flag("autofocus"),

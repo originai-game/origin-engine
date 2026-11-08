@@ -304,6 +304,13 @@ impl Ui {
             name: r.str("name").unwrap_or_default().to_string(),
             width: r.size("width"),
             backdrop: r.color("backdrop"),
+            closedby: match r.str("closedby") {
+                Some("any") => crate::widgets::ClosedBy::Any,
+                Some("closerequest") => crate::widgets::ClosedBy::CloseRequest,
+                Some("none") => crate::widgets::ClosedBy::None,
+                _ => crate::widgets::ClosedBy::Auto,
+            },
+            bare: r.str("appearance") == Some("none"),
         };
         let mut opened: Option<bool> = None;
         // A closed dialog or disclosure builds no content (HTML renders
@@ -590,7 +597,8 @@ impl Ui {
                         ..crate::widgets::DropdownOption::default()
                     })
                     .collect();
-                let out = self.dropdown(
+                let base = crate::widgets::DropdownDesc::default();
+                let out = self.dropdown_marked(
                     id.as_str(),
                     &crate::widgets::DropdownDesc {
                         options,
@@ -598,8 +606,10 @@ impl Ui {
                         placeholder: r.str("placeholder").unwrap_or_default().to_string(),
                         disabled: r.flag("disabled"),
                         width: r.size("width"),
-                        ..crate::widgets::DropdownDesc::default()
+                        max_height: styled.num("pickerMaxHeight").unwrap_or(base.max_height),
+                        ..base
                     },
+                    r.flag("invalid"),
                 );
                 resp = crate::Response {
                     changed: out.changed,
@@ -625,6 +635,24 @@ impl Ui {
             }
             "slider" => {
                 let v0 = r.num("value").unwrap_or(0.0);
+                // Its `<datalist>`'s options: a tick at each value.
+                let marks: Vec<crate::widgets::SliderMark> =
+                    match (r.get("markValues"), r.get("markLabels")) {
+                        (Some(V::Strs(values)), labels) => values
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(k, v)| {
+                                Some(crate::widgets::SliderMark {
+                                    value: v.parse().ok()?,
+                                    label: match labels {
+                                        Some(V::Strs(l)) => l.get(k).cloned().unwrap_or_default(),
+                                        _ => String::new(),
+                                    },
+                                })
+                            })
+                            .collect(),
+                        _ => Vec::new(),
+                    };
                 let out = self.value_slider(
                     id.as_str(),
                     v0,
@@ -635,6 +663,9 @@ impl Ui {
                         label: text_of(&r, b),
                         show_value: !r.has("showValue") || r.flag("showValue"),
                         width: r.size("width"),
+                        marks,
+                        origin: styled.num("fillOrigin"),
+                        disabled: r.flag("disabled"),
                         ..crate::widgets::ValueSliderDesc::default()
                     },
                 );
@@ -653,6 +684,17 @@ impl Ui {
                     on,
                     &crate::widgets::ToggleSwitchDesc {
                         label: text_of(&r, b),
+                        description: r.str("description").unwrap_or_default().to_string(),
+                        disabled: r.flag("disabled"),
+                        // Source order, swapped by the label's row-reverse.
+                        side: if (r.str("side") == Some("end"))
+                            != (styled.str("labelDirection") == Some("rowReverse"))
+                        {
+                            crate::widgets::LabelSide::End
+                        } else {
+                            crate::widgets::LabelSide::Start
+                        },
+                        size: styled.control_size(),
                         width: r.size("width"),
                         ..crate::widgets::ToggleSwitchDesc::default()
                     },
@@ -704,7 +746,8 @@ impl Ui {
                             Size::fit()
                         })),
                         label: text_of(&r, b),
-                        ..crate::widgets::SegmentedDesc::default()
+                        size: styled.control_size(),
+                        disabled: r.flag("disabled"),
                     },
                 );
                 selected = usize::try_from(out.selected).unwrap_or(0);
@@ -740,7 +783,7 @@ impl Ui {
                             rows: r.num("lines").unwrap_or(0.0) as u32,
                             max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
                             invalid: r.flag("invalid"),
-                            bare: false,
+                            bare: styled.str("appearance") == Some("none"),
                             tight: r.flag("tight"),
                             component: r.str("component").map(str::to_string),
                             readonly: r.flag("readonly"),
@@ -756,7 +799,7 @@ impl Ui {
                             width: r.size("width"),
                             max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
                             invalid: r.flag("invalid"),
-                            bare: false,
+                            bare: styled.str("appearance") == Some("none"),
                             tight: r.flag("tight"),
                             component: r.str("component").map(str::to_string),
                             input_type: r

@@ -121,6 +121,25 @@ pub struct DialogDesc {
     pub width: Option<Size>,
     /// A modal's scrim fill (`dialog::backdrop`); `None`: the style's `scrim`.
     pub backdrop: Option<Srgba>,
+    /// What closes it (HTML `closedby`).
+    pub closedby: ClosedBy,
+    /// No frame of its own (CSS `appearance: none`): its look is the
+    /// document's.
+    pub bare: bool,
+}
+
+/// What closes a dialog, HTML's `closedby`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ClosedBy {
+    /// HTML's default: `CloseRequest` for a modal, `None` in place.
+    #[default]
+    Auto,
+    /// A close request, and a press on a modal's backdrop (light dismiss).
+    Any,
+    /// A close request: Escape, Back or a pad's B.
+    CloseRequest,
+    /// Only the document, by writing `open` false.
+    None,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

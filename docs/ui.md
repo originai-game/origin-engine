@@ -91,23 +91,24 @@ probe) are unchanged. The mapping:
 
 | Document | Core kind | Notes |
 |---|---|---|
-| `<input>` (`type` text, password, number, email, url, tel, search) | field | `placeholder`, `maxlength`, `minlength`, `readonly`, `required`, `pattern`, `min`, `max`, `step` (`any`) |
+| `<input>` (`type` text, password, number, email, url, tel, search) | field | `placeholder`, `maxlength`, `minlength`, `readonly`, `required`, `pattern`, `min`, `max`, `step` (`any`), `aria-invalid`; CSS `appearance: none` drops its frame |
 | `<textarea rows>` | field (multi-line) | the same constraints; `rows` lines shown |
-| `<input type="range">` | slider | `min`, `max`, `step` |
-| `<input type="checkbox" switch>` | toggle | `checked` |
+| `<input type="range">` | slider | `min`, `max`, `step`, `disabled`, `list` naming a `<datalist>` (below); CSS `-og-fill-origin: <value>` |
+| `<datalist id>` of `<option value [label]>` | — | draws nothing: a range's `list` puts a tick at each option and its `label` (or text other than the value) under the track |
+| `<input type="checkbox" switch>` | toggle | `checked`, `disabled`; CSS `-og-control-size` |
 | `<input type="checkbox">` | toggle | `checked`; drawn as a switch (og-ui has one checkbox control) |
-| `<label><input type="checkbox"> Caption</label>` | toggle | the label's text is the caption; the two are one node |
+| `<label><input type="checkbox"> Caption</label>` | toggle | the label's text is the caption; the two are one node. The caption sits where it is written (after the switch here, before it in `<label>Caption <input …></label>`); `flex-direction: row-reverse` on the label swaps it. A `<small>` inside is its description line |
 | `<label for="id">` | — | joins the control `id` names: a checkbox takes its text as its caption (one node, as the wrapping form); an input, textarea, select, range, meter or progress takes it as its accessible name and the label stays a text beside it |
 | `<hr>` | divider | |
-| `<img>` | image | `src`, `alt` |
-| `<p>`, `<span>`, `<text>` | label | `<text>` is the core name; inline `<b>`/`<strong>`, `<i>`/`<em>`, `<u>`, `<s>`/`<del>`, `<br>`, a plain `<span>` and `<a href>` style runs of it |
+| `<img>` | image | `src`, `alt`; CSS `object-view-box: inset(<t>% <r>% <b>% <l>%)` (percentages of the texture) or `-og-uv: u0 v0 u1 v1` shows a part of it |
+| `<p>`, `<span>`, `<small>`, `<text>` | label | `<text>` is the core name; inline `<b>`/`<strong>`, `<i>`/`<em>`, `<u>`, `<s>`/`<del>`, `<br>`, a plain `<span>` and `<a href>` style runs of it |
 | `<h1>` … `<h6>` | label (heading) | role `heading` with `aria-level` 1–6; UA type steps `xl3`, `xl`, `lg`, `body`, `sm`, `xs` |
 | `<a href>` | label (a link) | a click sends a `link` event named by its href through the document's events, as `onclick` sends `emit`; accent ink and an underline |
 | `<div>`, `<section>`, `<header>`, `<footer>`, `<nav>`, `<main>`, `<aside>`, `<article>` | box | layout from CSS `display` (below); landmarks take their roles: `navigation`, `main`, `banner`, `contentinfo`, `complementary`, `article`, and `region` for a named `<section>` |
 | `<ul>`, `<ol>`, `<li>` | box (list, listitem) | not virtualised (that is `<list>`); markers from `list-style` (below); `<ol start reversed>`, `<li value>` |
 | `<button>`, `<progress>` | button, progress | already HTML |
-| `<select>` with `<option>` and `<optgroup>` | select | `value`, `placeholder`, `disabled`; options take `value`, `label`, `i18n`, `disabled`, `selected` |
-| `<dialog>` | dialog | `open`, `modal`, `aria-label` |
+| `<select>` with `<option>` and `<optgroup>` | select | `value`, `placeholder`, `disabled`, `aria-invalid`; options take `value`, `label`, `i18n`, `disabled`, `selected`; `select::picker(select) { max-height }` bounds the open list |
+| `<dialog>` | dialog | `open`, `modal`, `closedby`, `aria-label`; CSS `appearance: none` drops its frame |
 | `<details>` with a first `<summary>` | details | `open`, `disabled` |
 | `<meter>` | meter | `value`, `min`, `max`, `low`, `high`, `optimum` |
 
@@ -842,9 +843,27 @@ under it. `dialog::backdrop { background: … }` fills the scrim (default
 the style's `scrim`); a `::backdrop` rule takes only `background`, and
 cascades with states, variables and media as the dialog's own rules do.
 To a style pack the scrim is the part `Dialog.backdrop`. Without `modal` it is `show()`: a panel in place
-(`Dialog.panel[open]`) that Back closes only while the focus is inside, the
-focus then returning to what held it when it opened. Closing writes
-`open` false back.
+(`Dialog.panel[open]`); the focus returns to what held it when it opened.
+Closing writes `open` false back.
+
+What closes it is HTML's `closedby`: `closerequest` (a modal's default)
+is Escape, Back or pad B, for an in-place dialog only while the focus is
+inside; `any` adds a press on a modal's scrim (light dismiss; an in-place
+dialog's light dismiss comes with popovers); `none` (an in-place dialog's
+default) leaves closing to the document writing `open` false.
+`appearance: none` drops the panel's own padding, fill and dressed part,
+so the document's CSS draws it.
+
+A `<small>` next to a select or an input with `aria-invalid` is its
+message: `aria-invalid` puts the danger frame on the control
+(`Dropdown.trigger[invalid]`, the field's), and the text is the
+document's. `select::picker(select) { max-height: 240px }` (CSS's
+customizable-select pseudo-element) bounds the open list, which then
+scrolls; it takes only `max-height`.
+
+`data-og-instant` on any element settles its first entrance: its
+`-og-enter` lands at once, as the screen a game opens on behind the web's
+play gate needs; a later entrance, after it left, plays.
 
 `<details bind:open={$x}><summary>…</summary>…</details>` is a disclosure.
 The summary row (`Details.summary[open]`, role button with `expanded`)

@@ -87,6 +87,9 @@ pub struct DocHost {
     /// Document elements seen last tick (for `on appear`).
     pub(crate) seen: BTreeSet<u64>,
     pub(crate) seen_now: BTreeSet<u64>,
+    /// `data-og-instant` elements whose first entrance has landed: a
+    /// later one plays (presentation, outside `world_hash`).
+    pub(crate) entered: BTreeSet<u64>,
     /// This tick's builds, slots and art slots.
     pub(crate) built: Vec<Built>,
     pub(crate) slots: BTreeMap<String, usize>,

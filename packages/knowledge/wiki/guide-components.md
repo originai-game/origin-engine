@@ -108,6 +108,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `user-select:` | `auto \| none \| text \| all` | Whether its text and its subtree's can be selected and copied; auto takes its parent's (none at the top and under a control). |
 | `customize` | `bool` | The player can move, scale and fade it in the HUD edit mode. |
 | `customize-key` | `name` | With customize: its name in the saved HUD layout (default: its path). |
+| `data-og-instant` | `bool` | Its first entrance is settled (`data-og-instant`): the screen a game opens on, which the web draws behind its play gate. Later entrances play. |
 | `-og-reduced-motion:` | `fade \| none \| keep` | Its reduced-motion fallback. |
 | `draggable` | `bool` | HTML `draggable`: a drag that starts on it moves it with the pointer and returns it home on release, firing `ondragstart`, `ondragend`, and `ondragover`/`ondrop` on the element it is over (any element with one of those handlers takes drops). |
 | `data-drag-type` | `text` | What a draggable element is to drop targets (`data-drag-type="weapon"`), as a drag's data type is in HTML. |
@@ -252,7 +253,7 @@ Its own props, beside every element's:
 | `text` | `text` | What it says. |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `variant` | `secondary \| primary \| quiet \| danger \| ghost` | The button's role. |
-| `size` | `small \| medium \| large` | The control height. |
+| `size` | `small \| medium \| large` | The control height (`-og-control-size`). |
 | `disabled` | `bool` | Takes no input. |
 | `autofocus` | `bool` | Takes the focus when it appears. |
 | `square` | `bool` | A square of the control height: an icon button. |
@@ -269,6 +270,7 @@ Its own props, beside every element's:
 |---|---|---|
 | `src` | `number` | A texture handle (og.load.texture), usually bound. |
 | `-og-tint:` | `var(--<role>) \| #rrggbb[aa]` | Multiplies the texture (or fills without one). |
+| `object-view-box:` | `inset(<t>% <r>% <b>% <l>%) \| -og-uv: <u0> <v0> <u1> <v1>` | The part of the texture it shows, u0 v0 u1 v1 with v down (`object-view-box: inset(…)` in percentages, or `-og-uv`). |
 
 <a id="guide-components-13"></a>
 ### `components §13` `<art>` (`art`): An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one
@@ -331,6 +333,9 @@ Its own props, beside every element's:
 | `min` | `number` | The range's low end; a number input under it is invalid (`rangeUnderflow`). |
 | `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
 | `show-value` | `bool` | Show the slider's value readout (default true); false when an adjacent label supplies units. |
+| `-og-fill-origin:` | `<number>` | The value its fill grows from (`-og-fill-origin`; default min): 0 on a -1 to 1 balance fills either way from the centre. |
+| `mark-values` | `names` | The values of the `<datalist>` its `list` names: a tick at each. |
+| `mark-labels` | `names` | The marks' labels, under the track (an `<option label>`'s, or its text); empty for a tick only. |
 | `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
 
 <a id="guide-components-17"></a>
@@ -344,8 +349,12 @@ Its own props, beside every element's:
 |---|---|---|
 | `text` | `text` | What it says. |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
+| `size` | `small \| medium \| large` | The control height (`-og-control-size`). |
 | `disabled` | `bool` | Takes no input. |
 | `checked` | `bool` | Whether it is on (written back). Two-way only with an explicit bind: attribute. |
+| `description` | `text` | A line under its caption: a `<small>` in its `<label>`. |
+| `side` | `start \| end` | Where its caption sits, from the source order in its `<label>`: start before the switch (caption first), end after it. |
+| `flex-direction:` | `row \| row-reverse \| column \| column-reverse` | `flex-direction` on a checkbox's label: rowReverse swaps its caption's side. |
 
 <a id="guide-components-18"></a>
 ### `components §18` `<tabs>` (`tabs`): A tab list (two-way `selected`), using the core tabs widget
@@ -358,6 +367,8 @@ Its own props, beside every element's:
 |---|---|---|
 | `text` | `text` | What it says. |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
+| `size` | `small \| medium \| large` | The control height (`-og-control-size`). |
+| `disabled` | `bool` | Takes no input. |
 | `items` | `names` | The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them). |
 | `keys` | `names` | A string table key (og.i18n) per tab its label comes from; its item is the fallback. |
 | `values` | `names` | A name per tab (a screen's mode) that `current` holds instead of `selected`'s index. |
@@ -378,6 +389,7 @@ Its own props, beside every element's:
 | `min` | `number` | The range's low end; a number input under it is invalid (`rangeUnderflow`). |
 | `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
 | `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
+| `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `value` | `text` | The field's text (written back). Two-way only with an explicit bind: attribute. |
 | `placeholder` | `text` | Shown while it is empty. |
 | `readonly` | `bool` | Its text is selected and copied but never edited; it keeps its focus stop. |
@@ -389,7 +401,7 @@ Its own props, beside every element's:
 | `maxlength` | `number` | The most characters it takes. |
 | `tight` | `bool` | No inset and its text's line height: the text sits where the field is laid (in a box the screen draws). |
 | `component` | `name` | The component its style dresses it as (`Poem`, `Search[large]`): `<component>.frame`, `.text` and `.placeholder`; else Field. |
-| `invalid` | `bool` | Its text is wrong: the danger frame. |
+| `invalid` | `bool` | Its value is wrong (`aria-invalid`): the danger frame. |
 | `type` | `text \| password \| number \| email \| url \| tel \| search` | What it takes, by HTML's names: `password` is drawn masked with a reveal toggle (`<component>.reveal[revealed]`) and never copied or cut; `number` takes only a number's characters; a `number`, `email` or `url` whose text is not one matches `:invalid`. Each picks its virtual keyboard. |
 | `inputmode` | `none \| text \| decimal \| numeric \| tel \| search \| email \| url` | The virtual keyboard a touch device shows (HTML `inputmode`; `none`: the game shows its own); unset, its `type`'s. |
 | `autocomplete` | `name` | The page's autofill hint (HTML `autocomplete`: `username`, `current-password`, `new-password`, `one-time-code`, `email`, `off`…). |
@@ -440,8 +452,10 @@ Its own props, beside every element's:
 | `values` | `names` | A name per tab (a screen's mode) that `current` holds instead of `selected`'s index. |
 | `current` | `name` | The selected item's name from `values` (a `<select>`'s `value`); on tabs it takes over from `selected` when `values` is set. Two-way only with an explicit bind: attribute. |
 | `groups` | `names` | An `<option>`'s `<optgroup>` label, one per option (empty: none); options of one group follow each other. |
+| `-og-picker-max-height:` | `<n>px` | How tall its open list grows, CSS px, before it scrolls (`select::picker(select) { max-height }`). |
 | `disabled-items` | `names` | The `<option disabled>`s (and those of an `<optgroup disabled>`), by their zero-based index. |
 | `placeholder` | `text` | Shown while it is empty. |
+| `invalid` | `bool` | Its value is wrong (`aria-invalid`): the danger frame. |
 
 <a id="guide-components-24"></a>
 ### `components §24` `<dialog>` (`dialog`): A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns
@@ -454,6 +468,8 @@ Its own props, beside every element's:
 |---|---|---|
 | `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
 | `-og-backdrop:` | `var(--<role>) \| #rrggbb[aa]` | A modal's scrim fill (`dialog::backdrop { background: … }`); else the style's `scrim`. |
+| `closedby` | `any \| closerequest \| none` | What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place. |
+| `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `modal` | `bool` | Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`). |
 
 <a id="guide-components-25"></a>

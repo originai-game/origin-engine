@@ -177,6 +177,13 @@ pub(crate) fn resolve(
                         line: entry.line,
                         source: crate::doc::written(&entry.values),
                     }),
+                    // A checkbox label's `row-reverse` is its caption side
+                    // (`labelDirection`), not a box layout it lacks.
+                    Err(_)
+                        if entry.key == "direction"
+                            && entry.values.iter().any(
+                                |v| matches!(v, og_core::ogt::Value::Word(w) if w == "rowReverse"),
+                            ) => {}
                     Err(error) => out.diagnostics.push(format!(
                         "{} invalid at computed-value time: {error}",
                         entry.key

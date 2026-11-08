@@ -685,6 +685,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "With customize: its name in the saved HUD layout (default: its path)."
     ),
     p!(
+        "dataOgInstant",
+        Ty::Bool,
+        "Its first entrance is settled (`data-og-instant`): the screen a game opens on, which the web draws behind its play gate. Later entrances play."
+    ),
+    p!(
         "reduced",
         Ty::Word(&["fade", "none", "keep"]),
         "Its reduced-motion fallback."
@@ -776,14 +781,14 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "size",
         Ty::Word(&["small", "medium", "large"]),
-        ["button"],
-        "The control height."
+        ["button", "toggle", "tabs"],
+        "The control height (`-og-control-size`)."
     ),
     p!(
         "disabled",
         Ty::Bool,
         [
-            "button", "slider", "toggle", "field", "select", "details", "joystick", "dpad"
+            "button", "slider", "toggle", "tabs", "field", "select", "details", "joystick", "dpad"
         ],
         "Takes no input."
     ),
@@ -825,6 +830,24 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Show the slider's value readout (default true); false when an adjacent label supplies units."
     ),
     p!(
+        "fillOrigin",
+        Ty::Num,
+        ["slider"],
+        "The value its fill grows from (`-og-fill-origin`; default min): 0 on a -1 to 1 balance fills either way from the centre."
+    ),
+    p!(
+        "markValues",
+        Ty::Names,
+        ["slider"],
+        "The values of the `<datalist>` its `list` names: a tick at each."
+    ),
+    p!(
+        "markLabels",
+        Ty::Names,
+        ["slider"],
+        "The marks' labels, under the track (an `<option label>`'s, or its text); empty for a tick only."
+    ),
+    p!(
         "stepBy",
         Ty::Num,
         ["slider", "field"],
@@ -836,6 +859,24 @@ pub const CORE_PROPS: &[PropSpec] = &[
         ["toggle"],
         two_way,
         "Whether it is on (written back)."
+    ),
+    p!(
+        "description",
+        Ty::Text,
+        ["toggle"],
+        "A line under its caption: a `<small>` in its `<label>`."
+    ),
+    p!(
+        "side",
+        Ty::Word(&["start", "end"]),
+        ["toggle"],
+        "Where its caption sits, from the source order in its `<label>`: start before the switch (caption first), end after it."
+    ),
+    p!(
+        "labelDirection",
+        Ty::Word(&["row", "rowReverse", "column", "columnReverse"]),
+        ["toggle"],
+        "`flex-direction` on a checkbox's label: rowReverse swaps its caption's side."
     ),
     p!(
         "items",
@@ -876,6 +917,12 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "An `<option>`'s `<optgroup>` label, one per option (empty: none); options of one group follow each other."
     ),
     p!(
+        "pickerMaxHeight",
+        Ty::Num,
+        ["select"],
+        "How tall its open list grows, CSS px, before it scrolls (`select::picker(select) { max-height }`)."
+    ),
+    p!(
         "disabledItems",
         Ty::Names,
         ["select"],
@@ -893,6 +940,18 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Paint,
         ["dialog"],
         "A modal's scrim fill (`dialog::backdrop { background: … }`); else the style's `scrim`."
+    ),
+    p!(
+        "closedby",
+        Ty::Word(&["any", "closerequest", "none"]),
+        ["dialog"],
+        "What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place."
+    ),
+    p!(
+        "appearance",
+        Ty::Word(&["auto", "none"]),
+        ["dialog", "field"],
+        "none drops the control's own frame: its box, borders and background are the document's."
     ),
     p!(
         "display",
@@ -1034,8 +1093,8 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "invalid",
         Ty::Bool,
-        ["field"],
-        "Its text is wrong: the danger frame."
+        ["field", "select"],
+        "Its value is wrong (`aria-invalid`): the danger frame."
     ),
     p!(
         "type",
@@ -1074,6 +1133,12 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Paint,
         ["image", "art"],
         "Multiplies the texture (or fills without one)."
+    ),
+    p!(
+        "uv",
+        Ty::Num4,
+        ["image"],
+        "The part of the texture it shows, u0 v0 u1 v1 with v down (`object-view-box: inset(…)` in percentages, or `-og-uv`)."
     ),
     p!(
         "icon",
