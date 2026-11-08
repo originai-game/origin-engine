@@ -965,6 +965,14 @@ pub(crate) struct MaterialUniform {
     pub previous_custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
 }
 
+// `previous_custom` directly follows `custom`: the renderer writes a
+// material's new and previous shader parameters as one range (engine s98).
+const _: () = assert!(
+    std::mem::offset_of!(MaterialUniform, previous_custom)
+        == std::mem::offset_of!(MaterialUniform, custom)
+            + std::mem::size_of::<[[f32; 4]; crate::MAX_SHADER_PARAMS]>()
+);
+
 /// `m` with the scene's [`crate::MaterialStyle`] filled into every stylised
 /// field the material leaves at its own default: toon and the ramp, the
 /// rim light, the outline, flat facets. An unlit material keeps its look,

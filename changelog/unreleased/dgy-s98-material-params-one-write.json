@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: shader parameter uploads",
+      "summary": "When a material's shader parameters and their previous values (for motion vectors) both change in one frame, the renderer uploads them in one write instead of two. A game that moves a parameter on thousands of materials every frame (wind, sun) halves those calls, which cost the web host's Worker and GPU process more than their bytes. Frames do not change."
+    }
+  ]
+}

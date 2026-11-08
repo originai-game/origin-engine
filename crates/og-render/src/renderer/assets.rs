@@ -496,24 +496,35 @@ impl Renderer {
                     .map(|h| h.1);
                 // Advance even when the current parameters stopped changing:
                 // a paused wind must stop producing velocity on its next frame.
-                if m.previous_params != m.params
-                    && let Some(previous) = m.params
-                {
-                    self.queue.write_buffer(
-                        &m.factors,
-                        std::mem::offset_of!(material::MaterialUniform, previous_custom) as u64,
-                        bytemuck::bytes_of(&previous),
-                    );
+                let previous = m.params.filter(|_| m.previous_params != m.params);
+                let current = params.filter(|_| m.params != params);
+                let custom = std::mem::offset_of!(material::MaterialUniform, custom) as u64;
+                let behind =
+                    std::mem::offset_of!(material::MaterialUniform, previous_custom) as u64;
+                match (current, previous) {
+                    // Both in one write (engine s98): the two arrays are
+                    // adjacent (asserted beside MaterialUniform). Parameters
+                    // a game moves every tick (wind, sun) change both each
+                    // frame on thousands of materials, and on the web a call
+                    // costs the Worker and the GPU process more than its bytes.
+                    (Some(p), Some(q)) => {
+                        self.queue
+                            .write_buffer(&m.factors, custom, bytemuck::bytes_of(&[p, q]))
+                    }
+                    (Some(p), None) => {
+                        self.queue
+                            .write_buffer(&m.factors, custom, bytemuck::bytes_of(&p))
+                    }
+                    (None, Some(q)) => {
+                        self.queue
+                            .write_buffer(&m.factors, behind, bytemuck::bytes_of(&q))
+                    }
+                    (None, None) => {}
+                }
+                if previous.is_some() {
                     m.previous_params = m.params;
                 }
-                if m.params != params
-                    && let Some(p) = params
-                {
-                    self.queue.write_buffer(
-                        &m.factors,
-                        std::mem::offset_of!(material::MaterialUniform, custom) as u64,
-                        bytemuck::bytes_of(&p),
-                    );
+                if current.is_some() {
                     m.params = params;
                 }
                 advance |= m.previous_params != m.params;
