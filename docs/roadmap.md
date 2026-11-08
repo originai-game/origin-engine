@@ -28,9 +28,9 @@ All streams run on macrunner and report to the coordinator thread
 
 | Stream | Thread | Scope |
 |---|---|---|
-| Standard CSS | [T-01a1b996](https://ampcode.com/threads/T-01a1b996-bd22-7771-a0f9-a7e49b7a2fc9) | Instantiated sibling and structural selectors, property transitions and animations, container queries |
-| Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Dirty-only emission and bounded paint, lazy diagnostics, TS builder removal, both-host proof, perf after-numbers |
-| og-ui generic capabilities | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | Font packs, password and input types, colour-blind modes, live regions, selectable text, run-time colour emoji, split screen, UI debugger and `dump_ui:motion`, text on a path, untested components, UI perf budgets |
+| Standard CSS | [T-01a1b996](https://ampcode.com/threads/T-01a1b996-bd22-7771-a0f9-a7e49b7a2fc9) | Container queries, `@keyframes` inside `@media`/`@container` |
+| Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Lazy diagnostics and retained paint reuse, TS builder removal, both-host proof, perf after-numbers |
+| og-ui generic capabilities | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | HTML element names, select/dialog/details/meter, colour-blind modes, live regions, selectable text, run-time colour emoji, split screen, UI debugger and `dump_ui:motion`, text on a path, untested components, UI perf budgets |
 | og explore and invariants | [T-01a1b99f-0ce1](https://ampcode.com/threads/T-01a1b99f-0ce1-7570-9185-d8d1698ac145) | Per-tick invariants stream, invariants follow-ups, `og explore` |
 | Presentation checkpoints and og.motion | [T-01a1b99f-1445](https://ampcode.com/threads/T-01a1b99f-1445-70df-9528-b3bc997e0683) | Byte-identical restore of every presentation state, og.motion poses identical on every host, session forking, the jump pitch and the wave goal, module-scope state check |
 | Rendering performance | [T-01a1b99f-2748](https://ampcode.com/threads/T-01a1b99f-2748-7173-98de-af62ac91012f) | FSR 3.1, GI probes, crowds at 50k, first frame |
@@ -40,11 +40,16 @@ All streams run on macrunner and report to the coordinator thread
 - **UI reset:** the old kits and packs deleted (951b652e5); `docs/ui.md`
   rewritten (beccbf27a and follow-ups).
 - **UI documents:** scriptless Svelte templates (6ee803a44, fb2813069,
-  01a9a97b2); standard CSS cascade (443078990) and media queries
-  (fd41adf81).
+  01a9a97b2); standard CSS cascade (443078990), media queries
+  (fd41adf81), sibling and structural selectors (17d111bc2), property
+  transitions and `@keyframes` animations (7cb6be159).
 - **Retained core:** named stores, `GameDesc.ui`, presentation checkpoint
   and recorded intents (cc6000c29); mounts, topology, keyed virtual rows,
-  settlement, stable slots (1167a7566 to 0b6ba3af3).
+  settlement, stable slots (1167a7566 to 0b6ba3af3); only changed mounted
+  elements are written each frame (dc8a7b38b).
+- **og-ui capabilities:** input types, `inputmode`, `autocomplete` and
+  password reveal (4d8b785b9); ten Noto font packs loaded per script on
+  demand (84d8ec3e2).
 - **Core gaps:** CSS length tokens, keyed variable-height virtualization,
   CLDR formatting (a62282dbb, 00a1f5016, e8d43c7b8); structured rich text
   (80ca008ab).
