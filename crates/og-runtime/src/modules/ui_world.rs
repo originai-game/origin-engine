@@ -490,7 +490,7 @@ pub fn og_ui_scene_viewport(id: String, desc: Option<String>) -> String {
         let height = size_or(&d["height"], Size::Fixed(320.0));
         // Its camera for rays: the aspect is the element's as laid out.
         let aspect = {
-            let last = ui.frame().element(id.as_str());
+            let last = ui.element(id.as_str());
             last.map_or(1.0, |e| e.width / e.height.max(1.0))
         };
         let view = (fov > 0.0).then(|| {

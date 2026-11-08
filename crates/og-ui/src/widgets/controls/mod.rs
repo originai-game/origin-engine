@@ -376,9 +376,7 @@ impl Ui {
         if path.is_empty() {
             return None;
         }
-        self.frame()
-            .element(path)
-            .map(|e| Rect::new(e.x, e.y, e.width, e.height))
+        self.last_bounds(crate::id::key_of_path(path))
     }
 
     /// The path a child `id` of the open element has.

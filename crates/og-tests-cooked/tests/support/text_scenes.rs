@@ -534,7 +534,7 @@ fn kerning_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
         });
         cut.end();
     }
-    let w = |ui: &Ui| ui.frame().element("Title").expect("title").width;
+    let w = |ui: &Ui| ui.element("Title").expect("title").width;
     println!(
         "title {} px kerned, {} px without the pairs",
         w(&kerned),
@@ -614,7 +614,7 @@ fn keys(ui: &mut Ui, build: &mut dyn FnMut(&mut Ui, InputFrame), k: UiKey, n: us
 }
 
 fn end_of(ui: &Ui, id: &str) -> Vec2 {
-    let e = ui.frame().element(id).expect(id);
+    let e = ui.element(id).expect(id);
     Vec2::new(e.x + e.width - 4.0, e.y + e.height / 2.0)
 }
 
@@ -637,11 +637,7 @@ fn mixed_runs_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
     );
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     // Each mixed line is drawn in more than one face.
-    let line = ui
-        .frame()
-        .element("Line#0")
-        .expect("the first line")
-        .clone();
+    let line = ui.element("Line#0").expect("the first line").clone();
     let faces: std::collections::BTreeSet<og_render::FontHandle> = ui
         .frame()
         .items
@@ -773,7 +769,7 @@ fn edit_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
         ui.end();
     };
     b(&mut area, InputFrame::default());
-    let e = area.frame().element("Area").expect("area");
+    let e = area.element("Area").expect("area");
     let at = Vec2::new(e.x + 4.0, e.y + 4.0);
     tap(&mut area, &mut b, at);
     keys(&mut area, &mut b, UiKey::Down, 1, false);

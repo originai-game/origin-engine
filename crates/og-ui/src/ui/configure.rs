@@ -42,6 +42,9 @@ impl Ui {
             building: false,
             state: State::default(),
             frame: UiFrame::default(),
+            inspection: Default::default(),
+            prev_floating: Vec::new(),
+            prev_draws: Default::default(),
             nav: NavFrame::default(),
             touched: Default::default(),
             nav_on: true,
@@ -198,10 +201,6 @@ impl Ui {
     /// dialog's controls are always walked).
     pub fn navigation(&self) -> bool {
         !self.state.nav_off || self.state.scope != 0
-    }
-
-    pub fn a11y(&self) -> &crate::a11y::A11yTree {
-        &self.frame.a11y
     }
 
     /// What element `i` tells the accessibility tree: role, name,
@@ -478,8 +477,15 @@ impl Ui {
         self.in_place = None;
         // Retained slots keep their layers and draws until written again.
         let persistent = &self.persistent;
+        self.prev_floating = self.floating.clone();
         self.floating.retain(|&f| persistent[f]);
-        self.draws.retain(|&i, _| persistent[i]);
+        self.prev_draws = std::mem::take(&mut self.draws);
+        self.draws = self
+            .prev_draws
+            .iter()
+            .filter(|&(&i, _)| persistent[i])
+            .map(|(&i, d)| (i, d.clone()))
+            .collect();
         self.dressable.retain(|&i| persistent[i]);
         self.warnings.clear();
         self.last_closed = NONE;

@@ -80,7 +80,7 @@ impl Rig {
     }
 
     fn rect(&self, id: &str) -> (f32, f32, f32, f32) {
-        let e = self.ui.frame().element(id).expect(id);
+        let e = self.ui.element(id).expect(id);
         (e.x, e.y, e.width, e.height)
     }
 
@@ -296,7 +296,7 @@ fn labels_cut_with_an_ellipsis_where_they_do_not_fit() {
         "a text that fits is not cut"
     );
     assert_eq!(
-        ui.frame().element("One").expect("one").text,
+        ui.element("One").expect("one").text,
         long,
         "the probe reads the whole text"
     );

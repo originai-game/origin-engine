@@ -1242,7 +1242,7 @@ impl Ui {
     }
 
     /// Elements in states or moving, and leaving ones, for `dump_ui`.
-    pub(crate) fn motion_dump(&self, order: &[usize]) -> Vec<MotionDump> {
+    pub(crate) fn motion_dump_of(&self, order: &[usize]) -> Vec<MotionDump> {
         let m = &self.state.motion;
         let now = self.state.tick;
         let tps = self.ticks_per_second;

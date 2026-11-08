@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.a11y",
+      "summary": "The accessibility tree, the probe's element list, overlaps, dense and sideways regions and the motion dump are no longer made while a frame is drawn: each is made from the finished frame the first time it is asked for that tick. A retained node that was not written again draws its last commands while its geometry and sampled style are unchanged, so an idle tick lays out and paints nothing."
+    }
+  ]
+}

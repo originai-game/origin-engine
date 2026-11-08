@@ -70,7 +70,6 @@ fn tag(ui: &mut Ui, id: &str, desc: WorldAnchorDesc) -> AnchorInfo {
 
 fn rect(ui: &Ui, path: &str) -> (f32, f32, f32, f32) {
     let e = ui
-        .frame()
         .element(path)
         .unwrap_or_else(|| panic!("no element {path}"));
     (e.x, e.y, e.width, e.height)

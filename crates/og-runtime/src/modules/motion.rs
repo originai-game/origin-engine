@@ -632,8 +632,7 @@ pub fn og_ui_motion_events() -> String {
 
 pub fn og_ui_overlaps() -> String {
     let all = with_ui("og.ui.overlaps", |ui| {
-        ui.frame()
-            .overlaps
+        ui.overlaps()
             .iter()
             .map(|o| {
                 json!({

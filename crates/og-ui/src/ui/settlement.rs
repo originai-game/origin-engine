@@ -258,7 +258,7 @@ mod tests {
                         }
                     );
                     if width == 400.0 && sizes[0].previous.is_none() {
-                        assert_eq!(ui.frame.elements.len(), 0);
+                        assert_eq!(ui.frame.items.len(), 0);
                     }
                     ui.nodes[child].el.width = Size::Fixed(if sizes[0].current.width > 300.0 {
                         91.0
@@ -269,7 +269,8 @@ mod tests {
                 })
                 .unwrap();
             assert_eq!(calls, 1);
-            let child = frame.elements.iter().find(|e| e.id == "child").unwrap();
+            let _ = frame;
+            let child = ui.elements().iter().find(|e| e.id == "child").unwrap();
             assert_eq!(child.width, if width == 400.0 { 91.0 } else { 37.0 });
         }
     }
@@ -368,9 +369,9 @@ mod tests {
                 Ok(vec![label, button])
             })
             .unwrap();
-            assert_eq!(ui.frame().element("label").unwrap().text, "after");
+            assert_eq!(ui.element("label").unwrap().text, "after");
             assert_eq!(
-                ui.frame().element("button").unwrap().width,
+                ui.element("button").unwrap().width,
                 if width > 300.0 { 91.0 } else { 37.0 }
             );
             assert_eq!(ui.frame().stats.elements, 3);
@@ -439,9 +440,9 @@ mod tests {
             })
             .unwrap();
         direct.end();
-        assert_eq!(patched.frame.elements, direct.frame.elements);
+        assert_eq!(patched.elements(), direct.elements());
         assert_eq!(patched.frame.items, direct.frame.items);
-        assert_eq!(patched.frame.a11y, direct.frame.a11y);
+        assert_eq!(patched.a11y(), direct.a11y());
     }
 
     #[test]
@@ -516,7 +517,7 @@ mod tests {
             floating(&mut direct, width, if width == 400.0 { 91.0 } else { 37.0 });
             direct.end();
             assert_eq!(queried.frame.items, direct.frame.items);
-            assert_eq!(queried.frame.elements, direct.frame.elements);
+            assert_eq!(queried.elements(), direct.elements());
             let checkpoint = queried.save_state();
             queried.restore_state(&checkpoint).unwrap();
         }
@@ -535,7 +536,7 @@ mod tests {
             Ok(vec![container])
         });
         assert!(matches!(result, Err(SettlementError::Cycle(_))));
-        assert!(ui.frame.elements.is_empty());
+        assert!(ui.elements().is_empty());
         let mut ui = Ui::default();
         build(&mut ui, 400.0);
         assert!(matches!(
@@ -544,7 +545,7 @@ mod tests {
                 .into())),
             Err(SettlementError::Resolver(_))
         ));
-        assert!(ui.frame.elements.is_empty());
+        assert!(ui.elements().is_empty());
         build(&mut ui, 400.0);
         let mut recovered = false;
         ui.end_with_layout_queries(|_, sizes| {
@@ -554,6 +555,6 @@ mod tests {
         })
         .unwrap();
         assert!(recovered);
-        assert!(!ui.frame.elements.is_empty());
+        assert!(!ui.elements().is_empty());
     }
 }

@@ -143,7 +143,6 @@ fn every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_stat
                         label.to_string()
                     };
                     let (x, y) = ui
-                        .frame()
                         .element(&path)
                         .unwrap_or_else(|| panic!("no button {path}"))
                         .center();

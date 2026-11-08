@@ -91,8 +91,7 @@ Poem::placeholder {
     };
     run(&mut ui, "", "x");
     let verse = ui
-        .frame()
-        .elements
+        .elements()
         .iter()
         .find(|e| e.path == "Page/Verse")
         .cloned()
@@ -160,8 +159,7 @@ Poem::placeholder {
     ui.end();
     for path in ["Page/Verse", "Page/Line"] {
         let e = ui
-            .frame()
-            .elements
+            .elements()
             .iter()
             .find(|e| e.path == path)
             .cloned()
@@ -245,7 +243,7 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
         });
         ui.end();
         let frame = ui.frame();
-        assert_eq!(frame.element("List").unwrap().width, 100.0);
+        assert_eq!(ui.element("List").unwrap().width, 100.0);
         let flourishes: Vec<_> = frame
             .items
             .iter()
@@ -301,7 +299,7 @@ fn a_disabled_touch_controls_opacity_is_authored_by_its_state_dressing() {
             },
         );
         ui.end();
-        let element = ui.frame().element("Fire").unwrap();
+        let element = ui.element("Fire").unwrap();
         let rect = Rect::new(element.x, element.y, element.width, element.height);
         let fills = fills_in(&ui, rect);
         assert!(!fills.is_empty(), "the action face is drawn");

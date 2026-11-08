@@ -1667,7 +1667,11 @@ mod tests {
             tick(&mut ui);
         }
         let idle = tick(&mut ui);
-        assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+        assert_eq!(
+            (idle.bindings, idle.reconciled, idle.laid_out, idle.painted),
+            (0, 0, 0, 0),
+            "{idle:?}"
+        );
         ui.reactive
             .execute(Command::Patch {
                 source: SourceId::new("test", "c2"),

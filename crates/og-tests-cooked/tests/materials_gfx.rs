@@ -377,7 +377,7 @@ fn the_materials_frame_matches_its_reference() {
         step(&mut ui, InputFrame::default());
     }
     let center = |ui: &Ui, path: &str| {
-        let (x, y) = ui.frame().element(path).expect(path).center();
+        let (x, y) = ui.element(path).expect(path).center();
         Vec2::new(x, y)
     };
     // A pinch on the map about its centre: 60 px apart to 120.
@@ -415,10 +415,7 @@ fn the_materials_frame_matches_its_reference() {
         "pinched to 2x ({})",
         zoom.zoom
     );
-    let pic = ui
-        .frame()
-        .element("Card/Pictures/Left/Picture")
-        .expect("picture");
+    let pic = ui.element("Card/Pictures/Left/Picture").expect("picture");
     assert!(
         (pic.width / pic.height - 16.0 / 9.0).abs() < 0.02,
         "the picture keeps 16:9 ({}x{})",

@@ -52,13 +52,8 @@ fn pad(stick: Vec2, pressed: u32, held: u32) -> InputFrame {
 }
 
 fn bounds(ui: &Ui, path: &str) -> (f32, f32, f32, f32) {
-    let e = ui.frame().element(path).unwrap_or_else(|| {
-        let all: Vec<&str> = ui
-            .frame()
-            .elements
-            .iter()
-            .map(|e| e.path.as_str())
-            .collect();
+    let e = ui.element(path).unwrap_or_else(|| {
+        let all: Vec<&str> = ui.elements().iter().map(|e| e.path.as_str()).collect();
         panic!("{path} on screen: {all:?}")
     });
     (e.x, e.y, e.width, e.height)

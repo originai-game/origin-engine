@@ -167,7 +167,7 @@ fn structured_scalars_overlap_and_literal_text_preserve_unknown_metadata() {
         r.spans, spans,
         "including the invalid range and the zero-length game marker"
     );
-    assert!(ui.frame().elements.iter().any(|e| e.text == text));
+    assert!(ui.elements().iter().any(|e| e.text == text));
     let drawn = texts(&ui);
     let b = drawn
         .iter()
@@ -266,7 +266,7 @@ text::part(emphasis) { text-decoration-line: underline; }
                 && w.contains("Paragraph.spans")
                 && w.contains("TextSpan[]"))
     );
-    assert!(!ui.frame().elements.iter().any(|e| e.text == "Ada 😀 Bo"));
+    assert!(!ui.elements().iter().any(|e| e.text == "Ada 😀 Bo"));
 }
 
 #[test]

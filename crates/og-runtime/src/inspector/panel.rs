@@ -209,11 +209,10 @@ pub(super) fn build(ins: &mut Inspector, cx: &Ctx) {
     footer(&mut ui, &mut s, cx);
     ui.close();
     ui.end();
-    let frame = ui.frame();
-    s.ins.panel = frame.element("Inspector").map(|e| {
-        let u = frame.unit;
-        [e.x * u, e.y * u, e.width * u, e.height * u]
-    });
+    let u = ui.frame().unit;
+    s.ins.panel = ui
+        .element_bounds("Inspector")
+        .map(|e| [e.x * u, e.y * u, e.width * u, e.height * u]);
     let editing = s.editing;
     s.ins.editing = editing;
     if !editing {

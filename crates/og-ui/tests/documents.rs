@@ -276,17 +276,14 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
         ("Override", 66.0),
     ] {
         assert_eq!(
-            ui.frame()
-                .element(&format!("cascade/Root/{path}"))
-                .unwrap()
-                .width,
+            ui.element(&format!("cascade/Root/{path}")).unwrap().width,
             width,
             "{path}"
         );
     }
     assert!(
-        ui.frame().element("cascade/Root/Rich").unwrap().height
-            > ui.frame().element("cascade/Root/Plain").unwrap().height
+        ui.element("cascade/Root/Rich").unwrap().height
+            > ui.element("cascade/Root/Plain").unwrap().height
     );
     assert!(
         ui.frame()
@@ -347,7 +344,7 @@ fn ancestor_selectors_read_the_matched_nodes_state() {
                 ui.end();
             }
             assert_eq!(
-                ui.frame().element("Card/Title").unwrap().width,
+                ui.element("Card/Title").unwrap().width,
                 expected,
                 "{name}, node {node}"
             );
@@ -379,19 +376,19 @@ fn scoped_css_motion_uses_shared_curves_emits_sound_and_restores() {
             .count();
     }
     // x=u³ and y=1-(1-u)³: at 1/8 duration, y=7/8.
-    assert!((ui.frame().element("motion/Card").unwrap().x - 70.0).abs() < 0.001);
+    assert!((ui.element("motion/Card").unwrap().x - 70.0).abs() < 0.001);
     assert_eq!(sounds, 1);
     let saved = ui.save_state();
     let continued: Vec<_> = (0..12)
         .map(|_| {
             tick(&mut ui, InputFrame::default());
-            ui.frame().element("motion/Card").unwrap().x
+            ui.element("motion/Card").unwrap().x
         })
         .collect();
     ui.restore_state(&saved).unwrap();
     for expected in continued {
         tick(&mut ui, InputFrame::default());
-        assert_eq!(ui.frame().element("motion/Card").unwrap().x, expected);
+        assert_eq!(ui.element("motion/Card").unwrap().x, expected);
         assert!(
             ui.events().is_empty(),
             "restoring does not replay the entrance sound"
@@ -524,7 +521,7 @@ fn length_tokens_follow_the_active_style_in_layout_and_states() {
             expected.frame().items,
             "style factor {factor}"
         );
-        let button = expected.frame().element("tokens/Root/Child").unwrap();
+        let button = expected.element("tokens/Root/Child").unwrap();
         let (x, y) = (
             button.x + button.width * 0.5,
             button.y + button.height * 0.5,

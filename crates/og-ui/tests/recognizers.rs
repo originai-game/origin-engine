@@ -336,7 +336,7 @@ fn the_cursor_follows_what_the_pointer_is_over_and_what_it_holds() {
     };
     build(&mut ui, InputFrame::default());
     let c = |ui: &Ui, p: &str| {
-        let (x, y) = ui.frame().element(p).expect(p).center();
+        let (x, y) = ui.element(p).expect(p).center();
         Vec2::new(x, y)
     };
     let buy = c(&ui, "Shop/Buy");

@@ -330,18 +330,12 @@ fn every_widget_has_a_role_a_name_and_its_state() {
     }
     // The probe reads the same: dump_ui's elements carry role, name, value
     // and states.
-    let e = ui
-        .frame()
-        .element("Form/Volume/Track")
-        .expect("the slider element");
+    let e = ui.element("Form/Volume/Track").expect("the slider element");
     assert_eq!(
         (e.role.as_str(), e.name.as_str(), e.value.as_str()),
         ("slider", "Volume", "35")
     );
-    let e = ui
-        .frame()
-        .element("Form/Music")
-        .expect("the switch element");
+    let e = ui.element("Form/Music").expect("the switch element");
     assert!(e.states.contains(&"checked".to_owned()) && e.states.contains(&"focusable".to_owned()));
     // A layout column has no role and is not in the tree.
     assert!(tree.nodes.iter().all(|n| n.path != "Form"));

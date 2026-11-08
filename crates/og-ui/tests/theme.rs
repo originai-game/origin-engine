@@ -212,7 +212,7 @@ fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
         t.type_ramp.body.size, body,
         "lengths stay the style's, in units"
     );
-    assert_eq!(f.element("Go").expect("the button").width, 300.0);
+    assert_eq!(ui.element("Go").expect("the button").width, 300.0);
     assert_eq!(size, body * 1.5, "drawn at 1.5 CSS px a unit");
     assert_eq!(
         t.type_ramp.xs.size * 1.5,

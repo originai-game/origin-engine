@@ -7,6 +7,7 @@ mod controls;
 mod descriptors;
 mod dressing;
 mod finish;
+mod inspect;
 mod node_draw;
 pub(crate) mod settlement;
 mod snapshot;
@@ -447,6 +448,12 @@ pub struct Ui {
     pub(crate) building: bool,
     pub(crate) state: State,
     pub(crate) frame: UiFrame,
+    /// The last frame's inspection, made when asked for (`inspect`).
+    pub(crate) inspection: inspect::Inspection,
+    /// Last frame's layers and draws while this frame is built, for
+    /// inspecting the last frame mid-build.
+    pub(crate) prev_floating: Vec<usize>,
+    pub(crate) prev_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
     pub(crate) nav: NavFrame,
     /// Widget memories used this frame (others are dropped at `end`).
     pub(crate) touched: std::collections::BTreeSet<u64>,

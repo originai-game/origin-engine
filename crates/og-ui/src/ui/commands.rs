@@ -153,11 +153,15 @@ impl Ui {
         // Elements whose commands and ancestors' fills are as last frame
         // (docs/ui.md §2): their commands are last frame's.
         let mut same = vec![false; self.nodes.len()];
-        let mut next = crate::id::KeyMap::<(usize, Vec<DrawCmd>)>::with_capacity_and_hasher(
+        let mut next = crate::id::KeyMap::<(usize, Vec<DrawCmd>, crate::layout::DrawSig)>::with_capacity_and_hasher(
             order.len(),
             Default::default(),
         );
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
+        let mut written = vec![false; self.nodes.len()];
+        for &i in &self.emitted {
+            written[i] = true;
+        }
         let theme = self.theme;
         // An element's draw (crate::paint) in its layout box, at its
         // opacity; its clip is the screen's (bake leaves draw commands be).
@@ -202,18 +206,31 @@ impl Ui {
             };
             // Rich text draws from the tick (its moving spans), focus and
             // the hot link as well: it is always made again.
+            let sig = crate::layout::DrawSig::of(n);
             same[i] = !self.kept.fresh
                 && !matches!(n.content, Content::Rich(_))
-                && self.kept.prev.get(&i).is_some_and(|b| {
-                    crate::layout::draw_eq(n, b) && Some(&self.kinds[i]) == prev_kinds.get(&i)
-                })
+                && match self.kept.prev.get(&i) {
+                    Some(b) => {
+                        crate::layout::draw_eq(n, b) && Some(&self.kinds[i]) == prev_kinds.get(&i)
+                    }
+                    // A retained node not written again: its own inputs are
+                    // as they were; what the frame moves is in its signature.
+                    None => {
+                        !written[i]
+                            && self
+                                .kept
+                                .cmds
+                                .get(&n.key)
+                                .is_some_and(|(_, _, old)| *old == sig)
+                    }
+                }
                 && (n.parent == NONE || same[n.parent])
                 && !game_draw;
             if i != 0 || n.sampled.background.is_some() {
                 let mut local = Vec::new();
                 let mut background = 0;
                 if same[i]
-                    && let Some((b, c)) = self.kept.cmds.get(&n.key)
+                    && let Some((b, c, _)) = self.kept.cmds.get(&n.key)
                 {
                     (background, local) = (*b, c.clone());
                     self.stats.kept_commands += 1;
@@ -237,7 +254,7 @@ impl Ui {
                     };
                     d.style_text(&theme, &mut local, grid);
                 }
-                next.insert(self.nodes[i].key, (background, local.clone()));
+                next.insert(self.nodes[i].key, (background, local.clone(), sig));
                 let mut local = local.into_iter().map(|c| (c, world));
                 cmds.extend(local.by_ref().take(background));
                 cmds.extend(over_background(self));

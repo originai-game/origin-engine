@@ -71,19 +71,19 @@ fn anchors_sit_in_the_safe_area_and_touch_controls_keep_44px() {
     rig.idle(1, b);
     assert_eq!(rig.ui.breakpoint(), Breakpoint::PhonePortrait);
     let gutter = rig.ui.sizes().gutter;
-    let score = rig.ui.frame().element("Score").expect("score").clone();
+    let score = rig.ui.element("Score").expect("score").clone();
     assert!(
         (score.y - (47.0 + gutter)).abs() < 0.5,
         "under the notch: {score:?}"
     );
     assert!((score.x + score.width - (390.0 - gutter)).abs() < 0.5);
-    let pad = rig.ui.frame().element("Pad").expect("pad").clone();
+    let pad = rig.ui.element("Pad").expect("pad").clone();
     assert!(
         (pad.y + pad.height - (844.0 - 34.0 - gutter)).abs() < 0.5,
         "above the home indicator: {pad:?}"
     );
     for id in ["Stick", "Jump", "Dpad/Up", "Dpad/Left"] {
-        let e = rig.ui.frame().element(id).expect(id);
+        let e = rig.ui.element(id).expect(id);
         assert!(
             e.width >= 44.0 && e.height >= 44.0,
             "{id} is {}×{}",
@@ -93,7 +93,7 @@ fn anchors_sit_in_the_safe_area_and_touch_controls_keep_44px() {
     }
     // Drag the stick to the right edge.
     let c = rig.center("Stick");
-    let r = rig.ui.frame().element("Stick").unwrap().width / 2.0;
+    let r = rig.ui.element("Stick").unwrap().width / 2.0;
     rig.step(press(c), b);
     rig.step(
         InputFrame {
@@ -146,7 +146,7 @@ fn hud_corners_sit_in_a_centred_band_on_an_ultrawide() {
             );
         }
     };
-    let at = |rig: &Rig<()>, id: &str| rig.ui.frame().element(id).expect(id).clone();
+    let at = |rig: &Rig<()>, id: &str| rig.ui.element(id).expect(id).clone();
     // 16:10: narrower than the band, so the corners are the safe area's.
     rig.vp = Viewport::new(1680.0, 1050.0);
     rig.idle(1, b);

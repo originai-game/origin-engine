@@ -91,7 +91,6 @@ impl Rig {
 
     fn el(&self, id: &str) -> UiElement {
         self.ui
-            .frame()
             .element(id)
             .cloned()
             .unwrap_or_else(|| panic!("{id}"))

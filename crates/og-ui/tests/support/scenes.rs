@@ -380,7 +380,6 @@ pub fn sample_session(ui: &mut Ui, s: &mut Sample) {
     step(ui, s, InputFrame::default());
     let at = |ui: &Ui, path: &str| {
         let e = ui
-            .frame()
             .element(path)
             .unwrap_or_else(|| panic!("no element {path}"));
         let (x, y) = e.center();
@@ -686,7 +685,7 @@ pub fn widget_set_shot(font: &FontFiles) -> Shot {
     }
     // Open the select with a press: its menu floats over the panel and
     // takes focus; Tab moves it to Hard with the ring and its gap.
-    let sel = ui.frame().element("Difficulty").expect("select").clone();
+    let sel = ui.element("Difficulty").expect("select").clone();
     let (x, y) = sel.center();
     let p = Vec2::new(x, y);
     step(
@@ -828,7 +827,7 @@ pub fn text_fields_uis(font: &UiFont) -> (Ui, Ui) {
         ..InputFrame::default()
     };
     let center = |ui: &Ui, id: &str| {
-        let e = ui.frame().element(id).expect(id);
+        let e = ui.element(id).expect(id);
         Vec2::new(e.x + e.width - 4.0, e.y + e.height / 2.0)
     };
 
@@ -866,7 +865,7 @@ pub fn text_fields_uis(font: &UiFont) -> (Ui, Ui) {
         },
     );
     // A double click inside "select" (the test face's advances at body size).
-    let words = ui.frame().element("Words").expect("words").clone();
+    let words = ui.element("Words").expect("words").clone();
     let t = *ui.theme();
     let m = &font.metrics;
     let x = words.x + t.space.md + m.measure("drag to sel", t.type_ramp.body.size);
@@ -891,7 +890,7 @@ pub fn text_fields_uis(font: &UiFont) -> (Ui, Ui) {
         ui.end();
     };
     step(&mut area, &mut g, InputFrame::default());
-    let notes = area.frame().element("Notes").expect("notes").clone();
+    let notes = area.element("Notes").expect("notes").clone();
     let start = Vec2::new(notes.x + 30.0, notes.y + 14.0);
     step(&mut area, &mut g, at(start, true, true, false));
     let below = Vec2::new(notes.x + 120.0, notes.y + notes.height + 30.0);
@@ -965,7 +964,7 @@ pub fn mixed_runs_ui(fonts: Fonts, vp: Viewport) -> Ui {
         ui.end();
     };
     step(&mut ui, InputFrame::default());
-    let e = ui.frame().element("Name").expect("name").clone();
+    let e = ui.element("Name").expect("name").clone();
     let p = Vec2::new(e.x + e.width - 4.0, e.y + e.height / 2.0);
     for (down, pressed, released) in [(true, true, false), (false, false, true)] {
         step(

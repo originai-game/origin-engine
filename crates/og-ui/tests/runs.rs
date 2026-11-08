@@ -312,7 +312,7 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
             assert_eq!(text.1, expected);
             assert_eq!(text.2, 0.1);
             let width = bold.metrics.measure("Hi", expected) + 0.2 * expected;
-            assert!((ui.frame().element("Tracked").unwrap().width - width).abs() < 0.6);
+            assert!((ui.element("Tracked").unwrap().width - width).abs() < 0.6);
         }
     }
     let styled = |fonts: &Fonts, weight, italic, text| {

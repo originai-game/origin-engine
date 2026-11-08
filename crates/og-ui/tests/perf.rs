@@ -180,8 +180,7 @@ fn perf_dense_menu_300_elements_40_animating() {
         });
     });
     let animating = ui
-        .frame()
-        .motion
+        .motion_dump()
         .iter()
         .filter(|d| !d.moving.is_empty())
         .count();
@@ -607,7 +606,8 @@ fn perf_ui_retained_change_budgets() {
             );
             ui.build_retained_documents(&bind::NoEnv).unwrap();
             let built = start.elapsed().as_secs_f64() * 1000.0;
-            if scenario == "row-999" && ui.probe_elements().iter().any(|e| e.path == far) {
+            // The last frame showed row 999: hold the focus on it by key.
+            if scenario == "row-999" && ui.element_bounds(&far).is_some() {
                 ui.set_focus(&far);
             }
             let t = std::time::Instant::now();

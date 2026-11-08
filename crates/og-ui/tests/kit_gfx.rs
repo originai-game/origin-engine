@@ -21,10 +21,13 @@ fn the_widget_set_matches_its_reference_frame() {
     let frame = shot.ui.frame();
     assert!(frame.warnings.is_empty(), "{:?}", frame.warnings);
     assert!(
-        frame.element("Difficulty.list/List/Option#2").is_some(),
+        shot.ui.element("Difficulty.list/List/Option#2").is_some(),
         "the menu is open"
     );
-    assert!(frame.element("Toasts/Toast#1").is_some(), "the toast is up");
+    assert!(
+        shot.ui.element("Toasts/Toast#1").is_some(),
+        "the toast is up"
+    );
 
     // The pies: done 0.25 is the right half and a track half turned a
     // quarter; done 0.6 is the right half and a fill half turned 0.6 turn
@@ -156,7 +159,7 @@ fn stick_shot(font: &FontFiles, push: Option<Vec2>) -> (Shot, JoystickResponse) 
     };
     step(&mut ui, InputFrame::default());
     if let Some(push) = push {
-        let (x, y) = ui.frame().element("Pad/Stick").expect("the stick").center();
+        let (x, y) = ui.element("Pad/Stick").expect("the stick").center();
         let at = |p: Vec2, pressed: bool| InputFrame {
             pointer: p,
             pointer_inside: true,
@@ -182,7 +185,7 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
         let (shot, out) = with_test_font(|f| stick_shot(f, push));
         let f = shot.ui.frame();
         assert!(f.warnings.is_empty(), "{:?}", f.warnings);
-        let base = f.element("Pad/Stick").expect("the stick").clone();
+        let base = shot.ui.element("Pad/Stick").expect("the stick").clone();
         // The knob's rim disc (the widest round quad but the base) and the arcs.
         // A disc's corner radius is drawn a little under half its width (27.4
         // for a 55 px knob), so round is within half a pixel of it.

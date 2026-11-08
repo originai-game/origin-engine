@@ -29,8 +29,8 @@ fn keyed_rows_measure_anchor_navigate_and_restore() {
     };
     rig.idle(4, b);
     assert_ne!(
-        rig.ui.frame().element("Rows/Row#item0").unwrap().height,
-        rig.ui.frame().element("Rows/Row#item1").unwrap().height
+        rig.ui.element("Rows/Row#item0").unwrap().height,
+        rig.ui.element("Rows/Row#item1").unwrap().height
     );
     rig.ui.navigate(Nav::Next);
     rig.idle(1, b);
@@ -55,8 +55,7 @@ fn keyed_rows_measure_anchor_navigate_and_restore() {
     rig.idle(3, b);
     let anchor = rig
         .ui
-        .frame()
-        .elements
+        .elements()
         .iter()
         .filter(|e| e.parent == "Rows" && e.id.starts_with("Row#") && e.y >= 0.0)
         .min_by(|a, b| a.y.total_cmp(&b.y))
@@ -67,7 +66,7 @@ fn keyed_rows_measure_anchor_navigate_and_restore() {
     rig.state.remove(5);
     rig.idle(3, b);
     assert!(
-        (rig.ui.frame().element(&anchor.path).unwrap().y - anchor.y).abs() < 0.01,
+        (rig.ui.element(&anchor.path).unwrap().y - anchor.y).abs() < 0.01,
         "edits above the viewport preserve the visible item's position"
     );
     assert_eq!(
@@ -116,12 +115,12 @@ fn keyed_grid_uses_tallest_cells_and_reaches_unbuilt_end() {
         ui.close_list();
     };
     rig.idle(4, b);
-    let short = rig.ui.frame().element("Cells/Cell#0").unwrap();
-    let tall = rig.ui.frame().element("Cells/Cell#1").unwrap();
-    let next = rig.ui.frame().element("Cells/Cell#2").unwrap();
+    let short = rig.ui.element("Cells/Cell#0").unwrap();
+    let tall = rig.ui.element("Cells/Cell#1").unwrap();
+    let next = rig.ui.element("Cells/Cell#2").unwrap();
     assert_eq!(short.y, tall.y);
     assert!((next.y - (tall.y + tall.height + 4.0)).abs() < 0.01);
-    assert!(rig.ui.frame().element("Cells/Cell#40").is_none());
+    assert!(rig.ui.element("Cells/Cell#40").is_none());
     rig.ui.navigate(Nav::Next);
     rig.idle(1, b);
     rig.step(
@@ -133,7 +132,7 @@ fn keyed_grid_uses_tallest_cells_and_reaches_unbuilt_end() {
     );
     rig.idle(3, b);
     assert_eq!(rig.ui.focus_path(0), "Cells/Cell#40");
-    assert!(rig.ui.frame().element("Cells/Cell#40").unwrap().y < 180.0);
+    assert!(rig.ui.element("Cells/Cell#40").unwrap().y < 180.0);
     rig.step(
         InputFrame {
             keys: vec![UiKey::Home],
@@ -155,8 +154,7 @@ fn toasts_stack_three_leave_on_time_and_replay_after_a_restore() {
     rig.idle(30, b);
     let up: Vec<String> = rig
         .ui
-        .frame()
-        .elements
+        .elements()
         .iter()
         .filter(|e| e.parent == "Toasts")
         .map(|e| e.text.clone())
@@ -168,13 +166,7 @@ fn toasts_stack_three_leave_on_time_and_replay_after_a_restore() {
     );
     let saved = rig.ui.save_state();
     rig.idle(200, b);
-    let after: Vec<String> = rig
-        .ui
-        .frame()
-        .elements
-        .iter()
-        .map(|e| e.id.clone())
-        .collect();
+    let after: Vec<String> = rig.ui.elements().iter().map(|e| e.id.clone()).collect();
     assert!(
         after.iter().all(|id| !id.starts_with("Toast")),
         "they left after 3.2 s: {after:?}"
@@ -183,8 +175,7 @@ fn toasts_stack_three_leave_on_time_and_replay_after_a_restore() {
     rig.idle(1, b);
     assert_eq!(
         rig.ui
-            .frame()
-            .elements
+            .elements()
             .iter()
             .filter(|e| e.parent == "Toasts")
             .count(),

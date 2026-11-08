@@ -104,8 +104,8 @@ fn frame(engine: u32) -> Value {
             _ => None,
         })
         .collect();
-    let elements: Vec<Value> = f
-        .elements
+    let elements: Vec<Value> = ui
+        .elements()
         .iter()
         .map(|e| {
             let mut e = e.clone();
@@ -113,7 +113,7 @@ fn frame(engine: u32) -> Value {
             e.to_json()
         })
         .collect();
-    let a11y = &f.a11y;
+    let a11y = ui.a11y();
     json!({
         "viewport": {
             "width": vp.width * u, "height": vp.height * u, "dpr": vp.dpr / u,
@@ -129,11 +129,11 @@ fn frame(engine: u32) -> Value {
         // The dimmed inks: text drawn in one is dimmed on purpose (§16.5).
         "dimInks": [p.ink_muted.linear(), p.ink_faint.linear()],
         "elements": elements,
-        "overlaps": f.overlaps.iter().map(|o| json!({
+        "overlaps": ui.overlaps().iter().map(|o| json!({
             "path": o.path, "other": o.other, "rect": ur(&o.rect), "inFlow": o.in_flow,
         })).collect::<Vec<_>>(),
-        "dense": f.dense,
-        "sideways": f.sideways,
+        "dense": ui.dense(),
+        "sideways": ui.sideways(),
         "stats": {
             "elements": f.stats.elements, "rebuilt": f.stats.rebuilt,
             "laidOut": f.stats.laid_out, "keptCommands": f.stats.kept_commands,
@@ -152,7 +152,7 @@ fn frame(engine: u32) -> Value {
                 "states": n.states, "rect": [n.x * u, n.y * u, n.width * u, n.height * u],
             })).collect::<Vec<_>>(),
         },
-        "motion": f.motion.iter().map(|m| json!({
+        "motion": ui.motion_dump().iter().map(|m| json!({
             "path": m.path,
             "states": m.states.iter().map(|(g, s)| json!([g, s])).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),

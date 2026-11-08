@@ -249,7 +249,7 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
         );
         let frame = ui.end().clone();
         for id in ["Rich", "Label"] {
-            let e = frame.element(&format!("Box/{id}")).expect(id);
+            let e = ui.element(&format!("Box/{id}")).expect(id);
             assert!(
                 e.width <= width + 0.01,
                 "{id} fits its {width} px box: {}",

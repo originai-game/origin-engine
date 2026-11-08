@@ -193,13 +193,7 @@ impl Ui {
         self.native_input.values.clear();
         for request in std::mem::take(&mut self.native_input.pending) {
             let key = crate::id::key_of_path(&request.path);
-            let Some(node) = self
-                .frame
-                .a11y
-                .nodes
-                .iter()
-                .find(|n| n.path == request.path)
-            else {
+            let Some(node) = self.a11y().nodes.iter().find(|n| n.path == request.path) else {
                 continue;
             };
             if node.states.iter().any(|s| s == "disabled" || s == "hidden") {

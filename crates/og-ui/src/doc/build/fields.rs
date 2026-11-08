@@ -406,11 +406,7 @@ mod tests {
                 })
                 .unwrap();
             direct.end();
-            assert_eq!(
-                patched.frame().elements,
-                direct.frame().elements,
-                "styled={styled}"
-            );
+            assert_eq!(patched.elements(), direct.elements(), "styled={styled}");
             assert_eq!(
                 patched.frame().items,
                 direct.frame().items,

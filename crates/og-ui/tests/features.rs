@@ -99,7 +99,7 @@ fn a_pixel_font_is_set_at_multiples_of_its_grid() {
             },
         );
         ui.end();
-        ui.frame().element("N").expect("the label").width
+        ui.element("N").expect("the label").width
     };
     let pixel = || FontMetrics::fixed(0.5).with_pixel(12);
     // Half an em a character: 6 px at 12, 12 px at 24.
@@ -153,7 +153,7 @@ fn display_text_under_the_styles_display_min_takes_the_body_face() {
             },
         );
         ui.end();
-        ui.frame().element("N").expect("the label").width
+        ui.element("N").expect("the label").width
     };
     // Wrong: the threshold ignored (14 px display drawn in the display
     // face), or applied at and over it, or to the other roles.

@@ -53,7 +53,6 @@ fn boxed(ui: &mut Ui, id: &str, w: f32, h: f32, props: Props) {
 
 fn rect(ui: &Ui, path: &str) -> [f32; 4] {
     let e = ui
-        .frame()
         .element(path)
         .unwrap_or_else(|| panic!("no element {path}"));
     [e.x, e.y, e.width, e.height]
@@ -205,8 +204,7 @@ fn a_stack_overlays_and_undeclared_overlap_is_reported() {
     assert_eq!(rect(&ui, "P/Tag"), [100.0, 150.0, 40.0, 20.0]);
     let pairs = |ui: &Ui| -> Vec<(String, String)> {
         let mut v: Vec<_> = ui
-            .frame()
-            .overlaps
+            .overlaps()
             .iter()
             .map(|o| (o.path.clone(), o.other.clone()))
             .collect();
@@ -261,8 +259,7 @@ fn siblings_moved_over_each_other_in_a_flow_are_reported_in_order() {
     ui.close();
     ui.end();
     let shown: Vec<(String, String, bool)> = ui
-        .frame()
-        .overlaps
+        .overlaps()
         .iter()
         .map(|o| (o.path.clone(), o.other.clone(), o.in_flow))
         .collect();
@@ -320,8 +317,7 @@ fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
         boxed(ui, "Bar", 200.0, 50.0, Props::default());
         ui.close();
         ui.end();
-        ui.frame()
-            .overlaps
+        ui.overlaps()
             .iter()
             .map(|o| (o.path.clone(), o.other.clone()))
             .collect::<Vec<_>>()
@@ -365,8 +361,7 @@ fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
     ui.close();
     ui.end();
     let shown: Vec<_> = ui
-        .frame()
-        .overlaps
+        .overlaps()
         .iter()
         .map(|o| (o.path.clone(), o.other.clone()))
         .collect();

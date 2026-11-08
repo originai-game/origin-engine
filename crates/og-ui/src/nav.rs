@@ -432,8 +432,7 @@ impl Ui {
                 // A stepper's spinbutton: one of its buttons (its children, or
                 // its siblings in the native stepper's frame) is in reach.
                 let spin = self
-                    .frame
-                    .a11y
+                    .a11y()
                     .nodes
                     .iter()
                     .any(|n| n.path == *path && n.role == "spinbutton");

@@ -69,14 +69,13 @@ impl Rig {
     fn element(&self, path: &str) -> UiElement {
         self.ui
             .lock()
-            .frame()
             .element(path)
             .cloned()
             .unwrap_or_else(|| panic!("no element {path}"))
     }
 
     fn elements(&self) -> Vec<UiElement> {
-        self.ui.lock().frame().elements.clone()
+        self.ui.lock().elements().to_vec()
     }
 
     fn pointer(&self) -> (f32, f32) {
@@ -164,7 +163,7 @@ fn dump_ui_lists_every_visible_element_with_bounds_and_text() {
         by_id(path);
     }
     // Rows scrolled out of the list are not on screen, so not listed.
-    assert!(rig.ui.lock().frame().element("Row#11").is_none());
+    assert!(rig.ui.lock().element("Row#11").is_none());
 }
 
 #[test]

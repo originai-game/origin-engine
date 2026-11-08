@@ -109,7 +109,7 @@ impl Rig {
     }
 
     fn rect(&self, id: &str) -> (f32, f32, f32, f32) {
-        let e = self.ui.frame().element(id).expect(id);
+        let e = self.ui.element(id).expect(id);
         (e.x, e.y, e.width, e.height)
     }
 

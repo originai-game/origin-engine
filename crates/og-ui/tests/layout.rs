@@ -158,7 +158,6 @@ fn tree(ui: &mut Ui) {
 
 fn rect(ui: &Ui, path: &str) -> [f32; 4] {
     let e = ui
-        .frame()
         .element(path)
         .unwrap_or_else(|| panic!("no element {path}"));
     [e.x, e.y, e.width, e.height]
@@ -200,8 +199,7 @@ fn fixed_boxes_bound_layout_invalidation_but_fitting_boxes_propagate_it() {
         let mut fresh = Ui::new(UiDesc::default());
         build(&mut fresh, fixed, text);
         let geometry = |ui: &Ui| {
-            ui.frame()
-                .elements
+            ui.elements()
                 .iter()
                 .map(|e| (e.path.clone(), [e.x, e.y, e.width, e.height]))
                 .collect::<Vec<_>>()
@@ -280,7 +278,7 @@ fn nested_rows_and_columns_lay_out_as_the_golden() {
 
     let actual: Value = json!({
         "viewport": {"width": 400, "height": 300, "safeArea": {"left": 10, "top": 20}},
-        "elements": frame.elements.iter().map(|e| e.to_json()).collect::<Vec<_>>(),
+        "elements": ui.elements().iter().map(|e| e.to_json()).collect::<Vec<_>>(),
     });
     let text = serde_json::to_string_pretty(&actual).expect("json") + "\n";
     std::fs::write(out_dir().join("layout.json"), &text).expect("write actual");
@@ -378,7 +376,7 @@ fn a_screen_placed_element_bleeds_under_the_safe_area() {
     );
     ui.end();
     let r = |p: &str| {
-        let e = ui.frame().element(p).expect(p);
+        let e = ui.element(p).expect(p);
         (e.x, e.y, e.width, e.height)
     };
     assert_eq!(r("Loading/Art"), (0.0, 0.0, 390.0, 844.0));

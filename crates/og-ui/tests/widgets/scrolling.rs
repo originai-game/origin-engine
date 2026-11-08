@@ -91,7 +91,7 @@ fn wheel(at: Vec2, d: Vec2) -> InputFrame {
 
 /// Where an element is now, or None when it is scrolled out of view.
 fn pos(ui: &Ui, path: &str) -> Option<Vec2> {
-    ui.frame().element(path).map(|e| Vec2::new(e.x, e.y))
+    ui.element(path).map(|e| Vec2::new(e.x, e.y))
 }
 
 /// Scrolling both ways: the wheel moves a board on both axes and stops at
@@ -125,7 +125,7 @@ fn scroll_views_scroll_both_ways_hand_off_fling_and_grab() {
     rig.step(wheel(board, Vec2::new(5000.0, 5000.0)), b);
     rig.idle(1, b);
     let last = pos(&rig.ui, "Board/Row#9/Tile#99").expect("the last tile shows");
-    let view = rig.ui.frame().element("Board").expect("board").clone();
+    let view = rig.ui.element("Board").expect("board").clone();
     assert!(
         (last.x + 50.0 - (view.x + view.width)).abs() < 0.5
             && (last.y + 50.0 - (view.y + view.height)).abs() < 0.5,
@@ -189,7 +189,7 @@ fn scroll_views_scroll_both_ways_hand_off_fling_and_grab() {
     );
     // The horizontal scrollbar's position is the board's horizontal offset.
     let bar_x = |ui: &Ui| -> f32 {
-        let r = ui.frame().element("Board").expect("board").clone();
+        let r = ui.element("Board").expect("board").clone();
         ui.frame()
             .items
             .iter()
@@ -227,7 +227,7 @@ fn scroll_views_scroll_both_ways_hand_off_fling_and_grab() {
     rig.step(wheel(board, Vec2::new(-5000.0, -5000.0)), b);
     let saved = rig.ui.save_state();
     // The vertical scrollbar: a press near the bottom of the board's right edge grabs it.
-    let r = rig.ui.frame().element("Board").expect("board").clone();
+    let r = rig.ui.element("Board").expect("board").clone();
     let grab = Vec2::new(r.x + r.width - 3.0, r.y + r.height - 6.0);
     rig.step(
         InputFrame {
@@ -242,7 +242,7 @@ fn scroll_views_scroll_both_ways_hand_off_fling_and_grab() {
     rig.idle(1, b);
     let y = pos(&rig.ui, "Board/Row#0/Tile#0").map_or(f32::NEG_INFINITY, |p| p.y);
     assert!(
-        rig.ui.frame().element("Board/Row#0/Tile#0").is_none() || y < r.y - 100.0,
+        rig.ui.element("Board/Row#0/Tile#0").is_none() || y < r.y - 100.0,
         "pressing the track near its end moved the board far down ({y})"
     );
     // A restore replays the offsets.
@@ -335,23 +335,13 @@ fn two_fingers_scroll_lists_and_pinch_zoom_views() {
     let b = &mut gestures;
     rig.idle(2, b);
     // The aspect ratios.
-    let wide = rig
-        .ui
-        .frame()
-        .element("Pictures/Wide")
-        .expect("wide")
-        .clone();
+    let wide = rig.ui.element("Pictures/Wide").expect("wide").clone();
     assert_eq!(
         (wide.width, wide.height),
         (400.0, 200.0),
         "grow 400 wide at 2:1"
     );
-    let tall = rig
-        .ui
-        .frame()
-        .element("Pictures/Tall")
-        .expect("tall")
-        .clone();
+    let tall = rig.ui.element("Pictures/Tall").expect("tall").clone();
     assert_eq!((tall.width, tall.height), (45.0, 90.0), "90 tall at 1:2");
     // Two-finger scroll over the list, starting on a row.
     let row3 = rig.center("Top/List/Row#3");

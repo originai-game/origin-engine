@@ -59,7 +59,7 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
         |ui| ui.label("Chimes", "Chimes", LabelDesc::default()),
     );
     ui.end();
-    let hud = ui.frame().element("Hud").expect("the panel").clone();
+    let hud = ui.element("Hud").expect("the panel").clone();
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(
         &EmitDesc {

@@ -232,11 +232,41 @@ pub(crate) struct LayoutCache {
     /// Each element's own draw commands last frame, by key, reused while
     /// everything it draws from is unchanged, with how many of them are
     /// its background (its draw paints between those and the rest).
-    pub cmds: crate::id::KeyMap<(usize, Vec<crate::DrawCmd>)>,
+    pub cmds: crate::id::KeyMap<(usize, Vec<crate::DrawCmd>, DrawSig)>,
     pub measurements: crate::ui::settlement::Measurements,
     pub query_roots: Option<std::collections::BTreeSet<usize>>,
     /// Nodes whose laid-out size changed since they were last laid out.
     pub resized: Vec<usize>,
+}
+
+/// What the frame changes about a node's drawing without writing it again:
+/// a retained node not written this frame draws its last commands while
+/// these are as they were.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct DrawSig {
+    rect: Rect,
+    clip: Rect,
+    alpha: f32,
+    world: crate::element::Affine,
+    ring: bool,
+    pad_rings: u8,
+    scale: f32,
+    sampled: crate::layout::node::SampledStyle,
+}
+
+impl DrawSig {
+    pub(crate) fn of(n: &Node) -> Self {
+        Self {
+            rect: n.rect,
+            clip: n.clip,
+            alpha: n.alpha,
+            world: n.world,
+            ring: n.ring,
+            pad_rings: n.pad_rings,
+            scale: n.scale,
+            sampled: n.sampled,
+        }
+    }
 }
 
 /// Everything an element's own commands are made from is as last frame

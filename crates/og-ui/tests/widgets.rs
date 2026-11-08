@@ -65,7 +65,6 @@ impl<S> Rig<S> {
     fn center(&self, path: &str) -> Vec2 {
         let e = self
             .ui
-            .frame()
             .element(path)
             .unwrap_or_else(|| panic!("no element {path}: {:?}", ids(&self.ui)));
         let (x, y) = e.center();
@@ -80,7 +79,7 @@ impl<S> Rig<S> {
 }
 
 fn ids(ui: &Ui) -> Vec<String> {
-    ui.frame().elements.iter().map(|e| e.id.clone()).collect()
+    ui.elements().iter().map(|e| e.id.clone()).collect()
 }
 
 fn press(p: Vec2) -> InputFrame {

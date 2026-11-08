@@ -439,7 +439,7 @@ fn missing_art_slot_kinds_have_intentional_placeholders() {
     }
     ui.end();
     for (index, (_, width, height, _, _)) in placements.iter().enumerate() {
-        let rect = ui.frame().element(&format!("Cell{index}/Art")).unwrap();
+        let rect = ui.element(&format!("Cell{index}/Art")).unwrap();
         assert!(
             (rect.width - width).abs() <= 1.0 && (rect.height - height).abs() <= 1.0,
             "pixel-snapped slot {index}: {rect:?}, expected {width}x{height}"
@@ -936,7 +936,7 @@ fn sample_screen_matches_its_reference_frame() {
     assert!(frame.warnings.is_empty(), "{:?}", frame.warnings);
     assert_eq!(s.search, "pot", "the focused field took the typed text");
     assert!(
-        frame.element("tooltip").is_some(),
+        shot.ui.element("tooltip").is_some(),
         "the tooltip shows after the pointer rests on Buy"
     );
 
@@ -1054,7 +1054,7 @@ fn a_scroll_container_clips_everything_it_draws() {
         ui.end();
     };
     build(&mut ui, InputFrame::default());
-    let list = ui.frame().element("List").expect("list").clone();
+    let list = ui.element("List").expect("list").clone();
     build(
         &mut ui,
         InputFrame {
@@ -2003,7 +2003,7 @@ fn a_skewed_element_draws_its_parallelogram() {
     let boxes: Vec<[f32; 4]> = ["Row/Quad", "Row/Drawn"]
         .iter()
         .map(|p| {
-            let e = ui.frame().element(p).expect("laid out");
+            let e = ui.element(p).expect("laid out");
             [e.x, e.y, e.width, e.height]
         })
         .collect();
@@ -2166,7 +2166,7 @@ fn a_gradient_mask_fades_as_it_reads() {
     let boxes: Vec<[f32; 4]> = ["Row/Own", "Row/Backing/Parent"]
         .iter()
         .map(|p| {
-            let e = ui.frame().element(p).expect("laid out");
+            let e = ui.element(p).expect("laid out");
             [e.x, e.y, e.width, e.height]
         })
         .collect();

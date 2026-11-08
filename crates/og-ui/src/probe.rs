@@ -100,7 +100,7 @@ impl Ui {
     /// probe's input (`touch_move_to`, `move_to_text`) lands on them.
     pub fn probe_elements(&self) -> Vec<UiElement> {
         use serde_json::{Value, json};
-        let mut out = self.frame().elements.clone();
+        let mut out = self.elements().to_vec();
         let u = self.frame().unit.max(1.0);
         if u != 1.0 {
             for e in &mut out {
@@ -112,7 +112,7 @@ impl Ui {
         }
         // The part each is drawn as and the style rules that dress it, in
         // the order they apply (the last wins a property both set).
-        for (e, part) in out.iter_mut().zip(&self.frame().parts) {
+        for (e, part) in out.iter_mut().zip(self.parts()) {
             let Some(part) = part else { continue };
             // As a style writes them (`Button::base.primary:hover`).
             let css = |s: &str| {
@@ -136,7 +136,7 @@ impl Ui {
         let doc_built = self.doc_built();
         let doc_arts = self.art_slots();
         if doc_built.is_empty()
-            && self.frame().motion.is_empty()
+            && self.motion_dump().is_empty()
             && self.docs.layers.layers.is_empty()
         {
             return out;
@@ -151,8 +151,7 @@ impl Ui {
         let built: std::collections::BTreeMap<&str, &crate::doc::build::Built> =
             doc_built.iter().map(|b| (b.path.as_str(), b)).collect();
         let motion: std::collections::BTreeMap<&str, &crate::motion::MotionDump> = self
-            .frame()
-            .motion
+            .motion_dump()
             .iter()
             .map(|m| (m.path.as_str(), m))
             .collect();
@@ -237,7 +236,7 @@ impl Ui {
         );
         m.insert(
             "motion".into(),
-            Value::Array(self.frame().motion.iter().map(|d| json!({
+            Value::Array(self.motion_dump().iter().map(|d| json!({
                 "path": d.path,
                 "states": d.states.iter().map(|(g, s)| (g.clone(), json!(s))).collect::<serde_json::Map<_, _>>(),
                 "moving": d.moving, "plays": d.plays, "leaving": d.leaving,

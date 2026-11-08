@@ -150,8 +150,8 @@ fn ui_rive_text_draws_its_run_in_its_cooked_font() {
         "{:?}",
         frame.missing_glyphs
     );
-    let text = frame
-        .elements
+    let text = ui
+        .elements()
         .iter()
         .find(|e| e.kind == "rive" && e.id.ends_with("/Hello World"))
         .expect("the text as an element");
@@ -375,8 +375,8 @@ fn colr_label(
         .expect("render");
     assert_eq!(stats.missing_glyphs, 0);
     let image = renderer.read_offscreen().expect("read back");
-    let e = frame
-        .elements
+    let e = ui
+        .elements()
         .iter()
         .find(|e| e.id.ends_with("Emoji"))
         .expect("the text's element");

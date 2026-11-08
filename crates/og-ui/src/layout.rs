@@ -22,8 +22,8 @@ mod grid;
 mod node;
 
 pub(crate) use cache::{
-    LayoutCache, Measure, Metrics, TextCache, content_layout_eq, draw_eq, el_layout_eq, layout,
-    props_layout_eq,
+    DrawSig, LayoutCache, Measure, Metrics, TextCache, content_layout_eq, draw_eq, el_layout_eq,
+    layout, props_layout_eq,
 };
 pub(crate) use flex::on_screen;
 use flex::*;

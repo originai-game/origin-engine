@@ -153,7 +153,7 @@ fn a_counter_counts_by_the_tick_and_replays_after_a_restore() {
         shown[10] > 4000.0 && shown[10] < 12840.0,
         "ease-out: fast first"
     );
-    assert_eq!(ui.frame().element("Score").unwrap().text, "12,840");
+    assert_eq!(ui.element("Score").unwrap().text, "12,840");
     // A new value counts on from where it is.
     let mut ui = ui_with_font(test_font_metrics());
     for _ in 0..20 {
@@ -172,7 +172,7 @@ fn tops(ui: &mut Ui, input: &InputFrame, n: usize) -> Vec<f32> {
     (0..n)
         .map(|_| {
             step(ui, input.clone(), false);
-            ui.frame().element("Go").expect("the button").y
+            ui.element("Go").expect("the button").y
         })
         .collect()
 }
@@ -192,7 +192,7 @@ fn the_hover_lift_and_the_press_move_on_springs() {
         for _ in 0..30 {
             step(&mut ui, InputFrame::default(), false);
         }
-        let rest = ui.frame().element("Go").unwrap().clone();
+        let rest = ui.element("Go").unwrap().clone();
         let (x, y) = rest.center();
         let over = InputFrame::hover(x, y);
         let ys = tops(&mut ui, &over, 150);
@@ -233,7 +233,7 @@ fn the_hover_lift_and_the_press_move_on_springs() {
     for _ in 0..30 {
         step(&mut ui, InputFrame::default(), false);
     }
-    let (x, y) = ui.frame().element("Go").unwrap().center();
+    let (x, y) = ui.element("Go").unwrap().center();
     // The button's frame: the nine pieces cut from the atlas's button
     // region (u 0.25 to 0.5 of the test atlas); their extent is its height.
     let frame_h = |ui: &Ui| {

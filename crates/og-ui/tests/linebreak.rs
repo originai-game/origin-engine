@@ -82,7 +82,7 @@ fn rich_soft_hyphens_reserve_the_styled_glyph_at_a_break() {
             1,
             "the inline keycap is not split or lost: {drawn:?}"
         );
-        let left = ui.frame().element("Text").unwrap().x;
+        let left = ui.element("Text").unwrap().x;
         assert!(
             drawn
                 .iter()

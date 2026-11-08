@@ -681,12 +681,6 @@ impl IconAtlas {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct UiFrame {
     pub viewport: Viewport,
-    /// Every visible element in draw order with its (clipped) bounds and text.
-    pub elements: Vec<UiElement>,
-    /// The style part each of `elements` is drawn as (`Button.base[primary]`,
-    /// its variant and state flags as of this frame), index for index;
-    /// `None` for one no style dresses (a layout container, a link).
-    pub parts: Vec<Option<crate::dress::PartRef>>,
     /// Draw commands with their painter levels.
     pub items: Vec<DrawItem>,
     /// Problems in this frame's tree (duplicate ids, unclosed elements), each naming the fix.
@@ -699,28 +693,14 @@ pub struct UiFrame {
     /// The path of the control each pad's focus is on (pad 0: the shared
     /// focus), or empty.
     pub focus_paths: [String; 4],
-    /// The accessibility tree (`crate::a11y`).
-    pub a11y: crate::a11y::A11yTree,
     /// The focused text control, for the host: where an input method's
     /// window goes, and the selection a copy takes (`None`: no text focus).
     pub text_input: Option<TextTarget>,
-    /// Overlaps no element declared (docs/ui.md §2), for `og ui check`.
-    pub overlaps: Vec<Overlap>,
-    /// The paths of the elements whose props say dense (a dense HUD's
-    /// readouts, docs/ui.md §6.1), each covering its subtree, for `og ui
-    /// check`.
-    pub dense: Vec<String>,
-    /// The paths of the scroll containers that scroll sideways and of the
-    /// tracks dragged sideways (a carousel's), for `og ui check`: a line
-    /// their edge cuts across scrolls into view.
-    pub sideways: Vec<String>,
     /// What motion did this frame: timeline events (sounds, haptics,
     /// callbacks), plays that ended, swipes, snaps and drops.
     pub events: Vec<UiEvent>,
     /// Elements built, rebuilt and laid out (docs/ui.md §2).
     pub stats: LayoutStats,
-    /// Elements in visual states and the animations in flight, for `dump_ui`.
-    pub motion: Vec<crate::motion::run::MotionDump>,
     /// The og-ui unit, CSS px per unit (docs/ui.md §6.1): `viewport`,
     /// `elements`, `a11y`, `text_input` and `overlaps` are in units (the
     /// game's coordinates); `items` are already in CSS px. A host that hands
@@ -784,15 +764,6 @@ pub struct TextTarget {
 
 impl UiFrame {
     /// The element at an id or `Parent/Child` path (topmost first), as `touch_move_to` resolves it.
-    pub fn element(&self, path: &str) -> Option<&UiElement> {
-        find_by_id(&self.elements, path)
-    }
-
-    /// The element showing a text (`[=]text[@N]`), as `move_to_text` resolves it.
-    pub fn element_by_text(&self, query: &str) -> Option<&UiElement> {
-        find_by_text(&self.elements, query)
-    }
-
     /// Painter levels used: the most sprite and text runs the frame can take.
     pub fn levels(&self) -> i32 {
         self.items.iter().map(|i| i.level + 1).max().unwrap_or(0)

@@ -416,6 +416,7 @@ impl Ui {
                 Ok(false) => break,
                 Err(error) => {
                     self.abort_layout_queries();
+                    self.inspection = inspect::Inspection::none();
                     return Err(error);
                 }
             }
@@ -448,26 +449,6 @@ impl Ui {
                 }
             }
         }
-        let overlaps = self.find_overlaps(&order);
-        let dense: Vec<String> = order
-            .iter()
-            .filter(|&&i| self.nodes[i].props.dense)
-            .map(|&i| self.path_of(i))
-            .collect();
-        // A carousel's track, dragged sideways, scrolls as one does: the
-        // pages peeking at its edges move into view.
-        let sideways: Vec<String> = order
-            .iter()
-            .filter(|&&i| {
-                let n = &self.nodes[i];
-                n.el.scroll_x
-                    || n.props
-                        .drag
-                        .as_ref()
-                        .is_some_and(|d| d.axis == crate::DragAxis::X)
-            })
-            .map(|&i| self.path_of(i))
-            .collect();
         self.apply_shakes(&order);
         self.apply_stagger(&order);
         self.run_motion(&order);
@@ -582,46 +563,12 @@ impl Ui {
         let mut gesture_of = vec![0u64; self.nodes.len()];
         self.collect_input_specs(&order, &mut group_of, &mut gesture_of);
         let mut hits = Vec::new();
-        let mut elements = Vec::new();
-        let mut parts = Vec::new();
-        // The accessibility tree: each element's key (for its focus states)
-        // and the nodes with a role, with the paths their children name.
-        let mut element_keys: Vec<u64> = Vec::new();
-        let mut tree: Vec<(u64, crate::a11y::A11yNode)> = Vec::new();
-        // The path of each node with a role, by node: read for every node's
-        // nearest named ancestor, so an array, not a map.
-        let mut tree_path: Vec<Option<String>> = vec![None; self.nodes.len()];
         let mut top_scope = 0u64;
         let mut top_locked = false;
         // The minimum touch target, in og-ui units (44 CSS px), on a touch screen.
         let touch_min = self.touch_min();
         for &i in &order[1..] {
             let n = &self.nodes[i];
-            let (role, name, description, value, states) = self.a11y_info(i);
-            let parent_path = {
-                let mut up = if n.parent == NONE { n.anchor } else { n.parent };
-                loop {
-                    if up == NONE || up == 0 {
-                        break String::new();
-                    }
-                    if let Some(p) = &tree_path[up] {
-                        break p.clone();
-                    }
-                    up = if self.nodes[up].parent == NONE {
-                        self.nodes[up].anchor
-                    } else {
-                        self.nodes[up].parent
-                    };
-                }
-            };
-            let path = if role.is_empty() {
-                String::new()
-            } else {
-                self.path_of(i)
-            };
-            if !role.is_empty() {
-                tree_path[i] = Some(path.clone());
-            }
             if n.scope && !n.inert {
                 top_scope = n.key;
                 top_locked = n.locked;
@@ -689,6 +636,9 @@ impl Ui {
             if n.scope {
                 flags |= HIT_SCOPE;
             }
+            if flags == 0 && n.links.is_empty() {
+                continue;
+            }
             // Its reach past its box: its hit slop, and on a touch screen a
             // control's box grown to the minimum touch target (§15.2).
             let slop = n.props.hit_slop.max(0.0);
@@ -735,193 +685,37 @@ impl Ui {
                     gesture: gesture_of[i],
                 }
             };
-            let range = crate::a11y::range_of(n).filter(|_| !role.is_empty());
-            let node = |states: Vec<String>| crate::a11y::A11yNode {
-                path: path.clone(),
-                parent: parent_path.clone(),
-                role: role.to_owned(),
-                name: name.clone(),
-                description: description.clone(),
-                value: value.clone(),
-                states,
-                value_min: range.and_then(|r| r.min),
-                value_max: range.and_then(|r| r.max),
-                value_now: range.map(|r| r.now),
-                x: r.x,
-                y: r.y,
-                width: r.width,
-                height: r.height,
-            };
             if outside || (visible.is_empty() && !r.is_empty()) {
                 // Navigation can still reach a control just out of a list's view.
                 if n.nav && !n.inert && scroller_of[i] != 0 {
                     hits.push(hit(*r, (flags & (HIT_NAV | HIT_ADJUST)) | HIT_OFFSCREEN));
                 }
-                if !role.is_empty() {
-                    let mut st = states.clone();
-                    st.push("offscreen".to_owned());
-                    tree.push((n.key, node(st)));
-                }
                 continue;
-            }
-            if !role.is_empty() {
-                tree.push((n.key, node(states.clone())));
             }
             if (!visible.is_empty() || reaches) && flags != 0 && !n.inert {
                 hits.push(hit(visible, flags));
             }
-            let parent = if n.parent == NONE {
-                self.nodes
-                    .get(n.anchor)
-                    .map_or(String::new(), |a| a.id.clone())
-            } else if n.parent == 0 {
-                String::new()
-            } else {
-                self.nodes[n.parent].id.clone()
-            };
-            element_keys.push(n.key);
-            parts.push(n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref)));
-            elements.push(UiElement {
-                id: n.id.clone(),
-                parent,
-                path: self.probe_path(i),
-                kind: self.kinds.get(i).map_or("", |k| k.0).to_string(),
-                disabled: n.disabled,
-                clipped: visible.width + 0.01 < r.width || visible.height + 0.01 < r.height,
-                // As read: bidi marks and isolates steer the drawing only.
-                text: n
-                    .probe_text
-                    .chars()
-                    .filter(|&c| !og_i18n::is_bidi_control(c))
-                    .collect(),
-                role: role.to_owned(),
-                name: name.clone(),
-                value: value.clone(),
-                states: states.clone(),
-                // Its fill, solid and at full opacity, covers its box (a
-                // rounded corner's few pixels aside).
-                opaque: n.sampled.background.is_some_and(|bg| bg.alpha >= 0.999)
-                    && n.alpha >= 0.999,
-                x: visible.x,
-                y: visible.y,
-                width: visible.width,
-                height: visible.height,
-                detail: Default::default(),
-            });
-            // A Rive frame's drawn objects: children for dump_ui, describe
-            // and pick, their source the artboard's id and the object.
-            if let Some(crate::paint::RiveDraw(player)) =
-                self.draws.get(&i).and_then(|d| d.rive.as_ref())
-            {
-                let board = self.state.rive.get(&n.key).map_or("", |s| s.board.as_str());
-                let file = board.split_once('#').map_or(board, |(f, _)| f);
-                let at = n.world.map_rect(&n.rect);
-                for e in player.elements([at.x, at.y, at.width, at.height]) {
-                    let b = Rect::new(e.bounds[0], e.bounds[1], e.bounds[2], e.bounds[3]);
-                    let shown = b.intersect(&n.clip);
-                    element_keys.push(child_key(n.key, &e.id));
-                    parts.push(None);
-                    let mut detail = serde_json::Map::new();
-                    detail.insert(
-                        "source".into(),
-                        serde_json::json!(format!("{file}#{}", e.id)),
-                    );
-                    detail.insert(
-                        "rive".into(),
-                        serde_json::json!({ "node": e.node, "opacity": e.opacity }),
-                    );
-                    elements.push(UiElement {
-                        path: format!("{}/{}", self.probe_path(i), e.id),
-                        id: e.id,
-                        parent: n.id.clone(),
-                        kind: "rive".into(),
-                        disabled: false,
-                        clipped: shown.width + 0.01 < b.width || shown.height + 0.01 < b.height,
-                        text: e.text.clone(),
-                        role: String::new(),
-                        name: String::new(),
-                        value: String::new(),
-                        states: Vec::new(),
-                        opaque: false,
-                        x: shown.x,
-                        y: shown.y,
-                        width: shown.width,
-                        height: shown.height,
-                        detail,
-                    });
-                }
-            }
-            // A rich text's links: children for the probe, controls for input.
-            if !n.links.is_empty() {
-                let Content::Rich(rc) = &n.content else {
-                    unreachable!("links come from rich text")
-                };
+            // A rich text's links are controls of their own.
+            if !n.links.is_empty() && !n.inert {
                 for (l, lr) in self.rich_links(i) {
                     let lr = n.world.map_rect(&lr);
                     let shown = lr.intersect(&n.clip);
                     if shown.is_empty() {
                         continue;
                     }
-                    if !n.inert {
-                        hits.push(Hit {
-                            key: child_key(n.key, &l),
-                            rect: shown,
-                            full: lr,
-                            flags: HIT_POINTER | HIT_NAV,
-                            scope: scope_of[i],
-                            scroller: scroller_of[i],
-                            owner: owner_of[i],
-                            inv: Affine::IDENTITY,
-                            local: shown,
-                            clip: n.clip,
-                            group: group_of[i],
-                            gesture: gesture_of[i],
-                        });
-                    }
-                    let text: String = rc
-                        .spans
-                        .iter()
-                        .filter(|s| s.link.as_deref() == Some(l.as_str()))
-                        .map(|s| s.text.as_str())
-                        .collect();
-                    let link_path = format!("{}/{l}", self.path_of(i));
-                    tree.push((
-                        child_key(n.key, &l),
-                        crate::a11y::A11yNode {
-                            path: link_path,
-                            parent: path.clone(),
-                            role: "link".into(),
-                            name: text.clone(),
-                            description: String::new(),
-                            value: String::new(),
-                            states: Vec::new(),
-                            x: lr.x,
-                            y: lr.y,
-                            width: lr.width,
-                            height: lr.height,
-                            ..crate::a11y::A11yNode::default()
-                        },
-                    ));
-                    element_keys.push(child_key(n.key, &l));
-                    parts.push(None);
-                    elements.push(UiElement {
-                        path: format!("{}/{l}", self.probe_path(i)),
-                        id: l,
-                        parent: n.id.clone(),
-                        kind: "link".into(),
-                        disabled: false,
-                        clipped: shown.width + 0.01 < lr.width || shown.height + 0.01 < lr.height,
-                        name: text.clone(),
-                        text,
-                        role: "link".into(),
-                        value: String::new(),
-                        states: Vec::new(),
-                        opaque: false,
-                        x: shown.x,
-                        y: shown.y,
-                        width: shown.width,
-                        height: shown.height,
-                        detail: Default::default(),
+                    hits.push(Hit {
+                        key: child_key(n.key, &l),
+                        rect: shown,
+                        full: lr,
+                        flags: HIT_POINTER | HIT_NAV,
+                        scope: scope_of[i],
+                        scroller: scroller_of[i],
+                        owner: owner_of[i],
+                        inv: Affine::IDENTITY,
+                        local: shown,
+                        clip: n.clip,
+                        group: group_of[i],
+                        gesture: gesture_of[i],
                     });
                 }
             }
@@ -1016,45 +810,6 @@ impl Ui {
         self.state.scope = top_scope;
         self.state.scope_locked = top_locked;
         self.state.nav_off = !self.nav_on;
-        // Focus order: the controls keys and pads reach now, in the tree's
-        // order (the order navigation walks: `nav::focusables`).
-        let reach: Vec<u64> = hits
-            .iter()
-            .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (top_scope == 0 || h.scope == top_scope))
-            .map(|h| h.key)
-            .collect();
-        let mark = |key: u64, states: &mut Vec<String>| {
-            if reach.contains(&key) {
-                states.push("focusable".to_owned());
-            }
-            if key != 0 && key == self.state.focus {
-                states.push("focused".to_owned());
-            }
-        };
-        for (e, &key) in elements.iter_mut().zip(&element_keys) {
-            if !e.role.is_empty() {
-                mark(key, &mut e.states);
-            }
-        }
-        for (key, node) in &mut tree {
-            mark(*key, &mut node.states);
-        }
-        let focus_order: Vec<String> = reach
-            .iter()
-            .filter_map(|k| {
-                tree.iter()
-                    .find(|(t, _)| t == k)
-                    .map(|(_, n)| n.path.clone())
-            })
-            .collect();
-        let a11y = crate::a11y::A11yTree {
-            focused: tree
-                .iter()
-                .find(|(k, _)| *k != 0 && *k == self.state.focus)
-                .map_or(String::new(), |(_, n)| n.path.clone()),
-            nodes: tree.into_iter().map(|(_, n)| n).collect(),
-            focus_order,
-        };
         self.state.hits = hits;
         self.note_groups();
         self.note_taps(&present);
@@ -1093,7 +848,6 @@ impl Ui {
         cmds.extend(over.into_iter().map(|c| (c, Affine::IDENTITY)));
         let cmds: Vec<(DrawCmd, Affine)> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
         let missing_glyphs = self.missing_glyphs(&cmds);
-        let motion_dump = self.motion_dump(&order);
         let mut focus_paths: [String; 4] = Default::default();
         let focused = [
             self.state.focus,
@@ -1119,26 +873,20 @@ impl Ui {
         }
         self.frame = UiFrame {
             viewport: vp,
-            elements,
-            parts,
             items: crate::draw::zoom_items(assign_levels(cmds), self.unit),
             warnings: std::mem::take(&mut self.warnings),
             missing_glyphs,
             focus_paths,
-            a11y,
             text_input: self.text_target.take(),
-            overlaps,
-            dense,
-            sideways,
             events: std::mem::take(&mut self.events),
             stats: LayoutStats {
                 laid_out: self.kept.laid_out,
                 ..self.stats
             },
-            motion: motion_dump,
             unit: self.unit,
             cursor,
         };
+        self.inspection = Default::default();
         Ok(&self.frame)
     }
 

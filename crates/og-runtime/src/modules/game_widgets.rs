@@ -106,8 +106,7 @@ pub fn og_ui_spotlight(id: String, hole: String, desc: Option<String>) -> String
 
 pub fn og_ui_bounds(path: String) -> String {
     let b = with_ui("og.ui.bounds", |ui| {
-        ui.frame()
-            .element(&path)
+        ui.element(&path)
             .map(|e| og_ui::Rect::new(e.x, e.y, e.width, e.height))
     })
     .flatten();
