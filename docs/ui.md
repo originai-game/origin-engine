@@ -48,8 +48,9 @@ A document uses core UI elements as tags, `{#if}`, keyed
 The Svelte parser, cook path, and generic screens are implemented; the old
 screen reader is deleted. The [screens guide](../crates/og-api/guides/screens.md)
 and generated [component catalogue](../crates/og-api/guides/components.md)
-describe the supported syntax. Retained mounting and removal of TypeScript
-builders remain pending (§2.1); the structure-only authoring rule is the
+describe the supported syntax. Native retained mounting is implemented;
+TypeScript mount wiring and removal of TypeScript builders remain pending
+(§2.1). The structure-only authoring rule is the
 target contract, not a claim that those builders have already been removed.
 The document contract has these requirements:
 
@@ -192,10 +193,25 @@ tick. `takeIntents` records accepted intents and `replayIntent` validates
 their schema and tick. `og.PauseIntent` uses this same boundary to apply
 simulation time scale; a UI control does not write gameplay state directly.
 
-The retained second head remains pending: incremental scheduling,
-document mounts, keyed `{#each}` connected to the virtualizer, and removal
-of TypeScript tree builders. The following requirements describe that
-target, not additional methods on the landed `UiScope`:
+The native retained host implements dependency-tracked binding scheduling,
+document mounts, and keyed `{#each}` connected to the virtualizer. These
+behaviors are not yet exposed by TypeScript mount methods on `UiScope`:
+
+- Changed sources reevaluate subscribed bindings. Each evaluation replaces
+  its dependencies with the values it read, including after a branch changes.
+- Mounts preserve document-node and collection-key identities across row
+  insertion, removal, and reordering. Focus stays with the key rather than
+  a row index. Virtualized rows outside the materialized range defer styling
+  until they enter that range, then use the current style.
+- Replacing a mounted document rebuilds its nodes without resetting named
+  stores. Unmounting removes its nodes and binding subscriptions. Restore
+  reconstructs mounted instances from saved registrations and source values.
+- An action inside keyed rows carries the innermost collection's raw key,
+  including after restore. Keys are not escaped render paths; actions outside
+  keyed rows carry no row key.
+
+The authoring contract below also includes requirements whose TypeScript
+wiring remains pending:
 
 Each screen has one fixed-tick scope with a stable name, named stores and
 keyed collections. Documents mount once with named mount IDs and inputs.
@@ -218,13 +234,17 @@ focus and selection belong to keys,
 not row indices or recycled render nodes. Source values, collection order,
 mounts, and UI state are checkpointed outside `world_hash`. Restore rebuilds
 derived caches without replaying mount events or advancing time.
-Inspection and accessibility materialize lazily, with incremental updates
-for active subscribers. Errors are values that identify the scope and ID,
-including duplicate keys, cycles, undeclared reads, and reentrant writes.
+Lazy diagnostics, including inspection and accessibility with incremental
+updates for active subscribers, remain pending. Errors are values that identify
+the scope and ID, including duplicate keys, cycles, undeclared reads, and
+reentrant writes.
 Hot reload re-registers callbacks by ID while sources and mounts survive.
 
-The store signatures above are landed. Mount signatures remain pending
-the retained second head; measured update costs are reported separately.
+The store signatures above are landed. TypeScript mount wiring and signatures,
+removal of TypeScript tree builders, rendering through stable render slots,
+and bounded layout and paint remain pending. Performance after-numbers are
+also pending; native binding scheduling alone does not establish bounded
+rendering costs.
 The [components reference](../crates/og-api/guides/components.md) describes the
 implemented document dialect; the
 [screens guide](../crates/og-api/guides/screens.md) describes its workflow.
@@ -359,7 +379,8 @@ dimensions; unchanged measurements do not notify again. Changed query
 styles relayout their roots and dependent floating placement in the same
 frame, with safe-area geometry included. Repeated geometry states produce
 an error rather than publish an intermediate frame. This hook is landed;
-the CSS query adapter and retained second head are still pending.
+the CSS query adapter is still pending. Retained rendering limits and
+TypeScript integration are tracked separately in §2.1.
 
 Core parts keep their existing names and meanings. Each kit documents its
 additional parts with its own API, so packs can dress them without private

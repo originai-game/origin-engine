@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI retained-mount documentation",
+      "summary": "Document native binding scheduling, stable keyed mount identities, virtualization, lifecycle and row-key actions. Keep TypeScript mount wiring, builder removal, stable render slots, bounded layout and paint, lazy diagnostics and performance after-numbers explicitly pending."
+    }
+  ]
+}
