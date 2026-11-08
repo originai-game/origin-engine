@@ -975,6 +975,8 @@ pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
         ink.alpha,
         n.sampled.z as f32,
         f32::from(u8::from(n.sampled.inert)),
+        n.sampled.blur,
+        n.sampled.draw,
     ]
 }
 
@@ -1004,6 +1006,8 @@ pub(crate) fn write_values(n: &mut Node, v: &[f32; crate::element::CHANNELS]) {
     };
     n.sampled.z = v[17].round() as i32;
     n.sampled.inert = v[18] >= 0.5;
+    n.sampled.blur = v[19].max(0.0);
+    n.sampled.draw = v[20].clamp(0.0, 1.0);
 }
 
 #[cfg(test)]

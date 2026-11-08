@@ -343,6 +343,10 @@ pub(crate) struct SampledStyle {
     pub ink: Srgba,
     pub z: i32,
     pub inert: bool,
+    /// [`crate::element::Prop::Blur`] and [`crate::element::Prop::Draw`]:
+    /// 0 but while a transition moves them.
+    pub blur: f32,
+    pub draw: f32,
 }
 
 impl Default for SampledStyle {
@@ -355,6 +359,8 @@ impl Default for SampledStyle {
             ink: Srgba::WHITE,
             z: 0,
             inert: false,
+            blur: 0.0,
+            draw: 0.0,
         }
     }
 }
@@ -541,6 +547,8 @@ impl Node {
             },
             z: self.props.z,
             inert: self.props.inert,
+            blur: 0.0,
+            draw: 0.0,
         };
     }
 

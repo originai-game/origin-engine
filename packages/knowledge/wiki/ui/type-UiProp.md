@@ -32,6 +32,8 @@ A string: one of the variants below. The zero value is `"x"`.
 | `"inkA"` | Its text's alpha. |
 | `"z"` | Its z among its siblings (stepped, never tweened). |
 | `"inert"` | 1: it and its subtree take no input (stepped): a results screen's buttons wait for the sequence. |
+| `"blur"` | Its subtree blurred by this many CSS px (CSS blur()'s standard deviation): Svelte's blur transition. |
+| `"draw"` | How much of its stroke is hidden from the end (0 drawn whole, 1 none), over the outline's length: Svelte's draw transition on an SVG shape. |
 
 ```ogt
 enum UiProp {
@@ -56,6 +58,8 @@ enum UiProp {
   variant inkA "Its text's alpha."
   variant z "Its z among its siblings (stepped, never tweened)."
   variant inert "1: it and its subtree take no input (stepped): a results screen's buttons wait for the sequence."
+  variant blur "Its subtree blurred by this many CSS px (CSS blur()'s standard deviation): Svelte's blur transition."
+  variant draw "How much of its stroke is hidden from the end (0 drawn whole, 1 none), over the outline's length: Svelte's draw transition on an SVG shape."
 }
 ```
 

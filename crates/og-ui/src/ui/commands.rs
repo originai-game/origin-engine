@@ -458,6 +458,7 @@ impl Ui {
                 if !marked(n) {
                     out.extend(d.strokes(&theme, &placed(n)));
                 }
+                undraw(&mut out, n.sampled.draw);
                 if let Some(decor) = &n.decor {
                     out.extend(decor.lines(&placed(n)));
                 }
@@ -644,11 +645,12 @@ impl Ui {
                 let w = self.nodes[j].world;
                 if let Some(d) = self.draw_of(j) {
                     let at = placed(&self.nodes[j]);
-                    let leave = if marked(&self.nodes[j]) {
+                    let mut leave = if marked(&self.nodes[j]) {
                         d.leave(&theme, &at)
                     } else {
                         d.leave_stroked(&at)
                     };
+                    undraw(&mut leave, self.nodes[j].sampled.draw);
                     cmds.extend(leave.into_iter().map(|c| (c, w)));
                 }
                 // Focus rings over everything their subtree drew: later
@@ -723,6 +725,16 @@ impl Ui {
                         nj.clip,
                     );
                     // Every later command moves one place: no span is kept.
+                    self.kept_spans.retain(|r| r.end <= first);
+                    self.kept.aligned.retain(|r| r.end <= first);
+                    cmds.insert(first, (begin, nj.world));
+                    cmds.push((end, nj.world));
+                }
+                // A blurring subtree (Svelte's `blur` transition) draws
+                // through a blur layer, as CSS `filter: blur()` does.
+                let nj = &self.nodes[j];
+                if nj.sampled.blur > 0.0 {
+                    let (begin, end) = blur_layer(nj.sampled.blur, nj.rect, nj.clip);
                     self.kept_spans.retain(|r| r.end <= first);
                     self.kept.aligned.retain(|r| r.end <= first);
                     cmds.insert(first, (begin, nj.world));
@@ -928,6 +940,7 @@ impl Ui {
             || !node.props.match_key.is_empty()
             || !node.links.is_empty()
             || node.fx.is_some_and(|f| f.glitch > 0.0)
+            || node.sampled.blur > 0.0
             || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars));
         let outline =
             self.theme.outline && (node.nav || node.focusable) && node.sampled.background.is_some();
@@ -1000,10 +1013,21 @@ impl Ui {
         if fade <= 0.0 {
             return;
         }
+        let exit = |c: usize| g.channels.iter().find(|(k, _)| *k as usize == c);
+        let blur = exit(19).map_or(0.0, |(_, ch)| ch.value.max(0.0));
+        let drawn = exit(20).map_or(0.0, |(_, ch)| ch.value.clamp(0.0, 1.0));
+        let layer = (blur > 0.0).then(|| blur_layer(blur, f.rect, Rect::new(-1e9, -1e9, 2e9, 2e9)));
+        if let Some((begin, _)) = &layer {
+            cmds.push((begin.clone(), world));
+        }
         for (c, rel) in &f.cmds {
             let mut c = c.clone();
             fade_cmd(&mut c, fade);
+            undraw(std::slice::from_mut(&mut c), drawn);
             cmds.push((c, world.mul(rel)));
+        }
+        if let Some((_, end)) = layer {
+            cmds.push((end, world));
         }
     }
 
@@ -1274,6 +1298,86 @@ fn glitch_layer(
         ground: None,
     };
     (begin, end)
+}
+
+/// The layer a blurring subtree draws into and its composite: og-render's
+/// blur material at `sigma` CSS px (CSS `blur()`'s standard deviation;
+/// the material's radius is twice it), reaching past the box by the
+/// Gaussian's tail.
+fn blur_layer(sigma: f32, rect: Rect, clip: Rect) -> (DrawCmd, DrawCmd) {
+    let mut params = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+    params[0][0] = 2.0 * sigma;
+    let begin = DrawCmd::BeginLayer {
+        material: og_render::UiMaterial::Builtin(og_render::UiBuiltin::Blur),
+        params,
+        mask: None,
+        expand: 3.0 * sigma,
+        rect: Rect::default(),
+    };
+    let end = DrawCmd::EndLayer {
+        geometry: None,
+        rect,
+        opacity: 1.0,
+        blend: og_render::UiBlend::Normal,
+        clip,
+        ground: None,
+    };
+    (begin, end)
+}
+
+/// Hides `hidden` (0 none … 1 all) of each stroke in `cmds` from its
+/// end, as Svelte's `draw` does with `stroke-dasharray` over the
+/// outline's length: one dash as long as the outline, then a gap as long.
+fn undraw(cmds: &mut [DrawCmd], hidden: f32) {
+    if hidden <= 0.0 {
+        return;
+    }
+    for c in cmds {
+        let DrawCmd::Shape { shape, .. } = c else {
+            continue;
+        };
+        let og_render::UiMode::Stroke(stroke) = &mut shape.mode else {
+            continue;
+        };
+        let length = outline_length(&shape.geometry, shape.half);
+        if length <= 0.0 {
+            continue;
+        }
+        stroke.dash = [length, length];
+        stroke.dash_offset = hidden * length;
+    }
+}
+
+/// The length of a shape's outline in its local space, CSS px.
+fn outline_length(geometry: &og_render::UiGeometry, half: og_core::glam::Vec2) -> f32 {
+    use og_render::UiGeometry as G;
+    let polyline = |points: &[og_core::glam::Vec2], closed: bool| {
+        let open: f32 = points.windows(2).map(|w| w[0].distance(w[1])).sum();
+        match (closed, points.first(), points.last()) {
+            (true, Some(a), Some(b)) => open + a.distance(*b),
+            _ => open,
+        }
+    };
+    match geometry {
+        G::Rect { radii, .. } => {
+            let r = radii.iter().map(|r| r.min(half.x.min(half.y))).sum::<f32>();
+            4.0 * (half.x + half.y) - r * (2.0 - std::f32::consts::FRAC_PI_2)
+        }
+        G::Ellipse => {
+            // Ramanujan's second approximation.
+            let (a, b) = (half.x, half.y);
+            let h = ((a - b) / (a + b).max(1e-6)).powi(2);
+            std::f32::consts::PI * (a + b) * (1.0 + 3.0 * h / (10.0 + (4.0 - 3.0 * h).sqrt()))
+        }
+        G::Arc { sweep, .. } => sweep.abs().min(std::f32::consts::TAU) * half.x.min(half.y),
+        G::Polygon { .. } => 0.0,
+        G::Polyline { points, closed, .. } => polyline(points, *closed),
+        G::Path(path) => path
+            .flatten(0.25)
+            .iter()
+            .map(|(points, closed)| polyline(points, *closed))
+            .sum(),
+    }
 }
 
 /// A command with its map applied where the map keeps rectangles upright

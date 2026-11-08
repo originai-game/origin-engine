@@ -1002,13 +1002,19 @@ pub enum Prop {
     Z,
     /// 1: takes no input (stepped): a results screen's buttons wait for it.
     Inert,
+    /// Its subtree blurred by this many CSS px (CSS `blur()`'s standard
+    /// deviation): Svelte's `blur` transition.
+    Blur,
+    /// How much of its stroke is hidden from the end (0 drawn whole, 1
+    /// none), over the stroke's own length: Svelte's `draw` transition.
+    Draw,
 }
 
 /// The channels a [`Prop`] drives (`Scale` is two).
-pub(crate) const CHANNELS: usize = 19;
+pub(crate) const CHANNELS: usize = 21;
 
 impl Prop {
-    pub const ALL: [Prop; 20] = [
+    pub const ALL: [Prop; 22] = [
         Prop::X,
         Prop::Y,
         Prop::ScaleX,
@@ -1029,6 +1035,8 @@ impl Prop {
         Prop::InkA,
         Prop::Z,
         Prop::Inert,
+        Prop::Blur,
+        Prop::Draw,
     ];
 
     pub fn name(self) -> &'static str {
@@ -1053,6 +1061,8 @@ impl Prop {
             Prop::InkA => "inkA",
             Prop::Z => "z",
             Prop::Inert => "inert",
+            Prop::Blur => "blur",
+            Prop::Draw => "draw",
         }
     }
 
@@ -1083,12 +1093,14 @@ impl Prop {
             Prop::InkA => &[16],
             Prop::Z => &[17],
             Prop::Inert => &[18],
+            Prop::Blur => &[19],
+            Prop::Draw => &[20],
         }
     }
 
     /// A stepped channel: it jumps to its target.
     pub(crate) fn stepped(channel: usize) -> bool {
-        channel >= 17
+        matches!(channel, 17 | 18)
     }
 }
 

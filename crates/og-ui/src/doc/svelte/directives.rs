@@ -25,6 +25,7 @@ const TRANSITIONS: &[(&str, &[&str])] = &[
         "blur",
         &["delay", "duration", "easing", "amount", "opacity"],
     ),
+    ("draw", &["delay", "duration", "easing"]),
 ];
 
 /// `svelte/easing`'s curves as CSS cubic Béziers; the elastic and bounce
@@ -291,27 +292,39 @@ impl Parser {
             let value = PropValue::Bind(expression(key, a.at)?, None);
             return self.prop(i, internal, "match", value, a.at, key);
         }
-        if name == "draw" {
+        if name == "draw" && internal != "svgShape" {
             return Err((
                 a.at,
-                "draw is not supported yet: og-ui has no animated stroke; draw a line on with pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset={1 - $t}".into(),
+                "draw strokes an SVG shape on: put it on a <path>, <line>, <polyline>, <polygon>, <rect>, <circle> or <ellipse>".into(),
             ));
         }
         let Some((_, allowed)) = TRANSITIONS.iter().find(|(n, _)| *n == name) else {
             return Err((
                 a.at,
                 format!(
-                    "{name} is not a built-in transition; use fade, fly, slide, scale, blur, crossfade, or CSS @starting-style"
+                    "{name} is not a built-in transition; use fade, fly, slide, scale, blur, draw, crossfade, or CSS @starting-style"
                 ),
             ));
         };
         let ps = params(a)?;
         let mut duration = 400.0;
         let mut delay = 0.0;
-        let mut ease = if name == "fade" { "linear" } else { "cubicOut" }.to_string();
+        let mut ease = match name {
+            "fade" => "linear",
+            "draw" => "cubicInOut",
+            _ => "cubicOut",
+        }
+        .to_string();
+        let mut amount = 5.0;
         let mut values: Vec<(Prop, f32)> = Vec::new();
         let mut opacity = 0.0;
         for (k, v) in &ps {
+            if name == "draw" && k == "speed" {
+                return Err((
+                    a.at,
+                    "draw's speed reads the path's length, which a document does not know; give duration".into(),
+                ));
+            }
             if !allowed.contains(&k.as_str()) {
                 return Err((
                     a.at,
@@ -326,10 +339,7 @@ impl Parser {
                 "x" => values.push((Prop::X, number(a, k, v)?)),
                 "y" => values.push((Prop::Y, number(a, k, v)?)),
                 "start" => values.push((Prop::Scale, number(a, k, v)?)),
-                // Only its opacity moves until og-ui animates a filter.
-                "amount" => {
-                    number(a, k, v)?;
-                }
+                "amount" => amount = number(a, k, v)?,
                 "axis" => {
                     let axis = v.trim_matches(['\'', '"']);
                     values.retain(|(p, _)| !matches!(p, Prop::ScaleX | Prop::ScaleY));
@@ -354,6 +364,13 @@ impl Parser {
                 values.push((Prop::Scale, 0.0));
                 values.push((Prop::Opacity, opacity));
             }
+            // CSS `filter: blur()` from `amount` px, fading to `opacity`.
+            "blur" => {
+                values.push((Prop::Blur, amount));
+                values.push((Prop::Opacity, opacity));
+            }
+            // The stroke drawn on from its start, the fill as it is.
+            "draw" => values.push((Prop::Draw, 1.0)),
             _ => values.push((Prop::Opacity, opacity)),
         }
         let transition = easing(&ease, duration).map_err(|e| (a.at, e))?;

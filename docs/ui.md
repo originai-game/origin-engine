@@ -123,14 +123,18 @@ code in the tick.
   accepted) set the element's `enter`, `exit` or both from Svelte's
   `fade`, `fly` (`x`, `y`, `opacity`), `slide` (`axis`: it scales along
   the axis; the layout does not shrink), `scale` (`start`, `opacity`) and
-  `blur` (`amount`, `opacity`: only the opacity moves until og-ui
-  animates a filter), with `duration` (ms, default 400), `delay` and
+  `blur` (`amount`, default 5 px, and `opacity`: the subtree draws
+  through CSS `filter: blur()`'s layer, its blur moving with the
+  opacity), with `duration` (ms, default 400), `delay` and
   `easing` named from `svelte/easing` (cubic Béziers; the elastic and
   bounce curves are springs). Params are literal: `transition:fly={{ y:
   20, easing: quintOut }}`. `in:receive`, `out:send` or
   `transition:crossfade` with `{{ key: item.id }}` is the shared-element
-  key (`match`). `draw` is refused until og-ui animates a stroke; write
-  `stroke-dashoffset={1 - $t}` with `pathLength="1"`.
+  key (`match`). `draw` (`duration`, `delay`, `easing`, default
+  `cubicInOut`) on an SVG shape strokes it on from its start, as Svelte's
+  does: one dash and one gap the outline's length, the offset moving from
+  the length to 0 (`out:draw` takes it off the same way); its fill stays.
+  `speed` is refused (it needs the path's length): give `duration`.
 - `animate:flip={{ duration, easing }}` on an element directly inside a
   keyed `{#each}` is its layout motion (default 300 ms, `cubicOut`).
 - `style="width: 40px; color: red"` and `style:prop="value"` or

@@ -50269,7 +50269,9 @@
         "inkB",
         "inkA",
         "z",
-        "inert"
+        "inert",
+        "blur",
+        "draw"
       ],
       "x-og-variants": {
         "x": "Its horizontal offset, CSS px (the transform's x).",
@@ -50291,7 +50293,9 @@
         "inkB": "Its text's blue.",
         "inkA": "Its text's alpha.",
         "z": "Its z among its siblings (stepped, never tweened).",
-        "inert": "1: it and its subtree take no input (stepped): a results screen's buttons wait for the sequence."
+        "inert": "1: it and its subtree take no input (stepped): a results screen's buttons wait for the sequence.",
+        "blur": "Its subtree blurred by this many CSS px (CSS blur()'s standard deviation): Svelte's blur transition.",
+        "draw": "How much of its stroke is hidden from the end (0 drawn whole, 1 none), over the outline's length: Svelte's draw transition on an SVG shape."
       }
     },
     "LayoutMode": {

@@ -196,8 +196,8 @@ pub(crate) fn name_hash(name: &str) -> u64 {
 
 pub(crate) const CHANNEL_NAMES: [&str; crate::element::CHANNELS + 6] = [
     "~x", "~y", "~sx", "~sy", "~rot", "~kx", "~ky", "~opacity", "~radius", "~bgr", "~bgg", "~bgb",
-    "~bga", "~inkr", "~inkg", "~inkb", "~inka", "~z", "~inert", "~flipx", "~flipy", "~flipsx",
-    "~flipsy", "~gx", "~gy",
+    "~bga", "~inkr", "~inkg", "~inkb", "~inka", "~z", "~inert", "~blur", "~draw", "~flipx",
+    "~flipy", "~flipsx", "~flipsy", "~gx", "~gy",
 ];
 
 /// The FLIP channels after the props' own.

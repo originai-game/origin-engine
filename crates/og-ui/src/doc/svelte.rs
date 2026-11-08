@@ -2954,9 +2954,10 @@ button.active { opacity: 1; }
             ),
             ("<column>{#key $a}<text/></column>", "{/key}"),
             (
-                "<svg><path d='M0 0' in:draw/></svg>",
-                "draw is not supported yet",
+                "<svg><path d='M0 0' in:draw={{ speed: 1 }}/></svg>",
+                "give duration",
             ),
+            ("<div in:draw></div>", "SVG shape"),
             ("<div animate:flip></div>", "keyed {#each}"),
             ("<div transition:spin></div>", "not a built-in transition"),
             ("<div in:fade out:fade transition:fade></div>", "set twice"),

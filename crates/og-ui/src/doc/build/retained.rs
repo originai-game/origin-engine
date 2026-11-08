@@ -3302,4 +3302,91 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn blur_and_draw_transitions_move_a_filter_and_a_stroke() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "fx2.svelte",
+                r##"
+            <meta name="component" content="fx2">
+            <column id="Root">
+                {#if $show}
+                <div id="Soft" in:blur={{ amount: 8, duration: 400 }}></div>
+                <svg id="Pic" viewBox="0 0 100 100">
+                    <path id="Line" d="M10 10 L90 10" stroke="#ffffff" stroke-width="4"
+                          in:draw={{ duration: 400, easing: linear }}/>
+                </svg>
+                {/if}
+            </column>
+            <style>#Soft { width: 40px; height: 20px; background: #ff0000; }
+            #Pic { width: 100px; height: 100px; }</style>
+        "##,
+            )
+            .unwrap(),
+        );
+        let show = SourceId::new("test", "show");
+        ui.reactive
+            .execute(Command::Signal {
+                source: show.clone(),
+                initial: json!(false),
+                readable: false,
+            })
+            .unwrap();
+        ui.mount_document(
+            SourceId::new("test", "screen"),
+            "fx2",
+            [("show".to_string(), show.clone())].into_iter().collect(),
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        // The blur layer's radius and the line's dash and offset.
+        let frame = |ui: &mut Ui| {
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            let mut blur = None;
+            let mut dash = None;
+            for item in &ui.frame().items {
+                match &item.cmd {
+                    crate::DrawCmd::BeginLayer {
+                        material: og_render::UiMaterial::Builtin(og_render::UiBuiltin::Blur),
+                        params,
+                        ..
+                    } => blur = Some(params[0][0]),
+                    crate::DrawCmd::Shape { shape, .. } => {
+                        if let og_render::UiMode::Stroke(s) = shape.mode {
+                            dash = Some((s.dash, s.dash_offset));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            (blur, dash)
+        };
+        frame(&mut ui);
+        ui.reactive
+            .execute(Command::Set {
+                source: show,
+                value: json!(true),
+                force: false,
+            })
+            .unwrap();
+        let mut seen = Vec::new();
+        for _ in 0..40 {
+            seen.push(frame(&mut ui));
+        }
+        // Halfway: blurred by under its 8 px (a 16 px radius), and the
+        // 80-unit line half hidden by one dash and one gap of its length.
+        let (blur, dash) = seen[12];
+        let r = blur.expect("a blur layer while it enters");
+        assert!(r > 0.0 && r < 16.0, "{r}");
+        let ([d, g], offset) = dash.expect("the line's stroke");
+        assert!((d - 80.0).abs() < 0.5 && (g - 80.0).abs() < 0.5, "{d} {g}");
+        assert!(offset > 20.0 && offset < 60.0, "{offset}");
+        // Settled: no layer, a solid stroke.
+        assert_eq!(seen[39], (None, Some(([0.0; 2], 0.0))));
+    }
 }

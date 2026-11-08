@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "UI documents: transition:draw, in:draw, out:draw",
+      "summary": "Svelte's draw on an SVG shape strokes it on (or off) over the outline's length, with duration, delay and easing (default cubicInOut). speed is refused: give duration."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI documents: transition:blur",
+      "summary": "Svelte's blur now blurs the subtree through CSS filter: blur()'s layer from amount px (default 5), not opacity only. Presence and state values take the new props blur (CSS px) and draw (0 drawn whole, 1 hidden)."
+    }
+  ]
+}
