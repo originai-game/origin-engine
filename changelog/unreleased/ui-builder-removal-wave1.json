@@ -21,7 +21,7 @@
     {
       "member": "og.ui.progress, og.ui.ProgressDesc",
       "change": "The progress bar builder is removed (og.story.progress is unchanged).",
-      "fix": "Write `<progress value={$loaded}>` in a document with the fraction in a writable store, or draw a gauge with og.ui.meter(id, value, max).",
+      "fix": "Write `<progress value={$loaded}>` in a document with the fraction in a writable store, or `<meter value={$hp} max=\"100\">` for a gauge.",
       "find": ["og.ui.progress", "ProgressDesc"]
     },
     {

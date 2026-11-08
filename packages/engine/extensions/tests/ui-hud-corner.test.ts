@@ -5,15 +5,16 @@
 // element of the HUD lies under the control, and moving past it never lands
 // a group on another of the HUD's groups more than they met without it.
 // The rule is og-ui's (an anchored group's keep-out), so each HUD here puts
-// a different component in the top-left corner under Back. The command
+// a different readout in the top-left corner under Back. The command
 // channel's `cover` lays a native run out the same way (Viewport.covered
 // without a host).
 //
-// Ways it could fail: a health bar, a resource or a timer under Back; a
+// Ways it could fail: a health, resource or timer readout under Back; a
 // group moved right onto its neighbour; `cover` refused, ignored or never
 // cleared.
 import { beforeAll, expect, test } from "bun:test";
 import { og, defineSystem } from "@origingame/engine";
+import type * as Api from "@origingame/engine";
 import { loadNativeHost } from "../../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../../src/runtime.ts";
 
@@ -24,20 +25,28 @@ beforeAll(() => {
 type Rect = { x: number; y: number; width: number; height: number };
 type Element = Rect & { id: string; parent: string };
 
+// A HUD readout: an anchored group with a label and its value, as wide as a
+// health bar or a clock (the components themselves are documents now).
+const readout = (id: string, label: string, value: string, anchor: Api.Anchor): void =>
+  og.ui.anchor(id, { anchor, direction: "row", gap: 8, padding: { left: 8, top: 6, right: 8, bottom: 6 }, cross: "center" }, () => {
+    og.ui.label("Label", label);
+    og.ui.label("Value", value, { width: { kind: "fixed", px: 140 } } as never);
+  });
+
 const HUDS: Record<string, () => void> = {
   action: () => {
-    og.ui.statBar("HP", { value: 80, max: 100, label: "HP", showValue: true, anchor: "topLeft" });
-    og.ui.hudTimer("Clock", { seconds: 80, label: "Time", anchor: "top" });
-    og.ui.statBar("Res", { value: 1200, max: 2000, label: "Coins", showValue: true, anchor: "topRight" });
-    og.ui.statBar("Ammo", { value: 12, max: 90, label: "Ammo", showValue: true, anchor: "bottomRight" });
+    readout("HP", "HP", "80 / 100", "topLeft");
+    readout("Clock", "Time", "1:20", "top");
+    readout("Res", "Coins", "1,200", "topRight");
+    readout("Ammo", "Ammo", "12 / 90", "bottomRight");
   },
   resources: () => {
-    og.ui.statBar("Res", { value: 123456, max: 200000, label: "Gold", showValue: true, anchor: "topLeft" });
-    og.ui.hudTimer("Clock", { seconds: 40, label: "Wave", anchor: "topRight" });
+    readout("Res", "Gold", "123,456", "topLeft");
+    readout("Clock", "Wave", "0:40", "topRight");
   },
   timer: () => {
-    og.ui.hudTimer("Clock", { seconds: 3, label: "Lap", anchor: "topLeft" });
-    og.ui.statBar("Boost", { value: 40, max: 100, label: "Boost", anchor: "bottomRight" });
+    readout("Clock", "Lap", "0:03", "topLeft");
+    readout("Boost", "Boost", "40", "bottomRight");
   },
 };
 
@@ -85,7 +94,7 @@ for (const [name, build] of Object.entries(HUDS)) {
 
 test("the command channel's cover lays a native run out as the published page (Viewport.covered without a host)", () => {
   const Hud = defineSystem("UcHudCover", {}, () => {
-    og.ui.hudTimer("Clock", { seconds: 3, label: "Lap", anchor: "topLeft" });
+    readout("Clock", "Lap", "0:03", "topLeft");
   });
   const r = createEngine(og.game({ systems: [Hud] }) as GameToken);
   if (!r.ok) throw new Error(r.reason);

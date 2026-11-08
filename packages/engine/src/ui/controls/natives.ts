@@ -20,14 +20,6 @@ export function toggleSwitch(id: string, on: boolean, desc?: Api.ToggleSwitchDes
   return parse(abi().og_ui_toggle_switch(id, on, json(desc)));
 }
 
-export function checkField(id: string, checked: boolean, desc?: Api.CheckFieldDesc): Api.SwitchResult {
-  return parse(abi().og_ui_check_field(id, checked, json(desc)));
-}
-
-export function radioGroup(id: string, desc?: Api.RadioGroupDesc): Api.ChoiceIndexResult {
-  return parse(abi().og_ui_radio_group(id, json(desc)));
-}
-
 export function segmented(id: string, desc?: Api.SegmentedDesc): Api.ChoiceIndexResult {
   return parse(abi().og_ui_segmented(id, json(desc)));
 }

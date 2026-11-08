@@ -1,0 +1,154 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.checkField, og.ui.CheckFieldDesc",
+      "change": "The checkbox row builder is removed.",
+      "fix": "Write `<label><input type=\"checkbox\" bind:checked={$terms}> I accept the terms</label>` in a document, the state in a writable store.",
+      "find": ["og.ui.checkField", "CheckFieldDesc"]
+    },
+    {
+      "member": "og.ui.radioGroup, og.ui.RadioGroupDesc, og.ui.RadioOption, og.ui.RadioVariant",
+      "change": "The radio group builder and its option types are removed.",
+      "fix": "Write one `<label><input type=\"radio\" value=\"hard\" bind:group={$difficulty}> Hard</label>` per option inside a `<div role=\"radiogroup\">` in a document.",
+      "find": ["og.ui.radioGroup", "RadioGroupDesc", "RadioOption", "RadioVariant"]
+    },
+    {
+      "member": "og.ui.chip, og.ui.ChipDesc",
+      "change": "The chip builder is removed.",
+      "fix": "Write `<button aria-pressed={$selected}>Fire</button>` in a document and style the pressed state with `[aria-pressed=true]`.",
+      "find": ["og.ui.chip", "ChipDesc"]
+    },
+    {
+      "member": "og.ui.separator, og.ui.SeparatorDesc",
+      "change": "The labelled separator builder is removed.",
+      "fix": "Write `<hr>` in a document, or `<div role=\"separator\">Or</div>` for a labelled rule.",
+      "find": ["og.ui.separator", "SeparatorDesc"]
+    },
+    {
+      "member": "og.ui.prose, og.ui.ProseDesc",
+      "change": "The Markdown paragraph builder is removed.",
+      "fix": "Write `<p>` in a document, with `<strong>`, `<em>` and `<a>` runs inside it.",
+      "find": ["og.ui.prose", "ProseDesc"]
+    },
+    {
+      "member": "og.ui.meter, og.ui.MeterDesc, og.ui.MeterKind",
+      "change": "The gauge builder is removed.",
+      "fix": "Write `<meter value={$hp} max=\"100\" low=\"30\" optimum=\"100\">` (or `<progress value={$loaded}>`) in a document; a dressed resource bar is the `stat-bar` component document (`og ui eject stat-bar`).",
+      "find": ["og.ui.meter", "MeterDesc", "MeterKind"]
+    },
+    {
+      "member": "og.ui.cooldown, og.ui.CooldownDesc",
+      "change": "The cooldown builder is removed.",
+      "fix": "Eject the `cooldown` component document (`og ui eject cooldown`) and pass `remaining`, `total`, `icon` and `label` from a store; its `use` action reports the press.",
+      "find": ["og.ui.cooldown", "CooldownDesc"]
+    },
+    {
+      "member": "og.ui.minimap, og.ui.MinimapDesc, og.ui.MapMarker",
+      "change": "The mini-map builder is removed.",
+      "fix": "Eject the `minimap` component document; it draws the texture with `<img>` and its uv region with `-og-uv` from the props u0, v0, u1, v1, and the markers from a list prop.",
+      "find": ["og.ui.minimap", "MinimapDesc", "MapMarker"]
+    },
+    {
+      "member": "og.ui.actionButton, og.ui.ActionButtonDesc",
+      "change": "The touch action button builder is removed.",
+      "fix": "Write `<button data-og-touch=\"jump\">` in a document (or eject the `action-button` component document) and read og.input.action(world, \"jump\").",
+      "find": ["og.ui.actionButton", "ActionButtonDesc"]
+    },
+    {
+      "member": "og.ui.statBar, og.ui.orbMeter, og.ui.radialMeter, og.ui.StatBarDesc, og.ui.StatBarStyle, og.ui.OrbMeterDesc, og.ui.RadialMeterDesc",
+      "change": "The HUD meter builders are removed.",
+      "fix": "Eject the `stat-bar`, `orb-meter` or `radial-meter` component document (`og ui eject <name>`) and use it in a screen with its value and max from stores.",
+      "find": ["og.ui.statBar", "og.ui.orbMeter", "og.ui.radialMeter", "StatBarDesc", "StatBarStyle", "OrbMeterDesc", "RadialMeterDesc"]
+    },
+    {
+      "member": "og.ui.abilitySlot, og.ui.abilityBar, og.ui.statusGrid, og.ui.AbilitySlotDesc, og.ui.AbilityBarDesc, og.ui.AbilityBarResult, og.ui.StatusEffect, og.ui.StatusGridDesc, og.ui.StatusGridResult",
+      "change": "The ability bar, ability slot and buff grid builders are removed.",
+      "fix": "Eject the `ability-bar`, `ability-slot` or `status-grid` component document: slots and effects are list props keyed by id, the hotkey a `<kbd data-action>`, presses its `use` or `pick` action read with og.ui.docEvents.",
+      "find": ["og.ui.abilitySlot", "og.ui.abilityBar", "og.ui.statusGrid", "AbilitySlotDesc", "AbilityBarDesc", "AbilityBarResult", "StatusEffect", "StatusGridDesc", "StatusGridResult"]
+    },
+    {
+      "member": "og.ui.minimapView, og.ui.compass, og.ui.MinimapViewDesc, og.ui.MinimapResult, og.ui.MapMarkerItem, og.ui.MapShape, og.ui.MarkerKind, og.ui.CompassDesc, og.ui.CompassPoi",
+      "change": "The minimap view and compass strip builders are removed.",
+      "fix": "Eject the `minimap-view` or `compass` component document; the compass strip is a translateX bound to the heading prop, its points a list prop with bearings in radians.",
+      "find": ["og.ui.minimapView", "og.ui.compass", "MinimapViewDesc", "MinimapResult", "MapMarkerItem", "MapShape", "MarkerKind", "CompassDesc", "CompassPoi"]
+    },
+    {
+      "member": "og.ui.hudTimer, og.ui.starBar, og.ui.HudTimerDesc, og.ui.TimerMode, og.ui.StarBarDesc, og.ui.StarBarResult",
+      "change": "The HUD timer and star score bar builders are removed.",
+      "fix": "Eject the `hud-timer` or `star-bar` component document (`og ui eject <name>`) and pass its props from stores.",
+      "find": ["og.ui.hudTimer", "og.ui.starBar", "HudTimerDesc", "TimerMode", "StarBarDesc", "StarBarResult"]
+    },
+    {
+      "member": "og.ui.numberCounter, og.ui.NumberCounterDesc",
+      "change": "The counting number builder is removed (og.ui.formatNumber stays).",
+      "fix": "Write `<p count={$score}>` in a document; `-og-count-duration` and `-og-count-decimals` in its `<style>` set how long it counts and its decimals (the odometer roll is not available).",
+      "find": ["og.ui.numberCounter", "NumberCounterDesc"]
+    },
+    {
+      "member": "og.ui.progressBar, og.ui.progressRing, og.ui.skeletonGroup, og.ui.ribbon, og.ui.ProgressBarDesc, og.ui.ProgressRingDesc, og.ui.ProgressStyle, og.ui.SkeletonGroupDesc, og.ui.SkeletonShape, og.ui.UiRibbonDesc",
+      "change": "The progress bar, progress ring, loading skeleton and corner ribbon builders are removed (og.ui.banner stays).",
+      "fix": "Write `<progress value={$loaded}>` in a document, or eject the `progress-bar`, `progress-ring`, `skeleton-group` or `ribbon` component document.",
+      "find": ["og.ui.progressBar", "og.ui.progressRing", "og.ui.skeletonGroup", "og.ui.ribbon", "ProgressBarDesc", "ProgressRingDesc", "ProgressStyle", "SkeletonGroupDesc", "SkeletonShape", "UiRibbonDesc"]
+    },
+    {
+      "member": "og.ui.heroButton, og.ui.HeroButtonDesc, og.ui.HeroTone",
+      "change": "The call-to-action button builder is removed.",
+      "fix": "Eject the `hero-button` component document, or write `<button>` with its keycap as `<kbd data-action>` in a document.",
+      "find": ["og.ui.heroButton", "HeroButtonDesc", "HeroTone"]
+    },
+    {
+      "member": "og.ui.radialMenu, og.ui.splitView, og.ui.carousel, og.ui.breadcrumbs, og.ui.RadialDesc, og.ui.RadialItem, og.ui.RadialResult, og.ui.SplitViewDesc, og.ui.SplitResult, og.ui.CarouselDesc, og.ui.CarouselResult, og.ui.Crumb, og.ui.BreadcrumbsDesc, og.ui.BreadcrumbsResult",
+      "change": "The radial menu, split view, carousel and breadcrumbs builders are removed.",
+      "fix": "Eject the `radial-menu`, `split-view`, `carousel` or `breadcrumbs` component document: a radial menu is SVG wedges with its slice positions and the aim from pointer events, a split view's ratio is the game's from the divider's pointer events, a carousel is `scroll-snap-type`, breadcrumbs are `<nav><ol><li>` with `aria-current`.",
+      "find": ["og.ui.radialMenu", "og.ui.splitView", "og.ui.carousel", "og.ui.breadcrumbs", "RadialDesc", "RadialItem", "RadialResult", "SplitViewDesc", "SplitResult", "CarouselDesc", "CarouselResult", "BreadcrumbsDesc", "BreadcrumbsResult"]
+    },
+    {
+      "member": "og.ui.nameplate, og.ui.waypoint, og.ui.lootLabel, og.ui.speechBubble, og.ui.interactionPrompt, og.ui.NameplateDesc, og.ui.WaypointDesc, og.ui.WaypointKind, og.ui.LootLabelDesc, og.ui.LootLabelResult, og.ui.SpeechBubbleDesc, og.ui.InteractionPromptDesc, og.ui.Reaction, og.ui.UnitClass",
+      "change": "The world tag builders are removed.",
+      "fix": "Eject the `nameplate`, `waypoint`, `loot-label`, `speech-bubble` or `interaction-prompt` component document: each is an `<anchor entity={…} offset=\"0 2 0\">` with occlusion, declutter, `clamp=\"edge\"` and max-distance; the prompt's glyph is `<kbd data-action>` (the hold fill is not available in documents yet).",
+      "find": ["og.ui.nameplate", "og.ui.waypoint", "og.ui.lootLabel", "og.ui.speechBubble", "og.ui.interactionPrompt", "NameplateDesc", "WaypointDesc", "WaypointKind", "LootLabelDesc", "LootLabelResult", "SpeechBubbleDesc", "InteractionPromptDesc", "UnitClass"]
+    },
+    {
+      "member": "og.ui.selectionRing, og.ui.telegraph, og.ui.pathLine, og.ui.placementGhost, og.ui.SelectionRingDesc, og.ui.TelegraphDesc, og.ui.TelegraphShape, og.ui.PathLineDesc, og.ui.PlacementGhostDesc, og.ui.GroundDesc",
+      "change": "The ground mark builders are removed, with terrain draping (GroundDesc).",
+      "fix": "Eject the `selection-ring`, `telegraph`, `path-line` or `placement-ghost` component document: each is a `<ground at=\"x y z\" size=\"w d\">` with inline SVG, laid flat at its point's height; a path line's route is SVG path data the game projects into its box.",
+      "find": ["og.ui.selectionRing", "og.ui.telegraph", "og.ui.pathLine", "og.ui.placementGhost", "SelectionRingDesc", "TelegraphDesc", "TelegraphShape", "PathLineDesc", "PlacementGhostDesc", "GroundDesc"]
+    },
+    {
+      "member": "og.ui.overheadBars, og.ui.damageNumbers, og.ui.pushMass, og.ui.OverheadBar, og.ui.OverheadBarsDesc, og.ui.DamageHitDesc, og.ui.DamageKind, og.ui.DamageNumbersDesc",
+      "change": "The overhead bar and damage number builders are removed, with og.ui.pushMass (og.ui.defineMass, spawnMass and massCount stay).",
+      "fix": "Eject the `overhead-bars` or `damage-numbers` component document: a keyed `{#each}` of `<anchor mass=\"damage\" value={hit.amount}>` spawns one GPU number per new row playing its CSS animation; with `max` it is a bar that follows its row.",
+      "find": ["og.ui.overheadBars", "og.ui.damageNumbers", "og.ui.pushMass", "OverheadBarsDesc", "DamageHitDesc", "DamageKind", "DamageNumbersDesc"]
+    },
+    {
+      "member": "og.ui.cycler, og.ui.CyclerDesc",
+      "change": "The option cycler builder is removed.",
+      "fix": "Write `<select bind:value={$quality}>` with its `<option>`s in a document and `-og-select: cycle` in its `<style>`: previous, the option and next.",
+      "find": ["og.ui.cycler", "CyclerDesc"]
+    },
+    {
+      "member": "og.ui.colorPicker, og.ui.ColorPickerDesc, og.ui.ColorPickerResult, og.ui.PickedColor",
+      "change": "The colour picker builder and its types are removed.",
+      "fix": "Write `<input type=\"color\" bind:value={$tint}>` in a document; the value is `#rrggbb`.",
+      "find": ["og.ui.colorPicker", "ColorPickerDesc", "ColorPickerResult", "PickedColor"]
+    },
+    {
+      "member": "og.ui.spotlight, og.ui.SpotlightDesc",
+      "change": "The tutorial spotlight builder is removed.",
+      "fix": "Write `<dialog bind:open={$tip}>` with the callout in a document and `-og-spotlight: <id>` in its `<style>`: open, it dims the page but for the element of that id.",
+      "find": ["og.ui.spotlight", "SpotlightDesc"]
+    },
+    {
+      "member": "og.ui.dialogue, og.ui.DialogueDesc, og.ui.DialogueResult",
+      "change": "The dialogue box builder is removed.",
+      "fix": "Write the box in a document: the portrait an `<img>`, the speaker a `<span>`, the line a `<p>` with `-og-reveal: 40` (characters a second) and `onrevealed` when it is whole, and a `<button>` that advances.",
+      "find": ["og.ui.dialogue", "DialogueDesc", "DialogueResult"]
+    },
+    {
+      "member": "@origingame/engine/ui-parts/hud: slot, statusGrid, statBar, minimapView; @origingame/engine/ui-parts/screen: STAR_GOLD, speechBubble",
+      "change": "The kit helper modules no longer re-export the removed components.",
+      "fix": "Use the component documents (`og ui eject <name>`) in a kit's screens; for the star gold write `#ffc93c` or the style's `--gold` token.",
+      "find": ["ui-parts/hud", "ui-parts/screen", "STAR_GOLD"]
+    }
+  ]
+}

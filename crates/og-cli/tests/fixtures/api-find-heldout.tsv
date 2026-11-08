@@ -1,12 +1,12 @@
 query	expected
 show a little arrow from the gun to where it points while debugging	og.debug.arrow
-a number counting down on screen until the round ends	og.ui.hudTimer
+a number counting down on screen until the round ends	screens §7
 let the player choose one option from a list that drops open	og.ui.dropdown
 a volume bar the player drags left and right	og.ui.slider
 switch between inventory, map and settings pages along the top	og.ui.tabs
 confetti when the player wins	og.ui.celebration
-a red health bar over the HUD	og.ui.meter
-a small map in the corner showing where enemies are	og.ui.minimapView
+a red health bar over the HUD	components §30 | screens §7
+a small map in the corner showing where enemies are	screens §7
 type the player's name into a box	og.ui.inputField
 the player's highscore and the scores just above and below theirs	og.platform.leaderboardAround
 unlock a trophy once the player has collected 50 coins	og.platform.achievementProgress

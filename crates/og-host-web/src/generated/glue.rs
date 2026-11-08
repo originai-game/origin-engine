@@ -2249,11 +2249,6 @@ pub fn og_ui_close_modal() {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_spotlight(id: String, hole: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_spotlight(&Host, id, hole, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_bounds(path: String) -> String {
     <Host as UiApi>::og_ui_bounds(&Host, path)
 }
@@ -2289,11 +2284,6 @@ pub fn og_ui_close_list() -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_chip(id: String, text: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_chip(&Host, id, text, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_badge(id: String, text: String, tone: String) {
     <Host as UiApi>::og_ui_badge(&Host, id, text, tone)
 }
@@ -2321,31 +2311,6 @@ pub fn og_ui_spinner(id: String, size: f64) {
 #[wasm_bindgen]
 pub fn og_ui_icon(id: String, name: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_icon(&Host, id, name, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_meter(id: String, value: f64, max: f64, desc: Option<String>) {
-    <Host as UiApi>::og_ui_meter(&Host, id, value, max, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_cooldown(id: String, remaining: f64, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_cooldown(&Host, id, remaining, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_minimap(id: String, desc: Option<String>) {
-    <Host as UiApi>::og_ui_minimap(&Host, id, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_dialogue(id: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_dialogue(&Host, id, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_action_button(id: String, text: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_action_button(&Host, id, text, desc)
 }
 
 #[wasm_bindgen]
@@ -2494,16 +2459,6 @@ pub fn og_ui_toggle_switch(id: String, on: bool, desc: Option<String>) -> String
 }
 
 #[wasm_bindgen]
-pub fn og_ui_check_field(id: String, checked: bool, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_check_field(&Host, id, checked, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_radio_group(id: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_radio_group(&Host, id, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_value_slider(id: String, value: f64, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_value_slider(&Host, id, value, desc)
 }
@@ -2636,11 +2591,6 @@ pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_ui_spawn_mass(template: u32, instances: String) {
     <Host as UiApi>::og_ui_spawn_mass(&Host, template, instances)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_push_mass(template: u32, instances: String) {
-    <Host as UiApi>::og_ui_push_mass(&Host, template, instances)
 }
 
 #[wasm_bindgen]

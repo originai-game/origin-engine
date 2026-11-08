@@ -15,8 +15,6 @@ import { bindingControls, deviceSlots } from "../src/ui/controls/bindings.ts";
 import { formatValue, snap } from "../src/ui/controls/base.ts";
 import { filterSuggestions, fold } from "../src/ui/controls/fields.ts";
 import { kanaMark, layoutRows, toKatakana } from "../src/ui/controls/keyboard.ts";
-import { hsvToRgb, parseHex, rgbToHsv, toHex } from "../src/ui/controls/pickers.ts";
-import { stepEnabled } from "../src/ui/controls/choices.ts";
 import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
@@ -94,28 +92,6 @@ test("values: snapping counts steps from min, formats follow the step, percent a
   expect(formatValue(0.42, { percent: true })).toBe("42%");
 });
 
-test("choices: a step skips disabled entries and wraps only when asked", () => {
-  // Wrong: landing on the disabled index 2, or wrapping a non-wrapping cycler.
-  const off = (i: number) => i === 2;
-  expect(stepEnabled(4, 1, 1, off)).toBe(3);
-  expect(stepEnabled(4, 3, 1, off)).toBe(0);
-  expect(stepEnabled(4, 3, 1, off, false)).toBe(3);
-});
-
-test("colour: hsv and rgb round-trip, hex parses short and long forms and rejects junk", () => {
-  // Wrong: a hue off by a sector (red's hue 0 read as 60), or #abc taken as #0abc00.
-  const c = { r: 0.2, g: 0.6, b: 0.4 };
-  const hsv = rgbToHsv(c);
-  const back = hsvToRgb(hsv.h, hsv.s, hsv.v);
-  expect(back.r).toBeCloseTo(c.r, 4);
-  expect(back.g).toBeCloseTo(c.g, 4);
-  expect(back.b).toBeCloseTo(c.b, 4);
-  expect(rgbToHsv({ r: 1, g: 0, b: 0 }).h).toBeCloseTo(0, 4);
-  expect(parseHex("#abc")).toMatchObject({ r: 0xaa / 255, g: 0xbb / 255, b: 0xcc / 255 });
-  expect(parseHex("zzzzzz")).toBeNull();
-  expect(toHex({ r: 1, g: 0.5, b: 0, a: 1 })).toBe("#ff8000");
-});
-
 test("search: suggestions match ignoring case and accents, the prefix ones first, then the shorter", () => {
   // Wrong: an accented `Élan` missed by `el`, or a mid-word match ranked over a prefix.
   expect(fold("Élan")).toBe("elan");
@@ -150,16 +126,14 @@ test("bindings: a device shows its own bindings by their index among the action'
 
 // ── foundations ─────────────────────────────────────────────────────────
 
-test("foundations: roles read as headings, art waits as a busy image, a labelled divider is a separator, counts past 99 cap", () => {
+test("foundations: roles read as headings, art waits as a busy image, counts past 99 cap", () => {
   // Wrong: a title a screen reader reads as plain text, a missing texture drawn as nothing, or `120` overflowing its pill.
   let yaw = 0;
   const engine = run(() => {
     og.ui.text("Title", "Inventory", { role: "title" });
     og.ui.text("Body", "Twelve slots free", { tone: "muted" });
-    og.ui.prose("About", "The **Ember Blade** burns.\n\nForged in the *deep* mines.", {});
     og.ui.iconMark("Mail", "mail", { badge: "120", label: "Mail" });
     og.ui.artSlot("Hero", { kind: "portrait", aspect: 0.75, loading: true, label: "Hero portrait", width: { kind: "fixed", px: 120 } as never });
-    og.ui.separator("Or", { label: "OR" });
     og.ui.shapeBox("Gem", { kind: "diamond", fill: "primary", glow: "primary" } as never);
     og.ui.space("Gap", { step: "lg" });
     og.ui.emitter("Sparks", { preset: "sparkle" } as never);
@@ -174,9 +148,7 @@ test("foundations: roles read as headings, art waits as a busy image, a labelled
   // A portrait without art waits as a figure (head and shoulders), not a symbol on a grey box.
   expect(find(engine, (e) => e.path.endsWith("Hero/Head"))).toBeDefined();
   expect(find(engine, (e) => e.path.endsWith("Hero/Placeholder")) === undefined).toBeTrue();
-  expect(find(engine, (e) => e.role === "separator" && e.name === "OR")).toBeDefined();
   expect(find(engine, (e) => e.text === "Legendary")).toBeDefined();
-  expect(find(engine, (e) => e.text.includes("Ember Blade") || e.text.includes("burns"))).toBeDefined();
   // The viewport turns by a key step once focused, and its hint goes away.
   expect(find(engine, (e) => e.text === "Drag to turn")).toBeDefined();
   focusOn(engine, "Preview");
@@ -213,7 +185,7 @@ test("pushButton: two taps and Enter press it; a disabled one with a reason take
 });
 
 test("every control: on a coarse pointer each target a finger presses is at least 44 px (or reaches it by its hit slop)", () => {
-  // Wrong: a 28 px icon button, checkbox box or stepper arrow a thumb misses.
+  // Wrong: a 28 px icon button or stepper arrow a thumb misses.
   const taps: Record<string, number> = {};
   const hit = (name: string, r: { clicked: boolean }) => {
     if (r.clicked) taps[name] = (taps[name] ?? 0) + 1;
@@ -221,11 +193,8 @@ test("every control: on a coarse pointer each target a finger presses is at leas
   const engine = run(() => {
     hit("Close", og.ui.iconButton("Close", "cross", { label: "Close", size: "small" }));
     hit("Small", og.ui.pushButton("Small", "Small", { size: "small" }));
-    og.ui.checkField("Check", false, { label: "Check" });
     og.ui.toggleSwitch("Switch", false, { label: "Switch" });
-    og.ui.radioGroup("Radio", { label: "Radio", options: [{ label: "A" }, { label: "B" }], row: true });
     og.ui.segmented("Seg", { label: "Seg", items: [{ label: "A" }, { label: "B" }], size: "small" });
-    og.ui.cycler("Cyc", ["A", "B"], 0, { label: "Cyc" });
     og.ui.valueSlider("Slider", 0.5, { label: "Slider" });
     og.ui.numberStepper("Step", 1, { label: "Step" });
     og.ui.inputField("Field", "", { label: "Field", clearable: true });
@@ -298,13 +267,11 @@ test("holdButton: letting go early confirms nothing and drains; holding the whol
 
 // ── toggles and choices ─────────────────────────────────────────────────
 
-test("toggleSwitch and checkField: the whole row takes the tap and Space; the state is the game's", () => {
+test("toggleSwitch: the whole row takes the tap; the state is the game's", () => {
   // Wrong: only the knob taking the tap, or the component keeping its own state (game state ignored).
   let on = false;
-  let checked = false;
   const engine = run(() => {
     on = og.ui.toggleSwitch("Music", on, { label: "Music", description: "Background tracks", width: { kind: "grow" } as never }).on;
-    checked = og.ui.checkField("Terms", checked, { label: "I accept the terms" }).on;
   });
   const sw = find(engine, (e) => e.role === "switch")!;
   expect(sw.name).toContain("Music");
@@ -313,34 +280,6 @@ test("toggleSwitch and checkField: the whole row takes the tap and Space; the st
   engine.probe.commands(`0:touch_move:${Math.round(label.x + 4)},${Math.round(label.y + label.height / 2)};0.05:touch_start;0.1:touch_end`);
   engine.advance(12);
   expect(on).toBeTrue();
-  focusOn(engine, "Terms");
-  key(engine, "Space");
-  expect(checked).toBeTrue();
-  expect(find(engine, (e) => e.role === "checkbox")!.states).toContain("checked");
-});
-
-test("radioGroup: arrows move the choice past a disabled option, mirrored in right to left", () => {
-  // Wrong: ArrowRight going back in RTL, or selecting the disabled option.
-  for (const dir of ["ltr", "rtl"] as const) {
-    let sel = 0;
-    const engine = run(() => {
-      sel = og.ui.radioGroup("Diff", { label: "Difficulty", row: true, selected: sel, options: [{ label: "Story" }, { label: "Normal", disabled: true }, { label: "Hard" }, { label: "Nightmare" }] }).selected;
-    }, 640, dir === "rtl" ? kit : undefined);
-    if (dir === "rtl") {
-      const loaded = og.i18n.load(engine.world, "strings/ar.ogt");
-      if (!loaded.ok) throw new Error(loaded.reason);
-      og.i18n.setLocale(engine.world, "ar-EG");
-      engine.advance(6);
-    }
-    expect(find(engine, (e) => e.role === "radiogroup")).toBeDefined();
-    focusOn(engine, "Option#0");
-    // Forward skips the disabled one (backward would wrap to Nightmare, 3).
-    key(engine, dir === "rtl" ? "ArrowLeft" : "ArrowRight");
-    expect(`${dir} ${sel}`).toBe(`${dir} 2`);
-    // In RTL, the third option sits left of the first.
-    const [a, c] = [byPath(engine, "Option#0")!, byPath(engine, "Option#2")!];
-    expect(dir === "rtl" ? c.x < a.x : c.x > a.x).toBeTrue();
-  }
 });
 
 test("segmented: a tap selects a segment, the bumpers do not (it is not a tab bar), Left and Right step", () => {
@@ -353,19 +292,6 @@ test("segmented: a tap selects a segment, the bumpers do not (it is not a tab ba
   focusOn(engine, "Item#2");
   key(engine, "ArrowLeft");
   expect(sel).toBe(1);
-});
-
-test("cycler: the pad's d-pad cycles the focused option with wrap; its arrows are 44 px on touch", () => {
-  // Wrong: Left on the first option stopping (wrap ignored), or arrows too small for a thumb.
-  let idx = 0;
-  const engine = run(() => {
-    idx = og.ui.cycler("Quality", ["Low", "Medium", "High"], idx, { label: "Quality" }).selected;
-  });
-  focusOn(engine, "Quality");
-  pad(engine, "left");
-  expect(idx).toBe(2);
-  pad(engine, "right");
-  expect(idx).toBe(0);
 });
 
 // ── ranges ──────────────────────────────────────────────────────────────
@@ -495,19 +421,6 @@ test("dropdown: a tap opens the list with the focus on the chosen option, a tap 
   expect(sel).toBe(2);
 });
 
-test("colorPicker: a swatch commits its colour and the hex reads it", () => {
-  let c: Api.PickedColor = { r: 1, g: 1, b: 1, a: 1 };
-  let hex = "";
-  const engine = run(() => {
-    const r = og.ui.colorPicker("Paint", c, { swatches: ["#e63946", "#2a9d8f"], label: "Livery" });
-    c = r.color;
-    hex = r.hex;
-  });
-  tap(engine, byPath(engine, "Swatch#1")!.path);
-  expect(hex).toBe("#2a9d8f");
-  expect(c.g).toBeCloseTo(0x9d / 255, 3);
-});
-
 // ── key bindings ────────────────────────────────────────────────────────
 
 test("keyBindingRow: a press waits for a key, a free key lands at once, a used one asks and Swap trades them", () => {
@@ -633,10 +546,7 @@ function gallery(l: (s: string) => string, world: Api.World): void {
   });
   og.ui.holdButton("Hold", l("Delete save"), { hint: l("Hold to delete") });
   og.ui.toggleSwitch("Music", true, { label: l("Music"), description: l("Background tracks"), width: { kind: "grow" } as never });
-  og.ui.checkField("Terms", false, { label: l("I accept the terms") });
-  og.ui.radioGroup("Diff", { label: l("Difficulty"), row: true, selected: 0, options: [{ label: l("Story") }, { label: l("Normal") }, { label: l("Hard") }] });
   og.ui.segmented("View", { label: l("View"), selected: 0, items: [{ label: l("Grid") }, { label: l("List") }] });
-  og.ui.cycler("Quality", [l("Low"), l("Medium"), l("High")], 1, { label: l("Quality") });
   og.ui.valueSlider("Volume", 0.6, { label: l("Volume"), format: { percent: true } as never });
   og.ui.rangeSlider("Price", 20, 60, { label: l("Price"), min: 0, max: 100, step: 5 });
   og.ui.numberStepper("Players", 2, { label: l("Players"), min: 1, max: 8 });
@@ -660,7 +570,6 @@ test("right to left and the pseudo-locale: rows run from the right, slider fills
   const x = (end: string) => byPath(engine, end)!.x;
   // A switch row: the label at the start (right), the track at the end (left).
   expect(x("Music/Track")).toBeLessThan(x("Music/Text/Label"));
-  expect(x("Diff/Options/Option#0")).toBeGreaterThan(x("Diff/Options/Option#1"));
   expect(x("View/Strip/Track/Item#0")).toBeGreaterThan(x("View/Strip/Track/Item#1"));
   // The volume's fill (60 %) runs from the rail's right end, half a knob in from the track's edge.
   const track = byPath(engine, "Volume/Track")!;

@@ -275,13 +275,6 @@
     returns Void
   }
 
-  fn pushMass {
-    doc "Show instances of a template for this tick only (overhead bars, nameplates, status icons rebuilt every tick with their values)."
-    param template u32 "From defineMass."
-    param instances List.MassInstance "The instances."
-    returns Void
-  }
-
   fn massCount {
     doc "The live spawned instances of a template."
     param template u32 "From defineMass."

@@ -903,8 +903,6 @@ export interface HostAbi<A, V> {
   og_ui_open_modal(id: string, open: boolean, desc: string | undefined): string;
   /** `og.ui.closeModal` */
   og_ui_close_modal(): void;
-  /** `og.ui.spotlight` */
-  og_ui_spotlight(id: string, hole: string, desc: string | undefined): string;
   /** `og.ui.bounds` */
   og_ui_bounds(path: string): string;
   /** `og.ui.scrollState` */
@@ -919,8 +917,6 @@ export interface HostAbi<A, V> {
   og_ui_grid_item(index: number, selected: boolean): string;
   /** `og.ui.closeList` */
   og_ui_close_list(): string;
-  /** `og.ui.chip` */
-  og_ui_chip(id: string, text: string, desc: string | undefined): string;
   /** `og.ui.badge` */
   og_ui_badge(id: string, text: string, tone: string): void;
   /** `og.ui.divider` */
@@ -933,16 +929,6 @@ export interface HostAbi<A, V> {
   og_ui_spinner(id: string, size: number): void;
   /** `og.ui.icon` */
   og_ui_icon(id: string, name: string, desc: string | undefined): void;
-  /** `og.ui.meter` */
-  og_ui_meter(id: string, value: number, max: number, desc: string | undefined): void;
-  /** `og.ui.cooldown` */
-  og_ui_cooldown(id: string, remaining: number, desc: string | undefined): string;
-  /** `og.ui.minimap` */
-  og_ui_minimap(id: string, desc: string | undefined): void;
-  /** `og.ui.dialogue` */
-  og_ui_dialogue(id: string, desc: string | undefined): string;
-  /** `og.ui.actionButton` */
-  og_ui_action_button(id: string, text: string, desc: string | undefined): string;
   /** `og.ui.toast` */
   og_ui_toast(world: number, text: string, desc: string | undefined): number;
   /** `og.ui.dismissToast` */
@@ -1001,10 +987,6 @@ export interface HostAbi<A, V> {
   og_ui_preview_viewport(world: number, viewport: string): void;
   /** `og.ui.toggleSwitch` */
   og_ui_toggle_switch(id: string, on: boolean, desc: string | undefined): string;
-  /** `og.ui.checkField` */
-  og_ui_check_field(id: string, checked: boolean, desc: string | undefined): string;
-  /** `og.ui.radioGroup` */
-  og_ui_radio_group(id: string, desc: string | undefined): string;
   /** `og.ui.valueSlider` */
   og_ui_value_slider(id: string, value: number, desc: string | undefined): string;
   /** `og.ui.numberStepper` */
@@ -1059,8 +1041,6 @@ export interface HostAbi<A, V> {
   og_ui_define_mass(name: string, desc: string | undefined): string;
   /** `og.ui.spawnMass` */
   og_ui_spawn_mass(template: number, instances: string): void;
-  /** `og.ui.pushMass` */
-  og_ui_push_mass(template: number, instances: string): void;
   /** `og.ui.massCount` */
   og_ui_mass_count(template: number): number;
   /** `og.ui.particles` */
@@ -1751,7 +1731,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_open_anchor",
   "og_ui_open_modal",
   "og_ui_close_modal",
-  "og_ui_spotlight",
   "og_ui_bounds",
   "og_ui_scroll_state",
   "og_ui_open_list",
@@ -1759,18 +1738,12 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_list_item",
   "og_ui_grid_item",
   "og_ui_close_list",
-  "og_ui_chip",
   "og_ui_badge",
   "og_ui_divider",
   "og_ui_spacer",
   "og_ui_skeleton",
   "og_ui_spinner",
   "og_ui_icon",
-  "og_ui_meter",
-  "og_ui_cooldown",
-  "og_ui_minimap",
-  "og_ui_dialogue",
-  "og_ui_action_button",
   "og_ui_toast",
   "og_ui_dismiss_toast",
   "og_ui_navigate",
@@ -1800,8 +1773,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_screen_transition",
   "og_ui_preview_viewport",
   "og_ui_toggle_switch",
-  "og_ui_check_field",
-  "og_ui_radio_group",
   "og_ui_value_slider",
   "og_ui_number_stepper",
   "og_ui_segmented",
@@ -1829,7 +1800,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_open_world_anchor",
   "og_ui_define_mass",
   "og_ui_spawn_mass",
-  "og_ui_push_mass",
   "og_ui_mass_count",
   "og_ui_particles",
   "og_ui_meta",

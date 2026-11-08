@@ -2697,12 +2697,6 @@ pub fn og_ui_close_modal(env: Env) {
     <Host as UiApi>::og_ui_close_modal(&Host)
 }
 
-#[napi(js_name = "og_ui_spotlight")]
-pub fn og_ui_spotlight(env: Env, id: String, hole: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_spotlight(&Host, id, hole, desc)
-}
-
 #[napi(js_name = "og_ui_bounds")]
 pub fn og_ui_bounds(env: Env, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2745,12 +2739,6 @@ pub fn og_ui_close_list(env: Env) -> String {
     <Host as UiApi>::og_ui_close_list(&Host)
 }
 
-#[napi(js_name = "og_ui_chip")]
-pub fn og_ui_chip(env: Env, id: String, text: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_chip(&Host, id, text, desc)
-}
-
 #[napi(js_name = "og_ui_badge")]
 pub fn og_ui_badge(env: Env, id: String, text: String, tone: String) {
     let _env = crate::EnvScope::enter(&env);
@@ -2785,36 +2773,6 @@ pub fn og_ui_spinner(env: Env, id: String, size: f64) {
 pub fn og_ui_icon(env: Env, id: String, name: String, desc: Option<String>) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_icon(&Host, id, name, desc)
-}
-
-#[napi(js_name = "og_ui_meter")]
-pub fn og_ui_meter(env: Env, id: String, value: f64, max: f64, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_meter(&Host, id, value, max, desc)
-}
-
-#[napi(js_name = "og_ui_cooldown")]
-pub fn og_ui_cooldown(env: Env, id: String, remaining: f64, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_cooldown(&Host, id, remaining, desc)
-}
-
-#[napi(js_name = "og_ui_minimap")]
-pub fn og_ui_minimap(env: Env, id: String, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_minimap(&Host, id, desc)
-}
-
-#[napi(js_name = "og_ui_dialogue")]
-pub fn og_ui_dialogue(env: Env, id: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_dialogue(&Host, id, desc)
-}
-
-#[napi(js_name = "og_ui_action_button")]
-pub fn og_ui_action_button(env: Env, id: String, text: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_action_button(&Host, id, text, desc)
 }
 
 #[napi(js_name = "og_ui_toast")]
@@ -2991,18 +2949,6 @@ pub fn og_ui_toggle_switch(env: Env, id: String, on: bool, desc: Option<String>)
     <Host as UiApi>::og_ui_toggle_switch(&Host, id, on, desc)
 }
 
-#[napi(js_name = "og_ui_check_field")]
-pub fn og_ui_check_field(env: Env, id: String, checked: bool, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_check_field(&Host, id, checked, desc)
-}
-
-#[napi(js_name = "og_ui_radio_group")]
-pub fn og_ui_radio_group(env: Env, id: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_radio_group(&Host, id, desc)
-}
-
 #[napi(js_name = "og_ui_value_slider")]
 pub fn og_ui_value_slider(env: Env, id: String, value: f64, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -3163,12 +3109,6 @@ pub fn og_ui_define_mass(env: Env, name: String, desc: Option<String>) -> String
 pub fn og_ui_spawn_mass(env: Env, template: u32, instances: String) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_spawn_mass(&Host, template, instances)
-}
-
-#[napi(js_name = "og_ui_push_mass")]
-pub fn og_ui_push_mass(env: Env, template: u32, instances: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_push_mass(&Host, template, instances)
 }
 
 #[napi(js_name = "og_ui_mass_count")]

@@ -3,14 +3,10 @@
 // crates/og-api/api/ui.ogt (`host false`) and written here over public
 // og.ui calls only.
 
-import { heroButton } from "./core.ts";
-import { starBar } from "./stars.ts";
 import { overlayBar } from "./ledger.ts";
 import { settingsTree } from "./settings.ts";
 
 export const patterns = Object.freeze({
-  heroButton,
-  starBar,
   overlayBar,
   settingsTree,
 });

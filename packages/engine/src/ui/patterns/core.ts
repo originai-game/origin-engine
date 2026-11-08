@@ -936,16 +936,3 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
     }
   });
 }
-
-/** og.ui.heroButton: see `fn heroButton` in crates/og-api/api/ui.ogt. */
-export function heroButton(id: string, label: string, desc: Api.HeroButtonDesc = {}): Api.Response {
-  const size = desc.size === "large" ? "lg" : desc.size === "small" ? "sm" : "md";
-  return btn(id, label, {
-    variant: desc.tone === "premium" ? "premium" : desc.tone === "secondary" ? "secondary" : desc.tone === "danger" ? "danger" : "primary",
-    raised: true,
-    size,
-    disabled: desc.disabled ?? false,
-    width: desc.width ?? null,
-    ...(desc.key ? { key: desc.key, name: `${label}, ${desc.key}` } : {}),
-  });
-}

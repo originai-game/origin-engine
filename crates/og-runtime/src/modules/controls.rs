@@ -5,9 +5,9 @@
 
 use super::*;
 use og_ui::{
-    CheckFieldDesc, ChoiceIndexResult, ControlSize, DropdownDesc, DropdownOption, LabelSide,
-    NumberStepperDesc, RadioGroupDesc, RadioOption, RadioVariant, SegmentItem, SegmentedDesc,
-    SliderMark, SwitchResult, ToggleSwitchDesc, ValueFormat, ValueSliderDesc,
+    ChoiceIndexResult, ControlSize, DropdownDesc, DropdownOption, LabelSide, NumberStepperDesc,
+    SegmentItem, SegmentedDesc, SliderMark, SwitchResult, ToggleSwitchDesc, ValueFormat,
+    ValueSliderDesc,
 };
 
 fn text(v: &Value) -> String {
@@ -72,60 +72,6 @@ pub fn og_ui_toggle_switch(id: String, on: bool, desc: Option<String>) -> String
     switch(r.unwrap_or(SwitchResult {
         on,
         ..SwitchResult::default()
-    }))
-}
-
-pub fn og_ui_check_field(id: String, checked: bool, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let desc = CheckFieldDesc {
-        label: text(&d["label"]),
-        description: text(&d["description"]),
-        mixed: flag(&d["mixed"]),
-        disabled: flag(&d["disabled"]),
-        invalid: flag(&d["invalid"]),
-        side: d["side"]
-            .as_str()
-            .and_then(LabelSide::from_name)
-            .unwrap_or(LabelSide::End),
-        width: size(&d["width"]),
-    };
-    let r = with_ui("og.ui.checkField", |ui| {
-        ui.check_field(id.as_str(), checked, &desc)
-    });
-    switch(r.unwrap_or(SwitchResult {
-        on: checked,
-        ..SwitchResult::default()
-    }))
-}
-
-pub fn og_ui_radio_group(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let desc = RadioGroupDesc {
-        options: items(&d["options"])
-            .iter()
-            .map(|o| RadioOption {
-                label: text(&o["label"]),
-                description: text(&o["description"]),
-                icon: text(&o["icon"]),
-                disabled: flag(&o["disabled"]),
-            })
-            .collect(),
-        selected: d["selected"].as_i64().map_or(-1, |n| n as i32),
-        label: text(&d["label"]),
-        variant: if d["variant"].as_str() == Some("cards") {
-            RadioVariant::Cards
-        } else {
-            RadioVariant::List
-        },
-        row: flag(&d["row"]),
-        disabled: flag(&d["disabled"]),
-        width: size(&d["width"]),
-    };
-    let r = with_ui("og.ui.radioGroup", |ui| ui.radio_group(id.as_str(), &desc));
-    choice(r.unwrap_or(ChoiceIndexResult {
-        selected: desc.selected,
-        changed: false,
-        focused: -1,
     }))
 }
 

@@ -18,16 +18,6 @@
     returns AccordionResult
   }
 
-  fn splitView {
-    doc "Two panes with a divider a drag moves and a press of the focused divider steps."
-    host false
-    param id String "Its id."
-    param desc SplitViewDesc "Direction, ratio and limits."
-    param start UiBuild "Builds the start pane."
-    param end UiBuild "Builds the end pane."
-    returns SplitResult
-  }
-
   fn dialog {
     doc "A dialog on the modal layer: tone mark, message, body and actions."
     host false
@@ -96,23 +86,6 @@
     returns TabBarResult
   }
 
-  fn carousel {
-    doc "Pages a drag or a flick moves, snapping to a page, with arrows and dots."
-    host false
-    param id String "Its id."
-    param desc CarouselDesc "Count, the current page and options."
-    param build UiItemBuild "Builds a page by its index (the current one and two each side)."
-    returns CarouselResult
-  }
-
-  fn breadcrumbs {
-    doc "The path to where the player is, collapsing its middle into a menu when long."
-    host false
-    param id String "Its id."
-    param desc BreadcrumbsDesc "The crumbs."
-    returns BreadcrumbsResult
-  }
-
   fn pagination {
     doc "Previous, next and the pages around the current one."
     host false
@@ -127,14 +100,5 @@
     param id String "Its id."
     param desc ActionHintsDesc "The hints and the edge."
     returns ActionHintsResult
-  }
-
-  fn radialMenu {
-    doc "A radial wheel chosen by where the pointer or a stick points. A slice's cost sits under its label, in the danger hue while it cannot be paid; with the labels hidden (a small wheel, a large text size), the centre shows the aimed slice's cost under its name."
-    host false
-    param id String "Its id."
-    param open bool "Whether it is open."
-    param desc RadialDesc "Slices, aim and release."
-    returns RadialResult
   }
 

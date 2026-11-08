@@ -363,15 +363,6 @@ pub fn og_ui_spawn_mass(template: u32, list: String) {
     });
 }
 
-pub fn og_ui_push_mass(template: u32, list: String) {
-    with_ui("og.ui.pushMass", |ui| {
-        let theme = *ui.theme();
-        for i in instances(&theme, &list) {
-            ui.push_mass(og_ui::MassHandle(template), i);
-        }
-    });
-}
-
 pub fn og_ui_mass_count(template: u32) -> u32 {
     with_ui("og.ui.massCount", |ui| {
         ui.mass_count(og_ui::MassHandle(template)) as u32

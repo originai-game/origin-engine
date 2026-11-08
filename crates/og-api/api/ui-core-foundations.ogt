@@ -54,30 +54,6 @@
     returns Void
   }
 
-  struct ProseDesc {
-    doc "A passage of rich text: paragraphs at a readable measure."
-    desc true
-    field role TextRole "Each paragraph's role (body by default; caption for fine print)."
-    field tone TextTone "Its ink."
-    field width Option.Size "Its width; null grows, kept to a readable measure (about 66 characters) when measure is set."
-    field measure bool "Keep lines to about 66 characters, as long reading wants." {
-      default true
-    }
-    field gap Option.f32 "Space between paragraphs; null is the style's md." {
-      unit cssPx
-    }
-    field align TextAlign "How its lines align."
-  }
-
-  fn prose {
-    doc "A passage of rich text (og.ui.richText's markup: `[b]`, `[color=…]`, `[icon=…]`, `[link=…]`, `[wave]`…), split into paragraphs at blank lines, at a readable measure, each a text element `<id>/P#i` whose links are focusable children (`<id>/P#i/<link>`). Answers the link clicked this tick (keys and pads press links too). Its region reads as one group to a screen reader."
-    host false
-    param id String "Its id."
-    param markup String "The markup; a blank line starts a paragraph."
-    param desc ProseDesc "Its role, tone and measure."
-    returns RichTextResult
-  }
-
   enum IconPlate {
     doc "What an icon sits on."
     variant none "Nothing (the default)."
@@ -211,26 +187,6 @@
     host false
     param id String "Its id."
     param desc ShapeBoxDesc "Its outline and paints."
-    returns Void
-  }
-
-  struct SeparatorDesc {
-    doc "A separator: a hairline, upright or across, with an optional word in its middle."
-    desc true
-    field vertical bool "Upright (between items of a row)."
-    field label String "A word in its middle (`OR`, a date); empty for a plain line."
-    field inset f32 "Space kept at each end." {
-      unit cssPx
-      min 0
-    }
-    field strong bool "The style's strong line (between sections) rather than its hairline."
-  }
-
-  fn separator {
-    doc "A separator between groups: the style's line (its divider ornament where the style has one and no label is given), across or upright, with a label in its middle between two lines. Role separator. Parts: `Separator.line[strong]`. Probe: `<id>`, `<id>/Label`."
-    host false
-    param id String "Its id."
-    param desc SeparatorDesc "Its direction, label and weight."
     returns Void
   }
 

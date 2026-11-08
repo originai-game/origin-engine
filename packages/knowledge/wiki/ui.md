@@ -87,7 +87,6 @@ module ui {
 | [`Anchor`](ui/type-Anchor.md) | enum |  | A point of the safe area an anchored group sits at. |
 | [`TransitionKind`](ui/type-TransitionKind.md) | enum |  | How a transition moves its content in and out. |
 | [`Tone`](ui/type-Tone.md) | enum |  | A status tone of badges, toasts and map markers. |
-| [`MeterKind`](ui/type-MeterKind.md) | enum |  | What a meter measures, which sets its colour. |
 | [`Breakpoint`](ui/type-Breakpoint.md) | enum |  | The play surface's size class. |
 | [`ColorVision`](ui/type-ColorVision.md) | enum |  | A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>)). |
 | [`ColorVisionFilter`](ui/type-ColorVisionFilter.md) | enum |  | What UiDesc.colorVision does to the frame. |
@@ -99,20 +98,11 @@ module ui {
 | [`AnchorDesc`](ui/type-AnchorDesc.md) | desc struct |  | An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls). |
 | [`ModalDesc`](ui/type-ModalDesc.md) | desc struct |  | A dialog: a scrim over everything and a centred panel. |
 | [`ModalResult`](ui/type-ModalResult.md) | struct |  | A dialog's answer this tick. |
-| [`SpotlightDesc`](ui/type-SpotlightDesc.md) | desc struct |  | A spotlight: the surface dimmed except a hole around a target. |
 | [`ListDesc`](ui/type-ListDesc.md) | desc struct |  | A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row. |
 | [`ListRange`](ui/type-ListRange.md) | struct |  | The rows (or cells) to build this tick: first up to, not including, last. |
 | [`GridDesc`](ui/type-GridDesc.md) | desc struct |  | A virtualised grid of equal cells (inventories, level select), scrolling vertically. |
 | [`ToastDesc`](ui/type-ToastDesc.md) | desc struct |  | A toast's tone and time. |
-| [`ChipDesc`](ui/type-ChipDesc.md) | desc struct |  | A chip's state. |
-| [`MeterDesc`](ui/type-MeterDesc.md) | desc struct |  | A meter: a track with a fill that animates its changes by the tick. |
-| [`CooldownDesc`](ui/type-CooldownDesc.md) | desc struct |  | A cooldown ring's size and centre. |
 | [`IconDesc`](ui/type-IconDesc.md) | desc struct |  | An icon's size, ink and name. |
-| [`MapMarker`](ui/type-MapMarker.md) | desc struct |  | A marker on a mini-map. |
-| [`MinimapDesc`](ui/type-MinimapDesc.md) | desc struct |  | A mini-map frame. |
-| [`DialogueDesc`](ui/type-DialogueDesc.md) | desc struct |  | A dialogue box: a portrait slot, the speaker and the line typed out by the tick. |
-| [`DialogueResult`](ui/type-DialogueResult.md) | struct |  | A dialogue box's answer this tick. |
-| [`ActionButtonDesc`](ui/type-ActionButtonDesc.md) | desc struct |  | A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face, flagged primary, pressed and disabled, which a style dresses), its icon on it; a label wider than it with no ic… |
 | [`SkeletonDesc`](ui/type-SkeletonDesc.md) | desc struct |  | A skeleton: the neutral fill standing in for content that is loading. |
 | [`UiItemBuild`](ui/type-UiItemBuild.md) | callback |  | Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it. |
 | [`UiPointer`](ui/type-UiPointer.md) | struct |  | The primary pointer as the UI reads it this tick. |
@@ -131,7 +121,6 @@ module ui {
 | [`og.ui.openModal`](ui/fn-openModal.md) | function | `(id: string, open: boolean, desc?: ModalDesc): ModalResult` | Open a dialog, closed by closeModal(); build its content only while the answer is visible. |
 | [`og.ui.closeModal`](ui/fn-closeModal.md) | function | `(): void` | Close a dialog opened with openModal (its panel and backdrop). |
 | [`og.ui.modal`](ui/fn-modal.md) | function | `(id: string, open: boolean, desc: ModalDesc, build: UiBuild): ModalResult` | A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. |
-| [`og.ui.spotlight`](ui/fn-spotlight.md) | function | `(id: string, hole: UiRect \| null, desc?: SpotlightDesc): Response` | A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. |
 | [`og.ui.bounds`](ui/fn-bounds.md) | function | `(path: string): UiRect \| null` | Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it. |
 | [`ScrollState`](ui/type-ScrollState.md) | struct |  | A scroll container as the last frame laid it out (og.ui.scrollState). |
 | [`og.ui.scrollState`](ui/fn-scrollState.md) | function | `(path: string): ScrollState \| null` | A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scro… |
@@ -140,18 +129,12 @@ module ui {
 | [`og.ui.listItem`](ui/fn-listItem.md) | function | `(index: number, selected: boolean): Response` | Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). |
 | [`og.ui.gridItem`](ui/fn-gridItem.md) | function | `(index: number, selected: boolean): Response` | Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). |
 | [`og.ui.closeList`](ui/fn-closeList.md) | function | `(): Response` | Close a list or grid opened with openList or openGrid. |
-| [`og.ui.chip`](ui/fn-chip.md) | function | `(id: string, text: string, desc?: ChipDesc): Response` | A chip: a control-filled tag; selected inverts to ink. |
 | [`og.ui.badge`](ui/fn-badge.md) | function | `(id: string, text: string, tone: Tone): void` | A badge: a small status tag in its tone. |
 | [`og.ui.divider`](ui/fn-divider.md) | function | `(id: string, vertical: boolean): void` | A hairline in the border colour across its parent. |
 | [`og.ui.spacer`](ui/fn-spacer.md) | function | `(id: string, size: Size \| null): void` | Empty space. |
 | [`og.ui.skeleton`](ui/fn-skeleton.md) | function | `(id: string, desc?: SkeletonDesc): void` | A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion). |
 | [`og.ui.spinner`](ui/fn-spinner.md) | function | `(id: string, size: number): void` | A loading spinner: eight dots around a circle, the bright one turning by the tick. |
 | [`og.ui.icon`](ui/fn-icon.md) | function | `(id: string, name: string, desc?: IconDesc): void` | An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. |
-| [`og.ui.meter`](ui/fn-meter.md) | function | `(id: string, value: number, max: number, desc?: MeterDesc): void` | A health, mana or xp bar. |
-| [`og.ui.cooldown`](ui/fn-cooldown.md) | function | `(id: string, remaining: number, desc?: CooldownDesc): Response` | A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. |
-| [`og.ui.minimap`](ui/fn-minimap.md) | function | `(id: string, desc?: MinimapDesc): void` | A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label. |
-| [`og.ui.dialogue`](ui/fn-dialogue.md) | function | `(id: string, desc?: DialogueDesc): DialogueResult` | A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. |
-| [`og.ui.actionButton`](ui/fn-actionButton.md) | function | `(id: string, text: string, desc?: ActionButtonDesc): Response` | A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px. |
 | [`og.ui.toast`](ui/fn-toast.md) | function | `(world: World, text: string, desc?: ToastDesc): number` | Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. |
 | [`og.ui.dismissToast`](ui/fn-dismissToast.md) | function | `(world: World, toastId: number): void` | Start a toast's exit. |
 | [`og.ui.navigate`](ui/fn-navigate.md) | function | `(world: World, intent: NavIntent): void` | Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command. |
@@ -200,8 +183,6 @@ module ui {
 | [`AccordionSection`](ui/type-AccordionSection.md) | desc struct |  | A section of an accordion: its header's title, subtitle and badge. |
 | [`AccordionDesc`](ui/type-AccordionDesc.md) | desc struct |  | An accordion: sections whose headers open and close their bodies. |
 | [`AccordionResult`](ui/type-AccordionResult.md) | struct |  | What an accordion answered this tick. |
-| [`SplitViewDesc`](ui/type-SplitViewDesc.md) | desc struct |  | Two panes with a divider between them that a drag moves. |
-| [`SplitResult`](ui/type-SplitResult.md) | struct |  | What a split view answered this tick. |
 | [`DialogTone`](ui/type-DialogTone.md) | enum |  | A dialog's tone, shown by a mark as well as its colour. |
 | [`DialogAction`](ui/type-DialogAction.md) | desc struct |  | A button of a dialog. |
 | [`DialogDesc`](ui/type-DialogDesc.md) | desc struct |  | A dialog: a title, a tone mark, a message, a body the game builds and a row of actions. |
@@ -223,19 +204,11 @@ module ui {
 | [`TabItem`](ui/type-TabItem.md) | desc struct |  | A tab. |
 | [`TabBarDesc`](ui/type-TabBarDesc.md) | desc struct |  | Tabs over the panel the game builds for the selected one. |
 | [`TabBarResult`](ui/type-TabBarResult.md) | struct |  | What a tab bar answered this tick. |
-| [`CarouselDesc`](ui/type-CarouselDesc.md) | desc struct |  | Pages side by side that a drag or a flick moves, snapping to a page. |
-| [`CarouselResult`](ui/type-CarouselResult.md) | struct |  | What a carousel answered this tick. |
-| [`Crumb`](ui/type-Crumb.md) | desc struct |  | A step of a breadcrumb path. |
-| [`BreadcrumbsDesc`](ui/type-BreadcrumbsDesc.md) | desc struct |  | The path to where the player is; every crumb but the last is a link back. |
-| [`BreadcrumbsResult`](ui/type-BreadcrumbsResult.md) | struct |  | What breadcrumbs answered this tick. |
 | [`PaginationDesc`](ui/type-PaginationDesc.md) | desc struct |  | Previous and next, the first and last pages and the pages around the current one. |
 | [`PageResult`](ui/type-PageResult.md) | struct |  | What pagination answered this tick. |
 | [`ActionHint`](ui/type-ActionHint.md) | desc struct |  | A hint of the action bar: an action, its glyph on the device in use and what it does. |
 | [`ActionHintsDesc`](ui/type-ActionHintsDesc.md) | desc struct |  | The action bar (docs/ui.md §2.1): the actions the top layer accepts, each its glyph and its hint, at an edge. |
 | [`ActionHintsResult`](ui/type-ActionHintsResult.md) | struct |  | What the action bar answered this tick. |
-| [`RadialItem`](ui/type-RadialItem.md) | desc struct |  | A slice of a radial wheel. |
-| [`RadialDesc`](ui/type-RadialDesc.md) | desc struct |  | A radial wheel: slices around a centre, chosen by where the pointer or a stick points. |
-| [`RadialResult`](ui/type-RadialResult.md) | struct |  | What a radial wheel answered this tick. |
 | [`DataStateDesc`](ui/type-DataStateDesc.md) | desc struct |  | What a data view shows instead of its rows: loading, an error, or nothing. |
 | [`DataListDesc`](ui/type-DataListDesc.md) | desc struct |  | A virtualised list with its empty, loading and error states. |
 | [`DataListResult`](ui/type-DataListResult.md) | struct |  | What a data list or grid answered this tick. |
@@ -266,7 +239,6 @@ module ui {
 | [`CalendarResult`](ui/type-CalendarResult.md) | struct |  | What a calendar answered this tick. |
 | [`og.ui.card`](ui/fn-card.md) | function | `(id: string, desc: CardDesc, build: UiBuild): Response` | A card over a body the game builds. |
 | [`og.ui.accordion`](ui/fn-accordion.md) | function | `(id: string, desc: AccordionDesc, build: UiItemBuild): AccordionResult` | Sections whose headers open and close their bodies; the sections under one move on the panel spring. |
-| [`og.ui.splitView`](ui/fn-splitView.md) | function | `(id: string, desc: SplitViewDesc, start: UiBuild, end: UiBuild): SplitResult` | Two panes with a divider a drag moves and a press of the focused divider steps. |
 | [`og.ui.dialog`](ui/fn-dialog.md) | function | `(id: string, open: boolean, desc: DialogDesc, build: UiBuild): DialogResult` | A dialog on the modal layer: tone mark, message, body and actions. |
 | [`og.ui.confirm`](ui/fn-confirm.md) | function | `(id: string, open: boolean, desc?: ConfirmationDesc): ConfirmResult` | A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone). |
 | [`og.ui.popover`](ui/fn-popover.md) | function | `(id: string, open: boolean, desc: PopoverDesc, build: UiBuild): PopoverResult` | A popover beside an element with an arrow at it; Back or a press outside dismisses it. |
@@ -274,11 +246,8 @@ module ui {
 | [`og.ui.contextMenu`](ui/fn-contextMenu.md) | function | `(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice` | A menu at a point: where a right press or a long press happened. |
 | [`og.ui.sheet`](ui/fn-sheet.md) | function | `(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult` | A sheet sliding in from the bottom (resting at detents, dragged) or a side. |
 | [`og.ui.tabBar`](ui/fn-tabBar.md) | function | `(id: string, desc: TabBarDesc, build: UiItemBuild): TabBarResult` | Tabs with a sliding indicator and bumpers over the panel of the selected one. |
-| [`og.ui.carousel`](ui/fn-carousel.md) | function | `(id: string, desc: CarouselDesc, build: UiItemBuild): CarouselResult` | Pages a drag or a flick moves, snapping to a page, with arrows and dots. |
-| [`og.ui.breadcrumbs`](ui/fn-breadcrumbs.md) | function | `(id: string, desc?: BreadcrumbsDesc): BreadcrumbsResult` | The path to where the player is, collapsing its middle into a menu when long. |
 | [`og.ui.pagination`](ui/fn-pagination.md) | function | `(id: string, desc?: PaginationDesc): PageResult` | Previous, next and the pages around the current one. |
 | [`og.ui.actionHints`](ui/fn-actionHints.md) | function | `(id: string, desc?: ActionHintsDesc): ActionHintsResult` | The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons. |
-| [`og.ui.radialMenu`](ui/fn-radialMenu.md) | function | `(id: string, open: boolean, desc?: RadialDesc): RadialResult` | A radial wheel chosen by where the pointer or a stick points. |
 | [`og.ui.dataList`](ui/fn-dataList.md) | function | `(id: string, desc: DataListDesc, build: UiItemBuild): DataListResult` | A virtualised list with its empty, loading and error states. |
 | [`og.ui.dataGrid`](ui/fn-dataGrid.md) | function | `(id: string, desc: DataGridDesc, build: UiItemBuild): DataListResult` | A virtualised grid of cells with its empty, loading and error states. |
 | [`og.ui.table`](ui/fn-table.md) | function | `(id: string, desc?: TableDesc): TableResult` | A sortable, filterable table; only the rows in view are built, so 10,000 rows and more stay within budget. |
@@ -292,8 +261,6 @@ module ui {
 | [`TextTone`](ui/type-TextTone.md) | enum |  | A text's ink by meaning. |
 | [`TextBlockDesc`](ui/type-TextBlockDesc.md) | desc struct |  | How a text block reads: its role, tone and how it fits. |
 | [`og.ui.text`](ui/fn-text.md) | function | `(id: string, value: string, desc?: TextBlockDesc): void` | Text in a role (docs/ui.md §2, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines wi… |
-| [`ProseDesc`](ui/type-ProseDesc.md) | desc struct |  | A passage of rich text: paragraphs at a readable measure. |
-| [`og.ui.prose`](ui/fn-prose.md) | function | `(id: string, markup: string, desc?: ProseDesc): RichTextResult` | A passage of rich text (og.ui.richText's markup: `[b]`, `[color=…]`, `[icon=…]`, `[link=…]`, `[wave]`…), split into paragraphs at blank lines, at a readable measure, each a text element `<id>/P#i` wh… |
 | [`IconPlate`](ui/type-IconPlate.md) | enum |  | What an icon sits on. |
 | [`IconMarkDesc`](ui/type-IconMarkDesc.md) | desc struct |  | An icon's size, tone, plate and badge. |
 | [`og.ui.iconMark`](ui/fn-iconMark.md) | function | `(id: string, name: string, desc?: IconMarkDesc): void` | An icon of the style's set (og.ui.icon) in a tone, on a plate, with a badge or a dot: the foundation every icon in a control is. |
@@ -304,8 +271,6 @@ module ui {
 | [`ShapePreset`](ui/type-ShapePreset.md) | enum |  | A decorative shape. |
 | [`ShapeBoxDesc`](ui/type-ShapeBoxDesc.md) | desc struct |  | A decorative shape: its outline, fill, stroke and glow, in the style's colours. |
 | [`og.ui.shapeBox`](ui/fn-shapeBox.md) | function | `(id: string, desc?: ShapeBoxDesc): void` | A decorative shape drawn by the UI pass (docs/ui.md §3.3) in the style's colours: a pip, a gem, a star, a ring, a backdrop blob. |
-| [`SeparatorDesc`](ui/type-SeparatorDesc.md) | desc struct |  | A separator: a hairline, upright or across, with an optional word in its middle. |
-| [`og.ui.separator`](ui/fn-separator.md) | function | `(id: string, desc?: SeparatorDesc): void` | A separator between groups: the style's line (its divider ornament where the style has one and no label is given), across or upright, with a label in its middle between two lines. |
 | [`SpaceStep`](ui/type-SpaceStep.md) | enum |  | A step of the style's spacing scale. |
 | [`SpaceDesc`](ui/type-SpaceDesc.md) | desc struct |  | Empty space by the style's scale. |
 | [`og.ui.space`](ui/fn-space.md) | function | `(id: string, desc?: SpaceDesc): void` | Empty space of a step of the style's spacing scale (so a style's density moves every gap at once), or all the room left. |
@@ -328,13 +293,7 @@ module ui {
 | [`ToggleSwitchDesc`](ui/type-ToggleSwitchDesc.md) | desc struct |  | A switch: its label, description and states. |
 | [`SwitchResult`](ui/type-SwitchResult.md) | struct |  | A switch's or a check's state after this tick. |
 | [`og.ui.toggleSwitch`](ui/fn-toggleSwitch.md) | function | `(id: string, on: boolean, desc?: ToggleSwitchDesc): SwitchResult` | A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the who… |
-| [`CheckFieldDesc`](ui/type-CheckFieldDesc.md) | desc struct |  | A checkbox: its label, description and states. |
-| [`og.ui.checkField`](ui/fn-checkField.md) | function | `(id: string, checked: boolean, desc?: CheckFieldDesc): SwitchResult` | A checkbox: a box that fills with primary and draws its tick (a dash when mixed) with a pop as it turns on (its selection group), with a label and a description; the whole row takes a press, Enter, S… |
-| [`RadioOption`](ui/type-RadioOption.md) | desc struct |  | One choice of a radio group. |
-| [`RadioVariant`](ui/type-RadioVariant.md) | enum |  | How a radio group draws its choices. |
-| [`RadioGroupDesc`](ui/type-RadioGroupDesc.md) | desc struct |  | A radio group: its choices and layout. |
 | [`ChoiceIndexResult`](ui/type-ChoiceIndexResult.md) | struct |  | A choice control's state after this tick. |
-| [`og.ui.radioGroup`](ui/fn-radioGroup.md) | function | `(id: string, desc?: RadioGroupDesc): ChoiceIndexResult` | A radio group: one of several choices, as rings with labels or as cards. |
 | [`SliderMark`](ui/type-SliderMark.md) | struct |  | A labelled point on a slider's track. |
 | [`ValueFormat`](ui/type-ValueFormat.md) | desc struct |  | How a control shows a number. |
 | [`ValueSliderDesc`](ui/type-ValueSliderDesc.md) | desc struct |  | A slider: range, step, label, readout, ticks and marks. |
@@ -346,8 +305,6 @@ module ui {
 | [`NumberStepperDesc`](ui/type-NumberStepperDesc.md) | desc struct |  | A number stepper: minus, the value and plus. |
 | [`NumberResult`](ui/type-NumberResult.md) | struct |  | A stepper's value after this tick. |
 | [`og.ui.numberStepper`](ui/fn-numberStepper.md) | function | `(id: string, value: number, desc?: NumberStepperDesc): NumberResult` | A number stepper: minus, the value and plus. |
-| [`CyclerDesc`](ui/type-CyclerDesc.md) | desc struct |  | An option cycler: a setting's levels in one row. |
-| [`og.ui.cycler`](ui/fn-cycler.md) | function | `(id: string, options: readonly string[], index: number, desc?: CyclerDesc): ChoiceIndexResult` | An option cycler, the console settings row: `‹ High ›` with pips. |
 | [`SegmentItem`](ui/type-SegmentItem.md) | desc struct |  | One segment of a segmented control. |
 | [`SegmentedDesc`](ui/type-SegmentedDesc.md) | desc struct |  | A segmented control: its segments and layout. |
 | [`og.ui.segmented`](ui/fn-segmented.md) | function | `(id: string, desc?: SegmentedDesc): ChoiceIndexResult` | A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). |
@@ -363,10 +320,6 @@ module ui {
 | [`SearchBoxDesc`](ui/type-SearchBoxDesc.md) | desc struct |  | A search box and its suggestions. |
 | [`SearchResult`](ui/type-SearchResult.md) | struct |  | A search box's state after this tick. |
 | [`og.ui.searchBox`](ui/fn-searchBox.md) | function | `(id: string, query: string, desc?: SearchBoxDesc): SearchResult` | A search box with suggestions: a field with a lens, a clear button and, while it has the focus and something matches, a list of suggestions under it (recent searches while it is empty) whose matching… |
-| [`PickedColor`](ui/type-PickedColor.md) | desc struct |  | A colour as a picker answers it: sRGB components 0 to 1 and alpha. |
-| [`ColorPickerDesc`](ui/type-ColorPickerDesc.md) | desc struct |  | A colour picker: its swatches and the parts it shows. |
-| [`ColorPickerResult`](ui/type-ColorPickerResult.md) | struct |  | A colour picker's colour after this tick. |
-| [`og.ui.colorPicker`](ui/fn-colorPicker.md) | function | `(id: string, color?: PickedColor, desc?: ColorPickerDesc): ColorPickerResult` | A colour picker: a saturation and brightness square with a ring at the colour, a hue strip, an opacity strip, swatches and a hex field, with the colour before and after. |
 | [`KeyBindingRowDesc`](ui/type-KeyBindingRowDesc.md) | desc struct |  | A controls screen's row for one action: its name, its bindings on a device, and their capture. |
 | [`KeyBindingResult`](ui/type-KeyBindingResult.md) | struct |  | What a key-binding row did this tick. |
 | [`og.ui.keyBindingRow`](ui/fn-keyBindingRow.md) | function | `(world: World, id: string, desc?: KeyBindingRowDesc): KeyBindingResult` | A key-binding row (the settings tree's controls page, docs/ui.md §2): the action's name and a slot per binding on a device (keyboard and mouse, or a pad, the device used last by default) showing its … |
@@ -374,12 +327,6 @@ module ui {
 | [`KeyboardDesc`](ui/type-KeyboardDesc.md) | desc struct |  | An on-screen keyboard: what it edits and how it types. |
 | [`KeyboardResult`](ui/type-KeyboardResult.md) | struct |  | What an on-screen keyboard did this tick. |
 | [`og.ui.onScreenKeyboard`](ui/fn-onScreenKeyboard.md) | function | `(id: string, open: boolean, desc?: KeyboardDesc): KeyboardResult` | An on-screen keyboard for pads and touch (docs/ui.md §2: search and names with a pad): a panel at the screen's bottom with the text being typed and its caret, a candidate bar while composing, and key… |
-| [`HeroTone`](ui/type-HeroTone.md) | enum |  | A call to action's material. |
-| [`HeroButtonDesc`](ui/type-HeroButtonDesc.md) | desc struct |  | A call to action: tone, height, a keycap and whether it can be pressed now. |
-| [`og.ui.heroButton`](ui/fn-heroButton.md) | function | `(id: string, label: string, desc?: HeroButtonDesc): Response` | The one action a genre screen leads with (End turn, Summon, Play, Ready): a raised face lit from the top over a ledge of its own dark and a soft shadow on the scene, so it reads as a thing to press o… |
-| [`StarBarDesc`](ui/type-StarBarDesc.md) | desc struct |  | A level's score toward its stars. |
-| [`StarBarResult`](ui/type-StarBarResult.md) | struct |  | What the bar showed this tick. |
-| [`og.ui.starBar`](ui/fn-starBar.md) | function | `(id: string, desc?: StarBarDesc): StarBarResult` | A level's score toward its stars (Candy Crush, Homescapes, Angry Birds): the score in the display face over a bar that fills in a warm gold, a star standing on the bar at each threshold, lit as the s… |
 | [`MapOverlay`](ui/type-MapOverlay.md) | desc struct |  | One of the map's data overlays (Traffic, Power, Land value), with its legend's ramp. |
 | [`OverlayBarDesc`](ui/type-OverlayBarDesc.md) | desc struct |  | A city or strategy map's overlay picker: the overlays, the one shown and its legend. |
 | [`OverlayBarResult`](ui/type-OverlayBarResult.md) | struct |  | What the player asked for this tick. |
@@ -497,25 +444,13 @@ module ui {
 | [`TooltipCardDesc`](ui/type-TooltipCardDesc.md) | desc struct |  | A rich tooltip card beside its trigger. |
 | [`TooltipCardResult`](ui/type-TooltipCardResult.md) | struct |  | What a tooltip card did this tick. |
 | [`og.ui.tooltipCard`](ui/fn-tooltipCard.md) | function | `(id: string, desc?: TooltipCardDesc): TooltipCardResult` | A rich tooltip: a card in the tooltip layer beside its trigger, flipped and clamped inside the safe area, with a title in its rarity's colour and pips, an art slot, rich-text body whose keyword links… |
-| [`ProgressStyle`](ui/type-ProgressStyle.md) | enum |  | How a progress bar shows its value. |
-| [`ProgressBarDesc`](ui/type-ProgressBarDesc.md) | desc struct |  | A progress bar. |
-| [`og.ui.progressBar`](ui/fn-progressBar.md) | function | `(id: string, desc?: ProgressBarDesc): void` | A progress bar: a rounded track, a fill that moves to its value on the style's ui spring (never jumping back on a retarget), a buffer ahead of it, a sweeping sheen while it works, segments for steps,… |
-| [`ProgressRingDesc`](ui/type-ProgressRingDesc.md) | desc struct |  | A progress ring or spinner. |
-| [`og.ui.progressRing`](ui/fn-progressRing.md) | function | `(id: string, desc?: ProgressRingDesc): void` | A progress ring: an arc filled clockwise from the top on the style's ui spring, or a spinning arc that grows and shrinks as it turns (Material's indeterminate ring, which reads as working at any size… |
-| [`SkeletonShape`](ui/type-SkeletonShape.md) | enum |  | What a skeleton stands in for. |
-| [`SkeletonGroupDesc`](ui/type-SkeletonGroupDesc.md) | desc struct |  | A skeleton standing in for content that is loading. |
-| [`og.ui.skeletonGroup`](ui/fn-skeletonGroup.md) | function | `(id: string, desc?: SkeletonGroupDesc): void` | A skeleton: shapes of the neutral fill where content will arrive, swept by one sheen across the whole group (not each piece on its own clock), cornered as the parts they stand for. |
 | [`Notation`](ui/type-Notation.md) | enum |  | How a number is written. |
 | [`NumberFormatDesc`](ui/type-NumberFormatDesc.md) | desc struct |  | How og.ui.formatNumber and the counters write a number. |
 | [`og.ui.formatNumber`](ui/fn-formatNumber.md) | function | `(value: number, format?: NumberFormatDesc): string` | A number written in a notation: grouped, compact, idle letters, scientific or engineering, with a sign, prefix and suffix and the locale's separators, and past 1e308 through its exponent. |
-| [`NumberCounterDesc`](ui/type-NumberCounterDesc.md) | desc struct |  | A big number that counts to its value. |
-| [`og.ui.numberCounter`](ui/fn-numberCounter.md) | function | `(id: string, value: number, desc?: NumberCounterDesc): number` | A number display for scores, currency and resources: written in its notation (idle letters past trillions, numbers past 1e308), counting to a new value on an ease-out, its digits rolling like an odom… |
 | [`BannerKind`](ui/type-BannerKind.md) | enum |  | What a banner announces, which sets its look and timing. |
 | [`BannerDesc`](ui/type-BannerDesc.md) | desc struct |  | A full-width announcement. |
 | [`BannerResult`](ui/type-BannerResult.md) | struct |  | Where a banner is. |
 | [`og.ui.banner`](ui/fn-banner.md) | function | `(id: string, desc?: BannerDesc): BannerResult` | A full-width announcement: a wave or round band that slams in with a squash and a shake, a title card that fades up over a rule that draws out from its centre, a victory band with a burst and confett… |
-| [`UiRibbonDesc`](ui/type-UiRibbonDesc.md) | desc struct |  | A ribbon on a card or a result. |
-| [`og.ui.ribbon`](ui/fn-ribbon.md) | function | `(id: string, desc?: UiRibbonDesc): void` | A ribbon: a diagonal band wrapping a corner of the open container with its folded tail, a notched banner across its top or bottom, or a stamp slapped across its middle (a New best!: it lands from lar… |
 | [`CelebrationKind`](ui/type-CelebrationKind.md) | enum |  | Which celebration plays. |
 | [`CelebrationDesc`](ui/type-CelebrationDesc.md) | desc struct |  | A celebration effect. |
 | [`og.ui.celebration`](ui/fn-celebration.md) | function | `(id: string, desc?: CelebrationDesc): void` | A celebration: confetti over the whole screen, a burst from the container it is built in, a level-up flourish centred on the screen, or fireworks. |
@@ -526,69 +461,10 @@ module ui {
 | [`SubtitleLine`](ui/type-SubtitleLine.md) | desc struct |  | A line of dialogue or a sound caption showing now. |
 | [`SubtitlesDesc`](ui/type-SubtitlesDesc.md) | desc struct |  | The subtitles showing now. |
 | [`og.ui.subtitles`](ui/fn-subtitles.md) | function | `(id: string, desc?: SubtitlesDesc): void` | Subtitles and captions to the Xbox Accessibility Guidelines' 104: centred at the bottom of the safe area, at most two lines of at most about 42 characters each across 70 % of the width (the box wraps… |
-| [`StatBarStyle`](ui/type-StatBarStyle.md) | enum |  | A stat bar's shape. |
-| [`StatBarDesc`](ui/type-StatBarDesc.md) | desc struct |  | A health or resource bar. |
-| [`og.ui.statBar`](ui/fn-statBar.md) | function | `(id: string, desc?: StatBarDesc): void` | A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, an absorb overlay (World of W… |
-| [`OrbMeterDesc`](ui/type-OrbMeterDesc.md) | desc struct |  | An orb of health or mana. |
-| [`og.ui.orbMeter`](ui/fn-orbMeter.md) | function | `(id: string, desc?: OrbMeterDesc): void` | An orb (Diablo's health and mana globes): a glass sphere filled from the bottom with a liquid whose surface sways, a highlight on the glass, a frame ring, the value in the middle; the level moves on … |
-| [`RadialMeterDesc`](ui/type-RadialMeterDesc.md) | desc struct |  | A radial stamina wheel. |
-| [`og.ui.radialMeter`](ui/fn-radialMeter.md) | function | `(id: string, desc?: RadialMeterDesc): void` | A radial stamina wheel (Breath of the Wild, Elden Ring's spirit gauge): a ring that drains clockwise, outer rings for extra wheels, warn under a third, red and pulsing when exhausted until it refills… |
-| [`AbilitySlotDesc`](ui/type-AbilitySlotDesc.md) | desc struct |  | An ability, item or spell on a bar. |
-| [`og.ui.abilitySlot`](ui/fn-abilitySlot.md) | function | `(id: string, desc?: AbilitySlotDesc): Response` | An ability slot as shipped action bars draw it (Diablo IV, League, Destiny 2, Genshin): the art fills the frame edge to edge and stays the dominant element in every state; one centred numeral per sta… |
-| [`AbilityBarDesc`](ui/type-AbilityBarDesc.md) | desc struct |  | A bar of ability slots. |
-| [`AbilityBarResult`](ui/type-AbilityBarResult.md) | struct |  | What an ability bar answered. |
-| [`og.ui.abilityBar`](ui/fn-abilityBar.md) | function | `(id: string, desc?: AbilityBarDesc): AbilityBarResult` | An ability bar: abilitySlot for each slot, in a row (or a column) straight on the scene (a style may dress AbilityBar.frame as a slim bar), evenly spaced; a row with more slots than the HUD band hold… |
-| [`StatusEffect`](ui/type-StatusEffect.md) | desc struct |  | A buff or debuff on a unit. |
-| [`StatusGridDesc`](ui/type-StatusGridDesc.md) | desc struct |  | A grid of buffs and debuffs. |
-| [`StatusGridResult`](ui/type-StatusGridResult.md) | struct |  | What a status grid answered. |
-| [`og.ui.statusGrid`](ui/fn-statusGrid.md) | function | `(id: string, desc?: StatusGridDesc): StatusGridResult` | Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in … |
-| [`UnitClass`](ui/type-UnitClass.md) | enum |  | A unit's standing, which dresses its frame. |
-| [`MarkerKind`](ui/type-MarkerKind.md) | enum |  | What a map marker is. |
-| [`MapMarkerItem`](ui/type-MapMarkerItem.md) | desc struct |  | A marker on a minimap. |
-| [`MapShape`](ui/type-MapShape.md) | enum |  | A minimap's outline. |
-| [`MinimapViewDesc`](ui/type-MinimapViewDesc.md) | desc struct |  | A minimap. |
-| [`MinimapResult`](ui/type-MinimapResult.md) | struct |  | What a minimap answered. |
-| [`og.ui.minimapView`](ui/fn-minimapView.md) | function | `(id: string, desc?: MinimapViewDesc): MinimapResult` | A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the p… |
-| [`CompassPoi`](ui/type-CompassPoi.md) | desc struct |  | A point on a compass strip. |
-| [`CompassDesc`](ui/type-CompassDesc.md) | desc struct |  | A compass strip. |
-| [`og.ui.compass`](ui/fn-compass.md) | function | `(id: string, desc?: CompassDesc): void` | A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their dis… |
 | [`ObjectiveStep`](ui/type-ObjectiveStep.md) | desc struct |  | A step of an objective. |
 | [`ObjectiveQuest`](ui/type-ObjectiveQuest.md) | desc struct |  | An objective in the tracker. |
 | [`ObjectiveTrackerDesc`](ui/type-ObjectiveTrackerDesc.md) | desc struct |  | The objective tracker. |
 | [`og.ui.objectiveTracker`](ui/fn-objectiveTracker.md) | function | `(id: string, desc?: ObjectiveTrackerDesc): void` | An objective tracker to the bar of open worlds and MMOs: each objective's title by its icon with its distance and a countdown, its steps as boxes that tick with a pop when done (dimmed after), counts… |
-| [`TimerMode`](ui/type-TimerMode.md) | enum |  | Which way a timer runs. |
-| [`HudTimerDesc`](ui/type-HudTimerDesc.md) | desc struct |  | A round, match or turn timer. |
-| [`og.ui.hudTimer`](ui/fn-hudTimer.md) | function | `(id: string, desc?: HudTimerDesc): void` | A timer to the bar of fighting and battle royale HUDs: the time in tabular digits on the HUD chip, a ring for a countdown's share left, warn and then danger with a pulse and a tick sound each second … |
-| [`Reaction`](ui/type-Reaction.md) | enum |  | How a unit stands toward the player, which colours its tag. |
-| [`NameplateDesc`](ui/type-NameplateDesc.md) | desc struct |  | A nameplate over a unit. |
-| [`og.ui.nameplate`](ui/fn-nameplate.md) | function | `(id: string, desc?: NameplateDesc): AnchorInfo` | A nameplate to the bar of World of Warcraft and Final Fantasy XIV: the name in its reaction's colour with a level badge and an icon, a title under it, a slim health bar with its absorb and a cast bar… |
-| [`OverheadBar`](ui/type-OverheadBar.md) | desc struct |  | One overhead bar. |
-| [`OverheadBarsDesc`](ui/type-OverheadBarsDesc.md) | desc struct |  | Overhead bars over many units. |
-| [`og.ui.overheadBars`](ui/fn-overheadBars.md) | function | `(id: string, desc?: OverheadBarsDesc): void` | Overhead bars to the bar of RTS and MOBA crowds (StarCraft II, League of Legends): one mass element per unit, thousands a frame, each a dark track with its fill in its reaction's colour and a pale gh… |
-| [`DamageKind`](ui/type-DamageKind.md) | enum |  | What a damage number is. |
-| [`DamageHitDesc`](ui/type-DamageHitDesc.md) | desc struct |  | A damage number to throw. |
-| [`DamageNumbersDesc`](ui/type-DamageNumbersDesc.md) | desc struct |  | Damage numbers. |
-| [`og.ui.damageNumbers`](ui/fn-damageNumbers.md) | function | `(id: string, desc?: DamageNumbersDesc): void` | Damage numbers to the bar of Diablo IV, Genshin Impact and World of Warcraft: each hit thrown from where it landed, rising and drifting to its side as it fades, outlined so it reads on any scene; a c… |
-| [`InteractionPromptDesc`](ui/type-InteractionPromptDesc.md) | desc struct |  | An interaction prompt over a thing. |
-| [`og.ui.interactionPrompt`](ui/fn-interactionPrompt.md) | function | `(world: World, id: string, desc?: InteractionPromptDesc): AnchorInfo` | An interaction prompt to the bar of The Last of Us, Elden Ring and Genshin Impact: the action's glyph for the device used last (a key cap, a pad's face button) and the verb, the thing's name over it,… |
-| [`WaypointKind`](ui/type-WaypointKind.md) | enum |  | What a waypoint marks. |
-| [`WaypointDesc`](ui/type-WaypointDesc.md) | desc struct |  | A waypoint or a ping in the world. |
-| [`og.ui.waypoint`](ui/fn-waypoint.md) | function | `(id: string, desc?: WaypointDesc): AnchorInfo` | A waypoint or ping to the bar of Apex Legends and Destiny: a diamond with its kind's icon in its colour, the distance under it, a label and who pinged it; off screen or behind it stays on the safe ar… |
-| [`GroundDesc`](ui/type-GroundDesc.md) | desc struct |  | What a ground shape (a selection ring, a telegraph, a path line, a placement ghost) lies on: its outline is cut into vertices `spacing` apart and each is lifted to the surface under it, so it follows… |
-| [`SelectionRingDesc`](ui/type-SelectionRingDesc.md) | desc struct |  | A selection ring on the ground. |
-| [`og.ui.selectionRing`](ui/fn-selectionRing.md) | function | `(world: World, id: string, desc?: SelectionRingDesc): void` | A selection ring to the bar of StarCraft II and Baldur's Gate 3: an ellipse on the ground under the unit (the ground circle projected, lying on the terrain or colliders under it with desc.ground), a … |
-| [`TelegraphShape`](ui/type-TelegraphShape.md) | enum |  | A telegraph's area. |
-| [`TelegraphDesc`](ui/type-TelegraphDesc.md) | desc struct |  | An area an attack will hit. |
-| [`og.ui.telegraph`](ui/fn-telegraph.md) | function | `(world: World, id: string, desc?: TelegraphDesc): void` | An attack telegraph to the bar of Final Fantasy XIV and WildStar: the area on the ground (disc, ring, cone or line; with desc.ground over slopes and hills, every vertex on the surface) tinted in dang… |
-| [`PathLineDesc`](ui/type-PathLineDesc.md) | desc struct |  | A path on the ground. |
-| [`og.ui.pathLine`](ui/fn-pathLine.md) | function | `(world: World, id: string, desc?: PathLineDesc): void` | A path line to the bar of Baldur's Gate 3, XCOM 2 and RTS move orders: the route on the ground (draped on the surface with desc.ground) as a line with chevrons marching toward its end, the part past … |
-| [`PlacementGhostDesc`](ui/type-PlacementGhostDesc.md) | desc struct |  | A building's footprint while it is placed. |
-| [`og.ui.placementGhost`](ui/fn-placementGhost.md) | function | `(world: World, id: string, desc?: PlacementGhostDesc): void` | A placement ghost to the bar of Age of Empires IV, Anno and Cities: Skylines: the footprint on the ground (draped on the surface with desc.ground) in success or danger (hatched when invalid, so it is… |
-| [`LootLabelDesc`](ui/type-LootLabelDesc.md) | desc struct |  | A label on an item lying in the world. |
-| [`LootLabelResult`](ui/type-LootLabelResult.md) | struct |  | What a loot label answered. |
-| [`og.ui.lootLabel`](ui/fn-lootLabel.md) | function | `(id: string, desc?: LootLabelDesc): LootLabelResult` | A loot label to the bar of Diablo IV, Path of Exile and Borderlands: the name on a dark chip edged in its rarity's colour with pips so tiers do not rest on colour alone, the stack's count, a beam of … |
-| [`SpeechBubbleDesc`](ui/type-SpeechBubbleDesc.md) | desc struct |  | A speech bubble over a speaker. |
-| [`og.ui.speechBubble`](ui/fn-speechBubble.md) | function | `(id: string, desc?: SpeechBubbleDesc): AnchorInfo` | A speech bubble to the bar of Animal Crossing, Sea of Thieves and The Sims: a rounded bubble over the speaker with a tail pointing down to them, the speaker's name, the text typing out with a soft ti… |
 | [`VectorArt`](ui/type-VectorArt.md) | handle |  | A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill. |
 | [`UiMaterial`](ui/type-UiMaterial.md) | handle |  | A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through. |
 | [`VectorArt()`](#column-VectorArt) | column kind |  | A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill. |
@@ -646,7 +522,6 @@ module ui {
 | [`MassInstance`](ui/type-MassInstance.md) | desc struct |  | One mass element: a few values; its template does the rest. |
 | [`og.ui.defineMass`](ui/fn-defineMass.md) | function | `(name: string, desc?: MassTemplateDesc): Result<number>` | Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. |
 | [`og.ui.spawnMass`](ui/fn-spawnMass.md) | function | `(template: number, instances: readonly MassInstance[]): void` | Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). |
-| [`og.ui.pushMass`](ui/fn-pushMass.md) | function | `(template: number, instances: readonly MassInstance[]): void` | Show instances of a template for this tick only (overhead bars, nameplates, status icons rebuilt every tick with their values). |
 | [`og.ui.massCount`](ui/fn-massCount.md) | function | `(template: number): number` | The live spawned instances of a template. |
 | [`EmitFrom`](ui/type-EmitFrom.md) | enum |  | Where on its element a particle starts. |
 | [`ParticlesDesc`](ui/type-ParticlesDesc.md) | desc struct |  | UI particles from an element (docs/ui.md §3.3): confetti, sparks, coin streams, rarity bursts. |
@@ -707,7 +582,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 6685</sub>
+<sub>Module `ui` line 5009</sub>
 
 ```ogt
 column UiMaterial {
@@ -718,4 +593,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 6692</sub>
+<sub>Module `ui` line 5016</sub>

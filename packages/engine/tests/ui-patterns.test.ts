@@ -6,58 +6,11 @@ import type * as Api from "@origingame/engine";
 
 import { createEngine, type GameToken } from "../src/runtime.ts";
 
-import { run, byPath, centre, elements, tapOn, systemIds, key } from "./support/patterns.ts";
+import { run, byPath, elements, tapOn, systemIds, key } from "./support/patterns.ts";
 
 import "./support/patterns.ts";
 
-test("heroButton: a press is a click; disabled it is inert; a desktop shows its keycap and says it", () => {
-  // Wrong: a disabled call to action still answers clicked, or the keycap claims a key the name never says.
-  let clicked = 0;
-  let off = 0;
-  const e = run(() => {
-    if (og.ui.heroButton("Go", "End turn", { tone: "primary", key: "E" }).clicked) clicked += 1;
-    if (og.ui.heroButton("Wait", "Waiting", { disabled: true }).clicked) off += 1;
-  }, {});
-  const go = byPath(e, "Root/Go")!;
-  expect(go.name).toBe("End turn, E");
-  expect(byPath(e, "Go/Key/Text")!.text).toBe("E");
-  for (const b of [go, byPath(e, "Root/Wait")!]) {
-    e.probe.commands(`0:touch_move:${centre(b)};0.05:touch_start;0.1:touch_end`);
-    e.advance(10);
-  }
-  expect(clicked).toBe(1);
-  expect(off).toBe(0);
-});
-
-test("heroButton: a label longer than its row wraps inside the button instead of running past the row", () => {
-  // Wrong: a one-line label sets the button's least width, so a narrow row (a phone at 150 %) is overrun.
-  const e = run(() => og.ui.column("Box", { width: { kind: "fixed", px: 150 } }, () => og.ui.heroButton("Go", "Reroll the rewards for fifty gold")), {});
-  const box = byPath(e, "Root/Box")!;
-  const go = byPath(e, "Box/Go")!;
-  const label = byPath(e, "Go/Label")!;
-  expect(go.x + go.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
-  expect(label.x + label.width).toBeLessThanOrEqual(go.x + go.width + 0.5);
-  expect(label.text).toBe("Reroll the rewards for fifty gold");
-});
-
 // ── puzzle goals ────────────────────────────────────────────────────────
-
-test("starBar: a star is earned at its threshold and reported crossed once, not every tick after", () => {
-  // Wrong: crossed reported on every tick while over the line (the game's fanfare looping), or a star lit below it.
-  let score = 900;
-  const results: Api.StarBarResult[] = [];
-  const engine = run(() => {
-    results.push(og.ui.starBar("Stars", { value: score, thresholds: [1000, 2000, 3000], label: "Score" }));
-  });
-  expect(results.at(-1)!.earned).toBe(0);
-  score = 2100;
-  engine.advance(10);
-  expect(results.at(-1)!.earned).toBe(2);
-  expect(results.reduce((n, r) => n + r.crossed, 0)).toBe(2);
-  const meter = elements(engine).find((e) => e.role === "meter" && e.path.endsWith("Stars"))!;
-  expect(meter.name).toBe("Score");
-  expect(meter.value).toBe("2,100");
-});
 
 test("overlayBar: a press shows an overlay and its legend; a press on the shown one turns it off", () => {
   // Wrong: a second press on the shown overlay showing it again, or a legend with no overlay shown.

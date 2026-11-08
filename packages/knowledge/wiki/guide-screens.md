@@ -298,3 +298,43 @@ Read a phone layout at 390×844 and a desktop one at 1920×1080.
   English text overflows in German and mirrors wrongly in Arabic.
 - Numbers, plurals and dates go through og.i18n; never concatenate
   translated fragments.
+
+<a id="guide-screens-7"></a>
+### `screens §7` Component documents
+
+Health bars, ability bars and cooldowns, a round countdown timer, a minimap
+and compass, a radial weapon wheel chosen with the stick, nameplates and
+damage numbers are component documents, not `og.ui` builders: copy one with `og ui eject <name>` (`--list` names them
+with the screens), load it with `og.load.document`, and use it in a screen
+by its declared name with props from named stores. Each declares its props,
+actions and a `fixture:default`, so `og ui preview` shows it at once.
+
+- Bars and meters: `stat-bar` (a health or resource bar with a ghost and a
+  shield), `orb-meter`, `radial-meter` (a stamina wheel), `progress-bar`,
+  `progress-ring`, `skeleton-group` (a loading placeholder).
+- Abilities: `ability-bar`, `ability-slot` and `cooldown` (a cooldown
+  sweep over the icon, the seconds left, charges and cost, the hotkey as
+  `<kbd data-action>`), `status-grid` (buffs and debuffs with their time).
+- Time and score: `hud-timer` (a round countdown that turns warn and
+  critical), `star-bar` (a score bar with star thresholds). A number that
+  counts is `<p count={$score}>` with `-og-count-duration`.
+- Navigation: `minimap` and `minimap-view` (a map in the corner with
+  markers for allies, enemies, objectives and pings, a uv region by
+  `-og-uv`), `compass` (a heading strip with points of interest).
+- Menus and layout: `radial-menu` (a radial weapon wheel whose slice is
+  chosen with the right stick or the pointer: SVG wedges, the aim from its
+  events), `split-view` (two panes and a dragged
+  divider), `carousel` (`scroll-snap-type`), `breadcrumbs`
+  (`<nav><ol>` with `aria-current`), `chart` (bars and a line).
+- Buttons: `hero-button` (the main call to action with its keycap),
+  `action-button` (a touch button feeding an og-input action through
+  `data-og-touch`), `ribbon` (a corner ribbon on a card).
+- World: `nameplate`, `waypoint`, `loot-label`, `speech-bubble` and
+  `interaction-prompt` are `<anchor>`s over an entity or point;
+  `selection-ring`, `telegraph`, `path-line` and `placement-ghost` are
+  `<ground>` marks; `overhead-bars` and `damage-numbers` are
+  `<anchor mass>` rows drawn on the GPU by the thousand.
+
+Expressions compute no geometry: the game passes a chart's line and a path
+line's route as SVG path data, a radial menu's slice positions and a split
+view's ratio.

@@ -6,11 +6,9 @@
 
 import { keyBindingRow } from "./bindings.ts";
 import { holdButton, iconButton, pushButton } from "./buttons.ts";
-import { cycler } from "./choices.ts";
 import { inputArea, inputField, searchBox } from "./fields.ts";
 import { onScreenKeyboard } from "./keyboard.ts";
-import { colorPicker } from "./pickers.ts";
-import { checkField, dropdown, numberStepper, radioGroup, segmented, toggleSwitch, valueSlider } from "./natives.ts";
+import { dropdown, numberStepper, segmented, toggleSwitch, valueSlider } from "./natives.ts";
 import { rangeSlider } from "./ranges.ts";
 
 export const controls = Object.freeze({
@@ -18,10 +16,7 @@ export const controls = Object.freeze({
   iconButton,
   holdButton,
   toggleSwitch,
-  checkField,
-  radioGroup,
   segmented,
-  cycler,
   valueSlider,
   rangeSlider,
   numberStepper,
@@ -29,7 +24,6 @@ export const controls = Object.freeze({
   inputArea,
   searchBox,
   dropdown,
-  colorPicker,
   keyBindingRow,
   onScreenKeyboard,
 });

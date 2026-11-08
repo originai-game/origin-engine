@@ -213,18 +213,6 @@ export function levelOf(frac: number, low: number, critical: number): Level {
   return "normal";
 }
 
-/** A meter kind's colour; health turns warn and danger by level. */
-export function kindColor(kind: Api.MeterKind | undefined, level: Level, custom?: Api.Paint | null): Rgba {
-  if (custom) return paintRgba(custom, role("health"));
-  const k = kind ?? "health";
-  if (k === "health") {
-    if (level === "critical" || level === "empty") return role("danger");
-    if (level === "low") return mix(role("health"), role("warn"), 0.7);
-    return role("health");
-  }
-  return role(k);
-}
-
 /** The paint's colour as sRGB (a token resolved from the frame's style). */
 export function paintRgba(p: Api.Paint | null | undefined, fallback: Rgba): Rgba {
   if (!p) return fallback;

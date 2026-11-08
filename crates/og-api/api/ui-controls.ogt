@@ -122,71 +122,11 @@
     returns SwitchResult
   }
 
-  struct CheckFieldDesc {
-    doc "A checkbox: its label, description and states."
-    desc true
-    field label String "Its label (the whole row takes the press)."
-    field description String "A line under the label; empty for none."
-    field mixed bool "Neither: some of what it stands for is on (a group's parent). A press turns it on."
-    field disabled bool "Shown but inert."
-    field invalid bool "It must be checked (terms to accept): danger outline and the validity group."
-    field side LabelSide "Where the label sits." {
-      default end
-    }
-    field width Option.Size "The row's width; null fits."
-  }
-
-  fn checkField {
-    doc "A checkbox: a box that fills with primary and draws its tick (a dash when mixed) with a pop as it turns on (its selection group), with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Checkbox.box[checked|mixed][invalid][hover|pressed|focused|disabled]`, `Checkbox.mark`, `Checkbox.row[hover|pressed|focused|disabled]` (the whole row). Role checkbox, checked when on (and its value `mixed`). Probe: `<id>`, `<id>/Box`, `<id>/Box/Mark`."
-    aliases "checkbox, tick box, Godot CheckBox"
-    param id String "Its id."
-    param checked bool "Its state from game state."
-    param desc CheckFieldDesc "Its label and states."
-    returns SwitchResult
-  }
-
-  struct RadioOption {
-    doc "One choice of a radio group."
-    desc true
-    field label String "Its label."
-    field description String "A line under it; empty for none."
-    field icon String "An icon before it (cards); empty for none."
-    field disabled bool "Shown but cannot be chosen."
-  }
-
-  enum RadioVariant {
-    doc "How a radio group draws its choices."
-    variant list "A ring and a label per choice (the default)."
-    variant cards "A framed card per choice, the chosen one ringed (a difficulty, a class)."
-  }
-
-  struct RadioGroupDesc {
-    doc "A radio group: its choices and layout."
-    desc true
-    field options List.RadioOption "The choices."
-    field selected i32 "The chosen one from game state; -1 is none." {
-      default -1
-    }
-    field label String "The group's name: shown above it and read by a screen reader; empty for none."
-    field variant RadioVariant "How it draws."
-    field row bool "Lay the choices across (they wrap) rather than down."
-    field disabled bool "Every choice inert."
-    field width Option.Size "Its width; null fits."
-  }
-
   struct ChoiceIndexResult {
     doc "A choice control's state after this tick."
     field selected i32 "The chosen index, to keep and pass back (-1: none)."
     field changed bool "It changed this tick."
     field focused i32 "The index with the focus (-1: none)."
-  }
-
-  fn radioGroup {
-    doc "A radio group: one of several choices, as rings with labels or as cards. A press, Enter, Space or A chooses; Left and Right (and a pad's) step the choice while one has the focus, skipping disabled ones, as a native radio group does. The ring's dot grows in with a pop (selection group). Plays select. Parts: `Radio.option[selected][hover|pressed|focused|disabled]`, `Radio.ring[selected]`, `Radio.dot`, `Radio.card[selected]`. Role radiogroup with radio children, checked on the chosen. Probe: `<id>`, `<id>/Options/Option#i`."
-    aliases "radio, radio buttons, option group"
-    param id String "Its id."
-    param desc RadioGroupDesc "Its choices and layout."
-    returns ChoiceIndexResult
   }
 
   struct SliderMark {
@@ -313,33 +253,6 @@
     param value f32 "The value from game state."
     param desc NumberStepperDesc "Its range, step and look."
     returns NumberResult
-  }
-
-  struct CyclerDesc {
-    doc "An option cycler: a setting's levels in one row."
-    desc true
-    field label String "Its name, before it; empty for none."
-    field wrap bool "Past the last it goes to the first." {
-      default true
-    }
-    field pips bool "A pip per option under the value, the current lit." {
-      default true
-    }
-    field disabled bool "Shown but inert."
-    field width Option.Size "Its width; null grows."
-    field valueWidth Option.f32 "The value's width; null fits the longest option (so the arrows never move)." {
-      unit cssPx
-    }
-  }
-
-  fn cycler {
-    doc "An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option; its arrows are buttons under a finger and named images on a fine pointer (Left and Right on the focused cycler are theirs). Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`."
-    host false
-    param id String "Its id."
-    param options List.String "The options."
-    param index i32 "The current one from game state."
-    param desc CyclerDesc "Its label and look."
-    returns ChoiceIndexResult
   }
 
   struct SegmentItem {
@@ -513,47 +426,6 @@
     param query String "The query from game state."
     param desc SearchBoxDesc "Its suggestions and look."
     returns SearchResult
-  }
-
-  struct PickedColor {
-    doc "A colour as a picker answers it: sRGB components 0 to 1 and alpha."
-    desc true
-    field r f32 "Red."
-    field g f32 "Green."
-    field b f32 "Blue."
-    field a f32 "Alpha." {
-      default 1
-    }
-  }
-
-  struct ColorPickerDesc {
-    doc "A colour picker: its swatches and the parts it shows."
-    desc true
-    field swatches List.String "Preset colours as `#rrggbb` (a livery's, a team's); empty for none."
-    field alpha bool "An opacity strip."
-    field hex bool "A hex field." {
-      default true
-    }
-    field label String "Its name; empty for none."
-    field width Option.Size "Its width; null is 280."
-    field disabled bool "Shown but inert."
-  }
-
-  struct ColorPickerResult {
-    doc "A colour picker's colour after this tick."
-    field color PickedColor "The colour, to keep and pass back."
-    field hex String "It as `#rrggbb` (`#rrggbbaa` with alpha under 1)."
-    field changed bool "It changed this tick."
-    field committed bool "A drag ended, a swatch was chosen, a hex was entered or a step landed."
-  }
-
-  fn colorPicker {
-    doc "A colour picker: a saturation and brightness square with a ring at the colour, a hue strip, an opacity strip, swatches and a hex field, with the colour before and after. A press or a drag on the square or a strip sets it (a touch too); Left and Right step the hue strip, the opacity strip and the square's saturation while they have the focus; swatches are buttons; a hex field takes `#rgb`, `#rrggbb` and `#rrggbbaa`. The hue is kept while the colour is grey (UI state). Parts: `ColorPicker.square[focused]`, `ColorPicker.hue` and `ColorPicker.alpha` (the strips' reach, 44 px tall under a finger) with `ColorPicker.hueBar` and `ColorPicker.alphaBar` (the strips drawn in them), `ColorPicker.thumb[focused]`, `ColorPicker.swatch[selected][hover|focused]`, `ColorPicker.preview`. Roles: two sliders and a slider-like square (its hex as its value), swatches as radios. Probe: `<id>/Square`, `<id>/Hue`, `<id>/Alpha`, `<id>/Swatches/Swatch#i`, `<id>/Bottom/Hex/Input/Frame/Field`."
-    host false
-    param id String "Its id."
-    param color PickedColor "The colour from game state."
-    param desc ColorPickerDesc "Its swatches and parts."
-    returns ColorPickerResult
   }
 
   struct KeyBindingRowDesc {

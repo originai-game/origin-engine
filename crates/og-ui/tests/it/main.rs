@@ -12,6 +12,8 @@ mod box_decor;
 mod button_contrast;
 #[path = "../color_vision.rs"]
 mod color_vision;
+#[path = "../component_documents.rs"]
+mod component_documents;
 #[path = "../control_props.rs"]
 mod control_props;
 #[path = "../css_paint.rs"]

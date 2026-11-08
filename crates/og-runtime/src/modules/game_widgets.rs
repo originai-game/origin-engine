@@ -55,29 +55,6 @@ pub fn og_ui_close_modal() {
     with_ui("og.ui.closeModal", |ui| ui.close_modal());
 }
 
-pub fn og_ui_spotlight(id: String, hole: String, desc: Option<String>) -> String {
-    let h = parse(Some(&hole)).unwrap_or(Value::Null);
-    let d = desc_of(desc);
-    let hole = h.is_object().then(|| {
-        og_ui::Rect::new(
-            f(&h, "x", 0.0),
-            f(&h, "y", 0.0),
-            f(&h, "width", 0.0),
-            f(&h, "height", 0.0),
-        )
-    });
-    let r = with_ui("og.ui.spotlight", |ui| {
-        ui.spotlight(
-            id.as_str(),
-            hole,
-            SpotlightDesc {
-                padding: f(&d, "padding", 0.0),
-            },
-        )
-    });
-    response(r.unwrap_or_default()).to_string()
-}
-
 pub fn og_ui_bounds(path: String) -> String {
     let b = with_ui("og.ui.bounds", |ui| {
         ui.element(&path)
@@ -151,21 +128,6 @@ pub fn og_ui_close_list() -> String {
     response(with_ui("og.ui.closeList", |ui| ui.close_list()).unwrap_or_default()).to_string()
 }
 
-pub fn og_ui_chip(id: String, text: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.chip", |ui| {
-        ui.chip(
-            id.as_str(),
-            &text,
-            ChipDesc {
-                selected: d["selected"].as_bool().unwrap_or(false),
-                disabled: d["disabled"].as_bool().unwrap_or(false),
-            },
-        )
-    });
-    response(r.unwrap_or_default()).to_string()
-}
-
 pub fn og_ui_badge(id: String, text: String, t: String) {
     let tn = tone(&Value::String(t));
     with_ui("og.ui.badge", |ui| ui.badge(id.as_str(), &text, tn));
@@ -214,120 +176,6 @@ pub fn og_ui_icon(id: String, name: String, desc: Option<String>) {
             },
         )
     });
-}
-
-pub fn og_ui_meter(id: String, value: f64, max: f64, desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.meter", |ui| {
-        let t = *ui.theme();
-        let kind = match (paint(&t, &d["color"]), d["kind"].as_str()) {
-            (Some(c), _) => MeterKind::Custom(c),
-            (None, Some("mana")) => MeterKind::Mana,
-            (None, Some("xp")) => MeterKind::Xp,
-            (None, Some("primary")) => MeterKind::Primary,
-            _ => MeterKind::Health,
-        };
-        ui.meter(
-            id.as_str(),
-            value as f32,
-            max as f32,
-            &MeterDesc {
-                kind,
-                label: d["label"].as_str().unwrap_or_default().to_string(),
-                width: size(&d["width"]),
-                height: f(&d, "height", 0.0),
-                segments: idx(&d["segments"]).unwrap_or(0),
-            },
-        )
-    });
-}
-
-pub fn og_ui_cooldown(id: String, remaining: f64, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.cooldown", |ui| {
-        ui.cooldown(
-            id.as_str(),
-            remaining as f32,
-            &CooldownDesc {
-                size: f(&d, "size", 0.0),
-                label: d["label"].as_str().unwrap_or_default().to_string(),
-                icon: d["icon"].as_str().unwrap_or_default().to_string(),
-            },
-        )
-    });
-    response(r.unwrap_or_default()).to_string()
-}
-
-pub fn og_ui_minimap(id: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    let texture = texture_of(&d["texture"]);
-    with_ui("og.ui.minimap", |ui| {
-        let markers = d["markers"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .map(|m| MapMarker {
-                        x: f(m, "x", 0.0),
-                        y: f(m, "y", 0.0),
-                        tone: tone(&m["tone"]),
-                        player: m["player"].as_bool().unwrap_or(false),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        ui.minimap(
-            id.as_str(),
-            &MinimapDesc {
-                texture,
-                uv: uv_of(&d["uv"]),
-                size: f(&d, "size", 0.0),
-                markers,
-                label: d["label"].as_str().unwrap_or_default().to_string(),
-            },
-        )
-    });
-}
-
-pub fn og_ui_dialogue(id: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let portrait = texture_of(&d["portrait"])
-        .map(|t| (t, uv_of(&d["portraitUv"]).unwrap_or([0.0, 0.0, 1.0, 1.0])));
-    let r = with_ui("og.ui.dialogue", |ui| {
-        ui.dialogue(
-            id.as_str(),
-            &DialogueDesc {
-                speaker: d["speaker"].as_str().unwrap_or_default().to_string(),
-                text: d["text"].as_str().unwrap_or_default().to_string(),
-                portrait,
-                portrait_icon: d["portraitIcon"].as_str().unwrap_or_default().to_string(),
-                chars_per_second: f(&d, "charsPerSecond", 0.0),
-                portrait_right: d["portraitRight"].as_bool().unwrap_or(false),
-            },
-        )
-    })
-    .unwrap_or_default();
-    json!({ "shown": r.shown, "done": r.done, "advanced": r.advanced }).to_string()
-}
-
-pub fn og_ui_action_button(id: String, text: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.actionButton", |ui| {
-        ui.action_button(
-            id.as_str(),
-            &text,
-            &ActionButtonDesc {
-                size: f(&d, "size", 0.0),
-                primary: d["primary"].as_bool().unwrap_or(false),
-                icon: d["icon"].as_str().unwrap_or_default().to_string(),
-                customize: customize(&d["customize"]),
-                round: d["round"].as_bool().unwrap_or(false),
-                charge: d["charge"].as_f64().map(|v| v as f32),
-                charge_tone: tone(&d["chargeTone"]),
-                disabled: d["disabled"].as_bool().unwrap_or(false),
-            },
-        )
-    });
-    response(r.unwrap_or_default()).to_string()
 }
 
 /// The UI of an engine, for calls that work between ticks too.

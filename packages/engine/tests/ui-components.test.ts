@@ -471,115 +471,6 @@ test("pagination: the first, the last and the current page's neighbours with gap
   expect(find(engine, (e) => e.role === "navigation")?.value).toBe("11 / 20");
 });
 
-test("carousel: the next arrow moves on a page, the dots say which is current", () => {
-  let index = 0;
-  const engine = run(() => {
-    index = og.ui.carousel("Featured", { count: 4, index, height: { kind: "fixed", px: 160 } }, (k) => og.ui.label("Title", `Banner ${k}`, {})).index;
-  });
-  // A page is as wide as the viewport between the arrows, and the arrows stay beside it.
-  const clip = byPath(engine, "Viewport/Clip")!;
-  const page = byPath(engine, "Track/Page#0")!;
-  expect(page.width).toBeGreaterThan(clip.width * 0.9);
-  expect(byPath(engine, "Viewport/Next")!.x).toBeGreaterThanOrEqual(clip.x + clip.width - 1);
-  tap(engine, "Viewport/Next");
-  expect(index).toBe(1);
-  expect(find(engine, (e) => e.id === "Dot#1")?.states).toContain("selected");
-  tap(engine, "Dots/Dot#3");
-  expect(index).toBe(3);
-  expect(find(engine, (e) => e.id === "Next")?.disabled).toBeTrue();
-});
-
-test("breadcrumbs: a long path collapses its middle into a menu that goes back to a hidden crumb", () => {
-  let chosen = null as number | null;
-  const engine = run(() => {
-    const r = og.ui.breadcrumbs("Path", { items: [{ label: "Home" }, { label: "Inventory" }, { label: "Weapons" }, { label: "Swords" }, { label: "Rare" }, { label: "Moonblade" }], maxShown: 4 });
-    if (r.chosen !== null) chosen = r.chosen;
-  });
-  const crumbs = elements(engine).filter((e) => e.parent === "Path" && e.id.startsWith("Crumb#")).map((e) => e.id);
-  expect(crumbs).toEqual(["Crumb#0", "Crumb#4", "Crumb#5"]);
-  expect(byPath(engine, "Path/Crumb#5")?.states).toContain("selected");
-  tap(engine, "Path/More");
-  engine.advance(12);
-  const weapons = find(engine, (e) => e.role === "menuitem" && e.name === "Weapons")!;
-  tapAt(engine, weapons);
-  expect(chosen).toBe(2);
-});
-
-test("splitView: a press of the focused divider steps to the next snap ratio", () => {
-  let ratio = 0.5;
-  const engine = run(() => {
-    ratio = og.ui.splitView("Split", { ratio, height: { kind: "fixed", px: 200 } }, () => og.ui.label("A", "List", {}), () => og.ui.label("B", "Detail", {})).ratio;
-  });
-  engine.advance(4);
-  tap(engine, "Split/Divider");
-  expect(ratio).toBeCloseTo(0.67, 2);
-  expect(byPath(engine, "Split/Divider")?.role).toBe("separator");
-});
-
-test("radialMenu: a stick's aim chooses the slice it points at, a release picks it", () => {
-  // Wrong: slices counted from 3 o'clock, or counterclockwise.
-  let picked = null as number | null;
-  let aim = { x: 1, y: 0 };
-  let release = false;
-  const engine = run(() => {
-    const r = og.ui.radialMenu("Wheel", true, { items: [{ label: "Up" }, { label: "Right" }, { label: "Down" }, { label: "Left" }], aim, release });
-    if (r.chosen !== null) picked = r.chosen;
-  });
-  engine.advance(4);
-  expect(find(engine, (e) => e.role === "menu")?.value).toBe("Right");
-  aim = { x: 0, y: 1 };
-  release = true;
-  engine.advance(2);
-  expect(picked).toBe(2);
-});
-
-test("radialMenu: the pointer picks by angle anywhere on a slice; a release in the hole cancels; Right steps round", () => {
-  // Wrong: slices hit-tested as overlapping rectangles (the topmost wins everywhere), or a press in the hole that chooses.
-  let picked = null as number | null;
-  let hovered = null as number | null;
-  const engine = run(() => {
-    const r = og.ui.radialMenu("Wheel", true, { items: [{ label: "Up" }, { label: "Right" }, { label: "Down" }, { label: "Left" }, { label: "Bag", disabled: true }, { label: "Map" }] });
-    if (r.chosen !== null) picked = r.chosen;
-    hovered = r.hovered;
-  });
-  engine.advance(20);
-  const w = find(engine, (e) => e.role === "menu")!;
-  const cx = w.x + w.width / 2, cy = w.y + w.height / 2, R = w.width / 2;
-  // Six slices of 60° from the top, clockwise: a point near the edge between Down (2) and Left (3), on Left's side,
-  // near the rim and near the hole.
-  const at = (deg: number, r: number) => `${Math.round(cx + Math.sin((deg * Math.PI) / 180) * r)},${Math.round(cy - Math.cos((deg * Math.PI) / 180) * r)}`;
-  for (const [deg, r, want] of [[150 + 4, R * 0.95, 3], [150 - 4, R * 0.95, 2], [150 + 6, R * 0.5, 3], [0, R * 0.7, 0], [330 + 25, R * 0.8, 0], [300, R * 0.8, 5]] as const) {
-    engine.probe.commands(`0:touch_move:${at(deg, r)}`);
-    engine.advance(3);
-    expect([deg, hovered]).toEqual([deg, want]);
-  }
-  engine.probe.commands(`0:touch_move:${at(190, R * 0.8)};0.05:touch_start;0.1:touch_end`);
-  engine.advance(12);
-  expect(picked).toBe(3);
-  picked = null;
-  engine.probe.commands(`0:touch_move:${Math.round(cx)},${Math.round(cy)};0.05:touch_start;0.1:touch_end`);
-  engine.advance(12);
-  expect(picked).toBeNull();
-  // Right steps clockwise, skipping the disabled Bag (4).
-  key(engine, "ArrowRight");
-  expect(hovered).toBe(5);
-  key(engine, "Enter");
-  expect<unknown>(picked).toBe(5);
-});
-
-test("radialMenu: a slice's cost shows under its label; an unaffordable slice stays choosable", () => {
-  // Wrong: the cost dropped, or an unaffordable slice made unchoosable (the game refuses it and says why).
-  let picked = null as number | null;
-  const engine = run(() => {
-    const r = og.ui.radialMenu("Wheel", true, { items: [{ label: "Laser", icon: "bolt", cost: "100" }, { label: "Cannon", icon: "bomb", cost: "150", unaffordable: true }, { label: "Frost", icon: "drop", cost: "120" }], aim: { x: 0.9, y: 0.4 }, release: true });
-    if (r.chosen !== null) picked = r.chosen;
-  });
-  engine.advance(20);
-  const cost = elements(engine).filter((e) => e.path.endsWith("/Label/Cost/Text"));
-  expect(cost.map((e) => e.text).sort()).toEqual(["100", "120", "150"]);
-  expect(picked).toBe(1);
-});
-
 // ── data ────────────────────────────────────────────────────────────────
 
 const ROWS = Array.from({ length: 10_000 }, (_, i) => ({ name: `Player ${String(i).padStart(5, "0")}`, score: (i * 7919) % 10_007, guild: ["Ash", "Brine", "Cinder"][i % 3] }));
@@ -999,24 +890,21 @@ test("card: a number plate at the art's top start and a cost disc on its bottom 
 
 // ── direction, locale ───────────────────────────────────────────────────
 
-test("right to left: breadcrumbs, tabs and the calendar's arrows run from the right; the pseudo-locale's longer labels overlap nothing", () => {
+test("right to left: tabs and the calendar's arrows run from the right; the pseudo-locale's longer labels overlap nothing", () => {
   // Wrong: a component that places its parts by physical left, or draws its arrows unmirrored.
   const engine = run(() => {
-    og.ui.breadcrumbs("Path", { items: [{ label: pseudo("Home") }, { label: pseudo("Inventory") }, { label: pseudo("Swords") }] });
     og.ui.tabBar("Tabs", { tabs: [{ label: pseudo("Equipment") }, { label: pseudo("Skills") }, { label: pseudo("Achievements") }] }, () => og.ui.label("Body", pseudo("Nothing equipped yet"), {}));
     og.ui.calendar("Days", { year: 2026, month: 11, today: "2026-11-01" });
   }, 640, kit);
   const x = (end: string) => find(engine, (e) => e.path.endsWith(end))!.x;
-  expect(x("Path/Crumb#0")).toBeLessThan(x("Path/Crumb#1"));
   expect(x("Tab#0")).toBeLessThan(x("Tab#1"));
   expect(x("Header/Prev")).toBeLessThan(x("Header/Next"));
   const overlaps = og.ui.overlaps() as unknown as Array<{ path: string; other: string }>;
-  expect(overlaps.filter((o) => /Path|Tabs|Days/.test(o.path))).toEqual([]);
+  expect(overlaps.filter((o) => /Tabs|Days/.test(o.path))).toEqual([]);
   const loaded = og.i18n.load(engine.world, "strings/ar.ogt");
   if (!loaded.ok) throw new Error(loaded.reason);
   expect((og.i18n.setLocale(engine.world, "ar-EG") as unknown as { direction: string }).direction).toBe("rtl");
   engine.advance(8);
-  expect(x("Path/Crumb#0")).toBeGreaterThan(x("Path/Crumb#1"));
   expect(x("Tab#0")).toBeGreaterThan(x("Tab#1"));
   expect(x("Header/Prev")).toBeGreaterThan(x("Header/Next"));
   expect(x("Week#0/Cell#0")).toBeGreaterThan(x("Week#0/Cell#6"));
@@ -1030,16 +918,13 @@ test("150 % text: the containers, navigation and data components grow with the t
   const ui = native() as unknown as { og_node_ui_frame(id: number): string };
   const nav = () => {
     og.ui.tabBar("Tabs", { tabs: [{ label: "Equipment" }, { label: "Skills" }, { label: "Codex" }] }, () => {});
-    og.ui.breadcrumbs("Path", { items: [{ label: "Home" }, { label: "Inventory" }, { label: "Swords" }] });
     og.ui.pagination("Pages", { page: 3, pages: 9 });
     og.ui.accordion("Faq", { sections: [{ title: "Rules", subtitle: "How a round is played" }], expanded: [0] }, () => og.ui.label("Text", "Each round lasts three minutes.", {}));
     og.ui.actionHints("Hints", { hints: [{ action: "confirm", text: "Select" }, { action: "back", text: "Back" }, { action: "details", text: "Hold to sell", hold: true, progress: 0.4 }] });
-    og.ui.carousel("Featured", { count: 3, index: 0, height: { kind: "fixed", px: 140 } }, (k) => og.ui.label("Title", `Banner ${k}`, {}));
     og.ui.card("Card", { title: "Ember Blade", eyebrow: "Legendary", interactive: true } as never, () => og.ui.label("Body", "Deals fire damage over time.", {}));
     // A narrow card at a fixed width: it grows with the text instead of breaking its title mid-word.
     og.ui.card("Narrow", { title: "Moonblade", eyebrow: "Epic", badge: "New", interactive: true, width: { kind: "fixed", px: 110 }, media: { icon: "sword", aspect: 4 / 3 } } as never, () => {});
     og.ui.tabBar("Pills", { tabs: [{ label: "Daily" }, { label: "Weekly" }, { label: "Season" }], selected: 1, variant: "pill", fill: true, bumpers: false }, () => {});
-    og.ui.breadcrumbs("Long", { items: [{ label: "Home" }, { label: "Inventory" }, { label: "Weapons" }, { label: "Swords" }, { label: "Rare" }, { label: "Moonblade" }], maxShown: 4 });
     og.ui.menu("Menu", true, { at: { x: 40, y: 40 }, entries: [{ id: "copy", label: "Copy", shortcut: "Ctrl+C" }, { id: "compare", label: "Compare", shortcut: "C" }, { id: "sort", label: "Sort by" }, { id: "destroy", label: "Destroy", danger: true }, { id: "n", label: "Name", parent: "sort" }] });
     og.ui.confirm("Delete", true, { title: "Delete save?", message: "This cannot be undone.", confirmLabel: "Delete", danger: true });
   };

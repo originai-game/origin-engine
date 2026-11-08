@@ -199,114 +199,6 @@
     returns TooltipCardResult
   }
 
-  enum ProgressStyle {
-    doc "How a progress bar shows its value."
-    variant bar "A track filled from its start."
-    variant steps "Equal segments, each filled whole as the value passes it (a level's stages)."
-    variant indeterminate "No value: a band sweeping along the track (loading of unknown length)."
-  }
-
-  struct ProgressBarDesc {
-    doc "A progress bar."
-    desc true
-    field value f32 "Done, 0 to 1." {
-      unit ratio
-      min 0
-      max 1
-    }
-    field buffer f32 "A second, paler fill ahead of value (downloaded, ahead of installed), 0 to 1." {
-      unit ratio
-      min 0
-      max 1
-    }
-    field style ProgressStyle "How it shows."
-    field steps u32 "For style steps: how many; 0 is 5."
-    field label String "A caption over it at the start (Downloading); empty is none."
-    field valueText String "The value in words at the end (2.1 of 4.5 GB); empty is the percent, with showValue."
-    field showValue bool "Show the value at the end."
-    field tone Tone "Its fill's tone; neutral is the primary."
-    field width Option.Size "Its width; null grows."
-    field thickness f32 "The track's height; 0 is 8 (6 on a phone)." {
-      unit cssPx
-      min 0
-    }
-    field sheen bool "A highlight sweeps over the fill while it is short of done (still under reduced motion it stops)." {
-      default true
-    }
-  }
-
-  fn progressBar {
-    doc "A progress bar: a rounded track, a fill that moves to its value on the style's ui spring (never jumping back on a retarget), a buffer ahead of it, a sweeping sheen while it works, segments for steps, a sweeping band when indeterminate, and a caption and value over it. Reaching 1 flashes the fill once and plays success."
-    doc "Parts: ProgressBar.track[<style>], ProgressBar.buffer, ProgressBar.fill[<tone>][done], ProgressBar.step[filled], ProgressBar.label, ProgressBar.value. States: group progress (working, done) and group mode (determinate, indeterminate). Accessibility: progressbar named by the label, 0 to 100 (busy when indeterminate). Probe ids: <id>, <id>/Track, <id>/Fill, <id>/Label, <id>/Value."
-    aliases "loading bar, progress, Unity Slider fill, Godot ProgressBar"
-    host false
-    param id String "Its id."
-    param desc ProgressBarDesc "Its value and look."
-    returns Void
-  }
-
-  struct ProgressRingDesc {
-    doc "A progress ring or spinner."
-    desc true
-    field value Option.f32 "Done, 0 to 1; null spins (indeterminate)." {
-      unit ratio
-    }
-    field size f32 "Its diameter; 0 is 48." {
-      unit cssPx
-      min 0
-    }
-    field thickness f32 "The ring's width; 0 is a tenth of the size, at least 3." {
-      unit cssPx
-      min 0
-    }
-    field tone Tone "The fill's tone; neutral is the primary."
-    field label String "Text in the middle; empty is the percent for a value (none for a spinner), and none when the ring is under 40 px."
-    field name String "What a screen reader calls it (Loading); empty is Progress."
-  }
-
-  fn progressRing {
-    doc "A progress ring: an arc filled clockwise from the top on the style's ui spring, or a spinning arc that grows and shrinks as it turns (Material's indeterminate ring, which reads as working at any size); a label in the middle. Under reduced motion the spinner pulses its opacity instead of turning."
-    doc "Parts: ProgressRing.track, ProgressRing.fill[<tone>][spinning], ProgressRing.label. States: group mode (determinate, indeterminate). Accessibility: progressbar (busy when spinning). Probe ids: <id>, <id>/Fill, <id>/Label."
-    host false
-    param id String "Its id."
-    param desc ProgressRingDesc "Its value and size."
-    returns Void
-  }
-
-  enum SkeletonShape {
-    doc "What a skeleton stands in for."
-    variant lines "Lines of text: the last one shorter."
-    variant card "A card: an art block, a title and two lines."
-    variant row "A list row: an avatar, a title and a line."
-    variant avatar "A round avatar."
-    variant block "A block of the given size."
-  }
-
-  struct SkeletonGroupDesc {
-    doc "A skeleton standing in for content that is loading."
-    desc true
-    field shape SkeletonShape "What it stands in for."
-    field lines u32 "Lines, for lines; 0 is 3."
-    field count u32 "Repeats (rows of a list); 0 is 1."
-    field width Option.Size "Its width; null grows."
-    field height f32 "A block's or a card's art height; 0 is 120." {
-      unit cssPx
-      min 0
-    }
-    field name String "What a screen reader says while it loads." {
-      default "Loading"
-    }
-  }
-
-  fn skeletonGroup {
-    doc "A skeleton: shapes of the neutral fill where content will arrive, swept by one sheen across the whole group (not each piece on its own clock), cornered as the parts they stand for. The sheen stops under reduced motion and the shapes breathe their opacity instead."
-    doc "Parts: Skeleton.piece[<shape>], Skeleton.sheen. Accessibility: one progressbar, busy, named by name. Probe ids: <id>, <id>/Piece#i."
-    host false
-    param id String "Its id."
-    param desc SkeletonGroupDesc "What it stands in for."
-    returns Void
-  }
-
   enum Notation {
     doc "How a number is written."
     variant grouped "Every digit, grouped by thousands (12,840,000)."
@@ -335,42 +227,6 @@
     param value f64 "The number (times 10^format.exponent)."
     param format NumberFormatDesc "How to write it."
     returns String
-  }
-
-  struct NumberCounterDesc {
-    doc "A big number that counts to its value."
-    desc true
-    field format NumberFormatDesc "How it is written."
-    field step Option.TypeStepName "The type step; null is xl3."
-    field font FontRole "The font; the default is mono (tabular digits that do not jitter)." {
-      default mono
-    }
-    field color Option.Paint "The ink; null is ink."
-    field label String "A caption under it (Score, Gold); empty is none."
-    field icon String "An icon of the atlas before it (coin); empty is none."
-    field roll bool "Each digit rolls to its next like an odometer while it counts (the default); off, the number counts in place." {
-      default true
-    }
-    field durationMs f32 "How long a change takes to count; 0 is 600 ms (a rise of more than a tenth takes up to 1.2 s)." {
-      unit ms
-      min 0
-    }
-    field delta bool "A rise throws its +n off the number, rising and fading (the default)." {
-      default true
-    }
-    field ticks bool "Play counterTick as it counts, pitched higher through the count."
-    field anchor Option.Anchor "Opens its own anchored group there (on the HUD chip); null builds it in place."
-    field align TextAlign "How it aligns in its column."
-  }
-
-  fn numberCounter {
-    doc "A number display for scores, currency and resources: written in its notation (idle letters past trillions, numbers past 1e308), counting to a new value on an ease-out, its digits rolling like an odometer, a +n delta flying off on a rise, a pop when it lands (emphasis spring) and a flash of danger on a fall; on the HUD chip with its outline when anchored. Returns the number shown this tick."
-    doc "Parts: NumberCounter.frame[hud], NumberCounter.value, NumberCounter.digit, NumberCounter.icon, NumberCounter.label, NumberCounter.delta[up|down]. States: group change (still, rising, falling). Sounds: counterTick while counting, if ticks. Accessibility: text named by the label, value the final number written out (not each frame of the count). Probe ids: <id>, <id>/Value (its text is the whole number shown), <id>/Label, <id>/Delta."
-    host false
-    param id String "Its id."
-    param value f64 "The value to count to (times 10^format.exponent)."
-    param desc NumberCounterDesc "How it looks and counts."
-    returns f64
   }
 
   enum BannerKind {
@@ -416,29 +272,6 @@
     param id String "Its id."
     param desc BannerDesc "What it says and when."
     returns BannerResult
-  }
-
-  struct UiRibbonDesc {
-    doc "A ribbon on a card or a result."
-    desc true
-    field text String "Its words (NEW, -50%, New best!)."
-    field corner Anchor "Where on the open container: topLeft or topRight wrap the corner diagonally; top or bottom lie across as a banner with notched ends; center slaps it across the middle like a stamp." {
-      default topRight
-    }
-    field tone Tone "Its colour; the default is primary." {
-      default primary
-    }
-    field shownAt Option.u32 "og.ui.tick() when it slaps on (a stamp's motion and a sound); null shows it settled."
-    field name String "What a screen reader says; empty is the text."
-  }
-
-  fn ribbon {
-    doc "A ribbon: a diagonal band wrapping a corner of the open container with its folded tail, a notched banner across its top or bottom, or a stamp slapped across its middle (a New best!: it lands from large and turned, squashes, settles and puffs dust, emphasis spring). The open container should clip its corners for a corner ribbon."
-    doc "Parts: Ribbon.band[<corner>][<tone>], Ribbon.fold, Ribbon.text. States: group slap (waiting, landing, settled). Sounds: confirm when it lands. Accessibility: status named by the text. Probe ids: <id>, <id>/Text."
-    host false
-    param id String "Its id."
-    param desc UiRibbonDesc "Its words and place."
-    returns Void
   }
 
   enum CelebrationKind {

@@ -1218,9 +1218,6 @@ impl UiApi for NodeHost {
     fn og_ui_spawn_mass(&self, template: u32, instances: String) {
         rt::og_ui_spawn_mass(template, instances)
     }
-    fn og_ui_push_mass(&self, template: u32, instances: String) {
-        rt::og_ui_push_mass(template, instances)
-    }
     fn og_ui_mass_count(&self, template: u32) -> u32 {
         rt::og_ui_mass_count(template)
     }
@@ -1247,12 +1244,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_toggle_switch(&self, id: String, on: bool, desc: Option<String>) -> String {
         rt::og_ui_toggle_switch(id, on, desc)
-    }
-    fn og_ui_check_field(&self, id: String, checked: bool, desc: Option<String>) -> String {
-        rt::og_ui_check_field(id, checked, desc)
-    }
-    fn og_ui_radio_group(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_radio_group(id, desc)
     }
     fn og_ui_value_slider(&self, id: String, value: f64, desc: Option<String>) -> String {
         rt::og_ui_value_slider(id, value, desc)
@@ -1327,9 +1318,6 @@ impl UiApi for NodeHost {
     fn og_ui_close_modal(&self) {
         rt::og_ui_close_modal()
     }
-    fn og_ui_spotlight(&self, id: String, hole: String, desc: Option<String>) -> String {
-        rt::og_ui_spotlight(id, hole, desc)
-    }
     fn og_ui_bounds(&self, path: String) -> String {
         rt::og_ui_bounds(path)
     }
@@ -1351,9 +1339,6 @@ impl UiApi for NodeHost {
     fn og_ui_close_list(&self) -> String {
         rt::og_ui_close_list()
     }
-    fn og_ui_chip(&self, id: String, text: String, desc: Option<String>) -> String {
-        rt::og_ui_chip(id, text, desc)
-    }
     fn og_ui_badge(&self, id: String, text: String, tone: String) {
         rt::og_ui_badge(id, text, tone)
     }
@@ -1372,23 +1357,8 @@ impl UiApi for NodeHost {
     fn og_ui_icon(&self, id: String, name: String, desc: Option<String>) {
         rt::og_ui_icon(id, name, desc)
     }
-    fn og_ui_meter(&self, id: String, value: f64, max: f64, desc: Option<String>) {
-        rt::og_ui_meter(id, value, max, desc)
-    }
-    fn og_ui_cooldown(&self, id: String, remaining: f64, desc: Option<String>) -> String {
-        rt::og_ui_cooldown(id, remaining, desc)
-    }
-    fn og_ui_minimap(&self, id: String, desc: Option<String>) {
-        rt::og_ui_minimap(id, desc)
-    }
     fn og_ui_zoom_view(&self, id: String, desc: Option<String>) -> String {
         rt::og_ui_zoom_view(id, desc)
-    }
-    fn og_ui_dialogue(&self, id: String, desc: Option<String>) -> String {
-        rt::og_ui_dialogue(id, desc)
-    }
-    fn og_ui_action_button(&self, id: String, text: String, desc: Option<String>) -> String {
-        rt::og_ui_action_button(id, text, desc)
     }
     fn og_ui_toast(&self, world: u32, text: String, desc: Option<String>) -> u32 {
         rt::og_ui_toast(world, text, desc)

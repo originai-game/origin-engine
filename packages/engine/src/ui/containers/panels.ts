@@ -1,13 +1,14 @@
-// Panels and cards, the scroll area, the accordion and split views
-// (docs/ui.md §2, Containers). Frames are parts a style dresses
-// (`Card.frame[selected]`, `Accordion.header[expanded]`, `Split.divider`),
-// drawn from the tokens (the element class's shape, stroke and elevation)
+// Panels and cards, the scroll area and the accordion (docs/ui.md §2,
+// Containers; the split view is a component document in
+// src/ui/components). Frames are parts a style dresses
+// (`Card.frame[selected]`, `Accordion.header[expanded]`), drawn from the
+// tokens (the element class's shape, stroke and elevation)
 // where it does not; only decoration (chevrons, rings, fades) is drawn
 // with og.ui.setDraw.
 
 import type * as Api from "@origingame/engine";
 import {
-  all, byText, chevron, clamp, fit, flags, over, frame, grow, kit, lastGesture, lastInteraction, px, rememberPath, role, rtl, spring, still, surface, text, token, xy,
+  all, byText, chevron, fit, flags, over, frame, grow, kit, lastInteraction, px, role, rtl, spring, surface, text, token, xy,
 } from "./base.ts";
 
 // ── card ────────────────────────────────────────────────────────────────
@@ -244,98 +245,4 @@ export function accordion(id: string, desc: Api.AccordionDesc, build: Api.UiItem
     kit.close();
   }
   return { toggled, expanded };
-}
-
-// ── split view ──────────────────────────────────────────────────────────
-
-/**
- * Two panes side by side (or one over the other) with a divider between
- * them. A drag moves the divider with the pointer and the panes take the
- * new ratio on release (on the panel spring); a press of Enter or the
- * pad's A on the focused divider steps through the snap ratios. Each pane
- * keeps its minimum. On a phone in portrait a side-by-side split stacks
- * unless `keepOnPhone`. Answers the ratio to keep in game state.
- */
-export function splitView(id: string, desc: Api.SplitViewDesc, start: Api.UiBuild, end: Api.UiBuild): Api.SplitResult {
-  const { viewport } = frame();
-  const stacked = !desc.keepOnPhone && viewport.breakpoint === "phonePortrait" && (desc.direction ?? "row") === "row";
-  const dir: Api.Direction = stacked ? "column" : desc.direction ?? "row";
-  const across = dir === "row";
-  const ratio0 = clamp(desc.ratio ?? 0.5, 0, 1);
-  const handle = 12;
-  const key = `split:${id}`;
-  const size = kit.memory(`${id}~size`, 0);
-  kit.open(id, { direction: dir, width: desc.width ?? grow(), height: desc.height ?? grow(), cross: "stretch" });
-  let ratio = ratio0;
-  let changed = false;
-  try {
-    const total = Math.max(1, size - handle);
-    const lo = Math.min(0.5, (desc.minStart ?? 120) / total);
-    const hi = Math.max(0.5, 1 - (desc.minEnd ?? 120) / total);
-    // The divider's drag, last tick: its offset is the ratio it is dragged to; a release commits it.
-    const ges = lastGesture(`${key}/Divider`);
-    const held = kit.memory("~held", 0);
-    const dragged = kit.memory("~drag", 0);
-    if (ges && !ges.dragging && held !== 0) {
-      ratio = clamp(ratio0 + dragged / total, lo, hi);
-      changed = Math.abs(ratio - ratio0) > 1e-4;
-      if (changed) kit.feedback("select", -1);
-    }
-    kit.remember("~held", ges?.dragging ? 1 : 0);
-    kit.remember("~drag", ges?.dragging ? (across ? ges.offsetX * (kit.frameDirection() === "rtl" ? -1 : 1) : ges.offsetY) : 0);
-    const shown = stacked ? 0.5 : ratio;
-    pane("Start", across, size > 0 ? Math.round(shown * total) : 0, start);
-    const r = surface("Divider", {
-      part: "Split.divider",
-      cls: "bar",
-      fill: null,
-      washBy: 0.16,
-      width: across ? px(handle) : grow(),
-      height: across ? grow() : px(handle),
-      align: "center",
-      cross: "center",
-      radius: handle / 2,
-      semantics: { role: "separator", name: desc.label ?? "", valueMin: 0, valueMax: 100, valueNow: Math.round(ratio * 100), value: `${Math.round(ratio * 100)}%` },
-      props: { drag: { axis: across ? "x" : "y", returnHome: true, threshold: 3, spring: { kind: "instant" } }, hitSlop: 6 },
-    }, () => {
-      const was = lastInteraction("Divider");
-      const hot = was.hovered || was.pressed || was.focused || (ges?.held ?? false);
-      kit.open("Grip", { width: across ? px(hot ? 4 : 2) : px(40), height: across ? px(40) : px(hot ? 4 : 2), radius: 2, background: token(hot ? "focus" : "lineStrong") });
-      kit.close();
-      kit.props({ motion: spring("ui") });
-    });
-    rememberPath(`${key}/Divider`, kit.lastPath());
-    if (r.clicked && !ges?.dragging && held === 0) {
-      const snaps = desc.snaps && desc.snaps.length > 0 ? desc.snaps : [0.33, 0.5, 0.67];
-      ratio = clamp(snaps.find((s) => s > ratio0 + 0.01) ?? snaps[0]!, lo, hi);
-      changed = true;
-      kit.feedback("select", -1);
-    }
-    pane("End", across, 0, end);
-  } finally {
-    kit.close();
-  }
-  const b = kit.bounds(kit.lastPath());
-  kit.remember(`${id}~size`, b ? (across ? b.width : b.height) : size);
-  return { ratio, changed, stacked };
-}
-
-/** A pane `length` CSS px along the split (0: it takes what is left). */
-function pane(id: string, across: boolean, length: number, build: Api.UiBuild): void {
-  const along: Api.Size = length > 0 ? px(length) : grow();
-  kit.open(id, {
-    direction: "column",
-    width: across ? along : grow(),
-    height: across ? grow() : along,
-    cross: "stretch",
-    part: "Split.pane",
-    partClass: "panel",
-  });
-  try {
-    build();
-  } finally {
-    kit.close();
-  }
-  kit.props({ layoutMotion: spring("panel") });
-  kit.semantics({ role: "region" });
 }

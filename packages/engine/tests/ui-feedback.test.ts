@@ -59,15 +59,11 @@ test("og.ui.formatNumber: every notation, rounding into the next group, letters,
 
 test("core data, feedback and calendar formatting follows the current engine locale", () => {
   let locale = "de";
-  let count = 1234;
   let values: string[] = [];
   const e = engineFor("LocalizedCore", (world) => {
     og.i18n.setLocale(world, locale);
     values = [groupNumber(1234.5, 1), countdown(125), shortTime(120), og.ui.formatNumber(12345, { notation: "compact" })];
     og.ui.calendar("Calendar", { year: 2026, month: 11 });
-    og.ui.numberCounter("Counter", count, { roll: true });
-    og.ui.abilitySlot("Ability", { charges: 2, maxCharges: 3 });
-    og.ui.progressBar("Progress", { value: 0.42, showValue: true });
   });
   e.advance(3);
   expect(values).toEqual(["1.234,5", "2:05", "2 Min.", "12.345"]);
@@ -77,12 +73,8 @@ test("core data, feedback and calendar formatting follows the current engine loc
   expect(values[3]).toBe("1.2万");
   expect(at(dump(e), "Calendar/Header/Month")?.text).toBe("2026年11月");
   locale = "bn";
-  count = 1235;
   e.advance(3);
   expect(values.slice(0, 2)).toEqual(["১,২৩৪.৫", "২:০৫"]);
-  expect(dump(e).some((el) => el.path.startsWith("Counter/") && el.id === "D" && el.text === "২")).toBeTrue();
-  expect(dump(e).some((el) => el.id === "Charges" && el.text === "২")).toBeTrue();
-  expect(at(dump(e), "Progress")?.value).toBe("৪২%");
   locale = "en-XA";
   e.advance(3);
   expect(values.slice(0, 2)).toEqual(["[1,234.5~~~]", "[2:05~~]"]);
@@ -145,47 +137,6 @@ test("og.ui.countBadge: 99+ past max, nothing at 0, read as a status", () => {
   expect(at(dump(e), "Bar/Mail/Unread")).toBe(undefined);
 });
 
-test("og.ui.numberCounter: counts through the values between, lands on the value, shows its rise beside it, keeps the final width", () => {
-  let value = 100;
-  const shown: number[] = [];
-  const e = engineFor("FbCounter", () => {
-    shown.push(og.ui.numberCounter("Gold", value, { label: "Gold", durationMs: 500 }));
-  });
-  e.advance(2);
-  expect(shown.at(-1)).toBe(100);
-  value = 1100;
-  e.advance(10);
-  const mid = shown.at(-1)!;
-  expect(mid).toBeGreaterThan(100);
-  expect(mid).toBeLessThan(1100);
-  let els = dump(e);
-  expect(at(els, "Gold/Delta")!.text).toBe("+1,000");
-  // The rise has its own place beside the number, and the number's box is already the final value's width.
-  const body = at(els, "Gold/Body")!;
-  expect(at(els, "Gold/Delta")!.x).toBeGreaterThanOrEqual(body.x + body.width);
-  const midWidth = body.width;
-  e.advance(40);
-  expect(shown.at(-1)).toBe(1100);
-  els = dump(e);
-  expect(at(els, "Gold/Body/Value")!.text).toBe("1,100");
-  expect(at(els, "Gold/Body")!.width).toBe(midWidth);
-  expect(at(els, "Gold/Body/Value")!.width).toBeLessThanOrEqual(midWidth + 0.5);
-  expect(at(els, "Gold")!.value).toBe("1,100");
-
-  // A count wider than what holds it steps its numerals down instead of spilling out: digits never wrap.
-  const narrow = engineFor("FbCounterNarrow", () => {
-    og.ui.anchor("Box", { anchor: "topLeft", width: { kind: "fixed", px: 120 } }, () => {
-      og.ui.numberCounter("Gold", 1_284_330, { label: "Gold", step: "xl4" });
-    });
-  });
-  narrow.advance(4);
-  els = dump(narrow);
-  const box = at(els, "Box")!;
-  const big = at(els, "Box/Gold/Body/Value")!;
-  expect(big.text).toBe("1,284,330");
-  expect(big.x + big.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
-});
-
 test("og.ui.tooltipCard: shows after its delay beside its trigger, pins after resting, leaves when let go", () => {
   let open = true;
   let r: ReturnType<typeof og.ui.tooltipCard> | null = null;
@@ -231,22 +182,6 @@ test("og.ui.tooltipCard: shows after its delay beside its trigger, pins after re
   open = false;
   e.advance(40);
   expect(r!.visible).toBe(false);
-});
-
-test("og.ui.progressBar and progressRing: a screen reader hears the value, a spinner is busy", () => {
-  const e = engineFor("FbProgress", () => {
-    og.ui.progressBar("Download", { value: 0.42, label: "Downloading", showValue: true, width: { kind: "fixed", px: 300 } });
-    og.ui.progressRing("Spin", { name: "Loading" });
-    og.ui.progressBar("Stages", { value: 0.5, style: "steps", steps: 4, width: { kind: "fixed", px: 300 } });
-  });
-  e.advance(3);
-  const els = dump(e);
-  const bar = at(els, "Download")!;
-  expect(bar.role).toBe("progressbar");
-  expect(bar.value).toBe("42%");
-  expect(at(els, "Download/Head/Value")!.text).toBe("42%");
-  expect(at(els, "Spin")!.role).toBe("progressbar");
-  expect(els.filter((x) => x.parent === "Track" && x.path.startsWith("Stages/Track/Step#")).length).toBe(4);
 });
 
 test("og.ui.subtitles: two speech lines at most, captions only when asked, the speaker named", () => {

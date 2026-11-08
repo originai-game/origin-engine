@@ -1,0 +1,7 @@
+type strings
+version 1
+---
+locale "en"
+string "component.carousel.name" "Carousel"
+string "component.carousel.prev" "Previous"
+string "component.carousel.next" "Next"

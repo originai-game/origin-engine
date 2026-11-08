@@ -36,7 +36,9 @@ function card(k: number): void {
   og.ui.label("Name", `Item ${k}`);
   og.ui.label("Price", `${100 + k * 25} gold`);
   og.ui.badge("Rarity", ["Common", "Rare", "Epic"][k % 3]!, "primary");
-  og.ui.meter("Stock", k % 10, 10);
+  // The stock as a bar of its own width (og-ui's meter in perf.rs).
+  og.ui.open("Stock", { width: { kind: "fixed", px: 4 + (k % 10) * 18 }, height: { kind: "fixed", px: 6 }, radius: 3 } as Api.ElementDesc);
+  og.ui.close();
   og.ui.close();
   og.ui.props({
     transform: { scaleX: lifted ? 1.05 : 1, scaleY: lifted ? 1.05 : 1 },

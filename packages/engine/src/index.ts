@@ -39,7 +39,6 @@ import { uiKit } from "./ui-kit/index.ts";
 import { components } from "./ui/index.ts";
 import { feedback } from "./ui/feedback/index.ts";
 import { hud } from "./ui/hud/index.ts";
-import { worldUi } from "./ui/world/index.ts";
 
 // The math layer (IDL `math`): three.js's methods as pure functions over the plain structs.
 export { vec3, vec2, quat, mat4, box3, sphere, plane, frustum, ray, color, math } from "./math.ts";
@@ -102,6 +101,6 @@ export const og: typeof Api.og = Object.freeze({
   destruction,
   vfx,
   video,
-  ui: Object.freeze({ ...ui, ...uiKit, ...components, ...feedback, ...hud, ...worldUi }),
+  ui: Object.freeze({ ...ui, ...uiKit, ...components, ...feedback, ...hud }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

@@ -23,9 +23,9 @@
 //! `--check` writes nothing and exits 1 when one still needs it.
 //!
 //! `og ui eject <screen> [project] [--force]` (docs/ui.md §2) copies one
-//! of the library's screen documents (the engine package's
+//! of the library's screen or component documents (the engine package's
 //! `src/ui/screens/<screen>.svelte`, one or more for every screen type of
-//! docs/ui.md §2) into the game's `assets/ui/<screen>.svelte`, where
+//! docs/ui.md §2, and `src/ui/components/<component>.svelte`) into the game's `assets/ui/<screen>.svelte`, where
 //! `og.load.document(world, "ui/<screen>.svelte")` loads it and the game edits
 //! it as its own file. It refuses to overwrite one already there without
 //! `--force`; an unknown name exits 1 with the closest names. `og ui eject
@@ -401,23 +401,34 @@ fn slots(args: &[&str]) -> ExitCode {
     }
 }
 
-/// Where the library's screen documents sit in the engine package.
-const SCREENS_DIR: &str = "src/ui/screens";
+/// Where the library's screen and component documents sit in the engine
+/// package, in the order eject searches and lists them.
+const LIBRARY_DIRS: [&str; 2] = ["src/ui/screens", "src/ui/components"];
 
-/// One library screen: its name (the file's stem) and its Appendix B row.
+/// One library document: its name (the file's stem), its README row and
+/// the directory it sits in.
 #[derive(Debug, PartialEq)]
 struct LibScreen {
     name: String,
     row: String,
+    dir: std::path::PathBuf,
 }
 
-/// The library's screens in the order of the README's table
-/// (`| <Appendix B row> | `a`, `b` |`).
-fn lib_screens(dir: &Path) -> Result<Vec<LibScreen>, String> {
+/// The library's documents in the order of each directory's README table
+/// (`| <purpose row> | `a`, `b` |`).
+fn lib_screens(dirs: &[std::path::PathBuf]) -> Result<Vec<LibScreen>, String> {
+    let mut out = Vec::new();
+    for dir in dirs {
+        lib_table(dir, &mut out)?;
+    }
+    Ok(out)
+}
+
+/// One directory's README table, appended to `out`.
+fn lib_table(dir: &Path, out: &mut Vec<LibScreen>) -> Result<(), String> {
     let readme = dir.join("README.md");
     let text = std::fs::read_to_string(&readme)
         .map_err(|e| format!("{}: {e} (reinstall @origingame/engine)", readme.display()))?;
-    let mut out = Vec::new();
     for line in text
         .lines()
         .skip_while(|l| !l.starts_with("|---"))
@@ -433,10 +444,11 @@ fn lib_screens(dir: &Path) -> Result<Vec<LibScreen>, String> {
             out.push(LibScreen {
                 name,
                 row: (*row).to_string(),
+                dir: dir.to_path_buf(),
             });
         }
     }
-    Ok(out)
+    Ok(())
 }
 
 /// Levenshtein distance, for the closest names to a mistyped one.
@@ -491,16 +503,20 @@ fn closest<'a>(name: &str, screens: &'a [LibScreen]) -> Vec<&'a str> {
     scored.into_iter().take(3).map(|(_, n)| n).collect()
 }
 
-/// Copies the library's `name` from `dir` into `project`'s
+/// Copies the library's `name` from `dirs` into `project`'s
 /// `assets/ui/<name>.svelte`, with its declared strings; answers the path written.
 fn eject_from(
-    dir: &Path,
+    dirs: &[std::path::PathBuf],
     name: &str,
     project: &Path,
     force: bool,
 ) -> Result<std::path::PathBuf, String> {
-    let screens = lib_screens(dir)?;
-    if !screens.iter().any(|s| s.name == name) {
+    let screens = lib_screens(dirs)?;
+    let Some(dir) = screens
+        .iter()
+        .find(|s| s.name == name)
+        .map(|s| s.dir.as_path())
+    else {
         let near = closest(name, &screens);
         return Err(if near.is_empty() {
             format!("no library screen '{name}' (og ui eject --list names them)")
@@ -510,7 +526,7 @@ fn eject_from(
                 near.join(", ")
             )
         });
-    }
+    };
     if !project.join("project.ogt").is_file() {
         return Err(format!(
             "{}: no project.ogt; run it in a game's directory or pass the project",
@@ -589,9 +605,9 @@ fn eject(args: &[&str]) -> ExitCode {
         eprintln!("og ui eject: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
     };
-    let dir = package.join(SCREENS_DIR);
+    let dirs = LIBRARY_DIRS.map(|d| package.join(d));
     let Some(name) = name else {
-        return match lib_screens(&dir) {
+        return match lib_screens(&dirs) {
             Ok(screens) => {
                 for s in &screens {
                     println!("{:<20} {}", s.name, s.row);
@@ -604,7 +620,15 @@ fn eject(args: &[&str]) -> ExitCode {
             }
         };
     };
-    match eject_from(&dir, name, project, force) {
+    match eject_from(&dirs, name, project, force) {
+        Ok(_) if dirs[1].join(format!("{name}.svelte")).is_file() => {
+            println!(
+                "og ui eject: the library's '{name}' component into assets/ui/{name}.svelte\n\
+                 load it once with og.load.document(world, \"ui/{name}.svelte\") and use it in a screen by the name its <meta name=\"component\"> declares;\n\
+                 its header names its props, actions and fixture"
+            );
+            ExitCode::SUCCESS
+        }
         Ok(_) => {
             println!(
                 "og ui eject: the library's '{name}' into assets/ui/{name}.svelte\n\
@@ -759,14 +783,16 @@ fn collect_files(dir: &Path, extension: &str, out: &mut Vec<std::path::PathBuf>)
 
 #[cfg(test)]
 mod tests {
-    use super::{SCREENS_DIR, declared_screens, eject_from, lib_screens};
+    use super::{LIBRARY_DIRS, declared_screens, eject_from, lib_screens};
     use std::path::{Path, PathBuf};
 
     /// The checkout's library (what the engine package ships).
-    fn library() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../packages/engine")
-            .join(SCREENS_DIR)
+    fn library() -> [PathBuf; 2] {
+        LIBRARY_DIRS.map(|d| {
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../packages/engine")
+                .join(d)
+        })
     }
 
     /// An empty game in a fresh temporary directory.
@@ -858,12 +884,18 @@ mod tests {
         assert_eq!(got, dir.join("assets/ui/pause.svelte"));
         assert_eq!(
             std::fs::read(&got).unwrap(),
-            std::fs::read(library().join("pause.svelte")).unwrap()
+            std::fs::read(library()[0].join("pause.svelte")).unwrap()
         );
         assert_eq!(
             std::fs::read(dir.join("assets/ui/pause.en.ogt")).unwrap(),
-            std::fs::read(library().join("pause.en.ogt")).unwrap()
+            std::fs::read(library()[0].join("pause.en.ogt")).unwrap()
         );
+        let got = eject_from(&library(), "ability-bar", &dir, false).unwrap();
+        assert_eq!(
+            std::fs::read(&got).unwrap(),
+            std::fs::read(library()[1].join("ability-bar.svelte")).unwrap()
+        );
+        assert!(dir.join("assets/ui/ability-bar.en.ogt").is_file());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -879,7 +911,7 @@ mod tests {
         eject_from(&library(), "pause", &dir, true).unwrap();
         assert_eq!(
             std::fs::read(&target).unwrap(),
-            std::fs::read(library().join("pause.svelte")).unwrap()
+            std::fs::read(library()[0].join("pause.svelte")).unwrap()
         );
         std::fs::remove_file(&target).unwrap();
         std::fs::write(dir.join("assets/ui/pause.en.ogt"), "edited messages").unwrap();
@@ -898,8 +930,9 @@ mod tests {
     #[test]
     fn eject_list_names_every_document_with_its_appendix_b_row() {
         let screens = lib_screens(&library()).unwrap();
-        let mut files: Vec<String> = std::fs::read_dir(library())
-            .unwrap()
+        let mut files: Vec<String> = library()
+            .iter()
+            .flat_map(|d| std::fs::read_dir(d).unwrap())
             .filter_map(|e| {
                 let f = e.unwrap().file_name().into_string().unwrap();
                 f.strip_suffix(".svelte").map(str::to_string)

@@ -245,10 +245,11 @@ commands:
                       with the token to use; facts only, exit 0 when it ran (default: the
                       project's assets/ui-kits and assets/ui); `style-literal-ok` on a line skips it
   ui eject <screen> [project] [--force] | ui eject --list [project]
-                      copy one of the library's screen documents (the engine package's
-                      src/ui/screens/, one for every screen type of docs/ui.md §2) into
-                      assets/ui/<screen>.ogt to edit as the game's own; refuses to overwrite one
-                      there without --force; --list prints each with its Appendix B row
+                      copy one of the library's screen or component documents (the engine
+                      package's src/ui/screens/, one for every screen type of docs/ui.md §2, and
+                      src/ui/components/) into assets/ui/<name>.svelte to edit as the game's own;
+                      refuses to overwrite one there without --force; --list prints each with its
+                      README row
   ui types [project]  write .og/types/ui/<name>.d.ts for every screen and component document:
                       its props, the events it can send and its slots, so og.ui.push(world, name,
                       vm) checks vm; og check, og run, og build and og dev write them first

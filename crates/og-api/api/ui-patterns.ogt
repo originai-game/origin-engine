@@ -12,34 +12,6 @@
 
   # ·· the call to action ··
 
-  enum HeroTone {
-    doc "A call to action's material."
-    variant primary "The style's primary, lit from the top (End turn, Done, Play)."
-    variant premium "Gold: the purchase a screen leads with (Summon ×10)."
-    variant secondary "A raised neutral beside a primary or premium one (Summon ×1)."
-    variant danger "A destructive action, raised in the danger colour."
-  }
-
-  struct HeroButtonDesc {
-    doc "A call to action: tone, height, a keycap and whether it can be pressed now."
-    desc true
-    field tone HeroTone "Its material."
-    field size ControlSize "Its height: the control heights of the density, at least 44 CSS px on touch."
-    field disabled bool "Not now (the enemy's turn): it lies flat and inert, its label in the faint ink."
-    field width Option.Size "Its width; null fits the label."
-    field key String "The key or pad glyph of its action, in a keycap after the label (E, Space); empty shows none."
-  }
-
-  fn heroButton {
-    doc "The one action a genre screen leads with (End turn, Summon, Play, Ready): a raised face lit from the top over a ledge of its own dark and a soft shadow on the scene, so it reads as a thing to press over any backdrop, beside the flat controls of og.ui.button. It lifts under the pointer and the focus and sinks when pressed; disabled it lies flat. A keycap after the label shows the action's binding on a desktop."
-    doc "Parts: Pattern.button[primary|premium|secondary|danger][sm|md|lg], Pattern.buttonFace, Pattern.keycap. States: group interaction (normal, hover, pressed, focused, disabled). Motion: the ui token's lift and press. Sounds: the style's press. Accessibility: a button named by its label (and key). Probe id: <id>."
-    host false
-    param id String "Its id."
-    param label String "What it does."
-    param desc HeroButtonDesc "Tone, size, keycap, disabled and width."
-    returns Response
-  }
-
   # ·· rewards: pick one of N ··
 
   # ·· gacha: the banner and the pull ··
@@ -47,35 +19,6 @@
   # ·· saga map: a scrolling path of levels ··
 
   # ·· puzzle goals: the star bar and goal chips ··
-
-  struct StarBarDesc {
-    doc "A level's score toward its stars."
-    desc true
-    field value f32 "The score."
-    field max f32 "The score that fills the bar; 0 is the last threshold."
-    field thresholds List.f32 "The scores for each star, low to high; empty is a third, two thirds and all of max."
-    field label String "The caption over the score (Score); empty is none."
-    field valueText String "The score as written (18,450); empty writes value grouped."
-    field compact bool "One line: the score beside the bar (a phone's top strip)."
-    field starsLabel String "Its stars to a screen reader ({n} earned of {max})." {
-      default "{n} of {max} stars"
-    }
-  }
-
-  struct StarBarResult {
-    doc "What the bar showed this tick."
-    field earned u32 "Stars earned at this score."
-    field crossed u32 "Stars earned this tick (a threshold crossed): play the game's own fanfare if it has one."
-  }
-
-  fn starBar {
-    doc "A level's score toward its stars (Candy Crush, Homescapes, Angry Birds): the score in the display face over a bar that fills in a warm gold, a star standing on the bar at each threshold, lit as the score passes it with a pop and the success sound, an outline until then. The bar runs start to end, mirrored right to left."
-    doc "Parts: StarBar.frame[compact], StarBar.label, StarBar.value, StarBar.track, StarBar.fill, StarBar.star[lit]. States: on each star, group lit (off, on). Motion: the fill eases to the score on the ui spring; a star crossed pops on the emphasis spring (still under reduced motion). Sounds: success on each star crossed. Accessibility: a meter named by label with the score as its value and its stars as its description. Probe ids: <id>/Bar/Track, <id>/Bar/Stars/Star#i, <id>/Value."
-    host false
-    param id String "Its id."
-    param desc StarBarDesc "The score and its thresholds."
-    returns StarBarResult
-  }
 
   # ·· idle: a generator and the prestige ··
 

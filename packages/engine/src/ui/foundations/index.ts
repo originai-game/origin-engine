@@ -5,15 +5,13 @@
 
 import { effectLayer, emitter } from "./effects.ts";
 import { artSlot, iconMark, shapeBox, viewFrame } from "./media.ts";
-import { prose, separator, space, text } from "./text.ts";
+import { space, text } from "./text.ts";
 
 export const foundations = Object.freeze({
   text,
-  prose,
   iconMark,
   artSlot,
   shapeBox,
-  separator,
   space,
   viewFrame,
   emitter,

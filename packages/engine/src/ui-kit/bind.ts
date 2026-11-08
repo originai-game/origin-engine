@@ -62,8 +62,6 @@ export const widgets = {
     within(() => {}, () => { if (r.visible) build(); }, () => abi().og_ui_close_modal());
     return r;
   },
-  spotlight: (id: string, hole: Api.UiRect | null, desc?: Api.SpotlightDesc): Api.Response =>
-    parse(abi().og_ui_spotlight(id, JSON.stringify(hole ?? null), json(desc))),
   bounds: (path: string): Api.UiRect | null => parse(abi().og_ui_bounds(path)),
   scrollState: (path: string): Api.ScrollState | null => parse(abi().og_ui_scroll_state(path)),
   openList: (id: string, desc?: Api.ListDesc): Api.ListRange => parse(abi().og_ui_open_list(id, json(desc))),
@@ -71,19 +69,13 @@ export const widgets = {
   listItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_list_item(index, selected)),
   gridItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_grid_item(index, selected)),
   closeList: (): Api.Response => parse(abi().og_ui_close_list()),
-  chip: (id: string, text: string, desc?: Api.ChipDesc): Api.Response => parse(abi().og_ui_chip(id, text, json(desc))),
   badge: (id: string, text: string, tone: Api.Tone): void => abi().og_ui_badge(id, text, tone),
   divider: (id: string, vertical: boolean): void => abi().og_ui_divider(id, vertical),
   spacer: (id: string, size: Api.Size | null): void => abi().og_ui_spacer(id, JSON.stringify(size ?? null)),
   skeleton: (id: string, desc?: Api.SkeletonDesc): void => abi().og_ui_skeleton(id, json(desc)),
   spinner: (id: string, size: number): void => abi().og_ui_spinner(id, size),
   icon: (id: string, name: string, desc?: Api.IconDesc): void => abi().og_ui_icon(id, name, json(desc)),
-  meter: (id: string, value: number, max: number, desc?: Api.MeterDesc): void => abi().og_ui_meter(id, value, max, json(desc)),
-  cooldown: (id: string, remaining: number, desc?: Api.CooldownDesc): Api.Response => parse(abi().og_ui_cooldown(id, remaining, json(desc))),
-  minimap: (id: string, desc?: Api.MinimapDesc): void => abi().og_ui_minimap(id, json(desc)),
   zoomView: (id: string, desc?: Api.ZoomViewDesc): Api.ZoomResult => parse(abi().og_ui_zoom_view(id, json(desc))),
-  dialogue: (id: string, desc?: Api.DialogueDesc): Api.DialogueResult => parse(abi().og_ui_dialogue(id, json(desc))),
-  actionButton: (id: string, text: string, desc?: Api.ActionButtonDesc): Api.Response => parse(abi().og_ui_action_button(id, text, json(desc))),
   toast: (world: Api.World, text: string, desc?: Api.ToastDesc): number => abi().og_ui_toast(worldId(world), text, json(desc)),
   dismissToast: (world: Api.World, toastId: number): void => abi().og_ui_dismiss_toast(worldId(world), toastId),
   navigate: (world: Api.World, intent: Api.NavIntent): void => abi().og_ui_navigate(worldId(world), intent),
@@ -117,8 +109,6 @@ export const widgets = {
   defineMass: (name: string, desc?: Api.MassTemplateDesc): Api.Result<number> => parse(abi().og_ui_define_mass(name, json(desc))),
   spawnMass: (template: number, instances: Api.MassInstance[]): void =>
     abi().og_ui_spawn_mass(template, JSON.stringify(instances)),
-  pushMass: (template: number, instances: Api.MassInstance[]): void =>
-    abi().og_ui_push_mass(template, JSON.stringify(instances)),
   massCount: (template: number): number => abi().og_ui_mass_count(template),
   particles: (desc?: Api.ParticlesDesc): void => abi().og_ui_particles(json(desc)),
   meta: (id: string, desc?: Api.MetaDesc): void => abi().og_ui_meta(id, json(desc)),

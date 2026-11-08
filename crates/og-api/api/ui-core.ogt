@@ -757,14 +757,6 @@ module ui {
     variant inverse "Neutral emphasis: ink fill, inverse ink."
   }
 
-  enum MeterKind {
-    doc "What a meter measures, which sets its colour."
-    variant health "health; warn under 30 %, danger under 15 %."
-    variant mana "mana."
-    variant xp "xp."
-    variant primary "primary."
-  }
-
   enum Breakpoint {
     doc "The play surface's size class."
     variant desktop "1024 CSS px wide or more, the shorter side 600 or more."
@@ -897,15 +889,6 @@ module ui {
     field dismissed bool "Back or a press on the backdrop asked to close it: set your open flag false."
   }
 
-  struct SpotlightDesc {
-    doc "A spotlight: the surface dimmed except a hole around a target."
-    desc true
-    field padding f32 "Room around the target; 0 is space.sm." {
-      unit cssPx
-      min 0
-    }
-  }
-
   struct ListDesc {
     doc "A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row."
     desc true
@@ -962,38 +945,6 @@ module ui {
     }
   }
 
-  struct ChipDesc {
-    doc "A chip's state."
-    desc true
-    field selected bool "Selected: inverted to ink."
-    field disabled bool "Neutral and inert."
-  }
-
-  struct MeterDesc {
-    doc "A meter: a track with a fill that animates its changes by the tick."
-    desc true
-    field kind MeterKind "What it measures, which sets its colour."
-    field color Option.Paint "A colour of your own instead of the kind's."
-    field label String "Text inside the bar (such as `75 / 100`); empty is none."
-    field width Option.Size "Its width; null grows."
-    field height f32 "Its height; 0 is space.md, or the caption's line with a label." {
-      unit cssPx
-      min 0
-    }
-    field segments u32 "Notches dividing it into this many parts; 0 or 1 is none."
-  }
-
-  struct CooldownDesc {
-    doc "A cooldown ring's size and centre."
-    desc true
-    field size f32 "Its diameter; 0 is 56 (never under 44)." {
-      unit cssPx
-      min 0
-    }
-    field label String "Text in the middle (a key, seconds left); empty is none."
-    field icon String "An icon of the atlas in the middle, by name; empty is none."
-  }
-
   struct IconDesc {
     doc "An icon's size, ink and name."
     desc true
@@ -1005,69 +956,6 @@ module ui {
     field secondary Option.String "A second atlas icon, overlaid in the same em square: author the two silhouettes as separate named layers. Null draws one layer."
     field secondaryTint Option.Paint "The second layer's ink; null is accent."
     field label Option.String "What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table."
-  }
-
-  struct MapMarker {
-    doc "A marker on a mini-map."
-    desc true
-    field x f32 "Across the map, 0 to 1." {
-      unit ratio
-    }
-    field y f32 "Down the map, 0 to 1." {
-      unit ratio
-    }
-    field tone Tone "Its colour; neutral is the stage ink."
-    field player bool "The player: the primary, larger, ringed."
-  }
-
-  struct MinimapDesc {
-    doc "A mini-map frame."
-    desc true
-    field texture Option.Texture "The map; null is the stage colour."
-    field uv Option.Array.f32.4 "The region of the map shown, [u0, v0, u1, v1]; null is the whole texture."
-    field size f32 "Its side; 0 is 160." {
-      unit cssPx
-      min 0
-    }
-    field markers List.MapMarker "Markers over the map."
-    field label String "A zone name under it; empty is none."
-  }
-
-  struct DialogueDesc {
-    doc "A dialogue box: a portrait slot, the speaker and the line typed out by the tick."
-    desc true
-    field speaker String "Who speaks (primary ink)."
-    field text String "The line. A new text starts typing again."
-    field portrait Option.Texture "A portrait texture; null is the speaker's initial."
-    field portraitUv Option.Array.f32.4 "The portrait's region of the texture; null is the whole texture."
-    field portraitIcon String "A portrait from the icon atlas by name, when no texture is given; empty is the speaker's initial."
-    field charsPerSecond f32 "Typing speed; 0 is 40." {
-      min 0
-    }
-    field portraitRight bool "The portrait on the right."
-  }
-
-  struct DialogueResult {
-    doc "A dialogue box's answer this tick."
-    field shown u32 "Characters shown."
-    field done bool "The whole line is shown."
-    field advanced bool "Pressed (or activated) while done: show the next line."
-  }
-
-  struct ActionButtonDesc {
-    doc "A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face, flagged primary, pressed and disabled, which a style dresses), its icon on it; a label wider than it with no icon widens it to a capsule instead. A further touch holds it only when it went down on it, so a thumb steering a stick never fires it by sliding over."
-    desc true
-    field size f32 "Its side; 0 is 64 (never under 44)." {
-      unit cssPx
-      min 0
-    }
-    field primary bool "The primary button (one per screen)."
-    field icon String "An icon of the atlas by name, instead of the label; empty is the label."
-    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
-    field round bool "Kept a disc when its label is wider than it (it grows as a disc, a pedal) instead of widening to a capsule; a button with an icon, a short label or a charge is a disc anyway."
-    field charge Option.f32 "A ring inside its edge, lit clockwise from the top to this (0 to 1: a boost's charge, a brake's pressure), with a faint track for the rest. It follows the pad's outline, so a pad with a charge is drawn round. null draws no ring."
-    field chargeTone Tone "The lit ring's tone; neutral is the primary's."
-    field disabled bool "It answers nothing and shows faded (out of ammunition, not yet learnt)."
   }
 
   struct SkeletonDesc {
@@ -1197,14 +1085,6 @@ module ui {
     returns ModalResult
   }
 
-  fn spotlight {
-    doc "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`."
-    param id String "Its id."
-    param hole Option.UiRect "The rectangle to leave lit, as og.ui.bounds answers; null dims everything."
-    param desc SpotlightDesc "Room around the hole."
-    returns Response
-  }
-
   fn bounds {
     doc "Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it."
     param path String "The id or path."
@@ -1272,14 +1152,6 @@ module ui {
     returns Response
   }
 
-  fn chip {
-    doc "A chip: a control-filled tag; selected inverts to ink. For filters and tags."
-    param id String "Its id."
-    param text String "The label."
-    param desc ChipDesc "Selected and disabled."
-    returns Response
-  }
-
   fn badge {
     doc "A badge: a small status tag in its tone."
     param id String "Its id."
@@ -1322,46 +1194,6 @@ module ui {
     param name String "The icon's name."
     param desc IconDesc "Size and ink."
     returns Void
-  }
-
-  fn meter {
-    doc "A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick."
-    param id String "Its id."
-    param value f32 "The current value."
-    param max f32 "The full value."
-    param desc MeterDesc "Kind, label, size and notches."
-    returns Void
-  }
-
-  fn cooldown {
-    doc "A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not)."
-    param id String "Its id."
-    param remaining f32 "How much of the cooldown is left, 0 to 1: 1 just used, 0 ready."
-    param desc CooldownDesc "Size, label and icon."
-    returns Response
-  }
-
-  fn minimap {
-    doc "A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label."
-    param id String "Its id."
-    param desc MinimapDesc "Map, markers and label."
-    returns Void
-  }
-
-  fn dialogue {
-    doc "A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown."
-    aliases "dialogue box, speech box, visual novel text box, subtitles box"
-    param id String "Its id."
-    param desc DialogueDesc "Speaker, text, portrait and speed."
-    returns DialogueResult
-  }
-
-  fn actionButton {
-    doc "A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px."
-    param id String "Its id."
-    param text String "Its label (and what the probe reads)."
-    param desc ActionButtonDesc "Size, primary and icon."
-    returns Response
   }
 
   fn toast {
