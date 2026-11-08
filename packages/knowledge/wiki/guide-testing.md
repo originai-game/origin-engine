@@ -55,6 +55,10 @@ tick, not as pictures compared afterwards.
   `$` it is the text `total`.
 - Assertions cost nothing in publish builds and never touch the world
   hash: leave them in.
+- `og run --json` prints each site's first firing and first violation as
+  an `{"event":"assert", "outcome", "tick", ...}` line as it happens, before
+  the summary; a tool stepping a run reads the probe's `assertionEvents`
+  after each advance instead of the whole report.
 
 A playtest file, `tests/<name>.og.ts`, is an ordinary `bun:test` file:
 `describe`, `test` and `expect` as Bun and Vitest write them. Inside a test,

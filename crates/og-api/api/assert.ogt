@@ -102,6 +102,42 @@ module assert {
     field maxUs f64 "Their slowest tick, in microseconds."
   }
 
+  struct AssertEvent {
+    doc "One event of the assertions' stream (probe.assertionEvents): a first firing or a first violation."
+    field outcome String "`fired` (a sometimes held, a reachable ran, an each's bucket held) or `violated` (an always failed, an unreachable ran), each once per site or bucket in a report."
+    field tick u32 "The tick it happened at."
+    field kind AssertKind "The site's kind."
+    field origin AssertOrigin "Who declared it."
+    field name String "Its name."
+    field location String "Its place."
+    field key String "An each's bucket." {
+      optional true
+    }
+    field details Json "What the call passed as details."
+    field entity Option.String "A violation's entity (a default invariant)." {
+      optional true
+    }
+    field component Option.String "A violation's record." {
+      optional true
+    }
+    field field Option.String "A violation's field." {
+      optional true
+    }
+    field value Json "A violation's value." {
+      optional true
+    }
+    field message String "A violation in words." {
+      optional true
+    }
+  }
+
+  struct AssertEvents {
+    doc "The assertions' stream since the last read."
+    field epoch u32 "The report the events belong to now (take moves it on)."
+    field events List.AssertEvent "In the order they happened."
+    field dropped u32 "Events past the 4,096 held between reads."
+  }
+
   struct AssertReport {
     doc "The run's assertions since the report began (the probe's assertions member)."
     field epoch u32 "The report's number: take moves it on."

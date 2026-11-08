@@ -82,6 +82,7 @@ pub const MEMBERS: &[&str] = &[
     "expectations",
     "save_scene",
     "assertions",
+    "assertion_events",
     "pick_ui",
 ];
 

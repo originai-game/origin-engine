@@ -17872,6 +17872,13 @@
               "publish": false
             },
             {
+              "name": "assertionEvents",
+              "doc": "The assertions' stream since the last call: each site's first firing, each each-bucket's first holding and each site's first violation, with its tick, in the order they happened (at most 4,096 between calls; more are counted in dropped). A tool that steps a run reads it after each advance and stops at the first violation, instead of reading the whole report.",
+              "params": [],
+              "returns": "AssertEvents",
+              "publish": false
+            },
+            {
               "name": "saveScene",
               "doc": "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.",
               "params": [
@@ -18652,6 +18659,8 @@
         "AssertViolation",
         "AssertUncovered",
         "AssertCost",
+        "AssertEvent",
+        "AssertEvents",
         "AssertReport",
         "WorldBounds"
       ],
@@ -73341,6 +73350,130 @@
         "totalMs",
         "meanUs",
         "maxUs"
+      ],
+      "additionalProperties": false
+    },
+    "AssertEvent": {
+      "x-og-kind": "struct",
+      "x-og-module": "assert",
+      "description": "One event of the assertions' stream (probe.assertionEvents): a first firing or a first violation.",
+      "type": "object",
+      "properties": {
+        "outcome": {
+          "type": "string",
+          "description": "`fired` (a sometimes held, a reachable ran, an each's bucket held) or `violated` (an always failed, an unreachable ran), each once per site or bucket in a report."
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it happened at."
+        },
+        "kind": {
+          "$ref": "#/$defs/AssertKind",
+          "description": "The site's kind."
+        },
+        "origin": {
+          "$ref": "#/$defs/AssertOrigin",
+          "description": "Who declared it."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "location": {
+          "type": "string",
+          "description": "Its place."
+        },
+        "key": {
+          "type": "string",
+          "description": "An each's bucket."
+        },
+        "details": {
+          "description": "What the call passed as details."
+        },
+        "entity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A violation's entity (a default invariant)."
+        },
+        "component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A violation's record."
+        },
+        "field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A violation's field."
+        },
+        "value": {
+          "description": "A violation's value."
+        },
+        "message": {
+          "type": "string",
+          "description": "A violation in words."
+        }
+      },
+      "required": [
+        "outcome",
+        "tick",
+        "kind",
+        "origin",
+        "name",
+        "location",
+        "details"
+      ],
+      "additionalProperties": false
+    },
+    "AssertEvents": {
+      "x-og-kind": "struct",
+      "x-og-module": "assert",
+      "description": "The assertions' stream since the last read.",
+      "type": "object",
+      "properties": {
+        "epoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The report the events belong to now (take moves it on)."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssertEvent"
+          },
+          "description": "In the order they happened."
+        },
+        "dropped": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Events past the 4,096 held between reads."
+        }
+      },
+      "required": [
+        "epoch",
+        "events",
+        "dropped"
       ],
       "additionalProperties": false
     },

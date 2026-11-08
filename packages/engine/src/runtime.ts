@@ -1842,6 +1842,7 @@ function makeProbe(id: number) {
     expect: (what: string) => parse(a().og_engine_probe_expect(id, what)),
     expectations: () => parse(a().og_engine_probe_expectations(id)),
     assertions: (take?: boolean) => parse(a().og_engine_probe_assertions(id, take)),
+    assertionEvents: () => parse(a().og_engine_probe_assertion_events(id)),
     saveScene: (write?: boolean, spawned?: boolean) => parse(a().og_engine_probe_save_scene(id, write, spawned)),
     pickUi: (x: number, y: number) => parse(a().og_engine_probe_pick_ui(id, x, y)),
   });

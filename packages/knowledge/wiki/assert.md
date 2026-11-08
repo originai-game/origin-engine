@@ -41,6 +41,8 @@ module assert {
 | [`AssertViolation`](assert/type-AssertViolation.md) | struct |  | A site's first violation. |
 | [`AssertUncovered`](assert/type-AssertUncovered.md) | struct |  | A sometimes, reachable or each bucket that never fired. |
 | [`AssertCost`](assert/type-AssertCost.md) | struct |  | What the default invariants cost, measured outside the tick. |
+| [`AssertEvent`](assert/type-AssertEvent.md) | struct |  | One event of the assertions' stream (probe.assertionEvents): a first firing or a first violation. |
+| [`AssertEvents`](assert/type-AssertEvents.md) | struct |  | The assertions' stream since the last read. |
 | [`AssertReport`](assert/type-AssertReport.md) | struct |  | The run's assertions since the report began (the probe's assertions member). |
 | [`og.WorldBounds`](assert/record-WorldBounds.md) | resource |  | Where the world's entities may be: naming it turns on the default invariant that every entity's place (its og.MatrixWorld translation, else a root's og.Transform.position) lies inside min..max on eve… |
 | [`og.assert.always`](assert/fn-always.md) | function | `(condition: boolean, name: string, details?: unknown \| null): void` | The condition holds on every call: a false one is a violation, reported with its tick, its name, its place and `details`. |

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "EngineProbe.assertionEvents",
+      "summary": "The assertions' per-tick stream: each site's first firing, each each-bucket's first holding and each site's first violation, with its tick, since the last read (assert.AssertEvents). `og run --json` prints them as `{\"event\":\"assert\",\"outcome\",\"tick\",...}` lines as they happen, before the summary."
+    }
+  ]
+}

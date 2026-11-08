@@ -25753,6 +25753,18 @@
     {
       "id": 574,
       "kind": "method",
+      "path": "EngineProbe.assertionEvents",
+      "symbol": "og_engine_probe_assertion_events",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "assertionEvents",
+      "params": [],
+      "returns": "AssertEvents",
+      "publish": false
+    },
+    {
+      "id": 575,
+      "kind": "method",
       "path": "EngineProbe.saveScene",
       "symbol": "og_engine_probe_save_scene",
       "module": "probe",
@@ -25776,7 +25788,7 @@
       "publish": false
     },
     {
-      "id": 575,
+      "id": 576,
       "kind": "method",
       "path": "EngineProbe.pickUi",
       "symbol": "og_engine_probe_pick_ui",
@@ -25799,7 +25811,7 @@
       "publish": false
     },
     {
-      "id": 576,
+      "id": 577,
       "kind": "fn",
       "path": "og.terrain.load",
       "symbol": "og_terrain_load",
@@ -25821,7 +25833,7 @@
       "publish": true
     },
     {
-      "id": 577,
+      "id": 578,
       "kind": "fn",
       "path": "og.terrain.sample",
       "symbol": "og_terrain_sample",
@@ -25843,7 +25855,7 @@
       "publish": true
     },
     {
-      "id": 578,
+      "id": 579,
       "kind": "fn",
       "path": "og.terrain.bounds",
       "symbol": "og_terrain_bounds",
@@ -25880,7 +25892,7 @@
       "publish": true
     },
     {
-      "id": 579,
+      "id": 580,
       "kind": "fn",
       "path": "og.terrain.edit",
       "symbol": "og_terrain_edit",
@@ -25907,7 +25919,7 @@
       "publish": true
     },
     {
-      "id": 580,
+      "id": 581,
       "kind": "fn",
       "path": "og.terrain.stamp",
       "symbol": "og_terrain_stamp",
@@ -25929,7 +25941,7 @@
       "publish": true
     },
     {
-      "id": 581,
+      "id": 582,
       "kind": "fn",
       "path": "og.terrain.unstamp",
       "symbol": "og_terrain_unstamp",
@@ -25956,7 +25968,7 @@
       "publish": true
     },
     {
-      "id": 582,
+      "id": 583,
       "kind": "fn",
       "path": "og.terrain.layer",
       "symbol": "og_terrain_layer",
@@ -25983,7 +25995,7 @@
       "publish": true
     },
     {
-      "id": 583,
+      "id": 584,
       "kind": "fn",
       "path": "og.terrain.setLayer",
       "symbol": "og_terrain_set_layer",
@@ -26015,7 +26027,7 @@
       "publish": true
     },
     {
-      "id": 584,
+      "id": 585,
       "kind": "fn",
       "path": "og.stream.status",
       "symbol": "og_stream_status",
@@ -26037,7 +26049,7 @@
       "publish": true
     },
     {
-      "id": 585,
+      "id": 586,
       "kind": "fn",
       "path": "og.stream.request",
       "symbol": "og_stream_request",
@@ -26059,7 +26071,7 @@
       "publish": true
     },
     {
-      "id": 586,
+      "id": 587,
       "kind": "fn",
       "path": "og.stream.release",
       "symbol": "og_stream_release",
@@ -26081,7 +26093,7 @@
       "publish": true
     },
     {
-      "id": 587,
+      "id": 588,
       "kind": "fn",
       "path": "og.stream.budget",
       "symbol": "og_stream_budget",
@@ -26098,7 +26110,7 @@
       "publish": true
     },
     {
-      "id": 588,
+      "id": 589,
       "kind": "fn",
       "path": "og.stream.setBudget",
       "symbol": "og_stream_set_budget",
@@ -26120,7 +26132,7 @@
       "publish": true
     },
     {
-      "id": 589,
+      "id": 590,
       "kind": "fn",
       "path": "og.video.capabilities",
       "symbol": "og_video_capabilities",
@@ -26137,7 +26149,7 @@
       "publish": true
     },
     {
-      "id": 590,
+      "id": 591,
       "kind": "fn",
       "path": "og.debug.line",
       "symbol": "og_debug_line",
@@ -26169,7 +26181,7 @@
       "publish": false
     },
     {
-      "id": 591,
+      "id": 592,
       "kind": "fn",
       "path": "og.debug.box",
       "symbol": "og_debug_box",
@@ -26201,7 +26213,7 @@
       "publish": false
     },
     {
-      "id": 592,
+      "id": 593,
       "kind": "fn",
       "path": "og.debug.sphere",
       "symbol": "og_debug_sphere",
@@ -26233,7 +26245,7 @@
       "publish": false
     },
     {
-      "id": 593,
+      "id": 594,
       "kind": "fn",
       "path": "og.debug.arrow",
       "symbol": "og_debug_arrow",
@@ -26265,7 +26277,7 @@
       "publish": false
     },
     {
-      "id": 594,
+      "id": 595,
       "kind": "fn",
       "path": "og.debug.axes",
       "symbol": "og_debug_axes",
@@ -26297,7 +26309,7 @@
       "publish": false
     },
     {
-      "id": 595,
+      "id": 596,
       "kind": "fn",
       "path": "og.debug.text",
       "symbol": "og_debug_text",
@@ -26329,7 +26341,7 @@
       "publish": false
     },
     {
-      "id": 596,
+      "id": 597,
       "kind": "fn",
       "path": "og.debug.clear",
       "symbol": "og_debug_clear",
@@ -26346,7 +26358,7 @@
       "publish": false
     },
     {
-      "id": 597,
+      "id": 598,
       "kind": "fn",
       "path": "og.debug.setView",
       "symbol": "og_debug_set_view",
@@ -26368,7 +26380,7 @@
       "publish": false
     },
     {
-      "id": 598,
+      "id": 599,
       "kind": "fn",
       "path": "og.debug.view",
       "symbol": "og_debug_view",
@@ -26385,7 +26397,7 @@
       "publish": false
     },
     {
-      "id": 599,
+      "id": 600,
       "kind": "fn",
       "path": "og.debug.setEnabled",
       "symbol": "og_debug_set_enabled",
@@ -26407,7 +26419,7 @@
       "publish": false
     },
     {
-      "id": 600,
+      "id": 601,
       "kind": "fn",
       "path": "og.debug.enabled",
       "symbol": "og_debug_enabled",
@@ -26424,7 +26436,7 @@
       "publish": false
     },
     {
-      "id": 601,
+      "id": 602,
       "kind": "fn",
       "path": "og.assert.record",
       "symbol": "og_assert_record",
@@ -26446,7 +26458,7 @@
       "publish": false
     },
     {
-      "id": 602,
+      "id": 603,
       "kind": "fn",
       "path": "og.path.create",
       "symbol": "og_path_create",
@@ -26468,7 +26480,7 @@
       "publish": true
     },
     {
-      "id": 603,
+      "id": 604,
       "kind": "fn",
       "path": "og.path.find",
       "symbol": "og_path_find",
@@ -26490,7 +26502,7 @@
       "publish": true
     },
     {
-      "id": 604,
+      "id": 605,
       "kind": "fn",
       "path": "og.path.sample",
       "symbol": "og_path_sample",
@@ -26517,7 +26529,7 @@
       "publish": true
     },
     {
-      "id": 605,
+      "id": 606,
       "kind": "fn",
       "path": "og.path.length",
       "symbol": "og_path_length",
@@ -26539,7 +26551,7 @@
       "publish": true
     },
     {
-      "id": 606,
+      "id": 607,
       "kind": "fn",
       "path": "og.path.nearest",
       "symbol": "og_path_nearest",
@@ -26566,7 +26578,7 @@
       "publish": true
     },
     {
-      "id": 607,
+      "id": 608,
       "kind": "fn",
       "path": "og.timeline.info",
       "symbol": "og_timeline_info",
@@ -26588,7 +26600,7 @@
       "publish": true
     },
     {
-      "id": 608,
+      "id": 609,
       "kind": "fn",
       "path": "og.timeline.play",
       "symbol": "og_timeline_play",
@@ -26610,7 +26622,7 @@
       "publish": true
     },
     {
-      "id": 609,
+      "id": 610,
       "kind": "fn",
       "path": "og.timeline.pause",
       "symbol": "og_timeline_pause",
@@ -26632,7 +26644,7 @@
       "publish": true
     },
     {
-      "id": 610,
+      "id": 611,
       "kind": "fn",
       "path": "og.timeline.seek",
       "symbol": "og_timeline_seek",
@@ -26659,7 +26671,7 @@
       "publish": true
     },
     {
-      "id": 611,
+      "id": 612,
       "kind": "fn",
       "path": "og.timeline.stop",
       "symbol": "og_timeline_stop",
@@ -26681,7 +26693,7 @@
       "publish": true
     },
     {
-      "id": 612,
+      "id": 613,
       "kind": "fn",
       "path": "og.net.submit",
       "symbol": "og_net_submit",
@@ -26703,7 +26715,7 @@
       "publish": true
     },
     {
-      "id": 613,
+      "id": 614,
       "kind": "fn",
       "path": "og.net.shape",
       "symbol": "og_net_shape",
@@ -26725,7 +26737,7 @@
       "publish": true
     },
     {
-      "id": 614,
+      "id": 615,
       "kind": "fn",
       "path": "og.net.submitInput",
       "symbol": "og_net_submit_input",
@@ -26758,7 +26770,7 @@
       "publish": true
     },
     {
-      "id": 615,
+      "id": 616,
       "kind": "fn",
       "path": "og.net.command",
       "symbol": "og_net_command",
@@ -26791,7 +26803,7 @@
       "publish": true
     },
     {
-      "id": 616,
+      "id": 617,
       "kind": "fn",
       "path": "og.net.commands",
       "symbol": "og_net_commands",
@@ -26819,7 +26831,7 @@
       "publish": true
     },
     {
-      "id": 617,
+      "id": 618,
       "kind": "fn",
       "path": "og.net.status",
       "symbol": "og_net_status",
@@ -26836,7 +26848,7 @@
       "publish": true
     },
     {
-      "id": 618,
+      "id": 619,
       "kind": "fn",
       "path": "og.net.resimulating",
       "symbol": "og_net_resimulating",
@@ -26853,7 +26865,7 @@
       "publish": true
     },
     {
-      "id": 619,
+      "id": 620,
       "kind": "fn",
       "path": "og.net.finalHash",
       "symbol": "og_net_final_hash",
@@ -26875,7 +26887,7 @@
       "publish": true
     },
     {
-      "id": 620,
+      "id": 621,
       "kind": "fn",
       "path": "og.net.hash",
       "symbol": "og_net_hash",
@@ -26892,7 +26904,7 @@
       "publish": true
     },
     {
-      "id": 621,
+      "id": 622,
       "kind": "fn",
       "path": "og.motion.pose",
       "symbol": "og_motion_pose",
@@ -26919,7 +26931,7 @@
       "publish": true
     },
     {
-      "id": 622,
+      "id": 623,
       "kind": "fn",
       "path": "og.motion.place",
       "symbol": "og_motion_place",
@@ -26946,7 +26958,7 @@
       "publish": true
     },
     {
-      "id": 623,
+      "id": 624,
       "kind": "fn",
       "path": "og.motion.face",
       "symbol": "og_motion_face",
@@ -26973,7 +26985,7 @@
       "publish": true
     },
     {
-      "id": 624,
+      "id": 625,
       "kind": "fn",
       "path": "og.motion.walkTo",
       "symbol": "og_motion_walk_to",
@@ -27000,7 +27012,7 @@
       "publish": true
     },
     {
-      "id": 625,
+      "id": 626,
       "kind": "fn",
       "path": "og.motion.jump",
       "symbol": "og_motion_jump",
@@ -27027,7 +27039,7 @@
       "publish": true
     },
     {
-      "id": 626,
+      "id": 627,
       "kind": "fn",
       "path": "og.motion.clear",
       "symbol": "og_motion_clear",
@@ -27049,7 +27061,7 @@
       "publish": true
     },
     {
-      "id": 627,
+      "id": 628,
       "kind": "fn",
       "path": "og.motion.lookAt",
       "symbol": "og_motion_look_at",
@@ -27076,7 +27088,7 @@
       "publish": true
     },
     {
-      "id": 628,
+      "id": 629,
       "kind": "fn",
       "path": "og.motion.react",
       "symbol": "og_motion_react",
@@ -27103,7 +27115,7 @@
       "publish": true
     },
     {
-      "id": 629,
+      "id": 630,
       "kind": "fn",
       "path": "og.motion.status",
       "symbol": "og_motion_status",
@@ -27125,7 +27137,7 @@
       "publish": true
     },
     {
-      "id": 630,
+      "id": 631,
       "kind": "fn",
       "path": "og.motion.capabilities",
       "symbol": "og_motion_capabilities",
@@ -27142,7 +27154,7 @@
       "publish": true
     },
     {
-      "id": 631,
+      "id": 632,
       "kind": "fn",
       "path": "og.motion.presentation",
       "symbol": "og_motion_presentation",
@@ -27164,7 +27176,7 @@
       "publish": true
     },
     {
-      "id": 632,
+      "id": 633,
       "kind": "fn",
       "path": "og.motion.poses",
       "symbol": "og_motion_poses",
@@ -27175,7 +27187,7 @@
       "publish": true
     },
     {
-      "id": 633,
+      "id": 634,
       "kind": "fn",
       "path": "og.destruction.damage",
       "symbol": "og_destruction_damage",
@@ -27202,7 +27214,7 @@
       "publish": true
     },
     {
-      "id": 634,
+      "id": 635,
       "kind": "fn",
       "path": "og.destruction.explode",
       "symbol": "og_destruction_explode",
@@ -27224,7 +27236,7 @@
       "publish": true
     },
     {
-      "id": 635,
+      "id": 636,
       "kind": "fn",
       "path": "og.destruction.fracture",
       "symbol": "og_destruction_fracture",
@@ -27246,7 +27258,7 @@
       "publish": true
     },
     {
-      "id": 636,
+      "id": 637,
       "kind": "fn",
       "path": "og.destruction.info",
       "symbol": "og_destruction_info",
@@ -27268,7 +27280,7 @@
       "publish": true
     },
     {
-      "id": 637,
+      "id": 638,
       "kind": "fn",
       "path": "og.destruction.material",
       "symbol": "og_destruction_material",
@@ -27290,7 +27302,7 @@
       "publish": true
     },
     {
-      "id": 638,
+      "id": 639,
       "kind": "fn",
       "path": "og.destruction.capabilities",
       "symbol": "og_destruction_capabilities",
@@ -27307,7 +27319,7 @@
       "publish": true
     },
     {
-      "id": 639,
+      "id": 640,
       "kind": "fn",
       "path": "og.destruction.carve2d",
       "symbol": "og_destruction_carve2d",
@@ -27334,7 +27346,7 @@
       "publish": true
     },
     {
-      "id": 640,
+      "id": 641,
       "kind": "fn",
       "path": "og.destruction.fill2d",
       "symbol": "og_destruction_fill2d",
@@ -27361,7 +27373,7 @@
       "publish": true
     },
     {
-      "id": 641,
+      "id": 642,
       "kind": "fn",
       "path": "og.destruction.explode2d",
       "symbol": "og_destruction_explode2d",
@@ -27383,7 +27395,7 @@
       "publish": true
     },
     {
-      "id": 642,
+      "id": 643,
       "kind": "fn",
       "path": "og.destruction.fracture2d",
       "symbol": "og_destruction_fracture2d",
@@ -27410,7 +27422,7 @@
       "publish": true
     },
     {
-      "id": 643,
+      "id": 644,
       "kind": "fn",
       "path": "og.destruction.cell2d",
       "symbol": "og_destruction_cell2d",
@@ -27437,7 +27449,7 @@
       "publish": true
     },
     {
-      "id": 644,
+      "id": 645,
       "kind": "fn",
       "path": "og.vfx.spawn",
       "symbol": "og_vfx_spawn",
@@ -27459,7 +27471,7 @@
       "publish": true
     },
     {
-      "id": 645,
+      "id": 646,
       "kind": "fn",
       "path": "og.vfx.info",
       "symbol": "og_vfx_info",

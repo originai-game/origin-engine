@@ -19,6 +19,8 @@ use std::collections::BTreeMap;
 pub const MAX_BUCKETS: usize = 1024;
 /// The most sites a report keeps; more are counted, not listed.
 pub const MAX_SITES: usize = 4096;
+/// The most events the stream holds between reads; more are counted, not kept.
+pub const MAX_EVENTS: usize = 4096;
 
 /// IDL `assert.AssertKind`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -161,6 +163,10 @@ pub struct Assertions {
     sites_dropped: u64,
     epoch: u32,
     cost: Cost,
+    /// The stream: each site's first firing, each bucket's first holding and
+    /// each site's first violation, in the order they happened, until read.
+    events: Vec<Value>,
+    events_dropped: u64,
 }
 
 impl Assertions {
@@ -231,13 +237,19 @@ impl Assertions {
                     && b.first.is_none()
                 {
                     b.first = Some(tick);
+                    let key = b.key.clone();
+                    self.event(i, "fired", tick, Some(key), &call.details);
                 }
                 call.condition
             }
         };
+        let site = &mut self.sites[i];
         let violated = matches!(call.kind, Kind::Always | Kind::Unreachable) && !fired;
         if fired && site.first.is_none() && call.kind != Kind::Always {
             site.first = Some(tick);
+            if call.kind != Kind::Each {
+                self.event(i, "fired", tick, None, &call.details);
+            }
         }
         if violated {
             let seen = Seen {
@@ -271,6 +283,13 @@ impl Assertions {
         site.failures += 1;
         site.last_failure = tick;
         if site.failures == 1 {
+            let mut e = self.event_json(i, "violated", tick, None, &details);
+            e["entity"] = json!(seen.entity);
+            e["component"] = json!(seen.component);
+            e["field"] = json!(seen.field);
+            e["value"] = seen.value.clone();
+            e["message"] = json!(seen.message);
+            self.push_event(e);
             self.violations.push(Violation {
                 site: i,
                 tick,
@@ -278,6 +297,52 @@ impl Assertions {
                 details,
             });
         }
+    }
+
+    fn event_json(
+        &self,
+        i: usize,
+        what: &str,
+        tick: u64,
+        key: Option<String>,
+        details: &Value,
+    ) -> Value {
+        let s = &self.sites[i];
+        let mut e = json!({
+            "outcome": what,
+            "tick": tick,
+            "kind": s.kind.name(),
+            "origin": s.origin.name(),
+            "name": s.name,
+            "location": s.location,
+            "details": details,
+        });
+        if let Some(key) = key {
+            e["key"] = json!(key);
+        }
+        e
+    }
+
+    fn event(&mut self, i: usize, what: &str, tick: u64, key: Option<String>, details: &Value) {
+        let e = self.event_json(i, what, tick, key, details);
+        self.push_event(e);
+    }
+
+    fn push_event(&mut self, e: Value) {
+        if self.events.len() < MAX_EVENTS {
+            self.events.push(e);
+        } else {
+            self.events_dropped += 1;
+        }
+    }
+
+    /// The stream since the last read (IDL `assert.AssertEvents`): every
+    /// first firing, bucket holding and first violation, each with its tick,
+    /// in order; then it starts empty. A new report keeps unread events.
+    pub fn take_events(&mut self) -> Value {
+        let events = std::mem::take(&mut self.events);
+        let dropped = std::mem::take(&mut self.events_dropped);
+        json!({ "epoch": self.epoch, "events": events, "dropped": dropped })
     }
 
     /// Adds one tick of the default invariants' cost.
@@ -507,6 +572,43 @@ mod tests {
         assert_eq!(r["violations"][0]["tick"], 7);
         assert_eq!(r["violations"][0]["failures"], 2);
         assert_eq!(r["violations"][0]["lastTick"], 9);
+    }
+
+    /// The stream holds each first firing, bucket and violation once, with
+    /// its tick, and a read empties it: the 2nd hold of a sometimes and the
+    /// 2nd violation of an always are not events.
+    #[test]
+    fn the_stream_holds_each_first_event_once_and_a_read_empties_it() {
+        let mut a = Assertions::default();
+        a.record(&call(Kind::Sometimes, "wins", false, "", 1));
+        a.record(&call(Kind::Sometimes, "wins", true, "", 2));
+        a.record(&call(Kind::Sometimes, "wins", true, "", 3));
+        a.record(&call(Kind::Always, "hp", false, "", 4));
+        a.record(&call(Kind::Always, "hp", false, "", 5));
+        a.record(&call(Kind::Each, "lvl", true, "2", 6));
+        let e = a.take_events();
+        let seen: Vec<(String, u64, String)> = e["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| {
+                (
+                    e["outcome"].as_str().unwrap().into(),
+                    e["tick"].as_u64().unwrap(),
+                    e["name"].as_str().unwrap().into(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            seen,
+            [
+                ("fired".into(), 2, "wins".into()),
+                ("violated".into(), 4, "hp".into()),
+                ("fired".into(), 6, "lvl".into())
+            ]
+        );
+        assert_eq!(e["events"][2]["key"], "2");
+        assert_eq!(a.take_events()["events"], json!([]));
     }
 
     #[test]

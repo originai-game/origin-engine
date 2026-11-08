@@ -404,6 +404,29 @@ fn assertions {
 
 <sub>Module `probe` line 727</sub>
 
+<a id="member-EngineProbe-assertionEvents"></a>
+
+#### `EngineProbe.assertionEvents`
+
+The assertions' stream since the last call: each site's first firing, each each-bucket's first holding and each site's first violation, with its tick, in the order they happened (at most 4,096 between calls; more are counted in dropped). A tool that steps a run reads it after each advance and stops at the first violation, instead of reading the whole report.
+
+```ts
+EngineProbe.assertionEvents(): AssertEvents
+```
+
+**Returns** `AssertEvents`.
+
+Binding symbol `og_engine_probe_assertion_events` · publish builds: dropped
+
+```ogt
+fn assertionEvents {
+  doc "The assertions' stream since the last call: each site's first firing, each each-bucket's first holding and each site's first violation, with its tick, in the order they happened (at most 4,096 between calls; more are counted in dropped). A tool that steps a run reads it after each advance and stops at the first violation, instead of reading the whole report."
+  returns AssertEvents
+}
+```
+
+<sub>Module `probe` line 734</sub>
+
 <a id="member-EngineProbe-saveScene"></a>
 
 #### `EngineProbe.saveScene`
@@ -436,7 +459,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 734</sub>
+<sub>Module `probe` line 738</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -466,4 +489,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 744</sub>
+<sub>Module `probe` line 748</sub>

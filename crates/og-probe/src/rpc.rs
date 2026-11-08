@@ -364,6 +364,8 @@ impl Probe {
                 if take { a.take() } else { a.report() }
             }
             #[cfg(not(feature = "publish"))]
+            "assertion_events" => self.assertions.borrow_mut().take_events(),
+            #[cfg(not(feature = "publish"))]
             "save_scene" => {
                 let write = p.get("write").and_then(Value::as_bool).unwrap_or(false);
                 let spawned = p.get("spawned").and_then(Value::as_bool).unwrap_or(false);

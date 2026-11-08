@@ -253,6 +253,10 @@ pub fn og_engine_probe_assertions(probe: u32, take: Option<bool>) -> String {
     .to_string()
 }
 
+pub fn og_engine_probe_assertion_events(probe: u32) -> String {
+    member(probe, "assertion_events", json!({})).to_string()
+}
+
 pub fn og_engine_probe_save_scene(
     probe: u32,
     write: Option<bool>,

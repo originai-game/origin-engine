@@ -40933,6 +40933,10 @@ export interface EngineProbe extends RuntimeProbe {
    */
   assertions(take?: boolean): AssertReport;
   /**
+   * The assertions' stream since the last call: each site's first firing, each each-bucket's first holding and each site's first violation, with its tick, in the order they happened (at most 4,096 between calls; more are counted in dropped). A tool that steps a run reads it after each advance and stops at the first violation, instead of reading the whole report.
+   */
+  assertionEvents(): AssertEvents;
+  /**
    * Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.
    *
    * @param write Replace each scene's source file. Default `false`.
@@ -42567,6 +42571,50 @@ export interface AssertCost {
   readonly meanUs: number;
   /** Their slowest tick, in microseconds. */
   readonly maxUs: number;
+}
+
+/**
+ * One event of the assertions' stream (probe.assertionEvents): a first firing or a first violation.
+ */
+export interface AssertEvent {
+  /**
+   * `fired` (a sometimes held, a reachable ran, an each's bucket held) or `violated` (an always failed, an unreachable ran), each once per site or bucket in a report.
+   */
+  readonly outcome: string;
+  /** The tick it happened at. */
+  readonly tick: number;
+  /** The site's kind. */
+  readonly kind: AssertKind;
+  /** Who declared it. */
+  readonly origin: AssertOrigin;
+  /** Its name. */
+  readonly name: string;
+  /** Its place. */
+  readonly location: string;
+  /** An each's bucket. */
+  readonly key?: string;
+  /** What the call passed as details. */
+  readonly details: unknown;
+  /** A violation's entity (a default invariant). */
+  readonly entity?: string | null;
+  /** A violation's record. */
+  readonly component?: string | null;
+  /** A violation's field. */
+  readonly field?: string | null;
+  /** A violation's value. */
+  readonly value?: unknown;
+  /** A violation in words. */
+  readonly message?: string;
+}
+
+/** The assertions' stream since the last read. */
+export interface AssertEvents {
+  /** The report the events belong to now (take moves it on). */
+  readonly epoch: number;
+  /** In the order they happened. */
+  readonly events: readonly AssertEvent[];
+  /** Events past the 4,096 held between reads. */
+  readonly dropped: number;
 }
 
 /** The run's assertions since the report began (the probe's assertions member). */

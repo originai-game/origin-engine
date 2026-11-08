@@ -356,6 +356,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         }
         process.stderr.write(line + "\n");
       }
+      // --json: the assertions' stream as it happens (probe.assertionEvents), one line per
+      // first firing or first violation, before the summary line.
+      if (asJson)
+        for (const e of (engine.probe.assertionEvents() as unknown as { events?: object[] } | null)?.events ?? []) process.stdout.write(JSON.stringify({ event: "assert", ...e }) + "\n");
     }
 
     let tier = "none";
@@ -615,6 +619,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const dump = engine.probe.dump({ what: "world" }) as unknown as { hash: string; entities: number; tick: number; systems?: SystemTimes };
     // The script's expectations (`expect:` steps): a failure fails the run.
     const expectations = engine.probe.expectations();
+    drain();
     // The run's assertions (og.assert, the default invariants, `invariant:` steps): a violation fails the run.
     const assertions = engine.probe.assertions() as unknown as { violations: unknown[]; uncovered: unknown[] };
     // Order statistics (nearest rank).
