@@ -26,6 +26,47 @@ const SVG_DEFS: &[&str] = &[
 /// The elements whose children are SVG.
 const SVG_PARENTS: &[&str] = &["svg", "g", "defs", "symbol", "clipPath", "mask", "pattern"];
 
+/// What a `<tspan>` inside a `<text>` takes: the run's look.
+pub(super) const TSPAN_ATTRS: &[&str] = &["font-weight", "font-style", "text-decoration", "fill"];
+
+/// `run` styled by a `<tspan>`'s attribute `name`.
+pub(super) fn tspan(run: &mut super::InlineRun, name: &str, value: &str) -> Result<(), String> {
+    let v = value.trim();
+    match name {
+        "font-weight" => {
+            run.bold = match v {
+                "bold" | "bolder" => true,
+                "normal" | "lighter" => false,
+                n => n
+                    .parse::<u16>()
+                    .map(|w| w >= 600)
+                    .map_err(|_| format!("font-weight=\"{v}\" is normal, bold or 100–900"))?,
+            }
+        }
+        "font-style" => run.italic = matches!(v, "italic" | "oblique"),
+        "text-decoration" => {
+            for w in v.split_whitespace() {
+                match w {
+                    "underline" => run.underline = true,
+                    "line-through" => run.strike = true,
+                    "none" => {}
+                    w => {
+                        return Err(format!(
+                            "text-decoration \"{w}\" is underline, line-through or none"
+                        ));
+                    }
+                }
+            }
+        }
+        "fill" => {
+            crate::svg::color(v).map_err(|e| format!("fill: {e}"))?;
+            run.color = Some(v.to_string());
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 /// SVG's presentation properties: attributes on SVG elements and CSS
 /// properties of them (CSS wins over the attribute), inherited down the
 /// `<svg>` tree as SVG inherits them.
@@ -43,13 +84,25 @@ pub(crate) const PRESENTATION: &[&str] = &[
     "stroke-miterlimit",
 ];
 
+/// SVG's text presentation properties, inherited as [`PRESENTATION`] is
+/// (a group's `font-size` reaches its texts). As CSS they are read where
+/// no core property has the name (`font-size` and `font-weight` on SVG
+/// text are written as attributes).
+pub(crate) const TEXT_PRESENTATION: &[&str] = &[
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-anchor",
+    "dominant-baseline",
+];
+
 /// A CSS property only SVG elements read (cascaded as text, read by the
 /// SVG build).
 pub(crate) fn svg_longhand(name: &str) -> bool {
-    PRESENTATION.contains(&name)
+    PRESENTATION.contains(&name) || matches!(name, "text-anchor" | "dominant-baseline")
 }
 
-fn in_svg(parent_tag: Option<&str>) -> bool {
+pub(super) fn in_svg(parent_tag: Option<&str>) -> bool {
     parent_tag.is_some_and(|p| SVG_PARENTS.contains(&p))
 }
 
@@ -77,6 +130,9 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
         "anchor" => Some(Ok("anchor")),
         "dpad" => Some(Ok("dpad")),
         "g" => svg_child("svgGroup"),
+        "tspan" => Some(Err(
+            "<tspan> is a run inside an SVG <text>; write it there".into()
+        )),
         "use" => svg_child("svgUse"),
         // Parsed as text (so its content binds), then lifted into its
         // parent's name by [`finish`].
@@ -99,7 +155,7 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
         ),
         t if SVG_DEFS.contains(&t) => svg_child("svgDef"),
         t if in_svg(parent_tag) => Some(Err(format!(
-            "<{t}> is not in the inline SVG subset: g, use, path, rect, circle, ellipse, line, polyline, polygon, image, defs, symbol, clipPath, mask, pattern, linearGradient, radialGradient, stop, title and desc (docs/ui.md §3.3)"
+            "<{t}> is not in the inline SVG subset: g, use, text, tspan, path, rect, circle, ellipse, line, polyline, polygon, image, defs, symbol, clipPath, mask, pattern, linearGradient, radialGradient, stop, title and desc (docs/ui.md §3.3)"
         ))),
         _ => None,
     }
@@ -123,11 +179,24 @@ pub(super) fn property(kind: &str, attr: &str) -> Option<String> {
         return Some(p.into());
     }
     let svg = match kind {
-        "svg" => matches!(attr, "viewBox") || PRESENTATION.contains(&attr),
+        "svg" => {
+            matches!(attr, "viewBox")
+                || PRESENTATION.contains(&attr)
+                || TEXT_PRESENTATION.contains(&attr)
+        }
         "svgGroup" => {
-            matches!(attr, "transform" | "clip-path" | "mask") || PRESENTATION.contains(&attr)
+            matches!(attr, "transform" | "clip-path" | "mask")
+                || PRESENTATION.contains(&attr)
+                || TEXT_PRESENTATION.contains(&attr)
         }
         "svgShape" | "svgUse" => attr != "opacity",
+        "svgText" => {
+            matches!(
+                attr,
+                "x" | "y" | "dx" | "dy" | "transform" | "clip-path" | "mask"
+            ) || PRESENTATION.contains(&attr)
+                || TEXT_PRESENTATION.contains(&attr)
+        }
         "svgDef" => true,
         _ => false,
     };

@@ -336,6 +336,8 @@ pub(crate) fn props(d: &Value) -> Props {
         }),
         // Documents' pointer handlers only; built UI's interactive flag hits.
         pointer: false,
+        // Documents' SVG text only.
+        view_place: None,
         nav: og_ui::NavLinks {
             up: string(&d["nav"]["up"]),
             down: string(&d["nav"]["down"]),

@@ -893,6 +893,23 @@ pub struct Variant {
     pub set: Patch,
 }
 
+/// An out-of-flow element placed at a point of its parent's view box (an
+/// SVG `<text>`): laid out unscaled, in view units as CSS px, then moved so
+/// its anchor sits on `at` fitted into the parent's box (`xMidYMid meet`,
+/// as the parent's shapes are) and scaled by the fit about that anchor.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ViewPlace {
+    /// `min-x min-y width height`.
+    pub view_box: [f32; 4],
+    /// The point, view units.
+    pub at: [f32; 2],
+    /// The anchor across its own box: 0 its left, 0.5 its centre, 1 its
+    /// right (SVG's `text-anchor` in its direction).
+    pub anchor_x: f32,
+    /// The anchor down its own box, CSS px from its top (its baseline).
+    pub anchor_y: f32,
+}
+
 /// Everything an element carries beyond its box. The zero value is an
 /// element in the flow, unmoved and opaque, with no motion.
 #[derive(Clone, Debug, PartialEq)]
@@ -940,6 +957,9 @@ pub struct Props {
     /// `onpointermove`, `onpointerup` or `onwheel`): the pointer hits it,
     /// as it hits any element in HTML.
     pub pointer: bool,
+    /// Placed at a point of its parent's view box (an SVG `<text>`): see
+    /// [`ViewPlace`].
+    pub view_place: Option<ViewPlace>,
     /// Explicit focus moves from it (keys and pads), over the spatial pick.
     pub nav: NavLinks,
     /// Its focusable controls are one focus group.
@@ -1000,6 +1020,7 @@ impl Default for Props {
             pinch: None,
             drop: None,
             pointer: false,
+            view_place: None,
             nav: NavLinks::default(),
             focus_group: None,
             gestures: None,
@@ -1634,6 +1655,7 @@ impl Ui {
                                         && child.props.place == old.props.place
                                         && child.props.position == old.props.position
                                         && child.props.insets == old.props.insets
+                                        && child.props.view_place == old.props.view_place
                                         && child.float == old.float
                                 }))
                 });

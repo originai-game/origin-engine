@@ -448,10 +448,27 @@ Definitions are referenced by `#id`, as in browsers:
   nonzero. `clip-rule` is not read yet.
 - `fill="url(#id)"` naming a `<pattern>` tiles its shapes over a rect,
   circle or ellipse, with `patternUnits`, `patternTransform` and
-  `viewBox`. The tiles of each shape are one path, at most 4096 tiles.
+  `viewBox`, cut by the shape (a path by its own outline). The tiles of
+  each shape are one path, at most 4096 tiles.
 - `<title>` names its parent for assistive technology, as `aria-label`
   does, and can bind (`<title>{$label}</title>`). A named `<svg>` is an
   image. `<desc>` is dropped.
+
+`<text x y dx dy font-size font-weight font-style text-anchor
+dominant-baseline fill>` is one line shaped by og-ui's text, as any label
+is: its content binds (`<text>{$hp}</text>`), and `<tspan>` runs inside it
+take `font-weight`, `font-style`, `text-decoration` and `fill`. It is laid
+out at its view-box size (`font-size` in user units as CSS px), its anchor
+(`text-anchor` start, middle or end of the line; `dominant-baseline` auto,
+middle, central, hanging, mathematical, ideographic, text-before-edge or
+text-after-edge) is placed on `(x, y)` fitted into the `<svg>`'s box, and
+the line is scaled by the fit about it, glyphs from the font's distance
+field. Hit tests and the accessibility tree read the scaled box. Right to
+left the `<svg>` moves across the surface with the layout, but its text
+stays where its view box shows it, as its shapes do. A group's text
+attributes inherit, and its transform moves the point and scales the size
+(a turn is not applied). A bound `x` costs that text; moving or resizing
+the `<svg>` builds nothing.
 
 `<image href x y width height preserveAspectRatio>` draws an atlas image
 icon by name (`href="gem"`) or a render texture by handle
@@ -459,7 +476,8 @@ icon by name (`href="gem"`) or a render texture by handle
 covers, `none` stretches); it takes no turn or skew.
 
 Definition attributes (gradients, clips, masks, patterns) are literal.
-Text and filters are refused with the element named; a dash array takes
+Filters, `<textPath>` and multi-line text are refused with the element
+named; a dash array takes
 one dash and one gap. Cost: re-tessellating one
 dashed ring as a cooked vector takes 438 µs and 840 vertices; changing a
 bound attribute on one of 64 inline rings costs 69–150 µs of the frame

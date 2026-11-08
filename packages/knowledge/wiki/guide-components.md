@@ -573,6 +573,11 @@ Its own props, beside every element's:
 | `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
 | `x` | `text` | SVG `x`. |
 | `y` | `text` | SVG `y`. |
+| `font-size` | `text` | SVG `font-size`, user units (scaled with the view box; default 16). |
+| `font-weight` | `text` | SVG `font-weight`: normal, bold or 100–900 (600 and up is bold). |
+| `font-style` | `text` | SVG `font-style`: normal or italic. |
+| `text-anchor` | `text` | SVG `text-anchor`: start, middle or end of the line on `x`. |
+| `dominant-baseline` | `text` | SVG `dominant-baseline`: auto (alphabetic), middle, central, hanging, text-before-edge, text-after-edge, ideographic or mathematical on `y`. |
 | `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
 | `height` | `text` | SVG `height`. |
 | `cx` | `text` | SVG `cx`. |
@@ -607,6 +612,11 @@ Its own props, beside every element's:
 | `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
 | `x` | `text` | SVG `x`. |
 | `y` | `text` | SVG `y`. |
+| `font-size` | `text` | SVG `font-size`, user units (scaled with the view box; default 16). |
+| `font-weight` | `text` | SVG `font-weight`: normal, bold or 100–900 (600 and up is bold). |
+| `font-style` | `text` | SVG `font-style`: normal or italic. |
+| `text-anchor` | `text` | SVG `text-anchor`: start, middle or end of the line on `x`. |
+| `dominant-baseline` | `text` | SVG `dominant-baseline`: auto (alphabetic), middle, central, hanging, text-before-edge, text-after-edge, ideographic or mathematical on `y`. |
 | `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
 | `height` | `text` | SVG `height`. |
 | `cx` | `text` | SVG `cx`. |
@@ -662,7 +672,46 @@ Its own props, beside every element's:
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
 <a id="guide-components-35"></a>
-### `components §35` `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
+### `components §35` `<svgText>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`
+
+SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`. A leaf; text-bearing controls accept text content: `<svgText id="Name">…</svgText>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `fill` | `text` | SVG `fill`: a colour, `var(--role)`, `currentColor` (the style's ink), `url(#gradient)` or `none`. |
+| `fill-opacity` | `text` | SVG `fill-opacity`. |
+| `fill-rule` | `text` | SVG `fill-rule`: nonzero or evenodd. |
+| `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
+| `stroke-opacity` | `text` | SVG `stroke-opacity`. |
+| `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
+| `stroke-linecap` | `text` | SVG `stroke-linecap`. |
+| `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
+| `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
+| `x` | `text` | SVG `x`. |
+| `y` | `text` | SVG `y`. |
+| `dx` | `text` | A `<text>`'s `dx`: added to `x`. |
+| `dy` | `text` | A `<text>`'s `dy`: added to `y`. |
+| `font-size` | `text` | SVG `font-size`, user units (scaled with the view box; default 16). |
+| `font-weight` | `text` | SVG `font-weight`: normal, bold or 100–900 (600 and up is bold). |
+| `font-style` | `text` | SVG `font-style`: normal or italic. |
+| `text-anchor` | `text` | SVG `text-anchor`: start, middle or end of the line on `x`. |
+| `dominant-baseline` | `text` | SVG `dominant-baseline`: auto (alphabetic), middle, central, hanging, text-before-edge, text-after-edge, ideographic or mathematical on `y`. |
+| `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
+| `height` | `text` | SVG `height`. |
+| `cx` | `text` | SVG `cx`. |
+| `cy` | `text` | SVG `cy`. |
+| `r` | `text` | SVG `r`. |
+| `x1` | `text` | SVG `x1`. |
+| `y1` | `text` | SVG `y1`. |
+| `x2` | `text` | SVG `x2`. |
+| `y2` | `text` | SVG `y2`. |
+
+<a id="guide-components-36"></a>
+### `components §36` `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
 
 SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height. A container with nested children: `<use href="#Coin" x={i * 12} y="0" width="10" height="10" />`.
 
@@ -701,8 +750,8 @@ Its own props, beside every element's:
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 
-<a id="guide-components-36"></a>
-### `components §36` `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
+<a id="guide-components-37"></a>
+### `components §37` `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
 
 An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent. A container with nested children: `<linearGradient id="Up" x2="0" y2="1"><stop offset="0" stop-color="#fff" />…</linearGradient> (radialGradient, defs)` or `<symbol id="Coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></symbol> (clipPath, mask, pattern, title)`.
 

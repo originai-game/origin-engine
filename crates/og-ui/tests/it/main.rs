@@ -70,6 +70,8 @@ mod style_contract;
 mod support;
 #[path = "../svg_defs.rs"]
 mod svg_defs;
+#[path = "../svg_text.rs"]
+mod svg_text;
 #[path = "../text.rs"]
 mod text;
 #[path = "../text_path.rs"]

@@ -645,6 +645,10 @@ impl Ui {
                         italic: on(run.italic),
                         underline: on(run.underline),
                         strike: on(run.strike),
+                        color: run.color.as_deref().and_then(|c| {
+                            let c = crate::svg::color(c).ok()?;
+                            Some(crate::paint::ColorRef::Literal(svg::srgba(c, 1.0)))
+                        }),
                         link: run.link.map(inline_link),
                         ..Default::default()
                     },

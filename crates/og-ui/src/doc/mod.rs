@@ -464,6 +464,8 @@ pub struct InlineRun {
     pub italic: bool,
     pub underline: bool,
     pub strike: bool,
+    /// Its colour (an SVG `<tspan fill>`), CSS text.
+    pub color: Option<String>,
     /// Its link: an index into [`DocNode::links`], or `usize::MAX` for the
     /// `<a>` element's own `href`.
     pub link: Option<usize>,

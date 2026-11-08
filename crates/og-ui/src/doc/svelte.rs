@@ -130,6 +130,10 @@ fn inline(node: &Node) -> bool {
         Node::Text(..) | Node::Expression(..) => true,
         Node::Element { tag, attrs, .. } => match tag.as_str() {
             "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "br" | "span" => attrs.is_empty(),
+            // SVG's run inside a `<text>`: its weight, style, decoration and fill.
+            "tspan" => attrs
+                .iter()
+                .all(|a| !a.bound && super::extern_element::TSPAN_ATTRS.contains(&a.name.as_str())),
             "a" => attrs.iter().all(|a| a.name == "href" && !a.bound),
             _ => false,
         },
@@ -760,6 +764,8 @@ impl Parser {
             return Err((at, "<li> belongs inside a <ul> or an <ol>".into()));
         }
         let internal = match tag {
+            // SVG's text: placed in its view box (extern_element).
+            "text" if super::extern_element::in_svg(self.parent_tag(parent)) => "svgText",
             "text" | "p" | "span" | "a" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => "label",
             "label" if label_for.is_some() => "label",
             "div" | "section" | "header" | "footer" | "nav" | "main" | "aside" | "article"
@@ -1089,9 +1095,10 @@ impl Parser {
             }
             return Ok(i);
         }
-        if internal == "label"
-            && !component
-            && (tag == "a" || children.iter().any(|c| matches!(c, Node::Element { .. })))
+        if internal == "svgText"
+            || internal == "label"
+                && !component
+                && (tag == "a" || children.iter().any(|c| matches!(c, Node::Element { .. })))
         {
             if translated && children.iter().any(|c| matches!(c, Node::Element { .. })) {
                 return Err((
@@ -1243,6 +1250,7 @@ impl Parser {
             italic: false,
             underline: false,
             strike: false,
+            color: None,
             link,
         };
         self.runs(nodes, &base, &mut runs, &mut links, translated)?;
@@ -1283,10 +1291,9 @@ impl Parser {
             PropValue::Lit(Lit::Str(text))
         };
         self.prop(i, "label", "text", value, at, "")?;
-        if runs
-            .iter()
-            .any(|r| r.bold || r.italic || r.underline || r.strike || r.link.is_some())
-        {
+        if runs.iter().any(|r| {
+            r.bold || r.italic || r.underline || r.strike || r.color.is_some() || r.link.is_some()
+        }) {
             self.doc.nodes[i].inline = runs;
             self.doc.nodes[i].links = links;
         }
@@ -1346,6 +1353,12 @@ impl Parser {
                             out.push(run(Expr::Lit("\n".into())));
                             continue;
                         }
+                        "tspan" => {
+                            for a in attrs {
+                                super::extern_element::tspan(&mut inner, &a.name, &a.value)
+                                    .map_err(|e| (a.at, e))?;
+                            }
+                        }
                         "a" => {
                             if style.link.is_some() {
                                 return Err((*at, "a link cannot hold another link".into()));
@@ -1359,6 +1372,12 @@ impl Parser {
                         _ => {}
                     }
                     self.runs(children, &inner, out, links, translated)?;
+                }
+                Node::Element { tag, at, .. } if tag == "tspan" => {
+                    return Err((
+                        *at,
+                        "a <tspan> takes literal font-weight, font-style, text-decoration and fill; place a run elsewhere with its own <text x y>".into(),
+                    ));
                 }
                 Node::Element { tag, at, .. } => {
                     return Err((

@@ -183,7 +183,10 @@ local styles and `og style new` remain available.
   id="Coin" viewBox>` with `<use href="#Coin" x y width height/>`; cut with
   `clip-path="url(#id)"` (any shapes or paths) or a gradient
   `mask="url(#id)"`, hatch with a `<pattern>`, and name the graphic
-  with `<title>{$label}</title>`.
+  with `<title>{$label}</title>`. Label it with `<text x="50" y="20"
+  text-anchor="middle" dominant-baseline="central"
+  font-size="10">{$hp}</text>`: placed and scaled with the view box, with
+  `<tspan font-weight="bold" fill="#f0b429">` runs inside.
 - Drag and drop: `<li draggable="true" data-drag-type="gem"
   ondragstart={lift}>` and `<div data-accept="gem" ondrop={stash}>`; the
   event's value is `{ dragged, target, x, y }` (row keys and the point).

@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI documents: SVG <text> and <tspan>",
+      "summary": "<text x y dx dy font-size font-weight font-style text-anchor dominant-baseline fill> inside an <svg> is one line shaped by og-ui's text, its anchor placed on the point fitted into the svg's box and scaled with the view box (hit tests and accessibility bounds too, right to left where the view box shows it); its content binds, and <tspan> runs take font-weight, font-style, text-decoration and fill. A <pattern> fill on a path is cut to the path."
+    },
+    {
+      "member": "og-ui: Props.view_place (ViewPlace)",
+      "summary": "An out-of-flow element placed at a point of its parent's view box, laid out unscaled and scaled by the fit about its anchor (layout's own channel beside flip, gesture and custom; not the sampled transform)."
+    }
+  ]
+}

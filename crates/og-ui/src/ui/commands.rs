@@ -87,6 +87,7 @@ impl Ui {
             let p = &self.nodes[parent];
             (p.alpha, p.inert, p.world)
         };
+        let rtl = self.direction == og_i18n::Direction::Rtl;
         let n = &mut self.nodes[i];
         n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0);
         n.scale = 1.0;
@@ -117,6 +118,19 @@ impl Ui {
                 local = local
                     .mul(&Affine::translate(f.dx, f.dy))
                     .mul(&Affine::scale(f.scale, f.scale).about(cx, cy));
+            }
+        }
+        if n.props.view_place.is_some() {
+            // Laid out unscaled at its anchor: scaled by the view box's fit
+            // about it (moved back into place first, right to left).
+            let [k, fx, ay, off] = n.fit;
+            let ax = fx * r.width;
+            let dx = if rtl { 2.0 * (off - ax) + r.width } else { 0.0 };
+            let fit = Affine::scale(k, k)
+                .about(r.x + ax + dx, r.y + ay)
+                .mul(&Affine::translate(dx, 0.0));
+            if !fit.is_identity() {
+                local = local.mul(&fit);
             }
         }
         if !n.sampled.transform.is_identity() {

@@ -15,7 +15,7 @@
 //! `fill` re-resolves that group and the shapes that read it, nothing
 //! else.
 use super::*;
-use crate::doc::extern_element::PRESENTATION;
+use crate::doc::extern_element::{PRESENTATION, TEXT_PRESENTATION};
 use crate::doc::schema_extra::svg_prop;
 use crate::paint::{
     ColorRef, ElementDraw, Gradient, GradientKind, Paint, ShapeKind, Stop, Stroke, StrokeAlign,
@@ -24,7 +24,7 @@ use crate::svg::{Affine, GradientDef, PaintRef, Style, bounds, shape_path};
 use og_core::glam::Vec2;
 
 /// The kinds this module builds.
-pub(super) const KINDS: &[&str] = &["svg", "svgGroup", "svgShape", "svgUse", "svgDef"];
+pub(super) const KINDS: &[&str] = &["svg", "svgGroup", "svgShape", "svgUse", "svgDef", "svgText"];
 
 const VIEW_BOX: &str = " svg viewBox";
 const TRANSFORM: &str = " svg transform";
@@ -74,9 +74,9 @@ pub(super) fn inherit(kind: &str, r: &mut Resolved) {
     let reads = &mut r.cascade.inherited_reads;
     reads.insert(VIEW_BOX.into());
     reads.insert(TRANSFORM.into());
-    reads.extend(PRESENTATION.iter().map(|a| key(a)));
+    reads.extend(PRESENTATION.iter().chain(TEXT_PRESENTATION).map(|a| key(a)));
     let mut writes: Vec<(String, String)> = Vec::new();
-    for attr in PRESENTATION {
+    for attr in PRESENTATION.iter().chain(TEXT_PRESENTATION) {
         if let Some(v) = own(r, attr) {
             writes.push((key(attr), v));
         }
@@ -488,7 +488,7 @@ fn solid(p: &PaintRef, alpha: f32) -> Option<Paint> {
     }
 }
 
-fn srgba(c: [f32; 4], alpha: f32) -> Srgba {
+pub(super) fn srgba(c: [f32; 4], alpha: f32) -> Srgba {
     let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
     Srgba {
         rgb: [byte(c[0]), byte(c[1]), byte(c[2])],
@@ -610,7 +610,7 @@ fn subpaths(p: &crate::svg::Path) -> Vec<(Vec<[f32; 2]>, bool)> {
 type ShapeOut = (
     ElementDraw,
     Vec<(ShapeKind, Paint)>,
-    Option<(ShapeKind, [f32; 4])>,
+    Option<(ShapeKind, Option<[f32; 4]>)>,
 );
 
 fn shape_draw(doc: &UiDocument, tag: &str, r: &Resolved, vb: [f32; 4]) -> Result<ShapeOut, String> {
@@ -728,15 +728,229 @@ fn shape_draw(doc: &UiDocument, tag: &str, r: &Resolved, vb: [f32; 4]) -> Result
             ));
         }
     }
+    // The tiles are cut to the shape: a rect, circle or ellipse as a box,
+    // any other by its own path.
     let tile_box = if tiles.is_empty() {
         None
     } else {
-        basic_box(tag, &get, &local, &t)
+        Some(
+            basic_box(tag, &get, &local, &t)
+                .map_or((draw.shape.clone(), None), |(s, r)| (s, Some(r))),
+        )
     };
     Ok((draw, tiles, tile_box))
 }
 
+/// Where `dominant-baseline` puts `y` in a line box whose top is 0 and
+/// whose height is the font's extents (`ascender` to `descender`, em, at
+/// `size` CSS px): CSS px from the box's top.
+fn baseline_shift(base: &str, ascender: f32, descender: f32, size: f32) -> Result<f32, String> {
+    let alphabetic = ascender * size;
+    Ok(match base {
+        "auto" | "alphabetic" | "" => alphabetic,
+        // Half the x-height (0.5 em) over the baseline, as browsers take
+        // it without the font's OS/2 table.
+        "middle" => alphabetic - 0.25 * size,
+        "central" => (ascender - descender) * size / 2.0,
+        "hanging" => alphabetic - 0.8 * size,
+        "mathematical" => alphabetic - 0.5 * size,
+        "text-before-edge" | "text-top" => 0.0,
+        "text-after-edge" | "text-bottom" | "ideographic" => (ascender - descender) * size,
+        other => {
+            return Err(format!(
+                "dominant-baseline \"{other}\" is auto, alphabetic, middle, central, hanging, mathematical, ideographic, text-before-edge or text-after-edge"
+            ));
+        }
+    })
+}
+
 impl Ui {
+    /// An SVG `<text>`: one line shaped as any label, at its view-box size,
+    /// placed and scaled by layout through [`crate::element::ViewPlace`].
+    #[allow(clippy::too_many_arguments)]
+    fn build_svg_text(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &str,
+        r: &Resolved,
+        props: Props,
+        path: &str,
+        key: u64,
+        vb: [f32; 4],
+    ) {
+        let computed = r.cascade.computed.clone();
+        let value = |attr: &str| computed.get(&self::key(attr)).cloned().flatten();
+        let mut warnings = Vec::new();
+        let mut style = Style::default();
+        for attr in PRESENTATION {
+            if let Some(v) = value(attr) {
+                let parent = style.clone();
+                if let Err(e) = style.apply(attr, &v, &parent) {
+                    warnings.push(format!("{attr}: {e}"));
+                }
+            }
+        }
+        let num = |attr: &str, default: f32, warnings: &mut Vec<String>| match value(attr)
+            .as_deref()
+            .or_else(|| svg_prop(attr).and_then(|p| r.str(p)))
+            .map(|v| v.trim().trim_end_matches("px").parse::<f32>())
+        {
+            Some(Ok(v)) => v,
+            Some(Err(_)) => {
+                warnings.push(format!("{attr} is a number of user units"));
+                default
+            }
+            None => default,
+        };
+        let own = |attr: &str, warnings: &mut Vec<String>| {
+            svg_prop(attr)
+                .and_then(|p| r.str(p))
+                .map_or(Ok(0.0), |v| v.trim().parse::<f32>())
+                .unwrap_or_else(|_| {
+                    warnings.push(format!("{attr} is a number of user units"));
+                    0.0
+                })
+        };
+        let t = computed
+            .get(TRANSFORM)
+            .cloned()
+            .flatten()
+            .and_then(|t| Affine::parse(&t).ok())
+            .unwrap_or(Affine::IDENTITY);
+        let x = own("x", &mut warnings) + own("dx", &mut warnings);
+        let y = own("y", &mut warnings) + own("dy", &mut warnings);
+        let at = t.apply(og_core::glam::Vec2::new(x, y));
+        let size = num("font-size", 16.0, &mut warnings).max(0.0) * t.scale();
+        let weight = match value("font-weight").as_deref().map(str::trim) {
+            None | Some("normal") => 0,
+            Some("bold" | "bolder") => 700,
+            Some(v) => v.parse::<u16>().unwrap_or_else(|_| {
+                warnings.push(format!("font-weight \"{v}\" is normal, bold or 100–900"));
+                0
+            }),
+        };
+        let italic = matches!(
+            value("font-style").as_deref().map(str::trim),
+            Some("italic" | "oblique")
+        );
+        let text = r.str("text").unwrap_or_default().to_string();
+        let font = r.label_desc(&self.theme).font;
+        let (ascender, descender) = {
+            let m = &self.fonts.for_styled(font, weight, italic, &text).0.metrics;
+            m.extents(&text)
+        };
+        let anchor_x = match value("text-anchor").as_deref().map(str::trim) {
+            None | Some("start") => 0.0,
+            Some("middle") => 0.5,
+            Some("end") => 1.0,
+            Some(v) => {
+                warnings.push(format!("text-anchor \"{v}\" is start, middle or end"));
+                0.0
+            }
+        };
+        let base = value("dominant-baseline").unwrap_or_default();
+        let anchor_y = baseline_shift(base.trim(), ascender, descender, size).unwrap_or_else(|e| {
+            warnings.push(e);
+            ascender * size
+        });
+        let mut step = self.theme.type_ramp.body;
+        step.size = size;
+        // One line exactly the font's extents tall: the baseline sits at
+        // the ascender, so `dominant-baseline` is measured from its top.
+        step.line_height = (ascender - descender) * size;
+        step.cjk_line_height = step.line_height;
+        if weight > 0 {
+            step.weight = weight;
+        }
+        let color = solid(&style.fill, style.fill_opacity).and_then(|p| match p {
+            Paint::Solid(c) => c.srgb(&self.theme),
+            _ => None,
+        });
+        // `fill="none"`: transparent, still laid out and named.
+        let color = color.or(Some(Srgba {
+            rgb: [0; 3],
+            alpha: 0.0,
+        }));
+        let desc = crate::ui::LabelDesc {
+            step: Some(step),
+            color,
+            nowrap: true,
+            font,
+            ..Default::default()
+        };
+        // A whole bold or italic text is one span over it (bold synthesised
+        // where the role has no such face, as a `<tspan>`'s is).
+        let bold = weight >= 600;
+        let whole;
+        let spans = match r.get("spans") {
+            Some(V::Spans(Ok(spans))) => Some(spans.as_slice()),
+            _ if italic || bold => {
+                whole = [crate::TextSpan {
+                    name: "svgWhole".into(),
+                    position: 0,
+                    length: text.chars().count() as u32,
+                    properties: Default::default(),
+                }];
+                Some(&whole[..])
+            }
+            _ => None,
+        };
+        match spans {
+            Some(spans) => {
+                self.rich_text_spans(
+                    id,
+                    &text,
+                    spans,
+                    crate::RichTextDesc {
+                        step: desc.step,
+                        color: desc.color,
+                        align: desc.align,
+                        nowrap: true,
+                        width: desc.width,
+                        font,
+                    },
+                    |span| {
+                        let mut s = r
+                            .span_styles
+                            .iter()
+                            .find(|(attribute, _)| attribute == span)
+                            .map(|(_, style)| style.clone())
+                            .unwrap_or_default();
+                        if italic {
+                            s.italic.get_or_insert(true);
+                        }
+                        if bold {
+                            s.bold.get_or_insert(true);
+                        }
+                        s
+                    },
+                );
+            }
+            None => self.label(id, &text, desc),
+        }
+        let i = self.last_closed;
+        let mut p = Self::resolved_props(n, r);
+        p.states = props.states;
+        p.state = props.state;
+        p.position = crate::element::Position::Absolute;
+        p.view_place = Some(crate::element::ViewPlace {
+            view_box: vb,
+            at: [at.x, at.y],
+            anchor_x,
+            anchor_y,
+        });
+        self.nodes[i].props = p;
+        for e in warnings {
+            let tag = n.selector_tag.as_deref().unwrap_or("text");
+            self.warnings.push(format!(
+                "{}:{} ({path}): <{tag}>: {e}",
+                b.doc.source, n.line
+            ));
+        }
+        self.fire(b, n, key, path, crate::ui::Response::default());
+    }
+
     /// An `<image href x y width height preserveAspectRatio>`: an atlas
     /// icon by name, or a render texture by handle, filling its rect.
     fn image_draw(
@@ -843,6 +1057,11 @@ impl Ui {
             .flatten()
             .and_then(|v| view_box(&v))
             .unwrap_or([0.0, 0.0, DEFAULT_SIZE[0], DEFAULT_SIZE[1]]);
+        if kind == "svgText" {
+            self.build_svg_text(b, n, id, r, props, &path, key, vb);
+            self.note_built(built);
+            return Some(path);
+        }
         let mut el = Element {
             direction: Direction::Column,
             ..Element::default()
@@ -961,18 +1180,14 @@ impl Ui {
                     let boxed = !tiles.is_empty();
                     if boxed {
                         over(self, "~pattern");
-                        match tile_box {
-                            Some((shape, rect)) => self.set_draw(ElementDraw {
+                        if let Some((shape, view_rect)) = tile_box {
+                            self.set_draw(ElementDraw {
                                 shape,
                                 clip: crate::paint::Clip::Shape,
                                 view_box: Some(vb),
-                                view_rect: Some(rect),
+                                view_rect,
                                 ..ElementDraw::default()
-                            }),
-                            None => warn(
-                                self,
-                                "a pattern fills a rect, circle or ellipse (og-render does not clip to a path yet)".into(),
-                            ),
+                            });
                         }
                     }
                     for (k, (shape, paint)) in tiles.into_iter().enumerate() {
@@ -1309,6 +1524,149 @@ mod tests {
             })
             .unwrap();
         assert!((g.from.x - 0.6).abs() < 1e-3, "the mask refits: {g:?}");
+    }
+
+    const TEXT: &str = r##"
+<meta name="component" content="chart">
+<div id="Box" style:--s={$size} style:--m={$margin}>
+  <svg id="Chart" viewBox="0 0 100 50">
+    <text id="Mid" x="50" y="25" text-anchor="middle" dominant-baseline="central" font-size="10">{$label}</text>
+    <text id="End" x={$x} y="40" text-anchor="end" font-size="8">Max <tspan font-weight="bold" fill="#f00">99</tspan></text>
+  </svg>
+</div>
+<style>#Box { padding: calc(var(--m) * 1px); } #Chart { width: calc(var(--s) * 1px); height: calc(var(--s) * 0.5px); }</style>
+"##;
+
+    /// SVG `<text>`: its anchor on the point fitted into the `<svg>`'s box,
+    /// scaled with it (hit and accessibility bounds too), right to left
+    /// where its view box shows it; a bound `x` costs that text, and moving
+    /// or resizing the `<svg>` builds nothing.
+    ///
+    /// Ways it could fail: the text left at its unscaled size or place; a
+    /// start-anchored rather than end-anchored run; bounds of the unscaled
+    /// box; mirrored inside the view box, or scaled twice.
+    #[test]
+    fn svg_text_sits_on_its_point_and_scales_with_the_view_box() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(UiDocument::parse("chart.svelte", TEXT).unwrap());
+        let mut inputs = BTreeMap::new();
+        for (name, v) in [
+            ("x", json!(90)),
+            ("label", json!("Gold")),
+            ("size", json!(200)),
+            ("margin", json!(0)),
+        ] {
+            let source = SourceId::new("test", name);
+            ui.reactive
+                .execute(Command::Signal {
+                    source: source.clone(),
+                    initial: v,
+                    readable: false,
+                })
+                .unwrap();
+            inputs.insert(name.to_string(), source);
+        }
+        ui.mount_document(
+            SourceId::new("test", "chart"),
+            "chart",
+            inputs,
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let tick = |ui: &mut Ui| {
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 400.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end().stats
+        };
+        let set = |ui: &mut Ui, n: &str, v: serde_json::Value| {
+            ui.reactive
+                .execute(Command::Set {
+                    source: SourceId::new("test", n),
+                    value: v,
+                    force: false,
+                })
+                .unwrap();
+        };
+        let rect = |ui: &Ui, id: &str| {
+            let a = ui
+                .a11y()
+                .nodes
+                .iter()
+                .find(|a| a.path == format!("test:chart/Chart/{id}"))
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{id} in the a11y tree: {:?}",
+                        ui.a11y().nodes.iter().map(|a| &a.path).collect::<Vec<_>>()
+                    )
+                });
+            (a.x, a.y, a.width, a.height)
+        };
+        for _ in 0..3 {
+            tick(&mut ui);
+        }
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        // Checks against the svg's box `(sx, sy)`, 2 px a unit at size 200.
+        // The svg's box: at the padding's corner, or right to left at
+        // the surface's far side.
+        let check = |ui: &Ui, k: f32, x: f32, m: f32| {
+            let sx = if ui.direction() == og_i18n::Direction::Rtl {
+                400.0 - m - 100.0 * k
+            } else {
+                m
+            };
+            let sy = m;
+            let (mx, my, mw, mh) = rect(ui, "Mid");
+            // Centred on (50, 25): central baseline, middle anchor.
+            assert!(
+                (mx + mw / 2.0 - (sx + 50.0 * k)).abs() < 0.5,
+                "Mid x {mx} {mw}"
+            );
+            assert!(
+                (my + mh / 2.0 - (sy + 25.0 * k)).abs() < 0.5,
+                "Mid y {my} {mh}"
+            );
+            // The font's extents at 10 units, scaled: taller than 10 px at k 2.
+            assert!(mh > 10.0 * k * 0.9 && mh < 10.0 * k * 1.6, "Mid h {mh}");
+            let (ex, _, ew, _) = rect(ui, "End");
+            assert!(ew > 0.0);
+            assert!(
+                (ex + ew - (sx + x * k)).abs() < 0.5,
+                "End right {ex}+{ew} k {k} sx {sx} rtl {:?}",
+                ui.direction()
+            );
+        };
+        check(&ui, 2.0, 90.0, 0.0);
+        let idle = tick(&mut ui);
+        assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+        set(&mut ui, "x", json!(70));
+        // That text alone: rebuilt with its own bindings, nothing else.
+        let moved = tick(&mut ui);
+        assert!(moved.bindings <= 2 && moved.reconciled == 1, "{moved:?}");
+        tick(&mut ui);
+        check(&ui, 2.0, 70.0, 0.0);
+        set(&mut ui, "label", json!("Silver"));
+        let named = tick(&mut ui);
+        assert!(named.bindings == 1 && named.reconciled <= 2, "{named:?}");
+        tick(&mut ui);
+        check(&ui, 2.0, 70.0, 0.0);
+        // The svg moves, then resizes: nothing is built, and the texts follow.
+        for (n, v, k) in [("margin", json!(30), 2.0), ("size", json!(300), 3.0)] {
+            set(&mut ui, n, v);
+            for _ in 0..3 {
+                tick(&mut ui);
+            }
+            let idle = tick(&mut ui);
+            assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{n}: {idle:?}");
+            check(&ui, k, 70.0, 30.0);
+        }
+        // Right to left the svg moves across the surface, but its texts
+        // stay where its view box shows them.
+        ui.set_direction(og_i18n::Direction::Rtl);
+        for _ in 0..3 {
+            tick(&mut ui);
+        }
+        check(&ui, 3.0, 70.0, 30.0);
     }
 
     /// An `<image href>` of an atlas icon fills its rect through the view

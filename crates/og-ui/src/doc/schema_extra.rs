@@ -41,6 +41,11 @@ pub const KINDS: &[KindSpec] = &[
         doc: "An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable.",
     },
     KindSpec {
+        name: "svgText",
+        container: false,
+        doc: "SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`.",
+    },
+    KindSpec {
         name: "svgUse",
         container: true,
         doc: "SVG's `<use href=\"#id\" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height.",
@@ -112,6 +117,13 @@ const SVG_ATTRS: &[(&str, &str)] = &[
     ("d", "svgD"),
     ("x", "svgX"),
     ("y", "svgY"),
+    ("dx", "svgDx"),
+    ("dy", "svgDy"),
+    ("font-size", "svgFontSize"),
+    ("font-weight", "svgFontWeight"),
+    ("font-style", "svgFontStyle"),
+    ("text-anchor", "svgTextAnchor"),
+    ("dominant-baseline", "svgDominantBaseline"),
     ("width", "svgWidth"),
     ("height", "svgHeight"),
     ("rx", "svgRx"),
@@ -153,7 +165,8 @@ pub(super) fn svg_attr(prop: &str) -> Option<&'static str> {
     SVG_ATTRS.iter().find(|(_, p)| *p == prop).map(|(a, _)| *a)
 }
 
-const ALL: On = On::Kinds(&["svg", "svgGroup", "svgShape", "svgUse", "svgDef"]);
+const ALL: On = On::Kinds(&["svg", "svgGroup", "svgShape", "svgUse", "svgDef", "svgText"]);
+const TEXT: On = On::Kinds(&["svg", "svgGroup", "svgText"]);
 const SHAPES: On = On::Kinds(&["svgShape", "svgUse"]);
 const PAINTED: On = On::Kinds(&["svgGroup", "svgShape", "svgUse"]);
 const DEFS: On = On::Kinds(&["svgDef"]);
@@ -363,6 +376,37 @@ pub const PROPS: &[PropSpec] = &[
     svg!("svgD", SHAPES, "A `<path>`'s path data."),
     svg!("svgX", ALL, "SVG `x`."),
     svg!("svgY", ALL, "SVG `y`."),
+    svg!(
+        "svgDx",
+        On::Kinds(&["svgText"]),
+        "A `<text>`'s `dx`: added to `x`."
+    ),
+    svg!(
+        "svgDy",
+        On::Kinds(&["svgText"]),
+        "A `<text>`'s `dy`: added to `y`."
+    ),
+    svg!(
+        "svgFontSize",
+        TEXT,
+        "SVG `font-size`, user units (scaled with the view box; default 16)."
+    ),
+    svg!(
+        "svgFontWeight",
+        TEXT,
+        "SVG `font-weight`: normal, bold or 100–900 (600 and up is bold)."
+    ),
+    svg!("svgFontStyle", TEXT, "SVG `font-style`: normal or italic."),
+    svg!(
+        "svgTextAnchor",
+        TEXT,
+        "SVG `text-anchor`: start, middle or end of the line on `x`."
+    ),
+    svg!(
+        "svgDominantBaseline",
+        TEXT,
+        "SVG `dominant-baseline`: auto (alphabetic), middle, central, hanging, text-before-edge, text-after-edge, ideographic or mathematical on `y`."
+    ),
     svg!(
         "svgWidth",
         ALL,

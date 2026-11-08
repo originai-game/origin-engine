@@ -516,6 +516,7 @@ pub(crate) fn content_layout_eq(a: &Content, b: &Content) -> bool {
 pub(crate) fn props_layout_eq(a: &crate::element::Props, b: &crate::element::Props) -> bool {
     a.position == b.position
         && a.insets == b.insets
+        && a.view_place == b.view_place
         && a.layout == b.layout
         && a.grid == b.grid
         && a.place == b.place

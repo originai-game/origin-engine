@@ -881,6 +881,20 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
     let bx = Rect::new(nodes[i].x, nodes[i].y, nodes[i].w, nodes[i].h);
     for c in nodes[i].out.clone() {
         let (w, h) = (nodes[c].w, nodes[c].h);
+        if let Some(v) = nodes[c].props.view_place {
+            // Its anchor on the point the view box shows `at` at (meet,
+            // centred), scaled about it by the fit when drawn.
+            let [vx, vy, vw, vh] = v.view_box;
+            let k = (bx.width / vw.max(1e-6)).min(bx.height / vh.max(1e-6));
+            let off = (v.at[0] - (vx + vw / 2.0)) * k;
+            let ax = v.anchor_x * w;
+            nodes[c].x = bx.x + bx.width / 2.0 + off - ax;
+            nodes[c].y = bx.y + bx.height / 2.0 + (v.at[1] - (vy + vh / 2.0)) * k - v.anchor_y;
+            // Right to left the layout is mirrored whole; the draw moves
+            // the mirrored box back by its offset `off` from the centre.
+            nodes[c].fit = [k, v.anchor_x, v.anchor_y, off];
+            continue;
+        }
         let (x, y) = place_in(
             &bx,
             w,

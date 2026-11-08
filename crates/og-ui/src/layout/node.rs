@@ -446,6 +446,12 @@ pub(crate) struct Node {
     /// The player's HUD placement (`crate::hud_layout`): offset, scale and
     /// opacity (x, y, scale, opacity).
     pub custom: [f32; 4],
+    /// Its view-box fit ([`crate::element::ViewPlace`]), written by layout
+    /// where it places it: the scale, the anchor across its box (a
+    /// fraction) and down it (CSS px), and its anchor's offset across from
+    /// its parent's centre (right to left the mirror flips that offset,
+    /// and the draw moves it back where its view box shows it).
+    pub fit: [f32; 4],
     // Computed by the frame.
     pub alpha: f32,
     pub scale: f32,
@@ -560,6 +566,7 @@ impl Node {
             flip: [0.0, 0.0, 1.0, 1.0],
             gesture: [0.0, 0.0, 1.0, 0.0],
             custom: [0.0, 0.0, 1.0, 1.0],
+            fit: [1.0, 0.0, 0.0, 0.0],
             alpha: 1.0,
             scale: 1.0,
             inert: false,
@@ -603,6 +610,7 @@ impl Node {
         self.y = previous.y;
         self.layout_size = previous.layout_size;
         self.layout_offset = previous.layout_offset;
+        self.fit = previous.fit;
         self.laid_xy = previous.laid_xy;
         self.laid_rect = previous.laid_rect;
         self.laid_clip = previous.laid_clip;
