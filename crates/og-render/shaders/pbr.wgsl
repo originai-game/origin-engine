@@ -266,6 +266,7 @@ fn lit_place(model: mat4x4<f32>, position: vec3<f32>, normal: vec3<f32>, uv: vec
   h.origin = frame.origin.xyz;
   h.eye = frame.view_pos.xyz;
   h.front = 1.0;
+  h.wind = frame.foliage_wind[0][0];
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);
   var p: LitPlace;
   p.clip = retro_clip(moved_clip(frame.view_proj, world));
@@ -362,6 +363,8 @@ fn prepass_vertex_from(model: mat4x4<f32>, prev: mat4x4<f32>, v: VertexIn, befor
   h.origin = frame.origin.xyz;
   h.eye = frame.view_pos.xyz;
   h.front = 1.0;
+  // The previous drawn frame's wind, as its clock.
+  h.wind = frame.foliage_wind[1][0];
   previous = vec4<f32>(previous.xyz + vertex_offset(h, previous_shader_params()), previous.w);
   p.prev_clip = mul_point(fx.prev_view_proj, previous);
   p.object = object_id(model[0].xyz, model[1].xyz, model[2].xyz, model[3].xyz);

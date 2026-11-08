@@ -36,6 +36,7 @@ fn sprite_hook(world: vec3<f32>, corner: vec2<f32>, uv: vec2<f32>, color: vec4<f
   h.eye = frame.view_pos.xyz;
   h.front = 1.0;
   h.origin = frame.origin.xyz;
+  h.wind = frame.foliage_wind[0][0];
   return h;
 }
 

@@ -39,6 +39,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   hook.origin = frame.origin.xyz;
   hook.eye = frame.view_pos.xyz;
   hook.front = hook_front;
+  hook.wind = frame.foliage_wind[0][0];
   let base = surface_color(hook, shader_params(), material.base_color * base_sample * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
   if (DISCARD && ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved)) {
