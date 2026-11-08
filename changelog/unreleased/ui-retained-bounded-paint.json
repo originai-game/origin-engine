@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "Painting a frame judges only the nodes whose drawing may have changed (written, laid out, moved, restyled, or drawn again on their own every frame: game draws, rich text, exits, match keys, glitches, scroll fades and focus rings) and the subtrees under any that changed; every other subtree keeps last frame's commands without being compared, and a frame that keeps every tree takes last frame's list instead of copying it."
+    },
+    {
+      "member": "ui.a11y",
+      "summary": "A heading's level (`<h1>`\u2026`<h6>`, `aria-level`) reaches native screen readers through AccessKit."
+    }
+  ]
+}

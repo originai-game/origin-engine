@@ -9,42 +9,44 @@ use super::*;
 /// What a node carries that a pass of the frame reads every frame.
 pub(crate) mod feat {
     /// A row whose children share a baseline (`Ui::align_baselines`).
-    pub const BASELINE: u16 = 1 << 0;
+    pub const BASELINE: u32 = 1 << 0;
     /// Placed onto another node (`Position::Anchored`).
-    pub const ANCHORED: u16 = 1 << 1;
+    pub const ANCHORED: u32 = 1 << 1;
     /// A staggered entrance over its leaves.
-    pub const STAGGER: u16 = 1 << 2;
+    pub const STAGGER: u32 = 1 << 2;
     /// A drag or a pinch.
-    pub const GESTURE: u16 = 1 << 3;
+    pub const GESTURE: u32 = 1 << 3;
     /// States, transitions, channels or layout motion.
-    pub const ANIMATED: u16 = 1 << 4;
+    pub const ANIMATED: u32 = 1 << 4;
     /// A shared element's match key.
-    pub const MATCH: u16 = 1 << 5;
+    pub const MATCH: u32 = 1 << 5;
     /// A customisable HUD element.
-    pub const CUSTOM: u16 = 1 << 6;
+    pub const CUSTOM: u32 = 1 << 6;
     /// A drop target or a dragged element.
-    pub const DND: u16 = 1 << 7;
+    pub const DND: u32 = 1 << 7;
     /// A scroll container.
-    pub const SCROLLS: u16 = 1 << 8;
+    pub const SCROLLS: u32 = 1 << 8;
     /// A focus group.
-    pub const GROUP: u16 = 1 << 9;
+    pub const GROUP: u32 = 1 << 9;
     /// A gesture recogniser.
-    pub const RECOGNIZER: u16 = 1 << 10;
+    pub const RECOGNIZER: u32 = 1 << 10;
     /// Explicit focus moves.
-    pub const NAV_LINKS: u16 = 1 << 11;
+    pub const NAV_LINKS: u32 = 1 << 11;
     /// A focus scope.
-    pub const SCOPE: u16 = 1 << 12;
+    pub const SCOPE: u32 = 1 << 12;
     /// A styled button part (`[narrow]` follows its width).
-    pub const BUTTON_PART: u16 = 1 << 13;
+    pub const BUTTON_PART: u32 = 1 << 13;
     /// A part or a frame a style may dress (`Ui::build_part_draws`).
-    pub const PART: u16 = 1 << 14;
+    pub const PART: u32 = 1 << 14;
     /// Laid out in the world (`Float::World`): placed every frame.
-    pub const WORLD: u16 = 1 << 15;
-    pub const COUNT: usize = 16;
+    pub const WORLD: u32 = 1 << 15;
+    /// Rich text: painted afresh every frame.
+    pub const RICH: u32 = 1 << 16;
+    pub const COUNT: usize = 17;
 }
 
 /// The features of node `n`.
-pub(crate) fn features(n: &Node) -> u16 {
+pub(crate) fn features(n: &Node) -> u32 {
     use crate::element::Position;
     let p = &n.props;
     let mut f = 0;
@@ -103,6 +105,9 @@ pub(crate) fn features(n: &Node) -> u16 {
     if n.float == Float::World {
         f |= feat::WORLD;
     }
+    if matches!(n.content, Content::Rich(_)) {
+        f |= feat::RICH;
+    }
     f
 }
 
@@ -131,7 +136,7 @@ pub(crate) struct Orders {
     draw_ok: bool,
     /// Per slot: its features (`feat`); and per feature its nodes, in
     /// preorder.
-    pub feat: Vec<u16>,
+    pub feat: Vec<u32>,
     lists: Vec<Vec<usize>>,
     lists_ok: bool,
     /// Nodes the frame's own passes wrote (a stagger's leaves, a shake,
@@ -159,16 +164,25 @@ pub(crate) struct Orders {
     pub hit_inputs: Option<(f32, Rect)>,
     /// The drawing order was made again since the hits were listed.
     pub hits_moved: bool,
+    /// Per slot: written this frame where stamped (`written_stamp`).
+    pub written_at: Vec<u32>,
+    pub written_stamp: u32,
+    /// The nodes drawn again on their own every frame, and those a focus
+    /// ring or outline is drawn over (`Ui::paint_reuse`); and the paint's
+    /// verdicts, kept for their buffers.
+    pub volatile: std::collections::BTreeSet<usize>,
+    pub ringed: std::collections::BTreeSet<usize>,
+    pub reuse: super::commands::Reuse,
 }
 
 impl Orders {
     /// The nodes that carry feature `f`, in preorder.
-    pub(crate) fn with(&self, f: u16) -> &[usize] {
+    pub(crate) fn with(&self, f: u32) -> &[usize] {
         &self.lists[f.trailing_zeros() as usize]
     }
 
     /// The nodes that carry feature `f`, in drawing order.
-    pub(crate) fn drawn(&self, f: u16) -> Vec<usize> {
+    pub(crate) fn drawn(&self, f: u32) -> Vec<usize> {
         let mut out = self.with(f).to_vec();
         out.sort_unstable_by_key(|&i| self.pos[i]);
         out
@@ -193,6 +207,17 @@ impl Ui {
             o.gesture_of.resize(n, 0);
             o.hit_of.resize(n, Vec::new());
             o.warn_of.resize(n, None);
+            o.written_at.resize(n, 0);
+        }
+        o.written_stamp = o.written_stamp.wrapping_add(1);
+        if o.written_stamp == 0 {
+            o.written_at.fill(0);
+            o.written_stamp = 1;
+        }
+        for &i in &self.emitted {
+            if i < n {
+                o.written_at[i] = o.written_stamp;
+            }
         }
         o.wrote_last = std::mem::take(&mut o.wrote);
         let reshaped = whole || o.shape != Some(self.tree.shape);

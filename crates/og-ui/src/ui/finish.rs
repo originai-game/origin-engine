@@ -634,7 +634,7 @@ impl Ui {
         let touch_min = self.touch_min();
         let hit_seeds = match &seeds {
             Some(_) if self.orders.hit_inputs == Some((touch_min, screen)) => {
-                let mut h = mapped;
+                let mut h = mapped.clone();
                 h.extend(scoped);
                 Some(h)
             }
@@ -786,7 +786,21 @@ impl Ui {
         let mut parts = self.orders.with(visit::feat::PART).to_vec();
         parts.extend(self.draws.keys().copied().filter(|&i| self.tree.has(i)));
         self.build_part_draws(&parts);
-        let trees = self.commands(&order);
+        // Painted again where a node's drawing may have changed (every
+        // node on a fresh frame).
+        let trees = self.commands(&order, seeds.is_some().then_some(&mapped[..]));
+        #[cfg(debug_assertions)]
+        if bounded::checking() {
+            for &i in &order {
+                let n = &self.nodes[i];
+                assert_eq!(
+                    self.kept.sigs.get(i).copied().flatten(),
+                    Some((n.key, crate::layout::DrawSig::of(n))),
+                    "'{}' paints with another signature than it was kept by",
+                    self.path_of(i)
+                );
+            }
+        }
         let repainted = self.kept.repainted.take();
         self.note_semantics(repainted.as_deref());
         let matched = self.orders.with(visit::feat::MATCH).to_vec();

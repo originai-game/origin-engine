@@ -300,6 +300,9 @@ impl Ui {
 fn access_node(ui: &Ui, n: &crate::a11y::A11yNode, scale: [f64; 2]) -> Node {
     let mut node = Node::new(role(&n.role));
     node.set_label(n.name.clone());
+    if let Some(level) = n.level {
+        node.set_level(usize::from(level));
+    }
     node.set_description(n.description.clone());
     node.set_value(n.value.clone());
     node.set_bounds(accesskit::Rect::new(

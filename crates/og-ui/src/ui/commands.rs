@@ -151,11 +151,15 @@ impl Ui {
     /// elements (ghosts) after their parent's subtree, or last; and the
     /// drawing of every element with an exit or a match key frozen for
     /// next tick.
-    pub(super) fn commands(&mut self, order: &[usize]) -> Vec<(DrawCmd, Affine)> {
+    pub(super) fn commands(
+        &mut self,
+        order: &[usize],
+        changed: Option<&[usize]>,
+    ) -> Vec<(DrawCmd, Affine)> {
         let dpr = self.viewport.dpr();
         let snap = |v: f32| (v * dpr).round() / dpr;
-        let ends = crate::layout::subtree_ends(&self.nodes, order);
-        let last = std::mem::take(&mut self.kept.last_cmds);
+        let ends = std::mem::take(&mut self.orders.ends);
+        let mut last = std::mem::take(&mut self.kept.last_cmds);
         let mut cmds: Vec<(DrawCmd, Affine)> = Vec::with_capacity(last.len());
         let ghosts = std::mem::take(&mut self.state.motion.ghosts);
         let mut drawn = vec![false; ghosts.len()];
@@ -167,13 +171,8 @@ impl Ui {
         let mut rings: Vec<(usize, Vec<(DrawCmd, Affine)>)> = Vec::new();
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
         self.kept_spans.clear();
-        let Reuse {
-            same,
-            clean,
-            delta,
-            repainted,
-        } = self.paint_reuse(order, &ghosts, &prev_kinds);
-        self.kept.repainted = repainted;
+        let reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
+        self.kept.repainted = reuse.repainted.clone();
         let mut reused_roots = true;
         let theme = self.theme;
         // An element's draw (crate::paint) in its layout box, at its
@@ -204,10 +203,10 @@ impl Ui {
             };
             // A subtree that paints as last frame: its commands copied whole,
             // moved as far as it moved (a scrolled row).
-            let (dx, dy) = delta[i];
+            let (dx, dy) = reuse.delta(i);
             let moved = (dx, dy) != (0.0, 0.0);
             let copied = match at_last {
-                Some((from, len, _)) if clean[i] && from + len <= last.len() => {
+                Some((from, len, _)) if reuse.clean(i) && from + len <= last.len() => {
                     if moved {
                         last[from..from + len]
                             .iter()
@@ -226,6 +225,9 @@ impl Ui {
                 if moved {
                     cmds.extend(copy);
                     self.moved_subtree(&order[k..ends[k]], dx, dy);
+                } else if cmds.is_empty() && from == 0 && len == last.len() {
+                    // Last frame's whole list, as it was: taken, not copied.
+                    cmds = std::mem::take(&mut last);
                 } else {
                     cmds.extend_from_slice(&last[from..from + len]);
                 }
@@ -281,7 +283,7 @@ impl Ui {
                 let mut local = Vec::new();
                 let mut background = 0;
                 let mut kept_now = false;
-                if same[i]
+                if reuse.same(i)
                     && let Some((b, c, _)) = self.kept.cmds.get(&n.key)
                 {
                     (background, local) = (*b, c.clone());
@@ -370,13 +372,10 @@ impl Ui {
         self.state.motion.ghosts = ghosts;
         self.state.motion.frozen = frozen;
         // The same trees as last frame, each drawn whole as it was.
-        let roots: Vec<u64> = order
-            .iter()
-            .filter(|&&i| self.nodes[i].parent == NONE)
-            .map(|&i| self.nodes[i].key)
-            .collect();
-        let same_roots = roots == self.kept.last_roots;
-        self.kept.last_roots = roots;
+        let same_roots = self.orders.roots == self.kept.last_roots;
+        self.kept.last_roots.clone_from(&self.orders.roots);
+        self.orders.ends = ends;
+        self.orders.reuse = reuse;
         self.kept.reused_all = reused_roots && same_roots && !self.kept.fresh && !self.kept.whole;
         cmds
     }
@@ -527,51 +526,97 @@ impl Ui {
     /// their ancestors' fills are unchanged) and which subtrees do whole
     /// (`clean`: every node in them is `same`, and none draws what the
     /// frame makes again on its own: a focus ring, a ghost, world marks, a
-    /// frozen or glitching drawing, a scroll's fade and bars).
+    /// frozen or glitching drawing, a scroll's fade and bars). `changed`
+    /// holds the nodes whose drawing may differ from last frame's (`None`:
+    /// any); every other node, and the subtree it heads, paints as it did
+    /// unless one below it changed.
     fn paint_reuse(
-        &self,
+        &mut self,
         order: &[usize],
+        ends: &[usize],
+        changed: Option<&[usize]>,
         ghosts: &[crate::motion::state::Ghost],
         prev_kinds: &std::collections::HashMap<usize, (&'static str, bool)>,
     ) -> Reuse {
         let n = self.nodes.len();
-        let mut same = vec![false; n];
-        let mut clean = vec![false; n];
-        // How far each node moved since it was painted, where moving is all
-        // that changed (`DrawSig::moved_from`); NaN where it changed otherwise.
-        let mut delta = vec![(f32::NAN, f32::NAN); n];
+        let mut r = std::mem::take(&mut self.orders.reuse);
+        r.begin(n);
         // The bounded frame's check paints its whole twin afresh.
         if self.kept.fresh || self.kept.whole || self.tree.all_restructured {
-            return Reuse {
-                same,
-                clean,
-                delta,
-                repainted: None,
-            };
+            let o = &mut self.orders;
+            o.volatile.clear();
+            o.ringed.clear();
+            for &i in order {
+                r.set(i, false, false, (f32::NAN, f32::NAN));
+                let (v, ring) = self.paints_alone(i);
+                if v {
+                    self.orders.volatile.insert(i);
+                }
+                if ring {
+                    self.orders.ringed.insert(i);
+                }
+            }
+            r.repainted = None;
+            return r;
         }
-        let mut written = vec![false; n];
-        for &i in &self.emitted {
-            written[i] = true;
-        }
-        let mut volatile = vec![false; n];
-        // A node whose children changed draws them anew.
-        for &i in self.draws.keys().chain(&self.tree.restructured) {
-            volatile[i] = true;
-        }
+        let o = &mut self.orders;
+        // What the frame draws again on its own, kept until it does not.
+        o.volatile.retain(|&i| o.pos[i] != u32::MAX);
+        o.ringed.retain(|&i| o.pos[i] != u32::MAX);
+        let mut volatile: std::collections::HashSet<usize> = self
+            .draws
+            .keys()
+            .chain(&self.tree.restructured)
+            .copied()
+            .collect();
         let keyed = ghosts
             .iter()
             .map(|g| g.frozen.parent)
             .chain(self.world.marks.keys().copied());
         for key in keyed {
             if let Some(&i) = self.tree.by_key.get(&key) {
-                volatile[i] = true;
+                volatile.insert(i);
             }
         }
-        for &i in order {
+        // The nodes to judge, in drawing order: those that may have
+        // changed, those drawn again on their own, and below any that
+        // does not paint as last frame.
+        let mut at: Vec<u32> = changed
+            .unwrap_or(order)
+            .iter()
+            .chain(&self.emitted)
+            .chain(&volatile)
+            .chain(&o.volatile)
+            .chain(&o.ringed)
+            .chain(o.with(visit::feat::RICH))
+            .map(|&i| o.pos.get(i).copied().unwrap_or(u32::MAX))
+            .filter(|&p| p != u32::MAX)
+            .collect();
+        at.sort_unstable();
+        at.dedup();
+        let written_at = std::mem::take(&mut self.orders.written_at);
+        let stamp = self.orders.written_stamp;
+        let written = |i: usize| written_at[i] == stamp;
+        let mut judged = Vec::new();
+        let (mut next, mut cover, mut p) = (0usize, 0usize, None::<usize>);
+        loop {
+            let q = match p {
+                Some(p) if p + 1 < cover => p + 1,
+                _ => {
+                    while next < at.len() && p.is_some_and(|p| at[next] as usize <= p) {
+                        next += 1;
+                    }
+                    let Some(&q) = at.get(next) else { break };
+                    q as usize
+                }
+            };
+            p = Some(q);
+            let i = order[q];
             let node = &self.nodes[i];
+            let up = node.parent;
             let own = !self.draws.contains_key(&i)
                 && !matches!(node.content, Content::Rich(_))
-                && if written[i] {
+                && if written(i) {
                     // A node written again: as it was drawn last frame.
                     self.kept.prev.get(&i).is_some_and(|b| {
                         crate::layout::draw_eq(node, b)
@@ -586,11 +631,11 @@ impl Ui {
                         })
                     })
                 };
-            same[i] = own && (node.parent == NONE || same[node.parent]);
-            let parent = (node.parent != NONE).then(|| delta[node.parent]);
-            delta[i] = if same[i] {
+            let same = own && (up == NONE || r.same(up));
+            let parent = (up != NONE).then(|| r.delta(up));
+            let delta = if same {
                 (0.0, 0.0)
-            } else if !written[i]
+            } else if !written(i)
                 && !self.draws.contains_key(&i)
                 && !matches!(node.content, Content::Rich(_))
                 && let Some(Some((k, old))) = self.kept.sigs.get(i)
@@ -602,55 +647,84 @@ impl Ui {
             } else {
                 (f32::NAN, f32::NAN)
             };
-            volatile[i] |= node.props.exit.is_some()
-                || !node.props.match_key.is_empty()
-                || !node.links.is_empty()
-                || node.fx.is_some_and(|f| f.glitch > 0.0)
-                || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars));
-            clean[i] = !delta[i].0.is_nan() && !volatile[i];
+            let (own_volatile, ring) = self.paints_alone(i);
+            let o = &mut self.orders;
+            if own_volatile {
+                o.volatile.insert(i);
+            } else {
+                o.volatile.remove(&i);
+            }
+            if ring {
+                o.ringed.insert(i);
+            } else {
+                o.ringed.remove(&i);
+            }
+            let clean = !delta.0.is_nan() && !own_volatile && !volatile.contains(&i);
+            r.set(i, same, clean, delta);
+            judged.push(i);
+            if !same {
+                cover = cover.max(ends[q]);
+            }
         }
-        // A subtree is copied whole when every node in it moved as its root.
-        for &i in order.iter().rev() {
-            let parent = self.nodes[i].parent;
-            if parent != NONE && (!clean[i] || delta[i] != delta[parent]) {
-                clean[parent] = false;
+        // A subtree is copied whole when every node in it moved as its
+        // root: a node that is not, or moved otherwise, unsettles each
+        // node above it.
+        for &i in judged.iter().rev() {
+            let mut c = i;
+            loop {
+                let up = self.nodes[c].parent;
+                if up == NONE || (r.clean(c) && r.delta(c) == r.delta(up)) || !r.clean(up) {
+                    break;
+                }
+                r.unclean(up);
+                c = up;
             }
         }
         // A focus ring is drawn at the end of the subtree it draws over
         // (`ring_over`): that subtree is copied whole with it or not at
         // all, never a part of it below.
-        let field_ring = |n: &crate::layout::Node| match &n.widget {
-            Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
-                e.focused && n.sampled.background.is_some()
-            }
-            _ => false,
-        };
-        for &i in order {
-            let n = &self.nodes[i];
-            let outline =
-                self.theme.outline && (n.nav || n.focusable) && n.sampled.background.is_some();
-            if !(n.ring || n.pad_rings != 0 || outline || field_ring(n)) {
-                continue;
-            }
+        let ringed: Vec<usize> = self.orders.ringed.iter().copied().collect();
+        for i in ringed {
             let over = self.ring_over(i);
             let mut j = i;
             while j != over && j != NONE {
-                clean[j] = false;
+                r.unclean(j);
                 j = self.nodes[j].parent;
             }
         }
         // The nodes not written that draw otherwise than last frame.
-        let repainted = order
-            .iter()
-            .copied()
-            .filter(|&i| !same[i] && !written[i])
-            .collect();
-        Reuse {
-            same,
-            clean,
-            delta,
-            repainted: Some(repainted),
-        }
+        r.repainted = Some(
+            judged
+                .into_iter()
+                .filter(|&i| !r.same(i) && !written(i))
+                .collect(),
+        );
+        self.orders.written_at = written_at;
+        r
+    }
+
+    /// Whether node `i` draws again on its own every frame (an exit, a
+    /// match key, links, a glitch, a scroll's fade and bars), and whether
+    /// a focus ring or outline is drawn over it.
+    fn paints_alone(&self, i: usize) -> (bool, bool) {
+        let node = &self.nodes[i];
+        let volatile = node.props.exit.is_some()
+            || !node.props.match_key.is_empty()
+            || !node.links.is_empty()
+            || node.fx.is_some_and(|f| f.glitch > 0.0)
+            || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars));
+        let outline =
+            self.theme.outline && (node.nav || node.focusable) && node.sampled.background.is_some();
+        let field_ring = match &node.widget {
+            Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
+                e.focused && node.sampled.background.is_some()
+            }
+            _ => false,
+        };
+        (
+            volatile,
+            node.ring || node.pad_rings != 0 || outline || field_ring,
+        )
     }
 
     /// The nodes of a subtree copied moved by `(dx, dy)`: their signatures
@@ -1206,11 +1280,65 @@ pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
     (c, Affine::IDENTITY)
 }
 
-/// What `Ui::paint_reuse` found, per node index.
-struct Reuse {
+/// What `Ui::paint_reuse` found, per node: judged this frame where
+/// stamped, else as it painted last frame (same, clean, unmoved).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Reuse {
+    stamp: u32,
+    at: Vec<u32>,
     same: Vec<bool>,
     clean: Vec<bool>,
     delta: Vec<(f32, f32)>,
     /// The nodes painted anew (`None`: the whole frame is).
-    repainted: Option<Vec<usize>>,
+    pub repainted: Option<Vec<usize>>,
+}
+
+impl Reuse {
+    fn begin(&mut self, n: usize) {
+        self.stamp = self.stamp.wrapping_add(1);
+        if self.stamp == 0 {
+            self.at.fill(0);
+            self.stamp = 1;
+        }
+        if self.at.len() < n {
+            self.at.resize(n, 0);
+            self.same.resize(n, false);
+            self.clean.resize(n, false);
+            self.delta.resize(n, (0.0, 0.0));
+        }
+    }
+
+    fn set(&mut self, i: usize, same: bool, clean: bool, delta: (f32, f32)) {
+        self.at[i] = self.stamp;
+        (self.same[i], self.clean[i], self.delta[i]) = (same, clean, delta);
+    }
+
+    fn judged(&self, i: usize) -> bool {
+        self.at[i] == self.stamp
+    }
+
+    fn same(&self, i: usize) -> bool {
+        !self.judged(i) || self.same[i]
+    }
+
+    fn clean(&self, i: usize) -> bool {
+        !self.judged(i) || self.clean[i]
+    }
+
+    fn delta(&self, i: usize) -> (f32, f32) {
+        if self.judged(i) {
+            self.delta[i]
+        } else {
+            (0.0, 0.0)
+        }
+    }
+
+    /// Node `i` is not copied whole (as judged, or as last frame).
+    fn unclean(&mut self, i: usize) {
+        if !self.judged(i) {
+            self.set(i, true, false, (0.0, 0.0));
+        } else {
+            self.clean[i] = false;
+        }
+    }
 }

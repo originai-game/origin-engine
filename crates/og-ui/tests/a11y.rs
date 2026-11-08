@@ -474,6 +474,7 @@ fn native_tree_reads_only_the_changed_nodes() {
             "ui/hud.svelte",
             r#"<meta name="component" content="hud">
 <column id="Hud">
+  <h2 id="Title">Hud</h2>
   <text id="Score">{$score}</text>
   {#each $rows as row (row.id)}<button id="Row">{row.id}</button>{/each}
 </column>"#,
@@ -511,8 +512,18 @@ fn native_tree_reads_only_the_changed_nodes() {
     step(&mut ui);
     step(&mut ui);
     let mut bridge = native_a11y::Bridge::default();
-    assert!(bridge.update(&ui, [1.0, 1.0]).is_some());
+    let first = bridge.update(&ui, [1.0, 1.0]).expect("the whole tree");
     assert!(bridge.read() > 300, "the first update reads the whole tree");
+    let heading = first
+        .nodes
+        .iter()
+        .find(|(_, n)| n.label() == Some("Hud"))
+        .expect("the heading");
+    assert_eq!(
+        (heading.1.role(), heading.1.level()),
+        (native_a11y::accesskit::Role::Heading, Some(2)),
+        "an <h2> reaches the screen reader as a level 2 heading"
+    );
     step(&mut ui);
     assert!(bridge.update(&ui, [1.0, 1.0]).is_none());
     assert_eq!(bridge.read(), 0, "an idle tick reads nothing");
