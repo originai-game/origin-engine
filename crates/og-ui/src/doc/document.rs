@@ -6,14 +6,20 @@ impl UiDocument {
     pub fn validate_tokens(&self, themes: &[crate::Theme]) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
         let mut check = |paint: &Paint, line: usize| {
-            if let Paint::Token(name) = paint
-                && !themes.iter().any(|theme| theme.color(name).is_some())
-            {
-                errors.push(format!(
-                    "{}:{line}: unresolved colour token --{}",
-                    self.source,
-                    css::kebab(name)
-                ));
+            let mut names = Vec::new();
+            match paint {
+                Paint::Token(name) => names.push(name.clone()),
+                Paint::Css(c) => c.tokens(&mut names),
+                Paint::Color(_) => {}
+            }
+            for name in names {
+                if !themes.iter().any(|theme| theme.color(&name).is_some()) {
+                    errors.push(format!(
+                        "{}:{line}: unresolved colour token --{}",
+                        self.source,
+                        css::kebab(&name)
+                    ));
+                }
             }
         };
         for node in &self.nodes {

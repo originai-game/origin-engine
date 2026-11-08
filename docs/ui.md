@@ -417,6 +417,22 @@ corner (a `<button>`'s plate); sides that differ are drawn as strips, and
 the first listed on top, outer shadows under the background and inset ones
 over it.
 
+Colours. Every CSS colour property takes any CSS Color 4 and 5 colour:
+hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`), all 148 named colours,
+`transparent`, `currentColor`, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`,
+`oklab()`, `oklch()` (space and legacy comma forms, `none` components,
+alpha after `/`) and `color()` over `srgb`, `srgb-linear`, `display-p3`,
+`a98-rgb`, `prophoto-rgb`, `rec2020`, `xyz-d50` and `xyz-d65`;
+`color-mix(in <space> [<hue> hue], …)` interpolating premultiplied, with
+the spec's percentage normalisation and hue methods; relative colours
+(`oklch(from var(--accent) calc(l * 0.8) c h)`, channel keywords in
+`calc()`, `min()`, `max()`, `clamp()`); and `light-dark()`. Conversions
+are CSS Color 4's (`crates/og-ui/src/css_color.rs`), and a colour outside
+sRGB is gamut mapped by OKLCh chroma reduction, not clipped. A colour that
+reads no role, `currentColor` or `light-dark()` reduces to sRGB at cook;
+one that does is resolved against the active style when drawn, so a
+style switch recolours it.
+
 CSS paint. `background` (or `background-image`) takes comma-separated
 layers over the background colour, the first on top, as CSS Backgrounds
 3 writes them: each `<image> [<position> [/ <size>]] [<repeat>]`, the

@@ -987,6 +987,10 @@ fn tokens_in(c: &[char], i: &mut usize, func: bool) -> Result<(Vec<Vec<Tok>>, bo
         } else if ch == '/' {
             *i += 1;
             args.last_mut().unwrap().push(Tok::Slash);
+        } else if ch == '*' {
+            // A product in a relative colour's channel (`calc(l * 0.8)`).
+            *i += 1;
+            args.last_mut().unwrap().push(Tok::Ident("*".into()));
         } else if matches!(ch, '+' | '-') && c.get(*i + 1).is_none_or(|d| d.is_whitespace()) {
             // A math operator (CSS needs spaces around + and -).
             *i += 1;
@@ -1286,14 +1290,56 @@ fn want_var(t: &Tok, ns: &str) -> Result<String, String> {
     }
 }
 
+/// A colour declaration's values: a palette role (`token <role>`), a
+/// literal as `#rrggbbaa` (every CSS colour that depends on nothing reduces
+/// to one), or a colour that reads a role, `currentColor` or
+/// `light-dark()` as its CSS text, resolved when the element resolves
+/// ([`crate::css_color`]).
 pub(crate) fn paint_vals(t: &[Tok]) -> Result<Vec<Value>, String> {
     match t {
-        [Tok::Hash(h)] => Ok(vec![Value::String(h.clone())]),
-        [v @ Tok::Func(f, _)] if f == "var" => Ok(vec![
+        [v @ Tok::Func(f, a)] if f == "var" && a.len() == 1 => Ok(vec![
             Value::Word("token".into()),
             Value::Word(want_var(v, "")?),
         ]),
-        _ => Err("a colour: var(--role) or #rrggbb[aa]".into()),
+        [t] => {
+            let c = crate::css_color::parse(t)?;
+            Ok(vec![Value::String(match c.literal() {
+                Some(s) => hex(s),
+                None => tok_text(t),
+            })])
+        }
+        _ => Err(
+            "a colour: a named colour, #hex, rgb(), hsl(), oklch(), color-mix(), var(--role) …"
+                .into(),
+        ),
+    }
+}
+
+/// `#rrggbb`, or `#rrggbbaa` when not opaque.
+pub(crate) fn hex(c: crate::Srgba) -> String {
+    let [r, g, b] = c.rgb;
+    let a = (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
+    if a == 255 {
+        format!("#{r:02x}{g:02x}{b:02x}")
+    } else {
+        format!("#{r:02x}{g:02x}{b:02x}{a:02x}")
+    }
+}
+
+/// A token written back as CSS.
+pub(crate) fn tok_text(t: &Tok) -> String {
+    match t {
+        Tok::Ident(s) | Tok::Hash(s) => s.clone(),
+        Tok::Num(n, u) => format!("{n}{u}"),
+        Tok::Str(s) => quoted(s),
+        Tok::Slash => "/".into(),
+        Tok::Func(f, args) => format!(
+            "{f}({})",
+            args.iter()
+                .map(|a| a.iter().map(tok_text).collect::<Vec<_>>().join(" "))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
     }
 }
 

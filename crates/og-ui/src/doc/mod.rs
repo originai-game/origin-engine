@@ -200,6 +200,29 @@ pub enum Paint {
     /// A palette role, resolved through the style when drawn.
     Token(String),
     Color(Srgba),
+    /// A CSS colour that reads roles, `currentColor` or `light-dark()`
+    /// (`color-mix(in oklch, var(--accent) 40%, var(--panel))`).
+    Css(std::sync::Arc<crate::css_color::Color>),
+}
+
+impl Paint {
+    /// Its colour in `theme` (`None`: an unknown role).
+    pub fn resolve(&self, theme: &crate::Theme) -> Option<Srgba> {
+        match self {
+            Paint::Token(t) => theme.color(t),
+            Paint::Color(c) => Some(*c),
+            Paint::Css(c) => Some(c.resolve(&crate::css_color::Context::of(theme))),
+        }
+    }
+
+    /// The same colour as a draw's [`crate::paint::ColorRef`].
+    pub fn color_ref(&self) -> crate::paint::ColorRef {
+        match self {
+            Paint::Token(t) => crate::paint::ColorRef::token(t),
+            Paint::Color(c) => crate::paint::ColorRef::Literal(*c),
+            Paint::Css(c) => crate::paint::ColorRef::Css(c.clone()),
+        }
+    }
 }
 
 /// A prop's literal value, typed by its [`Ty`].
@@ -748,6 +771,13 @@ fn parse_paint(vals: &[Value]) -> Result<Paint, String> {
             crate::style_file::parse_color(s)
                 .map(Paint::Color)
                 .ok_or_else(|| format!("'{s}' is not a colour (#rrggbb or #rrggbbaa)"))
+        }
+        [Value::String(s)] if s.contains('(') || crate::css_color::is_named(s) => {
+            let c = crate::css_color::parse_str(s)?;
+            Ok(match c.literal() {
+                Some(l) => Paint::Color(l),
+                None => Paint::Css(std::sync::Arc::new(c)),
+            })
         }
         [Value::Word(role)] | [Value::String(role)]
             if crate::Palette::NAMES.contains(&role.as_str()) =>

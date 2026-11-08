@@ -27,8 +27,14 @@ pub use og_render::{
 /// literal sRGB colour as authored.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ColorRef {
-    Token { name: String, alpha: f32 },
+    Token {
+        name: String,
+        alpha: f32,
+    },
     Literal(Srgba),
+    /// A CSS colour expression over roles (`color-mix()`, a relative
+    /// colour, `light-dark()`), resolved through the theme when drawn.
+    Css(std::sync::Arc<crate::css_color::Color>),
 }
 
 /// What an unknown token draws: a colour no style uses, so a typo shows.
@@ -49,6 +55,7 @@ impl ColorRef {
                 .color(name)
                 .map_or(MISSING_TOKEN, |c| c.fade(alpha.clamp(0.0, 1.0)).linear()),
             ColorRef::Literal(c) => c.linear(),
+            ColorRef::Css(c) => c.resolve(&crate::css_color::Context::of(theme)).linear(),
         }
     }
 
@@ -59,6 +66,7 @@ impl ColorRef {
                 theme.color(name).map(|c| c.fade(alpha.clamp(0.0, 1.0)))
             }
             ColorRef::Literal(c) => Some(*c),
+            ColorRef::Css(c) => Some(c.resolve(&crate::css_color::Context::of(theme))),
         }
     }
 }

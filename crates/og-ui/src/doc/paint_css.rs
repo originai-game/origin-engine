@@ -146,25 +146,26 @@ pub(crate) struct CssPaint {
 
 // ---- parsing
 
-/// A colour token: `#hex`, a named colour, `transparent` or `var(--role)`.
-fn color(t: &Tok) -> Result<ColorRef, String> {
-    match t {
-        Tok::Func(f, a) if f == "var" => match a.as_slice() {
-            [v] => match v.as_slice() {
-                [Tok::Ident(n)] if n.starts_with("--") => Ok(ColorRef::Token {
-                    name: n[2..].to_owned(),
-                    alpha: 1.0,
-                }),
-                _ => Err("var(--<role>)".into()),
-            },
-            _ => Err("var(--<role>)".into()),
-        },
-        Tok::Ident(w) if w == "transparent" => Ok(ColorRef::Literal(Srgba::TRANSPARENT)),
-        Tok::Hash(h) | Tok::Ident(h) => crate::svg::color(h)
-            .map(|c| ColorRef::Literal(super::build::svg::srgba(c, 1.0)))
-            .map_err(|_| format!("'{h}' is not a colour")),
-        t => Err(format!("'{}' is not a colour", describe(t))),
+/// A colour token: any CSS colour ([`crate::css_color`]); `var(--role)`
+/// stays a role and a colour over roles an expression, both resolved when
+/// drawn.
+pub(crate) fn color(t: &Tok) -> Result<ColorRef, String> {
+    if let Tok::Func(f, a) = t
+        && f == "var"
+        && let [v] = a.as_slice()
+        && let [Tok::Ident(n)] = v.as_slice()
+        && let Some(name) = n.strip_prefix("--")
+    {
+        return Ok(ColorRef::Token {
+            name: name.to_owned(),
+            alpha: 1.0,
+        });
     }
+    let c = crate::css_color::parse(t)?;
+    Ok(match c.literal() {
+        Some(s) => ColorRef::Literal(s),
+        None => ColorRef::Css(std::sync::Arc::new(c)),
+    })
 }
 
 fn is_color(t: &Tok) -> bool {
@@ -1245,7 +1246,9 @@ pub(crate) fn material(text: &str) -> Result<Option<Layer>, String> {
         layer.params[k] = match a.as_slice() {
             [c] if is_color(c) => match color(c)? {
                 ColorRef::Literal(s) => s.linear(),
-                ColorRef::Token { .. } => return Err("a material's colour is a literal".into()),
+                ColorRef::Token { .. } | ColorRef::Css(_) => {
+                    return Err("a material's colour is a literal".into());
+                }
             },
             nums if nums.len() <= 4 => {
                 let mut v = [0.0; 4];

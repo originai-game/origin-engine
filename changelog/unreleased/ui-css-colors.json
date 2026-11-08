@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: every CSS colour function, color-mix(), relative colours, light-dark() and all named colours",
+      "summary": "Document CSS colours take hex with alpha, all 148 named colours, rgb(), hsl(), hwb(), lab(), lch(), oklab(), oklch() and color() over every predefined space, color-mix() with hue methods, relative colours over roles (oklch(from var(--accent) l c calc(h + 180))) and light-dark(). Out-of-gamut colours are gamut mapped as CSS Color 4 says; colours over roles resolve against the active style when drawn."
+    }
+  ]
+}

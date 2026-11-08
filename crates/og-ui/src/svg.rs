@@ -374,87 +374,23 @@ pub fn opacity(v: &str) -> Result<f32, String> {
 
 /// A colour as sRGB, straight alpha, each channel 0 to 1 (`currentColor`
 /// is white: the cook's vectors take their tint as their colour).
+/// A literal CSS colour as sRGB channels 0–1 ([`crate::css_color`]: hex,
+/// named colours, every colour function); `currentColor` reads as white
+/// here, its callers resolve it first.
 pub fn color(v: &str) -> Result<[f32; 4], String> {
     let v = v.trim();
-    if let Some(hex) = v.strip_prefix('#') {
-        let digit = |i: usize| {
-            u8::from_str_radix(&hex[i..i + 1], 16)
-                .map(f32::from)
-                .map_err(|_| format!("'{v}' is not a colour"))
-        };
-        let byte = |i: usize| {
-            u8::from_str_radix(&hex[i..i + 2], 16)
-                .map(|b| f32::from(b) / 255.0)
-                .map_err(|_| format!("'{v}' is not a colour"))
-        };
-        return match hex.len() {
-            3 | 4 => {
-                let a = if hex.len() == 4 {
-                    digit(3)? / 15.0
-                } else {
-                    1.0
-                };
-                Ok([digit(0)? / 15.0, digit(1)? / 15.0, digit(2)? / 15.0, a])
-            }
-            6 | 8 => {
-                let a = if hex.len() == 8 { byte(6)? } else { 1.0 };
-                Ok([byte(0)?, byte(2)?, byte(4)?, a])
-            }
-            _ => Err(format!("'{v}' is not a colour")),
-        };
+    if v.eq_ignore_ascii_case("currentcolor") {
+        return Ok([1.0; 4]);
     }
-    if let Some(args) = v
-        .strip_prefix("rgba(")
-        .or_else(|| v.strip_prefix("rgb("))
-        .and_then(|a| a.strip_suffix(')'))
-    {
-        let parts: Vec<&str> = args
-            .split([',', ' ', '/'])
-            .filter(|s| !s.is_empty())
-            .collect();
-        if parts.len() != 3 && parts.len() != 4 {
-            return Err(format!("'{v}' is not a colour"));
-        }
-        let ch = |s: &str| -> Result<f32, String> {
-            match s.strip_suffix('%') {
-                Some(p) => p.parse::<f32>().map(|p| p / 100.0),
-                None => s.parse::<f32>().map(|n| n / 255.0),
-            }
-            .map(|c| c.clamp(0.0, 1.0))
-            .map_err(|_| format!("'{v}' is not a colour"))
-        };
-        let a = match parts.get(3) {
-            Some(a) => opacity(a)?,
-            None => 1.0,
-        };
-        return Ok([ch(parts[0])?, ch(parts[1])?, ch(parts[2])?, a]);
-    }
-    let named: [u8; 3] = match v.to_ascii_lowercase().as_str() {
-        "currentcolor" | "white" => [255, 255, 255],
-        "black" => [0, 0, 0],
-        "red" => [255, 0, 0],
-        "lime" => [0, 255, 0],
-        "green" => [0, 128, 0],
-        "blue" => [0, 0, 255],
-        "yellow" => [255, 255, 0],
-        "cyan" | "aqua" => [0, 255, 255],
-        "magenta" | "fuchsia" => [255, 0, 255],
-        "gray" | "grey" => [128, 128, 128],
-        "silver" => [192, 192, 192],
-        "maroon" => [128, 0, 0],
-        "olive" => [128, 128, 0],
-        "navy" => [0, 0, 128],
-        "purple" => [128, 0, 128],
-        "teal" => [0, 128, 128],
-        "orange" => [255, 165, 0],
-        "transparent" => return Ok([0.0; 4]),
-        _ => return Err(format!("'{v}' is not a colour")),
-    };
+    let c = crate::css_color::parse_str(v)
+        .ok()
+        .and_then(|c| c.literal())
+        .ok_or_else(|| format!("'{v}' is not a colour"))?;
     Ok([
-        f32::from(named[0]) / 255.0,
-        f32::from(named[1]) / 255.0,
-        f32::from(named[2]) / 255.0,
-        1.0,
+        f32::from(c.rgb[0]) / 255.0,
+        f32::from(c.rgb[1]) / 255.0,
+        f32::from(c.rgb[2]) / 255.0,
+        c.alpha,
     ])
 }
 

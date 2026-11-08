@@ -341,10 +341,7 @@ impl Segments {
         let Some([a, b]) = &self.ramp else {
             return fill;
         };
-        let of = |c: &ColorRef| match c {
-            ColorRef::Token { name, alpha } => theme.color(name).map_or(fill, |c| c.fade(*alpha)),
-            ColorRef::Literal(c) => *c,
-        };
+        let of = |c: &ColorRef| c.srgb(theme).unwrap_or(fill);
         let t = k as f32 / (self.count.max(2) - 1) as f32;
         of(a).mix(of(b), t)
     }
@@ -371,10 +368,9 @@ impl DressDraw {
     }
 
     pub(crate) fn subpart_color(&self, fallback: Srgba, theme: &Theme) -> Srgba {
-        use crate::doc::{Lit, Paint};
+        use crate::doc::Lit;
         match self.appearance_value("color") {
-            Some(Lit::Paint(Paint::Color(c))) => Some(*c),
-            Some(Lit::Paint(Paint::Token(name))) => theme.color(name),
+            Some(Lit::Paint(p)) => p.resolve(theme),
             _ => self.ink.as_ref().and_then(|ink| ink.srgb(theme)),
         }
         .unwrap_or(fallback)

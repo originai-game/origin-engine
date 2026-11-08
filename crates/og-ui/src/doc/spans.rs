@@ -1,5 +1,5 @@
-use super::{AtQuery, Expr, Lit, Paint, Ty, css, parse_lit, schema};
-use crate::{TextSpan, TextSpanStyle, TextSpanValue, Theme, paint::ColorRef};
+use super::{AtQuery, Expr, Lit, Ty, css, parse_lit, schema};
+use crate::{TextSpan, TextSpanStyle, TextSpanValue, Theme};
 
 /// A scoped `text::part(name)[property=value]` rule, in cascade order.
 #[derive(Clone, Debug, PartialEq)]
@@ -218,12 +218,7 @@ fn apply_body(rule: &mut SpanRule, body: &str) -> Result<(), String> {
                 for entry in css::declarations(&format!("{name}: {value};"), 1)? {
                     let (_, spec) = schema::prop(&entry.key).ok_or("unknown span text property")?;
                     match (spec.ty, parse_lit(spec.ty, &entry.values)?) {
-                        (Ty::Paint, Lit::Paint(p)) => {
-                            rule.style.color = Some(match p {
-                                Paint::Token(name) => ColorRef::token(&name),
-                                Paint::Color(color) => ColorRef::Literal(color),
-                            })
-                        }
+                        (Ty::Paint, Lit::Paint(p)) => rule.style.color = Some(p.color_ref()),
                         (_, Lit::Str(s)) if entry.key == "step" => rule.step = Some(s),
                         (_, Lit::Str(s)) if entry.key == "font" => {
                             rule.style.font =

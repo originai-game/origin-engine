@@ -199,6 +199,8 @@ impl<'a> Cursor<'a> {
             match &mut c {
                 ColorRef::Token { alpha, .. } => *alpha *= opacity,
                 ColorRef::Literal(color) => *color = color.fade(opacity),
+                // A style file's colours are roles or literals.
+                ColorRef::Css(_) => {}
             }
         }
         Ok(c)

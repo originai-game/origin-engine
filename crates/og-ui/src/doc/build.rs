@@ -125,10 +125,7 @@ impl Resolved {
 }
 
 fn paint(ui: &Ui, p: &Paint) -> Option<Srgba> {
-    match p {
-        Paint::Token(t) => ui.theme().color(t),
-        Paint::Color(c) => Some(*c),
-    }
+    p.resolve(ui.theme())
 }
 
 /// A bound JSON value as a prop of type `ty`.
@@ -157,6 +154,12 @@ fn coerce(ui: &Ui, ty: Ty, v: &Value) -> Option<V> {
             let s = v.as_str()?;
             let p = if s.starts_with('#') {
                 Paint::Color(crate::style_file::parse_color(s)?)
+            } else if s.contains('(') || crate::css_color::is_named(s) {
+                Paint::Color(
+                    crate::css_color::parse_str(s)
+                        .ok()?
+                        .resolve(&crate::css_color::Context::of(ui.theme())),
+                )
             } else {
                 Paint::Token(s.to_string())
             };
