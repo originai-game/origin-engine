@@ -161,6 +161,12 @@ Its own props, beside every element's:
 | Write | Value | What |
 |---|---|---|
 | `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
+| `world` | `bool` | `<panel world src={$target} entity={$e} size="1.2 0.8" rotation="0 30 0">`: a world panel, its subtree drawn into the render target `src` at its CSS width and height, shown on a quad `size` world units across at the entity (or `at="x y z"`) turned by `rotation` (degrees about x, y, z); the pointer's ray reaches its controls. |
+| `world-size` | `text` | A world panel's quad, `width height` world units (default 1 1). |
+| `world-rotation` | `text` | A world panel's turn, degrees about x, y and z (`0 30 0`); facing +z unturned. |
+| `entity` | `number` | The entity it follows, by its bits (`entity={u.entity}`): its world pose as the host hands it in. |
+| `world-at` | `text` | `at="x y z"`: a world point it follows, without an entity. |
+| `viewport-src` | `number` | The render target its camera draws into (`src={$target}`, the target's colour texture handle). |
 
 ## 7. `<scroll>` (`scroll`): A column that scrolls its content
 

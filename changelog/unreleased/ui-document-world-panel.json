@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <panel world>",
+      "summary": "The native world panel in a document: laid out at its CSS size, drawn into the render target src names, shown on a quad size world units across at an entity or point, turned by rotation. Pointer rays that meet the quad reach its controls (onclick, focus, Enter)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og-ui: retained elements inside an <anchor> or <panel world>",
+      "summary": "A document's world layer is keyed by the element's own path, so the nodes in it carry the keys and paths the retained document gives them: presses and focus reach them, a patch writes the changed element in place (it wrote the whole anchor before), and an anchor or panel may be its document's root. Probe paths inside an anchor now include its document's path."
+    }
+  ]
+}

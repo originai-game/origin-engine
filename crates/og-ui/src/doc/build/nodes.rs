@@ -256,17 +256,10 @@ impl Ui {
             return self.build_viewport(b, n, id.as_str(), &r, props, path, key, built);
         }
         if kind == "anchor" {
-            return self.build_anchor(
-                b,
-                n,
-                id.as_str(),
-                &r,
-                props,
-                path,
-                key,
-                built,
-                build_children,
-            );
+            return self.build_anchor(b, n, &r, props, path, key, built, build_children);
+        }
+        if kind == "panel" && r.flag("world") {
+            return self.build_world_panel(b, n, &r, props, path, key, built, build_children);
         }
         if svg::KINDS.contains(&kind) {
             return self.build_svg(

@@ -559,6 +559,25 @@ that moves costs 0 bindings and 0 reconciled elements, and a renamed row
 writes that one anchor. `anchor` is not an HTML element; no standard names a
 box held over a 3D point.
 
+`<panel world>` is the native world panel (`og.ui.openWorldPanel`): a box
+laid out at its CSS size and drawn into the render target `src` names,
+which the game shows on a plane: `<panel id="Terminal" world
+entity={$console} size="3 2" rotation="0 30 0" src={$screen}>…</panel>`.
+`size` is the quad in world units (width height, default `1 1`),
+`rotation` turns it in degrees about x, y and z, and `at="x y z"` names a
+fixed point instead of an entity. A ray from the pointer that meets the
+quad reaches the panel's controls, so `onclick`, focus and Enter work in
+it as on the screen; without `entity` or `at` it takes no rays. `world`
+is a boolean attribute on HTML's `panel` kind because no web standard
+draws a box into a texture.
+
+An anchor or world panel stands outside the screen's tree, in a world
+layer of its own, but its layer is keyed by the element's own path: the
+nodes in it have the keys and paths (`test:term/Terminal/Row/Run`) they
+would have in place. A retained patch inside it writes the changed element
+in place, as anywhere else (1 reconciled, idle 0/0), and either may be its
+document's root.
+
 The authoring contract below also includes requirements whose TypeScript
 wiring remains pending:
 

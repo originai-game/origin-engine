@@ -202,6 +202,11 @@ local styles and `og style new` remain available.
   keys and pads; no handler is needed. Size them with CSS `width`, place
   them with `position: absolute` and insets, and hide them with
   `@media (pointer: fine) { #Stick { display: none } }`. A stick's dead zone is `data-dead-zone="0.2"`.
+- Name a box over an entity with `<anchor entity={u.entity} offset="0 2 0">`,
+  and put a working screen on a mesh with `<panel id="Terminal" world
+  entity={$console} size="3 2" src={$screen}>`: the game shows the render
+  target `src` on a plane `size` world units across, and pointer rays
+  that meet it press its buttons.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.

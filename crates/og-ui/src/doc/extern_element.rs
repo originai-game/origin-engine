@@ -168,6 +168,16 @@ pub(super) fn property(kind: &str, attr: &str) -> Option<String> {
     if kind == "viewport" && attr == "src" {
         return Some("viewportSrc".into());
     }
+    if kind == "panel" {
+        let p = match attr {
+            "at" => "worldAt",
+            "size" => "worldSize",
+            "rotation" => "worldRotation",
+            "src" => "viewportSrc",
+            _ => return None,
+        };
+        return Some(p.into());
+    }
     if kind == "anchor" {
         let p = match attr {
             "at" => "worldAt",

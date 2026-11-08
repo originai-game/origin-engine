@@ -181,6 +181,154 @@ fn a_world_panel_takes_a_press_through_the_pointer_ray() {
     assert!(!clicked && !info.pointed);
 }
 
+/// A document's `<panel world>` takes presses through the pointer ray on
+/// ticks it is not built again, and an idle panel builds nothing.
+///
+/// Fails when a retained panel is placed or hit only on the tick it was
+/// built (the press goes nowhere), or when it rebuilds every tick.
+#[test]
+fn a_document_world_panel_takes_a_press_while_it_is_not_rebuilt() {
+    let mut ui = ui();
+    let doc = r#"<meta name="component" content="term">
+<div id="Root">
+<button id="Out" onclick={out}>Out</button>
+<panel id="Terminal" world at="0 0 0" size="3 2">
+  <div id="Row"><button id="Run" onclick={run}>{$label}</button></div>
+</panel>
+<anchor id="Tag" at="0 1 0"><button id="Ping" onclick={ping}>{$label}</button></anchor>
+</div>
+<style>#Terminal { width: 480px; height: 320px; align-items: center; justify-content: center; }</style>"#;
+    let send = |ui: &mut Ui, command: serde_json::Value| {
+        let reply = reactive::wire::decode(
+            &ui.apply_reactive(&reactive::wire::encode(&serde_json::json!([command])).unwrap()),
+        )
+        .unwrap();
+        assert_eq!(reply[0]["ok"], true, "{reply}");
+    };
+    let label = reactive::SourceId::new("test", "label");
+    send(
+        &mut ui,
+        serde_json::json!({"op": "signal", "source": label, "initial": "Run"}),
+    );
+    ui.define_document(UiDocument::parse("term.svelte", doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "term"),
+        "term",
+        [("label".to_string(), label.clone())].into_iter().collect(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let tick = |ui: &mut Ui, i: InputFrame| {
+        ui.begin(i, vp());
+        ui.set_world_view(Some(view()));
+        ui.end().stats
+    };
+    for _ in 0..3 {
+        tick(&mut ui, InputFrame::default());
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let idle = tick(&mut ui, InputFrame::default());
+    assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+    // The panel's subtree is named as if in place.
+    let run = "test:term/Terminal/Row/Run";
+    let ping = "test:term/Tag/Ping";
+    let (bx, by, bw, bh) = rect(&ui, run);
+    let (px, py, ..) = rect(&ui, "test:term/Terminal");
+    let u = (bx + bw / 2.0 - px) / 480.0;
+    let v = (by + bh / 2.0 - py) / 320.0;
+    let p = Vec3::new((u - 0.5) * 3.0, (0.5 - v) * 2.0, 0.0);
+    let (sx, sy, _) = view().project(p, W, H).unwrap();
+    let at = Vec2::new(sx, sy);
+    let click = |ui: &mut Ui, p: Vec2| {
+        let mut events = Vec::new();
+        for i in [input(p, true, true, false), input(p, false, false, true)] {
+            tick(ui, i);
+            events.extend(ui.take_doc_events());
+        }
+        events
+    };
+    let center = |ui: &Ui, path: &str| {
+        let (x, y, w, h) = rect(ui, path);
+        Vec2::new(x + w / 2.0, y + h / 2.0)
+    };
+    ui.take_doc_events();
+    let o = center(&ui, "test:term/Out");
+    let events = click(&mut ui, o);
+    assert!(events.iter().any(|e| e.name == "out"), "{events:?}");
+    // A ray from the pointer meets the quad and presses the button.
+    let events = click(&mut ui, at);
+    assert!(
+        events.iter().any(|e| e.name == "run"),
+        "the panel's button took no press: {events:?}"
+    );
+    // Pressed, it holds focus: Enter activates it.
+    tick(
+        &mut ui,
+        InputFrame {
+            keys: vec![UiKey::Enter],
+            keys_pressed: vec!["Enter"],
+            ..Default::default()
+        },
+    );
+    let events = ui.take_doc_events();
+    assert!(events.iter().any(|e| e.name == "run"), "{events:?}");
+    // The anchored button takes a press where it is drawn.
+    let pa = center(&ui, ping);
+    let events = click(&mut ui, pa);
+    assert!(events.iter().any(|e| e.name == "ping"), "{events:?}");
+    // A press on nothing takes the focus away: a focused control is
+    // built every tick, wherever it stands.
+    click(&mut ui, Vec2::new(4.0, H - 4.0));
+    for _ in 0..30 {
+        tick(&mut ui, InputFrame::default());
+    }
+    let idle = tick(&mut ui, InputFrame::default());
+    assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+    // A label both buttons read: each written in place, its layer kept.
+    send(
+        &mut ui,
+        serde_json::json!({"op": "set", "source": label, "value": "Go"}),
+    );
+    let patched = tick(&mut ui, InputFrame::default());
+    assert_eq!(patched.reconciled, 2, "{patched:?}");
+    for path in [run, ping] {
+        assert_eq!(
+            ui.element(path).map(|e| e.text.clone()),
+            Some("Go".into()),
+            "{path}"
+        );
+    }
+    // Narrower, each button and what holds it read their new size once.
+    let settled = tick(&mut ui, InputFrame::default());
+    assert!(settled.reconciled <= 4, "{settled:?}");
+    let idle = tick(&mut ui, InputFrame::default());
+    assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+    let events = click(&mut ui, at);
+    assert!(
+        events.iter().any(|e| e.name == "run"),
+        "after a patch: {events:?}"
+    );
+    // Saved and restored: the panel and the anchor stand and take presses.
+    let saved = ui.save_state();
+    ui.restore_state(&saved).unwrap();
+    for _ in 0..2 {
+        tick(&mut ui, InputFrame::default());
+    }
+    assert_eq!(ui.element(run).map(|e| e.text.clone()), Some("Go".into()));
+    let events = click(&mut ui, at);
+    assert!(
+        events.iter().any(|e| e.name == "run"),
+        "after a restore: {events:?}"
+    );
+    let pa = center(&ui, ping);
+    let events = click(&mut ui, pa);
+    assert!(
+        events.iter().any(|e| e.name == "ping"),
+        "after a restore: {events:?}"
+    );
+}
+
 /// §15.1: a HUD plus 2,000 mass elements and 100 anchored elements in
 /// ≤ 1 ms of CPU a tick (build, lay out, place and record). A measurement
 /// for the reference machines, not the orb: `cargo test -p og-ui --release

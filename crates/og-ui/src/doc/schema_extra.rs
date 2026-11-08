@@ -186,16 +186,37 @@ macro_rules! svg {
 
 pub const PROPS: &[PropSpec] = &[
     PropSpec {
+        name: "world",
+        ty: Ty::Bool,
+        on: On::Kinds(&["panel"]),
+        two_way: false,
+        doc: "`<panel world src={$target} entity={$e} size=\"1.2 0.8\" rotation=\"0 30 0\">`: a world panel, its subtree drawn into the render target `src` at its CSS width and height, shown on a quad `size` world units across at the entity (or `at=\"x y z\"`) turned by `rotation` (degrees about x, y, z); the pointer's ray reaches its controls.",
+    },
+    PropSpec {
+        name: "worldSize",
+        ty: Ty::Text,
+        on: On::Kinds(&["panel"]),
+        two_way: false,
+        doc: "A world panel's quad, `width height` world units (default 1 1).",
+    },
+    PropSpec {
+        name: "worldRotation",
+        ty: Ty::Text,
+        on: On::Kinds(&["panel"]),
+        two_way: false,
+        doc: "A world panel's turn, degrees about x, y and z (`0 30 0`); facing +z unturned.",
+    },
+    PropSpec {
         name: "entity",
         ty: Ty::Num,
-        on: On::Kinds(&["anchor"]),
+        on: On::Kinds(&["anchor", "panel"]),
         two_way: false,
         doc: "The entity it follows, by its bits (`entity={u.entity}`): its world pose as the host hands it in.",
     },
     PropSpec {
         name: "worldAt",
         ty: Ty::Text,
-        on: On::Kinds(&["anchor"]),
+        on: On::Kinds(&["anchor", "panel"]),
         two_way: false,
         doc: "`at=\"x y z\"`: a world point it follows, without an entity.",
     },
@@ -272,7 +293,7 @@ pub const PROPS: &[PropSpec] = &[
     PropSpec {
         name: "viewportSrc",
         ty: Ty::Num,
-        on: On::Kinds(&["viewport"]),
+        on: On::Kinds(&["viewport", "panel"]),
         two_way: false,
         doc: "The render target its camera draws into (`src={$target}`, the target's colour texture handle).",
     },

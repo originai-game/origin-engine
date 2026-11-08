@@ -618,6 +618,22 @@ impl Ui {
             local = renamed;
         }
         let key = child_key(self.nodes[0].key, &local);
+        self.open_layer_keyed(kind, key, local, el, float, anchor)
+    }
+
+    /// Opens a layer whose node takes `key` itself rather than one derived
+    /// from its id: a document's `<anchor>` or `<panel world>` keyed by its
+    /// own identity, so its children's keys (folded from it with
+    /// [`child_key`]) are the ones the retained document gives them.
+    pub(crate) fn open_layer_keyed(
+        &mut self,
+        kind: &'static str,
+        key: u64,
+        local: String,
+        el: Element,
+        float: Float,
+        anchor: usize,
+    ) -> usize {
         let mut node = Node::new(key, local, NONE, el);
         node.float = float;
         node.anchor = anchor;

@@ -1202,13 +1202,18 @@ impl RetainedHost {
         }
         let parent_slot = ui.parent();
         let element = &self.elements[identity];
+        // A world layer (`<anchor>`, `<panel world>`) stands outside the
+        // tree, under no parent, and stays among the layers as it is.
+        let outside = element.parent_slot == NONE;
         if !in_place
             && !element.volatile
             && !self.emit.contains(identity)
             && let Some(slot) = element.slot
-            && ui.holds(slot, identity.key, parent_slot)
+            && ui.holds(slot, identity.key, if outside { NONE } else { parent_slot })
         {
-            ui.reattach(slot);
+            if !outside {
+                ui.reattach(slot);
+            }
             return Ok(());
         }
         self.emit.remove(identity);
@@ -1252,11 +1257,10 @@ impl RetainedHost {
                 .into_iter()
                 .map(|(path, value)| (e.context.clone(), path, value)),
         );
-        let slot = owned
-            .slots
-            .iter()
-            .copied()
-            .find(|&i| ui.nodes[i].key == identity.key && ui.nodes[i].parent == parent_slot);
+        let slot = owned.slots.iter().copied().find(|&i| {
+            ui.nodes[i].key == identity.key
+                && (ui.nodes[i].parent == parent_slot || ui.nodes[i].parent == NONE)
+        });
         let mut retired: Vec<usize> = e.owned.clone();
         let mut kept = owned.slots.clone();
         kept.sort_unstable();
@@ -1297,7 +1301,9 @@ impl RetainedHost {
         }
         let element = self.elements.get_mut(identity).unwrap();
         element.slot = slot;
-        element.parent_slot = parent_slot;
+        // The parent its node stands under: the open element, or none for
+        // a world layer.
+        element.parent_slot = slot.map_or(parent_slot, |i| ui.nodes[i].parent);
         element.owned = owned.slots;
         element.keys = keys;
         element.record = record;
@@ -1327,36 +1333,6 @@ impl RetainedHost {
         // An element without the slot it was built in (offscreen in a
         // virtual list, in a branch not shown, retired) is written whole
         // when it is built again: marking it does nothing, so the mark goes.
-        // One built inside an `<anchor>`'s world layer holds no slot of its
-        // own (its node's key follows the layer's): the anchor is written
-        // again in its place.
-        let orphans: Vec<MountedNode> = self
-            .emit
-            .iter()
-            .filter(|identity| {
-                self.elements
-                    .get(*identity)
-                    .is_some_and(|e| e.slot.is_none() && e.resolved.is_some())
-            })
-            .cloned()
-            .collect();
-        for identity in orphans {
-            let mut at = self.topology.parent(&identity).cloned();
-            while let Some(parent) = at {
-                let Some(e) = self.elements.get(&parent) else {
-                    break;
-                };
-                if matches!(e.document.nodes[e.index].kind, NodeKind::Element("anchor")) {
-                    if e.slot
-                        .is_some_and(|slot| ui.holds(slot, parent.key, e.parent_slot))
-                    {
-                        self.emit.insert(parent);
-                    }
-                    break;
-                }
-                at = self.topology.parent(&parent).cloned();
-            }
-        }
         // One materialized but without a node (never built while hidden,
         // now shown) is built by its nearest ancestor that holds its node.
         let holds = |host: &Self, identity: &MountedNode| {
@@ -1424,9 +1400,14 @@ impl RetainedHost {
             let outer = (ui.docs.accepts, ui.docs.building);
             let (accepts, building) = self.contexts.get(&identity.mount).copied().unwrap_or(outer);
             (ui.docs.accepts, ui.docs.building) = (accepts, building);
-            ui.stack.push(parent);
+            // A world layer's own arm opens its layer again.
+            if parent != NONE {
+                ui.stack.push(parent);
+            }
             let result = self.emit_element(ui, &identity, true, env, events, writes);
-            ui.stack.pop();
+            if parent != NONE {
+                ui.stack.pop();
+            }
             (ui.docs.accepts, ui.docs.building) = outer;
             result?;
         }

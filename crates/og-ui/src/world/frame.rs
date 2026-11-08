@@ -49,6 +49,34 @@ impl Ui {
 
     /// Opens an anchored element; its children follow until [`Ui::close`].
     pub fn open_world_anchor(&mut self, id: impl Into<Id>, desc: WorldAnchorDesc) -> AnchorInfo {
+        self.open_world_anchor_keyed(id.into(), None, desc)
+    }
+
+    /// The world layer of an anchor or panel: keyed from its id, or by
+    /// `key` itself, `id` then being the full path `key` is the key of (a
+    /// document's element: its subtree is keyed and named as if in place).
+    fn open_world_layer(
+        &mut self,
+        kind: &'static str,
+        id: Id,
+        key: Option<u64>,
+        el: Element,
+    ) -> usize {
+        match key {
+            Some(key) => {
+                self.open_layer_keyed(kind, key, id.as_str().to_owned(), el, Float::World, NONE)
+            }
+            None => self.open_layer(kind, id, el, Float::World, NONE),
+        }
+    }
+
+    /// [`Ui::open_world_anchor`], its layer keyed by `key` when given.
+    pub(crate) fn open_world_anchor_keyed(
+        &mut self,
+        id: Id,
+        key: Option<u64>,
+        desc: WorldAnchorDesc,
+    ) -> AnchorInfo {
         let mut el = desc.element;
         // Laid out at its own size: never stretched to the screen.
         if matches!(el.width, Size::Grow { .. } | Size::Percent(_)) {
@@ -57,7 +85,7 @@ impl Ui {
         if matches!(el.height, Size::Grow { .. } | Size::Percent(_)) {
             el.height = Size::fit();
         }
-        let i = self.open_layer("world", id.into(), el, Float::World, NONE);
+        let i = self.open_world_layer("world", id, key, el);
         self.world.want(desc.target);
         let info = self.anchor_info(self.nodes[i].key, &desc);
         self.world.anchors.push(AnchorEntry { node: i, desc });
@@ -76,12 +104,12 @@ impl Ui {
             .map(|a| self.nodes[a.node].key)
             .collect();
         let mut kept = std::mem::take(&mut self.world.kept);
-        kept.retain(|key, desc| {
+        kept.retain(|key, (desc, owner)| {
             if built.contains(key) {
                 return true;
             }
             match self.tree.by_key.get(key) {
-                Some(&node) if self.docs.retained.owns(*key) => {
+                Some(&node) if self.docs.retained.owns(*owner) => {
                     self.world.want(desc.target);
                     self.world.anchors.push(AnchorEntry {
                         node,
@@ -93,6 +121,44 @@ impl Ui {
             }
         });
         self.world.kept = kept;
+        let built: std::collections::BTreeSet<u64> = self
+            .world
+            .panels
+            .iter()
+            .map(|p| self.nodes[p.node].key)
+            .collect();
+        let mut kept = std::mem::take(&mut self.world.kept_panels);
+        kept.retain(|key, (desc, rect, owner)| {
+            if built.contains(key) {
+                return true;
+            }
+            match self.tree.by_key.get(key) {
+                Some(&node) if self.docs.retained.owns(*owner) => {
+                    if let Some((t, ..)) = desc.quad {
+                        self.world.want(t);
+                    }
+                    self.world.panels.push(PanelEntry {
+                        node,
+                        desc: desc.clone(),
+                        rect: *rect,
+                    });
+                    true
+                }
+                _ => false,
+            }
+        });
+        self.world.kept_panels = kept;
+    }
+
+    /// Keeps a document's world panel `node` for placement and rays on the
+    /// ticks it is not built again, while the retained element `owner`
+    /// stands (see [`Ui::keep_world_anchors`]).
+    pub(crate) fn keep_world_panel(&mut self, node: usize, owner: u64) {
+        let key = self.nodes[node].key;
+        if let Some(p) = self.world.panels.iter().rev().find(|p| p.node == node) {
+            let kept = (p.desc.clone(), p.rect, owner);
+            self.world.kept_panels.insert(key, kept);
+        }
     }
 
     /// An anchored element built by `f`, which reads where it stands (its
@@ -113,6 +179,16 @@ impl Ui {
 
     /// Opens a world panel; its children follow until [`Ui::close`].
     pub fn open_world_panel(&mut self, id: impl Into<Id>, desc: WorldPanelDesc) -> PanelInfo {
+        self.open_world_panel_keyed(id.into(), None, desc)
+    }
+
+    /// [`Ui::open_world_panel`], its layer keyed by `key` when given.
+    pub(crate) fn open_world_panel_keyed(
+        &mut self,
+        id: Id,
+        key: Option<u64>,
+        desc: WorldPanelDesc,
+    ) -> PanelInfo {
         let mut el = desc.element;
         el.width = Size::Fixed(desc.width.max(1.0));
         el.height = Size::Fixed(desc.height.max(1.0));
@@ -123,7 +199,7 @@ impl Ui {
             desc.width.max(1.0),
             desc.height.max(1.0),
         );
-        let i = self.open_layer("panel", id.into(), el, Float::World, NONE);
+        let i = self.open_world_layer("panel", id, key, el);
         if let Some((t, ..)) = desc.quad {
             self.world.want(t);
         }

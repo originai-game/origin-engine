@@ -538,7 +538,11 @@ pub(crate) struct WorldUi {
     pub last_pointer: Vec2,
     /// Mounted documents' anchors by key, placed every tick whether or not
     /// their element was built again ([`Ui::keep_world_anchors`]).
-    pub kept: BTreeMap<u64, WorldAnchorDesc>,
+    /// Each with the key of the in-flow element that owns it.
+    pub kept: BTreeMap<u64, (WorldAnchorDesc, u64)>,
+    /// Mounted documents' world panels by key, with the rect each was laid
+    /// out in, kept for rays and placement as anchors are.
+    kept_panels: BTreeMap<u64, (WorldPanelDesc, Rect, u64)>,
 }
 
 impl WorldUi {
