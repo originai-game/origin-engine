@@ -58,6 +58,7 @@ while [ ! -f "$CONTROL/$name.go" ]; do sleep 0.05; done
 # An allowance file admits one gate call per line.
 while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt "$(wc -l < "$CONTROL/$name.calls")" ]; do sleep 0.05; done
 [ ! -f "$CONTROL/$name.fail" ]
+[ ! -f breaks-c ] || [ ! -f scripts/c ]
 ''')
         gate.chmod(0o755)
         (self.a / 'shared').write_text('start\n' + 'context\n' * 20 + 'end\n')
@@ -159,14 +160,15 @@ while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt
         for name in ('b', 'c'):
             (self.root / f'{name}.allow').write_text('1\n' * 9)
         self.finish(jobs['b'])
-        self.finish(jobs['c'])
-        self.assertEqual((self.calls('b'), self.calls('c')), (2, 2))
+        self.assertIn('landed in a batch', self.finish(jobs['c']))
+        self.assertEqual((self.calls('b'), self.calls('c')), (3, 1))
         self.assertEqual(sorted(self.run_git(self.remote, 'log', '-3', '--format=%s').splitlines()),
                          ['first', 'second', 'third'])
 
-    def test_waiting_lander_lands_in_the_batch(self):
-        # b rechecks at the head of the queue; c and d pass quick meanwhile.
-        # c then leads and stacks d, so d lands without a gate of its own.
+    def drain(self, breaker=False):
+        # b rechecks at the head of the queue while c, then d, pass quick and
+        # wait. b lands itself, then drains both as one stack. With d breaking
+        # c, the stack fails: c (the passing prefix) lands, d goes back.
         repos = {'b': self.b}
         for name in ('c', 'd'):
             repos[name] = self.root / name
@@ -175,6 +177,8 @@ while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt
         self.commit(self.a, 'upstream')
         for name, repo in repos.items():
             (repo / 'scripts' / name).write_text(name + '\n')
+            if breaker and name == 'd':
+                (repo / 'breaks-c').write_text('d\n')
             self.commit(repo, name)
         (self.root / 'b.allow').write_text('1\n')
         jobs = {name: self.start(repo) for name, repo in repos.items()}
@@ -186,22 +190,37 @@ while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt
         while self.calls('b') < 2:
             self.assertLess(time.monotonic(), deadline, 'b never rechecked')
             time.sleep(0.05)
-        for name in ('c', 'd'):
+        offers = self.a / '.git/og-landing/batch'
+        for count, name in enumerate(('c', 'd'), 1):
             (self.root / f'{name}.go').touch()
-        while len(list((self.a / '.git/og-landing/batch').iterdir())) < 2:
-            self.assertLess(time.monotonic(), deadline, 'c and d never offered')
-            time.sleep(0.05)
-        (self.root / 'b.allow').write_text('1\n1\n')
+            while len(list(offers.iterdir())) < count:
+                self.assertLess(time.monotonic(), deadline, f'{name} never offered')
+                time.sleep(0.05)
+            time.sleep(1.1)  # offers are named by the second: c before d
+        (self.root / 'b.allow').write_text('1\n' * 9)
         self.finish(jobs['b'])
-        out = {name: self.finish(jobs[name]) for name in ('c', 'd')}
-        batched = [name for name in out if 'landed in a batch' in out[name]]
-        self.assertEqual(len(batched), 1, out)
-        lead = ({'c', 'd'} - set(batched)).pop()
-        self.assertEqual((self.calls('b'), self.calls(lead), self.calls(batched[0])), (2, 2, 1))
+        out = {name: self.finish(jobs[name], ok=not (breaker and name == 'd')) for name in ('c', 'd')}
+        self.assertIn('landed in a batch', out['c'])
+        self.assertEqual((self.calls('c'), self.calls('d')), (1, 1))
+        self.assertEqual(self.run_git(repos['c'], 'rev-parse', 'HEAD'),
+                         self.run_git(self.remote, 'rev-parse', 'main' if breaker else 'main~1'))
+        self.assertEqual(self.run_git(repos['b'], 'symbolic-ref', '--short', 'HEAD'), 'second')
+        return out
+
+    def test_holder_drains_the_queue_as_one_batch(self):
+        out = self.drain()
+        self.assertIn('landed in a batch', out['d'])
+        self.assertEqual(self.calls('b'), 3)
         self.assertEqual(self.run_git(self.remote, 'log', '-4', '--format=%s').splitlines(),
-                         [batched[0], lead, 'b', 'upstream'])
-        self.assertEqual(self.run_git(repos[batched[0]], 'rev-parse', 'HEAD'), self.run_git(self.remote, 'rev-parse', 'main'))
-        self.assertEqual(self.run_git(repos[lead], 'symbolic-ref', '--short', 'HEAD'), lead)
+                         ['d', 'c', 'b', 'upstream'])
+
+    def test_failing_head_goes_back_and_the_passing_prefix_lands(self):
+        out = self.drain(breaker=True)
+        self.assertIn('failed quick', out['d'])
+        self.assertEqual(self.calls('b'), 4)  # own recheck, the stack, then c alone
+        self.assertEqual(self.run_git(self.remote, 'log', '-3', '--format=%s').splitlines(),
+                         ['c', 'b', 'upstream'])
+        self.assertFalse(list((self.a / '.git/og-landing/batch').iterdir()))
 
     def test_failed_gate_never_pushes(self):
         (self.a / 'first').write_text('first')

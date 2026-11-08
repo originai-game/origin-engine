@@ -29,16 +29,22 @@ records skip unaffected work. Main cannot move during that recheck, so a
 landing gates at most twice. Waiting landers queue behind it instead of
 racing it.
 
-The recheck is batched. A lander whose first quick passed offers its head
-in `og-landing/batch/` while it waits. The head of the queue, before its
-recheck, stacks every live offer in order onto its rebased head (a detached
-checkout, generated-only conflicts regenerated as below), runs one quick on
-the stack and pushes it. Each stacked lander finds a marker in
-`og-landing/landed/` when its turn comes, moves its branch to its landed
+The lock holder drains the queue. A lander whose first quick passed offers
+its head in `og-landing/batch/` and waits, watching for its head to be
+settled. The holder lands itself (stacking the offers already waiting on its
+own head when it rechecks), then repeats until no offer is left: every
+waiting head rebased onto main as one stack (a detached checkout,
+generated-only conflicts regenerated as below), one quick on the stack, one
+push. When the stack fails, bisection finds the first head that fails on
+those before it: the passing prefix is pushed, that head is handed back to
+its owner (a marker in `og-landing/failed/` naming the stack and the gate
+logs), and the heads after it go into the next round. Each landed waiter
+finds a marker in `og-landing/landed/`, moves its branch to its landed
 commit and exits without gating again. An offer that does not rebase
-cleanly is left out and lands on its own; a stack that fails quick falls
-back to rechecking the head's branch alone. Main is still pushed only after
-quick passed on exactly the pushed tree.
+cleanly lands on its own after the drain. Main is only pushed after quick
+passed on exactly the pushed tree. A recheck runs only what the rebase
+changed since that checkout's last pass: per-step, per-test-binary and
+per-Bun-file input records, and the checkout's own incremental target.
 
 The recheck has priority. `land.sh` runs it with `OG_LANDING_RECHECK=1`:
 `check.sh` gives it a lone gate's cores, every other `check.sh` lowers itself
