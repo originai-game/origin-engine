@@ -11,7 +11,7 @@
 //! | [`bundle`] | [`Bundle`]: the weights (one safetensors file) and their [`Config`] |
 //! | [`contract`] | world poses to the graph inputs ([`encode`]) and motion frames back ([`decode_frame`]) |
 //! | [`glue`] | everything around the two networks, shared by every path |
-//! | [`cpu`] | the student and decoder on the CPU, the reference path (the `reference` feature) |
+//! | [`cpu`] | the student and decoder on the CPU, the same bits on every host: the engine's path and the reference |
 //! | [`flight`] | a generated jump drawn on the simulation's flight: its local height and its retiming |
 //! | [`gpu`] | the same on wgpu compute, the shipping path ([`gpu::Gpu`]) |
 //! | [`intent`] | the intent API: [`intent::Goal`]s queued per character, [`intent::Motion`] chaining generations in batches |
@@ -59,15 +59,12 @@ impl Generation {
     }
 }
 
-/// The model on the CPU, end to end: the reference path (the `reference`
-/// feature; the engine runs the model on the GPU only).
-#[cfg(feature = "reference")]
+/// The model on the CPU, end to end, every character's generation at once.
 pub struct Model {
     statics: glue::Statics,
     cpu: cpu::Cpu,
 }
 
-#[cfg(feature = "reference")]
 impl Model {
     pub fn new(bundle: &Bundle) -> Result<Model, BundleError> {
         Ok(Model {
@@ -78,12 +75,7 @@ impl Model {
 
     /// Generates motion for already encoded inputs.
     pub fn generate(&self, inputs: &Inputs) -> Generation {
-        let student = self
-            .cpu
-            .student(&glue::student_inputs(&self.statics, inputs));
-        let local = self
-            .cpu
-            .decoder(&glue::decoder_inputs(&self.statics, inputs, &student));
+        let (student, local) = self.cpu.generate(&self.statics, inputs);
         let motion = glue::finish(&self.statics, inputs, &student, &local);
         Generation {
             counts: student.counts.clone(),

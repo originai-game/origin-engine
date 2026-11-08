@@ -1303,6 +1303,8 @@ export interface HostAbi<A, V> {
   og_motion_status(world: number, entity: number): string;
   /** `og.motion.capabilities` */
   og_motion_capabilities(world: number): string;
+  /** `og.motion.setBackend` */
+  og_motion_set_backend(world: number, backend: string): string;
   /** `og.motion.presentation` */
   og_motion_presentation(world: number, entity: number): string;
   /** `og.motion.poses` */
@@ -1963,6 +1965,7 @@ export const SYMBOLS: readonly string[] = [
   "og_motion_react",
   "og_motion_status",
   "og_motion_capabilities",
+  "og_motion_set_backend",
   "og_motion_presentation",
   "og_motion_poses",
   "og_destruction_damage",

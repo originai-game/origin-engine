@@ -53,7 +53,8 @@ module motion {
 | [`og.motion.lookAt`](motion/fn-lookAt.md) | function | `(world: World, entity: Entity, desc?: LookAtDesc): Result<void>` | Replace the timed look overlay without interrupting locomotion. |
 | [`og.motion.react`](motion/fn-react.md) | function | `(world: World, entity: Entity, desc?: ReactionDesc): Result<void>` | Replace the authored reaction overlay without discarding locomotion goals. |
 | [`og.motion.status`](motion/fn-status.md) | function | `(world: World, entity: Entity): Result<MotionStatus>` | The agent's current goal and queue. |
-| [`og.motion.capabilities`](motion/fn-capabilities.md) | function | `(world: World): MotionCapabilities` | Where the model runs: gpu once its weights are resident, none before (loading) or when they failed to load. |
+| [`og.motion.capabilities`](motion/fn-capabilities.md) | function | `(world: World): MotionCapabilities` | Where the model runs: cpu (or gpu with the opt-in) once its weights are resident, none before (loading) or when they failed to load. |
+| [`og.motion.setBackend`](motion/fn-setBackend.md) | function | `(world: World, backend: MotionBackend): Result<void>` | Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). |
 | [`og.motion.presentation`](motion/fn-presentation.md) | function | `(world: World, entity: Entity): Result<MotionPresentationStatus>` | Presentation-only readiness on both hosts. |
 | [`og.motion.poses`](motion/fn-poses.md) | function | `(): readonly string[]` | The model's pose library, by name: idle, walk, run, jump, crouch, wave, cheer. |
 

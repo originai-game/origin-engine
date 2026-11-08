@@ -114,6 +114,24 @@ impl Inputs {
             allowed_pred_num_tokens: vec![0.0; n * COUNTS],
         }
     }
+
+    /// Character `i`'s inputs alone (`n` is 1).
+    pub fn character(&self, i: usize) -> Inputs {
+        let take = |v: &[f32]| {
+            let per = v.len() / self.n;
+            v[i * per..(i + 1) * per].to_vec()
+        };
+        Inputs {
+            n: 1,
+            global_root_values: take(&self.global_root_values),
+            has_global_root_values: take(&self.has_global_root_values),
+            local_root_values: take(&self.local_root_values),
+            has_local_root_values: take(&self.has_local_root_values),
+            local_poses: take(&self.local_poses),
+            has_local_poses: take(&self.has_local_poses),
+            allowed_pred_num_tokens: take(&self.allowed_pred_num_tokens),
+        }
+    }
 }
 
 /// Where a character's aligned frame sits in the world: `world = rotation ·
@@ -157,7 +175,8 @@ pub fn rot_y(angle: f32) -> Mat3 {
 /// as the angle `atan2(forward.x, forward.z)`.
 pub fn heading(right: Vec3, left: Vec3) -> f32 {
     let (ax, az) = (right[0] - left[0], right[2] - left[2]);
-    let length = ax.hypot(az);
+    // sqrt is exactly rounded on every host; hypot is the host libm's.
+    let length = (ax * ax + az * az).sqrt();
     if length <= 1e-6 {
         return 0.0;
     }

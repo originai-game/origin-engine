@@ -27016,6 +27016,28 @@
     {
       "id": 626,
       "kind": "fn",
+      "path": "og.motion.setBackend",
+      "symbol": "og_motion_set_backend",
+      "module": "motion",
+      "name": "setBackend",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "backend",
+          "type": "MotionBackend",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 627,
+      "kind": "fn",
       "path": "og.motion.presentation",
       "symbol": "og_motion_presentation",
       "module": "motion",
@@ -27036,7 +27058,7 @@
       "publish": true
     },
     {
-      "id": 627,
+      "id": 628,
       "kind": "fn",
       "path": "og.motion.poses",
       "symbol": "og_motion_poses",
@@ -27047,7 +27069,7 @@
       "publish": true
     },
     {
-      "id": 628,
+      "id": 629,
       "kind": "fn",
       "path": "og.destruction.damage",
       "symbol": "og_destruction_damage",
@@ -27074,7 +27096,7 @@
       "publish": true
     },
     {
-      "id": 629,
+      "id": 630,
       "kind": "fn",
       "path": "og.destruction.explode",
       "symbol": "og_destruction_explode",
@@ -27096,7 +27118,7 @@
       "publish": true
     },
     {
-      "id": 630,
+      "id": 631,
       "kind": "fn",
       "path": "og.destruction.fracture",
       "symbol": "og_destruction_fracture",
@@ -27118,7 +27140,7 @@
       "publish": true
     },
     {
-      "id": 631,
+      "id": 632,
       "kind": "fn",
       "path": "og.destruction.info",
       "symbol": "og_destruction_info",
@@ -27140,7 +27162,7 @@
       "publish": true
     },
     {
-      "id": 632,
+      "id": 633,
       "kind": "fn",
       "path": "og.destruction.material",
       "symbol": "og_destruction_material",
@@ -27162,7 +27184,7 @@
       "publish": true
     },
     {
-      "id": 633,
+      "id": 634,
       "kind": "fn",
       "path": "og.destruction.capabilities",
       "symbol": "og_destruction_capabilities",
@@ -27179,7 +27201,7 @@
       "publish": true
     },
     {
-      "id": 634,
+      "id": 635,
       "kind": "fn",
       "path": "og.destruction.carve2d",
       "symbol": "og_destruction_carve2d",
@@ -27206,7 +27228,7 @@
       "publish": true
     },
     {
-      "id": 635,
+      "id": 636,
       "kind": "fn",
       "path": "og.destruction.fill2d",
       "symbol": "og_destruction_fill2d",
@@ -27233,7 +27255,7 @@
       "publish": true
     },
     {
-      "id": 636,
+      "id": 637,
       "kind": "fn",
       "path": "og.destruction.explode2d",
       "symbol": "og_destruction_explode2d",
@@ -27255,7 +27277,7 @@
       "publish": true
     },
     {
-      "id": 637,
+      "id": 638,
       "kind": "fn",
       "path": "og.destruction.fracture2d",
       "symbol": "og_destruction_fracture2d",
@@ -27282,7 +27304,7 @@
       "publish": true
     },
     {
-      "id": 638,
+      "id": 639,
       "kind": "fn",
       "path": "og.destruction.cell2d",
       "symbol": "og_destruction_cell2d",
@@ -27309,7 +27331,7 @@
       "publish": true
     },
     {
-      "id": 639,
+      "id": 640,
       "kind": "fn",
       "path": "og.vfx.spawn",
       "symbol": "og_vfx_spawn",
@@ -27331,7 +27353,7 @@
       "publish": true
     },
     {
-      "id": 640,
+      "id": 641,
       "kind": "fn",
       "path": "og.vfx.info",
       "symbol": "og_vfx_info",

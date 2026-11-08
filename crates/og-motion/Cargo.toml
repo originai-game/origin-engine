@@ -9,7 +9,8 @@ description = "Origin Engine motion generation: a pose-conditioned humanoid moti
 
 # The weights are a bundle (one safetensors file, the og-motion-train
 # repository's export), parsed here; the model runs in Rust on the CPU
-# (the reference path) and on wgpu compute (the shipping path), with one
+# (the engine's path, the same bits on every host) and on wgpu compute
+# (an opt-in, the same bits only on one host), with one
 # implementation of everything around the two networks. Builds for
 # wasm32-unknown-unknown.
 [dependencies]
@@ -27,14 +28,7 @@ wgpu = { workspace = true, features = ["metal", "vulkan", "dx12"] }
 # The static DXC, as og-render: FXC compiles the kernels in about 30 s.
 wgpu = { workspace = true, features = ["static-dxc"] }
 
-[features]
-# The CPU path (`cpu::Cpu`, `Model`, `Motion::generate`): the reference the
-# tests check the GPU against, and the tools' baseline. The engine runs the
-# model on the GPU only (docs/design.md §2.7) and never turns it on.
-reference = []
-
 [dev-dependencies]
-og-motion = { path = ".", features = ["reference"] }
 naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }
 
 # The tests and examples block on the GPU; the library never does.

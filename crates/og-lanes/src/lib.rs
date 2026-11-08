@@ -64,30 +64,39 @@ pub enum Site {
     /// og-physics: the step (rapier's `parallel` build, [`install`]) and
     /// the contact pairs it reads back.
     Physics,
+    /// og.motion: the model's generations on the CPU, a share of each a tick.
+    Motion,
 }
 
 impl Site {
     /// The number of sites.
-    pub const COUNT: usize = 4;
+    pub const COUNT: usize = 5;
     /// Every site, in report order.
-    pub const ALL: [Site; Site::COUNT] = [Site::Anim, Site::Extract, Site::Cull, Site::Physics];
+    pub const ALL: [Site; Site::COUNT] = [
+        Site::Anim,
+        Site::Extract,
+        Site::Cull,
+        Site::Physics,
+        Site::Motion,
+    ];
 
     fn from_index(i: usize) -> Option<Site> {
         Site::ALL.get(i).copied()
     }
 
-    /// The site of a report name (`anim`, `extract`, `cull`, `physics`).
+    /// The site of a report name (`anim`, `extract`, `cull`, `physics`, `motion`).
     pub fn from_name(name: &str) -> Option<Site> {
         Site::ALL.into_iter().find(|s| s.name() == name)
     }
 
-    /// The site's name in the report (`anim`, `extract`, `cull`, `physics`).
+    /// The site's name in the report (`anim`, `extract`, `cull`, `physics`, `motion`).
     pub fn name(self) -> &'static str {
         match self {
             Site::Anim => "anim",
             Site::Extract => "extract",
             Site::Cull => "cull",
             Site::Physics => "physics",
+            Site::Motion => "motion",
         }
     }
 }

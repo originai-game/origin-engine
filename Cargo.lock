@@ -2898,7 +2898,6 @@ dependencies = [
  "naga",
  "og-anim",
  "og-core",
- "og-motion",
  "pollster",
  "serde",
  "serde_json",

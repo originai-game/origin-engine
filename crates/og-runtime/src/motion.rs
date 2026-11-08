@@ -1268,6 +1268,23 @@ pub fn og_motion_capabilities(world: u32) -> String {
     }
 }
 
+pub fn og_motion_set_backend(world: u32, backend: String) -> String {
+    let r = (|| {
+        let eng = engine(world)?;
+        let gpu = match backend.as_str() {
+            "cpu" => false,
+            "gpu" => true,
+            other => return Err(format!("backend is {other:?}: cpu or gpu")),
+        };
+        present::set_backend(&eng, gpu);
+        Ok::<_, String>(())
+    })();
+    match r {
+        Ok(()) => ok(Value::Null),
+        Err(e) => refuse(e),
+    }
+}
+
 pub fn og_motion_poses() -> String {
     json!(POSES).to_string()
 }
@@ -1317,6 +1334,22 @@ pub(crate) fn dump(engine_id: u32) -> Value {
 }
 
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
+    let _ = probe.register_command(
+        "motion_backend",
+        og_probe::CommandDesc {
+            usage: "motion_backend:<cpu|gpu>".into(),
+            doc: "og.motion.setBackend from the probe: cpu (the default, the same poses on every host) or gpu (the opt-in, the same poses only on one host and GPU)".into(),
+        },
+        move |_world, args| {
+            let eng = super::engine::engine(engine)?;
+            match args.first().map(String::as_str) {
+                Some("cpu") => present::set_backend(&eng, false),
+                Some("gpu") => present::set_backend(&eng, true),
+                _ => return Err("write motion_backend:cpu or motion_backend:gpu".into()),
+            }
+            Ok(())
+        },
+    );
     let _ = probe.register_dump(
         "dump_motion",
         og_probe::CommandDesc {

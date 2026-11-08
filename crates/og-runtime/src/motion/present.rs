@@ -1,5 +1,7 @@
-//! og.motion's presentation: the motion model on the renderer's GPU, and
-//! each agent's generated pose drawn in place of og.anim's joint palette.
+//! og.motion's presentation: the motion model, on the CPU across the lanes
+//! by default or on the renderer's GPU as an opt-in
+//! (`og.motion.setBackend`), and each agent's generated pose drawn in place
+//! of og.anim's joint palette.
 //!
 //! Once a tick ([`step`], from the probe's tick gate before the next tick,
 //! before a frame is drawn and before a capture or snapshot; at most once
@@ -7,9 +9,9 @@
 //!
 //! 1. **The weights.** As soon as the open bundle declares the model (its
 //!    manifest's `motion` entry, a game that uses og.motion) and a
-//!    renderer is attached, `cooked/motion/model.ogb` is read, unpacked
-//!    and its two networks put on the renderer's device
-//!    ([`RenderBackend::compute`]): natively on a thread of its own, on
+//!    renderer is attached, `cooked/motion/model.ogb` is read and
+//!    unpacked, and on the GPU opt-in its two networks put on the
+//!    renderer's device ([`RenderBackend::compute`]): natively on a thread of its own, on
 //!    the web from a fetch that lands at a later frame. Once an agent
 //!    needs it the tick waits for the load, so the tick the model starts
 //!    at is the agent's. Until then, or when that fails, og.anim's pose is
@@ -20,17 +22,26 @@
 //!    first change of its pose, at most [`HORIZON`] seconds on (the mover
 //!    run ahead with [`super::advance`]; without drive, its Transform's
 //!    velocity), in the pose it will be in there.
-//! 3. **One batch for every agent** runs at a time: it is submitted in
-//!    slices of about [`FRAME_BUDGET_MS`] of GPU time, one a tick, and its
-//!    frames are taken [`BATCH_SECONDS`] after it started, at a fixed tick
-//!    (waited for then), all its characters decoded at once; an agent with
-//!    nothing left to show waits for it too. A native host waits in place;
-//!    the web cannot, so the step stops there ([`Presenter`]'s `held`), the
+//! 3. **Batches.** On the CPU, the default, each agent asking gets a
+//!    batch of its own, due [`BATCH_SECONDS`] after the tick it starts:
+//!    its units (half encoder layers, decoder stages) are spread evenly
+//!    over the ticks to its due tick and run across the lanes
+//!    (`og_lanes::Site::Motion`), the rest at that tick, so no tick waits
+//!    for it on any host; the f32 kernel sums in one fixed order, so its
+//!    poses are the same bits on every host. On the GPU, one batch for
+//!    every agent asking runs at a time: it is submitted in slices of about
+//!    [`FRAME_BUDGET_MS`] of GPU time, one a tick, and its frames are taken
+//!    [`BATCH_SECONDS`] after it started, at a fixed tick (waited for
+//!    then), all its characters decoded at once; an agent with nothing
+//!    left to show waits for it too. A native host waits in place; the web
+//!    cannot, so the step stops there ([`Presenter`]'s `held`), the
 //!    probe's gate holds the next tick, and a later call goes on once the
-//!    readback has landed. Nothing drawn depends on the wall clock or the
-//!    GPU's speed: two runs draw the same poses, and a presentation checkpoint
-//!    ([`Presenter::checkpoint`]) keeps the agents, the queued frames and
-//!    the outstanding batch, run again on a restore.
+//!    readback has landed; its floats are the backend compiler's, equal
+//!    only on one host and GPU. Nothing drawn depends on the wall clock or
+//!    the machine's speed: two runs draw the same poses, and a
+//!    presentation checkpoint ([`Presenter::checkpoint`]) keeps the
+//!    agents, the queued frames and the outstanding batches, run again on
+//!    a restore.
 //! 4. **The pose.** Each agent plays its frames on the tick's clock,
 //!    blending the two around it, a walk or run at the rate that makes its
 //!    stride cover the ground the Transform does (30 Hz otherwise):
@@ -60,6 +71,7 @@ use og_motion::contract::{
     BOUNDARY_FRAMES, FRAMES, MAX_TOKENS, MIN_TOKENS, MOTION_FEATURES, POSES_PER_TOKEN,
 };
 use og_motion::contract::{LEFT_LEG, Pose, RIGHT_LEG, heading};
+use og_motion::cpu::{Cpu, Job};
 use og_motion::flight;
 use og_motion::glue::{Statics, StudentOutput, decoder_inputs, finish_character, student_inputs};
 use og_motion::gpu::{Gpu, GpuError};
@@ -317,11 +329,24 @@ impl Foot {
     }
 }
 
-type Running = Pin<Box<dyn Future<Output = (Gpu, Result<(StudentOutput, Vec<f32>), GpuError>)>>>;
+type Running =
+    Pin<Box<dyn Future<Output = (Box<Gpu>, Result<(StudentOutput, Vec<f32>), GpuError>)>>>;
 
-/// A batch on the GPU.
+/// A batch's student output and decoder features.
+type Generated = (StudentOutput, Vec<f32>);
+
+/// How a batch is computed.
+enum Work {
+    /// On the GPU (the opt-in): the future gives the GPU back with the result.
+    Gpu(Running),
+    /// On the CPU: each character's job, a share of its units a tick
+    /// across the lanes, the rest when its tick comes ([`run_flights`]).
+    Cpu(Vec<Job>),
+}
+
+/// A batch being computed.
 struct Flight {
-    future: Running,
+    work: Work,
     batch: Batch,
     started: f64,
     /// The tick its frames are taken at ([`BATCH_SECONDS`] after its start).
@@ -344,17 +369,31 @@ struct Landing {
     due: u64,
 }
 
+/// Where the model runs.
+enum Compute {
+    /// The default: the same bits on every host.
+    Cpu(Arc<Cpu>),
+    /// The opt-in: the same bits only on one host and GPU.
+    Gpu {
+        /// None while a batch has it.
+        gpu: Option<Box<Gpu>>,
+        /// Polled to wait for a batch (native only).
+        #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+        device: wgpu::Device,
+    },
+}
+
 struct Ready {
-    /// None while a batch has it.
-    gpu: Option<Gpu>,
-    /// Polled to wait for a batch (native only).
-    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    device: wgpu::Device,
-    flight: Option<Flight>,
-    landing: Option<Landing>,
-    /// A restored checkpoint's batch, with its tick: started again once the
-    /// GPU is free, in place of a new one.
-    queued: Option<(Batch, u64)>,
+    compute: Compute,
+    /// The batches being computed, in the order they started: at most one
+    /// on the GPU, all of every character asking at once; on the CPU one a
+    /// character, started the tick it asks, each with its own due tick.
+    flights: Vec<Flight>,
+    /// Batches computed and held until their tick, in the order they landed.
+    landings: Vec<Landing>,
+    /// A restored checkpoint's batches with their ticks: started again (on
+    /// the GPU once it is free) in place of new ones.
+    queued: Vec<(Batch, u64)>,
     statics: Arc<Statics>,
     motion: Motion,
     library: Library,
@@ -364,10 +403,68 @@ struct Ready {
     /// SOMA's ankle height standing on the ground (the library idle's
     /// lower ankle), the clearance of a jump's local height.
     clearance: f32,
-    /// The device's rate as the last batch measured it, GFLOP/s.
+    /// The GPU's rate as the last batch measured it, GFLOP/s (0 on the CPU).
     rate: f64,
+    /// The CPU model's wall time on each tick it ran (a diagnostic).
+    cpu_ticks: CpuTicks,
+    /// The characters' generations decoded, in all.
+    generations: u64,
     failure: Option<String>,
     startup: Startup,
+}
+
+/// The CPU model's wall time per tick, on the engine thread (the lanes'
+/// fork and join included): what one tick's share of the batches costs
+/// each thread. A diagnostic; the last [`CPU_TICKS`] ticks with work.
+#[derive(Default)]
+struct CpuTicks {
+    tick: Option<u64>,
+    recent: VecDeque<f64>,
+    ticks: u64,
+    total: f64,
+    max: f64,
+}
+
+/// How many ticks [`CpuTicks`] keeps for its percentiles.
+const CPU_TICKS: usize = 4096;
+
+impl CpuTicks {
+    fn add(&mut self, tick: u64, ms: f64) {
+        if self.tick == Some(tick)
+            && let Some(last) = self.recent.back_mut()
+        {
+            *last += ms;
+            self.max = self.max.max(*last);
+        } else {
+            if self.recent.len() == CPU_TICKS {
+                self.recent.pop_front();
+            }
+            self.recent.push_back(ms);
+            self.tick = Some(tick);
+            self.ticks += 1;
+            self.max = self.max.max(ms);
+        }
+        self.total += ms;
+    }
+
+    fn json(&self) -> Value {
+        let mut sorted: Vec<f64> = self.recent.iter().copied().collect();
+        sorted.sort_by(f64::total_cmp);
+        let at = |q: f64| {
+            sorted
+                .get(((sorted.len() as f64 * q).ceil() as usize).saturating_sub(1))
+                .copied()
+                .unwrap_or(0.0)
+        };
+        json!({
+            "ticks": self.ticks,
+            "meanMs": if self.ticks > 0 { self.total / self.ticks as f64 } else { 0.0 },
+            "p50Ms": at(0.5),
+            "p95Ms": at(0.95),
+            "maxMs": self.max,
+            "threads": og_lanes::threads(),
+        })
+    }
 }
 
 /// Wall-time diagnostics only; none of these clocks enter the world.
@@ -604,6 +701,10 @@ pub(crate) struct Presenter {
     generated: BTreeSet<u64>,
     /// og.motion.capabilities asked: load even without an agent.
     wanted: bool,
+    /// The GPU opt-in: the model runs on the renderer's GPU, the same bits
+    /// only on one host and GPU (the default is the CPU, the same bits on
+    /// every host).
+    gpu: bool,
     #[cfg(not(target_arch = "wasm32"))]
     loading: Option<Loading>,
     /// The clock (tick × dt) of the last tick stepped.
@@ -682,7 +783,7 @@ impl Presenter {
             held: self.held,
             previous: self.previous.clone(),
             motion: ready.map(|r| r.motion.clone()),
-            outstanding: ready.and_then(|r| outstanding(r)),
+            outstanding: ready.map(|r| outstanding(r)).unwrap_or_default(),
         }
     }
 
@@ -700,12 +801,16 @@ impl Presenter {
             self.forget();
             return;
         };
-        if let Some(f) = r.flight.as_mut() {
+        // A CPU batch is dropped; a GPU one, natively, waited for and dropped.
+        if matches!(r.compute, Compute::Cpu(_)) {
+            r.flights.clear();
+        }
+        for f in &mut r.flights {
             f.stale = true;
         }
         #[cfg(not(target_arch = "wasm32"))]
-        poll_flight(r, true, &mut self.errors);
-        r.landing = None;
+        run_flights(r, 0, |_| true, &mut self.errors);
+        r.landings.clear();
         r.motion = motion.clone();
         r.queued = c.outstanding.clone();
         self.agents = c.agents.clone();
@@ -756,7 +861,10 @@ impl Presenter {
                 text,
                 "{:?}|{:?}",
                 r.motion,
-                outstanding(r).map(|(b, due)| (b.characters, b.inputs, due))
+                outstanding(r)
+                    .into_iter()
+                    .map(|(b, due)| (b.characters, b.inputs, due))
+                    .collect::<Vec<_>>()
             );
         }
         let mut h = 0xcbf2_9ce4_8422_2325u64;
@@ -767,15 +875,19 @@ impl Presenter {
     }
 }
 
-/// The batch a checkpoint keeps: in flight, landed and held for its tick,
-/// or queued after a restore.
-fn outstanding(r: &Ready) -> Option<(Batch, u64)> {
-    r.flight
-        .as_ref()
+/// The batches a checkpoint keeps: in flight, landed and held for their
+/// tick, or queued after a restore; by due tick, then by character.
+fn outstanding(r: &Ready) -> Vec<(Batch, u64)> {
+    let mut all: Vec<(Batch, u64)> = r
+        .flights
+        .iter()
         .filter(|f| !f.stale)
         .map(|f| (f.batch.clone(), f.due))
-        .or_else(|| r.landing.as_ref().map(|l| (l.batch.clone(), l.due)))
-        .or_else(|| r.queued.clone())
+        .chain(r.landings.iter().map(|l| (l.batch.clone(), l.due)))
+        .chain(r.queued.iter().cloned())
+        .collect();
+    all.sort_by(|a, b| (a.1, &a.0.characters).cmp(&(b.1, &b.0.characters)));
+    all
 }
 
 /// og.motion's part of a presentation checkpoint ([`Presenter::checkpoint`]).
@@ -789,7 +901,7 @@ pub(crate) struct MotionCheckpoint {
     held: Option<Held>,
     previous: Option<(u64, IdMap<u64, Vec<Mat4>>)>,
     motion: Option<Motion>,
-    outstanding: Option<(Batch, u64)>,
+    outstanding: Vec<(Batch, u64)>,
 }
 
 fn now_ms() -> f64 {
@@ -821,17 +933,16 @@ pub(crate) fn declares(eng: &Engine) -> bool {
 /// What [`build`] makes off the engine thread: everything of [`Ready`] but
 /// the batch state.
 struct Parts {
-    gpu: Gpu,
+    compute: Compute,
     statics: Statics,
-    device: wgpu::Device,
     library: Library,
     soma: SkeletonAsset,
     soma_skeleton: Skeleton,
     soma_map: HumanoidMap,
 }
 
-/// The model from its pack's bytes, on `device`.
-fn build(bytes: &[u8], device: wgpu::Device, queue: wgpu::Queue) -> Result<Parts, String> {
+/// The model from its pack's bytes: on the CPU, or with `gpu` on that device.
+fn build(bytes: &[u8], gpu: Option<(wgpu::Device, wgpu::Queue)>) -> Result<Parts, String> {
     let files = og_bundle::runtime::unpack(bytes).map_err(|e| e.to_string())?;
     let (_, weights) = files
         .iter()
@@ -843,13 +954,21 @@ fn build(bytes: &[u8], device: wgpu::Device, queue: wgpu::Queue) -> Result<Parts
     let soma = soma_skeleton.asset();
     let soma_map = HumanoidMap::detect(&soma);
     let statics = Statics::new(&bundle).map_err(|e| e.to_string())?;
-    let mut gpu = Gpu::new(device.clone(), queue, &bundle).map_err(|e| e.to_string())?;
-    gpu.set_blocking(false);
-    gpu.set_frame_budget(Some(FRAME_BUDGET_MS));
+    let compute = match gpu {
+        Some((device, queue)) => {
+            let mut gpu = Gpu::new(device.clone(), queue, &bundle).map_err(|e| e.to_string())?;
+            gpu.set_blocking(false);
+            gpu.set_frame_budget(Some(FRAME_BUDGET_MS));
+            Compute::Gpu {
+                gpu: Some(Box::new(gpu)),
+                device,
+            }
+        }
+        None => Compute::Cpu(Arc::new(Cpu::new(&bundle).map_err(|e| e.to_string())?)),
+    };
     Ok(Parts {
-        gpu,
+        compute,
         statics,
-        device,
         library,
         soma,
         soma_skeleton,
@@ -858,21 +977,26 @@ fn build(bytes: &[u8], device: wgpu::Device, queue: wgpu::Queue) -> Result<Parts
 }
 
 fn ready(parts: Parts) -> Model {
+    let gpu = match &parts.compute {
+        Compute::Gpu { gpu: Some(g), .. } => Some(g),
+        _ => None,
+    };
     let startup = Startup {
         #[cfg(not(target_arch = "wasm32"))]
-        compile_ms: Some(parts.gpu.startup_ms.0),
+        compile_ms: gpu.map(|g| g.startup_ms.0),
         #[cfg(not(target_arch = "wasm32"))]
-        upload_submit_ms: Some(parts.gpu.startup_ms.1),
+        upload_submit_ms: gpu.map(|g| g.startup_ms.1),
         resident_at: now_ms(),
         ..Default::default()
     };
     Model::Ready(Box::new(Ready {
-        rate: parts.gpu.rate(),
-        gpu: Some(parts.gpu),
-        device: parts.device,
-        flight: None,
-        landing: None,
-        queued: None,
+        rate: gpu.map_or(0.0, |g| g.rate()),
+        cpu_ticks: CpuTicks::default(),
+        generations: 0,
+        compute: parts.compute,
+        flights: Vec::new(),
+        landings: Vec::new(),
+        queued: Vec::new(),
         failure: None,
         startup,
         statics: Arc::new(parts.statics),
@@ -923,10 +1047,16 @@ fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>, wa
             }
         };
     }
-    let Some((device, queue)) = backend.and_then(|b| b.compute()) else {
-        return Model::Waiting(
-            "no renderer is attached: the motion model runs on the renderer's GPU".into(),
-        );
+    let gpu = if p.gpu {
+        let Some(compute) = backend.and_then(|b| b.compute()) else {
+            return Model::Waiting(
+                "no renderer is attached: the GPU opt-in runs the model on the renderer's GPU"
+                    .into(),
+            );
+        };
+        Some(compute)
+    } else {
+        None
     };
     let path = match declared(eng) {
         None => return Model::Waiting("the cooked bundle is not open yet".into()),
@@ -942,7 +1072,7 @@ fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>, wa
                 let answer = match std::fs::read(&path) {
                     Ok(bytes) => (
                         bytes.len() as u64,
-                        build(&bytes, device, queue).map_err(|e| format!("{path}: {e}")),
+                        build(&bytes, gpu).map_err(|e| format!("{path}: {e}")),
                     ),
                     Err(e) => (0, Err(format!("{path}: {e}"))),
                 };
@@ -966,7 +1096,7 @@ fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>, wa
             None => return Model::Failed("no host is installed to read assets".into()),
         };
         p.model_bytes = p.model_bytes.max(bytes.len() as u64);
-        build(&bytes, device, queue).map_or_else(|e| Model::Failed(format!("{path}: {e}")), ready)
+        build(&bytes, gpu).map_or_else(|e| Model::Failed(format!("{path}: {e}")), ready)
     }
 }
 
@@ -1144,67 +1274,132 @@ impl std::task::Wake for Woken {
     }
 }
 
-/// Polls the batch in flight once; `block` runs it to its readback and
-/// waits for that (native only: the web answers false until it lands).
-fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
-    let Some(flight) = r.flight.as_mut() else {
-        return false;
-    };
-    let woken = Arc::new(Woken::default());
-    let waker = Waker::from(woken.clone());
-    let mut cx = Context::from_waker(&waker);
-    // Each poll submits the batch's next slice or polls its readback;
-    // blocking runs every slice left at once (a slice's turn wakes it) and,
-    // natively, waits for the GPU.
-    let (gpu, result) = loop {
-        let start = now_ms();
-        woken.0.store(false, std::sync::atomic::Ordering::Relaxed);
-        let polled = flight.future.as_mut().poll(&mut cx);
-        if r.startup.first_inference_wall_ms.is_none() {
-            r.startup.first_inference_poll_ms += now_ms() - start;
-        }
-        match polled {
-            Poll::Ready(done) => break done,
-            Poll::Pending if block && woken.0.load(std::sync::atomic::Ordering::Relaxed) => {}
-            Poll::Pending if block && cfg!(not(target_arch = "wasm32")) => {
-                #[cfg(not(target_arch = "wasm32"))]
-                let _ = r.device.poll(wgpu::PollType::wait_indefinitely());
-            }
-            Poll::Pending => return false,
-        }
-    };
-    let flight = r.flight.take().expect("polled above");
-    if r.startup.first_inference_wall_ms.is_none() {
-        let finished = now_ms();
-        r.startup.first_inference_wall_ms = Some(finished - flight.started);
-        r.startup.inference_finished_at = Some(finished);
-    }
-    r.rate = gpu.rate();
-    r.gpu = Some(gpu);
-    if flight.stale {
+/// Runs the batches in flight a step at tick `tick`; those `wait` picks
+/// are run to their end. On the GPU each poll submits its next slice or
+/// polls its readback, and a wait runs it to its readback and waits for
+/// that (native only: the web answers false until it lands). On the CPU
+/// each job runs its share of the units left (spread evenly over the ticks
+/// to its due tick), every flight's across the lanes at once, and a wait
+/// runs all its units: a CPU batch is never waited for past its tick, on
+/// any host. Answers whether every flight `wait` picks has landed.
+fn run_flights(
+    r: &mut Ready,
+    tick: u64,
+    wait: impl Fn(&Flight) -> bool,
+    errors: &mut Vec<String>,
+) -> bool {
+    if r.flights.is_empty() {
         return true;
     }
-    match result {
-        Ok((student, local)) => {
-            r.failure = None;
-            r.landing = Some(Landing {
-                batch: flight.batch,
-                student,
-                local,
-                next: 0,
-                motion: vec![0.0; FRAMES * MOTION_FEATURES],
-                started: flight.started,
-                due: flight.due,
+    let mut done: Vec<(usize, Result<Generated, String>)> = Vec::new();
+    match &mut r.compute {
+        Compute::Cpu(cpu) => {
+            let start = now_ms();
+            let cpu = &**cpu;
+            let statics = &*r.statics;
+            let mut work: Vec<(&mut Job, usize)> = Vec::new();
+            for f in &mut r.flights {
+                let ticks = f.due.saturating_sub(tick).max(1) as usize;
+                let all = wait(f);
+                let Work::Cpu(jobs) = &mut f.work else {
+                    unreachable!("a CPU model's flights are CPU jobs")
+                };
+                for job in jobs {
+                    let share = if all {
+                        usize::MAX
+                    } else {
+                        job.left(cpu).div_ceil(ticks)
+                    };
+                    work.push((job, share));
+                }
+            }
+            og_lanes::for_each_mut(og_lanes::Site::Motion, &mut work, 1, |(job, share)| {
+                cpu.run(statics, job, *share);
             });
+            let ms = now_ms() - start;
+            if r.startup.first_inference_wall_ms.is_none() {
+                r.startup.first_inference_poll_ms += ms;
+            }
+            r.cpu_ticks.add(tick, ms);
+            for (k, f) in r.flights.iter().enumerate() {
+                let Work::Cpu(jobs) = &f.work else {
+                    unreachable!("a CPU model's flights are CPU jobs")
+                };
+                if jobs.iter().all(|j| j.left(cpu) == 0) {
+                    done.push((k, Ok(og_motion::cpu::gather(jobs))));
+                }
+            }
         }
-        Err(e) => {
-            r.failure = Some(e.to_string());
-            if errors.len() < 8 {
-                errors.push(e.to_string());
+        Compute::Gpu { gpu: slot, device } => {
+            let f = &mut r.flights[0];
+            let block = wait(f);
+            let Work::Gpu(future) = &mut f.work else {
+                unreachable!("a GPU model's flights are GPU batches")
+            };
+            let woken = Arc::new(Woken::default());
+            let waker = Waker::from(woken.clone());
+            let mut cx = Context::from_waker(&waker);
+            // Blocking runs every slice left at once (a slice's turn wakes
+            // it) and, natively, waits for the GPU.
+            let polled = loop {
+                let start = now_ms();
+                woken.0.store(false, std::sync::atomic::Ordering::Relaxed);
+                let polled = future.as_mut().poll(&mut cx);
+                if r.startup.first_inference_wall_ms.is_none() {
+                    r.startup.first_inference_poll_ms += now_ms() - start;
+                }
+                match polled {
+                    Poll::Ready(answer) => break Some(answer),
+                    Poll::Pending
+                        if block && woken.0.load(std::sync::atomic::Ordering::Relaxed) => {}
+                    Poll::Pending if block && cfg!(not(target_arch = "wasm32")) => {
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+                    }
+                    Poll::Pending => break None,
+                }
+            };
+            #[cfg(target_arch = "wasm32")]
+            let _ = device;
+            if let Some((gpu, result)) = polled {
+                r.rate = gpu.rate();
+                *slot = Some(gpu);
+                done.push((0, result.map_err(|e| e.to_string())));
             }
         }
     }
-    true
+    for (k, result) in done.into_iter().rev() {
+        let flight = r.flights.remove(k);
+        if r.startup.first_inference_wall_ms.is_none() {
+            let finished = now_ms();
+            r.startup.first_inference_wall_ms = Some(finished - flight.started);
+            r.startup.inference_finished_at = Some(finished);
+        }
+        if flight.stale {
+            continue;
+        }
+        match result {
+            Ok((student, local)) => {
+                r.failure = None;
+                r.landings.push(Landing {
+                    batch: flight.batch,
+                    student,
+                    local,
+                    next: 0,
+                    motion: vec![0.0; FRAMES * MOTION_FEATURES],
+                    started: flight.started,
+                    due: flight.due,
+                });
+            }
+            Err(e) => {
+                if errors.len() < 8 {
+                    errors.push(e.clone());
+                }
+                r.failure = Some(e);
+            }
+        }
+    }
+    r.flights.iter().all(|f| !wait(f))
 }
 
 /// How many batches `dump_motion`'s `taken` lists.
@@ -1214,104 +1409,186 @@ const TAKEN: usize = 256;
 /// last [`TAKEN`] batches' ticks taken and due ([`Presenter`]'s).
 type Stats = (u64, (usize, f64), VecDeque<(u64, u64)>);
 
-/// The tick the outstanding batch (in flight, landed or queued after a
-/// restore; [`outstanding`]) is due at.
-fn due_of(r: &Ready) -> Option<u64> {
-    r.flight
-        .as_ref()
-        .filter(|f| !f.stale)
-        .map(|f| f.due)
-        .or_else(|| r.landing.as_ref().map(|l| l.due))
-        .or_else(|| r.queued.as_ref().map(|q| q.1))
-}
-
-/// Runs the outstanding batch until it has landed, a restore's queued one
-/// started once a stale flight has given the GPU back. Natively it waits;
-/// on the web, false while the GPU's readback has not landed.
-fn settle(r: &mut Ready, errors: &mut Vec<String>) -> bool {
+/// Runs the batches due by `tick` until they have landed, and with
+/// `starved`, the one with that character: on the GPU, the one outstanding
+/// (a restore's queued one started once a stale flight has given the GPU
+/// back). Natively it waits; on the web, false while the GPU's readback has
+/// not landed.
+fn settle(r: &mut Ready, tick: u64, starved: Option<usize>, errors: &mut Vec<String>) -> bool {
+    let gpu = matches!(r.compute, Compute::Gpu { .. });
+    let wanted = |b: &Batch, due: u64| {
+        due <= tick || starved.is_some_and(|c| gpu || b.characters.contains(&c))
+    };
     loop {
-        if r.flight.is_some() {
-            if !poll_flight(r, true, errors) {
+        if r.flights.iter().any(|f| wanted(&f.batch, f.due)) {
+            if !run_flights(r, tick, |f| wanted(&f.batch, f.due), errors) {
                 return false;
             }
-        } else if r.queued.is_some() && r.landing.is_none() && r.gpu.is_some() {
-            start_flight(r, 0);
+        } else if r.queued.iter().any(|(b, due)| wanted(b, *due))
+            && (!gpu || (r.landings.is_empty() && r.free()))
+        {
+            start_flights(r, 0);
         } else {
             return true;
         }
     }
 }
 
-/// Decodes the landed batch's characters into their frames, all of them:
-/// how many are decoded never depends on the time it takes.
-fn decode(r: &mut Ready, stats: &mut Stats, tick: u64) {
-    let Some(l) = r.landing.as_mut() else {
-        return;
-    };
-    let n = l.batch.characters.len();
-    while l.next < n {
-        let i = l.next;
-        finish_character(
-            &r.statics,
-            &l.batch.inputs,
-            &l.student,
-            &l.local,
-            i,
-            &mut l.motion,
-        );
-        r.motion
-            .accept_character(&l.batch, i, l.student.counts[i], &l.motion);
-        l.next += 1;
+/// Decodes the landed batches due by `tick` (and with `starved`, the one
+/// with that character; on the GPU, the one landed) into their frames, all
+/// their characters: how many are decoded never depends on the time it
+/// takes. In the order they landed.
+fn decode(r: &mut Ready, stats: &mut Stats, tick: u64, starved: Option<usize>) {
+    let gpu = matches!(r.compute, Compute::Gpu { .. });
+    let mut k = 0;
+    while k < r.landings.len() {
+        let l = &r.landings[k];
+        let forced =
+            starved.is_some() && (gpu || l.batch.characters.contains(&starved.unwrap_or(0)));
+        if l.due > tick && !forced {
+            k += 1;
+            continue;
+        }
+        let mut l = r.landings.remove(k);
+        let n = l.batch.characters.len();
+        while l.next < n {
+            let i = l.next;
+            finish_character(
+                &r.statics,
+                &l.batch.inputs,
+                &l.student,
+                &l.local,
+                i,
+                &mut l.motion,
+            );
+            r.motion
+                .accept_character(&l.batch, i, l.student.counts[i], &l.motion);
+            l.next += 1;
+        }
+        // Wall time, a diagnostic.
+        r.generations += n as u64;
+        stats.0 += 1;
+        stats.1 = (n, now_ms() - l.started);
+        if stats.2.len() == TAKEN {
+            stats.2.pop_front();
+        }
+        stats.2.push_back((tick, l.due));
     }
-    // Wall time, a diagnostic.
-    stats.0 += 1;
-    stats.1 = (n, now_ms() - l.started);
-    if stats.2.len() == TAKEN {
-        stats.2.pop_front();
-    }
-    stats.2.push_back((tick, l.due));
-    r.landing = None;
 }
 
-/// Starts the next batch, its frames due at tick `due`; a restored
-/// checkpoint's batch first, with its own tick.
-fn start_flight(r: &mut Ready, due: u64) {
-    if r.flight.is_some() || r.landing.is_some() || r.gpu.is_none() {
-        return;
+/// Starts the next batches, their frames due at tick `due`: a restored
+/// checkpoint's first, each with its own tick. On the GPU one batch of
+/// every character asking, once the last has been decoded. On the CPU one
+/// a character asking that has none outstanding; a character's batch whose
+/// request changed since ([`Motion::is_current`]) is dropped first, so it
+/// asks again at once.
+fn start_flights(r: &mut Ready, due: u64) {
+    if let Compute::Cpu(_) = r.compute {
+        let motion = &r.motion;
+        r.flights
+            .retain(|f| (0..f.batch.characters.len()).all(|i| motion.is_current(&f.batch, i)));
+        r.landings
+            .retain(|l| (0..l.batch.characters.len()).all(|i| motion.is_current(&l.batch, i)));
     }
-    let Some((batch, due)) = r
-        .queued
-        .take()
-        .or_else(|| r.motion.batch(usize::MAX).map(|b| (b, due)))
-    else {
-        return;
-    };
-    let Some(mut gpu) = r.gpu.take() else {
-        return;
-    };
-    let inputs = batch.inputs.clone();
-    let statics = r.statics.clone();
-    let started = now_ms();
-    r.startup
-        .first_dispatch_delay_ms
-        .get_or_insert(started - r.startup.resident_at);
-    r.flight = Some(Flight {
-        future: Box::pin(async move {
-            let result = async {
-                let student = gpu.student(&student_inputs(&statics, &inputs)).await?;
-                let local = gpu
-                    .decoder(&decoder_inputs(&statics, &inputs, &student))
-                    .await?;
-                Ok((student, local))
+    loop {
+        if !r.free() || (matches!(r.compute, Compute::Gpu { .. }) && !r.landings.is_empty()) {
+            return;
+        }
+        let next = if r.queued.is_empty() {
+            match &r.compute {
+                Compute::Gpu { .. } => r.motion.batch(usize::MAX).map(|b| (b, due)),
+                Compute::Cpu(_) => {
+                    let busy: BTreeSet<usize> = r
+                        .flights
+                        .iter()
+                        .map(|f| &f.batch)
+                        .chain(r.landings.iter().map(|l| &l.batch))
+                        .flat_map(|b| b.characters.iter().copied())
+                        .collect();
+                    (0..r.motion.len())
+                        .find(|c| !busy.contains(c) && r.motion.goals(*c) > 0)
+                        .and_then(|c| r.motion.batch_where(usize::MAX, |x| x == c))
+                        .map(|b| (b, due))
+                }
             }
-            .await;
-            (gpu, result)
-        }),
-        batch,
-        started,
-        due,
-        stale: false,
-    });
+        } else {
+            Some(r.queued.remove(0))
+        };
+        let Some((batch, due)) = next else {
+            return;
+        };
+        let work = match &mut r.compute {
+            Compute::Cpu(cpu) => Work::Cpu(
+                (0..batch.inputs.n)
+                    .map(|i| cpu.job(&r.statics, batch.inputs.character(i)))
+                    .collect(),
+            ),
+            Compute::Gpu { gpu, .. } => {
+                let Some(mut gpu) = gpu.take() else {
+                    return;
+                };
+                let inputs = batch.inputs.clone();
+                let statics = r.statics.clone();
+                Work::Gpu(Box::pin(async move {
+                    let result = async {
+                        let student = gpu.student(&student_inputs(&statics, &inputs)).await?;
+                        let local = gpu
+                            .decoder(&decoder_inputs(&statics, &inputs, &student))
+                            .await?;
+                        Ok((student, local))
+                    }
+                    .await;
+                    (gpu, result)
+                }))
+            }
+        };
+        let started = now_ms();
+        r.startup
+            .first_dispatch_delay_ms
+            .get_or_insert(started - r.startup.resident_at);
+        r.flights.push(Flight {
+            work,
+            batch,
+            started,
+            due,
+            stale: false,
+        });
+    }
+}
+
+impl Ready {
+    /// Whether a starved character's frames may come from a batch
+    /// outstanding: on the GPU any (its batch may be the next), on the CPU
+    /// its own.
+    fn awaits(&self, character: usize) -> bool {
+        let mut batches = self
+            .flights
+            .iter()
+            .map(|f| &f.batch)
+            .chain(self.landings.iter().map(|l| &l.batch))
+            .chain(self.queued.iter().map(|q| &q.0));
+        match self.compute {
+            Compute::Gpu { .. } => batches.next().is_some(),
+            Compute::Cpu(_) => batches.any(|b| b.characters.contains(&character)),
+        }
+    }
+
+    /// Where it runs, as og.motion.capabilities names it.
+    fn backend(&self) -> &'static str {
+        match self.compute {
+            Compute::Cpu(_) => "cpu",
+            Compute::Gpu { .. } => "gpu",
+        }
+    }
+
+    /// Whether a batch can start: the CPU always can, the GPU once the last
+    /// batch gave it back.
+    fn free(&self) -> bool {
+        match &self.compute {
+            Compute::Cpu(_) => true,
+            Compute::Gpu { gpu, .. } => gpu.is_some(),
+        }
+    }
 }
 
 /// How far `v` leans from straight up, rad.
@@ -1795,11 +2072,8 @@ pub(crate) fn step(eng: &Engine) -> bool {
             if !agents.is_empty()
                 && let Model::Ready(r) = &mut p.model
             {
-                poll_flight(r, false, &mut p.errors);
-                if r.landing.is_none()
-                    && due_of(r).is_some_and(|d| tick >= d)
-                    && !settle(r, &mut p.errors)
-                {
+                run_flights(r, tick, |_| false, &mut p.errors);
+                if !settle(r, tick, None, &mut p.errors) {
                     return false;
                 }
             }
@@ -1885,11 +2159,11 @@ pub(crate) fn step(eng: &Engine) -> bool {
                 // ran out waits for the batch outstanding. Until its first
                 // frames land it is drawn as og.anim poses it: the fallback
                 // covers the model's start, as its load.
-                if !(starved && due_of(r).is_some() && s.prev.is_some()) {
+                if !(starved && r.awaits(s.character) && s.prev.is_some()) {
                     break;
                 }
             }
-            if !settle(r, &mut p.errors) {
+            if !settle(r, tick, Some(s.character), &mut p.errors) {
                 p.held = Some(Held {
                     agent: k,
                     tries,
@@ -1898,8 +2172,8 @@ pub(crate) fn step(eng: &Engine) -> bool {
                 (p.batches, p.last_batch, p.taken) = stats;
                 return false;
             }
-            decode(r, &mut stats, tick);
-            start_flight(r, due);
+            decode(r, &mut stats, tick, Some(s.character));
+            start_flights(r, due);
             tries += 1;
         }
         if let Some(prev) = s.prev {
@@ -1925,7 +2199,7 @@ pub(crate) fn step(eng: &Engine) -> bool {
             }
         }
     }
-    start_flight(r, due);
+    start_flights(r, due);
     (p.batches, p.last_batch, p.taken) = stats;
     fallback(eng, p, &agents, &goals, sys.as_ref());
     true
@@ -1945,9 +2219,7 @@ fn step_goals(
     stats: &mut Stats,
     errors: &mut Vec<String>,
 ) {
-    if r.landing.as_ref().is_some_and(|l| tick >= l.due) {
-        decode(r, stats, tick);
-    }
+    decode(r, stats, tick, None);
     shown.retain(|e, _| agents.iter().any(|a| a.entity == *e));
     for a in agents {
         let s = shown.entry(a.entity).or_insert_with(|| {
@@ -2029,7 +2301,7 @@ fn step_goals(
         // batch runs at a time, so a goal asked for while another is on its
         // way waits for it, then for its own.
         let ahead = a.settings.lookahead.max(2.0 * BATCH_SECONDS);
-        let lookahead = (ahead * RATE) as usize;
+        let lookahead = (ahead * RATE * s.warp.max(1.0)).ceil() as usize;
         if serial != s.serial
             || (r.motion.goals(s.character) == 0 && s.ahead(&r.motion) < lookahead.max(1))
         {
@@ -2060,7 +2332,7 @@ fn step_goals(
             r.motion.push(s.character, goal);
         }
     }
-    start_flight(r, due);
+    start_flights(r, due);
 }
 
 impl Presenter {
@@ -2088,13 +2360,32 @@ pub(crate) fn presentation(eng: &Engine, entity: u64) -> Value {
     eng.render.borrow().motion.presentation(entity)
 }
 
+/// og.motion.setBackend: `gpu` for the opt-in. A change drops the loaded
+/// model, which loads again on the other backend, and every agent starts
+/// again.
+pub(crate) fn set_backend(eng: &Engine, gpu: bool) {
+    let mut rs = eng.render.borrow_mut();
+    let p = &mut rs.motion;
+    if p.gpu == gpu {
+        return;
+    }
+    p.gpu = gpu;
+    if matches!(p.model, Model::Ready(_) | Model::Failed(_)) {
+        p.model = Model::Unloaded;
+        p.agents.clear();
+        p.palettes.clear();
+        p.previous = None;
+        p.generated.clear();
+    }
+}
+
 /// og.motion.capabilities.
 pub(crate) fn capabilities(eng: &Engine) -> Value {
     let mut rs = eng.render.borrow_mut();
     let p = &mut rs.motion;
     p.wanted = true;
     let (backend, reason) = match &p.model {
-        Model::Ready(_) => ("gpu", String::new()),
+        Model::Ready(r) => (r.backend(), String::new()),
         Model::Unloaded => (
             "none",
             "loading: the model is read at the next frame".into(),
@@ -2110,7 +2401,7 @@ pub(crate) fn dump(eng: &Engine) -> Value {
     let rs = eng.render.borrow();
     let p = &rs.motion;
     let (state, reason) = match &p.model {
-        Model::Ready(_) => ("gpu", String::new()),
+        Model::Ready(r) => (r.backend(), String::new()),
         Model::Unloaded => ("unloaded", String::new()),
         Model::Waiting(w) | Model::Loading(w) => ("waiting", w.clone()),
         Model::Failed(f) => ("failed", f.clone()),
@@ -2171,7 +2462,7 @@ pub(crate) fn dump(eng: &Engine) -> Value {
         "reason": reason,
         "modelBytes": p.model_bytes as f64,
         "poses": POSES,
-        "inFlight": ready.is_some_and(|r| r.flight.is_some()),
+        "inFlight": ready.map_or(0, |r| r.flights.len()),
         "batches": p.batches,
         // [taken, due] ticks of the last batches: equal on every host.
         "taken": p.taken,
@@ -2179,6 +2470,8 @@ pub(crate) fn dump(eng: &Engine) -> Value {
         "frameBudgetMs": FRAME_BUDGET_MS,
         "startup": ready.map(|r| &r.startup),
         "gpuGflops": ready.map_or(0.0, |r| r.rate),
+        "cpuTicks": ready.map(|r| r.cpu_ticks.json()),
+        "generations": ready.map_or(0, |r| r.generations),
         "errors": p.errors,
         "agents": agents,
     })

@@ -43738,9 +43738,10 @@ export declare function MotionGoalKind(value?: MotionGoalKind, options?: FieldOp
 /**
  * Where the motion model runs.
  * - `"none"`: Nowhere yet: the weights are not resident (still loading, or failed: MotionCapabilities.reason says why); agents draw og.anim's pose.
- * - `"gpu"`: On the GPU beside the renderer.
+ * - `"gpu"`: On the GPU beside the renderer (the opt-in): the same poses only on one host and GPU.
+ * - `"cpu"`: On the CPU across the lanes (the default): the same poses, bit for bit, on every host.
  */
-export type MotionBackend = "none" | "gpu";
+export type MotionBackend = "none" | "gpu" | "cpu";
 
 /**
  * A humanoid the motion model animates: the entity needs an og.Skeleton whose asset is a humanoid rig (og.anim.humanoid recognises its bone names, or `rig` names them). Goals queue with og.motion.pose, place, face and walkTo. The generated pose is drawn in place of og.anim's (presentation only); og.anim still poses the skeleton every tick for everything the simulation reads, and is what is drawn until the model is resident.
@@ -44119,10 +44120,12 @@ export interface MotionPresentationStatus {
  * Where the motion model runs and what it knows. Presentation: a frame's answer, not the tick's; never branch the simulation on it.
  */
 export interface MotionCapabilities {
-  /** gpu once the weights are resident; none before, or when they failed. */
+  /**
+   * cpu (or gpu with the opt-in) once the weights are resident; none before, or when they failed.
+   */
   readonly backend: MotionBackend;
   /**
-   * Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty for gpu).
+   * Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty otherwise).
    */
   readonly reason: string;
   /**
@@ -44132,6 +44135,7 @@ export interface MotionCapabilities {
    */
   readonly modelBytes: number;
 }
+
 
 
 
@@ -50667,12 +50671,20 @@ export declare namespace og {
      */
     function status(world: World, entity: Entity): Result<MotionStatus>;
     /**
-     * Where the model runs: gpu once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet.
+     * Where the model runs: cpu (or gpu with the opt-in) once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet.
      *
      * @param world The world.
      * @returns Never refused.
      */
     function capabilities(world: World): MotionCapabilities;
+    /**
+     * Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). cpu, the default, poses every agent with the same bits on every host, which replays, forks, captures and cross-host checks rely on; its lanes split the agents' generations. gpu is an explicit opt-in for big presentation-only crowds: cheaper per character at scale, but its poses are identical only on one host and GPU (each backend's shader compiler rounds its own way), and on the web a tick whose batch has not come back waits for it. Set it before the first agent; a change later loads the model again on the other backend and every agent's generated motion starts again.
+     *
+     * @param world The world.
+     * @param backend cpu or gpu.
+     * @returns Refused for none.
+     */
+    function setBackend(world: World, backend: MotionBackend): Result<void>;
     /**
      * Presentation-only readiness on both hosts. Game logic must not branch on this value: it depends on GPU timing and is outside snapshots and hashes. A host may keep its page or shell cover up while the agent remains in the world and warms, then lift the cover on ready or failed (showing reason). Never write a component, gate a goal or advance a tick from this answer. ready requires generated frames and their palette for the current rendered frame; authored fallback does not count. Available in the probe's dump_motion too.
      *

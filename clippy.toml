@@ -18,6 +18,7 @@ disallowed-methods = [
   { path = "f32::acos", reason = "host libm: og_core::math::acos" },
   { path = "f32::atan", reason = "host libm: og_core::math::atan" },
   { path = "f32::atan2", reason = "host libm: og_core::math::atan2" },
+  { path = "f32::hypot", reason = "host libm: (x * x + y * y).sqrt(), exactly rounded" },
   { path = "f32::exp", reason = "host libm: og_core::math::exp" },
   { path = "f32::ln", reason = "host libm: og_core::math::ln" },
   { path = "f32::powf", reason = "host libm: og_core::math::pow" },

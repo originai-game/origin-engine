@@ -17,7 +17,6 @@
 
 use std::collections::VecDeque;
 
-#[cfg(feature = "reference")]
 use crate::Model;
 use crate::contract::{
     FRAMES, LEFT_LEG, MOTION_CONTACTS, MOTION_FEATURES, Pose, RIGHT_LEG, Request, encode, heading,
@@ -160,13 +159,28 @@ impl Motion {
         self.characters[character].frames.pop_front()
     }
 
+    /// The characters it holds.
+    pub fn len(&self) -> usize {
+        self.characters.len()
+    }
+
+    /// Whether it holds none.
+    pub fn is_empty(&self) -> bool {
+        self.characters.is_empty()
+    }
+
     /// The next generation: every character with a goal and fewer than
     /// `lookahead` frames queued, `None` when there is none.
     pub fn batch(&self, lookahead: usize) -> Option<Batch> {
+        self.batch_where(lookahead, |_| true)
+    }
+
+    /// [`Motion::batch`] of the characters `keep` keeps.
+    pub fn batch_where(&self, lookahead: usize, keep: impl Fn(usize) -> bool) -> Option<Batch> {
         let characters: Vec<usize> = (0..self.characters.len())
             .filter(|&c| {
                 let ch = &self.characters[c];
-                !ch.goals.is_empty() && ch.frames.len() < lookahead
+                keep(c) && !ch.goals.is_empty() && ch.frames.len() < lookahead
             })
             .collect();
         if characters.is_empty() {
@@ -207,6 +221,12 @@ impl Motion {
         }
     }
 
+    /// Whether the batch's character `i` still asks for what the batch
+    /// generates: no [`Motion::clear_goals`] or [`Motion::restart`] since.
+    pub fn is_current(&self, batch: &Batch, i: usize) -> bool {
+        self.characters[batch.characters[i]].revision == batch.revisions[i]
+    }
+
     /// [`Motion::accept`] for the batch's character `i` alone: its token
     /// count and its `[64,366]` motion (`glue::finish_character`).
     pub fn accept_character(&mut self, batch: &Batch, i: usize, count: u32, motion: &[f32]) {
@@ -233,9 +253,7 @@ impl Motion {
     }
 
     /// One generation on the CPU ([`Motion::batch`], then
-    /// [`Motion::accept`]); answers how many characters it moved. The
-    /// reference path (the `reference` feature).
-    #[cfg(feature = "reference")]
+    /// [`Motion::accept`]); answers how many characters it moved.
     pub fn generate(&mut self, model: &Model, lookahead: usize) -> usize {
         let Some(batch) = self.batch(lookahead) else {
             return 0;

@@ -10,19 +10,19 @@ Where the motion model runs and what it knows. Presentation: a frame's answer, n
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `backend` | `MotionBackend` | `"none"` | — | — | — | gpu once the weights are resident; none before, or when they failed. |
-| `reason` | `string` | `""` | — | — | — | Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty for gpu). |
+| `backend` | `MotionBackend` | `"none"` | — | — | — | cpu (or gpu with the opt-in) once the weights are resident; none before, or when they failed. |
+| `reason` | `string` | `""` | — | — | — | Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty otherwise). |
 | `modelBytes` | `number` | `0` | — | `bytes` | — | The size of cooked/motion/model.ogb, once read (0 before). |
 
 ```ogt
 struct MotionCapabilities {
   doc "Where the motion model runs and what it knows. Presentation: a frame's answer, not the tick's; never branch the simulation on it."
-  field backend MotionBackend "gpu once the weights are resident; none before, or when they failed."
-  field reason String "Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty for gpu)."
+  field backend MotionBackend "cpu (or gpu with the opt-in) once the weights are resident; none before, or when they failed."
+  field reason String "Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty otherwise)."
   field modelBytes f64 "The size of cooked/motion/model.ogb, once read (0 before)." {
     unit bytes
   }
 }
 ```
 
-<sub>Module `motion` line 242</sub>
+<sub>Module `motion` line 243</sub>

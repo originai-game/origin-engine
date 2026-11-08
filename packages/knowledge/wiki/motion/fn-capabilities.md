@@ -6,7 +6,7 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 ### `og.motion.capabilities`
 
-Where the model runs: gpu once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet.
+Where the model runs: cpu (or gpu with the opt-in) once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet.
 
 ```ts
 og.motion.capabilities(world: World): MotionCapabilities
@@ -22,10 +22,10 @@ Binding symbol `og_motion_capabilities` · publish builds: kept
 
 ```ogt
 fn capabilities {
-  doc "Where the model runs: gpu once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet."
+  doc "Where the model runs: cpu (or gpu with the opt-in) once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet."
   param world World "The world."
   returns MotionCapabilities "Never refused."
 }
 ```
 
-<sub>Module `motion` line 323</sub>
+<sub>Module `motion` line 324</sub>

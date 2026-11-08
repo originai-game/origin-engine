@@ -19303,7 +19303,7 @@
         },
         {
           "name": "capabilities",
-          "doc": "Where the model runs: gpu once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet.",
+          "doc": "Where the model runs: cpu (or gpu with the opt-in) once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet.",
           "params": [
             {
               "name": "world",
@@ -19314,6 +19314,27 @@
           ],
           "returns": "MotionCapabilities",
           "returnsDoc": "Never refused.",
+          "publish": true
+        },
+        {
+          "name": "setBackend",
+          "doc": "Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). cpu, the default, poses every agent with the same bits on every host, which replays, forks, captures and cross-host checks rely on; its lanes split the agents' generations. gpu is an explicit opt-in for big presentation-only crowds: cheaper per character at scale, but its poses are identical only on one host and GPU (each backend's shader compiler rounds its own way), and on the web a tick whose batch has not come back waits for it. Set it before the first agent; a change later loads the model again on the other backend and every agent's generated motion starts again.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "backend",
+              "type": "MotionBackend",
+              "optional": false,
+              "doc": "cpu or gpu."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for none.",
           "publish": true
         },
         {
@@ -74714,11 +74735,13 @@
       "type": "string",
       "enum": [
         "none",
-        "gpu"
+        "gpu",
+        "cpu"
       ],
       "x-og-variants": {
         "none": "Nowhere yet: the weights are not resident (still loading, or failed: MotionCapabilities.reason says why); agents draw og.anim's pose.",
-        "gpu": "On the GPU beside the renderer."
+        "gpu": "On the GPU beside the renderer (the opt-in): the same poses only on one host and GPU.",
+        "cpu": "On the CPU across the lanes (the default): the same poses, bit for bit, on every host."
       }
     },
     "MotionAgent": {
@@ -75154,11 +75177,11 @@
       "properties": {
         "backend": {
           "$ref": "#/$defs/MotionBackend",
-          "description": "gpu once the weights are resident; none before, or when they failed."
+          "description": "cpu (or gpu with the opt-in) once the weights are resident; none before, or when they failed."
         },
         "reason": {
           "type": "string",
-          "description": "Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty for gpu)."
+          "description": "Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty otherwise)."
         },
         "modelBytes": {
           "type": "number",

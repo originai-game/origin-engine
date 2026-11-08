@@ -43,6 +43,11 @@ debug = false
 # tests/evidence/P4/parity/). wgpu-hal's messages are wgpu's to verify.
 [profile.dev.package.objc2]
 debug-assertions = false
+# og.motion's model runs on the CPU every tick (crates/og-motion/src/cpu.rs):
+# about 1 GFLOP a generation, 40 ms optimised and seconds at opt-level 0,
+# which every test with a motion agent would wait for.
+[profile.dev.package.og-motion]
+opt-level = 3
 
 # Native shipping and explicit native performance runs. Never used for
 # tests, drift or the gate's addon; shipping wasm uses profile.wasm below.
@@ -60,6 +65,8 @@ lto = false
 codegen-units = 16
 incremental = true
 debug = false
+[profile.wasm-test.package.og-motion]
+opt-level = 3
 
 # Shipping bindgen wasm, measured directly by the size gate: release at
 # opt-level s, with the crates whose loops run every tick or frame at 3 and

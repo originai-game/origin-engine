@@ -366,6 +366,7 @@ pub(crate) const MODULE_ACTIONS: &[&str] = &[
     "lanes",
     "locale",
     "mip_stream",
+    "motion_backend",
     "terrain_stream",
     "timeline",
     "turntable",

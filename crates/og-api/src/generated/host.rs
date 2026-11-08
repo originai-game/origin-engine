@@ -1461,6 +1461,8 @@ pub trait MotionApi: Wire {
     fn og_motion_status(&self, world: u32, entity: f64) -> String;
     /// `og.motion.capabilities`
     fn og_motion_capabilities(&self, world: u32) -> String;
+    /// `og.motion.setBackend`
+    fn og_motion_set_backend(&self, world: u32, backend: String) -> String;
     /// `og.motion.presentation`
     fn og_motion_presentation(&self, world: u32, entity: f64) -> String;
     /// `og.motion.poses`
@@ -2134,6 +2136,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_motion_react",
     "og_motion_status",
     "og_motion_capabilities",
+    "og_motion_set_backend",
     "og_motion_presentation",
     "og_motion_poses",
     "og_destruction_damage",

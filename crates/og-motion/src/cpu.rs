@@ -1,39 +1,100 @@
-//! The student and the decoder on the CPU: the reference path every other
-//! path is checked against, in plain f32 loops over PyTorch weight layouts.
-//! The engine runs the model on the GPU only (docs/design.md §2.7): [`Cpu`]
-//! is built with the `reference` feature alone, which the crate's tests,
-//! examples and tools turn on and no host does. The tables both paths read
-//! (the tensors' shapes, the supported architecture) are always built.
+//! The student and the decoder on the CPU, in f32 over PyTorch weight
+//! layouts: the engine's path (docs/design.md §2.7) and the one every other
+//! path is checked against.
+//!
+//! Every value is the same on every host: each sum runs in one fixed order
+//! ([`dot`]: eight lanes, each in increasing index, then a fixed tree), a
+//! multiply and an add are never fused (Rust does not contract them, and
+//! wasm has no fused operation outside relaxed SIMD), and the one
+//! transcendental is og-core's `exp`. A character's generation is a
+//! [`Job`] of [`Cpu::units`] units of about equal cost (a half encoder
+//! layer, a decoder stage), so a host spreads it over ticks and threads
+//! without changing a bit of it.
 
-#[cfg(feature = "reference")]
 use og_core::math::exp;
 
-#[cfg(feature = "reference")]
 use crate::bundle::Bundle;
 use crate::bundle::{BundleError, Config};
-use crate::contract::{COUNTS, FRAMES, MAX_TOKENS, SLOTS};
+use crate::contract::{COUNTS, FRAMES, Inputs, MAX_TOKENS, SLOTS};
 use crate::glue::{CODES, HEADS, LOCAL_FEATURES, SLOT_FEATURES, TARGET_FEATURES};
-#[cfg(feature = "reference")]
-use crate::glue::{DecoderInputs, StudentInputs, StudentOutput};
+use crate::glue::{DecoderInputs, Statics, StudentInputs, StudentOutput};
 
-#[cfg(feature = "reference")]
-/// `y[r,o] = b[o] + Σk x[r,k]·w[o,k]` for `rows` rows.
+/// Lanes of [`dot`]'s accumulator.
+const LANES: usize = 8;
+
+/// `Σ a[j]·b[j]` in one fixed order on every target: lane `j mod 8`
+/// accumulates its products in increasing `j` (a separate multiply and
+/// add), then the lanes are summed in a fixed tree. The lanes are
+/// independent, so the compiler vectorises them without reordering.
+#[inline(always)]
+fn dot(a: &[f32], b: &[f32]) -> f32 {
+    let mut acc = [0.0f32; LANES];
+    let (ac, at) = a.as_chunks::<LANES>();
+    let (bc, bt) = b.as_chunks::<LANES>();
+    for (x, y) in ac.iter().zip(bc) {
+        for l in 0..LANES {
+            acc[l] += x[l] * y[l];
+        }
+    }
+    for (l, (x, y)) in at.iter().zip(bt).enumerate() {
+        acc[l] += x * y;
+    }
+    fold(acc)
+}
+
+#[inline(always)]
+fn fold(a: [f32; LANES]) -> f32 {
+    ((a[0] + a[4]) + (a[2] + a[6])) + ((a[1] + a[5]) + (a[3] + a[7]))
+}
+
+/// [`dot`] of four rows with one `b`, each in [`dot`]'s order.
+#[inline(always)]
+fn dot4(a: [&[f32]; 4], b: &[f32]) -> [f32; 4] {
+    let mut acc = [[0.0f32; LANES]; 4];
+    let (bc, bt) = b.as_chunks::<LANES>();
+    let chunks = a.map(|r| r.as_chunks::<LANES>());
+    for (j, y) in bc.iter().enumerate() {
+        for i in 0..4 {
+            let x = &chunks[i].0[j];
+            for l in 0..LANES {
+                acc[i][l] += x[l] * y[l];
+            }
+        }
+    }
+    for i in 0..4 {
+        for (l, (x, y)) in chunks[i].1.iter().zip(bt).enumerate() {
+            acc[i][l] += x * y;
+        }
+    }
+    acc.map(fold)
+}
+
+/// `y[r,o] = b[o] + Σk x[r,k]·w[o,k]` for `rows` rows, each sum a [`dot`].
+/// Output by output, so each weight row is read once for all the rows; a
+/// row's values never depend on the rows beside it.
 pub(crate) fn linear(x: &[f32], rows: usize, w: &[f32], b: &[f32]) -> Vec<f32> {
     let out = b.len();
     let k = w.len() / out;
     debug_assert_eq!(x.len(), rows * k);
     let mut y = vec![0.0; rows * out];
-    for r in 0..rows {
-        let xr = &x[r * k..(r + 1) * k];
-        for o in 0..out {
-            let wo = &w[o * k..(o + 1) * k];
-            y[r * out + o] = b[o] + xr.iter().zip(wo).map(|(a, b)| a * b).sum::<f32>();
+    let row = |r: usize| &x[r * k..(r + 1) * k];
+    for o in 0..out {
+        let wo = &w[o * k..(o + 1) * k];
+        let mut r = 0;
+        while r + 4 <= rows {
+            let s = dot4([row(r), row(r + 1), row(r + 2), row(r + 3)], wo);
+            for (i, v) in s.into_iter().enumerate() {
+                y[(r + i) * out + o] = b[o] + v;
+            }
+            r += 4;
+        }
+        for r in r..rows {
+            y[r * out + o] = b[o] + dot(row(r), wo);
         }
     }
     y
 }
 
-#[cfg(feature = "reference")]
 fn layer_norm(x: &mut [f32], width: usize, w: &[f32], b: &[f32]) {
     for row in x.chunks_exact_mut(width) {
         let mean = row.iter().sum::<f32>() / width as f32;
@@ -45,41 +106,42 @@ fn layer_norm(x: &mut [f32], width: usize, w: &[f32], b: &[f32]) {
     }
 }
 
-#[cfg(feature = "reference")]
 fn relu(x: &mut [f32]) {
     for v in x {
         *v = v.max(0.0);
     }
 }
 
-#[cfg(feature = "reference")]
-/// `x [C,T]`, `w [O,C,K]`, 'same' padding (`dilation · (K/2)` zeros each side).
+/// `x [C,T]`, `w [O,C,K]`, 'same' padding (`dilation · (K/2)` zeros each
+/// side): each position's taps gathered in `w`'s order (channel, then tap),
+/// then a [`linear`] over the positions, transposed back to `[O,T]`.
 fn conv1d(x: &[f32], t: usize, w: &[f32], b: &[f32], kernel: usize, dilation: usize) -> Vec<f32> {
     let out = b.len();
     let channels = x.len() / t;
     let pad = (dilation * (kernel / 2)) as isize;
-    let mut y = vec![0.0; out * t];
-    for o in 0..out {
-        let yo = &mut y[o * t..(o + 1) * t];
-        yo.fill(b[o]);
+    let taps = channels * kernel;
+    let mut cols = vec![0.0; t * taps];
+    for s in 0..t {
+        let row = &mut cols[s * taps..(s + 1) * taps];
         for c in 0..channels {
-            let xc = &x[c * t..(c + 1) * t];
             for k in 0..kernel {
-                let weight = w[(o * channels + c) * kernel + k];
-                let shift = k as isize * dilation as isize - pad;
-                for (s, yv) in yo.iter_mut().enumerate() {
-                    let at = s as isize + shift;
-                    if at >= 0 && (at as usize) < t {
-                        *yv += weight * xc[at as usize];
-                    }
+                let at = s as isize + (k * dilation) as isize - pad;
+                if at >= 0 && (at as usize) < t {
+                    row[c * kernel + k] = x[c * t + at as usize];
                 }
             }
+        }
+    }
+    let ty = linear(&cols, t, w, b);
+    let mut y = vec![0.0; out * t];
+    for s in 0..t {
+        for o in 0..out {
+            y[o * t + s] = ty[s * out + o];
         }
     }
     y
 }
 
-#[cfg(feature = "reference")]
 struct EncoderLayer {
     norm1: (Vec<f32>, Vec<f32>),
     in_proj: (Vec<f32>, Vec<f32>),
@@ -89,7 +151,6 @@ struct EncoderLayer {
     linear2: (Vec<f32>, Vec<f32>),
 }
 
-#[cfg(feature = "reference")]
 /// Both networks' weights, f32, PyTorch layouts.
 pub struct Cpu {
     config: Config,
@@ -97,6 +158,49 @@ pub struct Cpu {
     layers: Vec<EncoderLayer>,
     /// `[26·26]`, true where attention is not allowed.
     mask: Vec<bool>,
+}
+
+/// The rows of pass 2 that pass 1 has not computed: the count and the
+/// queries. The condition rows read none of them (the mask), so pass 2's
+/// condition rows are pass 1's, bit for bit: pass 2 reads their keys and
+/// values from pass 1's layers.
+const PASS2_ROWS: [usize; 1 + MAX_TOKENS] = {
+    let mut rows = [1; 1 + MAX_TOKENS];
+    let mut i = 0;
+    while i < MAX_TOKENS {
+        rows[1 + i] = 2 + SLOTS + i;
+        i += 1;
+    }
+    rows
+};
+
+/// One character's generation on the CPU, run unit by unit
+/// ([`Cpu::run`]): pass 1's half layers, pass 2's, then the decoder's
+/// stages. Its result never depends on how its units were spread.
+pub struct Job {
+    unit: usize,
+    inputs: Inputs,
+    student_inputs: StudentInputs,
+    /// Pass 1's rows `[9,w]`, then pass 2's `[17,w]`.
+    x: Vec<f32>,
+    /// Pass 1's keys and values of the condition rows, by layer: `[9,2w]`.
+    kv: Vec<Vec<f32>>,
+    student: Option<StudentOutput>,
+    decoder: Option<(DecoderInputs, Vec<f32>, Vec<f32>)>,
+    local: Option<Vec<f32>>,
+}
+
+impl Job {
+    /// Its units still to run.
+    pub fn left(&self, cpu: &Cpu) -> usize {
+        cpu.units() - self.unit
+    }
+
+    /// The student's output and the decoder's `[64,365]` (n = 1), once
+    /// every unit has run.
+    pub fn result(&self) -> Option<(&StudentOutput, &[f32])> {
+        Some((self.student.as_ref()?, self.local.as_deref()?))
+    }
 }
 
 pub(crate) const SEQUENCE: usize = 2 + SLOTS + MAX_TOKENS;
@@ -223,7 +327,6 @@ pub(crate) fn check_config(config: &Config) -> Result<(), BundleError> {
     Ok(())
 }
 
-#[cfg(feature = "reference")]
 impl Cpu {
     pub fn new(bundle: &Bundle) -> Result<Cpu, BundleError> {
         let config = bundle.config.clone();
@@ -275,9 +378,183 @@ impl Cpu {
         &self.get[name]
     }
 
-    /// One pre-norm encoder layer on `[length, width]`, `rows` naming which
-    /// rows of the full sequence these are (for the mask).
-    fn layer(&self, x: &mut [f32], rows: &[usize], layer: &EncoderLayer) {
+    /// The student's units: two per encoder layer in each of the two passes.
+    fn student_units(&self) -> usize {
+        4 * self.config.student.layers
+    }
+
+    /// The decoder's units: the first convolution, per level its
+    /// conditions, residual blocks and upsampling, and the last two
+    /// convolutions.
+    fn decoder_units(&self) -> usize {
+        let d = &self.config.decoder;
+        2 + d.down_t * (d.depth + 2)
+    }
+
+    /// A [`Job`]'s units, the same for every generation.
+    pub fn units(&self) -> usize {
+        self.student_units() + self.decoder_units()
+    }
+
+    /// One character's generation (`inputs.n` is 1), none of it run yet.
+    pub fn job(&self, statics: &Statics, inputs: Inputs) -> Job {
+        assert_eq!(inputs.n, 1, "a job is one character's generation");
+        let width = self.config.student.width;
+        let student_inputs = crate::glue::student_inputs(statics, &inputs);
+        let slot_tokens = linear(
+            &student_inputs.slots,
+            SLOTS,
+            self.w("student.slot_in.weight"),
+            self.w("student.slot_in.bias"),
+        );
+        let allowed = linear(
+            &student_inputs.allowed,
+            1,
+            self.w("student.allowed_in.weight"),
+            self.w("student.allowed_in.bias"),
+        );
+        let cls = (0..width).map(|c| self.w("student.cls")[c] + allowed[c]);
+        let slots = (0..SLOTS * width).map(|k| slot_tokens[k] + self.w("student.slot_pos")[k]);
+        Job {
+            unit: 0,
+            inputs,
+            student_inputs,
+            x: cls.chain(slots).collect(),
+            kv: Vec::with_capacity(self.layers.len()),
+            student: None,
+            decoder: None,
+            local: None,
+        }
+    }
+
+    /// Runs at most `units` of the job's units; answers how many ran.
+    pub fn run(&self, statics: &Statics, job: &mut Job, units: usize) -> usize {
+        let total = self.units();
+        let mut ran = 0;
+        while ran < units && job.unit < total {
+            self.unit(statics, job);
+            job.unit += 1;
+            ran += 1;
+        }
+        ran
+    }
+
+    fn unit(&self, statics: &Statics, job: &mut Job) {
+        let layers = self.layers.len();
+        let u = job.unit;
+        if u < 2 * layers {
+            let layer = &self.layers[u / 2];
+            if u % 2 == 0 {
+                let mut kv = Vec::new();
+                self.attention(&mut job.x, &CONDITION_ROWS, layer, None, Some(&mut kv));
+                job.kv.push(kv);
+            } else {
+                self.feed_forward(&mut job.x, layer);
+            }
+            if u == 2 * layers - 1 {
+                self.count(job);
+            }
+        } else if u < 4 * layers {
+            let l = (u - 2 * layers) / 2;
+            let layer = &self.layers[l];
+            if u % 2 == 0 {
+                let kv = std::mem::take(&mut job.kv[l]);
+                self.attention(&mut job.x, &PASS2_ROWS, layer, Some(&kv), None);
+                job.kv[l] = kv;
+            } else {
+                self.feed_forward(&mut job.x, layer);
+            }
+            if u == 4 * layers - 1 {
+                self.heads(statics, job);
+            }
+        } else {
+            self.decoder_unit(job, u - 4 * layers);
+        }
+    }
+
+    /// Pass 1's end: the count from CLS, and pass 2's rows (the count's
+    /// embedding and the queries).
+    fn count(&self, job: &mut Job) {
+        let width = self.config.student.width;
+        layer_norm(
+            &mut job.x,
+            width,
+            self.w("student.norm.weight"),
+            self.w("student.norm.bias"),
+        );
+        let logits = linear(
+            &job.x[..width],
+            1,
+            self.w("student.count_out.weight"),
+            self.w("student.count_out.bias"),
+        );
+        let allowed = &job.student_inputs.allowed[..COUNTS];
+        let index = argmax((0..COUNTS).map(|c| {
+            if allowed[c] > 0.0 {
+                logits[c]
+            } else {
+                f32::NEG_INFINITY
+            }
+        }));
+        let count = &self.w("student.count_emb.weight")[index * width..(index + 1) * width];
+        job.x = [count, self.w("student.queries")].concat();
+        job.student = Some(StudentOutput {
+            counts: vec![(index + 6) as u32],
+            root: Vec::new(),
+            tokens: Vec::new(),
+        });
+    }
+
+    /// Pass 2's end: the root path and the tokens (argmax per head, first
+    /// maximum on ties), and the decoder's inputs.
+    fn heads(&self, statics: &Statics, job: &mut Job) {
+        let width = self.config.student.width;
+        layer_norm(
+            &mut job.x,
+            width,
+            self.w("student.norm.weight"),
+            self.w("student.norm.bias"),
+        );
+        let queries = &job.x[width..];
+        let root = linear(
+            queries,
+            MAX_TOKENS,
+            self.w("student.root_out.weight"),
+            self.w("student.root_out.bias"),
+        );
+        let pose = linear(
+            queries,
+            MAX_TOKENS,
+            self.w("student.pose_out.weight"),
+            self.w("student.pose_out.bias"),
+        );
+        let student = job.student.as_mut().expect("pass 1 ran");
+        student.root = root;
+        student.tokens = (0..MAX_TOKENS * HEADS)
+            .map(|t| argmax(pose[t * CODES..(t + 1) * CODES].iter().copied()) as u32)
+            .collect();
+        let inputs = crate::glue::decoder_inputs(statics, &job.inputs, student);
+        let mask = inputs.token_mask[..MAX_TOKENS].to_vec();
+        let mut x = inputs.codes[..160 * MAX_TOKENS].to_vec();
+        masked(&mut x, &mask);
+        job.decoder = Some((inputs, mask, x));
+        job.x = Vec::new();
+        job.kv = Vec::new();
+    }
+
+    /// One pre-norm encoder layer's attention half on `x`, whose rows are
+    /// the sequence's `rows`. Keys and values are `x`'s own and, with
+    /// `cached`, the condition rows' from pass 1 (`store` keeps `x`'s).
+    /// Every row reads its keys in sequence order, so a row's values are
+    /// those of the whole sequence's pass.
+    fn attention(
+        &self,
+        x: &mut [f32],
+        rows: &[usize],
+        layer: &EncoderLayer,
+        cached: Option<&[f32]>,
+        store: Option<&mut Vec<f32>>,
+    ) {
         let width = self.config.student.width;
         let heads = self.config.student.heads;
         let dh = width / heads;
@@ -285,20 +562,38 @@ impl Cpu {
         let mut h = x.to_vec();
         layer_norm(&mut h, width, &layer.norm1.0, &layer.norm1.1);
         let qkv = linear(&h, length, &layer.in_proj.0, &layer.in_proj.1);
+        if let Some(store) = store {
+            for r in 0..length {
+                store.extend_from_slice(&qkv[r * 3 * width + width..(r + 1) * 3 * width]);
+            }
+        }
+        // Each key row by its place in the sequence: its keys then values.
+        let mut keys: Vec<(usize, &[f32])> = rows
+            .iter()
+            .enumerate()
+            .map(|(i, &row)| (row, &qkv[i * 3 * width + width..(i + 1) * 3 * width]))
+            .collect();
+        if let Some(cached) = cached {
+            keys.extend(
+                CONDITION_ROWS
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &row)| (row, &cached[i * 2 * width..(i + 1) * 2 * width])),
+            );
+        }
+        keys.sort_by_key(|k| k.0);
         let mut attended = vec![0.0; length * width];
         let scale = 1.0 / (dh as f32).sqrt();
-        let mut scores = vec![0.0f32; length];
+        let mut scores = vec![0.0f32; keys.len()];
         for head in 0..heads {
             for (qi, &qrow) in rows.iter().enumerate() {
                 let q = &qkv[qi * 3 * width + head * dh..qi * 3 * width + head * dh + dh];
                 let mut max = f32::NEG_INFINITY;
-                for (ki, &krow) in rows.iter().enumerate() {
+                for (ki, &(krow, kv)) in keys.iter().enumerate() {
                     scores[ki] = if self.mask[qrow * SEQUENCE + krow] {
                         f32::NEG_INFINITY
                     } else {
-                        let k = &qkv[ki * 3 * width + width + head * dh
-                            ..ki * 3 * width + width + head * dh + dh];
-                        q.iter().zip(k).map(|(a, b)| a * b).sum::<f32>() * scale
+                        dot(q, &kv[head * dh..head * dh + dh]) * scale
                     };
                     max = max.max(scores[ki]);
                 }
@@ -309,10 +604,13 @@ impl Cpu {
                 }
                 let out = &mut attended[qi * width + head * dh..qi * width + head * dh + dh];
                 for (ki, s) in scores.iter().enumerate() {
-                    let v = &qkv[ki * 3 * width + 2 * width + head * dh
-                        ..ki * 3 * width + 2 * width + head * dh + dh];
+                    if *s == 0.0 {
+                        continue;
+                    }
+                    let v = &keys[ki].1[width + head * dh..width + head * dh + dh];
+                    let p = s / total;
                     for (o, vv) in out.iter_mut().zip(v) {
-                        *o += s / total * vv;
+                        *o += p * vv;
                     }
                 }
             }
@@ -321,6 +619,12 @@ impl Cpu {
         for (a, b) in x.iter_mut().zip(&projected) {
             *a += b;
         }
+    }
+
+    /// One pre-norm encoder layer's feed-forward half on `x`.
+    fn feed_forward(&self, x: &mut [f32], layer: &EncoderLayer) {
+        let width = self.config.student.width;
+        let length = x.len() / width;
         let mut h = x.to_vec();
         layer_norm(&mut h, width, &layer.norm2.0, &layer.norm2.1);
         let mut hidden = linear(&h, length, &layer.linear1.0, &layer.linear1.1);
@@ -331,244 +635,192 @@ impl Cpu {
         }
     }
 
-    fn encode(&self, x: &mut [f32], rows: &[usize]) {
-        for layer in &self.layers {
-            self.layer(x, rows, layer);
-        }
-        layer_norm(
-            x,
-            self.config.student.width,
-            self.w("student.norm.weight"),
-            self.w("student.norm.bias"),
-        );
-    }
-
-    /// Pass 1 on CLS and the slots picks the count; pass 2 with it gives the
-    /// root path and the tokens (argmax per head, first maximum on ties).
-    pub fn student(&self, inputs: &StudentInputs) -> StudentOutput {
-        let width = self.config.student.width;
-        let n = inputs.n;
-        let slot_tokens = linear(
-            &inputs.slots,
-            n * SLOTS,
-            self.w("student.slot_in.weight"),
-            self.w("student.slot_in.bias"),
-        );
-        let allowed = linear(
-            &inputs.allowed,
-            n,
-            self.w("student.allowed_in.weight"),
-            self.w("student.allowed_in.bias"),
-        );
-        let mut out = StudentOutput {
-            counts: vec![0; n],
-            root: vec![0.0; n * FRAMES * 5],
-            tokens: vec![0; n * MAX_TOKENS * HEADS],
-        };
-        let all_rows: Vec<usize> = (0..SEQUENCE).collect();
-        for i in 0..n {
-            let cls: Vec<f32> = (0..width)
-                .map(|c| self.w("student.cls")[c] + allowed[i * width + c])
-                .collect();
-            let slots: Vec<f32> = (0..SLOTS * width)
-                .map(|k| slot_tokens[i * SLOTS * width + k] + self.w("student.slot_pos")[k])
-                .collect();
-            let mut conditions = [cls.clone(), slots.clone()].concat();
-            self.encode(&mut conditions, &CONDITION_ROWS);
-            let logits = linear(
-                &conditions[..width],
-                1,
-                self.w("student.count_out.weight"),
-                self.w("student.count_out.bias"),
-            );
-            let allowed = &inputs.allowed[i * COUNTS..(i + 1) * COUNTS];
-            let index = argmax((0..COUNTS).map(|c| {
-                if allowed[c] > 0.0 {
-                    logits[c]
-                } else {
-                    f32::NEG_INFINITY
-                }
-            }));
-            out.counts[i] = (index + 6) as u32;
-
-            let count = &self.w("student.count_emb.weight")[index * width..(index + 1) * width];
-            let mut sequence = [
-                cls,
-                count.to_vec(),
-                slots,
-                self.w("student.queries").to_vec(),
-            ]
-            .concat();
-            self.encode(&mut sequence, &all_rows);
-            let queries = &sequence[(2 + SLOTS) * width..];
-            let root = linear(
-                queries,
-                MAX_TOKENS,
-                self.w("student.root_out.weight"),
-                self.w("student.root_out.bias"),
-            );
-            out.root[i * FRAMES * 5..(i + 1) * FRAMES * 5].copy_from_slice(&root);
-            let pose = linear(
-                queries,
-                MAX_TOKENS,
-                self.w("student.pose_out.weight"),
-                self.w("student.pose_out.bias"),
-            );
-            for t in 0..MAX_TOKENS * HEADS {
-                out.tokens[i * MAX_TOKENS * HEADS + t] =
-                    argmax(pose[t * CODES..(t + 1) * CODES].iter().copied()) as u32;
-            }
-        }
-        out
-    }
-
-    /// The decoder: `[n,64,365]` normalised local motion features.
-    pub fn decoder(&self, inputs: &DecoderInputs) -> Vec<f32> {
+    /// The decoder's unit `u` of [`Cpu::decoder_units`].
+    fn decoder_unit(&self, job: &mut Job, u: usize) {
         let d = &self.config.decoder;
-        let (width, down) = (d.width, d.down_t);
-        let mut out = vec![0.0; inputs.n * FRAMES * LOCAL_FEATURES];
-        for i in 0..inputs.n {
-            let mut mask: Vec<f32> =
-                inputs.token_mask[i * MAX_TOKENS..(i + 1) * MAX_TOKENS].to_vec();
-            let masked = |h: &mut [f32], mask: &[f32]| {
-                let t = mask.len();
-                for (k, v) in h.iter_mut().enumerate() {
-                    *v *= mask[k % t];
-                }
-            };
-            let mut x = inputs.codes[i * 160 * MAX_TOKENS..(i + 1) * 160 * MAX_TOKENS].to_vec();
-            masked(&mut x, &mask);
-            let mut h = conv1d(
-                &x,
+        let (width, down, depth) = (d.width, d.down_t, d.depth);
+        let (inputs, mask, h) = job.decoder.as_mut().expect("the student ran");
+        if u == 0 {
+            let mut y = conv1d(
+                h,
                 MAX_TOKENS,
                 self.w("decoder.model.0.weight"),
                 self.w("decoder.model.0.bias"),
                 3,
                 1,
             );
-            relu(&mut h);
-            let target =
-                &inputs.target[i * FRAMES * TARGET_FEATURES..(i + 1) * FRAMES * TARGET_FEATURES];
-            let has = &inputs.has_target[i * FRAMES..(i + 1) * FRAMES];
-            let external = &inputs.external[i * FRAMES * 2..(i + 1) * FRAMES * 2];
-            for level in 0..down {
-                let per = 1 << (down - level);
-                let positions = FRAMES / per;
-                let part = width / per;
-                let ht = {
-                    let mut ht = linear(
-                        target,
-                        FRAMES,
-                        self.w(&format!("decoder.target_cond_blocks.{}.weight", 2 * level)),
-                        self.w(&format!("decoder.target_cond_blocks.{}.bias", 2 * level)),
-                    );
-                    relu(&mut ht);
-                    ht
-                };
-                // h [W,P] → rows [P, W + 2·per]: the frames' pose condition replaces
-                // their part of h, then the ground velocity of the position's frames.
-                let fused_width = width + 2 * per;
-                let mut fused = vec![0.0; positions * fused_width];
-                for p in 0..positions {
-                    for j in 0..width {
-                        let frame = p * per + j / part;
-                        fused[p * fused_width + j] = if has[frame] > 0.0 {
-                            ht[frame * part + j % part]
-                        } else {
-                            h[j * positions + p]
-                        };
-                    }
-                    fused[p * fused_width + width..(p + 1) * fused_width]
-                        .copy_from_slice(&external[p * per * 2..(p + 1) * per * 2]);
-                }
-                let mut rows = linear(
-                    &fused,
-                    positions,
-                    self.w(&format!(
-                        "decoder.external_cond_blocks.{}.weight",
-                        2 * level
-                    )),
-                    self.w(&format!("decoder.external_cond_blocks.{}.bias", 2 * level)),
-                );
-                relu(&mut rows);
-                h = (0..width * positions)
-                    .map(|k| rows[(k % positions) * width + k / positions])
-                    .collect();
-                for b in 0..d.depth {
-                    let p = format!("decoder.model.{}.0.model.{b}.", level + 2);
-                    let dilation = d.dilation_growth_rate.pow((d.depth - 1 - b) as u32);
-                    masked(&mut h, &mask);
-                    let mut y = h.clone();
-                    relu(&mut y);
-                    masked(&mut y, &mask);
-                    let mut y = conv1d(
-                        &y,
-                        positions,
-                        self.w(&format!("{p}conv1.weight")),
-                        self.w(&format!("{p}conv1.bias")),
-                        3,
-                        dilation,
-                    );
-                    relu(&mut y);
-                    masked(&mut y, &mask);
-                    let y = conv1d(
-                        &y,
-                        positions,
-                        self.w(&format!("{p}conv2.weight")),
-                        self.w(&format!("{p}conv2.bias")),
-                        1,
-                        1,
-                    );
-                    for (a, b) in h.iter_mut().zip(&y) {
-                        *a += b;
-                    }
-                    masked(&mut h, &mask);
-                }
-                // Nearest upsampling ×2.
-                h = (0..width * positions * 2)
-                    .map(|k| h[(k / (positions * 2)) * positions + (k % (positions * 2)) / 2])
-                    .collect();
-                mask = (0..positions * 2).map(|t| mask[t / 2]).collect();
-                masked(&mut h, &mask);
-                let name = format!("decoder.model.{}.2", level + 2);
-                h = conv1d(
-                    &h,
-                    positions * 2,
-                    self.w(&format!("{name}.weight")),
-                    self.w(&format!("{name}.bias")),
-                    3,
-                    1,
-                );
-            }
-            masked(&mut h, &mask);
+            relu(&mut y);
+            *h = y;
+            return;
+        }
+        if u == self.decoder_units() - 1 {
+            masked(h, mask);
             let name = format!("decoder.model.{}", 2 + down);
-            h = conv1d(
-                &h,
+            let mut y = conv1d(
+                h,
                 FRAMES,
                 self.w(&format!("{name}.weight")),
                 self.w(&format!("{name}.bias")),
                 3,
                 1,
             );
-            relu(&mut h);
-            masked(&mut h, &mask);
+            relu(&mut y);
+            masked(&mut y, mask);
             let name = format!("decoder.model.{}", 4 + down);
-            h = conv1d(
-                &h,
+            let mut y = conv1d(
+                &y,
                 FRAMES,
                 self.w(&format!("{name}.weight")),
                 self.w(&format!("{name}.bias")),
                 3,
                 1,
             );
-            masked(&mut h, &mask);
+            masked(&mut y, mask);
+            let mut out = vec![0.0; FRAMES * LOCAL_FEATURES];
             for f in 0..FRAMES {
                 for c in 0..LOCAL_FEATURES {
-                    out[(i * FRAMES + f) * LOCAL_FEATURES + c] = h[c * FRAMES + f];
+                    out[f * LOCAL_FEATURES + c] = y[c * FRAMES + f];
                 }
             }
+            job.local = Some(out);
+            job.decoder = None;
+            return;
         }
-        out
+        let level = (u - 1) / (depth + 2);
+        let stage = (u - 1) % (depth + 2);
+        let per = 1 << (down - level);
+        let positions = FRAMES / per;
+        let part = width / per;
+        if stage == 0 {
+            let target = &inputs.target[..FRAMES * TARGET_FEATURES];
+            let has = &inputs.has_target[..FRAMES];
+            let external = &inputs.external[..FRAMES * 2];
+            let mut ht = linear(
+                target,
+                FRAMES,
+                self.w(&format!("decoder.target_cond_blocks.{}.weight", 2 * level)),
+                self.w(&format!("decoder.target_cond_blocks.{}.bias", 2 * level)),
+            );
+            relu(&mut ht);
+            // h [W,P] → rows [P, W + 2·per]: the frames' pose condition replaces
+            // their part of h, then the ground velocity of the position's frames.
+            let fused_width = width + 2 * per;
+            let mut fused = vec![0.0; positions * fused_width];
+            for p in 0..positions {
+                for j in 0..width {
+                    let frame = p * per + j / part;
+                    fused[p * fused_width + j] = if has[frame] > 0.0 {
+                        ht[frame * part + j % part]
+                    } else {
+                        h[j * positions + p]
+                    };
+                }
+                fused[p * fused_width + width..(p + 1) * fused_width]
+                    .copy_from_slice(&external[p * per * 2..(p + 1) * per * 2]);
+            }
+            let mut rows = linear(
+                &fused,
+                positions,
+                self.w(&format!(
+                    "decoder.external_cond_blocks.{}.weight",
+                    2 * level
+                )),
+                self.w(&format!("decoder.external_cond_blocks.{}.bias", 2 * level)),
+            );
+            relu(&mut rows);
+            *h = (0..width * positions)
+                .map(|k| rows[(k % positions) * width + k / positions])
+                .collect();
+        } else if stage <= depth {
+            let b = stage - 1;
+            let p = format!("decoder.model.{}.0.model.{b}.", level + 2);
+            let dilation = d.dilation_growth_rate.pow((depth - 1 - b) as u32);
+            masked(h, mask);
+            let mut y = h.clone();
+            relu(&mut y);
+            masked(&mut y, mask);
+            let mut y = conv1d(
+                &y,
+                positions,
+                self.w(&format!("{p}conv1.weight")),
+                self.w(&format!("{p}conv1.bias")),
+                3,
+                dilation,
+            );
+            relu(&mut y);
+            masked(&mut y, mask);
+            let y = conv1d(
+                &y,
+                positions,
+                self.w(&format!("{p}conv2.weight")),
+                self.w(&format!("{p}conv2.bias")),
+                1,
+                1,
+            );
+            for (a, b) in h.iter_mut().zip(&y) {
+                *a += b;
+            }
+            masked(h, mask);
+        } else {
+            // Nearest upsampling ×2.
+            let up: Vec<f32> = (0..width * positions * 2)
+                .map(|k| h[(k / (positions * 2)) * positions + (k % (positions * 2)) / 2])
+                .collect();
+            *mask = (0..positions * 2).map(|t| mask[t / 2]).collect();
+            let mut up = up;
+            masked(&mut up, mask);
+            let name = format!("decoder.model.{}.2", level + 2);
+            *h = conv1d(
+                &up,
+                positions * 2,
+                self.w(&format!("{name}.weight")),
+                self.w(&format!("{name}.bias")),
+                3,
+                1,
+            );
+        }
+    }
+
+    /// Every character's job, run to its end.
+    fn jobs(&self, statics: &Statics, inputs: &Inputs) -> Vec<Job> {
+        (0..inputs.n)
+            .map(|i| {
+                let mut job = self.job(statics, inputs.character(i));
+                self.run(statics, &mut job, usize::MAX);
+                job
+            })
+            .collect()
+    }
+
+    /// The student and the decoder for every character of `inputs`: each
+    /// character's [`Job`], gathered.
+    pub fn generate(&self, statics: &Statics, inputs: &Inputs) -> (StudentOutput, Vec<f32>) {
+        gather(&self.jobs(statics, inputs))
+    }
+}
+
+/// Finished jobs' outputs as one batch's.
+pub fn gather(jobs: &[Job]) -> (StudentOutput, Vec<f32>) {
+    let mut student = StudentOutput {
+        counts: Vec::with_capacity(jobs.len()),
+        root: Vec::with_capacity(jobs.len() * FRAMES * 5),
+        tokens: Vec::with_capacity(jobs.len() * MAX_TOKENS * HEADS),
+    };
+    let mut local = Vec::with_capacity(jobs.len() * FRAMES * LOCAL_FEATURES);
+    for job in jobs {
+        let (s, l) = job.result().expect("every unit ran");
+        student.counts.extend_from_slice(&s.counts);
+        student.root.extend_from_slice(&s.root);
+        student.tokens.extend_from_slice(&s.tokens);
+        local.extend_from_slice(l);
+    }
+    (student, local)
+}
+
+fn masked(h: &mut [f32], mask: &[f32]) {
+    let t = mask.len();
+    for (k, v) in h.iter_mut().enumerate() {
+        *v *= mask[k % t];
     }
 }
 
