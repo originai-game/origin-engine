@@ -16,7 +16,9 @@
 //             from --fork-at to --ticks, then another branch of 24 ticks
 //             from the fork's snapshot without the inputs, the fork restored
 //             and the same ticks drawn again; every frame must be the first
-//             pass's byte for byte (`checked`, `mismatches`)
+//             pass's byte for byte (`checked`, `mismatches`); with
+//             --frames <dir>, the first pass's frames as <tick>.rgba there
+//             (tests/web/presentation-fork.ts compares the web's with them)
 //   ticks     a display frame on every tick, and each tick's world and
 //             presentation hash (`ticks`, from tick 1), then `dump_motion`
 //             (`motion`): what the web's run of the same project must reach
@@ -24,7 +26,7 @@
 //
 //   bun tests/support/presentation-capture.ts --project <dir> --mode every|capture|restore|synctest|display|ticks
 //       --ticks N [--restore-at A] [--fork-at R] [--rollback K] [--size WxH]
-//       [--inputs "tick:action[:args];..."] [--out <file.png>]
+//       [--inputs "tick:action[:args];..."] [--out <file.png>] [--frames <dir>]
 //
 // Inputs are probe steps sent before the tick they name, in every mode and
 // on every pass over a tick, so a restored run presses the same keys on the
@@ -32,7 +34,7 @@
 // world hash, the PNG's SHA-256 (and `first`'s with --mode restore), the
 // presentation hash, and with --mode synctest the ticks checked and the
 // mismatches.
-import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -186,6 +188,11 @@ else if (mode === "restore") {
     return frames;
   };
   const a = pass();
+  if (argv.includes("--frames")) {
+    const dir = opt("--frames");
+    mkdirSync(dir, { recursive: true });
+    a.forEach((f, i) => writeFileSync(join(dir, `${forkAt + i + 1}.rgba`), f));
+  }
   probe.restore(fork.id);
   const kept = new Map(inputs);
   inputs.clear();
