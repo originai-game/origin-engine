@@ -418,6 +418,20 @@ impl Ui {
         }
     }
 
+    /// Ticks of one half (cover, or reveal) of a screen transition: its
+    /// duration, else the style's screen duration, else `slow` × 2.
+    pub(crate) fn cover_half_ticks(&self, desc: &ScreenTransitionDesc) -> u64 {
+        let t = self.theme;
+        let ms = if desc.duration_ms > 0.0 {
+            desc.duration_ms
+        } else if t.art.motion.screen_ms > 0.0 {
+            t.art.motion.screen_ms
+        } else {
+            crate::theme::TIMING.screen_slows * t.durations_ms.slow
+        };
+        (self.ticks_for(ms) as u64).div_ceil(2).max(1)
+    }
+
     /// A transition between game screens, drawn over the whole frame: pass
     /// the screen the game wants every tick and build the one it answers.
     /// When the wanted screen changes, the cover closes over the old screen
@@ -434,14 +448,7 @@ impl Ui {
         let key = child_key(1, &format!("screen:{}", id.as_str()));
         self.touched.insert(key);
         let now = self.state.tick;
-        let ms = if desc.duration_ms > 0.0 {
-            desc.duration_ms
-        } else if t.art.motion.screen_ms > 0.0 {
-            t.art.motion.screen_ms
-        } else {
-            crate::theme::TIMING.screen_slows * t.durations_ms.slow
-        };
-        let half = (self.ticks_for(ms) as u64).div_ceil(2).max(1);
+        let half = self.cover_half_ticks(desc);
         let st = self
             .state
             .screens

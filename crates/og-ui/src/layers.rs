@@ -23,6 +23,7 @@ use crate::bind::{Env, NoEnv};
 use crate::doc::build::{DocEvent, DocResponse};
 use crate::doc::{Back, DocKind, InputMode, LayerSpec, Under};
 use crate::layout::{Direction, Element, Float, NONE};
+use crate::reactive::SourceId;
 use crate::ui::Ui;
 use serde_json::{Value, json};
 
@@ -35,6 +36,8 @@ pub enum LayerOp {
     Pop(u32),
     Replace(String, Value),
     Clear,
+    /// Removes the layer of that serial now (its leaving cover closed).
+    Drop(u32),
 }
 
 /// One screen on the stack.
@@ -43,8 +46,18 @@ pub struct Layer {
     /// Unique for the UI's life: what a push answers.
     pub serial: u32,
     pub screen: String,
-    /// Its viewmodel (two-way bindings write into it).
+    /// Its viewmodel (two-way bindings write into it); unused by a mounted layer.
     pub vm: Value,
+    /// The retained mount it shows: a `type screen` document a scope
+    /// mounted with store inputs (`scope.mount`). It is on the stack while
+    /// it is mounted, and leaves it, unmounted, when it is popped.
+    pub mount: Option<SourceId>,
+    /// A mounted layer was emitted last frame (a hidden one is released).
+    pub shown: bool,
+    /// The tick its view transition's cover started (0: none running).
+    pub since: u64,
+    /// It is leaving: its view transition covers it before it goes.
+    pub leaving: bool,
     /// The focus it had when a layer was pushed over it.
     pub focus: u64,
     /// It was the active layer last tick.
@@ -62,11 +75,26 @@ pub struct LayerStack {
     pub held_scale: Option<f32>,
 }
 
+/// A layer's `since` until its view transition's first tick.
+const STARTS: u64 = u64::MAX;
+
+/// An open layer frame ([`Ui::open_layer_frame`]): what closing it restores
+/// and decides.
+pub(crate) struct LayerFrame {
+    key: u64,
+    info: LayerInfo,
+    layer: Layer,
+    mount: String,
+    accepts: bool,
+    building: u32,
+}
+
 /// A layer as the probe lists it (`dump_ui:layers`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct LayerInfo {
     pub serial: u32,
     pub screen: String,
+    pub mount: Option<SourceId>,
     pub spec: LayerSpec,
     pub top: bool,
     /// The top layer that takes input (the topmost with none): it takes
@@ -83,6 +111,7 @@ impl LayerInfo {
         let s = &self.spec;
         json!({
             "serial": self.serial, "screen": self.screen, "kind": s.kind.name(),
+            "mount": self.mount.as_ref().map_or(String::new(), |m| format!("{}:{}", m.scope, m.id)),
             "input": s.input.name(), "capture": s.capture, "pause": s.pause,
             "under": s.under.name(),
             "back": match &s.back { Back::Pop => "pop".to_string(), Back::None => "none".into(), Back::Emit(n) => format!("emit {n}") },
@@ -112,13 +141,23 @@ impl Ui {
         if let Some(a) = self.active_layer() {
             self.docs.layers.layers[a].focus = self.state.focus;
         }
-        self.insert_screen(screen, vm)
+        self.insert_screen(screen, vm, None)
     }
 
     /// Puts a layer into the stack at its kind's place.
-    fn insert_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
-        let kind = self.screen_spec(screen)?.kind;
-        let vm = if vm.is_null() {
+    fn insert_screen(
+        &mut self,
+        screen: &str,
+        vm: Value,
+        mount: Option<SourceId>,
+    ) -> Result<u32, String> {
+        let spec = self.screen_spec(screen)?;
+        let kind = spec.kind;
+        // Its cover starts the first tick it is built.
+        let since = if spec.transition.is_some() { STARTS } else { 0 };
+        let vm = if mount.is_some() {
+            Value::Null
+        } else if vm.is_null() {
             self.document(screen)
                 .and_then(|d| d.fixture("default").cloned())
                 .unwrap_or(Value::Object(Default::default()))
@@ -141,6 +180,8 @@ impl Ui {
                 serial,
                 screen: screen.to_string(),
                 vm,
+                mount,
+                since,
                 ..Layer::default()
             },
         );
@@ -155,21 +196,131 @@ impl Ui {
     /// Pops the active layer; answers its screen.
     pub fn pop_screen(&mut self) -> Option<String> {
         let k = self.active_layer()?;
-        Some(self.docs.layers.layers.remove(k).screen)
+        Some(self.remove_layer(k).screen)
     }
 
     /// Replaces the active layer (the others keep their focus memory).
     pub fn replace_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
         self.screen_spec(screen)?;
         if let Some(k) = self.active_layer() {
-            self.docs.layers.layers.remove(k);
+            self.remove_layer(k);
         }
-        self.insert_screen(screen, vm)
+        self.insert_screen(screen, vm, None)
     }
 
-    /// Empties the stack.
+    /// Empties the stack (mounted layers are unmounted), with no transition.
     pub fn clear_screens(&mut self) {
-        self.docs.layers.layers.clear();
+        for l in std::mem::take(&mut self.docs.layers.layers) {
+            if let Some(mount) = &l.mount {
+                self.finish_unmount(mount);
+            }
+        }
+    }
+
+    /// Removes layer `k` from the stack (a mounted one is unmounted), or,
+    /// when its screen has a view transition, starts it leaving: the cover
+    /// closes over it before it goes.
+    fn remove_layer(&mut self, k: usize) -> Layer {
+        let l = self.docs.layers.layers[k].clone();
+        if self.layer_leaves(k) {
+            return l;
+        }
+        self.docs.layers.layers.remove(k);
+        if let Some(mount) = &l.mount {
+            self.finish_unmount(mount);
+        }
+        l
+    }
+
+    /// Starts layer `k` leaving when its screen has a view transition;
+    /// true while it is leaving.
+    pub(crate) fn layer_leaves(&mut self, k: usize) -> bool {
+        let transition = self
+            .screen_spec(&self.docs.layers.layers[k].screen)
+            .is_ok_and(|s| s.transition.is_some());
+        let l = &mut self.docs.layers.layers[k];
+        if !transition {
+            return false;
+        }
+        if !l.leaving {
+            l.leaving = true;
+            l.since = STARTS;
+        }
+        true
+    }
+
+    /// Where layer `k`'s view transition is this tick, covering the frame:
+    /// whether the layer shows (the old view while the cover closes, the
+    /// new one while it opens). A leaving layer whose cover has closed is
+    /// dropped.
+    fn layer_transition(&mut self, k: usize, spec: &LayerSpec) -> bool {
+        let l = &self.docs.layers.layers[k];
+        let (Some(desc), true) = (spec.transition, l.since != 0) else {
+            return !l.leaving;
+        };
+        let (mut since, leaving, serial) = (l.since, l.leaving, l.serial);
+        if since == STARTS {
+            since = self.state.tick;
+            self.docs.layers.layers[k].since = since;
+        }
+        let half = self.cover_half_ticks(&desc);
+        let elapsed = self.state.tick.saturating_sub(since);
+        if elapsed + 1 < half {
+            self.cover(&desc, (elapsed + 1) as f32 / half as f32, false);
+            return leaving;
+        }
+        if leaving {
+            // Closed over the old view: it goes, and the cover opens on what
+            // is under it.
+            self.cover(&desc, 1.0, true);
+            self.docs.ops.push(LayerOp::Drop(serial));
+            self.docs.revealing.push((desc, self.state.tick, half));
+            return false;
+        }
+        if elapsed + 1 < 2 * half {
+            let open = 1.0 - (elapsed + 1 - half) as f32 / half as f32;
+            self.cover(&desc, open, true);
+        } else {
+            self.docs.layers.layers[k].since = 0;
+        }
+        true
+    }
+
+    /// Keeps a retained mount's layer in step with its document: a
+    /// `type screen` document is a layer of the stack for as long as it is
+    /// mounted (inserted at its kind's place; the active layer remembers its
+    /// focus), any other document none.
+    pub(crate) fn sync_mount_layer(&mut self, mount: &SourceId, document: Option<&str>) {
+        let screen = document.filter(|d| self.screen_spec(d).is_ok());
+        let st = &self.docs.layers.layers;
+        let at = st.iter().position(|l| l.mount.as_ref() == Some(mount));
+        if let Some(k) = at {
+            if screen == Some(st[k].screen.as_str()) {
+                // Mounted again while it was leaving: it stays.
+                let l = &mut self.docs.layers.layers[k];
+                if l.leaving {
+                    l.leaving = false;
+                    l.since = 0;
+                }
+                return;
+            }
+            self.docs.layers.layers.remove(k);
+        }
+        if let Some(screen) = screen {
+            if let Some(a) = self.active_layer() {
+                self.docs.layers.layers[a].focus = self.state.focus;
+            }
+            let _ = self.insert_screen(screen, Value::Null, Some(mount.clone()));
+        }
+    }
+
+    /// The stack index of a mounted layer.
+    pub(crate) fn mount_layer(&self, mount: &SourceId) -> Option<usize> {
+        self.docs
+            .layers
+            .layers
+            .iter()
+            .position(|l| l.mount.as_ref() == Some(mount))
     }
 
     /// The stack, bottom first.
@@ -182,22 +333,24 @@ impl Ui {
                     .unwrap_or_else(|_| LayerSpec::of(Default::default()))
             })
             .collect();
-        let hide_from = specs.iter().rposition(|s| s.under == Under::Hide);
-        let menu_at = specs.iter().rposition(|s| s.input == InputMode::Menu);
-        let active = specs
-            .iter()
-            .rposition(|s| s.input != InputMode::Game)
-            .or(st.len().checked_sub(1));
+        // A leaving layer is only drawn: it hides, holds and takes nothing.
+        let here = |k: usize| !st[k].leaving;
+        let hide_from = (0..st.len()).rposition(|k| here(k) && specs[k].under == Under::Hide);
+        let menu_at = (0..st.len()).rposition(|k| here(k) && specs[k].input == InputMode::Menu);
+        let active = (0..st.len())
+            .rposition(|k| here(k) && specs[k].input != InputMode::Game)
+            .or_else(|| (0..st.len()).rposition(here));
         st.iter()
             .enumerate()
             .map(|(k, l)| LayerInfo {
                 serial: l.serial,
                 screen: l.screen.clone(),
+                mount: l.mount.clone(),
                 spec: specs[k].clone(),
                 top: k + 1 == st.len(),
                 active: active == Some(k),
                 hidden: hide_from.is_some_and(|h| k < h),
-                inert: menu_at.is_some_and(|m| k < m),
+                inert: l.leaving || menu_at.is_some_and(|m| k < m),
             })
             .collect()
     }
@@ -209,7 +362,7 @@ impl Ui {
             .layers
             .iter()
             .rev()
-            .find(|l| l.screen == screen)
+            .find(|l| l.screen == screen && l.mount.is_none())
             .map(|l| &l.vm)
     }
 
@@ -221,7 +374,7 @@ impl Ui {
             .layers
             .iter_mut()
             .rev()
-            .find(|l| l.screen == screen)
+            .find(|l| l.screen == screen && l.mount.is_none())
         {
             Some(l) => {
                 l.vm = vm;
@@ -274,7 +427,12 @@ impl Ui {
     /// with its viewmodel for this tick, and builds it now, so code fills
     /// its slots after this call. Its events since the last call come back.
     pub fn screen(&mut self, screen: &str, vm: Value, env: &dyn Env) -> DocResponse {
-        if !self.docs.layers.layers.iter().any(|l| l.screen == screen)
+        if !self
+            .docs
+            .layers
+            .layers
+            .iter()
+            .any(|l| l.screen == screen && l.mount.is_none())
             && let Err(e) = self.push_screen(screen, Value::Null)
         {
             self.warnings.push(format!("og.ui.screen: {e}"));
@@ -288,7 +446,7 @@ impl Ui {
             .layers
             .layers
             .iter()
-            .rposition(|l| l.screen == screen)
+            .rposition(|l| l.screen == screen && l.mount.is_none())
             .unwrap_or(0);
         let mut r = self.build_layer(k, env);
         let mut queued = Vec::new();
@@ -320,13 +478,24 @@ impl Ui {
             self.warnings.push(error);
         }
         self.docs.built_tick = tick;
+        // The covers still opening over layers that have left.
+        let mut revealing = std::mem::take(&mut self.docs.revealing);
+        revealing.retain(|&(desc, start, half)| {
+            let elapsed = tick.saturating_sub(start);
+            if elapsed + 1 >= half {
+                return false;
+            }
+            self.cover(&desc, 1.0 - (elapsed + 1) as f32 / half as f32, true);
+            true
+        });
+        self.docs.revealing = revealing;
         for k in 0..self.docs.layers.layers.len() {
             if self
                 .docs
                 .layers
                 .layers
                 .get(k)
-                .is_some_and(|l| l.built != tick)
+                .is_some_and(|l| l.built != tick && l.mount.is_none())
             {
                 let r = self.build_layer(k, env);
                 self.docs.queued.extend(r.events);
@@ -341,11 +510,29 @@ impl Ui {
                     Ok(())
                 }
                 LayerOp::Pop(serial) => {
-                    self.docs.layers.layers.retain(|l| l.serial != serial);
+                    if let Some(k) = self
+                        .docs
+                        .layers
+                        .layers
+                        .iter()
+                        .position(|l| l.serial == serial)
+                    {
+                        self.remove_layer(k);
+                    }
                     Ok(())
                 }
                 LayerOp::Clear => {
                     self.clear_screens();
+                    Ok(())
+                }
+                LayerOp::Drop(serial) => {
+                    let st = &mut self.docs.layers.layers;
+                    if let Some(k) = st.iter().position(|l| l.serial == serial) {
+                        let l = st.remove(k);
+                        if let Some(mount) = &l.mount {
+                            self.finish_unmount(mount);
+                        }
+                    }
                     Ok(())
                 }
             };
@@ -384,20 +571,63 @@ impl Ui {
 
     /// Builds layer `k` of the stack.
     fn build_layer(&mut self, k: usize, env: &dyn Env) -> DocResponse {
+        let (frame, lead) = self.open_layer_frame(k);
+        let Some(frame) = frame else {
+            return DocResponse {
+                events: lead,
+                ..DocResponse::default()
+            };
+        };
+        let layer = self.docs.layers.layers[k].clone();
+        let doc = self.docs.docs[&layer.screen].clone();
+        let mut vm = layer.vm.clone();
+        let root_id = match doc.nodes.get(doc.root) {
+            Some(n) if !n.id.is_empty() => n.id.clone(),
+            _ => "Root".to_string(),
+        };
+        let mut r = self.mount_doc(
+            doc.clone(),
+            layer.screen.clone(),
+            &root_id,
+            &mut vm,
+            env,
+            Default::default(),
+        );
+        let mut events = lead;
+        events.append(&mut r.events);
+        events.extend(self.close_layer_frame(frame, &r.path));
+        r.events = events;
+        if let Some(l) = self.docs.layers.layers.get_mut(k)
+            && l.serial == layer.serial
+        {
+            l.vm = vm;
+        }
+        r
+    }
+
+    /// Opens layer `k`'s frame: its activation events, and, unless a layer
+    /// above hides it, its float with the spec's backdrop, scope and
+    /// presence, input routed to it as the stack decides. Its content
+    /// follows until [`Ui::close_layer_frame`].
+    pub(crate) fn open_layer_frame(&mut self, k: usize) -> (Option<LayerFrame>, Vec<DocEvent>) {
         let infos = self.layer_stack();
         let Some(info) = infos.get(k).cloned() else {
-            return DocResponse::default();
+            return (None, Vec::new());
         };
         let tick = self.state.tick;
         let layer = self.docs.layers.layers[k].clone();
         self.docs.layers.layers[k].built = tick;
         self.docs.layers.layers[k].was_top = info.active;
+        let mount = layer
+            .mount
+            .as_ref()
+            .map_or(layer.screen.clone(), |m| m.id.clone());
         // CommonUI's OnActivated / OnDeactivated, before the layer's own events.
         let mut lead = Vec::new();
         if info.active != layer.was_top {
             lead.push(DocEvent {
-                mount: layer.screen.clone(),
-                path: layer.screen.clone(),
+                mount: mount.clone(),
+                path: layer_id(&layer),
                 row_key: String::new(),
                 kind: if info.active {
                     "activate"
@@ -409,15 +639,10 @@ impl Ui {
                 value: Value::Null,
             });
         }
-        let doc = match self.docs.docs.get(&layer.screen) {
-            Some(d) if !info.hidden => d.clone(),
-            _ => {
-                return DocResponse {
-                    events: lead,
-                    ..DocResponse::default()
-                };
-            }
-        };
+        let shows = self.layer_transition(k, &info.spec);
+        if info.hidden || !shows || !self.docs.docs.contains_key(&layer.screen) {
+            return (None, lead);
+        }
         let spec = &info.spec;
         let t = self.theme;
         let dim = matches!(spec.under, Under::Dim | Under::Blur);
@@ -441,11 +666,6 @@ impl Ui {
             n.props.enter = spec.enter.clone();
             n.props.exit = spec.exit.clone();
         }
-        let mut vm = layer.vm.clone();
-        let root_id = match doc.nodes.get(doc.root) {
-            Some(n) if !n.id.is_empty() => n.id.clone(),
-            _ => "Root".to_string(),
-        };
         // UI actions go to the top layer that takes input; with none, to every game layer.
         let top_taker = infos.iter().rposition(|l| l.spec.input != InputMode::Game);
         let accepts = std::mem::replace(
@@ -456,19 +676,35 @@ impl Ui {
             },
         );
         let building = std::mem::replace(&mut self.docs.building, layer.serial);
-        let mut r = self.mount_doc(
-            doc.clone(),
-            layer.screen.clone(),
-            &root_id,
-            &mut vm,
-            env,
-            Default::default(),
-        );
+        (
+            Some(LayerFrame {
+                key,
+                info,
+                layer,
+                mount,
+                accepts,
+                building,
+            }),
+            lead,
+        )
+    }
+
+    /// Closes a layer's frame: Back, then the focus a layer that became the
+    /// active one takes. `path` is its content root's path.
+    pub(crate) fn close_layer_frame(&mut self, frame: LayerFrame, path: &str) -> Vec<DocEvent> {
+        let LayerFrame {
+            key,
+            info,
+            layer,
+            mount,
+            accepts,
+            building,
+        } = frame;
         self.docs.building = building;
         self.docs.accepts = accepts;
-        lead.append(&mut r.events);
-        r.events = lead;
         self.close();
+        let spec = &info.spec;
+        let mut events = Vec::new();
         // Back: the topmost scope takes it (as a dialog does).
         if info.active && self.nav.back && self.state.scope == key {
             match &spec.back {
@@ -478,9 +714,9 @@ impl Ui {
                 }
                 Back::Emit(name) => {
                     self.nav.back = false;
-                    r.events.push(DocEvent {
-                        mount: layer.screen.clone(),
-                        path: r.path.clone(),
+                    events.push(DocEvent {
+                        mount,
+                        path: path.to_string(),
                         row_key: String::new(),
                         kind: "back".into(),
                         name: name.clone(),
@@ -495,17 +731,12 @@ impl Ui {
         if info.active && !layer.was_top {
             let remembered = (spec.remember && layer.focus != 0).then_some(layer.focus);
             let declared = (!spec.focus.is_empty())
-                .then(|| crate::id::key_of_path(&format!("{}/{}", r.path, spec.focus)));
+                .then(|| crate::id::key_of_path(&format!("{path}/{}", spec.focus)));
             if let Some(f) = remembered.or(declared) {
                 self.request_focus = f;
             }
         }
-        if let Some(l) = self.docs.layers.layers.get_mut(k)
-            && l.serial == layer.serial
-        {
-            l.vm = vm;
-        }
-        r
+        events
     }
 
     /// The layer state snapshots carry, as JSON.
@@ -520,6 +751,7 @@ impl Ui {
             "seen": d.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
             "layers": d.layers.layers.iter().map(|l| json!({
                 "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
+                "mount": l.mount, "since": l.since, "leaving": l.leaving,
             })).collect::<Vec<_>>(),
             "states": d.states.iter().map(|((k, g), s)| json!([k.to_string(), g, s])).collect::<Vec<_>>(),
             "last": d.last.iter().map(|((k, i), v)| json!([k.to_string(), i, v])).collect::<Vec<_>>(),
@@ -555,6 +787,10 @@ impl Ui {
                         vm: l["vm"].clone(),
                         focus: key(&l["focus"]),
                         was_top: l["wasTop"].as_bool().unwrap_or(false),
+                        mount: serde_json::from_value(l["mount"].clone()).ok(),
+                        shown: false,
+                        since: l["since"].as_u64().unwrap_or(0),
+                        leaving: l["leaving"].as_bool().unwrap_or(false),
                         built: 0,
                     })
                     .collect()
@@ -586,16 +822,251 @@ impl Ui {
                     .collect()
             })
             .unwrap_or_default();
+        self.sync_mount_layers();
         Ok(())
     }
 }
 
-/// A layer's node id: its screen's name (its probe path's first segment).
+/// A layer's node id: its screen's name (its probe path's first segment),
+/// or for a mounted layer its mount's (`scope:id`).
 fn layer_id(l: &Layer) -> String {
-    l.screen.clone()
+    match &l.mount {
+        Some(m) => format!("{}:{}", m.scope, m.id),
+        None => l.screen.clone(),
+    }
 }
 
 /// The host-less build `end` falls back on.
 pub(crate) fn build_without_host(ui: &mut Ui) {
     ui.build_layers(&NoEnv);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::doc::UiDocument;
+    use crate::reactive::session::Command;
+    use crate::{InputFrame, UiDesc, UiKey, Viewport};
+    use std::collections::BTreeMap;
+
+    const HUD: &str = r#"<meta name="component" content="hud">
+<column id="Hud"><text id="Gold">gold</text><button id="Map">map</button></column>"#;
+    const PAUSE: &str = r#"<meta name="screen" content="pause" data-layer="modal" data-pause="true" data-focus="Resume">
+<column id="Menu"><text id="Vol">{$volume}</text><button id="Quit">quit</button><button id="Resume">resume</button></column>"#;
+
+    fn ui_with(docs: &[(&str, &str)]) -> Ui {
+        let mut ui = Ui::new(UiDesc::default());
+        for (name, text) in docs {
+            ui.define_document(UiDocument::parse(name, text).unwrap());
+        }
+        ui.reactive
+            .execute(Command::Signal {
+                source: SourceId::new("test", "volume"),
+                initial: json!("half"),
+                readable: false,
+            })
+            .unwrap();
+        ui
+    }
+
+    fn mount(ui: &mut Ui, id: &str, document: &str) {
+        let inputs = BTreeMap::from([("volume".into(), SourceId::new("test", "volume"))]);
+        ui.reactive
+            .execute(Command::Signal {
+                source: SourceId::new("test", "_"),
+                initial: json!(0),
+                readable: false,
+            })
+            .ok();
+        ui.register_document_mount(SourceId::new("test", id), document.into(), inputs)
+            .unwrap();
+    }
+
+    fn step(ui: &mut Ui, input: InputFrame) -> crate::LayoutStats {
+        ui.begin(input, Viewport::new(640.0, 480.0));
+        ui.end().stats
+    }
+
+    fn escape() -> InputFrame {
+        InputFrame {
+            keys: vec![UiKey::Escape],
+            keys_held: vec!["Escape"],
+            keys_pressed: vec!["Escape"],
+            ..InputFrame::default()
+        }
+    }
+
+    fn texts(ui: &Ui) -> Vec<String> {
+        ui.probe_elements()
+            .into_iter()
+            .filter(|e| e.kind == "label")
+            .map(|e| e.text)
+            .collect()
+    }
+
+    /// A mounted screen document is a layer of the stack while it is
+    /// mounted: its store input binds, it pauses and holds input, takes its
+    /// declared focus and Back, and an idle frame does no work.
+    ///
+    /// Ways it could fail: the mount drawn as a plain overlay (no layer,
+    /// no pause), focus left on the HUD, Back leaving the mount drawn, or
+    /// the layer frame rebuilding the retained tree every tick.
+    #[test]
+    fn a_mounted_screen_is_a_layer_with_store_inputs() {
+        let mut ui = ui_with(&[("hud.svelte", HUD), ("pause.svelte", PAUSE)]);
+        mount(&mut ui, "hud", "hud");
+        for _ in 0..2 {
+            step(&mut ui, InputFrame::default());
+        }
+        assert!(ui.layer_stack().is_empty(), "a component is not a layer");
+        assert!(ui.game_input());
+        mount(&mut ui, "pause", "pause");
+        for _ in 0..3 {
+            step(&mut ui, InputFrame::default());
+        }
+        let stack = ui.layer_stack();
+        assert_eq!(stack.len(), 1);
+        assert_eq!(stack[0].mount, Some(SourceId::new("test", "pause")));
+        assert!(stack[0].active);
+        assert_eq!(stack[0].to_json()["mount"], "test:pause");
+        assert!(ui.paused() && !ui.game_input());
+        assert_eq!(ui.focus_path(0), "test:pause/Menu/Resume");
+        let events = ui.take_doc_events();
+        assert!(
+            events
+                .iter()
+                .any(|e| e.kind == "activate" && e.mount == "pause"),
+            "{events:?}"
+        );
+        assert!(texts(&ui).contains(&"half".to_string()));
+        // An idle frame evaluates and writes nothing.
+        // An idle frame evaluates nothing and writes only the focused
+        // control (it reads the focus every frame).
+        let idle = step(&mut ui, InputFrame::default());
+        assert_eq!((idle.bindings, idle.reconciled), (0, 1), "{idle:?}");
+        ui.reactive
+            .execute(Command::Set {
+                source: SourceId::new("test", "volume"),
+                value: json!("full"),
+                force: false,
+            })
+            .unwrap();
+        let changed = step(&mut ui, InputFrame::default());
+        assert_eq!(changed.bindings, 1, "{changed:?}");
+        assert!(texts(&ui).contains(&"full".to_string()));
+        // A snapshot carries the mounted layer.
+        let saved = ui.save_state();
+        // Back pops it: the layer and its mount go, the HUD stays.
+        step(&mut ui, escape());
+        step(&mut ui, InputFrame::default());
+        assert!(ui.layer_stack().is_empty());
+        assert!(!ui.paused() && ui.game_input());
+        assert_eq!(texts(&ui), ["gold"]);
+        ui.restore_state(&saved).unwrap();
+        for _ in 0..2 {
+            step(&mut ui, InputFrame::default());
+        }
+        assert_eq!(ui.layer_stack().len(), 1);
+        assert!(texts(&ui).contains(&"full".to_string()), "{:?}", texts(&ui));
+        // Unmounting removes the layer too.
+        ui.unmount_document(&SourceId::new("test", "pause"));
+        step(&mut ui, InputFrame::default());
+        assert!(ui.layer_stack().is_empty());
+        assert_eq!(texts(&ui), ["gold"]);
+    }
+
+    /// `@view-transition` covers the frame as a mounted layer joins and as
+    /// it leaves: the old view shows while the cover closes, the new one
+    /// while it opens, and an unmounted layer stays until it is covered.
+    #[test]
+    fn a_view_transition_covers_a_layer_joining_and_leaving() {
+        let page = format!(
+            "{PAUSE}<style>@view-transition {{ navigation: auto; types: wipe from-right; }}\n::view-transition-group(root) {{ animation-duration: 400ms; }}\n::view-transition {{ background-color: #102030; }}</style>"
+        );
+        let mut ui = ui_with(&[("hud.svelte", HUD), ("pause.svelte", &page)]);
+        let spec = ui.document("pause").unwrap().layer.clone();
+        let desc = spec.transition.expect("transition");
+        assert_eq!(
+            (desc.kind, desc.from),
+            (crate::ScreenWipe::Wipe, crate::Side::Right)
+        );
+        assert_eq!(desc.duration_ms, 400.0);
+        assert_eq!(desc.color.unwrap().rgb, [0x10, 0x20, 0x30]);
+        mount(&mut ui, "hud", "hud");
+        step(&mut ui, InputFrame::default());
+        mount(&mut ui, "pause", "pause");
+        let half = ui.cover_half_ticks(&desc) as usize;
+        assert!(half > 2);
+        // (shown, cover amount, revealing) per tick.
+        let mut seen = Vec::new();
+        for _ in 0..2 * half + 2 {
+            step(&mut ui, InputFrame::default());
+            let shown = texts(&ui).contains(&"half".to_string());
+            seen.push((shown, ui.cover.map(|c| (c.revealing, c.kind))));
+        }
+        let covering = seen
+            .iter()
+            .take_while(|(s, c)| !s && c.is_some_and(|c| !c.0))
+            .count();
+        assert_eq!(covering, half - 1, "{seen:?}");
+        assert!(seen[half - 1].0 && seen[half - 1].1.unwrap().0, "{seen:?}");
+        assert_eq!(seen[half - 1].1.unwrap().1, crate::ScreenWipe::Wipe);
+        assert!(
+            seen.last().is_some_and(|(s, c)| *s && c.is_none()),
+            "{seen:?}"
+        );
+        // Unmounting leaves it shown under the closing cover, then it goes.
+        ui.unmount_document(&SourceId::new("test", "pause"));
+        let mut seen = Vec::new();
+        for _ in 0..2 * half + 2 {
+            step(&mut ui, InputFrame::default());
+            seen.push((
+                texts(&ui).contains(&"half".to_string()),
+                ui.layer_stack().len(),
+                ui.cover.map(|c| c.revealing),
+            ));
+        }
+        assert!(seen[0].0 && seen[0].2 == Some(false), "{seen:?}");
+        let gone = seen.iter().position(|(s, ..)| !s).unwrap();
+        assert_eq!(gone, half - 1, "{seen:?}");
+        assert!(
+            seen[gone..].iter().all(|(s, n, _)| !s && *n == 0),
+            "{seen:?}"
+        );
+        assert_eq!(seen[gone].2, Some(true));
+        assert!(seen.last().unwrap().2.is_none(), "{seen:?}");
+        assert!(ui.document_mount_inputs().as_array().unwrap().len() == 1);
+    }
+
+    #[test]
+    fn view_transition_rules_are_a_screens_and_its_roots() {
+        for (text, wanted) in [
+            (
+                "<meta name=\"component\" content=\"c\"><column/><style>@view-transition { navigation: auto; }</style>",
+                "a view transition is a screen's",
+            ),
+            (
+                "<meta name=\"screen\" content=\"s\"><column/><style>::view-transition-old(root) { animation: none; }</style>",
+                "a layer's view transition is its root's",
+            ),
+            (
+                "<meta name=\"screen\" content=\"s\"><column/><style>@view-transition { navigation: auto; types: spin; }</style>",
+                "view-transition type spin",
+            ),
+            (
+                "<meta name=\"screen\" content=\"s\"><column/><style>@media (width > 10px) { @view-transition { navigation: auto; } }</style>",
+                "at the top level",
+            ),
+        ] {
+            let error = UiDocument::parse("t.svelte", text).unwrap_err().join("\n");
+            assert!(error.contains(wanted), "{error}");
+        }
+        // Pseudo-element rules alone transition nothing.
+        let doc = UiDocument::parse(
+            "t.svelte",
+            "<meta name=\"screen\" content=\"s\"><column/><style>::view-transition { background-color: #000000; }</style>",
+        )
+        .unwrap();
+        assert!(doc.layer.transition.is_none());
+    }
 }

@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "UI documents: mounted screens are layers",
+      "summary": "A `type screen` document mounted with scope.mount is a layer of the stack while it is mounted: its data-layer, data-pause, data-back and data-focus apply, its bindings read the mount's stores, Back or a pop trigger unmounts it, and snapshots carry it. Its root's path is `scope:id/<root id>`."
+    },
+    {
+      "member": "UiLayer.mount",
+      "summary": "The store-driven mount that shows a layer, `scope:id`; empty for a pushed screen."
+    },
+    {
+      "member": "UI documents: @view-transition",
+      "summary": "CSS View Transitions for a screen's layer: @view-transition { navigation: auto; types } covers the frame as the layer joins and leaves the stack (fade, wipe, iris, dissolve, slide, from-left/right/top/bottom); ::view-transition-group(root) animation-duration and ::view-transition background-color set its length and colour."
+    }
+  ]
+}

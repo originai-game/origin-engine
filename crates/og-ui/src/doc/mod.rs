@@ -23,6 +23,7 @@ mod syntax;
 pub mod topology;
 pub mod types;
 pub mod variables;
+mod view_transition;
 mod writeback;
 
 use crate::bind::{Expr, Format, Template};
@@ -149,6 +150,9 @@ pub struct LayerSpec {
     pub remember: bool,
     pub enter: Option<PresenceSpec>,
     pub exit: Option<PresenceSpec>,
+    /// Its CSS view transition (`@view-transition`): the frame is covered
+    /// as the layer joins the stack and as it leaves.
+    pub transition: Option<crate::ScreenTransitionDesc>,
 }
 
 impl LayerSpec {
@@ -174,6 +178,7 @@ impl LayerSpec {
             remember: true,
             enter: None,
             exit: None,
+            transition: None,
         }
     }
 }

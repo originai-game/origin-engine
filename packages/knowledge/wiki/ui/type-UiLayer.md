@@ -12,6 +12,7 @@ A layer of the stack (docs/ui.md §2.1), as its screen declares it.
 |---|---|---|---|---|---|---|
 | `serial` | `number` | `0` | — | — | — | Its number, unique for the UI's life: what push answered. |
 | `screen` | `string` | `""` | — | — | — | The screen's name; also its layer's id, the first segment of its elements' paths. |
+| `mount` | `string` | `""` | — | — | — | The store-driven mount that shows it, `scope:id` (a `type screen` document mounted with scope.mount is a layer while it is mounted); empty for a pushed screen. |
 | `kind` | `string` | `""` | — | — | — | hud, menu, modal, popover, toast, tooltip or system. |
 | `input` | `string` | `""` | — | — | — | game (input reaches gameplay), menu (input stays in the UI) or all. |
 | `capture` | `boolean` | `false` | — | — | — | It takes the pointer on its gaps too. |
@@ -30,6 +31,7 @@ struct UiLayer {
   doc "A layer of the stack (docs/ui.md §2.1), as its screen declares it."
   field serial u32 "Its number, unique for the UI's life: what push answered."
   field screen String "The screen's name; also its layer's id, the first segment of its elements' paths."
+  field mount String "The store-driven mount that shows it, `scope:id` (a `type screen` document mounted with scope.mount is a layer while it is mounted); empty for a pushed screen."
   field kind String "hud, menu, modal, popover, toast, tooltip or system."
   field input String "game (input reaches gameplay), menu (input stays in the UI) or all."
   field capture bool "It takes the pointer on its gaps too."

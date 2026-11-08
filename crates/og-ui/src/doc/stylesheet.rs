@@ -56,6 +56,22 @@ pub(super) fn apply(
         }
     }
     rules.retain(|rule| !rule.selector.starts_with("@keyframes "));
+    let mut opted = false;
+    for rule in rules
+        .iter()
+        .filter(|r| super::view_transition::selects(&r.selector))
+    {
+        let conditional = rule.query != AtQuery::default();
+        opted |=
+            super::view_transition::apply(doc, &rule.selector, &rule.body, rule.at, conditional)?;
+        if opted && doc.kind != DocKind::Screen {
+            return Err((rule.at, "a view transition is a screen's: its layer covers as it joins and leaves the stack".into()));
+        }
+    }
+    if !opted {
+        doc.layer.transition = None;
+    }
+    rules.retain(|r| !super::view_transition::selects(&r.selector));
     for rule in &mut rules {
         backdrop(rule)?;
     }

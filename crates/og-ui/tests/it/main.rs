@@ -38,6 +38,8 @@ mod layout;
 mod linebreak;
 #[path = "../motion.rs"]
 mod motion;
+#[path = "../mounted_layers.rs"]
+mod mounted_layers;
 #[path = "../perf.rs"]
 mod perf;
 #[path = "../probe.rs"]

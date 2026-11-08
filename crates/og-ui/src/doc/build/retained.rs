@@ -258,7 +258,7 @@ impl RetainedHost {
                 (document.clone(), document.root),
                 context,
                 None,
-                format!("{}:{}", mount.scope, mount.id),
+                root_path(&mount, &document),
                 env,
             ) {
                 Ok(root) => {
@@ -1450,6 +1450,20 @@ impl RetainedHost {
     }
 }
 
+/// A mount's root path: `scope:id`, and for a screen, whose layer is
+/// `scope:id`, its root's id under it (`scope:id/Menu`), as a pushed
+/// screen's root is `<screen>/<root id>`.
+fn root_path(mount: &SourceId, doc: &UiDocument) -> String {
+    let base = format!("{}:{}", mount.scope, mount.id);
+    if doc.kind != crate::doc::DocKind::Screen {
+        return base;
+    }
+    match doc.nodes.get(doc.root) {
+        Some(n) if !n.id.is_empty() => format!("{base}/{}", n.id),
+        _ => format!("{base}/Root"),
+    }
+}
+
 impl ElementInstance {
     fn build<'a>(
         &'a self,
@@ -1514,14 +1528,16 @@ impl Ui {
             (doc.clone(), doc.root),
             context,
             None,
-            format!("{}:{}", mount.scope, mount.id),
+            root_path(&mount, &doc),
             env,
         );
         let result = match root {
             Ok(root) => {
                 host.registrations.insert(mount.clone(), registration);
-                host.roots.insert(mount, root);
-                Ok(())
+                host.roots.insert(mount.clone(), root);
+                self.docs.retained = host;
+                self.sync_mount_layer(&mount, Some(document));
+                return Ok(());
             }
             Err(error) => {
                 host.remove_mount(self, &mount);
@@ -1532,7 +1548,20 @@ impl Ui {
         result
     }
 
+    /// Unmounts a mount. A mounted screen leaves the stack with it; when its
+    /// screen has a view transition, the mount stays until the cover has
+    /// closed over it.
     pub fn unmount_document(&mut self, mount: &SourceId) {
+        if let Some(k) = self.mount_layer(mount) {
+            if self.layer_leaves(k) {
+                return;
+            }
+            self.docs.layers.layers.remove(k);
+        }
+        self.finish_unmount(mount);
+    }
+
+    pub(crate) fn finish_unmount(&mut self, mount: &SourceId) {
         let mut host = std::mem::take(&mut self.docs.retained);
         host.remove_mount(self, mount);
         self.docs.retained = host;
@@ -1550,8 +1579,35 @@ impl Ui {
             host.reconciled = 0;
             let mut events = Vec::new();
             let mut writes = Vec::new();
-            for root in host.roots.values().cloned().collect::<Vec<_>>() {
-                if let Err(error) = host.emit(self, &root, env, &mut events, &mut writes) {
+            for (mount, root) in host
+                .roots
+                .iter()
+                .map(|(m, r)| (m.clone(), r.clone()))
+                .collect::<Vec<_>>()
+            {
+                // A mounted screen is a layer: its root is emitted inside the
+                // layer's frame, and released while a layer above hides it.
+                let layer = self.mount_layer(&mount);
+                let frame = layer.map(|k| {
+                    let (frame, lead) = self.open_layer_frame(k);
+                    events.extend(lead);
+                    let shown = frame.is_some();
+                    let was = std::mem::replace(&mut self.docs.layers.layers[k].shown, shown);
+                    if was && !shown {
+                        host.release(self, &root);
+                    }
+                    frame
+                });
+                if matches!(frame, Some(None)) {
+                    continue;
+                }
+                let emitted = host.emit(self, &root, env, &mut events, &mut writes);
+                if let Some(Some(frame)) = frame {
+                    let doc = &self.docs.docs[&host.registrations[&mount].document];
+                    let path = root_path(&mount, doc);
+                    events.extend(self.close_layer_frame(frame, &path));
+                }
+                if let Err(error) = emitted {
                     result = Err(error);
                     break;
                 }

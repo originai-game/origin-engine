@@ -27,15 +27,35 @@ impl Ui {
             source.validate()?;
         }
         let registration = Registration { document, inputs };
+        let document = registration.document.clone();
         if self.docs.retained.registrations.get(&mount) == Some(&registration) {
+            self.sync_mount_layer(&mount, Some(&document));
             return Ok(());
         }
         let mut host = std::mem::take(&mut self.docs.retained);
         host.remove_mount(self, &mount);
         host.registrations.insert(mount.clone(), registration);
-        host.pending_mounts.insert(mount);
+        host.pending_mounts.insert(mount.clone());
         self.docs.retained = host;
+        self.sync_mount_layer(&mount, Some(&document));
         Ok(())
+    }
+
+    /// After a restore: a mounted layer whose mount is gone leaves the
+    /// stack, and a mounted screen without one joins it.
+    pub(crate) fn sync_mount_layers(&mut self) {
+        let mounted = &self.docs.retained.registrations;
+        self.docs
+            .layers
+            .layers
+            .retain(|l| l.mount.as_ref().is_none_or(|m| mounted.contains_key(m)));
+        let all: Vec<_> = mounted
+            .iter()
+            .map(|(m, r)| (m.clone(), r.document.clone()))
+            .collect();
+        for (mount, document) in all {
+            self.sync_mount_layer(&mount, Some(&document));
+        }
     }
 
     pub(crate) fn unmount_scope(&mut self, scope: &str) {
@@ -47,8 +67,12 @@ impl Ui {
             .filter(|mount| mount.scope == scope)
             .cloned()
             .collect();
+        // Disposal is immediate: a leaving cover would read removed stores.
         for mount in mounts {
-            self.unmount_document(&mount);
+            if let Some(k) = self.mount_layer(&mount) {
+                self.docs.layers.layers.remove(k);
+            }
+            self.finish_unmount(&mount);
         }
         if let Some(managed) = &mut self.docs.retained.managed {
             managed.retain(|id, _| id.scope != scope);

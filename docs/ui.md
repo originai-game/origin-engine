@@ -292,6 +292,33 @@ behaviors are not yet exposed by TypeScript mount methods on `UiScope`:
   including after restore. Keys are not escaped render paths; actions outside
   keyed rows carry no row key.
 
+A `type screen` document mounted with `scope.mount(id, document, inputs)`
+is a layer of the stack for as long as it is mounted. Its
+`<meta name="screen" data-layer … data-pause … data-back … data-focus …>`
+decides where it sits and what it holds, exactly as for a pushed screen:
+input routing, inert layers under a menu, pause, focus memory, and the
+`activate` and `deactivate` events. Its bindings read the mount's stores,
+not a viewmodel. Back (with `data-back="pop"`) or a `pop` trigger unmounts
+it. Its layer's id is the mount's `scope:id`, and its root's path is
+`scope:id/<root id>`, as a pushed screen's is `<screen>/<root id>`.
+`og.ui.layers` names the mount (`UiLayer.mount`). Each layer adds one
+wrapper node per frame; the retained tree under it is written only where
+it changed.
+
+A screen opts into a CSS view transition with `@view-transition
+{ navigation: auto; types: wipe from-right; }`. The frame is covered as the
+layer joins the stack and again as it leaves. The old view stays under the
+closing cover, and the new view shows as the cover opens; an unmounted layer
+stays until the cover has closed over it. `types` takes the engine's covers
+(`fade`, `wipe`, `iris`, `dissolve`, `slide`) and `from-left`, `from-right`,
+`from-top` or `from-bottom`. `::view-transition-group(root)
+{ animation-duration }` is the whole transition, and `::view-transition
+{ background-color }` is the cover's colour. Only the root transitions:
+`view-transition-name` morphs and `::view-transition-old/new` are refused.
+Reduced motion makes every cover a fade. A component cannot declare a view
+transition. No `-og-` name is needed: View Transitions Level 2 already names
+every part.
+
 The authoring contract below also includes requirements whose TypeScript
 wiring remains pending:
 

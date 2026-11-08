@@ -162,6 +162,11 @@ local styles and `og style new` remain available.
   Components use `name="component"`. Props use `name="prop:volume"`,
   `content="number"`, and `data-doc="…"`; actions use `name="action:back"`;
   fixtures use `name="fixture:default"` with JSON content.
+- Mount a screen with stores, not a viewmodel: `og.ui.scope(world,
+  "menus").mount("pause", "pause", { volume })` puts it on the layer stack
+  while it is mounted; Back unmounts it. Give it a CSS view transition with
+  `@view-transition { navigation: auto; types: iris; }` and
+  `::view-transition-group(root) { animation-duration: 500ms; }`.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.
