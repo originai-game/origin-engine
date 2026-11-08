@@ -409,6 +409,7 @@ impl Ui {
                             count,
                             radius,
                             color,
+                            duration_ms,
                         } => {
                             ev.kind = "burst".into();
                             bursts.push(BurstRun {
@@ -417,6 +418,7 @@ impl Ui {
                                 count: *count,
                                 radius: *radius,
                                 color: *color,
+                                duration_ms: *duration_ms,
                             });
                         }
                         EventKind::State { group, state } => {
@@ -762,12 +764,14 @@ impl Ui {
                                 count,
                                 radius,
                                 color,
+                                duration_ms,
                             } if !reduced => css_bursts.push(BurstRun {
                                 key: self.nodes[i].key,
                                 since: now,
                                 count: *count,
                                 radius: *radius,
                                 color: *color,
+                                duration_ms: *duration_ms,
                             }),
                             _ => {}
                         }
@@ -1033,12 +1037,13 @@ impl Ui {
 
         // Bursts an event started.
         m.bursts.retain(|b| {
+            let ms = if b.duration_ms > 0.0 {
+                b.duration_ms
+            } else {
+                self.theme.durations_ms.slow + self.theme.durations_ms.base
+            };
             self.tree.by_key.contains_key(&b.key)
-                && now.saturating_sub(b.since)
-                    < u64::from(crate::style::Theme::ticks(
-                        self.theme.durations_ms.slow + self.theme.durations_ms.base,
-                        tps,
-                    ))
+                && now.saturating_sub(b.since) < u64::from(crate::style::Theme::ticks(ms, tps))
         });
 
         // Keep what was used; drop the memory of elements that are gone.

@@ -141,20 +141,6 @@ pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
     json!({ "zoom": zoom, "centerX": x, "centerY": y }).to_string()
 }
 
-pub fn og_ui_burst(desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.burst", |ui| {
-        let t = *ui.theme();
-        ui.burst(og_ui::BurstDesc {
-            count: d["count"].as_u64().unwrap_or(0).min(64) as u32,
-            color: paint(&t, &d["color"]),
-            radius: f(&d, "radius", 0.0),
-            duration_ms: f(&d, "durationMs", 0.0),
-            delay_ms: f(&d, "delayMs", 0.0),
-        })
-    });
-}
-
 pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let texture = d["texture"].as_f64().and_then(|h| {

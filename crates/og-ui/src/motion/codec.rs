@@ -391,6 +391,7 @@ impl W<'_> {
             self.u32(b.count);
             self.f32(b.radius);
             self.srgba(b.color);
+            self.f32(b.duration_ms);
         }
     }
 }
@@ -767,7 +768,9 @@ impl R<'_> {
         })
     }
 
-    pub fn motion(&mut self) -> Option<MotionState> {
+    /// A UI state's motion, saved at `version` (a burst's duration came in
+    /// at 23).
+    pub fn motion(&mut self, version: u32) -> Option<MotionState> {
         let mut m = MotionState::default();
         for _ in 0..self.u32()? {
             let k = self.u64()?;
@@ -905,6 +908,7 @@ impl R<'_> {
                 count: self.u32()?,
                 radius: self.f32()?,
                 color: self.srgba()?,
+                duration_ms: if version >= 23 { self.f32()? } else { 0.0 },
             });
         }
         Some(m)

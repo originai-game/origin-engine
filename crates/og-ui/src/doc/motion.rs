@@ -640,23 +640,32 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
         for (name, value) in super::css::split_decls(body)? {
             match name.as_str() {
                 "-og-burst" => {
-                    // `-og-burst: <count> [<radius>px] [<colour>]`: rays and
-                    // sparks from the element when the iteration reaches it.
+                    // `-og-burst: <count> [<radius>px] [<colour>] [<time>]`:
+                    // rays and sparks from the element when the iteration
+                    // reaches it, flying for the time.
                     let mut count = None;
                     let mut radius = 0.0;
                     let mut color = None;
+                    let mut duration_ms = 0.0;
                     for w in value.split_whitespace() {
+                        let ms = w
+                            .strip_suffix("ms")
+                            .map(|n| (n, 1.0))
+                            .or_else(|| w.strip_suffix('s').map(|n| (n, 1000.0)))
+                            .and_then(|(n, k)| n.parse::<f32>().ok().map(|v| v * k));
                         if let Ok(n) = w.parse::<u32>()
                             && count.is_none()
                         {
                             count = Some(n);
+                        } else if let Some(ms) = ms.filter(|v| *v >= 0.0) {
+                            duration_ms = ms;
                         } else if let Some(px) =
                             w.strip_suffix("px").and_then(|n| n.parse::<f32>().ok())
                         {
                             radius = px;
                         } else {
                             let c = crate::svg::color(w).map_err(|_| {
-                                format!("-og-burst: `{w}` is a count, a radius in px or a colour")
+                                format!("-og-burst: `{w}` is a count, a radius in px, a colour or a time")
                             })?;
                             let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
                             color = Some(crate::style::Srgba {
@@ -674,6 +683,7 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
                                 count,
                                 radius,
                                 color,
+                                duration_ms,
                             },
                         ));
                     }

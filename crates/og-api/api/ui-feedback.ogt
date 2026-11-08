@@ -1,6 +1,6 @@
   # ── components: feedback (docs/ui.md §2) ─────────────────
   # Built only from the public primitives (open, setDraw, props, label,
-  # icon, particles, anchors), each with named parts a style dresses
+  # icon, anchors), each with named parts a style dresses
   # (`Notification.card[achievement]`), a viewmodel, state groups the
   # probe can force (`ui:state:<path>.<group>=<state>`), motion on the
   # style's tokens, sounds from its feedback set, an accessibility role
@@ -120,42 +120,4 @@
     param value f64 "The number (times 10^format.exponent)."
     param format NumberFormatDesc "How to write it."
     returns String
-  }
-
-  enum CelebrationKind {
-    doc "Which celebration plays."
-    variant confetti "Confetti falls over the screen from its top edge, tumbling and fluttering."
-    variant burst "Rays, sparks and a ring thrown from the open container's centre (a reward, a level's star)."
-    variant levelUp "A level up: a ring of light expands, rays turn behind a big LEVEL UP and the new level, sparks rise."
-    variant fireworks "Shells rise and burst in rings across the top of the screen."
-  }
-
-  struct CelebrationDesc {
-    doc "A celebration effect."
-    desc true
-    field kind CelebrationKind "Which one."
-    field at u32 "og.ui.tick() when it fires: a later tick fires it again."
-    field colors List.Paint "Its colours; empty is the primary, gold and the style's chart series."
-    field intensity f32 "How much: confetti count and burst reach scale by it." {
-      default 1
-      min 0
-      max 3
-    }
-    field title String "levelUp: the big word (LEVEL UP)." {
-      default "Level up"
-    }
-    field value String "levelUp: the new level (12)."
-    field durationMs f32 "How long it lasts; 0 is the kind's (confetti 3 s, burst 1 s, levelUp 2.6 s, fireworks 3.5 s)." {
-      unit ms
-      min 0
-    }
-  }
-
-  fn celebration {
-    doc "A celebration: confetti over the whole screen, a burst from the container it is built in, a level-up flourish centred on the screen, or fireworks. Particles are the UI's own (seeded, so a replay throws the same), drawn over the HUD and under dialogs; under reduced motion only the level-up's text and a soft glow show. Plays reward (levelUp, fireworks) or success (confetti, burst) when it fires."
-    doc "Parts: Celebration.ring, Celebration.rays, Celebration.title, Celebration.value (level up). States: group play (idle, playing). Accessibility: a level up is a status named by its title and value. Probe ids: <id>, <id>/Title, <id>/Value."
-    host false
-    param id String "Its id."
-    param desc CelebrationDesc "Which one and when."
-    returns Void
   }

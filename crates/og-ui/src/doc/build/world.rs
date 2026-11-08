@@ -145,34 +145,296 @@ pub(super) fn panel_desc(
     })
 }
 
-/// `-og-emitter: <rate> [square|circle|diamond] [<size>px] [<colour>…]`.
-fn emitter_desc(v: &str) -> Result<Option<crate::particles::ParticlesDesc>, String> {
+/// A time in CSS's units (`1.4s`, `1400ms`), in ms.
+fn time_ms(w: &str) -> Option<f32> {
+    let (n, k) = match w.strip_suffix("ms") {
+        Some(n) => (n, 1.0),
+        None => (w.strip_suffix('s')?, 1000.0),
+    };
+    n.parse::<f32>().ok().filter(|v| *v >= 0.0).map(|v| v * k)
+}
+
+/// An `-og-emitter` preset: its particles, its rate and its palette roles.
+fn preset(name: &str) -> Option<(crate::particles::ParticlesDesc, &'static [&'static str])> {
+    use crate::particles::{EmitFrom, ParticlesDesc};
+    use og_render::UiParticleShape::{Circle, Diamond, Square};
+    use std::f32::consts::{FRAC_PI_2, TAU};
+    let d = |rate, life, shape, size: (f32, f32), travel, dir, spread, gravity, spin, end| {
+        ParticlesDesc {
+            rate,
+            lifetime_ms: life,
+            shape,
+            size: og_core::glam::Vec2::new(size.0, size.1),
+            travel,
+            direction: dir,
+            spread,
+            gravity,
+            spin,
+            from: EmitFrom::Area,
+            end_scale: end,
+            fade: true,
+            ..ParticlesDesc::default()
+        }
+    };
+    let (up, down) = (-FRAC_PI_2, FRAC_PI_2);
+    Some(match name {
+        "sparkles" => (
+            d(
+                5.0,
+                1400.0,
+                Diamond,
+                (5.0, 5.0),
+                (6.0, 22.0),
+                up,
+                1.2,
+                -6.0,
+                1.0,
+                0.0,
+            ),
+            &["highlight", "gold", "primary"],
+        ),
+        "confetti" => (
+            d(
+                18.0,
+                2600.0,
+                Square,
+                (10.0, 6.0),
+                (260.0, 620.0),
+                down,
+                0.9,
+                320.0,
+                6.0,
+                1.0,
+            ),
+            &["primary", "gold", "highlight", "success", "info"],
+        ),
+        "embers" => (
+            d(
+                10.0,
+                1800.0,
+                Circle,
+                (3.0, 3.0),
+                (40.0, 110.0),
+                up,
+                0.5,
+                -30.0,
+                0.0,
+                0.2,
+            ),
+            &["warn", "gold", "danger"],
+        ),
+        "snow" => (
+            d(
+                8.0,
+                4200.0,
+                Circle,
+                (4.0, 4.0),
+                (60.0, 140.0),
+                down,
+                0.5,
+                10.0,
+                0.0,
+                0.8,
+            ),
+            &["ink"],
+        ),
+        "bubbles" => (
+            d(
+                4.0,
+                2400.0,
+                Circle,
+                (8.0, 8.0),
+                (30.0, 80.0),
+                up,
+                0.4,
+                -20.0,
+                0.0,
+                1.6,
+            ),
+            &["info", "primarySoft"],
+        ),
+        "dust" => (
+            d(
+                3.0,
+                5000.0,
+                Circle,
+                (2.0, 2.0),
+                (8.0, 30.0),
+                up,
+                TAU,
+                0.0,
+                0.0,
+                1.0,
+            ),
+            &["inkFaint", "sheen"],
+        ),
+        // A ring of streaks thrown out from the centre (a reward landing).
+        "sparks" => (
+            ParticlesDesc {
+                from: EmitFrom::Center,
+                align: true,
+                ..d(
+                    0.0,
+                    900.0,
+                    Diamond,
+                    (7.0, 7.0),
+                    (40.0, 140.0),
+                    up,
+                    TAU,
+                    0.0,
+                    2.0,
+                    0.2,
+                )
+            },
+            &["primary", "gold", "highlight"],
+        ),
+        // A shell bursting: round sparks falling as they spread.
+        "fireworks" => (
+            ParticlesDesc {
+                from: EmitFrom::Center,
+                ..d(
+                    0.0,
+                    1500.0,
+                    Circle,
+                    (5.0, 5.0),
+                    (90.0, 170.0),
+                    up,
+                    TAU,
+                    70.0,
+                    0.0,
+                    0.4,
+                )
+            },
+            &["primary", "gold", "highlight"],
+        ),
+        _ => return None,
+    })
+}
+
+/// The `-og-emitter` presets, as the error lists them.
+const PRESETS: &str = "sparkles, confetti, embers, snow, bubbles, dust, sparks, fireworks";
+
+/// `-og-emitter: [<preset>] [<rate>] [burst <n>] [for <time>] [life <time>]
+/// [<v>px/s [<v>px/s]] [up|down|<n>deg] [square|circle|diamond] [<size>px]
+/// [<colour>…] | none`: a preset's particles (its palette roles in
+/// `palette`), each later word over it.
+fn emitter_desc(
+    v: &str,
+    palette: &crate::theme::Palette,
+) -> Result<Option<crate::particles::ParticlesDesc>, String> {
     use og_render::UiParticleShape;
     if v.trim() == "none" {
         return Ok(None);
     }
-    let mut d = crate::particles::ParticlesDesc {
-        fade: true,
-        ..Default::default()
+    let mut words = v.split_whitespace().peekable();
+    let (mut d, roles) = match words.peek().and_then(|w| preset(w)) {
+        Some(p) => {
+            words.next();
+            p
+        }
+        None => (
+            crate::particles::ParticlesDesc {
+                fade: true,
+                ..Default::default()
+            },
+            &[][..],
+        ),
     };
+    let named = !roles.is_empty();
     let mut rate = None;
-    for w in v.split_whitespace() {
+    let mut speeds = Vec::new();
+    let mut colors = Vec::new();
+    let mut size = None;
+    let mut life = None;
+    let after = |k: &str, w: Option<&str>| {
+        w.ok_or_else(|| format!("-og-emitter: `{k}` takes a value after it"))
+            .map(str::to_string)
+    };
+    while let Some(w) = words.next() {
         match w {
             "square" => d.shape = UiParticleShape::Square,
             "circle" => d.shape = UiParticleShape::Circle,
             "diamond" => d.shape = UiParticleShape::Diamond,
+            "up" => d.direction = -std::f32::consts::FRAC_PI_2,
+            "down" => d.direction = std::f32::consts::FRAC_PI_2,
+            "burst" => {
+                let n = after(w, words.next())?;
+                d.burst = n
+                    .parse()
+                    .map_err(|_| format!("-og-emitter: burst `{n}` is a count"))?;
+            }
+            "for" | "life" => {
+                let t = after(w, words.next())?;
+                let ms = time_ms(&t)
+                    .ok_or_else(|| format!("-og-emitter: {w} `{t}` is a time (1.4s, 900ms)"))?;
+                if w == "for" {
+                    d.duration_ms = ms;
+                } else {
+                    life = Some(ms);
+                }
+            }
             _ if rate.is_none() && w.parse::<f32>().is_ok() => rate = w.parse().ok(),
             _ => {
-                if let Some(px) = w.strip_suffix("px").and_then(|n| n.parse::<f32>().ok()) {
-                    d.size = og_core::glam::Vec2::splat(px);
+                if let Some(v) = w.strip_suffix("px/s").and_then(|n| n.parse::<f32>().ok()) {
+                    speeds.push(v);
+                } else if let Some(px) = w.strip_suffix("px").and_then(|n| n.parse::<f32>().ok()) {
+                    size = Some(px);
+                } else if let Some(deg) = w.strip_suffix("deg").and_then(|n| n.parse::<f32>().ok())
+                {
+                    // CSS angles: 0deg up, clockwise.
+                    d.direction = (deg - 90.0).to_radians();
+                } else if !named && rate.is_none() && colors.is_empty() && !w.starts_with('#') {
+                    return Err(format!(
+                        "-og-emitter: `{w}` is not a preset ({PRESETS}) or a rate"
+                    ));
                 } else {
-                    d.colors.push(srgba(w)?);
+                    colors.push(srgba(w)?);
                 }
             }
         }
     }
-    d.rate = rate
-        .ok_or("-og-emitter takes a rate a second first: `-og-emitter: 12 diamond 6px #ffd166`")?;
+    if let Some(r) = rate {
+        d.rate = r;
+    } else if !named && d.burst == 0 {
+        return Err(
+            "-og-emitter takes a preset or a rate a second first: `-og-emitter: sparkles` or `-og-emitter: 12 diamond 6px #ffd166`"
+                .into(),
+        );
+    }
+    if let Some(px) = size {
+        // A preset's shape kept, scaled to the size's longer side.
+        d.size = if named {
+            d.size * (px / d.size.max_element().max(1e-3))
+        } else {
+            og_core::glam::Vec2::splat(px)
+        };
+    }
+    // A speed is px a second over the particle's life (its travel).
+    let old_life = if d.lifetime_ms > 0.0 {
+        d.lifetime_ms
+    } else {
+        900.0
+    };
+    if let Some(ms) = life {
+        let k = ms / old_life;
+        d.travel = (d.travel.0 * k, d.travel.1 * k);
+        d.lifetime_ms = ms;
+    }
+    let secs = if d.lifetime_ms > 0.0 {
+        d.lifetime_ms
+    } else {
+        900.0
+    } / 1000.0;
+    match speeds.as_slice() {
+        [] => {}
+        [v] => d.travel = (v * secs * 0.7, v * secs),
+        [a, b, ..] => d.travel = (a.min(*b) * secs, a.max(*b) * secs),
+    }
+    d.colors = if colors.is_empty() {
+        roles.iter().filter_map(|r| palette.get(r)).collect()
+    } else {
+        colors
+    };
     Ok(Some(d))
 }
 
@@ -218,7 +480,11 @@ impl Ui {
         i: usize,
         path: &str,
     ) {
-        let emitter = r.str("emitter").map(emitter_desc).transpose();
+        let palette = self.theme().palette;
+        let emitter = r
+            .str("emitter")
+            .map(|v| emitter_desc(v, &palette))
+            .transpose();
         let meta = r.str("meta").map(meta_desc).transpose();
         match (emitter, meta) {
             (Ok(e), Ok(m)) => self.document_effects(i, e.flatten(), m.flatten()),
@@ -818,6 +1084,66 @@ mod tests {
         assert_eq!(bars(&ui), 0);
     }
 
+    /// `-og-emitter`'s presets, burst, emission time, life and speed:
+    /// a burst fires once when its element first stands, and `for` stops
+    /// the rate.
+    ///
+    /// Ways it could fail: a burst that fires every tick (or never), a rate
+    /// that runs past its `for`, a preset word read as a colour.
+    #[test]
+    fn css_emitter_presets_burst_once_and_stop_after_their_time() {
+        let palette = Ui::new(UiDesc::default()).theme().palette;
+        let d = super::emitter_desc("confetti 70 burst 110 for 1.4s life 2s 200px/s", &palette)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            (d.rate, d.burst, d.duration_ms, d.lifetime_ms),
+            (70.0, 110, 1400.0, 2000.0)
+        );
+        assert_eq!(d.travel, (280.0, 400.0));
+        assert!(
+            !d.colors.is_empty(),
+            "the preset's colours from the palette"
+        );
+        assert!(
+            super::emitter_desc("sparkle", &palette)
+                .unwrap_err()
+                .contains("sparkles")
+        );
+        let doc = r#"<meta name="component" content="fx">
+<div id="Root"><div id="Gem"></div></div>
+<style>#Gem { width: 40px; height: 40px; -og-emitter: sparks 600 burst 20 for 50ms; }</style>"#;
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(UiDocument::parse("fx.svelte", doc).unwrap());
+        ui.mount_document(
+            SourceId::new("test", "fx"),
+            "fx",
+            BTreeMap::new(),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let mut spawned = Vec::new();
+        for _ in 0..12 {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            spawned.push(
+                ui.world
+                    .state
+                    .particles
+                    .values()
+                    .map(|e| e.spawned)
+                    .sum::<u32>(),
+            );
+        }
+        // Once it stands: 20 at once and 10 a tick for the 50 ms (three
+        // ticks at 60), then none.
+        let first = spawned.iter().position(|&n| n > 0).unwrap();
+        assert_eq!(spawned[first], 30, "{spawned:?}");
+        assert_eq!(spawned[11], 50, "{spawned:?}");
+    }
+
     /// `-og-emitter` and `-og-meta` stay registered on the ticks their
     /// element is not built again, and leave with it; `-og-burst` in a
     /// keyframe is a burst event.
@@ -835,14 +1161,14 @@ mod tests {
 <style>
 #Gem { width: 40px; height: 40px; -og-emitter: 30 diamond 6px #ffd166; animation: pop 1s; }
 #Hurt { -og-meta: vignette #aa0000; opacity: 0.5; }
-@keyframes pop { 50% { -og-burst: 24 48px #ffffff; } }
+@keyframes pop { 50% { -og-burst: 24 48px #ffffff 600ms; } }
 </style>"#;
         let mut ui = Ui::new(UiDesc::default());
         let parsed = UiDocument::parse("fx.svelte", doc).unwrap();
         let pop = &parsed.keyframes.iter().find(|(k, _)| k == "pop").unwrap().1;
         assert!(matches!(
             pop.events.as_slice(),
-            [(o, crate::motion::EventKind::Burst { count: 24, .. })] if *o == 0.5
+            [(o, crate::motion::EventKind::Burst { count: 24, duration_ms, .. })] if *o == 0.5 && *duration_ms == 600.0
         ));
         ui.define_document(parsed);
         let on = SourceId::new("test", "on");

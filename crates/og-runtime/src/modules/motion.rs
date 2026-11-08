@@ -433,6 +433,7 @@ fn event_kind(theme: &Theme, v: &Value) -> Option<EventKind> {
             count: v["count"].as_u64().map_or(0, |n| n as u32),
             radius: f(v, "radius", 0.0),
             color: paint(theme, &json!({ "color": v["color"] })),
+            duration_ms: 0.0,
         },
         "state" => EventKind::State {
             group: string(&v["group"]),

@@ -1329,9 +1329,6 @@ impl UiApi for WebHost {
     fn og_ui_mass_count(&self, template: u32) -> u32 {
         rt::og_ui_mass_count(template)
     }
-    fn og_ui_particles(&self, desc: Option<String>) {
-        rt::og_ui_particles(desc)
-    }
     fn og_ui_meta(&self, id: String, desc: Option<String>) {
         rt::og_ui_meta(id, desc)
     }
@@ -1380,9 +1377,6 @@ impl UiApi for WebHost {
     }
     fn og_ui_scroll_into_view(&self, path: String, center: bool) {
         rt::og_ui_scroll_into_view(path, center)
-    }
-    fn og_ui_burst(&self, desc: Option<String>) {
-        rt::og_ui_burst(desc)
     }
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String {
         rt::og_ui_screen_transition(id, screen, desc)

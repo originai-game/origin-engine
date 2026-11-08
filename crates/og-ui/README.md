@@ -755,9 +755,6 @@ og-tests-cooked's `tests/materials_gfx.rs` renders them.
   by the tick, f64) from what it shows to `value` whenever `value` changes;
   the first count starts at `from` (none: no count). Grouped with commas,
   decimals, prefix and suffix; a style's `motion.pop` bumps it on landing.
-- `burst(BurstDesc)`: rays and sparks from the element built just before,
-  once, from when it first appears (the results stars); off under reduced
-  motion.
 - `screen_transition(id, wanted, ScreenTransitionDesc) -> ScreenTransition`:
   call every tick with the screen the game wants and build `shown`. A change
   starts a cover over the old screen (half the duration), switches `shown`

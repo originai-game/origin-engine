@@ -144,8 +144,6 @@ module ui {
 | [`og.ui.memory`](ui/fn-memory.md) | function | `(id: string, initial: number): number` | A number the UI keeps for an id under the open element (a component's tab, a count-up's start tick), in snapshots like the rest of the UI state. |
 | [`og.ui.remember`](ui/fn-remember.md) | function | `(id: string, value: number): void` | Set a number memory (see memory). |
 | [`og.ui.tick`](ui/fn-tick.md) | function | `(): number` | Frames the UI has built: its clock, for animations by the tick. |
-| [`BurstDesc`](ui/type-BurstDesc.md) | desc struct |  | Rays and sparks thrown from an element. |
-| [`og.ui.burst`](ui/fn-burst.md) | function | `(desc?: BurstDesc): void` | Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. |
 | [`ScreenWipe`](ui/type-ScreenWipe.md) | enum |  | How a screen transition covers the old screen and reveals the new one. |
 | [`WipeSide`](ui/type-WipeSide.md) | enum |  | Where a wipe or a slide comes from. |
 | [`ScreenTransitionDesc`](ui/type-ScreenTransitionDesc.md) | desc struct |  | How a screen transition looks. |
@@ -178,9 +176,6 @@ module ui {
 | [`ViewFrameDesc`](ui/type-ViewFrameDesc.md) | desc struct |  | A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad. |
 | [`ViewFrameResult`](ui/type-ViewFrameResult.md) | struct |  | A view frame's turn, tilt and zoom after this tick's input, and its viewport's answer. |
 | [`og.ui.viewFrame`](ui/fn-viewFrame.md) | function | `(id: string, desc?: ViewFrameDesc): ViewFrameResult` | A viewport in a frame (docs/ui.md §3.3, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with … |
-| [`EmitterPreset`](ui/type-EmitterPreset.md) | enum |  | A particle look. |
-| [`EmitterDesc`](ui/type-EmitterDesc.md) | desc struct |  | An ambient particle emitter over the area of its parent. |
-| [`og.ui.emitter`](ui/fn-emitter.md) | function | `(id: string, desc?: EmitterDesc): void` | An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. |
 | [`EffectLayerDesc`](ui/type-EffectLayerDesc.md) | desc struct |  | A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`. |
 | [`og.ui.effectLayer`](ui/fn-effectLayer.md) | function | `(id: string, desc: EffectLayerDesc, build: UiBuild): void` | A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hi… |
 | [`UiProp`](ui/type-UiProp.md) | enum |  | An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. |
@@ -283,9 +278,6 @@ module ui {
 | [`Notation`](ui/type-Notation.md) | enum |  | How a number is written. |
 | [`NumberFormatDesc`](ui/type-NumberFormatDesc.md) | desc struct |  | How og.ui.formatNumber and the counters write a number. |
 | [`og.ui.formatNumber`](ui/fn-formatNumber.md) | function | `(value: number, format?: NumberFormatDesc): string` | A number written in a notation: grouped, compact, idle letters, scientific or engineering, with a sign, prefix and suffix and the locale's separators, and past 1e308 through its exponent. |
-| [`CelebrationKind`](ui/type-CelebrationKind.md) | enum |  | Which celebration plays. |
-| [`CelebrationDesc`](ui/type-CelebrationDesc.md) | desc struct |  | A celebration effect. |
-| [`og.ui.celebration`](ui/fn-celebration.md) | function | `(id: string, desc?: CelebrationDesc): void` | A celebration: confetti over the whole screen, a burst from the container it is built in, a level-up flourish centred on the screen, or fireworks. |
 | [`VectorArt`](ui/type-VectorArt.md) | handle |  | A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill. |
 | [`UiMaterial`](ui/type-UiMaterial.md) | handle |  | A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through. |
 | [`VectorArt()`](#column-VectorArt) | column kind |  | A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill. |
@@ -337,9 +329,6 @@ module ui {
 | [`og.ui.defineMass`](ui/fn-defineMass.md) | function | `(name: string, desc?: MassTemplateDesc): Result<number>` | Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. |
 | [`og.ui.spawnMass`](ui/fn-spawnMass.md) | function | `(template: number, instances: readonly MassInstance[]): void` | Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). |
 | [`og.ui.massCount`](ui/fn-massCount.md) | function | `(template: number): number` | The live spawned instances of a template. |
-| [`EmitFrom`](ui/type-EmitFrom.md) | enum |  | Where on its element a particle starts. |
-| [`ParticlesDesc`](ui/type-ParticlesDesc.md) | desc struct |  | UI particles from an element (docs/ui.md §3.3): confetti, sparks, coin streams, rarity bursts. |
-| [`og.ui.particles`](ui/fn-particles.md) | function | `(desc?: ParticlesDesc): void` | Emit particles from the element built just before (a control, or a container just opened). |
 | [`MetaKind`](ui/type-MetaKind.md) | enum |  | What a meta layer draws over the scene. |
 | [`MetaDesc`](ui/type-MetaDesc.md) | desc struct |  | A meta layer (docs/ui.md §1): full screen, over the scene and under the screen's elements, never taking input. |
 | [`og.ui.meta`](ui/fn-meta.md) | function | `(id: string, desc?: MetaDesc): void` | A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame. |
@@ -397,7 +386,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 2826</sub>
+<sub>Module `ui` line 2728</sub>
 
 ```ogt
 column UiMaterial {
@@ -408,4 +397,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 2833</sub>
+<sub>Module `ui` line 2735</sub>

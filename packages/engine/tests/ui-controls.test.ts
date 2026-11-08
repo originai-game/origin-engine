@@ -58,7 +58,6 @@ test("foundations: an effect layer shows what it holds; a view frame turns by a 
   // Wrong: an effect layer that hides its content, or a view frame that ignores its keys.
   let yaw = 0;
   const engine = run(() => {
-    og.ui.emitter("Sparks", { preset: "sparkle" } as never);
     og.ui.effectLayer("Shine", { material: "shine", sweep: true } as never, () => og.ui.label("Inner", "Legendary", {}));
     yaw = og.ui.viewFrame("Preview", { yaw, label: "Character preview", hint: "Drag to turn", height: { kind: "fixed", px: 160 } as never }).yaw;
   });

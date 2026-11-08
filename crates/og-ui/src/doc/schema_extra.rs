@@ -285,7 +285,7 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "`-og-emitter: <rate> [square|circle|diamond] [<size>px] [<colour>…]`: particles a second from the element while it stands (`.rare { -og-emitter: 12 diamond 6px #ffd166 #fff; }`), drawn over it; `none` stops. Silent under reduced motion.",
+        doc: "`-og-emitter: [<preset>] [<rate>] [burst <n>] [for <time>] [life <time>] [<speed>px/s [<speed>px/s]] [up|down|<angle>deg] [square|circle|diamond] [<size>px] [<colour>…]`: particles from the element while it stands, drawn over it; `none` stops. A preset (sparkles, confetti, embers, snow, bubbles, dust, sparks, fireworks) gives the look, rate and the style's colours; the later words override it (`.rare { -og-emitter: sparkles; }`, `.win { -og-emitter: confetti 70 burst 110 for 1.4s; }`, `#Gem { -og-emitter: 12 diamond 6px #ffd166 #fff; }`). `burst` throws that many at once when the element first stands, `for` stops the rate that long after, `life` is each particle's life and a speed (one, or a range) its travel a second. Silent under reduced motion.",
     },
     PropSpec {
         name: "meta",

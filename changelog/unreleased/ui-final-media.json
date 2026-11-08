@@ -1,0 +1,28 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.emitter, og.ui.EmitterDesc, og.ui.EmitterPreset",
+      "change": "The ambient particle emitter builder is removed.",
+      "fix": "Write `-og-emitter: sparkles` (or confetti, embers, snow, bubbles, dust, sparks, fireworks) on the element in a document's `<style>`; a rate, `burst <n>`, `for <time>`, `life <time>`, a speed (`120px/s`), a shape, a size and colours override the preset. `none` stops it.",
+      "find": ["og.ui.emitter(", "EmitterDesc", "EmitterPreset"]
+    },
+    {
+      "member": "og.ui.particles, og.ui.ParticlesDesc, og.ui.EmitFrom",
+      "change": "The per-element particle builder is removed.",
+      "fix": "Write `-og-emitter` in a document: `-og-emitter: 40 burst 30 for 1.6s life 1.2s 80px/s 220px/s diamond 6px #ffd166` throws a burst when the element first stands, emits for 1.6 s, each particle living 1.2 s.",
+      "find": ["og.ui.particles(", "ParticlesDesc", "EmitFrom"]
+    },
+    {
+      "member": "og.ui.burst, og.ui.BurstDesc",
+      "change": "The rays-and-sparks builder is removed.",
+      "fix": "Write `-og-burst: <count> [<radius>px] [<colour>] [<time>]` in a `@keyframes` step of the element's animation (`@keyframes land { 60% { -og-burst: 24 48px #ffd166 600ms; } }`); a delay is the animation's `animation-delay`.",
+      "find": ["og.ui.burst(", "BurstDesc"]
+    },
+    {
+      "member": "og.ui.celebration, og.ui.CelebrationDesc, og.ui.CelebrationKind",
+      "change": "The celebration builder is removed.",
+      "fix": "Eject the `celebration` component document (`og ui eject celebration`) and use it as `<Celebration kind=\"levelUp\" shots={$shots} value={$level} />`: a new `shots` id plays it again.",
+      "find": ["og.ui.celebration(", "CelebrationDesc", "CelebrationKind"]
+    }
+  ]
+}

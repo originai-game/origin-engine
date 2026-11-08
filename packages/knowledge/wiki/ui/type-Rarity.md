@@ -33,4 +33,4 @@ enum Rarity {
 }
 ```
 
-<sub>Module `ui` line 2668</sub>
+<sub>Module `ui` line 2608</sub>

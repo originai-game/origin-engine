@@ -1503,11 +1503,17 @@ an attribute on the engine's `anchor`; no standard names a GPU-instanced
 element.
 
 Particles and overlays are CSS, under the engine prefix because no web
-standard has them. `-og-burst: 24 48px #ffd166` inside a `@keyframes`
-step fires rays and sparks from the element when an iteration reaches that
-offset. It sits beside `-og-sound`, as a keyframe event. `-og-emitter:
-12 diamond 6px #ffd166 #fff` (rate a second, shape, size, colours) emits
-particles while the element stands, and `none` stops it. `-og-meta:
+standard has them. `-og-burst: 24 48px #ffd166 600ms` inside a
+`@keyframes` step fires rays and sparks from the element when an iteration
+reaches that offset, flying for the time. It sits beside `-og-sound`, as a
+keyframe event. `-og-emitter` emits particles while the element stands,
+and `none` stops it: a preset (`sparkles`, `confetti`, `embers`, `snow`,
+`bubbles`, `dust`, `sparks`, `fireworks`) in the style's colours, or a rate
+a second, and over either `burst <n>` (that many at once when the element
+first stands), `for <time>` (the rate stops after it), `life <time>`, a
+speed (`120px/s`, or a range of two), `up`, `down` or an angle, a shape,
+a size and colours (`-og-emitter: confetti 70 burst 110 for 1.4s`,
+`-og-emitter: 12 diamond 6px #ffd166 #fff`). `-og-meta:
 vignette #a00` or `tint <colour>` draws a full-screen overlay with the
 element that never takes input, its strength the element's `opacity`
 (`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`). The engine

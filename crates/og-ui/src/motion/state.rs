@@ -147,6 +147,8 @@ pub(crate) struct BurstRun {
     pub count: u32,
     pub radius: f32,
     pub color: Option<Srgba>,
+    /// 0: the style's slow plus base duration.
+    pub duration_ms: f32,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

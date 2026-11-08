@@ -61,6 +61,8 @@ pub enum EventKind {
         count: u32,
         radius: f32,
         color: Option<Srgba>,
+        /// How long they fly, ms (0: the style's slow plus base duration).
+        duration_ms: f32,
     },
     /// Sets a state group of the target.
     State { group: String, state: String },

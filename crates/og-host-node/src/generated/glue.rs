@@ -2979,12 +2979,6 @@ pub fn og_ui_tick(env: Env) -> u32 {
     <Host as UiApi>::og_ui_tick(&Host)
 }
 
-#[napi(js_name = "og_ui_burst")]
-pub fn og_ui_burst(env: Env, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_burst(&Host, desc)
-}
-
 #[napi(js_name = "og_ui_screen_transition")]
 pub fn og_ui_screen_transition(env: Env, id: String, screen: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -3133,12 +3127,6 @@ pub fn og_ui_spawn_mass(env: Env, template: u32, instances: String) {
 pub fn og_ui_mass_count(env: Env, template: u32) -> u32 {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_mass_count(&Host, template)
-}
-
-#[napi(js_name = "og_ui_particles")]
-pub fn og_ui_particles(env: Env, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_particles(&Host, desc)
 }
 
 #[napi(js_name = "og_ui_meta")]

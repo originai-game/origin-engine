@@ -2,13 +2,13 @@
 //! clipped by its layer (confetti, sparks, coin streams, rarity bursts),
 //! drawn as og-render's particle mass elements, each particle a few values
 //! (where it starts, where it flies, its spin, colour and start tick) whose
-//! motion the shader evaluates. [`Ui::burst`] is one of its presets.
+//! motion the shader evaluates: a document's `-og-emitter` and `-og-burst`.
 //!
 //! Particles spawned by an emitter live in the world state (they replay),
 //! at fixed screen positions from where the element was drawn when they
 //! started: they keep flying when the element moves or leaves.
 
-use crate::layout::{NONE, Rect};
+use crate::layout::Rect;
 use crate::style::Srgba;
 use crate::ui::Ui;
 use crate::world::{Reader, WorldCmd};
@@ -31,7 +31,7 @@ pub enum EmitFrom {
     Edges,
 }
 
-/// An emitter ([`Ui::particles`]).
+/// An emitter on an element (`-og-emitter`, a burst).
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParticlesDesc {
     /// Particles a second while it is built (0: none).
@@ -39,6 +39,9 @@ pub struct ParticlesDesc {
     /// Particles at once on a tick `fire` is set (a burst).
     pub burst: u32,
     pub fire: bool,
+    /// How long `rate` emits after the emitter's start, ms (0: while it is
+    /// built).
+    pub duration_ms: f32,
     /// Milliseconds a particle lives (0: 900).
     pub lifetime_ms: f32,
     pub shape: UiParticleShape,
@@ -75,6 +78,7 @@ impl Default for ParticlesDesc {
             rate: 0.0,
             burst: 0,
             fire: false,
+            duration_ms: 0.0,
             lifetime_ms: 0.0,
             shape: UiParticleShape::Square,
             size: Vec2::new(8.0, 8.0),
@@ -95,47 +99,7 @@ impl Default for ParticlesDesc {
 }
 
 impl ParticlesDesc {
-    /// Confetti: `count` paper rectangles flung up and out, falling and
-    /// tumbling.
-    pub fn confetti(count: u32) -> ParticlesDesc {
-        ParticlesDesc {
-            burst: count,
-            fire: true,
-            lifetime_ms: 1400.0,
-            size: Vec2::new(10.0, 6.0),
-            colors: vec![
-                Srgba::rgb(255, 82, 82),
-                Srgba::rgb(255, 214, 64),
-                Srgba::rgb(64, 196, 255),
-                Srgba::rgb(105, 240, 174),
-                Srgba::rgb(224, 64, 251),
-            ],
-            travel: (80.0, 220.0),
-            direction: -std::f32::consts::FRAC_PI_2,
-            spread: 2.4,
-            gravity: 260.0,
-            drag: true,
-            spin: 3.0,
-            ..ParticlesDesc::default()
-        }
-    }
-
-    /// Sparks: a quick ring of small bright streaks.
-    pub fn sparks(count: u32, color: Srgba) -> ParticlesDesc {
-        ParticlesDesc {
-            burst: count,
-            fire: true,
-            lifetime_ms: 450.0,
-            size: Vec2::new(12.0, 3.0),
-            colors: vec![color],
-            travel: (30.0, 70.0),
-            align: true,
-            end_scale: 0.2,
-            ..ParticlesDesc::default()
-        }
-    }
-
-    /// [`Ui::burst`] as particles: `count` rays (0: 8) and as many sparks
+    /// A burst ([`crate::BurstDesc`]) as particles: `count` rays (0: 8) and as many sparks
     /// thrown out to `radius` (0: 1.4 × the element's size) from its centre.
     pub fn burst(desc: &crate::BurstDesc, color: Srgba, size: f32, ms: f32) -> ParticlesDesc {
         let count = if desc.count == 0 { 8 } else { desc.count };
@@ -303,25 +267,6 @@ fn rand01(key: u64, tick: u64, i: u32, salt: u64) -> f32 {
 }
 
 impl Ui {
-    /// An emitter on the element added last (a control, or a container just
-    /// opened): particles from it, drawn over it on its layer, clipped by
-    /// its clip. Built every tick it emits; a burst fires on the ticks
-    /// `fire` is set. Nothing under reduced motion.
-    pub fn particles(&mut self, desc: ParticlesDesc) {
-        let Some(&node) = self.emitted.last() else {
-            return;
-        };
-        let at = (self.last_closed != NONE).then_some(self.last_closed);
-        let node = at.unwrap_or(node);
-        let key = crate::id::child_key(self.nodes[node].key, "particles");
-        self.world.emitters.push(EmitterEntry {
-            node,
-            key,
-            desc,
-            at: None,
-        });
-    }
-
     /// A burst (the preset [`ParticlesDesc::burst`]) on node `i` from tick
     /// `since`, after `delay` ticks.
     pub(crate) fn burst_particles(&mut self, i: usize, desc: &crate::BurstDesc, since: u64) {
@@ -383,7 +328,13 @@ impl Ui {
                 None => d.fire,
             };
             let mut count = if fire { d.burst } else { 0 };
-            st.carry += d.rate / tps;
+            let emitting = match (e.at, d.duration_ms > 0.0) {
+                (Some(start), true) => {
+                    now.saturating_sub(start) as f32 * 1000.0 < d.duration_ms * tps
+                }
+                _ => true,
+            };
+            st.carry += if emitting { d.rate / tps } else { 0.0 };
             let whole = st.carry.floor();
             st.carry -= whole;
             count += whole as u32;

@@ -14,7 +14,7 @@ use og_render::{
     UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOcclusion,
     UiParticleShape,
 };
-use og_ui::{EmitFrom, MetaDesc, MetaKind, ParticlesDesc, ViewportDesc, WorldOcclusion, WorldView};
+use og_ui::{MetaDesc, MetaKind, ViewportDesc, WorldOcclusion, WorldView};
 
 /// What the UI's end reads to place world-space UI.
 pub(crate) struct Feed {
@@ -274,45 +274,6 @@ pub fn og_ui_mass_count(template: u32) -> u32 {
         ui.mass_count(og_ui::MassHandle(template)) as u32
     })
     .unwrap_or(0)
-}
-
-pub fn og_ui_particles(desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.particles", |ui| {
-        let theme = *ui.theme();
-        let base = ParticlesDesc::default();
-        let p = ParticlesDesc {
-            rate: f(&d, "rate", 0.0).max(0.0),
-            burst: d["burst"].as_u64().unwrap_or(0).min(4096) as u32,
-            fire: d["fire"].as_bool().unwrap_or(false),
-            lifetime_ms: f(&d, "lifetimeMs", 0.0).max(0.0),
-            shape: particle_shape(&d["shape"]),
-            size: v2(&d["size"], base.size),
-            colors: d["colors"]
-                .as_array()
-                .map(|a| a.iter().filter_map(|c| paint(&theme, c)).collect())
-                .unwrap_or_default(),
-            travel: (
-                f(&d, "travelMin", base.travel.0).max(0.0),
-                f(&d, "travelMax", base.travel.1).max(0.0),
-            ),
-            direction: f(&d, "direction", base.direction),
-            spread: f(&d, "spread", base.spread).max(0.0),
-            gravity: f(&d, "gravity", 0.0),
-            drag: d["drag"].as_bool().unwrap_or(true),
-            spin: f(&d, "spin", 0.0).max(0.0),
-            align: d["align"].as_bool().unwrap_or(false),
-            from: match d["from"].as_str() {
-                Some("area") => EmitFrom::Area,
-                Some("edges") => EmitFrom::Edges,
-                _ => EmitFrom::Center,
-            },
-            end_scale: f(&d, "endScale", 1.0).max(0.0),
-            fade: d["fade"].as_bool().unwrap_or(true),
-            clip: d["clip"].as_bool().unwrap_or(true),
-        };
-        ui.particles(p)
-    });
 }
 
 pub fn og_ui_meta(id: String, desc: Option<String>) {

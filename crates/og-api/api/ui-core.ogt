@@ -1255,31 +1255,6 @@ module ui {
     returns u32
   }
 
-  struct BurstDesc {
-    doc "Rays and sparks thrown from an element."
-    desc true
-    field count u32 "Rays; 0 is 8."
-    field color Option.Paint "Their ink; null is the primary."
-    field radius f32 "How far they fly from the element's centre; 0 is 1.4 times its size." {
-      unit cssPx
-      min 0
-    }
-    field durationMs f32 "How long they fly; 0 is motion.duration.slow plus base." {
-      unit ms
-      min 0
-    }
-    field delayMs f32 "Wait this long after the element first appears." {
-      unit ms
-      min 0
-    }
-  }
-
-  fn burst {
-    doc "Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion."
-    param desc BurstDesc "Count, ink, reach and timing."
-    returns Void
-  }
-
   enum ScreenWipe {
     doc "How a screen transition covers the old screen and reveals the new one."
     variant fade "The cover fades in and out."

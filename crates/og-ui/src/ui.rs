@@ -632,7 +632,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 22;
+const STATE_VERSION: u32 = 23;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,

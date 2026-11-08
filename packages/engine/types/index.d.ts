@@ -26021,51 +26021,6 @@ export interface A11yTree {
 
 
 /**
- * Rays and sparks thrown from an element.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface BurstDesc {
-  /**
-   * Rays; 0 is 8.
-   *
-   * @default 0
-   */
-  readonly count?: number;
-  /**
-   * Their ink; null is the primary.
-   *
-   * @default null
-   */
-  readonly color?: Paint | null;
-  /**
-   * How far they fly from the element's centre; 0 is 1.4 times its size.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly radius?: number;
-  /**
-   * How long they fly; 0 is motion.duration.slow plus base.
-   *
-   * @default 0
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly durationMs?: number;
-  /**
-   * Wait this long after the element first appears.
-   *
-   * @default 0
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly delayMs?: number;
-}
-
-
-/**
  * How a screen transition covers the old screen and reveals the new one.
  * - `"fade"`: The cover fades in and out.
  * - `"wipe"`: An edge sweeps across.
@@ -26865,58 +26820,6 @@ export interface ViewFrameResult {
   readonly zoom: number;
   /** The viewport's answer: its pixel size for the target, the ray, the pointer. */
   readonly view: SceneViewportInfo;
-}
-
-
-/**
- * A particle look.
- * - `"sparkle"`: Twinkling stars rising a little (the default): something rare, a reward.
- * - `"confetti"`: Paper squares falling and turning.
- * - `"embers"`: Sparks rising and fading: fire, heat, a forge.
- * - `"snow"`: Flakes drifting down.
- * - `"bubbles"`: Discs rising and swelling.
- * - `"dust"`: Motes drifting slowly every way: ambience behind a menu.
- */
-export type EmitterPreset = "sparkle" | "confetti" | "embers" | "snow" | "bubbles" | "dust";
-
-/**
- * An ambient particle emitter over the area of its parent.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface EmitterDesc {
-  /**
-   * What it throws.
-   *
-   * @default "sparkle"
-   */
-  readonly preset?: EmitterPreset;
-  /**
-   * Particles a second; 0 is the preset's.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly rate?: number;
-  /**
-   * Its colours; empty is the preset's (the style's primary, highlight and gold).
-   *
-   * @default []
-   */
-  readonly colors?: readonly ThemeColor[];
-  /**
-   * It throws (particles already thrown live out their lives when it stops).
-   *
-   * @default true
-   */
-  readonly active?: boolean;
-  /**
-   * Its particles' size, times the preset's.
-   *
-   * @default 1
-   * @range 0..
-   */
-  readonly size?: number;
 }
 
 
@@ -29003,69 +28906,6 @@ export interface NumberFormatDesc {
 
 
 /**
- * Which celebration plays.
- * - `"confetti"`: Confetti falls over the screen from its top edge, tumbling and fluttering.
- * - `"burst"`: Rays, sparks and a ring thrown from the open container's centre (a reward, a level's star).
- * - `"levelUp"`: A level up: a ring of light expands, rays turn behind a big LEVEL UP and the new level, sparks rise.
- * - `"fireworks"`: Shells rise and burst in rings across the top of the screen.
- */
-export type CelebrationKind = "confetti" | "burst" | "levelUp" | "fireworks";
-
-/**
- * A celebration effect.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface CelebrationDesc {
-  /**
-   * Which one.
-   *
-   * @default "confetti"
-   */
-  readonly kind?: CelebrationKind;
-  /**
-   * og.ui.tick() when it fires: a later tick fires it again.
-   *
-   * @default 0
-   */
-  readonly at?: number;
-  /**
-   * Its colours; empty is the primary, gold and the style's chart series.
-   *
-   * @default []
-   */
-  readonly colors?: readonly Paint[];
-  /**
-   * How much: confetti count and burst reach scale by it.
-   *
-   * @default 1
-   * @range 0..3
-   */
-  readonly intensity?: number;
-  /**
-   * levelUp: the big word (LEVEL UP).
-   *
-   * @default "Level up"
-   */
-  readonly title?: string;
-  /**
-   * levelUp: the new level (12).
-   *
-   * @default ""
-   */
-  readonly value?: string;
-  /**
-   * How long it lasts; 0 is the kind's (confetti 3 s, burst 1 s, levelUp 2.6 s, fireworks 3.5 s).
-   *
-   * @default 0
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly durationMs?: number;
-}
-
-
-/**
  * A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
@@ -30441,151 +30281,6 @@ export interface MassInstance {
 }
 
 
-
-
-/**
- * Where on its element a particle starts.
- * - `"center"`: Its centre.
- * - `"area"`: Anywhere inside its box.
- * - `"edges"`: On its edges.
- */
-export type EmitFrom = "center" | "area" | "edges";
-
-/**
- * UI particles from an element (docs/ui.md §3.3): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ParticlesDesc {
-  /**
-   * Particles a second while it is built.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly rate?: number;
-  /**
-   * Particles at once on a tick fire is set.
-   *
-   * @default 0
-   */
-  readonly burst?: number;
-  /**
-   * Throw the burst this tick.
-   *
-   * @default false
-   */
-  readonly fire?: boolean;
-  /**
-   * How long a particle lives; 0 is 900.
-   *
-   * @default 0
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly lifetimeMs?: number;
-  /**
-   * Its shape.
-   *
-   * @default "square"
-   */
-  readonly shape?: ParticleShape;
-  /**
-   * Its size.
-   *
-   * @default { x: 8, y: 8 }
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly size?: Vector2;
-  /**
-   * Picked by each particle's seed; empty is the accent.
-   *
-   * @default []
-   */
-  readonly colors?: readonly Paint[];
-  /**
-   * The shortest way a particle flies over its life.
-   *
-   * @default 40
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly travelMin?: number;
-  /**
-   * The longest.
-   *
-   * @default 120
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly travelMax?: number;
-  /**
-   * Its heading, clockwise from +x (-π/2 is up).
-   *
-   * @default -1.5707964
-   * @unit rad (radians)
-   */
-  readonly direction?: number;
-  /**
-   * The spread about the heading (2π is every way).
-   *
-   * @default 6.2831855
-   * @range 0..
-   * @unit rad (radians)
-   */
-  readonly spread?: number;
-  /**
-   * Added downward over its life, this much at its end.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gravity?: number;
-  /**
-   * Its flight slows to rest.
-   *
-   * @default true
-   */
-  readonly drag?: boolean;
-  /**
-   * Turns over its life, up to this many either way.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly spin?: number;
-  /**
-   * Its rotation follows its heading (a streak flying outward).
-   *
-   * @default false
-   */
-  readonly align?: boolean;
-  /**
-   * Where it starts.
-   *
-   * @default "center"
-   */
-  readonly from?: EmitFrom;
-  /**
-   * Its scale at the end of its life.
-   *
-   * @default 1
-   * @range 0..
-   */
-  readonly endScale?: number;
-  /**
-   * Fades out toward its end.
-   *
-   * @default true
-   */
-  readonly fade?: boolean;
-  /**
-   * Clipped by the element's clip (a scroll view, a masked panel).
-   *
-   * @default true
-   */
-  readonly clip?: boolean;
-}
 
 
 /**
@@ -40118,12 +39813,6 @@ export declare namespace og {
     /** Frames the UI has built: its clock, for animations by the tick. */
     function tick(): number;
     /**
-     * Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion.
-     *
-     * @param desc Count, ink, reach and timing.
-     */
-    function burst(desc?: BurstDesc): void;
-    /**
      * A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.
      *
      * @param id Its id.
@@ -40189,13 +39878,6 @@ export declare namespace og {
      * @param desc The target, its camera and its turn.
      */
     function viewFrame(id: string, desc?: ViewFrameDesc): ViewFrameResult;
-    /**
-     * An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`.
-     *
-     * @param id Its id.
-     * @param desc Its look and rate.
-     */
-    function emitter(id: string, desc?: EmitterDesc): void;
     /**
      * A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.
      *
@@ -40330,14 +40012,6 @@ export declare namespace og {
      */
     function formatNumber(value: number, format?: NumberFormatDesc): string;
     /**
-     * A celebration: confetti over the whole screen, a burst from the container it is built in, a level-up flourish centred on the screen, or fireworks. Particles are the UI's own (seeded, so a replay throws the same), drawn over the HUD and under dialogs; under reduced motion only the level-up's text and a soft glow show. Plays reward (levelUp, fireworks) or success (confetti, burst) when it fires.
-     * Parts: Celebration.ring, Celebration.rays, Celebration.title, Celebration.value (level up). States: group play (idle, playing). Accessibility: a level up is a status named by its title and value. Probe ids: <id>, <id>/Title, <id>/Value.
-     *
-     * @param id Its id.
-     * @param desc Which one and when.
-     */
-    function celebration(id: string, desc?: CelebrationDesc): void;
-    /**
      * Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown.
      *
      * @param desc Its role, name, value and states.
@@ -40369,12 +40043,6 @@ export declare namespace og {
      * @param template From defineMass.
      */
     function massCount(template: number): number;
-    /**
-     * Emit particles from the element built just before (a control, or a container just opened). Call every tick it emits; a burst throws on the ticks desc.fire is set. og.ui.burst is a preset of it.
-     *
-     * @param desc What it throws.
-     */
-    function particles(desc?: ParticlesDesc): void;
     /**
      * A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame.
      *

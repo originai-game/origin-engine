@@ -997,8 +997,6 @@ export interface HostAbi<A, V> {
   og_ui_remember(id: string, value: number): void;
   /** `og.ui.tick` */
   og_ui_tick(): number;
-  /** `og.ui.burst` */
-  og_ui_burst(desc: string | undefined): void;
   /** `og.ui.screenTransition` */
   og_ui_screen_transition(id: string, screen: string, desc: string | undefined): string;
   /** `og.ui.previewViewport` */
@@ -1049,8 +1047,6 @@ export interface HostAbi<A, V> {
   og_ui_spawn_mass(template: number, instances: string): void;
   /** `og.ui.massCount` */
   og_ui_mass_count(template: number): number;
-  /** `og.ui.particles` */
-  og_ui_particles(desc: string | undefined): void;
   /** `og.ui.meta` */
   og_ui_meta(id: string, desc: string | undefined): void;
   /** `og.ui.sceneViewport` */
@@ -1786,7 +1782,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_memory",
   "og_ui_remember",
   "og_ui_tick",
-  "og_ui_burst",
   "og_ui_screen_transition",
   "og_ui_preview_viewport",
   "og_ui_props",
@@ -1812,7 +1807,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_define_mass",
   "og_ui_spawn_mass",
   "og_ui_mass_count",
-  "og_ui_particles",
   "og_ui_meta",
   "og_ui_scene_viewport",
   "og_ui_push",

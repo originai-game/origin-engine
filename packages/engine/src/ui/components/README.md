@@ -29,6 +29,7 @@ test cooks every one from its fixture at desktop and phone sizes.
 | Meters and resource bars | `stat-bar`, `orb-meter`, `radial-meter` |
 | Progress and loading placeholders | `progress-bar`, `progress-ring`, `skeleton-group`, `spinner` |
 | Timers and scores | `hud-timer`, `star-bar` |
+| Celebrations (confetti, a burst, a level up, fireworks) | `celebration` |
 | Navigation (minimap, compass) | `minimap`, `minimap-view`, `compass` |
 | Menus and layout (radial menu, split view, carousel, breadcrumbs) | `radial-menu`, `split-view`, `carousel`, `breadcrumbs` |
 | Charts and map overlays | `chart`, `overlay-bar` |

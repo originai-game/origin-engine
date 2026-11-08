@@ -11972,7 +11972,6 @@
         "HudEdit",
         "A11yNode",
         "A11yTree",
-        "BurstDesc",
         "ScreenWipe",
         "WipeSide",
         "ScreenTransitionDesc",
@@ -11997,8 +11996,6 @@
         "NodeGraphResult",
         "ViewFrameDesc",
         "ViewFrameResult",
-        "EmitterPreset",
-        "EmitterDesc",
         "EffectLayerDesc",
         "UiProp",
         "LayoutMode",
@@ -12080,8 +12077,6 @@
         "TooltipCardResult",
         "Notation",
         "NumberFormatDesc",
-        "CelebrationKind",
-        "CelebrationDesc",
         "VectorArt",
         "UiMaterial",
         "VectorArt",
@@ -12128,8 +12123,6 @@
         "MassKey",
         "MassTemplateDesc",
         "MassInstance",
-        "EmitFrom",
-        "ParticlesDesc",
         "MetaKind",
         "MetaDesc",
         "SceneViewportDesc",
@@ -13045,20 +13038,6 @@
           "publish": true
         },
         {
-          "name": "burst",
-          "doc": "Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion.",
-          "params": [
-            {
-              "name": "desc",
-              "type": "BurstDesc",
-              "optional": true,
-              "doc": "Count, ink, reach and timing."
-            }
-          ],
-          "returns": "Void",
-          "publish": true
-        },
-        {
           "name": "screenTransition",
           "doc": "A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.",
           "params": [
@@ -13269,27 +13248,6 @@
             }
           ],
           "returns": "ViewFrameResult",
-          "publish": true,
-          "host": false
-        },
-        {
-          "name": "emitter",
-          "doc": "An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "EmitterDesc",
-              "optional": true,
-              "doc": "Its look and rate."
-            }
-          ],
-          "returns": "Void",
           "publish": true,
           "host": false
         },
@@ -13654,27 +13612,6 @@
           "host": false
         },
         {
-          "name": "celebration",
-          "doc": "A celebration: confetti over the whole screen, a burst from the container it is built in, a level-up flourish centred on the screen, or fireworks. Particles are the UI's own (seeded, so a replay throws the same), drawn over the HUD and under dialogs; under reduced motion only the level-up's text and a soft glow show. Plays reward (levelUp, fireworks) or success (confetti, burst) when it fires.\nParts: Celebration.ring, Celebration.rays, Celebration.title, Celebration.value (level up). States: group play (idle, playing). Accessibility: a level up is a status named by its title and value. Probe ids: <id>, <id>/Title, <id>/Value.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "desc",
-              "type": "CelebrationDesc",
-              "optional": true,
-              "doc": "Which one and when."
-            }
-          ],
-          "returns": "Void",
-          "publish": true,
-          "host": false
-        },
-        {
           "name": "semantics",
           "doc": "Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown.",
           "params": [
@@ -13754,20 +13691,6 @@
             }
           ],
           "returns": "u32",
-          "publish": true
-        },
-        {
-          "name": "particles",
-          "doc": "Emit particles from the element built just before (a control, or a container just opened). Call every tick it emits; a burst throws on the ticks desc.fire is set. og.ui.burst is a preset of it.",
-          "params": [
-            {
-              "name": "desc",
-              "type": "ParticlesDesc",
-              "optional": true,
-              "doc": "What it throws."
-            }
-          ],
-          "returns": "Void",
           "publish": true
         },
         {
@@ -47546,55 +47469,6 @@
       ],
       "additionalProperties": false
     },
-    "BurstDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "Rays and sparks thrown from an element.",
-      "type": "object",
-      "properties": {
-        "count": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "Rays; 0 is 8.",
-          "default": 0
-        },
-        "color": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Paint"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Their ink; null is the primary.",
-          "default": null
-        },
-        "radius": {
-          "type": "number",
-          "description": "How far they fly from the element's centre; 0 is 1.4 times its size.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "durationMs": {
-          "type": "number",
-          "description": "How long they fly; 0 is motion.duration.slow plus base.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "ms"
-        },
-        "delayMs": {
-          "type": "number",
-          "description": "Wait this long after the element first appears.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "ms"
-        }
-      },
-      "additionalProperties": false
-    },
     "ScreenWipe": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -48605,67 +48479,6 @@
         "zoom",
         "view"
       ],
-      "additionalProperties": false
-    },
-    "EmitterPreset": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "A particle look.",
-      "type": "string",
-      "enum": [
-        "sparkle",
-        "confetti",
-        "embers",
-        "snow",
-        "bubbles",
-        "dust"
-      ],
-      "x-og-variants": {
-        "sparkle": "Twinkling stars rising a little (the default): something rare, a reward.",
-        "confetti": "Paper squares falling and turning.",
-        "embers": "Sparks rising and fading: fire, heat, a forge.",
-        "snow": "Flakes drifting down.",
-        "bubbles": "Discs rising and swelling.",
-        "dust": "Motes drifting slowly every way: ambience behind a menu."
-      }
-    },
-    "EmitterDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "An ambient particle emitter over the area of its parent.",
-      "type": "object",
-      "properties": {
-        "preset": {
-          "$ref": "#/$defs/EmitterPreset",
-          "description": "What it throws.",
-          "default": "sparkle"
-        },
-        "rate": {
-          "type": "number",
-          "description": "Particles a second; 0 is the preset's.",
-          "default": 0,
-          "minimum": 0
-        },
-        "colors": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ThemeColor"
-          },
-          "description": "Its colours; empty is the preset's (the style's primary, highlight and gold).",
-          "default": []
-        },
-        "active": {
-          "type": "boolean",
-          "description": "It throws (particles already thrown live out their lives when it stops).",
-          "default": true
-        },
-        "size": {
-          "type": "number",
-          "description": "Its particles' size, times the preset's.",
-          "default": 1,
-          "minimum": 0
-        }
-      },
       "additionalProperties": false
     },
     "EffectLayerDesc": {
@@ -52175,77 +51988,6 @@
       },
       "additionalProperties": false
     },
-    "CelebrationKind": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "Which celebration plays.",
-      "type": "string",
-      "enum": [
-        "confetti",
-        "burst",
-        "levelUp",
-        "fireworks"
-      ],
-      "x-og-variants": {
-        "confetti": "Confetti falls over the screen from its top edge, tumbling and fluttering.",
-        "burst": "Rays, sparks and a ring thrown from the open container's centre (a reward, a level's star).",
-        "levelUp": "A level up: a ring of light expands, rays turn behind a big LEVEL UP and the new level, sparks rise.",
-        "fireworks": "Shells rise and burst in rings across the top of the screen."
-      }
-    },
-    "CelebrationDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A celebration effect.",
-      "type": "object",
-      "properties": {
-        "kind": {
-          "$ref": "#/$defs/CelebrationKind",
-          "description": "Which one.",
-          "default": "confetti"
-        },
-        "at": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "og.ui.tick() when it fires: a later tick fires it again.",
-          "default": 0
-        },
-        "colors": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Paint"
-          },
-          "description": "Its colours; empty is the primary, gold and the style's chart series.",
-          "default": []
-        },
-        "intensity": {
-          "type": "number",
-          "description": "How much: confetti count and burst reach scale by it.",
-          "default": 1,
-          "minimum": 0,
-          "maximum": 3
-        },
-        "title": {
-          "type": "string",
-          "description": "levelUp: the big word (LEVEL UP).",
-          "default": "Level up"
-        },
-        "value": {
-          "type": "string",
-          "description": "levelUp: the new level (12).",
-          "default": ""
-        },
-        "durationMs": {
-          "type": "number",
-          "description": "How long it lasts; 0 is the kind's (confetti 3 s, burst 1 s, levelUp 2.6 s, fireworks 3.5 s).",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "ms"
-        }
-      },
-      "additionalProperties": false
-    },
     "VectorArt": {
       "x-og-kind": "handle",
       "x-og-module": "ui",
@@ -54528,148 +54270,6 @@
           "description": "Its starting rotation, clockwise.",
           "default": 0,
           "x-og-unit": "rad"
-        }
-      },
-      "additionalProperties": false
-    },
-    "EmitFrom": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "Where on its element a particle starts.",
-      "type": "string",
-      "enum": [
-        "center",
-        "area",
-        "edges"
-      ],
-      "x-og-variants": {
-        "center": "Its centre.",
-        "area": "Anywhere inside its box.",
-        "edges": "On its edges."
-      }
-    },
-    "ParticlesDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "UI particles from an element (docs/ui.md §3.3): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion.",
-      "type": "object",
-      "properties": {
-        "rate": {
-          "type": "number",
-          "description": "Particles a second while it is built.",
-          "default": 0,
-          "minimum": 0
-        },
-        "burst": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "Particles at once on a tick fire is set.",
-          "default": 0
-        },
-        "fire": {
-          "type": "boolean",
-          "description": "Throw the burst this tick.",
-          "default": false
-        },
-        "lifetimeMs": {
-          "type": "number",
-          "description": "How long a particle lives; 0 is 900.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "ms"
-        },
-        "shape": {
-          "$ref": "#/$defs/ParticleShape",
-          "description": "Its shape.",
-          "default": "square"
-        },
-        "size": {
-          "$ref": "#/$defs/Vector2",
-          "description": "Its size.",
-          "default": {
-            "x": 8,
-            "y": 8
-          },
-          "x-og-unit": "cssPx"
-        },
-        "colors": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Paint"
-          },
-          "description": "Picked by each particle's seed; empty is the accent.",
-          "default": []
-        },
-        "travelMin": {
-          "type": "number",
-          "description": "The shortest way a particle flies over its life.",
-          "default": 40,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "travelMax": {
-          "type": "number",
-          "description": "The longest.",
-          "default": 120,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
-        },
-        "direction": {
-          "type": "number",
-          "description": "Its heading, clockwise from +x (-π/2 is up).",
-          "default": -1.5707964,
-          "x-og-unit": "rad"
-        },
-        "spread": {
-          "type": "number",
-          "description": "The spread about the heading (2π is every way).",
-          "default": 6.2831855,
-          "minimum": 0,
-          "x-og-unit": "rad"
-        },
-        "gravity": {
-          "type": "number",
-          "description": "Added downward over its life, this much at its end.",
-          "default": 0,
-          "x-og-unit": "cssPx"
-        },
-        "drag": {
-          "type": "boolean",
-          "description": "Its flight slows to rest.",
-          "default": true
-        },
-        "spin": {
-          "type": "number",
-          "description": "Turns over its life, up to this many either way.",
-          "default": 0,
-          "minimum": 0
-        },
-        "align": {
-          "type": "boolean",
-          "description": "Its rotation follows its heading (a streak flying outward).",
-          "default": false
-        },
-        "from": {
-          "$ref": "#/$defs/EmitFrom",
-          "description": "Where it starts.",
-          "default": "center"
-        },
-        "endScale": {
-          "type": "number",
-          "description": "Its scale at the end of its life.",
-          "default": 1,
-          "minimum": 0
-        },
-        "fade": {
-          "type": "boolean",
-          "description": "Fades out toward its end.",
-          "default": true
-        },
-        "clip": {
-          "type": "boolean",
-          "description": "Clipped by the element's clip (a scroll view, a masked panel).",
-          "default": true
         }
       },
       "additionalProperties": false

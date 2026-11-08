@@ -2484,11 +2484,6 @@ pub fn og_ui_tick() -> u32 {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_burst(desc: Option<String>) {
-    <Host as UiApi>::og_ui_burst(&Host, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_screen_transition(&Host, id, screen, desc)
 }
@@ -2611,11 +2606,6 @@ pub fn og_ui_spawn_mass(template: u32, instances: String) {
 #[wasm_bindgen]
 pub fn og_ui_mass_count(template: u32) -> u32 {
     <Host as UiApi>::og_ui_mass_count(&Host, template)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_particles(desc: Option<String>) {
-    <Host as UiApi>::og_ui_particles(&Host, desc)
 }
 
 #[wasm_bindgen]

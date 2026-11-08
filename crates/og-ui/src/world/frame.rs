@@ -198,11 +198,14 @@ impl Ui {
                 return self.docs.retained.owns(*key);
             };
             if let Some(d) = emitter {
+                // Its burst fires, and its `for` counts, from when it first stands.
+                let key = crate::id::child_key(*key, "particles");
+                let at = self.since(key);
                 self.world.emitters.push(crate::particles::EmitterEntry {
                     node: i,
-                    key: crate::id::child_key(*key, "particles"),
+                    key,
                     desc: d.clone(),
-                    at: None,
+                    at: Some(at),
                 });
             }
             if let Some(m) = meta {

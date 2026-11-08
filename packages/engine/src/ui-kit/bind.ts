@@ -87,13 +87,11 @@ export const widgets = {
   memory: (id: string, initial: number): number => abi().og_ui_memory(id, initial),
   remember: (id: string, value: number): void => abi().og_ui_remember(id, value),
   tick: (): number => abi().og_ui_tick(),
-  burst: (desc?: Api.BurstDesc): void => abi().og_ui_burst(json(desc)),
   // World-space UI (docs/ui.md §1, §3.3).
   defineMass: (name: string, desc?: Api.MassTemplateDesc): Api.Result<number> => parse(abi().og_ui_define_mass(name, json(desc))),
   spawnMass: (template: number, instances: Api.MassInstance[]): void =>
     abi().og_ui_spawn_mass(template, JSON.stringify(instances)),
   massCount: (template: number): number => abi().og_ui_mass_count(template),
-  particles: (desc?: Api.ParticlesDesc): void => abi().og_ui_particles(json(desc)),
   meta: (id: string, desc?: Api.MetaDesc): void => abi().og_ui_meta(id, json(desc)),
   sceneViewport: (id: string, desc?: Api.SceneViewportDesc): Api.SceneViewportInfo =>
     parse(abi().og_ui_scene_viewport(id, json(desc))),

@@ -435,7 +435,8 @@ impl Ui {
     /// state of version 17 with no Rive players, and the state of version
     /// 18 with its frozen texts' shaped forms (U+F0000 + glyph id) as
     /// glyph ids, the state of version 19 with no text selected, and the
-    /// states of versions 20 and 21, whose maps have no projective row.
+    /// states of versions 20 and 21, whose maps have no projective row, and
+    /// the state of version 22 with each burst at its default duration.
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -458,7 +459,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11..=21 => {
+            11..=22 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -483,7 +484,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 21"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 22"
             ))),
         }
     }
@@ -774,7 +775,7 @@ impl Reader<'_> {
             legacy_glyphs: version < 19,
             affine_only: version < 22,
         };
-        s.motion = r.motion()?;
+        s.motion = r.motion(version)?;
         self.at = r.at;
         if version < 14 {
             return Some(s);

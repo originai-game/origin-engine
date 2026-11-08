@@ -74,41 +74,6 @@
     returns ViewFrameResult
   }
 
-  enum EmitterPreset {
-    doc "A particle look."
-    variant sparkle "Twinkling stars rising a little (the default): something rare, a reward."
-    variant confetti "Paper squares falling and turning."
-    variant embers "Sparks rising and fading: fire, heat, a forge."
-    variant snow "Flakes drifting down."
-    variant bubbles "Discs rising and swelling."
-    variant dust "Motes drifting slowly every way: ambience behind a menu."
-  }
-
-  struct EmitterDesc {
-    doc "An ambient particle emitter over the area of its parent."
-    desc true
-    field preset EmitterPreset "What it throws."
-    field rate f32 "Particles a second; 0 is the preset's." {
-      min 0
-    }
-    field colors List.ThemeColor "Its colours; empty is the preset's (the style's primary, highlight and gold)."
-    field active bool "It throws (particles already thrown live out their lives when it stops)." {
-      default true
-    }
-    field size f32 "Its particles' size, times the preset's." {
-      default 1
-      min 0
-    }
-  }
-
-  fn emitter {
-    doc "An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`."
-    host false
-    param id String "Its id."
-    param desc EmitterDesc "Its look and rate."
-    returns Void
-  }
-
   struct EffectLayerDesc {
     doc "A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`."
     desc true

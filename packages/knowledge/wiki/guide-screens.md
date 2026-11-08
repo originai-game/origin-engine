@@ -282,10 +282,14 @@ local styles and `og style new` remain available.
   value={h.amount}>` in a keyed each: with a CSS animation (`rise 1s`) each row
   spawns one number that plays `@keyframes rise`; with `max="100"` and no
   animation it is a bar that stays with its row.
-- Celebrate with CSS: `@keyframes land { 60% { -og-burst: 24 48px #ffd166;
-  -og-sound: success; } }`. Sparkle a rare item with `.rare { -og-emitter:
-  12 diamond 6px #ffd166; }`. Flash damage with `#Hurt { -og-meta: vignette
-  #a00; opacity: var(--hit); }`.
+- Celebrate with CSS: `@keyframes land { 60% { -og-burst: 24 48px #ffd166
+  600ms; -og-sound: success; } }`. Sparkle a rare item with `.rare {
+  -og-emitter: sparkles; }` (presets: sparkles, confetti, embers, snow,
+  bubbles, dust, sparks, fireworks), throw confetti once with `-og-emitter:
+  confetti 70 burst 110 for 1.4s`, or set rate, shape, size, `life`, speed
+  (`120px/s`) and colours yourself. The `celebration` component is confetti,
+  a burst, a level-up flourish or fireworks. Flash damage with `#Hurt {
+  -og-meta: vignette #a00; opacity: var(--hit); }`.
   drawn flat on the ground in perspective, inert.
 - A carousel snaps with `scroll-snap-type: x mandatory` on its box and
   `scroll-snap-align: center` on each card. A bottom sheet is
@@ -379,7 +383,9 @@ actions and a `fixture:default`, so `og ui preview` shows it at once.
   sweep over the icon, the seconds left, charges and cost, the hotkey as
   `<kbd data-action>`), `status-grid` (buffs and debuffs with their time).
 - Time and score: `hud-timer` (a round countdown that turns warn and
-  critical), `star-bar` (a score bar with star thresholds). A number that
+  critical), `star-bar` (a score bar with star thresholds), `celebration`
+  (confetti, a burst, a level-up flourish or fireworks, played again by a
+  new `shots` id). A number that
   counts is `<p count={$score}>` with `-og-count-duration`.
 - Navigation: `minimap` and `minimap-view` (a map in the corner with
   markers for allies, enemies, objectives and pings, a uv region by

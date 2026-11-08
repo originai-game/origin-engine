@@ -1111,8 +1111,6 @@ pub trait UiApi: Wire {
     fn og_ui_remember(&self, id: String, value: f64);
     /// `og.ui.tick`
     fn og_ui_tick(&self) -> u32;
-    /// `og.ui.burst`
-    fn og_ui_burst(&self, desc: Option<String>);
     /// `og.ui.screenTransition`
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String;
     /// `og.ui.previewViewport`
@@ -1163,8 +1161,6 @@ pub trait UiApi: Wire {
     fn og_ui_spawn_mass(&self, template: u32, instances: String);
     /// `og.ui.massCount`
     fn og_ui_mass_count(&self, template: u32) -> u32;
-    /// `og.ui.particles`
-    fn og_ui_particles(&self, desc: Option<String>);
     /// `og.ui.meta`
     fn og_ui_meta(&self, id: String, desc: Option<String>);
     /// `og.ui.sceneViewport`
@@ -1957,7 +1953,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_memory",
     "og_ui_remember",
     "og_ui_tick",
-    "og_ui_burst",
     "og_ui_screen_transition",
     "og_ui_preview_viewport",
     "og_ui_props",
@@ -1983,7 +1978,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_define_mass",
     "og_ui_spawn_mass",
     "og_ui_mass_count",
-    "og_ui_particles",
     "og_ui_meta",
     "og_ui_scene_viewport",
     "og_ui_push",
