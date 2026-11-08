@@ -1124,7 +1124,7 @@ struct State {
     locations: Vec<Location>,
     archetypes: Vec<Archetype>,
     by_types: BTreeMap<Vec<SchemaId>, u32>,
-    resources: Vec<Option<RefCell<ResourceValue>>>,
+    resources: Vec<Option<crate::world::ResourceCell>>,
     events: Vec<RefCell<EventQueue>>,
     names: Vec<(Entity, String)>,
     /// Per state block, in added order.
@@ -1470,12 +1470,15 @@ impl World {
             archetypes.push(arch);
         }
 
-        let mut resources: Vec<Option<RefCell<ResourceValue>>> =
+        let mut resources: Vec<Option<crate::world::ResourceCell>> =
             (0..self.registry.len()).map(|_| None).collect();
         for &(t, data) in &parsed.resources {
             let id = map[t];
-            resources[id.0 as usize] =
-                Some(RefCell::new(resource_value(&self.registry, id, data)?));
+            resources[id.0 as usize] = Some(crate::world::ResourceCell::new(resource_value(
+                &self.registry,
+                id,
+                data,
+            )?));
         }
         if resources[self.time_id.0 as usize].is_none() {
             return Err(bad("no Time resource"));
@@ -1590,14 +1593,14 @@ impl World {
             }
         }
 
-        let mut resources: Vec<Option<RefCell<ResourceValue>>> =
+        let mut resources: Vec<Option<crate::world::ResourceCell>> =
             (0..self.registry.len()).map(|_| None).collect();
         for &(t, data) in &parsed.resources {
             let Some(p) = storable(t) else { continue };
             buf.clear();
             p.convert(data, &mut buf);
             let value = resource_value(&self.registry, p.target, &buf)?;
-            resources[p.target.0 as usize] = Some(RefCell::new(value));
+            resources[p.target.0 as usize] = Some(crate::world::ResourceCell::new(value));
         }
         // Types the snapshot does not know keep their current resource.
         let unknown: Vec<usize> = (0..self.registry.len())
@@ -1668,6 +1671,7 @@ impl World {
         self.resume = state.resume;
         self.apply_reactive(state.reactive);
         self.structural += 1;
+        self.restores += 1;
     }
 
     /// The snapshot's reactive block, decoded against this world.

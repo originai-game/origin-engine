@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "assert",
+      "summary": "The default invariants read only what was written since their last check (columns and resources by the world's write clock, tracked components by their changed rows) and everything after a restore, so a quiet tick reads almost nothing. Tracking, snapshots and world_hash are unchanged."
+    }
+  ]
+}

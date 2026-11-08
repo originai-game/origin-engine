@@ -7,11 +7,15 @@
 //! Entity field naming a despawned entity, and, where the world names
 //! og.WorldBounds, every root's Transform.position inside them.
 //!
-//! They only read, and they follow what changed: a component whose changes
-//! the world tracks is read on the rows that changed since the last check
-//! (its Entity fields on every row only when the world's structure changed:
-//! a despawn dangles a reference without touching it); every other
-//! component and every resource is read whole. A failure is an `always`
+//! They only read, and they follow what changed: an archetype none of whose
+//! columns of a component was written since the last check (the world's
+//! write clock: a view taken for writing, a row set, spawned or moved) is
+//! skipped, and of one that was, a component whose changes the world
+//! tracks is read on the rows that changed since; Entity fields are read on
+//! every row when the world's structure changed (a despawn dangles a
+//! reference without touching it), and everything after a restore. Nothing
+//! of this is world state: tracking stays the game's, and snapshots and
+//! hashes are as without the checks. A resource is read again once written. A failure is an `always`
 //! site of origin `default` in the probe's assertions, named for the rule
 //! and placed at the record and field (`finite Health.hp`, `Health.hp`).
 
@@ -50,9 +54,12 @@ struct Plan {
     made_for: (usize, usize),
     records: Vec<RecordCheck>,
     fields: u64,
-    /// The world's change tick and structural count at the last check.
+    /// The world's change tick, write clock, structural and restore
+    /// counts at the last check.
     since: Option<u64>,
+    clock: Option<u64>,
     structural: u64,
+    restores: u64,
 }
 
 thread_local! {
@@ -248,14 +255,23 @@ pub(crate) fn after_tick(eng: &Engine, world: &World) {
             make_plan(eng, world, plan);
             plan.made_for = made_for;
             plan.since = None;
+            plan.clock = None;
         }
         let now = world.change_tick();
-        // A restore moves the change tick back: read everything again.
-        let since = plan.since.filter(|&s| s <= now);
+        let clock = world.write_clock();
+        // After a restore every row is the snapshot's: read everything again.
+        let restored = world.restores() != plan.restores;
+        let since = plan.since.filter(|&s| s <= now && !restored);
+        let written_after = plan.clock.filter(|_| !restored);
         let structural = world.structural_changes() != plan.structural || since.is_none();
         let mut scratch = (Vec::new(), Vec::new());
         for r in &plan.records {
             if r.resource {
+                if written_after
+                    .is_some_and(|w| world.resource_written(r.id).is_none_or(|at| at <= w))
+                {
+                    continue;
+                }
                 let Ok(bytes) = world.resource_bytes(r.id) else {
                     continue;
                 };
@@ -281,8 +297,12 @@ pub(crate) fn after_tick(eng: &Engine, world: &World) {
             }
             let has_refs = r.fields.iter().any(|f| f.entity);
             // Every row when a reference may have dangled; else the changed ones.
-            let rows_since = if has_refs && structural { None } else { since };
-            world.scan_component(r.id, rows_since, None, |entities, cols, rows| {
+            let (rows_since, written) = if has_refs && structural {
+                (None, None)
+            } else {
+                (since, written_after)
+            };
+            world.scan_component(r.id, rows_since, written, None, |entities, cols, rows| {
                 let mut row = |i: usize| {
                     for f in &r.fields {
                         let size = f.ty.size();
@@ -317,7 +337,9 @@ pub(crate) fn after_tick(eng: &Engine, world: &World) {
         }
         bounds(eng, world, &mut failures, &mut values);
         plan.since = Some(now);
+        plan.clock = Some(clock);
         plan.structural = world.structural_changes();
+        plan.restores = world.restores();
         plan.fields
     });
     let mut a = eng.assertions.borrow_mut();
@@ -364,7 +386,7 @@ fn bounds(
         return;
     };
     let index = field.field as usize;
-    world.scan_component(transform, None, parent, |entities, cols, _| {
+    world.scan_component(transform, None, None, parent, |entities, cols, _| {
         let col = cols[index];
         for (i, &e) in entities.iter().enumerate() {
             let at = |k: usize| {

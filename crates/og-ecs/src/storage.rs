@@ -8,6 +8,22 @@
 use crate::entity::Entity;
 use crate::registry::{Registry, SchemaId};
 use std::cell::RefCell;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+/// The write clock: every mutable access to a column takes the next value
+/// of it, process-wide, so a reader that remembers the clock can tell the
+/// columns written since ([`crate::World::write_clock`]). Not world state.
+static WRITES: AtomicU64 = AtomicU64::new(0);
+
+/// The write clock now: a column written after this returns has a later stamp.
+pub(crate) fn write_clock() -> u64 {
+    WRITES.load(Ordering::Relaxed)
+}
+
+/// The stamp of a write happening now.
+pub(crate) fn next_write() -> u64 {
+    WRITES.fetch_add(1, Ordering::Relaxed) + 1
+}
 
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
 #[repr(C, align(16))]
@@ -18,6 +34,9 @@ pub(crate) struct Column {
     size: usize,
     rows: usize,
     blocks: Vec<Block>,
+    /// The write clock at its last mutable access (a view written through,
+    /// a row set, pushed or removed); never read by the simulation.
+    written: u64,
 }
 
 impl Column {
@@ -26,7 +45,13 @@ impl Column {
             size,
             rows: 0,
             blocks: Vec::new(),
+            written: next_write(),
         }
+    }
+
+    /// The write clock at its last mutable access.
+    pub fn written(&self) -> u64 {
+        self.written
     }
 
     pub fn bytes(&self) -> &[u8] {
@@ -34,6 +59,7 @@ impl Column {
     }
 
     pub fn bytes_mut(&mut self) -> &mut [u8] {
+        self.written = next_write();
         let len = self.rows * self.size;
         &mut bytemuck::cast_slice_mut(&mut self.blocks)[..len]
     }
@@ -48,6 +74,7 @@ impl Column {
     }
 
     fn resize_rows(&mut self, rows: usize) {
+        self.written = next_write();
         self.rows = rows;
         self.blocks
             .resize((rows * self.size).div_ceil(16), Block([0; 16]));

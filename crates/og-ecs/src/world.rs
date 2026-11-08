@@ -91,6 +91,50 @@ pub(crate) enum ResourceValue {
     Raw(Vec<u8>),
 }
 
+/// A resource's value with the write clock of its last mutable access, as
+/// a column keeps it ([`World::write_clock`]); the stamp is not world state.
+pub(crate) struct ResourceCell {
+    value: RefCell<ResourceValue>,
+    written: std::cell::Cell<u64>,
+}
+
+impl ResourceCell {
+    pub fn new(value: ResourceValue) -> ResourceCell {
+        ResourceCell {
+            value: RefCell::new(value),
+            written: std::cell::Cell::new(crate::storage::next_write()),
+        }
+    }
+
+    pub fn borrow(&self) -> Ref<'_, ResourceValue> {
+        self.value.borrow()
+    }
+
+    pub fn try_borrow(
+        &self,
+    ) -> std::result::Result<Ref<'_, ResourceValue>, std::cell::BorrowError> {
+        self.value.try_borrow()
+    }
+
+    pub fn try_borrow_mut(
+        &self,
+    ) -> std::result::Result<std::cell::RefMut<'_, ResourceValue>, std::cell::BorrowMutError> {
+        let value = self.value.try_borrow_mut()?;
+        self.written.set(crate::storage::next_write());
+        Ok(value)
+    }
+
+    pub fn get_mut(&mut self) -> &mut ResourceValue {
+        self.written.set(crate::storage::next_write());
+        self.value.get_mut()
+    }
+
+    /// The write clock at its last mutable access.
+    pub fn written(&self) -> u64 {
+        self.written.get()
+    }
+}
+
 /// Events of one type: `current` was delivered at the start of this tick,
 /// `pending` is what has been sent since and is delivered at the next.
 #[derive(Clone, Default)]
@@ -105,13 +149,15 @@ pub struct World {
     pub(crate) entities: RefCell<Entities>,
     pub(crate) archetypes: Vec<Archetype>,
     pub(crate) archetype_by_types: BTreeMap<Vec<SchemaId>, u32>,
-    pub(crate) resources: Vec<Option<RefCell<ResourceValue>>>,
+    pub(crate) resources: Vec<Option<ResourceCell>>,
     pub(crate) events: Vec<RefCell<EventQueue>>,
     pub(crate) systems: Vec<System>,
     pub(crate) time_id: SchemaId,
     pub(crate) scale_id: SchemaId,
     /// Bumped by every operation that may move a column or an entity list.
     pub(crate) structural: u64,
+    /// Bumped by every restore (not world state).
+    pub(crate) restores: u64,
     /// Entity names: one name per live entity, one entity per name.
     pub(crate) names: BTreeMap<Entity, String>,
     pub(crate) by_name: BTreeMap<String, Entity>,
@@ -158,6 +204,7 @@ impl World {
             time_id: SchemaId(0),
             scale_id: SchemaId(0),
             structural: 0,
+            restores: 0,
             names: BTreeMap::new(),
             by_name: BTreeMap::new(),
             blocks: Vec::new(),
@@ -232,12 +279,15 @@ impl World {
     /// entities, the bytes of each of the component's field columns in
     /// field order, and the rows whose value changed after change tick
     /// `since` (`None`: every row, as for a component the world does not
-    /// track). An archetype holding component `without`, one with no such
-    /// row, and one a view holds a column of mutably are skipped.
+    /// track). An archetype none of whose columns of the component was
+    /// written after write clock `written_after` ([`Self::write_clock`]),
+    /// one holding component `without`, one with no such row, and one a
+    /// view holds a column of mutably are skipped.
     pub fn scan_component(
         &self,
         id: SchemaId,
         since: Option<u64>,
+        written_after: Option<u64>,
         without: Option<SchemaId>,
         mut f: impl FnMut(&[Entity], &[&[u8]], Option<&[u32]>),
     ) {
@@ -266,6 +316,9 @@ impl World {
                 .filter_map(|c| arch.columns[c].try_borrow().ok())
                 .collect();
             if borrowed.len() != arch.columns_of(position).len() {
+                continue;
+            }
+            if written_after.is_some_and(|w| borrowed.iter().all(|c| c.written() <= w)) {
                 continue;
             }
             let cols: Vec<&[u8]> = borrowed.iter().map(|c| c.bytes()).collect();
@@ -694,7 +747,8 @@ impl World {
         let id = self.id::<T>()?;
         let bytes = self.registry.encode(id, &value)?; // a layout mismatch is refused here, once
         self.registry.check_value(id, &bytes)?;
-        self.resources[id.0 as usize] = Some(RefCell::new(ResourceValue::Typed(Box::new(value))));
+        self.resources[id.0 as usize] =
+            Some(ResourceCell::new(ResourceValue::Typed(Box::new(value))));
         Ok(())
     }
 
@@ -707,7 +761,7 @@ impl World {
             Some(rust) => ResourceValue::Typed((rust.decode)(&info.layout, bytes)?),
             None => ResourceValue::Raw(bytes.to_vec()),
         };
-        self.resources[id.0 as usize] = Some(RefCell::new(value));
+        self.resources[id.0 as usize] = Some(ResourceCell::new(value));
         Ok(())
     }
 
@@ -753,7 +807,7 @@ impl World {
             .is_ok_and(|id| self.resources[id.0 as usize].is_some())
     }
 
-    pub(crate) fn resource_cell(&self, id: SchemaId) -> Result<&RefCell<ResourceValue>> {
+    pub(crate) fn resource_cell(&self, id: SchemaId) -> Result<&ResourceCell> {
         self.resources[id.0 as usize]
             .as_ref()
             .ok_or_else(|| no_resource(self.registry.name(id)))
@@ -768,12 +822,26 @@ impl World {
     /// Exclusive access to resource `T`.
     pub fn resource_mut<T: Reflect>(&mut self) -> Result<&mut T> {
         let id = self.id::<T>()?;
-        match self.resources[id.0 as usize].as_mut().map(RefCell::get_mut) {
+        match self.resources[id.0 as usize]
+            .as_mut()
+            .map(ResourceCell::get_mut)
+        {
             Some(ResourceValue::Typed(value)) => value
                 .downcast_mut::<T>()
                 .ok_or_else(|| no_resource(T::NAME)),
             _ => Err(no_resource(T::NAME)),
         }
+    }
+
+    /// The write clock at resource `id`'s last mutable access (a set, a
+    /// system's write, an insert), `None` when it is not present: a reader
+    /// that remembers [`Self::write_clock`] reads it again only once it is
+    /// later. Not world state.
+    pub fn resource_written(&self, id: SchemaId) -> Option<u64> {
+        self.resources
+            .get(id.0 as usize)?
+            .as_ref()
+            .map(ResourceCell::written)
     }
 
     /// Packed bytes of resource `id`.
@@ -985,6 +1053,21 @@ impl World {
     /// value; it is not world state (not in snapshots or the hash).
     pub fn structural_changes(&self) -> u64 {
         self.structural
+    }
+
+    /// How many times this `World` value was restored from a snapshot (not
+    /// world state): a reader keeping change ticks reads everything again
+    /// after one, since a restored row's change tick belongs to the
+    /// snapshot's history, not this world's.
+    pub fn restores(&self) -> u64 {
+        self.restores
+    }
+
+    /// The process-wide write clock: every column written after this call
+    /// returns has a later write stamp ([`Self::scan_component`]'s
+    /// `written_after`). Not world state.
+    pub fn write_clock(&self) -> u64 {
+        crate::storage::write_clock()
     }
 
     // ---- schedule ---------------------------------------------------------
@@ -1369,10 +1452,7 @@ pub(crate) fn no_resource(name: &str) -> Error {
     )
 }
 
-pub(crate) fn typed_ref<'a, T: Reflect>(
-    cell: &'a RefCell<ResourceValue>,
-    name: &str,
-) -> Result<Ref<'a, T>> {
+pub(crate) fn typed_ref<'a, T: Reflect>(cell: &'a ResourceCell, name: &str) -> Result<Ref<'a, T>> {
     let value = cell.try_borrow().map_err(|_| busy(name))?;
     Ref::filter_map(value, |v| match v {
         ResourceValue::Typed(b) => b.downcast_ref::<T>(),

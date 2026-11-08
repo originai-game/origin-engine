@@ -138,3 +138,69 @@ fn nan_range_and_dangling_reference_are_violations_and_take_starts_clean() {
     assert_eq!(next["epoch"], 1);
     assert_eq!(next["uncovered"].as_array().unwrap().len(), 2, "{next}");
 }
+
+/// The checks read what was written since the last one: a quiet tick reads
+/// no component row, a write between ticks is read at the next, and a
+/// restore reads everything again (a snapshot's bad value is found once
+/// more after a fresh report).
+#[test]
+fn the_checks_read_only_written_columns_and_everything_after_a_restore() {
+    let e = engine();
+    let hero = value(og_world_spawn(e, None)).as_f64().unwrap();
+    value(og_world_insert(
+        e,
+        hero,
+        "Health".into(),
+        Some(json!({"hp": 50}).to_string()),
+    ));
+    value(og_engine_advance(e, 2));
+    report(e, true);
+    // One tick reads what the engine's own systems wrote (input, camera)...
+    value(og_engine_advance(e, 1));
+    let quiet = report(e, true)["defaults"]["values"].as_u64().unwrap();
+    // ...and one with Health written between ticks reads its one row more.
+    value(og_world_set(
+        e,
+        hero,
+        "Health".into(),
+        json!({"hp": 60}).to_string(),
+    ));
+    value(og_engine_advance(e, 1));
+    let written = report(e, true)["defaults"]["values"].as_u64().unwrap();
+    assert_eq!(
+        written,
+        quiet + 1,
+        "Health.hp is read once written, and only then"
+    );
+
+    value(og_world_set(
+        e,
+        hero,
+        "Health".into(),
+        json!({"hp": -5}).to_string(),
+    ));
+    value(og_engine_advance(e, 1));
+    let save = value(og_world_snapshot(e, None))
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let bad = report(e, true);
+    assert_eq!(named(&bad, "in range Health.hp")["tick"], 5, "{bad}");
+
+    value(og_world_set(
+        e,
+        hero,
+        "Health".into(),
+        json!({"hp": 10}).to_string(),
+    ));
+    value(og_engine_advance(e, 2));
+    assert_eq!(report(e, true)["violations"], json!([]));
+    value(og_world_restore(e, save, None));
+    value(og_engine_advance(e, 1));
+    let again = report(e, true);
+    assert_eq!(
+        named(&again, "in range Health.hp")["value"],
+        -5.0,
+        "{again}"
+    );
+}
