@@ -485,3 +485,114 @@ pub fn bounds(p: &Path) -> [f32; 4] {
     }
     [lo.x, lo.y, (hi.x - lo.x).max(1e-6), (hi.y - lo.y).max(1e-6)]
 }
+
+impl Path {
+    /// The dashes of `pattern` (dash, gap, dash…, even in number) from
+    /// `offset` along each subpath (each starts the pattern again, as SVG's
+    /// do), as open polylines within `tolerance`. A dash of no length is a
+    /// tiny one along the path, so its caps still draw a dot.
+    pub fn dashed(&self, pattern: &[f32], offset: f32, tolerance: f32) -> Vec<Vec<Vec2>> {
+        let total: f32 = pattern.iter().sum();
+        let mut out = Vec::new();
+        if pattern.is_empty() || total <= 0.0 || !total.is_finite() {
+            return out;
+        }
+        for (mut pts, closed) in self.flatten(tolerance) {
+            if closed && let Some(&first) = pts.first() {
+                pts.push(first);
+            }
+            // Where `offset` falls in the pattern.
+            let mut phase = offset.rem_euclid(total);
+            let mut k = 0;
+            while phase > pattern[k] || (phase == pattern[k] && phase > 0.0) {
+                phase -= pattern[k];
+                k = (k + 1) % pattern.len();
+            }
+            let mut left = pattern[k] - phase;
+            let mut cur: Vec<Vec2> = Vec::new();
+            let emit_dot = |p: Vec2, dir: Vec2, out: &mut Vec<Vec<Vec2>>| {
+                out.push(vec![p, p + dir.normalize_or_zero() * 1e-3]);
+            };
+            if k % 2 == 0 {
+                cur.push(pts[0]);
+            }
+            for w in pts.windows(2) {
+                let (a, b) = (w[0], w[1]);
+                let seg = (b - a).length();
+                if seg <= 0.0 {
+                    continue;
+                }
+                let dir = (b - a) / seg;
+                let mut at = 0.0;
+                // Steps through the pattern elements this segment crosses
+                // (bounded: a pattern of tiny lengths cannot spin forever).
+                let mut guard = 0;
+                while seg - at >= left && guard < 100_000 {
+                    guard += 1;
+                    at += left;
+                    let p = a + dir * at;
+                    if k % 2 == 0 {
+                        if pattern[k] == 0.0 {
+                            emit_dot(p, dir, &mut out);
+                        } else {
+                            cur.push(p);
+                            out.push(std::mem::take(&mut cur));
+                        }
+                    } else {
+                        cur = vec![p];
+                    }
+                    k = (k + 1) % pattern.len();
+                    left = pattern[k];
+                }
+                left -= seg - at;
+                if k % 2 == 0 && !cur.is_empty() {
+                    cur.push(b);
+                }
+            }
+            if k % 2 == 0 && cur.len() > 1 {
+                out.push(cur);
+            }
+        }
+        out
+    }
+
+    /// Where markers go: every vertex (each subpath's start and each
+    /// segment's end, a closed subpath's closing line too), with the
+    /// direction the path comes in and goes out (`None` at an open end).
+    pub fn vertices(&self) -> Vec<(Vec2, Option<Vec2>, Option<Vec2>)> {
+        let mut out: Vec<(Vec2, Option<Vec2>, Option<Vec2>)> = Vec::new();
+        let dir = |v: Vec2| (v.length() > 1e-9).then(|| v.normalize());
+        for (start, cubics, closed) in &self.subpaths {
+            let mut at = *start;
+            // Each segment's start and end tangents.
+            let mut segs: Vec<(Vec2, Option<Vec2>, Option<Vec2>)> = Vec::new();
+            for c in cubics {
+                let out_dir = dir(c[0] - at).or(dir(c[1] - at)).or(dir(c[2] - at));
+                let in_dir = dir(c[2] - c[1]).or(dir(c[2] - c[0])).or(dir(c[2] - at));
+                segs.push((c[2], out_dir, in_dir));
+                at = c[2];
+            }
+            if *closed && (at - *start).length() > 1e-6 {
+                let d = dir(*start - at);
+                segs.push((*start, d, d));
+            }
+            let closing_in = if *closed {
+                segs.last().and_then(|s| s.2)
+            } else {
+                None
+            };
+            out.push((*start, closing_in, segs.first().and_then(|s| s.1)));
+            for (i, (p, _, in_dir)) in segs.iter().enumerate() {
+                let next = if i + 1 < segs.len() {
+                    segs[i + 1].1
+                } else if *closed {
+                    segs.first().and_then(|s| s.1)
+                } else {
+                    None
+                };
+                out.push((*p, *in_dir, next));
+            }
+        }
+        out
+    }
+}

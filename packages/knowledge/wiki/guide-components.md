@@ -736,7 +736,7 @@ Its own props, beside every element's:
 | `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
 | `stroke-opacity` | `text` | SVG `stroke-opacity`. |
 | `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
-| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: dash and gap lengths, an odd list repeated (user units, or of `pathLength`). |
 | `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
 | `stroke-linecap` | `text` | SVG `stroke-linecap`. |
 | `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
@@ -757,6 +757,9 @@ Its own props, beside every element's:
 | `y1` | `text` | SVG `y1`. |
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
+| `marker-start` | `text` | SVG `marker-start="url(#id)"`: the `<marker>` drawn at a shape's first vertex. |
+| `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
+| `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
 <a id="guide-components-37"></a>
@@ -775,7 +778,7 @@ Its own props, beside every element's:
 | `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
 | `stroke-opacity` | `text` | SVG `stroke-opacity`. |
 | `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
-| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: dash and gap lengths, an odd list repeated (user units, or of `pathLength`). |
 | `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
 | `stroke-linecap` | `text` | SVG `stroke-linecap`. |
 | `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
@@ -796,6 +799,9 @@ Its own props, beside every element's:
 | `y1` | `text` | SVG `y1`. |
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
+| `marker-start` | `text` | SVG `marker-start="url(#id)"`: the `<marker>` drawn at a shape's first vertex. |
+| `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
+| `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 
@@ -815,7 +821,7 @@ Its own props, beside every element's:
 | `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
 | `stroke-opacity` | `text` | SVG `stroke-opacity`. |
 | `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
-| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: dash and gap lengths, an odd list repeated (user units, or of `pathLength`). |
 | `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
 | `stroke-linecap` | `text` | SVG `stroke-linecap`. |
 | `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
@@ -836,6 +842,9 @@ Its own props, beside every element's:
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
 | `points` | `text` | A `<polyline>`'s or `<polygon>`'s points. |
+| `marker-start` | `text` | SVG `marker-start="url(#id)"`: the `<marker>` drawn at a shape's first vertex. |
+| `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
+| `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
 | `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from. |
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
@@ -843,9 +852,9 @@ Its own props, beside every element's:
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
 <a id="guide-components-39"></a>
-### `components §39` `<svgText>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`
+### `components §39` `<svgText>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path
 
-SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`. A leaf; text-bearing controls accept text content: `<svgText id="Name">…</svgText>`.
+SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path. A leaf; text-bearing controls accept text content: `<svgText id="Name">…</svgText>`.
 
 Its own props, beside every element's:
 
@@ -857,15 +866,15 @@ Its own props, beside every element's:
 | `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
 | `stroke-opacity` | `text` | SVG `stroke-opacity`. |
 | `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
-| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: dash and gap lengths, an odd list repeated (user units, or of `pathLength`). |
 | `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
 | `stroke-linecap` | `text` | SVG `stroke-linecap`. |
 | `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
 | `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
 | `x` | `text` | SVG `x`. |
 | `y` | `text` | SVG `y`. |
-| `dx` | `text` | A `<text>`'s `dx`: added to `x`. |
-| `dy` | `text` | A `<text>`'s `dy`: added to `y`. |
+| `dx` | `text` | A `<text>`'s `dx`: added to `x`, user units or `em`. |
+| `dy` | `text` | A `<text>`'s `dy`: added to `y`, user units or `em` (`1.2em`: a line down). |
 | `font-size` | `text` | SVG `font-size`, user units (scaled with the view box; default 16). |
 | `font-weight` | `text` | SVG `font-weight`: normal, bold or 100–900 (600 and up is bold). |
 | `font-style` | `text` | SVG `font-style`: normal or italic. |
@@ -880,9 +889,53 @@ Its own props, beside every element's:
 | `y1` | `text` | SVG `y1`. |
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
+| `marker-start` | `text` | SVG `marker-start="url(#id)"`: the `<marker>` drawn at a shape's first vertex. |
+| `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
+| `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
+| `startOffset` | `text` | A `<textPath>`'s `startOffset`: where the text's anchor sits along the path, user units or a percentage of its length. |
+| `side` | `text` | A `<textPath>`'s `side`: left (the default) or right (the path run backwards). |
+| `method` | `text` | A `<textPath>`'s `method`: align (each glyph turned rigidly onto the path; stretch draws as align, as browsers do). |
+| `spacing` | `text` | A `<textPath>`'s `spacing`: exact or auto (both keep the font's advances). |
+| `path` | `text` | A `<textPath>`'s `path`: its own path data instead of `href`. |
+| `svg-text-path-href` | `text` | A `<textPath>`'s `href="#id"`: the path or shape the text runs along. |
 
 <a id="guide-components-40"></a>
-### `components §40` `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
+### `components §40` `<foreignObject>` (`svgForeign`): SVG's `<foreignObject x y width height>`: document elements laid out in a box of `width` by `height` user units at `(x, y)`, scaled with the view box as the shapes are
+
+SVG's `<foreignObject x y width height>`: document elements laid out in a box of `width` by `height` user units at `(x, y)`, scaled with the view box as the shapes are. A container with nested children: `<foreignObject x="10" y="10" width="80" height="30"><button onclick={buy}>Buy</button></foreignObject>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `fill` | `text` | SVG `fill`: a colour, `var(--role)`, `currentColor` (the style's ink), `url(#gradient)` or `none`. |
+| `fill-opacity` | `text` | SVG `fill-opacity`. |
+| `fill-rule` | `text` | SVG `fill-rule`: nonzero or evenodd. |
+| `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
+| `stroke-opacity` | `text` | SVG `stroke-opacity`. |
+| `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: dash and gap lengths, an odd list repeated (user units, or of `pathLength`). |
+| `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
+| `stroke-linecap` | `text` | SVG `stroke-linecap`. |
+| `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
+| `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
+| `x` | `text` | SVG `x`. |
+| `y` | `text` | SVG `y`. |
+| `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
+| `height` | `text` | SVG `height`. |
+| `cx` | `text` | SVG `cx`. |
+| `cy` | `text` | SVG `cy`. |
+| `r` | `text` | SVG `r`. |
+| `x1` | `text` | SVG `x1`. |
+| `y1` | `text` | SVG `y1`. |
+| `x2` | `text` | SVG `x2`. |
+| `y2` | `text` | SVG `y2`. |
+| `marker-start` | `text` | SVG `marker-start="url(#id)"`: the `<marker>` drawn at a shape's first vertex. |
+| `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
+| `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
+
+<a id="guide-components-41"></a>
+### `components §41` `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
 
 SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height. A container with nested children: `<use href="#Coin" x={i * 12} y="0" width="10" height="10" />`.
 
@@ -896,7 +949,7 @@ Its own props, beside every element's:
 | `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
 | `stroke-opacity` | `text` | SVG `stroke-opacity`. |
 | `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
-| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: dash and gap lengths, an odd list repeated (user units, or of `pathLength`). |
 | `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
 | `stroke-linecap` | `text` | SVG `stroke-linecap`. |
 | `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
@@ -917,13 +970,16 @@ Its own props, beside every element's:
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
 | `points` | `text` | A `<polyline>`'s or `<polygon>`'s points. |
+| `marker-start` | `text` | SVG `marker-start="url(#id)"`: the `<marker>` drawn at a shape's first vertex. |
+| `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
+| `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
 | `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from. |
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
 
-<a id="guide-components-41"></a>
-### `components §41` `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
+<a id="guide-components-42"></a>
+### `components §42` `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
 
 An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent. A container with nested children: `<linearGradient id="Up" x2="0" y2="1"><stop offset="0" stop-color="#fff" />…</linearGradient> (radialGradient, defs)` or `<symbol id="Coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></symbol> (clipPath, mask, pattern, title)`.
 
@@ -939,7 +995,7 @@ Its own props, beside every element's:
 | `stroke` | `text` | SVG `stroke`: a colour, `var(--role)`, `currentColor`, `url(#gradient)` or `none`. |
 | `stroke-opacity` | `text` | SVG `stroke-opacity`. |
 | `stroke-width` | `text` | SVG `stroke-width`, user units (scaled with the view box). |
-| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`). |
+| `stroke-dasharray` | `text` | SVG `stroke-dasharray`: dash and gap lengths, an odd list repeated (user units, or of `pathLength`). |
 | `stroke-dashoffset` | `text` | SVG `stroke-dashoffset`. |
 | `stroke-linecap` | `text` | SVG `stroke-linecap`. |
 | `stroke-linejoin` | `text` | SVG `stroke-linejoin`. |
@@ -955,6 +1011,15 @@ Its own props, beside every element's:
 | `y1` | `text` | SVG `y1`. |
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
+| `marker-start` | `text` | SVG `marker-start="url(#id)"`: the `<marker>` drawn at a shape's first vertex. |
+| `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
+| `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
+| `refX` | `text` | A `<marker>`'s `refX`: the x of its content placed on the vertex. |
+| `refY` | `text` | A `<marker>`'s `refY`. |
+| `markerWidth` | `text` | A `<marker>`'s `markerWidth` (default 3). |
+| `markerHeight` | `text` | A `<marker>`'s `markerHeight` (default 3). |
+| `markerUnits` | `text` | A `<marker>`'s `markerUnits`: strokeWidth (scaled by the shape's stroke width, the default) or userSpaceOnUse. |
+| `orient` | `text` | A `<marker>`'s `orient`: auto (along the path), auto-start-reverse, or an angle in degrees. |
 | `fx` | `text` | A radial gradient's `fx`. |
 | `fy` | `text` | A radial gradient's `fy`. |
 | `offset` | `text` | A `<stop>`'s `offset`. |

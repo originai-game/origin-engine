@@ -24,7 +24,15 @@ use crate::svg::{Affine, GradientDef, PaintRef, Style, bounds, shape_path};
 use og_core::glam::Vec2;
 
 /// The kinds this module builds.
-pub(super) const KINDS: &[&str] = &["svg", "svgGroup", "svgShape", "svgUse", "svgDef", "svgText"];
+pub(super) const KINDS: &[&str] = &[
+    "svg",
+    "svgGroup",
+    "svgShape",
+    "svgUse",
+    "svgDef",
+    "svgText",
+    "svgForeign",
+];
 
 const VIEW_BOX: &str = " svg viewBox";
 const TRANSFORM: &str = " svg transform";
@@ -128,6 +136,255 @@ pub(super) fn inherit(kind: &str, r: &mut Resolved) {
     for (name, value) in writes {
         computed.insert(name, Some(value));
     }
+}
+
+/// The widget memory holding when the element at `path` first showed:
+/// its SMIL animations' clock starts there.
+fn smil_clock(path: &str) -> u64 {
+    crate::id::child_key(og_core::hash::hash_bytes(path.as_bytes()), "~smil")
+}
+
+/// Whether `n` holds SMIL animations.
+fn animated(doc: &UiDocument, n: &DocNode) -> bool {
+    n.children.iter().any(|&c| {
+        doc.nodes[c]
+            .selector_tag
+            .as_deref()
+            .is_some_and(|t| crate::svg::smil::TAGS.contains(&t))
+    })
+}
+
+/// The path and transform of the shape `href="#id"` names, in its own
+/// user space.
+fn shape_by_href(
+    doc: &UiDocument,
+    href: &str,
+    vb: [f32; 4],
+) -> Result<(crate::svg::Path, f32), String> {
+    let id = href.trim().strip_prefix('#').unwrap_or(href.trim());
+    let node = doc
+        .nodes
+        .iter()
+        .find(|n| {
+            n.id == id
+                && n.selector_tag.as_deref().is_some_and(|t| {
+                    crate::doc::extern_element::SVG_SHAPES.contains(&t) && t != "image"
+                })
+        })
+        .ok_or_else(|| format!("href=\"{href}\": no path or shape has id \"{id}\""))?;
+    let attrs = literal_attrs(node)?;
+    let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
+    let tag = node.selector_tag.as_deref().unwrap_or("path");
+    let shape = shape_path(tag, &get, vb)?.ok_or_else(|| format!("#{id} is empty"))?;
+    let own = match get("transform") {
+        Some(v) => Affine::parse(v)?,
+        None => Affine::IDENTITY,
+    };
+    // A length along it measures the path in its pathLength.
+    let k = match get("pathLength").map(|v| v.trim().parse::<f32>()) {
+        Some(Ok(l)) if l > 0.0 => shape.length(vb[2].max(vb[3]) / 2000.0) / l,
+        _ => 1.0,
+    };
+    Ok((shape.transformed(&own), k))
+}
+
+/// An animation element's begins in seconds of its element's clock,
+/// following `id.begin` and `id.end` to the animations they name.
+fn begin_times(doc: &UiDocument, a: &crate::svg::smil::Animation, depth: u32) -> Vec<f32> {
+    use crate::svg::smil::{Animation, Begin};
+    let mut out = Vec::new();
+    for b in &a.begins {
+        match b {
+            Begin::At(t) => out.push(*t),
+            Begin::Sync { id, end, offset } if depth < 8 => {
+                let Some(node) = doc.nodes.iter().find(|n| {
+                    &n.id == id
+                        && n.selector_tag
+                            .as_deref()
+                            .is_some_and(|t| crate::svg::smil::TAGS.contains(&t))
+                }) else {
+                    continue;
+                };
+                let tag = node.selector_tag.as_deref().unwrap_or("animate");
+                let Some(other) = literal_attrs(node)
+                    .ok()
+                    .and_then(|attrs| Animation::parse(tag, &attrs, Some(Default::default())).ok())
+                else {
+                    continue;
+                };
+                let Some(first) = begin_times(doc, &other, depth + 1)
+                    .into_iter()
+                    .reduce(f32::min)
+                else {
+                    continue;
+                };
+                match (end, other.active()) {
+                    (false, _) => out.push(first + offset),
+                    (true, Some(d)) => out.push(first + d + offset),
+                    (true, None) => {}
+                }
+            }
+            Begin::Sync { .. } => {}
+        }
+    }
+    out
+}
+
+/// Applies `n`'s SMIL animations (`<animate>`, `<set>`,
+/// `<animateTransform>`, `<animateMotion>`) at the UI clock: each
+/// overrides an attribute, a presentation property or the transform as
+/// SVG's override style sheet does. Presentation only: the clock is the
+/// element's widget memory and the values never leave the UI. Returns
+/// whether any still moves (or waits to begin), so it resolves again
+/// next frame. Under reduced motion each shows its frozen end, or none.
+pub(super) fn animate(
+    ui: &Ui,
+    doc: &UiDocument,
+    n: &DocNode,
+    path: &str,
+    r: &mut Resolved,
+) -> bool {
+    use crate::svg::smil::{Animation, Target};
+    if !animated(doc, n) {
+        return false;
+    }
+    let vb = r
+        .cascade
+        .computed
+        .get(VIEW_BOX)
+        .cloned()
+        .flatten()
+        .and_then(|v| view_box(&v))
+        .unwrap_or([0.0, 0.0, DEFAULT_SIZE[0], DEFAULT_SIZE[1]]);
+    let tps = ui.ticks_per_second().max(1) as f32;
+    let start = ui
+        .state
+        .anims
+        .get(&smil_clock(path))
+        .map_or(ui.state.tick, |a| a.t);
+    let still = ui.theme().reduced_motion;
+    let now = ui.state.tick.saturating_sub(start) as f32 / tps;
+    let mut running = false;
+    let mut values: Vec<(String, String)> = Vec::new();
+    let mut motion: Option<String> = None;
+    for &c in &n.children {
+        let node = &doc.nodes[c];
+        let Some(tag) = node
+            .selector_tag
+            .as_deref()
+            .filter(|t| crate::svg::smil::TAGS.contains(t))
+        else {
+            continue;
+        };
+        let parsed = literal_attrs(node).and_then(|attrs| {
+            let mpath = match node
+                .children
+                .iter()
+                .map(|&m| &doc.nodes[m])
+                .find(|m| m.selector_tag.as_deref() == Some("mpath"))
+            {
+                Some(m) => {
+                    let attrs = literal_attrs(m)?;
+                    let href = attrs
+                        .iter()
+                        .find(|(k, _)| k == "href")
+                        .map(|(_, v)| v.as_str())
+                        .ok_or("<mpath> names its path: href=\"#id\"")?;
+                    Some(
+                        shape_by_href(doc, href, vb)
+                            .map_err(|e| format!("<mpath {e}"))?
+                            .0,
+                    )
+                }
+                None => None,
+            };
+            Animation::parse(tag, &attrs, mpath)
+        });
+        let a = match parsed {
+            Ok(a) => a,
+            Err(e) => {
+                r.cascade.diagnostics.push(format!("<{tag}>: {e}"));
+                continue;
+            }
+        };
+        let begins = begin_times(doc, &a, 0);
+        let at = if still {
+            match (a.active(), a.freeze) {
+                (Some(d), true) => begins.iter().copied().reduce(f32::min).map(|b| (b, d)),
+                _ => None,
+            }
+        } else {
+            running |= begins.iter().any(|b| *b > now);
+            Animation::current(&begins, now).map(|b| (b, now - b))
+        };
+        let Some((_, local)) = at else {
+            continue;
+        };
+        let (progress, live) = a.progress(local);
+        running |= live && !still;
+        let Some(progress) = progress else {
+            continue;
+        };
+        let current = |values: &[(String, String)], name: &str| -> String {
+            if let Some((_, v)) = values.iter().rev().find(|(k, _)| k == name) {
+                return v.clone();
+            }
+            if name == "transform" {
+                return r.str("svgTransform").unwrap_or_default().to_string();
+            }
+            if name == "opacity" {
+                return r.num("opacity").unwrap_or(1.0).to_string();
+            }
+            own(r, name)
+                .or_else(|| svg_prop(name).and_then(|p| r.str(p)).map(str::to_string))
+                .unwrap_or_default()
+        };
+        match &a.target {
+            Target::Attr(name) => {
+                let v = a.sample(&current(&values, name), progress);
+                values.push((name.clone(), v));
+            }
+            Target::Transform(_) => {
+                let v = a.sample(&current(&values, "transform"), progress);
+                values.push(("transform".into(), v));
+            }
+            Target::Motion { .. } => motion = Some(a.sample("", progress)),
+        }
+    }
+    if let Some(m) = motion {
+        let base = values
+            .iter()
+            .rev()
+            .find(|(k, _)| k == "transform")
+            .map(|(_, v)| v.clone())
+            .or_else(|| r.str("svgTransform").map(str::to_string))
+            .unwrap_or_default();
+        values.push(("transform".into(), format!("{m} {base}")));
+    }
+    for (name, v) in values {
+        if PRESENTATION.contains(&name.as_str()) || TEXT_PRESENTATION.contains(&name.as_str()) {
+            r.cascade.svg.push((name, v));
+        } else if name == "opacity" {
+            match v.trim().parse::<f64>() {
+                Ok(o) => {
+                    if let Some((spec, _)) = schema::prop("opacity") {
+                        r.vals.push((spec, V::Num(o.clamp(0.0, 1.0))));
+                    }
+                }
+                Err(_) => r
+                    .cascade
+                    .diagnostics
+                    .push(format!("<animate> opacity \"{v}\" is not a number")),
+            }
+        } else if let Some((spec, _)) = svg_prop(&name).and_then(schema::prop) {
+            r.vals.push((spec, V::Str(v)));
+        } else {
+            r.cascade.diagnostics.push(format!(
+                "<animate attributeName=\"{name}\">: no SVG attribute {name} to animate"
+            ));
+        }
+    }
+    running
 }
 
 /// A `<use>`'s own placement: `translate(x y)`, then a symbol's view box
@@ -635,42 +892,321 @@ pub(crate) fn subpaths(p: &crate::svg::Path) -> Vec<(Vec<[f32; 2]>, bool)> {
         .collect()
 }
 
-/// A shape's draw, in its `<svg>`'s user space.
-/// A shape's draw, the tiles of a pattern fill drawn inside it, and the
-/// box they are cut to (`None`: the shape is a path, which og-render
-/// cannot clip to yet).
-type ShapeOut = (
-    ElementDraw,
-    Vec<(ShapeKind, Paint)>,
-    Option<(ShapeKind, Option<[f32; 4]>)>,
-);
+/// A shape's draw, the tiles of a pattern fill drawn inside it, the box
+/// they are cut to (`None`: the shape is a path), and its markers' draws.
+struct ShapeOut {
+    draw: ElementDraw,
+    tiles: Vec<(ShapeKind, Paint)>,
+    tile_box: Option<(ShapeKind, Option<[f32; 4]>)>,
+    markers: Vec<ElementDraw>,
+}
+
+fn cap_of(c: crate::svg::Cap) -> crate::paint::Cap {
+    match c {
+        crate::svg::Cap::Butt => crate::paint::Cap::Butt,
+        crate::svg::Cap::Round => crate::paint::Cap::Round,
+        crate::svg::Cap::Square => crate::paint::Cap::Square,
+    }
+}
+
+/// A path (in the `<svg>`'s user space) filled with `fill` and stroked
+/// with `stroke` by `style`: `scale` is its transform's (the stroke's
+/// width scales by it), `per` the user units of one dash unit. A dash
+/// pattern of one dash and one gap is og-render's; a longer one is cut
+/// into its dashes here.
+#[allow(clippy::too_many_arguments)]
+fn painted(
+    path: &crate::svg::Path,
+    style: &Style,
+    scale: f32,
+    per: f32,
+    fill: Option<Paint>,
+    stroke: Option<Paint>,
+    vb: [f32; 4],
+) -> ElementDraw {
+    let parts = subpaths(path);
+    let rule = if style.even_odd {
+        crate::paint::FillRule::EvenOdd
+    } else {
+        crate::paint::FillRule::NonZero
+    };
+    let cap = cap_of(style.cap);
+    let join = match style.join {
+        crate::svg::Join::Miter => crate::paint::Join::Miter(style.miter_limit),
+        crate::svg::Join::Round => crate::paint::Join::Round,
+        crate::svg::Join::Bevel => crate::paint::Join::Bevel,
+    };
+    let width = style.stroke_width * scale;
+    let mut draw = ElementDraw {
+        view_box: Some(vb),
+        shape: ShapeKind::Path {
+            points: parts.iter().flat_map(|(p, _)| p.iter().copied()).collect(),
+            closed: true,
+            filled: true,
+            curves: true,
+            fill_rule: rule,
+            contours: parts.iter().map(|(p, _)| p.len() as u32).collect(),
+            width,
+            cap,
+            join,
+        },
+        ..ElementDraw::default()
+    };
+    if let Some(fill) = fill {
+        draw.fills.push(fill);
+    }
+    let Some(stroke) = stroke.filter(|_| width > 0.0) else {
+        return draw;
+    };
+    let outline =
+        |points: Vec<[f32; 2]>, closed: bool, curves: bool, dash: [f32; 2], offset: f32| {
+            (
+                ShapeKind::Path {
+                    points,
+                    closed,
+                    filled: false,
+                    curves,
+                    fill_rule: rule,
+                    contours: Vec::new(),
+                    width,
+                    cap,
+                    join,
+                },
+                Stroke {
+                    width,
+                    align: StrokeAlign::Center,
+                    dash,
+                    dash_offset: offset,
+                    dash_cap: cap,
+                    paint: stroke.clone(),
+                },
+            )
+        };
+    match style.dashes.as_slice() {
+        [] => {
+            for (points, closed) in parts {
+                draw.outlines
+                    .push(outline(points, closed, true, [0.0; 2], 0.0));
+            }
+        }
+        [d, g] => {
+            for (points, closed) in parts {
+                draw.outlines.push(outline(
+                    points,
+                    closed,
+                    true,
+                    [d * per, g * per],
+                    style.dash_offset * per,
+                ));
+            }
+        }
+        more => {
+            // Every dash its own open polyline, its caps the stroke's.
+            let pattern: Vec<f32> = more.iter().map(|d| d * per).collect();
+            let tolerance = vb[2].max(vb[3]) / 4000.0;
+            for dash in path.dashed(&pattern, style.dash_offset * per, tolerance) {
+                let points = dash.into_iter().map(<[f32; 2]>::from).collect();
+                draw.outlines
+                    .push(outline(points, false, false, [0.0; 2], 0.0));
+            }
+        }
+    }
+    draw
+}
+
+/// A presentation value as SVG writes it, a marker's `context-fill` and
+/// `context-stroke` (SVG 2) taken from the shape that draws it.
+fn style_of(attrs: &[(String, String)], context: Option<&Style>) -> Result<Style, String> {
+    let mut style = Style::default();
+    for attr in PRESENTATION {
+        let Some((_, v)) = attrs.iter().find(|(k, _)| k == attr) else {
+            continue;
+        };
+        let parent = style.clone();
+        match (v.trim(), context) {
+            ("context-fill", Some(c)) => style.apply(attr, "none", &parent).map(|_| {
+                if *attr == "fill" {
+                    style.fill = c.fill.clone();
+                } else {
+                    style.stroke = c.fill.clone();
+                }
+            }),
+            ("context-stroke", Some(c)) => style.apply(attr, "none", &parent).map(|_| {
+                if *attr == "fill" {
+                    style.fill = c.stroke.clone();
+                } else {
+                    style.stroke = c.stroke.clone();
+                }
+            }),
+            (v, _) => style.apply(attr, v, &parent),
+        }
+        .map_err(|e| format!("{attr}: {e}"))?;
+    }
+    Ok(style)
+}
+
+/// Which vertices a marker property draws at.
+#[derive(Clone, Copy, PartialEq)]
+enum Which {
+    Start,
+    Mid,
+    End,
+}
+
+/// The draws of a shape's `marker-start`, `marker-mid` and `marker-end`:
+/// each `<marker>`'s shapes at the vertices, turned by its `orient`, its
+/// `refX refY` on the vertex, scaled by the stroke's width (markerUnits
+/// strokeWidth) and its view box fitted into `markerWidth markerHeight`.
+fn markers(
+    doc: &UiDocument,
+    value: &dyn Fn(&str) -> Option<String>,
+    local: &crate::svg::Path,
+    t: &Affine,
+    style: &Style,
+    vb: [f32; 4],
+) -> Result<Vec<ElementDraw>, String> {
+    let verts = local.vertices();
+    let n = verts.len();
+    let mut out = Vec::new();
+    for (attr, which) in [
+        ("marker-start", Which::Start),
+        ("marker-mid", Which::Mid),
+        ("marker-end", Which::End),
+    ] {
+        let Some(v) = value(attr).filter(|v| v.trim() != "none") else {
+            continue;
+        };
+        let id = url_id(&v).ok_or_else(|| format!("{attr} \"{v}\" is url(#id) or none"))?;
+        let node = def(doc, id, &["marker"])
+            .ok_or_else(|| format!("{attr}: url(#{id}) names no <marker>"))?;
+        let attrs = literal_attrs(node)?;
+        let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
+        let num = |a: &str, default: f32| -> Result<f32, String> {
+            get(a)
+                .map_or(Ok(default), |v| crate::svg::length(v, 1.0))
+                .map_err(|e| format!("#{id} {a}: {e}"))
+        };
+        let (mw, mh) = (num("markerWidth", 3.0)?, num("markerHeight", 3.0)?);
+        if mw <= 0.0 || mh <= 0.0 {
+            continue;
+        }
+        let scale = match get("markerUnits").map(str::trim) {
+            None | Some("strokeWidth") => style.stroke_width,
+            Some("userSpaceOnUse") => 1.0,
+            Some(u) => {
+                return Err(format!(
+                    "#{id} markerUnits \"{u}\" is strokeWidth or userSpaceOnUse"
+                ));
+            }
+        };
+        let content = match get("viewBox").and_then(view_box) {
+            Some(mvb) => fit_box(mvb, [0.0, 0.0, mw, mh], get("preserveAspectRatio")),
+            None => Affine::IDENTITY,
+        };
+        let refp = content.apply(Vec2::new(num("refX", 0.0)?, num("refY", 0.0)?));
+        let orient = get("orient").unwrap_or("0").trim();
+        let fixed = match orient {
+            "auto" | "auto-start-reverse" => None,
+            o => Some(
+                o.trim_end_matches("deg")
+                    .trim()
+                    .parse::<f32>()
+                    .map_err(|_| {
+                        format!("#{id} orient \"{o}\" is auto, auto-start-reverse or degrees")
+                    })?
+                    .to_radians(),
+            ),
+        };
+        let mut shapes = Vec::new();
+        def_shapes(doc, node, Affine::IDENTITY, &mut shapes)?;
+        let at: Vec<usize> = match which {
+            Which::Start => (n > 0).then_some(0).into_iter().collect(),
+            Which::End => n.checked_sub(1).into_iter().collect(),
+            Which::Mid => (1..n.saturating_sub(1)).collect(),
+        };
+        for i in at {
+            let (p, came, goes) = verts[i];
+            let angle = fixed.unwrap_or_else(|| {
+                let d = match (came, goes) {
+                    (Some(a), Some(b)) => (a + b).try_normalize().unwrap_or(a),
+                    (Some(a), None) => a,
+                    (None, Some(b)) => b,
+                    (None, None) => Vec2::X,
+                };
+                let a = d.y.atan2(d.x);
+                if orient == "auto-start-reverse" && which == Which::Start {
+                    a + std::f32::consts::PI
+                } else {
+                    a
+                }
+            });
+            let (sin, cos) = angle.sin_cos();
+            let m = t
+                .then(&Affine([1.0, 0.0, 0.0, 1.0, p.x, p.y]))
+                .then(&Affine([cos, sin, -sin, cos, 0.0, 0.0]))
+                .then(&Affine([scale, 0.0, 0.0, scale, 0.0, 0.0]))
+                .then(&Affine([1.0, 0.0, 0.0, 1.0, -refp.x, -refp.y]))
+                .then(&content);
+            for (tag, attrs, own) in &shapes {
+                let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
+                let Some(shape) = shape_path(tag, &get, vb)? else {
+                    continue;
+                };
+                let s = style_of(attrs, Some(style))?;
+                let at = m.then(own);
+                let fill = if *tag == "line" {
+                    None
+                } else {
+                    solid(&s.fill, s.fill_opacity)
+                };
+                let stroke = solid(&s.stroke, s.stroke_opacity);
+                out.push(painted(
+                    &shape.transformed(&at),
+                    &s,
+                    at.scale(),
+                    at.scale(),
+                    fill,
+                    stroke,
+                    vb,
+                ));
+            }
+        }
+    }
+    Ok(out)
+}
 
 fn shape_draw(doc: &UiDocument, tag: &str, r: &Resolved, vb: [f32; 4]) -> Result<ShapeOut, String> {
     let computed = &r.cascade.computed;
-    let value = |name: &str| computed.get(name).cloned().flatten();
+    let value = |name: &str| computed.get(&key(name)).cloned().flatten();
     let mut style = Style::default();
     for attr in PRESENTATION {
-        if let Some(v) = value(&key(attr)) {
+        if let Some(v) = value(attr) {
             let parent = style.clone();
             style
                 .apply(attr, &v, &parent)
                 .map_err(|e| format!("{attr}: {e}"))?;
         }
     }
-    let t = value(TRANSFORM)
+    let t = computed
+        .get(TRANSFORM)
+        .cloned()
+        .flatten()
         .and_then(|t| Affine::parse(&t).ok())
         .unwrap_or(Affine::IDENTITY);
     let get = |attr: &str| svg_prop(attr).and_then(|p| r.str(p));
-    let mut draw = ElementDraw {
-        view_box: Some(vb),
-        ..ElementDraw::default()
-    };
     let Some(local) = shape_path(tag, &get, vb)? else {
-        return Ok((draw, Vec::new(), None));
+        return Ok(ShapeOut {
+            draw: ElementDraw {
+                view_box: Some(vb),
+                ..ElementDraw::default()
+            },
+            tiles: Vec::new(),
+            tile_box: None,
+            markers: Vec::new(),
+        });
     };
     let bbox = bounds(&local);
     let path = local.transformed(&t);
-    let parts = subpaths(&path);
     let paint = |p: &PaintRef, alpha: f32| -> Result<Option<Paint>, String> {
         Ok(match p {
             PaintRef::Url(id) if def(doc, id, &["pattern"]).is_some() => None,
@@ -684,82 +1220,24 @@ fn shape_draw(doc: &UiDocument, tag: &str, r: &Resolved, vb: [f32; 4]) -> Result
         }
         _ => Vec::new(),
     };
-    let rule = if style.even_odd {
-        crate::paint::FillRule::EvenOdd
-    } else {
-        crate::paint::FillRule::NonZero
-    };
-    let cap = match style.cap {
-        crate::svg::Cap::Butt => crate::paint::Cap::Butt,
-        crate::svg::Cap::Round => crate::paint::Cap::Round,
-        crate::svg::Cap::Square => crate::paint::Cap::Square,
-    };
-    let join = match style.join {
-        crate::svg::Join::Miter => crate::paint::Join::Miter(style.miter_limit),
-        crate::svg::Join::Round => crate::paint::Join::Round,
-        crate::svg::Join::Bevel => crate::paint::Join::Bevel,
-    };
-    let width = style.stroke_width * t.scale();
-    draw.shape = ShapeKind::Path {
-        points: parts.iter().flat_map(|(p, _)| p.iter().copied()).collect(),
-        closed: true,
-        filled: true,
-        curves: true,
-        fill_rule: rule,
-        contours: parts.iter().map(|(p, _)| p.len() as u32).collect(),
-        width,
-        cap,
-        join,
-    };
     // A line has no inside; a polyline fills as SVG does, closed.
-    if tag != "line"
-        && let Some(fill) = paint(&style.fill, style.fill_opacity)?
-    {
-        draw.fills.push(fill);
-    }
-    if width > 0.0
-        && let Some(stroke) = paint(&style.stroke, style.stroke_opacity)?
-    {
-        // Dashes measure the outline in user units, or in `pathLength`.
-        let per = match get("pathLength").map(|v| v.trim().parse::<f32>()) {
-            Some(Ok(l)) if l > 0.0 => local.length(vb[2].max(vb[3]) / 2000.0) / l,
-            Some(_) => return Err("pathLength is a positive number".into()),
-            None => 1.0,
-        } * t.scale();
-        let dash = match style.dashes.as_slice() {
-            [] => [0.0; 2],
-            [d, g] => [d * per, g * per],
-            more => {
-                return Err(format!(
-                    "stroke-dasharray takes one dash and one gap, not {} lengths",
-                    more.len()
-                ));
-            }
-        };
-        for (points, closed) in parts {
-            draw.outlines.push((
-                ShapeKind::Path {
-                    points,
-                    closed,
-                    filled: false,
-                    curves: true,
-                    fill_rule: rule,
-                    contours: Vec::new(),
-                    width,
-                    cap,
-                    join,
-                },
-                Stroke {
-                    width,
-                    align: StrokeAlign::Center,
-                    dash,
-                    dash_offset: style.dash_offset * per,
-                    dash_cap: cap,
-                    paint: stroke.clone(),
-                },
-            ));
-        }
-    }
+    let fill = if tag == "line" {
+        None
+    } else {
+        paint(&style.fill, style.fill_opacity)?
+    };
+    let stroke = if style.stroke_width * t.scale() > 0.0 {
+        paint(&style.stroke, style.stroke_opacity)?
+    } else {
+        None
+    };
+    // Dashes measure the outline in user units, or in `pathLength`.
+    let per = match get("pathLength").map(|v| v.trim().parse::<f32>()) {
+        Some(Ok(l)) if l > 0.0 => local.length(vb[2].max(vb[3]) / 2000.0) / l,
+        Some(_) => return Err("pathLength is a positive number".into()),
+        None => 1.0,
+    } * t.scale();
+    let draw = painted(&path, &style, t.scale(), per, fill, stroke, vb);
     // The tiles are cut to the shape: a rect, circle or ellipse as a box,
     // any other by its own path.
     let tile_box = if tiles.is_empty() {
@@ -770,7 +1248,17 @@ fn shape_draw(doc: &UiDocument, tag: &str, r: &Resolved, vb: [f32; 4]) -> Result
                 .map_or((draw.shape.clone(), None), |(s, r)| (s, Some(r))),
         )
     };
-    Ok((draw, tiles, tile_box))
+    let markers = if tag == "image" {
+        Vec::new()
+    } else {
+        markers(doc, &value, &local, &t, &style, vb)?
+    };
+    Ok(ShapeOut {
+        draw,
+        tiles,
+        tile_box,
+        markers,
+    })
 }
 
 /// Where `dominant-baseline` puts `y` in a line box whose top is 0 and
@@ -794,6 +1282,76 @@ fn baseline_shift(base: &str, ascender: f32, descender: f32, size: f32) -> Resul
             ));
         }
     })
+}
+
+/// A `<text>`'s `<textPath>` as og-ui's text on a path: the path `href`
+/// names (a `<path>` or any basic shape, its own transform applied) or its
+/// own `path` data, under the text's transform, in the `<svg>`'s user
+/// space from the view box's origin. `None`: the text is not on a path.
+fn text_path(
+    doc: &UiDocument,
+    r: &Resolved,
+    t: &Affine,
+    vb: [f32; 4],
+) -> Result<Option<crate::text_path::TextPath>, String> {
+    let (local, length_scale) = if let Some(d) = r.str("svgPath") {
+        (
+            crate::svg::Path::parse(d).map_err(|e| format!("<textPath> path: {e}"))?,
+            1.0,
+        )
+    } else if let Some(href) = r.str("svgTextPathHref") {
+        shape_by_href(doc, href, vb).map_err(|e| format!("<textPath {e}"))?
+    } else {
+        return Ok(None);
+    };
+    let path = local.transformed(t);
+    let tolerance = vb[2].max(vb[3]) / 4000.0;
+    let origin = Vec2::new(vb[0], vb[1]);
+    let subs: Vec<Vec<Vec2>> = path
+        .flatten(tolerance)
+        .into_iter()
+        .map(|(mut pts, closed)| {
+            if closed && let Some(&p) = pts.first() {
+                pts.push(p);
+            }
+            pts.into_iter().map(|p| p - origin).collect()
+        })
+        .collect();
+    let (offset, percent) = match r.str("svgStartOffset").map(str::trim) {
+        None => (0.0, false),
+        Some(v) => match v.strip_suffix('%') {
+            Some(p) => (
+                p.trim()
+                    .parse::<f32>()
+                    .map_err(|_| format!("startOffset \"{v}\""))?
+                    / 100.0,
+                true,
+            ),
+            None => (
+                crate::svg::length(v, 0.0)? * length_scale * t.scale(),
+                false,
+            ),
+        },
+    };
+    let reverse = match r.str("svgSide").map(str::trim) {
+        None | Some("left") => false,
+        Some("right") => true,
+        Some(v) => return Err(format!("<textPath> side \"{v}\" is left or right")),
+    };
+    match r.str("svgMethod").map(str::trim) {
+        None | Some("align" | "stretch") => {}
+        Some(v) => return Err(format!("<textPath> method \"{v}\" is align or stretch")),
+    }
+    match r.str("svgSpacing").map(str::trim) {
+        None | Some("exact" | "auto") => {}
+        Some(v) => return Err(format!("<textPath> spacing \"{v}\" is exact or auto")),
+    }
+    Ok(Some(crate::text_path::TextPath {
+        shape: crate::text_path::PathShape::Data(std::sync::Arc::new(subs)),
+        offset,
+        percent,
+        reverse,
+    }))
 }
 
 impl Ui {
@@ -838,7 +1396,7 @@ impl Ui {
         let own = |attr: &str, warnings: &mut Vec<String>| {
             svg_prop(attr)
                 .and_then(|p| r.str(p))
-                .map_or(Ok(0.0), |v| v.trim().parse::<f32>())
+                .map_or(Ok(0.0), |v| v.trim().trim_end_matches("px").parse::<f32>())
                 .unwrap_or_else(|_| {
                     warnings.push(format!("{attr} is a number of user units"));
                     0.0
@@ -850,10 +1408,29 @@ impl Ui {
             .flatten()
             .and_then(|t| Affine::parse(&t).ok())
             .unwrap_or(Affine::IDENTITY);
-        let x = own("x", &mut warnings) + own("dx", &mut warnings);
-        let y = own("y", &mut warnings) + own("dy", &mut warnings);
+        let font_size = num("font-size", 16.0, &mut warnings).max(0.0);
+        // dx and dy: user units or em, a list summed (a line's dy is the
+        // sum of the dys since its y).
+        let shift = |attr: &str, warnings: &mut Vec<String>| -> f32 {
+            let Some(v) = svg_prop(attr).and_then(|p| r.str(p)) else {
+                return 0.0;
+            };
+            v.split([' ', ','])
+                .filter(|t| !t.is_empty())
+                .map(|t| match t.strip_suffix("em") {
+                    Some(n) => n.parse::<f32>().map(|n| n * font_size),
+                    None => t.trim_end_matches("px").parse::<f32>(),
+                })
+                .sum::<Result<f32, _>>()
+                .unwrap_or_else(|_| {
+                    warnings.push(format!("{attr} \"{v}\" is user units or em"));
+                    0.0
+                })
+        };
+        let x = own("x", &mut warnings) + shift("dx", &mut warnings);
+        let y = own("y", &mut warnings) + shift("dy", &mut warnings);
         let at = t.apply(og_core::glam::Vec2::new(x, y));
-        let size = num("font-size", 16.0, &mut warnings).max(0.0) * t.scale();
+        let size = font_size * t.scale();
         let weight = match value("font-weight").as_deref().map(str::trim) {
             None | Some("normal") => 0,
             Some("bold" | "bolder") => 700,
@@ -904,13 +1481,28 @@ impl Ui {
             rgb: [0; 3],
             alpha: 0.0,
         }));
+        // Lines a kept line break starts align on the anchor too.
+        let align = match anchor_x {
+            0.5 => crate::layout::TextAlign::Center,
+            1.0 => crate::layout::TextAlign::End,
+            _ => crate::layout::TextAlign::Start,
+        };
         let desc = crate::ui::LabelDesc {
             step: Some(step),
             color,
             nowrap: true,
+            align,
             font,
             ..Default::default()
         };
+        let text_path = match text_path(&b.doc, r, &t, vb) {
+            Ok(tp) => tp,
+            Err(e) => {
+                warnings.push(e);
+                None
+            }
+        };
+        let width = desc.width;
         // A whole bold or italic text is one span over it (bold synthesised
         // where the role has no such face, as a `<tspan>`'s is).
         let bold = weight >= 600;
@@ -962,16 +1554,30 @@ impl Ui {
             None => self.label(id, &text, desc),
         }
         let i = self.last_closed;
+        // Its anchor places it, so it keeps its text's width (a centred
+        // label in a column would take the column's).
+        self.nodes[i].el.width = width;
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
         p.position = crate::element::Position::Absolute;
-        p.view_place = Some(crate::element::ViewPlace {
-            view_box: vb,
-            at: [at.x, at.y],
-            anchor_x,
-            anchor_y,
+        p.view_place = Some(match &text_path {
+            // On a path: its box from the view box's origin, the path in
+            // it (scaled with the view box as the shapes are).
+            Some(_) => crate::element::ViewPlace {
+                view_box: vb,
+                at: [vb[0], vb[1]],
+                anchor_x: 0.0,
+                anchor_y: 0.0,
+            },
+            None => crate::element::ViewPlace {
+                view_box: vb,
+                at: [at.x, at.y],
+                anchor_x,
+                anchor_y,
+            },
         });
+        p.text_path = text_path;
         self.nodes[i].props = p;
         for e in warnings {
             let tag = n.selector_tag.as_deref().unwrap_or("text");
@@ -1063,6 +1669,101 @@ impl Ui {
         }))
     }
 
+    /// A `<foreignObject x y width height>`: a column box `width` by
+    /// `height` user units laid out at that size, its corner on `(x, y)`
+    /// fitted into the `<svg>`'s box and scaled with the view box, its
+    /// document elements cut to it (SVG's overflow hidden).
+    #[allow(clippy::too_many_arguments)]
+    fn build_svg_foreign(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &str,
+        r: &Resolved,
+        props: Props,
+        path: String,
+        key: u64,
+        built: Built,
+        vb: [f32; 4],
+        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+    ) -> Option<String> {
+        let computed = r.cascade.computed.clone();
+        let t = computed
+            .get(TRANSFORM)
+            .cloned()
+            .flatten()
+            .and_then(|t| Affine::parse(&t).ok())
+            .unwrap_or(Affine::IDENTITY);
+        let mut warnings = Vec::new();
+        let len = |p: &str, whole: f32, warnings: &mut Vec<String>| {
+            r.str(p)
+                .map_or(Ok(0.0), |v| crate::svg::length(v, whole))
+                .unwrap_or_else(|e| {
+                    warnings.push(format!(
+                        "{}: {e}",
+                        crate::doc::schema_extra::svg_attr(p).unwrap_or(p)
+                    ));
+                    0.0
+                })
+        };
+        let (x, y) = (
+            len("svgX", vb[2], &mut warnings),
+            len("svgY", vb[3], &mut warnings),
+        );
+        let (w, h) = (
+            len("svgWidth", vb[2], &mut warnings).max(0.0),
+            len("svgHeight", vb[3], &mut warnings).max(0.0),
+        );
+        let [a, bb, c, d, ..] = t.0;
+        if bb != 0.0 || c != 0.0 || (a - 1.0).abs() > 1e-6 || (d - 1.0).abs() > 1e-6 {
+            warnings.push(
+                "a <foreignObject> takes only a translation from its transform (its content is laid out, not drawn as shapes)".into(),
+            );
+        }
+        let at = Vec2::new(x + t.0[4], y + t.0[5]);
+        let el = Element {
+            direction: Direction::Column,
+            ..Element::default()
+        };
+        let mut el = Self::box_of(r, el, self.em_of(r));
+        el.width = Size::px(w);
+        el.height = Size::px(h);
+        self.open(id, el);
+        let i = self.parent();
+        let mut p = Self::resolved_props(n, r);
+        p.states = props.states;
+        p.state = props.state;
+        p.position = crate::element::Position::Absolute;
+        p.view_place = Some(crate::element::ViewPlace {
+            view_box: vb,
+            at: [at.x, at.y],
+            anchor_x: 0.0,
+            anchor_y: 0.0,
+        });
+        self.nodes[i].props = p;
+        self.set_draw(ElementDraw {
+            shape: ShapeKind::Rect {
+                radii: Some([0.0; 4]),
+                corner: crate::paint::Corner::Round,
+            },
+            clip: crate::paint::Clip::Shape,
+            ..ElementDraw::default()
+        });
+        for e in warnings {
+            self.warnings.push(format!(
+                "{}:{} ({path}): <foreignObject>: {e}",
+                b.doc.source, n.line
+            ));
+        }
+        self.note_built(built);
+        let inherited = std::mem::replace(&mut b.inherited, computed);
+        build_children(self, b, None);
+        b.inherited = inherited;
+        let resp = self.close();
+        self.fire(b, n, key, &path, resp);
+        Some(path)
+    }
+
     /// Builds an SVG element: `<svg>` as a box of its size, a group or a
     /// shape as a box over the whole `<svg>`, a definition as nothing.
     #[allow(clippy::too_many_arguments)]
@@ -1082,6 +1783,27 @@ impl Ui {
         if kind == "svgDef" {
             return None;
         }
+        if animated(&b.doc, n) {
+            // Its animations' clock starts as it first shows.
+            let clock = smil_clock(&path);
+            if self.has_anim(clock) {
+                self.anim(clock);
+            } else {
+                let t = self.state.tick;
+                self.set_anim(
+                    clock,
+                    crate::ui::Anim {
+                        t,
+                        ..Default::default()
+                    },
+                );
+            }
+            if r.smil
+                && let Some(owned) = self.owning.last_mut()
+            {
+                owned.restyle = true;
+            }
+        }
         let computed = r.cascade.computed.clone();
         let vb = computed
             .get(VIEW_BOX)
@@ -1093,6 +1815,20 @@ impl Ui {
             self.build_svg_text(b, n, id, r, props, &path, key, vb);
             self.note_built(built);
             return Some(path);
+        }
+        if kind == "svgForeign" {
+            return self.build_svg_foreign(
+                b,
+                n,
+                id,
+                r,
+                props,
+                path,
+                key,
+                built,
+                vb,
+                build_children,
+            );
         }
         let mut el = Element {
             direction: Direction::Column,
@@ -1204,7 +1940,12 @@ impl Ui {
         } else if kind == "svgShape" {
             let tag = n.selector_tag.as_deref().unwrap_or("path");
             match shape_draw(&b.doc, tag, r, vb) {
-                Ok((draw, tiles, tile_box)) => {
+                Ok(ShapeOut {
+                    draw,
+                    tiles,
+                    tile_box,
+                    markers,
+                }) => {
                     if cut.is_some() {
                         over(self, "~shape");
                     }
@@ -1233,6 +1974,11 @@ impl Ui {
                         self.close();
                     }
                     if boxed {
+                        self.close();
+                    }
+                    for (k, draw) in markers.into_iter().enumerate() {
+                        over(self, &format!("~marker{k}"));
+                        self.set_draw(draw);
                         self.close();
                     }
                     if cut.is_some() {
@@ -1754,5 +2500,333 @@ mod tests {
             "{h:?}"
         );
         assert_eq!(uv, [0.5, 0.0, 1.0, 1.0]);
+    }
+}
+
+#[cfg(test)]
+mod more_tests {
+    use crate::doc::UiDocument;
+    use crate::reactive::SourceId;
+    use crate::{DrawCmd, InputFrame, Ui, UiDesc, Viewport};
+    use og_core::glam::Vec2;
+    use std::collections::BTreeMap;
+
+    /// A dash list cut by hand: pattern 4 2 1 2 along a 20-unit line.
+    /// Ways it could fail: only the first dash and gap honoured; the
+    /// offset entering the pattern at the wrong element; a zero dash with
+    /// no dot for its caps; a dash cut short at a segment's end.
+    #[test]
+    fn dash_lists_cut_every_dash_and_gap() {
+        let line = crate::svg::Path::parse("M0 0 L8 0 L20 0").unwrap();
+        let spans = |pattern: &[f32], offset: f32| -> Vec<(f32, f32)> {
+            line.dashed(pattern, offset, 0.01)
+                .iter()
+                .map(|d| (d[0].x, d.last().unwrap().x))
+                .map(|(a, b)| ((a * 1000.0).round() / 1000.0, (b * 1000.0).round() / 1000.0))
+                .collect()
+        };
+        let p = [4.0, 2.0, 1.0, 2.0];
+        assert_eq!(
+            spans(&p, 0.0),
+            [
+                (0.0, 4.0),
+                (6.0, 7.0),
+                (9.0, 13.0),
+                (15.0, 16.0),
+                (18.0, 20.0)
+            ]
+        );
+        assert_eq!(
+            spans(&p, 5.0),
+            [
+                (1.0, 2.0),
+                (4.0, 8.0),
+                (10.0, 11.0),
+                (13.0, 17.0),
+                (19.0, 20.0)
+            ]
+        );
+        // Zero-length dashes are dots, each a tiny dash its caps round.
+        assert_eq!(
+            spans(&[0.0, 5.0], 0.0)
+                .iter()
+                .map(|s| s.0)
+                .collect::<Vec<_>>(),
+            [0.0, 5.0, 10.0, 15.0, 20.0]
+        );
+    }
+
+    const DOC: &str = r##"
+<meta name="component" content="pic">
+<div id="Box">
+  <svg id="S" viewBox="0 0 100 100">
+    <defs>
+      <marker id="Tip" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="2" markerHeight="2" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#0000ff"/>
+      </marker>
+      <path id="Arc" d="M10 80 L90 80"/>
+    </defs>
+    <polyline id="P" points="10,10 30,10 30,30" fill="none" stroke="#000" stroke-width="2"
+      marker-start="url(#Tip)" marker-mid="url(#Tip)" marker-end="url(#Tip)"/>
+    <text id="T" x="50" y="40" text-anchor="middle" font-size="6"><tspan x="50">One</tspan><tspan x="50" dy="2em">Two</tspan></text>
+    <text id="W" x="80" y="20" font-size="6" white-space="pre-line">Up
+      Down</text>
+    <text id="On" font-size="6" text-anchor="middle"><textPath href="#Arc" startOffset="50%">{$word}</textPath></text>
+    <foreignObject id="F" x="10" y="50" width="40" height="20"><div id="B"></div></foreignObject>
+  </svg>
+</div>
+<style>#S { width: 200px; height: 200px; } #Box { padding: 0; } #B { width: 30px; height: 10px; }</style>
+"##;
+
+    /// Markers, lines of a text, a text on a path and a foreignObject, in
+    /// a 2× box. Ways it could fail: markers not drawn at every vertex, or
+    /// not turned (auto-start-reverse not flipping the start); a tspan's
+    /// dy not moving its line, or lines not each on their anchor; a kept
+    /// line break dropped; text on a path drawn in a line; a foreignObject
+    /// laid out at its user size but not placed and scaled into the box.
+    #[test]
+    fn markers_lines_text_paths_and_foreign_objects_draw_in_the_view_box() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(UiDocument::parse("pic.svelte", DOC).unwrap());
+        let word = SourceId::new("test", "word");
+        ui.reactive
+            .execute(crate::reactive::session::Command::Signal {
+                source: word.clone(),
+                initial: serde_json::json!("Along"),
+                readable: false,
+            })
+            .unwrap();
+        let mut inputs = BTreeMap::new();
+        inputs.insert("word".to_string(), word);
+        ui.mount_document(
+            SourceId::new("test", "pic"),
+            "pic",
+            inputs,
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        for _ in 0..3 {
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 400.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+        }
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        let s = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path == "test:pic/S")
+            .unwrap();
+        let o = Vec2::new(s.x, s.y);
+        // The three blue triangles, 4 px long (2 user units, stroke 2, ×2
+        // box... markerWidth 2 × stroke 2 = 4 units = 8 px), tail on the vertex.
+        let mut tips: Vec<(Vec2, Vec2)> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::Shape { shape, .. } => match (&shape.paint, &shape.geometry) {
+                    (og_render::UiPaint::Solid(c), og_render::UiGeometry::Path(p))
+                        if c[2] > 0.9 && c[0] < 0.1 =>
+                    {
+                        let lo = p
+                            .points
+                            .iter()
+                            .fold(Vec2::splat(f32::MAX), |m, q| m.min(*q));
+                        let hi = p
+                            .points
+                            .iter()
+                            .fold(Vec2::splat(f32::MIN), |m, q| m.max(*q));
+                        let mid = shape.center + (lo + hi) / 2.0;
+                        Some(((mid - o) / 2.0, (hi - lo) / 4.0))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect();
+        tips.sort_by(|a, b| (a.0.x + a.0.y).total_cmp(&(b.0.x + b.0.y)));
+        assert_eq!(tips.len(), 3, "{tips:?}");
+        let near = |a: Vec2, b: Vec2| (a - b).length() < 0.2;
+        // Start (10,10), reversed: pointing back along -x, 4 units long.
+        assert!(near(tips[0].0, Vec2::new(8.0, 10.0)), "{tips:?}");
+        // Mid (30,10): the bisector of +x and +y, a diagonal.
+        let (c, _) = tips[1];
+        assert!(
+            c.x > 30.0 && c.y > 10.0 && near(c - Vec2::new(30.0, 10.0), Vec2::splat(c.x - 30.0)),
+            "{tips:?}"
+        );
+        // End (30,30): pointing down +y.
+        assert!(near(tips[2].0, Vec2::new(30.0, 32.0)), "{tips:?}");
+        let rect = |id: &str| {
+            ui.a11y()
+                .nodes
+                .iter()
+                .filter(|a| a.path.starts_with(&format!("test:pic/S/{id}")) && !a.name.is_empty())
+                .map(|a| (a.name.clone(), a.x, a.y, a.width, a.height))
+                .collect::<Vec<_>>()
+        };
+        // Two lines centred on x 50, the second 2em (12 units, 24 px) down.
+        let lines = rect("T");
+        assert_eq!(
+            lines.iter().map(|l| l.0.as_str()).collect::<Vec<_>>(),
+            ["One", "Two"],
+            "{lines:?}"
+        );
+        for l in &lines {
+            assert!((l.1 + l.3 / 2.0 - (o.x + 100.0)).abs() < 0.6, "{l:?}");
+        }
+        assert!((lines[1].2 - lines[0].2 - 24.0).abs() < 0.6, "{lines:?}");
+        // pre-line: its break kept, so two lines tall.
+        let w = rect("W");
+        assert_eq!(w[0].0, "Up\nDown");
+        assert!(w[0].4 > 1.8 * lines[0].4, "{w:?} vs {lines:?}");
+        // On the path: the text's box is the path's extent from the view
+        // box's origin (glyphs are drawn along it; no font draws in tests).
+        let on = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/On"))
+            .unwrap();
+        assert!(
+            (on.x - o.x).abs() < 0.5
+                && (on.y - o.y).abs() < 0.5
+                && (on.width - 180.0).abs() < 0.5
+                && (on.height - 160.0).abs() < 0.5,
+            "{on:?}"
+        );
+        // The 30×10 box inside the foreignObject: at its corner (10,50),
+        // laid out in user units and scaled 2× with the view box.
+        let b = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/B"))
+            .unwrap();
+        let got = [b.x - o.x, b.y - o.y, b.width, b.height];
+        assert!(
+            got.iter()
+                .zip([20.0, 100.0, 60.0, 20.0])
+                .all(|(g, e)| (g - e).abs() < 0.5),
+            "{b:?}"
+        );
+    }
+
+    const SMIL: &str = r##"
+<meta name="component" content="smil">
+<div id="Box">
+<svg id="S" viewBox="0 0 100 100">
+  <g id="G">
+    <animateTransform attributeName="transform" type="translate" from="0 0" to="40 0" dur="1s" fill="freeze"/>
+    <path d="M0 0 H10 V10 Z" fill="#00ff00"/>
+  </g>
+  <polygon id="P" points="0,50 10,50 10,60" fill="#ff0000">
+    <animate id="Grow" attributeName="points" values="0,50 10,50 10,60;0,50 30,50 30,60" begin="0.5s" dur="1s" fill="freeze"/>
+    <set attributeName="fill" to="#0000ff" begin="Grow.end"/>
+  </polygon>
+</svg>
+</div>
+<style>#S { width: 100px; height: 100px; } #Box { padding: 0; }</style>
+"##;
+
+    /// SMIL on the UI clock (10 ticks a second): a group's
+    /// animateTransform moving the path it holds, a polygon's points
+    /// growing from a delayed begin, and a set chained to its end.
+    /// Ways it could fail: a group's animated transform not reaching its
+    /// children; the element not resolving again each frame (frozen at its
+    /// first value); begin read from the wrong clock; fill="freeze" not
+    /// holding the end; a syncbase begin never firing; reduced motion
+    /// still playing.
+    #[test]
+    fn smil_animations_play_on_the_ui_clock() {
+        let run = |reduced: bool, frames: u32| -> Vec<Vec<([f32; 3], f32, f32)>> {
+            let mut ui = Ui::new(UiDesc {
+                ticks_per_second: 10,
+                ..UiDesc::default()
+            });
+            if reduced {
+                let mut theme = *ui.theme();
+                theme.reduced_motion = true;
+                ui.set_theme(theme);
+            }
+            ui.define_document(UiDocument::parse("smil.svelte", SMIL).unwrap());
+            ui.mount_document(
+                SourceId::new("test", "smil"),
+                "smil",
+                BTreeMap::new(),
+                BTreeMap::new(),
+                &crate::bind::NoEnv,
+            )
+            .unwrap();
+            let mut out = Vec::new();
+            for _ in 0..frames {
+                ui.begin(InputFrame::default(), Viewport::new(200.0, 200.0));
+                ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+                ui.end();
+                assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+                let s = ui
+                    .probe_elements()
+                    .into_iter()
+                    .find(|e| e.path == "test:smil/S")
+                    .unwrap();
+                // Each solid path's color and its left and right edges.
+                let mut shapes: Vec<_> = ui
+                    .frame()
+                    .items
+                    .iter()
+                    .filter_map(|it| match &it.cmd {
+                        DrawCmd::Shape { shape, .. } => match (&shape.paint, &shape.geometry) {
+                            (og_render::UiPaint::Solid(c), og_render::UiGeometry::Path(p)) => {
+                                let lo = p.points.iter().fold(f32::MAX, |m, q| m.min(q.x));
+                                let hi = p.points.iter().fold(f32::MIN, |m, q| m.max(q.x));
+                                let x = shape.center.x - s.x;
+                                Some(([c[0], c[1], c[2]], x + lo, x + hi))
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .collect();
+                shapes.sort_by(|a, b| a.0[1].total_cmp(&b.0[1]).reverse());
+                out.push(shapes);
+            }
+            out
+        };
+        let frames = run(false, 25);
+        let at = |tick: usize| {
+            assert_eq!(frames[tick].len(), 2, "{tick}: {:?}", frames[tick]);
+            (frames[tick][0], frames[tick][1])
+        };
+        let near = |a: f32, b: f32| (a - b).abs() < 0.05;
+        // Tick 0: the clock starts as it shows; nothing has moved.
+        let (g, p) = at(0);
+        assert!(
+            near(g.1, 0.0) && near(p.2, 10.0) && p.0[0] > 0.9,
+            "{g:?} {p:?}"
+        );
+        // 0.5 s: the group halfway (20 units), the polygon about to grow.
+        let (g, p) = at(5);
+        assert!(near(g.1, 20.0) && near(p.2, 10.0), "{g:?} {p:?}");
+        // 1 s: the group frozen at 40; the polygon halfway (20).
+        let (g, p) = at(10);
+        assert!(near(g.1, 40.0) && near(p.2, 20.0), "{g:?} {p:?}");
+        // 1.5 s: Grow ends at 30 and freezes; its end turns the fill blue.
+        let (g, p) = at(15);
+        assert!(
+            near(g.1, 40.0) && near(p.2, 30.0) && p.0[2] > 0.9,
+            "{g:?} {p:?}"
+        );
+        let (g, p) = at(24);
+        assert!(
+            near(g.1, 40.0) && near(p.2, 30.0) && p.0[2] > 0.9,
+            "{g:?} {p:?}"
+        );
+        // Reduced motion: each shows its frozen end from the first frame
+        // (the set has no end, so no effect).
+        let still = run(true, 2);
+        let (g, p) = (still[1][0], still[1][1]);
+        assert!(
+            near(g.1, 40.0) && near(p.2, 30.0) && p.0[0] > 0.9,
+            "{still:?}"
+        );
     }
 }

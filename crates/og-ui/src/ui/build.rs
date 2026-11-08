@@ -9,6 +9,8 @@ pub(crate) struct Owned {
     pub memories: Vec<u64>,
     /// A memory it wrote changed: it is in motion and builds again next frame.
     pub moved: bool,
+    /// Its style moves with the clock (SMIL): it resolves again next frame.
+    pub restyle: bool,
 }
 
 impl Ui {

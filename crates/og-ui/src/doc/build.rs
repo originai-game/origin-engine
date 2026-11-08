@@ -59,6 +59,8 @@ struct Resolved {
     /// Its effective CSS text and font style ([`super::text_css`]); `None`
     /// for an element that neither declares nor shows text.
     text: Option<Arc<super::text_css::TextCss>>,
+    /// Its SMIL animations are playing: it resolves again next frame.
+    smil: bool,
 }
 
 #[derive(Clone)]
@@ -801,6 +803,7 @@ impl Ui {
         if let NodeKind::Element(kind) = n.kind
             && svg::KINDS.contains(&kind)
         {
+            r.smil = svg::animate(self, &b.doc, n, path, &mut r);
             svg::inherit(kind, &mut r);
         }
         // Text style: written for those under it by an element declaring

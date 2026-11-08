@@ -14,6 +14,7 @@ pub(crate) const SVG_SHAPES: &[&str] = &[
 const SVG_DEFS: &[&str] = &[
     "defs",
     "symbol",
+    "marker",
     "clipPath",
     "mask",
     "pattern",
@@ -24,7 +25,9 @@ const SVG_DEFS: &[&str] = &[
 ];
 
 /// The elements whose children are SVG.
-const SVG_PARENTS: &[&str] = &["svg", "g", "defs", "symbol", "clipPath", "mask", "pattern"];
+const SVG_PARENTS: &[&str] = &[
+    "svg", "g", "defs", "symbol", "clipPath", "mask", "pattern", "marker",
+];
 
 /// What a `<tspan>` inside a `<text>` takes: the run's look.
 pub(super) const TSPAN_ATTRS: &[&str] = &["font-weight", "font-style", "text-decoration", "fill"];
@@ -82,6 +85,9 @@ pub(crate) const PRESENTATION: &[&str] = &[
     "stroke-linecap",
     "stroke-linejoin",
     "stroke-miterlimit",
+    "marker-start",
+    "marker-mid",
+    "marker-end",
 ];
 
 /// SVG's text presentation properties, inherited as [`PRESENTATION`] is
@@ -100,6 +106,25 @@ pub(crate) const TEXT_PRESENTATION: &[&str] = &[
 /// SVG build).
 pub(crate) fn svg_longhand(name: &str) -> bool {
     PRESENTATION.contains(&name) || matches!(name, "text-anchor" | "dominant-baseline")
+}
+
+/// A `<text>`'s literal `white-space` attribute (or `xml:space`): spaces
+/// kept (`pre`, `pre-wrap`, `break-spaces`, `preserve`) and line breaks
+/// kept (`pre`, `pre-wrap`, `pre-line`, `break-spaces`); `None` for
+/// `normal` and `nowrap`, which collapse both.
+pub(super) fn white_space(value: &str) -> Result<Option<(bool, bool)>, String> {
+    Ok(match value.trim() {
+        "normal" | "nowrap" | "default" => None,
+        "pre" | "pre-wrap" | "break-spaces" => Some((true, true)),
+        "pre-line" => Some((false, true)),
+        // xml:space="preserve" keeps spaces; its line breaks are spaces.
+        "preserve" => Some((true, false)),
+        v => {
+            return Err(format!(
+                "white-space=\"{v}\" is normal, nowrap, pre, pre-wrap, pre-line or break-spaces"
+            ));
+        }
+    })
 }
 
 pub(super) fn in_svg(parent_tag: Option<&str>) -> bool {
@@ -135,6 +160,10 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
             "<tspan> is a run inside an SVG <text>; write it there".into()
         )),
         "use" => svg_child("svgUse"),
+        "foreignObject" => svg_child("svgForeign"),
+        "textPath" => Some(Err(
+            "<textPath> is the content of an SVG <text>; write it there".into(),
+        )),
         // Parsed as text (so its content binds), then lifted into its
         // parent's name by [`finish`].
         "title" | "desc" => Some(if under_svg(parent_tag) {
@@ -155,8 +184,21 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
             },
         ),
         t if SVG_DEFS.contains(&t) => svg_child("svgDef"),
+        // SMIL: read by the element it sits in, never built.
+        t if crate::svg::smil::TAGS.contains(&t) => Some(if under_svg(parent_tag) {
+            Ok("svgDef")
+        } else {
+            Err(format!(
+                "<{t}> animates the SVG element it sits in; write it there"
+            ))
+        }),
+        "mpath" => Some(if parent_tag == Some("animateMotion") {
+            Ok("svgDef")
+        } else {
+            Err("<mpath> names an <animateMotion>'s path; write it there".into())
+        }),
         t if in_svg(parent_tag) => Some(Err(format!(
-            "<{t}> is not in the inline SVG subset: g, use, text, tspan, path, rect, circle, ellipse, line, polyline, polygon, image, defs, symbol, clipPath, mask, pattern, linearGradient, radialGradient, stop, title and desc (docs/ui.md §3.3)"
+            "<{t}> is not in the inline SVG subset: g, use, text, tspan, textPath, path, rect, circle, ellipse, line, polyline, polygon, image, foreignObject, defs, symbol, marker, animate, set, animateTransform, animateMotion, mpath, clipPath, mask, pattern, linearGradient, radialGradient, stop, title and desc (docs/ui.md §3.3)"
         ))),
         _ => None,
     }
@@ -219,6 +261,7 @@ pub(super) fn property(kind: &str, attr: &str) -> Option<String> {
             ) || PRESENTATION.contains(&attr)
                 || TEXT_PRESENTATION.contains(&attr)
         }
+        "svgForeign" => matches!(attr, "x" | "y" | "width" | "height" | "transform"),
         "svgDef" => true,
         _ => false,
     };

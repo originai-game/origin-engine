@@ -48,7 +48,12 @@ pub const KINDS: &[KindSpec] = &[
     KindSpec {
         name: "svgText",
         container: false,
-        doc: "SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`.",
+        doc: "SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path.",
+    },
+    KindSpec {
+        name: "svgForeign",
+        container: true,
+        doc: "SVG's `<foreignObject x y width height>`: document elements laid out in a box of `width` by `height` user units at `(x, y)`, scaled with the view box as the shapes are.",
     },
     KindSpec {
         name: "svgUse",
@@ -90,6 +95,10 @@ pub(super) fn tags(kind: &str) -> Option<Vec<(String, String)>> {
         ),
         "svgGroup" => one("g", "<g transform=\"rotate(-90 20 20)\" stroke=\"var(--accent)\">…</g>"),
         "svgUse" => one("use", "<use href=\"#Coin\" x={i * 12} y=\"0\" width=\"10\" height=\"10\" />"),
+        "svgForeign" => one(
+            "foreignObject",
+            "<foreignObject x=\"10\" y=\"10\" width=\"80\" height=\"30\"><button onclick={buy}>Buy</button></foreignObject>",
+        ),
         "svgShape" => Some(vec![
             ("path".into(), "<path d={$line} fill=\"none\" stroke=\"currentColor\" />".into()),
             ("circle".into(), "<circle cx=\"20\" cy=\"20\" r=\"18\" pathLength=\"1\" stroke-dasharray=\"1 1\" stroke-dashoffset={1 - $ready} />".into()),
@@ -163,6 +172,20 @@ const SVG_ATTRS: &[(&str, &str)] = &[
     ("patternContentUnits", "svgPatternContentUnits"),
     ("patternTransform", "svgPatternTransform"),
     ("preserveAspectRatio", "svgPreserveAspectRatio"),
+    ("marker-start", "svgMarkerStart"),
+    ("marker-mid", "svgMarkerMid"),
+    ("marker-end", "svgMarkerEnd"),
+    ("refX", "svgRefX"),
+    ("refY", "svgRefY"),
+    ("markerWidth", "svgMarkerWidth"),
+    ("markerHeight", "svgMarkerHeight"),
+    ("markerUnits", "svgMarkerUnits"),
+    ("orient", "svgOrient"),
+    ("startOffset", "svgStartOffset"),
+    ("side", "svgSide"),
+    ("method", "svgMethod"),
+    ("spacing", "svgSpacing"),
+    ("path", "svgPath"),
 ];
 
 /// The prop SVG's attribute `attr` sets.
@@ -175,7 +198,15 @@ pub(super) fn svg_attr(prop: &str) -> Option<&'static str> {
     SVG_ATTRS.iter().find(|(_, p)| *p == prop).map(|(a, _)| *a)
 }
 
-const ALL: On = On::Kinds(&["svg", "svgGroup", "svgShape", "svgUse", "svgDef", "svgText"]);
+const ALL: On = On::Kinds(&[
+    "svg",
+    "svgGroup",
+    "svgShape",
+    "svgUse",
+    "svgDef",
+    "svgText",
+    "svgForeign",
+]);
 const TEXT: On = On::Kinds(&["svg", "svgGroup", "svgText"]);
 const SHAPES: On = On::Kinds(&["svgShape", "svgUse"]);
 const PAINTED: On = On::Kinds(&["svgGroup", "svgShape", "svgUse"]);
@@ -428,7 +459,7 @@ pub const PROPS: &[PropSpec] = &[
     svg!(
         "svgStrokeDasharray",
         ALL,
-        "SVG `stroke-dasharray`: a dash and a gap (user units, or of `pathLength`)."
+        "SVG `stroke-dasharray`: dash and gap lengths, an odd list repeated (user units, or of `pathLength`)."
     ),
     svg!("svgStrokeDashoffset", ALL, "SVG `stroke-dashoffset`."),
     svg!("svgStrokeLinecap", ALL, "SVG `stroke-linecap`."),
@@ -445,12 +476,12 @@ pub const PROPS: &[PropSpec] = &[
     svg!(
         "svgDx",
         On::Kinds(&["svgText"]),
-        "A `<text>`'s `dx`: added to `x`."
+        "A `<text>`'s `dx`: added to `x`, user units or `em`."
     ),
     svg!(
         "svgDy",
         On::Kinds(&["svgText"]),
-        "A `<text>`'s `dy`: added to `y`."
+        "A `<text>`'s `dy`: added to `y`, user units or `em` (`1.2em`: a line down)."
     ),
     svg!(
         "svgFontSize",
@@ -492,6 +523,77 @@ pub const PROPS: &[PropSpec] = &[
         "svgPoints",
         SHAPES,
         "A `<polyline>`'s or `<polygon>`'s points."
+    ),
+    svg!(
+        "svgMarkerStart",
+        ALL,
+        "SVG `marker-start=\"url(#id)\"`: the `<marker>` drawn at a shape's first vertex."
+    ),
+    svg!(
+        "svgMarkerMid",
+        ALL,
+        "SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last."
+    ),
+    svg!(
+        "svgMarkerEnd",
+        ALL,
+        "SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead)."
+    ),
+    svg!(
+        "svgRefX",
+        DEFS,
+        "A `<marker>`'s `refX`: the x of its content placed on the vertex."
+    ),
+    svg!("svgRefY", DEFS, "A `<marker>`'s `refY`."),
+    svg!(
+        "svgMarkerWidth",
+        DEFS,
+        "A `<marker>`'s `markerWidth` (default 3)."
+    ),
+    svg!(
+        "svgMarkerHeight",
+        DEFS,
+        "A `<marker>`'s `markerHeight` (default 3)."
+    ),
+    svg!(
+        "svgMarkerUnits",
+        DEFS,
+        "A `<marker>`'s `markerUnits`: strokeWidth (scaled by the shape's stroke width, the default) or userSpaceOnUse."
+    ),
+    svg!(
+        "svgOrient",
+        DEFS,
+        "A `<marker>`'s `orient`: auto (along the path), auto-start-reverse, or an angle in degrees."
+    ),
+    svg!(
+        "svgStartOffset",
+        On::Kinds(&["svgText"]),
+        "A `<textPath>`'s `startOffset`: where the text's anchor sits along the path, user units or a percentage of its length."
+    ),
+    svg!(
+        "svgSide",
+        On::Kinds(&["svgText"]),
+        "A `<textPath>`'s `side`: left (the default) or right (the path run backwards)."
+    ),
+    svg!(
+        "svgMethod",
+        On::Kinds(&["svgText"]),
+        "A `<textPath>`'s `method`: align (each glyph turned rigidly onto the path; stretch draws as align, as browsers do)."
+    ),
+    svg!(
+        "svgSpacing",
+        On::Kinds(&["svgText"]),
+        "A `<textPath>`'s `spacing`: exact or auto (both keep the font's advances)."
+    ),
+    svg!(
+        "svgPath",
+        On::Kinds(&["svgText"]),
+        "A `<textPath>`'s `path`: its own path data instead of `href`."
+    ),
+    svg!(
+        "svgTextPathHref",
+        On::Kinds(&["svgText"]),
+        "A `<textPath>`'s `href=\"#id\"`: the path or shape the text runs along."
     ),
     svg!("svgFx", DEFS, "A radial gradient's `fx`."),
     svg!("svgFy", DEFS, "A radial gradient's `fy`."),

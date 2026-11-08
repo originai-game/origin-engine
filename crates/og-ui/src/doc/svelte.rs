@@ -43,6 +43,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
             buttons: Vec::new(),
             fieldsets: Vec::new(),
             aria_refs_for: Vec::new(),
+            white_space: None,
         };
         let mut script = false;
         let mut window = None;
@@ -447,6 +448,9 @@ struct Parser {
     fieldsets: Vec<(usize, Expr)>,
     /// `<output for>`'s ids, checked once the tree is read.
     aria_refs_for: Vec<(String, usize)>,
+    /// An SVG `<text>`'s `white-space` while its runs are read: whether
+    /// spaces and line breaks are kept (`None`: both collapse).
+    white_space: Option<(bool, bool)>,
 }
 /// A `<datalist>`: its id, its options' values and labels, and its bound
 /// `items`.
@@ -981,6 +985,34 @@ impl Parser {
         at: usize,
         parent: usize,
     ) -> Result<usize, Error> {
+        // An SVG <text>: its white-space read here, its lines split into
+        // texts of their own.
+        let kept;
+        let mut white_space = None;
+        self.white_space = None;
+        let attrs = if tag == "text" && super::extern_element::in_svg(self.parent_tag(parent)) {
+            let mut rest = Vec::new();
+            for a in attrs {
+                if a.name == "white-space" || a.name == "xml:space" {
+                    if a.bound {
+                        return Err((a.at, format!("{} is literal", a.name)));
+                    }
+                    white_space =
+                        super::extern_element::white_space(&a.value).map_err(|e| (a.at, e))?;
+                } else {
+                    rest.push(a.clone());
+                }
+            }
+            if let Some(i) = self.svg_lines(&rest, white_space, children, at, parent)? {
+                return Ok(i);
+            }
+            // Read by its runs (element_node, below).
+            self.white_space = white_space;
+            kept = rest;
+            &kept[..]
+        } else {
+            attrs
+        };
         match tag {
             "svelte:element" => return self.dynamic_element(attrs, children, at, parent),
             "svelte:window" => {
@@ -1347,6 +1379,32 @@ impl Parser {
                 .push((attr.name.clone(), value));
         }
         self.selectors.push((i, tag.into(), attrs.to_vec()));
+        let smil = crate::svg::smil::TAGS.contains(&tag);
+        if smil || tag == "mpath" {
+            if let Some(a) = attrs.iter().find(|a| a.bound) {
+                return Err((
+                    a.at,
+                    format!(
+                        "<{tag}>'s attributes are literal: it plays on the UI clock; animate bound values with og.tween or a CSS transition"
+                    ),
+                ));
+            }
+            if let Some(a) = attrs
+                .iter()
+                .find(|a| tag == "mpath" && a.name != "href" && a.name != "id")
+            {
+                return Err((a.at, format!("<mpath> takes href=\"#id\", not {}", a.name)));
+            }
+            if smil {
+                let literal: Vec<(String, String)> = attrs
+                    .iter()
+                    .map(|a| (a.name.clone(), a.value.clone()))
+                    .collect();
+                // An `<mpath>` child names the path later: stand in for it.
+                let mpath = (tag == "animateMotion").then(crate::svg::Path::default);
+                crate::svg::smil::Animation::parse(tag, &literal, mpath).map_err(|e| (at, e))?;
+            }
+        }
         for a in attrs {
             if a.name == "id" {
                 if a.bound || a.value.is_empty() || a.value.contains(['/', '#']) {
@@ -1366,6 +1424,10 @@ impl Parser {
                     ));
                 }
                 self.doc.nodes[i].id = a.value.clone();
+                continue;
+            }
+            // An animation's attributes are read as it plays (svg::smil).
+            if smil || tag == "mpath" {
                 continue;
             }
             if a.name == "class" || a.name.starts_with("class:") {
@@ -1723,6 +1785,13 @@ impl Parser {
                 ));
             }
             let own = (tag == "a").then_some(usize::MAX);
+            if internal == "svgText" {
+                let children = self.text_path(i, children)?;
+                let read = self.text_runs(i, &children, own, at, translated);
+                self.white_space = None;
+                read?;
+                return Ok(i);
+            }
             self.text_runs(i, children, own, at, translated)?;
             return Ok(i);
         }
@@ -1850,6 +1919,216 @@ impl Parser {
 
     /// Text element `i`'s content as inline runs: its `text` (the runs'
     /// plain text), and the runs themselves when any is styled or a link.
+    /// An SVG `<text>` whose `<tspan x>`s start lines: a group carrying
+    /// the text's attributes (so they inherit), holding one `<text>` per
+    /// line at its own point. A line's `y` is its tspan's, else the line
+    /// before's, moved by every `dy` since (SVG's current text position).
+    /// `None`: no tspan starts a line.
+    fn svg_lines(
+        &mut self,
+        attrs: &[Attr],
+        white_space: Option<(bool, bool)>,
+        children: &[Node],
+        at: usize,
+        parent: usize,
+    ) -> Result<Option<usize>, Error> {
+        const PLACE: [&str; 4] = ["x", "y", "dx", "dy"];
+        let line = |n: &Node| match n {
+            Node::Element { tag, attrs, .. } if tag == "tspan" => {
+                attrs.iter().any(|a| PLACE.contains(&a.name.as_str()))
+            }
+            _ => false,
+        };
+        if !children.iter().any(line) {
+            return Ok(None);
+        }
+        let attr = |name: &str, value: String, at: usize| Attr {
+            name: name.into(),
+            value,
+            bound: false,
+            at,
+            end: at,
+        };
+        let own = |name: &str| attrs.iter().find(|a| a.name == name).cloned();
+        if let Some(a) = own("dy").filter(|a| a.bound) {
+            return Err((a.at, "a <text> of several lines takes a literal dy".into()));
+        }
+        let mut ws = Vec::new();
+        if let Some((spaces, breaks)) = white_space {
+            let v = match (spaces, breaks) {
+                (true, true) => "pre",
+                (false, true) => "pre-line",
+                _ => "preserve",
+            };
+            ws.push(attr("white-space", v.into(), at));
+        }
+        // The first line: the text's own place and what comes before the
+        // first tspan that starts a line.
+        let mut lines: Vec<(Vec<Attr>, Vec<Node>)> =
+            vec![(PLACE.iter().filter_map(|p| own(p)).collect(), Vec::new())];
+        let mut y = own("y");
+        let mut dys: Vec<String> = own("dy").map(|a| a.value).into_iter().collect();
+        for child in children {
+            let Node::Element {
+                tag,
+                attrs: t,
+                children: inner,
+                at: tat,
+                end,
+                close,
+            } = child
+            else {
+                lines.last_mut().expect("a line").1.push(child.clone());
+                continue;
+            };
+            if !line(child) {
+                lines.last_mut().expect("a line").1.push(child.clone());
+                continue;
+            }
+            let get = |n: &str| t.iter().find(|a| a.name == n).cloned();
+            let Some(x) = get("x") else {
+                return Err((
+                    *tat,
+                    "a <tspan> that moves starts a line: give it x (and y or dy); a run within a line takes no y, dx or dy".into(),
+                ));
+            };
+            if let Some(a) = get("dy").filter(|a| a.bound) {
+                return Err((a.at, "a line's dy is literal".into()));
+            }
+            if let Some(ty) = get("y") {
+                y = Some(ty);
+                dys.clear();
+            }
+            dys.extend(get("dy").map(|a| a.value));
+            let mut place = vec![x];
+            place.extend(y.clone());
+            place.extend(get("dx"));
+            if !dys.is_empty() {
+                place.push(attr("dy", dys.join(" "), *tat));
+            }
+            let run = Node::Element {
+                tag: tag.clone(),
+                attrs: t
+                    .iter()
+                    .filter(|a| !PLACE.contains(&a.name.as_str()))
+                    .cloned()
+                    .collect(),
+                children: inner.clone(),
+                at: *tat,
+                end: *end,
+                close: *close,
+            };
+            lines.push((place, vec![run]));
+        }
+        let group: Vec<Attr> = attrs
+            .iter()
+            .filter(|a| !PLACE.contains(&a.name.as_str()))
+            .cloned()
+            .collect();
+        let body: Vec<Node> = lines
+            .into_iter()
+            .filter(|(_, content)| {
+                content
+                    .iter()
+                    .any(|n| !matches!(n, Node::Text(t, _) if t.trim().is_empty()))
+            })
+            .map(|(mut place, content)| {
+                place.extend(ws.iter().cloned());
+                Node::Element {
+                    tag: "text".into(),
+                    attrs: place,
+                    children: content,
+                    at,
+                    end: at,
+                    close: at,
+                }
+            })
+            .collect();
+        let g = self.element("g", &group, &body, at, parent)?;
+        // Selected and named as the <text> it was written as.
+        self.doc.nodes[g].selector_tag = Some("text".into());
+        if let Some(entry) = self.selectors.iter_mut().find(|(n, ..)| *n == g) {
+            entry.1 = "text".into();
+        }
+        Ok(Some(g))
+    }
+
+    /// A `<text>` holding a `<textPath>`: its attributes as the text's
+    /// props, and its content as the text's. Other content: unchanged.
+    fn text_path(&mut self, i: usize, children: &[Node]) -> Result<Vec<Node>, Error> {
+        let Some(Node::Element {
+            attrs,
+            children: inner,
+            at,
+            ..
+        }) = children
+            .iter()
+            .find(|n| matches!(n, Node::Element { tag, .. } if tag == "textPath"))
+        else {
+            return Ok(children.to_vec());
+        };
+        if children.iter().any(|n| match n {
+            Node::Element { tag, .. } => tag != "textPath",
+            Node::Text(t, _) => !t.trim().is_empty(),
+            _ => true,
+        }) {
+            return Err((
+                *at,
+                "a <textPath> is the whole content of its <text>".into(),
+            ));
+        }
+        if let Some(n) = inner
+            .iter()
+            .find(|n| !matches!(n, Node::Text(..) | Node::Expression(..)))
+        {
+            let at = match n {
+                Node::Element { at, .. } => *at,
+                _ => *at,
+            };
+            return Err((
+                at,
+                "a <textPath> holds words and {expressions}: one run along its path".into(),
+            ));
+        }
+        for a in attrs {
+            let prop = match a.name.as_str() {
+                "href" | "xlink:href" => "svgTextPathHref",
+                "startOffset" => "svgStartOffset",
+                "side" => "svgSide",
+                "method" => "svgMethod",
+                "spacing" => "svgSpacing",
+                "path" => "svgPath",
+                other => {
+                    return Err((
+                        a.at,
+                        format!(
+                            "<textPath> takes href, path, startOffset, side, method and spacing, not {other}; presentation attributes go on its <text>"
+                        ),
+                    ));
+                }
+            };
+            if a.bound && matches!(prop, "svgTextPathHref" | "svgPath") {
+                return Err((a.at, format!("{} names its path literally", a.name)));
+            }
+            let value = if a.bound {
+                PropValue::Bind(expression(&a.value, a.at)?, None)
+            } else {
+                PropValue::Lit(Lit::Str(a.value.clone()))
+            };
+            self.prop(i, "svgText", prop, value, a.at, &a.value)?;
+        }
+        if !attrs
+            .iter()
+            .any(|a| matches!(a.name.as_str(), "href" | "xlink:href" | "path"))
+        {
+            return Err((
+                *at,
+                "a <textPath> names its path: href=\"#id\" or path=\"M…\"".into(),
+            ));
+        }
+        Ok(inner.clone())
+    }
+
     fn text_runs(
         &mut self,
         i: usize,
@@ -1872,20 +2151,26 @@ impl Parser {
             atom: None,
         };
         self.runs(nodes, &base, &mut runs, &mut links, translated)?;
-        // No space at either end, as a CSS block trims its line.
+        // No space at either end, as a CSS block trims its line (an SVG
+        // text keeping its white space trims its line breaks there too).
+        let ends: &[char] = if self.white_space.is_some() {
+            &[' ', '\n']
+        } else {
+            &[' ']
+        };
         if let Some(InlineRun {
             text: Expr::Lit(serde_json::Value::String(t)),
             ..
         }) = runs.first_mut()
         {
-            *t = t.trim_start_matches(' ').into();
+            *t = t.trim_start_matches(ends).into();
         }
         if let Some(InlineRun {
             text: Expr::Lit(serde_json::Value::String(t)),
             ..
         }) = runs.last_mut()
         {
-            t.truncate(t.trim_end_matches(' ').len());
+            t.truncate(t.trim_end_matches(ends).len());
         }
         runs.retain(|r| r.text != Expr::Lit("".into()));
         let bound = runs.iter().any(|r| !matches!(r.text, Expr::Lit(_)));
@@ -1943,10 +2228,17 @@ impl Parser {
                     if !translated && !value.trim().is_empty() {
                         self.warn(*at);
                     }
+                    let (spaces, breaks) = self.white_space.unwrap_or((false, false));
                     let mut collapsed = String::new();
                     for c in value.chars() {
-                        if c.is_ascii_whitespace() {
-                            if !collapsed.ends_with(' ') {
+                        if c == '\n' && breaks {
+                            if !spaces {
+                                // pre-line: no spaces around a line break.
+                                collapsed.truncate(collapsed.trim_end_matches(' ').len());
+                            }
+                            collapsed.push('\n');
+                        } else if c.is_ascii_whitespace() {
+                            if spaces || !(collapsed.ends_with(' ') || collapsed.ends_with('\n')) {
                                 collapsed.push(' ');
                             }
                         } else {
@@ -2058,7 +2350,21 @@ impl Parser {
                 Node::Element { tag, at, .. } if tag == "tspan" => {
                     return Err((
                         *at,
-                        "a <tspan> takes literal font-weight, font-style, text-decoration and fill; place a run elsewhere with its own <text x y>".into(),
+                        "a <tspan> takes literal font-weight, font-style, text-decoration and fill, and starts a line with x (and y, dx, dy); its other attributes are not read".into(),
+                    ));
+                }
+                Node::Element { tag, at, .. } if tag == "textPath" => {
+                    return Err((
+                        *at,
+                        "a <textPath> is the whole content of its <text>".into(),
+                    ));
+                }
+                Node::Element { tag, at, .. } if crate::svg::smil::TAGS.contains(&tag.as_str()) => {
+                    return Err((
+                        *at,
+                        format!(
+                            "<{tag}> animates a <text> from a <g> around it: the group's transform and presentation attributes reach its text"
+                        ),
                     ));
                 }
                 Node::Element { tag, at, .. } => {

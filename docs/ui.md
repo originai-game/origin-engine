@@ -838,8 +838,9 @@ and are a follow-up.
 
 Inline SVG draws data-bound vector graphics in a document: `<svg viewBox>`
 with `<g>`, `<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`,
-`<polyline>`, `<polygon>`, and `<defs>`, `<linearGradient>`,
-`<radialGradient>` and `<stop>`. Every attribute can bind
+`<polyline>`, `<polygon>`, `<text>`, `<foreignObject>`, and `<defs>`,
+`<marker>`, `<linearGradient>`, `<radialGradient>` and `<stop>`, animated
+by SMIL. Every attribute can bind
 (`d={$series.path}`, `stroke-dashoffset={1 - $ready}`,
 `{#each $bars as b (b.id)}<rect height={b.h}/>{/each}`), and SVG's
 presentation properties (`fill`, `stroke`, `stroke-width`,
@@ -885,7 +886,7 @@ Definitions are referenced by `#id`, as in browsers:
   image. `<desc>` is dropped.
 
 `<text x y dx dy font-size font-weight font-style text-anchor
-dominant-baseline fill>` is one line shaped by og-ui's text, as any label
+dominant-baseline fill>` is a line shaped by og-ui's text, as any label
 is: its content binds (`<text>{$hp}</text>`), and `<tspan>` runs inside it
 take `font-weight`, `font-style`, `text-decoration` and `fill`. It is laid
 out at its view-box size (`font-size` in user units as CSS px), its anchor
@@ -900,15 +901,65 @@ attributes inherit, and its transform moves the point and scales the size
 (a turn is not applied). A bound `x` costs that text; moving or resizing
 the `<svg>` builds nothing.
 
+Several lines are `<tspan>`s that move: each one with `x` (and `y`, or
+`dy`, which accumulates from the last `y`; `dx` and `dy` take user units
+or `em`) starts a line placed and anchored on its own point, as browsers
+draw them. `white-space` (or `xml:space="preserve"`) on the `<text>` keeps
+its spaces (`pre`, `pre-wrap`, `break-spaces`) and its line breaks
+(`pre`, `pre-wrap`, `pre-line`, `break-spaces`).
+
+`<text><textPath href="#id" startOffset side method spacing>…</textPath></text>`
+runs the text along a path or any shape (`href`), or along its own `path`
+data, with og-ui's text on a path (`-og-text-path`, below): `startOffset`
+in user units (of the shape's `pathLength`) or a percentage, `text-anchor`
+on the `<text>` as the anchor at that offset, `side="right"` backwards.
+`method` and `spacing` take SVG's values; glyphs are turned rigidly and
+keep the font's advances. Presentation attributes go on the `<text>`.
+
+`marker-start`, `marker-mid` and `marker-end="url(#id)"` draw a
+`<marker viewBox refX refY markerWidth markerHeight markerUnits orient>`'s
+shapes at a shape's first, middle and last vertices: `orient` `auto`
+(along the path, the bisector at a corner), `auto-start-reverse` (the
+start turned back, for two-headed arrows) or an angle; `markerUnits`
+`strokeWidth` (the default, scaled by the stroke width) or
+`userSpaceOnUse`; `context-fill` and `context-stroke` take the shape's
+paints. `stroke-dasharray` takes any list (an odd one repeats, as SVG
+says); one dash and one gap draws natively, a longer list cuts the outline
+into its dashes.
+
+`<foreignObject x y width height>` lays document elements out in a box of
+`width` by `height` user units at `(x, y)`, clipped to it and scaled with
+the view box as the shapes are; its elements take input and are in the
+accessibility tree as any others.
+
+SMIL animation plays inside the element it animates: `<animate
+attributeName>` (any attribute or presentation property, `opacity`
+included), `<set to>`, `<animateTransform type>` (translate, scale,
+rotate, skewX, skewY) and `<animateMotion path rotate>` (or an
+`<mpath href="#id">` naming any shape; `rotate` auto, auto-reverse or an
+angle), with `begin` (clock values, lists, `id.begin` and `id.end` with
+offsets), `dur`, `repeatCount`, `repeatDur`, `fill` (freeze or remove),
+`values`, `from`, `to`, `by`, `keyTimes`, `keySplines`, `calcMode`
+(discrete, linear, paced, spline), `additive` and `accumulate`. Numbers
+interpolate within their text (`d` with the same commands, `points`,
+lengths) and colours by channel; anything else is discrete. Each
+animation is presentation only: its clock is the UI's tick-counted clock,
+starting when its element first shows, kept in the element's widget
+memory (snapshotted beside the world, outside `world_hash`); an animated
+element resolves again each frame while an animation plays or waits to
+begin, and nothing else does. Under reduced motion each shows its frozen
+end, or nothing. An event `begin` (`click`) is refused: start motion from
+input with `og.tween` or a CSS state. Animation attributes are literal; a
+`<text>` animates from a `<g>` around it.
+
 `<image href x y width height preserveAspectRatio>` draws an atlas image
 icon by name (`href="gem"`) or a render texture by handle
 (`href={$target}`), filling its rect (contained by default, `slice`
 covers, `none` stretches); it takes no turn or skew.
 
-Definition attributes (gradients, clips, masks, patterns) are literal.
-Filters, `<textPath>` and multi-line text are refused with the element
-named; a dash array takes
-one dash and one gap. Cost: re-tessellating one
+Definition attributes (gradients, clips, markers, masks, patterns) are
+literal. Filters (`<filter>` and the fe* primitives) are refused with the
+element named. Cost: re-tessellating one
 dashed ring as a cooked vector takes 438 µs and 840 vertices; changing a
 bound attribute on one of 64 inline rings costs 69–150 µs of the frame
 (dev profile), and unchanged shapes cost nothing.

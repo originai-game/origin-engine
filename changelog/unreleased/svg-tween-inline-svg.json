@@ -1,0 +1,20 @@
+{
+  "added": [
+    {
+      "member": "document <text> lines and <textPath>",
+      "summary": "Inline SVG text takes several lines (`<tspan x>` with `y` or `dy`, `dx`/`dy` in user units or `em`), `white-space` (and `xml:space=\"preserve\"`), and `<textPath href startOffset side method spacing>` (or its own `path`) along any path or shape, drawn by og-ui's text on a path (docs/ui.md §3.3). These were refused before."
+    },
+    {
+      "member": "document <marker>, stroke-dasharray lists",
+      "summary": "`marker-start`, `marker-mid` and `marker-end=\"url(#id)\"` draw a `<marker viewBox refX refY markerWidth markerHeight markerUnits orient>` at a shape's vertices (orient auto, auto-start-reverse or an angle; context-fill and context-stroke). `stroke-dasharray` takes any list; it took one dash and one gap before."
+    },
+    {
+      "member": "document <foreignObject>",
+      "summary": "`<foreignObject x y width height>` in an inline `<svg>` lays document elements out in its box of user units, clipped and scaled with the view box."
+    },
+    {
+      "member": "document SMIL <animate>, <set>, <animateTransform>, <animateMotion>",
+      "summary": "SMIL animation inside the element it animates, with `<mpath>`, begin (clock lists, id.begin/id.end), dur, repeatCount, repeatDur, fill, values, from/to/by, keyTimes, keySplines, calcMode, additive and accumulate. Presentation only, on the UI's tick clock from when the element first shows (kept in widget memory, outside world_hash); an event begin is refused (docs/ui.md §3.3)."
+    }
+  ]
+}

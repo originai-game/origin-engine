@@ -140,6 +140,8 @@ pub struct RetainedHost {
     emit: BTreeSet<MountedNode>,
     /// Elements built every frame ([`ElementInstance::volatile`]).
     volatile: BTreeSet<MountedNode>,
+    /// Elements resolved again every frame: their SMIL animations play.
+    animated: BTreeSet<MountedNode>,
     /// The elements not built because they were hidden: shown again, the
     /// nearest ancestor that holds its node builds them.
     unbuilt_hidden: BTreeSet<MountedNode>,
@@ -433,6 +435,7 @@ impl RetainedHost {
         self.elements.retain(|node, _| &node.mount != mount);
         self.emit.retain(|node| &node.mount != mount);
         self.volatile.retain(|node| &node.mount != mount);
+        self.animated.retain(|node| &node.mount != mount);
         self.on_action.retain(|_, listeners| {
             listeners.retain(|node| &node.mount != mount);
             !listeners.is_empty()
@@ -1361,6 +1364,11 @@ impl RetainedHost {
         } else {
             self.volatile.remove(identity);
         }
+        if owned.restyle {
+            self.animated.insert(identity.clone());
+        } else {
+            self.animated.remove(identity);
+        }
         let element = self.elements.get_mut(identity).unwrap();
         element.slot = slot;
         // The parent its node stands under: the open element, or none for
@@ -1565,6 +1573,7 @@ impl RetainedHost {
         }
         self.forget_memories(&memories);
         self.volatile.remove(identity);
+        self.animated.remove(identity);
         self.emit.remove(identity);
         self.scrollers.remove(identity);
     }
@@ -1734,6 +1743,8 @@ impl RetainedHost {
             }
         }
         self.emit.extend(self.volatile.iter().cloned());
+        self.dirty.extend(self.animated.iter().cloned());
+        self.emit.extend(self.animated.iter().cloned());
         self.built_now.clear();
         self.fired = 0;
         self.mark_fired(ui);

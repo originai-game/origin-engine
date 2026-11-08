@@ -12,6 +12,7 @@
 use og_core::glam::Vec2;
 
 mod path;
+pub mod smil;
 
 pub use path::{Path, bounds, shape_path};
 
