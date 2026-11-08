@@ -1,0 +1,996 @@
+//! CSS paint on a document element's box: gradients (`background`,
+//! `mask-image`), `backdrop-filter`, `filter`, `mix-blend-mode`,
+//! `text-shadow`, `clip-path` and `-og-material`. Each is parsed from its
+//! text when the stylesheet is read (a bad value is named there) and again
+//! when the element builds; what depends on the box (a gradient's angle, a
+//! shape's percentages) is resolved from the placed size when it is drawn,
+//! so the draw is a function of the box size alone.
+
+use super::css::{Tok, describe, tokens};
+use crate::paint::{
+    Blend, Builtin, ColorRef, Effect, FillRule, Gradient, GradientKind, Layer, Material, ShapeKind,
+    Spread, Stop, TextShadow,
+};
+use crate::theme::Srgba;
+use std::f32::consts::{PI, SQRT_2};
+
+/// A length along an axis: a fraction of the box's, or CSS px.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Pos {
+    Frac(f32),
+    Px(f32),
+}
+
+impl Pos {
+    fn at(self, whole: f32) -> f32 {
+        match self {
+            Pos::Frac(f) => f * whole,
+            Pos::Px(p) => p,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum Shape {
+    /// A direction: an angle (radians, CSS's: 0 up, clockwise) or a
+    /// corner `to top right` (x, y signs).
+    Linear(Dir),
+    Radial {
+        circle: bool,
+        size: Extent,
+        at: [Pos; 2],
+    },
+    Conic {
+        from: f32,
+        at: [Pos; 2],
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Dir {
+    Angle(f32),
+    Corner(f32, f32),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Extent {
+    ClosestSide,
+    FarthestSide,
+    ClosestCorner,
+    FarthestCorner,
+    Given(Pos, Pos),
+}
+
+/// A CSS gradient, its geometry resolved against the box when drawn.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct CssGradient {
+    shape: Shape,
+    repeating: bool,
+    stops: Vec<(ColorRef, Option<Pos>)>,
+}
+
+/// A `clip-path` basic shape.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum CssClip {
+    Inset([Pos; 4], f32),
+    Ellipse([Option<Pos>; 2], bool, [Pos; 2]),
+    Polygon(FillRule, Vec<[Pos; 2]>),
+    Path(FillRule, Vec<(Vec<[f32; 2]>, bool)>),
+}
+
+/// The paint of one element: what [`crate::decor::BoxDecor`] adds to its
+/// draw.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct CssPaint {
+    /// `background` images over its colour, the first on top.
+    pub images: Vec<CssGradient>,
+    pub mask: Option<CssGradient>,
+    pub effects: Vec<Effect>,
+    pub blend: Option<Blend>,
+    pub text_shadows: Vec<TextShadow>,
+    pub clip: Option<CssClip>,
+    pub layer: Option<Layer>,
+}
+
+// ---- parsing
+
+/// A colour token: `#hex`, a named colour, `transparent` or `var(--role)`.
+fn color(t: &Tok) -> Result<ColorRef, String> {
+    match t {
+        Tok::Func(f, a) if f == "var" => match a.as_slice() {
+            [v] => match v.as_slice() {
+                [Tok::Ident(n)] if n.starts_with("--") => Ok(ColorRef::Token {
+                    name: n[2..].to_owned(),
+                    alpha: 1.0,
+                }),
+                _ => Err("var(--<role>)".into()),
+            },
+            _ => Err("var(--<role>)".into()),
+        },
+        Tok::Ident(w) if w == "transparent" => Ok(ColorRef::Literal(Srgba::TRANSPARENT)),
+        Tok::Hash(h) | Tok::Ident(h) => crate::svg::color(h)
+            .map(|c| ColorRef::Literal(super::build::svg::srgba(c, 1.0)))
+            .map_err(|_| format!("'{h}' is not a colour")),
+        t => Err(format!("'{}' is not a colour", describe(t))),
+    }
+}
+
+fn is_color(t: &Tok) -> bool {
+    color(t).is_ok()
+}
+
+fn number(t: &Tok) -> Result<(f32, &str), String> {
+    match t {
+        Tok::Num(n, u) => n
+            .parse::<f32>()
+            .map(|v| (v, u.as_str()))
+            .map_err(|_| format!("'{n}' is not a number")),
+        t => Err(format!("'{}' is not a number", describe(t))),
+    }
+}
+
+fn pos(t: &Tok) -> Result<Pos, String> {
+    match number(t)? {
+        (v, "%") => Ok(Pos::Frac(v / 100.0)),
+        (v, "px") => Ok(Pos::Px(v)),
+        (0.0, "") => Ok(Pos::Px(0.0)),
+        _ => Err(format!("'{}' is not a length: <n>px or <n>%", describe(t))),
+    }
+}
+
+fn angle(t: &Tok) -> Result<f32, String> {
+    match number(t)? {
+        (v, "deg") => Ok(v.to_radians()),
+        (v, "rad") => Ok(v),
+        (v, "turn") => Ok(v * 2.0 * PI),
+        (v, "grad") => Ok(v * PI / 200.0),
+        (0.0, "") => Ok(0.0),
+        _ => Err(format!("'{}' is not an angle", describe(t))),
+    }
+}
+
+/// `at <x> <y>` (keywords, lengths or percentages); centred by default.
+fn position(t: &[Tok]) -> Result<[Pos; 2], String> {
+    let word = |w: &str| match w {
+        "left" | "top" => Some(Pos::Frac(0.0)),
+        "center" => Some(Pos::Frac(0.5)),
+        "right" | "bottom" => Some(Pos::Frac(1.0)),
+        _ => None,
+    };
+    let one = |t: &Tok| match t {
+        Tok::Ident(w) => word(w).ok_or_else(|| format!("'{w}' is not a position")),
+        t => pos(t),
+    };
+    match t {
+        [] => Ok([Pos::Frac(0.5); 2]),
+        [Tok::Ident(w)] if w == "top" || w == "bottom" => Ok([Pos::Frac(0.5), one(&t[0])?]),
+        [a] => Ok([one(a)?, Pos::Frac(0.5)]),
+        // `top left` names y first.
+        [Tok::Ident(a), Tok::Ident(b)] if matches!(a.as_str(), "top" | "bottom") => {
+            Ok([one(&Tok::Ident(b.clone()))?, one(&Tok::Ident(a.clone()))?])
+        }
+        [a, b] => Ok([one(a)?, one(b)?]),
+        _ => {
+            Err("a position is one or two of: left, center, right, top, bottom, <n>px, <n>%".into())
+        }
+    }
+}
+
+/// A `*-gradient(…)` function, or `None` when `t` is not one.
+fn gradient(t: &Tok) -> Option<Result<CssGradient, String>> {
+    let Tok::Func(f, args) = t else { return None };
+    let repeating = f.starts_with("repeating-");
+    let kind = f.strip_prefix("repeating-").unwrap_or(f);
+    if !matches!(
+        kind,
+        "linear-gradient" | "radial-gradient" | "conic-gradient"
+    ) {
+        return None;
+    }
+    Some(gradient_of(kind, repeating, args).map_err(|e| format!("{f}: {e}")))
+}
+
+fn gradient_of(kind: &str, repeating: bool, args: &[Vec<Tok>]) -> Result<CssGradient, String> {
+    let first = args.first().ok_or("no colour stops")?;
+    let prelude = !first.is_empty() && !is_color(&first[0]);
+    let (shape, stops) = match kind {
+        "linear-gradient" => {
+            let dir = match first.as_slice() {
+                _ if !prelude => Dir::Angle(PI),
+                [a] => Dir::Angle(angle(a)?),
+                [Tok::Ident(to), sides @ ..] if to == "to" => {
+                    let (mut x, mut y) = (0.0, 0.0);
+                    for s in sides {
+                        match s {
+                            Tok::Ident(w) if w == "left" => x = -1.0,
+                            Tok::Ident(w) if w == "right" => x = 1.0,
+                            Tok::Ident(w) if w == "top" => y = -1.0,
+                            Tok::Ident(w) if w == "bottom" => y = 1.0,
+                            s => return Err(format!("'{}' is not a side", describe(s))),
+                        }
+                    }
+                    match (x, y) {
+                        (0.0, 0.0) => return Err("`to` names a side or a corner".into()),
+                        (0.0, y) => Dir::Angle(if y < 0.0 { 0.0 } else { PI }),
+                        (x, 0.0) => Dir::Angle(if x > 0.0 { PI / 2.0 } else { 1.5 * PI }),
+                        (x, y) => Dir::Corner(x, y),
+                    }
+                }
+                _ => return Err("<angle> or to <side> [<side>]".into()),
+            };
+            (Shape::Linear(dir), &args[prelude as usize..])
+        }
+        "radial-gradient" => {
+            let (mut circle, mut size, mut at) =
+                (false, Extent::FarthestCorner, [Pos::Frac(0.5); 2]);
+            if prelude {
+                let split = first
+                    .iter()
+                    .position(|t| matches!(t, Tok::Ident(w) if w == "at"))
+                    .unwrap_or(first.len());
+                if split < first.len() {
+                    at = position(&first[split + 1..])?;
+                }
+                let mut lengths = Vec::new();
+                for t in &first[..split] {
+                    match t {
+                        Tok::Ident(w) if w == "circle" => circle = true,
+                        Tok::Ident(w) if w == "ellipse" => circle = false,
+                        Tok::Ident(w) => {
+                            size = match w.as_str() {
+                                "closest-side" => Extent::ClosestSide,
+                                "farthest-side" => Extent::FarthestSide,
+                                "closest-corner" => Extent::ClosestCorner,
+                                "farthest-corner" => Extent::FarthestCorner,
+                                _ => return Err(format!("'{w}' is not a radial shape or size")),
+                            }
+                        }
+                        t => lengths.push(pos(t)?),
+                    }
+                }
+                match lengths.as_slice() {
+                    [] => {}
+                    [r] => {
+                        circle = true;
+                        size = Extent::Given(*r, *r);
+                    }
+                    [x, y] => size = Extent::Given(*x, *y),
+                    _ => return Err("a radial size is one or two lengths".into()),
+                }
+            }
+            (
+                Shape::Radial { circle, size, at },
+                &args[prelude as usize..],
+            )
+        }
+        _ => {
+            let (mut from, mut at) = (0.0, [Pos::Frac(0.5); 2]);
+            if prelude {
+                let mut i = 0;
+                while i < first.len() {
+                    match &first[i] {
+                        Tok::Ident(w) if w == "from" => {
+                            from = angle(first.get(i + 1).ok_or("from <angle>")?)?;
+                            i += 2;
+                        }
+                        Tok::Ident(w) if w == "at" => {
+                            at = position(&first[i + 1..])?;
+                            i = first.len();
+                        }
+                        t => {
+                            return Err(format!(
+                                "'{}' is not part of a conic prelude",
+                                describe(t)
+                            ));
+                        }
+                    }
+                }
+            }
+            (Shape::Conic { from, at }, &args[prelude as usize..])
+        }
+    };
+    let conic = matches!(shape, Shape::Conic { .. });
+    let mut out = Vec::new();
+    for s in stops {
+        let (c, rest) = s.split_first().ok_or("an empty colour stop")?;
+        let c = color(c)?;
+        let at = |t: &Tok| -> Result<Pos, String> {
+            if conic {
+                Ok(match number(t)? {
+                    (v, "%") => Pos::Frac(v / 100.0),
+                    _ => Pos::Frac(angle(t)? / (2.0 * PI)),
+                })
+            } else {
+                pos(t)
+            }
+        };
+        match rest {
+            [] => out.push((c, None)),
+            [a] => out.push((c, Some(at(a)?))),
+            // `red 10% 30%`: two stops of one colour.
+            [a, b] => {
+                out.push((c.clone(), Some(at(a)?)));
+                out.push((c, Some(at(b)?)));
+            }
+            _ => return Err("a stop is <colour> [<position> [<position>]]".into()),
+        }
+    }
+    if out.len() < 2 {
+        return Err("a gradient takes at least two colour stops".into());
+    }
+    if out.len() > og_render::UI_GRADIENT_STOPS {
+        return Err(format!(
+            "a gradient takes at most {} stops",
+            og_render::UI_GRADIENT_STOPS
+        ));
+    }
+    Ok(CssGradient {
+        shape,
+        repeating,
+        stops: out,
+    })
+}
+
+/// A `background` value: its gradient images, the first on top, and its
+/// colour (the last layer), if any. `None` when there is no gradient (a
+/// plain colour, lowered as before).
+/// A `background`'s gradient images and its trailing colour.
+pub(crate) type Background = (Vec<CssGradient>, Option<Tok>);
+
+pub(crate) fn background(text: &str) -> Option<Result<Background, String>> {
+    let Ok(t) = tokens(text) else { return None };
+    if !t.iter().any(|t| gradient(t).is_some()) {
+        return None;
+    }
+    let n = t.len();
+    Some((|| {
+        let mut images = Vec::new();
+        let mut colour = None;
+        for (k, t) in t.iter().enumerate() {
+            match gradient(t) {
+                Some(g) => images.push(g?),
+                None if k + 1 == n && is_color(t) => colour = Some(t.clone()),
+                None => {
+                    return Err(format!(
+                        "'{}' is not a background layer: a gradient, or a colour last",
+                        describe(t)
+                    ));
+                }
+            }
+        }
+        Ok((images, colour))
+    })())
+}
+
+/// `mask-image`: one gradient, or `none`.
+pub(crate) fn mask(text: &str) -> Result<Option<CssGradient>, String> {
+    let t = tokens(text)?;
+    match t.as_slice() {
+        [Tok::Ident(w)] if w == "none" => Ok(None),
+        [g] => gradient(g)
+            .unwrap_or_else(|| Err("a mask-image is a gradient or none".into()))
+            .map(Some),
+        _ => Err("a mask-image is one gradient or none".into()),
+    }
+}
+
+/// A list of filter functions with one numeric argument each.
+fn filter_fns(text: &str, what: &str) -> Result<Vec<(String, Tok)>, String> {
+    let t = tokens(text)?;
+    if matches!(t.as_slice(), [Tok::Ident(w)] if w == "none") {
+        return Ok(Vec::new());
+    }
+    t.into_iter()
+        .map(|t| match t {
+            Tok::Func(f, a) => match <[Vec<Tok>; 1]>::try_from(a) {
+                Ok([v]) if v.len() == 1 => Ok((f, v.into_iter().next().unwrap())),
+                _ => Err(format!("{f}() takes one value")),
+            },
+            t => Err(format!("'{}' is not a {what} function", describe(&t))),
+        })
+        .collect()
+}
+
+/// `saturate(150%)`, `brightness(1.2)`: a factor.
+fn amount(t: &Tok) -> Result<f32, String> {
+    match number(t)? {
+        (v, "%") => Ok(v / 100.0),
+        (v, "") => Ok(v),
+        _ => Err(format!("'{}' is not an amount: <n> or <n>%", describe(t))),
+    }
+}
+
+fn px(t: &Tok) -> Result<f32, String> {
+    match number(t)? {
+        (v, "px") | (v @ 0.0, "") => Ok(v),
+        _ => Err(format!("'{}' is not a length in px", describe(t))),
+    }
+}
+
+/// `backdrop-filter: blur(<px>) [saturate(<n>)] [brightness(<n>)]`.
+pub(crate) fn backdrop(text: &str) -> Result<Option<Effect>, String> {
+    let fns = filter_fns(text, "backdrop-filter")?;
+    if fns.is_empty() {
+        return Ok(None);
+    }
+    let (mut blur, mut saturation, mut brightness) = (0.0, 1.0, 1.0);
+    for (f, v) in &fns {
+        match f.as_str() {
+            "blur" => blur = px(v)?,
+            "saturate" => saturation = amount(v)?,
+            "brightness" => brightness = amount(v)?,
+            f => {
+                return Err(format!(
+                    "{f}() is not a backdrop-filter here: blur, saturate, brightness"
+                ));
+            }
+        }
+    }
+    Ok(Some(Effect::Backdrop {
+        blur,
+        saturation,
+        brightness,
+        tint: ColorRef::Literal(Srgba::TRANSPARENT),
+        glass: Default::default(),
+    }))
+}
+
+/// `filter`: `blur()` blurs the element and its subtree; `hue-rotate()`,
+/// `saturate()`, `brightness()` and `grayscale()` adjust its colour.
+pub(crate) fn filter(text: &str) -> Result<(Option<f32>, Option<[f32; 4]>), String> {
+    let mut blur = None;
+    let mut adjust: Option<[f32; 4]> = None;
+    for (f, v) in filter_fns(text, "filter")? {
+        let (k, x) = match f.as_str() {
+            "blur" => {
+                blur = Some(px(&v)?);
+                continue;
+            }
+            "hue-rotate" => (0, angle(&v)?),
+            "saturate" => (1, amount(&v)?),
+            "brightness" => (2, amount(&v)?),
+            "grayscale" => (3, amount(&v)?.clamp(0.0, 1.0)),
+            f => {
+                return Err(format!(
+                    "{f}() is not a filter here: blur, hue-rotate, saturate, brightness, grayscale"
+                ));
+            }
+        };
+        adjust.get_or_insert([0.0, 1.0, 1.0, 0.0])[k] = x;
+    }
+    Ok((blur, adjust))
+}
+
+/// `mix-blend-mode`.
+pub(crate) fn blend(text: &str) -> Result<Blend, String> {
+    Ok(match text.trim() {
+        "normal" => Blend::Normal,
+        "multiply" => Blend::Multiply,
+        "screen" => Blend::Screen,
+        "plus-lighter" => Blend::Add,
+        "overlay" => Blend::Overlay,
+        "soft-light" => Blend::SoftLight,
+        "color-dodge" => Blend::ColorDodge,
+        w => {
+            return Err(format!(
+                "'{w}' is not a mix-blend-mode here: normal, multiply, screen, plus-lighter, overlay, soft-light, color-dodge"
+            ));
+        }
+    })
+}
+
+/// `text-shadow: <x> <y> [<blur>] [<colour>], …` (unset colour: the text's,
+/// given as `current`).
+pub(crate) fn text_shadows(text: &str, current: ColorRef) -> Result<Vec<TextShadow>, String> {
+    if text.trim() == "none" {
+        return Ok(Vec::new());
+    }
+    super::boxes::items(text)
+        .into_iter()
+        .map(|item| {
+            let mut lengths = Vec::new();
+            let mut c = None;
+            for t in tokens(item)? {
+                if matches!(t, Tok::Num(..)) {
+                    lengths.push(px(&t)?);
+                } else if c.is_none() {
+                    c = Some(color(&t)?);
+                } else {
+                    return Err(format!("a text-shadow takes one colour: {item}"));
+                }
+            }
+            match lengths.as_slice() {
+                [x, y, rest @ ..] if rest.len() <= 1 => Ok(TextShadow {
+                    offset: [*x, *y],
+                    blur: rest.first().copied().unwrap_or(0.0).max(0.0),
+                    color: c.unwrap_or_else(|| current.clone()),
+                }),
+                _ => Err(format!(
+                    "a text-shadow is <x> <y> [<blur>] [<colour>]: {item}"
+                )),
+            }
+        })
+        .collect()
+}
+
+fn rule(t: &[Tok]) -> (FillRule, &[Tok]) {
+    match t.split_first() {
+        Some((Tok::Ident(w), rest)) if w == "evenodd" => (FillRule::EvenOdd, rest),
+        Some((Tok::Ident(w), rest)) if w == "nonzero" => (FillRule::NonZero, rest),
+        _ => (FillRule::NonZero, t),
+    }
+}
+
+/// `clip-path`: `inset()`, `circle()`, `ellipse()`, `polygon()`, `path()`
+/// or `none`.
+pub(crate) fn clip(text: &str) -> Result<Option<CssClip>, String> {
+    let t = tokens(text)?;
+    let (f, args) = match t.as_slice() {
+        [Tok::Ident(w)] if w == "none" => return Ok(None),
+        [Tok::Func(f, a)] => (f.as_str(), a),
+        _ => {
+            return Err(
+                "a clip-path is inset(), circle(), ellipse(), polygon(), path() or none".into(),
+            );
+        }
+    };
+    let split_at = |a: &[Tok]| -> Result<(Vec<Tok>, [Pos; 2]), String> {
+        match a
+            .iter()
+            .position(|t| matches!(t, Tok::Ident(w) if w == "at"))
+        {
+            Some(k) => Ok((a[..k].to_vec(), position(&a[k + 1..])?)),
+            None => Ok((a.to_vec(), [Pos::Frac(0.5); 2])),
+        }
+    };
+    Ok(Some(match (f, args.as_slice()) {
+        ("inset", [a]) => {
+            let k = a
+                .iter()
+                .position(|t| matches!(t, Tok::Ident(w) if w == "round"))
+                .unwrap_or(a.len());
+            let p: Vec<Pos> = a[..k].iter().map(pos).collect::<Result<_, _>>()?;
+            let sides = match p.as_slice() {
+                [a] => [*a; 4],
+                [a, b] => [*a, *b, *a, *b],
+                [a, b, c] => [*a, *b, *c, *b],
+                [a, b, c, d] => [*a, *b, *c, *d],
+                _ => return Err("inset() takes one to four lengths".into()),
+            };
+            let radius = match &a[k..] {
+                [] => 0.0,
+                [_, r] => px(r)?,
+                _ => return Err("inset(… round <n>px)".into()),
+            };
+            CssClip::Inset(sides, radius)
+        }
+        ("circle", [a]) => {
+            let (r, at) = split_at(a)?;
+            let r = match r.as_slice() {
+                [] => None,
+                [r] => Some(pos(r)?),
+                _ => return Err("circle(<r> at <x> <y>)".into()),
+            };
+            CssClip::Ellipse([r, r], true, at)
+        }
+        ("ellipse", [a]) => {
+            let (r, at) = split_at(a)?;
+            match r.as_slice() {
+                [] => CssClip::Ellipse([None; 2], false, at),
+                [x, y] => CssClip::Ellipse([Some(pos(x)?), Some(pos(y)?)], false, at),
+                _ => return Err("ellipse(<rx> <ry> at <x> <y>)".into()),
+            }
+        }
+        ("polygon", points) => {
+            let (fill, first) = rule(points.first().map_or(&[][..], |p| p.as_slice()));
+            let skip = first.is_empty() as usize;
+            let mut out = Vec::new();
+            for (k, p) in points.iter().enumerate().skip(skip) {
+                let p = if k == 0 { first } else { p.as_slice() };
+                match p {
+                    [x, y] => out.push([pos(x)?, pos(y)?]),
+                    _ => return Err("polygon([<rule>,] <x> <y>, …)".into()),
+                }
+            }
+            if out.len() < 3 {
+                return Err("a polygon takes at least three points".into());
+            }
+            CssClip::Polygon(fill, out)
+        }
+        ("path", args) => {
+            let (fill, d) = match args {
+                [d] => (FillRule::NonZero, d.as_slice()),
+                [r, d] => (rule(r).0, d.as_slice()),
+                _ => return Err("path([<rule>,] \"<svg path data>\")".into()),
+            };
+            let [Tok::Str(d)] = d else {
+                return Err("path(\"<svg path data>\")".into());
+            };
+            let p = crate::svg::Path::parse(d)?;
+            CssClip::Path(fill, super::build::svg::subpaths(&p))
+        }
+        (f, _) => return Err(format!("{f}() is not a clip-path shape")),
+    }))
+}
+
+/// `-og-material: <name>(<n> …[, <colour>])`: the element and its subtree
+/// drawn offscreen and composited through one of the engine's built-in
+/// materials, its parameters in the order the material lists them (a
+/// colour as linear RGBA).
+pub(crate) fn material(text: &str) -> Result<Option<Layer>, String> {
+    let t = tokens(text)?;
+    let (name, args) = match t.as_slice() {
+        [Tok::Ident(w)] if w == "none" => return Ok(None),
+        [Tok::Ident(w)] => (w.as_str(), &[][..]),
+        [Tok::Func(f, a)] => (f.as_str(), a.as_slice()),
+        _ => return Err("-og-material: <name>(<params>)".into()),
+    };
+    let builtin = match name {
+        "dissolve" => Builtin::Dissolve,
+        "shine" => Builtin::Shine,
+        "hologram" => Builtin::Hologram,
+        "glitch" => Builtin::Glitch,
+        "ripple" => Builtin::Ripple,
+        "pixelate" => Builtin::Pixelate,
+        "color-adjust" => Builtin::ColorAdjust,
+        "outline" => Builtin::Outline,
+        "blur" => Builtin::Blur,
+        n => {
+            return Err(format!(
+                "'{n}' is not a material: dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur"
+            ));
+        }
+    };
+    let mut layer = Layer {
+        material: Material::Builtin(builtin),
+        params: Default::default(),
+    };
+    if args.len() > layer.params.len() {
+        return Err(format!(
+            "{name}() takes at most {} groups",
+            layer.params.len()
+        ));
+    }
+    for (k, a) in args.iter().enumerate() {
+        layer.params[k] = match a.as_slice() {
+            [c] if is_color(c) => match color(c)? {
+                ColorRef::Literal(s) => s.linear(),
+                ColorRef::Token { .. } => return Err("a material's colour is a literal".into()),
+            },
+            nums if nums.len() <= 4 => {
+                let mut v = [0.0; 4];
+                for (j, n) in nums.iter().enumerate() {
+                    v[j] = match number(n)? {
+                        (x, "%") => x / 100.0,
+                        (_, "deg" | "rad" | "turn") => angle(n)?,
+                        (x, _) => x,
+                    };
+                }
+                v
+            }
+            _ => return Err("a material group is up to four numbers, or a colour".into()),
+        };
+    }
+    Ok(Some(layer))
+}
+
+// ---- resolving against the box
+
+impl CssGradient {
+    /// The gradient over a `w` × `h` box.
+    pub(crate) fn resolve(&self, w: f32, h: f32) -> Gradient {
+        let (w, h) = (w.max(1e-3), h.max(1e-3));
+        let (kind, mut from, mut to, length) = match self.shape {
+            Shape::Linear(dir) => {
+                let d = match dir {
+                    Dir::Angle(a) => [a.sin(), -a.cos()],
+                    // Perpendicular to the diagonal through the other two
+                    // corners, so they sit on the 50% line.
+                    Dir::Corner(x, y) => {
+                        let v = [x * h, y * w];
+                        let n = (v[0] * v[0] + v[1] * v[1]).sqrt();
+                        [v[0] / n, v[1] / n]
+                    }
+                };
+                let len = (w * d[0]).abs() + (h * d[1]).abs();
+                let c = [w / 2.0, h / 2.0];
+                (
+                    GradientKind::Linear,
+                    [(c[0] - d[0] * len / 2.0) / w, (c[1] - d[1] * len / 2.0) / h],
+                    [(c[0] + d[0] * len / 2.0) / w, (c[1] + d[1] * len / 2.0) / h],
+                    len,
+                )
+            }
+            Shape::Radial { circle, size, at } => {
+                let c = [at[0].at(w), at[1].at(h)];
+                let (dx, dy) = (
+                    [c[0].abs(), (w - c[0]).abs()],
+                    [c[1].abs(), (h - c[1]).abs()],
+                );
+                let side = |far: bool| {
+                    let pick = |a: [f32; 2]| if far { a[0].max(a[1]) } else { a[0].min(a[1]) };
+                    (pick(dx), pick(dy))
+                };
+                let (rx, ry) = match size {
+                    Extent::Given(x, y) => (x.at(w), y.at(h)),
+                    Extent::ClosestSide | Extent::FarthestSide => {
+                        let (x, y) = side(size == Extent::FarthestSide);
+                        if circle {
+                            let r = if size == Extent::FarthestSide {
+                                x.max(y)
+                            } else {
+                                x.min(y)
+                            };
+                            (r, r)
+                        } else {
+                            (x, y)
+                        }
+                    }
+                    Extent::ClosestCorner | Extent::FarthestCorner => {
+                        let (x, y) = side(size == Extent::FarthestCorner);
+                        if circle {
+                            let r = x.hypot(y);
+                            (r, r)
+                        } else {
+                            (x * SQRT_2, y * SQRT_2)
+                        }
+                    }
+                };
+                let (rx, ry) = (rx.max(1e-3), ry.max(1e-3));
+                (
+                    GradientKind::Radial,
+                    [c[0] / w, c[1] / h],
+                    [rx / w, ry / h],
+                    rx,
+                )
+            }
+            Shape::Conic { from, at } => (
+                GradientKind::Conic,
+                [at[0].at(w) / w, at[1].at(h) / h],
+                [from - PI / 2.0, 0.0],
+                1.0,
+            ),
+        };
+        let mut offsets: Vec<Option<f32>> = self
+            .stops
+            .iter()
+            .map(|(_, p)| p.map(|p| p.at(length) / length))
+            .collect();
+        fix_stops(&mut offsets);
+        let mut offsets: Vec<f32> = offsets.into_iter().map(|o| o.unwrap_or(0.0)).collect();
+        let mut spread = Spread::Pad;
+        if self.repeating {
+            spread = Spread::Repeat;
+            let (p0, p1) = (offsets[0], *offsets.last().unwrap());
+            let span = (p1 - p0).max(1e-4);
+            match kind {
+                GradientKind::Linear => {
+                    let (f, t) = (from, to);
+                    for k in 0..2 {
+                        from[k] = f[k] + (t[k] - f[k]) * p0;
+                        to[k] = f[k] + (t[k] - f[k]) * p1;
+                    }
+                    for o in &mut offsets {
+                        *o = (*o - p0) / span;
+                    }
+                }
+                GradientKind::Radial if p0 <= 0.0 => {
+                    to = [to[0] * p1, to[1] * p1];
+                    for o in &mut offsets {
+                        *o /= span;
+                    }
+                }
+                _ => spread = Spread::Pad,
+            }
+        }
+        Gradient {
+            kind,
+            from,
+            to,
+            stops: self
+                .stops
+                .iter()
+                .zip(offsets)
+                .map(|((c, _), offset)| Stop {
+                    offset,
+                    color: c.clone(),
+                })
+                .collect(),
+            spread,
+            dither: true,
+        }
+    }
+}
+
+/// CSS Images 3 §3.5.3: an unpositioned first stop is at 0, last at 1;
+/// a stop before an earlier one moves up to it; runs of unpositioned
+/// stops share their span evenly.
+fn fix_stops(o: &mut [Option<f32>]) {
+    let n = o.len();
+    if o[0].is_none() {
+        o[0] = Some(0.0);
+    }
+    if o[n - 1].is_none() {
+        o[n - 1] = Some(1.0);
+    }
+    let mut most = f32::MIN;
+    for v in o.iter_mut().flatten() {
+        most = most.max(*v);
+        *v = most;
+    }
+    let mut k = 0;
+    while k < n {
+        if o[k].is_some() {
+            k += 1;
+            continue;
+        }
+        let a = k - 1;
+        let b = (k..n).find(|&j| o[j].is_some()).unwrap();
+        let (pa, pb) = (o[a].unwrap(), o[b].unwrap());
+        for (j, v) in o.iter_mut().enumerate().take(b).skip(k) {
+            *v = Some(pa + (pb - pa) * (j - a) as f32 / (b - a) as f32);
+        }
+        k = b;
+    }
+}
+
+/// A cubic's controls for a quarter ellipse.
+const KAPPA: f32 = 0.552_284_8;
+
+impl CssClip {
+    /// The shape over a `w` × `h` box, as a filled path in CSS px from its
+    /// top left.
+    pub(crate) fn resolve(&self, w: f32, h: f32) -> ShapeKind {
+        let path = |contours: Vec<(Vec<[f32; 2]>, bool)>, fill_rule, curves| ShapeKind::Path {
+            contours: contours.iter().map(|(p, _)| p.len() as u32).collect(),
+            points: contours.into_iter().flat_map(|(p, _)| p).collect(),
+            closed: true,
+            filled: true,
+            curves,
+            fill_rule,
+            width: 0.0,
+            cap: Default::default(),
+            join: Default::default(),
+        };
+        match self {
+            CssClip::Inset([t, r, b, l], radius) => {
+                let (x0, y0) = (l.at(w), t.at(h));
+                let (x1, y1) = ((w - r.at(w)).max(x0), (h - b.at(h)).max(y0));
+                let rr = radius.min((x1 - x0) / 2.0).min((y1 - y0) / 2.0).max(0.0);
+                let k = rr * (1.0 - KAPPA);
+                // Corners as cubics (a square corner is a straight cubic).
+                let pts = vec![
+                    [x0 + rr, y0],
+                    [x0 + rr, y0],
+                    [x1 - rr, y0],
+                    [x1 - rr, y0],
+                    [x1 - k, y0],
+                    [x1, y0 + k],
+                    [x1, y0 + rr],
+                    [x1, y0 + rr],
+                    [x1, y1 - rr],
+                    [x1, y1 - rr],
+                    [x1, y1 - k],
+                    [x1 - k, y1],
+                    [x1 - rr, y1],
+                    [x1 - rr, y1],
+                    [x0 + rr, y1],
+                    [x0 + rr, y1],
+                    [x0 + k, y1],
+                    [x0, y1 - k],
+                    [x0, y1 - rr],
+                    [x0, y1 - rr],
+                    [x0, y0 + rr],
+                    [x0, y0 + rr],
+                    [x0, y0 + k],
+                    [x0 + k, y0],
+                    [x0 + rr, y0],
+                ];
+                path(vec![(pts, true)], FillRule::NonZero, true)
+            }
+            CssClip::Ellipse(r, circle, at) => {
+                let c = [at[0].at(w), at[1].at(h)];
+                let (cx, cy) = ([c[0], w - c[0]], [c[1], h - c[1]]);
+                // CSS's default: closest-side.
+                let side = |a: [f32; 2]| a[0].abs().min(a[1].abs());
+                let (rx, ry) = if *circle {
+                    let r = r[0].map_or(side(cx).min(side(cy)), |p| {
+                        // A percentage of a circle's radius is of the box's
+                        // normalised diagonal.
+                        match p {
+                            Pos::Frac(f) => f * w.hypot(h) / SQRT_2,
+                            Pos::Px(v) => v,
+                        }
+                    });
+                    (r, r)
+                } else {
+                    (
+                        r[0].map_or(side(cx), |p| p.at(w)),
+                        r[1].map_or(side(cy), |p| p.at(h)),
+                    )
+                };
+                let (kx, ky) = (rx * KAPPA, ry * KAPPA);
+                let [x, y] = c;
+                let pts = vec![
+                    [x + rx, y],
+                    [x + rx, y + ky],
+                    [x + kx, y + ry],
+                    [x, y + ry],
+                    [x - kx, y + ry],
+                    [x - rx, y + ky],
+                    [x - rx, y],
+                    [x - rx, y - ky],
+                    [x - kx, y - ry],
+                    [x, y - ry],
+                    [x + kx, y - ry],
+                    [x + rx, y - ky],
+                    [x + rx, y],
+                ];
+                path(vec![(pts, true)], FillRule::NonZero, true)
+            }
+            CssClip::Polygon(fill, points) => {
+                // Straight cubics, so one path form carries every shape.
+                let p: Vec<[f32; 2]> = points.iter().map(|[x, y]| [x.at(w), y.at(h)]).collect();
+                let mut pts = vec![p[0]];
+                for k in 1..=p.len() {
+                    let (a, b) = (p[k - 1], p[k % p.len()]);
+                    pts.extend([a, b, b]);
+                }
+                path(vec![(pts, true)], *fill, true)
+            }
+            CssClip::Path(fill, contours) => path(contours.clone(), *fill, true),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The resolved geometry a browser draws. Ways it could fail: CSS's
+    /// angle convention (0 up, clockwise) read as maths', a gradient line
+    /// not lengthened to the corners on a non-square box, unpositioned
+    /// stops not shared evenly, a radial size from the wrong sides, or a
+    /// conic start not turned from up to +x.
+    #[test]
+    fn gradients_resolve_as_css_draws_them() {
+        let g = |s: &str| background(s).unwrap().unwrap().0.remove(0);
+        let close =
+            |a: [f32; 2], b: [f32; 2]| (a[0] - b[0]).abs() < 1e-4 && (a[1] - b[1]).abs() < 1e-4;
+        // `to right` across a 200 × 100 box.
+        let r = g("linear-gradient(to right, red, blue)").resolve(200.0, 100.0);
+        assert!(
+            close(r.from, [0.0, 0.5]) && close(r.to, [1.0, 0.5]),
+            "{r:?}"
+        );
+        // 45deg on 200 × 100: the line is 200·sin45 + 100·cos45 long.
+        let r = g("linear-gradient(45deg, red, blue)").resolve(200.0, 100.0);
+        let half = (200.0 + 100.0) * std::f32::consts::FRAC_1_SQRT_2 / 2.0
+            * std::f32::consts::FRAC_1_SQRT_2;
+        assert!(
+            close(r.to, [(100.0 + half) / 200.0, (50.0 - half) / 100.0]),
+            "{r:?}"
+        );
+        // Default is to bottom; stops 0, 0.25 (fixed), 0.5 (shared), 1.
+        let r = g("linear-gradient(red, lime 25%, #000, blue)").resolve(100.0, 100.0);
+        let o: Vec<f32> = r.stops.iter().map(|s| s.offset).collect();
+        assert!(close(r.from, [0.5, 0.0]) && close(r.to, [0.5, 1.0]));
+        assert!((o[2] - 0.625).abs() < 1e-4 && o[3] == 1.0, "{o:?}");
+        // A closest-side circle a quarter in on 200 × 100: radius 50.
+        let r =
+            g("radial-gradient(circle closest-side at 25% 50%, red, blue)").resolve(200.0, 100.0);
+        assert!(
+            close(r.from, [0.25, 0.5]) && close(r.to, [0.25, 0.5]),
+            "{r:?}"
+        );
+        let r = g("radial-gradient(farthest-side, red, blue)").resolve(200.0, 100.0);
+        assert!(close(r.to, [0.5, 0.5]), "{r:?}");
+        let r = g("conic-gradient(from 90deg, red, blue)").resolve(10.0, 10.0);
+        assert!(r.to[0].abs() < 1e-5, "from 90deg starts at +x: {r:?}");
+        assert!(background("linear-gradient(red)").unwrap().is_err());
+        assert!(
+            background("#fff").is_none(),
+            "a plain colour lowers as before"
+        );
+    }
+}

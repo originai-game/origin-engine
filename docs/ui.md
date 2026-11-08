@@ -214,6 +214,32 @@ corner (a `<button>`'s plate); sides that differ are drawn as strips, and
 the first listed on top, outer shadows under the background and inset ones
 over it.
 
+CSS paint. `background` (or `background-image`) takes
+`linear-gradient()`, `radial-gradient()` and `conic-gradient()` and
+their `repeating-` forms as CSS Images 3 writes them (angles with 0 up
+and clockwise, `to <side or corner>`, radial shapes and extents, `from
+<angle> at <position>`, stops with one or two positions, at most 8),
+layered over the background colour, the first image on top; they mix in
+OKLab and are resolved against the placed box, so the line of a
+`45deg` gradient reaches the corners of a wide box. `mask-image: <gradient>`
+fades the element and its subtree by the gradient's alpha. `clip-path`
+takes `inset(… [round r])`, `circle()`, `ellipse()`, `polygon([rule,]
+…)` and `path([rule,] "…")` and cuts the element, its background and its
+children by the shape's analytic coverage (the path clip of inline SVG),
+with either fill rule. `filter` takes `blur()` (the element and its
+subtree, a layer blur) and `hue-rotate()`, `saturate()`, `brightness()`
+and `grayscale()` (one colour-adjust layer). `backdrop-filter: blur()
+[saturate()] [brightness()]` is the glass backdrop. `mix-blend-mode`
+takes normal, multiply, screen, plus-lighter, overlay, soft-light and
+color-dodge. `text-shadow` takes a comma list of `x y [blur] [color]`.
+`-og-material: <name>(<params>…)` composites the element and its subtree
+through one of og-render's built-in layer materials (dissolve, shine,
+hologram, glitch, ripple, pixelate, color-adjust, outline, blur), each
+group of up to four numbers or a colour in the order the material lists
+them; it is the engine prefix because no CSS standard has shader
+materials. All of it is paint: a change repaints that element, and an
+idle retained element builds nothing.
+
 `overflow`, `overflow-x` and `overflow-y` take `visible`, `hidden`,
 `clip`, `scroll` and `auto`; as in CSS, `visible` beside a non-visible axis
 computes to `auto`. `auto` and `scroll` make the box scroll on that axis,

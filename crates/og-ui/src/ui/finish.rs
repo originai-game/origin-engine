@@ -805,7 +805,11 @@ impl Ui {
         for k in 0..self.orders.with(visit::feat::DECOR).len() {
             let i = self.orders.with(visit::feat::DECOR)[k];
             if let Some(decor) = &self.nodes[i].decor {
-                let d = decor.over(self.draws.get(&i).or_else(|| self.part_draws.get(&i)));
+                let r = self.nodes[i].rect;
+                let d = decor.over(
+                    self.draws.get(&i).or_else(|| self.part_draws.get(&i)),
+                    [r.width, r.height],
+                );
                 self.decor_draws.insert(i, d);
             }
         }

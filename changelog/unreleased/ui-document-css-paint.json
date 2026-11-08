@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: CSS gradients, mask-image, clip-path, filter, backdrop-filter, mix-blend-mode, text-shadow, -og-material",
+      "summary": "Document CSS takes linear, radial and conic gradients (and repeating ones) in background, mask-image gradients, clip-path basic shapes and path() cut by analytic coverage with either fill rule, filter blur and colour adjustment, backdrop-filter glass, mix-blend-mode, text-shadow, and -og-material for og-render's built-in layer materials. Geometry resolves against the placed box; an idle element builds nothing."
+    }
+  ]
+}

@@ -217,6 +217,12 @@ local styles and `og style new` remain available.
   -og-sound: success; } }`. Sparkle a rare item with `.rare { -og-emitter:
   12 diamond 6px #ffd166; }`. Flash damage with `#Hurt { -og-meta: vignette
   #a00; opacity: var(--hit); }`.
+- Paint with standard CSS: `background: linear-gradient(160deg,
+  var(--panel), #0000), #123`, `mask-image: linear-gradient(#000 70%,
+  transparent)`, `clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)`,
+  `backdrop-filter: blur(12px)`, `filter: grayscale(1)` for a locked item,
+  `text-shadow: 0 2px 6px var(--accent)`. A shader look is
+  `-og-material: shine(-0.5 0.2 0.6 1)`.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.

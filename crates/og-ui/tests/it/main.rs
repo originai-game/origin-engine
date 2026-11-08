@@ -14,6 +14,8 @@ mod button_contrast;
 mod color_vision;
 #[path = "../control_props.rs"]
 mod control_props;
+#[path = "../css_paint.rs"]
+mod css_paint;
 #[path = "../custom_properties.rs"]
 mod custom_properties;
 #[path = "../documents.rs"]

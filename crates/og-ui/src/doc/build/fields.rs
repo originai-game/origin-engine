@@ -138,6 +138,21 @@ impl Ui {
                     .map(|c| crate::paint::Paint::Solid(crate::paint::ColorRef::Literal(c)));
             }
         }
+        let css = self.css_paint(r, current);
+        // A clip, mask, blend or material cuts or composites the
+        // background too: it is drawn with them.
+        if css.as_ref().is_some_and(|c| {
+            c.clip.is_some() || c.mask.is_some() || c.blend.is_some() || c.layer.is_some()
+        }) && d.background.is_none()
+            && el.part.is_none()
+            && el.frame.is_none()
+        {
+            d.background = el
+                .background
+                .take()
+                .map(|c| crate::paint::Paint::Solid(crate::paint::ColorRef::Literal(c)));
+        }
+        d.css = css.map(Box::new);
         // CSS Overflow 3: `visible` beside a scrolling or clipping axis
         // computes to `auto`.
         let (x, y) = (r.str("overflowX"), r.str("overflowY"));
@@ -164,6 +179,45 @@ impl Ui {
             d.radius = Some(el.radius);
         }
         (d != BoxDecor::default()).then_some(d)
+    }
+
+    /// The element's CSS paint (`docs/ui.md`, CSS paint); values the
+    /// stylesheet already checked, so one that fails here is skipped.
+    fn css_paint(&self, r: &Resolved, current: Srgba) -> Option<crate::doc::paint_css::CssPaint> {
+        use crate::doc::paint_css as p;
+        let mut c = p::CssPaint::default();
+        if let Some(Ok((images, _))) = r.str("backgroundImage").and_then(p::background) {
+            c.images = images;
+        }
+        c.mask = r.str("maskImage").and_then(|v| p::mask(v).ok()).flatten();
+        if let Some(Ok(Some(e))) = r.str("backdropFilter").map(p::backdrop) {
+            c.effects.push(e);
+        }
+        if let Some(Ok((blur, adjust))) = r.str("filter").map(p::filter) {
+            if let Some(radius) = blur {
+                c.effects.push(crate::paint::Effect::LayerBlur { radius });
+            }
+            if let Some(a) = adjust {
+                let mut l = crate::paint::Layer {
+                    material: crate::paint::Material::Builtin(crate::paint::Builtin::ColorAdjust),
+                    params: Default::default(),
+                };
+                l.params[0] = a;
+                c.layer = Some(l);
+            }
+        }
+        c.blend = r.str("mixBlendMode").and_then(|v| p::blend(v).ok());
+        if let Some(Ok(s)) = r
+            .str("textShadow")
+            .map(|v| p::text_shadows(v, crate::paint::ColorRef::Literal(current)))
+        {
+            c.text_shadows = s;
+        }
+        c.clip = r.str("clipPath").and_then(|v| p::clip(v).ok()).flatten();
+        if let Some(Ok(Some(l))) = r.str("material").map(p::material) {
+            c.layer = Some(l);
+        }
+        (c != p::CssPaint::default()).then_some(c)
     }
 
     pub(super) fn apply_document_fields(&mut self, n: &DocNode, r: &Resolved, base: &RenderFields) {

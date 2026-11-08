@@ -86,16 +86,48 @@ pub struct BoxDecor {
     /// A `border-radius` written over a dressed part (a `<button>`): its
     /// rectangle takes this corner instead of the dressing's.
     pub radius: Option<f32>,
+    /// Its CSS paint beyond these: gradients, mask, filters, blend, text
+    /// shadows, clip path and material.
+    pub css: Option<Box<crate::doc::paint_css::CssPaint>>,
 }
 
 impl BoxDecor {
     /// The draw it paints over: `base` (the element's draw or dressing)
     /// with its background, shadows and clip added; a plain rectangle
     /// when there is none.
-    pub(crate) fn over(&self, base: Option<&ElementDraw>) -> ElementDraw {
+    /// `size` is the placed box's, which a gradient's line and a clip
+    /// path's percentages are resolved against.
+    pub(crate) fn over(&self, base: Option<&ElementDraw>, size: [f32; 2]) -> ElementDraw {
         let mut d = base.cloned().unwrap_or_default();
         if let Some(bg) = &self.background {
             d.fills.insert(0, bg.clone());
+        }
+        if let Some(c) = &self.css {
+            let [w, h] = size;
+            // The first image listed is on top: drawn last.
+            d.fills.extend(
+                c.images
+                    .iter()
+                    .rev()
+                    .map(|g| Paint::Gradient(g.resolve(w, h))),
+            );
+            d.effects.extend(c.effects.iter().cloned());
+            if let Some(b) = c.blend {
+                d.blend = b;
+            }
+            if !c.text_shadows.is_empty() {
+                d.text.get_or_insert_default().shadows = c.text_shadows.clone();
+            }
+            if let Some(l) = &c.layer {
+                d.layer = Some(l.clone());
+            }
+            if let Some(shape) = &c.clip {
+                d.shape = shape.resolve(w, h);
+                d.clip = crate::paint::Clip::Shape;
+            }
+            if let Some(m) = &c.mask {
+                d.clip = crate::paint::Clip::Mask(crate::paint::Mask::Gradient(m.resolve(w, h)));
+            }
         }
         // The first listed on top: drawn last.
         for s in self.shadows.iter().rev() {

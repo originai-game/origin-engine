@@ -1095,7 +1095,7 @@ mod mount;
 mod nodes;
 mod retained;
 mod structure;
-mod svg;
+pub(crate) mod svg;
 mod touch;
 mod viewport;
 mod world;

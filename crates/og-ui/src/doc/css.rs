@@ -120,6 +120,14 @@ pub const STYLE: &[(&str, &str)] = &[
     ("outlineColor", "outline-color"),
     ("outlineOffset", "outline-offset"),
     ("boxShadow", "box-shadow"),
+    ("backgroundImage", "background-image"),
+    ("maskImage", "mask-image"),
+    ("backdropFilter", "backdrop-filter"),
+    ("filter", "filter"),
+    ("mixBlendMode", "mix-blend-mode"),
+    ("textShadow", "text-shadow"),
+    ("clipPath", "clip-path"),
+    ("material", "-og-material"),
     ("overflowX", "overflow-x"),
     ("overflowY", "overflow-y"),
     ("scrollbarWidth", "scrollbar-width"),
@@ -237,6 +245,8 @@ fn conv(prop: &str) -> Conv {
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
         "boxShadow" | "uv" => Conv::Raw,
+        "backgroundImage" | "maskImage" | "backdropFilter" | "filter" | "mixBlendMode"
+        | "textShadow" | "clipPath" | "material" => Conv::Raw,
         "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop"
         | "pickerMaxHeight" => Conv::Len,
@@ -311,6 +321,21 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Origin => "<x>% <y>%".into(),
         Conv::Rive => "rive(\"<file>.riv#<Artboard>\")".into(),
         Conv::Raw if prop == "uv" => "inset(<t>% <r>% <b>% <l>%) | -og-uv: <u0> <v0> <u1> <v1>".into(),
+        Conv::Raw if prop == "backgroundImage" || prop == "maskImage" => {
+            "linear-gradient(…) | radial-gradient(…) | conic-gradient(…) (repeating- too)".into()
+        }
+        Conv::Raw if prop == "backdropFilter" => "blur(<n>px) [saturate(<n>)] [brightness(<n>)]".into(),
+        Conv::Raw if prop == "filter" => {
+            "blur(<n>px) hue-rotate(<angle>) saturate(<n>) brightness(<n>) grayscale(<n>) | none".into()
+        }
+        Conv::Raw if prop == "mixBlendMode" => {
+            "normal | multiply | screen | plus-lighter | overlay | soft-light | color-dodge".into()
+        }
+        Conv::Raw if prop == "textShadow" => "<x> <y> [<blur>] [<colour>], … | none".into(),
+        Conv::Raw if prop == "clipPath" => {
+            "inset(…) | circle(…) | ellipse(…) | polygon(…) | path(\"…\") | none".into()
+        }
+        Conv::Raw if prop == "material" => "<material>(<n> …[, <colour>]) | none".into(),
         Conv::Raw if prop == "textPath" => {
             "none | path(\"<svg path data>\") | circle([<n>px])".into()
         }
@@ -379,7 +404,6 @@ pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
             "write each part as its own property: `translate: 0 -4px`, `scale: 1.05`, `rotate: 0.1rad`, `-og-skew`"
         }
         "visibility" => "write the attribute `visible false` (or `visible bind …`)",
-        "background-color" | "background-image" => "write `background: var(--panel)` or `#rrggbb`",
         "inset-inline" | "inset" | "inset-block" => {
             "write each side: `top`, `bottom`, `inset-inline-start`, `inset-inline-end`"
         }
@@ -1449,7 +1473,20 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         "opacity" => Ok(vec![e("opacity", vec![want_num(&one(&t, name)?)?])]),
         "z-index" => Ok(vec![e("z", vec![want_num(&one(&t, name)?)?])]),
         "border-radius" => Ok(vec![e("radius", vec![want_len(&one(&t, name)?)?])]),
-        "background" => Ok(vec![e("background", paint_vals(&t)?)]),
+        "background" | "background-image"
+            if !state && super::paint_css::background(value).is_some() =>
+        {
+            let (_, colour) = super::paint_css::background(value).unwrap()?;
+            let mut out = vec![e(
+                "backgroundImage",
+                vec![Value::String(value.trim().to_owned())],
+            )];
+            if let Some(c) = colour {
+                out.push(e("background", paint_vals(&[c])?));
+            }
+            Ok(out)
+        }
+        "background" | "background-color" => Ok(vec![e("background", paint_vals(&t)?)]),
         "-og-backdrop" if !state => Ok(vec![e("backdrop", paint_vals(&t)?)]),
         "color" => Ok(vec![e(
             if state { "ink" } else { "color" },
@@ -1470,6 +1507,28 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             ]
             .join(", ")
         )),
+        "background-image" if value.trim() == "none" => Ok(vec![e(
+            "backgroundImage",
+            vec![Value::String("none".into())],
+        )]),
+        "mask-image" | "backdrop-filter" | "filter" | "mix-blend-mode" | "text-shadow"
+        | "clip-path" | "-og-material" => {
+            use super::paint_css as p;
+            let prop = match name {
+                "mask-image" => p::mask(value).map(|_| "maskImage"),
+                "backdrop-filter" => p::backdrop(value).map(|_| "backdropFilter"),
+                "filter" => p::filter(value).map(|_| "filter"),
+                "mix-blend-mode" => p::blend(value).map(|_| "mixBlendMode"),
+                "text-shadow" => p::text_shadows(
+                    value,
+                    crate::paint::ColorRef::Literal(crate::theme::Srgba::TRANSPARENT),
+                )
+                .map(|_| "textShadow"),
+                "clip-path" => p::clip(value).map(|_| "clipPath"),
+                _ => p::material(value).map(|_| "material"),
+            }?;
+            Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
+        }
         "width" | "height" | "min-width" | "max-width" | "min-height" | "max-height" => {
             let axis = if name.ends_with("width") { 0 } else { 1 };
             let v = one(&t, name)?;

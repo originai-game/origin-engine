@@ -15,6 +15,7 @@ pub(crate) mod lists;
 pub mod matching;
 pub mod media;
 pub(crate) mod motion;
+pub(crate) mod paint_css;
 pub mod schema;
 mod schema_extra;
 pub mod selectors;

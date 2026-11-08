@@ -520,7 +520,7 @@ fn solid(p: &PaintRef, alpha: f32) -> Option<Paint> {
     }
 }
 
-pub(super) fn srgba(c: [f32; 4], alpha: f32) -> Srgba {
+pub(crate) fn srgba(c: [f32; 4], alpha: f32) -> Srgba {
     let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
     Srgba {
         rgb: [byte(c[0]), byte(c[1]), byte(c[2])],
@@ -623,7 +623,7 @@ fn gradient(
 
 /// A path's subpaths as `ShapeKind::Path` points: each its start, then
 /// three points per cubic.
-fn subpaths(p: &crate::svg::Path) -> Vec<(Vec<[f32; 2]>, bool)> {
+pub(crate) fn subpaths(p: &crate::svg::Path) -> Vec<(Vec<[f32; 2]>, bool)> {
     p.subpaths
         .iter()
         .filter(|(_, cubics, _)| !cubics.is_empty())
