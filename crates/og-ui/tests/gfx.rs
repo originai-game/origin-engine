@@ -26,6 +26,7 @@ fn core_documents_preserve_screen_pixels() {
     struct Env {
         vm: serde_json::Value,
         messages: std::collections::BTreeMap<String, String>,
+        art: [og_render::TextureHandle; 3],
     }
     impl bind::Env for Env {
         fn lookup(&self, root: &str) -> Option<serde_json::Value> {
@@ -33,6 +34,9 @@ fn core_documents_preserve_screen_pixels() {
         }
         fn translate(&self, key: &str) -> Option<String> {
             self.messages.get(key).cloned()
+        }
+        fn texture(&self, handle: f64) -> Option<og_render::TextureHandle> {
+            self.art.get(handle as usize).copied()
         }
     }
     let directory =
@@ -56,11 +60,37 @@ fn core_documents_preserve_screen_pixels() {
         "title",
         "tutorial",
     ] {
-        let new = UiDocument::parse(
-            &format!("{name}.svelte"),
-            &std::fs::read_to_string(directory.join(format!("{name}.svelte"))).unwrap(),
-        )
-        .unwrap();
+        let fixtures =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/core-screens");
+        let mut source = std::fs::read_to_string(directory.join(format!("{name}.svelte"))).unwrap();
+        if matches!(name, "settings" | "creator-tools" | "hud-editor") {
+            source.push_str(
+                &std::fs::read_to_string(fixtures.join(format!("{name}.svelte"))).unwrap(),
+            );
+        }
+        let mut new = UiDocument::parse(&format!("{name}.svelte"), &source).unwrap();
+        // Supply art through the same authored asset props as a game. Keep
+        // placeholder-only captures separate so an empty slot cannot hide here.
+        let art_nodes: Vec<_> = new
+            .nodes
+            .iter()
+            .enumerate()
+            .filter(|(_, node)| node.kind == doc::NodeKind::Element("art"))
+            .map(|(i, node)| (i, node.id == "Logo" || name == "splash"))
+            .collect();
+        for (i, logo) in art_nodes {
+            let handle = if logo {
+                "1"
+            } else if matches!(name, "results" | "leaderboard") {
+                "2"
+            } else {
+                "0"
+            };
+            new.set_prop(i, "texture", handle).unwrap();
+            if logo {
+                new.set_prop(i, "ratio", "3 1").unwrap();
+            }
+        }
         let table = match og_i18n::StringTable::parse(
             &std::fs::read_to_string(directory.join(format!("{name}.en.ogt"))).unwrap(),
         ) {
@@ -96,6 +126,16 @@ fn core_documents_preserve_screen_pixels() {
             for (width, height) in [(1280u32, 720u32), (390, 844)] {
                 let mut scene = RenderScene::new();
                 let font = add_test_font(&mut scene);
+                let art = ["coast.png", "logo.png", "thumbnail.png"].map(|file| {
+                    let image = image::open(fixtures.join(file)).unwrap().to_rgba8();
+                    scene.add_texture(og_render::TextureData {
+                        width: image.width(),
+                        height: image.height(),
+                        rgba: image.into_raw(),
+                        color_space: og_render::ColorSpace::Srgb,
+                        mips: og_render::Mips::Generate,
+                    })
+                });
                 let mut renderer = Renderer::new_blocking(&RenderDesc {
                     width,
                     height,
@@ -109,6 +149,7 @@ fn core_documents_preserve_screen_pixels() {
                 let env = Env {
                     vm: vm.clone(),
                     messages: messages.clone(),
+                    art,
                 };
                 for _ in 0..30 {
                     ui.begin(
@@ -164,6 +205,81 @@ fn core_documents_preserve_screen_pixels() {
         }
     }
     assert!(failures.is_empty(), "moved frames: {}", failures.join(", "));
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn missing_art_slot_kinds_have_intentional_placeholders() {
+    let vp = Viewport::new(960.0, 1200.0);
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let mut ui = ui_with_font(font);
+    ui.begin(InputFrame::default(), vp);
+    for (index, &kind) in slot::SlotKind::ALL.iter().enumerate() {
+        if index % 6 == 0 {
+            ui.open(
+                format!("Row{index}"),
+                Element {
+                    direction: Direction::Row,
+                    height: Size::Fixed(150.0),
+                    gap: 8.0,
+                    ..Element::default()
+                },
+            );
+        }
+        ui.open(
+            format!("Cell{index}"),
+            Element {
+                width: Size::Fixed(152.0),
+                height: Size::Fixed(140.0),
+                ..Element::default()
+            },
+        );
+        ui.art(
+            "Art",
+            &ArtDesc {
+                spec: slot::SlotSpec::new(kind.name(), kind),
+                width: Size::Fixed(152.0),
+                height: Size::Fixed(140.0),
+                texture: None,
+                size: None,
+                label: String::new(),
+            },
+        );
+        ui.close();
+        if index % 6 == 5 || index + 1 == slot::SlotKind::ALL.len() {
+            ui.close();
+        }
+    }
+    ui.end();
+    let shot = shot(ui, scene, vp);
+    let mut renderer = Renderer::new_blocking(&shot.desc).unwrap();
+    renderer
+        .render(&shot.scene, &RenderTarget::Offscreen)
+        .unwrap();
+    let image = renderer.read_offscreen().unwrap();
+    let filename = "art-slot-placeholders.png";
+    image::save_buffer(
+        out_dir().join(filename),
+        &image.pixels,
+        image.width,
+        image.height,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let reference = reference_dir("metal").join(filename);
+    if std::env::var_os("OG_UI_CAPTURE").is_some() {
+        record_reference(&reference, image.width, image.height, &image.pixels);
+    } else {
+        let expected = image::open(&reference).unwrap().to_rgba8();
+        compare(
+            &image.pixels,
+            expected.as_raw(),
+            renderer.info(),
+            &reference,
+        )
+        .unwrap();
+    }
 }
 
 #[test]

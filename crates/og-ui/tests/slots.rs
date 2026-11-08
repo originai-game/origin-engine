@@ -12,6 +12,50 @@
 use og_ui::slot::{Aspect, Fit, ITEM_CELLS, Mask, SlotAspect, SlotKind, SlotSpec};
 
 #[test]
+fn missing_art_marks_stay_small_and_square_in_every_slot_kind() {
+    use og_ui::*;
+    for &kind in SlotKind::ALL {
+        for (width, height) in [(390.0, 844.0), (1280.0, 720.0), (32.0, 96.0)] {
+            let mut ui = Ui::new(UiDesc::default());
+            ui.set_style_name("placeholder-test");
+            ui.begin(InputFrame::default(), Viewport::new(1280.0, 900.0));
+            ui.art(
+                "Art",
+                &ArtDesc {
+                    spec: SlotSpec::new("fixture", kind),
+                    width: Size::Fixed(width),
+                    height: Size::Fixed(height),
+                    texture: None,
+                    size: None,
+                    label: String::new(),
+                },
+            );
+            ui.end();
+            let marks: Vec<_> = ui
+                .frame()
+                .items
+                .iter()
+                .filter_map(|item| {
+                    if let DrawCmd::Quad { rect, radius, .. } = item.cmd {
+                        (radius > 0.0).then_some(rect)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            assert_eq!(marks.len(), 1, "{}", kind.name());
+            assert_eq!(
+                marks[0].width,
+                marks[0].height,
+                "{} {width}×{height}",
+                kind.name()
+            );
+            assert!(marks[0].width <= 32.0, "{}: {:?}", kind.name(), marks[0]);
+        }
+    }
+}
+
+#[test]
 fn a_wrong_slot_is_refused_with_its_fix() {
     let mut bust = SlotSpec::new("hero", SlotKind::Bust);
     bust.aspect = SlotAspect::One(Aspect::new(16, 9));

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Art slot placeholders",
+      "summary": "Missing artwork uses a quiet token surface and a small square-fit mark instead of stretching a disc across the slot. Core-screen references now use supplied art and populated settings, creator-tools and HUD-editor content, with separate missing-art coverage for every slot kind."
+    }
+  ]
+}

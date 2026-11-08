@@ -15,9 +15,9 @@
 //! 1232×706, vertical 748×896, library 600×900, hero 3840×1240).
 //!
 //! Until its art lands a slot draws a placeholder from the style and the
-//! kind ([`SlotKind::placeholder`]): a gradient of two of the palette's
-//! roles, the kind's silhouette from the style's icon set, and the slot's
-//! name in the default style only; never an empty grey box
+//! kind ([`SlotKind::placeholder`]): a quiet surface, a small square-fit
+//! silhouette from the style's icon set, and the slot's name in the default
+//! style only. Missing silhouettes use a disc, never a stretched pill
 //! ([`crate::Ui::art`]). [`document_slots`] reads every `art` element of a
 //! document with its spec, what `og ui slots` lists.
 

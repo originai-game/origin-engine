@@ -369,13 +369,12 @@ impl Ui {
     /// An art slot (docs/ui.md §3.3): its texture fitted as its spec says
     /// (cover around the focal point, contain, a nine-slice…), cut to its
     /// mask, with the style's treatments (a vignette, a frame, a rarity
-    /// glow); until the art is there, a placeholder drawn from the style
-    /// and the kind ([`crate::slot::SlotKind::placeholder`]: a gradient of
-    /// the palette, the kind's silhouette from the icon set, the slot's
-    /// name in the default style only), never an empty grey box. With a
+    /// glow); until the art is there, a quiet surface and a small centred
+    /// mark from the kind's icon set, with the slot's name in the default
+    /// style only. The mark never stretches with the slot. With a
     /// height left to fit it takes the slot's aspect.
     pub fn art(&mut self, id: impl Into<Id>, desc: &ArtDesc) {
-        use crate::paint::{ColorRef, Effect, ElementDraw, Gradient, Paint, ShapeKind, Stop};
+        use crate::paint::{ColorRef, Effect, ElementDraw, Paint, ShapeKind};
         use crate::slot::{Mask, SlotAspect, Treatment};
         let t = self.theme;
         let spec = &desc.spec;
@@ -458,27 +457,7 @@ impl Ui {
                 }));
             }
             None => {
-                d.fills.push(Paint::Gradient(Gradient {
-                    stops: vec![
-                        Stop {
-                            offset: 0.0,
-                            color: token(ph.from, 1.0),
-                        },
-                        Stop {
-                            offset: 1.0,
-                            color: token(ph.to, 1.0),
-                        },
-                    ],
-                    ..Gradient::default()
-                }));
-                d.strokes.push(crate::paint::Stroke {
-                    width: t.tokens.stroke(crate::tokens::StrokeWidth::Hairline),
-                    align: crate::paint::StrokeAlign::Inside,
-                    dash: [4.0, 3.0],
-                    dash_offset: 0.0,
-                    dash_cap: crate::paint::Cap::Butt,
-                    paint: Paint::Solid(token("line", 1.0)),
-                });
+                d.fills.push(Paint::Solid(token("well", 1.0)));
             }
         }
         for tr in &spec.treatments {
@@ -516,9 +495,10 @@ impl Ui {
                 fy: if named { 0.4 - k / 2.0 } else { 0.5 - k / 2.0 },
                 fw: k,
                 fh: k,
+                square_max: Some(32.0),
                 ..Frame::default()
             };
-            let ink = t.palette.ink_faint;
+            let ink = t.palette.ink_muted;
             match self.icon_shape(
                 crate::dress::PartRef::of("ArtSlot", "icon", None),
                 ph.icon,

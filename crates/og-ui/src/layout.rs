@@ -444,6 +444,8 @@ pub(crate) struct Frame {
     pub y: f32,
     pub w: f32,
     pub h: f32,
+    /// Fit a centred square inside the resolved rectangle, capped in UI units.
+    pub square_max: Option<f32>,
 }
 
 impl Frame {
@@ -457,6 +459,7 @@ impl Frame {
         y: 0.0,
         w: 0.0,
         h: 0.0,
+        square_max: None,
     };
 
     /// A `w`×`h` box whose centre is the element's centre moved by (dx, dy).
@@ -483,12 +486,23 @@ impl Frame {
     }
 
     pub fn resolve(&self, r: &Rect) -> Rect {
-        Rect::new(
+        let rect = Rect::new(
             r.x + self.fx * r.width + self.x,
             r.y + self.fy * r.height + self.y,
             self.fw * r.width + self.w,
             self.fh * r.height + self.h,
-        )
+        );
+        if let Some(max) = self.square_max {
+            let side = rect.width.min(rect.height).min(max);
+            Rect::new(
+                rect.x + (rect.width - side) / 2.0,
+                rect.y + (rect.height - side) / 2.0,
+                side,
+                side,
+            )
+        } else {
+            rect
+        }
     }
 }
 
