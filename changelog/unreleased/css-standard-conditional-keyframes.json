@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "@keyframes may be nested in @media and @container. The last definition of a name whose conditions hold plays; switching to another definition restarts the animation, as an animation-name change does."
+    }
+  ]
+}

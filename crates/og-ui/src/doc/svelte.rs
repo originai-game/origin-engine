@@ -18,6 +18,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
                 actions: Vec::new(),
                 timelines: Vec::new(),
                 keyframes: Vec::new(),
+                keyframe_rules: Vec::new(),
                 fixtures: Vec::new(),
                 nodes: Vec::new(),
                 root: NONE,

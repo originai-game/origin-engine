@@ -28,21 +28,21 @@ pub(super) fn apply(
             if !syntax::identifier(name) {
                 return Err((rule.at, "@keyframes needs a CSS identifier".into()));
             }
-            if rule.query != AtQuery::default() {
-                return Err((
-                    rule.at,
-                    format!(
-                        "@keyframes {name} inside @media or @container: declare keyframes at the top level and choose the animation in a conditional rule"
-                    ),
-                ));
-            }
             let mut frames = Vec::new();
             read_rules(&rule.body, rule.body_at, AtQuery::default(), &mut frames)?;
             let frames: Vec<_> = frames.into_iter().map(|f| (f.selector, f.body)).collect();
             let parsed = super::motion::keyframes(&frames)
                 .map_err(|e| (rule.at, format!("@keyframes {name}: {e}")))?;
-            doc.keyframes.retain(|(n, _)| n != name);
-            doc.keyframes.push((name.to_string(), parsed));
+            let key = if rule.query == AtQuery::default() {
+                name.to_string()
+            } else {
+                format!("{name}@{}", doc.keyframe_rules.len())
+            };
+            doc.keyframe_rules.retain(|(_, _, k)| *k != key);
+            doc.keyframes.retain(|(k, _)| *k != key);
+            doc.keyframe_rules
+                .push((name.to_string(), rule.query.clone(), key.clone()));
+            doc.keyframes.push((key, parsed));
         }
     }
     rules.retain(|rule| !rule.selector.starts_with("@keyframes "));
@@ -88,7 +88,7 @@ pub(super) fn apply(
             }
             continue;
         }
-        let known: Vec<String> = doc.keyframes.iter().map(|(n, _)| n.clone()).collect();
+        let known: Vec<String> = doc.keyframe_rules.iter().map(|(n, ..)| n.clone()).collect();
         let mut declarations = Vec::new();
         for declaration in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
             for declaration in super::container::expand(declaration).map_err(|e| (rule.at, e))? {

@@ -145,6 +145,10 @@ local styles and `og style new` remain available.
   it. Rules choose animations like any property, so `#Card.open { animation:
   … }` or `:hover` starts one and removing the match ends it. Reduced motion
   shows a finite animation's end and stops endless ones.
+  `@keyframes` may sit inside `@media` or `@container`, for example a
+  shorter entrance on phones: the last definition of a name whose
+  conditions hold is the one that plays, and switching to another
+  definition restarts the animation.
   A keyframe's `-og-sound: error` emits the active style's named sound once
   when playback crosses that frame, at the recorded playback rate.
 - Bind structured rich text with `<text spans={$spans}>{$body}</text>`.

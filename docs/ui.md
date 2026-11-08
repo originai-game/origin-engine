@@ -429,6 +429,9 @@ keyframes cover opacity, translate, scale, rotate, `-og-skew` and
 `border-radius`; transitions also cover background, color and z-index. Other
 properties, `var()` inside a shorthand, and unknown keyframes fail at cook
 with the property named.
+`@keyframes` may be nested in `@media` and `@container`: the last
+definition of a name whose conditions currently hold defines it, and a
+switch between definitions restarts the animation as a name change does.
 Scoped `@keyframes` can emit a style sound at a frame, such as
 `-og-sound: error` for game-over entrance feedback. The event records its
 playback rate; rate-valued fields use `playbackRate`, not `pitch`.

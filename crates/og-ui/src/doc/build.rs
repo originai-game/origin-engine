@@ -472,6 +472,30 @@ impl Ui {
         }
         (r.transitions, r.animations) =
             super::motion::resolve(&r.cascade.motion, &b.doc.name, &mut r.cascade.diagnostics);
+        // A conditional `@keyframes` defines its name while its conditions
+        // hold; choosing another definition restarts the animation, as a
+        // name change does.
+        if b.doc
+            .keyframe_rules
+            .iter()
+            .any(|(_, q, _)| *q != super::AtQuery::default())
+        {
+            let prefix = format!("{}/", b.doc.name);
+            for a in &mut r.animations {
+                let Some(name) = a.name.strip_prefix(&prefix) else {
+                    continue;
+                };
+                let key = b
+                    .doc
+                    .keyframe_rules
+                    .iter()
+                    .rev()
+                    .filter(|(n, ..)| n == name)
+                    .find(|(_, q, _)| applies(q, &mut media_reads))
+                    .map_or_else(|| format!("{name}@none"), |(.., key)| key.clone());
+                a.name = format!("{prefix}{key}");
+            }
+        }
         sets.retain(|prop| !r.cascade.unset.contains(&prop.spec));
         sets.extend(&r.cascade.props);
         for p in sets {

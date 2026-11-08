@@ -571,4 +571,56 @@ mod document_tests {
             assert_eq!(tick(&mut ui, &on), expected, "tick {j} after restore");
         }
     }
+
+    #[test]
+    fn conditional_keyframes_follow_the_conditions_and_restart_on_a_switch() {
+        // 60 ticks: grow lasts 600 ms, 36 ticks; scale goes 1 → the target.
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "m.svelte",
+                r#"<meta name="screen" content="m" data-layer="hud">
+<column id="Box"><panel id="Card"/></column>
+<style>
+#Box { width: 50%; container-type: inline-size; }
+#Card { width: 40px; height: 20px; animation: grow 600ms linear both; }
+@keyframes grow { to { scale: 2; } }
+@media (width < 500px) { @keyframes grow { to { scale: 5; } } }
+@container (width > 400px) { @keyframes grow { to { scale: 3; } } }
+</style>"#,
+            )
+            .unwrap(),
+        );
+        ui.push_screen("m", json!({})).unwrap();
+        let mut at = |width: f32| {
+            ui.begin(InputFrame::default(), Viewport::new(width, 480.0));
+            ui.end();
+            let i = (0..ui.nodes.len())
+                .find(|&i| ui.path_of(i) == "m/Box/Card")
+                .unwrap();
+            crate::layout::read_values(&ui.nodes[i])[SCALE]
+        };
+        // 640: Box 320, no media or container match: the top-level 2.
+        for _ in 0..18 {
+            at(640.0);
+        }
+        let half = at(640.0);
+        assert!((half - 1.5).abs() < 0.06, "half way to 2: {half}");
+        // 400: the media variant (later in source order) wins and starts
+        // again from its first keyframe, so it is near 1, not near 3.
+        let restarted = at(400.0);
+        assert!(restarted < 1.3, "restarted toward 5: {restarted}");
+        for _ in 0..40 {
+            at(400.0);
+        }
+        assert!(close(at(400.0), 5.0), "held at 5");
+        // 1000: Box 500 > 400; the container variant is last and holds.
+        // Its condition settles after the first build, so it switches within
+        // a frame of the resize and runs to its end.
+        for _ in 0..40 {
+            at(1000.0);
+        }
+        assert!(close(at(1000.0), 3.0), "held at 3");
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    }
 }
