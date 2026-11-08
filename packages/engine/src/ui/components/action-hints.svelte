@@ -4,7 +4,7 @@
 <meta name="prop:label" content="string" data-doc="What a screen reader calls the bar; empty is Actions.">
 <meta name="action:press" content="Do">
 <meta name="action:hold" content="Hold">
-<meta name="fixture:default" content='{"label":"","hints":[{"action":"confirm","hint":"Buy","hold":false},{"action":"back","hint":"Back","hold":false},{"action":"sell","hint":"Sell all","hold":true}]}'>
+<meta name="fixture:default" content='{"label":"","hints":[{"action":"confirm","hint":"Buy","hold":false},{"action":"back","hint":"Back","hold":false},{"action":"details","hint":"Sell all","hold":true}]}'>
 
 <nav id="ActionHints" role="toolbar" aria-label={label || t("component.action-hints.name")}>
   {#each hints as h (h.action)}

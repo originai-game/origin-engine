@@ -29,6 +29,9 @@
 #Button:hover { filter: brightness(1.1); }
 #Button:disabled { opacity: 0.45; }
 #Icon { width: 18px; height: 18px; }
+#Icon, #Label, #Holding { color: var(--danger); }
+.primary #Icon, .primary #Label, .primary #Holding { color: var(--on-primary); }
+.secondary #Icon, .secondary #Label, .secondary #Holding { color: var(--ink); }
 #Label, #Holding { font: var(--text-body); white-space: nowrap; }
 #Button:not(:active) #Holding { display: none; }
 #Button:active #Label { display: none; }
