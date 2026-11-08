@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "FrameStats.missing_glyphs",
+      "summary": "A UI text whose face lacks every one of its glyphs (so it measured no width) reached the renderer and is counted; it was dropped before drawing and the count stayed 0."
+    }
+  ]
+}

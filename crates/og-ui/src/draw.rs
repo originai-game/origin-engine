@@ -595,6 +595,16 @@ fn collect(
 
 /// Levels a space's entries and flattens them; `drawn` gets the union of
 /// what they draw.
+/// A text with visible characters (plain or styled): one that has no
+/// bounds only because its face lacks every glyph of it.
+fn unmeasured_text(cmd: &DrawCmd) -> bool {
+    match cmd {
+        DrawCmd::StyledText { text, .. } => unmeasured_text(text),
+        DrawCmd::Text { text, .. } => text.chars().any(|c| !c.is_whitespace()),
+        _ => false,
+    }
+}
+
 fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> Vec<DrawItem> {
     let keyed: Vec<(Rect, Batch)> = entries
         .iter()
@@ -643,6 +653,18 @@ fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> 
                 cmd,
                 transform,
             }),
+            // A text whose every glyph its face lacks measures no width (a
+            // missing glyph takes no space), so it has no bounds. It draws
+            // nothing, but it goes on so the renderer counts its missing
+            // glyphs (`FrameStats::missing_glyphs`) on every frame, not only
+            // when a drawn character shares its line.
+            (Entry::Cmd(cmd, transform), None) if unmeasured_text(&cmd) => {
+                out.push(DrawItem {
+                    level: 0,
+                    cmd,
+                    transform,
+                });
+            }
             (
                 Entry::Layer {
                     begin, items, end, ..
