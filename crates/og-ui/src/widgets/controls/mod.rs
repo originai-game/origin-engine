@@ -342,6 +342,11 @@ impl Ui {
     // ── the frame's facts ───────────────────────────────────────────────
 
     fn role(&self, name: &str) -> C {
+        if let Some(a) = self.accent
+            && matches!(name, "primary" | "primaryHover" | "primaryActive")
+        {
+            return C::of(a);
+        }
         C::of(
             self.theme
                 .color(name)

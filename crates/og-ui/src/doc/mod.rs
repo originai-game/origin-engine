@@ -25,6 +25,7 @@ mod spans;
 mod stylesheet;
 mod svelte;
 mod syntax;
+pub(crate) mod text_css;
 pub mod topology;
 pub mod types;
 pub mod variables;

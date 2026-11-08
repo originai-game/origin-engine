@@ -867,7 +867,7 @@ impl Ui {
             Some("italic" | "oblique")
         );
         let text = r.str("text").unwrap_or_default().to_string();
-        let font = r.label_desc(&self.theme).font;
+        let font = r.label_desc(&self.theme, false).font;
         let (ascender, descender) = {
             let m = &self.fonts.for_styled(font, weight, italic, &text).0.metrics;
             m.extents(&text)

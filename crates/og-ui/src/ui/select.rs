@@ -124,30 +124,32 @@ impl Ui {
         let rtl = self.direction == og_i18n::Direction::Rtl;
         let tracking = tc.tracking();
         let mut start = 0u32;
-        let lines = n
-            .lines
-            .iter()
-            .enumerate()
-            .map(|(k, line)| {
-                let free = inner.width - line.width * sk;
-                let x = inner.x
-                    + match (tc.align, rtl) {
-                        (TextAlign::Start, false) | (TextAlign::End, true) => 0.0,
-                        (TextAlign::Center, _) => free / 2.0,
-                        (TextAlign::End, false) | (TextAlign::Start, true) => free,
+        let lines =
+            n.lines
+                .iter()
+                .enumerate()
+                .map(|(k, line)| {
+                    let free = inner.width - line.width * sk;
+                    let x = inner.x
+                        + match (tc.align, rtl) {
+                            (TextAlign::Start | TextAlign::Justify, false)
+                            | (TextAlign::End, true) => 0.0,
+                            (TextAlign::Center, _) => free / 2.0,
+                            (TextAlign::End, false)
+                            | (TextAlign::Start | TextAlign::Justify, true) => free,
+                        };
+                    let chars: Vec<char> = line.text.chars().collect();
+                    let l = TextLine {
+                        start,
+                        x,
+                        top: top + k as f32 * lh,
+                        boxes: crate::edit::boxes(m, &line.text, self.direction, size, tracking),
+                        chars,
                     };
-                let chars: Vec<char> = line.text.chars().collect();
-                let l = TextLine {
-                    start,
-                    x,
-                    top: top + k as f32 * lh,
-                    boxes: crate::edit::boxes(m, &line.text, self.direction, size, tracking),
-                    chars,
-                };
-                start += l.chars.len() as u32 + 1;
-                l
-            })
-            .collect();
+                    start += l.chars.len() as u32 + 1;
+                    l
+                })
+                .collect();
         Some(TextLines { lines })
     }
 

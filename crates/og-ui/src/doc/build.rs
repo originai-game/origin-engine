@@ -58,6 +58,9 @@ struct Resolved {
     replay: Option<Arc<containers::Replay>>,
     /// A numbered `<li>`'s number ([`super::lists::ordinal`]).
     ordinal: Option<i64>,
+    /// Its effective CSS text and font style ([`super::text_css`]); `None`
+    /// for an element that neither declares nor shows text.
+    text: Option<Arc<super::text_css::TextCss>>,
 }
 
 #[derive(Clone)]
@@ -727,6 +730,45 @@ impl Ui {
         {
             svg::inherit(kind, &mut r);
         }
+        // Text style: written for those under it by an element declaring
+        // it, read by an element that shows text.
+        // Controls read accent-color and caret-color the same way.
+        let shows_text = matches!(
+            n.kind,
+            NodeKind::Element(
+                "label"
+                    | "button"
+                    | "field"
+                    | "toggle"
+                    | "slider"
+                    | "radio"
+                    | "progress"
+                    | "meter"
+                    | "select"
+                    | "color"
+            )
+        );
+        if shows_text || !r.cascade.text.is_empty() {
+            let mut ramp = self.theme.type_ramp;
+            let step = r
+                .str("step")
+                .and_then(|s| crate::style_file::ramp_step(&mut ramp, s).copied())
+                .unwrap_or(self.theme.type_ramp.body);
+            let current = r.color("color").unwrap_or(self.theme.palette.ink);
+            let local = std::mem::take(&mut r.cascade.text);
+            let cascade = &mut r.cascade;
+            let text = super::text_css::inherit(super::text_css::Inputs {
+                local: &local,
+                computed: Arc::make_mut(&mut cascade.computed),
+                reads: &mut cascade.inherited_reads,
+                diagnostics: &mut cascade.diagnostics,
+                theme: &self.theme,
+                current,
+                step,
+            });
+            cascade.text = local;
+            r.text = (text != Default::default()).then(|| Arc::new(text));
+        }
         if recording {
             let cached = b.recording.borrow_mut().take().unwrap_or_default();
             r.replay = Some(Arc::new(containers::Replay { cached, decisions }));
@@ -738,6 +780,9 @@ impl Ui {
     fn em_of(&self, r: &Resolved) -> f32 {
         let mut ramp = self.theme.type_ramp;
         let body = ramp.body.size;
+        if let Some(s) = r.text.as_ref().and_then(|t| t.size) {
+            return s;
+        }
         r.str("step")
             .and_then(|name| crate::style_file::ramp_step(&mut ramp, name))
             .map_or(body, |s| s.size)

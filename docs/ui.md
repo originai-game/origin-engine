@@ -417,6 +417,37 @@ corner (a `<button>`'s plate); sides that differ are drawn as strips, and
 the first listed on top, outer shadows under the background and inset ones
 over it.
 
+Text and fonts. Elements take CSS Fonts 4 and CSS Text 3/4 properties as
+standard CSS beside the house form `font: var(--text-<step>)`, which stays
+valid: `font-size` (lengths, `%`, `em` of the parent's size, the absolute
+and relative keywords), `font-weight` (numbers, `bold`, `bolder` and
+`lighter` against the parent's), `font-style` (`italic`, `oblique
+<angle>`), `font-stretch`/`font-width`, `line-height` (a number inherits as
+the number, a length as px), `letter-spacing`, `word-spacing`, the `font`
+shorthand (a generic family picks the style's body, display or mono role),
+every `font-variant-*` keyword and the `font-variant` shorthand as their
+OpenType features, `font-feature-settings`, `font-variation-settings`,
+`font-kerning`, `font-optical-sizing`, `font-synthesis` and its longhands.
+`text-transform` takes `uppercase`, `lowercase`, `capitalize`, `full-width`
+and `full-size-kana` (cased for the UI's locale); `white-space` and its
+longhands `white-space-collapse` and `text-wrap-mode` process the text as
+CSS Text 4 §4 says (`pre`, `pre-wrap`, `pre-line`, `break-spaces`, tabs to
+`tab-size` stops); `text-wrap`, `hyphens: none` (soft hyphens dropped),
+`word-break` (`break-all`, `keep-all`), `overflow-wrap`, `text-indent`,
+`text-justify`, `text-align` (`left` and `right` are physical, `start` and
+`end` follow the direction, `justify` stretches every line but a
+paragraph's last at its spaces) and `text-align-last`. `text-decoration`
+(and its `-line`, `-style`, `-color`, `-thickness` longhands,
+`text-underline-offset` and `text-underline-position`) draws solid,
+double, dotted, dashed and wavy underlines, overlines and line-throughs,
+propagated to the text inside as CSS Text Decoration 3 says.
+`-webkit-text-stroke`, `-webkit-text-fill-color` and `paint-order` outline
+and fill the glyphs. The inherited properties pass down the instantiated
+tree as custom properties do, so a change re-resolves only the texts that
+read it. `accent-color` is the primary ink of the controls under it
+(switches, sliders, radios, progress), `caret-color` a field's caret, and
+`color-scheme: light | dark` picks `light-dark()`'s side for its subtree.
+
 Colours. Every CSS colour property takes any CSS Color 4 and 5 colour:
 hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`), all 148 named colours,
 `transparent`, `currentColor`, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`,

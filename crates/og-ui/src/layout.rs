@@ -378,6 +378,9 @@ pub enum TextAlign {
     Start,
     Center,
     End,
+    /// CSS `text-align: justify`: every line but the last (and a line a
+    /// forced break ends) stretched to the box at its spaces, from start.
+    Justify,
 }
 
 /// A container: its layout and its look. The zero value is a transparent

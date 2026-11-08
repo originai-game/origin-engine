@@ -294,18 +294,27 @@ impl Ui {
             return self.build_popover(b, n, id.as_str(), &r, path, key, built, build_children);
         }
         let t = self.theme;
-        let text_of = |r: &Resolved, b: &Build<'_>| -> String {
+        let raw_of = |r: &Resolved, b: &Build<'_>| -> String {
             if let Some(k) = r.str("key")
                 && let Some(s) = b.env.translate(k)
             {
                 // Its markup styles runs; the text is without it.
-                return if crate::doc::mf2::has_markup(&s) {
+                if crate::doc::mf2::has_markup(&s) {
                     crate::doc::mf2::plain(&s)
                 } else {
                     s
-                };
+                }
+            } else {
+                r.str("text").unwrap_or_default().to_string()
             }
-            r.str("text").unwrap_or_default().to_string()
+        };
+        // CSS's text-transform and white-space processing over its source.
+        let text_of = |r: &Resolved, b: &Build<'_>| -> String {
+            let raw = raw_of(r, b);
+            match r.text.as_deref() {
+                Some(t) => t.shown(&raw, b.env.language()),
+                None => raw,
+            }
         };
         let mut resp = crate::ui::Response::default();
         // A button with only text is the leaf control; with content it holds it.
@@ -508,10 +517,11 @@ impl Ui {
         let styled = r;
         let r = styled.intrinsic();
         let mut texture = None;
+        self.accent = styled.text.as_deref().and_then(|t| t.accent);
         match kind {
             "label" => {
                 let text = text_of(&r, b);
-                let desc = r.label_desc(&t);
+                let desc = r.label_desc(&t, self.direction == og_i18n::Direction::Rtl);
                 if !n.inline.is_empty() {
                     self.inline_links(b, n, &r, &path, key);
                 }
@@ -523,6 +533,7 @@ impl Ui {
                                 "{}:{}: {path}.spans: expected TextSpan[]: {error}",
                                 doc.source, n.line
                             ));
+                            self.accent = None;
                             return None;
                         }
                     };
@@ -546,6 +557,23 @@ impl Ui {
                                     .map(|(_, style)| style.clone())
                                     .unwrap_or_default()
                             },
+                        )
+                        .response;
+                } else if let Some((span, style)) = r.css_span(&text) {
+                    resp = self
+                        .rich_text_spans(
+                            id.as_str(),
+                            &text,
+                            std::slice::from_ref(&span),
+                            crate::RichTextDesc {
+                                step: desc.step,
+                                color: desc.color,
+                                align: desc.align,
+                                nowrap: desc.nowrap,
+                                width: desc.width,
+                                font: desc.font,
+                            },
+                            |_| style.clone(),
                         )
                         .response;
                 } else {
@@ -1030,13 +1058,19 @@ impl Ui {
             other => {
                 self.warnings
                     .push(format!("{}:{}: '{other}' is not built", doc.source, n.line));
+                self.accent = None;
                 return None;
             }
         }
+        self.accent = None;
         let last = self.last_closed;
         if last != NONE && last < self.nodes.len() {
-            let fields = fields::RenderFields::capture(self, last, kind, resp, props, texture)
+            let mut fields = fields::RenderFields::capture(self, last, kind, resp, props, texture)
                 .with_textures(&styled, b.env);
+            // A text keeps its source: settlement shows it in its new style.
+            if kind == "label" && styled.text.is_some() {
+                fields.text = raw_of(&styled, b);
+            }
             self.apply_document_fields(n, &styled, &fields);
             self.note_render_fields(key, fields);
             if styled.has("dataOgTouch") {

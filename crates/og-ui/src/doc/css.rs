@@ -431,9 +431,6 @@ pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
         "float" | "clear" => "write `display` as the kind: a `row` or a `grid`",
         "left" => "write `inset-inline-start` (it mirrors right to left)",
         "right" => "write `inset-inline-end` (it mirrors right to left)",
-        "font-size" | "font-weight" | "line-height" | "letter-spacing" => {
-            "text takes a step of the style's type ramp: `font: var(--text-caption)`"
-        }
         "transform" => {
             "write each part as its own property: `translate: 0 -4px`, `scale: 1.05`, `rotate: 0.1rad`, `-og-skew`"
         }

@@ -24,6 +24,8 @@ pub struct Cascade {
     pub(crate) container: Vec<(String, String)>,
     /// Winning SVG presentation properties (`fill`, `stroke`…), substituted.
     pub(crate) svg: Vec<(String, String)>,
+    /// Winning text and font properties ([`crate::doc::text_css`]), substituted.
+    pub(crate) text: Vec<(String, String)>,
     /// Query containers whose settled size the matched rules depend on.
     pub container_reads: BTreeSet<u64>,
 }
@@ -158,6 +160,14 @@ pub(crate) fn resolve(
         }
         if crate::doc::extern_element::svg_longhand(&name) {
             out.svg.push((name, value));
+            continue;
+        }
+        if crate::doc::text_css::longhand(&name) {
+            // SVG text reads its font as a presentation attribute too.
+            if crate::doc::extern_element::TEXT_PRESENTATION.contains(&name.as_str()) {
+                out.svg.push((name.clone(), value.clone()));
+            }
+            out.text.push((name, value));
             continue;
         }
         let declaration = format!("{name}: {value};");

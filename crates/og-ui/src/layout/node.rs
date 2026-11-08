@@ -430,6 +430,10 @@ pub(crate) struct Node {
     pub props: crate::element::Props,
     /// Frame sampling never changes the authored element, content or props.
     pub sampled: SampledStyle,
+    /// CSS `accent-color` and `caret-color` it declares or inherits as a
+    /// document element (controls under it read the nearest, [`crate::Ui`]).
+    pub accent: Option<Srgba>,
+    pub caret: Option<Srgba>,
     /// Its children out of the flow (absolute, anchored), in build order;
     /// `children` holds the ones in the flow once the frame ends.
     pub out: Vec<usize>,
@@ -559,6 +563,8 @@ impl Node {
             stagger: None,
             props: crate::element::Props::default(),
             sampled: SampledStyle::default(),
+            accent: None,
+            caret: None,
             out: Vec::new(),
             grid: None,
             world: crate::element::Affine::IDENTITY,

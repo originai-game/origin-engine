@@ -50,6 +50,8 @@ pub(crate) struct RichSpan {
     pub atom: Option<Atom>,
     pub link: Option<String>,
     pub fx: SpanFx,
+    /// Its CSS decoration's style, colour, thickness, offset and overline.
+    pub decoration: Option<crate::doc::text_css::Decoration>,
 }
 
 /// An italic's slant: x moves by this much of the height above the baseline.
@@ -627,6 +629,7 @@ impl Ui {
                 atom,
                 link: s.link.clone(),
                 fx: s.fx,
+                decoration: None,
             });
         }
         self.rich_runs(id.into(), probe, spans, desc)
@@ -714,9 +717,9 @@ impl Ui {
             let free = inner.width - width * sk;
             let x0 = inner.x
                 + match (rc.align, rtl) {
-                    (TextAlign::Start, false) | (TextAlign::End, true) => 0.0,
+                    (TextAlign::Start | TextAlign::Justify, false) | (TextAlign::End, true) => 0.0,
                     (TextAlign::Center, _) => free / 2.0,
-                    (TextAlign::End, false) | (TextAlign::Start, true) => free,
+                    (TextAlign::End, false) | (TextAlign::Start | TextAlign::Justify, true) => free,
                 };
             let mut x = x0;
             for seg in segments {
@@ -1085,22 +1088,84 @@ impl Ui {
                     };
                 }
             }
-            // A link's or [u]'s underline and [s]'s strike: hairlines across
-            // the piece, in its ink.
-            let th = (size * 0.07).max(1.0 / dpr);
-            let mut rule = |y: f32| {
-                cmds.push(DrawCmd::Quad {
-                    rect: Rect::new(r.x, y, r.width, th).snapped(dpr),
-                    radius: 0.0,
-                    color: color.fade(alpha).linear(),
-                    clip,
-                });
-            };
+            // A link's or [u]'s underline and [s]'s strike, and CSS's
+            // decoration lines (CSS Text Decoration 3 §2): across the piece
+            // in its ink or the decoration's colour, in its style.
+            let d = s.decoration.clone().unwrap_or_default();
+            let th = d
+                .thickness
+                .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.scale);
+            let ink = d.color.unwrap_or(color).fade(alpha).linear();
+            let mut rule =
+                |y: f32| decoration_line(r.x, r.width, y, th, d.style, ink, clip, dpr, cmds);
             if link_key.is_some() || s.underline {
-                rule(baseline + size * 0.12);
+                let off = d.offset.map_or(size * 0.12, |o| o * n.scale);
+                let under = if d.under { size * 0.1 } else { 0.0 };
+                rule(baseline + off + under);
+            }
+            if d.overline {
+                rule(baseline - size * 0.95);
             }
             if s.strike {
                 rule(baseline - size * 0.3);
+            }
+        }
+    }
+}
+
+/// One decoration line of `style` from `x` across `width`, its top at `y`.
+#[allow(clippy::too_many_arguments)]
+fn decoration_line(
+    x: f32,
+    width: f32,
+    y: f32,
+    th: f32,
+    style: crate::doc::text_css::DecorationStyle,
+    color: [f32; 4],
+    clip: Rect,
+    dpr: f32,
+    cmds: &mut Vec<crate::draw::DrawCmd>,
+) {
+    use crate::doc::text_css::DecorationStyle as S;
+    use crate::draw::DrawCmd;
+    let mut quad = |r: Rect, radius: f32| {
+        cmds.push(DrawCmd::Quad {
+            rect: r.snapped(dpr),
+            radius,
+            color,
+            clip,
+        })
+    };
+    match style {
+        S::Solid => quad(Rect::new(x, y, width, th), 0.0),
+        S::Double => {
+            quad(Rect::new(x, y, width, th), 0.0);
+            quad(Rect::new(x, y + th * 2.0, width, th), 0.0);
+        }
+        S::Dotted | S::Dashed => {
+            let (on, gap) = if style == S::Dotted {
+                (th, th)
+            } else {
+                (th * 3.0, th * 2.0)
+            };
+            let mut at = x;
+            while at < x + width {
+                let w = on.min(x + width - at);
+                quad(
+                    Rect::new(at, y, w, th),
+                    if style == S::Dotted { th / 2.0 } else { 0.0 },
+                );
+                at += on + gap;
+            }
+        }
+        S::Wavy => {
+            // A sine of a period of six thicknesses, as dots along it.
+            let (amp, step) = (th * 1.2, th * 0.5);
+            let mut at = 0.0;
+            while at < width {
+                let dy = amp * (at / (th * 6.0) * std::f32::consts::TAU).sin();
+                quad(Rect::new(x + at, y + amp + dy, step.max(th), th), th / 2.0);
+                at += step;
             }
         }
     }

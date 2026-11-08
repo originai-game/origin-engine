@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: standard CSS font and text properties on elements",
+      "summary": "font-size, font-weight, font-style, line-height, letter-spacing, word-spacing, the font shorthand, font-variant*, font-feature-settings, font-variation-settings, font-kerning, font-synthesis, text-transform (all values), white-space and its longhands, text-wrap, hyphens, word-break, overflow-wrap, text-indent, tab-size, text-justify, text-align left/right/justify, text-align-last, text-decoration with style, colour, thickness and offset, -webkit-text-stroke, paint-order, accent-color, caret-color and color-scheme now work on document elements, inherited as CSS inherits them. font: var(--text-*) stays valid."
+    }
+  ]
+}

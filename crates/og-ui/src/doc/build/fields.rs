@@ -9,7 +9,7 @@ pub(crate) struct RenderFields {
     element: Element,
     widget_props: Props,
     document_props: Props,
-    text: String,
+    pub(super) text: String,
     response: crate::Response,
     amounts: (f32, f32),
     press: f32,
@@ -319,13 +319,44 @@ impl Ui {
         let i = base.index;
         self.nodes[i].el = base.element;
         self.nodes[i].props = base.widget_props.clone();
+        let css = r.text.as_deref();
+        self.nodes[i].accent = css.and_then(|t| t.accent);
+        self.nodes[i].caret = css.and_then(|t| t.caret);
         // `display: none` that a container query decides keeps its element
         // built, so settlement can show it again.
         self.nodes[i].hidden = base.hidden || (r.has("visible") && !r.flag("visible"));
         match base.kind {
             "label" => {
-                let desc = r.label_desc(self.theme());
-                if let Some(V::Spans(Ok(spans))) = r.get("spans") {
+                let desc = r.label_desc(self.theme(), self.direction == og_i18n::Direction::Rtl);
+                let shown;
+                let base = match r.text.as_deref() {
+                    Some(t) => {
+                        shown = RenderFields {
+                            text: t.shown(&base.text, &self.locale),
+                            ..base.clone()
+                        };
+                        &shown
+                    }
+                    None => base,
+                };
+                if r.get("spans").is_none()
+                    && let Some((span, style)) = r.css_span(&base.text)
+                {
+                    self.apply_text_spans(
+                        i,
+                        &base.text,
+                        std::slice::from_ref(&span),
+                        crate::RichTextDesc {
+                            step: desc.step,
+                            color: desc.color,
+                            align: desc.align,
+                            nowrap: desc.nowrap,
+                            width: desc.width,
+                            font: desc.font,
+                        },
+                        |_| style.clone(),
+                    );
+                } else if let Some(V::Spans(Ok(spans))) = r.get("spans") {
                     self.apply_text_spans(
                         i,
                         &base.text,
@@ -626,24 +657,40 @@ impl Resolved {
                 })
                 .cloned()
                 .collect(),
+            text: self.text.clone(),
             ..Self::default()
         }
     }
 
-    pub(super) fn label_desc(&self, theme: &crate::Theme) -> LabelDesc {
+    pub(super) fn label_desc(&self, theme: &crate::Theme, rtl: bool) -> LabelDesc {
+        let step = self
+            .str("step")
+            .and_then(|s| crate::style_file::ramp_step(&mut theme.type_ramp.clone(), s).copied());
+        let css = self.text.as_deref();
+        let step = match css {
+            Some(t) => Some(t.step(step.unwrap_or(theme.type_ramp.body))),
+            None => step,
+        };
+        // CSS Text 3 §6.1: left and right are physical; start and end follow
+        // the direction (the line drawer mirrors Start and End).
+        let align = match css
+            .and_then(|t| t.align.as_deref())
+            .or(self.str("textAlign"))
+        {
+            Some("center") => TextAlign::Center,
+            Some("end") => TextAlign::End,
+            Some("left") if rtl => TextAlign::End,
+            Some("right") if !rtl => TextAlign::End,
+            Some("justify" | "justify-all") => TextAlign::Justify,
+            _ => TextAlign::Start,
+        };
         LabelDesc {
-            step: self.str("step").and_then(|s| {
-                crate::style_file::ramp_step(&mut theme.type_ramp.clone(), s).copied()
-            }),
+            step,
             color: self.color("color"),
             on_scene: self.flag("onScene"),
             uppercase: self.flag("uppercase"),
-            align: match self.str("textAlign") {
-                Some("center") => TextAlign::Center,
-                Some("end") => TextAlign::End,
-                _ => TextAlign::Start,
-            },
-            nowrap: self.flag("nowrap"),
+            align,
+            nowrap: css.and_then(|t| t.nowrap).unwrap_or(self.flag("nowrap")),
             width: self.size("width").unwrap_or_default(),
             font: self
                 .str("font")
@@ -656,6 +703,37 @@ impl Resolved {
                 crate::style_file::ramp_step(&mut theme.type_ramp.clone(), s).copied()
             }),
         }
+    }
+
+    /// Its text as one span styled by its CSS (`font-style`,
+    /// `text-decoration`, `-webkit-text-stroke`, `-webkit-text-fill-color`)
+    /// when the plain text path cannot draw that style.
+    pub(super) fn css_span(&self, text: &str) -> Option<(crate::TextSpan, crate::TextSpanStyle)> {
+        let t = self.text.as_deref().filter(|t| t.rich())?;
+        let span = crate::TextSpan {
+            name: "css".into(),
+            position: 0,
+            length: text.chars().count() as u32,
+            properties: Default::default(),
+        };
+        let style = crate::TextSpanStyle {
+            italic: t.italic,
+            weight: t.weight,
+            color: t.fill.map(crate::paint::ColorRef::Literal),
+            outline: t.stroke.map(|(w, c)| {
+                (
+                    w,
+                    crate::paint::ColorRef::Literal(
+                        c.or(t.fill)
+                            .or(self.color("color"))
+                            .unwrap_or(crate::Srgba::rgb(0, 0, 0)),
+                    ),
+                )
+            }),
+            decoration: t.decoration.any().then(|| t.decoration.clone()),
+            ..Default::default()
+        };
+        Some((span, style))
     }
 
     /// Its `-og-control-size`.

@@ -357,9 +357,11 @@ impl Ui {
                         let rtl = self.direction == og_i18n::Direction::Rtl;
                         let x = inner.x
                             + match (tc.align, rtl) {
-                                (TextAlign::Start, false) | (TextAlign::End, true) => 0.0,
+                                (TextAlign::Start | TextAlign::Justify, false)
+                                | (TextAlign::End, true) => 0.0,
                                 (TextAlign::Center, _) => free / 2.0,
-                                (TextAlign::End, false) | (TextAlign::Start, true) => free,
+                                (TextAlign::End, false)
+                                | (TextAlign::Start | TextAlign::Justify, true) => free,
                             };
                         // A focused field: scrolled, its selection under the text.
                         let x = match &field {
@@ -396,13 +398,32 @@ impl Ui {
                         first += line.text.chars().count() as u32 + 1;
                         // Bidi runs in visual order, shaped runs shaped, one
                         // piece per font of a mixed text (crate::text).
-                        let pieces = crate::text::pieces_with(
-                            font,
-                            &line.text,
-                            self.direction,
-                            tc.tracking(),
-                            tc.features(),
-                        );
+                        // Justified: every line but the last of its paragraph
+                        // takes the free room at its spaces.
+                        let spaces = line.text.chars().filter(|c| *c == ' ').count();
+                        let justify = tc.align == TextAlign::Justify
+                            && k + 1 < n.lines.len()
+                            && spaces > 0
+                            && free > 0.0
+                            && !tc.text.contains(&format!("{}\n", line.text));
+                        let pieces = if justify {
+                            crate::text::pieces_spaced(
+                                font,
+                                &line.text,
+                                self.direction,
+                                tc.tracking(),
+                                tc.features(),
+                                free / spaces as f32 / size.max(1e-3),
+                            )
+                        } else {
+                            crate::text::pieces_with(
+                                font,
+                                &line.text,
+                                self.direction,
+                                tc.tracking(),
+                                tc.features(),
+                            )
+                        };
                         let baseline = m.baseline(&line.text, ly, lh, size);
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
                         let role = tc.font.effect_index();
@@ -896,7 +917,7 @@ impl Ui {
         };
         let start = at
             - match tc.align {
-                TextAlign::Start => 0.0,
+                TextAlign::Start | TextAlign::Justify => 0.0,
                 TextAlign::Center => width / 2.0,
                 TextAlign::End => width,
             };

@@ -119,7 +119,9 @@ pub(super) fn apply(
                 .and_then(|ds| {
                     let mut out = Vec::new();
                     for d in ds {
-                        out.extend(super::lists::expand(d)?);
+                        for d in super::lists::expand(d)? {
+                            out.extend(super::text_css::expand(d)?);
+                        }
                     }
                     Ok(out)
                 })
@@ -138,6 +140,7 @@ pub(super) fn apply(
                 || super::motion::longhand(name)
                 || super::container::longhand(name)
                 || super::extern_element::svg_longhand(name)
+                || super::text_css::longhand(name)
             {
                 continue;
             }

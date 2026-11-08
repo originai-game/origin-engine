@@ -308,6 +308,13 @@ impl Ui {
             let over_background = |ui: &Self| -> Vec<(DrawCmd, Affine)> {
                 let Some(d) = &draw else { return Vec::new() };
                 let n = &ui.nodes[i];
+                // CSS accent-color: the primary ink of its control's parts.
+                let mut theme = theme;
+                if let Some(a) = ui.nearest(i, |n| n.accent) {
+                    theme.palette.primary = a;
+                    theme.palette.primary_hover = a;
+                    theme.palette.primary_active = a;
+                }
                 let mut out = d.enter(&theme, &placed(n));
                 if !marked(n) {
                     out.extend(d.strokes(&theme, &placed(n)));
@@ -328,18 +335,30 @@ impl Ui {
                     (background, local) = (*b, c.clone());
                     self.stats.kept_commands += 1;
                     kept_now = true;
-                } else if world.is_identity() {
-                    self.stats.painted += 1;
-                    background = self.node_commands(i, &mut local, &snap);
-                } else if let Some(inv) = world.invert() {
-                    self.stats.painted += 1;
-                    // Drawn in its layout box: its screen clip taken there.
-                    let screen_clip = n.clip;
-                    self.nodes[i].clip = inv.map_rect(&screen_clip);
-                    self.drawing = world;
-                    background = self.node_commands(i, &mut local, &snap);
-                    self.drawing = Affine::IDENTITY;
-                    self.nodes[i].clip = screen_clip;
+                } else {
+                    // CSS accent-color: its controls' primary ink.
+                    let accent = self.nearest(i, |n| n.accent);
+                    if let Some(a) = accent {
+                        self.theme.palette.primary = a;
+                        self.theme.palette.primary_hover = a;
+                        self.theme.palette.primary_active = a;
+                    }
+                    if world.is_identity() {
+                        self.stats.painted += 1;
+                        background = self.node_commands(i, &mut local, &snap);
+                    } else if let Some(inv) = world.invert() {
+                        self.stats.painted += 1;
+                        // Drawn in its layout box: its screen clip taken there.
+                        let screen_clip = n.clip;
+                        self.nodes[i].clip = inv.map_rect(&screen_clip);
+                        self.drawing = world;
+                        background = self.node_commands(i, &mut local, &snap);
+                        self.drawing = Affine::IDENTITY;
+                        self.nodes[i].clip = screen_clip;
+                    }
+                    if accent.is_some() {
+                        self.theme.palette = theme.palette;
+                    }
                 }
                 if let Some(d) = &draw {
                     let grid = match &self.nodes[i].content {
@@ -1392,5 +1411,23 @@ impl Reuse {
         } else {
             self.clean[i] = false;
         }
+    }
+}
+
+impl Ui {
+    /// The value `get` gives of node `i` or its nearest ancestor that has
+    /// one (an inherited CSS colour of a control's parts).
+    pub(crate) fn nearest<T>(
+        &self,
+        mut i: usize,
+        get: impl Fn(&crate::layout::Node) -> Option<T>,
+    ) -> Option<T> {
+        while i != crate::layout::NONE && i < self.nodes.len() {
+            if let Some(v) = get(&self.nodes[i]) {
+                return Some(v);
+            }
+            i = self.nodes[i].parent;
+        }
+        None
     }
 }

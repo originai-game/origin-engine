@@ -585,7 +585,8 @@ impl Ui {
         if e.caret_on && mk.caret_here && e.caret >= mk.first && e.caret <= mk.first + n {
             let cx = mk.x + crate::edit::caret_x_at(&boxes, e.caret - mk.first, e.upstream);
             let caret_w = 1.0f32.max(1.0 / dpr);
-            mark("caret", Rect::new(cx, cy, caret_w, ch), p.primary, cmds);
+            let caret = self.nearest(i, |n| n.caret).unwrap_or(p.primary);
+            mark("caret", Rect::new(cx, cy, caret_w, ch), caret, cmds);
         }
     }
 

@@ -897,6 +897,28 @@ pub fn pieces_with(
     )
 }
 
+/// [`pieces_with`] with `extra` em added after each space (CSS
+/// `text-align: justify`'s expansion at word separators, CSS Text 3 §7.1).
+pub(crate) fn pieces_spaced(
+    font: &UiFont,
+    line: &str,
+    default: Direction,
+    tracking: f32,
+    features: Features,
+    extra: f32,
+) -> Vec<Piece> {
+    let mut glyphs = font.metrics.visual_with(line, default, tracking, features);
+    let mut shift = 0.0;
+    for g in &mut glyphs {
+        g.x += shift;
+        if matches!(g.ch, ' ' | '\u{a0}' | '\u{3000}') {
+            g.advance += extra;
+            shift += extra;
+        }
+    }
+    split(font, &glyphs)
+}
+
 /// Visual glyphs cut into one piece per run of one font, left to right.
 pub(crate) fn split(font: &UiFont, glyphs: &[VisualGlyph]) -> Vec<Piece> {
     let mut out = Vec::new();

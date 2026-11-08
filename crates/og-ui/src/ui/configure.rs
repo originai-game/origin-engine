@@ -81,6 +81,7 @@ impl Ui {
             gesture: false,
             direction: og_i18n::Direction::Ltr,
             locale: String::new(),
+            accent: None,
             texts: Default::default(),
             timelines: Default::default(),
             pending_plays: Vec::new(),

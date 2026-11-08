@@ -547,6 +547,9 @@ pub struct Ui {
     pub(crate) direction: og_i18n::Direction,
     /// Active BCP-47 locale, for display text casing.
     pub(crate) locale: String,
+    /// CSS `accent-color` of the document control being built: its
+    /// primary ink (`widgets::controls`' roles).
+    pub(crate) accent: Option<crate::Srgba>,
     /// Text measurements kept from the frames before (layout's).
     pub(crate) texts: crate::layout::TextCache,
     /// Timelines by name hash (`define_timeline`): configuration, like the theme.

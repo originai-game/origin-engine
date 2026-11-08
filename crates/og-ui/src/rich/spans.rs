@@ -50,6 +50,10 @@ pub struct TextSpanStyle {
     /// It is an inline picture, icon or action glyph (its one character the
     /// placeholder U+FFFC), one em tall in the line.
     pub atom: Option<InlineAtom>,
+    /// A CSS `text-decoration` beyond the plain underline and strike: its
+    /// lines, style, colour, thickness and offset (the lines it sets win
+    /// over `underline` and `strike`).
+    pub decoration: Option<crate::doc::text_css::Decoration>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<icon>` or `<kbd
@@ -144,6 +148,7 @@ impl Ui {
                 atom: None,
                 link: None,
                 fx: SpanFx::None,
+                decoration: None,
             };
             for (_, _, style) in ranges.iter().filter(|(a, b, _)| *a <= start && end <= *b) {
                 if let Some(c) = &style.color {
@@ -211,6 +216,11 @@ impl Ui {
                 }
                 if let Some(motion) = style.motion {
                     s.fx = motion;
+                }
+                if let Some(d) = &style.decoration {
+                    s.underline = d.underline;
+                    s.strike = d.through;
+                    s.decoration = Some(d.clone());
                 }
                 if let Some(link) = &style.link {
                     s.link = Some(link.clone());
