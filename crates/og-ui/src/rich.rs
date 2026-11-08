@@ -791,7 +791,7 @@ impl Ui {
                     cmds.push(DrawCmd::Quad {
                         rect: r.outset(w),
                         radius: w,
-                        color: self.behind(i).fade(alpha).linear(),
+                        color: self.sampled_behind(i).fade(alpha).linear(),
                         clip,
                     });
                 }

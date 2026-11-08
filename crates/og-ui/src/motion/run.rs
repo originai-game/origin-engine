@@ -729,7 +729,7 @@ impl Ui {
                 },
                 1.0,
             );
-            let r = self.nodes[i].el.radius;
+            let r = self.nodes[i].sampled.radius;
             set(8, prev.radius, r);
             // The flip pivots on its top left: fold the scale into the offset
             // so the first frame sits exactly on the old rectangle.
@@ -747,7 +747,7 @@ impl Ui {
                     1.0
                 },
             ];
-            self.nodes[i].el.radius = prev.radius;
+            self.nodes[i].sampled.radius = prev.radius;
             if let Some(f) = m.frozen.get(&prev.key).cloned() {
                 let ticks = crate::style::Theme::ticks(t.duration_ms(&tokens), tps);
                 let mut fade = Channel::at(1.0, now);
@@ -1136,7 +1136,7 @@ impl Ui {
                 Matched {
                     key: n.key,
                     rect: n.screen,
-                    radius: n.el.radius,
+                    radius: n.sampled.radius,
                     tick: now,
                 },
             );

@@ -364,18 +364,18 @@ impl Ui {
             let py = r.y + pl.pivot.1 * r.height;
             let at = pl.at + Vec2::new(s.dx, s.dy);
             let n = &mut self.nodes[node];
-            n.props.transform = Transform {
+            n.sampled.transform = Transform {
                 x: at.x - px,
                 y: at.y - py,
                 scale_x: pl.scale,
                 scale_y: pl.scale,
                 pivot_x: pl.pivot.0,
                 pivot_y: pl.pivot.1,
-                ..n.props.transform
+                ..n.sampled.transform
             };
-            n.props.opacity *= s.alpha;
+            n.sampled.opacity *= s.alpha;
             if s.alpha < 0.05 {
-                n.props.inert = true;
+                n.sampled.inert = true;
             }
             let mut info = pl.info;
             info.x = at.x;

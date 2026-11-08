@@ -334,6 +334,31 @@ pub(crate) struct Stagger {
     pub kind: crate::motion::TransitionKind,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct SampledStyle {
+    pub transform: crate::element::Transform,
+    pub opacity: f32,
+    pub radius: f32,
+    pub background: Option<Srgba>,
+    pub ink: Srgba,
+    pub z: i32,
+    pub inert: bool,
+}
+
+impl Default for SampledStyle {
+    fn default() -> Self {
+        Self {
+            transform: crate::element::Transform::IDENTITY,
+            opacity: 1.0,
+            radius: 0.0,
+            background: None,
+            ink: Srgba::WHITE,
+            z: 0,
+            inert: false,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Node {
     pub key: u64,
@@ -389,6 +414,8 @@ pub(crate) struct Node {
     pub stagger: Option<Stagger>,
     /// The element model beyond its box (`crate::element`).
     pub props: crate::element::Props,
+    /// Frame sampling never changes the authored element, content or props.
+    pub sampled: SampledStyle,
     /// Its children out of the flow (absolute, anchored), in build order;
     /// `children` holds the ones in the flow once the frame ends.
     pub out: Vec<usize>,
@@ -439,6 +466,21 @@ pub(crate) struct Node {
 }
 
 impl Node {
+    pub(crate) fn sample_style(&mut self) {
+        self.sampled = SampledStyle {
+            transform: self.props.transform,
+            opacity: self.props.opacity,
+            radius: self.el.radius,
+            background: self.el.background,
+            ink: match &self.content {
+                Content::Text(text) => text.color,
+                _ => Srgba::WHITE,
+            },
+            z: self.props.z,
+            inert: self.props.inert,
+        };
+    }
+
     pub fn new(key: u64, id: String, parent: usize, el: Element) -> Node {
         Node {
             key,
@@ -471,6 +513,7 @@ impl Node {
             a11y: crate::a11y::A11y::default(),
             stagger: None,
             props: crate::element::Props::default(),
+            sampled: SampledStyle::default(),
             out: Vec::new(),
             grid: None,
             world: crate::element::Affine::IDENTITY,

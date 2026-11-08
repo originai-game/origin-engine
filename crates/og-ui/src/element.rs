@@ -1220,8 +1220,13 @@ impl Ui {
             let mut j = i;
             while j != NONE {
                 let n = &self.nodes[j];
-                if !n.props.transform.is_identity() {
-                    m = n.props.transform.matrix(&n.rect).mul(&m);
+                let transform = if self.direction == og_i18n::Direction::Rtl {
+                    n.props.transform.mirrored()
+                } else {
+                    n.props.transform
+                };
+                if !transform.is_identity() {
+                    m = transform.matrix(&n.rect).mul(&m);
                 }
                 j = n.parent;
             }

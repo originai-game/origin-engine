@@ -427,14 +427,14 @@ impl Ui {
             // it always has; a part an element names draws its dressing.
             let part = match (n.el.part, n.el.frame) {
                 (Some(p), _) => p,
-                (None, Some(f)) if n.el.background.is_some() => f.part_ref(),
+                (None, Some(f)) if n.sampled.background.is_some() => f.part_ref(),
                 _ => continue,
             };
             let r = self.dress.resolve(&part);
             if r.frame.slice.is_some() && self.theme.art.atlas.is_some() {
                 continue;
             }
-            let d = self.part_draw(&part, n.el.background);
+            let d = self.part_draw(&part, n.sampled.background);
             if d.fills.is_empty()
                 && d.strokes.is_empty()
                 && d.effects.is_empty()
@@ -564,10 +564,23 @@ impl Ui {
     /// What is behind node `i`: its nearest ancestor's fill over the theme's
     /// ground, opaque (a focus ring's gap).
     pub(crate) fn behind(&self, i: usize) -> Srgba {
+        self.background_behind(i, false)
+    }
+
+    pub(crate) fn sampled_behind(&self, i: usize) -> Srgba {
+        self.background_behind(i, true)
+    }
+
+    fn background_behind(&self, i: usize, sampled: bool) -> Srgba {
         let mut fills = Vec::new();
         let mut j = self.nodes[i].parent;
         while j != NONE {
             let nj = &self.nodes[j];
+            let background = if sampled {
+                nj.sampled.background
+            } else {
+                nj.el.background
+            };
             let part = nj.el.part.or_else(|| nj.el.frame.map(StylePart::part_ref));
             // A dressing whose paints are its own (a gradient panel) is what
             // is behind, as the frame draws it.
@@ -575,7 +588,7 @@ impl Ui {
                 let r = self.dress.resolve(&p);
                 let atlas = r.frame.slice.is_some() && self.theme.art.atlas.is_some();
                 if !atlas && !r.draw.fills.is_empty() {
-                    let d = r.element_draw(&p, &self.theme, nj.el.background);
+                    let d = r.element_draw(&p, &self.theme, background);
                     let c = crate::dress::ground_of(&d, &self.theme, Srgba::TRANSPARENT);
                     fills.push(c);
                     if c.alpha >= 1.0 {
@@ -585,7 +598,7 @@ impl Ui {
                     continue;
                 }
             }
-            if let Some(mut bg) = self.nodes[j].el.background {
+            if let Some(mut bg) = background {
                 // A styled frame draws its art's centre (`tone`), not the flat fill.
                 if let Some(d) = part
                     .and_then(|p| {

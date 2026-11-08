@@ -70,7 +70,7 @@ impl Ui {
             };
             let mut at = Placed {
                 rect: rect.outset(gap),
-                radius: n.el.radius + gap,
+                radius: n.sampled.radius + gap,
                 clip,
                 alpha: n.alpha,
             };
@@ -119,11 +119,11 @@ impl Ui {
         // A bare field (no frame of its own) leaves the ring to its frame.
         let field_ring = match &n.widget {
             Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
-                e.focused && n.el.background.is_some()
+                e.focused && n.sampled.background.is_some()
             }
             _ => false,
         };
-        let outline = t.outline && (n.nav || n.focusable) && n.el.background.is_some();
+        let outline = t.outline && (n.nav || n.focusable) && n.sampled.background.is_some();
         if field_ring || n.ring || outline {
             // The style's focus stroke (`stroke { focus … }`): cartoon's
             // 3 px ring stands clear of its 2 px outlines.
@@ -192,9 +192,10 @@ impl Ui {
             let s = r.frame.slice?;
             Some((p, r.frame, s))
         });
-        if let Some(bg) =
-            n.el.background
-                .filter(|_| !self.part_draws.contains_key(&i) || atlas_dressed.is_some())
+        if let Some(bg) = n
+            .sampled
+            .background
+            .filter(|_| !self.part_draws.contains_key(&i) || atlas_dressed.is_some())
         {
             let (pressed, press) = match n.widget {
                 Widget::Button { pressed, press } => (pressed, press),
@@ -217,7 +218,7 @@ impl Ui {
                         ornament_tint,
                         slice,
                         r,
-                        n.el.radius,
+                        n.sampled.radius,
                         bg,
                         alpha,
                         clip,
@@ -230,7 +231,7 @@ impl Ui {
                     } else {
                         rect
                     };
-                    cmds.push(quad(r, n.el.radius, bg));
+                    cmds.push(quad(r, n.sampled.radius, bg));
                 }
             }
         }
@@ -401,7 +402,7 @@ impl Ui {
                         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
                         // A style's text glow: the font's distance field, under the glyphs.
                         let glow = t.art.text_glows[role].map(|g| {
-                            let c = g.ink.color(p).fade(g.alpha * tc.color.alpha * alpha);
+                            let c = g.ink.color(p).fade(g.alpha * n.sampled.ink.alpha * alpha);
                             (c.linear(), TEXT_GLOW_REACH * g.size * sk)
                         });
                         let one = pieces.len() == 1;
@@ -462,13 +463,13 @@ impl Ui {
                             .text_drop(role, size, m.pixel_grid())
                             .filter(|_| !own && !plated)
                         {
-                            let c = sc.fade(tc.color.alpha);
+                            let c = sc.fade(n.sampled.ink.alpha);
                             text(dx, dy, c, None, cmds);
                             if blur > 0.0 {
                                 text(dx + blur / 2.0, dy + blur / 2.0, c.fade(0.5), None, cmds);
                             }
                         }
-                        text(0.0, 0.0, tc.color, glow, cmds);
+                        text(0.0, 0.0, n.sampled.ink, glow, cmds);
                         // Undressed flourishes frame titles at cap height.
                         // A dressing can opt smaller headings in as well.
                         if n.heading

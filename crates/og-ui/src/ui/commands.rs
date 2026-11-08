@@ -79,9 +79,9 @@ impl Ui {
                 (p.alpha, p.inert, p.world)
             };
             let n = &mut self.nodes[i];
-            n.alpha = alpha * n.props.opacity.clamp(0.0, 1.0);
+            n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0);
             n.scale = 1.0;
-            n.inert = inert || n.props.inert;
+            n.inert = inert || n.sampled.inert;
             let r = n.rect;
             let (cx, cy) = r.center();
             let mut local = Affine::IDENTITY;
@@ -110,8 +110,8 @@ impl Ui {
                         .mul(&Affine::scale(f.scale, f.scale).about(cx, cy));
                 }
             }
-            if !n.props.transform.is_identity() {
-                local = local.mul(&n.props.transform.matrix(&r));
+            if !n.sampled.transform.is_identity() {
+                local = local.mul(&n.sampled.transform.matrix(&r));
             }
             n.world = if local.is_identity() {
                 pw
@@ -168,7 +168,7 @@ impl Ui {
         };
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
             rect: part_rect(n, press_scale),
-            radius: n.el.radius,
+            radius: n.sampled.radius,
             clip: n.clip,
             alpha: n.alpha,
         };
@@ -209,7 +209,7 @@ impl Ui {
                 })
                 && (n.parent == NONE || same[n.parent])
                 && !game_draw;
-            if i != 0 || n.el.background.is_some() {
+            if i != 0 || n.sampled.background.is_some() {
                 let mut local = Vec::new();
                 let mut background = 0;
                 if same[i]
@@ -339,7 +339,7 @@ impl Ui {
                             } else {
                                 crate::motion::state::name_hash(&nj.props.match_key)
                             },
-                            radius: nj.el.radius,
+                            radius: nj.sampled.radius,
                         },
                     );
                 }

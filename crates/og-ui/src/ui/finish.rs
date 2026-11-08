@@ -401,6 +401,9 @@ impl Ui {
         }
         self.align_baselines(&order);
         self.place_anchored(&order);
+        for &i in &order {
+            self.nodes[i].sample_style();
+        }
         if self.direction == og_i18n::Direction::Rtl {
             // Right to left: the whole layout mirrored about the surface's
             // centre, and with it each transform (moves and turns the other way).
@@ -411,9 +414,9 @@ impl Ui {
                 // would cut away the content of a scroller off the surface's centre line.
                 let c = &mut self.nodes[i].clip;
                 c.x = vp.width - c.x - c.width;
-                let t = self.nodes[i].props.transform;
+                let t = self.nodes[i].sampled.transform;
                 if !t.is_identity() {
-                    self.nodes[i].props.transform = t.mirrored();
+                    self.nodes[i].sampled.transform = t.mirrored();
                 }
             }
         }
@@ -764,7 +767,8 @@ impl Ui {
                 states: states.clone(),
                 // Its fill, solid and at full opacity, covers its box (a
                 // rounded corner's few pixels aside).
-                opaque: n.el.background.is_some_and(|bg| bg.alpha >= 0.999) && n.alpha >= 0.999,
+                opaque: n.sampled.background.is_some_and(|bg| bg.alpha >= 0.999)
+                    && n.alpha >= 0.999,
                 x: visible.x,
                 y: visible.y,
                 width: visible.width,

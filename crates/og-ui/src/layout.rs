@@ -534,8 +534,8 @@ pub(crate) fn draw_order(nodes: &[Node], root: usize) -> Vec<usize> {
     while let Some(i) = stack.pop() {
         order.push(i);
         let mut kids = all_children(&nodes[i]);
-        if kids.iter().any(|&c| nodes[c].props.z != 0) {
-            og_core::sort::sort_by_key(&mut kids, |&c| nodes[c].props.z);
+        if kids.iter().any(|&c| nodes[c].sampled.z != 0) {
+            og_core::sort::sort_by_key(&mut kids, |&c| nodes[c].sampled.z);
         }
         stack.extend(kids.into_iter().rev());
     }
@@ -602,6 +602,7 @@ pub(crate) fn apply_patch(n: &mut Node, p: &Patch) {
         n.hidden = v;
     }
     if !p.values.is_empty() {
+        n.sample_style();
         let mut row = read_values(n);
         for &(prop, v) in &p.values {
             for &c in prop.channels() {
@@ -609,20 +610,26 @@ pub(crate) fn apply_patch(n: &mut Node, p: &Patch) {
             }
         }
         write_values(n, &row);
+        n.props.transform = n.sampled.transform;
+        n.props.opacity = n.sampled.opacity;
+        n.props.z = n.sampled.z;
+        n.props.inert = n.sampled.inert;
+        n.el.radius = n.sampled.radius;
+        n.el.background = n.sampled.background;
+        if let Content::Text(text) = &mut n.content {
+            text.color = n.sampled.ink;
+        }
     }
 }
 
 /// A node's animatable values, one per channel (`Prop::channels`).
 pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
-    let t = &n.props.transform;
-    let bg = n.el.background.unwrap_or(Srgba {
+    let t = &n.sampled.transform;
+    let bg = n.sampled.background.unwrap_or(Srgba {
         rgb: [0, 0, 0],
         alpha: 0.0,
     });
-    let ink = match &n.content {
-        Content::Text(tc) => tc.color,
-        _ => Srgba::WHITE,
-    };
+    let ink = n.sampled.ink;
     let c = |v: u8| f32::from(v) / 255.0;
     [
         t.x,
@@ -632,8 +639,8 @@ pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
         t.rotate,
         t.skew_x,
         t.skew_y,
-        n.props.opacity,
-        n.el.radius,
+        n.sampled.opacity,
+        n.sampled.radius,
         c(bg.rgb[0]),
         c(bg.rgb[1]),
         c(bg.rgb[2]),
@@ -642,14 +649,14 @@ pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
         c(ink.rgb[1]),
         c(ink.rgb[2]),
         ink.alpha,
-        n.props.z as f32,
-        f32::from(u8::from(n.props.inert)),
+        n.sampled.z as f32,
+        f32::from(u8::from(n.sampled.inert)),
     ]
 }
 
-/// Writes a row of channel values back into a node.
+/// Writes frame output without changing the next tick's authored inputs.
 pub(crate) fn write_values(n: &mut Node, v: &[f32; crate::element::CHANNELS]) {
-    let t = &mut n.props.transform;
+    let t = &mut n.sampled.transform;
     t.x = v[0];
     t.y = v[1];
     t.scale_x = v[2];
@@ -657,22 +664,20 @@ pub(crate) fn write_values(n: &mut Node, v: &[f32; crate::element::CHANNELS]) {
     t.rotate = v[4];
     t.skew_x = v[5];
     t.skew_y = v[6];
-    n.props.opacity = v[7].clamp(0.0, 1.0);
-    n.el.radius = v[8].max(0.0);
+    n.sampled.opacity = v[7].clamp(0.0, 1.0);
+    n.sampled.radius = v[8].max(0.0);
     let u = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
     let bg = Srgba {
         rgb: [u(v[9]), u(v[10]), u(v[11])],
         alpha: v[12].clamp(0.0, 1.0),
     };
-    if n.el.background.is_some() || bg.alpha > 0.0 {
-        n.el.background = Some(bg);
+    if n.sampled.background.is_some() || bg.alpha > 0.0 {
+        n.sampled.background = Some(bg);
     }
-    if let Content::Text(tc) = &mut n.content {
-        tc.color = Srgba {
-            rgb: [u(v[13]), u(v[14]), u(v[15])],
-            alpha: v[16].clamp(0.0, 1.0),
-        };
-    }
-    n.props.z = v[17].round() as i32;
-    n.props.inert = v[18] >= 0.5;
+    n.sampled.ink = Srgba {
+        rgb: [u(v[13]), u(v[14]), u(v[15])],
+        alpha: v[16].clamp(0.0, 1.0),
+    };
+    n.sampled.z = v[17].round() as i32;
+    n.sampled.inert = v[18] >= 0.5;
 }
