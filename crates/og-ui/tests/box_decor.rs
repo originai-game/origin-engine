@@ -40,6 +40,7 @@ fn borders_pad_the_box_and_outlines_take_no_room() {
   <div id="B"><div id="BK"></div></div>
   <div id="C"><div id="CK"></div></div>
   <div id="D"><div id="DK"></div></div>
+  <div id="E"><div id="EK"></div></div>
 </div></div>
 <style>
 #Root { width: 400px; }
@@ -48,6 +49,7 @@ fn borders_pad_the_box_and_outlines_take_no_room() {
 #B { border-top: 2px solid; border-left: thick dashed var(--accent); }
 #C { outline: 3px solid; outline-offset: 2px; }
 #D { border-width: 9px; }
+#E { border-inline: 1px solid; border-inline-end-width: 7px; border-block-start: 3px solid; border-block-style: solid none; }
 </style>"#;
     both(text, &[], |d| {
         let off = |id: &str, kid: &str| {
@@ -63,6 +65,11 @@ fn borders_pad_the_box_and_outlines_take_no_room() {
         assert_eq!(off("C", "CK"), (0.0, 0.0, 10.0));
         // A width without a style draws nothing and takes no room.
         assert_eq!(off("D", "DK"), (0.0, 0.0, 10.0));
+        // Logical sides in horizontal-tb, left to right: inline-start is
+        // the left (1px), inline-end the right (7px), block-start the top
+        // (3px); the block end's style is none, so it takes no room.
+        assert_eq!(off("E", "EK"), (1.0, 3.0, 13.0));
+        assert_eq!(d.get("E").width, 400.0);
     });
 }
 

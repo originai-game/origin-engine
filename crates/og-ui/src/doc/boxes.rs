@@ -235,8 +235,39 @@ fn side_index(side: &str) -> Option<usize> {
     SIDES.iter().position(|s| s.eq_ignore_ascii_case(side))
 }
 
+/// A logical border property (CSS Logical 1 §6): the physical sides it
+/// means in horizontal-tb, left to right (CSS order), and its part (``,
+/// `-width`, `-style`, `-color`).
+pub(crate) fn logical(name: &str) -> Option<(&'static [usize], &str)> {
+    let rest = name.strip_prefix("border-")?;
+    const FLOWS: [(&str, &[usize]); 6] = [
+        ("block-start", &[0]),
+        ("block-end", &[2]),
+        ("inline-start", &[3]),
+        ("inline-end", &[1]),
+        ("block", &[0, 2]),
+        ("inline", &[3, 1]),
+    ];
+    FLOWS.iter().find_map(|(flow, sides)| {
+        let part = rest.strip_prefix(flow)?;
+        matches!(part, "" | "-width" | "-style" | "-color").then_some((*sides, part))
+    })
+}
+
 /// The props a shorthand sets (several), or the one a longhand sets.
 pub(crate) fn longhands(name: &str) -> Vec<&'static str> {
+    if let Some((sides, part)) = logical(name) {
+        let parts: &[&str] = match part {
+            "-width" => &["Width"],
+            "-style" => &["Style"],
+            "-color" => &["Color"],
+            _ => &["Width", "Style", "Color"],
+        };
+        return sides
+            .iter()
+            .flat_map(|&k| parts.iter().map(move |p| side_props(p)[k]))
+            .collect();
+    }
     match name {
         "border" => ["Width", "Style", "Color"]
             .into_iter()
@@ -286,6 +317,34 @@ fn push_triple(
 /// in the element's text colour.
 pub(crate) fn lower(name: &str, value: &str, t: &[Tok]) -> Result<Entries, String> {
     let mut out = Entries::new();
+    if let Some((sides, part)) = logical(name) {
+        // `border-block` sets both sides alike; `border-block-width: a b`
+        // sets start then end.
+        let each: Vec<&[Tok]> = match (sides.len(), part) {
+            (2, "") | (1, _) => vec![t; sides.len()],
+            (2, _) => match t {
+                [a] => vec![std::slice::from_ref(a); 2],
+                [a, b] => vec![std::slice::from_ref(a), std::slice::from_ref(b)],
+                _ => return Err(format!("{name} takes one or two values (start end)")),
+            },
+            _ => unreachable!(),
+        };
+        for (&k, t) in sides.iter().zip(each) {
+            let side = format!("border-{}{part}", SIDES[k].to_lowercase());
+            if part == "-style" {
+                let [v] = t else {
+                    return Err(format!("{name} takes one style"));
+                };
+                out.push((
+                    side_props("Style")[k],
+                    vec![Value::Word(want_style(v, false)?)],
+                ));
+            } else {
+                out.extend(lower(&side, value, t)?);
+            }
+        }
+        return Ok(out);
+    }
     let one = |what: &str| match t {
         [v] => Ok(v),
         _ => Err(format!("{name} takes one {what}")),

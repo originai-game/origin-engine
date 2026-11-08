@@ -1933,6 +1933,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             Ok(out)
         }
         n if super::boxes::longhands(n).len() > 1
+            || super::boxes::logical(n).is_some()
             || n == "box-shadow"
             || n.ends_with("-width") && (n.starts_with("border-") || n == "outline-width")
             || n.ends_with("-color") && (n.starts_with("border-") || n == "outline-color") =>

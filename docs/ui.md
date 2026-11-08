@@ -436,7 +436,10 @@ These follow CSS Backgrounds and Borders Level 3 and CSS Overflow Level 3
 on any element. `border` and `outline` take the shorthand (`2px dashed
 var(--accent)`) and the longhands: `border-{top,right,bottom,left}`,
 `border-width`/`-style`/`-color` with one to four sides, and
-`outline-width`/`-style`/`-color`/`-offset`. Styles are `none`, `hidden`,
+`outline-width`/`-style`/`-color`/`-offset`. The logical borders
+`border-block`, `border-inline`, `border-{block,inline}-{start,end}` and
+their `-width`/`-style`/`-color` (the two-sided ones take start and end)
+map to the physical sides in horizontal-tb, left to right. Styles are `none`, `hidden`,
 `solid`, `dashed`, `dotted`, `double`, `groove`, `ridge`, `inset` and
 `outset` (an outline takes `auto` in place of `hidden`); `currentColor` is
 the element's `color`. A border's width pads the box as `box-sizing:

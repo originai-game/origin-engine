@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: logical borders",
+      "summary": "border-block, border-inline, border-block-start/-end, border-inline-start/-end and their -width, -style and -color longhands now work, mapped to the physical sides in horizontal-tb, left to right."
+    }
+  ]
+}
