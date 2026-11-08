@@ -486,6 +486,12 @@ impl Ui {
             if !open {
                 self.take_text(&filter_key);
             }
+            // A pick or Back gives the focus back to the trigger (the list
+            // took it by request, so no scope return was kept); a press
+            // elsewhere leaves it where it lands.
+            if was_open && !open && (picked.is_some() || !self.input.pressed) {
+                self.set_focus(&trig_path);
+            }
         }
         if selected != before {
             self.feedback(SoundEvent::Select);

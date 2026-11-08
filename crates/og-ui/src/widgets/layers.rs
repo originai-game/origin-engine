@@ -322,6 +322,116 @@ impl Ui {
         self.close();
     }
 
+    /// Opens an HTML `<dialog>`. Modal, it is [`Ui::open_modal`] (a scrim
+    /// that takes every press, the focus moved in, trapped, and returned
+    /// on close; Back or the backdrop dismisses it); its panel is
+    /// `<id>/Panel`. Non-modal, it is a panel in place, `<id>` (`Dialog.
+    /// panel[open]`), shown only while open: Back (Escape, gamepad B)
+    /// dismisses it while the focus is inside, and on closing with the
+    /// focus inside, the focus returns to what held it when it opened. Its
+    /// content follows until [`Ui::close_dialog`]. Role dialog, named
+    /// `desc.name`.
+    pub fn open_dialog(
+        &mut self,
+        id: impl Into<Id>,
+        open: bool,
+        desc: &DialogDesc,
+    ) -> ModalResponse {
+        let id = id.into();
+        if desc.modal {
+            // Its place in the tree: a retained document finds the dialog's
+            // node by its id under its parent, and the backdrop is a layer
+            // outside the tree.
+            self.leaf(
+                "dialog",
+                id.clone(),
+                Element {
+                    width: Size::Fixed(0.0),
+                    height: Size::Fixed(0.0),
+                    ..Element::default()
+                },
+            );
+            let r = self.open_modal(
+                id,
+                open,
+                &ModalDesc {
+                    width: desc.width,
+                    ..ModalDesc::default()
+                },
+            );
+            let panel = self.parent();
+            self.nodes[panel].a11y.name = Some(desc.name.clone());
+            return r;
+        }
+        let t = self.theme;
+        let path = self.child_path(id.as_str());
+        let opener_key = format!("{}~opener", id.as_str());
+        let was_open = self.memory(&format!("{}~open", id.as_str()), 0.0) > 0.0;
+        let focus = self.state.focus;
+        let inside = self.focus_path(0).starts_with(&format!("{path}/"));
+        let mut r = ModalResponse {
+            visible: open,
+            dismissed: false,
+        };
+        if open && inside && self.nav.back {
+            self.nav.back = false;
+            r.dismissed = true;
+        }
+        if open && !was_open {
+            self.remember(&opener_key, f64::from_bits(focus));
+            self.sound(crate::style_file::UiSound::Open);
+        }
+        let opener = self.memory(&opener_key, 0.0).to_bits();
+        if (!open || r.dismissed) && was_open {
+            if inside && opener != 0 {
+                self.request_focus = opener;
+            }
+            self.sound(crate::style_file::UiSound::Close);
+        }
+        self.remember(
+            &format!("{}~open", id.as_str()),
+            if open && !r.dismissed { 1.0 } else { 0.0 },
+        );
+        let i = self.push(
+            "panel",
+            id,
+            Element {
+                direction: Direction::Column,
+                width: desc.width.unwrap_or_default(),
+                padding: Insets::all(t.space.xl),
+                gap: t.space.md,
+                background: Some(t.palette.panel_raised),
+                radius: t.radius.panel,
+                frame: Some(crate::style_file::StylePart::Panel),
+                part: crate::dress::PartRef::parse(
+                    if open {
+                        "Dialog.panel[open]"
+                    } else {
+                        "Dialog.panel"
+                    },
+                    crate::tokens::ElementClass::Panel,
+                )
+                .ok(),
+                interactive: true,
+                ..Element::default()
+            },
+        );
+        self.stack.push(i);
+        self.nodes[i].hidden = !open;
+        self.nodes[i].a11y.role = Some("dialog");
+        self.nodes[i].a11y.name = Some(desc.name.clone());
+        r
+    }
+
+    /// Closes a dialog opened with [`Ui::open_dialog`].
+    pub fn close_dialog(&mut self, desc: &DialogDesc) {
+        if desc.modal {
+            self.close_modal();
+        } else {
+            self.close();
+        }
+    }
+
     /// A dialog built by `f` while visible.
     pub fn modal(
         &mut self,

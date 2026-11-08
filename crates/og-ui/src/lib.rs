@@ -124,13 +124,13 @@ pub use vcursor::VirtualCursorDesc;
 pub use viewport::{ViewportDesc, ViewportResponse};
 pub use widgets::{
     ActionButtonDesc, AnchorDesc, ArtDesc, CheckFieldDesc, ChipDesc, ChoiceIndexResult,
-    CooldownDesc, DialogueDesc, DialogueResponse, DpadDesc, DpadResponse, DropdownDesc,
-    DropdownOption, DropdownResult, GridDesc, IconDesc, JoystickDesc, JoystickResponse, LabelSide,
-    ListDesc, ListRange, MapMarker, MeterDesc, MeterKind, MinimapDesc, ModalDesc, ModalResponse,
-    NumberResult, NumberStepperDesc, Presence, RadioGroupDesc, RadioOption, RadioVariant,
-    SegmentItem, SegmentedDesc, SkeletonDesc, SliderMark, SpotlightDesc, SwitchResult, ToastDesc,
-    ToggleSwitchDesc, Tone, TransitionDesc, ValueFormat, ValueSliderDesc, ValueSliderResult,
-    ZoomResponse, ZoomViewDesc, kept_options,
+    CooldownDesc, DetailsDesc, DetailsResult, DialogDesc, DialogueDesc, DialogueResponse, DpadDesc,
+    DpadResponse, DropdownDesc, DropdownOption, DropdownResult, GaugeDesc, GridDesc, IconDesc,
+    JoystickDesc, JoystickResponse, LabelSide, ListDesc, ListRange, MapMarker, MeterDesc,
+    MeterKind, MeterRegion, MinimapDesc, ModalDesc, ModalResponse, NumberResult, NumberStepperDesc,
+    Presence, RadioGroupDesc, RadioOption, RadioVariant, SegmentItem, SegmentedDesc, SkeletonDesc,
+    SliderMark, SpotlightDesc, SwitchResult, ToastDesc, ToggleSwitchDesc, Tone, TransitionDesc,
+    ValueFormat, ValueSliderDesc, ValueSliderResult, ZoomResponse, ZoomViewDesc, kept_options,
 };
 pub use world::{
     AnchorInfo, AnchorPoint, AnchorScale, Declutter, EdgeClamp, MassHandle, MetaDesc, MetaKind,

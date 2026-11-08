@@ -1109,7 +1109,9 @@ impl RetainedHost {
         let resolved = e.resolved.as_ref().expect("resolved mount");
         let mut b = e.build(env, resolved.values.cascade.computed.clone());
         let mut result = Ok(());
+        let mut children_built = false;
         ui.build_resolved_node(&mut b, e.index, resolved.clone(), |ui, b, virtual_props| {
+            children_built = true;
             result = if let Some(props) = virtual_props {
                 self.emit_virtual(ui, &e, b, props, env, events, writes)
             } else {
@@ -1174,8 +1176,10 @@ impl RetainedHost {
         element.memories = owned.memories;
         element.volatile = volatile;
         element.materialization = materialization;
-        if slot.is_none() {
-            // Not shown (`visible` false): its descendants' nodes go too.
+        if slot.is_none() || !children_built {
+            // Not shown (`visible` false), or showing no content (a closed
+            // dialog or disclosure): its descendants' nodes go too, and are
+            // built afresh when shown.
             for child in e.children.clone() {
                 self.release(ui, &child);
             }
@@ -1385,6 +1389,19 @@ impl RetainedHost {
         ];
         input.extend(s.pad_focus);
         input.extend(n.pad_activate);
+        if n.back {
+            // Back belongs to the topmost scope (a modal, an open list),
+            // else to what holds the focus (a dialog in place).
+            input.push(s.scope);
+            if s.focus != 0
+                && let Some(mut i) = ui.nodes.iter().position(|node| node.key == s.focus)
+            {
+                while ui.nodes[i].parent != NONE {
+                    i = ui.nodes[i].parent;
+                    input.push(ui.nodes[i].key);
+                }
+            }
+        }
         input.retain(|&key| key != 0);
         for key in input.iter().chain(&self.input) {
             if let Some(owner) = self.owner_of.get(key) {

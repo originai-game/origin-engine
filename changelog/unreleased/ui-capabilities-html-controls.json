@@ -1,0 +1,26 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <select>, <option>, <optgroup>",
+      "summary": "A core select bound by value: literal options under one level of optgroups (disabled options and groups skipped), keyboard, d-pad and pointer picking, typeahead, Escape or B closing, the focus returned to the trigger. A bound list is items={…} values={…}. Parts Dropdown.trigger, .list, .group, .option."
+    },
+    {
+      "member": "UI documents: <dialog>",
+      "summary": "HTML's dialog, two-way open: modal (a scrim taking every press, the focus moved in, trapped and returned, Escape, B or the scrim closing it) or in place (Back closes it while the focus is inside). ui.DialogDesc and Ui::open_dialog for Rust."
+    },
+    {
+      "member": "UI documents: <details>, <summary>",
+      "summary": "A disclosure, two-way open: the summary row toggles it by press, Enter, Space or A; the content is built only while open. Parts Details.root, .summary[open], .content."
+    },
+    {
+      "member": "UI documents: <meter>",
+      "summary": "HTML's meter beside <progress>: value, min, max, low, high, optimum; the fill is dressed Meter.fill[region=optimum|suboptimum|poor] by HTML's region rules."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI documents: popovers and dialogs in retained documents",
+      "summary": "A retained layer rewritten in its own slot is no longer renamed `<id>~1` with a duplicate-layer warning; Back reaches the element owning the topmost scope or holding the focus; a press on a disabled option inside an open dropdown no longer closes it."
+    }
+  ]
+}

@@ -109,6 +109,7 @@ pub(super) fn edit(
         "texture" => "src",
         "tabIndex" => "tabindex",
         "input" if matches!(tag.as_str(), "input" | "textarea") => "value",
+        "current" if tag == "select" => "value",
         "maxChars" => "maxlength",
         "minChars" => "minlength",
         "lines" => "rows",
@@ -119,6 +120,7 @@ pub(super) fn edit(
         let name = a.name.strip_prefix("bind:").unwrap_or(&a.name);
         svelte::property(name) == prop
             || (prop == "input" && matches!(tag.as_str(), "input" | "textarea") && name == "value")
+            || (prop == "current" && tag == "select" && name == "value")
             || matches!(
                 (prop, name),
                 ("maxChars", "maxlength") | ("minChars", "minlength") | ("lines", "rows")

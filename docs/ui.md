@@ -100,6 +100,10 @@ probe) are unchanged. The mapping:
 | `<img>` | image | `src`, `alt` |
 | `<text>` | label | HTML has no plain-text element; `<label>` is HTML's caption wrapper |
 | `<button>`, `<progress>` | button, progress | already HTML |
+| `<select>` with `<option>` and `<optgroup>` | select | `value`, `placeholder`, `disabled`; options take `value`, `label`, `i18n`, `disabled`, `selected` |
+| `<dialog>` | dialog | `open`, `modal`, `aria-label` |
+| `<details>` with a first `<summary>` | details | `open`, `disabled` |
+| `<meter>` | meter | `value`, `min`, `max`, `low`, `high`, `optimum` |
 
 `<field>`, `<slider>`, `<toggle>`, `<divider>`, `<image>` and a bare
 `<label>` are refused. CSS type selectors match the written tag (`input`,
@@ -345,6 +349,51 @@ shell stands a hidden `<input>` with those attributes behind a one-line
 field so phones show the requested keyboard and autofill reaches it; a
 text area keeps its `<textarea>`. A number uses a text input with the
 decimal keyboard.
+
+### 2.4 Select, dialog, details and meter
+
+These four are core controls with HTML's elements and attributes; kits
+dress them and never draw substitutes.
+
+`<select bind:value={$x}>` lists literal `<option>`s, one level of
+`<optgroup label>` around them. An option without `value` is valued by its
+text, as in HTML; `<option selected>` is the value when none is bound;
+`<option disabled>` and `<optgroup disabled>` cannot be picked. A bound
+list is written `items={$labels} values={$ids}` on the select instead of
+`{#each}`, which is refused. The list opens over the page at the chosen
+option. A press, Enter, Space or pad A opens and picks; the arrows and the
+d-pad move past disabled options; letters move by typeahead; Escape, pad B
+or a press outside closes it. A pick or Back returns the focus to the
+trigger. The value, never the label, is written back. Parts:
+`Dropdown.trigger[open][invalid]`, `Dropdown.list`, `Dropdown.group`,
+`Dropdown.option[selected][disabled]`. Roles: combobox, listbox, option.
+
+`<dialog bind:open={$x} aria-label="…">` is HTML's dialog. With `modal`
+it is `showModal()`: a scrim layer that takes every press, the focus moved
+to its first control and trapped, Escape, pad B or a press on the scrim
+closing it, and the focus returned to its opener. The panel is
+`<id>/Panel`. Without `modal` it is `show()`: a panel in place
+(`Dialog.panel[open]`) that Back closes only while the focus is inside, the
+focus then returning to what held it when it opened. Closing writes
+`open` false back.
+
+`<details bind:open={$x}><summary>…</summary>…</details>` is a disclosure.
+The summary row (`Details.summary[open]`, role button with `expanded`)
+opens and closes it by press, Enter, Space or pad A; its marker points to
+the inline end while closed and down while open. The content
+(`Details.content`, inside `Details.root`) is not built while closed. A
+literal `open` is the initial state; the player's toggle is UI state that
+saves and restores.
+
+A closed dialog or disclosure builds no content: in a retained document
+its children are released and built afresh when it opens, so they take
+input and the focus from the frame they show.
+
+`<meter>` is HTML's gauge, beside `<progress>`. Its fill is dressed by the
+region HTML's rules put the value in, `Meter.fill[region=optimum]`,
+`[region=suboptimum]` or `[region=poor]` (undressed: the style's success,
+warn and danger), over `Meter.track`. `low` and `high` clamp into the
+range and `optimum` defaults to its middle. Role meter with its range.
 
 ## 3. Style contract
 

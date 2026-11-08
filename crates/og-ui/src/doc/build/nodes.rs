@@ -258,8 +258,54 @@ impl Ui {
         };
         let mut resp = crate::ui::Response::default();
         let container = schema::kind(kind).is_some_and(|k| k.container);
+        // A dialog's or a disclosure's `open`: the bound store's, else the
+        // literal's until the player toggles it (kept as widget memory).
+        let open_now = |ui: &mut Ui| -> bool {
+            let literal = r.flag("open");
+            if bound(n, "open") {
+                literal
+            } else {
+                ui.memory(
+                    &format!("{}~doc-open", id.as_str()),
+                    f64::from(u8::from(literal)),
+                ) > 0.0
+            }
+        };
+        let dialog = crate::widgets::DialogDesc {
+            modal: r.flag("modal"),
+            name: r.str("name").unwrap_or_default().to_string(),
+            width: r.size("width"),
+        };
+        let mut opened: Option<bool> = None;
+        // A closed dialog or disclosure builds no content (HTML renders
+        // none): opened, its controls are built fresh and take input.
+        let mut shows_content = true;
         if container {
             match kind {
+                "dialog" => {
+                    let open = open_now(self);
+                    let out = self.open_dialog(id.as_str(), open, &dialog);
+                    shows_content = out.visible;
+                    if out.dismissed {
+                        opened = Some(false);
+                    }
+                }
+                "details" => {
+                    let open = open_now(self);
+                    let out = self.open_details(
+                        id.as_str(),
+                        &crate::widgets::DetailsDesc {
+                            summary: r.str("summary").unwrap_or_default().to_string(),
+                            open,
+                            disabled: r.flag("disabled"),
+                            width: r.size("width"),
+                        },
+                    );
+                    shows_content = out.open;
+                    if out.toggled {
+                        opened = Some(out.open);
+                    }
+                }
                 "panel" => {
                     self.open_panel(
                         id.as_str(),
@@ -328,10 +374,25 @@ impl Ui {
                 self.docs.slots.entry(short).or_insert(at);
             }
             self.note_built(built);
-            let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-            build_children(self, b, None);
-            b.inherited = inherited;
-            resp = self.close();
+            if shows_content {
+                let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
+                build_children(self, b, None);
+                b.inherited = inherited;
+            }
+            match kind {
+                "dialog" => self.close_dialog(&dialog),
+                "details" => self.close_details(),
+                _ => resp = self.close(),
+            }
+            if let Some(open) = opened {
+                if !bound(n, "open") {
+                    self.remember(
+                        &format!("{}~doc-open", id.as_str()),
+                        f64::from(u8::from(open)),
+                    );
+                }
+                self.write_back(b, n, "open", json!(open));
+            }
             self.fire(b, n, key, &path, resp);
             return Some(path);
         }
@@ -435,6 +496,79 @@ impl Ui {
                         label: r.str("name").map(str::to_string),
                     },
                 );
+            }
+            "meter" => {
+                self.gauge(
+                    id.as_str(),
+                    &crate::widgets::GaugeDesc {
+                        value: r.num("value").unwrap_or(0.0),
+                        min: r.num("min").unwrap_or(0.0),
+                        max: r.num("max").unwrap_or(1.0),
+                        low: r.num("low"),
+                        high: r.num("high"),
+                        optimum: r.num("optimum"),
+                        width: r.size("width"),
+                    },
+                );
+            }
+            "select" => {
+                let strs = |name: &str| match r.get(name) {
+                    Some(V::Strs(s)) => s.clone(),
+                    _ => Vec::new(),
+                };
+                let (items, keys, groups, off) = (
+                    strs("items"),
+                    strs("keys"),
+                    strs("groups"),
+                    strs("disabledItems"),
+                );
+                let mut values = strs("values");
+                values.resize(items.len(), String::new());
+                for (v, item) in values.iter_mut().zip(&items) {
+                    if v.is_empty() {
+                        v.clone_from(item);
+                    }
+                }
+                let selected = r
+                    .str("current")
+                    .and_then(|now| values.iter().position(|v| v == now))
+                    .map_or(-1, |k| k as i32);
+                let options = items
+                    .iter()
+                    .enumerate()
+                    .map(|(k, item)| crate::widgets::DropdownOption {
+                        label: keys
+                            .get(k)
+                            .filter(|key| !key.is_empty())
+                            .and_then(|key| b.env.translate(key))
+                            .unwrap_or_else(|| item.clone()),
+                        group: groups.get(k).cloned().unwrap_or_default(),
+                        disabled: off.iter().any(|o| o == &k.to_string()),
+                        ..crate::widgets::DropdownOption::default()
+                    })
+                    .collect();
+                let out = self.dropdown(
+                    id.as_str(),
+                    &crate::widgets::DropdownDesc {
+                        options,
+                        selected,
+                        placeholder: r.str("placeholder").unwrap_or_default().to_string(),
+                        disabled: r.flag("disabled"),
+                        width: r.size("width"),
+                        ..crate::widgets::DropdownDesc::default()
+                    },
+                );
+                resp = crate::Response {
+                    changed: out.changed,
+                    ..crate::Response::default()
+                };
+                if out.changed
+                    && let Some(v) = usize::try_from(out.selected)
+                        .ok()
+                        .and_then(|k| values.get(k))
+                {
+                    self.write_back(b, n, "current", json!(v));
+                }
             }
             "progress" => {
                 let v = r.num("value").unwrap_or(0.0);
@@ -866,4 +1000,13 @@ impl Ui {
             }
         }
     }
+}
+
+/// Whether `n`'s `prop` reads a store (`bind:` or `{$x}`) rather than a literal.
+fn bound(n: &DocNode, prop: &str) -> bool {
+    n.props
+        .iter()
+        .rev()
+        .find(|p| p.name() == prop)
+        .is_some_and(|p| !matches!(p.value, PropValue::Lit(_)))
 }

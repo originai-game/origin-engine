@@ -117,6 +117,171 @@ fn renamed(tag: &str) -> Option<String> {
     Some(format!("<{tag}> is not a core element; write {html}"))
 }
 
+/// One `<option>` of a `<select>`.
+struct SelectOption {
+    label: String,
+    value: String,
+    group: String,
+    key: Option<String>,
+    disabled: bool,
+    selected: bool,
+}
+
+/// A `<select>`'s options, in order, through its `<optgroup>`s: literal
+/// ones (a bound list is `items={…} values={…}` on the select).
+fn select_options(children: &[Node]) -> Result<Vec<SelectOption>, Error> {
+    fn walk(
+        nodes: &[Node],
+        group: Option<(&str, bool)>,
+        out: &mut Vec<SelectOption>,
+    ) -> Result<(), Error> {
+        for node in nodes {
+            match node {
+                Node::Text(t, _) if t.trim().is_empty() => {}
+                Node::Element {
+                    tag,
+                    attrs,
+                    children,
+                    at,
+                    ..
+                } if tag == "optgroup" && group.is_none() => {
+                    let literal = |name: &str| attrs.iter().find(|a| a.name == name && !a.bound);
+                    let label = literal("label")
+                        .map(|a| a.value.as_str())
+                        .unwrap_or_default();
+                    if label.is_empty() {
+                        return Err((*at, "an <optgroup> needs a literal label".into()));
+                    }
+                    walk(children, Some((label, literal("disabled").is_some())), out)?;
+                }
+                Node::Element {
+                    tag,
+                    attrs,
+                    children,
+                    at,
+                    ..
+                } if tag == "option" => {
+                    let mut o = SelectOption {
+                        label: String::new(),
+                        value: String::new(),
+                        group: group.map(|g| g.0.to_string()).unwrap_or_default(),
+                        key: None,
+                        disabled: group.is_some_and(|g| g.1),
+                        selected: false,
+                    };
+                    let mut value = None;
+                    for a in attrs {
+                        if a.bound {
+                            return Err((
+                                a.at,
+                                "an <option>'s attributes are literal; bind a list with items={…} values={…} on the <select>".into(),
+                            ));
+                        }
+                        match a.name.as_str() {
+                            "value" => value = Some(a.value.clone()),
+                            "label" => o.label = a.value.clone(),
+                            "i18n" => o.key = Some(a.value.clone()),
+                            "disabled" => o.disabled = true,
+                            "selected" => o.selected = true,
+                            other => {
+                                return Err((
+                                    a.at,
+                                    format!(
+                                        "unknown <option> attribute {other}; it takes value, label, i18n, disabled and selected"
+                                    ),
+                                ));
+                            }
+                        }
+                    }
+                    if o.label.is_empty() {
+                        match text_value(children, *at)? {
+                            Some((PropValue::Lit(Lit::Str(text)), _)) => o.label = text,
+                            Some(_) => {
+                                return Err((
+                                    *at,
+                                    "an <option>'s text is literal; bind a list with items={…} values={…} on the <select>".into(),
+                                ));
+                            }
+                            None => {}
+                        }
+                    }
+                    // HTML: an option without a value is valued by its text.
+                    o.value = value.unwrap_or_else(|| o.label.clone());
+                    out.push(o);
+                }
+                Node::Each { at, .. } => {
+                    return Err((
+                        *at,
+                        "a <select> lists literal <option>s; bind a list with items={…} values={…} instead of {#each}".into(),
+                    ));
+                }
+                Node::Element { at, .. }
+                | Node::Text(_, at)
+                | Node::Expression(_, at)
+                | Node::If { at, .. }
+                | Node::Snippet { at, .. }
+                | Node::Render { at, .. } => {
+                    return Err((
+                        *at,
+                        "a <select> holds <option>s and <optgroup>s (one level) only".into(),
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+    let mut out = Vec::new();
+    walk(children, None, &mut out)?;
+    Ok(out)
+}
+
+/// The text of a text-only element (a `<summary>`, an `<option>`), its
+/// whitespace collapsed as HTML renders it, and its source; `None` when it
+/// has none.
+fn text_value(children: &[Node], at: usize) -> Result<Option<(PropValue, String)>, Error> {
+    let collapse = |t: &str| t.split_ascii_whitespace().collect::<Vec<_>>().join(" ");
+    let mut source = String::new();
+    let mut text = Expr::Lit("".into());
+    let mut bound = false;
+    for (k, child) in children.iter().enumerate() {
+        let part = match child {
+            Node::Text(t, _) => {
+                source.push_str(t);
+                // One space where text meets an expression, none at the ends.
+                let lead = k > 0 && t.starts_with(|c: char| c.is_ascii_whitespace());
+                let trail =
+                    k + 1 < children.len() && t.ends_with(|c: char| c.is_ascii_whitespace());
+                let body = collapse(t);
+                let gap = |on: bool| if on && !body.is_empty() { " " } else { "" };
+                Expr::Lit(
+                    format!(
+                        "{}{body}{}",
+                        gap(lead),
+                        if body.is_empty() && (lead || trail) {
+                            " "
+                        } else {
+                            gap(trail)
+                        }
+                    )
+                    .into(),
+                )
+            }
+            Node::Expression(e, at) => {
+                source.push_str(&format!("{{{e}}}"));
+                bound = true;
+                expression(e, *at)?
+            }
+            _ => return Err((at, "this element holds text only".into())),
+        };
+        text = Expr::Bin(crate::bind::Op::Add, Box::new(text), Box::new(part));
+    }
+    if bound {
+        return Ok(Some((PropValue::Bind(text, None), source)));
+    }
+    let literal = collapse(&source);
+    Ok((!literal.is_empty()).then_some((PropValue::Lit(Lit::Str(literal)), source)))
+}
+
 pub(super) fn literal(ty: Ty, text: &str) -> Result<PropValue, String> {
     let values = match ty {
         Ty::Text | Ty::Name | Ty::Word(_) => vec![Value::String(text.into())],
@@ -418,6 +583,97 @@ impl Parser {
         at: usize,
         parent: usize,
     ) -> Result<usize, Error> {
+        match tag {
+            "option" | "optgroup" => {
+                return Err((at, format!("<{tag}> belongs inside a <select>")));
+            }
+            "summary" => {
+                return Err((at, "<summary> is the first child of a <details>".into()));
+            }
+            "select" => {
+                let options = select_options(children)?;
+                let i = self.element_node(tag, attrs, &[], at, parent)?;
+                let strs = |v: Vec<String>| PropValue::Lit(Lit::Strs(v));
+                let items = options.iter().map(|o| o.label.clone()).collect();
+                let values = options.iter().map(|o| o.value.clone()).collect();
+                self.prop(i, tag, "items", strs(items), at, "")?;
+                self.prop(i, tag, "values", strs(values), at, "")?;
+                if options.iter().any(|o| !o.group.is_empty()) {
+                    let groups = options.iter().map(|o| o.group.clone()).collect();
+                    self.prop(i, tag, "groups", strs(groups), at, "")?;
+                }
+                if options.iter().any(|o| o.key.is_some()) {
+                    let keys = options
+                        .iter()
+                        .map(|o| o.key.clone().unwrap_or_default())
+                        .collect();
+                    self.prop(i, tag, "keys", strs(keys), at, "")?;
+                }
+                let off: Vec<String> = (0..options.len())
+                    .filter(|&k| options[k].disabled)
+                    .map(|k| k.to_string())
+                    .collect();
+                if !off.is_empty() {
+                    self.prop(i, tag, "disabledItems", strs(off), at, "")?;
+                }
+                // `<option selected>` is the value when nothing is bound.
+                let valued = attrs
+                    .iter()
+                    .any(|a| matches!(a.name.as_str(), "value" | "bind:value"));
+                if !valued && let Some(o) = options.iter().find(|o| o.selected) {
+                    self.prop(
+                        i,
+                        tag,
+                        "current",
+                        PropValue::Lit(Lit::Str(o.value.clone())),
+                        at,
+                        "",
+                    )?;
+                }
+                return Ok(i);
+            }
+            "details" => {
+                let mut rest = Vec::new();
+                let mut summary = None;
+                for child in children {
+                    match child {
+                        Node::Element {
+                            tag: t,
+                            children: inner,
+                            at,
+                            ..
+                        } if t == "summary" => {
+                            if summary.is_some()
+                                || rest.iter().any(|c| matches!(c, Node::Element { .. }))
+                            {
+                                return Err((
+                                    *at,
+                                    "a <details> takes one <summary>, as its first child".into(),
+                                ));
+                            }
+                            summary = Some((text_value(inner, *at)?, *at));
+                        }
+                        other => rest.push(other.clone()),
+                    }
+                }
+                let i = self.element_node(tag, attrs, &rest, at, parent)?;
+                if let Some((Some((value, source)), at)) = summary {
+                    self.prop(i, tag, "summary", value, at, &source)?;
+                }
+                return Ok(i);
+            }
+            _ => {}
+        }
+        self.element_node(tag, attrs, children, at, parent)
+    }
+    fn element_node(
+        &mut self,
+        tag: &str,
+        attrs: &[Attr],
+        children: &[Node],
+        at: usize,
+        parent: usize,
+    ) -> Result<usize, Error> {
         // A label around a checkbox is the checkbox, its text the caption
         // (HTML's implicit label association).
         if tag == "label" {
@@ -610,6 +866,9 @@ impl Parser {
             };
             if name == "value" && internal == "field" {
                 name = "input".into();
+            }
+            if name == "value" && internal == "select" {
+                name = "current".into();
             }
             if a.name == "hidden" {
                 name = "visible".into();

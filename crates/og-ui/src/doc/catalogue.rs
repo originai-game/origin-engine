@@ -52,6 +52,22 @@ pub fn tags(kind: &str) -> Vec<(String, String)> {
             ),
         ],
         "divider" => vec![void("hr")],
+        "select" => vec![(
+            "select".into(),
+            "<select id=\"Name\" bind:value={$x}><optgroup label=\"G\"><option value=\"a\">A</option></optgroup></select>".into(),
+        )],
+        "details" => vec![(
+            "details".into(),
+            "<details id=\"Name\" bind:open={$x}><summary>More</summary>…</details>".into(),
+        )],
+        "dialog" => vec![(
+            "dialog".into(),
+            "<dialog id=\"Name\" modal bind:open={$x} aria-label=\"Quit?\">…</dialog>".into(),
+        )],
+        "meter" => vec![(
+            "meter".into(),
+            "<meter id=\"Name\" value={$hp} min=\"0\" max=\"100\" low=\"25\" high=\"75\" optimum=\"90\" />".into(),
+        )],
         other => vec![(other.into(), format!("<{other} id=\"Name\">…</{other}>"))],
     }
 }

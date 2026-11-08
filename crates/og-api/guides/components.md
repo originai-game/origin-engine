@@ -296,10 +296,10 @@ Its own props, beside every element's:
 |---|---|---|
 | `text` | `text` | What it says. |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
-| `items` | `names` | The tab labels, literal names or a bound list of strings. |
+| `items` | `names` | The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them). |
 | `keys` | `names` | A string table key (og.i18n) per tab its label comes from; its item is the fallback. |
 | `values` | `names` | A name per tab (a screen's mode) that `current` holds instead of `selected`'s index. |
-| `current` | `name` | The selected tab's name from `values`; it takes over from `selected` when `values` is set. Two-way only with an explicit bind: attribute. |
+| `current` | `name` | The selected item's name from `values` (a `<select>`'s `value`); on tabs it takes over from `selected` when `values` is set. Two-way only with an explicit bind: attribute. |
 | `selected` | `number` | The selected tab's zero-based index. Two-way only with an explicit bind: attribute. |
 | `fill` | `bool` | Equal tabs filling the available width. |
 
@@ -358,3 +358,58 @@ Its own props, beside every element's:
 | Write | Value | What |
 |---|---|---|
 | `vertical` | `bool` | Upright. |
+
+## 23. `<select>` (`select`): A select (two-way `value`): its `<option>`s, under `<optgroup>`s, in a list that opens over it
+
+A select (two-way `value`): its `<option>`s, under `<optgroup>`s, in a list that opens over it. A leaf; text-bearing controls accept text content: `<select id="Name" bind:value={$x}><optgroup label="G"><option value="a">A</option></optgroup></select>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `disabled` | `bool` | Takes no input. |
+| `items` | `names` | The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them). |
+| `keys` | `names` | A string table key (og.i18n) per tab its label comes from; its item is the fallback. |
+| `values` | `names` | A name per tab (a screen's mode) that `current` holds instead of `selected`'s index. |
+| `current` | `name` | The selected item's name from `values` (a `<select>`'s `value`); on tabs it takes over from `selected` when `values` is set. Two-way only with an explicit bind: attribute. |
+| `groups` | `names` | An `<option>`'s `<optgroup>` label, one per option (empty: none); options of one group follow each other. |
+| `disabled-items` | `names` | The `<option disabled>`s (and those of an `<optgroup disabled>`), by their zero-based index. |
+| `placeholder` | `text` | Shown while it is empty. |
+
+## 24. `<dialog>` (`dialog`): A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns
+
+A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns. A container with nested children: `<dialog id="Name" modal bind:open={$x} aria-label="Quit?">…</dialog>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
+| `modal` | `bool` | Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`). |
+
+## 25. `<details>` (`details`): A disclosure (two-way `open`): its `<summary>` row, its content shown only while open
+
+A disclosure (two-way `open`): its `<summary>` row, its content shown only while open. A container with nested children: `<details id="Name" bind:open={$x}><summary>More</summary>…</details>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `disabled` | `bool` | Takes no input. |
+| `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
+| `summary` | `text` | Its `<summary>`'s text; empty is `Details`. Written as the first child, `<summary>…</summary>`. |
+
+## 26. `<meter>` (`meter`): A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in
+
+A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in. A leaf; text-bearing controls accept text content: `<meter id="Name" value={$hp} min="0" max="100" low="25" high="75" optimum="90" />`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `value` | `number` | Its value (a slider writes it back). Two-way only with an explicit bind: attribute. |
+| `min` | `number` | The range's low end; a number input under it is invalid (`rangeUnderflow`). |
+| `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
+| `low` | `number` | The top of the low region (HTML `low`; default `min`). |
+| `high` | `number` | The bottom of the high region (HTML `high`; default `max`). |
+| `optimum` | `number` | The best value (HTML `optimum`; default the middle): its region is `optimum`, the next `suboptimum`, the far one `poor`. |

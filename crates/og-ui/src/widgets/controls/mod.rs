@@ -22,6 +22,7 @@ use crate::ui::{ControlSize, LabelDesc, Response, Ui};
 use crate::widgets::IconDesc;
 
 mod choices;
+mod details;
 mod dropdown;
 mod ranges;
 
@@ -29,6 +30,7 @@ pub use choices::{
     CheckFieldDesc, ChoiceIndexResult, LabelSide, RadioGroupDesc, RadioOption, RadioVariant,
     SegmentItem, SegmentedDesc, SwitchResult, ToggleSwitchDesc,
 };
+pub use details::{DetailsDesc, DetailsResult};
 pub use dropdown::{DropdownDesc, DropdownOption, DropdownResult, kept_options};
 pub use ranges::{
     NumberResult, NumberStepperDesc, SliderMark, ValueFormat, ValueSliderDesc, ValueSliderResult,
@@ -380,7 +382,7 @@ impl Ui {
     }
 
     /// The path a child `id` of the open element has.
-    fn child_path(&self, id: &str) -> String {
+    pub(crate) fn child_path(&self, id: &str) -> String {
         let p = self.open_path();
         if p.is_empty() {
             id.to_owned()
@@ -742,6 +744,21 @@ impl Ui {
         expanded: bool,
         weight: f32,
     ) {
+        self.chevron(id, size, color, expanded, weight, (0.0, 2.0));
+    }
+
+    /// A chevron turned `turns.0` quarter turns from down while collapsed
+    /// and `turns.1` while expanded (-1: towards the right), moving between
+    /// them as the `expansion` group.
+    fn chevron(
+        &mut self,
+        id: impl Into<Id>,
+        size: f32,
+        color: C,
+        expanded: bool,
+        weight: f32,
+        turns: (f32, f32),
+    ) {
         let s = size;
         self.open(
             id,
@@ -775,12 +792,12 @@ impl Ui {
         let turn = |name: &str, q: f32| vstate(name, vec![(Prop::Rotate, rad(q))]);
         self.set_props(Props {
             transform: Transform {
-                rotate: rad(if expanded { 2.0 } else { 0.0 }),
+                rotate: rad(if expanded { turns.1 } else { turns.0 }),
                 ..Transform::IDENTITY
             },
             states: vec![StateGroup {
                 name: "expansion".into(),
-                states: vec![turn("collapsed", 0.0), turn("expanded", 2.0)],
+                states: vec![turn("collapsed", turns.0), turn("expanded", turns.1)],
                 transitions: Vec::new(),
             }],
             state: vec![(
@@ -1003,10 +1020,16 @@ impl Ui {
             // Last tick's hits: what the press landed on.
             if self.input.pressed {
                 let hot = self.state.hot;
+                let at = self.input.pointer;
+                // A press on what takes no input inside it (a disabled
+                // option, its padding) is inside it too.
                 let inside = hot == self.nodes[anchor].key
                     || self
                         .hit(hot)
-                        .is_some_and(|h| h.scope == key || h.key == key);
+                        .is_some_and(|h| h.scope == key || h.key == key)
+                    || self
+                        .last_bounds(key)
+                        .is_some_and(|r| r.contains(at.x, at.y));
                 dismissed |= !inside;
             }
             if self.state.scope == key && self.nav.back {

@@ -212,6 +212,26 @@ pub const KINDS: &[KindSpec] = &[
         container: false,
         doc: "A hairline.",
     },
+    KindSpec {
+        name: "select",
+        container: false,
+        doc: "A select (two-way `value`): its `<option>`s, under `<optgroup>`s, in a list that opens over it.",
+    },
+    KindSpec {
+        name: "dialog",
+        container: true,
+        doc: "A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns.",
+    },
+    KindSpec {
+        name: "details",
+        container: true,
+        doc: "A disclosure (two-way `open`): its `<summary>` row, its content shown only while open.",
+    },
+    KindSpec {
+        name: "meter",
+        container: false,
+        doc: "A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in.",
+    },
 ];
 
 const STEPS: &[&str] = &crate::style_file::STEP_NAMES;
@@ -583,7 +603,7 @@ pub const PROPS: &[PropSpec] = &[
     p!(
         "disabled",
         Ty::Bool,
-        ["button", "slider", "toggle", "field"],
+        ["button", "slider", "toggle", "field", "select", "details"],
         "Takes no input."
     ),
     p!(
@@ -601,20 +621,20 @@ pub const PROPS: &[PropSpec] = &[
     p!(
         "value",
         Ty::Num,
-        ["progress", "slider"],
+        ["progress", "slider", "meter"],
         two_way,
         "Its value (a slider writes it back)."
     ),
     p!(
         "min",
         Ty::Num,
-        ["slider", "field"],
+        ["slider", "field", "meter"],
         "The range's low end; a number input under it is invalid (`rangeUnderflow`)."
     ),
     p!(
         "max",
         Ty::Num,
-        ["slider", "field"],
+        ["slider", "field", "meter"],
         "The range's high end; a number input over it is invalid (`rangeOverflow`)."
     ),
     p!(
@@ -639,27 +659,27 @@ pub const PROPS: &[PropSpec] = &[
     p!(
         "items",
         Ty::Names,
-        ["tabs"],
-        "The tab labels, literal names or a bound list of strings."
+        ["tabs", "select"],
+        "The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them)."
     ),
     p!(
         "keys",
         Ty::Names,
-        ["tabs"],
+        ["tabs", "select"],
         "A string table key (og.i18n) per tab its label comes from; its item is the fallback."
     ),
     p!(
         "values",
         Ty::Names,
-        ["tabs"],
+        ["tabs", "select"],
         "A name per tab (a screen's mode) that `current` holds instead of `selected`'s index."
     ),
     p!(
         "current",
         Ty::Name,
-        ["tabs"],
+        ["tabs", "select"],
         two_way,
-        "The selected tab's name from `values`; it takes over from `selected` when `values` is set."
+        "The selected item's name from `values` (a `<select>`'s `value`); on tabs it takes over from `selected` when `values` is set."
     ),
     p!(
         "selected",
@@ -667,6 +687,55 @@ pub const PROPS: &[PropSpec] = &[
         ["tabs"],
         two_way,
         "The selected tab's zero-based index."
+    ),
+    p!(
+        "groups",
+        Ty::Names,
+        ["select"],
+        "An `<option>`'s `<optgroup>` label, one per option (empty: none); options of one group follow each other."
+    ),
+    p!(
+        "disabledItems",
+        Ty::Names,
+        ["select"],
+        "The `<option disabled>`s (and those of an `<optgroup disabled>`), by their zero-based index."
+    ),
+    p!(
+        "open",
+        Ty::Bool,
+        ["dialog", "details"],
+        two_way,
+        "Whether it is open (HTML `open`; closing writes false back)."
+    ),
+    p!(
+        "modal",
+        Ty::Bool,
+        ["dialog"],
+        "Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`)."
+    ),
+    p!(
+        "summary",
+        Ty::Text,
+        ["details"],
+        "Its `<summary>`'s text; empty is `Details`. Written as the first child, `<summary>…</summary>`."
+    ),
+    p!(
+        "low",
+        Ty::Num,
+        ["meter"],
+        "The top of the low region (HTML `low`; default `min`)."
+    ),
+    p!(
+        "high",
+        Ty::Num,
+        ["meter"],
+        "The bottom of the high region (HTML `high`; default `max`)."
+    ),
+    p!(
+        "optimum",
+        Ty::Num,
+        ["meter"],
+        "The best value (HTML `optimum`; default the middle): its region is `optimum`, the next `suboptimum`, the far one `poor`."
     ),
     p!(
         "fill",
@@ -684,7 +753,7 @@ pub const PROPS: &[PropSpec] = &[
     p!(
         "placeholder",
         Ty::Text,
-        ["field"],
+        ["field", "select"],
         "Shown while it is empty."
     ),
     p!(

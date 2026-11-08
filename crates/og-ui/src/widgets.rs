@@ -19,10 +19,10 @@ use og_render::TextureHandle;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 pub use controls::{
-    CheckFieldDesc, ChoiceIndexResult, DropdownDesc, DropdownOption, DropdownResult, LabelSide,
-    NumberResult, NumberStepperDesc, RadioGroupDesc, RadioOption, RadioVariant, SegmentItem,
-    SegmentedDesc, SliderMark, SwitchResult, ToggleSwitchDesc, ValueFormat, ValueSliderDesc,
-    ValueSliderResult, kept_options,
+    CheckFieldDesc, ChoiceIndexResult, DetailsDesc, DetailsResult, DropdownDesc, DropdownOption,
+    DropdownResult, LabelSide, NumberResult, NumberStepperDesc, RadioGroupDesc, RadioOption,
+    RadioVariant, SegmentItem, SegmentedDesc, SliderMark, SwitchResult, ToggleSwitchDesc,
+    ValueFormat, ValueSliderDesc, ValueSliderResult, kept_options,
 };
 
 // ── descs and answers ───────────────────────────────────────────────────────
@@ -108,6 +108,17 @@ pub struct ModalDesc {
     pub backdrop: Option<Srgba>,
     /// No panel: the content sits on the backdrop (full-screen menus, loading).
     pub bare: bool,
+}
+
+/// An HTML `<dialog>` ([`Ui::open_dialog`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct DialogDesc {
+    /// Over a backdrop with the focus trapped (`showModal()`); else in place (`show()`).
+    pub modal: bool,
+    /// What a screen reader calls it (its `aria-label`).
+    pub name: String,
+    /// Its width; `None`: a modal's 420 CSS px, a non-modal's fit.
+    pub width: Option<Size>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -235,6 +246,75 @@ pub struct MeterDesc {
     pub height: f32,
     /// Notches dividing the bar into this many parts (0, 1: none).
     pub segments: u32,
+}
+
+/// An HTML `<meter>` ([`Ui::gauge`]): its value, range and regions.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GaugeDesc {
+    pub value: f32,
+    pub min: f32,
+    pub max: f32,
+    /// The top of the low region; `None`: `min`.
+    pub low: Option<f32>,
+    /// The bottom of the high region; `None`: `max`.
+    pub high: Option<f32>,
+    /// The best value; `None`: the middle.
+    pub optimum: Option<f32>,
+    /// Its width; `None`: 160 CSS px (HTML's 5em at 16 px is 80; a game bar is wider).
+    pub width: Option<Size>,
+}
+
+impl Default for GaugeDesc {
+    fn default() -> Self {
+        GaugeDesc {
+            value: 0.0,
+            min: 0.0,
+            max: 1.0,
+            low: None,
+            high: None,
+            optimum: None,
+            width: None,
+        }
+    }
+}
+
+/// Where a `<meter>`'s value lies against its optimum (the HTML Living
+/// Standard's meter regions).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MeterRegion {
+    Optimum,
+    Suboptimum,
+    /// HTML's "even less good".
+    Poor,
+}
+
+impl MeterRegion {
+    /// The region of `d`'s value, by HTML's rules: every bound clamped
+    /// into the range (`low` into min..max, `high` into low..max); with the
+    /// optimum below `low` the low region is best and the high one poor,
+    /// above `high` the reverse, and between them the middle is best and
+    /// either end only suboptimal.
+    pub fn of(d: &GaugeDesc) -> MeterRegion {
+        let (min, max) = (d.min, d.max.max(d.min));
+        let value = d.value.clamp(min, max);
+        let low = d.low.unwrap_or(min).clamp(min, max);
+        let high = d.high.unwrap_or(max).clamp(low, max);
+        let optimum = d.optimum.unwrap_or((min + max) / 2.0).clamp(min, max);
+        let (best, worst) = if optimum < low {
+            (value < low, value > high)
+        } else if optimum > high {
+            (value > high, value < low)
+        } else {
+            (value >= low && value <= high, false)
+        };
+        if best {
+            MeterRegion::Optimum
+        } else if worst {
+            MeterRegion::Poor
+        } else {
+            MeterRegion::Suboptimum
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

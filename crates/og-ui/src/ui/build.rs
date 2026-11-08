@@ -588,7 +588,13 @@ impl Ui {
         if local.is_empty() {
             local = format!("{kind}#{}", self.floating.len());
         }
-        let taken = |s: &Ui, l: &str| s.floating.iter().any(|&f| s.nodes[f].id == l);
+        // Taken by a layer written or kept this frame; a retained layer of
+        // last frame not yet written is this one's own slot, rewritten below.
+        let taken = |s: &Ui, l: &str| {
+            s.floating
+                .iter()
+                .any(|&f| s.nodes[f].id == l && s.slot_present[f])
+        };
         if taken(self, &local) {
             let mut n = 1;
             while taken(self, &format!("{local}~{n}")) {

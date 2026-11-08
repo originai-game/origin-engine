@@ -20,6 +20,8 @@ mod fields;
 mod gfx;
 #[path = "../glyphs.rs"]
 mod glyphs;
+#[path = "../html_controls.rs"]
+mod html_controls;
 #[path = "../hud_layout.rs"]
 mod hud_layout;
 #[path = "../input_types.rs"]
