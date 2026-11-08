@@ -794,10 +794,18 @@ impl Parser {
             ] = controls[..]
                 && inner == "input"
                 && inner_children.is_empty()
-                && inner_attrs
-                    .iter()
-                    .any(|a| a.name == "type" && !a.bound && a.value == "checkbox")
+                && inner_attrs.iter().any(|a| {
+                    a.name == "type" && !a.bound && matches!(a.value.as_str(), "checkbox" | "radio")
+                })
             {
+                let control = if inner_attrs
+                    .iter()
+                    .any(|a| a.name == "type" && a.value == "radio")
+                {
+                    "radio"
+                } else {
+                    "toggle"
+                };
                 let caption: Vec<Node> = children
                     .iter()
                     .filter(|c| !matches!(c, Node::Element { .. }))
@@ -852,7 +860,7 @@ impl Parser {
                 if after {
                     self.prop(
                         i,
-                        "toggle",
+                        control,
                         "side",
                         PropValue::Lit(Lit::Str("end".into())),
                         *inner_at,
@@ -860,7 +868,7 @@ impl Parser {
                     )?;
                 }
                 if let Some(((value, source), at)) = description {
-                    self.prop(i, "toggle", "description", value, at, &source)?;
+                    self.prop(i, control, "description", value, at, &source)?;
                 }
                 return Ok(i);
             }
@@ -885,7 +893,7 @@ impl Parser {
             }
             "label" if label_for.is_some() => "label",
             "div" | "section" | "header" | "footer" | "nav" | "main" | "aside" | "article"
-            | "ul" | "ol" | "li" => "box",
+            | "ul" | "ol" | "li" | "menu" => "box",
             "img" => "image",
             "hr" => "divider",
             "textarea" => "field",
@@ -898,6 +906,7 @@ impl Parser {
             {
                 Some("range") => "slider",
                 Some("checkbox") => "toggle",
+                Some("radio") => "radio",
                 _ => "field",
             },
             other => match super::extern_element::kind(other, self.parent_tag(parent)) {
@@ -925,7 +934,10 @@ impl Parser {
             .any(|a| matches!(a.name.as_str(), "aria-label" | "name"));
         // HTML's implicit roles (landmarks, lists); a section is a region
         // only when named.
+        let in_menu = tag == "button" && self.parent_tag(parent) == Some("menu");
         self.doc.nodes[i].role = match tag {
+            "menu" => Some("menu"),
+            "button" if in_menu => Some("menuitem"),
             "nav" => Some("navigation"),
             "main" => Some("main"),
             "header" => Some("banner"),
@@ -1106,7 +1118,22 @@ impl Parser {
             }
             // An input's type chose its kind; a checkbox's `switch` is how
             // it draws, and a toggle is a switch.
-            if tag == "input" && internal != "field" && (a.name == "type" || a.name == "switch") {
+            if tag == "input" && internal == "toggle" && a.name == "switch" && !a.bound {
+                self.prop(
+                    i,
+                    internal,
+                    "switch",
+                    PropValue::Lit(Lit::Bool(true)),
+                    a.at,
+                    "",
+                )?;
+                continue;
+            }
+            if tag == "input" && internal != "field" && a.name == "type" {
+                continue;
+            }
+            // A radio's group is the store it binds; its `name` adds nothing.
+            if internal == "radio" && a.name == "name" {
                 continue;
             }
             if a.name == "multiline" || (tag == "textarea" && a.name == "type") {
@@ -1151,6 +1178,9 @@ impl Parser {
             }
             if name == "value" && internal == "select" {
                 name = "current".into();
+            }
+            if name == "value" && internal == "radio" {
+                name = "choice".into();
             }
             if name == "value" && internal == "kbd" {
                 name = "binding".into();

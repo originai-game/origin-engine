@@ -129,6 +129,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `aria-current` | `page \| step \| location \| date \| time \| true \| false` | The current item in a set (`aria-current`): a pagination's page, a breadcrumb's last, a wizard's step. |
 | `data-og-instant` | `bool` | Its first entrance is settled (`data-og-instant`): the screen a game opens on, which the web draws behind its play gate. Later entrances play. |
 | `-og-reduced-motion:` | `fade \| none \| keep` | Its reduced-motion fallback. |
+| `data-hold` | `number` | How long a press is held before `onhold` fires, in ms (`data-hold`; default 500). |
 | `-og-emitter:` | `<n>px \| <n>%` | `-og-emitter: <rate> [square\|circle\|diamond] [<size>px] [<colour>…]`: particles a second from the element while it stands (`.rare { -og-emitter: 12 diamond 6px #ffd166 #fff; }`), drawn over it; `none` stops. Silent under reduced motion. |
 | `-og-meta:` | `<n>px \| <n>%` | `-og-meta: vignette [<colour>] \| tint <colour>`: a full-screen overlay drawn with the element, never taking input, its strength the element's `opacity` (`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`). |
 | `draggable` | `bool` | HTML `draggable`: a drag that starts on it moves it with the pointer and returns it home on release, firing `ondragstart`, `ondragend`, and `ondragover`/`ondrop` on the element it is over (any element with one of those handlers takes drops). |
@@ -386,9 +387,9 @@ Its own props, beside every element's:
 | `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
 
 <a id="guide-components-18"></a>
-### `components §18` `<input type="checkbox" switch>`, `<label>` (`toggle`): A switch with a label (two-way `checked`)
+### `components §18` `<input type="checkbox">`, `<input type="checkbox" switch>`, `<label>` (`toggle`): A switch with a label (two-way `checked`)
 
-A switch with a label (two-way `checked`). A leaf; text-bearing controls accept text content: `<input type="checkbox" switch id="Name" />` or `<label id="Name"><input type="checkbox" /> Caption</label>`.
+A switch with a label (two-way `checked`). A leaf; text-bearing controls accept text content: `<input type="checkbox" id="Name" />` or `<input type="checkbox" switch id="Name" />` or `<label id="Name"><input type="checkbox" /> Caption</label>`.
 
 Its own props, beside every element's:
 
@@ -398,13 +399,34 @@ Its own props, beside every element's:
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `size` | `small \| medium \| large` | The control height (`-og-control-size`). |
 | `disabled` | `bool` | Takes no input. |
+| `switch` | `bool` | Draws the checkbox as a switch (HTML `switch`); without it, a box with a check. |
+| `indeterminate` | `bool` | Neither on nor off: a dash in its box (HTML `indeterminate`); a press turns it on. |
 | `checked` | `bool` | Whether it is on (written back). Two-way only with an explicit bind: attribute. |
 | `description` | `text` | A line under its caption: a `<small>` in its `<label>`. |
 | `side` | `start \| end` | Where its caption sits, from the source order in its `<label>`: start before the switch (caption first), end after it. |
 | `flex-direction:` | `row \| row-reverse \| column \| column-reverse` | `flex-direction` on a checkbox's label: rowReverse swaps its caption's side. |
+| `invalid` | `bool` | Its value is wrong (`aria-invalid`): the danger frame. |
 
 <a id="guide-components-19"></a>
-### `components §19` `<tabs>` (`tabs`): A tab list (two-way `selected`), using the core tabs widget
+### `components §19` `<input>` (`radio`): One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes
+
+One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes. A leaf; text-bearing controls accept text content: `<label><input type="radio" value="easy" bind:group={$level} /> Easy</label>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `text` | `text` | What it says. |
+| `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
+| `disabled` | `bool` | Takes no input. |
+| `group` | `text` | The store its group's choice is in (`bind:group`): it is checked while that holds its value, and a press writes its value. Two-way only with an explicit bind: attribute. |
+| `choice` | `text` | Its value (HTML `value`), what its group holds when it is checked. |
+| `checked` | `bool` | Whether it is on (written back). Two-way only with an explicit bind: attribute. |
+| `description` | `text` | A line under its caption: a `<small>` in its `<label>`. |
+| `side` | `start \| end` | Where its caption sits, from the source order in its `<label>`: start before the switch (caption first), end after it. |
+
+<a id="guide-components-20"></a>
+### `components §20` `<tabs>` (`tabs`): A tab list (two-way `selected`), using the core tabs widget
 
 A tab list (two-way `selected`), using the core tabs widget. A leaf; text-bearing controls accept text content: `<tabs id="Name">…</tabs>`.
 
@@ -423,8 +445,8 @@ Its own props, beside every element's:
 | `selected` | `number` | The selected tab's zero-based index. Two-way only with an explicit bind: attribute. |
 | `fill` | `bool` | Equal tabs filling the available width. |
 
-<a id="guide-components-20"></a>
-### `components §20` `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several
+<a id="guide-components-21"></a>
+### `components §21` `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several
 
 A text control (two-way `input`): `<input>` for one line, `<textarea>` for several. A leaf; text-bearing controls accept text content: `<input type="text" id="Name" />` or `<textarea id="Name" rows="4" />`.
 
@@ -436,6 +458,7 @@ Its own props, beside every element's:
 | `min` | `number` | The range's low end; a number input under it is invalid (`rangeUnderflow`). |
 | `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
 | `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
+| `-og-stepper:` | `none \| buttons` | A number input drawn as minus, its value and plus (`-og-stepper: buttons`). |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `value` | `text` | The field's text (written back). Two-way only with an explicit bind: attribute. |
 | `placeholder` | `text` | Shown while it is empty. |
@@ -453,8 +476,8 @@ Its own props, beside every element's:
 | `inputmode` | `none \| text \| decimal \| numeric \| tel \| search \| email \| url` | The virtual keyboard a touch device shows (HTML `inputmode`; `none`: the game shows its own); unset, its `type`'s. |
 | `autocomplete` | `name` | The page's autofill hint (HTML `autocomplete`: `username`, `current-password`, `new-password`, `one-time-code`, `email`, `off`…). |
 
-<a id="guide-components-21"></a>
-### `components §21` `<badge>` (`badge`): A small toned label
+<a id="guide-components-22"></a>
+### `components §22` `<badge>` (`badge`): A small toned label
 
 A small toned label. A leaf; text-bearing controls accept text content: `<badge id="Name">…</badge>`.
 
@@ -466,15 +489,15 @@ Its own props, beside every element's:
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `tone` | `neutral \| info \| success \| warn \| danger \| accent` | Its tone. |
 
-<a id="guide-components-22"></a>
-### `components §22` `<spacer>` (`spacer`): Empty room (grows by default)
+<a id="guide-components-23"></a>
+### `components §23` `<spacer>` (`spacer`): Empty room (grows by default)
 
 Empty room (grows by default). A leaf; text-bearing controls accept text content: `<spacer id="Name">…</spacer>`.
 
 It takes every element's props and none of its own.
 
-<a id="guide-components-23"></a>
-### `components §23` `<hr>` (`divider`): A hairline
+<a id="guide-components-24"></a>
+### `components §24` `<hr>` (`divider`): A hairline
 
 A hairline. A leaf; text-bearing controls accept text content: `<hr id="Name" />`.
 
@@ -484,8 +507,8 @@ Its own props, beside every element's:
 |---|---|---|
 | `vertical` | `bool` | Upright. |
 
-<a id="guide-components-24"></a>
-### `components §24` `<select>` (`select`): A select (two-way `value`): its `<option>`s, under `<optgroup>`s, in a list that opens over it
+<a id="guide-components-25"></a>
+### `components §25` `<select>` (`select`): A select (two-way `value`): its `<option>`s, under `<optgroup>`s, in a list that opens over it
 
 A select (two-way `value`): its `<option>`s, under `<optgroup>`s, in a list that opens over it. A leaf; text-bearing controls accept text content: `<select id="Name" bind:value={$x}><optgroup label="G"><option value="a">A</option></optgroup></select>`.
 
@@ -504,8 +527,8 @@ Its own props, beside every element's:
 | `placeholder` | `text` | Shown while it is empty. |
 | `invalid` | `bool` | Its value is wrong (`aria-invalid`): the danger frame. |
 
-<a id="guide-components-25"></a>
-### `components §25` `<dialog>` (`dialog`): A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns
+<a id="guide-components-26"></a>
+### `components §26` `<dialog>` (`dialog`): A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns
 
 A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns. A container with nested children: `<dialog id="Name" modal bind:open={$x} aria-label="Quit?">…</dialog>`.
 
@@ -520,8 +543,8 @@ Its own props, beside every element's:
 | `modal` | `bool` | Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`). |
 | `-og-sheet-detents:` | `<n>% \| <n>px …` | `-og-sheet-detents: 40% 90%` on a modal `<dialog>`: a bottom sheet docked to the bottom at full width, dragged onto its detents (heights, `%` of the viewport's) and swiped down to close (writing `open` back). It opens at the first. No CSS standard has detents. |
 
-<a id="guide-components-26"></a>
-### `components §26` `<details>` (`details`): A disclosure (two-way `open`): its `<summary>` row, its content shown only while open
+<a id="guide-components-27"></a>
+### `components §27` `<details>` (`details`): A disclosure (two-way `open`): its `<summary>` row, its content shown only while open
 
 A disclosure (two-way `open`): its `<summary>` row, its content shown only while open. A container with nested children: `<details id="Name" bind:open={$x}><summary>More</summary>…</details>`.
 
@@ -533,8 +556,8 @@ Its own props, beside every element's:
 | `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
 | `summary` | `text` | Its `<summary>`'s text; empty is `Details`. Written as the first child, `<summary>…</summary>`. |
 
-<a id="guide-components-27"></a>
-### `components §27` `<div>`, `<nav>`, `<ul>`, `<ol>` (`box`): A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker
+<a id="guide-components-28"></a>
+### `components §28` `<div>`, `<nav>`, `<ul>`, `<ol>` (`box`): A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker
 
 A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker. A container with nested children: `<div id="Name">…</div>` or `<nav aria-label="Site">…</nav> (section, header, footer, main, aside, article)` or `<ul><li>…</li></ul>` or `<ol start="1"><li>…</li></ol>`.
 
@@ -547,8 +570,8 @@ Its own props, beside every element's:
 | `-og-marker-type:` | `none \| disc \| circle \| square \| decimal \| lower-alpha \| upper-alpha \| lower-roman \| upper-roman` | An `<li>`'s marker, from the inherited `list-style-type` (`<ul>`: disc, nested circle then square; `<ol>`: decimal). |
 | `-og-marker-position:` | `outside \| inside` | Where an `<li>`'s marker sits, from the inherited `list-style-position`: `outside` hangs it before the item's start edge (the default), `inside` lays the item out as a row after it. |
 
-<a id="guide-components-28"></a>
-### `components §28` `<meter>` (`meter`): A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in
+<a id="guide-components-29"></a>
+### `components §29` `<meter>` (`meter`): A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in
 
 A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in. A leaf; text-bearing controls accept text content: `<meter id="Name" value={$hp} min="0" max="100" low="25" high="75" optimum="90" />`.
 
@@ -563,8 +586,8 @@ Its own props, beside every element's:
 | `high` | `number` | The bottom of the high region (HTML `high`; default `max`). |
 | `optimum` | `number` | The best value (HTML `optimum`; default the middle): its region is `optimum`, the next `suboptimum`, the far one `poor`. |
 
-<a id="guide-components-29"></a>
-### `components §29` `<anchor>` (`anchor`): A box held over a world point (`<anchor entity={u.entity} offset="0 2 0">`): placed every tick from the camera and the entity's pose, its children laid out as a column; `occlusion`, `declutter`, `clamp="edge"`, `priority`, `max-distance`, `scale-at`
+<a id="guide-components-30"></a>
+### `components §30` `<anchor>` (`anchor`): A box held over a world point (`<anchor entity={u.entity} offset="0 2 0">`): placed every tick from the camera and the entity's pose, its children laid out as a column; `occlusion`, `declutter`, `clamp="edge"`, `priority`, `max-distance`, `scale-at`
 
 A box held over a world point (`<anchor entity={u.entity} offset="0 2 0">`): placed every tick from the camera and the entity's pose, its children laid out as a column; `occlusion`, `declutter`, `clamp="edge"`, `priority`, `max-distance`, `scale-at`. A container with nested children: `<anchor entity={u.entity} offset="0 2.1 0" occlusion="fade" declutter="stack" clamp="edge">…</anchor>`.
 
@@ -585,8 +608,8 @@ Its own props, beside every element's:
 | `max-distance` | `number` | `max-distance`: hidden past this many world units, fading over its last tenth. |
 | `world-scale-at` | `number` | `scale-at="10"`: scaled 1 at this distance, larger nearer and smaller farther (0.5 to 2). |
 
-<a id="guide-components-30"></a>
-### `components §30` `<ground>` (`ground`): A box laid flat in the world (`<ground entity={u.entity} size="3 3">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation="0 45 0"` turns it. Inert
+<a id="guide-components-31"></a>
+### `components §31` `<ground>` (`ground`): A box laid flat in the world (`<ground entity={u.entity} size="3 3">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation="0 45 0"` turns it. Inert
 
 A box laid flat in the world (`<ground entity={u.entity} size="3 3">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation="0 45 0"` turns it. Inert. A container with nested children: `<ground entity={u.entity} size="3 3"><svg viewBox="0 0 40 40">…</svg></ground>`.
 
@@ -599,8 +622,8 @@ Its own props, beside every element's:
 | `entity` | `number` | The entity it follows, by its bits (`entity={u.entity}`): its world pose as the host hands it in. |
 | `world-at` | `text` | `at="x y z"`: a world point it follows, without an entity. |
 
-<a id="guide-components-31"></a>
-### `components §31` `<joystick>` (`joystick`): A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px)
+<a id="guide-components-32"></a>
+### `components §32` `<joystick>` (`joystick`): A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px)
 
 A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px). A leaf; text-bearing controls accept text content: `<joystick id="Stick" action="move" data-dead-zone="0.2" customize />`.
 
@@ -612,8 +635,8 @@ Its own props, beside every element's:
 | `action` | `name` | The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it. |
 | `data-dead-zone` | `number` | A stick's dead zone, a ratio of its radius (`data-dead-zone="0.2"`; default 0.15): past it the value rises from 0. |
 
-<a id="guide-components-32"></a>
-### `components §32` `<dpad>` (`dpad`): A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px)
+<a id="guide-components-33"></a>
+### `components §33` `<dpad>` (`dpad`): A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px)
 
 A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px). A leaf; text-bearing controls accept text content: `<dpad id="Pad" action="move" />`.
 
@@ -624,8 +647,8 @@ Its own props, beside every element's:
 | `disabled` | `bool` | Takes no input. |
 | `action` | `name` | The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it. |
 
-<a id="guide-components-33"></a>
-### `components §33` `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene
+<a id="guide-components-34"></a>
+### `components §34` `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene
 
 A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one, its pointer events carrying the ray into its scene. A leaf; text-bearing controls accept text content: `<viewport id="Preview" src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w} onpointermove={orbit} />`.
 
@@ -640,8 +663,8 @@ Its own props, beside every element's:
 | `client-width` | `number` | Svelte's `bind:clientWidth`: its laid-out width, CSS px, written when it changes (size its render target by it times the pixel ratio). Two-way only with an explicit bind: attribute. |
 | `client-height` | `number` | Svelte's `bind:clientHeight`: its laid-out height, CSS px. Two-way only with an explicit bind: attribute. |
 
-<a id="guide-components-34"></a>
-### `components §34` `<svg>` (`svg`): Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size)
+<a id="guide-components-35"></a>
+### `components §35` `<svg>` (`svg`): Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size)
 
 Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size). A container with nested children: `<svg id="Name" viewBox="0 0 40 40">…</svg>`.
 
@@ -679,8 +702,8 @@ Its own props, beside every element's:
 | `y2` | `text` | SVG `y2`. |
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
-<a id="guide-components-35"></a>
-### `components §35` `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
+<a id="guide-components-36"></a>
+### `components §36` `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
 
 SVG's `<g>`: a transform and presentation attributes its shapes inherit. A container with nested children: `<g transform="rotate(-90 20 20)" stroke="var(--accent)">…</g>`.
 
@@ -719,8 +742,8 @@ Its own props, beside every element's:
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 
-<a id="guide-components-36"></a>
-### `components §36` `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
+<a id="guide-components-37"></a>
+### `components §37` `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
 
 An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable. A leaf; text-bearing controls accept text content: `<path d={$line} fill="none" stroke="currentColor" />` or `<circle cx="20" cy="20" r="18" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset={1 - $ready} />` or `<rect x={b.x} y={40 - b.h} width="8" height={b.h} rx="2" />` or `<polygon points="0,0 10,0 5,8" /> (ellipse, line, polyline)`.
 
@@ -762,8 +785,8 @@ Its own props, beside every element's:
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
-<a id="guide-components-37"></a>
-### `components §37` `<svgText>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`
+<a id="guide-components-38"></a>
+### `components §38` `<svgText>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`
 
 SVG's `<text x y text-anchor dominant-baseline font-size>`: one line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`. A leaf; text-bearing controls accept text content: `<svgText id="Name">…</svgText>`.
 
@@ -801,8 +824,8 @@ Its own props, beside every element's:
 | `x2` | `text` | SVG `x2`. |
 | `y2` | `text` | SVG `y2`. |
 
-<a id="guide-components-38"></a>
-### `components §38` `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
+<a id="guide-components-39"></a>
+### `components §39` `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
 
 SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height. A container with nested children: `<use href="#Coin" x={i * 12} y="0" width="10" height="10" />`.
 
@@ -842,8 +865,8 @@ Its own props, beside every element's:
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
 
-<a id="guide-components-39"></a>
-### `components §39` `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
+<a id="guide-components-40"></a>
+### `components §40` `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
 
 An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent. A container with nested children: `<linearGradient id="Up" x2="0" y2="1"><stop offset="0" stop-color="#fff" />…</linearGradient> (radialGradient, defs)` or `<symbol id="Coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></symbol> (clipPath, mask, pattern, title)`.
 

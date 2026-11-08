@@ -204,6 +204,11 @@ pub const CORE_KINDS: &[KindSpec] = &[
         doc: "A switch with a label (two-way `checked`).",
     },
     KindSpec {
+        name: "radio",
+        container: false,
+        doc: "One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes.",
+    },
+    KindSpec {
         name: "tabs",
         container: false,
         doc: "A tab list (two-way `selected`), using the core tabs widget.",
@@ -831,13 +836,13 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "text",
         Ty::Text,
-        ["label", "button", "badge", "toggle", "tabs", "kbd"],
+        ["label", "button", "badge", "toggle", "radio", "tabs", "kbd"],
         "What it says."
     ),
     p!(
         "key",
         Ty::Name,
-        ["label", "button", "badge", "toggle", "tabs", "kbd"],
+        ["label", "button", "badge", "toggle", "radio", "tabs", "kbd"],
         "A string table key (og.i18n) its text comes from; `text` is the fallback."
     ),
     p!("step", Ty::Word(STEPS), ["label"], "The type step."),
@@ -921,7 +926,8 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "disabled",
         Ty::Bool,
         [
-            "button", "slider", "toggle", "tabs", "field", "select", "details", "joystick", "dpad"
+            "button", "slider", "toggle", "radio", "tabs", "field", "select", "details",
+            "joystick", "dpad"
         ],
         "Takes no input."
     ),
@@ -987,22 +993,58 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step)."
     ),
     p!(
-        "checked",
+        "switch",
         Ty::Bool,
         ["toggle"],
+        "Draws the checkbox as a switch (HTML `switch`); without it, a box with a check."
+    ),
+    p!(
+        "indeterminate",
+        Ty::Bool,
+        ["toggle"],
+        "Neither on nor off: a dash in its box (HTML `indeterminate`); a press turns it on."
+    ),
+    p!(
+        "group",
+        Ty::Text,
+        ["radio"],
+        two_way,
+        "The store its group's choice is in (`bind:group`): it is checked while that holds its value, and a press writes its value."
+    ),
+    p!(
+        "choice",
+        Ty::Text,
+        ["radio"],
+        "Its value (HTML `value`), what its group holds when it is checked."
+    ),
+    p!(
+        "stepper",
+        Ty::Word(&["none", "buttons"]),
+        ["field"],
+        "A number input drawn as minus, its value and plus (`-og-stepper: buttons`)."
+    ),
+    p!(
+        "dataHold",
+        Ty::Num,
+        "How long a press is held before `onhold` fires, in ms (`data-hold`; default 500)."
+    ),
+    p!(
+        "checked",
+        Ty::Bool,
+        ["toggle", "radio"],
         two_way,
         "Whether it is on (written back)."
     ),
     p!(
         "description",
         Ty::Text,
-        ["toggle"],
+        ["toggle", "radio"],
         "A line under its caption: a `<small>` in its `<label>`."
     ),
     p!(
         "side",
         Ty::Word(&["start", "end"]),
-        ["toggle"],
+        ["toggle", "radio"],
         "Where its caption sits, from the source order in its `<label>`: start before the switch (caption first), end after it."
     ),
     p!(
@@ -1226,7 +1268,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "invalid",
         Ty::Bool,
-        ["field", "select"],
+        ["field", "select", "toggle"],
         "Its value is wrong (`aria-invalid`): the danger frame."
     ),
     p!(

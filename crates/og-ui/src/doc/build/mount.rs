@@ -90,6 +90,9 @@ pub struct DocHost {
     /// `data-og-instant` elements whose first entrance has landed: a
     /// later one plays (presentation, outside `world_hash`).
     pub(crate) entered: BTreeSet<u64>,
+    /// What happened to the element being built beyond its response
+    /// (`ontoggle`, `onclose`), taken by its triggers.
+    pub(crate) happened: Vec<crate::doc::When>,
     /// The popovers documents name, by their key in their mount.
     pub(crate) popovers: BTreeMap<u64, super::popover::PopoverLink>,
     /// The `$ui` store's value as last published.

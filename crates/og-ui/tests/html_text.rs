@@ -54,7 +54,7 @@ pub(crate) struct Doc {
     pub(crate) mounted: bool,
     vm: Value,
     /// An immediate build's events, collected tick by tick.
-    events: Vec<DocEvent>,
+    pub(crate) events: Vec<DocEvent>,
     /// The viewport each step lays out in (800 × 900 unless a test resizes it).
     pub(crate) viewport: Viewport,
 }
@@ -750,7 +750,7 @@ a { padding: 0 0 0 40px; }
 fn checkboxes_and_labels_join_by_for() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Page">
-  <input type="checkbox" id="Mute" bind:checked={$mute}>
+  <input type="checkbox" switch id="Mute" bind:checked={$mute}>
   <label for="Mute" i18n="m">Mute music</label>
   <label for="Nick" i18n="n">Nickname</label>
   <input type="text" id="Nick" bind:value={$nick}>

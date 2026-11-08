@@ -17,6 +17,8 @@ pub(crate) struct PopoverLink {
     pub interest: bool,
     /// Its layer's key, as last built (hovering it keeps a hint shown).
     pub layer: u64,
+    /// It showed when last built (`ontoggle` fires as that changes).
+    pub shown: bool,
     /// `auto`, `manual` or `hint`, as last built.
     pub mode: Mode,
 }
@@ -167,6 +169,9 @@ impl Ui {
         } else if mode == Mode::Hint {
             open = false;
         }
+        if open != link.shown {
+            self.docs.happened.push(When::Toggle);
+        }
         // The element's place in the tree, as a modal dialog's, out of the
         // flow: HTML's popover is in the top layer, never in the page.
         self.leaf(
@@ -223,9 +228,11 @@ impl Ui {
             build_children(self, b, None);
             self.close();
         }
+        let l = self.docs.popovers.entry(pk).or_default();
         if layer != 0 {
-            self.docs.popovers.entry(pk).or_default().layer = layer;
+            l.layer = layer;
         }
+        l.shown = open && layer != 0;
         let resp = crate::ui::Response::default();
         self.fire(b, n, key, &path, resp);
         Some(path)

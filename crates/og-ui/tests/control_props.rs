@@ -166,7 +166,7 @@ fn a_checkbox_follows_its_label_order_size_and_description() {
   <label id="After"><input type="checkbox" switch bind:checked={$a}> After</label>
   <label id="Before">Before <input type="checkbox" switch><small>Plays in menus</small></label>
   <label id="Flip" class="rev">Flipped <input type="checkbox" switch></label>
-  <input type="checkbox" id="Late"><label for="Late">Late</label>
+  <input type="checkbox" switch id="Late"><label for="Late">Late</label>
   <label id="Big" class="big">Big <input type="checkbox" switch disabled></label>
   <label id="Small">Small <input type="checkbox" switch></label>
 </div>
@@ -776,4 +776,105 @@ fn titles_and_popovers_show_against_their_controls() {
             "the hint leaves with the interest"
         );
     });
+}
+
+/// HTML's core controls beyond the switch: a plain checkbox is a box with a
+/// check (`indeterminate` a dash), radios share a `bind:group`, a number
+/// input with `-og-stepper: buttons` steps, `<menu>` holds menu items, and
+/// `onhold`, `oncontextmenu`, `ontoggle` and `onclose` fire.
+///
+/// Ways it could fail: a plain checkbox still drawn as a switch, a radio
+/// that writes when unchecked or fails to uncheck its sibling, a stepper
+/// ignoring max, a hold firing at once or on every tick, a context menu on
+/// a primary press, or toggle and close never firing.
+#[test]
+fn core_controls_choose_step_hold_and_report() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <label><input type="checkbox" id="Box" bind:checked={$box}> Box</label>
+  <label><input type="checkbox" id="Mixed" indeterminate> Some</label>
+  <label><input type="checkbox" switch id="Sw"> Switch</label>
+  <label><input type="radio" id="Easy" name="lv" value="easy" bind:group={$level}> Easy</label>
+  <label><input type="radio" id="Hard" name="lv" value="hard" bind:group={$level}> Hard</label>
+  <input type="number" id="Qty" class="stepper" max="3" bind:value={$qty}>
+  <menu id="Menu"><button id="Copy">Copy</button></menu>
+  <button id="Buy" onhold={buy} data-hold="300" oncontextmenu={more}>Buy</button>
+  <details id="More" summary="More" ontoggle={toggled}><p>x</p></details>
+</div>
+<style>
+.stepper { -og-stepper: buttons; }
+#Page { gap: 8px; padding: 8px; }
+</style>"#;
+    let stores = [
+        ("box", json!(false)),
+        ("level", json!("easy")),
+        ("qty", json!("2")),
+    ];
+    let d = &mut Doc::new(text, &stores, true);
+    for _ in 0..5 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(d.a11y("Box").role, "checkbox", "a plain checkbox is a box");
+    assert_eq!(d.a11y("Sw").role, "switch");
+    assert_eq!(d.a11y("Mixed").value, "mixed", "indeterminate");
+    d.click("Box");
+    assert_eq!(d.read("box"), json!(true));
+    // Radios: the bound group checks one; a press on the other moves it.
+    assert_eq!(d.a11y("Easy").role, "radiogroup");
+    d.click("Hard");
+    assert_eq!(d.read("level"), json!("hard"));
+    d.click("Hard");
+    assert_eq!(d.read("level"), json!("hard"), "a checked radio stays");
+    d.click("Easy");
+    assert_eq!(d.read("level"), json!("easy"));
+    // The stepper's plus steps to max and no further.
+    let plus =
+        d.ui.probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/Qty/Frame/Inc"))
+            .expect("the stepper's plus");
+    let at = Vec2::new(plus.x + plus.width / 2.0, plus.y + plus.height / 2.0);
+    d.click_at(at);
+    d.click_at(at);
+    assert_eq!(d.read("qty"), json!("3"), "steps to max and stops");
+    assert_eq!(d.a11y("Copy").role, "menuitem");
+    // Hold: fires once, after 300 ms, not at once.
+    let buy = d.get("Buy");
+    let at = Vec2::new(buy.x + buy.width / 2.0, buy.y + buy.height / 2.0);
+    let mut holds = Vec::new();
+    for tick in 0..40 {
+        d.step(InputFrame {
+            pointer: at,
+            pointer_inside: true,
+            down: true,
+            pressed: tick == 0,
+            ..InputFrame::default()
+        });
+        if d.events.iter().any(|e| e.name == "buy") {
+            holds.push(tick);
+        }
+        d.events.clear();
+    }
+    d.step(InputFrame {
+        pointer: at,
+        pointer_inside: true,
+        released: true,
+        ..InputFrame::default()
+    });
+    assert_eq!(holds.len(), 1, "one hold per press: {holds:?}");
+    assert!(holds[0] >= 15, "not before 300 ms: {holds:?}");
+    // A secondary press asks for the context menu; a primary one does not.
+    let events = d.click("Buy");
+    assert!(!events.iter().any(|e| e.name == "more"));
+    d.step(InputFrame {
+        pointer: at,
+        pointer_inside: true,
+        secondary_pressed: true,
+        ..InputFrame::default()
+    });
+    assert!(d.events.iter().any(|e| e.name == "more"), "{:?}", d.events);
+    // ontoggle on a disclosure.
+    d.events.clear();
+    let events = d.click("More");
+    assert!(events.iter().any(|e| e.name == "toggled"), "{events:?}");
 }

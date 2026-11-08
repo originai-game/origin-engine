@@ -169,6 +169,22 @@ a chip `<button aria-pressed={…}>`, a labelled rule
 `<div role="separator">Or</div>`. They are applied with the element's
 other fields, so a bound one updates the tree when its element rebuilds.
 
+#### Checkboxes, radios, steppers, menus and press events
+
+`<input type="checkbox">` is HTML's box with a check, `indeterminate` a
+dash in it (a press turns it on); with `switch` it is a switch. `<input
+type="radio" value="easy" bind:group={$level}>` is one choice of a group:
+checked while the bound store holds its value, which a press writes;
+radios binding one store are one group (`name` is accepted and adds
+nothing). Each takes its caption from its `<label>` as a checkbox does.
+`<input type="number">` with `-og-stepper: buttons` (a pack's `.stepper`
+rule, say) is minus, its value and plus, bounded by `min`, `max` and
+`step`. `<menu>` is a box with role menu whose buttons are menu items.
+Beyond `onclick`, an element fires `onhold` once per press held for its
+`data-hold` ms (default 500), `oncontextmenu` on a secondary press or a
+long press, `ontoggle` when a `<details>` or popover opens or closes, and
+`onclose` when a `<dialog>` closes.
+
 #### Tooltips and popovers
 
 `title="…"` on any element is its tooltip, shown after the pointer rests

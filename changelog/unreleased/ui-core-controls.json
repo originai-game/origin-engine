@@ -1,0 +1,15 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "HTML core controls: a plain <input type=\"checkbox\"> is a check box (indeterminate a dash; switch keeps the switch), <input type=\"radio\" value bind:group> radios, <input type=\"number\"> with -og-stepper: buttons a stepper, <menu> of menu items; onhold (data-hold ms), oncontextmenu (secondary press or long press), ontoggle and onclose fire."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "ui documents",
+      "change": "<input type=\"checkbox\"> without switch draws HTML's check box, not a switch.",
+      "fix": "Add switch to a checkbox that should stay a switch: <input type=\"checkbox\" switch>."
+    }
+  ]
+}

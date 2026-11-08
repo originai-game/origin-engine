@@ -456,6 +456,10 @@ impl Ui {
                 _ => resp = self.close(),
             }
             if let Some(open) = opened {
+                self.docs.happened.push(When::Toggle);
+                if kind == "dialog" && !open {
+                    self.docs.happened.push(When::Close);
+                }
                 if !bound(n, "open") {
                     self.remember(
                         &format!("{}~doc-open", id.as_str()),
@@ -708,32 +712,81 @@ impl Ui {
             }
             "toggle" => {
                 let on = r.flag("checked");
-                let out = self.toggle_switch(
-                    id.as_str(),
-                    on,
-                    &crate::widgets::ToggleSwitchDesc {
-                        label: text_of(&r, b),
-                        description: r.str("description").unwrap_or_default().to_string(),
-                        disabled: r.flag("disabled"),
-                        // Source order, swapped by the label's row-reverse.
-                        side: if (r.str("side") == Some("end"))
-                            != (styled.str("labelDirection") == Some("rowReverse"))
-                        {
-                            crate::widgets::LabelSide::End
-                        } else {
-                            crate::widgets::LabelSide::Start
+                // Source order, swapped by the label's row-reverse.
+                let side = if (r.str("side") == Some("end"))
+                    != (styled.str("labelDirection") == Some("rowReverse"))
+                {
+                    crate::widgets::LabelSide::End
+                } else {
+                    crate::widgets::LabelSide::Start
+                };
+                let out = if r.flag("switch") {
+                    self.toggle_switch(
+                        id.as_str(),
+                        on,
+                        &crate::widgets::ToggleSwitchDesc {
+                            label: text_of(&r, b),
+                            description: r.str("description").unwrap_or_default().to_string(),
+                            disabled: r.flag("disabled"),
+                            side,
+                            size: styled.control_size(),
+                            width: r.size("width"),
+                            ..crate::widgets::ToggleSwitchDesc::default()
                         },
-                        size: styled.control_size(),
-                        width: r.size("width"),
-                        ..crate::widgets::ToggleSwitchDesc::default()
-                    },
-                );
+                    )
+                } else {
+                    // HTML's checkbox: a box with a check (a dash when
+                    // indeterminate).
+                    self.check_field(
+                        id.as_str(),
+                        on,
+                        &crate::widgets::CheckFieldDesc {
+                            label: text_of(&r, b),
+                            description: r.str("description").unwrap_or_default().to_string(),
+                            mixed: r.flag("indeterminate"),
+                            disabled: r.flag("disabled"),
+                            invalid: r.flag("invalid"),
+                            side,
+                            width: r.size("width"),
+                        },
+                    )
+                };
                 resp = crate::Response {
                     changed: out.changed,
                     ..out.response
                 };
                 if out.changed {
                     self.write_back(b, n, "checked", json!(out.on));
+                }
+            }
+            "radio" => {
+                let choice = r.str("choice").unwrap_or("on").to_string();
+                let on = if r.has("group") {
+                    r.str("group") == Some(choice.as_str())
+                        || r.num("group").is_some_and(|g| g.to_string() == choice)
+                } else {
+                    r.flag("checked")
+                };
+                let out = self.radio_group(
+                    id.as_str(),
+                    &crate::widgets::RadioGroupDesc {
+                        options: vec![crate::widgets::RadioOption {
+                            label: text_of(&r, b),
+                            description: r.str("description").unwrap_or_default().to_string(),
+                            ..Default::default()
+                        }],
+                        selected: if on { 0 } else { -1 },
+                        disabled: r.flag("disabled"),
+                        width: r.size("width"),
+                        ..Default::default()
+                    },
+                );
+                resp = crate::Response {
+                    changed: out.changed,
+                    ..crate::Response::default()
+                };
+                if out.changed && out.selected == 0 {
+                    self.write_back(b, n, "group", json!(choice));
                 }
             }
             "tabs" => {
@@ -802,7 +855,29 @@ impl Ui {
                     max: r.num("max").map(f64::from),
                     step: r.num("stepBy").map(f64::from),
                 };
-                resp = if r.flag("multiline") {
+                resp = if styled.str("stepper") == Some("buttons")
+                    && r.str("type") == Some("number")
+                {
+                    let out = self.number_stepper(
+                        id.as_str(),
+                        s.trim().parse().unwrap_or(0.0),
+                        &crate::widgets::NumberStepperDesc {
+                            min: r.num("min"),
+                            max: r.num("max"),
+                            step: r.num("stepBy").filter(|s| *s > 0.0).unwrap_or(1.0),
+                            disabled: r.flag("disabled") || r.flag("readonly"),
+                            width: r.size("width"),
+                            ..Default::default()
+                        },
+                    );
+                    if out.changed {
+                        s = out.value.to_string();
+                    }
+                    crate::Response {
+                        changed: out.changed,
+                        ..crate::Response::default()
+                    }
+                } else if r.flag("multiline") {
                     self.text_area(
                         id.as_str(),
                         &mut s,
@@ -1156,6 +1231,36 @@ impl Ui {
         b.event("", "changed", prop, v);
     }
 
+    /// Whether a press held on `key` reached its `data-hold` ms this tick
+    /// (once per press). The count is widget memory: in snapshots, and the
+    /// element builds each tick while it moves.
+    fn held(&mut self, key: u64, n: &DocNode) -> bool {
+        let ms = n
+            .props
+            .iter()
+            .rev()
+            .find(|p| p.name() == "dataHold")
+            .and_then(|p| match p.value {
+                PropValue::Lit(Lit::Num(ms)) => Some(ms),
+                _ => None,
+            })
+            .unwrap_or(500.0);
+        let need = ((ms * self.ticks_per_second as f32 / 1000.0).ceil() as u64).max(1);
+        let memory = crate::id::child_key(key, "~hold");
+        let pressing = self.input.down && self.state.active == key;
+        let ticks = if pressing { self.anim(memory).h + 1 } else { 0 };
+        if pressing || self.has_anim(memory) {
+            self.set_anim(
+                memory,
+                crate::ui::Anim {
+                    h: ticks,
+                    ..Default::default()
+                },
+            );
+        }
+        ticks == need
+    }
+
     /// Fires a node's triggers for what happened to it this tick.
     pub(super) fn fire(
         &mut self,
@@ -1186,6 +1291,9 @@ impl Ui {
             }
         }
         let appeared = !self.docs.seen.contains(&key);
+        let happened = std::mem::take(&mut self.docs.happened);
+        let held = n.triggers.iter().any(|t| t.when == When::Hold) && self.held(key, n);
+        let context = long || (self.input.secondary_pressed && self.state.hot == key);
         for (k, t) in n.triggers.iter().enumerate() {
             let go = match &t.when {
                 When::Click => resp.clicked,
@@ -1194,6 +1302,9 @@ impl Ui {
                 When::Tap => tap,
                 When::DoubleTap => double,
                 When::LongPress => long,
+                When::Hold => held,
+                When::ContextMenu => context,
+                When::Toggle | When::Close => happened.contains(&t.when),
                 When::Action(a) => self.docs.accepts && self.action_fired(a),
                 When::Change(e) => {
                     let v = b.eval(e);

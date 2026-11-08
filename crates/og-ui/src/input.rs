@@ -170,6 +170,10 @@ pub trait InputSource {
     fn primary_pressed(&self) -> bool;
     /// The primary button went up this tick.
     fn primary_released(&self) -> bool;
+    /// The secondary button (right) went down this tick.
+    fn secondary_pressed(&self) -> bool {
+        false
+    }
     /// A key (`KeyboardEvent.code`) went down this tick.
     fn key_pressed(&self, code: &str) -> bool;
     /// A key is held (UI actions' holds and releases).
@@ -317,6 +321,10 @@ impl InputSource for og_input::Input {
         self.button_released(PointerButton::Left)
     }
 
+    fn secondary_pressed(&self) -> bool {
+        self.button_pressed(PointerButton::Right)
+    }
+
     fn key_pressed(&self, code: &str) -> bool {
         self.pressed(code)
     }
@@ -372,6 +380,8 @@ pub struct InputFrame {
     pub down: bool,
     pub pressed: bool,
     pub released: bool,
+    /// The secondary button (right) went down this tick: a context menu.
+    pub secondary_pressed: bool,
     /// Editing keys that went down this tick.
     pub keys: Vec<UiKey>,
     /// Text typed this tick: committed `og.TextInput` text when any arrived
@@ -453,6 +463,7 @@ impl InputFrame {
             down: source.primary_down(),
             pressed: source.primary_pressed(),
             released: source.primary_released(),
+            secondary_pressed: source.secondary_pressed(),
             keys: UiKey::ALL
                 .into_iter()
                 .filter(|k| source.key_pressed(k.code()))
