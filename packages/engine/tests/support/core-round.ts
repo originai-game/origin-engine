@@ -195,6 +195,10 @@ if (which === "rng") {
     v.level = Math.min(time.tick, 9);
     v.spent += 0.5;
     og.assert.always(v.spent <= 4, "spends at most four", { spent: v.spent });
+    // The game's own statements of the default invariant's range and of the command invariant:
+    // each must fail at the tick its twin does.
+    og.assert.always(v.level <= 8, "level at most 8");
+    og.assert.always(v.level <= 6, "level at most the cap");
     og.assert.sometimes(v.level >= 3, "fills to three");
     if (time.tick === 5) og.assert.reachable("the fifth tick");
     if (time.tick === 7) og.assert.unreachable("the seventh tick");

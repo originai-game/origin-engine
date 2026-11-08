@@ -1119,6 +1119,8 @@ impl Probe {
         if counting {
             self.count_events(world, true);
         }
+        // The tick these systems run as (og.Time.tick inside them).
+        let ran = world.time().tick;
         world.step()?;
         if counting {
             self.count_events(world, false);
@@ -1133,7 +1135,7 @@ impl Probe {
             self.shift_schedule(next, now);
         }
         #[cfg(not(feature = "publish"))]
-        self.check_invariants(world);
+        self.check_invariants(world, ran);
         Ok(())
     }
 

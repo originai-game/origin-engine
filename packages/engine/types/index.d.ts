@@ -42589,7 +42589,9 @@ export interface AssertViolation {
   readonly name: string;
   /** Its place. */
   readonly location: string;
-  /** The first tick it failed. */
+  /**
+   * The first tick it failed: the tick whose systems produced the failing state (og.Time.tick inside them), the same number for a game call, a default invariant and a playtest invariant checked after that tick.
+   */
   readonly tick: number;
   /** The entity a default invariant found it on (its probe id). */
   readonly entity: string | null;
@@ -42653,7 +42655,7 @@ export interface AssertEvent {
    * `fired` (a sometimes held, a reachable ran, an each's bucket held) or `violated` (an always failed, an unreachable ran), each once per site or bucket in a report.
    */
   readonly outcome: string;
-  /** The tick it happened at. */
+  /** The tick it happened at, numbered as AssertViolation.tick. */
   readonly tick: number;
   /** The site's kind. */
   readonly kind: AssertKind;

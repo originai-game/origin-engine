@@ -112,7 +112,8 @@ fn nan_range_and_dangling_reference_are_violations_and_take_starts_clean() {
 
     let r = report(e, true);
     let range = named(&r, "in range Health.hp");
-    assert_eq!(range["tick"], 4, "{range}");
+    // The tick that ran (3, the sometimes calls' tick), not og.Time's next one.
+    assert_eq!(range["tick"], 3, "{range}");
     assert_eq!(range["field"], "hp");
     assert_eq!(range["value"], -5.0);
     assert!(
@@ -185,7 +186,7 @@ fn the_checks_read_only_written_columns_and_everything_after_a_restore() {
         .unwrap()
         .to_owned();
     let bad = report(e, true);
-    assert_eq!(named(&bad, "in range Health.hp")["tick"], 5, "{bad}");
+    assert_eq!(named(&bad, "in range Health.hp")["tick"], 4, "{bad}");
 
     value(og_world_set(
         e,

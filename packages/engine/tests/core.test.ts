@@ -20,7 +20,7 @@
 //   an AudioContext's latency (and its prime) does not reach it, or a later
 //   report does not move it → "og.audio.outputLatency …"
 // - og.assert's report, the default invariants or a command-channel
-//   invariant differ between the hosts, the per-tick stream loses or
+//   invariant differ between the hosts, number one state by different ticks, the per-tick stream loses or
 //   reorders an event, or after a take and a restore the game's sites are
 //   not heard of again when a tick's number comes again → "og.assert, the
 //   default invariants and the per-tick stream …"
@@ -202,25 +202,34 @@ test.skipIf(STALE_WASM)("og.assert, the default invariants and the per-tick stre
   const node = run<Asserted>("node", "assert");
   const web = run<Asserted>("web", "assert");
   const e = (tick: number, outcome: string, kind: string, name: string, extra: { key?: string; field?: string; value?: number } = {}) => ({ tick, outcome, kind, name, key: extra.key ?? null, field: extra.field ?? null, value: extra.value ?? null });
-  // A game call carries the tick its system ran in; an invariant checked after the tick, the tick after it.
+  // Every source numbers a state by the tick whose systems produced it (og.Time.tick in them).
   expect(node.stream).toEqual([
     e(1, "fired", "each", "each third holds", { key: "1" }),
     e(2, "fired", "each", "each third holds", { key: "2" }),
     e(3, "fired", "sometimes", "fills to three"),
     e(3, "fired", "each", "each third holds", { key: "0" }),
     e(5, "fired", "reachable", "the fifth tick"),
+    e(7, "violated", "always", "level at most the cap"),
     e(7, "violated", "unreachable", "the seventh tick"),
-    e(8, "violated", "always", "invariant state:level<=$cap", { value: 7 }),
+    e(7, "violated", "always", "invariant state:level<=$cap", { value: 7 }),
     e(8, "violated", "always", "spends at most four"),
-    e(10, "violated", "always", "in range CrGauge.level", { field: "level", value: 9 }),
+    e(9, "violated", "always", "level at most 8"),
+    e(9, "violated", "always", "in range CrGauge.level", { field: "level", value: 9 }),
   ]);
+  // The same state, three reporters: the game's og.assert, the default range invariant and the
+  // command channel's invariant fail at one tick.
+  const tickOf = (name: string) => (node.stream as Array<{ name: string; tick: number }>).find((x) => x.name === name)?.tick;
+  expect(tickOf("in range CrGauge.level")).toBe(tickOf("level at most 8"));
+  expect(tickOf("invariant state:level<=$cap")).toBe(tickOf("level at most the cap"));
   // Tick 11 again after the report was taken: every site it reaches is new to the new report.
   expect(node.again).toEqual([
     e(11, "violated", "always", "spends at most four"),
+    e(11, "violated", "always", "level at most 8"),
+    e(11, "violated", "always", "level at most the cap"),
     e(11, "fired", "sometimes", "fills to three"),
     e(11, "fired", "each", "each third holds", { key: "0" }),
-    e(12, "violated", "always", "in range CrGauge.level", { field: "level", value: 9 }),
-    e(12, "violated", "always", "invariant state:level<=$cap", { value: 9 }),
+    e(11, "violated", "always", "in range CrGauge.level", { field: "level", value: 9 }),
+    e(11, "violated", "always", "invariant state:level<=$cap", { value: 9 }),
   ]);
   expect(web).toEqual({ ...node, host: "web" } as Asserted);
 }, 120_000);

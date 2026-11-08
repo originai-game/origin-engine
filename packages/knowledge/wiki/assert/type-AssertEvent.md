@@ -11,7 +11,7 @@ One event of the assertions' stream (probe.assertionEvents): a first firing or a
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `outcome` | `string` | `""` | — | — | — | `fired` (a sometimes held, a reachable ran, an each's bucket held) or `violated` (an always failed, an unreachable ran), each once per site or bucket in a report. |
-| `tick` | `number` | `0` | — | — | — | The tick it happened at. |
+| `tick` | `number` | `0` | — | — | — | The tick it happened at, numbered as AssertViolation.tick. |
 | `kind` | `AssertKind` | `"always"` | — | — | — | The site's kind. |
 | `origin` | `AssertOrigin` | `"game"` | — | — | — | Who declared it. |
 | `name` | `string` | `""` | — | — | — | Its name. |
@@ -28,7 +28,7 @@ One event of the assertions' stream (probe.assertionEvents): a first firing or a
 struct AssertEvent {
   doc "One event of the assertions' stream (probe.assertionEvents): a first firing or a first violation."
   field outcome String "`fired` (a sometimes held, a reachable ran, an each's bucket held) or `violated` (an always failed, an unreachable ran), each once per site or bucket in a report."
-  field tick u32 "The tick it happened at."
+  field tick u32 "The tick it happened at, numbered as AssertViolation.tick."
   field kind AssertKind "The site's kind."
   field origin AssertOrigin "Who declared it."
   field name String "Its name."

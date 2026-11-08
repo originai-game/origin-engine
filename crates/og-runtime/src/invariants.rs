@@ -243,7 +243,9 @@ fn check(
 /// After every tick: every default invariant, on what changed.
 pub(crate) fn after_tick(eng: &Engine, world: &World) {
     let t0 = crate::probe::now_ms();
-    let tick = world.time().tick;
+    // The tick whose systems produced this state, the one og.assert sees as og.Time.tick
+    // (og.Time has moved on to the next tick by now).
+    let tick = og_ecs::last_tick();
     let layouts = eng.state.borrow().layouts.len();
     let mut failures: Vec<(String, String, Seen)> = Vec::new();
     let mut values = 0u64;

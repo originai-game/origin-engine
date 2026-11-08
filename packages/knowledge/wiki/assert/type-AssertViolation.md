@@ -14,7 +14,7 @@ A site's first violation.
 | `origin` | `AssertOrigin` | `"game"` | — | — | — | Who declared it. |
 | `name` | `string` | `""` | — | — | — | Its name. |
 | `location` | `string` | `""` | — | — | — | Its place. |
-| `tick` | `number` | `0` | — | — | — | The first tick it failed. |
+| `tick` | `number` | `0` | — | — | — | The first tick it failed: the tick whose systems produced the failing state (og.Time.tick inside them), the same number for a game call, a default invariant and a playtest invariant checked after that tick. |
 | `entity` | `string \| null` | `null` | — | — | — | The entity a default invariant found it on (its probe id). |
 | `component` | `string \| null` | `null` | — | — | — | The record: a component or a resource. |
 | `field` | `string \| null` | `null` | — | — | — | The field. |
@@ -32,7 +32,7 @@ struct AssertViolation {
   field origin AssertOrigin "Who declared it."
   field name String "Its name."
   field location String "Its place."
-  field tick u32 "The first tick it failed."
+  field tick u32 "The first tick it failed: the tick whose systems produced the failing state (og.Time.tick inside them), the same number for a game call, a default invariant and a playtest invariant checked after that tick."
   field entity Option.String "The entity a default invariant found it on (its probe id)."
   field component Option.String "The record: a component or a resource."
   field field Option.String "The field."

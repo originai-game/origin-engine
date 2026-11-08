@@ -487,10 +487,11 @@ impl crate::Probe {
         Ok(())
     }
 
-    /// Every `invariant:` step, after a tick: a failure is recorded as a
-    /// violation with the tick and the observed value.
+    /// Every `invariant:` step, after tick `ran`: a failure is recorded as a
+    /// violation at `ran` (the tick whose systems produced the state, as
+    /// og.assert and the default invariants number it) with the observed value.
     #[cfg(not(feature = "publish"))]
-    pub(crate) fn check_invariants(&mut self, world: &mut og_ecs::World) {
+    pub(crate) fn check_invariants(&mut self, world: &mut og_ecs::World, ran: u64) {
         if self.invariants.is_empty() {
             return;
         }
@@ -505,7 +506,7 @@ impl crate::Probe {
                     Origin::Playtest,
                     &format!("invariant {}", r.expect),
                     "playtest",
-                    r.tick,
+                    ran,
                     Seen {
                         value: r.observed,
                         expected: r.expected,

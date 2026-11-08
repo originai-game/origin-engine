@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "assert",
+      "summary": "Default invariants and playtest invariants (`invariant:` steps, PlaytestDesc.invariants) report the tick whose systems produced the failing state, og.Time.tick inside them, as og.assert's calls always did; they reported the tick after it. A violation in probe.assertions, the assertion stream, og run and a playtest's failure now names a tick one lower than before."
+    }
+  ]
+}

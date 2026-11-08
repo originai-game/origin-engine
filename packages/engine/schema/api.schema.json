@@ -73290,7 +73290,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The first tick it failed."
+          "description": "The first tick it failed: the tick whose systems produced the failing state (og.Time.tick inside them), the same number for a game call, a default invariant and a playtest invariant checked after that tick."
         },
         "entity": {
           "anyOf": [
@@ -73463,7 +73463,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The tick it happened at."
+          "description": "The tick it happened at, numbered as AssertViolation.tick."
         },
         "kind": {
           "$ref": "#/$defs/AssertKind",
