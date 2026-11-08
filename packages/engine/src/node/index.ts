@@ -70,6 +70,8 @@ export interface NativeExtras {
   og_node_render_snapshot(engine: number): Uint8Array;
   /** Restores a render snapshot another process took: a wire Result of its tick. */
   og_node_render_restore(engine: number, snapshot: Uint8Array): string;
+  /** Waits for every pipeline compile the process started (the full lit variants included), so the display frames after it repeat byte for byte. Development only. */
+  og_node_settle_pipelines(): void;
   /** `og run --trace`: turns the engine's trace on or off. */
   og_node_trace(engine: number, on: boolean): void;
   /** The trace's spans since the last take: `{ now, events }`, Chrome trace events on the engine's clock (src/trace.ts); `last` waits for the GPU's frames in flight. */

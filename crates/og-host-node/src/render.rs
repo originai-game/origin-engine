@@ -5,7 +5,10 @@
 //!   read back without drawing it again; empty without one;
 //! - `og_node_render_snapshot`: the world as a render snapshot (a Buffer),
 //!   which `og_node_render_restore` brings into another process of the same
-//!   game and script (wire JSON: the tick, or the reason).
+//!   game and script (wire JSON: the tick, or the reason);
+//! - `og_node_settle_pipelines`: waits for every pipeline compile started
+//!   so far (og_render::settle_pipelines), for a test that compares
+//!   display frames byte for byte.
 
 // napi registers the exports outside `cfg(test)` only.
 #![cfg_attr(test, allow(dead_code))]
@@ -46,4 +49,12 @@ pub fn og_node_render_restore(engine: u32, snapshot: Buffer) -> String {
         Ok(tick) => serde_json::json!({ "ok": true, "value": tick }).to_string(),
         Err(reason) => serde_json::json!({ "ok": false, "reason": reason }).to_string(),
     }
+}
+
+/// Waits until every pipeline compile the process started has finished
+/// (og_render::settle_pipelines): the display frames after it draw with
+/// the full pipeline variants.
+#[napi(js_name = "og_node_settle_pipelines")]
+pub fn og_node_settle_pipelines() {
+    og_render::settle_pipelines();
 }

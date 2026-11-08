@@ -16,7 +16,11 @@
 //             from --fork-at to --ticks, then another branch of 24 ticks
 //             from the fork's snapshot without the inputs, the fork restored
 //             and the same ticks drawn again; every frame must be the first
-//             pass's byte for byte (`checked`, `mismatches`); with
+//             pass's byte for byte (`checked`, `mismatches`). The ticks are
+//             drawn once before, from the fork's snapshot, and the pipeline
+//             compiles that started settled: a display frame drawn while a
+//             pipeline's full variant compiles may differ in its last bit
+//             (docs/design.md §2.4), which only captures promise; with
 //             --frames <dir>, the first pass's frames as <tick>.rgba there
 //             (tests/web/presentation-fork.ts compares the web's with them);
 //             with --settle, a small capture before each frame, so og.motion's
@@ -181,6 +185,11 @@ else if (mode === "restore") {
   // of the fork's snapshot; each tick's frame must be the first pass's.
   stepTo(forkAt, true);
   const fork = probe.snapshot() as Snap;
+  // The compile window settled: the run's pipelines met and their full
+  // variants compiled before the frames compared are drawn.
+  stepTo(ticks, true);
+  native().og_node_settle_pipelines();
+  probe.restore(fork.id);
   const pass = (): Uint8Array[] => {
     const frames: Uint8Array[] = [];
     while (tick() < ticks) {

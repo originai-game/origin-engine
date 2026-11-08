@@ -97,6 +97,7 @@ mod custom;
 mod debris;
 pub mod debug;
 mod deferred;
+pub use deferred::settle_pipelines;
 mod effect;
 mod effects;
 mod environment;

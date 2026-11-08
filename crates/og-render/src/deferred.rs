@@ -175,12 +175,27 @@ struct Queues {
     background: std::collections::VecDeque<(u64, Job)>,
     held: Vec<(u64, Job)>,
     next: u64,
+    /// Jobs a worker is running.
+    running: usize,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Queues {
+    fn idle(&self) -> bool {
+        self.frame.is_empty()
+            && self.background.is_empty()
+            && self.held.is_empty()
+            && self.running == 0
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 struct Pool {
     queues: Mutex<Queues>,
     work: std::sync::Condvar,
+    /// Notified when the last running job ends with nothing queued
+    /// ([`settle`]).
+    idle: std::sync::Condvar,
 }
 
 /// The compile workers: one a core, started on first use and kept for the
@@ -193,6 +208,7 @@ fn pool() -> &'static Pool {
         let pool: &'static Pool = Box::leak(Box::new(Pool {
             queues: Mutex::new(Queues::default()),
             work: std::sync::Condvar::new(),
+            idle: std::sync::Condvar::new(),
         }));
         let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
         for i in 0..workers {
@@ -208,12 +224,18 @@ fn pool() -> &'static Pool {
                                     .pop_front()
                                     .or_else(|| q.background.pop_front().map(|(_, job)| job))
                                 {
+                                    q.running += 1;
                                     break job;
                                 }
                                 q = pool.work.wait(q).unwrap_or_else(|e| e.into_inner());
                             }
                         };
                         job();
+                        let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
+                        q.running -= 1;
+                        if q.idle() {
+                            pool.idle.notify_all();
+                        }
                     }
                 })
                 .expect("a pipeline compile worker");
@@ -235,6 +257,26 @@ pub(crate) fn release_background() {
         let held = std::mem::take(&mut q.held);
         q.background.extend(held);
         pool.work.notify_all();
+    }
+}
+
+/// Waits until every pipeline compile started so far has finished, in
+/// every renderer of the process, the full lit variants compiling in the
+/// background included (pipeline_features.rs): from then on the frames
+/// draw with the full variants of every pipeline met so far. Display
+/// frames drawn while a variant compiles may differ from later ones in
+/// their last bit (docs/design.md §2.4), so a test that compares display
+/// frames byte for byte settles them first. Natively; nothing on the web,
+/// which makes the full variants only.
+pub fn settle_pipelines() {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        release_background();
+        let pool = pool();
+        let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
+        while !q.idle() {
+            q = pool.idle.wait(q).unwrap_or_else(|e| e.into_inner());
+        }
     }
 }
 

@@ -297,6 +297,18 @@ cancellable `og dev` checks use the stateless path.
   - *Capture-only.* `og run --capture-only` draws no display frame: only
     the captures the commands ask for, each from the presentation state
     stepped by the tick, so its PNGs equal a run that draws every frame.
+  - *Captures wait; display frames never do.* Byte-exact frames are the
+    capture contract. A capture draws every lit pipeline as its full
+    variant and waits for it to compile (og-render
+    `pipeline_features.rs`), so its bytes never depend on which compiles
+    have finished. A display frame never waits: until a pipeline's full
+    variant has compiled it draws with the variant made for the features
+    the frame first used, and a feature turned on in that window is drawn
+    once the full variant is ready. The variants' binaries may differ in
+    their last bit, so display frames drawn while a variant compiles may
+    differ from a later run's by one LSB. A test that compares display
+    frames byte for byte first settles the compiles
+    (`og_render::settle_pipelines`) or compares captures.
   - *Session forks.* `og run --forks N --commands <script>` takes N probe
     snapshots at evenly spaced ticks of the script, each with og.platform's
     state. After the run it restores each one, schedules the steps still
