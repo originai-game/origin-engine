@@ -377,3 +377,118 @@ fn perf_scaling_inventory_table_and_raid_hud() {
         );
     }
 }
+
+/// The same large surface with no change, one text mutation, and a real
+/// wheel-driven virtual list. Include authoring and overlay recording:
+/// skipping layout alone must not look like an idle-frame improvement.
+#[test]
+#[ignore = "perf: run on the reference machines in release"]
+fn perf_ui_change_budgets() {
+    release_only();
+    for scenario in ["idle", "one-label", "scroll-1000"] {
+        let mut scene = og_render::RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let mut samples = Vec::new();
+        let mut max_first = 0;
+        let mut commands = 0;
+        for tick in 0..WARM + TICKS {
+            let start = std::time::Instant::now();
+            ui.begin(
+                InputFrame {
+                    pointer_inside: true,
+                    pointer: og_core::glam::Vec2::new(50.0, 80.0),
+                    wheel: og_core::glam::Vec2::new(
+                        0.0,
+                        if scenario == "scroll-1000" && tick > 0 {
+                            24.0
+                        } else {
+                            0.0
+                        },
+                    ),
+                    ..InputFrame::default()
+                },
+                Viewport::new(2560.0, 1440.0),
+            );
+            if scenario == "scroll-1000" {
+                let range = ui.open_list(
+                    "Rows",
+                    ListDesc {
+                        count: 1000,
+                        row_height: 24.0,
+                        width: Size::Fixed(2560.0),
+                        height: Some(Size::Fixed(1440.0)),
+                        ..ListDesc::default()
+                    },
+                );
+                max_first = max_first.max(range.first);
+                for row in range.first..range.last {
+                    ui.list_item(row, false);
+                    ui.label(
+                        "Name",
+                        &format!("Inventory item {row}"),
+                        LabelDesc::default(),
+                    );
+                    ui.close();
+                }
+                ui.close_list();
+            } else {
+                ui.row("Screen", Element::row(), |ui| {
+                    for column in 0..20 {
+                        ui.open(
+                            format!("Column{column}"),
+                            Element {
+                                width: Size::Fixed(128.0),
+                                height: Size::Fixed(1440.0),
+                                ..Element::column()
+                            },
+                        );
+                        for row in 0..50 {
+                            let label = if scenario == "one-label" && column == 7 && row == 19 {
+                                format!("Value {tick}")
+                            } else {
+                                format!("Cell {column}:{row}")
+                            };
+                            ui.label(format!("Label{row}"), &label, LabelDesc::default());
+                        }
+                        ui.close();
+                    }
+                });
+            }
+            ui.end();
+            let mut overlay = Overlay::new(2560.0, 1440.0, 1.0);
+            ui.frame().emit(&EmitDesc::default(), &mut overlay);
+            std::hint::black_box(&overlay);
+            commands = ui.frame().items.len();
+            if tick >= WARM {
+                samples.push(start.elapsed().as_secs_f64() * 1000.0);
+            }
+        }
+        assert!(commands > 0);
+        if scenario == "scroll-1000" {
+            assert!(max_first > 100, "the measured list must actually scroll");
+        } else {
+            let text = ui
+                .probe_elements()
+                .into_iter()
+                .find(|e| e.path == "Screen/Column7/Label19")
+                .unwrap()
+                .text;
+            assert_eq!(
+                text,
+                if scenario == "one-label" {
+                    format!("Value {}", WARM + TICKS - 1)
+                } else {
+                    "Cell 7:19".to_owned()
+                }
+            );
+        }
+        samples.sort_by(f64::total_cmp);
+        println!(
+            "perf ui change {scenario}: median {:.3} ms, p95 {:.3} ms; {} elements, {} laid out, {commands} commands, first row {max_first}",
+            samples[samples.len() / 2],
+            samples[samples.len() * 95 / 100],
+            ui.frame().stats.elements,
+            ui.frame().stats.laid_out,
+        );
+    }
+}
