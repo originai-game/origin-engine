@@ -23,6 +23,7 @@ use crate::bind::{Env, NoEnv};
 use crate::doc::build::{DocEvent, DocResponse};
 use crate::doc::{Back, DocKind, InputMode, LayerSpec, Under};
 use crate::layout::{Direction, Element, Float, NONE};
+use crate::motion::css::CssAnimation;
 use crate::reactive::SourceId;
 use crate::ui::Ui;
 use serde_json::{Value, json};
@@ -73,6 +74,26 @@ pub struct LayerStack {
     pub next: u32,
     /// The game's time scale when a pausing layer was pushed (restored when none is left).
     pub held_scale: Option<f32>,
+}
+
+/// Whether an animation is one of the engine's covers (`-og-iris`, …).
+fn is_cover(a: &CssAnimation) -> bool {
+    crate::doc::view_transition::cover(&a.name).is_some()
+}
+
+/// When the last of `animations` ends, ms after they start.
+fn ends(animations: &[CssAnimation]) -> f32 {
+    animations
+        .iter()
+        .map(|a| {
+            let n = if a.iterations.is_finite() {
+                a.iterations
+            } else {
+                1.0
+            };
+            a.delay_ms + a.duration_ms * n
+        })
+        .fold(0.0, f32::max)
 }
 
 /// A layer's `since` until its view transition's first tick.
@@ -249,40 +270,84 @@ impl Ui {
         true
     }
 
-    /// Where layer `k`'s view transition is this tick, covering the frame:
-    /// whether the layer shows (the old view while the cover closes, the
-    /// new one while it opens). A leaving layer whose cover has closed is
-    /// dropped.
-    fn layer_transition(&mut self, k: usize, spec: &LayerSpec) -> bool {
+    /// Where layer `k`'s view transition is this tick: whether the layer
+    /// shows, and the animations its node plays (`new` while it joins, `old`
+    /// while it leaves). Covers named on `old` close first; on a join the
+    /// layer shows once they have closed, and `new`'s covers open on it. A
+    /// leaving layer is dropped when its `old` animations end, and `new`'s
+    /// covers then open on what is under it.
+    fn layer_transition(&mut self, k: usize, spec: &LayerSpec) -> (bool, Vec<CssAnimation>) {
         let l = &self.docs.layers.layers[k];
-        let (Some(desc), true) = (spec.transition, l.since != 0) else {
-            return !l.leaving;
+        let (Some(vt), true) = (&spec.transition, l.since != 0) else {
+            return (!l.leaving, Vec::new());
         };
         let (mut since, leaving, serial) = (l.since, l.leaving, l.serial);
         if since == STARTS {
             since = self.state.tick;
             self.docs.layers.layers[k].since = since;
         }
-        let half = self.cover_half_ticks(&desc);
-        let elapsed = self.state.tick.saturating_sub(since);
-        if elapsed + 1 < half {
-            self.cover(&desc, (elapsed + 1) as f32 / half as f32, false);
-            return leaving;
-        }
+        let t = self.state.tick.saturating_sub(since) as f32 * 1000.0
+            / self.ticks_per_second.max(1) as f32;
+        let (covers, plays): (Vec<_>, Vec<_>) = vt.old.iter().cloned().partition(is_cover);
         if leaving {
-            // Closed over the old view: it goes, and the cover opens on what
-            // is under it.
-            self.cover(&desc, 1.0, true);
+            if t < ends(&vt.old) {
+                self.draw_covers(&covers, vt.color, t, false);
+                return (true, plays);
+            }
             self.docs.ops.push(LayerOp::Drop(serial));
-            self.docs.revealing.push((desc, self.state.tick, half));
-            return false;
+            let opening: Vec<_> = vt.new.iter().filter(|a| is_cover(a)).cloned().collect();
+            if !opening.is_empty() {
+                self.draw_covers(&opening, vt.color, 0.0, true);
+                self.docs
+                    .revealing
+                    .push((opening, vt.color, self.state.tick));
+            }
+            return (false, Vec::new());
         }
-        if elapsed + 1 < 2 * half {
-            let open = 1.0 - (elapsed + 1 - half) as f32 / half as f32;
-            self.cover(&desc, open, true);
-        } else {
+        let wait = ends(&covers);
+        if t < wait {
+            self.draw_covers(&covers, vt.color, t, false);
+            return (false, Vec::new());
+        }
+        let t = t - wait;
+        if t >= ends(&vt.new) {
             self.docs.layers.layers[k].since = 0;
+            return (true, Vec::new());
         }
+        let (opening, plays): (Vec<_>, Vec<_>) = vt.new.iter().cloned().partition(is_cover);
+        self.draw_covers(&opening, vt.color, t, true);
+        (true, plays)
+    }
+
+    /// Draws the cover of the last of `covers` that has started at `t` ms:
+    /// closing (0 to 1 over its timing) or opening (1 to 0). False when none
+    /// is running.
+    pub(crate) fn draw_covers(
+        &mut self,
+        covers: &[CssAnimation],
+        color: Option<crate::Srgba>,
+        t: f32,
+        opening: bool,
+    ) -> bool {
+        let Some(a) = covers.iter().rev().find(|a| t >= a.delay_ms || opening) else {
+            return false;
+        };
+        let Some((kind, from)) = crate::doc::view_transition::cover(&a.name) else {
+            return false;
+        };
+        let p = if a.duration_ms > 0.0 {
+            ((t - a.delay_ms) / a.duration_ms).clamp(0.0, 1.0)
+        } else {
+            f32::from(u8::from(t >= a.delay_ms))
+        };
+        let p = a.ease.apply(p);
+        let desc = crate::ScreenTransitionDesc {
+            kind,
+            from,
+            color,
+            ..Default::default()
+        };
+        self.cover(&desc, if opening { 1.0 - p } else { p }, opening);
         true
     }
 
@@ -480,13 +545,10 @@ impl Ui {
         self.docs.built_tick = tick;
         // The covers still opening over layers that have left.
         let mut revealing = std::mem::take(&mut self.docs.revealing);
-        revealing.retain(|&(desc, start, half)| {
-            let elapsed = tick.saturating_sub(start);
-            if elapsed + 1 >= half {
-                return false;
-            }
-            self.cover(&desc, 1.0 - (elapsed + 1) as f32 / half as f32, true);
-            true
+        revealing.retain(|(covers, color, start)| {
+            let t =
+                tick.saturating_sub(*start) as f32 * 1000.0 / self.ticks_per_second.max(1) as f32;
+            t < ends(covers) && self.draw_covers(covers, *color, t, true)
         });
         self.docs.revealing = revealing;
         for k in 0..self.docs.layers.layers.len() {
@@ -639,9 +701,17 @@ impl Ui {
                 value: Value::Null,
             });
         }
-        let shows = self.layer_transition(k, &info.spec);
+        let (shows, animations) = self.layer_transition(k, &info.spec);
         if info.hidden || !shows || !self.docs.docs.contains_key(&layer.screen) {
             return (None, lead);
+        }
+        for a in &animations {
+            if let Some(frames) = crate::doc::view_transition::builtin_keyframes(&a.name) {
+                self.docs
+                    .keyframes
+                    .entry(a.name.clone())
+                    .or_insert_with(|| std::sync::Arc::new(frames));
+            }
         }
         let spec = &info.spec;
         let t = self.theme;
@@ -665,6 +735,7 @@ impl Ui {
             n.props.inert = info.inert;
             n.props.enter = spec.enter.clone();
             n.props.exit = spec.exit.clone();
+            n.props.animations = animations;
         }
         // UI actions go to the top layer that takes input; with none, to every game layer.
         let top_taker = infos.iter().rposition(|l| l.spec.input != InputMode::Game);
@@ -980,47 +1051,86 @@ mod tests {
         assert_eq!(texts(&ui), ["gold"]);
     }
 
-    /// `@view-transition` covers the frame as a mounted layer joins and as
-    /// it leaves: the old view shows while the cover closes, the new one
-    /// while it opens, and an unmounted layer stays until it is covered.
+    /// By default a layer cross-fades as it joins and leaves (the UA's
+    /// fade-in and fade-out, 0.25s): its node's opacity rises from 0, and a
+    /// leaving layer fades out before it goes.
     #[test]
-    fn a_view_transition_covers_a_layer_joining_and_leaving() {
+    fn a_view_transition_cross_fades_a_layer_by_default() {
+        let page = format!("{PAUSE}<style>@view-transition {{ navigation: auto; }}</style>");
+        let mut ui = ui_with(&[("hud.svelte", HUD), ("pause.svelte", &page)]);
+        mount(&mut ui, "pause", "pause");
+        let opacity = |ui: &Ui| {
+            ui.nodes
+                .iter()
+                .find(|n| n.id == "test:pause")
+                .map(|n| (n.sampled.opacity, n.props.animations.len()))
+        };
+        let ticks = ui.ticks_for(250.0) as usize;
+        let mut seen = Vec::new();
+        for _ in 0..ticks + 3 {
+            step(&mut ui, InputFrame::default());
+            seen.push(opacity(&ui).unwrap());
+        }
+        assert!(seen[0].0 < 0.2 && seen[0].1 == 1, "{seen:?}");
+        assert!(
+            seen.windows(2).take(ticks - 1).all(|w| w[1].0 > w[0].0),
+            "{seen:?}"
+        );
+        assert_eq!(*seen.last().unwrap(), (1.0, 0), "{seen:?}");
+        assert!(texts(&ui).contains(&"half".to_string()));
+        ui.unmount_document(&SourceId::new("test", "pause"));
+        let mut seen = Vec::new();
+        for _ in 0..ticks + 3 {
+            step(&mut ui, InputFrame::default());
+            seen.push((opacity(&ui), ui.layer_stack().len()));
+        }
+        assert!(seen[0].0.unwrap().0 > 0.8 && seen[0].1 == 1, "{seen:?}");
+        assert!(seen[ticks - 2].0.unwrap().0 < 0.2, "{seen:?}");
+        assert!(
+            seen.last().is_some_and(|(o, n)| o.is_none() && *n == 0),
+            "{seen:?}"
+        );
+        assert!(ui.document_mount_inputs().as_array().unwrap().is_empty());
+    }
+
+    /// A cover named on `old` closes over the outgoing view, and the
+    /// incoming view shows once it has closed; on `new` it opens. A
+    /// leaving layer stays under the closing cover, then goes.
+    #[test]
+    fn view_transition_covers_close_on_old_and_open_on_new() {
         let page = format!(
-            "{PAUSE}<style>@view-transition {{ navigation: auto; types: wipe from-right; }}\n::view-transition-group(root) {{ animation-duration: 400ms; }}\n::view-transition {{ background-color: #102030; }}</style>"
+            "{PAUSE}<style>@view-transition {{ navigation: auto; }}\n::view-transition-old(root), ::view-transition-new(root) {{ animation: 400ms linear -og-wipe-from-right; }}\n::view-transition {{ background-color: #102030; }}</style>"
         );
         let mut ui = ui_with(&[("hud.svelte", HUD), ("pause.svelte", &page)]);
-        let spec = ui.document("pause").unwrap().layer.clone();
-        let desc = spec.transition.expect("transition");
-        assert_eq!(
-            (desc.kind, desc.from),
-            (crate::ScreenWipe::Wipe, crate::Side::Right)
-        );
-        assert_eq!(desc.duration_ms, 400.0);
-        assert_eq!(desc.color.unwrap().rgb, [0x10, 0x20, 0x30]);
         mount(&mut ui, "hud", "hud");
         step(&mut ui, InputFrame::default());
         mount(&mut ui, "pause", "pause");
-        let half = ui.cover_half_ticks(&desc) as usize;
+        let half = ui.ticks_for(400.0) as usize;
         assert!(half > 2);
-        // (shown, cover amount, revealing) per tick.
+        // (shown, (revealing, kind, colour)) per tick.
         let mut seen = Vec::new();
         for _ in 0..2 * half + 2 {
             step(&mut ui, InputFrame::default());
             let shown = texts(&ui).contains(&"half".to_string());
-            seen.push((shown, ui.cover.map(|c| (c.revealing, c.kind))));
+            seen.push((shown, ui.cover.map(|c| (c.revealing, c.kind, c.from))));
         }
-        let covering = seen
-            .iter()
-            .take_while(|(s, c)| !s && c.is_some_and(|c| !c.0))
-            .count();
-        assert_eq!(covering, half - 1, "{seen:?}");
-        assert!(seen[half - 1].0 && seen[half - 1].1.unwrap().0, "{seen:?}");
-        assert_eq!(seen[half - 1].1.unwrap().1, crate::ScreenWipe::Wipe);
+        // Hidden while the cover closes (from nothing, on its first tick).
+        let covering = seen.iter().take_while(|(s, _)| !s).count();
+        assert_eq!(covering, half, "{seen:?}");
+        assert!(
+            seen[1..half].iter().all(|(_, c)| c.is_some_and(|c| !c.0)),
+            "{seen:?}"
+        );
+        assert_eq!(
+            seen[half].1,
+            Some((true, crate::ScreenWipe::Wipe, crate::Side::Right)),
+            "{seen:?}"
+        );
+        assert!(seen[half].0, "{seen:?}");
         assert!(
             seen.last().is_some_and(|(s, c)| *s && c.is_none()),
             "{seen:?}"
         );
-        // Unmounting leaves it shown under the closing cover, then it goes.
         ui.unmount_document(&SourceId::new("test", "pause"));
         let mut seen = Vec::new();
         for _ in 0..2 * half + 2 {
@@ -1031,9 +1141,9 @@ mod tests {
                 ui.cover.map(|c| c.revealing),
             ));
         }
-        assert!(seen[0].0 && seen[0].2 == Some(false), "{seen:?}");
+        assert!(seen[1].0 && seen[1].2 == Some(false), "{seen:?}");
         let gone = seen.iter().position(|(s, ..)| !s).unwrap();
-        assert_eq!(gone, half - 1, "{seen:?}");
+        assert_eq!(gone, half, "{seen:?}");
         assert!(
             seen[gone..].iter().all(|(s, n, _)| !s && *n == 0),
             "{seen:?}"
@@ -1041,37 +1151,5 @@ mod tests {
         assert_eq!(seen[gone].2, Some(true));
         assert!(seen.last().unwrap().2.is_none(), "{seen:?}");
         assert!(ui.document_mount_inputs().as_array().unwrap().len() == 1);
-    }
-
-    #[test]
-    fn view_transition_rules_are_a_screens_and_its_roots() {
-        for (text, wanted) in [
-            (
-                "<meta name=\"component\" content=\"c\"><column/><style>@view-transition { navigation: auto; }</style>",
-                "a view transition is a screen's",
-            ),
-            (
-                "<meta name=\"screen\" content=\"s\"><column/><style>::view-transition-old(root) { animation: none; }</style>",
-                "a layer's view transition is its root's",
-            ),
-            (
-                "<meta name=\"screen\" content=\"s\"><column/><style>@view-transition { navigation: auto; types: spin; }</style>",
-                "view-transition type spin",
-            ),
-            (
-                "<meta name=\"screen\" content=\"s\"><column/><style>@media (width > 10px) { @view-transition { navigation: auto; } }</style>",
-                "at the top level",
-            ),
-        ] {
-            let error = UiDocument::parse("t.svelte", text).unwrap_err().join("\n");
-            assert!(error.contains(wanted), "{error}");
-        }
-        // Pseudo-element rules alone transition nothing.
-        let doc = UiDocument::parse(
-            "t.svelte",
-            "<meta name=\"screen\" content=\"s\"><column/><style>::view-transition { background-color: #000000; }</style>",
-        )
-        .unwrap();
-        assert!(doc.layer.transition.is_none());
     }
 }

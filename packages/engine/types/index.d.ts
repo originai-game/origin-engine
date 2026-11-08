@@ -39443,7 +39443,7 @@ export interface UiScope {
    */
   collection<T extends unknown>(id: string, items: readonly T[], desc?: UiCollectionDesc): UiCollection<T>;
   /**
-   * Register a loaded document once with named store inputs. The native renderer updates it from store changes; no per-element TypeScript calls are made. Re-registering the same ID and inputs preserves its mounted identity. Inputs stay subscribed until unmount or scope disposal. A `type screen` document is a layer of the stack while it is mounted (docs/ui.md §2.1): its `<meta name="screen" data-layer …>` decides its kind, input, pause, Back and focus memory, Back or a `pop` trigger unmounts it, and its `@view-transition` covers the frame as it joins and leaves the stack.
+   * Register a loaded document once with named store inputs. The native renderer updates it from store changes; no per-element TypeScript calls are made. Re-registering the same ID and inputs preserves its mounted identity. Inputs stay subscribed until unmount or scope disposal. A `type screen` document is a layer of the stack while it is mounted (docs/ui.md §2.1): its `<meta name="screen" data-layer …>` decides its kind, input, pause, Back and focus memory, Back or a `pop` trigger unmounts it, and its `@view-transition` animates it (a cross-fade by default) as it joins and leaves the stack.
    *
    * @param id Stable mount ID within this scope.
    * @param document The loaded document's declared name.

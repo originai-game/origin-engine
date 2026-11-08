@@ -324,19 +324,31 @@ where the screen writes `{@render side?.()}`. Rendered content's paths sit
 under the snippet's name (`…/Card#a/body/Desc`), and a component
 instance's root takes the instance's id.
 
-A screen opts into a CSS view transition with `@view-transition
-{ navigation: auto; types: wipe from-right; }`. The frame is covered as the
-layer joins the stack and again as it leaves. The old view stays under the
-closing cover, and the new view shows as the cover opens; an unmounted layer
-stays until the cover has closed over it. `types` takes the engine's covers
-(`fade`, `wipe`, `iris`, `dissolve`, `slide`) and `from-left`, `from-right`,
-`from-top` or `from-bottom`. `::view-transition-group(root)
-{ animation-duration }` is the whole transition, and `::view-transition
-{ background-color }` is the cover's colour. Only the root transitions:
-`view-transition-name` morphs and `::view-transition-old/new` are refused.
-Reduced motion makes every cover a fade. A component cannot declare a view
-transition. No `-og-` name is needed: View Transitions Level 2 already names
-every part.
+A screen opts into CSS View Transitions with `@view-transition
+{ navigation: auto; }`. Its layer joining the stack and leaving it are its
+navigations, and the layer is the `root` snapshot. By default the layer
+cross-fades, as the spec's UA stylesheet does (`-ua-view-transition-fade-in`
+and `-fade-out`, 0.25s). `::view-transition-new(root)` animates the
+incoming view (the joining layer) and `::view-transition-old(root)` the
+outgoing one (the leaving layer, which stays drawn and inert until its
+animations end). Both take `animation` with the document's `@keyframes`.
+`::view-transition-group(root)` and `::view-transition-image-pair(root)`
+give both their inherited timing (`animation-duration` and the other
+longhands except the name). `types` are labels, as in the spec: a rule
+qualified by `:active-view-transition-type(slide)` applies when
+`@view-transition` lists `slide`, and outranks an unqualified one.
+
+The engine's full-frame covers are the only `-og-` part, because CSS has
+no keyframes that cover the whole frame: `-og-iris`, `-og-dissolve`,
+`-og-wipe` and `-og-slide`, the last two with `-from-right`, `-from-top`
+or `-from-bottom`. On `::view-transition-old(root)` a cover closes over the
+outgoing view, and the incoming view shows once it has closed. On
+`::view-transition-new(root)` it opens on the incoming view.
+`::view-transition { background-color }` is the covers' colour. Reduced
+motion ends finite animations at once and makes covers fade. A component
+cannot declare a view transition. Shared-element morphs
+(`view-transition-name`, `::view-transition-old(card)`) are refused for now
+and are a follow-up.
 
 The authoring contract below also includes requirements whose TypeScript
 wiring remains pending:

@@ -106,9 +106,13 @@ pub struct DocHost {
     pub(crate) accepts: bool,
     /// The serial of the layer being built (0 outside one): what its `pop` pops.
     pub(crate) building: u32,
-    /// View-transition covers still opening after their layer left:
-    /// (transition, the tick it left, ticks of a half).
-    pub(crate) revealing: Vec<(crate::ScreenTransitionDesc, u64, u64)>,
+    /// View-transition covers still opening after their layer left: the
+    /// covers, their colour and the tick it left.
+    pub(crate) revealing: Vec<(
+        Vec<crate::motion::css::CssAnimation>,
+        Option<crate::Srgba>,
+        u64,
+    )>,
     /// The Rive artboards elements can play, by id ([`Ui::define_rive`]).
     pub(crate) rive: BTreeMap<String, Arc<crate::rive::Artboard>>,
     /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.

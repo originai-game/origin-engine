@@ -56,21 +56,15 @@ pub(super) fn apply(
         }
     }
     rules.retain(|rule| !rule.selector.starts_with("@keyframes "));
-    let mut opted = false;
-    for rule in rules
+    let transitions: Vec<(&str, &str, usize, bool)> = rules
         .iter()
         .filter(|r| super::view_transition::selects(&r.selector))
-    {
-        let conditional = rule.query != AtQuery::default();
-        opted |=
-            super::view_transition::apply(doc, &rule.selector, &rule.body, rule.at, conditional)?;
-        if opted && doc.kind != DocKind::Screen {
-            return Err((rule.at, "a view transition is a screen's: its layer covers as it joins and leaves the stack".into()));
-        }
-    }
-    if !opted {
-        doc.layer.transition = None;
-    }
+        .map(|r| {
+            let conditional = r.query != AtQuery::default();
+            (r.selector.as_str(), r.body.as_str(), r.at, conditional)
+        })
+        .collect();
+    super::view_transition::apply(doc, &transitions)?;
     rules.retain(|r| !super::view_transition::selects(&r.selector));
     for rule in &mut rules {
         backdrop(rule)?;

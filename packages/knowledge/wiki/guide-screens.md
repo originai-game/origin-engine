@@ -171,8 +171,10 @@ local styles and `og style new` remain available.
 - Mount a screen with stores, not a viewmodel: `og.ui.scope(world,
   "menus").mount("pause", "pause", { volume })` puts it on the layer stack
   while it is mounted; Back unmounts it. Give it a CSS view transition with
-  `@view-transition { navigation: auto; types: iris; }` and
-  `::view-transition-group(root) { animation-duration: 500ms; }`.
+  `@view-transition { navigation: auto; }`: it cross-fades by default, and
+  `::view-transition-new(root) { animation: 300ms rise; }` or the engine's
+  covers (`::view-transition-old(root) { animation: 400ms -og-iris; }`)
+  change how.
 - Compose with components and snippets, not code callbacks:
   `<Card title={item.name}>{#snippet body()}<p>{item.desc}</p>{/snippet}</Card>`,
   rendered in `Card` with `{@render body?.()}`. Pass content to a mount by

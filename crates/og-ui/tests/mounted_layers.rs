@@ -1,7 +1,7 @@
 //! Mounted screens as layers (docs/ui.md §2.1): a HUD component and a
 //! pause screen mounted with a store input, the pause menu a modal layer
 //! over the dimmed HUD, and the same menu leaving under its CSS view
-//! transition's iris cover. The frames match
+//! transition's `-og-iris` cover on `::view-transition-old(root)`. The frames match
 //! `references/metal/mounted-layers-{1280,390}.png` and
 //! `mounted-layers-iris-{1280,390}.png` (`OG_UI_CAPTURE=1` records them).
 //!
@@ -33,8 +33,8 @@ const PAUSE: &str = r#"<meta name="screen" content="pause" data-layer="modal" da
 #Center { width: 100%; height: 100%; align-items: center; justify-content: center; }
 #Menu { width: 320px; padding: 24px; gap: 12px; }
 #Title, #Vol { margin: 0; }
-@view-transition { navigation: auto; types: iris; }
-::view-transition-group(root) { animation-duration: 800ms; }
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation: 400ms -og-iris; }
 ::view-transition { background-color: #0b1220; }
 </style>"#;
 

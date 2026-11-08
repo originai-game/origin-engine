@@ -10,7 +10,7 @@
     },
     {
       "member": "UI documents: @view-transition",
-      "summary": "CSS View Transitions for a screen's layer: @view-transition { navigation: auto; types } covers the frame as the layer joins and leaves the stack (fade, wipe, iris, dissolve, slide, from-left/right/top/bottom); ::view-transition-group(root) animation-duration and ::view-transition background-color set its length and colour."
+      "summary": "CSS View Transitions for a screen's layer: @view-transition { navigation: auto } cross-fades the layer as it joins and leaves the stack (the UA's fade-in and fade-out); ::view-transition-new(root) and ::view-transition-old(root) take animation with the document's @keyframes, ::view-transition-group(root) and -image-pair(root) their inherited timing, and types gate :active-view-transition-type() rules. The engine's covers are built-in keyframes -og-iris, -og-dissolve, -og-wipe and -og-slide (-from-right/top/bottom); ::view-transition background-color is their colour."
     }
   ]
 }
