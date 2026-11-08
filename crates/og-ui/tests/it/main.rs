@@ -70,6 +70,8 @@ mod style_contract;
 mod support;
 #[path = "../text.rs"]
 mod text;
+#[path = "../text_path.rs"]
+mod text_path;
 #[path = "../theme.rs"]
 mod theme;
 #[path = "../touch_controls.rs"]

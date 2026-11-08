@@ -463,6 +463,19 @@
     variant none "Hidden (a game drawing its own)."
   }
 
+  struct TextPathSpec {
+    doc "An element's text set along a path (CSS -og-text-path, SVG 2 textPath, docs/ui.md §2): each character turned to the path where it sits, its baseline on the path. One line; the element's textAlign anchors it at offset. CSS offset-path moves the element itself; this moves its text."
+    desc true
+    field data String "SVG path data (M L H V C S Q T A Z), CSS px from the element's content box; empty is a circle. Data that does not parse sets the text in lines."
+    field radius f32 "With empty data: the circle's radius, centred in the content box from its top, clockwise; 0 is the box's closest side." {
+      unit cssPx
+      min 0
+    }
+    field offset f32 "Where the anchor sits along the path: CSS px, or with percent a share of its length (0 to 1)."
+    field percent bool "offset is a share of the path's length."
+    field reverse bool "Runs the path backwards (SVG side=right): on a circle, counter-clockwise inside it."
+  }
+
   enum UserSelect {
     doc "Whether the player can select an element's text and copy it (CSS user-select, docs/ui.md §2)."
     variant auto "Its parent's; with none set above it, or under a control (a button's label is pressed, not selected), none."
@@ -504,6 +517,7 @@
     field focusGroup Option.FocusGroup "Its focusable controls are one focus group: arrows move among them first; at its edge it wraps or is left; it can remember its last member."
     field gestures Option.GestureSpec "Tap, double tap and long press on it."
     field cursor Cursor "The pointer's shape over it and its subtree; auto takes its parent's."
+    field textPath Option.TextPathSpec "Its text set along a path instead of in lines (CSS -og-text-path); null is in lines."
     field userSelect UserSelect "Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's."
     field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout)."
     field motion Option.Transition "How its animatable values move when they change; null is at once."

@@ -240,6 +240,11 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     let n = &nodes[i];
     let fonts = measure.fonts;
     let (pref, min) = match &n.content {
+        // Text on a path is as wide as its path.
+        Content::Text(_) if let Some(tp) = &n.props.text_path => {
+            let w = tp.extent().map_or(0.0, |e| e.x);
+            (w, w)
+        }
         Content::Text(t) => {
             let (pref, min) = measure.texts.widths(t, || text_widths(t, fonts));
             match t.fit.last() {
@@ -549,6 +554,10 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
             )
         }
         Content::None if n.props.layout == LayoutMode::Grid => grid_intrinsic(nodes, i, false),
+        Content::Text(_) if let Some(tp) = &n.props.text_path => {
+            let h = tp.extent().map_or(0.0, |e| e.y);
+            (h, h)
+        }
         Content::Text(t) => {
             let h = n.lines.len().max(1) as f32 * t.line_height();
             (h, h)

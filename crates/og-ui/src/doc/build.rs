@@ -895,6 +895,16 @@ impl Ui {
         if let Some(c) = r.str("cursor").and_then(crate::element::Cursor::from_name) {
             p.cursor = c;
         }
+        if let Some(shape) = r.str("textPath") {
+            // Checked when the CSS was lowered.
+            p.text_path = crate::text_path::TextPath::from_css(
+                shape,
+                r.str("textPathOffset"),
+                r.str("textPathSide"),
+            )
+            .ok()
+            .flatten();
+        }
         if let Some(s) = r
             .str("userSelect")
             .and_then(crate::element::UserSelect::from_name)

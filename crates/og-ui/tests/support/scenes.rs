@@ -1251,8 +1251,59 @@ pub fn user_select_scene(font: &FontFiles, width: u32, height: u32) -> (RenderSc
     )
 }
 
+/// `text-path-<width>`: an arched title, a badge ringed with text (one
+/// ring outside, one inside on the right side) and a wave, each in
+/// `-og-text-path` (tests/text_path.rs).
+pub const TEXT_PATH_DOC: &str = r#"<meta name="component" content="tp">
+<column id="Root">
+  <p id="Arch">Legends of the Arch</p>
+  <row id="Badges">
+    <stack id="Badge"><column id="Seal"/><p id="Outer">GUILD OF MAKERS - EST 2026 -</p><p id="Inner">well met, traveller</p></stack>
+    <p id="Wave">riding the wave of words</p>
+  </row>
+</column>
+<style>
+#Root { padding: 24px; gap: 16px; }
+#Badges { gap: 24px; flex-wrap: wrap; }
+#Arch { -og-text-path: path("M0 90 Q170 -20 340 90"); -og-text-path-offset: 50%; text-align: center; font: var(--text-xl); }
+#Badge { width: 180px; height: 180px; }
+#Seal { width: 120px; height: 120px; border-radius: 60px; background: #7a2e22; translate: 30px 30px; }
+#Outer { -og-text-path: circle(82px); translate: 8px 8px; }
+#Inner { -og-text-path: circle(52px); -og-text-path-side: right; -og-text-path-offset: 50%; text-align: center; translate: 38px 38px; }
+#Wave { -og-text-path: path("M0 40 C40 0 80 0 120 40 S200 80 240 40"); -og-text-path-offset: 8px; }
+</style>"#;
+
+/// `text-path-<width>`: [`TEXT_PATH_DOC`] at `width`×`height`.
+pub fn text_path_scene(font: &FontFiles, width: u32, height: u32) -> (RenderScene, RenderDesc) {
+    let mut scene = RenderScene::new();
+    let font = add_font(&mut scene, font);
+    let mut ui = ui_with_font(font);
+    ui.define_document(UiDocument::parse("ui/tp.svelte", TEXT_PATH_DOC).expect("tp parses"));
+    let vp = Viewport::new(width as f32, height as f32);
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), vp);
+        ui.component("T", "tp", &mut serde_json::json!({}), &bind::NoEnv);
+        ui.end();
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    let bg = ui.theme().palette.backdrop.linear();
+    scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
+    scene.post.tonemap = Tonemap::None;
+    (
+        scene,
+        RenderDesc {
+            width,
+            height,
+            ..Default::default()
+        },
+    )
+}
+
 /// The reference frames, by their file name under `references/<tier>/`.
-pub const REFERENCE_SCENES: [&str; 7] = [
+pub const REFERENCE_SCENES: [&str; 9] = [
     "sample-screen",
     "text-glow",
     "glass",
@@ -1260,6 +1311,8 @@ pub const REFERENCE_SCENES: [&str; 7] = [
     "text-fields-2",
     "user-select-1280",
     "user-select-390",
+    "text-path-1280",
+    "text-path-390",
 ];
 
 /// The scene and renderer description of reference frame `name`.
@@ -1283,6 +1336,8 @@ pub fn reference_scene(name: &str, font: &FontFiles) -> Result<(RenderScene, Ren
         "color-vision-390" => color_vision_scene(font, 390, 844),
         "user-select-1280" => user_select_scene(font, 1280, 720),
         "user-select-390" => user_select_scene(font, 390, 844),
+        "text-path-1280" => text_path_scene(font, 1280, 720),
+        "text-path-390" => text_path_scene(font, 390, 844),
         _ => {
             return Err(format!(
                 "no og-ui reference scene {name} (it knows {})",

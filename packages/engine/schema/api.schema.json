@@ -11853,6 +11853,7 @@
         "GestureSpec",
         "Customize",
         "Cursor",
+        "TextPathSpec",
         "UserSelect",
         "ElementProps",
         "EaseKey",
@@ -59431,6 +59432,42 @@
         "none": "Hidden (a game drawing its own)."
       }
     },
+    "TextPathSpec": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An element's text set along a path (CSS -og-text-path, SVG 2 textPath, docs/ui.md §2): each character turned to the path where it sits, its baseline on the path. One line; the element's textAlign anchors it at offset. CSS offset-path moves the element itself; this moves its text.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string",
+          "description": "SVG path data (M L H V C S Q T A Z), CSS px from the element's content box; empty is a circle. Data that does not parse sets the text in lines.",
+          "default": ""
+        },
+        "radius": {
+          "type": "number",
+          "description": "With empty data: the circle's radius, centred in the content box from its top, clockwise; 0 is the box's closest side.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "offset": {
+          "type": "number",
+          "description": "Where the anchor sits along the path: CSS px, or with percent a share of its length (0 to 1).",
+          "default": 0
+        },
+        "percent": {
+          "type": "boolean",
+          "description": "offset is a share of the path's length.",
+          "default": false
+        },
+        "reverse": {
+          "type": "boolean",
+          "description": "Runs the path backwards (SVG side=right): on a circle, counter-clockwise inside it.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
     "UserSelect": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -59620,6 +59657,18 @@
           "$ref": "#/$defs/Cursor",
           "description": "The pointer's shape over it and its subtree; auto takes its parent's.",
           "default": "auto"
+        },
+        "textPath": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TextPathSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its text set along a path instead of in lines (CSS -og-text-path); null is in lines.",
+          "default": null
         },
         "userSelect": {
           "$ref": "#/$defs/UserSelect",

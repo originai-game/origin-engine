@@ -36,6 +36,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `focusGroup` | `FocusGroup \| null` | `null` | — | — | — | Its focusable controls are one focus group: arrows move among them first; at its edge it wraps or is left; it can remember its last member. |
 | `gestures` | `GestureSpec \| null` | `null` | — | — | — | Tap, double tap and long press on it. |
 | `cursor` | `Cursor` | `"auto"` | — | — | — | The pointer's shape over it and its subtree; auto takes its parent's. |
+| `textPath` | `TextPathSpec \| null` | `null` | — | — | — | Its text set along a path instead of in lines (CSS -og-text-path); null is in lines. |
 | `userSelect` | `UserSelect` | `"auto"` | — | — | — | Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's. |
 | `customize` | `Customize \| null` | `null` | — | — | — | The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout). |
 | `motion` | `Transition \| null` | `null` | — | — | — | How its animatable values move when they change; null is at once. |
@@ -81,6 +82,7 @@ struct ElementProps {
   field focusGroup Option.FocusGroup "Its focusable controls are one focus group: arrows move among them first; at its edge it wraps or is left; it can remember its last member."
   field gestures Option.GestureSpec "Tap, double tap and long press on it."
   field cursor Cursor "The pointer's shape over it and its subtree; auto takes its parent's."
+  field textPath Option.TextPathSpec "Its text set along a path instead of in lines (CSS -og-text-path); null is in lines."
   field userSelect UserSelect "Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's."
   field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout)."
   field motion Option.Transition "How its animatable values move when they change; null is at once."
@@ -94,4 +96,4 @@ struct ElementProps {
 }
 ```
 
-<sub>Module `ui` line 4794</sub>
+<sub>Module `ui` line 4807</sub>

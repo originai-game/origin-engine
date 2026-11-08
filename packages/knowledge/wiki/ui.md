@@ -448,6 +448,7 @@ module ui {
 | [`GestureSpec`](ui/type-GestureSpec.md) | desc struct |  | Tap, double tap and long press on any element (docs/ui.md §2.1), answered by Response (tapped, doubleTapped, longPressed, longPress), og.ui.gesture and the frame's motion events. |
 | [`Customize`](ui/type-Customize.md) | desc struct |  | An element the player can move, scale and fade in the HUD edit mode (docs/ui.md §2.1): a HUD group, a touch stick or button. |
 | [`Cursor`](ui/type-Cursor.md) | enum |  | The pointer's shape over an element (CSS cursor, docs/ui.md §2), inherited by its subtree. |
+| [`TextPathSpec`](ui/type-TextPathSpec.md) | desc struct |  | An element's text set along a path (CSS -og-text-path, SVG 2 textPath, docs/ui.md §2): each character turned to the path where it sits, its baseline on the path. |
 | [`UserSelect`](ui/type-UserSelect.md) | enum |  | Whether the player can select an element's text and copy it (CSS user-select, docs/ui.md §2). |
 | [`ElementProps`](ui/type-ElementProps.md) | desc struct |  | Everything an element carries beyond its box (docs/ui.md §2): set with og.ui.props right after the element. |
 | [`EaseKey`](ui/type-EaseKey.md) | struct |  | A named ease into a key. |
@@ -725,7 +726,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 6798</sub>
+<sub>Module `ui` line 6812</sub>
 
 ```ogt
 column UiMaterial {
@@ -736,4 +737,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 6805</sub>
+<sub>Module `ui` line 6819</sub>

@@ -375,6 +375,7 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.decor == b.decor
         && a.lines == b.lines
         && a.selected == b.selected
+        && a.props.text_path == b.props.text_path
         && a.rich_lines == b.rich_lines
 }
 

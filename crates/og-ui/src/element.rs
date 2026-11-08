@@ -944,6 +944,8 @@ pub struct Props {
     pub cursor: Cursor,
     /// Whether its text can be selected and copied (`user-select`).
     pub select: UserSelect,
+    /// Its text set along a path (`-og-text-path`); `None`: in lines.
+    pub text_path: Option<crate::text_path::TextPath>,
     /// The player can move, scale and fade it (a customisable HUD).
     pub customize: Option<Customize>,
     /// How its animatable values move when they change (`None`: at once).
@@ -997,6 +999,7 @@ impl Default for Props {
             gestures: None,
             cursor: Cursor::Auto,
             select: UserSelect::Auto,
+            text_path: None,
             customize: None,
             motion: None,
             transitions: Vec::new(),

@@ -315,6 +315,9 @@ impl Ui {
             self.text_area_commands(i, rect, clip, cmds);
         }
         match &n.content {
+            Content::Text(tc) if let Some(tp) = &n.props.text_path => {
+                self.path_text_commands(i, tc, tp, rect, clip, cmds);
+            }
             Content::Text(tc) => {
                 let font = self
                     .fonts
@@ -842,3 +845,115 @@ const FLOURISH_MIN_TITLE: f32 = 28.0;
 /// A face's cap height as a share of its size (Latin display faces run
 /// 0.66 to 0.72): what a flourish is drawn as tall as.
 const CAP_HEIGHT: f32 = 0.7;
+
+impl Ui {
+    /// Text on a path (`-og-text-path`, SVG 2 `<textPath>`): each grapheme
+    /// cluster drawn on its own, its advance's middle on the path at its
+    /// distance along it, turned to the path there, its baseline on the
+    /// path; a cluster whose middle is off an open path is not drawn.
+    fn path_text_commands(
+        &self,
+        i: usize,
+        tc: &crate::layout::TextContent,
+        tp: &crate::text_path::TextPath,
+        rect: Rect,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        let n = &self.nodes[i];
+        let font = self
+            .fonts
+            .for_styled(tc.font, tc.step.weight, false, &tc.text)
+            .0;
+        if font.handle.is_none() {
+            return;
+        }
+        let m = &font.metrics;
+        let sk = n.scale;
+        let size = tc.step.size * sk;
+        let tracking = tc.tracking();
+        let pad = n.el.padding;
+        let origin = Vec2::new(rect.x + pad.left * sk, rect.y + pad.top * sk);
+        let inner = Vec2::new(
+            (rect.width - pad.horizontal() * sk).max(0.0),
+            (rect.height - pad.vertical() * sk).max(0.0),
+        );
+        let (subs, closed) = tp.polyline(inner / sk.max(1e-3));
+        let subs: Vec<Vec<Vec2>> = subs
+            .into_iter()
+            .map(|s| s.into_iter().map(|p| origin + p * sk).collect())
+            .collect();
+        let walk = crate::text_path::Walk::new(&subs, closed);
+        // One line: its breaks are spaces.
+        let line: String = tc.text.replace('\n', " ");
+        let chars: Vec<char> = line.chars().collect();
+        let boxes = crate::edit::boxes(m, &line, self.direction, size, tracking);
+        let width = boxes.iter().map(|b| b.x1).fold(0.0, f32::max);
+        let at = if tp.percent {
+            tp.offset * walk.length
+        } else {
+            tp.offset * sk
+        };
+        let start = at
+            - match tc.align {
+                TextAlign::Start => 0.0,
+                TextAlign::Center => width / 2.0,
+                TextAlign::End => width,
+            };
+        let t = &self.theme;
+        let dpr = self.viewport.dpr();
+        let role = tc.font.effect_index();
+        let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
+        let color = n.sampled.ink.fade(n.alpha).linear();
+        for (a, b) in og_i18n::graphemes(&line) {
+            let span = boxes.iter().filter(|g| g.index >= a && g.index < b).fold(
+                None,
+                |s: Option<(f32, f32)>, g| {
+                    Some(s.map_or((g.x0, g.x1), |(x0, x1)| (x0.min(g.x0), x1.max(g.x1))))
+                },
+            );
+            let Some((x0, x1)) = span else { continue };
+            let cluster: String = chars[a..b].iter().collect();
+            if cluster.trim().is_empty() {
+                continue;
+            }
+            let advance = x1 - x0;
+            let Some((p, angle)) = walk.at(start + x0 + advance / 2.0) else {
+                continue;
+            };
+            let (sin, cos) = angle.sin_cos();
+            // The pen: half the advance back along the path's direction.
+            let pen = p - Vec2::new(cos, sin) * (advance / 2.0);
+            let pieces =
+                crate::text::pieces_with(font, &cluster, self.direction, tracking, tc.features());
+            for pc in pieces {
+                let Some(handle) = pc.font.filter(|_| !pc.text.is_empty()) else {
+                    continue;
+                };
+                let ox = pc.dx * size;
+                let pen = pen + Vec2::new(cos, sin) * ox;
+                let text = DrawCmd::Text {
+                    x: pen.x,
+                    baseline: pen.y,
+                    size,
+                    text: pc.text,
+                    color,
+                    font: handle,
+                    bounds: Rect::new(pen.x - size, pen.y - size, advance + 2.0 * size, 2.0 * size),
+                    clip,
+                    tracking,
+                    weight,
+                    glow: None,
+                    placements: pc.placements,
+                };
+                cmds.push(DrawCmd::StyledText {
+                    text: Box::new(text),
+                    effects: Box::new(og_render::UiTextEffects {
+                        transform: [cos, sin, -sin, cos],
+                        ..Default::default()
+                    }),
+                });
+            }
+        }
+    }
+}

@@ -47,7 +47,8 @@ enum Conv {
     /// A margin edge: `<n>px`, `<n>em` (of its own type step) or `0`, as
     /// px and em.
     Margin,
-    /// The CSS value as written, checked when it is read (`box-shadow`).
+    /// The CSS value as written, checked when it is read (`box-shadow`,
+    /// `-og-text-path`'s shapes).
     Raw,
     /// Written with its partner in one property (`translate: <x> <y>`,
     /// `scale: <x> <y>`, `-og-skew`, `grid-column`/`grid-row`,
@@ -165,6 +166,9 @@ pub const STYLE: &[(&str, &str)] = &[
     ("exit", "-og-exit"),
     ("cursor", "cursor"),
     ("userSelect", "user-select"),
+    ("textPath", "-og-text-path"),
+    ("textPathOffset", "-og-text-path-offset"),
+    ("textPathSide", "-og-text-path-side"),
     ("reduced", "-og-reduced-motion"),
     ("step", "font"),
     ("fitMin", "-og-fit-min"),
@@ -239,6 +243,8 @@ fn conv(prop: &str) -> Conv {
         "font" => Conv::Var("font"),
         "anchorTo" => Conv::Str,
         "rive" => Conv::Rive,
+        "textPath" | "textPathOffset" => Conv::Raw,
+        "textPathSide" => Conv::Kebab,
         "area" | "cue" => Conv::Ident,
         "areas" | "overlaps" => Conv::Strs,
         "columns" | "rows" => Conv::Tracks,
@@ -264,7 +270,9 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Size => "fit-content | stretch | <n>px | <n>% (min-/max- bounds)".into(),
         Conv::Insets => "1 to 4 lengths (top right bottom left)".into(),
         Conv::Margin => "<n>px | <n>em".into(),
-        Conv::Raw => "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into(),
+        Conv::Raw if prop == "boxShadow" => {
+            "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into()
+        }
         Conv::Bool(t, f) => format!("{t} | {f}"),
         Conv::Kebab => words
             .iter()
@@ -283,6 +291,10 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Presence => "<kind> [<distance>px] [<transition>]".into(),
         Conv::Origin => "<x>% <y>%".into(),
         Conv::Rive => "rive(\"<file>.riv#<Artboard>\")".into(),
+        Conv::Raw if prop == "textPath" => {
+            "none | path(\"<svg path data>\") | circle([<n>px])".into()
+        }
+        Conv::Raw => "<n>px | <n>%".into(),
         Conv::Joint => return None,
     })
 }
@@ -1384,6 +1396,20 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             let (start, span) = grid_line(&t)?;
             let axis = if name == "grid-column" { 0 } else { 1 };
             Ok(vec![Part::Grid(axis, start, span)])
+        }
+        "-og-text-path" => {
+            crate::text_path::parse_shape(value)?;
+            Ok(vec![e(
+                "textPath",
+                vec![Value::String(value.trim().to_owned())],
+            )])
+        }
+        "-og-text-path-offset" => {
+            crate::text_path::parse_offset(value)?;
+            Ok(vec![e(
+                "textPathOffset",
+                vec![Value::String(value.trim().to_owned())],
+            )])
         }
         "grid-auto-flow" => {
             let mut out = Vec::new();

@@ -194,7 +194,14 @@ impl Ui {
                         },
                     );
                 } else {
+                    let width = desc.width;
                     self.apply_label(i, &base.text, desc);
+                    // Path text aligns along its path, not in its box: it
+                    // keeps the box its path gives (a `circle()` centres in
+                    // it), never the column's width a centred line takes.
+                    if r.has("textPath") {
+                        self.nodes[i].el.width = width;
+                    }
                 }
             }
             "button" => self.apply_button(

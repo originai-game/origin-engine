@@ -630,6 +630,21 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "The pointer's shape over it and its subtree."
     ),
     p!(
+        "textPath",
+        Ty::Text,
+        "Its text set along a path (`-og-text-path`): `none`, `path(\"<svg path data>\")` in px from its content box, or `circle([<n>px])` centred in it."
+    ),
+    p!(
+        "textPathOffset",
+        Ty::Text,
+        "Where its text's anchor (text-align) sits along its path: `<n>px` or `<n>%` of the path's length."
+    ),
+    p!(
+        "textPathSide",
+        Ty::Word(&["left", "right"]),
+        "Which side of its path the text stands on: right runs the path backwards (inside a circle)."
+    ),
+    p!(
         "userSelect",
         Ty::Word(&["auto", "none", "text", "all"]),
         "Whether its text and its subtree's can be selected and copied; auto takes its parent's (none at the top and under a control)."

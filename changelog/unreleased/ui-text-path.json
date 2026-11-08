@@ -1,0 +1,5 @@
+{
+  "added": [
+    {"member":"ElementProps.textPath","summary":"Text on a path (CSS -og-text-path in documents, SVG 2 textPath layout): path(\"<SVG path data>\") or circle([r]), -og-text-path-offset in px or % of the path, text-align as the anchor, -og-text-path-side: right to run it backwards. Each grapheme is turned to the path with its baseline on it; what runs off an open path is dropped and a circle wraps. An element with no size is as large as its path. CSS offset-path still moves the element itself."}
+  ]
+}

@@ -78,6 +78,7 @@ pub use doc::UiDocument;
 pub use doc::build::{DocEvent, DocResponse};
 pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS, drawn_lines};
 pub use dress::{DressFrame, Dressing, Selector};
+pub mod text_path;
 pub use element::{
     Affine, Cursor, Customize, Dismiss, DragAxis, DragSpec, DropSpec, Edges, FocusGroup,
     GestureSpec, GridFlow, GridPlace, GridSpec, LayoutMode, LayoutStats, NavLinks, Orientation,
@@ -116,6 +117,7 @@ pub use style_file::{
 pub use text::{
     FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces, pieces_with,
 };
+pub use text_path::{PathShape, TextPath};
 pub use tokens::StyleTokens;
 pub use ui::{
     ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, ButtonDesc, ButtonVariant, CjkLocale,

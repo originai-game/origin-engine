@@ -33263,6 +33263,46 @@ export interface Customize {
 export type Cursor = "auto" | "default" | "pointer" | "text" | "grab" | "grabbing" | "move" | "notAllowed" | "crosshair" | "help" | "wait" | "progress" | "resizeEw" | "resizeNs" | "resizeNesw" | "resizeNwse" | "zoomIn" | "zoomOut" | "none";
 
 /**
+ * An element's text set along a path (CSS -og-text-path, SVG 2 textPath, docs/ui.md §2): each character turned to the path where it sits, its baseline on the path. One line; the element's textAlign anchors it at offset. CSS offset-path moves the element itself; this moves its text.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TextPathSpec {
+  /**
+   * SVG path data (M L H V C S Q T A Z), CSS px from the element's content box; empty is a circle. Data that does not parse sets the text in lines.
+   *
+   * @default ""
+   */
+  readonly data?: string;
+  /**
+   * With empty data: the circle's radius, centred in the content box from its top, clockwise; 0 is the box's closest side.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+  /**
+   * Where the anchor sits along the path: CSS px, or with percent a share of its length (0 to 1).
+   *
+   * @default 0
+   */
+  readonly offset?: number;
+  /**
+   * offset is a share of the path's length.
+   *
+   * @default false
+   */
+  readonly percent?: boolean;
+  /**
+   * Runs the path backwards (SVG side=right): on a circle, counter-clockwise inside it.
+   *
+   * @default false
+   */
+  readonly reverse?: boolean;
+}
+
+/**
  * Whether the player can select an element's text and copy it (CSS user-select, docs/ui.md §2).
  * - `"auto"`: Its parent's; with none set above it, or under a control (a button's label is pressed, not selected), none.
  * - `"none"`: Not selectable.
@@ -33423,6 +33463,12 @@ export interface ElementProps {
    * @default "auto"
    */
   readonly cursor?: Cursor;
+  /**
+   * Its text set along a path instead of in lines (CSS -og-text-path); null is in lines.
+   *
+   * @default null
+   */
+  readonly textPath?: TextPathSpec | null;
   /**
    * Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's.
    *

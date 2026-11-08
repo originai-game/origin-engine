@@ -95,6 +95,9 @@ What every kind takes: its box, layout, paint, motion and input.
 | `long-press-ms` | `number` | How long its long press is held, ms (0: 500). |
 | `gesture-priority` | `number` | Among nested recognisers of one press: higher wins. |
 | `cursor:` | `auto \| default \| pointer \| text \| grab \| grabbing \| move \| not-allowed \| crosshair \| help \| wait \| progress \| ew-resize \| ns-resize \| nesw-resize \| nwse-resize \| zoom-in \| zoom-out \| none` | The pointer's shape over it and its subtree. |
+| `-og-text-path:` | `none \| path("<svg path data>") \| circle([<n>px])` | Its text set along a path (`-og-text-path`): `none`, `path("<svg path data>")` in px from its content box, or `circle([<n>px])` centred in it. |
+| `-og-text-path-offset:` | `<n>px \| <n>%` | Where its text's anchor (text-align) sits along its path: `<n>px` or `<n>%` of the path's length. |
+| `-og-text-path-side:` | `left \| right` | Which side of its path the text stands on: right runs the path backwards (inside a circle). |
 | `user-select:` | `auto \| none \| text \| all` | Whether its text and its subtree's can be selected and copied; auto takes its parent's (none at the top and under a control). |
 | `customize` | `bool` | The player can move, scale and fade it in the HUD edit mode. |
 | `customize-key` | `name` | With customize: its name in the saved HUD layout (default: its path). |

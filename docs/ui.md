@@ -606,6 +606,43 @@ and restore. `dump_ui` carries it as `selection` (`text`, and each end's
 `path` and character), `null` with none. Only the elements whose selected
 range changed are painted again.
 
+#### Text on a path
+
+`-og-text-path` (`ElementProps.textPath` in TypeScript) sets an element's
+text along a path instead of in lines, as SVG 2's `<textPath>` does: each
+grapheme cluster sits with the middle of its advance on the path, turned to
+the path's direction there, its baseline on the path. CSS `offset-path`
+moves the element itself, so it is not reused.
+
+```css
+.title { -og-text-path: path("M0 90 Q170 -20 340 90"); -og-text-path-offset: 50%; text-align: center; }
+.seal  { -og-text-path: circle(52px); -og-text-path-side: right; }
+```
+
+- `-og-text-path`: `none`, `path("<SVG path data>")` (`M L H V C S Q T A
+  Z`, absolute and relative, in CSS px from the content box's origin), or
+  `circle([<radius>])`, which is centred in the content box and starts at
+  its top, running clockwise. Without a radius, the circle takes the box's
+  closest side. An `offset-path` shape such as `ray()` or `inset()` is an
+  error that names the difference.
+- `-og-text-path-offset`: where the anchor sits along the path, in `px` or
+  as a percentage of the path's length (SVG's `startOffset`).
+- `text-align` is the anchor at that offset (SVG's `text-anchor`): `start`
+  starts the run there, `center` centres it, `end` ends it.
+- `-og-text-path-side: right` runs the path backwards (SVG 2's `side`), so
+  text on a circle reads counter-clockwise, inside it.
+
+The text is one line, and its line breaks are spaces. A cluster whose
+middle falls off an open path is not drawn (SVG 2 §11.8.3), and a circle
+wraps. An element with no size of its own is as large as its path: the
+path data's extent, or a circle's diameter. A centred path text keeps that
+box instead of taking its column's width. Path data is flattened once per
+distinct string, and an unchanged path text is not painted again. Path text
+is not selectable (`user-select`). Its accessible name is still its text.
+In TypeScript, `textPath` is `{ data, radius, offset, percent, reverse }`;
+empty `data` is a circle, and data that does not parse keeps the text in
+lines. The reference frames are `text-path-1280` and `text-path-390`.
+
 ### 2.4 Select, dialog, details and meter
 
 These four are core controls with HTML's elements and attributes; kits

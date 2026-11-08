@@ -363,6 +363,7 @@ pub(crate) fn props(d: &Value) -> Props {
             .as_str()
             .and_then(og_ui::Cursor::from_name)
             .unwrap_or_default(),
+        text_path: text_path(&d["textPath"]),
         select: d["userSelect"]
             .as_str()
             .and_then(og_ui::UserSelect::from_name)
@@ -682,6 +683,27 @@ pub fn og_ui_semantics(desc: Option<String>) -> bool {
     with_ui("og.ui.semantics", |ui| ui.semantics(&s)).unwrap_or(false)
 }
 
+/// `ElementProps.textPath`: its path data, or a circle; `None` (text in
+/// lines) for null or data that does not parse.
+fn text_path(v: &Value) -> Option<og_ui::TextPath> {
+    if !v.is_object() {
+        return None;
+    }
+    let data = v["data"].as_str().unwrap_or("");
+    let shape = if data.trim().is_empty() {
+        let r = v["radius"].as_f64().unwrap_or(0.0) as f32;
+        og_ui::PathShape::Circle((r > 0.0).then_some(r))
+    } else {
+        og_ui::text_path::parse_shape(&format!("path({})", serde_json::json!(data))).ok()??
+    };
+    Some(og_ui::TextPath {
+        shape,
+        offset: v["offset"].as_f64().unwrap_or(0.0) as f32,
+        percent: v["percent"].as_bool().unwrap_or(false),
+        reverse: v["reverse"].as_bool().unwrap_or(false),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -760,6 +782,29 @@ mod tests {
                 "removed or CSS name {name} is not a GSAP alias"
             );
         }
+    }
+
+    #[test]
+    fn a_text_path_desc_reads_as_its_css_does() {
+        let p = props(
+            &json!({"textPath": {"data": "M0 10 h100", "offset": 0.5, "percent": true, "reverse": true}}),
+        );
+        let tp = p.text_path.expect("a path");
+        assert_eq!(tp.extent(), Some(og_core::glam::Vec2::new(100.0, 10.0)));
+        assert!((tp.offset, tp.percent, tp.reverse) == (0.5, true, true));
+        // Empty data is a circle: its radius, or none for the box's side.
+        let circle = |d| props(&d).text_path.map(|t| t.shape);
+        assert_eq!(
+            circle(json!({"textPath": {"radius": 40}})),
+            Some(og_ui::PathShape::Circle(Some(40.0)))
+        );
+        assert_eq!(
+            circle(json!({"textPath": {}})),
+            Some(og_ui::PathShape::Circle(None))
+        );
+        // Null, and data that does not parse, keep the text in lines.
+        assert_eq!(circle(json!({"textPath": null})), None);
+        assert_eq!(circle(json!({"textPath": {"data": "L1 1"}})), None);
     }
 
     #[test]

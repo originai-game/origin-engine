@@ -512,6 +512,7 @@ impl Ui {
                 flags |= HIT_NAV;
             }
             if matches!(n.content, Content::Text(_))
+                && n.props.text_path.is_none()
                 && !matches!(n.widget, Widget::Field(_))
                 && matches!(
                     o.select_of[i],

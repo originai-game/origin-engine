@@ -38,4 +38,4 @@ struct AbilityBarDesc {
 }
 ```
 
-<sub>Module `ui` line 5967</sub>
+<sub>Module `ui` line 5981</sub>
