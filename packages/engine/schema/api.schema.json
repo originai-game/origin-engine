@@ -51805,7 +51805,7 @@
     "Cursor": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "The pointer's shape over an element (CSS cursor, docs/ui.md §2), inherited by its subtree.",
+      "description": "The pointer's shape over an element (CSS cursor's keywords, CSS UI 4 §5.1, docs/ui.md §2), inherited by its subtree.",
       "type": "string",
       "enum": [
         "auto",
@@ -51826,7 +51826,24 @@
         "resizeNwse",
         "zoomIn",
         "zoomOut",
-        "none"
+        "none",
+        "contextMenu",
+        "cell",
+        "verticalText",
+        "alias",
+        "copy",
+        "noDrop",
+        "allScroll",
+        "resizeCol",
+        "resizeRow",
+        "resizeN",
+        "resizeE",
+        "resizeS",
+        "resizeW",
+        "resizeNe",
+        "resizeNw",
+        "resizeSe",
+        "resizeSw"
       ],
       "x-og-variants": {
         "auto": "Its parent's; with none set above it, a text control's I-beam, a draggable element's open hand (closed while dragged), a link's hand, else the arrow.",
@@ -51847,7 +51864,24 @@
         "resizeNwse": "Up left and down right.",
         "zoomIn": "The magnifier with a plus.",
         "zoomOut": "The magnifier with a minus.",
-        "none": "Hidden (a game drawing its own)."
+        "none": "Hidden (a game drawing its own).",
+        "contextMenu": "A menu is available.",
+        "cell": "A cell or cells can be selected.",
+        "verticalText": "The I-beam of vertical text.",
+        "alias": "An alias or shortcut is made.",
+        "copy": "A copy is made.",
+        "noDrop": "It cannot be dropped here.",
+        "allScroll": "Scrolls in any direction.",
+        "resizeCol": "A column resizes left and right.",
+        "resizeRow": "A row resizes up and down.",
+        "resizeN": "Its top edge moves.",
+        "resizeE": "Its right edge moves.",
+        "resizeS": "Its bottom edge moves.",
+        "resizeW": "Its left edge moves.",
+        "resizeNe": "Its top right corner moves.",
+        "resizeNw": "Its top left corner moves.",
+        "resizeSe": "Its bottom right corner moves.",
+        "resizeSw": "Its bottom left corner moves."
       }
     },
     "TextPathSpec": {

@@ -369,6 +369,8 @@ pub(crate) fn props(d: &Value) -> Props {
             .as_str()
             .and_then(og_ui::Cursor::from_name)
             .unwrap_or_default(),
+        cursor_images: Vec::new(),
+        interact: og_ui::Interact::default(),
         text_path: text_path(&d["textPath"]),
         player: d["player"].as_u64().map(|k| k.min(3) as u8),
         select: d["userSelect"]

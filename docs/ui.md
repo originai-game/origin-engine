@@ -1409,6 +1409,41 @@ and restore. `dump_ui` carries it as `selection` (`text`, and each end's
 `path` and character), `null` with none. Only the elements whose selected
 range changed are painted again.
 
+#### Pointer, touch and visibility
+
+CSS `cursor` takes every CSS UI 4 keyword (`context-menu`, `cell`,
+`vertical-text`, `alias`, `copy`, `no-drop`, `all-scroll`, `col-resize`,
+`row-resize`, the eight edge and corner resizes beside the earlier ones),
+inherited by the subtree, and `og.ui.frameCursor` answers it. `url(<icon
+or texture>) [<x> <y>]` images listed before the keyword are accepted and
+kept on the element; the host shows the keyword (the fallback CSS takes
+when an image does not load).
+
+`pointer-events` inherits: `none` lets the pointer through to what lies
+under the element (keys and pads still reach it), and a descendant saying
+`auto` takes it again. On inline SVG shapes the SVG values pick what is
+hit: `visiblePainted` (the shape's fill and stroke where they are
+painted), `visibleFill`, `visibleStroke`, `visible`, `painted`, `fill`,
+`stroke`, `all` and `bounding-box`, tested against the shape's geometry
+by its fill rule and half its stroke's width. On other elements they act
+as `auto`.
+
+`touch-action` (Pointer Events 3) limits what a touch drag starting on an
+element does on a coarse pointer: `pan-x`, `pan-left`, `pan-right`,
+`pan-y`, `pan-up`, `pan-down` and `pinch-zoom` combine, `manipulation`
+is all three, `none` keeps the touch for the element's own handlers. The
+used value is its own intersected with its ancestors'; a pan it does not
+allow does not scroll, and a zoom view without `pinch-zoom` is not
+pinched.
+
+`visibility` inherits: `hidden` keeps the element's place but draws
+nothing of its own, takes no pointer and leaves the accessibility tree,
+while a child saying `visible` is drawn and taken as usual. `collapse` is
+`hidden` that also gives up a flex item's main size. The `visible`
+attribute stays: `visible false` removes the element from layout as
+`display: none` does. These are read from the frame's orders as
+`user-select` is, so a declared value costs nothing while idle.
+
 #### Text on a path
 
 `-og-text-path` (`ElementProps.textPath` in TypeScript) sets an element's

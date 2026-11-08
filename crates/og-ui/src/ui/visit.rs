@@ -172,6 +172,12 @@ pub(crate) struct Orders {
     /// Per slot: whether its text can be selected (`user-select` as used:
     /// its own, else its parent's; never `Auto`).
     pub select_of: Vec<crate::element::UserSelect>,
+    /// Per slot: its used CSS `pointer-events` (never `Inherit`),
+    /// `visibility` (whether hidden) and `touch-action` (the gestures a
+    /// touch on it may make, its ancestors' intersected; `u8::MAX`: auto).
+    pub pointer_of: Vec<crate::element::PointerEvents>,
+    pub hidden_of: Vec<bool>,
+    pub touch_of: Vec<u8>,
     /// Per slot: its hits and the warning its place gives; the nodes
     /// with either, in drawing order.
     pub hit_of: Vec<Vec<Hit>>,
@@ -224,6 +230,9 @@ impl Ui {
             o.gesture_of.resize(n, 0);
             o.player_of.resize(n, 0);
             o.select_of.resize(n, crate::element::UserSelect::None);
+            o.pointer_of.resize(n, crate::element::PointerEvents::Auto);
+            o.hidden_of.resize(n, false);
+            o.touch_of.resize(n, u8::MAX);
             o.hit_of.resize(n, Vec::new());
             o.warn_of.resize(n, None);
             o.written_at.resize(n, 0);
@@ -433,6 +442,24 @@ impl Ui {
                 s => s,
             }
         };
+        // `pointer-events` and `visibility` inherit; `touch-action`'s used
+        // value is its own intersected with its ancestors'.
+        let (pointer, hidden, touch) = {
+            use crate::element::{PointerEvents, Visibility};
+            let parent = (up != NONE).then_some(up);
+            let i = &n.props.interact;
+            let pointer = match i.pointer_events {
+                PointerEvents::Inherit => parent.map_or(PointerEvents::Auto, |u| o.pointer_of[u]),
+                v => v,
+            };
+            let hidden = match i.visibility {
+                Visibility::Inherit => parent.is_some_and(|u| o.hidden_of[u]),
+                v => v != Visibility::Visible,
+            };
+            let touch =
+                parent.map_or(u8::MAX, |u| o.touch_of[u]) & i.touch_action.unwrap_or(u8::MAX);
+            (pointer, hidden, touch)
+        };
         let o = &mut self.orders;
         let old = (
             o.scope_of[i],
@@ -442,8 +469,18 @@ impl Ui {
             o.gesture_of[i],
             o.select_of[i],
             o.player_of[i],
+            (o.pointer_of[i], o.hidden_of[i], o.touch_of[i]),
         );
-        let new = (scope, scroller, owner, group, gesture, select, player);
+        let new = (
+            scope,
+            scroller,
+            owner,
+            group,
+            gesture,
+            select,
+            player,
+            (pointer, hidden, touch),
+        );
         (
             o.scope_of[i],
             o.scroller_of[i],
@@ -452,8 +489,30 @@ impl Ui {
             o.gesture_of[i],
             o.select_of[i],
             o.player_of[i],
+            (o.pointer_of[i], o.hidden_of[i], o.touch_of[i]),
         ) = new;
         old != new
+    }
+
+    /// Whether a point on an SVG shape's hit ([`HIT_SHAPE`]) is on the
+    /// geometry its `pointer-events` names.
+    pub(crate) fn shape_hit(&self, h: &Hit, x: f32, y: f32) -> bool {
+        let Some(i) = self.tree.find(h.key) else {
+            return false;
+        };
+        let (crate::element::PointerEvents::Svg(bits), Some(d)) =
+            (self.orders.pointer_of[i], self.draw_of(i))
+        else {
+            return true;
+        };
+        let r = &self.nodes[i].rect;
+        let (lx, ly) = if h.inv.is_identity() {
+            (x, y)
+        } else {
+            h.inv.apply(x, y)
+        };
+        let local = og_core::glam::Vec2::new(lx - r.x, ly - r.y);
+        d.covers([r.width, r.height], local, bits.0)
     }
 
     /// Node `i`'s hits (none for the screen's root) and the warning its
@@ -467,6 +526,21 @@ impl Ui {
                 break 'node;
             }
             let n = &self.nodes[i];
+            // CSS `pointer-events` and `visibility` (an SVG value without
+            // `visible` in it takes the pointer while hidden too).
+            let (pass, shape) = match o.pointer_of[i] {
+                crate::element::PointerEvents::None => (true, None),
+                crate::element::PointerEvents::Svg(s)
+                    if self.draw_of(i).is_some_and(|d| d.view_box.is_some()) =>
+                {
+                    (false, Some(s.0))
+                }
+                _ => (false, None),
+            };
+            let shown_or_svg = shape.is_some_and(|s| s & crate::element::SvgPointer::VISIBLE == 0);
+            if o.hidden_of[i] && !shown_or_svg {
+                break 'node;
+            }
             let visible = n.screen.intersect(&n.clip);
             // Scrolled or clipped out of view: not on screen, not listed. A
             // zero-size element (an empty spacer) is listed where it sits.
@@ -544,6 +618,12 @@ impl Ui {
             if flags == 0 && n.links.is_empty() {
                 break 'node;
             }
+            if pass {
+                // Keys and pads still reach it; the pointer passes.
+                flags = (flags & !(HIT_SCROLL | HIT_DROP | HIT_SELECT)) | HIT_PASS;
+            } else if shape.is_some_and(|s| s & crate::element::SvgPointer::BOX == 0) {
+                flags |= HIT_SHAPE;
+            }
             // Its reach past its box: its hit slop, and on a touch screen a
             // control's box grown to the minimum touch target (§15.2).
             let slop = n.props.hit_slop.max(0.0);
@@ -613,7 +693,7 @@ impl Ui {
                         key: child_key(n.key, &l),
                         rect: shown,
                         full: lr,
-                        flags: HIT_POINTER | HIT_NAV,
+                        flags: HIT_POINTER | HIT_NAV | if pass { HIT_PASS } else { 0 },
                         scope: o.scope_of[i],
                         scroller: o.scroller_of[i],
                         owner: o.owner_of[i],

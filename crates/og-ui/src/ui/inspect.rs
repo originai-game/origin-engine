@@ -291,7 +291,8 @@ impl Ui {
     ) -> Option<crate::a11y::A11yNode> {
         let n = &self.nodes[i];
         let (role, name, description, value, mut states) = self.a11y_info(i);
-        if role.is_empty() {
+        // CSS `visibility: hidden` leaves the tree (its visible children stay).
+        if role.is_empty() || self.orders.hidden_of.get(i) == Some(&true) {
             return None;
         }
         let r = &n.screen;

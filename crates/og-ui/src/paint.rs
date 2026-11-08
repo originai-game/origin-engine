@@ -738,6 +738,73 @@ impl ElementDraw {
         }
     }
 
+    /// Whether a point `p` (CSS px from its box's top left, the box `size`)
+    /// is on the geometry SVG `pointer-events` names (`bits` of
+    /// [`crate::element::SvgPointer`]): inside its fill by its fill rule,
+    /// within half a stroke's width of its stroke or outlines, or in its
+    /// bounding box; `painted` takes only what is painted (SVG 2 §16.6).
+    pub fn covers(&self, size: [f32; 2], p: Vec2, bits: u8) -> bool {
+        use crate::element::SvgPointer as S;
+        let (k, q) = match self.view_box {
+            Some([x, y, w, h]) => {
+                let k = (size[0] / w.max(1e-6)).min(size[1] / h.max(1e-6)).max(1e-6);
+                let mid = Vec2::new(x + w * 0.5, y + h * 0.5);
+                (k, (p - Vec2::from(size) * 0.5) / k + mid)
+            }
+            None => (1.0, p),
+        };
+        let frame = self.view_rect.unwrap_or(match self.view_box {
+            Some(vb) => vb,
+            None => [0.0, 0.0, size[0], size[1]],
+        });
+        let tol = 0.25 / k;
+        let lines = |kind: &ShapeKind| outline(kind, frame, tol);
+        if bits & S::BOX != 0 {
+            let all: Vec<Vec2> = std::iter::once(&self.shape)
+                .chain(self.outlines.iter().map(|(s, _)| s))
+                .flat_map(|s| lines(s).0.into_iter().flatten())
+                .collect();
+            let lo = all.iter().fold(Vec2::splat(f32::MAX), |a, b| a.min(*b));
+            let hi = all.iter().fold(Vec2::splat(f32::MIN), |a, b| a.max(*b));
+            return q.cmpge(lo).all() && q.cmple(hi).all();
+        }
+        let painted = bits & S::PAINTED != 0;
+        let (shape, closed, rule) = lines(&self.shape);
+        if bits & S::FILL != 0 && (!painted || !self.fills.is_empty()) && closed {
+            let winding: i32 = shape.iter().map(|c| winding(c, q)).sum();
+            if match rule {
+                FillRule::EvenOdd => winding % 2 != 0,
+                _ => winding != 0,
+            } {
+                return true;
+            }
+        }
+        if bits & S::STROKE != 0 && (!painted || !self.strokes.is_empty()) {
+            let width = self.strokes.iter().map(|s| s.width).fold(0.0, f32::max);
+            let own = match &self.shape {
+                ShapeKind::Path {
+                    filled: false,
+                    width: w,
+                    ..
+                } => *w,
+                _ => width,
+            };
+            let near = |cs: &[Vec<Vec2>], closed: bool, half: f32| {
+                cs.iter().any(|c| distance(c, closed, q) <= half)
+            };
+            if own > 0.0 && near(&shape, closed, own * 0.5) {
+                return true;
+            }
+            if self.outlines.iter().any(|(s, st)| {
+                let (c, closed, _) = lines(s);
+                near(&c, closed, st.width * 0.5)
+            }) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// The view box's fit in `at`'s box: its scale and the box point
     /// (CSS px from the box's top left) its centre lands on.
     fn fit(&self, at: &Placed) -> Option<(f32, Vec2, Vec2)> {
@@ -1315,6 +1382,115 @@ pub(crate) fn snap_to_cells(v: f32, cell: f32) -> f32 {
         return v;
     }
     (v.abs() / cell).round().max(1.0) * cell * v.signum()
+}
+
+/// A shape's contours as polylines in its own units (`frame`: the rect a
+/// rect or ellipse fills), whether they are closed, and its fill rule.
+fn outline(kind: &ShapeKind, frame: [f32; 4], tol: f32) -> (Vec<Vec<Vec2>>, bool, FillRule) {
+    let [x, y, w, h] = frame;
+    match kind {
+        ShapeKind::Path {
+            points,
+            closed,
+            filled,
+            curves,
+            fill_rule,
+            contours,
+            ..
+        } => {
+            let whole = [points.len() as u32];
+            let counts: &[u32] = if contours.is_empty() {
+                &whole
+            } else {
+                contours
+            };
+            let mut rest: &[[f32; 2]] = points;
+            let mut out = Vec::new();
+            for &n in counts {
+                let (c, more) = rest.split_at((n as usize).min(rest.len()));
+                rest = more;
+                let Some(first) = c.first() else { continue };
+                let mut line = vec![Vec2::from(*first)];
+                if *curves {
+                    for seg in c[1..].as_chunks::<3>().0 {
+                        let [p0, p1, p2, p3] = [
+                            *line.last().unwrap(),
+                            seg[0].into(),
+                            seg[1].into(),
+                            seg[2].into(),
+                        ];
+                        let len = p0.distance(p1) + p1.distance(p2) + p2.distance(p3);
+                        let steps = ((len / tol.max(1e-3)).sqrt().ceil() as usize).clamp(1, 64);
+                        for k in 1..=steps {
+                            let t = k as f32 / steps as f32;
+                            let u = 1.0 - t;
+                            line.push(
+                                p0 * (u * u * u)
+                                    + p1 * (3.0 * u * u * t)
+                                    + p2 * (3.0 * u * t * t)
+                                    + p3 * (t * t * t),
+                            );
+                        }
+                    }
+                } else {
+                    line.extend(c[1..].iter().map(|p| Vec2::from(*p)));
+                }
+                out.push(line);
+            }
+            (out, *closed || *filled, *fill_rule)
+        }
+        ShapeKind::Ellipse => {
+            let (c, r) = (Vec2::new(x + w * 0.5, y + h * 0.5), Vec2::new(w, h) * 0.5);
+            let line = (0..64)
+                .map(|k| {
+                    let a = k as f32 / 64.0 * std::f32::consts::TAU;
+                    c + r * Vec2::new(a.cos(), a.sin())
+                })
+                .collect();
+            (vec![line], true, FillRule::NonZero)
+        }
+        _ => {
+            let line = vec![
+                Vec2::new(x, y),
+                Vec2::new(x + w, y),
+                Vec2::new(x + w, y + h),
+                Vec2::new(x, y + h),
+            ];
+            (vec![line], true, FillRule::NonZero)
+        }
+    }
+}
+
+/// The winding number of a closed polyline around `q`.
+fn winding(c: &[Vec2], q: Vec2) -> i32 {
+    let mut w = 0;
+    for (k, a) in c.iter().enumerate() {
+        let b = c[(k + 1) % c.len()];
+        let cross = (b.x - a.x) * (q.y - a.y) - (q.x - a.x) * (b.y - a.y);
+        if a.y <= q.y && b.y > q.y && cross > 0.0 {
+            w += 1;
+        } else if a.y > q.y && b.y <= q.y && cross < 0.0 {
+            w -= 1;
+        }
+    }
+    w
+}
+
+/// The distance from `q` to a polyline.
+fn distance(c: &[Vec2], closed: bool, q: Vec2) -> f32 {
+    let segs = if closed {
+        c.len()
+    } else {
+        c.len().saturating_sub(1)
+    };
+    let mut best = c.first().map_or(f32::MAX, |p| p.distance(q));
+    for k in 0..segs {
+        let (a, b) = (c[k], c[(k + 1) % c.len()]);
+        let ab = b - a;
+        let t = ((q - a).dot(ab) / ab.length_squared().max(1e-12)).clamp(0.0, 1.0);
+        best = best.min((a + ab * t).distance(q));
+    }
+    best
 }
 
 #[cfg(test)]

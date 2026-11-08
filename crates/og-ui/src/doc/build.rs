@@ -1352,8 +1352,22 @@ impl Ui {
             ..crate::element::GestureSpec::default()
         };
         p.gestures = g.any().then_some(g);
-        if let Some(c) = r.str("cursor").and_then(crate::element::Cursor::from_name) {
-            p.cursor = c;
+        {
+            // Checked when the CSS was lowered.
+            use crate::doc::interact_css as ic;
+            if let Some(Ok((images, c))) = r.str("cursor").map(ic::cursor) {
+                (p.cursor_images, p.cursor) = (images, c);
+            }
+            let i = &mut p.interact;
+            if let Some(Ok(v)) = r.str("pointerEvents").map(ic::pointer_events) {
+                i.pointer_events = v;
+            }
+            if let Some(Ok(v)) = r.str("touchAction").map(ic::touch_action) {
+                i.touch_action = v;
+            }
+            if let Some(Ok(v)) = r.str("visibility").map(ic::visibility) {
+                i.visibility = v;
+            }
         }
         if let Some(shape) = r.str("textPath") {
             // Checked when the CSS was lowered.

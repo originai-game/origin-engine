@@ -504,6 +504,18 @@ fn flex_inputs(n: &Node, horizontal: bool, inner: f32) -> FlexInputs {
             ..FlexItem::default()
         },
     });
+    // CSS Flexbox §4.4: a collapsed item keeps its cross size (its line's
+    // strut) and gives up its main size.
+    if n.props.interact.visibility == crate::element::Visibility::Collapse {
+        return FlexInputs {
+            base: 0.0,
+            hypo: 0.0,
+            min: 0.0,
+            max: 0.0,
+            grow: 0.0,
+            shrink: 0.0,
+        };
+    }
     let specified = size.definite(pref, min, Some(inner));
     let base = f
         .basis

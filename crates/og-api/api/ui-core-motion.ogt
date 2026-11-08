@@ -443,7 +443,7 @@
   }
 
   enum Cursor {
-    doc "The pointer's shape over an element (CSS cursor, docs/ui.md §2), inherited by its subtree."
+    doc "The pointer's shape over an element (CSS cursor's keywords, CSS UI 4 §5.1, docs/ui.md §2), inherited by its subtree."
     variant auto "Its parent's; with none set above it, a text control's I-beam, a draggable element's open hand (closed while dragged), a link's hand, else the arrow."
     variant default "The arrow."
     variant pointer "The hand (a link)."
@@ -463,6 +463,23 @@
     variant zoomIn "The magnifier with a plus."
     variant zoomOut "The magnifier with a minus."
     variant none "Hidden (a game drawing its own)."
+    variant contextMenu "A menu is available."
+    variant cell "A cell or cells can be selected."
+    variant verticalText "The I-beam of vertical text."
+    variant alias "An alias or shortcut is made."
+    variant copy "A copy is made."
+    variant noDrop "It cannot be dropped here."
+    variant allScroll "Scrolls in any direction."
+    variant resizeCol "A column resizes left and right."
+    variant resizeRow "A row resizes up and down."
+    variant resizeN "Its top edge moves."
+    variant resizeE "Its right edge moves."
+    variant resizeS "Its bottom edge moves."
+    variant resizeW "Its left edge moves."
+    variant resizeNe "Its top right corner moves."
+    variant resizeNw "Its top left corner moves."
+    variant resizeSe "Its bottom right corner moves."
+    variant resizeSw "Its bottom left corner moves."
   }
 
   struct TextPathSpec {

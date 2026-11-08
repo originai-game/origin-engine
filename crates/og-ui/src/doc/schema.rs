@@ -286,28 +286,6 @@ pub const CORE_KINDS: &[KindSpec] = &[
 ];
 
 const STEPS: &[&str] = &crate::style_file::STEP_NAMES;
-const CURSORS: &[&str] = &[
-    "auto",
-    "default",
-    "pointer",
-    "text",
-    "grab",
-    "grabbing",
-    "move",
-    "notAllowed",
-    "crosshair",
-    "help",
-    "wait",
-    "progress",
-    "resizeEw",
-    "resizeNs",
-    "resizeNesw",
-    "resizeNwse",
-    "zoomIn",
-    "zoomOut",
-    "none",
-];
-
 const ANCHORS: &[&str] = &[
     "topLeft",
     "top",
@@ -942,8 +920,23 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!(
         "cursor",
-        Ty::Word(CURSORS),
-        "The pointer's shape over it and its subtree."
+        Ty::Text,
+        "CSS `cursor`: the pointer's shape over it and its subtree, any CSS keyword. `url(<icon or texture>) [<x> <y>]` images before it are accepted and kept; the keyword is what the host shows."
+    ),
+    p!(
+        "pointerEvents",
+        Ty::Text,
+        "CSS `pointer-events`, inherited: none lets the pointer through to what is under it (keys and pads still reach it; a child saying auto still takes it). On SVG shapes the SVG values pick the fill, the stroke or the bounding box."
+    ),
+    p!(
+        "touchAction",
+        Ty::Text,
+        "CSS `touch-action`: the pans (pan-x, pan-left…, pan-y…) and pinch-zoom a touch starting on it may make; none keeps the touch for its own handlers. The used value intersects its ancestors'."
+    ),
+    p!(
+        "visibility",
+        Ty::Text,
+        "CSS `visibility`, inherited: hidden keeps its place but draws nothing and takes no pointer or focus, while a child saying visible is drawn; collapse also gives up a flex item's main size."
     ),
     p!(
         "textPath",

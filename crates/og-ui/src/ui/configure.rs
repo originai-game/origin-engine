@@ -568,7 +568,9 @@ impl Ui {
         let p = input.pointer;
         let hot = if input.pointer_inside {
             crate::ui::pick_hit(&self.state.hits, p.x, p.y, |h| {
-                !h.has(HIT_OFFSCREEN) && h.has(HIT_POINTER | HIT_SCROLL | HIT_TEXT)
+                !h.has(HIT_OFFSCREEN)
+                    && h.has(HIT_POINTER | HIT_SCROLL | HIT_TEXT)
+                    && (!h.has(crate::ui::HIT_SHAPE) || self.shape_hit(h, p.x, p.y))
             })
         } else {
             0

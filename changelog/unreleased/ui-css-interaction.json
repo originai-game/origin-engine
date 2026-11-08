@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS pointer-events, touch-action, visibility and every cursor keyword in documents",
+      "summary": "pointer-events none and auto (inherited) and the SVG values on inline SVG shapes, tested on their fill and stroke; touch-action pans and pinch-zoom intersected down the tree; visibility hidden and collapse with visible children inside a hidden parent; cursor takes every CSS UI 4 keyword, and og.ui.Cursor gains contextMenu, cell, verticalText, alias, copy, noDrop, allScroll, resizeCol, resizeRow and the edge and corner resizes. The visible attribute stays."
+    }
+  ]
+}

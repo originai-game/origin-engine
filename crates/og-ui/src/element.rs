@@ -784,10 +784,12 @@ impl GestureSpec {
     }
 }
 
-/// The pointer's shape over an element (CSS `cursor`, docs/ui.md §2),
-/// inherited by its subtree. `Auto` takes its parent's, and with none set
-/// above it a text control's I-beam, a draggable element's open hand (a
-/// closed one while dragged), a link's hand, else the arrow.
+/// The pointer's shape over an element (CSS `cursor`, CSS UI 4 §5.1,
+/// docs/ui.md §2), inherited by its subtree: every keyword CSS has. `Auto`
+/// takes its parent's, and with none set above it a text control's I-beam,
+/// a draggable element's open hand (a closed one while dragged), a link's
+/// hand, else the arrow. `url()` images over a keyword are
+/// [`CursorImage`]s beside it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Cursor {
     #[default]
@@ -811,84 +813,174 @@ pub enum Cursor {
     ZoomOut,
     /// Hidden (a game drawing its own).
     None,
+    ContextMenu,
+    Cell,
+    VerticalText,
+    Alias,
+    Copy,
+    NoDrop,
+    AllScroll,
+    ResizeCol,
+    ResizeRow,
+    ResizeN,
+    ResizeE,
+    ResizeS,
+    ResizeW,
+    ResizeNe,
+    ResizeNw,
+    ResizeSe,
+    ResizeSw,
 }
 
-impl Cursor {
-    pub const ALL: [Cursor; 19] = [
-        Cursor::Auto,
-        Cursor::Default,
-        Cursor::Pointer,
-        Cursor::Text,
-        Cursor::Grab,
-        Cursor::Grabbing,
-        Cursor::Move,
-        Cursor::NotAllowed,
-        Cursor::Crosshair,
-        Cursor::Help,
-        Cursor::Wait,
-        Cursor::Progress,
-        Cursor::ResizeEw,
-        Cursor::ResizeNs,
-        Cursor::ResizeNesw,
-        Cursor::ResizeNwse,
-        Cursor::ZoomIn,
-        Cursor::ZoomOut,
-        Cursor::None,
-    ];
+/// Each cursor's (variant, IDL name, CSS keyword).
+const CURSOR_NAMES: [(Cursor, &str, &str); 36] = [
+    (Cursor::Auto, "auto", "auto"),
+    (Cursor::Default, "default", "default"),
+    (Cursor::Pointer, "pointer", "pointer"),
+    (Cursor::Text, "text", "text"),
+    (Cursor::Grab, "grab", "grab"),
+    (Cursor::Grabbing, "grabbing", "grabbing"),
+    (Cursor::Move, "move", "move"),
+    (Cursor::NotAllowed, "notAllowed", "not-allowed"),
+    (Cursor::Crosshair, "crosshair", "crosshair"),
+    (Cursor::Help, "help", "help"),
+    (Cursor::Wait, "wait", "wait"),
+    (Cursor::Progress, "progress", "progress"),
+    (Cursor::ResizeEw, "resizeEw", "ew-resize"),
+    (Cursor::ResizeNs, "resizeNs", "ns-resize"),
+    (Cursor::ResizeNesw, "resizeNesw", "nesw-resize"),
+    (Cursor::ResizeNwse, "resizeNwse", "nwse-resize"),
+    (Cursor::ZoomIn, "zoomIn", "zoom-in"),
+    (Cursor::ZoomOut, "zoomOut", "zoom-out"),
+    (Cursor::None, "none", "none"),
+    (Cursor::ContextMenu, "contextMenu", "context-menu"),
+    (Cursor::Cell, "cell", "cell"),
+    (Cursor::VerticalText, "verticalText", "vertical-text"),
+    (Cursor::Alias, "alias", "alias"),
+    (Cursor::Copy, "copy", "copy"),
+    (Cursor::NoDrop, "noDrop", "no-drop"),
+    (Cursor::AllScroll, "allScroll", "all-scroll"),
+    (Cursor::ResizeCol, "resizeCol", "col-resize"),
+    (Cursor::ResizeRow, "resizeRow", "row-resize"),
+    (Cursor::ResizeN, "resizeN", "n-resize"),
+    (Cursor::ResizeE, "resizeE", "e-resize"),
+    (Cursor::ResizeS, "resizeS", "s-resize"),
+    (Cursor::ResizeW, "resizeW", "w-resize"),
+    (Cursor::ResizeNe, "resizeNe", "ne-resize"),
+    (Cursor::ResizeNw, "resizeNw", "nw-resize"),
+    (Cursor::ResizeSe, "resizeSe", "se-resize"),
+    (Cursor::ResizeSw, "resizeSw", "sw-resize"),
+];
 
-    /// Its CSS name (`auto` for `Auto`).
-    pub fn css(self) -> &'static str {
-        match self {
-            Cursor::Auto => "auto",
-            Cursor::Default => "default",
-            Cursor::Pointer => "pointer",
-            Cursor::Text => "text",
-            Cursor::Grab => "grab",
-            Cursor::Grabbing => "grabbing",
-            Cursor::Move => "move",
-            Cursor::NotAllowed => "not-allowed",
-            Cursor::Crosshair => "crosshair",
-            Cursor::Help => "help",
-            Cursor::Wait => "wait",
-            Cursor::Progress => "progress",
-            Cursor::ResizeEw => "ew-resize",
-            Cursor::ResizeNs => "ns-resize",
-            Cursor::ResizeNesw => "nesw-resize",
-            Cursor::ResizeNwse => "nwse-resize",
-            Cursor::ZoomIn => "zoom-in",
-            Cursor::ZoomOut => "zoom-out",
-            Cursor::None => "none",
+impl Cursor {
+    pub const ALL: [Cursor; 36] = {
+        let mut all = [Cursor::Auto; 36];
+        let mut k = 0;
+        while k < all.len() {
+            all[k] = CURSOR_NAMES[k].0;
+            k += 1;
         }
+        all
+    };
+
+    /// Its CSS keyword (`auto` for `Auto`).
+    pub fn css(self) -> &'static str {
+        CURSOR_NAMES[self as usize].2
     }
 
     /// Its IDL name (`notAllowed`, `resizeEw`…).
     pub fn name(self) -> &'static str {
-        match self {
-            Cursor::Auto => "auto",
-            Cursor::Default => "default",
-            Cursor::Pointer => "pointer",
-            Cursor::Text => "text",
-            Cursor::Grab => "grab",
-            Cursor::Grabbing => "grabbing",
-            Cursor::Move => "move",
-            Cursor::NotAllowed => "notAllowed",
-            Cursor::Crosshair => "crosshair",
-            Cursor::Help => "help",
-            Cursor::Wait => "wait",
-            Cursor::Progress => "progress",
-            Cursor::ResizeEw => "resizeEw",
-            Cursor::ResizeNs => "resizeNs",
-            Cursor::ResizeNesw => "resizeNesw",
-            Cursor::ResizeNwse => "resizeNwse",
-            Cursor::ZoomIn => "zoomIn",
-            Cursor::ZoomOut => "zoomOut",
-            Cursor::None => "none",
-        }
+        CURSOR_NAMES[self as usize].1
     }
 
     pub fn from_name(name: &str) -> Option<Cursor> {
-        Cursor::ALL.into_iter().find(|c| c.name() == name)
+        CURSOR_NAMES.iter().find(|c| c.1 == name).map(|c| c.0)
     }
+
+    /// The cursor a CSS keyword names.
+    pub fn from_css(word: &str) -> Option<Cursor> {
+        CURSOR_NAMES
+            .iter()
+            .find(|c| c.2.eq_ignore_ascii_case(word))
+            .map(|c| c.0)
+    }
+}
+
+/// A `cursor: url(<image>) [<x> <y>]` image tried before the keyword
+/// (CSS UI 4 §5.1): an atlas icon by name, or a texture by its asset
+/// handle, as `background-image` names one, and its hotspot in image px
+/// (`None`: the image's own, else its top left).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CursorImage {
+    pub url: String,
+    pub hotspot: Option<[f32; 2]>,
+}
+
+/// CSS `pointer-events` (CSS UI 4 §5.3, SVG 2 §16.6), inherited.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum PointerEvents {
+    /// Not declared: its parent's (`Auto` at the top).
+    #[default]
+    Inherit,
+    Auto,
+    /// The pointer passes through it to what is under it; its subtree's
+    /// elements that say `auto` still take it. Keys and pads still reach it.
+    None,
+    /// An SVG value: which of an SVG shape's parts take the pointer. On
+    /// other elements it is `Auto`.
+    Svg(SvgPointer),
+}
+
+/// The SVG `pointer-events` values: bit 0 its fill, bit 1 its stroke,
+/// bit 2 only while it paints them (`visiblePainted`, `painted`), bit 3
+/// only while visible, bit 4 its bounding box.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SvgPointer(pub u8);
+
+impl SvgPointer {
+    pub const FILL: u8 = 1;
+    pub const STROKE: u8 = 2;
+    pub const PAINTED: u8 = 4;
+    pub const VISIBLE: u8 = 8;
+    pub const BOX: u8 = 16;
+}
+
+/// CSS `visibility` (CSS Display 3 §7), inherited: a hidden element keeps
+/// its place but draws nothing and takes no pointer or focus; a child that
+/// says `visible` inside it is drawn.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Visibility {
+    /// Not declared: its parent's.
+    #[default]
+    Inherit,
+    Visible,
+    Hidden,
+    /// `hidden`, except that a flex item gives up its main size (CSS
+    /// Flexbox 1 §4.4) and a table row or column its track.
+    Collapse,
+}
+
+/// An element's interaction properties (CSS UI 4, CSS Containment 2,
+/// CSS Will Change 1, Pointer Events 3). The zero value is CSS's initial.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Interact {
+    pub pointer_events: PointerEvents,
+    pub visibility: Visibility,
+    /// CSS `touch-action` (Pointer Events 3 §9): `None` is `auto`, else
+    /// the gestures a touch starting on it may make, bits of
+    /// [`Interact::PAN_X`], [`Interact::PAN_Y`], [`Interact::PINCH`] (0:
+    /// `none`). The used value intersects its ancestors'.
+    pub touch_action: Option<u8>,
+}
+
+impl Interact {
+    pub const PAN_LEFT: u8 = 1;
+    pub const PAN_RIGHT: u8 = 2;
+    pub const PAN_UP: u8 = 4;
+    pub const PAN_DOWN: u8 = 8;
+    pub const PAN_X: u8 = Self::PAN_LEFT | Self::PAN_RIGHT;
+    pub const PAN_Y: u8 = Self::PAN_UP | Self::PAN_DOWN;
+    pub const PINCH: u8 = 16;
 }
 
 /// Whether the player can select an element's text and copy it (CSS
@@ -1239,6 +1331,10 @@ pub struct Props {
     pub gestures: Option<GestureSpec>,
     /// The pointer's shape over it and its subtree.
     pub cursor: Cursor,
+    /// `cursor: url()` images tried in order before `cursor`.
+    pub cursor_images: Vec<CursorImage>,
+    /// Its CSS interaction properties.
+    pub interact: Interact,
     /// Whether its text can be selected and copied (`user-select`).
     pub select: UserSelect,
     /// Its text set along a path (`-og-text-path`); `None`: in lines.
@@ -1298,6 +1394,8 @@ impl Default for Props {
             focus_group: None,
             gestures: None,
             cursor: Cursor::Auto,
+            cursor_images: Vec::new(),
+            interact: Interact::default(),
             select: UserSelect::Auto,
             text_path: None,
             customize: None,

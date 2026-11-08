@@ -83,10 +83,11 @@ pub use dress::{DressFrame, Dressing, Selector};
 pub mod text_path;
 pub mod transform3d;
 pub use element::{
-    Affine, AutoRepeat, Breadth, Cursor, Customize, Dismiss, DragAxis, DragSpec, DropSpec, Edges,
-    FocusGroup, GestureSpec, GridFlow, GridLine, GridPlace, GridSpec, LayoutMode, LayoutStats,
-    Lines, NavLinks, Orientation, Overlap, Patch, PinchSpec, Position, Prop, Props, Query,
-    Template, Track, Transform, UserSelect, Values, Variant,
+    Affine, AutoRepeat, Breadth, Cursor, CursorImage, Customize, Dismiss, DragAxis, DragSpec,
+    DropSpec, Edges, FocusGroup, GestureSpec, GridFlow, GridLine, GridPlace, GridSpec, Interact,
+    LayoutMode, LayoutStats, Lines, NavLinks, Orientation, Overlap, Patch, PinchSpec,
+    PointerEvents, Position, Prop, Props, Query, SvgPointer, Template, Track, Transform,
+    UserSelect, Values, Variant, Visibility,
 };
 pub use hud_layout::{HudEditInfo, HudEditorDesc, HudEditorResponse, HudPlacement};
 pub use id::{Id, ui_id, ui_idi};

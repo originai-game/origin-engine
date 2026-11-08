@@ -280,6 +280,16 @@ impl Ui {
                 if key == 0 || under(b) != key {
                     return false;
                 }
+                // CSS `touch-action` without pinch-zoom keeps the pinch.
+                if self
+                    .tree
+                    .find(key)
+                    .and_then(|i| self.orders.touch_of.get(i))
+                    .is_some_and(|t| t & crate::element::Interact::PINCH == 0)
+                    && self.zoom_state(key).is_some()
+                {
+                    return false;
+                }
                 self.state.pinch = Some(Pinch {
                     key,
                     center,
@@ -590,6 +600,35 @@ impl Ui {
     /// This tick's scrolling: a grabbed bar, the wheel, a drag (with its
     /// velocity) and a fling, before interaction is decided. Answers the
     /// scroll container a press on a scrollbar grabbed (it holds the press).
+    /// A touch drag's move `d` (content offset) as CSS `touch-action`
+    /// lets the element it started on pan: an axis or direction it does
+    /// not allow is dropped. A fine pointer pans freely.
+    fn touch_allows(&self, key: u64, d: Vec2) -> Vec2 {
+        use crate::element::Interact as I;
+        if !self.viewport.coarse_pointer {
+            return d;
+        }
+        let Some(t) = self
+            .tree
+            .find(key)
+            .and_then(|i| self.orders.touch_of.get(i))
+        else {
+            return d;
+        };
+        // A finger moving left moves the content's offset right.
+        let ok = |v: f32, fwd: u8, back: u8| {
+            if (v > 0.0 && t & fwd != 0) || (v < 0.0 && t & back != 0) {
+                v
+            } else {
+                0.0
+            }
+        };
+        Vec2::new(
+            ok(d.x, I::PAN_LEFT, I::PAN_RIGHT),
+            ok(d.y, I::PAN_UP, I::PAN_DOWN),
+        )
+    }
+
     pub(crate) fn scroll_input(&mut self, input: &crate::input::InputFrame) -> Option<u64> {
         let p = input.pointer;
         self.gesture = self.two_touches(input);
@@ -663,7 +702,7 @@ impl Ui {
             }
         } else if self.hit(active).is_some_and(|h| h.has(HIT_SCROLL)) {
             if input.down && !input.pressed {
-                let d = self.state.pointer - p;
+                let d = self.touch_allows(active, self.state.pointer - p);
                 self.scroll_chain_by(active, d);
                 self.state.drag_v = self.state.drag_v * 0.5 + d * 0.5;
             } else if input.released {

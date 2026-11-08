@@ -56,28 +56,6 @@ enum Conv {
     Joint,
 }
 
-const CURSORS: &[(&str, &str)] = &[
-    ("auto", "auto"),
-    ("default", "default"),
-    ("pointer", "pointer"),
-    ("text", "text"),
-    ("grab", "grab"),
-    ("grabbing", "grabbing"),
-    ("move", "move"),
-    ("notAllowed", "not-allowed"),
-    ("crosshair", "crosshair"),
-    ("help", "help"),
-    ("wait", "wait"),
-    ("progress", "progress"),
-    ("resizeEw", "ew-resize"),
-    ("resizeNs", "ns-resize"),
-    ("resizeNesw", "nesw-resize"),
-    ("resizeNwse", "nwse-resize"),
-    ("zoomIn", "zoom-in"),
-    ("zoomOut", "zoom-out"),
-    ("none", "none"),
-];
-
 const POSITIONS: &[(&str, &str)] = &[
     ("flow", "static"),
     ("absolute", "absolute"),
@@ -221,6 +199,9 @@ pub const STYLE: &[(&str, &str)] = &[
     ("enter", "-og-enter"),
     ("exit", "-og-exit"),
     ("cursor", "cursor"),
+    ("pointerEvents", "pointer-events"),
+    ("touchAction", "touch-action"),
+    ("visibility", "visibility"),
     ("emitter", "-og-emitter"),
     ("meta", "-og-meta"),
     ("userSelect", "user-select"),
@@ -321,6 +302,7 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
 
 fn conv(prop: &str) -> Conv {
     match prop {
+        p if super::interact_css::form(p).is_some() => Conv::Raw,
         "width" | "height" | "minWidth" | "maxWidth" | "minHeight" | "maxHeight" => Conv::Size,
         "padding" => Conv::Insets,
         "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft" => Conv::Len,
@@ -377,7 +359,6 @@ fn conv(prop: &str) -> Conv {
         "nowrap" => Conv::Bool("nowrap", "normal"),
         "ellipsis" => Conv::Bool("ellipsis", "clip"),
         "position" => Conv::Kw(POSITIONS),
-        "cursor" => Conv::Kw(CURSORS),
         "step" | "fitMin" => Conv::Var("text"),
         "font" => Conv::Var("font"),
         "anchorTo" => Conv::Str,
@@ -413,6 +394,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         }
         Conv::Insets => "1 to 4 lengths (top right bottom left)".into(),
         Conv::Margin => "<n>px | <n>em | <n>% | auto | calc(…)".into(),
+        Conv::Raw if let Some(f) = super::interact_css::form(prop) => f.into(),
         Conv::Raw if prop == "boxShadow" => {
             "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into()
         }
@@ -533,7 +515,6 @@ pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
         "float" | "clear" => "write `display` as the kind: a `row` or a `grid`",
         "left" => "write `inset-inline-start` (it mirrors right to left)",
         "right" => "write `inset-inline-end` (it mirrors right to left)",
-        "visibility" => "write the attribute `visible false` (or `visible bind …`)",
         "inset-inline" | "inset" | "inset-block" => {
             "write each side: `top`, `bottom`, `inset-inline-start`, `inset-inline-end`"
         }
@@ -1759,6 +1740,10 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             "backgroundImage",
             vec![Value::String("none".into())],
         )]),
+        n if let Some(prop) = super::interact_css::prop_of(n) => {
+            super::interact_css::check(n, value)?;
+            Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
+        }
         "scroll-snap-type" | "scroll-snap-align" | "-og-sheet-detents" => {
             let prop = match name {
                 "scroll-snap-type" => super::paint_css::snap_type(value).map(|_| "scrollSnapType"),

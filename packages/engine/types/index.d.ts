@@ -28948,7 +28948,7 @@ export interface Customize {
 }
 
 /**
- * The pointer's shape over an element (CSS cursor, docs/ui.md §2), inherited by its subtree.
+ * The pointer's shape over an element (CSS cursor's keywords, CSS UI 4 §5.1, docs/ui.md §2), inherited by its subtree.
  * - `"auto"`: Its parent's; with none set above it, a text control's I-beam, a draggable element's open hand (closed while dragged), a link's hand, else the arrow.
  * - `"default"`: The arrow.
  * - `"pointer"`: The hand (a link).
@@ -28968,8 +28968,25 @@ export interface Customize {
  * - `"zoomIn"`: The magnifier with a plus.
  * - `"zoomOut"`: The magnifier with a minus.
  * - `"none"`: Hidden (a game drawing its own).
+ * - `"contextMenu"`: A menu is available.
+ * - `"cell"`: A cell or cells can be selected.
+ * - `"verticalText"`: The I-beam of vertical text.
+ * - `"alias"`: An alias or shortcut is made.
+ * - `"copy"`: A copy is made.
+ * - `"noDrop"`: It cannot be dropped here.
+ * - `"allScroll"`: Scrolls in any direction.
+ * - `"resizeCol"`: A column resizes left and right.
+ * - `"resizeRow"`: A row resizes up and down.
+ * - `"resizeN"`: Its top edge moves.
+ * - `"resizeE"`: Its right edge moves.
+ * - `"resizeS"`: Its bottom edge moves.
+ * - `"resizeW"`: Its left edge moves.
+ * - `"resizeNe"`: Its top right corner moves.
+ * - `"resizeNw"`: Its top left corner moves.
+ * - `"resizeSe"`: Its bottom right corner moves.
+ * - `"resizeSw"`: Its bottom left corner moves.
  */
-export type Cursor = "auto" | "default" | "pointer" | "text" | "grab" | "grabbing" | "move" | "notAllowed" | "crosshair" | "help" | "wait" | "progress" | "resizeEw" | "resizeNs" | "resizeNesw" | "resizeNwse" | "zoomIn" | "zoomOut" | "none";
+export type Cursor = "auto" | "default" | "pointer" | "text" | "grab" | "grabbing" | "move" | "notAllowed" | "crosshair" | "help" | "wait" | "progress" | "resizeEw" | "resizeNs" | "resizeNesw" | "resizeNwse" | "zoomIn" | "zoomOut" | "none" | "contextMenu" | "cell" | "verticalText" | "alias" | "copy" | "noDrop" | "allScroll" | "resizeCol" | "resizeRow" | "resizeN" | "resizeE" | "resizeS" | "resizeW" | "resizeNe" | "resizeNw" | "resizeSe" | "resizeSw";
 
 /**
  * An element's text set along a path (CSS -og-text-path, SVG 2 textPath, docs/ui.md §2): each character turned to the path where it sits, its baseline on the path. One line; the element's textAlign anchors it at offset. CSS offset-path moves the element itself; this moves its text.

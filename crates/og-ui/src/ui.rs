@@ -128,6 +128,12 @@ pub(crate) const HIT_MULTILINE: u16 = 128;
 pub(crate) const HIT_DROP: u16 = 256;
 /// Its text can be selected and copied (`user-select: text | all`).
 pub(crate) const HIT_SELECT: u16 = 1 << 13;
+/// CSS `pointer-events: none`: the pointer passes through it (it is
+/// still reached by keys and pads).
+pub(crate) const HIT_PASS: u16 = 1 << 14;
+/// An SVG shape whose `pointer-events` takes only its painted geometry
+/// (its fill, its stroke), tested by [`Ui::shape_hit`].
+pub(crate) const HIT_SHAPE: u16 = 1 << 15;
 /// The arrows it claims while focused: [`ARROW_LEFT`] … shifted by 9.
 pub(crate) const HIT_CLAIM_SHIFT: u16 = 9;
 
@@ -169,6 +175,9 @@ impl Hit {
     /// The point is on it: inside its clip and, mapped back through its
     /// transform, inside its box (with its hit slop).
     pub fn contains(&self, x: f32, y: f32) -> bool {
+        if self.has(HIT_PASS) {
+            return false;
+        }
         if self.inv.is_identity() {
             return self.rect.contains(x, y);
         }

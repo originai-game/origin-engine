@@ -465,7 +465,11 @@ impl Ui {
                 out.into_iter().map(|c| (c, world)).collect()
             };
             let sig = crate::layout::DrawSig::of(n);
-            if i != 0 || n.sampled.background.is_some() {
+            // CSS `visibility: hidden`: nothing of its own is drawn; its
+            // children that say `visible` are.
+            let hidden = self.orders.hidden_of.get(i) == Some(&true);
+            if hidden {
+            } else if i != 0 || n.sampled.background.is_some() {
                 let mut local = Vec::new();
                 let mut background = 0;
                 let mut kept_now = false;
@@ -531,7 +535,8 @@ impl Ui {
                 cmds.extend(over_background(self));
             }
             let mut ring = Vec::new();
-            if world.is_identity() {
+            if hidden {
+            } else if world.is_identity() {
                 let screen_clip = self.nodes[i].clip;
                 self.nodes[i].clip = draw_clip;
                 self.focus_ring_commands(i, &mut ring);
@@ -550,7 +555,7 @@ impl Ui {
                     ring.into_iter().map(|c| (c, world)).collect(),
                 ));
             }
-            if let Some(d) = &draw {
+            if let Some(d) = draw.as_ref().filter(|_| !hidden) {
                 let at = placed(&self.nodes[i]);
                 cmds.extend(d.children(&at).into_iter().map(|c| (c, world)));
             }

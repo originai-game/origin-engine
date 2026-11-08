@@ -436,7 +436,7 @@ fn is_image(t: &Tok) -> bool {
 }
 
 /// `url(<name>)`, `url("<name>")` or `url(<handle>)`.
-fn url(args: &[Vec<Tok>]) -> Result<String, String> {
+pub(crate) fn url(args: &[Vec<Tok>]) -> Result<String, String> {
     let mut out = String::new();
     for t in args.iter().flatten() {
         match t {
