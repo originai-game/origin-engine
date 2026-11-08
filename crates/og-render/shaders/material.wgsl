@@ -15,7 +15,8 @@ struct MaterialFactors {
   coat: vec4<f32>,        // x: clearcoat (0 none), y: clearcoat roughness, zw: leaf translucency/dome normals
   uv: array<vec4<f32>, 10>,  // per slot (UV_MAP and on): [a, b, c, d], [tx, ty, 0, 0]; uv[1].zw holds base/normal array layers, uv[3].z paintDetail, uv[3].w weathering
   custom: array<vec4<f32>, 8>,  // a material shader's parameters (hooks.rs)
-  previous_custom: array<vec4<f32>, 8>,  // the last drawn frame, not the last simulation tick
+  previous_custom: array<vec4<f32>, 8>,  // the parameters the frame before `stamp.x` drew, not the last simulation tick
+  stamp: vec4<u32>,  // x: the drawn frame `custom` was written in (frame.wgsl `params_moved`), yzw unused
 };
 
 @group(1) @binding(0) var<uniform> material: MaterialFactors;

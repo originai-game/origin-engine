@@ -603,11 +603,12 @@ pub(crate) fn group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
 /// The hooks section of an effect draw module: the material hook contract
 /// (`hooks.rs`'s `Hook`, the effect inputs) with `shader`'s `Params` read
 /// from the effect entry's parameters, its code, and the built-in hooks it
-/// leaves out (an effect runs `surface_color` and `surface_emissive`).
+/// leaves out (an effect runs `surface_color` and `surface_emissive`; it
+/// draws no motion, so its previous parameters are the current ones).
 /// Without a shader, the identities.
 pub(crate) fn hooks_source(shader: Option<&crate::MaterialShader>) -> String {
     let (params, code) = shader.map_or((&[][..], ""), |s| (&s.params[..], &s.code[..]));
-    crate::hooks::hook_functions_from(params, code, "effect.params", "effect.params")
+    crate::hooks::hook_functions_from(params, code, "effect.params", None)
 }
 
 /// The renderer's effect materials this frame: their uniform entries

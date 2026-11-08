@@ -65,7 +65,6 @@ fn surface_emissive(h: Hook, p: Params, e: vec3<f32>) -> vec3<f32> {
 #[derive(Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniform {
     custom: [[f32; 4]; MAX_SHADER_PARAMS],
-    previous_custom: [[f32; 4]; MAX_SHADER_PARAMS],
 }
 
 /// The device's answer on a pipeline's error scope, while it has not
@@ -268,12 +267,8 @@ impl SpriteHooks {
         index: usize,
         params: [[f32; 4]; MAX_SHADER_PARAMS],
     ) {
-        let uniform = Uniform {
-            custom: params,
-            // Sprites write no motion vectors: the previous frame's are
-            // the same.
-            previous_custom: params,
-        };
+        // Sprites write no motion vectors: no previous parameters.
+        let uniform = Uniform { custom: params };
         if let Some(g) = self.groups.get_mut(&index) {
             if g.params != params {
                 queue.write_buffer(&g.buffer, 0, bytemuck::bytes_of(&uniform));

@@ -242,9 +242,16 @@ const DEFAULT_HOOKS: [&str; 4] = [
 
 /// The `Hook` and `Params` structs, `shader_params()`, the snippet, the
 /// built-in hooks it leaves out and the lit vertex stage's `moved_clip`.
-/// Placed after material.wgsl (it reads `material.custom`).
+/// Placed after material.wgsl (it reads `material.custom`, and the previous
+/// parameters only in the frame `material.stamp` names: `params_moved`,
+/// frame.wgsl, false in the casters' shadow_pass.wgsl; engine s100).
 pub(crate) fn hooks_section(params: &[ShaderParam], code: &str) -> String {
-    let mut s = hook_functions(params, code);
+    let mut s = hook_functions_from(
+        params,
+        code,
+        "material.custom",
+        Some(("material.previous_custom", "params_moved(material.stamp.x)")),
+    );
     s.push_str(if defines(code, "vertex_offset") {
         MOVED_CLIP_OFFSET
     } else {
@@ -253,24 +260,27 @@ pub(crate) fn hooks_section(params: &[ShaderParam], code: &str) -> String {
     s
 }
 
-/// [`hooks_section`] without `moved_clip`: what any module that declares a
-/// `material` uniform with `custom` and `previous_custom` takes (the
-/// sprite module, `sprite_hooks.rs`).
+/// The hook functions of a module that declares a `material` uniform with
+/// `custom` and draws no motion (the sprite module, `sprite_hooks.rs`):
+/// [`hooks_section`]'s without `moved_clip`, its previous parameters the
+/// current ones.
 pub(crate) fn hook_functions(params: &[ShaderParam], code: &str) -> String {
-    hook_functions_from(params, code, "material.custom", "material.previous_custom")
+    hook_functions_from(params, code, "material.custom", None)
 }
 
 /// The one hook contract every kind of draw takes (lit materials, sprites,
 /// effect materials): the `Hook` and `Params` structs, the effect inputs,
-/// `shader_params()` and `previous_shader_params()` reading `Params` from
-/// the arrays `current` and `previous`, the snippet and the built-in hooks
-/// it leaves out. An effect draw reads both from its entry's parameters
-/// (`effect.rs`).
+/// `shader_params()` reading `Params` from the array `current`,
+/// `previous_shader_params()` from the array of `previous` where its
+/// condition holds (the frame they changed in) and from `current` elsewhere
+/// (without `previous`, always: a draw without motion), the snippet and
+/// the built-in hooks it leaves out. An effect draw reads its entry's
+/// parameters (`effect.rs`).
 pub(crate) fn hook_functions_from(
     params: &[ShaderParam],
     code: &str,
     current: &str,
-    previous: &str,
+    previous: Option<(&str, &str)>,
 ) -> String {
     let mut s = String::from("// Material shader hooks (hooks.rs).\n");
     s.push_str(HOOK_STRUCT);
@@ -282,19 +292,30 @@ pub(crate) fn hook_functions_from(
         s.push_str(&format!("  {}: {},\n", p.name, p.kind.wgsl()));
     }
     s.push_str("};\n");
-    for (function, field) in [
-        ("shader_params", current),
-        ("previous_shader_params", previous),
-    ] {
-        s.push_str(&format!("fn {function}() -> Params {{\n  var p: Params;\n"));
-        for (i, p) in params.iter().enumerate() {
+    s.push_str("fn shader_params() -> Params {\n  var p: Params;\n");
+    for (i, p) in params.iter().enumerate() {
+        s.push_str(&format!(
+            "  p.{} = {current}[{i}]{};\n",
+            p.name,
+            p.kind.swizzle()
+        ));
+    }
+    s.push_str("  return p;\n}\n");
+    match previous {
+        Some((field, moved)) if !params.is_empty() => {
             s.push_str(&format!(
-                "  p.{} = {field}[{i}]{};\n",
-                p.name,
-                p.kind.swizzle()
+                "fn previous_shader_params() -> Params {{\n  var p: Params;\n  let moved = {moved};\n"
             ));
+            for (i, p) in params.iter().enumerate() {
+                s.push_str(&format!(
+                    "  p.{} = select({current}[{i}], {field}[{i}], moved){};\n",
+                    p.name,
+                    p.kind.swizzle()
+                ));
+            }
+            s.push_str("  return p;\n}\n");
         }
-        s.push_str("  return p;\n}\n");
+        _ => s.push_str("fn previous_shader_params() -> Params {\n  return shader_params();\n}\n"),
     }
     s.push_str(code);
     s.push('\n');

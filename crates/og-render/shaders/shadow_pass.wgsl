@@ -11,6 +11,12 @@ struct ShadowPass {
 };
 @group(0) @binding(0) var<uniform> shadow_pass: ShadowPass;
 
+// A caster draws no motion: `previous_shader_params()` (hooks.rs) reads the current parameters (frame.wgsl's
+// `params_moved` in the modules that draw motion).
+fn params_moved(stamp: u32) -> bool {
+  return false;
+}
+
 // How far behind its hemisphere (as a fraction of the distance) a point is
 // still drawn: the map holds up to 96° from the axis.
 const PARABOLOID_MARGIN: f32 = 0.1;

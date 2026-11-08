@@ -94,6 +94,11 @@ pub(crate) struct FrameUniform {
     /// `ssr_tex` holds this camera's reflections (the main camera's; 0 for
     /// views, probe faces and planar reflections).
     pub ssr: [f32; 4],
+    /// x: the frames the renderer drew before this one (its frame index as
+    /// u32, which counts on while the clock is paused), which a material's
+    /// shader parameters compare their stamp with (frame.wgsl
+    /// `params_moved`); yzw unused.
+    pub drawn: [u32; 4],
 }
 
 /// The camera's matrices for one frame.

@@ -6,6 +6,8 @@ mod gpu_tests;
 
 #[path = "../meshlet.rs"]
 mod meshlet;
+#[path = "../params_motion.rs"]
+mod params_motion;
 #[path = "../png.rs"]
 mod png;
 #[path = "../profile2d.rs"]

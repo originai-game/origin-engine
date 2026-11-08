@@ -149,7 +149,6 @@ pub(crate) struct GpuMaterial {
     /// parameters it holds: a parameter change is written into it in place.
     pub(crate) factors: wgpu::Buffer,
     pub(crate) params: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
-    pub(crate) previous_params: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
     /// The standard group: every pass but a physical material's lit one.
     pub(crate) bind_group: wgpu::BindGroup,
     /// A physical material's group for its lit pass (`physical.rs`).
@@ -230,12 +229,10 @@ pub(crate) struct SceneCache {
     /// The material style the materials were uploaded with.
     pub(crate) material_style: MaterialStyle,
     /// The scene's material serial the materials were last brought in
-    /// line with (none: never), and whether some material's uniform still
-    /// holds previous shader parameters other than its current ones (the
-    /// next frame advances them): the per-frame material pass runs only
-    /// when either asks (engine s96).
+    /// line with (none: never): the per-frame material pass runs only when
+    /// it moved (engine s96). A shader parameter change needs no pass on
+    /// the frame after it: its uniform's stamp ends its motion (s100).
     pub(crate) material_serial: Option<u64>,
-    pub(crate) material_advance: bool,
     pub(crate) scene_id: u64,
     pub(crate) meshes: Vec<GpuMesh>,
     /// The lit shader with each of the scene's material shaders.

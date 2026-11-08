@@ -475,11 +475,8 @@ impl Renderer {
         // (a pass over thousands of materials costs most of a millisecond
         // on the web, engine s96).
         let serial = scene.material_serial();
-        let unchanged = self.cache.material_serial == Some(serial)
-            && !self.cache.material_advance
-            && !restyle
-            && replaced.is_empty();
-        let mut advance = false;
+        let unchanged =
+            self.cache.material_serial == Some(serial) && !restyle && replaced.is_empty();
         for (i, (material, revision)) in scene.materials().enumerate() {
             if unchanged {
                 break;
@@ -494,40 +491,28 @@ impl Renderer {
                 let params = scene
                     .material_shader(MaterialHandle::from_index(i))
                     .map(|h| h.1);
-                // Advance even when the current parameters stopped changing:
-                // a paused wind must stop producing velocity on its next frame.
-                let previous = m.params.filter(|_| m.previous_params != m.params);
-                let current = params.filter(|_| m.params != params);
-                let custom = std::mem::offset_of!(material::MaterialUniform, custom) as u64;
-                let behind =
-                    std::mem::offset_of!(material::MaterialUniform, previous_custom) as u64;
-                match (current, previous) {
-                    // Both in one write (engine s98): the two arrays are
-                    // adjacent (asserted beside MaterialUniform). Parameters
-                    // a game moves every tick (wind, sun) change both each
-                    // frame on thousands of materials, and on the web a call
-                    // costs the Worker and the GPU process more than its bytes.
-                    (Some(p), Some(q)) => {
-                        self.queue
-                            .write_buffer(&m.factors, custom, bytemuck::bytes_of(&[p, q]))
-                    }
-                    (Some(p), None) => {
-                        self.queue
-                            .write_buffer(&m.factors, custom, bytemuck::bytes_of(&p))
-                    }
-                    (None, Some(q)) => {
-                        self.queue
-                            .write_buffer(&m.factors, behind, bytemuck::bytes_of(&q))
-                    }
-                    (None, None) => {}
-                }
-                if previous.is_some() {
-                    m.previous_params = m.params;
-                }
-                if current.is_some() {
+                // With the ones the frames before drew and this frame's
+                // number, in one write (engine s98, s100; the three are the
+                // uniform's tail, asserted beside MaterialUniform):
+                // `previous_shader_params()` reads them in this frame only,
+                // so the parameters' motion stops on the next frame, a paused
+                // wind's too, with nothing written then. Parameters a game
+                // moves every few ticks (wind, sun) change on thousands of
+                // materials, and on the web a call costs the Worker and the
+                // GPU process more than its bytes.
+                if let Some(p) = params.filter(|_| m.params != params) {
+                    let change = material::ParamsChange {
+                        custom: p,
+                        previous_custom: m.params.unwrap_or(p),
+                        stamp: [self.frame_index as u32, 0, 0, 0],
+                    };
+                    self.queue.write_buffer(
+                        &m.factors,
+                        std::mem::offset_of!(material::MaterialUniform, custom) as u64,
+                        bytemuck::bytes_of(&change),
+                    );
                     m.params = params;
                 }
-                advance |= m.previous_params != m.params;
                 continue;
             }
             let styled = material::styled(material, &scene.stylise.material);
@@ -542,24 +527,18 @@ impl Renderer {
                     shadow_source(&hooks::default_hooks()),
                 ));
             }
-            let (bind_group, array, factors) =
-                self.material_bind_group(i, material, hooked.map(|h| h.1))?;
             // A colour/texture edit rebuilds the group, not the vertex's
-            // history. A different shader has no comparable previous state.
+            // history: the parameters the frames before drew go into the new
+            // uniform with this frame's number (engine s100). A different
+            // shader has no comparable previous state.
             let previous_params = self
                 .cache
                 .materials
                 .get(i)
                 .filter(|m| m.shader == hooked.map(|h| h.0.index()))
-                .and_then(|m| m.params)
-                .or_else(|| hooked.map(|h| h.1));
-            if let Some(previous) = previous_params {
-                self.queue.write_buffer(
-                    &factors,
-                    std::mem::offset_of!(material::MaterialUniform, previous_custom) as u64,
-                    bytemuck::bytes_of(&previous),
-                );
-            }
+                .and_then(|m| m.params);
+            let (bind_group, array, factors) =
+                self.material_bind_group(i, material, hooked.map(|h| h.1), previous_params)?;
             // A full shader (custom.rs) draws a physical material with its
             // own entries: no physical pipelines.
             let full = hooked.is_some_and(|(sh, _)| {
@@ -585,7 +564,6 @@ impl Renderer {
             let gpu = GpuMaterial {
                 revision,
                 params: hooked.map(|h| h.1),
-                previous_params,
                 factors,
                 bind_group,
                 physical,
@@ -635,7 +613,6 @@ impl Renderer {
                     && material.textures().iter().all(Option::is_none),
                 ..gpu
             };
-            advance |= gpu.previous_params != gpu.params;
             if i < self.cache.materials.len() {
                 self.cache.materials[i] = gpu;
             } else {
@@ -644,7 +621,6 @@ impl Renderer {
         }
         if !unchanged {
             self.cache.material_serial = Some(serial);
-            self.cache.material_advance = advance;
         }
         let stale_fonts: Vec<usize> = (0..self.cache.fonts.len())
             .filter(|&i| {

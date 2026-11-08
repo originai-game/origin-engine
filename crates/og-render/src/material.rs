@@ -961,16 +961,38 @@ pub(crate) struct MaterialUniform {
     pub uv: [[f32; 4]; 10],
     /// A material shader's parameters (`hooks.rs`).
     pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
-    /// The last drawn frame's parameters, for vertex motion vectors.
+    /// The parameters the frames before `stamp`'s drew, for vertex motion
+    /// vectors in that frame.
     pub previous_custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
+    /// x: the drawn frame `custom` was written in (`FrameUniform::drawn`):
+    /// `previous_shader_params()` reads `previous_custom` in that frame
+    /// only (frame.wgsl `params_moved`); yzw unused.
+    pub stamp: [u32; 4],
 }
 
-// `previous_custom` directly follows `custom`: the renderer writes a
-// material's new and previous shader parameters as one range (engine s98).
+/// The tail of a [`MaterialUniform`] a shader parameter change writes in
+/// one call (engine s98, s100): the new parameters, the ones the frames
+/// before drew and the frame they change in. Nothing needs writing on the
+/// frames after, paused or not: their number is not the stamp.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct ParamsChange {
+    pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
+    pub previous_custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
+    pub stamp: [u32; 4],
+}
+
+// `previous_custom` directly follows `custom`, and `stamp` it, at the end
+// of the uniform: a [`ParamsChange`] written at `custom`'s offset.
 const _: () = assert!(
     std::mem::offset_of!(MaterialUniform, previous_custom)
         == std::mem::offset_of!(MaterialUniform, custom)
             + std::mem::size_of::<[[f32; 4]; crate::MAX_SHADER_PARAMS]>()
+        && std::mem::offset_of!(MaterialUniform, stamp)
+            == std::mem::offset_of!(MaterialUniform, previous_custom)
+                + std::mem::size_of::<[[f32; 4]; crate::MAX_SHADER_PARAMS]>()
+        && std::mem::size_of::<MaterialUniform>()
+            == std::mem::offset_of!(MaterialUniform, custom) + std::mem::size_of::<ParamsChange>()
 );
 
 /// `m` with the scene's [`crate::MaterialStyle`] filled into every stylised
@@ -1105,6 +1127,7 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
         },
         custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
         previous_custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
+        stamp: [0; 4],
     }
 }
 
@@ -1456,6 +1479,42 @@ mod tests {
         let shadow = array_shadow_source(&crate::shadow_source(&crate::hooks::default_hooks()));
         assert!(shadow.contains("fn vs_standard(") && shadow.contains("fn vs_lean_standard("));
         assert_eq!(shadow.matches("\nfn vs(").count(), 1);
+    }
+
+    /// material.wgsl's `MaterialFactors` is laid out as [`MaterialUniform`]:
+    /// the same size and the parameter tail at the same offsets, so the
+    /// shaders read the stamp a [`ParamsChange`] writes (engine s100).
+    #[test]
+    fn the_wgsl_material_is_the_rust_material() {
+        let module = naga::front::wgsl::parse_str(crate::MATERIAL_WGSL).expect("material.wgsl");
+        let mut layouter = naga::proc::Layouter::default();
+        layouter.update(module.to_ctx()).expect("layout");
+        let (handle, ty) = module
+            .types
+            .iter()
+            .find(|(_, t)| t.name.as_deref() == Some("MaterialFactors"))
+            .expect("struct MaterialFactors");
+        assert_eq!(
+            layouter[handle].size as usize,
+            std::mem::size_of::<MaterialUniform>()
+        );
+        let naga::TypeInner::Struct { members, .. } = &ty.inner else {
+            panic!("MaterialFactors must be a struct")
+        };
+        for (name, offset) in [
+            ("custom", std::mem::offset_of!(MaterialUniform, custom)),
+            (
+                "previous_custom",
+                std::mem::offset_of!(MaterialUniform, previous_custom),
+            ),
+            ("stamp", std::mem::offset_of!(MaterialUniform, stamp)),
+        ] {
+            let m = members
+                .iter()
+                .find(|m| m.name.as_deref() == Some(name))
+                .expect(name);
+            assert_eq!(m.offset as usize, offset, "{name}");
+        }
     }
 
     #[test]
