@@ -315,8 +315,8 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     ),
     (
         "dump_ui",
-        "dump_ui[:path]",
-        "Write the UI tree with bounds.",
+        "dump_ui[:layers|motion][:path]",
+        "Write the UI tree with bounds; `layers` writes the layer stack alone, `motion` the elements in visual states or animating alone.",
     ),
     (
         "set",

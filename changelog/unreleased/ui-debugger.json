@@ -1,0 +1,6 @@
+{
+  "added": [
+    {"member":"ui.debug","summary":"A visual UI debugger in development builds: the inspector's UI view (F1, third tab, or inspect:ui[:<path>]) picks an element of the game's UI and shows its box model, its layout boundaries, its computed styles with the file:line each was written on, the style rules that dress it and its bindings, and draws its margin, border, padding and content boxes over the game. Layout bounds outlines every element. In Rust: Ui::debug_pick, Ui::debug_element, og_ui::debug_overlay (docs/ui.md 6.4)."},
+    {"member":"probe.dump_ui","summary":"dump_ui:motion[:path] writes the elements in visual states or animating alone, as dump_ui:layers writes the layer stack."}
+  ]
+}

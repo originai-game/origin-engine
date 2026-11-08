@@ -82,6 +82,8 @@ mod text_path;
 mod theme;
 #[path = "../touch_controls.rs"]
 mod touch_controls;
+#[path = "../ui_debug.rs"]
+mod ui_debug;
 #[path = "../user_select.rs"]
 mod user_select;
 #[path = "../widgets.rs"]

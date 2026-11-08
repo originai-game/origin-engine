@@ -170,7 +170,7 @@ pub(super) fn build(ins: &mut Inspector, cx: &Ctx) {
         .segmented(
             "View",
             &SegmentedDesc {
-                items: ["Entities", "Resources"]
+                items: ["Entities", "Resources", "UI"]
                     .map(|l| SegmentItem {
                         label: l.into(),
                         ..SegmentItem::default()
@@ -191,23 +191,37 @@ pub(super) fn build(ins: &mut Inspector, cx: &Ctx) {
         "Filter",
         &mut filter,
         &FieldDesc {
-            placeholder: if tab == 0 {
-                "Filter entities by name".into()
-            } else {
-                "Filter resources by name".into()
+            placeholder: match tab {
+                0 => "Filter entities by name".into(),
+                super::ui_debug::TAB => "Filter styles and bindings by name".into(),
+                _ => "Filter resources by name".into(),
             },
             ..FieldDesc::default()
         },
     );
     s.editing |= r.focused;
     s.ins.filter = filter;
-    if tab == 0 {
-        entities(&mut ui, &mut s, cx);
-    } else {
-        resources(&mut ui, &mut s, cx);
+    let view = s.ins.ui_view.clone();
+    match tab {
+        0 => entities(&mut ui, &mut s, cx),
+        super::ui_debug::TAB => {
+            let filter = s.ins.filter.trim().to_lowercase();
+            super::ui_debug::detail(&mut ui, &view, &filter, &mut s.ins.ui_bounds)
+        }
+        _ => resources(&mut ui, &mut s, cx),
     }
     footer(&mut ui, &mut s, cx);
     ui.close();
+    if tab == super::ui_debug::TAB {
+        let unit = ui.frame().unit;
+        og_ui::debug_overlay(
+            &mut ui,
+            view.element.as_ref(),
+            view.hover.as_ref(),
+            &view.bounds,
+            unit,
+        );
+    }
     ui.end();
     let u = ui.frame().unit;
     s.ins.panel = ui

@@ -1417,6 +1417,43 @@ only after that group proves the complete author-to-review process.
 Release still requires the complete matrix. Quality failures delay release
 rather than lower the scope or silently waive sign-off.
 
+### 6.4 UI debugger
+
+A development build's inspector (F1) has a UI view, its third tab. Pick
+picks the element of the game's UI under the pointer, and the element under
+the pointer is outlined while picking. The panel then shows the picked
+element:
+
+- Its path and tag.
+- Its box model: margin, border and padding in CSS order, and the content
+  box and border box with their positions.
+- The layout boundaries it sets: `scroll` (a scroll container), `container`
+  (a container queries read), `layer` (a layer's root) and `fixed` (a fixed
+  width and height, so its children cannot move what is outside it).
+- Its computed styles: each winning document declaration with its value and
+  the `file:line` it was written on, the style pack's rules that dress its
+  part with where each was written, and its bindings with the expression as
+  written and the value now.
+
+The frame draws the picked element's margin, border, padding and content
+boxes over the game in Chrome's colours. Layout bounds outlines every
+element drawn. The filter field keeps the styles, rules and bindings whose
+name holds it. `inspect:ui[:<path>]` opens the view from a script, and
+`dump_inspector` carries the picked element as `ui`.
+
+The view is built on the on-demand inspection API (`Ui::elements`,
+`Ui::element_bounds`): `Ui::debug_pick(x, y)` and `Ui::debug_element(path)`
+read the last finished frame, and `og_ui::debug_overlay` draws a debugger's
+boxes into its own UI. A pick walks the drawn elements once. Reading the
+picked element is one lookup by its render key, and its cascade is the one
+its last resolve kept, so nothing is resolved again. The game's UI is read
+only while the view is the tab shown. The reference frames are
+`ui-debug-1280` and `ui-debug-390`.
+
+`dump_ui:motion[:path]` writes the motion alone, as `dump_ui:layers` writes
+the layer stack: each element in a visual state or animating, with its
+states, what is moving, what plays and whether it is leaving.
+
 ## 7. Maintenance boundaries
 
 The integration owner owns shared schema, labels, looks, creation,

@@ -657,14 +657,21 @@ impl Probe {
             }
             #[cfg(not(feature = "publish"))]
             "dump_world" | "dump_ui" => {
-                // `dump_ui:layers[:path]`: the layer stack alone.
-                let layers =
-                    step.action == "dump_ui" && args.first().is_some_and(|a| a == "layers");
-                let args: &[String] = if layers { &args[1..] } else { args };
+                // `dump_ui:layers[:path]`: the layer stack alone;
+                // `dump_ui:motion[:path]`: the motion alone.
+                let part = args
+                    .first()
+                    .filter(|a| {
+                        step.action == "dump_ui" && matches!(a.as_str(), "layers" | "motion")
+                    })
+                    .cloned();
+                let args: &[String] = if part.is_some() { &args[1..] } else { args };
                 let dump = if step.action == "dump_world" {
                     self.dump_world(world)
-                } else if layers {
+                } else if part.as_deref() == Some("layers") {
                     self.dump_layers(world)
+                } else if part.is_some() {
+                    self.dump_motion(world)
                 } else {
                     self.dump_ui(world)
                 };

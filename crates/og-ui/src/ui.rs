@@ -6,6 +6,7 @@ mod build;
 mod commands;
 mod configure;
 mod controls;
+mod debug;
 mod descriptors;
 mod dressing;
 mod finish;
@@ -19,6 +20,8 @@ mod tree;
 pub(crate) mod visit;
 
 pub(crate) use commands::bake;
+pub(crate) use debug::DebugBindings;
+pub use debug::{UiDebugElement, UiDebugStyle, debug_overlay};
 pub use descriptors::*;
 use dressing::scaled_xy;
 use node_draw::part_rect;

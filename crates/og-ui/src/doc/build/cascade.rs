@@ -15,6 +15,8 @@ pub struct Cascade {
     pub diagnostics: Vec<String>,
     pub props: Vec<crate::doc::PropSet>,
     pub unset: BTreeSet<usize>,
+    /// The winning declarations, substituted, with the line each was
+    /// written on.
     pub(crate) values: Vec<(String, String, usize)>,
     /// Winning transition and animation longhands, substituted.
     pub(crate) motion: Vec<(String, String)>,
@@ -143,7 +145,9 @@ pub(crate) fn resolve(
 ) -> Cascade {
     let mut out = resolve_values(rules, inline, inherited, theme, Some(basis), applies);
     let mut body = String::new();
-    for (name, value, line) in std::mem::take(&mut out.values) {
+    // The winners stay with the cascade: the UI debugger names each one's
+    // line (`Ui::debug_element`).
+    for (name, value, line) in out.values.clone() {
         if crate::doc::motion::longhand(&name) {
             out.motion.push((name, value));
             continue;

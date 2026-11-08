@@ -29,6 +29,7 @@
 mod gizmo;
 mod model;
 mod panel;
+mod ui_debug;
 
 pub(crate) use model::Edit;
 
@@ -188,6 +189,13 @@ pub(crate) struct Inspector {
     picking: bool,
     pick_at: Option<(f32, f32)>,
     pub selected: Option<Entity>,
+    /// The UI view (`ui_debug`): a pick of the game's UI asked for at a
+    /// point, the element picked (its path), whether layout bounds are
+    /// drawn, and what the view read this frame.
+    ui_pick: Option<(f32, f32)>,
+    ui_selected: Option<String>,
+    ui_bounds: bool,
+    ui_view: ui_debug::View,
     tab: usize,
     filter: String,
     collapsed: BTreeSet<u64>,
@@ -238,6 +246,10 @@ impl Inspector {
             picking: false,
             pick_at: None,
             selected: None,
+            ui_pick: None,
+            ui_selected: None,
+            ui_bounds: false,
+            ui_view: ui_debug::View::default(),
             tab: 0,
             filter: String::new(),
             collapsed: BTreeSet::new(),
@@ -368,7 +380,11 @@ pub(crate) fn filter(engine_id: u32, world: &World, event: &InjectedInput) -> bo
                         ins.input.apply(event);
                         return true;
                     } else if ins.picking {
-                        ins.pick_at = Some((*x, *y));
+                        if ins.tab == ui_debug::TAB {
+                            ins.ui_pick = Some((*x, *y));
+                        } else {
+                            ins.pick_at = Some((*x, *y));
+                        }
                         ins.picking = false;
                         ins.captured = true;
                         take = true;
@@ -452,6 +468,7 @@ pub(crate) fn frame(eng: &Engine) {
             let u = u.lock();
             (u.fonts().clone(), u.icons().clone())
         });
+        let game = rs.ui.clone();
         let Some(ins) = rs.inspector.as_mut().filter(|i| i.open) else {
             return;
         };
@@ -463,6 +480,11 @@ pub(crate) fn frame(eng: &Engine) {
             ui.set_icons(icons);
         }
         ins.frames += 1;
+        // The UI view reads the game's UI only while it is the tab shown.
+        ins.ui_view = match game.filter(|_| ins.tab == ui_debug::TAB) {
+            Some(game) => ui_debug::read(ins, &game.lock()),
+            None => ui_debug::View::default(),
+        };
         if ins.selected.is_some_and(|e| !world.is_alive(e)) {
             ins.selected = None;
         }
@@ -1108,6 +1130,18 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
                 "open": ins.open,
                 "key": ins.key_label(),
                 "selected": selected,
+                "ui": {
+                    "selected": ins.ui_selected,
+                    "bounds": ins.ui_bounds,
+                    "element": ins.ui_view.element.as_ref().map(|e| serde_json::json!({
+                        "path": e.path, "kind": e.kind,
+                        "box": [e.border_box.x, e.border_box.y, e.border_box.width, e.border_box.height],
+                        "content": [e.content.x, e.content.y, e.content.width, e.content.height],
+                        "styles": e.styles.iter().map(|s| serde_json::json!({ "name": s.name, "value": s.value, "source": s.source })).collect::<Vec<_>>(),
+                        "bindings": e.bindings.iter().map(|(p, x, v)| serde_json::json!({ "prop": p, "expr": x, "value": v })).collect::<Vec<_>>(),
+                        "boundaries": e.boundaries,
+                    })),
+                },
                 "dirty": ins.dirty.iter().collect::<Vec<_>>(),
                 "changedByGame": ins.flash.keys().collect::<Vec<_>>(),
                 "status": ins.status,
@@ -1119,15 +1153,15 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_command(
         "inspect",
         og_probe::CommandDesc {
-            usage: "inspect[:on|off|<entity>|key:<code>|mode:translate|rotate|scale|space:world|local]".into(),
-            doc: "the inspector (development builds): open it (on, or no argument), close it (off), open it on an entity (its name or #<index>.<generation>), set the key that toggles it (key:F2; F1 by default, with Ctrl when the game binds it), or the transform gizmo's mode (mode:rotate; W, E and R) and axes (space:local)".into(),
+            usage: "inspect[:on|off|<entity>|ui[:<path>]|key:<code>|mode:translate|rotate|scale|space:world|local]".into(),
+            doc: "the inspector (development builds): open it (on, or no argument), close it (off), open it on an entity (its name or #<index>.<generation>), open its UI view (ui) on a UI element (ui:<path>, as dump_ui names it), set the key that toggles it (key:F2; F1 by default, with Ctrl when the game binds it), or the transform gizmo's mode (mode:rotate; W, E and R) and axes (space:local)".into(),
         },
         move |world, args| {
             let eng = crate::engine::engine(engine_id)?;
             let arg = args.first().map(String::as_str).unwrap_or("on");
             let selected = match arg {
                 "on" | "off" => None,
-                "key" | "mode" | "space" => None,
+                "key" | "mode" | "space" | "ui" => None,
                 id => Some(
                     og_probe::Names
                         .resolve(world, id)
@@ -1140,6 +1174,13 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
             match arg {
                 "on" => ins.open = true,
                 "off" => ins.open = false,
+                "ui" => {
+                    ins.open = true;
+                    ins.tab = ui_debug::TAB;
+                    if args.len() > 1 {
+                        ins.ui_selected = Some(args[1..].join(":"));
+                    }
+                }
                 "key" => {
                     let code = args.get(1).map(String::as_str).unwrap_or("");
                     if !og_input::KEY_CODES.contains(&code) {

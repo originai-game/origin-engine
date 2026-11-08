@@ -1481,6 +1481,42 @@ impl RetainedHost {
         self.scrollers.remove(identity);
     }
 
+    /// The document cascade's winning declarations of the element the
+    /// render key `key` belongs to (`file:line` each), and its bindings, as
+    /// the UI debugger shows them (`Ui::debug_element`): read from what its
+    /// last resolve kept, for that one element.
+    pub(crate) fn debug_styles(
+        &self,
+        key: u64,
+    ) -> Option<(Vec<crate::UiDebugStyle>, crate::ui::DebugBindings)> {
+        let e = self.elements.get(self.owner_of.get(&key)?)?;
+        let resolved = e.resolved.as_ref()?;
+        let source = &e.document.source;
+        let styles = resolved
+            .values
+            .cascade
+            .values
+            .iter()
+            .map(|(name, value, line)| crate::UiDebugStyle {
+                name: name.clone(),
+                value: value.trim().to_owned(),
+                source: format!("{source}:{line}"),
+            })
+            .collect();
+        let bindings = e
+            .record
+            .built
+            .iter()
+            .filter(|b| b.path == e.path)
+            .flat_map(|b| &b.bindings)
+            .map(|(p, x, v)| {
+                let v = v.as_str().map_or_else(|| v.to_string(), str::to_owned);
+                (p.clone(), x.clone(), v)
+            })
+            .collect();
+        Some((styles, bindings))
+    }
+
     /// The retained elements' records, mounted ones in tree order.
     pub(crate) fn records(&self) -> impl Iterator<Item = &super::mount::DocRecord> {
         let mut order = Vec::new();

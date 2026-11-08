@@ -64,7 +64,7 @@ impl Ui {
     /// The last completed frame as a UI to inspect: this one once it has
     /// ended, or while a frame is being built, a copy with last frame's
     /// nodes put back (made only when something is asked mid-frame).
-    fn finished(&self) -> std::borrow::Cow<'_, Ui> {
+    pub(super) fn finished(&self) -> std::borrow::Cow<'_, Ui> {
         if !self.building {
             return std::borrow::Cow::Borrowed(self);
         }

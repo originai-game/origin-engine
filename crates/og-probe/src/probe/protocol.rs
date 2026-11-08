@@ -1062,4 +1062,17 @@ impl Probe {
             .unwrap_or_else(|| json!([]));
         json!({"kind": "layers", "tick": world.time().tick, "layers": layers})
     }
+
+    /// `dump_ui:motion`: the motion alone (docs/ui.md §6): each element in
+    /// a visual state or animating, with its states, what is moving, what
+    /// plays and whether it is leaving.
+    pub fn dump_motion(&self, world: &World) -> Value {
+        let motion = self
+            .ui
+            .as_ref()
+            .and_then(|ui| ui.extra(world))
+            .and_then(|mut e| e.remove("motion"))
+            .unwrap_or_else(|| json!([]));
+        json!({"kind": "motion", "tick": world.time().tick, "motion": motion})
+    }
 }
