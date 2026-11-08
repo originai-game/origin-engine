@@ -274,14 +274,26 @@ struct TapsAlbedo {
 // A plane's albedo (and height in alpha): its taps blended, then the
 // quarter-frequency tap mixed in by `coarse`.
 fn taps_albedo(i: u32, t: PlaneTaps, coarse: f32) -> TapsAlbedo {
+  // The taps' reads (3, or 1), then the quarter-frequency one (3, where
+  // `coarse` asks), in one loop (one copy of the read: DXC inlines every
+  // call).
+  var c: array<vec4<f32>, 4>;
+  let taps = select(3u, 1u, t.n == 1u);
+  for (var j = 0u; j < 4u; j++) {
+    if (j == 3u && coarse <= 0.0) { break; }
+    if (j >= taps && j < 3u) { continue; }
+    let k = min(j, 2u);
+    let far = j == 3u;
+    c[j] = layer_albedo(i, select(t.uv[k], t.coarse_uv, far), select(t.dx[k], t.coarse_dx, far), select(t.dy[k], t.coarse_dy, far));
+  }
   var o: TapsAlbedo;
   if (t.n == 1u) {
-    o.albedo = layer_albedo(i, t.uv[0], t.dx[0], t.dy[0]);
+    o.albedo = c[0];
     o.w = vec3<f32>(1.0, 0.0, 0.0);
   } else {
-    let c0 = layer_albedo(i, t.uv[0], t.dx[0], t.dy[0]);
-    let c1 = layer_albedo(i, t.uv[1], t.dx[1], t.dy[1]);
-    let c2 = layer_albedo(i, t.uv[2], t.dx[2], t.dy[2]);
+    let c0 = c[0];
+    let c1 = c[1];
+    let c2 = c[2];
     let luma = vec3<f32>(0.299, 0.587, 0.114);
     let lum = vec3<f32>(dot(c0.rgb, luma), dot(c1.rgb, luma), dot(c2.rgb, luma));
     var w = mix(vec3<f32>(1.0), lum, 0.6) * pow(t.w, vec3<f32>(7.0));
@@ -290,8 +302,7 @@ fn taps_albedo(i: u32, t: PlaneTaps, coarse: f32) -> TapsAlbedo {
     o.w = w;
   }
   if (coarse > 0.0) {
-    let far = layer_albedo(i, t.coarse_uv, t.coarse_dx, t.coarse_dy);
-    o.albedo = mix(o.albedo, far, 0.5 * coarse);
+    o.albedo = mix(o.albedo, c[3], 0.5 * coarse);
   }
   return o;
 }
@@ -339,16 +350,20 @@ struct TapsNormal {
 // moved by its own number (so the copies of one cell differ).
 fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> TapsNormal {
   let s = clamp(terrain.layers[i].coarse.w, 0.0, 1.0);
+  // The taps' reads (3, or 1) in one loop (one copy of the read).
+  var m: array<vec4<f32>, 3>;
+  for (var j = 0u; j < select(3u, 1u, t.n == 1u); j++) {
+    m[j] = layer_normal_map(i, t.uv[j], t.dx[j], t.dy[j]);
+  }
   var o: TapsNormal;
   if (t.n == 1u) {
-    let m = layer_normal_map(i, t.uv[0], t.dx[0], t.dy[0]);
-    o.normal = m.xyz;
-    o.tone = cell_tone(m.w, s);
+    o.normal = m[0].xyz;
+    o.tone = cell_tone(m[0].w, s);
     return o;
   }
-  let m0 = layer_normal_map(i, t.uv[0], t.dx[0], t.dy[0]);
-  let m1 = layer_normal_map(i, t.uv[1], t.dx[1], t.dy[1]);
-  let m2 = layer_normal_map(i, t.uv[2], t.dx[2], t.dy[2]);
+  let m0 = m[0];
+  let m1 = m[1];
+  let m2 = m[2];
   let d = turn2(m0.xy, t.turn[0]) / max(m0.z, 0.05) * w.x
     + turn2(m1.xy, t.turn[1]) / max(m1.z, 0.05) * w.y
     + turn2(m2.xy, t.turn[2]) / max(m2.z, 0.05) * w.z;

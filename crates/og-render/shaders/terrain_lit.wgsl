@@ -103,11 +103,12 @@ fn value_noise(x: vec2<f32>) -> f32 {
   let f = x - i;
   let u = f * f * (3.0 - 2.0 * f);
   let c = vec2<i32>(i);
-  let a = hex_hash(c).x;
-  let b = hex_hash(c + vec2<i32>(1, 0)).x;
-  let d = hex_hash(c + vec2<i32>(0, 1)).x;
-  let e = hex_hash(c + vec2<i32>(1, 1)).x;
-  return mix(mix(a, b, u.x), mix(d, e, u.x), u.y);
+  // The cell's four corners' hashes in one loop (one copy of the hash).
+  var h = vec4<f32>(0.0);
+  for (var j = 0u; j < 4u; j++) {
+    h[j] = hex_hash(c + vec2<i32>(i32(j & 1u), i32(j >> 1u))).x;
+  }
+  return mix(mix(h.x, h.y, u.x), mix(h.z, h.w, u.x), u.y);
 }
 
 fn layer_coarse(l: TerrainLayerGpu, p: vec3<f32>) -> f32 {
