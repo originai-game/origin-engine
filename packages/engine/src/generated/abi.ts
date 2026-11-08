@@ -913,10 +913,6 @@ export interface HostAbi<A, V> {
   og_ui_image(id: string, desc: string | undefined): void;
   /** `og.ui.zoomView` */
   og_ui_zoom_view(id: string, desc: string | undefined): string;
-  /** `og.ui.textField` */
-  og_ui_text_field(id: string, value: string, desc: string | undefined): string;
-  /** `og.ui.textArea` */
-  og_ui_text_area(id: string, value: string, desc: string | undefined): string;
   /** `og.ui.framePointer` */
   og_ui_frame_pointer(): string;
   /** `og.ui.frameCursor` */
@@ -1752,8 +1748,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_label",
   "og_ui_image",
   "og_ui_zoom_view",
-  "og_ui_text_field",
-  "og_ui_text_area",
   "og_ui_frame_pointer",
   "og_ui_frame_cursor",
   "og_ui_frame_viewport",

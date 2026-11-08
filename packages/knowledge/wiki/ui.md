@@ -51,10 +51,7 @@ module ui {
 | [`ImageDesc`](ui/type-ImageDesc.md) | desc struct |  | A texture region, or a solid rectangle without a texture. |
 | [`ZoomViewDesc`](ui/type-ZoomViewDesc.md) | desc struct |  | A zoomable picture (a map, an artwork): what it shows and its zoom limits. |
 | [`ZoomResult`](ui/type-ZoomResult.md) | struct |  | Where a zoom view is. |
-| [`FieldDesc`](ui/type-FieldDesc.md) | desc struct |  | A one-line text field. |
-| [`TextAreaDesc`](ui/type-TextAreaDesc.md) | desc struct |  | A multi-line text area. |
 | [`Response`](ui/type-Response.md) | struct |  | What happened to an element this tick. |
-| [`FieldResult`](ui/type-FieldResult.md) | struct |  | A text field's response and its text after this tick's input. |
 | [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit. |
 | [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. |
 | [`UiSounds`](ui/type-UiSounds.md) | desc struct |  | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
@@ -78,8 +75,6 @@ module ui {
 | [`og.ui.label`](ui/fn-label.md) | function | `(id: string, text: string, desc?: LabelDesc): void` | MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. |
 | [`og.ui.image`](ui/fn-image.md) | function | `(id: string, desc?: ImageDesc): void` | A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other. |
 | [`og.ui.zoomView`](ui/fn-zoomView.md) | function | `(id: string, desc?: ZoomViewDesc): ZoomResult` | A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans; Tab or a pad focuses it,… |
-| [`og.ui.textField`](ui/fn-textField.md) | function | `(id: string, value: string, desc?: FieldDesc): FieldResult` | One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text … |
-| [`og.ui.textArea`](ui/fn-textArea.md) | function | `(id: string, value: string, desc?: TextAreaDesc): FieldResult` | Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, a triple click selecting the line between its breaks, t… |
 | [`og.ui.idi`](ui/fn-idi.md) | function | `(name: string, index: number): string` | The id of the index-th of several siblings of one name: `idi("Slot", 3)` is `Slot#3`. |
 | [`Anchor`](ui/type-Anchor.md) | enum |  | A point of the safe area an anchored group sits at. |
 | [`TransitionKind`](ui/type-TransitionKind.md) | enum |  | How a transition moves its content in and out. |
@@ -202,11 +197,6 @@ module ui {
 | [`DropdownDesc`](ui/type-DropdownDesc.md) | desc struct |  | A dropdown: its options, label and states. |
 | [`DropdownResult`](ui/type-DropdownResult.md) | struct |  | A dropdown's state after this tick. |
 | [`og.ui.dropdown`](ui/fn-dropdown.md) | function | `(id: string, desc?: DropdownDesc): DropdownResult` | A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes th… |
-| [`InputFieldDesc`](ui/type-InputFieldDesc.md) | desc struct |  | A text field with its label, helper, error and adornments. |
-| [`InputResult`](ui/type-InputResult.md) | struct |  | A text field's state after this tick. |
-| [`og.ui.inputField`](ui/fn-inputField.md) | function | `(id: string, value: string, desc?: InputFieldDesc): InputResult` | A text field (og.ui.textField's editing: IME, selection, clipboard, undo) in a framed row with a label above, an icon, a suffix, a clear button and a helper, error or counter line below. |
-| [`InputAreaDesc`](ui/type-InputAreaDesc.md) | desc struct |  | A text area with its label, helper, error and counter. |
-| [`og.ui.inputArea`](ui/fn-inputArea.md) | function | `(id: string, value: string, desc?: InputAreaDesc): InputResult` | A text area (og.ui.textArea's editing) framed as inputField is, with its label, helper, error and counter. |
 | [`UiProp`](ui/type-UiProp.md) | enum |  | An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. |
 | [`LayoutMode`](ui/type-LayoutMode.md) | enum |  | How a container lays out its children. |
 | [`Position`](ui/type-Position.md) | enum |  | How an element is placed. |
@@ -421,7 +411,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 3087</sub>
+<sub>Module `ui` line 2975</sub>
 
 ```ogt
 column UiMaterial {
@@ -432,4 +422,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 3094</sub>
+<sub>Module `ui` line 2982</sub>

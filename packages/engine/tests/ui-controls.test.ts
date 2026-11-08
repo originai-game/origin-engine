@@ -102,7 +102,6 @@ test("foundations: an effect layer shows what it holds; a view frame turns by a 
 test("every control: on a coarse pointer each target a finger presses is at least 44 px (or reaches it by its hit slop)", () => {
   // Wrong: a 28 px stepper arrow or clear button a thumb misses.
   const engine = run(() => {
-    og.ui.inputField("Field", "", { label: "Field", clearable: true });
     og.ui.dropdown("Drop", { label: "Drop", options: [{ label: "A" }] });
   }, 360);
   og.ui.previewViewport(engine.world, { width: 390, height: 1400, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait" } as never);
@@ -121,21 +120,6 @@ test("every control: on a coarse pointer each target a finger presses is at leas
     engine.probe.commands("0:touch_end");
     engine.advance(6);
   }
-});
-
-test("inputField: an error marks it invalid with its message described, the clear button empties it", () => {
-  let value = "Arthur";
-  let cleared = false;
-  const engine = run(() => {
-    const r = og.ui.inputField("Name", value, { label: "Hero name", error: value.length > 4 ? "At most 4 letters" : "", clearable: true });
-    value = r.value;
-    if (r.cleared) cleared = true;
-  });
-  expect(find(engine, (e) => e.text === "At most 4 letters")).toBeDefined();
-  const clear = find(engine, (e) => e.name.toLowerCase().includes("clear"))!;
-  tap(engine, clear.path);
-  expect(cleared).toBeTrue();
-  expect(value).toBe("");
 });
 
 test("dropdown: a tap opens the list with the focus on the chosen option, a tap on another chooses and closes, Back closes", () => {
@@ -167,7 +151,6 @@ test("dropdown: a tap opens the list with the focus on the chosen option, a tap 
 
 /** The controls a settings or a shop screen holds, labelled through `l` (the pseudo-locale's longer words). */
 function gallery(l: (s: string) => string): void {
-  og.ui.inputField("Name", "", { label: l("Hero name"), placeholder: l("Type a name"), helper: l("Shown to other players") });
   og.ui.dropdown("Lang", { label: l("Language"), selected: 0, options: [{ label: "English" }, { label: "日本語" }] });
 }
 

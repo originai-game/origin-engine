@@ -2274,16 +2274,6 @@ pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_text_field(&Host, id, value, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_text_area(id: String, value: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_text_area(&Host, id, value, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_frame_pointer() -> String {
     <Host as UiApi>::og_ui_frame_pointer(&Host)
 }

@@ -141,54 +141,6 @@ pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
     json!({ "zoom": zoom, "centerX": x, "centerY": y }).to_string()
 }
 
-pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let mut text = value;
-    let r = with_ui("og.ui.textField", |ui| {
-        let fd = FieldDesc {
-            placeholder: d["placeholder"].as_str().unwrap_or_default().to_string(),
-            width: size(&d["width"]),
-            max_chars: d["maxChars"].as_u64().unwrap_or(0) as u32,
-            invalid: d["invalid"].as_bool().unwrap_or(false),
-            bare: d["bare"].as_bool().unwrap_or(false),
-            tight: d["tight"].as_bool().unwrap_or(false),
-            component: d["component"].as_str().map(str::to_string),
-            input_type: d["type"]
-                .as_str()
-                .and_then(og_ui::InputType::from_name)
-                .unwrap_or_default(),
-            inputmode: d["inputmode"]
-                .as_str()
-                .and_then(og_ui::InputMode::from_name),
-            autocomplete: d["autocomplete"].as_str().unwrap_or_default().to_string(),
-            // readonly and the constraints are document attributes only.
-            ..FieldDesc::default()
-        };
-        ui.text_field(id.as_str(), &mut text, &fd)
-    });
-    json!({ "response": response(r.unwrap_or_default()), "value": text }).to_string()
-}
-
-pub fn og_ui_text_area(id: String, value: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let mut text = value;
-    let r = with_ui("og.ui.textArea", |ui| {
-        let ad = og_ui::TextAreaDesc {
-            placeholder: d["placeholder"].as_str().unwrap_or_default().to_string(),
-            width: size(&d["width"]),
-            rows: d["rows"].as_u64().unwrap_or(0) as u32,
-            max_chars: d["maxChars"].as_u64().unwrap_or(0) as u32,
-            invalid: d["invalid"].as_bool().unwrap_or(false),
-            bare: d["bare"].as_bool().unwrap_or(false),
-            tight: d["tight"].as_bool().unwrap_or(false),
-            component: d["component"].as_str().map(str::to_string),
-            ..og_ui::TextAreaDesc::default()
-        };
-        ui.text_area(id.as_str(), &mut text, &ad)
-    });
-    json!({ "response": response(r.unwrap_or_default()), "value": text }).to_string()
-}
-
 pub fn og_ui_burst(desc: Option<String>) {
     let d = desc_of(desc);
     with_ui("og.ui.burst", |ui| {

@@ -1027,10 +1027,6 @@ pub trait UiApi: Wire {
     fn og_ui_image(&self, id: String, desc: Option<String>);
     /// `og.ui.zoomView`
     fn og_ui_zoom_view(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.textField`
-    fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String;
-    /// `og.ui.textArea`
-    fn og_ui_text_area(&self, id: String, value: String, desc: Option<String>) -> String;
     /// `og.ui.framePointer`
     fn og_ui_frame_pointer(&self) -> String;
     /// `og.ui.frameCursor`
@@ -1923,8 +1919,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_label",
     "og_ui_image",
     "og_ui_zoom_view",
-    "og_ui_text_field",
-    "og_ui_text_area",
     "og_ui_frame_pointer",
     "og_ui_frame_cursor",
     "og_ui_frame_viewport",

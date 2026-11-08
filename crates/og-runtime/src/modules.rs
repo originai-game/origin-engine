@@ -38,7 +38,7 @@ use widgets::desc_of;
 pub(crate) use widgets::emit;
 pub use widgets::{
     og_ui_burst, og_ui_close, og_ui_image, og_ui_label, og_ui_open, og_ui_open_scroll,
-    og_ui_rich_text, og_ui_screen_transition, og_ui_text_area, og_ui_text_field, og_ui_zoom_view,
+    og_ui_rich_text, og_ui_screen_transition, og_ui_zoom_view,
 };
 mod controls;
 pub use controls::og_ui_dropdown;
@@ -82,9 +82,9 @@ use og_physics::{
     ShapeCastDesc, ShapeDesc,
 };
 use og_ui::{
-    Align, Anchor, AnchorDesc, Cross, DensityMode, Direction, Element, FieldDesc, FontRole, Fonts,
-    IconAtlas, IconDesc, ImageDesc, InputFrame, Insets, LabelDesc, ModalDesc, Nav, Response,
-    Scheme, ScrollDesc, SharedUi, Size, Srgba, StylePart, TextAlign, Theme, ToastDesc, Tone,
+    Align, Anchor, AnchorDesc, Cross, DensityMode, Direction, Element, FontRole, Fonts, IconAtlas,
+    IconDesc, ImageDesc, InputFrame, Insets, LabelDesc, ModalDesc, Nav, Response, Scheme,
+    ScrollDesc, SharedUi, Size, Srgba, StylePart, TextAlign, Theme, ToastDesc, Tone,
     TransitionKind, TypeStep, Ui, UiDesc, UiFont, Viewport,
 };
 use serde_json::{Map, Value, json};

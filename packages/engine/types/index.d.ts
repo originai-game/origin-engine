@@ -24695,130 +24695,6 @@ export interface ZoomResult {
 }
 
 /**
- * A one-line text field.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface FieldDesc {
-  /**
-   * Shown, dimmed, while the field is empty.
-   *
-   * @default ""
-   */
-  readonly placeholder?: string;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * The most characters it takes; 0 is no limit.
-   *
-   * @default 0
-   */
-  readonly maxChars?: number;
-  /**
-   * Its text is wrong (a form's error): its frame is dressed `Field.frame[invalid]` and, undressed, takes the danger outline.
-   *
-   * @default false
-   */
-  readonly invalid?: boolean;
-  /**
-   * No frame and no focus ring of its own, a small inset: a component frames it (an input with an icon and a clear button) and shows its focus.
-   *
-   * @default false
-   */
-  readonly bare?: boolean;
-  /**
-   * No inset and the height of its text's line (on a touch screen at least the 44 CSS px touch target, the line centred): the text sits exactly where the field is laid, in a box the caller draws or on a line of a page. With or without bare.
-   *
-   * @default false
-   */
-  readonly tight?: boolean;
-  /**
-   * The component its style dresses it as (`Poem`, `Search[large]`): its frame `<component>.frame`, its text `<component>.text` and its placeholder `<component>.placeholder`, in its states (focused, invalid, disabled); `ink` and `step` on the text parts set the text's colour and type step. Null: Field.
-   *
-   * @default null
-   */
-  readonly component?: string | null;
-  /**
-   * What it takes, by HTML's `type` names: `text` (empty is text), `password` (drawn masked, never copied or cut, with a reveal toggle `<id>/Reveal` dressed `<component>.reveal[revealed]`), `number` (only a number's characters are typed), `email`, `url`, `tel`, `search`. A number, email or url whose text is not one is invalid, as `invalid` makes it.
-   *
-   * @default ""
-   */
-  readonly type?: string;
-  /**
-   * The virtual keyboard a touch device shows (HTML `inputmode`: none, text, decimal, numeric, tel, search, email, url); empty: its type's.
-   *
-   * @default ""
-   */
-  readonly inputmode?: string;
-  /**
-   * The page's autofill hint (HTML `autocomplete`: `username`, `current-password`, `new-password`, `one-time-code`, `off`…); empty: none.
-   *
-   * @default ""
-   */
-  readonly autocomplete?: string;
-}
-
-/**
- * A multi-line text area.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TextAreaDesc {
-  /**
-   * Shown, dimmed, while the area is empty.
-   *
-   * @default ""
-   */
-  readonly placeholder?: string;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Lines shown at once; 0 is 4. More scroll.
-   *
-   * @default 0
-   */
-  readonly rows?: number;
-  /**
-   * The most characters it takes, line breaks included; 0 is no limit.
-   *
-   * @default 0
-   */
-  readonly maxChars?: number;
-  /**
-   * Its text is wrong: its frame is dressed `Field.frame[invalid]`.
-   *
-   * @default false
-   */
-  readonly invalid?: boolean;
-  /**
-   * No frame and no focus ring of its own: a component frames it.
-   *
-   * @default false
-   */
-  readonly bare?: boolean;
-  /**
-   * No inset and rows lines of its text's height (FieldDesc.tight).
-   *
-   * @default false
-   */
-  readonly tight?: boolean;
-  /**
-   * The component its style dresses it as (FieldDesc.component). Null: Field.
-   *
-   * @default null
-   */
-  readonly component?: string | null;
-}
-
-/**
  * What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick.
  */
 export interface Response {
@@ -24880,14 +24756,6 @@ export interface Response {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly longPress: number;
-}
-
-/** A text field's response and its text after this tick's input. */
-export interface FieldResult {
-  /** What happened to it. */
-  readonly response: Response;
-  /** The text, to keep in game state and pass back next tick. */
-  readonly value: string;
 }
 
 /**
@@ -25400,8 +25268,6 @@ export interface TextSpan {
    */
   readonly properties: Readonly<Record<string, string | number | boolean>>;
 }
-
-
 
 
 
@@ -27445,164 +27311,6 @@ export interface DropdownResult {
   readonly changed: boolean;
   /** Its list is open. */
   readonly open: boolean;
-}
-
-
-/**
- * A text field with its label, helper, error and adornments.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface InputFieldDesc {
-  /**
-   * Its name, above it (a screen reader names the field by it); empty for none.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-  /**
-   * Shown while it is empty.
-   *
-   * @default ""
-   */
-  readonly placeholder?: string;
-  /**
-   * A line under it; empty for none.
-   *
-   * @default ""
-   */
-  readonly helper?: string;
-  /**
-   * An error under it, the danger frame, the validity group's invalid (a shake); empty for none.
-   *
-   * @default ""
-   */
-  readonly error?: string;
-  /**
-   * A mark after the label.
-   *
-   * @default false
-   */
-  readonly required?: boolean;
-  /**
-   * An icon at its start; empty for none.
-   *
-   * @default ""
-   */
-  readonly icon?: string;
-  /**
-   * A clear button at its end while it has text.
-   *
-   * @default true
-   */
-  readonly clearable?: boolean;
-  /**
-   * The most characters it takes (0: no limit); with counter, `12/20` under it.
-   *
-   * @default 0
-   */
-  readonly maxChars?: number;
-  /**
-   * Show the count under it (with maxChars, against the limit).
-   *
-   * @default false
-   */
-  readonly counter?: boolean;
-  /**
-   * Shown but inert.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Text at its end (`gold`, `.com`); empty for none.
-   *
-   * @default ""
-   */
-  readonly suffix?: string;
-}
-
-/** A text field's state after this tick. */
-export interface InputResult {
-  /** The field's response (focused while it is edited, submitted on Enter). */
-  readonly response: Response;
-  /** The text, to keep and pass back. */
-  readonly value: string;
-  /** The text changed this tick. */
-  readonly changed: boolean;
-  /** Enter was pressed in it. */
-  readonly submitted: boolean;
-  /** The clear button emptied it. */
-  readonly cleared: boolean;
-}
-
-
-/**
- * A text area with its label, helper, error and counter.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface InputAreaDesc {
-  /**
-   * Its name, above it; empty for none.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-  /**
-   * Shown while it is empty.
-   *
-   * @default ""
-   */
-  readonly placeholder?: string;
-  /**
-   * A line under it; empty for none.
-   *
-   * @default ""
-   */
-  readonly helper?: string;
-  /**
-   * An error under it; empty for none.
-   *
-   * @default ""
-   */
-  readonly error?: string;
-  /**
-   * Lines shown at once (more scroll).
-   *
-   * @default 4
-   */
-  readonly rows?: number;
-  /**
-   * The most characters (0: no limit).
-   *
-   * @default 0
-   */
-  readonly maxChars?: number;
-  /**
-   * Show the count under it.
-   *
-   * @default false
-   */
-  readonly counter?: boolean;
-  /**
-   * Shown but inert.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-  /**
-   * Its width; null grows.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
 }
 
 
@@ -40499,22 +40207,6 @@ export declare namespace og {
      */
     function zoomView(id: string, desc?: ZoomViewDesc): ZoomResult;
     /**
-     * One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
-     *
-     * @param id Its id.
-     * @param value The text from game state.
-     * @param desc Placeholder, width and length limit.
-     */
-    function textField(id: string, value: string, desc?: FieldDesc): FieldResult;
-    /**
-     * Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, a triple click selecting the line between its breaks, the text wrapped between words at the area's width and scrolled to keep the caret's line in view (a drag above or below the area scrolls it, faster the further out). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
-     *
-     * @param id Its id.
-     * @param value The text from game state.
-     * @param desc Placeholder, width, rows and length limit.
-     */
-    function textArea(id: string, value: string, desc?: TextAreaDesc): FieldResult;
-    /**
      * The id of the index-th of several siblings of one name: `idi("Slot", 3)` is `Slot#3`.
      *
      * @param name The name.
@@ -40884,22 +40576,6 @@ export declare namespace og {
      * @param desc Its options and states.
      */
     function dropdown(id: string, desc?: DropdownDesc): DropdownResult;
-    /**
-     * A text field (og.ui.textField's editing: IME, selection, clipboard, undo) in a framed row with a label above, an icon, a suffix, a clear button and a helper, error or counter line below. Its frame takes the focus ring as it is edited, turns danger and shakes once when an error appears (validity group). On a coarse pointer its row is 44 CSS px at least. Parts: `Input.frame[focused][invalid][disabled][hover]`, `Input.clear`. Role textbox named by its label; the error is an alert; the clear button is a button under a finger (a stop keys and pads reach too) and a named image on a fine pointer. Disabled, its text is drawn in muted ink on a fainter frame, out of the focus order, a textbox the tree calls disabled. Probe: `<id>/Frame/Field` (its text), `<id>/Frame/Clear`, `<id>/Foot/Error`.
-     *
-     * @param id Its id.
-     * @param value The text from game state.
-     * @param desc Its label and adornments.
-     */
-    function inputField(id: string, value: string, desc?: InputFieldDesc): InputResult;
-    /**
-     * A text area (og.ui.textArea's editing) framed as inputField is, with its label, helper, error and counter. Parts: `Input.frame[area][focused][invalid]` and the field's. Probe: `<id>/Frame/Area`, `<id>/Foot/Counter`.
-     *
-     * @param id Its id.
-     * @param value The text from game state.
-     * @param desc Its label and adornments.
-     */
-    function inputArea(id: string, value: string, desc?: InputAreaDesc): InputResult;
     /**
      * Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §2, §3.1). Call it right after the element.
      *

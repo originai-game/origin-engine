@@ -2147,7 +2147,5 @@ export const ui = Object.freeze({
   label: (id: string, text: string, desc?: unknown) => abi().og_ui_label(id, text, json(desc)),
   richText: (id: string, markup: string, desc?: unknown) => parse(abi().og_ui_rich_text(id, markup, json(desc))),
   image: (id: string, desc?: unknown) => abi().og_ui_image(id, json(desc)),
-  textField: (id: string, value: string, desc?: unknown) => parse(abi().og_ui_text_field(id, value, json(desc))),
-  textArea: (id: string, value: string, desc?: unknown) => parse(abi().og_ui_text_area(id, value, json(desc))),
   idi: (name: string, index: number) => `${name}#${index}`,
 });

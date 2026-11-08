@@ -55,7 +55,10 @@ impl Ui {
         let secret = desc.input_type == crate::InputType::Password;
         // A password's reveal toggle takes a square at the field's end:
         // its text stops before it (the start side in right to left).
-        let reveal_w = if secret {
+        // A search box's clear button (HTML's search cancel button) takes
+        // the same square, kept while it is empty so its text never moves.
+        let search = desc.input_type == crate::InputType::Search;
+        let reveal_w = if secret || search {
             height.min(sizes.control_md)
         } else {
             0.0
@@ -82,8 +85,16 @@ impl Ui {
         self.nodes[i].nav = true;
         let key = self.nodes[i].key;
         let revealed = secret && self.reveal_toggle(i, base, reveal_w, height);
+        let cleared = search
+            && !value.is_empty()
+            && !desc.readonly
+            && self.clear_button(i, base, reveal_w, height);
+        if cleared {
+            value.clear();
+        }
         self.last_closed = i;
         let mut r = self.respond(key);
+        r.changed |= cleared;
         if r.focused {
             let inner = self.hit(key).map(|h| h.full.inset(&padding));
             let e = self.edit(
@@ -102,7 +113,7 @@ impl Ui {
                     readonly: desc.readonly,
                 },
             );
-            r.changed = e.changed;
+            r.changed = e.changed || cleared;
             r.submitted = e.submitted;
             r.focused = self.state.focus == key;
         }
@@ -277,6 +288,63 @@ impl Ui {
         n.a11y.name = Some(label.into());
         n.a11y.checked = Some(revealed);
         revealed
+    }
+
+    /// A search box's clear button (`<id>/Clear`, HTML's search cancel
+    /// button): a square button at field `i`'s end while it has text,
+    /// dressed `<component>.clear[hover|pressed]`, drawing a cross, named
+    /// Clear. Like the reveal toggle it is no focus stop (a press keeps
+    /// the field's focus). Answers whether it was pressed this tick.
+    fn clear_button(&mut self, i: usize, base: crate::dress::PartRef, w: f32, h: f32) -> bool {
+        self.stack.push(i);
+        let j = self.leaf(
+            "button",
+            Id::from("Clear"),
+            Element {
+                width: Size::Fixed(w),
+                height: Size::Fixed(h),
+                interactive: true,
+                radius: self.theme.radius.control,
+                ..Element::default()
+            },
+        );
+        self.stack.pop();
+        self.nodes[j].props.position = crate::element::Position::Absolute;
+        self.nodes[j].props.insets = crate::element::Edges {
+            end: Some(0.0),
+            top: Some(0.0),
+            ..Default::default()
+        };
+        let r = self.respond(self.nodes[j].key);
+        let p = self.theme.palette;
+        let part = crate::dress::PartRef {
+            part: "clear",
+            ..base
+        }
+        .flag_if(r.hovered, "hover")
+        .flag_if(r.pressed, "pressed");
+        let icon = crate::dress::PartRef {
+            part: "clear-icon",
+            class: None,
+            ..base
+        };
+        let color = if r.hovered { p.ink } else { p.ink_muted };
+        let s = (w.min(h) * 0.32).max(6.0);
+        let thick = (s * 0.16).max(1.0);
+        let n = &mut self.nodes[j];
+        n.el.part = Some(part);
+        n.shapes.clear();
+        for angle in [std::f32::consts::FRAC_PI_4, -std::f32::consts::FRAC_PI_4] {
+            n.shapes.push(Shape::Bar {
+                part: icon,
+                frame: crate::layout::Frame::centered(0.0, 0.0, s * 1.4, thick),
+                angle,
+                color,
+            });
+        }
+        n.probe_text = "Clear".into();
+        n.a11y.name = Some("Clear".into());
+        r.clicked && !self.nodes[i].disabled
     }
 
     /// A field's frame as a part (`Field.frame[focused][invalid]`): its ground moves

@@ -1050,14 +1050,21 @@ fn core_controls_choose_step_hold_and_report() {
     d.click_at(at);
     d.click_at(at);
     assert_eq!(d.read("qty"), json!("3"), "steps to max and stops");
-    assert_eq!(d.get("Qty/Frame/Value/Text").text, "3 m", "data-format writes it");
+    assert_eq!(
+        d.get("Qty/Frame/Value/Text").text,
+        "3 m",
+        "data-format writes it"
+    );
     // -og-stepper-wrap goes past max to min.
     let plus =
         d.ui.probe_elements()
             .into_iter()
             .find(|e| e.path.ends_with("/Lv/Frame/Inc"))
             .expect("the wrapping stepper's plus");
-    d.click_at(Vec2::new(plus.x + plus.width / 2.0, plus.y + plus.height / 2.0));
+    d.click_at(Vec2::new(
+        plus.x + plus.width / 2.0,
+        plus.y + plus.height / 2.0,
+    ));
     assert_eq!(d.read("lv"), json!("0"), "wraps past max to min");
     assert_eq!(d.a11y("Copy").role, "menuitem");
     // Hold: fires once, after 300 ms, not at once.
@@ -1093,7 +1100,10 @@ fn core_controls_choose_step_hold_and_report() {
         fills[2] > 0.0 && fills[2] < fills[10] && fills[10] < buy.width,
         "the fill grows: {fills:?}"
     );
-    assert!((fills[30] - buy.width).abs() < 1.0, "full at the hold: {fills:?}");
+    assert!(
+        (fills[30] - buy.width).abs() < 1.0,
+        "full at the hold: {fills:?}"
+    );
     assert_eq!(hold_fill_width(d), 0.0, "released, no fill");
     // A secondary press asks for the context menu; a primary one does not.
     let events = d.click("Buy");
@@ -1334,4 +1344,47 @@ fn shipped_component_documents_build_from_their_fixtures() {
             assert!(shown, "{name} (mounted: {}): no {row}", d.mounted);
         });
     }
+}
+
+/// A search box draws HTML's clear button while it has text, and a press on
+/// it empties the field; a field's count, leading icon and suffix are plain
+/// markup round a bare input (`{$name.length}/20`, `<icon>`, `<span>`).
+///
+/// Ways it could fail: no clear button, one that shows on an empty box or
+/// leaves the text, or a count that does not follow the text.
+#[test]
+fn search_clears_and_field_adornments_compose() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <input type="search" id="Find" bind:value={$q}>
+  <div id="Frame" class="frame">
+    <icon id="Lead" icon="coin"></icon>
+    <input id="Gold" class="bare" maxlength="20" bind:value={$name}>
+    <span id="Suffix">gold</span>
+  </div>
+  <small id="Count">{$name.length}/20</small>
+</div>
+<style>
+#Page { gap: 8px; padding: 8px; }
+.frame { flex-direction: row; align-items: center; gap: 4px; padding: 0 8px; }
+.bare { appearance: none; }
+</style>"#;
+    let d = &mut Doc::new(text, &[("q", json!("ore")), ("name", json!("Ash"))], true);
+    assert!(
+        d.el("Find/Clear").is_some(),
+        "a search box with text has its clear button"
+    );
+    d.click("Find/Clear");
+    assert_eq!(d.read("q"), json!(""), "the clear button empties it");
+    d.step(InputFrame::default());
+    assert!(d.el("Find/Clear").is_none(), "an empty search box has none");
+    assert_eq!(d.get("Count").text, "3/20");
+    let (lead, gold, suffix) = (d.get("Lead"), d.get("Gold"), d.get("Suffix"));
+    assert!(
+        lead.x < gold.x && gold.x < suffix.x,
+        "icon, field, suffix in a row"
+    );
+    d.set("name", json!("Ashen"));
+    d.step(InputFrame::default());
+    assert_eq!(d.get("Count").text, "5/20", "the count follows the text");
 }

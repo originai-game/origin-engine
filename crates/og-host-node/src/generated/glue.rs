@@ -2727,18 +2727,6 @@ pub fn og_ui_zoom_view(env: Env, id: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_zoom_view(&Host, id, desc)
 }
 
-#[napi(js_name = "og_ui_text_field")]
-pub fn og_ui_text_field(env: Env, id: String, value: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_text_field(&Host, id, value, desc)
-}
-
-#[napi(js_name = "og_ui_text_area")]
-pub fn og_ui_text_area(env: Env, id: String, value: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_text_area(&Host, id, value, desc)
-}
-
 #[napi(js_name = "og_ui_frame_pointer")]
 pub fn og_ui_frame_pointer(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);

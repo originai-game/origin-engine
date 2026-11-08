@@ -7,7 +7,7 @@ switch between inventory, map and settings pages along the top	og.ui.tabs
 confetti when the player wins	og.ui.celebration
 a red health bar over the HUD	components §30 | screens §7
 a small map in the corner showing where enemies are	screens §7
-type the player's name into a box	og.ui.inputField
+type the player's name into a box	components §26
 the player's highscore and the scores just above and below theirs	og.platform.leaderboardAround
 unlock a trophy once the player has collected 50 coins	og.platform.achievementProgress
 open the share sheet so the player can post their result	og.platform.share
