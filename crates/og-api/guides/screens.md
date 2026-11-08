@@ -76,6 +76,26 @@ local styles and `og style new` remain available.
 - Read a named store with `{$gold}` or `disabled={$gold < 10}`. Use
   `bind:value={$volume}` for two-way controls. Ordinary attribute bindings
   never write. `onclick={buy}` names an action supplied by the game.
+- Controls are HTML's, with a few `-og-` properties where HTML has none:
+  - `<button data-hold="1200" onhold={confirm}>` fires after a held press
+    (Enter, Space, a pad's A, or its `data-action`'s input hold it too) and
+    draws a fill across it as it is held: `button::-og-hold { background }`.
+  - `<input type="checkbox" switch data-on="On" data-off="Off">` is a
+    switch whose on and off words a screen reader reads.
+  - `<input type="number" data-format="{value, number} m">` with
+    `-og-stepper: buttons` steps; `-og-stepper-wrap: wrap` goes past max to
+    min and `-og-stepper-large-step: 10` sets a held button's repeats.
+    `data-format` is an ICU message over `value`.
+  - A field's icon, suffix and count are markup round an input with
+    `appearance` set to `none`, in a row styled with `:focus-within`:
+    `<icon>`, `<span>gold</span>`, `<small>{$name.length}/20</small>`.
+    `<input type="search">` draws a clear button while it has text.
+  - `<select>` with `-og-select-filter: on` puts a filter on its open list
+    (`data-filter-placeholder`); `auto` shows one past 10 options.
+  - `<tabs items icons badges>` draws an icon and a count badge per tab;
+    the tabPrev and tabNext actions (Q and E, LB and RB) step it.
+  - `<details name="faq">` is an exclusive accordion: one of a name open
+    at once.
 - Use `{#if expression}…{:else}…{/if}` and
   `{#each $items as item (item.id)}…{:else}…{/each}`. Every collection row
   needs a stable string key. Index keys and executable JavaScript fail cooking.
@@ -362,7 +382,9 @@ actions and a `fixture:default`, so `og ui preview` shows it at once.
   (`<nav><ol>` with `aria-current`), `chart` (bars and a line).
 - Buttons: `hero-button` (the main call to action with its keycap),
   `action-button` (a touch button feeding an og-input action through
-  `data-og-touch`), `ribbon` (a corner ribbon on a card).
+  `data-og-touch`), `hold-button` (hold to confirm, filling as it is held),
+  `action-hints` (the action bar: each action's `<kbd data-action>` glyph
+  and hint), `ribbon` (a corner ribbon on a card).
 - World: `nameplate`, `waypoint`, `loot-label`, `speech-bubble` and
   `interaction-prompt` are `<anchor>`s over an entity or point;
   `selection-ring`, `telegraph`, `path-line` and `placement-ghost` are

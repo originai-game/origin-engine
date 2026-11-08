@@ -166,7 +166,7 @@ pub const CORE_KINDS: &[KindSpec] = &[
     KindSpec {
         name: "button",
         container: true,
-        doc: "A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states.",
+        doc: "A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states; `data-hold` makes it a hold-to-confirm button that fills while held down.",
     },
     KindSpec {
         name: "kbd",
@@ -241,7 +241,7 @@ pub const CORE_KINDS: &[KindSpec] = &[
     KindSpec {
         name: "field",
         container: false,
-        doc: "A text control (two-way `input`): `<input>` for one line, `<textarea>` for several.",
+        doc: "A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type=\"number\"` with `-og-stepper: buttons` is a number stepper with minus and plus buttons.",
     },
     KindSpec {
         name: "badge",

@@ -1,0 +1,105 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document data-hold fill (::-og-hold)",
+      "summary": "A data-hold element draws a fill from its start edge across the share of the hold its press has reached, over its background and under its content; button::-og-hold { background } colours it (::-og-hold is a pseudo-element box, as ::backdrop is). Enter, Space or a pad's A held while it has the focus hold it, and so does its data-action's input."
+    },
+    {
+      "member": "UI document <input type=checkbox switch data-on data-off>",
+      "summary": "A switch's on and off words are its value for a screen reader and the probe."
+    },
+    {
+      "member": "UI document <input type=number> stepper (-og-stepper-wrap, -og-stepper-large-step, data-format)",
+      "summary": "With -og-stepper: buttons, -og-stepper-wrap: wrap goes past max to min, -og-stepper-large-step sets what a held button's repeats move by, and data-format writes the value through an ICU message over value in the UI's locale ({value, number} m, {value, number, compact}, {value, plural, =0 {Off} other {#}}), checked when the document is parsed."
+    },
+    {
+      "member": "UI document <input type=search> clear button",
+      "summary": "A search box draws HTML's clear button at its end while it has text (`<id>/Clear`, dressed `<component>.clear`); a press empties it."
+    },
+    {
+      "member": "UI document <select> filter (-og-select-filter, data-filter-placeholder)",
+      "summary": "-og-select-filter: on puts a filter field atop the open list, off keeps it away, auto (the default) shows it past 10 options; data-filter-placeholder is what it shows while empty."
+    },
+    {
+      "member": "UI document <tabs icons badges>, tabPrev and tabNext",
+      "summary": "icons and badges (a list each, one per tab) draw an icon before a tab's label and a count badge after it. The tabPrev and tabNext actions (Q and E, LB and RB) step through a document's tabs, wrapping."
+    },
+    {
+      "member": "UI document <details name>",
+      "summary": "HTML's exclusive accordion: of the disclosures in a mount sharing a literal name, one is open at once; opening one closes the others the next tick and writes their open state back."
+    },
+    {
+      "member": "Component documents hold-button and action-hints",
+      "summary": "`og ui eject hold-button` (a hold-to-confirm button with its holding words and hint) and `og ui eject action-hints` (the action bar: a <kbd data-action> glyph and hint per action, a hold row filling as its action is held)."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "og.ui.holdButton, og.ui.HoldButtonDesc, og.ui.HoldResult",
+      "change": "The hold-to-confirm builder is removed.",
+      "fix": "Write `<button data-hold=\"1200\" onhold={confirm}>Delete save</button>` in a document (its fill is `button::-og-hold { background: … }`) and read the hold from og.ui.docEvents, or eject the `hold-button` component document.",
+      "find": ["og.ui.holdButton", "HoldButtonDesc", "HoldResult"]
+    },
+    {
+      "member": "og.ui.actionHints, og.ui.ActionHint, og.ui.ActionHintsDesc, og.ui.ActionHintsResult",
+      "change": "The action bar builder is removed.",
+      "fix": "Write a row of `<button onclick={press}><kbd data-action={h.action}></kbd> {h.hint}</button>` over og.ui.actionBar's hints (a hold one with `data-hold` and `data-action`, so the action's hold fills it), or eject the `action-hints` component document. Place it with CSS (`position: absolute; inset-block-end: 0`): a screen's root already keeps out of the safe area.",
+      "find": ["og.ui.actionHints", "ActionHintsDesc", "ActionHintsResult", "ActionHint"]
+    },
+    {
+      "member": "og.ui.toggleSwitch, og.ui.ToggleSwitchDesc, og.ui.SwitchResult, og.ui.LabelSide",
+      "change": "The switch builder is removed.",
+      "fix": "Write `<label><input type=\"checkbox\" switch data-on=\"On\" data-off=\"Off\" bind:checked={$music}> Music</label>` in a document; the caption's side is its source order in the label.",
+      "find": ["og.ui.toggleSwitch", "ToggleSwitchDesc", "SwitchResult", "LabelSide"]
+    },
+    {
+      "member": "og.ui.numberStepper, og.ui.NumberStepperDesc, og.ui.NumberResult, og.ui.ValueFormat",
+      "change": "The number stepper builder is removed.",
+      "fix": "Write `<input type=\"number\" min=\"1\" max=\"8\" data-format=\"{value, number} players\" bind:value={$players}>` with `-og-stepper: buttons` (and `-og-stepper-wrap: wrap`, `-og-stepper-large-step: 10`) in its `<style>`.",
+      "find": ["og.ui.numberStepper", "NumberStepperDesc", "NumberResult", "ValueFormat"]
+    },
+    {
+      "member": "og.ui.inputField, og.ui.inputArea, og.ui.InputFieldDesc, og.ui.InputAreaDesc, og.ui.InputResult",
+      "change": "The framed text field builders are removed.",
+      "fix": "Write the field as markup: `<label for>` above, a row of `<icon>`, `<input class=\"bare\" maxlength=\"20\" bind:value={$name}>` (`appearance: none`, the row styled with `:focus-within`) and a `<span>` suffix, then `<small>{$name.length}/20</small>` for the count and a `<small role=\"alert\">` for the error; `<input type=\"search\">` draws the clear button; `<textarea rows>` for several lines.",
+      "find": ["og.ui.inputField", "og.ui.inputArea", "InputFieldDesc", "InputAreaDesc", "InputResult"]
+    },
+    {
+      "member": "og.ui.textField, og.ui.textArea, og.ui.FieldDesc, og.ui.TextAreaDesc, og.ui.FieldResult",
+      "change": "The bare text input builders are removed.",
+      "fix": "Write `<input bind:value={$name}>` or `<textarea rows=\"4\" bind:value={$note}>` in a document (`type`, `inputmode`, `autocomplete`, `maxlength`, `placeholder`, `readonly` as in HTML).",
+      "find": ["og.ui.textField", "og.ui.textArea", "FieldDesc", "TextAreaDesc", "FieldResult"]
+    },
+    {
+      "member": "og.ui.dropdown, og.ui.DropdownOption, og.ui.DropdownDesc, og.ui.DropdownResult",
+      "change": "The dropdown builder is removed.",
+      "fix": "Write `<select bind:value={$lang}>` with `<option>`s (under `<optgroup>`s) in a document; `-og-select-filter: on` and `data-filter-placeholder` give its open list a filter, `select::picker(select) { max-height }` bounds it.",
+      "find": ["og.ui.dropdown", "DropdownOption", "DropdownDesc", "DropdownResult"]
+    },
+    {
+      "member": "og.ui.tabBar, og.ui.TabVariant, og.ui.TabItem, og.ui.TabBarDesc, og.ui.TabBarResult",
+      "change": "The tab bar builder is removed.",
+      "fix": "Write `<tabs items=\"Gear Quests\" icons=\"sword shield\" badges={$unread} bind:selected={$tab}>` in a document with the selected tab's panel under it in an `{#if}`; tabPrev and tabNext step it, and `<kbd data-action=\"tabPrev\">` shows a bumper's glyph.",
+      "find": ["og.ui.tabBar", "TabBarDesc", "TabBarResult", "TabItem", "TabVariant"]
+    },
+    {
+      "member": "og.ui.accordion, og.ui.AccordionSection, og.ui.AccordionDesc, og.ui.AccordionResult",
+      "change": "The accordion builder is removed.",
+      "fix": "Write a `<details name=\"faq\" summary=\"Rules\">` per section in a document; one name keeps one open at once (single), no name lets several open.",
+      "find": ["og.ui.accordion", "AccordionDesc", "AccordionResult", "AccordionSection"]
+    },
+    {
+      "member": "@origingame/engine/ui-parts/screen inputField, dropdown, holdButton",
+      "change": "The screen helpers no longer export the removed builders.",
+      "fix": "Build those controls in the kit's screen document: `<input>`, `<select>`, `<button data-hold>`.",
+      "find": ["ui-parts/screen"]
+    },
+    {
+      "member": "UI document <details name>",
+      "change": "name on a <details> is its exclusive accordion group, no longer its accessible name.",
+      "fix": "Name a disclosure for a screen reader with aria-label; keep name for the group.",
+      "find": ["<details name="]
+    }
+  ]
+}

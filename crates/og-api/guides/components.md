@@ -377,9 +377,9 @@ Its own props, beside every element's:
 | `-og-reveal:` | `<number>` | Types its text out at this many characters a second (`-og-reveal`); `onrevealed` fires when it is whole. |
 | `href` | `text` | An `<a>`'s destination: a click sends a `link` event named by it (as `onclick` fires). |
 
-## 11. `<button>` (`button`): A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states
+## 11. `<button>` (`button`): A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states; `data-hold` makes it a hold-to-confirm button that fills while held down
 
-A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states. A container with nested children: `<button id="Name">…</button>`.
+A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states; `data-hold` makes it a hold-to-confirm button that fills while held down. A container with nested children: `<button id="Name">…</button>`.
 
 Its own props, beside every element's:
 
@@ -627,9 +627,9 @@ Its own props, beside every element's:
 | `selected` | `number` | The selected tab's zero-based index. Two-way only with an explicit bind: attribute. |
 | `fill` | `bool` | Equal tabs filling the available width. |
 
-## 26. `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several
+## 26. `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` with `-og-stepper: buttons` is a number stepper with minus and plus buttons
 
-A text control (two-way `input`): `<input>` for one line, `<textarea>` for several. A leaf; text-bearing controls accept text content: `<input type="text" id="Name" />` or `<textarea id="Name" rows="4" />`.
+A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` with `-og-stepper: buttons` is a number stepper with minus and plus buttons. A leaf; text-bearing controls accept text content: `<input type="text" id="Name" />` or `<textarea id="Name" rows="4" />`.
 
 Its own props, beside every element's:
 
