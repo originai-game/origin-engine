@@ -1038,7 +1038,7 @@ use the [art contract](art.md); the
 Fonts ship as packs, like the UI packs: one directory per script under
 `templates/fonts/` (`latin`, `cyrillic-greek`, `arabic`, `hebrew`,
 `devanagari`, `thai`, `japanese`, `korean`, `chinese-simplified`,
-`chinese-traditional`), each an `extension.json` of kind `font` naming its
+`chinese-traditional`, and `emoji`), each an `extension.json` of kind `font` naming its
 `scripts`, `languages` and `faces`, the faces with their import settings,
 and their licence. `og font list` names them; `og font add <pack>` installs
 one under `assets/fonts/<pack>/`; `og create --lang` installs the packs of
@@ -1075,6 +1075,35 @@ after it arrives; until then it is blank, never warned of. A probe
 capture waits for every glyph asked for, so captured frames do not
 depend on timing. Glyphs are presentation only: no world state, hash or
 replay reads them.
+
+Colour emoji are a font feature, not cooked images. The `emoji` pack is
+Noto Color Emoji's COLRv1 face (SIL OFL 1.1, 5.05 MB, 1,508 characters
+and their sequences): a pack of no language, named by its script `Zsye`,
+tried after every text pack. Its face declares `color true` with `runtime
+true`, so a glyph with a COLR paint is painted in colour when first shown,
+by the same painter the cook uses (`crates/og-ui/src/colr.rs`, COLR v0
+and v1) at `color_px` in the palette the settings name (the blob's
+`color-runtime` section). Each glyph goes onto a colour page with a
+silhouette distance field beside it for its shadows, glow and outline,
+and a glyph in the text's colour (CPAL 0xFFFF) is painted black and white
+and mixed at draw, as a cooked colour glyph is. Skin tones, ZWJ sequences
+and flags are one glyph each, formed by the face's GSUB. A space or
+punctuation after an emoji takes a text face's glyph, never the emoji
+face's (whose space is 1.25 em), as browsers fall back. Any project font
+can do the same with `font { color true runtime true }`; one with no COLR
+glyph is refused.
+
+Measured on Metal (debug build, `run_time_emoji_cost_what_cooked_emoji_cost`,
+eight emoji including a skin tone, a family and a flag), against the same
+emoji cooked as images: the steady frame costs the same (0.57 ms CPU
+against 0.59 ms); the worst first-use frame is 4.8 ms against 6.6 ms,
+because the painting runs off the frame. A colour glyph costs about two
+distance fields to paint (3.0 ms median natively, unoptimised), so the web
+counts it as two of its three glyphs a frame per face. Size: the pack cooks
+to 5.08 MB for every emoji, which a game pays only when it installs the
+pack; cooking just those eight as images is 431 KB, so a game that shows
+a fixed handful of emoji can list them in `chars` with `color true` instead.
+The reference frames are `color-emoji-1280` and `color-emoji-390`.
 
 ## 4. Shipped catalogue
 

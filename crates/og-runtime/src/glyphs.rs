@@ -6,7 +6,10 @@
 //! (`og_ui::glyphs::render_glyph`, the cook's geometry) into a 512² page
 //! of the font's own. Every page of the font learns the glyph's advance,
 //! so text drawn page by page keeps one layout; the page that holds it
-//! learns its bounds. Pages are added as they fill.
+//! learns its bounds. Pages are added as they fill. A colour font
+//! (`font { color true runtime true }`) paints a glyph with a COLR paint
+//! as the cook paints one (`og_ui::colr::render_runtime`) onto colour
+//! pages, each with a silhouette page for its shadows, glow and outline.
 
 use super::extract::RenderState;
 use og_render::{ColorSpace, FontHandle, Glyph, GlyphKey, Mips, TextureData, TextureHandle};
@@ -17,7 +20,7 @@ use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::mpsc::{Receiver, Sender};
 
-/// The edge of a run-time page, in pixels.
+/// The edge of a run-time page, in pixels (a foreground page is two wide).
 const PAGE: u32 = 512;
 
 /// A font whose missing characters are rendered at run time.
@@ -28,42 +31,141 @@ pub(crate) struct RuntimeFont {
     /// A pixel font's grid (0: an outline font): its glyphs are rendered
     /// as their cells, as the cook renders them.
     pub pixel: u32,
+    /// A colour font's (`font { color true runtime true }`): a glyph with
+    /// a COLR paint is painted in colour as the cook paints one, onto
+    /// colour pages, instead of a distance field.
+    pub color: Option<og_bundle::runtime::ColorRuntime>,
     /// Glyphs handled (rendered, or not in the font either).
     done: BTreeSet<GlyphKey>,
-    /// The page being filled.
-    page: Option<Page>,
+    /// The page of each kind being filled ([`Kind`] as index).
+    pages: [Option<Page>; 3],
     /// Glyph batches rendering off the frame (natively, on a thread each):
     /// how many are out, and where they arrive.
     #[cfg(not(target_arch = "wasm32"))]
-    flight: (usize, Sender<Vec<GlyphImage>>, Receiver<Vec<GlyphImage>>),
+    flight: (usize, Sender<Vec<Rendered>>, Receiver<Vec<Rendered>>),
     /// Glyphs waiting their turn (the web: a few rendered each frame).
     #[cfg(target_arch = "wasm32")]
     queue: std::collections::VecDeque<GlyphKey>,
 }
 
-/// Glyphs the single-threaded web renders per frame and font: a frame
-/// keeps its budget while a new script's characters arrive over a few.
+/// Glyphs the single-threaded web renders per frame and font, in distance
+/// fields: a frame keeps its budget while a new script's characters arrive
+/// over a few.
 #[cfg(target_arch = "wasm32")]
 const WEB_BUDGET: usize = 3;
 
+/// What a colour glyph takes of [`WEB_BUDGET`]: painting its layers and
+/// its silhouette's field costs about two distance fields (3.0 ms against
+/// 1.5 natively, unoptimised; Noto Color Emoji at 64 px per em).
+#[cfg(target_arch = "wasm32")]
+const WEB_COLOUR_COST: usize = 2;
+
+/// A glyph rendered off the frame.
+enum Rendered {
+    /// A distance field (an outline glyph).
+    Field(GlyphImage),
+    /// A colour glyph's images and silhouette field.
+    Colour(og_ui::colr::RuntimeColor),
+}
+
+/// A run-time page's kind, as the cooked font's pages: a distance field;
+/// colour images (sRGB, drawn as sprites); colour images in the text's
+/// colour (each glyph painted black, its white twin half the page to the
+/// right). A colour page has a silhouette page beside it, its glyphs at the
+/// same places as a distance field, for their shadows, glow and outline.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Kind {
+    Field = 0,
+    Colour = 1,
+    Foreground = 2,
+}
+
 struct Page {
+    kind: Kind,
     font: FontHandle,
     atlas: TextureHandle,
     rgba: Vec<u8>,
+    /// A colour page's silhouette page: its font, atlas and pixels.
+    silhouette: Option<(FontHandle, TextureHandle, Vec<u8>)>,
     x: u32,
     y: u32,
     shelf: u32,
+    /// Drawn into since its last upload.
+    dirty: bool,
+}
+
+impl Kind {
+    fn width(self) -> u32 {
+        if self == Kind::Foreground {
+            2 * PAGE
+        } else {
+            PAGE
+        }
+    }
+}
+
+impl Page {
+    /// Where an image of `w`×`h` goes, a pixel of gutter round it (a new
+    /// shelf when the row is full); `None` when the page is full.
+    fn spot(&self, w: u32, h: u32) -> Option<(u32, u32)> {
+        let (x, y) = if self.x + w + 1 > PAGE {
+            (1, self.y + self.shelf + 1)
+        } else {
+            (self.x, self.y)
+        };
+        (y + h < PAGE && x + w < PAGE).then_some((x, y))
+    }
+
+    /// Uploads its atlas, and its silhouette's, as they now stand.
+    fn upload(&mut self, scene: &mut og_render::RenderScene) {
+        let colour = self.kind != Kind::Field;
+        scene.set_texture(
+            self.atlas,
+            TextureData {
+                width: self.kind.width(),
+                height: PAGE,
+                rgba: self.rgba.clone(),
+                color_space: if colour {
+                    ColorSpace::Srgb
+                } else {
+                    ColorSpace::Linear
+                },
+                mips: if colour { Mips::Generate } else { Mips::None },
+            },
+        );
+        if let Some((_, atlas, rgba)) = &self.silhouette {
+            scene.set_texture(*atlas, field_texture(rgba.clone()));
+        }
+        self.dirty = false;
+    }
+}
+
+fn field_texture(rgba: Vec<u8>) -> TextureData {
+    TextureData {
+        width: PAGE,
+        height: PAGE,
+        rgba,
+        color_space: ColorSpace::Linear,
+        mips: Mips::None,
+    }
 }
 
 impl RuntimeFont {
-    pub fn new(file: Arc<FontFile>, em_px: f32, px_range: f32, pixel: u32) -> RuntimeFont {
+    pub fn new(
+        file: Arc<FontFile>,
+        em_px: f32,
+        px_range: f32,
+        pixel: u32,
+        color: Option<og_bundle::runtime::ColorRuntime>,
+    ) -> RuntimeFont {
         RuntimeFont {
             file,
             em_px,
             px_range,
             pixel,
+            color,
             done: BTreeSet::new(),
-            page: None,
+            pages: [None, None, None],
             #[cfg(not(target_arch = "wasm32"))]
             flight: {
                 let (tx, rx) = std::sync::mpsc::channel();
@@ -86,19 +188,18 @@ impl RuntimeFont {
     /// finished since the last call; with `settle`, every one asked for.
     /// The distance fields are the costly part (milliseconds a glyph):
     /// rendered on the frame, a new script's first frame hitched.
-    fn render(&mut self, want: Vec<GlyphKey>, settle: bool) -> Vec<GlyphImage> {
+    fn render(&mut self, want: Vec<GlyphKey>, settle: bool) -> Vec<Rendered> {
         let (em, range, grid) = (self.em_px, self.px_range, self.pixel);
         #[cfg(not(target_arch = "wasm32"))]
         {
             if !want.is_empty() {
                 let (file, tx) = (self.file.clone(), self.flight.1.clone());
+                let color = self.color.clone();
                 self.flight.0 += 1;
                 std::thread::spawn(move || {
                     let images = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                         want.into_iter()
-                            .filter_map(|k| {
-                                og_ui::glyphs::render_glyph_on(file.bytes(), k, em, range, grid)
-                            })
+                            .filter_map(|k| render_one(file.bytes(), k, em, range, grid, &color))
                             .collect()
                     }))
                     .unwrap_or_default();
@@ -121,18 +222,41 @@ impl RuntimeFont {
         #[cfg(target_arch = "wasm32")]
         {
             self.queue.extend(want);
-            let n = if settle {
-                self.queue.len()
-            } else {
-                WEB_BUDGET.min(self.queue.len())
-            };
             let file = self.file.clone();
-            self.queue
-                .drain(..n)
-                .filter_map(|k| og_ui::glyphs::render_glyph_on(file.bytes(), k, em, range, grid))
-                .collect()
+            let mut out = Vec::new();
+            let mut spent = 0;
+            while settle || spent < WEB_BUDGET {
+                let Some(k) = self.queue.pop_front() else {
+                    break;
+                };
+                let r = render_one(file.bytes(), k, em, range, grid, &self.color);
+                spent += match r {
+                    Some(Rendered::Colour(_)) => WEB_COLOUR_COST,
+                    _ => 1,
+                };
+                out.extend(r);
+            }
+            out
         }
     }
+}
+
+/// Glyph `k` of a font file: in colour when the font paints colour glyphs
+/// and `k` has a COLR paint, else its distance field.
+fn render_one(
+    ttf: &[u8],
+    k: GlyphKey,
+    em: f32,
+    range: f32,
+    grid: u32,
+    color: &Option<og_bundle::runtime::ColorRuntime>,
+) -> Option<Rendered> {
+    if let Some(c) = color
+        && let Some(g) = og_ui::colr::render_runtime(ttf, k, c.em_px, &c.palette)
+    {
+        return Some(Rendered::Colour(g));
+    }
+    og_ui::glyphs::render_glyph_on(ttf, k, em, range, grid).map(Rendered::Field)
 }
 
 /// Glyphs an engine's run-time fonts were asked for that are still being
@@ -143,6 +267,17 @@ pub fn glyphs_pending(engine: u32) -> u32 {
             rs.runtime_fonts.values().map(|f| f.pending() as u32).sum()
         })
     })
+}
+
+/// An image to place on a page of `kind`: its size and pixels, a
+/// foreground glyph's white twin, a colour glyph's silhouette field.
+struct Image<'a> {
+    kind: Kind,
+    width: u32,
+    height: u32,
+    rgba: &'a [u8],
+    white: Option<&'a [u8]>,
+    field: Option<&'a [u8]>,
 }
 
 /// Renders what each run-time font was asked for since the last frame.
@@ -179,124 +314,104 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
         if images.is_empty() {
             continue;
         }
-        // Rendered glyphs and the page each landed on.
-        let mut added: Vec<(Glyph, Option<FontHandle>)> = Vec::new();
+        // Rendered glyphs and the pages that draw each (none: advance only).
+        let mut added: Vec<(Glyph, Vec<FontHandle>)> = Vec::new();
         let mut new_pages: Vec<FontHandle> = Vec::new();
-        let mut touched: BTreeSet<u32> = BTreeSet::new();
         for img in images {
-            let c = img.key;
             rendered += 1;
-            if img.width == 0 {
+            let (key, advance, plane, image) = match &img {
+                Rendered::Field(g) => (
+                    g.key,
+                    g.advance,
+                    g.plane,
+                    (g.width > 0).then_some(Image {
+                        kind: Kind::Field,
+                        width: g.width,
+                        height: g.height,
+                        rgba: &g.rgba,
+                        white: None,
+                        field: None,
+                    }),
+                ),
+                Rendered::Colour(c) => (
+                    c.key,
+                    c.advance,
+                    c.image.plane,
+                    Some(Image {
+                        kind: if c.white.is_some() {
+                            Kind::Foreground
+                        } else {
+                            Kind::Colour
+                        },
+                        width: c.image.width,
+                        height: c.image.height,
+                        rgba: &c.image.rgba,
+                        white: c.white.as_deref(),
+                        field: Some(&c.field),
+                    }),
+                ),
+            };
+            let Some(image) = image else {
                 added.push((
                     Glyph {
-                        key: c,
-                        advance: img.advance,
+                        key,
+                        advance,
                         plane_bounds: [0.0; 4],
                         atlas_bounds: [0.0; 4],
                     },
-                    None,
+                    Vec::new(),
                 ));
                 continue;
-            }
-            if img.width + 2 > PAGE || img.height + 2 > PAGE {
+            };
+            if image.width + 2 > PAGE || image.height + 2 > PAGE {
                 continue;
             }
-            // Shelf packing with a pixel of gutter, a new page when full.
-            let fits = |p: &Page| {
-                let (x, y) = if p.x + img.width + 1 > PAGE {
-                    (1, p.y + p.shelf + 1)
-                } else {
-                    (p.x, p.y)
-                };
-                y + img.height < PAGE && x + img.width < PAGE
-            };
-            if !rf.page.as_ref().is_some_and(fits) {
-                // The page this batch leaves keeps what it drew: uploaded
-                // now, or its glyphs sample the texture of its last upload
-                // (a page made in this batch, all zero) and draw blank.
-                if let Some(old) = rf.page.take()
-                    && touched.contains(&(old.font.index() as u32))
-                {
-                    upload(&mut rs.scene, &old);
-                }
-                let atlas = rs.scene.add_texture(TextureData {
-                    width: PAGE,
-                    height: PAGE,
-                    rgba: vec![0; (PAGE * PAGE * 4) as usize],
-                    color_space: ColorSpace::Linear,
-                    mips: Mips::None,
-                });
-                // Every glyph so far, by advance only: this page draws its own.
-                let mut glyphs: Vec<Glyph> = first
-                    .glyphs
-                    .iter()
-                    .map(|g| Glyph {
-                        plane_bounds: [0.0; 4],
-                        atlas_bounds: [0.0; 4],
-                        ..*g
-                    })
-                    .collect();
-                glyphs.extend(added.iter().map(|(g, _)| Glyph {
+            let known: Vec<Glyph> = first
+                .glyphs
+                .iter()
+                .chain(added.iter().map(|(g, _)| g))
+                .map(|g| Glyph {
                     plane_bounds: [0.0; 4],
                     atlas_bounds: [0.0; 4],
                     ..*g
-                }));
-                let font = rs.scene.add_font(og_render::MsdfFont {
-                    atlas,
-                    glyphs,
-                    ..first.clone()
-                });
-                new_pages.push(font);
-                rf.page = Some(Page {
-                    font,
-                    atlas,
-                    rgba: vec![0; (PAGE * PAGE * 4) as usize],
-                    x: 1,
-                    y: 1,
-                    shelf: 0,
-                });
-            }
-            let page = rf.page.as_mut().expect("a page");
-            if page.x + img.width + 1 > PAGE {
-                page.x = 1;
-                page.y += page.shelf + 1;
-                page.shelf = 0;
-            }
+                })
+                .collect();
+            let page = place(
+                &mut rf.pages[image.kind as usize],
+                &mut rs.scene,
+                &first,
+                known,
+                &image,
+                &mut new_pages,
+            );
             let (gx, gy) = (page.x, page.y);
-            for row in 0..img.height {
-                let s = (row * img.width * 4) as usize;
-                let d = (((gy + row) * PAGE + gx) * 4) as usize;
-                page.rgba[d..d + (img.width * 4) as usize]
-                    .copy_from_slice(&img.rgba[s..s + (img.width * 4) as usize]);
-            }
-            page.x += img.width + 1;
-            page.shelf = page.shelf.max(img.height);
-            touched.insert(page.font.index() as u32);
+            let mut owners = vec![page.font];
+            owners.extend(page.silhouette.as_ref().map(|s| s.0));
+            page.x += image.width + 1;
+            page.shelf = page.shelf.max(image.height);
             added.push((
                 Glyph {
-                    key: c,
-                    advance: img.advance,
-                    plane_bounds: img.plane,
+                    key,
+                    advance,
+                    plane_bounds: plane,
                     atlas_bounds: [
                         gx as f32,
                         gy as f32,
-                        (gx + img.width) as f32,
-                        (gy + img.height) as f32,
+                        (gx + image.width) as f32,
+                        (gy + image.height) as f32,
                     ],
                 },
-                Some(page.font),
+                owners,
             ));
         }
         if added.is_empty() {
             continue;
         }
-        // The atlas of the page being filled, uploaded again.
-        if let Some(p) = &rf.page
-            && touched.contains(&(p.font.index() as u32))
-        {
-            upload(&mut rs.scene, p);
+        // The atlases of the pages being filled, uploaded again.
+        for p in rf.pages.iter_mut().flatten().filter(|p| p.dirty) {
+            p.upload(&mut rs.scene);
         }
-        // Every page learns the new glyphs: bounds on the page that holds
+        // Every page learns the new glyphs: bounds on the pages that draw
         // each, the advance everywhere else.
         let mut all = pages.clone();
         all.extend(new_pages.iter().copied());
@@ -304,17 +419,16 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
             let Some(mut font) = rs.scene.font(p).cloned() else {
                 continue;
             };
-            for (g, owner) in &added {
-                if font.glyphs.iter().any(|h| h.key == g.key) {
+            for (g, owners) in &added {
+                let own = owners.contains(&p);
+                if let Some(h) = font.glyphs.iter_mut().find(|h| h.key == g.key) {
                     // A page created in this batch already lists it by advance.
-                    if *owner == Some(p)
-                        && let Some(h) = font.glyphs.iter_mut().find(|h| h.key == g.key)
-                    {
+                    if own {
                         *h = *g;
                     }
                     continue;
                 }
-                font.glyphs.push(if *owner == Some(p) {
+                font.glyphs.push(if own {
                     *g
                 } else {
                     Glyph {
@@ -328,29 +442,138 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
         }
         if !new_pages.is_empty() {
             let head = pages[0];
+            let scene = &rs.scene;
             if let Some(fp) = rs.fonts.get_mut(render) {
                 fp.pages.extend(new_pages.iter().copied());
+                in_draw_order(scene, &mut fp.pages);
             }
             if let Some(ui) = rs.ui_pages.get_mut(&head) {
                 ui.extend(new_pages.iter().copied());
+                in_draw_order(scene, ui);
             }
         }
     }
     rendered
 }
 
-/// Uploads a run-time page's atlas as it now stands.
-fn upload(scene: &mut og_render::RenderScene, page: &Page) {
-    scene.set_texture(
-        page.atlas,
-        TextureData {
-            width: PAGE,
+/// The page of `slot`'s kind with room for `image`, a new one (and its
+/// silhouette page) when there is none or it is full; draws the image
+/// there and answers the page, its pen still before the image.
+fn place<'p>(
+    slot: &'p mut Option<Page>,
+    scene: &mut og_render::RenderScene,
+    first: &og_render::MsdfFont,
+    known: Vec<Glyph>,
+    image: &Image,
+    new_pages: &mut Vec<FontHandle>,
+) -> &'p mut Page {
+    let (w, h) = (image.width, image.height);
+    if slot.as_ref().and_then(|p| p.spot(w, h)).is_none() {
+        // The page this leaves keeps what it drew: uploaded now, or its
+        // glyphs sample the texture of its last upload (a page made in
+        // this batch, all zero) and draw blank.
+        if let Some(mut old) = slot.take()
+            && old.dirty
+        {
+            old.upload(scene);
+        }
+        let kind = image.kind;
+        let size = (kind.width() * PAGE * 4) as usize;
+        let colour = kind != Kind::Field;
+        let atlas = scene.add_texture(TextureData {
+            width: kind.width(),
             height: PAGE,
-            rgba: page.rgba.clone(),
-            color_space: ColorSpace::Linear,
-            mips: Mips::None,
-        },
-    );
+            rgba: vec![0; size],
+            color_space: if colour {
+                ColorSpace::Srgb
+            } else {
+                ColorSpace::Linear
+            },
+            mips: if colour { Mips::Generate } else { Mips::None },
+        });
+        // A silhouette page draws before its colour page: their effects
+        // lie under the images.
+        let silhouette = colour.then(|| {
+            let rgba = vec![0; (PAGE * PAGE * 4) as usize];
+            let atlas = scene.add_texture(field_texture(rgba.clone()));
+            let font = scene.add_font(og_render::MsdfFont {
+                atlas,
+                distance_range: og_bundle::format::COLOR_FIELD_RANGE,
+                foreground: false,
+                silhouette: true,
+                glyphs: known.clone(),
+                ..first.clone()
+            });
+            new_pages.push(font);
+            (font, atlas, rgba)
+        });
+        // Every glyph so far, by advance only: this page draws its own.
+        let font = scene.add_font(og_render::MsdfFont {
+            atlas,
+            distance_range: if colour { 0.0 } else { first.distance_range },
+            foreground: kind == Kind::Foreground,
+            silhouette: false,
+            glyphs: known,
+            ..first.clone()
+        });
+        new_pages.push(font);
+        *slot = Some(Page {
+            kind,
+            font,
+            atlas,
+            rgba: vec![0; size],
+            silhouette,
+            x: 1,
+            y: 1,
+            shelf: 0,
+            dirty: false,
+        });
+    }
+    let page = slot.as_mut().expect("a page");
+    let (gx, gy) = page.spot(w, h).expect("room on a new page");
+    if gy != page.y {
+        page.x = 1;
+        page.y = gy;
+        page.shelf = 0;
+    }
+    let stride = page.kind.width();
+    let blit = |to: &mut [u8], stride: u32, at: u32, from: &[u8]| {
+        for row in 0..h {
+            let s = (row * w * 4) as usize;
+            let d = (((gy + row) * stride + at) * 4) as usize;
+            to[d..d + (w * 4) as usize].copy_from_slice(&from[s..s + (w * 4) as usize]);
+        }
+    };
+    blit(&mut page.rgba, stride, gx, image.rgba);
+    if let Some(white) = image.white {
+        blit(&mut page.rgba, stride, gx + PAGE, white);
+    }
+    if let (Some((_, _, rgba)), Some(field)) = (page.silhouette.as_mut(), image.field) {
+        blit(rgba, PAGE, gx, field);
+    }
+    page.dirty = true;
+    page
+}
+
+/// Puts a font's pages in the cooked font's drawing order: distance-field
+/// pages, then silhouettes (shadows, glow and outlines of colour glyphs),
+/// then colour pages, so no glyph's effects draw over another's colour.
+/// The first page, which names the font, stays first.
+fn in_draw_order(scene: &og_render::RenderScene, pages: &mut [FontHandle]) {
+    let rank = |p: &FontHandle| {
+        scene.font(*p).map_or(0, |f| {
+            if f.silhouette {
+                1
+            } else if f.distance_range == 0.0 {
+                2
+            } else {
+                0
+            }
+        })
+    };
+    if let Some((_, rest)) = pages.split_first_mut() {
+        rest.sort_by_key(rank);
+    }
 }
 
 /// The characters of `text` that font `render` (an index into
@@ -535,7 +758,7 @@ mod tests {
         });
         rs.fonts.push(FontPages { pages: vec![first] });
         rs.runtime_fonts
-            .insert(0, RuntimeFont::new(file.clone(), 48.0, 16.0, 0));
+            .insert(0, RuntimeFont::new(file.clone(), 48.0, 16.0, 0, None));
         let wanted: Vec<char> = "偏向スクリーンターン終了修理ドローン"
             .chars()
             .chain((0x4e00..0x4e60).filter_map(char::from_u32))

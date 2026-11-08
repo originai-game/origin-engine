@@ -434,6 +434,41 @@ pub struct CookedFont {
     /// A pixel font's grid, its pixels to the em (`font { pixel <grid> }`,
     /// the blob's `pixel` section); 0 for an outline font.
     pub pixel: u32,
+    /// A colour font that paints its colour glyphs at run time (`font {
+    /// color true runtime true }`, the blob's `color-runtime` section):
+    /// a character outside the charset with a COLR paint is painted from
+    /// `ttf` as the cook paints one. `None` for every other font.
+    pub color_runtime: Option<ColorRuntime>,
+}
+
+/// How a colour font's run-time glyphs are painted: as its cooked ones.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ColorRuntime {
+    /// Image pixels per em (`color_px`).
+    pub em_px: f32,
+    /// The CPAL palette the cook chose, straight sRGB in 0..1, RGBA.
+    pub palette: Vec<[f32; 4]>,
+}
+
+impl ColorRuntime {
+    /// From the `color-runtime` section: `em_px` as f32 (LE), then RGBA8
+    /// per palette entry; `None` for a section that is not that.
+    pub fn parse(b: &[u8]) -> Option<ColorRuntime> {
+        let (px, rest) = b.split_first_chunk::<4>()?;
+        let em_px = f32::from_le_bytes(*px);
+        if em_px.is_nan() || em_px <= 0.0 || rest.len() % 4 != 0 {
+            return None;
+        }
+        Some(ColorRuntime {
+            em_px,
+            palette: rest
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| c.map(|v| f32::from(v) / 255.0))
+                .collect(),
+        })
+    }
 }
 
 impl CookedFont {

@@ -1002,7 +1002,13 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
     {
         rs.runtime_fonts.insert(
             render,
-            super::glyphs::RuntimeFont::new(f.clone(), m.em_px, m.px_range, font.pixel),
+            super::glyphs::RuntimeFont::new(
+                f.clone(),
+                m.em_px,
+                m.px_range,
+                font.pixel,
+                font.color_runtime.clone(),
+            ),
         );
     }
     let mut assets = eng.assets.borrow_mut();

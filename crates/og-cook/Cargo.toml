@@ -73,7 +73,7 @@ mikktspace = { version = "0.3.0", default-features = false, features = ["glam"],
 fdsm = { version = "0.8.0", optional = true }
 fdsm-ttf-parser = { version = "0.2.0", optional = true }
 ttf-parser = { version = "0.25.1", optional = true }
-# COLR v0 and v1 paint graphs of `font { color true }` (cook/font/colr.rs),
+# COLR v0 and v1 paint graphs of `font { color true }` (painted by og-ui's colr.rs),
 # the version og-ui shapes with.
 skrifa = { version = "=0.44.0", default-features = false, features = ["libm"], optional = true }
 write-fonts = { version = "=0.55.0", default-features = false, optional = true }

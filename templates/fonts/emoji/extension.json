@@ -1,0 +1,14 @@
+{
+  "format": 1,
+  "kind": "font",
+  "name": "emoji",
+  "version": "1.0.0",
+  "description": "Noto Color Emoji (COLRv1): every emoji with its sequences (skin tones, ZWJ families, flags), painted in colour when first shown",
+  "scripts": [
+    "Zsye"
+  ],
+  "languages": [],
+  "faces": [
+    "Noto-COLRv1.ttf"
+  ]
+}

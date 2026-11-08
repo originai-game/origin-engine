@@ -127,6 +127,8 @@ pub type ShapedRun = Option<Arc<Vec<Shaped>>>;
 pub struct FontFile {
     ttf: Arc<Vec<u8>>,
     runtime: bool,
+    /// An emoji face: one whose characters have COLR colour glyphs.
+    colour: bool,
     units_per_em: f32,
     #[cfg(feature = "shaping")]
     shaper: harfrust::ShaperData,
@@ -174,9 +176,16 @@ impl FontFile {
         );
         #[cfg(feature = "shaping")]
         let shaper = harfrust::ShaperData::new(&face);
+        let colour = {
+            let glyphs = face.color_glyphs();
+            face.charmap()
+                .mappings()
+                .any(|(_, gid)| glyphs.get(gid).is_some())
+        };
         Some(Arc::new(FontFile {
             ttf,
             runtime,
+            colour,
             units_per_em,
             #[cfg(feature = "shaping")]
             shaper,
@@ -185,6 +194,13 @@ impl FontFile {
             extra: Mutex::new(BTreeMap::new()),
             wanted: Mutex::new(BTreeSet::new()),
         }))
+    }
+
+    /// Whether it is an emoji face: some character maps to a COLR colour
+    /// glyph. Its spaces and punctuation are not a text face's (Noto Color
+    /// Emoji's space is 1.25 em), so they never stick to it in a mixed text.
+    pub fn is_colour(&self) -> bool {
+        self.colour
     }
 
     /// The font file's bytes.

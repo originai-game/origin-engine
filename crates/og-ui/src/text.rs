@@ -304,9 +304,11 @@ impl FontMetrics {
 
     /// The font (0: this one, `k`: the `k`-th of `runs`) that draws `c` in
     /// a mixed text after a character drawn with `prev`: a neutral
-    /// character or a mark stays with `prev` when that font has it; any
-    /// other the first font whose atlas has it, else the first whose file
-    /// renders it at run time, else `prev`'s (it is missing everywhere).
+    /// character or a mark stays with `prev` when that font has it (not an
+    /// emoji face: a space after an emoji takes a text face's, as browsers
+    /// fall back); any other the first font whose atlas has it, else the
+    /// first whose file renders it at run time, else `prev`'s (it is
+    /// missing everywhere).
     fn font_of(&self, c: char, prev: Option<usize>) -> usize {
         let Some(runs) = &self.runs else { return 0 };
         let n = runs.len() + 1;
@@ -314,6 +316,7 @@ impl FontMetrics {
         if let Some(p) = prev
             && sticks(c)
             && m(p).own_has(c)
+            && !m(p).file.as_ref().is_some_and(|f| f.is_colour())
         {
             return p;
         }

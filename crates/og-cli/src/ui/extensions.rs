@@ -29,7 +29,8 @@ pub struct Manifest {
     pub keywords: Option<Vec<String>>,
     /// A font pack's ISO 15924 scripts (`Arab`, `Hans`), the language tags
     /// it is the face of, and its faces' files, first first (docs/ui.md
-    /// §3.4). Only a font pack has them, and it has all three.
+    /// §3.4). Only a font pack has them, and it has all three; only its
+    /// languages may be empty, for a pack of no language (`emoji`: `Zsye`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scripts: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -158,9 +159,10 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
             .is_some_and(|k| !k.iter().all(|w| lower_word(w)))
         || (m.kind == "font") != (m.scripts.is_some() || m.languages.is_some() || m.faces.is_some())
         || (m.kind == "font"
-            && [&m.scripts, &m.languages, &m.faces]
-                .iter()
-                .any(|v| v.as_ref().is_none_or(|v| v.is_empty())))
+            && (m.languages.is_none()
+                || [&m.scripts, &m.faces]
+                    .iter()
+                    .any(|v| v.as_ref().is_none_or(|v| v.is_empty()))))
         || m.scripts.as_ref().is_some_and(|s| {
             !s.iter().all(|s| {
                 s.len() == 4
@@ -474,7 +476,10 @@ pub fn list_fonts(args: &[&str]) -> ExitCode {
                 m.name,
                 m.version,
                 if e.installed { "installed" } else { "bundled" },
-                m.languages.as_deref().unwrap_or_default().join(" "),
+                match m.languages.as_deref().unwrap_or_default() {
+                    [] => m.scripts.as_deref().unwrap_or_default().join(" "),
+                    l => l.join(" "),
+                },
                 m.description
             );
         }

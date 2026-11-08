@@ -175,9 +175,11 @@ commands:
   font add <pack|directory> [project]
                       a font pack (one per script: latin, cyrillic-greek, arabic, hebrew,
                       devanagari, thai, japanese, korean, chinese-traditional,
-                      chinese-simplified) into assets/fonts/<pack>; og.i18n puts the
-                      active locale's pack in the font chain, the others load on demand
+                      chinese-simplified; and emoji, colour emoji painted when first
+                      shown) into assets/fonts/<pack>; og.i18n puts the active
+                      locale's pack in the font chain, the others load on demand
   font list [project] the bundled and installed font packs, with their languages
+                      (a pack of no language: its scripts)
   vfx add <pack|directory> [project] [--any-engine]
                       copy an effect pack (`kind vfx`: type vfx and type vfx2d effects,
                       emitters, effect materials and their textures) into the game's

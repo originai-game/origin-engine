@@ -3,7 +3,8 @@
 Made by `make-packs.py` from google/fonts: each a Noto face at Regular (wght
 400, wdth 100), every layout feature kept, no hinting. Copyright The Noto
 Project Authors; the CJK faces Copyright 2014-2021 Adobe, with Reserved Font
-Name 'Source'. Each pack carries its licence file, which `og font add` and
+Name 'Source'. The emoji face is Noto Color Emoji's COLRv1 build from
+googlefonts/noto-emoji, Copyright 2013 Google LLC. Each pack carries its licence file, which `og font add` and
 `og create --lang` install with it.
 
 | File | Languages | Holds | Licence | Source |
@@ -18,3 +19,4 @@ Name 'Source'. Each pack carries its licence file, which `og font add` and
 | `korean/NotoSansKR-Regular.ttf` | ko | 3,355 characters, 742,336 bytes | SIL OFL 1.1 (`OFL-notosanskr.txt`) | google/fonts `ofl/notosanskr/NotoSansKR[wght].ttf` |
 | `chinese-traditional/NotoSansTC-Regular.ttf` | zh-Hant, zh-TW, zh-HK, zh-MO | 5,952 characters, 2,038,800 bytes | SIL OFL 1.1 (`OFL-notosanstc.txt`) | google/fonts `ofl/notosanstc/NotoSansTC[wght].ttf` |
 | `chinese-simplified/NotoSansSC-Regular.ttf` | zh, zh-Hans, zh-CN, zh-SG | 4,489 characters, 1,419,424 bytes | SIL OFL 1.1 (`OFL-notosanssc.txt`) | google/fonts `ofl/notosanssc/NotoSansSC[wght].ttf` |
+| `emoji/Noto-COLRv1.ttf` | any (emoji) | 1,508 characters, 5,052,748 bytes | SIL OFL 1.1 (`OFL-notoemoji.txt`) | googlefonts/noto-emoji `2D/fonts/Noto-COLRv1.ttf` |

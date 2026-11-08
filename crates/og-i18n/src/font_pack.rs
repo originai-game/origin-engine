@@ -133,7 +133,8 @@ pub fn for_locale<'a>(packs: &'a [FontPack], locale: &str) -> Option<&'a FontPac
 /// The order packs are tried for a character no loaded face draws: the
 /// locale's own first, then the CJK packs in the locale's forms (a Han
 /// character in a Japanese game takes Japanese forms), then the rest by
-/// name. Answers indexes into `packs`.
+/// name, and `emoji` last: it also maps digits, `#`, `*`, © and ™, which a
+/// text face draws as text. Answers indexes into `packs`.
 pub fn fallback_order(packs: &[FontPack], locale: &str) -> Vec<usize> {
     let own = for_locale(packs, locale).map(|p| p.name.clone());
     let lang = crate::locale::language(&crate::locale::canonical(locale));
@@ -168,6 +169,8 @@ pub fn fallback_order(packs: &[FontPack], locale: &str) -> Vec<usize> {
             (0, 0, p.name.clone())
         } else if let Some(i) = cjk.iter().position(|n| *n == p.name) {
             (1, i, p.name.clone())
+        } else if p.name == "emoji" {
+            (3, 0, p.name.clone())
         } else {
             (2, 0, p.name.clone())
         }
@@ -245,5 +248,29 @@ mod tests {
         assert_eq!(first_han("en").as_deref(), Some("chinese-simplified"));
         assert_eq!(first_han("zh-TW").as_deref(), Some("chinese-traditional"));
         assert_eq!(first_han("ar").as_deref(), Some("chinese-simplified"));
+    }
+
+    /// The emoji pack maps text characters too (digits, ©, ™): a Latin one
+    /// a face lacks takes the Latin pack, though "emoji" sorts first by
+    /// name; an emoji only it covers still takes it.
+    #[test]
+    fn text_characters_take_a_text_pack_before_the_emoji_pack() {
+        let mut packs = all();
+        packs.push(pack(
+            "emoji",
+            &[],
+            &[(0x20, 0x7e), (0xa9, 0xa9), (0x1f300, 0x1faff)],
+        ));
+        let first = |c: char| {
+            // A locale with no pack of its own: the by-name tail decides.
+            fallback_order(&packs, "ko")
+                .into_iter()
+                .map(|i| &packs[i])
+                .find(|p| p.covers(c))
+                .map(|p| p.name.clone())
+        };
+        assert_eq!(first('7').as_deref(), Some("latin"));
+        assert_eq!(first('\u{a9}').as_deref(), Some("latin"));
+        assert_eq!(first('\u{1f525}').as_deref(), Some("emoji"));
     }
 }

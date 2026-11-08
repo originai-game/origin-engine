@@ -17,7 +17,9 @@ Latin Extended).
     python3 templates/fonts/make-packs.py [--cache DIR]
 
 Sources are fetched into the cache (default .amp/in/fonts-src) when
-missing. Rerun after changing a pack below; it rewrites every pack.
+missing. Rerun after changing a pack below; it rewrites every pack, or
+with `--pack <name>` only that one (the others keep their files and their
+LICENSES.md rows).
 """
 import argparse
 import json
@@ -129,24 +131,44 @@ PACKS = {
         ["Hans"],
         "zh zh-Hans zh-CN zh-SG".split(),
         [("NotoSansSC-Regular.ttf", "notosanssc/NotoSansSC[wght].ttf", (GB | CJK_PUNCT) - ASCII)],
+    ),    "emoji": (
+        "Noto Color Emoji (COLRv1): every emoji with its sequences (skin tones, ZWJ families, flags), painted in colour when first shown",
+        ["Zsye"],
+        [],
+        [("Noto-COLRv1.ttf", "noto-emoji:2D/fonts/Noto-COLRv1.ttf", None)],
     ),
 }
+
+# Faces from googlefonts/noto-emoji (`noto-emoji:<path>`), not google/fonts.
+EMOJI_RAW = "https://raw.githubusercontent.com/googlefonts/noto-emoji/main/"
+
+
+def url(source: str) -> str:
+    if source.startswith("noto-emoji:"):
+        return EMOJI_RAW + source.split(":", 1)[1]
+    return RAW + urllib.parse.quote(source)
 
 
 def fetch(cache: Path, source: str) -> Path:
     path = cache / Path(source).name
     if not path.exists():
         cache.mkdir(parents=True, exist_ok=True)
-        print(f"fetch {RAW + source}")
-        urllib.request.urlretrieve(RAW + urllib.parse.quote(source), path)
+        print(f"fetch {url(source)}")
+        urllib.request.urlretrieve(url(source), path)
     return path
 
 
+def family(source: str) -> str:
+    return "notoemoji" if source.startswith("noto-emoji:") else source.split("/")[0]
+
+
 def licence(cache: Path, source: str) -> str:
-    family = source.split("/")[0]
-    path = cache / f"OFL-{family}.txt"
+    path = cache / f"OFL-{family(source)}.txt"
     if not path.exists():
-        urllib.request.urlretrieve(RAW + family + "/OFL.txt", path)
+        if source.startswith("noto-emoji:"):
+            urllib.request.urlretrieve(EMOJI_RAW + str(Path(source.split(":", 1)[1]).parent / "LICENSE"), path)
+        else:
+            urllib.request.urlretrieve(RAW + family(source) + "/OFL.txt", path)
     return path.read_text()
 
 
@@ -173,13 +195,42 @@ font {{
 }}
 """
 
+# A colour face (`color true` with `runtime true`): each glyph with a COLR
+# paint is painted in colour from the file when first shown, at color_px
+# pixels per em, with a silhouette field for its glow and outline.
+COLOR_SIDECAR = """type import
+version 1
+---
+# Made by templates/fonts/make-packs.py: no atlas cooked (its space alone);
+# every emoji is painted in colour from the face's COLR table when first
+# shown, so a game pays only for what it shows.
+font {{
+  charset
+  chars " "
+  em_px 48
+  px_range 16
+  runtime true
+  color true
+  color_px 64
+}}
+"""
+
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", type=Path, default=Path(".amp/in/fonts-src"))
+    ap.add_argument("--pack", action="append", help="rewrite only this pack (repeatable); the others keep their files and rows")
     args = ap.parse_args()
     rows = []
+    kept = {}
+    if args.pack:
+        for line in (HERE / "LICENSES.md").read_text().splitlines():
+            if line.startswith("| `"):
+                kept.setdefault(line[3:].split("/", 1)[0], []).append(line)
     for name, (description, scripts, languages, faces) in PACKS.items():
+        if args.pack and name not in args.pack:
+            rows.extend(kept.get(name, []))
+            continue
         out = HERE / name
         out.mkdir(exist_ok=True)
         for old in out.iterdir():
@@ -199,13 +250,15 @@ def main() -> None:
             sub.populate(unicodes=sorted(c for c in (wanted if wanted is not None else set(cmap)) if c in cmap))
             sub.subset(font)
             font.save(out / file)
-            (out / f"{file}.ogt").write_text(SIDECAR.format())
-            ofl = f"OFL-{source.split('/')[0]}.txt"
+            colour = "COLR" in font
+            (out / f"{file}.ogt").write_text((COLOR_SIDECAR if colour else SIDECAR).format())
+            ofl = f"OFL-{family(source)}.txt"
             (out / ofl).write_text(licence(args.cache, source))
             count = len(font.getBestCmap())
             size = (out / file).stat().st_size
             files.append(file)
-            rows.append(f"| `{name}/{file}` | {', '.join(languages)} | {count:,} characters, {size:,} bytes | SIL OFL 1.1 (`{ofl}`) | google/fonts `ofl/{source}` |")
+            origin = f"googlefonts/noto-emoji `{source.split(':', 1)[1]}`" if source.startswith("noto-emoji:") else f"google/fonts `ofl/{source}`"
+            rows.append(f"| `{name}/{file}` | {', '.join(languages) or 'any (emoji)'} | {count:,} characters, {size:,} bytes | SIL OFL 1.1 (`{ofl}`) | {origin} |")
             print(f"{name}/{file}: {size} bytes, {count} characters")
         manifest = {
             "format": 1,
@@ -224,7 +277,8 @@ def main() -> None:
 Made by `make-packs.py` from google/fonts: each a Noto face at Regular (wght
 400, wdth 100), every layout feature kept, no hinting. Copyright The Noto
 Project Authors; the CJK faces Copyright 2014-2021 Adobe, with Reserved Font
-Name 'Source'. Each pack carries its licence file, which `og font add` and
+Name 'Source'. The emoji face is Noto Color Emoji's COLRv1 build from
+googlefonts/noto-emoji, Copyright 2013 Google LLC. Each pack carries its licence file, which `og font add` and
 `og create --lang` install with it.
 
 | File | Languages | Holds | Licence | Source |

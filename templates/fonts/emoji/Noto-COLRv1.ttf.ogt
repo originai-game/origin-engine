@@ -1,0 +1,15 @@
+type import
+version 1
+---
+# Made by templates/fonts/make-packs.py: no atlas cooked (its space alone);
+# every emoji is painted in colour from the face's COLR table when first
+# shown, so a game pays only for what it shows.
+font {
+  charset
+  chars " "
+  em_px 48
+  px_range 16
+  runtime true
+  color true
+  color_px 64
+}

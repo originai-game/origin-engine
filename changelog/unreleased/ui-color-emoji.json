@@ -1,0 +1,9 @@
+{
+  "added": [
+    {"member":"font { color true runtime true }","summary":"Colour emoji as run-time glyphs: a COLR (v0 or v1) font that ships its file paints each colour glyph when a text first shows it, off the frame, with the cook's painter and the palette its settings name, onto colour pages with silhouette fields for glow and outlines. Skin tones, ZWJ sequences and flags are one glyph each."},
+    {"member":"templates/fonts/emoji","summary":"The emoji font pack: Noto Color Emoji COLRv1 (SIL OFL 1.1, 5.05 MB), a pack of no language (script Zsye) tried after every text pack. `og font add emoji` installs it."}
+  ],
+  "fixed": [
+    {"member":"mixed-font text","summary":"A space or punctuation after an emoji takes a text face's glyph instead of the emoji face's 1.25 em space."}
+  ]
+}

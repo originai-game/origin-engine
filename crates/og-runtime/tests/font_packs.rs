@@ -27,12 +27,13 @@ fn repo() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-const PACKS: [&str; 5] = [
+const PACKS: [&str; 6] = [
     "latin",
     "arabic",
     "japanese",
     "chinese-simplified",
     "chinese-traditional",
+    "emoji",
 ];
 
 /// A project whose UI face is a Latin-only display font, with five packs
@@ -51,6 +52,11 @@ fn atlas_project() -> &'static Path {
 
 /// The mixed-script label the frames draw.
 const MIXED: &str = "はじめる 骨 · ليلى 门 · Start";
+
+/// The emoji label: single emoji, a skin tone, a ZWJ family and a flag
+/// (each sequence one glyph the face's GSUB forms), and a heart with its
+/// emoji presentation selector.
+const EMOJI: &str = "Victory 🏆🔥⭐ 👍🏽 👨‍👩‍👧 🇳🇿 ❤️";
 
 fn cooked(name: &str, atlas: Option<&str>) -> PathBuf {
     {
@@ -82,10 +88,21 @@ fn cooked(name: &str, atlas: Option<&str>) -> PathBuf {
                 for e in std::fs::read_dir(&to).unwrap() {
                     let path = e.unwrap().path();
                     if path.extension().is_some_and(|x| x == "ogt") {
-                        let chars = format!("{text} \u{3000}").replace('"', "");
+                        // The emoji face cooks its colour glyphs as images.
+                        let colour = std::fs::read_to_string(&path)
+                            .unwrap()
+                            .contains("color true");
+                        let (chars, colour) = if colour {
+                            (
+                                EMOJI.replace(char::is_alphabetic, ""),
+                                "  color true\n  color_px 64\n",
+                            )
+                        } else {
+                            (format!("{text} \u{3000}").replace('"', ""), "")
+                        };
                         std::fs::write(
                             path,
-                            format!("type import\nversion 1\n---\nfont {{\n  charset\n  chars {chars:?}\n  em_px 48\n  px_range 16\n}}\n"),
+                            format!("type import\nversion 1\n---\nfont {{\n  charset\n  chars {chars:?}\n  em_px 48\n  px_range 16\n{colour}}}\n"),
                         )
                         .unwrap();
                     }
@@ -411,9 +428,9 @@ fn rig(
     (engine, frame, seen, info)
 }
 
-/// Steady (median of 30), the first frames that draw `MIXED` (loading
-/// arabic and chinese-simplified), and steady after (median of 30).
-fn costs(root: &Path) -> (Cost, Vec<Cost>, Cost, u32) {
+/// Steady (median of 30), the first frames that draw `text` (loading
+/// the packs only it needs), and steady after (median of 30).
+fn costs(root: &Path, text: &str) -> (Cost, Vec<Cost>, Cost, u32) {
     let (engine, frame, _, _) = rig(root, 1280, 720, false);
     let steady = |n: usize| {
         let c: Vec<Cost> = (0..n).map(|_| frame()).collect();
@@ -426,7 +443,7 @@ fn costs(root: &Path) -> (Cost, Vec<Cost>, Cost, u32) {
     show("はじめる 骨 · Start");
     steady(10);
     let before = steady(30);
-    show(MIXED);
+    show(text);
     // The packs load on the first frame, their glyphs are asked for on
     // the second: the most still rendering when any of the frames returns.
     let mut waited = 0;
@@ -463,7 +480,7 @@ fn run_time_faces_cost_what_atlas_fonts_cost() {
         // Best of three, each a fresh engine: the machine's noise.
         let mut best: Option<(Cost, Vec<Cost>, Cost, u32)> = None;
         for _ in 0..3 {
-            let r = costs(root);
+            let r = costs(root, MIXED);
             if best.as_ref().is_none_or(|b| r.2.cpu < b.2.cpu) {
                 best = Some(r);
             }
@@ -508,22 +525,7 @@ fn mixed_script_text_draws_from_its_packs() {
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
         let (engine, frame, seen, info) = rig(project(), width, height, true);
         show(MIXED);
-        // Glyphs render off the frame: draw until the chain holds the
-        // packs and three frames in a row wait for no glyph.
-        let mut quiet = 0;
-        for _ in 0..2000 {
-            frame();
-            quiet = if chain(engine).len() == 3 && og_runtime::glyphs_pending(engine) == 0 {
-                quiet + 1
-            } else {
-                0
-            };
-            if quiet == 3 {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(2));
-        }
-        assert_eq!(quiet, 3, "the glyphs never arrived");
+        settle(engine, &frame, 3);
         let w = warnings(engine);
         assert!(w.iter().all(|w| !w.contains("lacks")), "{w:?}");
         assert_eq!(
@@ -531,34 +533,154 @@ fn mixed_script_text_draws_from_its_packs() {
             vec!["japanese", "arabic", "chinese-simplified"]
         );
         let image = seen.borrow_mut().frame.take().expect("a frame drawn");
-        let name = format!("font-packs-{width}.png");
-        let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(&name);
-        std::fs::write(&out, og_render::png_best(&image)).unwrap();
-        let own = repo().join("crates/og-ui/references/metal").join(&name);
-        if std::env::var_os("OG_UI_CAPTURE").is_some() {
-            std::fs::copy(&out, &own).unwrap();
-        }
-        let expected = image::open(&own)
-            .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", own.display()))
-            .to_rgba8();
-        use og_tests::compare::{Tolerance, tolerance_for};
-        let tolerance = tolerance_for(
-            Tolerance::default(),
-            Tolerance::CROSS_PLATFORM,
-            &info.backend_tier(),
-            info.software(),
-            &own,
-        );
-        let c = og_tests::compare::compare(
-            &image.pixels,
-            expected.as_raw(),
-            width * height,
-            1,
-            &tolerance,
-        )
-        .unwrap();
-        c.check(&tolerance)
-            .unwrap_or_else(|e| panic!("{name}: {e}"));
-        println!("{name}: RMSE {:.6} ({})", c.rmse, out.display());
+        check_reference(&format!("font-packs-{width}.png"), &image, &info);
     }
+}
+
+/// Glyphs render off the frame: draws until the chain holds `packs`
+/// packs and three frames in a row wait for no glyph.
+fn settle(engine: u32, frame: &impl Fn() -> Cost, packs: usize) {
+    let mut quiet = 0;
+    for _ in 0..2000 {
+        frame();
+        quiet = if chain(engine).len() == packs && og_runtime::glyphs_pending(engine) == 0 {
+            quiet + 1
+        } else {
+            0
+        };
+        if quiet == 3 {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    assert_eq!(quiet, 3, "the glyphs never arrived");
+}
+
+/// `crates/og-ui/references/metal/color-emoji-{1280,390}.png`: a label
+/// in the Latin display face with emoji from the emoji pack (Noto Color
+/// Emoji, COLRv1), loaded when first drawn and painted in colour from the
+/// face's COLR table at run time. Ways it could fail: the emoji drawn as
+/// distance fields in the text's ink (no colour); a ZWJ family or a flag
+/// drawn as its parts; the pack never loaded, so they are warned of and
+/// boxed; a colour page's glyphs blank (an atlas never uploaded).
+#[test]
+#[ignore = "requires GPU"]
+fn colour_emoji_draw_from_the_emoji_pack_in_colour() {
+    for (width, height) in [(1280u32, 720u32), (390, 844)] {
+        let (engine, frame, seen, info) = rig(project(), width, height, true);
+        show(EMOJI);
+        settle(engine, &frame, 2);
+        let w = warnings(engine);
+        assert!(w.iter().all(|w| !w.contains("lacks")), "{w:?}");
+        assert_eq!(chain(engine), vec!["japanese", "emoji"]);
+        let image = seen.borrow_mut().frame.take().expect("a frame drawn");
+        // Colour: the label's ink is a light grey, and the scene black, so
+        // only an emoji painted from its palette is saturated (🔥's orange,
+        // 🏆's gold, the flag's red and blue).
+        let saturated = image
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| {
+                let (hi, lo) = (p[0].max(p[1]).max(p[2]), p[0].min(p[1]).min(p[2]));
+                hi > 120 && hi - lo > 90
+            })
+            .count();
+        assert!(
+            saturated > 400,
+            "{saturated} saturated pixels: no colour emoji"
+        );
+        check_reference(&format!("color-emoji-{width}.png"), &image, &info);
+    }
+}
+
+/// Frame and size cost of colour emoji painted at run time (the emoji
+/// pack as shipped) against the same emoji cooked as images (`color
+/// true`, its characters in `chars`). Prints CPU and GPU milliseconds and
+/// the cooked bytes; asserts the steady frame within noise of the cooked
+/// font's, and that the frames first drawing them return while they are
+/// still being painted.
+#[test]
+#[ignore = "requires GPU"]
+fn run_time_emoji_cost_what_cooked_emoji_cost() {
+    let show_cost = |c: &Cost| {
+        format!(
+            "cpu {:.2} ms, gpu {:.3} ms (ui {:.3})",
+            c.cpu, c.gpu, c.gpu_ui
+        )
+    };
+    let mut runs = Vec::new();
+    for (name, root) in [("run-time", project()), ("cooked", atlas_project())] {
+        let bytes: u64 = std::fs::read_dir(root.join("cooked/fonts/emoji"))
+            .unwrap()
+            .map(|e| e.unwrap().metadata().unwrap().len())
+            .sum();
+        println!("{name}: emoji pack cooked to {bytes} bytes");
+        let mut best: Option<(Cost, Vec<Cost>, Cost, u32)> = None;
+        for _ in 0..3 {
+            let r = costs(root, EMOJI);
+            if best.as_ref().is_none_or(|b| r.2.cpu < b.2.cpu) {
+                best = Some(r);
+            }
+        }
+        let (before, first, after, waited) = best.unwrap();
+        if name == "run-time" {
+            assert!(waited > 0, "a frame waited for its emoji to be painted");
+        }
+        println!("{name}: steady before {}", show_cost(&before));
+        for (i, c) in first.iter().enumerate() {
+            println!("{name}: first-use frame {i} {}", show_cost(c));
+        }
+        println!("{name}: steady after {}", show_cost(&after));
+        runs.push((before, first, after, waited));
+    }
+    let (rt, ck) = (&runs[0], &runs[1]);
+    assert!(
+        rt.2.cpu <= ck.2.cpu * 1.25 + 0.3,
+        "run-time steady {:.2} ms against cooked {:.2} ms",
+        rt.2.cpu,
+        ck.2.cpu
+    );
+    let worst = |r: &(Cost, Vec<Cost>, Cost, u32)| r.1.iter().map(|c| c.cpu).fold(0.0, f64::max);
+    println!(
+        "worst first-use frame: run-time {:.2} ms ({} glyphs painted off it), cooked {:.2} ms",
+        worst(rt),
+        rt.3,
+        worst(ck)
+    );
+}
+
+/// Compares `image` with `crates/og-ui/references/metal/<name>`
+/// (`OG_UI_CAPTURE=1` records it) under og-tests' rule for this tier,
+/// writing it to the test's temporary directory; prints its RMSE.
+fn check_reference(name: &str, image: &og_render::RgbaImage, info: &og_render::RenderInfo) {
+    let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
+    std::fs::write(&out, og_render::png_best(image)).unwrap();
+    let own = repo().join("crates/og-ui/references/metal").join(name);
+    if std::env::var_os("OG_UI_CAPTURE").is_some() {
+        std::fs::copy(&out, &own).unwrap();
+    }
+    let expected = image::open(&own)
+        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", own.display()))
+        .to_rgba8();
+    use og_tests::compare::{Tolerance, tolerance_for};
+    let tolerance = tolerance_for(
+        Tolerance::default(),
+        Tolerance::CROSS_PLATFORM,
+        &info.backend_tier(),
+        info.software(),
+        &own,
+    );
+    let c = og_tests::compare::compare(
+        &image.pixels,
+        expected.as_raw(),
+        image.width * image.height,
+        1,
+        &tolerance,
+    )
+    .unwrap();
+    c.check(&tolerance)
+        .unwrap_or_else(|e| panic!("{name}: {e}"));
+    println!("{name}: RMSE {:.6} ({})", c.rmse, out.display());
 }

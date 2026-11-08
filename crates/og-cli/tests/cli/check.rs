@@ -127,6 +127,18 @@ fn check_warns_when_requested_languages_lack_installed_font_chains() {
         check().unwrap()["locales"],
         serde_json::json!(["ja-JP", "th"])
     );
+    // A pack of no language (emoji) installs, and answers for no locale.
+    let add = og()
+        .args(["font", "add", "emoji"])
+        .arg(&game)
+        .output()
+        .unwrap();
+    assert!(add.status.success(), "{}", text(&add));
+    assert!(game.join("assets/fonts/emoji/OFL-notoemoji.txt").is_file());
+    assert_eq!(
+        check().unwrap()["locales"],
+        serde_json::json!(["ja-JP", "th"])
+    );
     std::fs::create_dir_all(game.join("assets/strings")).unwrap();
     std::fs::write(
         game.join("assets/strings/ja.ogt"),

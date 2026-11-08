@@ -1,5 +1,6 @@
-//! COLR colour glyphs drawn into images at cook time (`font { color true
-//! }`): skrifa walks a glyph's COLR v0 or v1 paint graph (layers, solid
+//! COLR colour glyphs drawn into images, at cook time (`font { color true
+//! }`) and at run time for a colour font that ships its file (`color true`
+//! with `runtime true`, og-runtime's glyphs.rs): skrifa walks a glyph's COLR v0 or v1 paint graph (layers, solid
 //! and gradient brushes, transforms, glyph and box clips, composite modes)
 //! and this painter draws it into RGBA at `color_px` pixels per em. The
 //! cooked image is drawn as a textured quad on the font's colour pages, so
@@ -39,45 +40,6 @@ const MAX_EM: f32 = 4.0;
 
 /// Transparent pixels round an image's ink.
 const PAD: i32 = 4;
-
-/// The font's CPAL palette `which` as straight sRGB in 0..1, RGBA; empty
-/// for a font without palettes. An index past the font's palettes, or a
-/// light or dark palette it does not mark, is an error naming what it has.
-pub fn palette(font: &FontRef, which: super::Palette) -> Result<Vec<[f32; 4]>, String> {
-    use super::Palette;
-    let palettes = font.color_palettes();
-    let n = palettes.len();
-    let marked = |bits: u32| {
-        (0..n).find(|&i| {
-            palettes
-                .get(i)
-                .and_then(|p| p.palette_type())
-                .is_some_and(|t| t.bits() & bits != 0)
-        })
-    };
-    let index = match which {
-        Palette::First => 0,
-        Palette::Index(i) if i < n => i,
-        Palette::Index(i) => {
-            return Err(format!("palette {i}: the font has {n} CPAL palette(s), 0 to {}", n.saturating_sub(1)));
-        }
-        Palette::Light => marked(1).ok_or_else(|| {
-            format!("palette light: none of the font's {n} CPAL palette(s) is marked for a light background")
-        })?,
-        Palette::Dark => marked(2).ok_or_else(|| {
-            format!("palette dark: none of the font's {n} CPAL palette(s) is marked for a dark background")
-        })?,
-    };
-    Ok(palettes
-        .get(index)
-        .map(|p| {
-            p.colors()
-                .iter()
-                .map(|c| [c.red, c.green, c.blue, c.alpha].map(|v| f32::from(v) / 255.0))
-                .collect()
-        })
-        .unwrap_or_default())
-}
 
 /// Draws glyph `gid` in colour at `em_px` pixels per em, palette entry
 /// 0xFFFF (the text's colour) as `foreground` (sRGB, opaque); `None` when
@@ -154,6 +116,65 @@ pub fn render(
         ],
         foreground: p.used_foreground.get(),
     }))
+}
+
+/// A colour glyph painted at run time (`color true` with `runtime true`):
+/// what a colour font's cooked glyph carries, made from its file when a
+/// text first shows it.
+pub struct RuntimeColor {
+    pub key: og_render::GlyphKey,
+    /// Horizontal advance in em.
+    pub advance: f32,
+    /// Painted with a black foreground (the only paint unless
+    /// `image.foreground`).
+    pub image: ColorImage,
+    /// With `image.foreground`: the same glyph painted with a white
+    /// foreground, the twin the renderer mixes by the text's colour.
+    pub white: Option<Vec<u8>>,
+    /// The silhouette's distance field ([`silhouette_field`] at
+    /// [`FIELD_RANGE`]), the image's size: its shadows, glow and outline.
+    pub field: Vec<u8>,
+}
+
+/// Paints glyph `key` of font file `ttf` as the cook paints a colour
+/// glyph, at `em_px` pixels per em in `palette` (the cooked font's); `None`
+/// when the font lacks it or it has no colour paint (an outline glyph).
+pub fn render_runtime(
+    ttf: &[u8],
+    key: og_render::GlyphKey,
+    em_px: f32,
+    palette: &[[f32; 4]],
+) -> Option<RuntimeColor> {
+    let font = FontRef::new(ttf).ok()?;
+    let gid = match key {
+        og_render::GlyphKey::Char(c) => font.charmap().map(c)?,
+        og_render::GlyphKey::Id(id) => GlyphId::new(u32::from(id)),
+    };
+    let image = render(&font, gid, em_px, palette, [0.0; 3]).ok()??;
+    let white = if image.foreground {
+        Some(render(&font, gid, em_px, palette, [1.0; 3]).ok()??.rgba)
+    } else {
+        None
+    };
+    let upem = f32::from(font.head().ok()?.units_per_em().max(1));
+    let advance = font
+        .glyph_metrics(Size::unscaled(), LocationRef::default())
+        .advance_width(gid)
+        .unwrap_or(0.0)
+        / upem;
+    let field = silhouette_field(
+        &image.rgba,
+        image.width as usize,
+        image.height as usize,
+        FIELD_RANGE,
+    );
+    Some(RuntimeColor {
+        key,
+        advance,
+        image,
+        white,
+        field,
+    })
 }
 
 /// Premultiplied sRGB to straight 8-bit, then the colour of the nearest
@@ -1006,8 +1027,7 @@ fn set_sat(c: [f32; 3], s: f32) -> [f32; 3] {
 /// The distance range of a colour page's silhouette field, in its pixels:
 /// twice the transparent border round each image, so the field reaches
 /// its border and never a neighbour's ink.
-pub const FIELD_RANGE: f32 = og_bundle::format::COLOR_FIELD_RANGE;
-const _: () = assert!(FIELD_RANGE == 2.0 * PAD as f32);
+pub const FIELD_RANGE: f32 = 2.0 * PAD as f32;
 
 /// A colour page's silhouette as a distance field for its shadows, glow
 /// and outline (og-render's MSDF passes): every channel the signed

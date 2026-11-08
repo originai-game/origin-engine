@@ -714,7 +714,10 @@ the logic tests and the probe's CPU description of a frame.
   colour when it asks (`font { color true }`): the cook paints each COLR
   v0 or v1 glyph into an image on colour pages beside the field, drawn as
   sprites in the same text; a glyph in the text's colour (COLR's
-  foreground) is painted black and white and mixed by it at draw. A pixel font (`font { pixel 12 }`, its pixels to the
+  foreground) is painted black and white and mixed by it at draw. With
+  `runtime true` as well (the `emoji` font pack), the same painter
+  (og-ui's `colr.rs`) paints each colour glyph from the font's file when a
+  text first shows it, off the frame, onto run-time colour pages. A pixel font (`font { pixel 12 }`, its pixels to the
   em) is cooked as its cells on that grid, sampled at the cells' centres
   and traced into square contours before the field, its advances and
   kerning in whole cells, and og-ui sets it at whole multiples of the grid

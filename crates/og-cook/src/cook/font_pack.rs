@@ -15,6 +15,10 @@ struct Manifest {
     name: String,
     #[serde(default)]
     languages: Vec<String>,
+    /// ISO 15924 codes; a pack of no language (`emoji`: `Zsye`) names
+    /// only its scripts and is never a locale's own.
+    #[serde(default)]
+    scripts: Vec<String>,
     #[serde(default)]
     faces: Vec<String>,
 }
@@ -66,9 +70,9 @@ pub(super) fn dependencies(s: &Source) -> String {
 
 pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let m = manifest(s)?;
-    if m.faces.is_empty() || m.languages.is_empty() {
+    if m.faces.is_empty() || (m.languages.is_empty() && m.scripts.is_empty()) {
         return Err(CookError(format!(
-            "font pack '{}': a pack names its languages and at least one face",
+            "font pack '{}': a pack names its languages (or, of no language, its scripts) and at least one face",
             m.name
         )));
     }

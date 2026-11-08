@@ -14,12 +14,15 @@ use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
 
-mod colr;
 mod overlap;
 
 /// Where a glyph by id (a shaped form) is keyed in the blob: 0x110000 + id,
 /// past every Unicode code point (og_bundle::format::GLYPH_ID_KEYS).
 use og_bundle::format::GLYPH_ID_KEYS;
+use og_ui::colr;
+
+// The silhouette fields og-ui paints are the range the blob declares.
+const _: () = assert!(colr::FIELD_RANGE == og_bundle::format::COLOR_FIELD_RANGE);
 
 /// Shaping needs metrics and layout tables, not raster outlines or hints.
 /// FontBuilder writes the SFNT directory and checksums; glyph IDs stay intact.
@@ -545,13 +548,6 @@ pub fn cook(
     stamp: u64,
 ) -> Result<(Vec<u8>, FontNotes), CookError> {
     let face = ttf_parser::Face::parse(bytes, 0).map_err(|e| CookError(format!("font: {e}")))?;
-    if s.color && s.runtime {
-        return Err(CookError(
-            "color true and runtime true: run-time glyphs are drawn from outlines, without their colour; \
-             list the colour characters in chars or charset and drop runtime"
-                .into(),
-        ));
-    }
     let mut in_font: Vec<u32> = Vec::new();
     if let Some(cmap) = face.tables().cmap {
         for sub in cmap.subtables {
@@ -715,6 +711,7 @@ pub fn cook(
         black,
         white,
         bent,
+        palette: colour_palette,
     } = if s.color {
         colour_glyphs(bytes, &face, &mut glyphs, s)?
     } else {
@@ -886,6 +883,16 @@ pub fn cook(
         w.raw("ttf", bytes.to_vec(), 16);
     } else {
         w.raw("shaping", shaping_tables(&face), 16);
+    }
+    if s.color && s.runtime {
+        // A colour glyph a text first shows is painted from the file at
+        // run time as the cook paints one: its pixels per em (f32), then
+        // the palette, RGBA8 per entry (the CPAL bytes).
+        let mut b = s.color_px.to_le_bytes().to_vec();
+        for c in &colour_palette {
+            b.extend(c.map(|v| (v * 255.0).round() as u8));
+        }
+        w.raw("color-runtime", b, 4);
     }
     if s.pixel > 0 {
         // The grid, as text: og-ui snaps the font's sizes to its multiples.
@@ -1102,12 +1109,16 @@ struct Colour {
     /// off for (`colr::mix_error` over `colr::MIX_PROBES`), by how many
     /// 8-bit levels at worst.
     bent: Vec<(u32, u8)>,
+    /// The palette they were painted in (straight sRGB, 0..1), which a
+    /// font with `runtime true` ships for the glyphs painted at run time.
+    palette: Vec<[f32; 4]>,
 }
 
 /// `font { color true }`: each cooked glyph with a COLR paint drawn in
 /// colour at `color_px` (colr.rs) and taken off the distance field, which
 /// keeps its advance. A font none of whose cooked glyphs is coloured is
-/// an error: the setting would ship nothing.
+/// an error (the setting would ship nothing) unless it paints its colour
+/// glyphs at run time (`runtime true`), when the font needs a COLR glyph.
 fn colour_glyphs(
     bytes: &[u8],
     face: &ttf_parser::Face,
@@ -1115,8 +1126,11 @@ fn colour_glyphs(
     s: &FontSettings,
 ) -> Result<Colour, CookError> {
     let font = skrifa::FontRef::new(bytes).map_err(|e| CookError(format!("font: {e}")))?;
-    let palette = colr::palette(&font, s.palette).map_err(CookError)?;
-    let mut out = Colour::default();
+    let palette = palette(&font, s.palette).map_err(CookError)?;
+    let mut out = Colour {
+        palette: palette.clone(),
+        ..Colour::default()
+    };
     for g in glyphs.iter_mut() {
         let gid = if (GLYPH_ID_KEYS..GLYPH_ID_KEYS + 0x1_0000).contains(&g.codepoint) {
             g.codepoint - GLYPH_ID_KEYS
@@ -1173,7 +1187,19 @@ fn colour_glyphs(
             ..*g
         };
     }
-    if out.plain.is_empty() && out.black.is_empty() {
+    if s.runtime {
+        use skrifa::MetadataProvider;
+        let colour = font.color_glyphs();
+        if !font
+            .charmap()
+            .mappings()
+            .any(|(_, gid)| colour.get(gid).is_some())
+        {
+            return Err(CookError(
+                "color true and runtime true, but the font has no COLR colour glyph".into(),
+            ));
+        }
+    } else if out.plain.is_empty() && out.black.is_empty() {
         return Err(CookError(
             "color true, but no character of the charset has a COLR colour glyph".into(),
         ));
@@ -1214,6 +1240,45 @@ fn figures_note(face: &ttf_parser::Face, wanted: &[u32], features: &[String]) ->
         "; warning: proportional figures ({lo:.3} to {hi:.3} em) and {has}: a numeric \
          text in it is set on the widest figure's advance, each digit centred"
     )
+}
+
+/// The font's CPAL palette `which` as straight sRGB in 0..1, RGBA; empty
+/// for a font without palettes. An index past the font's palettes, or a
+/// light or dark palette it does not mark, is an error naming what it has.
+fn palette(font: &skrifa::FontRef, which: Palette) -> Result<Vec<[f32; 4]>, String> {
+    use skrifa::MetadataProvider;
+    let palettes = font.color_palettes();
+    let n = palettes.len();
+    let marked = |bits: u32| {
+        (0..n).find(|&i| {
+            palettes
+                .get(i)
+                .and_then(|p| p.palette_type())
+                .is_some_and(|t| t.bits() & bits != 0)
+        })
+    };
+    let index = match which {
+        Palette::First => 0,
+        Palette::Index(i) if i < n => i,
+        Palette::Index(i) => {
+            return Err(format!("palette {i}: the font has {n} CPAL palette(s), 0 to {}", n.saturating_sub(1)));
+        }
+        Palette::Light => marked(1).ok_or_else(|| {
+            format!("palette light: none of the font's {n} CPAL palette(s) is marked for a light background")
+        })?,
+        Palette::Dark => marked(2).ok_or_else(|| {
+            format!("palette dark: none of the font's {n} CPAL palette(s) is marked for a dark background")
+        })?,
+    };
+    Ok(palettes
+        .get(index)
+        .map(|p| {
+            p.colors()
+                .iter()
+                .map(|c| [c.red, c.green, c.blue, c.alpha].map(|v| f32::from(v) / 255.0))
+                .collect()
+        })
+        .unwrap_or_default())
 }
 
 #[cfg(test)]
@@ -1584,6 +1649,76 @@ mod tests {
             "{}",
             e.0
         );
+    }
+
+    /// `color true` with `runtime true` (the emoji pack): the font ships
+    /// its file and the `color-runtime` section, and a glyph og-runtime
+    /// paints from them is the image the cook paints for the same glyph,
+    /// byte for byte, in the palette the settings name. A font with no
+    /// COLR glyph refuses it.
+    #[test]
+    fn a_colour_font_painted_at_run_time_matches_its_cooked_glyphs() {
+        let bytes = std::fs::read(format!(
+            "{}/../../tests/fixtures/ui-text/assets/fonts/test_glyphs-glyf_colr_1.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let settings = |runtime, chars: &str| FontSettings {
+            charset: Vec::new(),
+            chars: chars.into(),
+            color: true,
+            runtime,
+            color_px: 48.0,
+            palette: Palette::Index(1),
+            ..FontSettings::default()
+        };
+        let (blob, _) = cook(&bytes, &settings(true, "\u{F0200}"), 2, 0).expect("cooks");
+        let b = og_blob::Blob::parse(&blob, "test").unwrap();
+        assert!(b.raw_opt("ttf").is_some(), "the file ships");
+        let rt = og_bundle::runtime::ColorRuntime::parse(b.raw("color-runtime").unwrap())
+            .expect("a color-runtime section");
+        assert_eq!(rt.em_px, 48.0);
+        let c = '\u{F0100}';
+        let painted = og_ui::colr::render_runtime(
+            &bytes,
+            og_render::GlyphKey::Char(c),
+            rt.em_px,
+            &rt.palette,
+        )
+        .expect("painted at run time");
+        let (cooked, _) = cook(&bytes, &settings(false, "\u{F0100}"), 2, 0).expect("cooks");
+        let b = og_blob::Blob::parse(&cooked, "test").unwrap();
+        let rows = b
+            .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
+            .unwrap();
+        let r = rows.iter().find(|r| r.codepoint == c as u32).unwrap();
+        let (w, _, rgba) = ktx2::decode_rgba8(b.raw("color.0").unwrap(), 0).unwrap();
+        assert_eq!(
+            (painted.image.width, painted.image.height),
+            (r.atlas_w, r.atlas_h)
+        );
+        for y in 0..r.atlas_h {
+            let at = (((r.atlas_y + y) * w + r.atlas_x) * 4) as usize;
+            let row = (y * r.atlas_w * 4) as usize;
+            assert_eq!(
+                &painted.image.rgba[row..row + (r.atlas_w * 4) as usize],
+                &rgba[at..at + (r.atlas_w * 4) as usize],
+                "row {y}"
+            );
+        }
+        // A font with no COLR glyph refuses it.
+        let inter = std::fs::read(format!(
+            "{}/../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let s = FontSettings {
+            color: true,
+            runtime: true,
+            ..FontSettings::default()
+        };
+        let e = cook(&inter, &s, 2, 0).err().expect("refused");
+        assert!(e.0.contains("has no COLR colour glyph"), "{}", e.0);
     }
 
     /// `palette` picks the CPAL palette the colour glyphs are painted
