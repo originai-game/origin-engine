@@ -31,7 +31,7 @@ All streams run on macrunner and report to the coordinator thread
 | Standard CSS | [T-01a1b996](https://ampcode.com/threads/T-01a1b996-bd22-7771-a0f9-a7e49b7a2fc9) | `@keyframes` inside `@media`/`@container` |
 | Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Lazy diagnostics and retained paint reuse, TS builder removal, both-host proof, perf after-numbers |
 | og-ui generic capabilities | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | HTML element names, select/dialog/details/meter, colour-blind modes, live regions, selectable text, run-time colour emoji, split screen, UI debugger and `dump_ui:motion`, text on a path, untested components, UI perf budgets |
-| og explore and invariants | [T-01a1b99f-0ce1](https://ampcode.com/threads/T-01a1b99f-0ce1-7570-9185-d8d1698ac145) | Per-tick invariants stream, invariants follow-ups, `og explore` |
+| og explore and invariants | [T-01a1b99f-0ce1](https://ampcode.com/threads/T-01a1b99f-0ce1-7570-9185-d8d1698ac145) | Explore test down to seconds; one tick number for every assertion kind |
 | Presentation checkpoints and og.motion | [T-01a1b99f-1445](https://ampcode.com/threads/T-01a1b99f-1445-70df-9528-b3bc997e0683) | og.motion poses identical on every host, Chrome WebGPU restore check, session forking |
 | Rendering performance | [T-01a1b99f-2748](https://ampcode.com/threads/T-01a1b99f-2748-7173-98de-af62ac91012f) | FSR 3.1, GI probes, crowds at 50k, first frame |
 
@@ -57,6 +57,10 @@ All streams run on macrunner and report to the coordinator thread
   `og run --capture-only` draws a still frame (1fac50487). The og.motion
   pitch and wave rows were stale since aea4a0f15 (no bounds remain; the
   wave plays past 15 s).
+- **Invariants and `og explore`:** incremental default invariants, `$`
+  path values, `require`, the per-tick `probe.assertionEvents` stream on
+  node and web, `RestoreDesc.session`, the `intent:` command and
+  `og explore` (29d909847 to dffb7421d).
 - **Core gaps:** CSS length tokens, keyed variable-height virtualization,
   CLDR formatting (a62282dbb, 00a1f5016, e8d43c7b8); structured rich text
   (80ca008ab).
