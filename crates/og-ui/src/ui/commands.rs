@@ -163,6 +163,7 @@ impl Ui {
         self.kept.prev_len = last.len();
         self.kept.aligned.clear();
         self.kept.aligned_kept = 0;
+        self.kept.shifted_out = false;
         let mut cmds: Vec<(DrawCmd, Affine)> = Vec::with_capacity(last.len());
         let ghosts = std::mem::take(&mut self.state.motion.ghosts);
         let mut drawn = vec![false; ghosts.len()];
@@ -210,24 +211,23 @@ impl Ui {
             let moved = (dx, dy) != (0.0, 0.0);
             let copied = match at_last {
                 Some((from, len, _)) if reuse.clean(i) && from + len <= last.len() => {
-                    if moved {
-                        last[from..from + len]
-                            .iter()
-                            .map(|(c, m)| shifted(c, dx, dy).map(|c| (c, *m)))
-                            .collect::<Option<Vec<_>>>()
-                    } else {
-                        Some(Vec::new())
-                    }
+                    !moved || last[from..from + len].iter().all(|(c, _)| shiftable(c))
                 }
-                _ => None,
+                _ => false,
             };
-            if let Some(copy) = copied
-                && let Some((from, len, count)) = at_last
-            {
+            if copied && let Some((from, len, count)) = at_last {
                 let start = cmds.len();
                 if moved {
-                    cmds.extend(copy);
+                    // Moved out of last frame's list (no other subtree
+                    // copies its range) and shifted where it lies.
+                    let blank = || (DrawCmd::PopClip, Affine::IDENTITY);
+                    cmds.extend(last[from..from + len].iter_mut().map(|c| {
+                        let mut c = std::mem::replace(c, blank());
+                        shift(&mut c.0, dx, dy);
+                        c
+                    }));
                     self.moved_subtree(&order[k..ends[k]], dx, dy);
+                    self.kept.shifted_out = true;
                 } else if cmds.is_empty() && from == 0 && len == last.len() {
                     // Last frame's whole list, as it was: taken, not copied.
                     cmds = std::mem::take(&mut last);
@@ -761,18 +761,13 @@ impl Ui {
             self.kept
                 .sigs_set(j, key, crate::layout::DrawSig::of(&self.nodes[j]));
             if let Some((_, local, sig)) = self.kept.cmds.get_mut(&key) {
-                match local
-                    .iter()
-                    .map(|c| shifted(c, dx, dy))
-                    .collect::<Option<Vec<_>>>()
-                {
-                    Some(moved) => {
-                        *local = moved;
-                        *sig = crate::layout::DrawSig::of(&self.nodes[j]);
+                if local.iter().all(shiftable) {
+                    for c in local.iter_mut() {
+                        shift(c, dx, dy);
                     }
-                    None => {
-                        self.kept.cmds.remove(&key);
-                    }
+                    *sig = crate::layout::DrawSig::of(&self.nodes[j]);
+                } else {
+                    self.kept.cmds.remove(&key);
                 }
             }
         }
@@ -1097,13 +1092,26 @@ fn glitch_layer(
 /// image flips by its uv).
 /// Command `c` moved by `(dx, dy)` with its clip where it was (an element
 /// that moved inside what clips it); `None` for what does not move so.
-fn shifted(c: &DrawCmd, dx: f32, dy: f32) -> Option<DrawCmd> {
+/// Whether [`shift`] can move `c` (a layer or world command cannot).
+fn shiftable(c: &DrawCmd) -> bool {
+    match c {
+        DrawCmd::StyledText { text, .. } => shiftable(text),
+        DrawCmd::BeginLayer { .. } | DrawCmd::EndLayer { .. } | DrawCmd::World(_) => false,
+        _ => true,
+    }
+}
+
+/// Moves `c` by `(dx, dy)` in place, its clip where it was; `false`, with
+/// nothing moved, for what [`shiftable`] refuses.
+fn shift(c: &mut DrawCmd, dx: f32, dy: f32) -> bool {
+    if !shiftable(c) {
+        return false;
+    }
     let mv = |r: &mut Rect| {
         r.x += dx;
         r.y += dy;
     };
-    let mut c = c.clone();
-    match &mut c {
+    match c {
         DrawCmd::Glass { rect, .. }
         | DrawCmd::Quad { rect, .. }
         | DrawCmd::Image { rect, .. }
@@ -1123,7 +1131,7 @@ fn shifted(c: &DrawCmd, dx: f32, dy: f32) -> Option<DrawCmd> {
             mv(bounds);
         }
         DrawCmd::StyledText { text, effects } => {
-            **text = shifted(text, dx, dy)?;
+            shift(text, dx, dy);
             effects.fill_box[0] += dx;
             effects.fill_box[1] += dy;
         }
@@ -1135,10 +1143,12 @@ fn shifted(c: &DrawCmd, dx: f32, dy: f32) -> Option<DrawCmd> {
             center.0 += dx;
             center.1 += dy;
         }
-        DrawCmd::PopClip => {}
-        DrawCmd::BeginLayer { .. } | DrawCmd::EndLayer { .. } | DrawCmd::World(_) => return None,
+        DrawCmd::PopClip
+        | DrawCmd::BeginLayer { .. }
+        | DrawCmd::EndLayer { .. }
+        | DrawCmd::World(_) => {}
     }
-    Some(c)
+    true
 }
 
 pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {

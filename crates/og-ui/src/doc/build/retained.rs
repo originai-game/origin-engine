@@ -1275,15 +1275,19 @@ impl RetainedHost {
         events: &mut Vec<DocEvent>,
         writes: &mut Vec<(BindingContext, String, Value)>,
     ) -> Result<(), String> {
+        // An element without the slot it was built in (offscreen in a
+        // virtual list, in a branch not shown, retired) is written whole
+        // when it is built again: marking it does nothing, so the mark goes.
+        let elements = &self.elements;
+        self.emit.retain(|identity| {
+            elements.get(identity).is_some_and(|e| {
+                e.slot
+                    .is_some_and(|slot| ui.holds(slot, identity.key, e.parent_slot))
+            })
+        });
         let mut pending: Vec<(usize, MountedNode)> = self
             .emit
             .iter()
-            .filter(|identity| {
-                self.elements.get(*identity).is_some_and(|e| {
-                    e.slot
-                        .is_some_and(|slot| ui.holds(slot, identity.key, e.parent_slot))
-                })
-            })
             .map(|identity| {
                 let mut depth = 0;
                 let mut at = self.topology.parent(identity);
@@ -1376,6 +1380,7 @@ impl RetainedHost {
         }
         self.forget_memories(&memories);
         self.volatile.remove(identity);
+        self.emit.remove(identity);
         self.scrollers.remove(identity);
     }
 

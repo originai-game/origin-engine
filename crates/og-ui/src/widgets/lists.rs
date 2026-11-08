@@ -155,21 +155,35 @@ impl Ui {
         grid: bool,
     ) -> (ListRange, f32, f32) {
         let prefix = if grid { "Cell#" } else { "Row#" };
-        let row = |n: &crate::layout::Node| {
-            let key =
-                n.id.strip_prefix(prefix)?
-                    .replace("%23", "#")
+        // A row's key from its id, decoded only where it was escaped.
+        fn row<'a>(
+            prefix: &str,
+            n: &'a crate::layout::Node,
+        ) -> Option<(std::borrow::Cow<'a, str>, f32)> {
+            let id = n.id.strip_prefix(prefix)?;
+            let key: std::borrow::Cow<'_, str> = if id.contains('%') {
+                id.replace("%23", "#")
                     .replace("%2F", "/")
-                    .replace("%25", "%");
+                    .replace("%25", "%")
+                    .into()
+            } else {
+                id.into()
+            };
             Some((key, n.rect.height))
-        };
+        }
+        let old = self.state.scroll.get(&container).copied().unwrap_or(0.0);
+        let mut v = self
+            .state
+            .virtual_lists
+            .remove(&container)
+            .unwrap_or_default();
         // Its rows as laid out last frame: the container's own children,
         // which it still holds before it is written again.
         let measurements: Vec<_> = match self.previous_child(container) {
             Some(list) => self.nodes[list]
                 .ordered_children
                 .iter()
-                .filter_map(|&c| row(&self.nodes[c]))
+                .filter_map(|&c| row(prefix, &self.nodes[c]))
                 .collect(),
             None => self
                 .previous_nodes()
@@ -178,12 +192,10 @@ impl Ui {
                     if parent.key != container {
                         return None;
                     }
-                    row(n)
+                    row(prefix, n)
                 })
                 .collect(),
         };
-        let old = self.state.scroll.get(&container).copied().unwrap_or(0.0);
-        let v = self.state.virtual_lists.entry(container).or_default();
         v.grid = grid;
         let off = v.update(
             keys,
@@ -195,6 +207,7 @@ impl Ui {
             view.max(0.0),
             old,
         );
+        drop(measurements);
         self.state.scroll.insert(container, off);
         let range = v.range(off);
         let top = v.offset(range.first as usize) - gap;
@@ -203,6 +216,7 @@ impl Ui {
         } else {
             -1.0
         };
+        self.state.virtual_lists.insert(container, v);
         (range, top, rest)
     }
 

@@ -57,25 +57,37 @@ impl RetainedHost {
         if props != Props::default() {
             ui.nodes[at].props = props;
         }
-        let visible: BTreeSet<_> = each.order[range.first as usize..range.last.min(count) as usize]
+        let (first, end) = (range.first as usize, range.last.min(count) as usize);
+        // What leaves the window and what enters it; the rows staying are
+        // read in place, not copied.
+        let window: std::collections::HashSet<&String> = each.order[first..end].iter().collect();
+        let gone: Vec<String> = each
+            .materialized
             .iter()
+            .filter(|key| !window.contains(key))
             .cloned()
             .collect();
-        let leaving: Vec<_> = each
-            .materialized
-            .difference(&visible)
+        let entering: Vec<String> = each.order[first..end]
+            .iter()
+            .filter(|key| !each.materialized.contains(*key))
+            .cloned()
+            .collect();
+        let leaving: Vec<_> = gone
+            .iter()
             .filter_map(|key| each.rows.get(key))
             .flatten()
             .cloned()
             .collect();
-        let rows: Vec<_> = (range.first..range.last.min(count))
-            .map(|index| {
-                let key = &each.order[index as usize];
-                (index, key.clone(), each.rows[key].clone())
-            })
-            .collect();
-        let empty = each.empty.clone();
-        self.each.get_mut(id).unwrap().materialized = visible;
+        let empty = if count == 0 {
+            each.empty.clone()
+        } else {
+            Vec::new()
+        };
+        let materialized = &mut self.each.get_mut(id).unwrap().materialized;
+        for key in &gone {
+            materialized.remove(key);
+        }
+        materialized.extend(entering);
         for child in leaving {
             self.dematerialize(&child)?;
             self.release(ui, &child);
@@ -88,40 +100,48 @@ impl RetainedHost {
                 .copied()
                 .unwrap_or(0.0),
         );
+        // Each row's materialization: on screen, or in the overscan.
+        let shown: Vec<Materialization> = {
+            let list = &ui.state.virtual_lists[&element.context.node.key];
+            let offset = ui
+                .state
+                .scroll
+                .get(&element.context.node.key)
+                .copied()
+                .unwrap_or(0.0);
+            (first..end)
+                .map(|index| {
+                    let top = list.offset(index);
+                    let bottom = list.offset((index / list.columns + 1) * list.columns);
+                    if top < offset + list.viewport && bottom > offset {
+                        Materialization::Visible
+                    } else {
+                        Materialization::Overscan
+                    }
+                })
+                .collect()
+        };
         let result = (|| {
-            if count == 0 {
-                for child in &empty {
-                    self.emit(ui, child, env, events, writes)?;
-                }
+            for child in &empty {
+                self.emit(ui, child, env, events, writes)?;
             }
             let list_slot = ui.parent();
             let list_key = ui.nodes[list_slot].key;
-            for (index, key, children) in rows {
-                let list = &ui.state.virtual_lists[&element.context.node.key];
-                let offset = ui
-                    .state
-                    .scroll
-                    .get(&element.context.node.key)
-                    .copied()
-                    .unwrap_or(0.0);
-                let top = list.offset(index as usize);
-                let bottom = list.offset((index as usize / list.columns + 1) * list.columns);
-                let materialization = if top < offset + list.viewport && bottom > offset {
-                    Materialization::Visible
-                } else {
-                    Materialization::Overscan
-                };
+            for (index, materialization) in (first..end).zip(shown) {
+                let index = index as u32;
                 // A row whose own node would be written as it stands (no
                 // input on it now or last frame, the same frame-wide
                 // inputs) is put back with its subtree: a scroll writes
                 // only the rows it brings in. What changed inside it is
                 // written in place (`emit_in_place`).
+                let each = &self.each[id];
+                let key = &each.order[index as usize];
                 let row_key =
-                    crate::id::child_key(list_key, &crate::virtualize::item_id(&key, grid));
+                    crate::id::child_key(list_key, &crate::virtualize::item_id(key, grid));
                 let still = !self.restyled
                     && !self.input.contains(&row_key)
                     && !self.last_input.contains(&row_key)
-                    && children.iter().all(|child| match child {
+                    && each.rows[key].iter().all(|child| match child {
                         Child::Element(id) => self
                             .topology
                             .node(id)
@@ -135,6 +155,8 @@ impl RetainedHost {
                     ui.keep_owned(slot);
                     continue;
                 }
+                let key = key.clone();
+                let children = each.rows[&key].clone();
                 let response = if grid {
                     ui.grid_item(index, false)
                 } else {

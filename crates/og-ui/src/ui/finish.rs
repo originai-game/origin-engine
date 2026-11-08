@@ -917,6 +917,7 @@ impl Ui {
         let prev = std::mem::take(&mut self.kept.prev_cmds);
         if self.kept.levels.is_none()
             || self.kept.aligned.len() != self.kept.aligned_kept
+            || self.kept.shifted_out
             || self.frame.unit != self.unit
             || trees.len() != self.kept.prev_len
             || tail.len() != self.kept.last_tail.len()

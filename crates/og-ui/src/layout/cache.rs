@@ -289,6 +289,9 @@ pub(crate) struct LayoutCache {
     /// How many ranges `aligned` held before a later insertion dropped
     /// some (their commands are no longer in last frame's list).
     pub aligned_kept: usize,
+    /// A moved subtree's commands were moved out of last frame's list:
+    /// its other places no longer hold what they held.
+    pub shifted_out: bool,
     pub prev_cmds: Vec<(crate::DrawCmd, crate::element::Affine)>,
     pub prev_len: usize,
     /// What last frame's levelling decided (`None`: level afresh).

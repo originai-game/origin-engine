@@ -99,7 +99,7 @@ impl Virtualizer {
     pub fn update(
         &mut self,
         order: Order<'_>,
-        measurements: &[(String, f32)],
+        measurements: &[(impl AsRef<str>, f32)],
         columns: usize,
         estimate: f32,
         gap: f32,
@@ -146,12 +146,13 @@ impl Virtualizer {
             self.measured.clear();
         } else {
             for (key, height) in measurements {
+                let key = key.as_ref();
                 if !self.invalidated.contains(key)
                     && height.is_finite()
                     && *height > 0.0
                     && self.measured.get(key) != Some(height)
                 {
-                    self.measured.insert(key.clone(), *height);
+                    self.measured.insert(key.to_owned(), *height);
                     changed = true;
                 }
             }
