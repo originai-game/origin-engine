@@ -1,4 +1,5 @@
-// A layer's composite (src/ui/pass.rs), after ui_common.wgsl: the layer's
+// A layer's composite (src/ui/pass.rs), after ui_common.wgsl and
+// ui_blend.wgsl: the layer's
 // offscreen target read through a material, masked, laid over the frame
 // by the compositing shape's coverage. The built-in materials (ui_builtin
 // .wgsl) and a game's `type ui-material` (ui/mod.rs) follow this prelude
@@ -190,13 +191,13 @@ fn composite(in: UiOut, c: vec4<f32>) -> vec4<f32> {
     mask = mask_weight(mask, c.rgb);
   }
   let a = clamp(cov * c.a * mask * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);
-  let out = finish_color(c.rgb, a);
-  // A Porter-Duff composite (src/ui/build.rs codes 17 to 20) blends premultiplied.
   let op = (s.kinds.z >> 4u) & 31u;
+  // A Porter-Duff composite (src/ui/build.rs codes 17 to 20) blends premultiplied.
   if (op >= 17u && op <= 20u) {
+    let out = finish_color(c.rgb, a);
     return vec4<f32>(out.rgb * a, a);
   }
-  return out;
+  return blend_over(c.rgb, a, op, in.position.xy);
 }
 
 fn material_input(in: UiOut) -> MaterialInput {

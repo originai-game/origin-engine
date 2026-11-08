@@ -79,8 +79,9 @@ pub(crate) enum ShapeSource {
     /// A solid backdrop ([`UiGlass::solid`]): the backdrop's shader, which
     /// reads no pyramid for it.
     SolidBackdrop,
-    /// A layer's composite, through the Porter-Duff operator's pipe or
-    /// the normal one.
+    /// A layer's composite, through the Porter-Duff operator's pipe, the
+    /// destination one (a blend that reads what is under it, as the
+    /// destination blends do) or the normal one.
     Composite(u32, ShapePipe),
 }
 
@@ -685,7 +686,14 @@ pub(crate) fn shape(
         _ => None,
     };
     let source = if let Some(k) = composite {
-        ShapeSource::Composite(k, op.unwrap_or(ShapePipe::Normal))
+        ShapeSource::Composite(
+            k,
+            op.unwrap_or(if s.blend == UiBlend::Normal {
+                ShapePipe::Normal
+            } else {
+                ShapePipe::Destination
+            }),
+        )
     } else if let UiMode::Backdrop { glass, .. } = s.mode {
         if glass.solid {
             ShapeSource::SolidBackdrop

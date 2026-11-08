@@ -222,6 +222,7 @@ impl Ui {
                     .iter()
                     .any(|l| l.blend != crate::paint::Blend::Normal)
                 || c.blend.is_some()
+                || c.isolate
                 || c.layer.is_some()
                 || !c.filters.is_empty()
         }) || d.corners.is_some())
@@ -400,6 +401,7 @@ impl Ui {
                 p::filter_layers(&fns, |c| c.map_or(current.linear(), |c| c.resolve(theme)));
         }
         c.blend = r.str("mixBlendMode").and_then(|v| p::blend(v).ok());
+        c.isolate = r.str("isolation").and_then(|v| p::isolation(v).ok()) == Some(true);
         if let Some(Ok(s)) = r
             .str("textShadow")
             .map(|v| p::text_shadows(v, crate::paint::ColorRef::Literal(current)))

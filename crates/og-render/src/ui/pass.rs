@@ -77,6 +77,7 @@ struct VectorMesh {
 /// A layer's target, kept across frames by size.
 struct LayerTarget {
     size: (u32, u32),
+    texture: wgpu::Texture,
     /// Level 0, what the layer draws into.
     view: wgpu::TextureView,
     /// Every level, what its composite samples.
@@ -105,6 +106,8 @@ pub(crate) struct UiFrameGroups {
     /// By layer index.
     layers: HashMap<u32, (wgpu::BindGroup, usize, wgpu::BindGroup)>,
     backdrop: Option<wgpu::BindGroup>,
+    /// What a layer's blends read: [`UiRenderer::layer_behind`].
+    layer_backdrop: Option<wgpu::BindGroup>,
     /// The mass elements' camera, templates, table and instances.
     mass: Option<wgpu::BindGroup>,
 }
@@ -123,6 +126,10 @@ pub(crate) struct UiRenderer {
     white: wgpu::TextureView,
     dummy_backdrop: wgpu::BindGroup,
     backdrop_params: wgpu::Buffer,
+    /// The copy of a layer as drawn so far that its blends read, as large
+    /// as the largest layer that has them; its group's parameters.
+    layer_behind: Option<(wgpu::Texture, (u32, u32))>,
+    layer_backdrop_params: wgpu::Buffer,
     instances: wgpu::Buffer,
     gradients: wgpu::Buffer,
     clips: wgpu::Buffer,
@@ -182,7 +189,12 @@ const VECTOR_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayou
 
 /// The shape family's module.
 pub(crate) fn ui_source() -> String {
-    format!("{}{}", super::UI_COMMON_WGSL, UI_WGSL)
+    format!(
+        "{}{}{}",
+        super::UI_COMMON_WGSL,
+        super::UI_BLEND_WGSL,
+        UI_WGSL
+    )
 }
 
 /// The mass elements' module.
@@ -193,8 +205,9 @@ pub(crate) fn mass_source() -> String {
 /// The built-in materials' composite module.
 pub(crate) fn builtin_source() -> String {
     format!(
-        "{}{}{}",
+        "{}{}{}{}",
         super::UI_COMMON_WGSL,
+        super::UI_BLEND_WGSL,
         super::UI_MATERIAL_WGSL,
         UI_BUILTIN_WGSL
     )
@@ -238,13 +251,19 @@ fn blend_state(pipe: Option<ShapePipe>) -> wgpu::BlendState {
             },
             alpha: keep_alpha,
         },
+        // Screen on premultiplied colour is exact over any backdrop
+        // (Sc + Dc - Sc·Dc), its alpha source-over; plus-lighter adds both.
         Some(ShapePipe::Screen) => wgpu::BlendState {
             color: wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::One,
                 dst_factor: wgpu::BlendFactor::OneMinusSrc,
                 operation: wgpu::BlendOperation::Add,
             },
-            alpha: keep_alpha,
+            alpha: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            },
         },
         Some(ShapePipe::Add) => wgpu::BlendState {
             color: wgpu::BlendComponent {
@@ -252,7 +271,11 @@ fn blend_state(pipe: Option<ShapePipe>) -> wgpu::BlendState {
                 dst_factor: wgpu::BlendFactor::One,
                 operation: wgpu::BlendOperation::Add,
             },
-            alpha: keep_alpha,
+            alpha: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::One,
+                operation: wgpu::BlendOperation::Add,
+            },
         },
         Some(ShapePipe::SourceIn) => op(F::DstAlpha, F::Zero),
         Some(ShapePipe::SourceOut) => op(F::OneMinusDstAlpha, F::Zero),
@@ -406,7 +429,11 @@ impl UiRenderer {
         });
         let composite_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ui composite"),
-            bind_group_layouts: &[Some(&overlay.layout), Some(&layer_layout)],
+            bind_group_layouts: &[
+                Some(&overlay.layout),
+                Some(&layer_layout),
+                Some(&backdrop_layout),
+            ],
             immediate_size: 0,
         });
         // A uniform and a texture only: group 0 already takes the four
@@ -572,6 +599,8 @@ impl UiRenderer {
             white,
             dummy_backdrop,
             backdrop_params,
+            layer_behind: None,
+            layer_backdrop_params: uniform_buffer(device, "ui layer backdrop", 16),
             instances: storage_buffer(device, "ui instances", 256),
             gradients: storage_buffer(device, "ui gradients", 256),
             clips: storage_buffer(device, "ui clips", 256),
@@ -966,7 +995,8 @@ impl UiRenderer {
                         dimension: wgpu::TextureDimension::D2,
                         format: LAYER_FORMAT,
                         usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                            | wgpu::TextureUsages::TEXTURE_BINDING,
+                            | wgpu::TextureUsages::TEXTURE_BINDING
+                            | wgpu::TextureUsages::COPY_SRC,
                         view_formats: &[],
                     });
                     let sampled = texture.create_view(&Default::default());
@@ -978,6 +1008,7 @@ impl UiRenderer {
                     };
                     self.targets.push(LayerTarget {
                         size: plan.size,
+                        texture: texture.clone(),
                         view,
                         sampled,
                         chain,
@@ -1088,6 +1119,55 @@ impl UiRenderer {
                 (group0(&self.uniforms[n + 1]), target_of[n], composite),
             );
         }
+        // What a layer's blends read: premultiplied, linear.
+        let copies = frame.layers.iter().filter(|p| {
+            frame
+                .layer_runs(p.index)
+                .iter()
+                .any(|r| r.source.needs_copy())
+        });
+        let size = copies.fold((0, 0), |(w, h), p| (w.max(p.size.0), h.max(p.size.1)));
+        if size.0 > 0 {
+            if self
+                .layer_behind
+                .as_ref()
+                .is_none_or(|(_, s)| s.0 < size.0 || s.1 < size.1)
+            {
+                let texture = device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("ui layer behind"),
+                    size: wgpu::Extent3d {
+                        width: size.0,
+                        height: size.1,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: LAYER_FORMAT,
+                    usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[],
+                });
+                self.layer_behind = Some((texture, size));
+            }
+            queue.write_buffer(
+                &self.layer_backdrop_params,
+                0,
+                bytemuck::cast_slice(&[0.0f32, 1.0, 0.0, 0.0]),
+            );
+            let (texture, _) = self.layer_behind.as_ref().expect("made above");
+            let view = texture.create_view(&Default::default());
+            groups.layer_backdrop = Some(crate::bind_group(
+                device,
+                "ui layer backdrop",
+                &self.backdrop_layout,
+                &[
+                    wgpu::BindingResource::TextureView(&self.white),
+                    wgpu::BindingResource::TextureView(&view),
+                    wgpu::BindingResource::Sampler(&self.sampler),
+                    self.layer_backdrop_params.as_entire_binding(),
+                ],
+            ));
+        }
         if let Some((pyramid, behind, decode)) = backdrop {
             queue.write_buffer(
                 &self.backdrop_params,
@@ -1161,12 +1241,12 @@ impl Renderer {
         let ui = self.ui.pipelines(kind);
         let materials = scene.overlay.as_ref().map(|o| &o.ui.layers);
         pass.set_bind_group(0, group0, &[]);
-        let backdrop = self
-            .ui
-            .frame
-            .backdrop
-            .as_ref()
-            .unwrap_or(&self.ui.dummy_backdrop);
+        // A layer's blends read the copy of the layer drawn so far.
+        let backdrop = match kind {
+            TargetKind::Layer => self.ui.frame.layer_backdrop.as_ref(),
+            _ => self.ui.frame.backdrop.as_ref(),
+        }
+        .unwrap_or(&self.ui.dummy_backdrop);
         let mut draws = 0;
         let sprite_group = |t: Option<crate::TextureHandle>| match t {
             None => &self.white_sprite_group,
@@ -1255,7 +1335,9 @@ impl Renderer {
                         continue;
                     };
                     let plain = match op {
-                        ShapePipe::Normal => &ui.composite,
+                        // A blend reads the copy in the shader and lays the
+                        // result over as the normal composite does.
+                        ShapePipe::Normal | ShapePipe::Destination => &ui.composite,
                         op => &ui.composite_operators[operator(op)],
                     };
                     let pipeline = match materials
@@ -1273,6 +1355,7 @@ impl Renderer {
                     };
                     pass.set_pipeline(pipeline);
                     pass.set_bind_group(1, group, &[]);
+                    pass.set_bind_group(2, backdrop, &[]);
                     pass.draw(0..6, range);
                 }
                 OverlaySource::Mass(k) => {
@@ -1338,30 +1421,61 @@ impl Renderer {
                 Some(t) => &self.cache.textures[t].view,
                 None => &self.ui.targets[*target].view,
             };
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("ui layer"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            draws += self.draw_overlay_runs(
-                &mut pass,
-                scene,
-                frame.layer_runs(plan.index),
-                group0,
-                TargetKind::Layer,
-            );
-            drop(pass);
+            // The runs between the copies its blends read, each in a pass
+            // of its own (the first clears the target).
+            let runs = frame.layer_runs(plan.index);
+            let mut cuts: Vec<usize> = (0..runs.len())
+                .filter(|&i| runs[i].source.needs_copy())
+                .collect();
+            cuts.push(runs.len());
+            let mut from = 0;
+            let mut first = true;
+            for to in cuts {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("ui layer"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: if first {
+                                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+                            } else {
+                                wgpu::LoadOp::Load
+                            },
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                });
+                first = false;
+                draws += self.draw_overlay_runs(
+                    &mut pass,
+                    scene,
+                    &runs[from..to],
+                    group0,
+                    TargetKind::Layer,
+                );
+                drop(pass);
+                if to < runs.len()
+                    && let (Some((behind, _)), None) = (&self.ui.layer_behind, plan.target)
+                {
+                    encoder.copy_texture_to_texture(
+                        self.ui.targets[*target].texture.as_image_copy(),
+                        behind.as_image_copy(),
+                        wgpu::Extent3d {
+                            width: plan.size.0,
+                            height: plan.size.1,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+                    draws += 1;
+                }
+                from = to;
+            }
             // A blur's levels, from what the layer drew.
             if plan.target.is_none()
                 && let Some(chain) = &self.ui.targets[*target].chain

@@ -766,11 +766,18 @@ difference, exclusion, hue, saturation, color, luminosity and
 plus-lighter. All but multiply, screen and plus-lighter read what is
 under the element and blend sRGB-encoded values, as CSS does; multiply
 and screen are fixed-function blends in linear light (a few levels darker
-than a browser's mid-tones), which also work inside an offscreen layer. A
-mode that reads what is under it is drawn only on the screen, not inside
-a layer (a `filter`, mask or material of an ancestor), and an element's
-mode applies to each of its own shapes, not to its subtree as one group,
-so `isolation` is not yet read. `text-shadow` takes a comma list of `x y [blur] [color]`.
+than a browser's mid-tones). As CSS Compositing 1 §3.2 has it, a
+blended element is a group: it and its subtree draw into an offscreen
+layer over a transparent backdrop, and the layer composites through the
+blend. `isolation: isolate` makes an element such a group with a normal
+composite, and so do `filter`, `mask-image` and `-og-material`: the
+blends inside it blend with what is drawn in the group, never with what
+is under it. In a layer, a blend reads a copy of the layer drawn so far
+(og-render splits the layer's pass there) and follows the spec's
+backdrop alpha, so over the group's transparent pixels a colour is
+itself; multiply reads it too there, while screen and plus-lighter stay
+fixed-function, exact over any alpha. A world panel's layer (
+§1) still drops the blends that read what is under them. `text-shadow` takes a comma list of `x y [blur] [color]`.
 `-og-material: <name>(<params>…)` composites the element and its subtree
 through one of og-render's built-in layer materials (dissolve, shine,
 hologram, glitch, ripple, pixelate, color-adjust, outline, blur), each

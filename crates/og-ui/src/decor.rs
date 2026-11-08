@@ -236,6 +236,17 @@ impl BoxDecor {
                 d.shape = shape.resolve(w, h);
                 d.clip = crate::paint::Clip::Shape;
             }
+            // A blend or `isolation: isolate` makes it a group (CSS
+            // Compositing 1 §3.2): its subtree drawn offscreen over a
+            // transparent backdrop, the group composited through the blend.
+            if (c.blend.is_some_and(|b| b != crate::paint::Blend::Normal) || c.isolate)
+                && !d.composited()
+            {
+                d.layer = Some(crate::paint::Layer {
+                    material: crate::paint::Material::Plain,
+                    params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                });
+            }
         }
         // The first listed on top: drawn last.
         for s in self.shadows.iter().rev() {

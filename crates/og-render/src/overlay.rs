@@ -87,7 +87,10 @@ impl OverlaySource {
     pub fn needs_copy(self) -> bool {
         matches!(
             self,
-            OverlaySource::Ui(ShapeSource::Shape(ShapePipe::Destination, _))
+            OverlaySource::Ui(
+                ShapeSource::Shape(ShapePipe::Destination, _)
+                    | ShapeSource::Composite(_, ShapePipe::Destination)
+            )
         )
     }
 }
@@ -676,11 +679,29 @@ pub(crate) fn build<'a>(
         }
     }
     og_core::sort::sort_by_key(&mut plans, |p| std::cmp::Reverse(depth[p.index as usize]));
-    // Glass, backdrops and blends that read the destination draw only in
-    // the output; a layer that is not drawn composites nothing.
+    // Glass and backdrops draw only in the output, and so do blends that
+    // read the destination in a world panel's target; in a layer of the
+    // UI pass's own they read a copy of the layer as drawn so far (a
+    // group's backdrop, CSS Compositing 1 §3.2). A layer that is not drawn
+    // composites nothing.
     let drawn: Vec<u32> = plans.iter().map(|p| p.index).collect();
+    let own: Vec<u32> = plans
+        .iter()
+        .filter(|p| p.target.is_none())
+        .map(|p| p.index)
+        .collect();
+    for (t, _, s, _) in keyed.iter_mut() {
+        // Multiply's fixed-function blend takes the destination as opaque;
+        // over a layer's transparent pixels it reads it instead.
+        if *t > 0
+            && let OverlaySource::Ui(ShapeSource::Shape(p @ ShapePipe::Multiply, _)) = s
+        {
+            *p = ShapePipe::Destination;
+        }
+    }
     keyed.retain(|(t, _, s, _)| {
-        let in_layer_ok = *t == 0 || !(s.needs_pyramid() || s.needs_copy());
+        let in_layer_ok =
+            *t == 0 || !(s.needs_pyramid() || s.needs_copy() && !own.contains(&(*t - 1)));
         let composite_ok = match s {
             OverlaySource::Ui(ShapeSource::Composite(k, _)) => drawn.contains(k),
             _ => true,

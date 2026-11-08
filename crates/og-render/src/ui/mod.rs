@@ -1113,11 +1113,13 @@ impl crate::RenderScene {
 }
 
 pub(crate) const UI_MATERIAL_WGSL: &str = wgsl!("ui_material.wgsl");
+pub(crate) const UI_BLEND_WGSL: &str = wgsl!("ui_blend.wgsl");
 
 /// The module a custom UI material compiles to: the UI pass's common code,
 /// the composite's prelude, its `Params` and its code.
 pub fn ui_material_module_source(material: &UiMaterialShader) -> String {
     let mut s = String::from(UI_COMMON_WGSL);
+    s.push_str(UI_BLEND_WGSL);
     s.push_str(UI_MATERIAL_WGSL);
     s.push_str("struct Params {\n");
     if material.params.is_empty() {

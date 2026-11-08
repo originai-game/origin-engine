@@ -853,7 +853,14 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `mix-blend-mode`: normal, multiply, screen, plus-lighter, overlay, soft-light or color-dodge.",
+        doc: "CSS `mix-blend-mode`: any of CSS Compositing's modes (normal, multiply, screen, overlay, darken, lighten, color-dodge, color-burn, hard-light, soft-light, difference, exclusion, hue, saturation, color, luminosity) or plus-lighter. The element and its subtree composite as one group over what is under it.",
+    },
+    PropSpec {
+        name: "isolation",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `isolation`, `auto` or `isolate`: `isolate` makes the element a group its descendants' blends blend within, over a transparent backdrop.",
     },
     PropSpec {
         name: "textShadow",

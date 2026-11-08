@@ -157,6 +157,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("backdropFilter", "backdrop-filter"),
     ("filter", "filter"),
     ("mixBlendMode", "mix-blend-mode"),
+    ("isolation", "isolation"),
     ("textShadow", "text-shadow"),
     ("clipPath", "clip-path"),
     ("material", "-og-material"),
@@ -398,6 +399,7 @@ fn conv(prop: &str) -> Conv {
         | "backdropFilter"
         | "filter"
         | "mixBlendMode"
+        | "isolation"
         | "textShadow"
         | "clipPath"
         | "material"
@@ -515,6 +517,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if prop == "mixBlendMode" => {
             "normal | multiply | screen | plus-lighter | overlay | soft-light | color-dodge".into()
         }
+        Conv::Raw if prop == "isolation" => "auto | isolate".into(),
         Conv::Raw if prop == "textShadow" => "<x> <y> [<blur>] [<colour>], … | none".into(),
         Conv::Raw if prop == "clipPath" => {
             "inset(…) | circle(…) | ellipse(…) | polygon(…) | path(\"…\") | none".into()
@@ -1852,13 +1855,14 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             .into_iter()
             .map(|(prop, v)| e(prop, vec![Value::String(v)]))
             .collect()),
-        "backdrop-filter" | "filter" | "mix-blend-mode" | "text-shadow" | "clip-path"
-        | "-og-material" => {
+        "backdrop-filter" | "filter" | "mix-blend-mode" | "isolation" | "text-shadow"
+        | "clip-path" | "-og-material" => {
             use super::paint_css as p;
             let prop = match name {
                 "backdrop-filter" => p::backdrop(value).map(|_| "backdropFilter"),
                 "filter" => p::filter_fns(value, "filter").map(|_| "filter"),
                 "mix-blend-mode" => p::blend(value).map(|_| "mixBlendMode"),
+                "isolation" => p::isolation(value).map(|_| "isolation"),
                 "text-shadow" => p::text_shadows(
                     value,
                     crate::paint::ColorRef::Literal(crate::theme::Srgba::TRANSPARENT),

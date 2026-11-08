@@ -342,6 +342,8 @@ pub(crate) struct CssPaint {
     /// `filter`'s layers, the first innermost.
     pub filters: Vec<Layer>,
     pub blend: Option<Blend>,
+    /// `isolation: isolate`.
+    pub isolate: bool,
     pub text_shadows: Vec<TextShadow>,
     pub clip: Option<CssClip>,
     pub layer: Option<Layer>,
@@ -1742,6 +1744,15 @@ pub(crate) fn backdrop(text: &str) -> Result<Option<Effect>, String> {
             ..Default::default()
         },
     }))
+}
+
+/// `isolation`: whether it isolates.
+pub(crate) fn isolation(text: &str) -> Result<bool, String> {
+    match text.trim() {
+        "auto" => Ok(false),
+        "isolate" => Ok(true),
+        w => Err(format!("'{w}' is not an isolation: auto | isolate")),
+    }
 }
 
 /// `mix-blend-mode`.

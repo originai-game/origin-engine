@@ -1,4 +1,5 @@
-// The UI pass's shapes (src/ui/pass.rs), after ui_common.wgsl: fills,
+// The UI pass's shapes (src/ui/pass.rs), after ui_common.wgsl and
+// ui_blend.wgsl: fills,
 // strokes, shadows, image paints, blends, backdrops and vectors. Every
 // fragment entry returns a straight-alpha colour in the target's encoding,
 // alpha its coverage, so the pipelines blend as the overlay does; the
@@ -12,17 +13,6 @@ struct SpriteParams {
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;
 @group(1) @binding(1) var sprite_sampler: sampler;
 @group(1) @binding(2) var<uniform> sprite_params: SpriteParams;
-
-struct BackdropParams {
-  // x: 1 when `behind` holds sRGB-encoded values; w: the pyramid's levels.
-  params: vec4<f32>,
-};
-// The blur pyramid of what is under a backdrop (src/glass.rs), and a copy
-// of the target as drawn so far (the blends that read it).
-@group(2) @binding(0) var pyramid_tex: texture_2d<f32>;
-@group(2) @binding(1) var behind_tex: texture_2d<f32>;
-@group(2) @binding(2) var backdrop_sampler: sampler;
-@group(2) @binding(3) var<uniform> backdrop: BackdropParams;
 
 const FIT_FILL: u32 = 0u;
 const FIT_COVER: u32 = 1u;
@@ -364,53 +354,6 @@ fn fs_shape(in: UiOut) -> @location(0) vec4<f32> {
   return blend_out(c.rgb, a, (s.kinds.z >> 4u) & 31u);
 }
 
-// Hard light (Compositing and Blending 1 §10.1.6): multiply or screen by
-// the source; overlay is it with source and backdrop swapped.
-fn hard_light(b: f32, s: f32) -> f32 {
-  return select(1.0 - 2.0 * (1.0 - s) * (1.0 - b), 2.0 * s * b, s <= 0.5);
-}
-
-// The separable modes (Compositing and Blending 1 §10.1), backdrop `b`
-// and source `s` in 0..1; `mode` is UiBlend's code (src/ui/build.rs).
-fn blend_channel(b: f32, s: f32, mode: u32) -> f32 {
-  switch mode {
-    case 4u: { return hard_light(s, b); }
-    case 7u: { return min(b, s); }
-    case 8u: { return max(b, s); }
-    case 9u: {
-      // Colour burn.
-      if (b >= 1.0) {
-        return 1.0;
-      }
-      if (s <= 0.0) {
-        return 0.0;
-      }
-      return 1.0 - min(1.0, (1.0 - b) / s);
-    }
-    case 10u: { return hard_light(b, s); }
-    case 11u: { return abs(b - s); }
-    case 12u: { return b + s - 2.0 * b * s; }
-    case 5u: {
-      // Soft light (the W3C compositing formula).
-      if (s <= 0.5) {
-        return b - (1.0 - 2.0 * s) * b * (1.0 - b);
-      }
-      let d = select(sqrt(b), ((16.0 * b - 12.0) * b + 4.0) * b, b <= 0.25);
-      return b + (2.0 * s - 1.0) * (d - b);
-    }
-    default: {
-      // Colour dodge.
-      if (b <= 0.0) {
-        return 0.0;
-      }
-      if (s >= 1.0) {
-        return 1.0;
-      }
-      return min(1.0, b / (1.0 - s));
-    }
-  }
-}
-
 // The blends that read what is under the shape: the backdrop's colour by
 // the formula, laid over it by the shape's coverage.
 @fragment
@@ -423,66 +366,7 @@ fn fs_shape_dst(in: UiOut) -> @location(0) vec4<f32> {
   let cov = mode_coverage(s, in.local, px);
   let c = shape_color(s, in, im, gx, gy);
   let a = clamp(cov * c.a * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);
-  let size = vec2<i32>(textureDimensions(behind_tex));
-  let at = clamp(vec2<i32>(in.position.xy), vec2<i32>(0), size - 1);
-  var b = textureLoad(behind_tex, at, 0).rgb;
-  if (backdrop.params.x > 0.5) {
-    b = decode(b);
-  }
-  let mode = (s.kinds.z >> 4u) & 31u;
-  // CSS Compositing 1 blends sRGB-encoded values: the formula runs on
-  // them and its result is decoded back to the linear light drawn here.
-  let src = encode(c.rgb);
-  let bb = encode(b);
-  var r: vec3<f32>;
-  switch mode {
-    case 13u: { r = set_lum(set_sat(src, sat(bb)), lum(bb)); }
-    case 14u: { r = set_lum(set_sat(bb, sat(src)), lum(bb)); }
-    case 15u: { r = set_lum(src, lum(bb)); }
-    case 16u: { r = set_lum(bb, lum(src)); }
-    default: {
-      r = vec3<f32>(blend_channel(bb.r, src.r, mode), blend_channel(bb.g, src.g, mode), blend_channel(bb.b, src.b, mode));
-    }
-  }
-  return finish_color(decode(clamp(r, vec3<f32>(0.0), vec3<f32>(1.0))), a);
-}
-
-// The non-separable modes' helpers (Compositing and Blending 1 §10.2).
-fn lum(c: vec3<f32>) -> f32 {
-  return dot(c, vec3<f32>(0.3, 0.59, 0.11));
-}
-
-fn clip_color(c: vec3<f32>) -> vec3<f32> {
-  let l = lum(c);
-  let n = min(c.r, min(c.g, c.b));
-  let x = max(c.r, max(c.g, c.b));
-  var o = c;
-  if (n < 0.0) {
-    o = l + (o - l) * l / max(l - n, 1e-6);
-  }
-  if (x > 1.0) {
-    o = l + (o - l) * (1.0 - l) / max(x - l, 1e-6);
-  }
-  return o;
-}
-
-fn set_lum(c: vec3<f32>, l: f32) -> vec3<f32> {
-  return clip_color(c + (l - lum(c)));
-}
-
-fn sat(c: vec3<f32>) -> f32 {
-  return max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
-}
-
-// The spec's SetSat: the largest channel to `s`, the smallest to 0, the
-// middle scaled between them.
-fn set_sat(c: vec3<f32>, s: f32) -> vec3<f32> {
-  let n = min(c.r, min(c.g, c.b));
-  let x = max(c.r, max(c.g, c.b));
-  if (x <= n) {
-    return vec3<f32>(0.0);
-  }
-  return (c - n) * s / (x - n);
+  return blend_over(c.rgb, a, (s.kinds.z >> 4u) & 31u, in.position.xy);
 }
 
 // A glass shadow (offset xy, blur, spread) of the shape at local `p`: its

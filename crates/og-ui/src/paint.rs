@@ -901,7 +901,7 @@ pub(crate) struct Placed {
 
 impl ElementDraw {
     /// Whether its subtree draws offscreen.
-    fn layered(&self) -> bool {
+    pub(crate) fn layered(&self) -> bool {
         self.layer.is_some()
             || !self.filters.is_empty()
             || matches!(self.clip, Clip::Mask(_))
@@ -919,7 +919,7 @@ impl ElementDraw {
     }
 
     /// Whether a layer's composite carries its opacity and blend.
-    fn composited(&self) -> bool {
+    pub(crate) fn composited(&self) -> bool {
         self.layered() || self.masked()
     }
 
