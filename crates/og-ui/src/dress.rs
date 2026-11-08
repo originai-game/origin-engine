@@ -396,6 +396,7 @@ impl DressDraw {
             Some(Lit::Size(size)) => match *size {
                 Size::Fixed(n) => n.max(0.0),
                 Size::Percent(p) => (available * p).max(0.0),
+                Size::Calc(c) => c.of(available).max(0.0),
                 Size::Fit { min, max } => current.clamp(min, max),
                 Size::Grow { min, max } => available.clamp(min, max),
             },

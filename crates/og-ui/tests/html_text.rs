@@ -23,6 +23,16 @@
 //!   last child), or collapse through padding, a set height or a flex
 //!   column, or stale after a keyed insert →
 //!   `block_margins_follow_the_ua_stylesheet_and_collapse`
+//! - horizontal margins refused or laid out wrong: `margin: 0 auto` not
+//!   centring a block, a percentage not reading the parent's content width,
+//!   a negative one not pulling the box out, `auto` ignored in a flex line
+//!   or a grid area, or a mixed-unit `calc()`/`min()`/`clamp()` width, a
+//!   store-driven `var()` term or a viewport unit not resolved against its
+//!   basis (or stale after a resize) →
+//!   `horizontal_margins_and_mixed_unit_lengths_resolve_at_layout`
+//! - an empty block (or an empty `<p>`) taking room instead of letting its
+//!   margins collapse through it with its neighbours' →
+//!   `an_empty_block_collapses_through_itself`
 //! - a plain checkbox refused, `<label for>` not joining its checkbox (or
 //!   left drawn twice), a field not named by its label, a bare `<label>`
 //!   accepted → `checkboxes_and_labels_join_by_for`
@@ -45,6 +55,8 @@ pub(crate) struct Doc {
     vm: Value,
     /// An immediate build's events, collected tick by tick.
     events: Vec<DocEvent>,
+    /// The viewport each step lays out in (800 × 900 unless a test resizes it).
+    pub(crate) viewport: Viewport,
 }
 
 impl Doc {
@@ -58,6 +70,7 @@ impl Doc {
             name,
             mounted,
             events: Vec::new(),
+            viewport: Viewport::new(800.0, 900.0),
             // An immediate build reads the stores as `$name` from its viewmodel.
             vm: Value::Object(
                 stores
@@ -107,6 +120,17 @@ impl Doc {
         });
     }
 
+    /// A new value for scalar store `name`, then two steps.
+    pub(crate) fn set(&mut self, name: &str, value: Value) {
+        if self.mounted {
+            self.apply(json!({"op": "set", "source": SourceId::new("test", name), "value": value}));
+        } else {
+            self.vm[format!("${name}")] = value;
+        }
+        self.step(InputFrame::default());
+        self.step(InputFrame::default());
+    }
+
     /// A keyed edit of list store `name`: `op` on a mounted collection,
     /// the whole list `after` in an immediate viewmodel.
     pub(crate) fn edit(&mut self, name: &str, mut op: Value, after: Value) {
@@ -121,7 +145,7 @@ impl Doc {
     }
 
     pub(crate) fn step(&mut self, input: InputFrame) {
-        self.ui.begin(input, Viewport::new(800.0, 900.0));
+        self.ui.begin(input, self.viewport);
         if self.mounted {
             self.ui
                 .build_retained_documents(&bind::NoEnv)
@@ -438,6 +462,136 @@ fn block_margins_follow_the_ua_stylesheet_and_collapse() {
             );
         }
         assert_eq!(d.get("L").y - bottom(&p[2]), em);
+    });
+}
+
+#[test]
+fn horizontal_margins_and_mixed_unit_lengths_resolve_at_layout() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Centre"></div>
+  <div id="Right"></div>
+  <div id="Pct"></div>
+  <div id="Neg"></div>
+  <div id="Calc"></div>
+  <div id="Min"></div>
+  <div id="Clamp"></div>
+  <div id="Var" style:--w={$frac}></div>
+  <div id="Vw"></div>
+  <div id="Row"><div id="A1"></div><div id="A2"></div><div id="A3"></div></div>
+  <div id="Row2"><div id="B1"></div></div>
+  <div id="Col"><div id="C1"></div><div id="C2"></div></div>
+  <div id="Grid"><div id="G1"></div><div id="G2"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; margin-left: 40px; }
+#Root div { height: 10px; }
+#Centre { width: 200px; margin: 0 auto; }
+#Right { width: 100px; margin-left: auto; }
+#Pct { margin: 0 10% 0 25px; }
+#Neg { margin-left: -10px; margin-right: 30px; }
+#Calc { width: calc(50% - 12px); margin-left: calc(25% + 3px); }
+#Min { width: min(100%, 150px); }
+#Clamp { width: clamp(50px, 10%, 300px); }
+#Var { width: calc(var(--w) * 100% - 20px); }
+#Root #Vw { width: calc(50vw - 40px); height: 2vh; }
+#Root #Row { display: flex; height: 100px; }
+#A1 { width: 50px; margin: auto 20px 0 10px; }
+#A2 { width: 60px; margin-left: auto; }
+#A3 { width: calc(25% - 10px); margin-right: 5%; }
+#Root #Row2 { display: flex; height: 60px; }
+#B1 { width: 100px; margin: auto; }
+#Root #Col { display: flex; flex-direction: column; height: 100px; }
+#C2 { margin-top: auto; }
+#Root #Grid { display: grid; grid-template-columns: 200px 200px; height: fit-content; }
+#G1 { width: 100px; margin: 0 auto; }
+#G2 { margin-left: 30px; }
+</style>"#;
+    both(text, &[("frac", json!(0.5))], |d| {
+        let x0 = d.get("Root").x;
+        assert_eq!(x0, 40.0);
+        let at = |d: &Doc, id: &str| {
+            let e = d.get(id);
+            (e.x - x0, e.width)
+        };
+        // Block flow (CSS 2 §10.3.3): auto margins centre or push, a
+        // percentage reads the parent's 400px, a negative one pulls out.
+        assert_eq!(at(d, "Centre"), (100.0, 200.0));
+        assert_eq!(at(d, "Right"), (300.0, 100.0));
+        assert_eq!(at(d, "Pct"), (25.0, 400.0 - 40.0 - 25.0));
+        assert_eq!(at(d, "Neg"), (-10.0, 400.0 + 10.0 - 30.0));
+        // Mixed units are a sum layout resolves against the same 400px.
+        assert_eq!(at(d, "Calc"), (103.0, 188.0));
+        assert_eq!(at(d, "Min").1, 150.0);
+        assert_eq!(at(d, "Clamp").1, 50.0);
+        assert_eq!(at(d, "Var").1, 180.0);
+        // 50vw of the 800px viewport, less 40px; 2vh of 900px.
+        assert_eq!((at(d, "Vw").1, d.get("Vw").height), (360.0, 18.0));
+        // A flex row: margins take room, the auto one takes what is left
+        // (400 − 80 − 60 − 110 = 150), and an auto top sends A1 down.
+        let row = d.get("Row");
+        assert_eq!(at(d, "A1"), (10.0, 50.0));
+        assert_eq!(at(d, "A2"), (80.0 + 150.0, 60.0));
+        assert_eq!(at(d, "A3"), (290.0, 90.0));
+        assert_eq!(d.get("A1").y - row.y, 90.0);
+        assert_eq!(d.get("A2").y, row.y);
+        // `margin: auto` centres on both axes.
+        let b1 = d.get("B1");
+        assert_eq!((b1.x - x0, b1.y - d.get("Row2").y), (150.0, 25.0));
+        // A flex column's auto top margin takes its free space.
+        assert_eq!(d.get("C2").y - d.get("Col").y, 90.0);
+        assert_eq!(d.get("C1").y, d.get("Col").y);
+        // A grid area: auto centres in the 200px column, a margin insets
+        // the stretched item.
+        assert_eq!(at(d, "G1"), (50.0, 100.0));
+        assert_eq!(at(d, "G2"), (230.0, 170.0));
+
+        // A store-driven var() term and a resize re-resolve their elements.
+        d.set("frac", json!(0.25));
+        assert_eq!(at(d, "Var").1, 80.0);
+        d.viewport = Viewport::new(600.0, 900.0);
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+        assert_eq!(at(d, "Vw").1, 260.0);
+        assert_eq!(at(d, "Centre"), (100.0, 200.0));
+    });
+}
+
+#[test]
+fn an_empty_block_collapses_through_itself() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="A"></div>
+  <div id="Empty"></div>
+  <div id="B"></div>
+  <div id="C"></div>
+  <p id="EmptyP"></p>
+  <div id="D"></div>
+  <div id="E"></div>
+  <div id="Kept"></div>
+  <div id="F"></div>
+</div></div>
+<style>
+#Root { width: 400px; padding: 10px; }
+#A, #B, #C, #D, #E, #F { height: 10px; }
+#A { margin-bottom: 20px; }
+#Empty { margin: 30px 0 10px; }
+#B { margin-top: 5px; }
+#Kept { margin: 30px 0 10px; padding: 1px 0 0 0; }
+</style>"#;
+    both(text, &[], |d| {
+        let em = d.ui.theme().type_ramp.body.size;
+        let gap = |a: &str, b: &str| d.get(b).y - (d.get(a).y + d.get(a).height);
+        // A, an empty block and B: one set of margins, max(20, 30, 10, 5).
+        assert_eq!(d.get("Empty").height, 0.0);
+        assert_eq!(gap("A", "B"), 30.0);
+        // An empty <p>: no line, and its 1em margins collapse into one.
+        assert_eq!(d.get("EmptyP").height, 0.0);
+        assert_eq!(gap("C", "D"), em);
+        // Padding gives a block an edge: its margins no longer adjoin.
+        assert_eq!(d.get("Kept").height, 1.0);
+        assert_eq!(gap("E", "Kept"), 30.0);
+        assert_eq!(gap("Kept", "F"), 10.0);
     });
 }
 

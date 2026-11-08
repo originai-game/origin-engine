@@ -145,10 +145,20 @@ outside the alphabetic and roman ranges.
 HTML's block margins come with them: `<p>`, `<ul>` and `<ol>` take 1em
 above and below (a list inside a list none), and `<h1>` to `<h6>` take
 0.67em, 0.83em, 1em, 1.33em, 1.67em and 2.33em of their own type step;
-`margin: 0` resets them. `margin-top`, `margin-bottom`, `margin-block` and
-`margin` take px or em (of the element's type step; an element with none
-uses the body step); a horizontal margin is 0 or `auto` only, since
-og-ui lays out vertical margins only. In a `display: block` box the
+`margin: 0` resets them. `margin`, its longhands (`margin-top`,
+`-right`, `-bottom`, `-left`) and the logical `margin-block`,
+`margin-inline` and their `-start`/`-end` take px, em (of the element's
+type step; an element with none uses the body step), `rem`, viewport
+units, a percentage, `auto` or a `calc()` of those. As in CSS 2 §8.3 a
+percentage, top and bottom too, reads the parent's content width, and a
+negative margin pulls the box out. Horizontal margins never collapse.
+In a block's flow an `auto` left and right margin share what the width
+leaves (`margin: 0 auto` centres a box with a width), one `auto` takes all
+of it, and the top and bottom ones are 0. In a flex line `auto` margins
+take the free space before `justify-content` does and, across the line,
+align the item in place of `align-items` (CSS Flexbox §8.1); in a grid
+area they align the item and its other margins inset it (CSS Grid
+§11.2). A stack places its children without margins. In a `display: block` box the
 vertical margins collapse as CSS 2 §8.3.1 says: two adjacent siblings'
 margins become the larger positive one plus the most negative one, and a
 block's first child's top margin (last child's bottom one) collapses
@@ -156,8 +166,25 @@ through the block's own edge when no padding separates them and, at the
 bottom, the block's height is auto; scrolling, `display: flex` and
 `display: grid` boxes keep their children's margins inside. A flex
 column adds its children's margins along it, a flex row adds them across
-it, and a stack or grid places its children without them. An empty block
-does not collapse through itself.
+it, a grid insets each area by them, and a stack places its children
+without them. An empty block in a block's flow (no padding, an auto
+height, and no children or only such empty blocks), and an empty `<p>`,
+collapses through itself: it is 0 tall, and its top and bottom margins
+join its neighbours' into one set, as CSS 2 §8.3.1 says.
+
+Lengths in `width`, `height` and the margins follow CSS Values 4: a
+`calc()` over `%`, px and em (em in margins), with `rem` and `vw`, `vh`,
+`vmin` and `vmax` turned into px when the element resolves, reduces to a
+linear sum (`calc((100% - 2 * 8px) / 2)` is `calc(50% - 8px)`), and layout
+resolves its percentage against the basis it already has for one: the
+parent's content width (or height), a grid area, the screen. `min()`,
+`max()` and `clamp()` over such sums, up to three, are evaluated at
+layout: `width: min(100%, 600px)`. A `var()` term (`calc(var(--w) * 100%
+- 20px)`) is substituted first, so a store bound with `style:--w` moves
+only its element; an element whose values read a viewport unit resolves
+again when the viewport resizes. Times, angles and plain numbers still
+take one unit per function; `calc(10px + 20ms)` is an error. Container
+units (`cqw`…) are refused for now.
 
 An item's number is its place among its `<li>` siblings, counted from the
 list's `start` (1, or the item count when `reversed`), or from the
@@ -179,7 +206,8 @@ the element's `color`. A border's width pads the box as `box-sizing:
 border-box` does; an outline takes no room and is drawn outside the border
 edge, grown by its offset, so `:focus-visible { outline: 2px solid
 var(--focus) }` replaces the core focus ring for that element. A uniform
-border follows `border-radius`; sides that differ are drawn as strips, and
+border follows `border-radius`, which also replaces a dressed control's
+corner (a `<button>`'s plate); sides that differ are drawn as strips, and
 `inset`/`outset`/`groove`/`ridge` darken their shaded sides.
 `box-shadow` takes a comma list of `[inset] x y [blur [spread]] [color]`,
 the first listed on top, outer shadows under the background and inset ones
@@ -823,8 +851,8 @@ known: at cook for constant values, when the element resolves otherwise.
 `width: calc(var(--fill) * 100%)` and `animation-delay: calc(var(--i) *
 80ms)` work; `+` and `-` need spaces around them, `*` and `/` take a plain
 number on one side, and `s`, `rad` and `turn` convert to `ms` and `deg`.
-og-ui reduces them before layout, so every term of one function takes one
-unit: `calc(100% - 12px)` is refused (give the parent a padding instead).
+Lengths in several units stay a sum that layout resolves (§2, HTML
+blocks): `calc(100% - 12px)` works.
 
 Media rules use standard conditions, such as
 `@media (width < 600px), (height < 600px)`. Supported features are `width`,

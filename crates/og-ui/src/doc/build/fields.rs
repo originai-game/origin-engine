@@ -159,6 +159,10 @@ impl Ui {
         if r.str("scrollbarWidth") == Some("none") {
             el.hide_bars = true;
         }
+        // A dressed part takes the style's corner unless CSS writes one.
+        if r.has("radius") && (el.part.is_some() || el.frame.is_some()) {
+            d.radius = Some(el.radius);
+        }
         (d != BoxDecor::default()).then_some(d)
     }
 
@@ -319,7 +323,9 @@ impl Ui {
                 "height",
                 "padding",
                 "marginTop",
+                "marginRight",
                 "marginBottom",
+                "marginLeft",
                 "gap",
                 "align",
                 "cross",

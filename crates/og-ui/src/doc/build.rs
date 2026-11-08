@@ -513,7 +513,12 @@ impl Ui {
                 Some((name.clone(), text))
             })
             .collect();
-        r.cascade = cascade::resolve(&n.rules, &inline, inherited, self.theme(), |rule| {
+        let basis = super::calc::Basis {
+            width: vp.width,
+            height: vp.height,
+            rem: self.theme().type_ramp.body.size,
+        };
+        r.cascade = cascade::resolve(&n.rules, &inline, inherited, self.theme(), basis, |rule| {
             applies(&rule.query, &mut media_reads)
                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 && rule.structure.as_ref().is_none_or(|s| structure(s))
@@ -650,7 +655,7 @@ impl Ui {
                 r.vals.push((spec, V::Spans(Ok(spans))));
             }
         }
-        r.cascade.viewport_reads = media_reads;
+        r.cascade.viewport_reads.extend(media_reads);
         if !container_reads.is_empty() {
             // The chain is inherited state: a container appearing or leaving
             // above this element re-resolves it like a custom property would.
@@ -683,12 +688,20 @@ impl Ui {
     /// The box of an element from its props, over `base`; `em` sizes its
     /// em margins.
     fn box_of(r: &Resolved, mut el: Element, em: f32) -> Element {
-        for (name, edge) in [
-            ("marginTop", &mut el.margin_top),
-            ("marginBottom", &mut el.margin_bottom),
-        ] {
-            if let Some([px, ems]) = r.nums(name).and_then(|n| <&[f32; 2]>::try_from(n).ok()) {
-                *edge = px + ems * em;
+        for (name, edge) in ["marginTop", "marginRight", "marginBottom", "marginLeft"]
+            .into_iter()
+            .zip(&mut el.margin)
+        {
+            if let Some(&[px, ems, pct, auto]) =
+                r.nums(name).and_then(|n| <&[f32; 4]>::try_from(n).ok())
+            {
+                *edge = crate::Margin {
+                    len: crate::Length {
+                        pct,
+                        px: px + ems * em,
+                    },
+                    auto: auto != 0.0,
+                };
             }
         }
         if let Some(s) = r.size("width") {

@@ -490,8 +490,7 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.scroll == b.scroll
         && a.scroll_x == b.scroll_x
         && a.aspect == b.aspect
-        && a.margin_top == b.margin_top
-        && a.margin_bottom == b.margin_bottom
+        && a.margin == b.margin
         && a.block == b.block
 }
 
@@ -561,6 +560,7 @@ pub(crate) fn layout(
         Size::Fixed(v) => v,
         Size::Fit { .. } => nodes[root].pref_w.min(area.width).max(nodes[root].min_w),
         Size::Percent(p) => p * area.width,
+        Size::Calc(c) => c.of(area.width),
         Size::Grow { .. } => {
             let (lo, hi) = nodes[root].el.width.bounds();
             area.width.clamp(lo, hi)
@@ -599,6 +599,7 @@ pub(crate) fn layout(
         Size::Fixed(v) => v,
         Size::Fit { .. } => nodes[root].pref_h,
         Size::Percent(p) => p * area.height,
+        Size::Calc(c) => c.of(area.height),
         Size::Grow { .. } => {
             let (lo, hi) = nodes[root].el.height.bounds();
             area.height.clamp(lo, hi)

@@ -1629,8 +1629,7 @@ impl Ui {
                                 || k.prev.get(&c).is_some_and(|old| {
                                     child.el.width == old.el.width
                                         && child.el.height == old.el.height
-                                        && child.el.margin_top == old.el.margin_top
-                                        && child.el.margin_bottom == old.el.margin_bottom
+                                        && child.el.margin == old.el.margin
                                         && !old.collapse_in[0]
                                         && child.props.place == old.props.place
                                         && child.props.position == old.props.position

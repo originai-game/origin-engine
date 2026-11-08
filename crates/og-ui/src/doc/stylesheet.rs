@@ -154,9 +154,12 @@ pub(super) fn apply(
                 let value = declaration
                     .value
                     .substitute(&mut |_| None)
-                    .and_then(|v| super::calc::reduce(&v))
                     .map_err(|error| (rule.at, error))?;
-                body.push_str(&format!("{name}: {value};"));
+                // Viewport units and rem resolve when the element does.
+                if !super::calc::has_absolute(&value) {
+                    let value = super::calc::reduce(&value).map_err(|error| (rule.at, error))?;
+                    body.push_str(&format!("{name}: {value};"));
+                }
             }
         }
         let entries = css::declarations(&body, syntax::location(&doc.text, rule.at).0)

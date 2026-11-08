@@ -273,9 +273,11 @@ fn grid_items(nodes: &[Node], i: usize, horizontal: bool) -> Vec<(usize, usize, 
         .map(|(&c, &(col, row, cs, rs))| {
             let k = &nodes[c];
             if horizontal {
-                (col, cs, k.pref_w, k.min_w)
+                let m = super::flex::side_margins(k);
+                (col, cs, k.pref_w + m, k.min_w + m)
             } else {
-                (row, rs, k.pref_h, k.min_h)
+                let m = super::flex::cross_room(k);
+                (row, rs, k.pref_h + m, k.min_h + m)
             }
         })
         .collect()
@@ -330,14 +332,30 @@ pub(super) fn grid_columns(nodes: &mut [Node], i: usize, inner: f32) {
         let span: f32 = cols[col.min(e)..e].iter().sum::<f32>()
             + gap * (e.saturating_sub(col)).saturating_sub(1) as f32;
         let k = &nodes[c];
-        nodes[c].w = match k.el.width {
+        // Its margins inset its area (a percentage reads the area's width);
+        // `auto` ones take what its width leaves (CSS Grid §11.2).
+        let [l, r] = [k.el.margin[3], k.el.margin[1]];
+        let fill = (span - l.of(span) - r.of(span)).max(0.0);
+        let w = match k.el.width {
             Size::Fixed(v) => v,
             Size::Percent(p) => p * span,
+            Size::Calc(c) => c.of(span),
+            Size::Fit { .. } if l.auto || r.auto => k.pref_w.min(fill).max(k.min_w),
             Size::Fit { .. } | Size::Grow { .. } => {
                 let (lo, hi) = k.el.width.bounds();
-                span.clamp(lo, hi)
+                fill.clamp(lo, hi)
             }
         };
+        let used = if l.auto { 0.0 } else { l.of(span) } + if r.auto { 0.0 } else { r.of(span) };
+        let free = (span - w - used).max(0.0);
+        let sides = match (l.auto, r.auto) {
+            (true, true) => [free / 2.0, free / 2.0],
+            (true, false) => [free, r.of(span)],
+            (false, true) => [l.of(span), free],
+            (false, false) => [l.of(span), r.of(span)],
+        };
+        nodes[c].w = w;
+        nodes[c].margin_x = sides;
     }
     if let Some(g) = nodes[i].grid.as_mut() {
         g.cols = cols;
@@ -366,12 +384,16 @@ pub(super) fn grid_rows(nodes: &mut [Node], i: usize, inner: f32) {
         let span: f32 = rows[row.min(e)..e].iter().sum::<f32>()
             + gap * (e.saturating_sub(row)).saturating_sub(1) as f32;
         let k = &nodes[c];
+        let around = super::flex::cross_room(k);
+        let fill = (span - around).max(0.0);
         nodes[c].h = match k.el.height {
             Size::Fixed(v) => v,
             Size::Percent(p) => p * span,
+            Size::Calc(c) => c.of(span),
+            Size::Fit { .. } if k.el.margin[0].auto || k.el.margin[2].auto => k.pref_h.min(fill),
             Size::Fit { .. } | Size::Grow { .. } => {
                 let (lo, hi) = k.el.height.bounds();
-                span.clamp(lo, hi)
+                fill.clamp(lo, hi)
             }
         };
     }

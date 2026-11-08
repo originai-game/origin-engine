@@ -83,6 +83,9 @@ pub struct BoxDecor {
     pub background: Option<Paint>,
     /// `overflow: hidden` or `clip`: its children are cut to its shape.
     pub clip: bool,
+    /// A `border-radius` written over a dressed part (a `<button>`): its
+    /// rectangle takes this corner instead of the dressing's.
+    pub radius: Option<f32>,
 }
 
 impl BoxDecor {
@@ -112,6 +115,10 @@ impl BoxDecor {
                     color,
                 }
             });
+        }
+        if let (Some(r), crate::paint::ShapeKind::Rect { radii, .. }) = (self.radius, &mut d.shape)
+        {
+            *radii = Some([r; 4]);
         }
         if self.clip && d.clip == crate::paint::Clip::None {
             d.clip = crate::paint::Clip::Shape;

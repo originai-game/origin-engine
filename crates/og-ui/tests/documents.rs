@@ -710,7 +710,7 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
         "{}",
         err("  float: left")
     );
-    assert!(err("  margin: 4px").contains("gap"));
+    assert!(err("  margin: 4px 2px 1px 0 9px").contains("1 to 4"));
     assert!(err("  gap: 12").contains("12px"));
     assert!(err("  font-size: 14px").contains("var(--text-"));
     assert!(err("  padding: 4px !urgent").contains("declaration"));

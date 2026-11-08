@@ -669,6 +669,31 @@ fn parse_size(vals: &[Value]) -> Result<Size, String> {
         }
         "fixed" => Size::Fixed(n(1).ok_or(HOW)?),
         "percent" => Size::Percent(n(1).ok_or(HOW)?),
+        "calc" => {
+            let op = match vals.get(1).and_then(Value::as_word) {
+                Some("sum") => crate::CalcOp::Sum,
+                Some("min") => crate::CalcOp::Min,
+                Some("max") => crate::CalcOp::Max,
+                Some("clamp") => crate::CalcOp::Clamp,
+                _ => return Err(HOW.into()),
+            };
+            let mut c = crate::Calc {
+                op,
+                ..Default::default()
+            };
+            let terms = &vals[2..];
+            if terms.is_empty() || terms.len() % 2 != 0 || terms.len() > 6 {
+                return Err(HOW.into());
+            }
+            for (k, arg) in c.args.iter_mut().take(terms.len() / 2).enumerate() {
+                *arg = crate::Length {
+                    pct: n(2 + 2 * k).ok_or(HOW)?,
+                    px: n(3 + 2 * k).ok_or(HOW)?,
+                };
+            }
+            c.count = (terms.len() / 2) as u8;
+            Size::Calc(c)
+        }
         _ => return Err(HOW.into()),
     })
 }

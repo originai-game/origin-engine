@@ -100,7 +100,7 @@ fn apply_size(size: Size, pref: f32, min: f32) -> (f32, f32) {
             let p = pref.clamp(lo, hi).max(min.min(pref));
             (p, min.max(lo).min(p))
         }
-        Size::Percent(_) => (pref, min.min(pref)),
+        Size::Percent(_) | Size::Calc(_) => (pref, min.min(pref)),
     }
 }
 
@@ -124,10 +124,22 @@ fn span(m: MarginSet) -> f32 {
     m.0 + m.1
 }
 
+/// The width node `i`'s margin percentages read: its parent's content
+/// width (CSS 2 §8.3: all four, even the vertical ones).
+pub(super) fn margin_basis(nodes: &[Node], i: usize) -> f32 {
+    let p = nodes[i].parent;
+    if p == NONE || p >= nodes.len() {
+        return 0.0;
+    }
+    (nodes[p].w - nodes[p].el.padding.horizontal()).max(0.0)
+}
+
 /// Node `i`'s collapsed outer margins, and whether its first child's top
 /// and last child's bottom margin collapse through its own edges: it is a
 /// CSS block in a block parent's flow (so no new formatting context), with
-/// no padding at that edge, and at the bottom no set height.
+/// no padding at that edge, and at the bottom no set height. An empty block
+/// in a block's flow collapses through itself: its own top and bottom
+/// margins, and those of its children, are one set (CSS 2 §8.3.1).
 fn collapse_margins(nodes: &mut [Node], i: usize) {
     let n = &nodes[i];
     let p = n.parent;
@@ -136,61 +148,102 @@ fn collapse_margins(nodes: &mut [Node], i: usize) {
         && nodes[p].el.block
         && nodes[p].props.layout == LayoutMode::Flex
         && nodes[p].children.contains(&i);
-    let through = in_block_flow
+    let flows = in_block_flow
         && n.el.block
         && n.props.layout == LayoutMode::Flex
         && matches!(n.content, Content::None)
         && !n.el.scroll
-        && !n.el.scroll_x
-        && !n.children.is_empty();
-    let collapse_in = [
-        through && n.el.padding.top == 0.0,
-        through && n.el.padding.bottom == 0.0 && matches!(n.el.height, Size::Fit { .. }),
-    ];
-    let mut sets = [margin_set(n.el.margin_top), margin_set(n.el.margin_bottom)];
+        && !n.el.scroll_x;
+    let auto_height = matches!(n.el.height, Size::Fit { min, .. } if min <= 0.0);
+    let empty_text = matches!(&n.content, Content::Text(t) if t.text.is_empty());
+    let through = in_block_flow
+        && auto_height
+        && n.el.padding.top == 0.0
+        && n.el.padding.bottom == 0.0
+        && n.out.is_empty()
+        && ((flows && n.children.iter().all(|&c| nodes[c].through)) || empty_text);
+    let basis = margin_basis(nodes, i);
+    let edge = |m: crate::layout::Margin| margin_set(m.of(basis));
+    let mut sets = [edge(n.el.margin[0]), edge(n.el.margin[2])];
+    let collapse_in = if through {
+        [true, true]
+    } else {
+        let kids = !n.children.is_empty();
+        [
+            flows && kids && n.el.padding.top == 0.0,
+            flows && kids && n.el.padding.bottom == 0.0 && auto_height,
+        ]
+    };
+    // The run of margins that meets an edge: each child that collapses
+    // through itself passes on to the next.
+    let chain = |kids: &mut dyn Iterator<Item = &usize>, side: usize| {
+        let mut set = (0.0, 0.0);
+        for &c in kids {
+            set = joined(set, nodes[c].margin_sets[side]);
+            if !nodes[c].through {
+                break;
+            }
+        }
+        set
+    };
     if collapse_in[0] {
-        sets[0] = joined(sets[0], nodes[n.children[0]].margin_sets[0]);
+        sets[0] = joined(sets[0], chain(&mut n.children.iter(), 0));
     }
     if collapse_in[1] {
-        let last = *n.children.last().expect("a child");
-        sets[1] = joined(sets[1], nodes[last].margin_sets[1]);
+        sets[1] = joined(sets[1], chain(&mut n.children.iter().rev(), 1));
+    }
+    if through {
+        sets = [joined(sets[0], sets[1]); 2];
     }
     nodes[i].margin_sets = sets;
     nodes[i].collapse_in = collapse_in;
+    nodes[i].through = through;
 }
 
 /// The room a column's margins and gaps take around its children: before
 /// the first, between each pair, and after the last. A block's adjacent
-/// margins collapse; a flex column's add.
+/// margins collapse, through any child that collapses through itself; a
+/// flex column's add.
 fn column_spacing(nodes: &[Node], i: usize) -> (f32, Vec<f32>, f32) {
     let n = &nodes[i];
     let kids = &n.children;
-    let (Some(&first), Some(&last)) = (kids.first(), kids.last()) else {
+    if kids.is_empty() {
         return (0.0, Vec::new(), 0.0);
-    };
-    let between = kids
-        .windows(2)
-        .map(|w| {
-            let (a, b) = (nodes[w[0]].margin_sets[1], nodes[w[1]].margin_sets[0]);
-            n.el.gap
-                + if n.el.block {
-                    span(joined(a, b))
-                } else {
-                    span(a) + span(b)
-                }
-        })
-        .collect();
-    let lead = if n.collapse_in[0] {
-        0.0
-    } else {
-        span(nodes[first].margin_sets[0])
-    };
+    }
+    // `run` is the margin set open after the last child, `used` the room
+    // already given to it, and `outside` that the run collapses through
+    // the column's own top edge.
+    let mut run = (0.0, 0.0);
+    let mut used = 0.0;
+    let mut outside = n.collapse_in[0];
+    let mut before = Vec::with_capacity(kids.len());
+    for (j, &c) in kids.iter().enumerate() {
+        let k = &nodes[c];
+        let gap = if j > 0 { n.el.gap } else { 0.0 };
+        if n.el.block {
+            let set = joined(run, k.margin_sets[0]);
+            let total = if outside { 0.0 } else { span(set) };
+            before.push(gap + total - used);
+            if k.through {
+                (run, used) = (set, total);
+            } else {
+                (run, used, outside) = (k.margin_sets[1], 0.0, false);
+            }
+        } else {
+            before.push(gap + span(run) + span(k.margin_sets[0]));
+            run = k.margin_sets[1];
+        }
+    }
     let trail = if n.collapse_in[1] {
         0.0
+    } else if outside {
+        // Every child collapsed through the top edge.
+        0.0
     } else {
-        span(nodes[last].margin_sets[1])
+        span(run) - used
     };
-    (lead, between, trail)
+    let lead = before.remove(0);
+    (lead, before, trail)
 }
 
 fn column_room(nodes: &[Node], i: usize) -> f32 {
@@ -198,9 +251,35 @@ fn column_room(nodes: &[Node], i: usize) -> f32 {
     lead + between.iter().sum::<f32>() + trail
 }
 
+/// The room a child's left and right margins take in its parent's
+/// intrinsic width: their px (a percentage and `auto` count 0, as CSS
+/// counts them in a min- or max-content contribution).
+pub(super) fn side_margins(n: &Node) -> f32 {
+    n.el.margin[1].intrinsic() + n.el.margin[3].intrinsic()
+}
+
+/// A child's left and right margins against `basis`, with its `auto` ones
+/// taking `free` (CSS 2 §10.3.3 in a block, CSS Flexbox §8.1 in a line):
+/// split between two, all to one. Free space under 0 gives them none.
+fn place_sides(n: &Node, basis: f32, free: f32) -> [f32; 2] {
+    let [l, r] = [n.el.margin[3], n.el.margin[1]];
+    let free = free.max(0.0);
+    match (l.auto, r.auto) {
+        (true, true) => [free / 2.0, free / 2.0],
+        (true, false) => [free, r.of(basis)],
+        (false, true) => [l.of(basis), free],
+        (false, false) => [l.of(basis), r.of(basis)],
+    }
+}
+
 /// The room a child's own vertical margins take across a row.
 fn cross_margins(n: &Node) -> f32 {
     span(n.margin_sets[0]) + span(n.margin_sets[1])
+}
+
+/// The room its own vertical margins take in a grid row.
+pub(super) fn cross_room(n: &Node) -> f32 {
+    cross_margins(n)
 }
 
 /// A text's preferred width (its widest line) and the least it can take:
@@ -275,17 +354,23 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
             let kids = n.children.iter().map(|&c| &nodes[c]);
             match n.el.direction {
                 Direction::Row => {
-                    let pref = kids.clone().map(|c| c.pref_w).sum::<f32>() + gaps(n.el.gap, k);
+                    let pref = kids
+                        .clone()
+                        .map(|c| c.pref_w + side_margins(c))
+                        .sum::<f32>()
+                        + gaps(n.el.gap, k);
                     let min = if n.el.wrap {
-                        kids.map(|c| c.min_w).fold(0.0, f32::max)
+                        kids.map(|c| c.min_w + side_margins(c)).fold(0.0, f32::max)
                     } else {
-                        kids.map(|c| c.min_w).sum::<f32>() + gaps(n.el.gap, k)
+                        kids.map(|c| c.min_w + side_margins(c)).sum::<f32>() + gaps(n.el.gap, k)
                     };
                     (pref, min)
                 }
                 Direction::Column => (
-                    kids.clone().map(|c| c.pref_w).fold(0.0, f32::max),
-                    kids.map(|c| c.min_w).fold(0.0, f32::max),
+                    kids.clone()
+                        .map(|c| c.pref_w + side_margins(c))
+                        .fold(0.0, f32::max),
+                    kids.map(|c| c.min_w + side_margins(c)).fold(0.0, f32::max),
                 ),
             }
         }
@@ -317,6 +402,7 @@ fn cross_size(size: Size, pref: f32, min: f32, inner: f32, stretch: bool) -> f32
     match size {
         Size::Fixed(v) => v,
         Size::Percent(p) => p * inner,
+        Size::Calc(c) => c.of(inner),
         Size::Grow { .. } => {
             let (lo, hi) = size.bounds();
             inner.clamp(lo, hi)
@@ -351,6 +437,7 @@ fn main_sizes(
         let base = match size {
             Size::Fixed(v) => v,
             Size::Percent(p) => p * inner,
+            Size::Calc(c) => c.of(inner),
             _ => pref,
         };
         sizes.push(base);
@@ -472,11 +559,19 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
         Direction::Column => {
             for &c in &kids {
                 let n = &nodes[c];
+                // A percentage, a calc() or a fixed width reads the column's
+                // content width; a stretched or growing one fills what its
+                // margins leave.
+                let fill = (inner - n.el.margin[1].of(inner) - n.el.margin[3].of(inner)).max(0.0);
+                let basis = match n.el.width {
+                    Size::Grow { .. } | Size::Fit { .. } => fill,
+                    _ => inner,
+                };
                 let w = cross_size(
                     n.el.width,
                     n.pref_w,
                     n.min_w,
-                    inner,
+                    basis,
                     el.cross == Cross::Stretch,
                 );
                 // In a horizontal scroller a fitting child keeps its width.
@@ -485,30 +580,41 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                     _ => w,
                 };
                 nodes[c].w = w;
+                nodes[c].margin_x = place_sides(&nodes[c], inner, fill - w);
             }
         }
         Direction::Row if !el.wrap => {
-            let avail = inner - gaps(el.gap, kids.len());
+            let sides: f32 = kids
+                .iter()
+                .map(|&c| nodes[c].el.margin[1].of(inner) + nodes[c].el.margin[3].of(inner))
+                .sum();
+            let avail = inner - gaps(el.gap, kids.len()) - sides;
             let sizes = main_sizes(nodes, &kids, true, inner, avail, !el.scroll_x);
+            let free = avail - sizes.iter().sum::<f32>();
             for (&c, w) in kids.iter().zip(sizes) {
                 nodes[c].w = w;
             }
+            line_sides(nodes, &kids, inner, free);
         }
         Direction::Row => {
             // Each child at its preferred width, capped at the row; then lines.
             let mut base = Vec::with_capacity(kids.len());
+            let mut sides = Vec::with_capacity(kids.len());
             for &c in &kids {
                 let n = &nodes[c];
                 base.push(match n.el.width {
                     Size::Fixed(v) => v,
                     Size::Percent(p) => p * inner,
+                    Size::Calc(c) => c.of(inner),
                     _ => n.pref_w.min(inner).max(n.min_w),
                 });
+                sides.push(n.el.margin[1].of(inner) + n.el.margin[3].of(inner));
             }
             let mut rows = Vec::new();
             let mut start = 0;
             let mut used = 0.0f32;
-            for (k, &b) in base.iter().enumerate() {
+            for (k, (&b, &m)) in base.iter().zip(&sides).enumerate() {
+                let b = b + m;
                 // Half a pixel of slack, as text wrapping has: a fit row
                 // snapped a fraction under its children's sum keeps them
                 // on one line, over by less than half a pixel.
@@ -532,13 +638,35 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                     })
                     .collect();
                 let none = vec![None; line.len()];
-                flex(&mut sizes, &grow, &none, inner - gaps(el.gap, line.len()));
+                let avail = inner - gaps(el.gap, line.len()) - sides[s..e].iter().sum::<f32>();
+                flex(&mut sizes, &grow, &none, avail);
+                let free = avail - sizes.iter().sum::<f32>();
                 for (&c, w) in line.iter().zip(sizes) {
                     nodes[c].w = w;
                 }
+                line_sides(nodes, line, inner, free);
             }
             nodes[i].rows = rows;
         }
+    }
+}
+
+/// A flex line's left and right margins: `free` split evenly between its
+/// `auto` ones (CSS Flexbox §8.1), each other one against `basis`.
+fn line_sides(nodes: &mut [Node], line: &[usize], basis: f32, free: f32) {
+    let autos = line
+        .iter()
+        .map(|&c| nodes[c].el.margin[1].auto as usize + nodes[c].el.margin[3].auto as usize)
+        .sum::<usize>();
+    let each = if autos > 0 {
+        free.max(0.0) / autos as f32
+    } else {
+        0.0
+    };
+    for &c in line {
+        let [l, r] = [nodes[c].el.margin[3], nodes[c].el.margin[1]];
+        let side = |m: crate::layout::Margin| if m.auto { each } else { m.of(basis) };
+        nodes[c].margin_x = [side(l), side(r)];
     }
 }
 
@@ -558,6 +686,8 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
             let h = tp.extent().map_or(0.0, |e| e.y);
             (h, h)
         }
+        // An empty text that collapses through itself has no line.
+        Content::Text(_) if n.through => (0.0, 0.0),
         Content::Text(t) => {
             let h = n.lines.len().max(1) as f32 * t.line_height();
             (h, h)
@@ -712,6 +842,7 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
                     let h = match n.el.height {
                         Size::Fixed(v) => v,
                         Size::Percent(p) => p * inner,
+                        Size::Calc(c) => c.of(inner),
                         Size::Grow { .. } => {
                             let (lo, hi) = n.el.height.bounds();
                             line_h.clamp(lo, hi)
@@ -821,9 +952,20 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
                 };
                 let (x0, cw) = span(&cx, &g.cols, col, cs, g.col_gap);
                 let (y0, rh) = span(&ry, &g.rows, row, rs, g.row_gap);
-                let cell = Rect::new(inner.x + x0, inner.y + y0, cw, rh);
-                let (w, h) = (nodes[c].w, nodes[c].h);
-                let (x, y) = place_in(&cell, w, h, &nodes[c].props.insets, align, cross);
+                // Its margins inset its grid area; `auto` ones align it there
+                // (CSS Grid §11.2).
+                let k = &nodes[c];
+                let [ml, mr] = k.margin_x;
+                let [mt, mb] = k.margin_sets.map(|(pos, neg)| pos + neg);
+                let cell = Rect::new(
+                    inner.x + x0 + ml,
+                    inner.y + y0 + mt,
+                    (cw - ml - mr).max(0.0),
+                    (rh - mt - mb).max(0.0),
+                );
+                let (w, h) = (k.w, k.h);
+                let (x, y) = place_in(&cell, w, h, &k.props.insets, align, cross);
+                let y = auto_offset(k, 0, cell.height - h).map_or(y, |o| cell.y + o);
                 nodes[c].x = x;
                 nodes[c].y = y;
             }
@@ -836,16 +978,17 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
         let n = &nodes[i];
         let kids = &n.children;
         match n.el.direction {
-            Direction::Column => kids.iter().map(|&c| nodes[c].w).fold(0.0, f32::max),
+            Direction::Column => kids.iter().map(|&c| outer_w(&nodes[c])).fold(0.0, f32::max),
             Direction::Row if n.el.wrap && !n.rows.is_empty() => n
                 .rows
                 .iter()
                 .map(|&(s, e)| {
-                    kids[s..e].iter().map(|&c| nodes[c].w).sum::<f32>() + gaps(n.el.gap, e - s)
+                    kids[s..e].iter().map(|&c| outer_w(&nodes[c])).sum::<f32>()
+                        + gaps(n.el.gap, e - s)
                 })
                 .fold(0.0, f32::max),
             Direction::Row => {
-                kids.iter().map(|&c| nodes[c].w).sum::<f32>() + gaps(n.el.gap, kids.len())
+                kids.iter().map(|&c| outer_w(&nodes[c])).sum::<f32>() + gaps(n.el.gap, kids.len())
             }
         }
     };
@@ -879,7 +1022,8 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
         let k = line.len();
         match el.direction {
             Direction::Row => {
-                let used: f32 = line.iter().map(|&c| nodes[c].w).sum::<f32>() + gaps(el.gap, k);
+                let used: f32 =
+                    line.iter().map(|&c| outer_w(&nodes[c])).sum::<f32>() + gaps(el.gap, k);
                 let mut free = inner_w - used;
                 if el.scroll_x {
                     free = free.max(0.0);
@@ -896,9 +1040,14 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
                 for &c in line {
                     let (w, h) = (nodes[c].w, nodes[c].h);
                     let (top, around) = (span(nodes[c].margin_sets[0]), cross_margins(&nodes[c]));
-                    nodes[c].x = x;
-                    nodes[c].y = y0 + line_y + top + cross_offset(el.cross, room - around, h);
-                    x += w + el.gap + between;
+                    let [ml, mr] = nodes[c].margin_x;
+                    nodes[c].x = x + ml;
+                    nodes[c].y = y0
+                        + line_y
+                        + top
+                        + auto_offset(&nodes[c], 0, room - around - h)
+                            .unwrap_or_else(|| cross_offset(el.cross, room - around, h));
+                    x += ml + w + mr + el.gap + between;
                 }
                 line_y += room + el.gap;
             }
@@ -912,17 +1061,78 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
                 if el.scroll {
                     free = free.max(0.0);
                 }
-                let (start, between) = main_offsets(el.align, free, k);
+                // A flex column's `auto` top and bottom margins take its free
+                // space before `justify-content` does (CSS Flexbox §8.1); a
+                // block's are 0 (CSS 2 §10.6.3).
+                let autos = if el.block {
+                    0
+                } else {
+                    line.iter()
+                        .map(|&c| {
+                            nodes[c].el.margin[0].auto as usize
+                                + nodes[c].el.margin[2].auto as usize
+                        })
+                        .sum()
+                };
+                let each = if autos > 0 {
+                    free.max(0.0) / autos as f32
+                } else {
+                    0.0
+                };
+                let (start, between) = if autos > 0 {
+                    (0.0, 0.0)
+                } else {
+                    main_offsets(el.align, free, k)
+                };
                 let mut y = y0 + start + lead;
                 for (j, &c) in line.iter().enumerate() {
                     let (w, h) = (nodes[c].w, nodes[c].h);
-                    nodes[c].y = y;
+                    let [top, bottom] = [0, 2].map(|e| {
+                        if nodes[c].el.margin[e].auto {
+                            each
+                        } else {
+                            0.0
+                        }
+                    });
+                    let [ml, mr] = nodes[c].margin_x;
+                    let room = inner_w.max(if el.scroll_x { ml + w + mr } else { 0.0 }) - ml - mr;
+                    let sideways = nodes[c].el.margin[1].auto || nodes[c].el.margin[3].auto;
+                    nodes[c].y = y + top;
                     nodes[c].x = x0
-                        + cross_offset(el.cross, inner_w.max(if el.scroll_x { w } else { 0.0 }), w);
-                    y += h + spacing.get(j).copied().unwrap_or(0.0) + between;
+                        + ml
+                        + if sideways {
+                            0.0
+                        } else {
+                            cross_offset(el.cross, room, w)
+                        };
+                    y += top + h + bottom + spacing.get(j).copied().unwrap_or(0.0) + between;
                 }
             }
         }
+    }
+}
+
+/// Its width with its left and right margins as laid out.
+fn outer_w(n: &Node) -> f32 {
+    n.w + n.margin_x[0] + n.margin_x[1]
+}
+
+/// Where its `auto` margins on edges `edge` and `edge + 2` (top and bottom,
+/// or right and left) put it in `free` room: centred between two, at the
+/// far end after a leading one, at the start before a trailing one. `None`
+/// with neither: its parent's alignment places it.
+pub(super) fn auto_offset(n: &Node, edge: usize, free: f32) -> Option<f32> {
+    let free = free.max(0.0);
+    let (lead, trail) = if edge == 0 {
+        (n.el.margin[0].auto, n.el.margin[2].auto)
+    } else {
+        (n.el.margin[3].auto, n.el.margin[1].auto)
+    };
+    match (lead, trail) {
+        (true, true) => Some(free / 2.0),
+        (true, false) => Some(free),
+        (false, true) => Some(0.0),
+        (false, false) => None,
     }
 }
 
@@ -977,6 +1187,7 @@ fn out_size(size: Size, pref: f32, outer: f32, a: Option<f32>, b: Option<f32>) -
         (_, _, Size::Fixed(v)) => v,
         (Some(a), Some(b), _) => (outer - a - b).max(0.0),
         (_, _, Size::Percent(p)) => p * outer,
+        (_, _, Size::Calc(c)) => c.of(outer),
         (_, _, Size::Grow { .. }) => {
             let (lo, hi) = size.bounds();
             (outer - a.unwrap_or(0.0) - b.unwrap_or(0.0)).clamp(lo, hi)

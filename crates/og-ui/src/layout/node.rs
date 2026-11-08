@@ -469,6 +469,11 @@ pub(crate) struct Node {
     /// Its first child's top and its last child's bottom margin collapse
     /// through its own edge: inside, that edge has none.
     pub collapse_in: [bool; 2],
+    /// An empty block in a block's flow: its top and bottom margins adjoin
+    /// and collapse together with its neighbours' (CSS 2 §8.3.1).
+    pub through: bool,
+    /// Its left and right margins as laid out, `auto` ones resolved.
+    pub margin_x: [f32; 2],
     /// The content's width (its children's extent), for horizontal scrolling.
     pub content_w: f32,
     pub lines: Vec<Line>,
@@ -581,6 +586,8 @@ impl Node {
             layout_step: None,
             margin_sets: [(0.0, 0.0); 2],
             collapse_in: [false; 2],
+            through: false,
+            margin_x: [0.0; 2],
             laid_xy: [f32::NAN; 2],
             laid_rect: Rect::default(),
             laid_clip: Rect::default(),
@@ -615,6 +622,8 @@ impl Node {
         self.layout_step = previous.layout_step;
         self.margin_sets = previous.margin_sets;
         self.collapse_in = previous.collapse_in;
+        self.through = previous.through;
+        self.margin_x = previous.margin_x;
     }
 
     /// The scroll range: how far the content overflows the inner height.

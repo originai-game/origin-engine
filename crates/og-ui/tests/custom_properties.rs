@@ -99,11 +99,11 @@ fn calc_reduces_once_its_variables_are_known() {
     });
     let mixed = UiDocument::parse(
         "ui/t.svelte",
-        "<meta name=\"component\" content=\"t\"><div id=\"A\"></div><style>#A { width: calc(100% - 12px); }</style>",
+        "<meta name=\"component\" content=\"t\"><div id=\"A\"></div><style>#A { width: calc(100% - 12ms); }</style>",
     )
     .unwrap_err()
     .join("\n");
-    assert!(mixed.contains("calc() mixes % and px"), "{mixed}");
+    assert!(mixed.contains("calc() mixes % and ms"), "{mixed}");
     let style = UiDocument::parse(
         "ui/t.svelte",
         "<meta name=\"component\" content=\"t\"><div style:width=\"4px\"></div>",

@@ -92,7 +92,9 @@ pub const STYLE: &[(&str, &str)] = &[
     ("height", "height"),
     ("padding", "padding"),
     ("marginTop", "margin-top"),
+    ("marginRight", "margin-right"),
     ("marginBottom", "margin-bottom"),
+    ("marginLeft", "margin-left"),
     ("gap", "gap"),
     ("align", "justify-content"),
     ("cross", "align-items"),
@@ -194,7 +196,13 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         _ => None,
     };
     let both: Vec<&'static str> = match name {
-        "margin" | "margin-block" => vec!["marginTop", "marginBottom"],
+        "margin" => vec!["marginTop", "marginRight", "marginBottom", "marginLeft"],
+        "margin-block" => vec!["marginTop", "marginBottom"],
+        "margin-inline" => vec!["marginRight", "marginLeft"],
+        "margin-inline-start" => vec!["marginLeft"],
+        "margin-inline-end" => vec!["marginRight"],
+        "margin-block-start" => vec!["marginTop"],
+        "margin-block-end" => vec!["marginBottom"],
         _ => super::boxes::longhands(name),
     };
     let target = match name {
@@ -221,7 +229,7 @@ fn conv(prop: &str) -> Conv {
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
         "boxShadow" => Conv::Raw,
-        "marginTop" | "marginBottom" => Conv::Margin,
+        "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop" => Conv::Len,
         "aspect" | "opacity" | "z" | "scale" | "maxLines" => Conv::Num,
         "rotate" => Conv::Angle,
@@ -267,9 +275,12 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Num => "<number>".into(),
         Conv::Angle => "<n>deg | <n>rad | <n>turn".into(),
         Conv::Paint => "var(--<role>) | #rrggbb[aa]".into(),
-        Conv::Size => "fit-content | stretch | <n>px | <n>% (min-/max- bounds)".into(),
+        Conv::Size => {
+            "fit-content | stretch | <n>px | <n>% | calc(…) | min(…) | max(…) | clamp(…) (min-/max- bounds)"
+                .into()
+        }
         Conv::Insets => "1 to 4 lengths (top right bottom left)".into(),
-        Conv::Margin => "<n>px | <n>em".into(),
+        Conv::Margin => "<n>px | <n>em | <n>% | auto | calc(…)".into(),
         Conv::Raw if prop == "boxShadow" => {
             "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into()
         }
@@ -348,13 +359,6 @@ pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
     Some(match name {
         "flex" | "flex-grow" | "flex-shrink" | "flex-basis" => {
             "write `width: stretch` (or `height`) to take the room left"
-        }
-        "margin-left"
-        | "margin-right"
-        | "margin-inline"
-        | "margin-inline-start"
-        | "margin-inline-end" => {
-            "og-ui lays out vertical margins only: give the parent a `padding` or a `gap`, or centre with its `align-items`"
         }
         "float" | "clear" => "write `display` as the kind: a `row` or a `grid`",
         "left" => "write `inset-inline-start` (it mirrors right to left)",
@@ -599,13 +603,25 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
         },
         Conv::Paint => paint_css(vals),
         Conv::Margin => match vals {
-            [Value::Number(p), Value::Number(e)] => Ok(match (p.text(), e.text()) {
-                ("0", "0") => "0".into(),
-                (p, "0") => format!("{p}px"),
-                ("0", e) => format!("{e}em"),
-                (p, e) => format!("calc({p}px + {e}em)"),
-            }),
-            _ => Err(format!("{prop} takes px and em")),
+            [_, _, _, Value::Number(a)] if a.text() != "0" => Ok("auto".into()),
+            [Value::Number(p), Value::Number(e), Value::Number(c), _] => {
+                let pct = super::calc::number(c.as_f32() as f64 * 100.0);
+                let terms: Vec<String> = [
+                    (pct, "%"),
+                    (p.text().to_string(), "px"),
+                    (e.text().to_string(), "em"),
+                ]
+                .into_iter()
+                .filter(|(v, _)| v != "0")
+                .map(|(v, u)| format!("{v}{u}"))
+                .collect();
+                Ok(match terms.as_slice() {
+                    [] => "0".into(),
+                    [t] => t.clone(),
+                    _ => format!("calc({})", terms.join(" + ").replace("+ -", "- ")),
+                })
+            }
+            _ => Err(format!("{prop} takes a length or auto")),
         },
         Conv::Insets => {
             let n: Vec<String> = vals.iter().map(px).collect::<Result<_, _>>()?;
@@ -673,6 +689,33 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
                     "{}%",
                     shift(&vals.get(1).map(text_of).ok_or("percent <0–1>")?, 2)
                 )),
+                "calc" => {
+                    let n: Vec<f64> = vals[2..]
+                        .iter()
+                        .map(|v| v.as_number().map_or(0.0, |n| n.as_f32() as f64))
+                        .collect();
+                    let sum = |k: usize| {
+                        let (pct, px) = (
+                            n.get(2 * k).copied().unwrap_or(0.0),
+                            n.get(2 * k + 1).copied().unwrap_or(0.0),
+                        );
+                        super::calc::sum_text(
+                            &[("%", pct * 100.0), ("px", px)]
+                                .into_iter()
+                                .filter(|(_, v)| *v != 0.0)
+                                .collect::<Vec<_>>(),
+                        )
+                    };
+                    let op = vals.get(1).map(text_of).unwrap_or_default();
+                    Ok(match op.as_str() {
+                        "sum" => sum(0),
+                        "clamp" => format!("clamp({}, {}, {})", sum(0), sum(1), sum(2)),
+                        op => {
+                            let k = n.len() / 2;
+                            format!("{op}({})", (0..k).map(sum).collect::<Vec<_>>().join(", "))
+                        }
+                    })
+                }
                 _ => Err("a size".into()),
             }
         }
@@ -877,6 +920,10 @@ fn tokens_in(c: &[char], i: &mut usize, func: bool) -> Result<(Vec<Vec<Tok>>, bo
         } else if ch == '/' {
             *i += 1;
             args.last_mut().unwrap().push(Tok::Slash);
+        } else if matches!(ch, '+' | '-') && c.get(*i + 1).is_none_or(|d| d.is_whitespace()) {
+            // A math operator (CSS needs spaces around + and -).
+            *i += 1;
+            args.last_mut().unwrap().push(Tok::Ident(ch.to_string()));
         } else if ch == '"' {
             let start = *i;
             *i += 1;
@@ -989,14 +1036,108 @@ pub(crate) fn want_len(t: &Tok) -> Result<Value, String> {
     }
 }
 
-/// A margin edge as its px and em: `12px`, `0.67em` or `0`.
+/// A margin edge as its px, em, fraction of the parent's content width and
+/// auto flag: `12px`, `0.67em`, `5%`, `0`, `auto` or a reduced
+/// `calc(50% - 12px)`.
 fn margin_vals(t: &Tok) -> Result<Vec<Value>, String> {
-    let zero = || number("0");
-    match t {
-        Tok::Num(n, u) if u == "em" => Ok(vec![zero()?, number(n)?]),
-        Tok::Num(_, u) if u == "rem" => Err("a margin takes px or em, not rem".into()),
-        t => Ok(vec![want_len(t)?, zero()?]),
+    let n = |v: f64| number(&super::calc::number(v));
+    if matches!(t, Tok::Ident(w) if w == "auto") {
+        return [0.0, 0.0, 0.0, 1.0].into_iter().map(n).collect();
     }
+    if let Tok::Func(f, _) = t
+        && f == "var"
+    {
+        let v = want_len(t)?;
+        return Ok(vec![v, n(0.0)?, n(0.0)?, n(0.0)?]);
+    }
+    let [pct, px, em] = want_lin(t)?;
+    [px, em, pct, 0.0].into_iter().map(n).collect()
+}
+
+/// A size's reduced math function as its ogt form, `calc <op> <pct> <px>
+/// …`: `calc(100% - 12px)` → `calc sum 1 -12`, `min(100%, 600px)` → `calc
+/// min 1 0 0 600`.
+fn size_calc(name: &str, f: &str, args: &[Vec<Tok>]) -> Result<Vec<Value>, String> {
+    let lengths: Vec<[f64; 3]> = if f == "calc" {
+        vec![want_lin(&Tok::Func(f.into(), args.to_vec()))?]
+    } else {
+        args.iter()
+            .map(|arg| match arg.as_slice() {
+                [t] => want_lin(t),
+                _ => Err(format!("{f}() takes one length an argument")),
+            })
+            .collect::<Result<_, _>>()?
+    };
+    let count_ok = match f {
+        "calc" => lengths.len() == 1,
+        "clamp" => lengths.len() == 3,
+        _ => (1..=3).contains(&lengths.len()),
+    };
+    if !count_ok {
+        return Err(format!(
+            "{name}: {f}() takes {}",
+            if f == "clamp" {
+                "three lengths"
+            } else {
+                "one to three lengths"
+            }
+        ));
+    }
+    if lengths.iter().any(|l| l[2] != 0.0) {
+        return Err(format!("{name} takes px and %, not em"));
+    }
+    let op = if f == "calc" { "sum" } else { f };
+    let mut out = vec![Value::Word("calc".into()), Value::Word(op.into())];
+    for [pct, px, _] in lengths {
+        out.push(number(&super::calc::number(pct))?);
+        out.push(number(&super::calc::number(px))?);
+    }
+    Ok(out)
+}
+
+/// A length as its fraction, px and em terms: `12px`, `50%`, `1.5em`, `0`,
+/// or a `calc()` doc/calc.rs reduced to a sum (`calc(50% - 12px + 1em)`).
+pub(crate) fn want_lin(t: &Tok) -> Result<[f64; 3], String> {
+    fn term(t: &Tok, sign: f64, out: &mut [f64; 3]) -> Result<(), String> {
+        let Tok::Num(n, u) = t else {
+            return Err(format!("'{}' is not a length (px, %, em)", describe(t)));
+        };
+        let v: f64 = n.parse().map_err(|_| format!("'{n}' is not a number"))?;
+        let k = match u.as_str() {
+            "%" => 0,
+            "px" => 1,
+            "em" => 2,
+            "" if v == 0.0 => 1,
+            _ => return Err(format!("'{n}{u}' is not a length (px, %, em)")),
+        };
+        out[k] += sign * if k == 0 { v / 100.0 } else { v };
+        Ok(())
+    }
+    let mut out = [0.0; 3];
+    match t {
+        Tok::Func(f, args) if f == "calc" => {
+            let [toks] = args.as_slice() else {
+                return Err("calc() takes one expression".into());
+            };
+            let mut sign = 1.0;
+            for (k, t) in toks.iter().enumerate() {
+                match t {
+                    Tok::Ident(op) if k % 2 == 1 && (op == "+" || op == "-") => {
+                        sign = if op == "-" { -1.0 } else { 1.0 };
+                    }
+                    t if k % 2 == 0 => term(t, sign, &mut out)?,
+                    t => return Err(format!("'{}' is not part of a reduced calc()", describe(t))),
+                }
+            }
+        }
+        Tok::Func(f, _) if matches!(f.as_str(), "min" | "max" | "clamp") => {
+            return Err(format!(
+                "{f}() over lengths in more than one unit takes a width or a height; a margin takes calc()"
+            ));
+        }
+        t => term(t, 1.0, &mut out)?,
+    }
+    Ok(out)
 }
 
 pub(crate) fn want_num(t: &Tok) -> Result<Value, String> {
@@ -1342,6 +1483,11 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     Tok::Num(n, u) if u == "%" => {
                         vec![Value::Word("percent".into()), number(&shift(n, -2))?]
                     }
+                    Tok::Func(f, args)
+                        if matches!(f.as_str(), "calc" | "min" | "max" | "clamp") =>
+                    {
+                        size_calc(name, f, args)?
+                    }
                     v => vec![want_len(v)?],
                 }),
             )])
@@ -1357,32 +1503,45 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             };
             Ok(vec![e("padding", vals)])
         }
-        "margin" | "margin-block" => {
-            // Horizontal margins are not laid out: only 0 or auto (a
-            // reset's `margin: 0 auto`) passes for them.
-            let (top, bottom, sides) = match (name, t.as_slice()) {
-                ("margin", [a]) => (a, a, vec![a]),
-                ("margin-block", [a]) => (a, a, vec![]),
-                ("margin-block", [a, b]) => (a, b, vec![]),
-                ("margin", [v, h]) => (v, v, vec![h]),
-                ("margin", [top, h, b]) => (top, b, vec![h]),
-                ("margin", [top, r, b, l]) => (top, b, vec![r, l]),
-                _ => return Err(format!("{name} takes 1 to 4 lengths")),
-            };
-            for side in sides {
-                let zero = matches!(side, Tok::Ident(w) if w == "auto")
-                    || matches!(margin_vals(side).as_deref(), Ok([Value::Number(p), Value::Number(e)]) if p.text() == "0" && e.text() == "0");
-                if !zero {
+        "margin"
+        | "margin-block"
+        | "margin-inline"
+        | "margin-inline-start"
+        | "margin-inline-end"
+        | "margin-block-start"
+        | "margin-block-end" => {
+            // CSS order: top, right, bottom, left (left to right).
+            let sides: [Option<&Tok>; 4] = match (name, t.as_slice()) {
+                ("margin-block-start", [a]) => [Some(a), None, None, None],
+                ("margin-inline-end", [a]) => [None, Some(a), None, None],
+                ("margin-block-end", [a]) => [None, None, Some(a), None],
+                ("margin-inline-start", [a]) => [None, None, None, Some(a)],
+                ("margin", [a]) => [Some(a); 4],
+                ("margin", [v, h]) => [Some(v), Some(h), Some(v), Some(h)],
+                ("margin", [top, h, b]) => [Some(top), Some(h), Some(b), Some(h)],
+                ("margin", [top, r, b, l]) => [Some(top), Some(r), Some(b), Some(l)],
+                ("margin-block", [a]) => [Some(a), None, Some(a), None],
+                ("margin-block", [a, b]) => [Some(a), None, Some(b), None],
+                ("margin-inline", [a]) => [None, Some(a), None, Some(a)],
+                ("margin-inline", [start, end]) => [None, Some(end), None, Some(start)],
+                _ => {
                     return Err(format!(
-                        "{name}: a horizontal margin must be 0 or auto; write `margin-block` for the vertical ones ({})",
-                        unsupported("margin-left").unwrap_or_default()
+                        "{name} takes 1 to {} values",
+                        if name == "margin" { 4 } else { 2 }
                     ));
                 }
+            };
+            let mut out = Vec::new();
+            for (side, prop) in
+                sides
+                    .into_iter()
+                    .zip(["marginTop", "marginRight", "marginBottom", "marginLeft"])
+            {
+                if let Some(side) = side {
+                    out.push(e(prop, margin_vals(side)?));
+                }
             }
-            Ok(vec![
-                e("marginTop", margin_vals(top)?),
-                e("marginBottom", margin_vals(bottom)?),
-            ])
+            Ok(out)
         }
         n if super::boxes::longhands(n).len() > 1
             || n == "box-shadow"

@@ -3,6 +3,8 @@
 //! ways a document is (immediate and mounted).
 //!
 //! Ways these could fail, each covered below:
+//! - a `border-radius` on a dressed control (a `<button>`) ignored for the
+//!   style's corner → `border_radius_rounds_a_dressed_button`
 //! - a border that takes no room (content under it), a side's width read
 //!   for another side, a width counted with `border-style: none`, an
 //!   outline that moves layout → `borders_pad_the_box_and_outlines_take_no_room`
@@ -183,6 +185,37 @@ fn decorations_paint_in_css_order_over_any_draw() {
 }
 
 #[test]
+fn border_radius_rounds_a_dressed_button() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <button id="Round">Go</button>
+  <button id="Plain">Go</button>
+</div></div>
+<style>
+#Root { width: 400px; gap: 20px; }
+#Round { border-radius: 20px; }
+</style>"#;
+    both(text, &[], |d| {
+        let s = shapes(&d.ui);
+        let radii = |id: &str| {
+            let e = d.get(id);
+            let at = Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0);
+            s.iter()
+                .filter(|x| x.center == at && matches!(x.mode, UiMode::Fill))
+                .find_map(|x| match x.geometry {
+                    og_render::UiGeometry::Rect { radii, .. } => Some(radii),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("{id}'s plate"))
+        };
+        // The written corner replaces the dressing's (the renderer clamps
+        // overlapping radii, as CSS does).
+        assert_eq!(radii("Round"), [20.0; 4]);
+        assert_ne!(radii("Plain"), radii("Round"), "the style's corner differs");
+    });
+}
+
+#[test]
 fn overflow_scrolls_and_clips() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Root">
@@ -261,7 +294,7 @@ main { width: 100%; height: 100%; padding: 24px; gap: 16px; background: #4a5060;
 .outlined { outline: 2px solid var(--accent); outline-offset: 4px; }
 .clipped { overflow: hidden; }
 .spill { width: 160px; height: 90px; background: var(--danger); }
-.go { border: 2px solid var(--accent); }
+.go { border: 2px solid var(--accent); border-radius: 20px; margin: 0 auto; }
 @media (width < 600px) { .grid { grid-template-columns: 110px 110px; } }
 </style>"#;
 

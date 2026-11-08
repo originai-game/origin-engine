@@ -28,12 +28,14 @@ pub struct Cascade {
 
 /// `inline` are the element's own custom properties (`style:--name`),
 /// which win over every rule but an `!important` one, as an HTML `style`
-/// attribute's declarations do.
+/// attribute's declarations do. `basis` gives viewport units and `rem`
+/// their px; without one they stay as written.
 pub(crate) fn resolve_values(
     rules: &[StyleRule],
     inline: &[(String, String)],
     inherited: &variables::Computed,
     theme: &crate::Theme,
+    basis: Option<crate::doc::calc::Basis>,
     mut applies: impl FnMut(&StyleRule) -> bool,
 ) -> Cascade {
     let mut out = Cascade::default();
@@ -103,8 +105,18 @@ pub(crate) fn resolve_values(
                 None => token(theme, name),
             }
         });
-        // Math functions reduce once their variables are known.
+        // Viewport units and rem become px; math functions reduce once
+        // their variables are known.
         let value = value.and_then(|v| {
+            let v = match basis {
+                Some(basis) if crate::doc::calc::has_absolute(&v) => {
+                    let (v, read) = crate::doc::calc::absolute(&v, basis);
+                    out.viewport_reads.width |= read.width;
+                    out.viewport_reads.height |= read.height;
+                    v
+                }
+                _ => v,
+            };
             if crate::doc::calc::has_math(&v) {
                 crate::doc::calc::reduce(&v)
             } else {
@@ -121,14 +133,15 @@ pub(crate) fn resolve_values(
     out
 }
 
-pub fn resolve(
+pub(crate) fn resolve(
     rules: &[StyleRule],
     inline: &[(String, String)],
     inherited: &variables::Computed,
     theme: &crate::Theme,
+    basis: crate::doc::calc::Basis,
     applies: impl FnMut(&StyleRule) -> bool,
 ) -> Cascade {
-    let mut out = resolve_values(rules, inline, inherited, theme, applies);
+    let mut out = resolve_values(rules, inline, inherited, theme, Some(basis), applies);
     let mut body = String::new();
     for (name, value, line) in std::mem::take(&mut out.values) {
         if crate::doc::motion::longhand(&name) {

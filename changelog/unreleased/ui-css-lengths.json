@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "UI documents: horizontal margins",
+      "summary": "margin, margin-left/-right, margin-inline (and -start/-end) and margin-block-start/-end take px, em, rem, viewport units, percentages (of the parent's content width, as CSS 2 §8.3 has it), negatives, auto and calc(). In a block's flow auto left and right margins centre or push the box (margin: 0 auto); in a flex line auto margins take the free space and align the item across it; in a grid area they align the item and other margins inset it."
+    },
+    {
+      "member": "UI documents: mixed-unit calc(), min(), max(), clamp()",
+      "summary": "A length calc() reduces to a linear sum of %, px and em terms, with rem and vw/vh/vmin/vmax turned into px when the element resolves; layout resolves the percentage against the basis it already has. min(), max() and clamp() over such sums are evaluated at layout. width: calc(100% - 12px) and min(100%, 600px) work, a var() term bound with style:--name moves only its element, and a viewport unit re-resolves on resize."
+    },
+    {
+      "member": "UI documents: empty blocks collapse through themselves",
+      "summary": "An empty block in a block's flow (no padding, auto height, no children but such blocks) and an empty <p> are 0 tall, and their top and bottom margins collapse with their neighbours' (CSS 2 §8.3.1)."
+    }
+  ]
+}

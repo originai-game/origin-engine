@@ -200,6 +200,104 @@ pub enum Size {
     Fixed(f32),
     /// A fraction (0–1) of the parent's inner size.
     Percent(f32),
+    /// CSS `calc()`, `min()`, `max()` or `clamp()` over lengths in more than
+    /// one unit (`calc(100% - 12px)`), resolved against the size a
+    /// percentage reads.
+    Calc(Calc),
+}
+
+/// A CSS length as a linear sum: a fraction of a basis plus CSS px.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Length {
+    /// A fraction (0–1) of the basis.
+    pub pct: f32,
+    pub px: f32,
+}
+
+impl Length {
+    pub const fn px(v: f32) -> Length {
+        Length { pct: 0.0, px: v }
+    }
+
+    /// Its CSS px against `basis`, the size a percentage reads.
+    pub fn of(self, basis: f32) -> f32 {
+        self.pct * basis + self.px
+    }
+}
+
+/// How a [`Calc`] combines its lengths.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CalcOp {
+    /// The first length (`calc()`).
+    #[default]
+    Sum,
+    Min,
+    Max,
+    /// The second length between the first and the third.
+    Clamp,
+}
+
+/// Up to three lengths a CSS math function combines at layout.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Calc {
+    pub op: CalcOp,
+    pub args: [Length; 3],
+    /// How many of `args` it reads.
+    pub count: u8,
+}
+
+impl Calc {
+    /// Its CSS px against `basis`.
+    pub fn of(&self, basis: f32) -> f32 {
+        let v = self.args[..self.count.max(1) as usize]
+            .iter()
+            .map(|l| l.of(basis));
+        match self.op {
+            CalcOp::Sum => self.args[0].of(basis),
+            CalcOp::Min => v.fold(f32::INFINITY, f32::min),
+            CalcOp::Max => v.fold(f32::NEG_INFINITY, f32::max),
+            CalcOp::Clamp => {
+                let [lo, v, hi] = self.args.map(|l| l.of(basis));
+                v.min(hi).max(lo)
+            }
+        }
+    }
+
+    /// Its px with no basis (a percentage of an unknown size is 0, as CSS
+    /// reads one for an intrinsic size).
+    pub fn intrinsic(&self) -> f32 {
+        let mut c = *self;
+        for a in &mut c.args {
+            a.pct = 0.0;
+        }
+        c.of(0.0).max(0.0)
+    }
+}
+
+/// One margin edge: a length, or `auto` (the free space).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Margin {
+    pub len: Length,
+    pub auto: bool,
+}
+
+impl Margin {
+    pub const fn px(v: f32) -> Margin {
+        Margin {
+            len: Length::px(v),
+            auto: false,
+        }
+    }
+
+    /// Its CSS px against `basis` (its parent's content width); `auto` is 0.
+    pub fn of(self, basis: f32) -> f32 {
+        if self.auto { 0.0 } else { self.len.of(basis) }
+    }
+
+    /// Its CSS px for an intrinsic size: a percentage and `auto` are 0.
+    pub fn intrinsic(self) -> f32 {
+        if self.auto { 0.0 } else { self.len.px }
+    }
 }
 
 impl Default for Size {
@@ -235,7 +333,7 @@ impl Size {
         match *self {
             Size::Fit { min, max } | Size::Grow { min, max } => (min, max.max(min)),
             Size::Fixed(v) => (v, v),
-            Size::Percent(_) => (0.0, f32::INFINITY),
+            Size::Percent(_) | Size::Calc(_) => (0.0, f32::INFINITY),
         }
     }
 }
@@ -346,11 +444,12 @@ pub struct Element {
     /// height and the width left to fit, as wide as the height times it
     /// (an image keeps its picture's proportions in a growing column).
     pub aspect: f32,
-    /// Its top and bottom margins (CSS `margin-top`, `margin-bottom`), CSS
-    /// px: room outside its box along its parent's column, or across its
-    /// parent's row. A stack or a grid places its children without them.
-    pub margin_top: f32,
-    pub margin_bottom: f32,
+    /// Its margins in CSS order (top, right, bottom, left): room outside
+    /// its box. A percentage reads its parent's content width, as CSS's do;
+    /// an `auto` one takes the free space a block's width or a flex line
+    /// leaves (docs/ui.md §2, HTML blocks). A stack places its children
+    /// without them.
+    pub margin: [Margin; 4],
     /// A CSS block box (`display: block`): its in-flow children's vertical
     /// margins collapse with each other and, where no padding separates
     /// them, with its own (CSS 2 §8.3.1).

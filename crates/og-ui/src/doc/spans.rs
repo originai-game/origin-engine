@@ -207,7 +207,7 @@ pub(crate) fn resolve(
         })
         .collect();
     let mut cascade =
-        super::build::cascade::resolve_values(&rules, &[], inherited, theme, |_| true);
+        super::build::cascade::resolve_values(&rules, &[], inherited, theme, None, |_| true);
     let mut rule = SpanRule {
         name: span.name.clone(),
         attributes: Vec::new(),
