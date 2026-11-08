@@ -132,6 +132,13 @@ impl RetainedHost {
                 self.dispatch(ui, env, target, When::Drop, keys(k, target), events);
             }
             self.dispatch(ui, env, k, When::DragEnd, keys(k, target), events);
+            // Thrown off (a sheet swiped down): its element builds next
+            // tick and closes.
+            if gesture(k).is_some_and(|g| g.dismissed)
+                && let Some(owner) = self.owner_of.get(&k).cloned()
+            {
+                self.emit.insert(owner);
+            }
         }
         self.pointer.drag = now;
         // Pointer Events: down and wheel at the element under the pointer,

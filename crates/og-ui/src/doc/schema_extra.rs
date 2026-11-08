@@ -599,4 +599,25 @@ pub const PROPS: &[PropSpec] = &[
         two_way: false,
         doc: "`-og-material: <name>(<n> …[, <colour>])`: the element and its subtree composited through one of the engine's built-in materials (dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur), its parameters in the material's order. No CSS standard has shader materials.",
     },
+    PropSpec {
+        name: "scrollSnapType",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `scroll-snap-type: x | y | both [mandatory | proximity]` on a scroll container: a drag, fling or wheel settles on the snap position of the area nearest where it would stop (`proximity`: only within a third of the view).",
+    },
+    PropSpec {
+        name: "scrollSnapAlign",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `scroll-snap-align: start | center | end` (block, then inline) of an area inside a snapping scroll container: the edge or centre that lines up with its view's.",
+    },
+    PropSpec {
+        name: "sheetDetents",
+        ty: Ty::Text,
+        on: On::Kinds(&["dialog"]),
+        two_way: false,
+        doc: "`-og-sheet-detents: 40% 90%` on a modal `<dialog>`: a bottom sheet docked to the bottom at full width, dragged onto its detents (heights, `%` of the viewport's) and swiped down to close (writing `open` back). It opens at the first. No CSS standard has detents.",
+    },
 ];

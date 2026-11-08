@@ -171,6 +171,18 @@ impl Ui {
             }
             d.clip = matches!(x, "hidden" | "clip") || matches!(y, "hidden" | "clip");
         }
+        if let Some(Ok(s)) = r
+            .str("scrollSnapType")
+            .map(crate::doc::paint_css::snap_type)
+        {
+            el.snap = s;
+        }
+        if let Some(Ok(a)) = r
+            .str("scrollSnapAlign")
+            .map(crate::doc::paint_css::snap_align)
+        {
+            el.snap_align = a;
+        }
         if r.str("scrollbarWidth") == Some("none") {
             el.hide_bars = true;
         }

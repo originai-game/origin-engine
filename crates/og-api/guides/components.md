@@ -122,6 +122,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `text-shadow:` | `<x> <y> [<blur>] [<colour>], … \| none` | CSS `text-shadow: <x> <y> [<blur>] [<colour>], …` on the element's text. |
 | `clip-path:` | `inset(…) \| circle(…) \| ellipse(…) \| polygon(…) \| path("…") \| none` | CSS `clip-path`: `inset()`, `circle()`, `ellipse()`, `polygon()` or `path()` cuts the element, its background and its children to the shape (by its path's coverage, either fill rule). |
 | `-og-material:` | `<material>(<n> …[, <colour>]) \| none` | `-og-material: <name>(<n> …[, <colour>])`: the element and its subtree composited through one of the engine's built-in materials (dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur), its parameters in the material's order. No CSS standard has shader materials. |
+| `scroll-snap-type:` | `none \| x \| y \| block \| inline \| both [mandatory \| proximity]` | CSS `scroll-snap-type: x \| y \| both [mandatory \| proximity]` on a scroll container: a drag, fling or wheel settles on the snap position of the area nearest where it would stop (`proximity`: only within a third of the view). |
+| `scroll-snap-align:` | `none \| start \| center \| end [<inline>]` | CSS `scroll-snap-align: start \| center \| end` (block, then inline) of an area inside a snapping scroll container: the edge or centre that lines up with its view's. |
 
 Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).
 
@@ -457,6 +459,7 @@ Its own props, beside every element's:
 | `closedby` | `any \| closerequest \| none` | What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place. |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `modal` | `bool` | Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`). |
+| `-og-sheet-detents:` | `<n>% \| <n>px …` | `-og-sheet-detents: 40% 90%` on a modal `<dialog>`: a bottom sheet docked to the bottom at full width, dragged onto its detents (heights, `%` of the viewport's) and swiped down to close (writing `open` back). It opens at the first. No CSS standard has detents. |
 
 ## 25. `<details>` (`details`): A disclosure (two-way `open`): its `<summary>` row, its content shown only while open
 

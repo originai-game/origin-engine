@@ -674,6 +674,49 @@ pub(crate) fn material(text: &str) -> Result<Option<Layer>, String> {
     Ok(Some(layer))
 }
 
+/// `scroll-snap-type` as [`crate::layout::Element::snap`].
+pub(crate) fn snap_type(text: &str) -> Result<u8, String> {
+    let w: Vec<&str> = text.split_whitespace().collect();
+    let axes =
+        match w.first().copied() {
+            Some("none") if w.len() == 1 => return Ok(0),
+            Some("x" | "inline") => 1,
+            Some("y" | "block") => 2,
+            Some("both") => 3,
+            _ => return Err(
+                "scroll-snap-type: none | x | y | block | inline | both [mandatory | proximity]"
+                    .into(),
+            ),
+        };
+    match w.get(1..).unwrap_or_default() {
+        [] | ["mandatory"] => Ok(axes),
+        ["proximity"] => Ok(axes | 4),
+        _ => Err("scroll-snap-type's strictness is mandatory or proximity".into()),
+    }
+}
+
+/// `scroll-snap-align` (block, then inline) as
+/// [`crate::layout::Element::snap_align`].
+pub(crate) fn snap_align(text: &str) -> Result<u8, String> {
+    let one = |w: &str| match w {
+        "none" => Ok(0u8),
+        "start" => Ok(1),
+        "center" => Ok(2),
+        "end" => Ok(3),
+        w => Err(format!(
+            "'{w}' is not a snap alignment: none, start, center, end"
+        )),
+    };
+    match text.split_whitespace().collect::<Vec<_>>().as_slice() {
+        [a] => {
+            let a = one(a)?;
+            Ok(a | a << 2)
+        }
+        [block, inline] => Ok(one(inline)? | one(block)? << 2),
+        _ => Err("scroll-snap-align takes one or two values".into()),
+    }
+}
+
 // ---- resolving against the box
 
 impl CssGradient {

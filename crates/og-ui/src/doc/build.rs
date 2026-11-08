@@ -1090,7 +1090,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 pub mod cascade;
 mod containers;
 mod fields;
-mod gestures;
+pub(crate) mod gestures;
 mod mount;
 mod nodes;
 mod retained;

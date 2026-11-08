@@ -360,6 +360,92 @@ impl Ui {
         d - (to - at)
     }
 
+    /// Whether scroll container `key` snaps (CSS `scroll-snap-type`).
+    fn snaps(&self, key: u64) -> bool {
+        self.tree
+            .find(key)
+            .is_some_and(|i| self.nodes[i].el.snap & 3 != 0)
+    }
+
+    /// Where snapping container `key` settles from offset `projected` (CSS
+    /// Scroll Snap 1): on each snapping axis, the nearest snap position of
+    /// the areas inside it (not those inside a nested scroller), clamped to
+    /// its range; `mandatory` always, `proximity` only within a third of
+    /// its view, else `projected`. Read from last frame's boxes, which were
+    /// laid out at its offset now. Walks only down to the snap areas, and
+    /// only while the container settles.
+    fn snap_target(&self, key: u64, projected: Vec2) -> Option<Vec2> {
+        let i = self.tree.find(key)?;
+        let n = &self.nodes[i];
+        let snap = n.el.snap;
+        if snap & 3 == 0 {
+            return None;
+        }
+        let pad = n.el.padding;
+        let view = crate::layout::Rect::new(
+            n.rect.x + pad.left,
+            n.rect.y + pad.top,
+            (n.rect.width - pad.horizontal()).max(0.0),
+            (n.rect.height - pad.vertical()).max(0.0),
+        );
+        let at = self.offset(key);
+        let mut found: [Vec<f32>; 2] = Default::default();
+        let mut stack: Vec<usize> = n.children.clone();
+        while let Some(c) = stack.pop() {
+            let cn = &self.nodes[c];
+            if cn.hidden {
+                continue;
+            }
+            let a = cn.el.snap_align;
+            if a == 0 {
+                if !(cn.el.scroll || cn.el.scroll_x) {
+                    stack.extend(cn.children.iter().copied());
+                }
+                continue;
+            }
+            let r = cn.rect;
+            for (axis, found) in found.iter_mut().enumerate() {
+                let align = (a >> (2 * axis)) & 3;
+                if snap & (1 << axis) == 0 || align == 0 {
+                    continue;
+                }
+                let (lo, len, vlo, vlen) = if axis == 0 {
+                    (r.x, r.width, view.x, view.width)
+                } else {
+                    (r.y, r.height, view.y, view.height)
+                };
+                let d = match align {
+                    1 => lo - vlo,
+                    2 => (lo + len / 2.0) - (vlo + vlen / 2.0),
+                    _ => (lo + len) - (vlo + vlen),
+                };
+                found.push(if axis == 0 { at.x } else { at.y } + d);
+            }
+        }
+        let range = self
+            .state
+            .scroll_info
+            .get(&key)
+            .map_or(Vec2::ZERO, |s| s.range)
+            .max(Vec2::ZERO);
+        let mut out = projected.clamp(Vec2::ZERO, range);
+        for axis in 0..2 {
+            let p = out[axis];
+            let Some(best) = found[axis]
+                .iter()
+                .map(|c| c.clamp(0.0, range[axis]))
+                .min_by(|a, b| (a - p).abs().total_cmp(&(b - p).abs()))
+            else {
+                continue;
+            };
+            let size = if axis == 0 { view.width } else { view.height };
+            if snap & 4 == 0 || (best - p).abs() <= size / 3.0 {
+                out[axis] = best;
+            }
+        }
+        Some(out)
+    }
+
     /// `key` and the scroll containers around it, innermost first.
     fn scroll_chain(&self, key: u64) -> Vec<u64> {
         let mut out = Vec::new();
@@ -457,6 +543,9 @@ impl Ui {
             return grabbed;
         }
         // The wheel: the innermost scroll container under the pointer first.
+        // A snapping one settles once the wheel stops (the next tick, when
+        // its boxes are laid out at the offset the wheel left).
+        let mut wheel_snap = None;
         if input.wheel != Vec2::ZERO && input.pointer_inside {
             self.state.fling = None;
             if let Some(h) = self
@@ -474,6 +563,7 @@ impl Ui {
                     self.zoom_by(key, k, p, Vec2::ZERO);
                 } else {
                     self.scroll_chain_by(key, input.wheel);
+                    wheel_snap = self.snaps(key).then_some(key);
                 }
             }
         }
@@ -492,7 +582,11 @@ impl Ui {
                 self.state.drag_v = self.state.drag_v * 0.5 + d * 0.5;
             } else if input.released {
                 let v = self.state.drag_v;
-                if !self.theme().reduced_motion && v.length() > 1.0 {
+                let reduced = self.theme().reduced_motion;
+                if self.snaps(active) {
+                    // It settles on a snap position (a still release too).
+                    self.state.fling = Some((active, if reduced { Vec2::ZERO } else { v }));
+                } else if !reduced && v.length() > 1.0 {
                     self.state.fling = Some((active, v));
                 }
                 self.state.drag_v = Vec2::ZERO;
@@ -504,9 +598,35 @@ impl Ui {
             if self.hit(key).is_none() {
                 self.state.fling = None;
             } else {
-                let left = self.scroll_by(key, v);
                 let response = (crate::theme::SPRING_MOMENTUM.response_ms / 1000.0).max(1e-3);
                 let decay = (1.0 - 1.0 / (self.ticks_per_second() as f32 * response)).max(0.0);
+                let keep = 1.0 - decay;
+                let at = self.offset(key);
+                // A snapping container steers its fling onto the snap
+                // position nearest where it would stop: a velocity of
+                // (target − offset)·(1 − decay) decays onto the target
+                // exactly, so the next tick projects the same target and the
+                // fling needs no state beyond its velocity.
+                if let Some(target) = self.snap_target(key, at + v / keep) {
+                    if self.theme().reduced_motion {
+                        self.scroll_by(key, target - at);
+                        self.state.fling = None;
+                    } else {
+                        self.scroll_by(key, (target - at) * keep);
+                        let rest = target - self.offset(key);
+                        if rest.length() < 0.25 {
+                            self.scroll_by(key, rest);
+                            self.state.fling = None;
+                        } else {
+                            self.state.fling = Some((key, rest * keep));
+                        }
+                    }
+                    if let Some(k) = wheel_snap {
+                        self.state.fling = Some((k, Vec2::ZERO));
+                    }
+                    return grabbed;
+                }
+                let left = self.scroll_by(key, v);
                 let mut next = v * decay;
                 // At the content's end on an axis (what the offset could not
                 // take, past a float's rounding of the move), it stops there.
@@ -518,6 +638,9 @@ impl Ui {
                 }
                 self.state.fling = (next.length() >= FLING_STOP).then_some((key, next));
             }
+        }
+        if let Some(k) = wheel_snap {
+            self.state.fling = Some((k, Vec2::ZERO));
         }
         grabbed
     }

@@ -217,6 +217,10 @@ local styles and `og style new` remain available.
   -og-sound: success; } }`. Sparkle a rare item with `.rare { -og-emitter:
   12 diamond 6px #ffd166; }`. Flash damage with `#Hurt { -og-meta: vignette
   #a00; opacity: var(--hit); }`.
+  drawn flat on the ground in perspective, inert.
+- A carousel snaps with `scroll-snap-type: x mandatory` on its box and
+  `scroll-snap-align: center` on each card. A bottom sheet is
+  `<dialog modal bind:open={$bag}>` with `-og-sheet-detents: 40% 90%`.
 - Paint with standard CSS: `background: linear-gradient(160deg,
   var(--panel), #0000), #123`, `mask-image: linear-gradient(#000 70%,
   transparent)`, `clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)`,

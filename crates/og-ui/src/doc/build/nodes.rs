@@ -325,6 +325,12 @@ impl Ui {
                     if out.dismissed {
                         opened = Some(false);
                     }
+                    if dialog.modal
+                        && let Some(d) = r.str("sheetDetents")
+                        && self.sheet(id.as_str(), d, open)
+                    {
+                        opened = Some(false);
+                    }
                 }
                 "details" => {
                     let open = open_now(self);

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: scroll-snap-type, scroll-snap-align, -og-sheet-detents",
+      "summary": "Scrolling boxes snap a released drag, a fling or a stopped wheel onto their areas' snap positions (mandatory or proximity). A modal dialog with -og-sheet-detents is a bottom sheet that drags onto its detents and closes when swiped down, writing open back."
+    }
+  ]
+}

@@ -402,6 +402,12 @@ pub struct Element {
     /// that shows its overflow by its cut edge, where a resting thumb read
     /// as a selection underline).
     pub hide_bars: bool,
+    /// CSS `scroll-snap-type` of a scroll container: bit 0 x, bit 1 y,
+    /// bit 2 proximity (else mandatory); 0 does not snap.
+    pub snap: u8,
+    /// CSS `scroll-snap-align` of a snap area: x in bits 0–1, y in bits
+    /// 2–3, each 0 none, 1 start, 2 center, 3 end.
+    pub snap_align: u8,
     /// A scroll container's edge fade (CSS px, 0: none) where more content
     /// lies beyond, into `fade_into` (`None`: `panel`).
     pub fade: f32,

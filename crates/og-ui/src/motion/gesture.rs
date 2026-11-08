@@ -332,6 +332,28 @@ impl Ui {
         out
     }
 
+    /// Places element `key`'s drag at rest at `offset` (a sheet opening at
+    /// its first detent), as if a release had settled it there.
+    pub(crate) fn seed_drag(&mut self, key: u64, offset: Vec2) {
+        let now = self.state.tick;
+        let m = &mut self.state.motion;
+        let g = m.gestures.entry(key).or_insert(Gesture {
+            snapped: -1,
+            scale: 1.0,
+            ..Gesture::default()
+        });
+        g.offset = offset;
+        g.dismissed = false;
+        g.held = false;
+        g.dragging = false;
+        g.snapped = 0;
+        g.tick = now;
+        m.channels
+            .insert(channel_key(key, DRAG_X), Channel::at(offset.x, now));
+        m.channels
+            .insert(channel_key(key, DRAG_Y), Channel::at(offset.y, now));
+    }
+
     /// What the drag or pinch on `id` (under the open element) is doing:
     /// last tick's answer, as responses are.
     pub fn gesture(&self, id: &str) -> GestureInfo {

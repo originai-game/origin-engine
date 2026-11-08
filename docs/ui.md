@@ -246,6 +246,17 @@ computes to `auto`. `auto` and `scroll` make the box scroll on that axis,
 `hidden` and `clip` clip its children to the padding box.
 `scrollbar-width: none` hides the bars of a scrolling box (`auto` and
 `thin` show them).
+`scroll-snap-type: x | y | both [mandatory | proximity]` on a scrolling
+box and `scroll-snap-align: start | center | end` (block, then inline) on
+the areas inside it settle a released drag, a fling or a stopped wheel on
+the snap position nearest where it would stop, as CSS Scroll Snap 1 does;
+`proximity` snaps only within a third of the view. The fling is steered
+onto the target and decays onto it exactly, and the areas are read from
+last frame's boxes only while the box settles. A modal `<dialog>` with
+`-og-sheet-detents: 40% 90%` is a bottom sheet: docked to the bottom at
+full width, as tall as its tallest detent, opened at its first, dragged
+onto its detents and swiped down to close, which writes `open` back. The
+detents are the engine prefix because no CSS standard has them.
 
 A `display: block` box with an auto width fills its block parent's
 content width, as in CSS block flow, so a `<div>` inside a `<section>` is
