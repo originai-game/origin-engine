@@ -478,10 +478,52 @@ impl Ui {
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
             self.nodes[i].a11y.name = Some(name.to_string());
         }
+        self.apply_aria(i, r);
         if !self.building {
             self.apply_part_appearance(i);
             self.prepare_layout_node(i);
         }
+    }
+}
+
+impl Ui {
+    /// An element's ARIA attributes over what its kind tells the tree
+    /// (docs/ui.md §2): a role, a description, a value and its range, and
+    /// states. Applied with its other fields, so a bound one changes the
+    /// tree only when its element is rebuilt.
+    fn apply_aria(&mut self, i: usize, r: &Resolved) {
+        if let Some(role) = r.str("role")
+            && let Some(&k) = crate::a11y::ROLES.iter().find(|&&k| k == role)
+        {
+            self.nodes[i].a11y.role = Some(k);
+        }
+        if r.flag("ariaDisabled") {
+            self.nodes[i].disabled = true;
+        }
+        let a = &mut self.nodes[i].a11y;
+        if let Some(d) = r.str("ariaDescription").filter(|d| !d.is_empty()) {
+            a.description = Some(d.to_string());
+        }
+        if let Some(v) = r.str("ariaValuetext") {
+            a.value = Some(v.to_string());
+        }
+        if let Some(now) = r.num("ariaValuenow") {
+            a.range = Some(crate::a11y::A11yRange {
+                min: r.num("ariaValuemin"),
+                max: r.num("ariaValuemax"),
+                now,
+            });
+        }
+        let state = |name: &str| r.has(name).then(|| r.flag(name));
+        a.checked = state("ariaChecked").or(a.checked);
+        a.selected = state("ariaSelected").or(a.selected);
+        a.expanded = state("ariaExpanded").or(a.expanded);
+        a.pressed = state("ariaPressed").or(a.pressed);
+        a.busy |= r.flag("ariaBusy");
+        if let Some(level) = r.num("ariaLevel").filter(|l| *l >= 1.0) {
+            a.level = Some(level.min(255.0) as u8);
+        }
+        a.current = r.str("ariaCurrent").is_some_and(|c| c != "false");
     }
 }
 

@@ -40473,7 +40473,7 @@ export interface UiElement {
    */
   readonly value: string;
   /**
-   * Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, collapsed (expandable and closed), pressed, busy.
+   * Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, collapsed (expandable and closed), pressed, busy, current (`aria-current`).
    */
   readonly states: readonly string[];
   /**

@@ -119,6 +119,22 @@ Elements HTML has no name for (`column`, `row`, `stack`, `grid`, `panel`,
 `scroll`, the virtualised `list` and `cells`, `art`, `icon`, `tabs`,
 `badge`, `spacer`) keep their names.
 
+#### ARIA
+
+Any element takes ARIA over what its kind tells the accessibility tree:
+`role` (one of og.ui's roles; another is refused at parse),
+`aria-label`, `aria-labelledby` and `aria-describedby` (the text of the
+elements their ids name: one id's text follows it when bound, several
+ids join their literal texts), `aria-description`, `aria-valuemin`,
+`-valuemax`, `-valuenow` and `-valuetext`, and the states
+`aria-checked`, `aria-selected`, `aria-expanded`, `aria-pressed`,
+`aria-busy`, `aria-disabled` (also inert), `aria-level` and
+`aria-current` (the state `current`). A tab bar is
+`<div role="tablist"><button role="tab" aria-selected={…}>…</button></div>`,
+a chip `<button aria-pressed={…}>`, a labelled rule
+`<div role="separator">Or</div>`. They are applied with the element's
+other fields, so a bound one updates the tree when its element rebuilds.
+
 #### HTML blocks and lists
 
 A box (`<div>` and the other block tags) lays out by its CSS `display`:

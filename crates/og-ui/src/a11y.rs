@@ -89,6 +89,10 @@ pub(crate) struct A11y {
     pub atomic: Option<bool>,
     /// A notification (a toast): its region announces as it appears.
     pub notify: bool,
+    /// A toggle button's state (`aria-pressed`).
+    pub pressed: Option<bool>,
+    /// The current item of a set (`aria-current`).
+    pub current: bool,
 }
 
 /// How a live region's changes are announced (`aria-live`).
@@ -555,8 +559,11 @@ pub(crate) fn states_of(n: &Node) -> Vec<String> {
         Some(false) => s.push("collapsed".to_owned()),
         None => {}
     }
-    if let Widget::Button { pressed: true, .. } = n.widget {
+    if matches!(n.widget, Widget::Button { pressed: true, .. }) || n.a11y.pressed == Some(true) {
         s.push("pressed".to_owned());
+    }
+    if n.a11y.current {
+        s.push("current".to_owned());
     }
     if n.a11y.busy {
         s.push("busy".to_owned());

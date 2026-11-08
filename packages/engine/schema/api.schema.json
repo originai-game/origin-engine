@@ -70010,7 +70010,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, collapsed (expandable and closed), pressed, busy."
+          "description": "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, collapsed (expandable and closed), pressed, busy, current (`aria-current`)."
         },
         "opaque": {
           "type": "boolean",

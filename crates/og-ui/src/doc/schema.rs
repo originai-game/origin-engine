@@ -689,6 +689,77 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Name,
         "With customize: its name in the saved HUD layout (default: its path)."
     ),
+    // ARIA (docs/ui.md §2: semantics through ARIA).
+    p!(
+        "role",
+        Ty::Name,
+        "Its accessibility role over its kind's (ARIA `role`; one of og.ui's roles)."
+    ),
+    p!(
+        "ariaDescription",
+        Ty::Text,
+        "Read after its name (`aria-description`, or the text `aria-describedby` names)."
+    ),
+    p!(
+        "ariaValuemin",
+        Ty::Num,
+        "Its range's low end for a screen reader (`aria-valuemin`)."
+    ),
+    p!(
+        "ariaValuemax",
+        Ty::Num,
+        "Its range's high end for a screen reader (`aria-valuemax`)."
+    ),
+    p!(
+        "ariaValuenow",
+        Ty::Num,
+        "Its value as a number for a screen reader (`aria-valuenow`)."
+    ),
+    p!(
+        "ariaValuetext",
+        Ty::Text,
+        "Its value as a screen reader says it (`aria-valuetext`)."
+    ),
+    p!(
+        "ariaChecked",
+        Ty::Bool,
+        "Checked, for a screen reader (`aria-checked`)."
+    ),
+    p!(
+        "ariaSelected",
+        Ty::Bool,
+        "Selected, for a screen reader (`aria-selected`): a tab, an option, a row."
+    ),
+    p!(
+        "ariaExpanded",
+        Ty::Bool,
+        "Expanded or collapsed (`aria-expanded`): a disclosure, a tree item, a menu button."
+    ),
+    p!(
+        "ariaPressed",
+        Ty::Bool,
+        "A toggle button's pressed state (`aria-pressed`): a chip, a filter."
+    ),
+    p!(
+        "ariaBusy",
+        Ty::Bool,
+        "Busy (`aria-busy`): loading or working."
+    ),
+    p!(
+        "ariaDisabled",
+        Ty::Bool,
+        "Disabled for a screen reader and inert (`aria-disabled`)."
+    ),
+    p!(
+        "ariaLevel",
+        Ty::Num,
+        "Its level, 1 and up (`aria-level`): a heading's, a tree item's."
+    ),
+    p!(
+        "ariaCurrent",
+        Ty::Word(&["page", "step", "location", "date", "time", "true", "false"]),
+        "The current item in a set (`aria-current`): a pagination's page, a breadcrumb's last, a wizard's step."
+    ),
     p!(
         "dataOgInstant",
         Ty::Bool,

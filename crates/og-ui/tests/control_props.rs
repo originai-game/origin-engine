@@ -507,3 +507,81 @@ fn a_button_holds_its_content_in_a_row() {
         );
     });
 }
+
+/// ARIA in documents (G4): `role` and the `aria-*` states and values reach
+/// the accessibility tree, `aria-labelledby`/`aria-describedby` read the
+/// text of the elements they name (and follow it when it is bound), and
+/// a role og.ui has not is refused. Ways it could fail: a role kept to the
+/// kind's, a state dropped (pressed, current, busy, expanded), a range
+/// without its bounds, a referenced label's text not followed.
+#[test]
+fn aria_attributes_reach_the_accessibility_tree() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <h2 id="Title">{$title}</h2>
+  <p id="Help">Pick a tab</p>
+  <div id="Tabs" role="tablist" aria-labelledby="Title" aria-describedby="Help">
+    <button id="One" role="tab" aria-selected={$tab == 1} aria-current="page">One</button>
+    <button id="Two" role="tab" aria-selected={$tab == 2}>Two</button>
+  </div>
+  <button id="Chip" aria-pressed={$on} aria-busy="true">Filter</button>
+  <div id="Bar" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow={$n} aria-valuetext="3 of 10">x</div>
+  <div id="Sep" role="separator" aria-expanded="false">Or</div>
+</div>"#;
+    both(
+        text,
+        &[
+            ("title", json!("Modes")),
+            ("tab", json!(1)),
+            ("on", json!(true)),
+            ("n", json!(3)),
+        ],
+        |d| {
+            let tabs = d.a11y("Tabs");
+            assert_eq!(
+                (tabs.role.as_str(), tabs.name.as_str()),
+                ("tablist", "Modes")
+            );
+            assert_eq!(tabs.description, "Pick a tab");
+            let one = d.a11y("One");
+            assert_eq!(one.role, "tab");
+            assert!(
+                one.states.contains(&"selected".into()) && one.states.contains(&"current".into()),
+                "{:?}",
+                one.states
+            );
+            assert!(!d.a11y("Two").states.contains(&"selected".into()));
+            let chip = d.a11y("Chip");
+            assert!(
+                chip.states.contains(&"pressed".into()) && chip.states.contains(&"busy".into()),
+                "{:?}",
+                chip.states
+            );
+            let bar = d.a11y("Bar");
+            assert_eq!(
+                (bar.role.as_str(), bar.value.as_str()),
+                ("progressbar", "3 of 10")
+            );
+            assert_eq!(
+                (bar.value_min, bar.value_max, bar.value_now),
+                (Some(0.0), Some(10.0), Some(3.0))
+            );
+            let sep = d.a11y("Sep");
+            assert_eq!(sep.role, "separator");
+            assert!(sep.states.contains(&"collapsed".into()));
+            d.set("tab", json!(2));
+            d.set("title", json!("Maps"));
+            assert!(
+                d.a11y("Two").states.contains(&"selected".into()),
+                "a bound state follows"
+            );
+            assert_eq!(
+                d.a11y("Tabs").name,
+                "Maps",
+                "a named element's bound text follows"
+            );
+        },
+    );
+    let bad = refused(r#"<meta name="component" content="t"><div role="banana">x</div>"#);
+    assert!(bad.contains("not an accessibility role"), "{bad}");
+}

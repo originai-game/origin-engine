@@ -30,6 +30,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
             label_fors: Vec::new(),
             datalists: Vec::new(),
             list_fors: Vec::new(),
+            aria_refs: Vec::new(),
         };
         for node in &nodes {
             match node {
@@ -62,6 +63,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
         }
         p.join_labels()?;
         p.join_lists()?;
+        p.join_aria()?;
         super::extern_element::finish(&mut p.doc, &mut p.selectors).map_err(|e| (0, e))?;
         super::stylesheet::apply(&mut p.doc, &p.selectors, &p.styles)?;
         let mut errors = Vec::new();
@@ -338,6 +340,9 @@ struct Parser {
     /// Ranges' `list`s, joined to their datalists once the tree is read:
     /// (the range's node, the datalist's id, where `list` is written).
     list_fors: Vec<(usize, String, usize)>,
+    /// `aria-labelledby` and `aria-describedby`, joined once the tree is
+    /// read: (the element, the prop the text goes to, the ids, where).
+    aria_refs: Vec<(usize, &'static str, String, usize)>,
 }
 impl Parser {
     fn line(&self, at: usize) -> usize {
@@ -1047,6 +1052,32 @@ impl Parser {
                 }
                 continue;
             }
+            // ARIA naming by reference: the named elements' text, joined
+            // once the tree is read.
+            if let Some(prop) = match a.name.as_str() {
+                "aria-labelledby" => Some("name"),
+                "aria-describedby" => Some("ariaDescription"),
+                _ => None,
+            } {
+                if a.bound || a.value.trim().is_empty() {
+                    return Err((
+                        a.at,
+                        format!("{} names elements by their literal ids", a.name),
+                    ));
+                }
+                self.aria_refs.push((i, prop, a.value.clone(), a.at));
+                continue;
+            }
+            if a.name == "role" && !a.bound && !crate::a11y::ROLES.contains(&a.value.as_str()) {
+                return Err((
+                    a.at,
+                    format!(
+                        "role \"{}\" is not an accessibility role; take one of {}",
+                        a.value,
+                        crate::a11y::ROLES.join(", ")
+                    ),
+                ));
+            }
             // A range's ticks: the `<datalist>` it names, joined once the
             // tree is read.
             if tag == "input" && a.name == "list" {
@@ -1525,6 +1556,63 @@ impl Parser {
                     ));
                 }
             }
+        }
+        Ok(())
+    }
+
+    /// Joins each `aria-labelledby` and `aria-describedby` to the text of
+    /// the elements its ids name (an element's own text, else its first
+    /// text inside): one id's text as written, bound or not; several ids'
+    /// literal texts joined by spaces, as ARIA computes a name.
+    fn join_aria(&mut self) -> Result<(), Error> {
+        for (node, prop, ids, at) in std::mem::take(&mut self.aria_refs) {
+            let mut texts = Vec::new();
+            for id in ids.split_ascii_whitespace() {
+                let Some(target) = self
+                    .doc
+                    .nodes
+                    .iter()
+                    .position(|n| n.id == id && matches!(n.kind, NodeKind::Element(_)))
+                else {
+                    return Err((
+                        at,
+                        format!("\"{id}\" names no element; give it id=\"{id}\""),
+                    ));
+                };
+                let mut stack = vec![target];
+                let mut found = None;
+                while let Some(k) = stack.pop() {
+                    if let Some(t) = self.doc.nodes[k].props.iter().find(|p| p.name() == "text") {
+                        found = Some(t.clone());
+                        break;
+                    }
+                    stack.extend(self.doc.nodes[k].children.iter().rev());
+                }
+                texts.push(found.ok_or((at, format!("#{id} has no text to read")))?);
+            }
+            let mut set = if let [one] = &texts[..] {
+                one.clone()
+            } else {
+                let joined = texts
+                    .iter()
+                    .map(|t| match &t.value {
+                        PropValue::Lit(Lit::Str(s)) => Ok(s.clone()),
+                        _ => Err((
+                            at,
+                            "several ids join literal texts; name one element for a bound text"
+                                .to_string(),
+                        )),
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+                    .join(" ");
+                PropSet {
+                    value: PropValue::Lit(Lit::Str(joined)),
+                    ..texts[0].clone()
+                }
+            };
+            set.spec = schema::prop(prop).expect("an ARIA prop").0;
+            self.doc.nodes[node].props.retain(|p| p.name() != prop);
+            self.doc.nodes[node].props.push(set);
         }
         Ok(())
     }

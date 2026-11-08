@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "ARIA on any element: role (checked against og.ui's roles), aria-labelledby and aria-describedby joined to the named elements' text, aria-description, aria-value{min,max,now,text}, and aria-checked, -selected, -expanded, -pressed, -busy, -disabled, -level and -current. A11yNode states gain current."
+    }
+  ]
+}
