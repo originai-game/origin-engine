@@ -325,8 +325,16 @@ Unshadowed engine tokens resolve against the active style, and `::part`
 declarations use the same cascade. These rules do not relax the kit's
 token-only rule (§3.1).
 
-Named breakpoints use `@media phone`; safe-area values use the supported CSS
-`env(safe-area-inset-*)` spellings. Svelte `class:` directives select
+Media rules use standard conditions, such as
+`@media (width < 600px), (height < 600px)`. Supported features are `width`,
+`height`, `aspect-ratio`, `orientation`, and `prefers-reduced-motion`, with
+inclusive `min-`/`max-` bounds and range comparisons. Commas and `or` select
+alternatives, `and` intersects, and `not` negates; mixed operators require
+parentheses. Nested media rules intersect. There is no named-breakpoint
+reader. Container-query runtime support remains pending.
+
+Safe-area values use the supported CSS `env(safe-area-inset-*)` spellings.
+Svelte `class:` directives select
 states; they do not introduce a second styling language.
 The `style:` directive accepts only bound CSS-token references, not raw
 numbers, colours, or arbitrary expressions. Other styling belongs in
@@ -341,7 +349,7 @@ such as `none`, `power1.out`, and `back.out`, plus `cubic-bezier(...)` and
 `steps(...)`. Style tokens retain `EaseRole` indirection. CSS timing
 keywords belong to the CSS parser; shared timing does not make them GSAP
 names. Lexical custom properties and the cascade above are implemented.
-Standard CSS completion remains pending for media and container queries,
+Standard CSS completion remains pending for container queries,
 transitions and animations, and sibling and structural selectors.
 The supported subset in the component catalogue is not full CSS support.
 

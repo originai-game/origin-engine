@@ -167,134 +167,44 @@ density's gutter (or `margin`), moved by `offset`.
 
 ## Documents (`src/doc/`)
 
-A **screen** (`type screen`) or a **component** (`type component`) is an
-`.ogt` document: an element tree with props, slots, parts, state groups,
-transitions, timelines, breakpoint overrides, list templates and bindings
-(docs/ui.md §2.1). `UiDocument::parse(source, text)` reads and validates one
-against the reflected props below (`doc::schema`, the one schema: the
-parser, `ui:set`, the probe's `schema`, `og.ui.documentSchema` and this
-table all read it, and `tests/documents.rs` holds this table equal to
-it); every error names its line and its fix. og-cook cooks a document into
-an `og.UiDocument` blob (the validated text, as styles are); a game loads it
-with `og.load.document` and a `Ui` registers it with `define_document`.
+A screen or component is a scriptless `.svelte` document. Metadata
+declares its contract; markup defines structure and bindings; scoped CSS
+defines appearance. `UiDocument::parse(source, text)` validates it against
+the reflected document schema, and og-cook writes an `og.UiDocument` blob.
+The old `.ogt` screen reader is deleted.
 
 ### Grammar
 
-```text
-type screen                       # or: type component
-version 2
----
-name "shop"                       # what og.ui.screen / push / component name it
-layer menu                        # screens: hud menu modal popover toast tooltip system
-input menu                        # game | menu | all (the kind's default)
-capture true                      # takes the pointer on its gaps too
-pause true                        # the game pauses while it is on the stack
-under dim                         # the layers under it: none | dim | blur | hide
-back pop                          # pop | none | emit <event>
-focus "Footer/Buy"                # where focus starts (a path below the root)
-remember true                     # focus returns where it was when it is the top again
-enter slideUp 24 spring 320 0.1   # the layer's presence (as an element's enter/exit)
-exit fade
-props {                           # the viewmodel's contract: name type "doc"
-  gold number "The player's gold."  # number string bool list object any
-  items list "What the shop sells."
+```svelte
+<meta name="screen" content="shop" data-layer="menu">
+<meta name="prop:gold" content="number">
+<meta name="prop:price" content="number">
+
+<panel id="Shop">
+	<button id="Buy" disabled={$gold < $price} onclick={buy}>
+		{t('shop.buy')}
+	</button>
+</panel>
+
+<style>
+#Shop { width: 520px; }
+@media (width < 600px), (height < 600px) {
+	#Shop, #Buy { width: stretch; }
 }
-parts frame price                 # part names a style dresses (every one used by an element)
-actions {                         # the action bar's hints while this layer is on top
-  confirm "Buy"
-  back "Leave"
-}
-timeline bought {                 # defined as <name>/<timeline>: shop/bought
-  track "" scale {                # target: "" the element it plays on, or a path below it
-    key 0 1                       # <ms> <value> [linear|out|exit|inOut|hold|spring <ms> <bounce>|bezier a b c d]
-    key 120 1.08 out
-    key 260 1
-  }
-  event 0 "" sound buy            # sound <name> [pitch] | haptic <kind> | burst [n] [radius] [#colour] | state <group> <state> | callback <name>
-  label hit 120
-  duration 400
-}
-fixture rich "{\"gold\": 1250000, \"items\": []}"   # a viewmodel to preview or push with (ui:push:shop:rich)
-panel Shop {                      # the one root element: <kind> [id] { … }
-  width: 520px                    # a style prop is a CSS declaration (docs/ui.md §3.2)
-  part frame
-  label Gold {
-    text bind gold compact        # bind <expression> [format [digits]]
-  }
-  label Price {
-    text "{price, grouped} gold"  # a quoted text with { is a template
-  }
-  for item in items {             # one copy of the block per entry; $index is its index
-    row Item {                    # its elements are told apart: Item#0, Item#1 …
-      label Name {
-        text bind item.name
-      }
-      state selection bind "$index == selected" {   # a group: its binding picks the state
-        off {                     # (a bool: the second state when true; a string: by name)
-          opacity: 0.6            # a state sets animatable props
-        }
-        on {
-          opacity: 1
-          background: var(--primary-soft) # or color; var(--<role>) or #rrggbb[aa]
-          enter bought            # a timeline played when the state is entered (exit: left)
-        }
-        transition: off on -og-spring(260ms, 0.2) # <from|any> <to|any> -og-spring(<ms>ms, <bounce>) | <ms>ms [ease] | var(--motion-<name>) | none
-      }
-    }
-  }
-  if "gold > 0" {                 # its block only while the expression is true
-    label Rich {
-      text "Rich"
-    }
-  }
-  list Items {                    # list and cells: virtualised, exactly one `for` inside
-    rowHeight 56                  # (only the rows in view are built)
-    for item in items {
-      label Name {
-        text bind item.name
-      }
-    }
-  }
-  slot Preview {                  # a place code fills: og.ui.openSlot("shop/Preview")
-    height: 120px
-  }
-  use PriceTag Tag {              # a component: its props by name (bound ones are two-way)
-    price bind item.price
-    width: 80px                   # an element prop applies to the instance's root
-  }
-  slider Volume {
-    value bind volume             # two-way: the slider writes volume back
-  }
-  button Buy {
-    text "Buy"
-    disabled bind "gold < price"
-    on click emit buy             # on <when> <act>
-    on click play bought
-    @media phone {                # breakpoint overrides: phone-portrait phone-landscape
-      width: stretch              # phone tablet desktop portrait landscape (later wins)
-    }
-  }
-}
+</style>
 ```
 
-Structure and behaviour are `.ogt` lines (one construct per line, `#`
-comments, quoted strings for anything that is not a word: paths with `/`,
-expressions with spaces); an element's look and layout are CSS declarations,
-its interaction states pseudo-classes (`:hover`, `:active`,
-`:focus-visible`, `:disabled`) and its breakpoints `@media` blocks
-(`src/doc/css.rs`, docs/ui.md §3.2). `og ui migrate` writes a version 1
-document as version 2.
-Element ids are unique among siblings (paths name elements by them); an
-element without one is `<kind>#<n>` among its same-kind siblings.
+The caller supplies `gold`, `price`, the `buy` action, and a string table
+containing `shop.buy`. IDs are unique within the document. Media conditions
+support width, height, aspect ratio, orientation, and reduced-motion
+preferences, min/max and range comparisons, boolean composition, and nested
+intersections. There is no named-breakpoint reader. Container-query runtime
+support is separate and remains pending.
 
-- **When** (`on <when> <act>`): `click`, `changed` (a control's value),
-  `appear` (it was not built last tick), `change <expression>` (its value
-  differs from last tick's), `action <name>` (a UI action fired while the
-  element's layer is the top one that takes input).
-- **Act**: `play <timeline>` (the document's, or `<doc>/<name>`),
-  `state <group> <state>`, `emit <event>` (an event to code), `push
-  <screen>`, `pop`, `action <name>`, `set <path> <expression>` (a write into
-  the viewmodel).
+See the [screens guide](../og-api/guides/screens.md) for the document grammar
+and [component catalogue](../og-api/guides/components.md) for reflected
+properties. The [UI contract](../../docs/ui.md) distinguishes implemented
+document support from pending retained mounting.
 
 ### Bindings and formats (`src/bind.rs`)
 

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI media-query documentation",
+      "summary": "Document standard media conditions and remove the obsolete named-breakpoint example. Keep container-query runtime support explicitly pending."
+    }
+  ]
+}
