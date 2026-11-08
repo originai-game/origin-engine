@@ -197,6 +197,30 @@ impl ColorFilter {
         o
     }
 
+    /// What the pass makes of an 8-bit sRGB pixel: decoded, filtered,
+    /// encoded and rounded, as an sRGB target stores it.
+    pub fn apply_srgb8(&self, rgb: [u8; 3]) -> [u8; 3] {
+        let decode = |v: u8| {
+            let c = f32::from(v) / 255.0;
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        let encode = |v: f32| {
+            let c = v.clamp(0.0, 1.0);
+            let e = if c <= 0.003_130_8 {
+                c * 12.92
+            } else {
+                1.055 * c.powf(1.0 / 2.4) - 0.055
+            };
+            (e * 255.0).round() as u8
+        };
+        let o = self.apply(rgb.map(decode));
+        o.map(encode)
+    }
+
     /// Its uniform (`FilterParams` in color_filter.wgsl): `a`'s rows, `b`'s
     /// rows, then the plane with `decode` in w (1: the frame holds
     /// sRGB-encoded values, decoded before and encoded after).
@@ -226,6 +250,10 @@ pub(crate) const COLOR_FILTER_WGSL: &str = wgsl!("color_filter.wgsl");
 mod tests {
     use super::*;
 
+    fn srgb(f: &ColorFilter, c: [u8; 3]) -> [u8; 3] {
+        f.apply_srgb8(c)
+    }
+
     fn decode(v: u8) -> f32 {
         let c = f32::from(v) / 255.0;
         if c <= 0.04045 {
@@ -233,21 +261,6 @@ mod tests {
         } else {
             ((c + 0.055) / 1.055).powf(2.4)
         }
-    }
-
-    fn encode(v: f32) -> u8 {
-        let c = v.clamp(0.0, 1.0);
-        let e = if c <= 0.003_130_8 {
-            c * 12.92
-        } else {
-            1.055 * c.powf(1.0 / 2.4) - 0.055
-        };
-        (e * 255.0).round() as u8
-    }
-
-    fn srgb(f: &ColorFilter, c: [u8; 3]) -> [u8; 3] {
-        let o = f.apply([decode(c[0]), decode(c[1]), decode(c[2])]);
-        [encode(o[0]), encode(o[1]), encode(o[2])]
     }
 
     /// libDaltonLens's own outputs (its `dl_simulate_cvd` at severity 1,

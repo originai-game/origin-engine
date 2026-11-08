@@ -456,6 +456,49 @@ mod web {
         Err(err("the cull readback did not land in 10000 polls"))
     }
 
+    fn color_filter(vision: &str, filter: &str) -> Result<Option<og_render::ColorFilter>, JsValue> {
+        let v = og_render::ColorVision::from_name(vision)
+            .ok_or_else(|| err(format!("no colour vision {vision}")))?;
+        let f = match filter {
+            "correct" => og_render::ColorVisionFilter::Correct,
+            "simulate" => og_render::ColorVisionFilter::Simulate,
+            _ => return Err(err(format!("no colour vision filter {filter}"))),
+        };
+        Ok(og_render::ColorFilter::new(v, f, 1.0))
+    }
+
+    /// Puts the open scene's frame through colour vision `vision` (`none`
+    /// takes the filter off) corrected or simulated (`filter`), as
+    /// UiDesc.colorVision does (docs/ui.md §3.2).
+    #[wasm_bindgen]
+    pub fn og_gfx_color_filter(vision: String, filter: String) -> Result<(), JsValue> {
+        let f = color_filter(&vision, &filter)?;
+        OPEN.with(|o| {
+            let mut o = o.borrow_mut();
+            let open = o.as_mut().ok_or_else(|| err("no scene open"))?;
+            open.built.scene.color_filter = f;
+            Ok(())
+        })
+    }
+
+    /// RGBA8 `pixels` through the CPU's colour filter
+    /// (`og_render::ColorFilter::apply_srgb8`), alpha kept: what the GPU
+    /// pass must draw from them, within rounding.
+    #[wasm_bindgen]
+    pub fn og_gfx_color_filter_cpu(
+        vision: String,
+        filter: String,
+        mut pixels: Vec<u8>,
+    ) -> Result<Vec<u8>, JsValue> {
+        if let Some(f) = color_filter(&vision, &filter)? {
+            for p in pixels.chunks_exact_mut(4) {
+                let o = f.apply_srgb8([p[0], p[1], p[2]]);
+                p[..3].copy_from_slice(&o);
+            }
+        }
+        Ok(pixels)
+    }
+
     /// One macrotask (setTimeout 0), so the browser can finish GPU work.
     async fn tick() -> Result<(), JsValue> {
         let set_timeout: js_sys::Function =

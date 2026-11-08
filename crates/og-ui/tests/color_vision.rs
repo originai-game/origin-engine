@@ -121,68 +121,21 @@ fn a_cue_draws_the_tokens_icon_from_the_styles_names() {
     assert!(warnings.contains("warn's cue is Pattern"), "{warnings}");
 }
 
-/// The filter on the GPU is the CPU's ([`ColorFilter::apply`]) on every
+/// The filter on the GPU is the CPU's ([`og_render::ColorFilter::apply_srgb8`]) on every
 /// pixel, the overlay's and the scene's alike: one frame rendered with no
 /// filter, then with each mode, compared pixel for pixel.
 #[test]
 #[ignore = "requires GPU"]
 fn the_frame_is_the_cpu_filter_of_the_unfiltered_frame() {
     use og_render::*;
-    let doc = r#"<meta name="component" content="chips">
-<row id="Root"><panel id="R"/><panel id="G"/><panel id="B"/><panel id="Y"/><panel id="M"/></row>
-<style>
-#Root { padding: 24px; gap: 12px; flex-wrap: wrap; }
-panel { width: 120px; height: 120px; }
-#R { background: #d03028; } #G { background: #2fa84f; } #B { background: #2f6fe0; }
-#Y { background: #e8c83a; } #M { background: #a03ad0; }
-</style>"#;
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
-        let mut scene = RenderScene::new();
-        let font = add_test_font(&mut scene);
-        let mut ui = ui_with_font(font);
-        ui.define_document(UiDocument::parse("ui/chips.svelte", doc).unwrap());
-        for _ in 0..2 {
-            ui.begin(
-                InputFrame::default(),
-                Viewport::new(width as f32, height as f32),
-            );
-            ui.component("T", "chips", &mut json!({}), &bind::NoEnv);
-            ui.end();
-        }
-        let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
-        ui.frame().emit(&EmitDesc::default(), &mut overlay);
-        scene.overlay = Some(overlay);
-        // A scene colour under the UI: the filter covers it too.
-        scene.environment.background = Background::Color(og_core::glam::Vec3::new(0.6, 0.15, 0.05));
-        scene.post.tonemap = Tonemap::None;
-        let mut renderer = Renderer::new_blocking(&RenderDesc {
-            width,
-            height,
-            ..Default::default()
-        })
-        .expect("a headless adapter");
+        let (mut scene, desc) = with_test_font(|f| color_vision_scene(f, width, height));
+        let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
         let mut frame = |scene: &RenderScene| {
             renderer.render(scene, &RenderTarget::Offscreen).unwrap();
             renderer.read_offscreen().unwrap().pixels
         };
         let plain = frame(&scene);
-        let decode = |v: u8| {
-            let c = f32::from(v) / 255.0;
-            if c <= 0.04045 {
-                c / 12.92
-            } else {
-                ((c + 0.055) / 1.055).powf(2.4)
-            }
-        };
-        let encode = |v: f32| {
-            let c = v.clamp(0.0, 1.0);
-            let e = if c <= 0.003_130_8 {
-                c * 12.92
-            } else {
-                1.055 * c.powf(1.0 / 2.4) - 0.055
-            };
-            (e * 255.0).round() as u8
-        };
         for vision in [
             ColorVision::Protanopia,
             ColorVision::Deuteranopia,
@@ -195,9 +148,9 @@ panel { width: 120px; height: 120px; }
                 let mut worst = 0u8;
                 let mut moved = 0usize;
                 for (p, g) in plain.chunks(4).zip(got.chunks(4)) {
-                    let o = f.apply([decode(p[0]), decode(p[1]), decode(p[2])]);
+                    let o = f.apply_srgb8([p[0], p[1], p[2]]);
                     for k in 0..3 {
-                        worst = worst.max(encode(o[k]).abs_diff(g[k]));
+                        worst = worst.max(o[k].abs_diff(g[k]));
                     }
                     moved += usize::from(p[..3] != g[..3]);
                 }

@@ -1129,6 +1129,45 @@ pub fn glass_reference_scene() -> (RenderScene, RenderDesc) {
     (scene, desc)
 }
 
+/// The colour vision frame (docs/ui.md §3.2) at `width`×`height`: five
+/// swatches a dichromat confuses in pairs, over a scene colour, so the
+/// filter's test sees both the overlay and the scene. Not a reference: its
+/// tests (`tests/color_vision.rs`, packages/engine/tests/web/color-vision.ts)
+/// compare each filtered frame with the CPU filter of the unfiltered one.
+pub fn color_vision_scene(font: &FontFiles, width: u32, height: u32) -> (RenderScene, RenderDesc) {
+    let doc = r#"<meta name="component" content="chips">
+<row id="Root"><panel id="R"/><panel id="G"/><panel id="B"/><panel id="Y"/><panel id="M"/></row>
+<style>
+#Root { padding: 24px; gap: 12px; flex-wrap: wrap; }
+panel { width: 120px; height: 120px; }
+#R { background: #d03028; } #G { background: #2fa84f; } #B { background: #2f6fe0; }
+#Y { background: #e8c83a; } #M { background: #a03ad0; }
+</style>"#;
+    let mut scene = RenderScene::new();
+    let font = add_font(&mut scene, font);
+    let mut ui = ui_with_font(font);
+    ui.define_document(UiDocument::parse("ui/chips.svelte", doc).expect("chips parse"));
+    let vp = Viewport::new(width as f32, height as f32);
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), vp);
+        ui.component("T", "chips", &mut serde_json::json!({}), &bind::NoEnv);
+        ui.end();
+    }
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.environment.background = Background::Color(Vec3::new(0.6, 0.15, 0.05));
+    scene.post.tonemap = Tonemap::None;
+    (
+        scene,
+        RenderDesc {
+            width,
+            height,
+            ..Default::default()
+        },
+    )
+}
+
 /// The reference frames, by their file name under `references/<tier>/`.
 pub const REFERENCE_SCENES: [&str; 5] = [
     "sample-screen",
@@ -1155,6 +1194,8 @@ pub fn reference_scene(name: &str, font: &FontFiles) -> Result<(RenderScene, Ren
             let s = text_fields_shot(font);
             (s.scene, s.desc)
         }
+        "color-vision-1280" => color_vision_scene(font, 1280, 720),
+        "color-vision-390" => color_vision_scene(font, 390, 844),
         _ => {
             return Err(format!(
                 "no og-ui reference scene {name} (it knows {})",
