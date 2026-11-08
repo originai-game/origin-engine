@@ -1869,6 +1869,15 @@ impl Parser {
         if matches!(value, PropValue::Model(_)) && !p.two_way {
             return Err((at, format!("{name} is read-only; remove bind:")));
         }
+        // A modal's content is built in the top layer, a tree of its own
+        // its descendants are named by; HTML chooses it per opening too
+        // (showModal or show).
+        if name == "modal" && !matches!(value, PropValue::Lit(_)) {
+            return Err((
+                at,
+                "write modal as a literal, not bound: use two dialogs, or {#if} around one".into(),
+            ));
+        }
         let line = self.line(at);
         self.doc.nodes[node].props.push(PropSet {
             spec,

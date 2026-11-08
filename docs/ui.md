@@ -202,6 +202,16 @@ saturation and value square over the hue, a hue slider and the hex field)
 and writes `#rrggbb` back. Each keeps its progress in widget memory, so a
 snapshot restores it mid-count or mid-reveal.
 
+The engine ships component documents in place of the TS builders, under
+`packages/engine/src/ui/screens/` beside the screens, each with its props,
+actions and a default fixture: `card`, `confirm` (a modal dialog with
+cancel and confirm, the danger variant when `$danger`), `pagination`,
+`data-list`, `key-values`, `table`, `tree`, `calendar`,
+`objective-tracker`, `star-rating`, `banner`, `subtitles` (the HUD layer)
+and `notifications` (the toast layer). Their lists are keyed collections
+read directly by `{#each}`; a game ejects one (`og ui eject <name>`) to
+change it.
+
 The settings screen (`settings.svelte`) builds its tree from data: `$pages`
 (a keyed collection of `{ id, name }`, a tab each), `$entries` (a keyed
 collection of `{ id, page, name, description, kind, value, … }`, kind
@@ -1016,7 +1026,10 @@ the style's `scrim`); a `::backdrop` rule takes only `background`, and
 cascades with states, variables and media as the dialog's own rules do.
 To a style pack the scrim is the part `Dialog.backdrop`. Without `modal` it is `show()`: a panel in place
 (`Dialog.panel[open]`); the focus returns to what held it when it opened.
-Closing writes `open` false back.
+Closing writes `open` false back. `modal` is written as a literal, never
+bound: a modal's content is built in the top layer and named under
+`<id>/Panel`, so a dialog that is sometimes modal is two dialogs or an
+`{#if}`.
 
 What closes it is HTML's `closedby`: `closerequest` (a modal's default)
 is Escape, Back or pad B, for an in-place dialog only while the focus is

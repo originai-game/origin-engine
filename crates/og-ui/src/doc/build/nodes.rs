@@ -332,7 +332,8 @@ impl Ui {
             match kind {
                 "dialog" if open_now(self) && r.str("spotlight").is_some() => {
                     let target = r.str("spotlight").unwrap_or_default();
-                    let (shade, anchored) = self.open_spotlight(id.as_str(), target, &r);
+                    let (shade, anchored) =
+                        self.open_spotlight(id.as_str(), (key, &path), target, &r);
                     spot = anchored;
                     if shade.clicked && r.str("closedby") == Some("any") {
                         opened = Some(false);

@@ -1,0 +1,24 @@
+{
+  "added": [
+    {
+      "member": "UI component documents",
+      "summary": "The engine ships component documents in place of the TS builders, in packages/engine/src/ui/screens: card, confirm, pagination, data-list, key-values, table, tree, calendar, objective-tracker, star-rating, banner, subtitles and notifications, each with its props, actions and a default fixture (docs/ui.md §2). `og ui eject <name>` copies one into a game."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "<dialog modal>, popover and -og-spotlight in a mounted document",
+      "summary": "A container inside a modal dialog, a popover or a spotlight's callout now shows its content in a mounted (retained) document; before, its children were dropped from the first frame (a modal's footer of buttons showed empty), because they were named apart from the top-layer node they are built under."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "<dialog modal>",
+      "change": "`modal` is refused when bound (`modal={$x}`): a modal's content is built in the top layer, under `<id>/Panel`, so it is fixed when the document is written, as HTML chooses showModal() or show() per opening.",
+      "fix": "Write `modal` as a literal; for a dialog that is sometimes modal, write two dialogs or put one in `{#if}`.",
+      "find": [
+        "modal={"
+      ]
+    }
+  ]
+}

@@ -173,6 +173,7 @@ impl Ui {
     pub(super) fn open_spotlight(
         &mut self,
         id: &str,
+        (key, path): (u64, &str),
         target: &str,
         r: &Resolved,
     ) -> (crate::ui::Response, bool) {
@@ -212,9 +213,12 @@ impl Ui {
             },
             self.em_of(r),
         );
-        self.open_layer(
+        // Keyed and named as the element itself (as a world layer is), so
+        // its content's keys are the ones a retained document gives it.
+        self.open_layer_keyed(
             "popover",
-            crate::Id::from(format!("{id}~callout").as_str()),
+            key,
+            path.to_string(),
             content,
             crate::layout::Float::Popover,
             found.unwrap_or(NONE),

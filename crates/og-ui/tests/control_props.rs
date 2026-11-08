@@ -897,7 +897,7 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
   <p id="Line" class="typed" onrevealed={done}>Hello there</p>
   <select id="Diff" class="cycle" bind:value={$diff}><option value="easy">Easy</option><option value="hard">Hard</option></select>
   <button id="Target">Here</button>
-  <dialog id="Tour" bind:open={$tour} class="tour"><p id="Callout">Press here</p></dialog>
+  <dialog id="Tour" bind:open={$tour} class="tour"><div id="Step"><p id="Callout">Press here</p></div></dialog>
   <input type="color" id="Tint" bind:value={$tint}>
 </div>
 <style>
@@ -950,7 +950,10 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
     for _ in 0..5 {
         d.step(InputFrame::default());
     }
-    assert!(d.el("Callout").is_some(), "the spotlight's callout shows");
+    assert!(
+        d.el("Callout").is_some(),
+        "the spotlight's callout shows its nested content"
+    );
     d.click("Diff/Next");
     assert_eq!(
         d.read("diff"),
@@ -1042,4 +1045,61 @@ fn rows_leaving_with_their_changed_children_restyle_cleanly() {
             .map(|e| e.text)
             .collect();
     assert_eq!(shown, ["B"]);
+}
+
+/// Every component document the engine ships in place of a TS builder
+/// (B-port) builds from its default fixture, both ways a document is built,
+/// and its keyed lists show their rows.
+///
+/// Ways it could fail: a document that no longer parses after a tag or CSS
+/// change, a fixture list that builds no rows (a nested `{#each}` a retained
+/// build cannot read).
+#[test]
+fn shipped_component_documents_build_from_their_fixtures() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../packages/engine/src/ui/screens");
+    // Each document, and a text from its fixture's list it must show.
+    for (name, row) in [
+        ("card", "Ember Blade"),
+        ("confirm", "Keep playing"),
+        ("pagination", "9"),
+        ("data-list", "Silk"),
+        ("key-values", "Defence"),
+        ("calendar", "2"),
+        ("tree", "Camera"),
+        ("table", "Gulls"),
+        ("objective-tracker", "Light the lamps 2/5"),
+        ("star-rating", ""),
+        ("banner", "Level up!"),
+        ("subtitles", "Keeper"),
+        ("notifications", "First blood"),
+    ] {
+        let text = std::fs::read_to_string(root.join(format!("{name}.svelte"))).unwrap();
+        let doc = UiDocument::parse(name, &text).unwrap_or_else(|e| panic!("{name}: {e:?}"));
+        let fixture = doc
+            .fixtures
+            .iter()
+            .find(|(n, _)| n == "default")
+            .map(|(_, v)| v.clone())
+            .unwrap_or_else(|| panic!("{name}: no default fixture"));
+        let stores: Vec<(String, Value)> = fixture
+            .as_object()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        let stores: Vec<(&str, Value)> = stores
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.clone()))
+            .collect();
+        both(&text, &stores, |d| {
+            let elements = d.ui.probe_elements();
+            let shown = if row.is_empty() {
+                elements.iter().filter(|e| e.kind == "icon").count() == 3
+            } else {
+                elements.iter().any(|e| e.text.contains(row))
+            };
+            assert!(shown, "{name} (mounted: {}): no {row}", d.mounted);
+        });
+    }
 }

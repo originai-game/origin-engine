@@ -27,6 +27,12 @@ and 0.000607. Phone control sizes preserve their existing pixels.
 The game-over entrance now targets its title directly; the old relative
 timeline path missed it. Its 300 ms curve and error sound are retained.
 
+The component documents (`card`, `confirm` and the lists, tables and HUD
+feedback rows) are the TS builders' replacements: a game mounts one as
+`<Card title={…}>` once it is loaded, or ejects and edits it. Lists are keyed
+collections; a nested list is flattened, as a retained `{#each}` reads a
+named collection (a table's `cells` row by row, a tree's visible `rows`).
+
 `og ui eject --list` prints these generic screens. Core document tests
 cook them independently of genre kits and style packs.
 
@@ -44,3 +50,6 @@ cook them independently of genre kits and style packs.
 | Death, retry, revive offer, game over | `game-over` |
 | Creator tools (inspector, hierarchy, catalogues) | `creator-tools` |
 | Credits | `credits` |
+| Card, confirm dialog | `card`, `confirm` |
+| Lists and tables (data list, key-value and stat compare, table, tree, calendar, pagination) | `data-list`, `key-values`, `table`, `tree`, `calendar`, `pagination` |
+| HUD feedback (objectives, rating, banner, subtitles, notifications) | `objective-tracker`, `star-rating`, `banner`, `subtitles`, `notifications` |

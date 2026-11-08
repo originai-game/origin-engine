@@ -511,7 +511,7 @@ impl RetainedHost {
                 doc.source, node.line
             ));
         };
-        let path = parent.map_or_else(|| id.clone(), |p| format!("{}/{id}", self.elements[p].path));
+        let path = parent.map_or_else(|| id.clone(), |p| format!("{}/{id}", self.content_path(p)));
         context.node.key = crate::id::key_of_path(&path);
         Arc::make_mut(&mut context.selector_nodes).insert(index, context.node.clone());
         let identity = context.node.clone();
@@ -1412,6 +1412,32 @@ impl RetainedHost {
             result?;
         }
         Ok(())
+    }
+
+    /// The path element `p`'s children are built under, so their keys
+    /// are their nodes' own: a modal dialog's panel and a popover's layer
+    /// stand in the top layer, named apart from the element (a spotlight's
+    /// callout layer takes the element's own key and path).
+    fn content_path(&self, p: &MountedNode) -> String {
+        let e = &self.elements[p];
+        let n = &e.document.nodes[e.index];
+        let set = |name: &str| {
+            n.props.iter().any(|s| {
+                schema::PROPS[s.spec].name == name
+                    && !matches!(
+                        s.value,
+                        crate::doc::PropValue::Lit(crate::doc::Lit::Bool(false))
+                    )
+            })
+        };
+        let local = e.path.rsplit('/').next().unwrap_or(&e.path);
+        match n.kind {
+            NodeKind::Element("dialog") if set("modal") => format!("{local}/Panel"),
+            NodeKind::Element(_) if set("popover") => {
+                format!("{}~popover", e.path.replace('/', "_"))
+            }
+            _ => e.path.clone(),
+        }
     }
 
     fn forget_memories(&mut self, keys: &[u64]) {
