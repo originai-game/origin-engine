@@ -115,3 +115,115 @@ fn an_answering_server_is_left_alone() {
     assert!(log.starts_with("run rustc"), "{log}");
     assert_eq!(code, 7);
 }
+
+/// A fake server: a process listening on a port of its own, running a
+/// compiler (`busy`, a `sleep` child) or nothing. Returns it and its port.
+#[cfg(unix)]
+fn fake_server(busy: bool) -> (std::process::Child, u16) {
+    use std::io::BufRead;
+    use std::os::unix::process::CommandExt;
+    let child_line = if busy {
+        "import subprocess; c = subprocess.Popen(['sleep', '600'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL);"
+    } else {
+        ""
+    };
+    let mut server = Command::new("python3")
+        .args([
+            "-c",
+            &format!(
+                "import socket, time; {child_line} s = socket.socket(); \
+                 s.bind(('127.0.0.1', 0)); s.listen(); \
+                 print(s.getsockname()[1], flush=True); time.sleep(600)"
+            ),
+        ])
+        .stdout(std::process::Stdio::piped())
+        .process_group(0)
+        .spawn()
+        .expect("python3");
+    let mut line = String::new();
+    std::io::BufReader::new(server.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    (server, line.trim().parse().unwrap())
+}
+
+/// Runs the wrapper against `server` with a 1 s stall window and a fake
+/// sccache client that waits on the server until it stops listening (as a client
+/// waits on a server whose jobserver ran dry) or `patience` seconds pass,
+/// then compiles "locally" and exits 7. Returns the exit status, the
+/// client's log, whether the server is still running and the watchdog log.
+#[cfg(unix)]
+fn run_stalled(name: &str, busy: bool, patience: u32) -> (i32, String, bool, String) {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = scratch(name);
+    let (mut server, port) = fake_server(busy);
+    let log = dir.join("log");
+    let fake = dir.join("sccache");
+    std::fs::write(
+        &fake,
+        format!(
+            // One process, as a real client waiting on its server is: a
+            // child would read as a compile of its own.
+            "#!/usr/bin/env python3\nimport os, socket, sys, time\n\
+             for _ in range({ticks}):\n\
+             \x20   try: socket.create_connection(('127.0.0.1', {port})).close()\n\
+             \x20   except OSError: break\n\
+             \x20   time.sleep(0.1)\n\
+             open('{log}', 'a').write('run ' + ' '.join(sys.argv[1:]) + ' IGNORE=' + os.environ.get('SCCACHE_IGNORE_SERVER_IO_ERROR', '') + '\\n')\n\
+             sys.exit(7)\n",
+            ticks = patience * 10,
+            log = log.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let status = Command::new(WRAP)
+        .args(["rustc", "--crate-name", "x"])
+        .env("OG_SCCACHE", &fake)
+        .env("OG_SCCACHE_STATE", dir.join("state"))
+        .env("OG_SCCACHE_STALL", "1")
+        .env("SCCACHE_SERVER_PORT", port.to_string())
+        .status()
+        .unwrap();
+    let alive = server.try_wait().unwrap().is_none();
+    // The server and its `sleep`: its whole process group.
+    let _ = Command::new("kill")
+        .args(["-KILL", &format!("-{}", server.id())])
+        .stderr(std::process::Stdio::null())
+        .status();
+    let _ = server.wait();
+    (
+        status.code().unwrap_or(-1),
+        std::fs::read_to_string(&log).unwrap_or_default(),
+        alive,
+        std::fs::read_to_string(dir.join("state/watchdog.log")).unwrap_or_default(),
+    )
+}
+
+/// The hang of 2026-11-09 (second): a server whose jobserver ran dry runs
+/// no compiler while clients wait. The wrapper stops it, and its compile
+/// finishes with its own status (locally, told to ignore the lost server).
+/// Ways it could fail: the watch never fires, fires without stopping the
+/// server, or loses the compile's status.
+#[cfg(unix)]
+#[test]
+fn a_server_running_no_compiler_while_a_compile_waits_is_stopped() {
+    let (code, log, alive, watchdog) = run_stalled("stalled", false, 60);
+    assert!(!alive, "the stalled server must be stopped");
+    assert!(watchdog.contains("stopped sccache server"), "{watchdog}");
+    assert_eq!(log.trim_end(), "run rustc --crate-name x IGNORE=1");
+    assert_eq!(code, 7, "the compile's exit status");
+}
+
+/// A server running a compiler is busy, not stalled, however long a
+/// compile waits on it. Way it could fail: the watch stops a healthy
+/// server under every lane's builds.
+#[cfg(unix)]
+#[test]
+fn a_server_running_a_compiler_is_left_alone() {
+    let (code, log, alive, watchdog) = run_stalled("busy", true, 4);
+    assert!(alive, "a busy server must keep running: {watchdog}");
+    assert!(watchdog.is_empty(), "{watchdog}");
+    assert_eq!(log.trim_end(), "run rustc --crate-name x IGNORE=1");
+    assert_eq!(code, 7);
+}

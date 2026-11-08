@@ -423,8 +423,25 @@ jobserver. It is an executable, not a script, because cargo on Windows
 runs only an `.exe` as the wrapper; studio-win uses the same.
 `scripts/install-tools.sh` builds it from the checkout without itself and
 installs it next to the other tools, so a host runs it once after a change
-to the crate. `crates/og-sccache-wrap/tests/start.rs` fails if the server is
-started with a jobserver. `RUSTC_WRAPPER=` (empty) bypasses the wrapper and
+to the crate.
+
+A clean server can still stall. sccache hands rustc the server's own
+jobserver, one token per CPU, and a rustc killed while it holds tokens for
+its threads never gives them back (mozilla/sccache#2874, still open in
+0.19). On 2026-11-09 macrunner's server ran dry after 4 h 48 min and
+13,299 requests: eight clients waited minutes with no rustc running. So on
+Unix the wrapper watches its compile. When it has waited `OG_SCCACHE_STALL`
+seconds (default 60, 0 turns the watch off) while the server, found by its
+port with `lsof`, runs no child and the client runs none of its own, it
+stops that server under the lock (TERM, then KILL after 10 s) and logs it in
+`~/.cache/og-sccache/watchdog.log`. Clients run with
+`SCCACHE_IGNORE_SERVER_IO_ERROR=1`, so the ones waiting on it compile
+locally instead of failing, and the next compile starts a fresh server with
+a full pool. This covers a server however it was started, including one
+started by a plain `sccache` wrapper outside this repository. On Windows
+the wrapper does not watch. `crates/og-sccache-wrap/tests/start.rs` fails
+if the server is started with a jobserver, if a stalled server is not
+stopped, or if a busy one is. `RUSTC_WRAPPER=` (empty) bypasses the wrapper and
 sccache, as CI does. To restart a server, run `sccache --stop-server`; the
 next compile starts a clean one. A server you start by hand must also go
 without the jobserver: `env -u CARGO_MAKEFLAGS -u MAKEFLAGS -u MFLAGS
