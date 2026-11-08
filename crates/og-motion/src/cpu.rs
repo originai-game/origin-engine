@@ -47,50 +47,189 @@ fn fold(a: [f32; LANES]) -> f32 {
     ((a[0] + a[4]) + (a[2] + a[6])) + ((a[1] + a[5]) + (a[3] + a[7]))
 }
 
-/// [`dot`] of four rows with one `b`, each in [`dot`]'s order.
+/// Rows of `x` and of the weights a [`block`] takes at a time: eight sums
+/// of two vectors each, sixteen accumulators, in the registers of every
+/// target (NEON's 32, simd128's and SSE's 16 with their loads).
+const BLOCK_ROWS: usize = 2;
+const BLOCK_OUTPUTS: usize = 4;
+
+/// [`dot`] of `R` rows of `x` with `O` rows of `w` (all of one length),
+/// each sum in [`dot`]'s order, every chunk loaded once for all the sums
+/// it is in: the multiplies and adds are lane for lane those of [`dot`],
+/// so the target's vectors change no bit.
+#[cfg(target_arch = "aarch64")]
 #[inline(always)]
-fn dot4(a: [&[f32]; 4], b: &[f32]) -> [f32; 4] {
-    let mut acc = [[0.0f32; LANES]; 4];
-    let (bc, bt) = b.as_chunks::<LANES>();
-    let chunks = a.map(|r| r.as_chunks::<LANES>());
-    for (j, y) in bc.iter().enumerate() {
-        for i in 0..4 {
-            let x = &chunks[i].0[j];
-            for l in 0..LANES {
-                acc[i][l] += x[l] * y[l];
+fn block<const R: usize, const O: usize>(x: [&[f32]; R], w: [&[f32]; O]) -> [[f32; O]; R] {
+    use std::arch::aarch64::{
+        float32x4_t, vaddq_f32, vdupq_n_f32, vld1q_f32, vmulq_f32, vst1q_f32,
+    };
+    let k = w[0].len();
+    let n = k / LANES;
+    assert!(x.iter().chain(&w).all(|r| r.len() == k));
+    let mut acc = [[[0.0f32; LANES]; O]; R];
+    // SAFETY: NEON is in every aarch64 target; every load is of a chunk
+    // `j < n` of a row of `k >= n·LANES` floats, checked above.
+    unsafe {
+        let mut lo = [[vdupq_n_f32(0.0); O]; R];
+        let mut hi = lo;
+        let (xp, wp) = (x.map(<[f32]>::as_ptr), w.map(<[f32]>::as_ptr));
+        for j in 0..n {
+            let wl: [float32x4_t; O] = std::array::from_fn(|o| vld1q_f32(wp[o].add(j * LANES)));
+            let wh: [float32x4_t; O] = std::array::from_fn(|o| vld1q_f32(wp[o].add(j * LANES + 4)));
+            for r in 0..R {
+                let xl = vld1q_f32(xp[r].add(j * LANES));
+                let xh = vld1q_f32(xp[r].add(j * LANES + 4));
+                for o in 0..O {
+                    lo[r][o] = vaddq_f32(lo[r][o], vmulq_f32(xl, wl[o]));
+                    hi[r][o] = vaddq_f32(hi[r][o], vmulq_f32(xh, wh[o]));
+                }
+            }
+        }
+        for r in 0..R {
+            for o in 0..O {
+                vst1q_f32(acc[r][o].as_mut_ptr(), lo[r][o]);
+                vst1q_f32(acc[r][o].as_mut_ptr().add(4), hi[r][o]);
             }
         }
     }
-    for i in 0..4 {
-        for (l, (x, y)) in chunks[i].1.iter().zip(bt).enumerate() {
-            acc[i][l] += x * y;
-        }
-    }
-    acc.map(fold)
+    finish(x, w, n * LANES, acc)
 }
 
-/// `y[r,o] = b[o] + Σk x[r,k]·w[o,k]` for `rows` rows, each sum a [`dot`].
-/// Output by output, so each weight row is read once for all the rows; a
-/// row's values never depend on the rows beside it.
+/// [`block`] in wasm's simd128 (the engine's wasm is built without it;
+/// every browser with WebGPU has it).
+#[cfg(target_arch = "wasm32")]
+#[target_feature(enable = "simd128")]
+fn block<const R: usize, const O: usize>(x: [&[f32]; R], w: [&[f32]; O]) -> [[f32; O]; R] {
+    use std::arch::wasm32::{f32x4_add, f32x4_mul, f32x4_splat, v128, v128_load, v128_store};
+    let k = w[0].len();
+    let n = k / LANES;
+    assert!(x.iter().chain(&w).all(|r| r.len() == k));
+    let mut acc = [[[0.0f32; LANES]; O]; R];
+    // SAFETY: every load is of a chunk `j < n` of a row of `k >= n·LANES`
+    // floats, checked above; v128_load and v128_store take any alignment.
+    unsafe {
+        let mut lo = [[f32x4_splat(0.0); O]; R];
+        let mut hi = lo;
+        let xp = x.map(|r| r.as_ptr().cast::<v128>());
+        let wp = w.map(|r| r.as_ptr().cast::<v128>());
+        for j in 0..n {
+            let wl: [v128; O] = std::array::from_fn(|o| v128_load(wp[o].add(2 * j)));
+            let wh: [v128; O] = std::array::from_fn(|o| v128_load(wp[o].add(2 * j + 1)));
+            for r in 0..R {
+                let xl = v128_load(xp[r].add(2 * j));
+                let xh = v128_load(xp[r].add(2 * j + 1));
+                for o in 0..O {
+                    lo[r][o] = f32x4_add(lo[r][o], f32x4_mul(xl, wl[o]));
+                    hi[r][o] = f32x4_add(hi[r][o], f32x4_mul(xh, wh[o]));
+                }
+            }
+        }
+        for r in 0..R {
+            for o in 0..O {
+                let at = acc[r][o].as_mut_ptr().cast::<v128>();
+                v128_store(at, lo[r][o]);
+                v128_store(at.add(1), hi[r][o]);
+            }
+        }
+    }
+    finish(x, w, n * LANES, acc)
+}
+
+/// [`block`] in portable Rust, which LLVM vectorises (x86's SSE).
+#[cfg(not(any(target_arch = "aarch64", target_arch = "wasm32")))]
+#[inline(always)]
+fn block<const R: usize, const O: usize>(x: [&[f32]; R], w: [&[f32]; O]) -> [[f32; O]; R] {
+    let k = w[0].len();
+    let n = k / LANES;
+    let xc = x.map(|r| &r.as_chunks::<LANES>().0[..n]);
+    let wc = w.map(|r| &r.as_chunks::<LANES>().0[..n]);
+    let mut acc = [[[0.0f32; LANES]; O]; R];
+    for j in 0..n {
+        let ws: [[f32; LANES]; O] = std::array::from_fn(|o| wc[o][j]);
+        for r in 0..R {
+            let xs = xc[r][j];
+            for o in 0..O {
+                for l in 0..LANES {
+                    acc[r][o][l] += xs[l] * ws[o][l];
+                }
+            }
+        }
+    }
+    finish(x, w, n * LANES, acc)
+}
+
+/// A [`block`]'s end: the products past the last whole chunk into lanes
+/// 0.., as [`dot`] adds them, then each sum's [`fold`].
+#[inline(always)]
+fn finish<const R: usize, const O: usize>(
+    x: [&[f32]; R],
+    w: [&[f32]; O],
+    whole: usize,
+    mut acc: [[[f32; LANES]; O]; R],
+) -> [[f32; O]; R] {
+    for j in whole..w[0].len() {
+        for r in 0..R {
+            for o in 0..O {
+                acc[r][o][j - whole] += x[r][j] * w[o][j];
+            }
+        }
+    }
+    acc.map(|r| r.map(fold))
+}
+
+/// `y[r,o] = b[o] + Σk x[r,k]·w[o,k]` for `rows` rows, each sum a [`dot`],
+/// in [`block`]s of [`BLOCK_ROWS`] rows by [`BLOCK_OUTPUTS`] outputs (and
+/// single rows and outputs at the edges); a row's values never depend on
+/// the rows beside it.
 pub(crate) fn linear(x: &[f32], rows: usize, w: &[f32], b: &[f32]) -> Vec<f32> {
     let out = b.len();
     let k = w.len() / out;
     debug_assert_eq!(x.len(), rows * k);
     let mut y = vec![0.0; rows * out];
     let row = |r: usize| &x[r * k..(r + 1) * k];
-    for o in 0..out {
-        let wo = &w[o * k..(o + 1) * k];
+    let weights = |o: usize| &w[o * k..(o + 1) * k];
+    let mut put = |r: usize, o: usize, v: f32| y[r * out + o] = b[o] + v;
+    let mut o = 0;
+    while o < out {
+        let outputs = if o + BLOCK_OUTPUTS <= out {
+            BLOCK_OUTPUTS
+        } else {
+            1
+        };
         let mut r = 0;
-        while r + 4 <= rows {
-            let s = dot4([row(r), row(r + 1), row(r + 2), row(r + 3)], wo);
-            for (i, v) in s.into_iter().enumerate() {
-                y[(r + i) * out + o] = b[o] + v;
+        while r < rows {
+            let rs = if r + BLOCK_ROWS <= rows {
+                BLOCK_ROWS
+            } else {
+                1
+            };
+            macro_rules! run {
+                ($rs:literal, $os:literal) => {{
+                    // SAFETY: `block` enables simd128 on wasm, which every
+                    // browser the engine runs in has; elsewhere it is safe.
+                    #[allow(unused_unsafe)]
+                    let s = unsafe {
+                        block::<$rs, $os>(
+                            std::array::from_fn(|i| row(r + i)),
+                            std::array::from_fn(|i| weights(o + i)),
+                        )
+                    };
+                    for (i, v) in s.iter().enumerate() {
+                        for (j, v) in v.iter().enumerate() {
+                            put(r + i, o + j, *v);
+                        }
+                    }
+                }};
             }
-            r += 4;
+            match (rs, outputs) {
+                (BLOCK_ROWS, BLOCK_OUTPUTS) => run!(2, 4),
+                (BLOCK_ROWS, _) => run!(2, 1),
+                (_, BLOCK_OUTPUTS) => run!(1, 4),
+                _ => run!(1, 1),
+            }
+            r += rs;
         }
-        for r in r..rows {
-            y[r * out + o] = b[o] + dot(row(r), wo);
-        }
+        o += outputs;
     }
     y
 }

@@ -2,9 +2,15 @@
 //! its output, natively or under wasm32-wasip1:
 //!
 //!     cargo run --release -p og-motion --example cpu_bench -- <bundle.safetensors> <case.safetensors> [n...]
+//!
+//! First it prints one character's profile: the median time of each stage
+//! of a job (pass 1 and pass 2 of the student's encoder, the student's
+//! heads, the decoder's units).
 
 use std::time::Instant;
 
+use og_motion::cpu::Cpu;
+use og_motion::glue::Statics;
 use og_motion::{Bundle, Inputs, Model};
 
 fn read(path: &str) -> Bundle {
@@ -28,6 +34,7 @@ fn main() {
         allowed_pred_num_tokens: t("allowed_pred_num_tokens"),
     };
     let model = Model::new(&bundle).unwrap();
+    profile(&bundle, &base);
     let ns: Vec<usize> = args[3..].iter().map(|a| a.parse().unwrap()).collect();
     for n in if ns.is_empty() { vec![1, 16] } else { ns } {
         let take = |v: &[f32]| {
@@ -101,4 +108,56 @@ fn main() {
             times[2] / n as f64
         );
     }
+}
+
+/// One character's job run a unit at a time: the median time of each unit,
+/// grouped by stage.
+fn profile(bundle: &Bundle, base: &Inputs) {
+    let statics = Statics::new(bundle).unwrap();
+    let cpu = Cpu::new(bundle).unwrap();
+    let layers = bundle.config.student.layers;
+    let units = cpu.units();
+    let mut times = vec![Vec::new(); units + 1];
+    for _ in 0..7 {
+        let start = Instant::now();
+        let mut job = cpu.job(&statics, base.character(0));
+        times[units].push(start.elapsed().as_secs_f64() * 1e3);
+        for t in times.iter_mut().take(units) {
+            let start = Instant::now();
+            cpu.run(&statics, &mut job, 1);
+            t.push(start.elapsed().as_secs_f64() * 1e3);
+        }
+    }
+    let median: Vec<f64> = times
+        .iter_mut()
+        .map(|t| {
+            t.sort_by(f64::total_cmp);
+            t[t.len() / 2]
+        })
+        .collect();
+    let sum = |r: std::ops::Range<usize>| median[r].iter().sum::<f64>();
+    let attention = (0..4 * layers).step_by(2).map(|u| median[u]).sum::<f64>();
+    let feed_forward = (1..4 * layers).step_by(2).map(|u| median[u]).sum::<f64>();
+    let total: f64 = median.iter().sum();
+    println!("profile, one character, one thread: {total:.2} ms");
+    println!("  job setup (input embeddings)  {:.2} ms", median[units]);
+    println!(
+        "  student pass 1 ({layers} layers)     {:.2} ms",
+        sum(0..2 * layers)
+    );
+    println!(
+        "  student pass 2 + heads        {:.2} ms",
+        sum(2 * layers..4 * layers)
+    );
+    println!("    of which attention {attention:.2} ms, feed-forward {feed_forward:.2} ms");
+    println!(
+        "  decoder ({} units)            {:.2} ms",
+        units - 4 * layers,
+        sum(4 * layers..units)
+    );
+    let decoder: Vec<String> = median[4 * layers..units]
+        .iter()
+        .map(|t| format!("{t:.2}"))
+        .collect();
+    println!("    per unit: {}", decoder.join(" "));
 }
