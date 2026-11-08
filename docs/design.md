@@ -299,6 +299,15 @@ cancellable `og dev` checks use the stateless path.
   - *Capture-only.* `og run --capture-only` draws no display frame: only
     the captures the commands ask for, each from the presentation state
     stepped by the tick, so its PNGs equal a run that draws every frame.
+  - *Session forks.* `og run --forks N --commands <script>` takes N probe
+    snapshots at evenly spaced ticks of the script, each with og.platform's
+    state. After the run it restores each one, schedules the steps still
+    queued at it again (a probe snapshot holds the world and the
+    presentation, not the probe's queue, and a restore undoes a `quit`
+    that ran), and plays to the run's last tick, writing no files. Each
+    fork must give the run's world hash on every tick, its screenshots'
+    bytes and its presentation hash at the end; `forks` in the JSON
+    summary lists the differences, and any difference fails the run.
 - Game state in a JS module is in neither the world snapshot nor the
   presentation checkpoint, so a restore, a rollback, a fork or a
   capture-only run does not bring it back. `og check` fails on it (OG9101,

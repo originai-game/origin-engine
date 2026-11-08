@@ -170,3 +170,32 @@ gpuTest("og run --capture-only screenshots vehicle-terrain with the bytes of a r
     rmSync(dir, { recursive: true, force: true });
   }
 }, 120_000);
+
+// og run --forks: each snapshot of the run (the world, the presentation
+// checkpoint, og.platform's state), restored and played on with the steps
+// still queued at it, gives the run's world hash on every tick, its
+// screenshots' bytes and its presentation hash at the end. A fork that
+// stops at its own tick (a `quit` left with the probe, the queue lost) or
+// draws other bytes fails the run.
+gpuTest("og run --forks plays three forks of a vehicle-terrain run to its frames and hashes", () => {
+  const project = join(repo, "tests", "fixtures", "vehicle-terrain");
+  cookProject(project, repo);
+  const dir = mkdtempSync(join(tmpdir(), "og-forks-"));
+  const commands = "0.2:key_down:KeyW;1:screenshot:a.png;2:key_down:KeyD;2:key_down:Space;2.3:key_up:Space;2.4:screenshot:b.png;2.6:quit";
+  try {
+    for (const extra of [[], ["--capture-only"]]) {
+      const r = Bun.spawnSync([ogBin(), "run", "--headless", project, "--size", "640x360", "--commands", commands, "--out", dir, "--forks", "3", "--json", ...extra], { cwd: repo });
+      const err = new TextDecoder().decode(r.stderr);
+      expect(r.exitCode, err).toBe(0);
+      const lines = new TextDecoder().decode(r.stdout).trim().split("\n");
+      const summary = JSON.parse(lines[lines.length - 1]!) as { tick: number; hash: string; forks: Array<{ tick: number; hash: string; mismatches: string[] }> };
+      expect(summary.forks.map((f) => f.tick)).toEqual([39, 78, 117]);
+      for (const f of summary.forks) {
+        expect(f.mismatches).toEqual([]);
+        expect(f.hash).toBe(summary.hash);
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 120_000);

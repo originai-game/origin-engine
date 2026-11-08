@@ -252,6 +252,11 @@ const SERVICES: ReadonlySet<string> = new Set(SERVICE_METHODS);
 /** What a fake call leaves to do later: an ad's answer while the game is paused, a pending purchase to settle. */
 type Later = { kind: "ad"; request: number; result: PlatformAnswer; pumps: number; fresh: boolean } | { kind: "settle"; purchase: string; fresh: boolean };
 
+type FakeCheckpoint = { used: [string, number][]; later: Later[]; sent: number[] };
+
+/** What a local platform holds, to put back with its `restore`: the persisted document and the fake's state. */
+export type LocalCheckpoint = { text: string | null; fake: FakeCheckpoint | null };
+
 /** The fake's state for one host: the outcome queues' positions, what waits for a later pump, the notices sent. */
 class Fake {
   readonly #fake: LocalFake;
@@ -260,6 +265,19 @@ class Fake {
   readonly #sent = new Set<number>();
   constructor(fake: LocalFake) {
     this.#fake = fake;
+  }
+
+  /** Its state, to put back with `restore` (a fork of a run). */
+  checkpoint(): FakeCheckpoint {
+    return { used: [...this.#used], later: JSON.parse(JSON.stringify(this.later)) as Later[], sent: [...this.#sent] };
+  }
+
+  restore(c: FakeCheckpoint): void {
+    this.#used.clear();
+    for (const [k, v] of c.used) this.#used.set(k, v);
+    this.later.splice(0, this.later.length, ...(JSON.parse(JSON.stringify(c.later)) as Later[]));
+    this.#sent.clear();
+    for (const n of c.sent) this.#sent.add(n);
   }
 
   get capabilities(): string[] {
@@ -402,13 +420,21 @@ function entitlementsOf(doc: LocalDocument) {
 }
 
 /** The local platform over a persistence: every call answered at once (an ad after a paused frame), the document saved after each batch. With `fake`, it fakes the platform services; without, they are `unavailable`. */
-export function localPlatform(persistence: LocalPersistence = memoryPersistence(), fake?: LocalFake): PlatformHost & { document(): LocalDocument } {
+export function localPlatform(persistence: LocalPersistence = memoryPersistence(), fake?: LocalFake): PlatformHost & { document(): LocalDocument; checkpoint(): LocalCheckpoint; restore(c: LocalCheckpoint): void } {
   let doc = readDocument(persistence.load());
   const faked = fake ? new Fake(fake) : null;
   return {
     host: "local",
     capabilities: faked ? faked.capabilities : LOCAL_CAPABILITIES,
     document: () => doc,
+    // Every call is answered within its batch, so nothing is in flight between ticks: the
+    // document and the fake's state are the whole platform (og run --forks).
+    checkpoint: () => ({ text: persistence.load(), fake: faked?.checkpoint() ?? null }),
+    restore(c) {
+      if (c.text !== null) persistence.save(c.text);
+      doc = readDocument(persistence.load());
+      if (faked && c.fake) faked.restore(c.fake);
+    },
     handle(calls, answer, link) {
       doc = readDocument(persistence.load());
       const answers: Array<[number, PlatformAnswer]> = [];

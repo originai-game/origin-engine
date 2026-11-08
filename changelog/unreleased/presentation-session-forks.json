@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"og run --forks","summary":"With --commands, takes N snapshots at evenly spaced ticks of the script and, after the run, plays each to the run's last tick with the steps still queued at it, writing no files; any fork whose world hash on a tick, screenshot bytes or end presentation hash differs from the run's is listed under `forks` in the JSON summary and fails the run. Refuses --realtime, --watch, --port, --room and --handoff."}
+  ],
+  "fixed": [
+    {"member":"probe restore","summary":"Restoring a probe snapshot undoes a `quit` that ran after it, so the restored world plays on instead of staying stopped."}
+  ]
+}

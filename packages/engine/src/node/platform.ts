@@ -22,7 +22,7 @@ export function filePersistence(path: string): LocalPersistence {
 }
 
 /** The native platform: a file's store when `path` is given, else memory; the services faked as `fake` scripts them. */
-export function nativePlatform(path?: string, fake: LocalFake = {}): PlatformHost & { document(): unknown } {
+export function nativePlatform(path?: string, fake: LocalFake = {}): ReturnType<typeof localPlatform> {
   return localPlatform(path ? filePersistence(path) : memoryPersistence(), fake);
 }
 

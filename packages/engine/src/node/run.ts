@@ -7,7 +7,17 @@
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render] [--capture-only]
 //       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>]
 //       [--trace <out.json> [--trace-append]] [--room ws://127.0.0.1:P/<room>] [--json]
-//       [--restore <world.save>] [--handoff <world.save>]
+//       [--restore <world.save>] [--handoff <world.save>] [--forks N]
+//
+// - With --forks N and --commands: after the script's run, N forks of it,
+//   each restoring a snapshot (world and presentation checkpoint) the run
+//   took at an evenly spaced tick and playing on to the run's last tick
+//   with the script's steps still queued at that tick.
+//   Every fork must reach the run's world hash on each tick, write the same
+//   screenshot bytes and end on the same presentation hash; `forks` in the
+//   summary holds each fork's tick, end hash and mismatches, and a mismatch
+//   fails the run. og.platform's store and fake are outside the snapshot:
+//   each fork puts back their state as the snapshot's tick left it.
 //
 // - Without --commands, --port or --watch: advance --ticks N at once and print
 //   the world hash (M2's hello world).
@@ -97,6 +107,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     let watchFile: string | undefined;
     let render = true;
     let captureOnly = false;
+    let forks = 0;
     let asJson = false;
     let requireChecked = false;
     let audioOut = "null";
@@ -134,6 +145,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       else if (a === "--watch") watchFile = resolve(next());
       else if (a === "--no-render") render = false;
       else if (a === "--capture-only") captureOnly = true;
+      else if (a === "--forks") forks = Number(next());
       else if (a === "--json") asJson = true;
       else if (a === "--require-checked") requireChecked = true;
       else if (a === "--audio") audioOut = next();
@@ -162,6 +174,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     if (seed !== undefined && (!Number.isInteger(seed) || seed < 0)) fail("--seed takes a whole number");
     if (clock !== undefined && !(Number.isFinite(clock) && clock > 0)) fail("--clock takes UTC milliseconds since 1970, such as 1767225600000");
     if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535)) fail("--port takes 0 (a free port) to 65535");
+    if (!Number.isInteger(forks) || forks < 0) fail("--forks takes a whole number of forks");
+    if (forks > 0 && (commands === undefined || realtime || watchFile !== undefined || port !== undefined || room !== undefined || handoffFile !== undefined))
+      fail("--forks forks a script's run: it takes --commands, not --realtime, --watch, --port, --room or --handoff");
     if (captureOnly && (realtime || watchFile !== undefined || port !== undefined)) fail("--capture-only draws no display frame: it is for a script's run, not --realtime, --watch or --port");
 
     // --trace: the Chrome trace (src/trace.ts), continuing og's prelude (the cook) when appending.
@@ -306,7 +321,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     // The platform services are faked: every call succeeds unless --platform-fake scripts it.
     const fake = platformFake === undefined ? { ok: true as const, value: {} } : readFake(platformFake);
     if (!fake.ok) fail(`--platform-fake: ${fake.reason}`);
-    engine.attachPlatform(nativePlatform(platformStore, fake.ok ? fake.value : {}));
+    const platform = nativePlatform(platformStore, fake.ok ? fake.value : {});
+    engine.attachPlatform(platform);
     // One sink per engine, pumped after every step (crates/og-audio/README.md
     // §Host contract): null keeps the stream drained, a .wav path captures it.
     const audioMode = audioOut === "device" ? "device" : audioOut === "null" ? "null" : "capture";
@@ -327,7 +343,24 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       return bytes;
     }
 
+    // --forks: each screenshot's SHA-256 the run wrote, by path; while a fork
+    // plays, `forking` collects its differences and nothing is written.
+    const shots = new Map<string, string>();
+    let forking: string[] | null = null;
+    const sha256 = (b: Uint8Array | string): string => createHash("sha256").update(b).digest("hex");
+
     function drain(): void {
+      if (forking) {
+        for (const o of engine.takeOutputs()) {
+          if (o.kind !== "png") continue;
+          const path = resolve(out, o.file);
+          const was = shots.get(path);
+          if (was !== sha256(decode(o.data))) forking.push(`tick ${o.tick} ${o.file}: ${was === undefined ? "the run wrote no such screenshot" : "other bytes than the run's"}`);
+        }
+        engine.takeLog();
+        engine.probe.assertionEvents();
+        return;
+      }
       for (const o of engine.takeOutputs()) {
         // A script names its output relative to --out; one that would land
         // outside it (an absolute path or `..`) is refused, never written.
@@ -340,7 +373,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
           continue;
         }
         mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(path, o.kind === "png" || o.kind === "wav" ? decode(o.data) : o.data);
+        const bytes = o.kind === "png" || o.kind === "wav" ? decode(o.data) : o.data;
+        writeFileSync(path, bytes);
+        if (forks > 0 && o.kind === "png") shots.set(path, sha256(bytes));
         outputs.push(path);
         // `dump_ui:<name>.uicheck.json`: og ui check's reading of the same frame
         // beside it, `<name>.uiframe.json` (checkUi in a playtest reads it).
@@ -449,6 +484,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     };
 
     let untilTick = -1;
+    const scheduledAt = worldTick();
     if (commands !== undefined) {
       const report = engine.probe.commands(commands) as { scheduled: number; untilTick: number; warnings: string[] } | null;
       drain();
@@ -456,6 +492,24 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       for (const w of report!.warnings) process.stderr.write(`WARN ${w}\n`);
       untilTick = report!.untilTick;
     }
+
+    // --forks: snapshots at evenly spaced ticks of the script (to --ticks or
+    // its last step), each with og.platform's state, and the run's world hash
+    // on every tick from the first of them.
+    type Fork = { id: string; tick: number; pending: number; platform: ReturnType<typeof platform.checkpoint> };
+    const forkEnd = ticks ?? untilTick;
+    const forkTicks = [...new Set(Array.from({ length: forks }, (_, k) => Math.floor((forkEnd * (k + 1)) / (forks + 1))))].filter((t) => t > 0);
+    const forkSnaps: Fork[] = [];
+    const runHashes = new Map<number, string>();
+    function atTick(tick: number, pending: number): void {
+      if (forkTicks.length > 0 && tick >= forkTicks[0]!) runHashes.set(tick, engine.hash());
+      while (forkSnaps.length < forkTicks.length && tick >= forkTicks[forkSnaps.length]!) {
+        const s = engine.probe.snapshot() as unknown as { id: string; tick: number } | null;
+        if (!s) fail(`--forks: the probe refused a snapshot at tick ${tick}`);
+        forkSnaps.push({ id: s!.id, tick: s!.tick, pending, platform: platform.checkpoint() });
+      }
+    }
+    if (forks > 0 && forkTicks.length === 0) fail(`--forks: the script ends at tick ${forkEnd}, too soon to fork`);
 
     const rate = engine.rate;
     const tickMs = 1000 / rate;
@@ -572,6 +626,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         takeTrace(engine.id);
         drain();
         const tick = answer.tick ?? 0;
+        if (forks > 0) atTick(tick, answer.pending ?? 0);
         if (control.signal && tick % 16 === 0) await sleep(0);
         if (answer.quit) {
           quit = true;
@@ -622,6 +677,55 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     drain();
     // The run's assertions (og.assert, the default invariants, `invariant:` steps): a violation fails the run.
     const assertions = engine.probe.assertions() as unknown as { violations: unknown[]; uncovered: unknown[] };
+    // --forks: each snapshot restored and played on to the run's last tick.
+    const forkResults: Array<{ tick: number; hash: string; mismatches: string[] }> = [];
+    if (forks > 0 && !frameFailed) {
+      const presentationOf = (): string => (engine.probe.snapshot() as unknown as { presentation: string }).presentation;
+      const runPresentation = presentationOf();
+      for (const f of forkSnaps) {
+        const mismatches: string[] = [];
+        forking = mismatches;
+        try {
+          if (!engine.probe.restore(f.id)) {
+            mismatches.push(`the probe refused to restore the snapshot of tick ${f.tick}`);
+            continue;
+          }
+          platform.restore(f.platform);
+          // The script's steps still queued at the snapshot, on their ticks:
+          // a probe snapshot holds the world, not the probe's queue.
+          const left = forkScript(commands!, f.pending, (f.tick - scheduledAt) / rate);
+          if (left !== "" && !engine.probe.commands(left)) {
+            mismatches.push(`the script's steps after tick ${f.tick} do not schedule again`);
+            continue;
+          }
+          drain();
+          let idle = 0;
+          while (worldTick() < dump.tick) {
+            cancelled();
+            const answer = engine.frame(tickMs);
+            if (!answer.ok) {
+              mismatches.push(`the frame failed at tick ${worldTick()}: ${answer.reason}`);
+              break;
+            }
+            sink.pump();
+            drain();
+            const t = answer.tick ?? 0;
+            const h = engine.hash();
+            const was = runHashes.get(t);
+            if (was !== undefined && was !== h) mismatches.push(`tick ${t}: world hash ${h}, the run's ${was}`);
+            if ((answer.ticks ?? 0) === 0 && ++idle > 600) break;
+          }
+          if (worldTick() !== dump.tick) mismatches.push(`the fork stopped at tick ${worldTick()}, the run at ${dump.tick}`);
+          const end = presentationOf();
+          if (end !== runPresentation) mismatches.push(`presentation hash ${end} at the end, the run's ${runPresentation}`);
+        } finally {
+          forking = null;
+        }
+        forkResults.push({ tick: f.tick, hash: engine.hash(), mismatches: mismatches.slice(0, 16) });
+        for (const m of mismatches.slice(0, 4)) process.stderr.write(`og run: the fork at tick ${f.tick} parts from the run: ${m}\n`);
+      }
+    }
+    const forkFailed = forkResults.some((f) => f.mismatches.length > 0);
     // Order statistics (nearest rank).
     const percentile = (xs: number[], q: number): number => {
       if (xs.length === 0) return 0;
@@ -679,6 +783,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       warnings,
       expectations,
       assertions,
+      ...(forks > 0 ? { forks: forkResults } : {}),
     };
     if (asJson) process.stdout.write(JSON.stringify(summary) + "\n");
     else {
@@ -692,7 +797,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       for (const u of assertions.uncovered as Array<{ kind: string; name: string; key?: string }>)
         process.stdout.write(`never fired: ${u.kind} ${u.name}${u.key !== undefined ? ` [${u.key}]` : ""}\n`);
     }
-    return frameFailed || expectations.failed > 0 || assertions.violations.length > 0 || (requireChecked && summary.uncheckedCount > 0) ? 1 : 0;
+    return frameFailed || forkFailed || expectations.failed > 0 || assertions.violations.length > 0 || (requireChecked && summary.uncheckedCount > 0) ? 1 : 0;
   } catch (error) {
     if (error instanceof RunExit) return error.code;
     // Bun resolves source maps lazily; materialize the stack before cleanup
@@ -718,3 +823,32 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
 }
 
 if (import.meta.main) hostProcess.exit(await run(hostProcess.argv.slice(2)));
+
+/**
+ * The last `pending` steps of a command script, each `shift` seconds sooner
+ * (at 0 at the soonest), as written: steps split on an unescaped `;`, a
+ * step's time before its first `:` (`og-probe`'s `command::parse`).
+ */
+export function forkScript(script: string, pending: number, shift: number): string {
+  const steps: string[] = [];
+  let step = "";
+  for (let i = 0; i < script.length; i++) {
+    const c = script[i]!;
+    if (c === "\\") {
+      step += c + (script[i + 1] ?? "");
+      i++;
+    } else if (c === ";") {
+      if (step.trim() !== "") steps.push(step.trim());
+      step = "";
+    } else step += c;
+  }
+  if (step.trim() !== "") steps.push(step.trim());
+  return steps
+    .slice(steps.length - Math.min(pending, steps.length))
+    .map((s) => {
+      const colon = s.indexOf(":");
+      const at = Math.max(0, Number(s.slice(0, colon)) - shift);
+      return `${at}${s.slice(colon)}`;
+    })
+    .join(";");
+}

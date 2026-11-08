@@ -834,6 +834,8 @@ impl Probe {
 
     /// `restore`: a snapshot this process took; `false` for an unknown id
     /// (or one dropped beyond [`MAX_SNAPSHOTS`]) or a world it no longer fits.
+    /// A `quit` that ran is undone with it: the restored world is from
+    /// before it, and its ticks play again (`og run --forks`).
     pub fn restore(&mut self, world: &mut World, id: &str) -> bool {
         let Some(saved) = self
             .snapshots
@@ -843,7 +845,11 @@ impl Probe {
         else {
             return false;
         };
-        self.load(world, &saved).is_ok()
+        let ok = self.load(world, &saved).is_ok();
+        if ok {
+            self.quit = false;
+        }
+        ok
     }
 
     /// `dump`: a world, entity or UI dump; `None` for an unknown entity.
