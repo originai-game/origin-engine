@@ -450,8 +450,9 @@ impl UiShape {
 
 /// A clip with a shape: what uses clip rectangle `rect` of
 /// [`crate::Overlay::clips`] is also cut to this shape (antialiased), and to
-/// `parent`'s, a [`UiList::clips`] index (nested rounded panels). A
-/// polyline does not clip.
+/// `parent`'s, a [`UiList::clips`] index (nested rounded panels). A path
+/// cuts by its fill rule, a polyline by its polygon (even-odd), each with
+/// the path fill's analytic coverage.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiClip {
     pub rect: u32,

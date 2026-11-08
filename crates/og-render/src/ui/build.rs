@@ -283,10 +283,47 @@ impl UiTables {
 
     /// Adds clip `c`'s shape; `parent` is its parent's record + 1 (0: none).
     pub fn clip(&mut self, c: &UiClip, parent: u32) -> u32 {
+        let m = transform_of(c.transform);
+        // A path, or a polyline's polygon (even-odd), cuts by the path
+        // fill's own coverage: its bands are written like a fill's, read
+        // two pixels past the outline.
+        let outline = match &c.geometry {
+            UiGeometry::Path(p) => Some(std::borrow::Cow::Borrowed(&**p)),
+            UiGeometry::Polyline { points, .. } => {
+                let mut p = UiPath {
+                    fill_rule: UiFillRule::EvenOdd,
+                    ..UiPath::default()
+                };
+                for (i, q) in points.iter().enumerate() {
+                    if i == 0 {
+                        p.move_to(*q);
+                    } else {
+                        p.line_to(*q);
+                    }
+                }
+                p.close();
+                Some(std::borrow::Cow::Owned(p))
+            }
+            _ => None,
+        };
+        if let Some(path) = outline {
+            let px = 1.0 / (m[0] * m[3] - m[1] * m[2]).abs().sqrt().max(1e-6);
+            // No curves: an empty clip cuts everything (sd_path reads no
+            // bands as outside).
+            let (geo, rule) = path::write(&path, 2.0 * px, 0.05 * px, &mut self.points)
+                .map_or(([0.0; 4], 0.0), |p| (p.geo, p.rule));
+            self.clips.push(GpuClip {
+                center_half: [c.center.x, c.center.y, c.half.x.max(0.0), c.half.y.max(0.0)],
+                inverse: inverse(m),
+                radii: [0.0; 4],
+                geo,
+                kinds: [6.0, 0.0, rule, parent as f32],
+            });
+            return self.clips.len() as u32;
+        }
         let (word, geo, geo2) = area(&c.geometry);
         let kind = word & 15;
         let corner = (word >> 4) & 15;
-        let m = transform_of(c.transform);
         self.clips.push(GpuClip {
             center_half: [c.center.x, c.center.y, c.half.x.max(0.0), c.half.y.max(0.0)],
             inverse: inverse(m),
@@ -354,14 +391,7 @@ pub(crate) fn clip_heads(
             }
             None => 0,
         };
-        let r = if matches!(
-            c.geometry,
-            UiGeometry::Polyline { .. } | UiGeometry::Path(_)
-        ) {
-            parent
-        } else {
-            tables.clip(c, parent)
-        };
+        let r = tables.clip(c, parent);
         records[k] = Some(r);
         Ok(r)
     }

@@ -283,7 +283,7 @@ fn filled(parts: Vec<(Vec<[f32; 2]>, bool)>) -> ShapeKind {
 /// transform `t`: the definition's shapes as one clip path, or (a mask of
 /// one gradient-filled shape) a gradient mask.
 enum Cut {
-    /// Paths (og-render does not clip to a path yet: see docs/ui.md).
+    /// Paths, cut by the path fill's coverage.
     Shape(ShapeKind),
     /// One rect or ellipse, clipped natively.
     Box(ShapeKind, [f32; 4]),
@@ -899,13 +899,6 @@ impl Ui {
         // A clip or a mask cuts the element's children; a cut shape
         // draws as the cut element's child, an anonymous box over it.
         let cut = match cut(&b.doc, r, &t, vb) {
-            Ok(Some(Cut::Shape(s))) => {
-                warn(
-                    self,
-                    "a clip or mask of paths, or of a turned shape, does not cut yet (og-render clips to rects and ellipses): use one rect, circle or ellipse".into(),
-                );
-                Some(Cut::Shape(s))
-            }
             Ok(c) => c,
             Err(e) => {
                 warn(self, e);
@@ -1155,18 +1148,20 @@ mod tests {
       <mask id="Fade"><rect x="60" y="0" width="20" height="40" fill="url(#Ramp)"/></mask>
       <linearGradient id="Ramp"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
       <pattern id="Dots" patternUnits="userSpaceOnUse" width="5" height="5"><circle cx="2.5" cy="2.5" r="1" fill="#fff"/></pattern>
+      <clipPath id="Wedge"><path d="M82 22 L98 22 Q90 30 82 38 Z"/></clipPath>
     </defs>
     <use id="A" href="#Coin" x={$x} y="0" width="20" height="20"/>
     <use id="B" href="#Coin" x="20" y="0" width="10" height="10" fill="#000"/>
     <g id="Clipped" clip-path="url(#Half)"><circle id="Big" cx="45" cy="20" r="20" fill="#f00"/></g>
     <g id="Masked" mask="url(#Fade)"><rect id="Under" x="60" y="0" width="20" height="40" fill="#0f0"/></g>
     <rect id="Dotted" x="80" y="0" width="20" height="20" fill="url(#Dots)"/>
+    <g id="Wedged" clip-path="url(#Wedge)"><circle id="Disc" cx="90" cy="30" r="8" fill="#00f"/></g>
   </svg>
 </div>
 <style>#Box { padding: calc(var(--m) * 1px); } #Icons { width: calc(var(--s) * 1px); height: calc(var(--s) * 0.4px); }</style>
 "##;
 
-    /// `<use>` of a `<symbol>`, `clip-path`, a gradient `<mask>`, a
+    /// `<use>` of a `<symbol>`, `clip-path` (a rect and a path), a gradient `<mask>`, a
     /// pattern fill and `<title>`: each draws through the native draw, a
     /// bound attribute of a copy costs that copy, and moving or resizing
     /// the `<svg>` builds nothing.
@@ -1235,6 +1230,17 @@ mod tests {
             .iter()
             .any(|it| matches!(it.cmd, DrawCmd::PushClip { .. }));
         assert!(clipped, "clip-path pushes a clip");
+        // A clip to a path cuts by the path (no warning, above).
+        let path_clip = ui.frame().items.iter().any(|it| {
+            matches!(
+                &it.cmd,
+                DrawCmd::PushClip {
+                    geometry: og_render::UiGeometry::Path(_),
+                    ..
+                }
+            )
+        });
+        assert!(path_clip, "the wedge clips to its path");
         let masked = ui.frame().items.iter().find_map(|it| match &it.cmd {
             DrawCmd::BeginLayer {
                 mask: Some(og_render::UiMask::Gradient(g)),

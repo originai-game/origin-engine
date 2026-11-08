@@ -1,12 +1,13 @@
 //! SVG definitions in documents (docs/ui.md §3.3): a coin `<symbol>`
 //! drawn by three `<use>`s at three sizes, a gauge cut by a `<clipPath>`,
-//! a card faded by a gradient `<mask>`, and a hatched `<pattern>` fill.
+//! a card faded by a gradient `<mask>`, and a hatched `<pattern>` fill
+//! cut to a diamond path.
 //! The frames match `references/metal/svg-defs-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
 //! Ways it could fail: a use drawn at the symbol's own size, a clip or a
 //! mask placed in view-box units instead of the box, or tiles that stop
-//! short of the shape's edge.
+//! short of the shape's edge, or a path clip that draws uncut.
 
 use crate::support;
 
@@ -30,13 +31,14 @@ const CARD: &str = r##"<meta name="component" content="defs">
       <pattern id="Hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
         <rect x="0" y="0" width="2" height="6" fill="#58a6ff"/>
       </pattern>
+      <clipPath id="Gem"><path d="M178 6 Q196 22 198 40 L178 74 L158 40 Q160 22 178 6 Z"/></clipPath>
     </defs>
     <use href="#Coin" x="4" y="28" width="24" height="24"/>
     <use href="#Coin" x="30" y="20" width="40" height="40"/>
     <use href="#Coin" x="8" y="60" width="16" height="16"/>
     <g clip-path="url(#Half)"><circle cx="85" cy="40" r="30" fill="#f85149"/></g>
     <g mask="url(#Fade)"><rect x="110" y="10" width="40" height="60" rx="6" fill="#7ee787"/></g>
-    <rect x="160" y="10" width="36" height="60" rx="4" fill="url(#Hatch)" stroke="#58a6ff"/>
+    <g clip-path="url(#Gem)"><rect x="160" y="10" width="36" height="60" rx="4" fill="url(#Hatch)" stroke="#58a6ff"/></g>
   </svg>
 </panel>
 </column>
@@ -48,46 +50,79 @@ const CARD: &str = r##"<meta name="component" content="defs">
 @media (max-width: 500px) { #Art { width: 320px; height: 128px; } }
 </style>"##;
 
+/// `source` mounted and rendered at `width`×`height`: its pixels and the
+/// renderer's info.
+fn render(source: &str, width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let mut ui = ui_with_font(font);
+    ui.define_document(UiDocument::parse("ui/defs.svelte", source).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "defs"),
+        "defs",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let vp = Viewport::new(width as f32, height as f32);
+    for _ in 0..4 {
+        ui.begin(InputFrame::default(), vp);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    let bg = ui.theme().palette.backdrop.linear();
+    scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
+    scene.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width,
+        height,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    (pixels, renderer.info().clone())
+}
+
+/// A `<clipPath>` of a triangle path cuts a red square to the triangle:
+/// red in its top left, the backdrop past the diagonal.
+///
+/// Fails when a path clip draws uncut (red everywhere) or cuts all of it.
+#[test]
+#[ignore = "requires GPU"]
+fn a_path_clip_cuts_to_the_path() {
+    const TRI: &str = r##"<meta name="component" content="defs">
+<svg id="Art" viewBox="0 0 100 100">
+  <defs><clipPath id="Tri"><path d="M0 0 L100 0 L0 100 Z"/></clipPath></defs>
+  <g clip-path="url(#Tri)"><rect x="0" y="0" width="100" height="100" fill="#ff0000"/></g>
+</svg>
+<style>#Art { width: 200px; height: 200px; }</style>"##;
+    let (pixels, _) = render(TRI, 200, 200);
+    let at = |x: usize, y: usize| {
+        let i = (y * 200 + x) * 4;
+        [pixels[i], pixels[i + 1], pixels[i + 2]]
+    };
+    let red = |p: [u8; 3]| p[0] > 200 && p[1] < 60 && p[2] < 60;
+    assert!(red(at(40, 40)), "inside the triangle: {:?}", at(40, 40));
+    assert!(!red(at(160, 160)), "past the diagonal: {:?}", at(160, 160));
+    assert!(
+        !red(at(104, 104)),
+        "just past the diagonal: {:?}",
+        at(104, 104)
+    );
+}
+
 #[test]
 #[ignore = "requires GPU"]
 fn svg_defs_match_their_reference_frames() {
-    use og_render::*;
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
-        let mut scene = RenderScene::new();
-        let font = add_test_font(&mut scene);
-        let mut ui = ui_with_font(font);
-        ui.define_document(UiDocument::parse("ui/defs.svelte", CARD).unwrap());
-        ui.mount_document(
-            reactive::SourceId::new("test", "defs"),
-            "defs",
-            Default::default(),
-            Default::default(),
-            &bind::NoEnv,
-        )
-        .unwrap();
-        let vp = Viewport::new(width as f32, height as f32);
-        for _ in 0..4 {
-            ui.begin(InputFrame::default(), vp);
-            ui.build_retained_documents(&bind::NoEnv).unwrap();
-            ui.end();
-        }
-        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-        let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
-        ui.frame().emit(&EmitDesc::default(), &mut overlay);
-        scene.overlay = Some(overlay);
-        let bg = ui.theme().palette.backdrop.linear();
-        scene.environment.background =
-            Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
-        scene.post.tonemap = Tonemap::None;
-        let mut renderer = Renderer::new_blocking(&RenderDesc {
-            width,
-            height,
-            ..Default::default()
-        })
-        .expect("a headless adapter");
-        renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
-        let pixels = renderer.read_offscreen().unwrap().pixels;
-        let info = renderer.info().clone();
+        let (pixels, info) = render(CARD, width, height);
         let name = format!("svg-defs-{width}.png");
         image::save_buffer(
             out_dir().join(&name),

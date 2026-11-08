@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og-render: UiClip with a path or polyline geometry",
+      "summary": "A UiClip of a Path or Polyline was ignored (its children drew uncut); it now cuts by the path fill's analytic coverage and fill rule (a polyline by its polygon, even-odd), so SVG <clipPath> and <mask> of paths, polygons and turned shapes cut correctly."
+    }
+  ]
+}

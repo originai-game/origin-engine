@@ -413,9 +413,11 @@ Definitions are referenced by `#id`, as in browsers:
 - `clip-path="url(#id)"` on a group or a shape cuts it to a `<clipPath>`'s
   shapes. `mask="url(#id)"` cuts it to a `<mask>`'s white shapes, or fades
   it through a mask of one gradient-filled shape (luminance times alpha, as
-  SVG masks). og-render clips natively to one rect, circle or ellipse under
-  an axis-aligned transform. A clip to paths or to a turned shape draws
-  uncut, with a warning, until og-render clips to paths.
+  SVG masks). One rect, circle or ellipse under an axis-aligned transform
+  clips as a box; any other clip, of paths, polygons or turned shapes,
+  cuts by the paths' own analytic coverage (the coverage a path fill
+  draws with, read from the same band tables): the union of its shapes,
+  nonzero. `clip-rule` is not read yet.
 - `fill="url(#id)"` naming a `<pattern>` tiles its shapes over a rect,
   circle or ellipse, with `patternUnits`, `patternTransform` and
   `viewBox`. The tiles of each shape are one path, at most 4096 tiles.

@@ -747,7 +747,13 @@ fn clip_coverage(head: u32, css: vec2<f32>) -> f32 {
     let det = abs(s.inverse.x * s.inverse.w - s.inverse.y * s.inverse.z);
     let px = sqrt(max(det, 1e-8)) / frame.output.z;
     let kinds = vec4<u32>(s.kinds);
-    let d = sd_area(local, kinds.x, kinds.y, CAP_BUTT, s.center_half.zw, s.radii, s.geo, s.kinds.z);
+    var d: f32;
+    if (kinds.x == 6u) {
+      // A path (geo its bands, kinds.z its fill rule): the fill's distance.
+      d = sd_path(local, s.geo, s.kinds.z).x;
+    } else {
+      d = sd_area(local, kinds.x, kinds.y, CAP_BUTT, s.center_half.zw, s.radii, s.geo, s.kinds.z);
+    }
     c *= clamp(0.5 - d / max(px, 1e-6), 0.0, 1.0);
     k = kinds.w;
   }
