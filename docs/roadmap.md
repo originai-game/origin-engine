@@ -28,7 +28,6 @@ All streams run on macrunner and report to the coordinator thread
 
 | Stream | Thread | Scope |
 |---|---|---|
-| Standard CSS | [T-01a1b996](https://ampcode.com/threads/T-01a1b996-bd22-7771-a0f9-a7e49b7a2fc9) | `@keyframes` inside `@media`/`@container` |
 | Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Lazy diagnostics and retained paint reuse, TS builder removal, both-host proof, perf after-numbers |
 | og-ui generic capabilities | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | HTML element names, select/dialog/details/meter, colour-blind modes, live regions, selectable text, run-time colour emoji, split screen, UI debugger and `dump_ui:motion`, text on a path, untested components, UI perf budgets |
 | og explore and invariants | [T-01a1b99f-0ce1](https://ampcode.com/threads/T-01a1b99f-0ce1-7570-9185-d8d1698ac145) | Explore test down to seconds; one tick number for every assertion kind |
@@ -43,7 +42,8 @@ All streams run on macrunner and report to the coordinator thread
   01a9a97b2); standard CSS cascade (443078990), media queries
   (fd41adf81), sibling and structural selectors (17d111bc2), property
   transitions and `@keyframes` animations (7cb6be159), container queries
-  (0c5f2cc93).
+  (0c5f2cc93) and `@keyframes` inside `@media`/`@container` (dba9940b7);
+  the standard CSS stream is complete.
 - **Retained core:** named stores, `GameDesc.ui`, presentation checkpoint
   and recorded intents (cc6000c29); mounts, topology, keyed virtual rows,
   settlement, stable slots (1167a7566 to 0b6ba3af3); only changed mounted
