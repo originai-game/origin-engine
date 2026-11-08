@@ -64,6 +64,21 @@ pub enum UiCorner {
     Bevel,
     /// A concave quarter circle cut into the corner (an inset notch).
     Notch,
+    /// CSS's corners (CSS Backgrounds 3 §5.1, CSS Borders 4 §corner-shape):
+    /// [`UiGeometry::Rect`]'s radii are the horizontal ones, these the rest.
+    Css(UiCssCorners),
+}
+
+/// Per-corner CSS corners, top left, top right, bottom right, bottom left.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct UiCssCorners {
+    /// The vertical radii, CSS px (each clamped to the half height); the
+    /// horizontal ones are the rectangle's `radii`.
+    pub vertical: [f32; 4],
+    /// Each corner's `superellipse(K)`: 1 round, 2 squircle, 0 bevel, −1
+    /// scoop, −∞ notch, +∞ square; finite values are kept to quarter steps
+    /// between −7.75 and 7.5. The default (0) is a bevel: give 1 for round.
+    pub shape: [f32; 4],
 }
 
 /// The end of an open line or arc.

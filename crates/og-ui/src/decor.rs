@@ -89,6 +89,56 @@ pub struct BoxDecor {
     /// Its CSS paint beyond these: gradients, mask, filters, blend, text
     /// shadows, clip path and material.
     pub css: Option<Box<crate::doc::paint_css::CssPaint>>,
+    /// Per-corner, elliptical or % `border-radius`, or a `corner-shape`.
+    pub corners: Option<Corners>,
+}
+
+/// CSS corners as written: each corner's horizontal and vertical radius
+/// as (px, fraction of the box's side), and its `corner-shape` K.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Corners {
+    pub radii: [[(f32, f32); 2]; 4],
+    pub shape: [f32; 4],
+}
+
+/// Corners resolved for one box: horizontal radii and the rest.
+pub(crate) type Resolved = ([f32; 4], og_render::UiCssCorners);
+
+impl Corners {
+    /// Its radii for a `w` × `h` box, scaled down together where two
+    /// meeting along a side would overlap (CSS Backgrounds 3 §5.5).
+    pub(crate) fn resolve(&self, w: f32, h: f32) -> Resolved {
+        let rx = self.radii.map(|[x, _]| (x.0 + x.1 * w).max(0.0));
+        let ry = self.radii.map(|[_, y]| (y.0 + y.1 * h).max(0.0));
+        let ratio = |side: f32, a: f32, b: f32| if a + b > 0.0 { side / (a + b) } else { 1.0 };
+        let f = ratio(w, rx[0], rx[1])
+            .min(ratio(h, ry[1], ry[2]))
+            .min(ratio(w, rx[2], rx[3]))
+            .min(ratio(h, ry[3], ry[0]))
+            .min(1.0);
+        // A corner with a zero radius is square, whatever its shape.
+        let fix = |r: f32| if r * f < 1e-4 { 0.0 } else { r * f };
+        (
+            rx.map(fix),
+            og_render::UiCssCorners {
+                vertical: ry.map(fix),
+                shape: self.shape,
+            },
+        )
+    }
+}
+
+/// `c` grown outwards by `k` CSS px (negative: inwards), as an outline's
+/// or a shadow's spread follows the border's curve.
+fn grow((h, c): Resolved, k: f32) -> Resolved {
+    let g = |r: f32| if r > 0.0 { (r + k).max(0.0) } else { 0.0 };
+    (
+        h.map(g),
+        og_render::UiCssCorners {
+            vertical: c.vertical.map(g),
+            shape: c.shape,
+        },
+    )
 }
 
 impl BoxDecor {
@@ -148,6 +198,13 @@ impl BoxDecor {
         {
             *radii = Some([r; 4]);
         }
+        if let (Some(c), crate::paint::ShapeKind::Rect { radii, corner }) =
+            (&self.corners, &mut d.shape)
+        {
+            let (h, css) = c.resolve(size[0], size[1]);
+            *radii = Some(h);
+            *corner = og_render::UiCorner::Css(css);
+        }
         if self.clip && d.clip == crate::paint::Clip::None {
             d.clip = crate::paint::Clip::Shape;
         }
@@ -158,10 +215,14 @@ impl BoxDecor {
     pub(crate) fn lines(&self, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
         let r = at.rect;
+        let corners = self
+            .corners
+            .map(|c| c.resolve(r.width, r.height))
+            .unwrap_or(([at.radius; 4], round()));
         let uniform = self.borders.iter().all(|b| *b == self.borders[0]);
         match self.borders[0] {
             Some(b) if uniform && !b.style.shaded() => {
-                ring(&mut out, at, r, at.radius, b, Inside);
+                ring(&mut out, at, r, corners, b, Inside);
             }
             _ => self.sides(&mut out, at),
         }
@@ -172,12 +233,7 @@ impl BoxDecor {
                 r.width + 2.0 * offset,
                 r.height + 2.0 * offset,
             );
-            let radius = if at.radius > 0.0 {
-                (at.radius + offset).max(0.0)
-            } else {
-                0.0
-            };
-            ring(&mut out, at, grown, radius, line, Outside);
+            ring(&mut out, at, grown, grow(corners, offset), line, Outside);
         }
         out
     }
@@ -258,27 +314,44 @@ fn halve(r: Rect, k: usize) -> (Rect, Rect) {
 
 use og_render::UiAlign::{Inside, Outside};
 
-/// A line of `line` round `rect`, inside or outside its edge.
+/// Round corners of K 1, as `corner-shape: round` is.
+fn round() -> og_render::UiCssCorners {
+    og_render::UiCssCorners {
+        vertical: [0.0; 4],
+        shape: [1.0; 4],
+    }
+}
+
+/// A line of `line` round `rect` (its corners `corners`), inside or
+/// outside its edge.
 fn ring(
     out: &mut Vec<DrawCmd>,
     at: &Placed,
     rect: Rect,
-    radius: f32,
+    corners: Resolved,
     line: Line,
     align: og_render::UiAlign,
 ) {
+    // Plain round corners stay the circular geometry (its dashes follow
+    // the arcs exactly); anything else is CSS's.
+    let plain = corners.1.shape == [1.0; 4]
+        && (corners.1.vertical == [0.0; 4] || corners.1.vertical == corners.0);
     let w = line.width;
     let (dash, cap) = match line.style {
         LineStyle::Dashed => ([3.0 * w, 3.0 * w], og_render::UiCap::Butt),
         LineStyle::Dotted => ([w, w], og_render::UiCap::Butt),
         _ => ([0.0; 2], og_render::UiCap::Butt),
     };
-    let mut stroke = |rect: Rect, radius: f32, width: f32| {
+    let mut stroke = |rect: Rect, (radii, css): Resolved, width: f32| {
         out.push(DrawCmd::Shape {
             shape: Box::new(og_render::UiShape {
                 geometry: og_render::UiGeometry::Rect {
-                    radii: [radius.max(0.0); 4],
-                    corner: og_render::UiCorner::Round,
+                    radii: radii.map(|r| r.max(0.0)),
+                    corner: if plain {
+                        og_render::UiCorner::Round
+                    } else {
+                        og_render::UiCorner::Css(css)
+                    },
                 },
                 center: Vec2::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0),
                 half: Vec2::new(rect.width / 2.0, rect.height / 2.0),
@@ -302,7 +375,7 @@ fn ring(
     if line.style == LineStyle::Double && w >= 3.0 {
         // Two lines a third as wide, a third apart (CSS's double).
         let third = w / 3.0;
-        stroke(rect, radius, third);
+        stroke(rect, corners, third);
         let k = if align == Inside {
             2.0 * third
         } else {
@@ -314,16 +387,8 @@ fn ring(
             rect.width - 2.0 * k,
             rect.height - 2.0 * k,
         );
-        stroke(
-            inner,
-            if radius > 0.0 {
-                (radius - k).max(0.0)
-            } else {
-                0.0
-            },
-            third,
-        );
+        stroke(inner, grow(corners, -k), third);
     } else {
-        stroke(rect, radius, w);
+        stroke(rect, corners, w);
     }
 }

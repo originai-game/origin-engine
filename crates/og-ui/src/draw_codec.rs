@@ -109,6 +109,11 @@ fn geometry(w: &mut W, g: &UiGeometry) {
                 }
                 UiCorner::Bevel => w.u8(2),
                 UiCorner::Notch => w.u8(3),
+                UiCorner::Css(c) => {
+                    w.u8(4);
+                    f4(w, &c.vertical);
+                    f4(w, &c.shape);
+                }
             }
         }
         UiGeometry::Ellipse => w.u8(1),
@@ -193,6 +198,10 @@ fn rgeometry(r: &mut R) -> Option<UiGeometry> {
                 1 => UiCorner::Squircle(r.f32()?),
                 2 => UiCorner::Bevel,
                 3 => UiCorner::Notch,
+                4 => UiCorner::Css(og_render::UiCssCorners {
+                    vertical: rf4(r)?,
+                    shape: rf4(r)?,
+                }),
                 _ => return None,
             },
         },

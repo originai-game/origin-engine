@@ -216,6 +216,53 @@ fn border_radius_rounds_a_dressed_button() {
 }
 
 #[test]
+fn corners_take_css_radii_and_shapes() {
+    // 200 × 100: the top radii sum to 240, so every radius scales by
+    // 200 / 240 (CSS Backgrounds 3 §5.5); the bottom corners are bevels.
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root"><div id="Box"></div><div id="Pill"></div></div></div>
+<style>
+#Root { width: 400px; }
+#Box { width: 200px; height: 100px; background: #224466;
+  border: 2px solid #ffffff;
+  border-top-left-radius: 160px 40px; border-top-right-radius: 80px;
+  border-bottom-right-radius: 10%; corner-shape: round round bevel bevel; }
+#Pill { width: 200px; height: 100px; background: #224466; border-radius: 50% / 20px 10px; }
+</style>"#;
+    both(text, &[], |d| {
+        let s = shapes(&d.ui);
+        let geo = |id: &str, fill: bool| {
+            let e = d.get(id);
+            let at = Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0);
+            s.iter()
+                .filter(|x| x.center == at && matches!(x.mode, UiMode::Fill) == fill)
+                .find_map(|x| match x.geometry {
+                    og_render::UiGeometry::Rect {
+                        radii,
+                        corner: og_render::UiCorner::Css(c),
+                    } => Some((radii, c)),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("{id}'s CSS corners"))
+        };
+        let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.01);
+        let f = 200.0 / 240.0;
+        for fill in [true, false] {
+            let (h, c) = geo("Box", fill);
+            assert!(near(h, [160.0 * f, 80.0 * f, 20.0 * f, 0.0]), "{h:?}");
+            assert!(
+                near(c.vertical, [40.0 * f, 80.0 * f, 10.0 * f, 0.0]),
+                "{c:?}"
+            );
+            assert_eq!(c.shape, [1.0, 1.0, 0.0, 0.0]);
+        }
+        let (h, c) = geo("Pill", true);
+        assert!(near(h, [100.0; 4]), "{h:?}");
+        assert!(near(c.vertical, [20.0, 10.0, 20.0, 10.0]), "{c:?}");
+    });
+}
+
+#[test]
 fn overflow_scrolls_and_clips() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Root">
@@ -275,6 +322,8 @@ const PAGE: &str = r#"<meta name="component" content="t">
     <div class="card raised"><p i18n="g">Shadow</p></div>
     <div class="card outlined"><p i18n="h">Outline</p></div>
     <div class="card clipped"><div class="spill"></div></div>
+    <div class="card corners"><div class="spill"></div></div>
+    <div class="card shaped"><p i18n="s">Shapes</p></div>
   </div>
   <button class="go" i18n="go">Continue</button>
 </main>
@@ -294,6 +343,8 @@ main { width: 100%; height: 100%; padding: 24px; gap: 16px; background: #4a5060;
 .outlined { outline: 2px solid var(--accent); outline-offset: 4px; }
 .clipped { overflow: hidden; }
 .spill { width: 160px; height: 90px; background: var(--danger); }
+.corners { overflow: hidden; border: 3px solid var(--accent); border-radius: 40px 8px / 24px 8px; box-shadow: 0 6px 12px #000000aa; }
+.shaped { border: 2px solid var(--accent); border-radius: 50% 20px 20px 20px; corner-shape: round squircle bevel scoop; }
 .go { border: 2px solid var(--accent); border-radius: 20px; margin: 0 auto; }
 @media (width < 600px) { .grid { grid-template-columns: 110px 110px; } }
 </style>"#;

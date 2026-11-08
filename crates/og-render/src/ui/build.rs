@@ -110,7 +110,7 @@ fn cap_code(c: UiCap) -> u32 {
 /// A geometry's kind word (kind | corner << 4 | cap << 8 | join << 12),
 /// its `geo` and `geo2`, for an area (a polyline's are made by
 /// [`UiTables::polyline`]).
-fn area(g: &UiGeometry) -> (u32, [f32; 4], [f32; 4]) {
+fn area(g: &UiGeometry, half: Vec2) -> (u32, [f32; 4], [f32; 4]) {
     match g {
         UiGeometry::Rect { radii, corner } => {
             let (code, n) = match corner {
@@ -118,8 +118,13 @@ fn area(g: &UiGeometry) -> (u32, [f32; 4], [f32; 4]) {
                 UiCorner::Squircle(n) => (1, n.max(1.0)),
                 UiCorner::Bevel => (2, 2.0),
                 UiCorner::Notch => (3, 2.0),
+                UiCorner::Css(_) => (4, 2.0),
             };
-            (code << 4, radii.map(|r| r.max(0.0)), [n, 0.0, 0.0, 0.0])
+            let mut ext = [n, 0.0, 0.0, 0.0];
+            if let UiCorner::Css(c) = corner {
+                ext = css_corners(c, half.y);
+            }
+            (code << 4, radii.map(|r| r.max(0.0)), ext)
         }
         UiGeometry::Ellipse => (1, [0.0; 4], [0.0; 4]),
         UiGeometry::Arc {
@@ -145,6 +150,37 @@ fn area(g: &UiGeometry) -> (u32, [f32; 4], [f32; 4]) {
         UiGeometry::Polyline { .. } => (4, [0.0; 4], [0.0; 4]),
         UiGeometry::Path(_) => (6, [0.0; 4], [0.0; 4]),
     }
+}
+
+/// Two fractions 0 to 1 as 12-bit steps in one float, exact in f32
+/// (`unpack12` in ui_common.wgsl).
+fn pack12(a: f32, b: f32) -> f32 {
+    let q = |v: f32| (v.clamp(0.0, 1.0) * 4095.0).round();
+    q(a) * 4096.0 + q(b)
+}
+
+/// [`UiCorner::Css`]'s `geo2` for a rectangle of half height `half`: the
+/// vertical radii as fractions of it, and each corner's shape in 6 bits
+/// (0 −∞, 63 +∞, else K as `(code − 32) / 4`).
+fn css_corners(c: &UiCssCorners, half: f32) -> [f32; 4] {
+    let code = |k: f32| -> u32 {
+        if k.is_nan() {
+            36
+        } else if k == f32::INFINITY {
+            63
+        } else if k == f32::NEG_INFINITY {
+            0
+        } else {
+            (32.0 + k * 4.0).round().clamp(1.0, 62.0) as u32
+        }
+    };
+    let codes = c
+        .shape
+        .iter()
+        .enumerate()
+        .fold(0u32, |acc, (i, k)| acc | code(*k) << (6 * i));
+    let v = c.vertical.map(|r| r.max(0.0) / half.max(1e-6));
+    [2.0, pack12(v[0], v[1]), pack12(v[2], v[3]), codes as f32]
 }
 
 impl UiTables {
@@ -321,14 +357,15 @@ impl UiTables {
             });
             return self.clips.len() as u32;
         }
-        let (word, geo, geo2) = area(&c.geometry);
+        let (word, geo, geo2) = area(&c.geometry, c.half);
         let kind = word & 15;
         let corner = (word >> 4) & 15;
         self.clips.push(GpuClip {
             center_half: [c.center.x, c.center.y, c.half.x.max(0.0), c.half.y.max(0.0)],
             inverse: inverse(m),
             radii: geo,
-            geo,
+            // A rectangle's shape reads its corners' extension here.
+            geo: if kind == 0 { geo2 } else { geo },
             kinds: [kind as f32, corner as f32, geo2[0], parent as f32],
         });
         self.clips.len() as u32
@@ -485,7 +522,7 @@ pub(crate) fn shape(
             g.kinds[0] = 6;
         }
         other => {
-            let (word, geo, geo2) = area(other);
+            let (word, geo, geo2) = area(other, s.half);
             g.geo = geo;
             g.geo2 = geo2;
             g.kinds[0] = word;

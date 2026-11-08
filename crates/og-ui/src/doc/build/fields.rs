@@ -92,6 +92,36 @@ fn css_textures(r: &Resolved, env: &dyn crate::bind::Env) -> Vec<(f64, og_render
         .collect()
 }
 
+/// Its CSS corners when a corner differs from the element's one circular
+/// `radius`: per-corner, elliptical or % radii, or a `corner-shape`.
+fn corners(r: &Resolved, radius: f32) -> Option<crate::decor::Corners> {
+    use crate::doc::boxes::{CORNER_RADII, CORNER_SHAPES, corner_radius, corner_shape};
+    let written = |p: &str| r.str(p).filter(|v| !v.trim().is_empty());
+    if CORNER_RADII
+        .iter()
+        .chain(&CORNER_SHAPES)
+        .all(|p| written(p).is_none())
+    {
+        return None;
+    }
+    let mut c = crate::decor::Corners {
+        radii: [[(radius, 0.0); 2]; 4],
+        shape: [1.0; 4],
+    };
+    for k in 0..4 {
+        if let Some(Ok(v)) = written(CORNER_RADII[k]).map(corner_radius) {
+            c.radii[k] = v;
+        }
+        if let Some(Ok(t)) = written(CORNER_SHAPES[k]).map(crate::doc::css::tokens)
+            && let [t] = t.as_slice()
+            && let Ok(v) = corner_shape(t)
+        {
+            c.shape[k] = v;
+        }
+    }
+    Some(c)
+}
+
 impl Ui {
     /// The CSS border, outline, shadows and overflow of an element, with
     /// what they do to its box: a border's width pads it, an outline set
@@ -172,16 +202,18 @@ impl Ui {
                     .map(|c| crate::paint::Paint::Solid(crate::paint::ColorRef::Literal(c)));
             }
         }
+        d.corners = corners(r, el.radius);
         let css = self.css_paint(r, current, textures, warn);
         // A clip, mask, blend, filter or material cuts or composites the
         // background too: it is drawn with them.
-        if css.as_ref().is_some_and(|c| {
+        if (css.as_ref().is_some_and(|c| {
             c.clip.is_some()
                 || c.mask.is_some()
                 || c.blend.is_some()
                 || c.layer.is_some()
                 || !c.filters.is_empty()
-        }) && d.background.is_none()
+        }) || d.corners.is_some())
+            && d.background.is_none()
             && el.part.is_none()
             && el.frame.is_none()
         {

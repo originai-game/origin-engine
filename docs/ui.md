@@ -446,6 +446,15 @@ var(--focus) }` replaces the core focus ring for that element. A uniform
 border follows `border-radius`, which also replaces a dressed control's
 corner (a `<button>`'s plate); sides that differ are drawn as strips, and
 `inset`/`outset`/`groove`/`ridge` darken their shaded sides.
+`border-radius` takes one to four corners, the elliptical `/` form and
+`%` of the box's sides, with the longhands `border-top-left-radius` (and
+the other three, `<h> [<v>]`) and the logical `border-start-start-radius`
+forms; radii that would overlap scale down together (§5.5). `corner-shape`
+(CSS Borders 4) and its per-corner and per-side longhands take `round`,
+`squircle`, `bevel`, `scoop`, `notch`, `square` and `superellipse(<K>)`.
+Background, border, outline, shadows, `overflow: hidden` and the element's
+clip all follow the corners. One uniform px radius stays the element's
+`radius`, which states and transitions animate.
 `box-shadow` takes a comma list of `[inset] x y [blur [spread]] [color]`,
 the first listed on top, outer shadows under the background and inset ones
 over it.

@@ -68,6 +68,8 @@ const CORNER_ROUND: u32 = 0u;
 const CORNER_SQUIRCLE: u32 = 1u;
 const CORNER_BEVEL: u32 = 2u;
 const CORNER_NOTCH: u32 = 3u;
+// CSS corners (UiCorner::Css): elliptical radii and a superellipse per corner.
+const CORNER_CSS: u32 = 4u;
 const CAP_BUTT: u32 = 0u;
 const CAP_ROUND: u32 = 1u;
 const CAP_SQUARE: u32 = 2u;
@@ -180,7 +182,63 @@ fn corner_radius(p: vec2<f32>, radii: vec4<f32>) -> f32 {
   return select(right, left, p.x < 0.0);
 }
 
-fn sd_rect(p: vec2<f32>, half: vec2<f32>, radii: vec4<f32>, corner: u32, n: f32) -> f32 {
+// Two 12-bit fractions packed in one float (src/ui/build.rs `pack12`).
+fn unpack12(v: f32) -> vec2<f32> {
+  let hi = floor(v / 4096.0);
+  return vec2<f32>(hi, v - hi * 4096.0) / 4095.0;
+}
+
+// CSS corners (CSS Backgrounds 3 §5, CSS Borders 4 corner-shape): the
+// corner `p` is nearest, an ellipse quadrant of radii `rx`, `ry` (`ext`
+// packs ry as fractions of the half height) shaped as a superellipse of
+// parameter K (`ext.w` packs it, 6 bits a corner): K ≥ 0 convex, exponent
+// 2^K about the corner's inner centre (0 bevel, 1 round, 2 squircle);
+// K < 0 concave, exponent 2^-K about the box's corner (−1 scoop, −∞ notch);
+// +∞ square.
+fn sd_css_corner(p: vec2<f32>, half: vec2<f32>, radii: vec4<f32>, ext: vec4<f32>) -> f32 {
+  let ab = unpack12(ext.y);
+  let cd = unpack12(ext.z);
+  let ry4 = vec4<f32>(ab.x, ab.y, cd.x, cd.y) * half.y;
+  let codes = u32(ext.w);
+  // tl, tr, br, bl: 6 bits each, tl lowest.
+  let idx = select(select(2u, 3u, p.x < 0.0), select(1u, 0u, p.x < 0.0), p.y < 0.0);
+  let code = (codes >> (6u * idx)) & 63u;
+  let r = vec2<f32>(clamp(corner_radius(p, radii), 0.0, half.x), clamp(corner_radius(p, ry4), 0.0, half.y));
+  let a = abs(p);
+  let box = max(a.x - half.x, a.y - half.y);
+  let outside = sd_box(p, half);
+  if (code == 63u || r.x <= 0.0 || r.y <= 0.0) {
+    return outside;
+  }
+  if (code == 0u) {
+    // Notch: the corner's r.x × r.y rectangle taken out.
+    let u = half - a;
+    return max(outside, min(r.x - u.x, r.y - u.y));
+  }
+  let k = (f32(code) - 32.0) / 4.0;
+  let n = exp2(abs(k));
+  if (k >= 0.0) {
+    let q = (a - half + r) / r;
+    if (q.x > 0.0 && q.y > 0.0) {
+      let s = pow(pow(q.x, n) + pow(q.y, n), 1.0 / n);
+      let g = vec2<f32>(pow(q.x, n - 1.0), pow(q.y, n - 1.0)) / max(pow(s, n - 1.0), 1e-6) / r;
+      return (s - 1.0) / max(length(g), 1e-6);
+    }
+    return select(box, outside, box > 0.0);
+  }
+  let u = max(half - a, vec2<f32>(0.0)) / r;
+  if (u.x < 1.0 && u.y < 1.0) {
+    let s = pow(pow(u.x, n) + pow(u.y, n), 1.0 / n);
+    let g = vec2<f32>(pow(u.x, n - 1.0), pow(u.y, n - 1.0)) / max(pow(s, n - 1.0), 1e-6) / r;
+    return max(outside, (1.0 - s) / max(length(g), 1e-6));
+  }
+  return outside;
+}
+
+fn sd_rect(p: vec2<f32>, half: vec2<f32>, radii: vec4<f32>, corner: u32, n: f32, ext: vec4<f32>) -> f32 {
+  if (corner == CORNER_CSS) {
+    return sd_css_corner(p, half, radii, ext);
+  }
   let r = clamp(corner_radius(p, radii), 0.0, min(half.x, half.y));
   switch corner {
     case 1u: {
@@ -607,7 +665,8 @@ fn sd_area(p: vec2<f32>, kind: u32, corner: u32, cap: u32, half: vec2<f32>, radi
     case 1u: { return sd_ellipse(p, half); }
     case 2u: { return sd_arc(p, min(half.x, half.y), geo.x, geo.y, geo.z, cap); }
     case 3u: { return polygon_frame(p, min(half.x, half.y), geo).x; }
-    default: { return sd_rect(p, half, radii, corner, n); }
+    // A rectangle's `geo` is its corners' extension (geo2).
+    default: { return sd_rect(p, half, radii, corner, n, geo); }
   }
 }
 
@@ -910,7 +969,8 @@ struct UiInstance {
   // polygon: sides, inner, rounding, rotation; polyline: first, count,
   // closed. Vector: its view box.
   geo: vec4<f32>,
-  // x: squircle exponent; polyline: y width, z miter limit.
+  // x: squircle exponent; CSS corners: y, z the vertical radii (pack12),
+  // w each corner's shape; polyline: y width, z miter limit.
   geo2: vec4<f32>,
   // Stroke: width, offset of its centre from the outline, dash, gap.
   // Shadow: blur, spread, offset x, y. Backdrop: blur, saturation,
@@ -1026,7 +1086,7 @@ fn shape_distance(s: UiInstance, p: vec2<f32>) -> vec2<f32> {
   if (kind == GEO_POLYLINE) {
     return sd_polyline(p, u32(s.geo.x), u32(s.geo.y), s.geo.z > 0.5, s.geo2.y, cap, join, s.geo2.z);
   }
-  return vec2<f32>(sd_area(p, kind, corner, cap, s.center_half.zw, s.geo, s.geo, s.geo2.x), 0.0);
+  return vec2<f32>(sd_area(p, kind, corner, cap, s.center_half.zw, s.geo, select(s.geo, s.geo2, kind == GEO_RECT), s.geo2.x), 0.0);
 }
 
 // What the instance's mode covers at local `p`, 0..1 (`px`: local units

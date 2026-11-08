@@ -247,6 +247,7 @@ pub(crate) fn longhands(name: &str) -> Vec<&'static str> {
         "border-color" => side_props("Color"),
         "outline" => vec!["outlineWidth", "outlineStyle", "outlineColor"],
         "overflow" => vec!["overflowX", "overflowY"],
+        n if n.ends_with("-radius") || n.starts_with("corner-") => corner_props(n),
         _ => match name.strip_prefix("border-").and_then(side_index) {
             Some(k) => vec![
                 side_props("Width")[k],
@@ -393,4 +394,207 @@ pub(crate) fn lower(name: &str, value: &str, t: &[Tok]) -> Result<Entries, Strin
         }
     }
     Ok(out)
+}
+
+/// The corners in CSS's order, as `border-<v>-<h>-radius` names them.
+pub(crate) const CORNERS: [&str; 4] = ["top-left", "top-right", "bottom-right", "bottom-left"];
+
+/// The props of each corner's radii and shape (CSS order).
+pub(crate) const CORNER_RADII: [&str; 4] = [
+    "radiusTopLeft",
+    "radiusTopRight",
+    "radiusBottomRight",
+    "radiusBottomLeft",
+];
+pub(crate) const CORNER_SHAPES: [&str; 4] = [
+    "cornerTopLeftShape",
+    "cornerTopRightShape",
+    "cornerBottomRightShape",
+    "cornerBottomLeftShape",
+];
+
+/// The physical corner a corner name means (`top-left`, the logical
+/// `start-start` in horizontal-tb, left to right), in CSS order.
+fn corner_index(name: &str) -> Option<usize> {
+    let physical = match name {
+        "start-start" => "top-left",
+        "start-end" => "top-right",
+        "end-end" => "bottom-right",
+        "end-start" => "bottom-left",
+        n => n,
+    };
+    CORNERS.iter().position(|c| *c == physical)
+}
+
+/// The corner props a `border-radius` or `corner-shape` property sets: the
+/// four for the shorthands (`corner-top-shape` its side's two), one for a
+/// longhand; empty when it is neither.
+pub(crate) fn corner_props(name: &str) -> Vec<&'static str> {
+    if name == "border-radius" {
+        return CORNER_RADII.to_vec();
+    }
+    if name == "corner-shape" {
+        return CORNER_SHAPES.to_vec();
+    }
+    if let Some(c) = name
+        .strip_prefix("border-")
+        .and_then(|n| n.strip_suffix("-radius"))
+        .and_then(corner_index)
+    {
+        return vec![CORNER_RADII[c]];
+    }
+    let Some(rest) = name
+        .strip_prefix("corner-")
+        .and_then(|n| n.strip_suffix("-shape"))
+    else {
+        return Vec::new();
+    };
+    if let Some(c) = corner_index(rest) {
+        return vec![CORNER_SHAPES[c]];
+    }
+    // A side's two corners: corner-top-shape, corner-block-start-shape…
+    let pair = match rest {
+        "top" | "block-start" => [0, 1],
+        "right" | "inline-end" => [1, 2],
+        "bottom" | "block-end" => [2, 3],
+        "left" | "inline-start" => [3, 0],
+        _ => return Vec::new(),
+    };
+    pair.iter().map(|&k| CORNER_SHAPES[k]).collect()
+}
+
+/// A radius: px (or `0`) or a percentage of the box's side, as (px, fraction).
+fn radius_len(t: &Tok) -> Result<(f32, f32), String> {
+    let bad = || format!("'{}' is not a radius (<n>px or <n>%)", describe(t));
+    match t {
+        Tok::Num(n, u) => {
+            let v: f32 = n.parse().map_err(|_| bad())?;
+            if v < 0.0 {
+                return Err(format!("a radius is not negative: {}", describe(t)));
+            }
+            match u.as_str() {
+                "%" => Ok((0.0, v / 100.0)),
+                "px" => Ok((v, 0.0)),
+                "" if v == 0.0 => Ok((0.0, 0.0)),
+                _ => Err(bad()),
+            }
+        }
+        _ => Err(bad()),
+    }
+}
+
+/// One corner's radii, as its prop holds them: `<h> [<v>]`.
+pub(crate) fn corner_radius(text: &str) -> Result<[(f32, f32); 2], String> {
+    let t = super::css::tokens(text)?;
+    match t.as_slice() {
+        [h] => {
+            let h = radius_len(h)?;
+            Ok([h, h])
+        }
+        [h, v] => Ok([radius_len(h)?, radius_len(v)?]),
+        _ => Err("a corner radius takes one or two lengths (horizontal vertical)".into()),
+    }
+}
+
+/// A `corner-shape` value: its superellipse parameter K (CSS Borders 4).
+pub(crate) fn corner_shape(t: &Tok) -> Result<f32, String> {
+    Ok(match t {
+        Tok::Ident(w) => match w.as_str() {
+            "round" => 1.0,
+            "squircle" => 2.0,
+            "bevel" => 0.0,
+            "scoop" => -1.0,
+            "notch" => f32::NEG_INFINITY,
+            "square" => f32::INFINITY,
+            _ => return Err(format!("'{w}' is not a corner shape: {SHAPES}")),
+        },
+        Tok::Func(f, a) if f == "superellipse" => match a.as_slice() {
+            [v] => match v.as_slice() {
+                [Tok::Ident(i)] if i == "infinity" => f32::INFINITY,
+                [Tok::Ident(i)] if i == "-infinity" => f32::NEG_INFINITY,
+                [Tok::Num(n, u)] if u.is_empty() => n
+                    .parse()
+                    .map_err(|_| format!("superellipse({n}) takes a number"))?,
+                _ => return Err("superellipse(<number> | infinity | -infinity)".into()),
+            },
+            _ => return Err("superellipse(<number> | infinity | -infinity)".into()),
+        },
+        t => return Err(format!("'{}' is not a corner shape: {SHAPES}", describe(t))),
+    })
+}
+
+const SHAPES: &str = "round, squircle, bevel, scoop, notch, square or superellipse(<K>)";
+
+/// Lowers `border-radius`, its longhands, `corner-shape` and its longhands
+/// onto the corner props. A uniform `border-radius: <n>px` is the element's
+/// `radius` (which states and transitions animate) and clears the corners.
+pub(crate) fn lower_corners(name: &str, t: &[Tok]) -> Result<Entries, String> {
+    let props = corner_props(name);
+    let mut out = Entries::new();
+    let text = |v: String| vec![Value::String(v)];
+    if name.contains("shape") {
+        let k: Vec<f32> = t.iter().map(corner_shape).collect::<Result<_, _>>()?;
+        let k = match props.len() {
+            4 => four(name, k)?.to_vec(),
+            n if k.len() == 1 => vec![k[0]; n],
+            _ => return Err(format!("{name} takes one corner shape")),
+        };
+        for (p, k) in props.into_iter().zip(k) {
+            out.push((p, text(shape_text(k))));
+        }
+        return Ok(out);
+    }
+    if props.len() == 1 {
+        if t.is_empty() || t.len() > 2 {
+            return Err(format!(
+                "{name} takes one or two lengths (horizontal vertical)"
+            ));
+        }
+        for v in t {
+            radius_len(v)?;
+        }
+        out.push((props[0], text(written(t))));
+        return Ok(out);
+    }
+    // border-radius: 1 to 4 horizontal radii [/ 1 to 4 vertical].
+    let split = t.iter().position(|v| matches!(v, Tok::Slash));
+    let (h, v) = match split {
+        Some(k) => (&t[..k], Some(&t[k + 1..])),
+        None => (t, None),
+    };
+    if let ([one], None) = (h, v)
+        && matches!(one, Tok::Num(_, u) if u != "%")
+    {
+        out.push(("radius", vec![super::css::want_len(one)?]));
+        for p in CORNER_RADII {
+            out.push((p, text(String::new())));
+        }
+        return Ok(out);
+    }
+    for x in h.iter().chain(v.into_iter().flatten()) {
+        radius_len(x)?;
+    }
+    let h = four(name, h.to_vec())?;
+    let v = match v {
+        Some(v) => four(name, v.to_vec())?,
+        None => h.clone(),
+    };
+    for (k, p) in CORNER_RADII.into_iter().enumerate() {
+        out.push((p, text(written(&[h[k].clone(), v[k].clone()]))));
+    }
+    Ok(out)
+}
+
+fn written(t: &[Tok]) -> String {
+    t.iter().map(describe).collect::<Vec<_>>().join(" ")
+}
+
+fn shape_text(k: f32) -> String {
+    if k == f32::INFINITY {
+        "superellipse(infinity)".into()
+    } else if k == f32::NEG_INFINITY {
+        "superellipse(-infinity)".into()
+    } else {
+        format!("superellipse({k})")
+    }
 }

@@ -46,6 +46,14 @@ What every kind takes: its box, layout, paint, motion and input.
 | `justify-self:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where it sits across its grid area or its absolute box, over its parent's (CSS `justify-self`). |
 | `background:` | `var(--<role>) \| #rrggbb[aa]` | Its fill. |
 | `border-radius:` | `<n>px` | Its corner radius, CSS px. |
+| `border-top-left-radius:` | `<h> [<v>] (<n>px \| <n>%)` | Its top left corner's radii: `<h> [<v>]`, px or %. |
+| `border-top-right-radius:` | `<h> [<v>] (<n>px \| <n>%)` | Its top right corner's radii: `<h> [<v>]`, px or %. |
+| `border-bottom-right-radius:` | `<h> [<v>] (<n>px \| <n>%)` | Its bottom right corner's radii: `<h> [<v>]`, px or %. |
+| `border-bottom-left-radius:` | `<h> [<v>] (<n>px \| <n>%)` | Its bottom left corner's radii: `<h> [<v>]`, px or %. |
+| `corner-top-left-shape:` | `round \| squircle \| bevel \| scoop \| notch \| square \| superellipse(<K>)` | Its top left corner's shape: `superellipse(<K>)`. |
+| `corner-top-right-shape:` | `round \| squircle \| bevel \| scoop \| notch \| square \| superellipse(<K>)` | Its top right corner's shape: `superellipse(<K>)`. |
+| `corner-bottom-right-shape:` | `round \| squircle \| bevel \| scoop \| notch \| square \| superellipse(<K>)` | Its bottom right corner's shape: `superellipse(<K>)`. |
+| `corner-bottom-left-shape:` | `round \| squircle \| bevel \| scoop \| notch \| square \| superellipse(<K>)` | Its bottom left corner's shape: `superellipse(<K>)`. |
 | `border-top-width:` | `<n>px` | Its top border's width, CSS px: room inside its box, as padding is. |
 | `border-top-style:` | `none \| hidden \| solid \| dashed \| dotted \| double \| groove \| ridge \| inset \| outset` | Its top border's style (none draws nothing and takes no room). |
 | `border-top-color:` | `var(--<role>) \| #rrggbb[aa]` | Its top border's colour (unset: its text colour). |

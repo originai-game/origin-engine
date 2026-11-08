@@ -122,6 +122,14 @@ pub const STYLE: &[(&str, &str)] = &[
     ("labelDirection", "flex-direction"),
     ("background", "background"),
     ("radius", "border-radius"),
+    ("radiusTopLeft", "border-top-left-radius"),
+    ("radiusTopRight", "border-top-right-radius"),
+    ("radiusBottomRight", "border-bottom-right-radius"),
+    ("radiusBottomLeft", "border-bottom-left-radius"),
+    ("cornerTopLeftShape", "corner-top-left-shape"),
+    ("cornerTopRightShape", "corner-top-right-shape"),
+    ("cornerBottomRightShape", "corner-bottom-right-shape"),
+    ("cornerBottomLeftShape", "corner-bottom-left-shape"),
     ("borderTopWidth", "border-top-width"),
     ("borderTopStyle", "border-top-style"),
     ("borderTopColor", "border-top-color"),
@@ -325,11 +333,28 @@ fn conv(prop: &str) -> Conv {
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
         "boxShadow" | "uv" => Conv::Raw,
-        "backgroundImage" | "backgroundSize" | "backgroundPosition" | "backgroundRepeat"
-        | "maskImage" | "backdropFilter" | "filter" | "mixBlendMode" | "textShadow"
-        | "clipPath" | "material" | "scrollSnapType" | "scrollSnapAlign" | "sheetDetents" => {
-            Conv::Raw
-        }
+        "backgroundImage"
+        | "backgroundSize"
+        | "backgroundPosition"
+        | "backgroundRepeat"
+        | "maskImage"
+        | "backdropFilter"
+        | "filter"
+        | "mixBlendMode"
+        | "textShadow"
+        | "clipPath"
+        | "material"
+        | "scrollSnapType"
+        | "scrollSnapAlign"
+        | "sheetDetents"
+        | "radiusTopLeft"
+        | "radiusTopRight"
+        | "radiusBottomRight"
+        | "radiusBottomLeft"
+        | "cornerTopLeftShape"
+        | "cornerTopRightShape"
+        | "cornerBottomRightShape"
+        | "cornerBottomLeftShape" => Conv::Raw,
         "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop"
         | "pickerMaxHeight" => Conv::Len,
@@ -408,6 +433,10 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Presence => "<kind> [<distance>px] [<transition>]".into(),
         Conv::Origin => "<x>% <y>%".into(),
         Conv::Rive => "rive(\"<file>.riv#<Artboard>\")".into(),
+        Conv::Raw if prop.starts_with("radius") => "<h> [<v>] (<n>px | <n>%)".into(),
+        Conv::Raw if prop.starts_with("corner") => {
+            "round | squircle | bevel | scoop | notch | square | superellipse(<K>)".into()
+        }
         Conv::Raw if prop == "uv" => "inset(<t>% <r>% <b>% <l>%) | -og-uv: <u0> <v0> <u1> <v1>".into(),
         Conv::Raw if prop == "maskImage" => {
             "linear-gradient(…) | radial-gradient(…) | conic-gradient(…) (repeating- too)".into()
@@ -1623,7 +1652,11 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         "rotate" => Ok(vec![e("rotate", vec![want_angle(&one(&t, name)?)?])]),
         "opacity" => Ok(vec![e("opacity", vec![want_num(&one(&t, name)?)?])]),
         "z-index" => Ok(vec![e("z", vec![want_num(&one(&t, name)?)?])]),
-        "border-radius" => Ok(vec![e("radius", vec![want_len(&one(&t, name)?)?])]),
+        "border-radius" if state => Ok(vec![e("radius", vec![want_len(&one(&t, name)?)?])]),
+        n if !state && !super::boxes::corner_props(n).is_empty() => {
+            super::boxes::lower_corners(n, &t)
+                .map(|parts| parts.into_iter().map(|(k, v)| e(k, v)).collect())
+        }
         "background" | "background-image"
             if !state && super::paint_css::background(value).is_some() =>
         {

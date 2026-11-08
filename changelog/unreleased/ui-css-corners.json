@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: per-corner, elliptical and % border-radius, and corner-shape",
+      "summary": "border-radius takes four corners, the elliptical / form and percentages, with border-<corner>-radius longhands and logical corner names; corner-shape and its longhands take round, squircle, bevel, scoop, notch, square and superellipse(). Backgrounds, borders, outlines, shadows and overflow clips follow the corners. og-render: UiCorner::Css(UiCssCorners) gives a rectangle elliptical radii and a superellipse per corner."
+    }
+  ]
+}

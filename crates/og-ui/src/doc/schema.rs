@@ -529,6 +529,46 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!("background", Ty::Paint, "Its fill."),
     p!("radius", Ty::Num, "Its corner radius, CSS px."),
     p!(
+        "radiusTopLeft",
+        Ty::Text,
+        "Its top left corner's radii: `<h> [<v>]`, px or %."
+    ),
+    p!(
+        "radiusTopRight",
+        Ty::Text,
+        "Its top right corner's radii: `<h> [<v>]`, px or %."
+    ),
+    p!(
+        "radiusBottomRight",
+        Ty::Text,
+        "Its bottom right corner's radii: `<h> [<v>]`, px or %."
+    ),
+    p!(
+        "radiusBottomLeft",
+        Ty::Text,
+        "Its bottom left corner's radii: `<h> [<v>]`, px or %."
+    ),
+    p!(
+        "cornerTopLeftShape",
+        Ty::Text,
+        "Its top left corner's shape: `superellipse(<K>)`."
+    ),
+    p!(
+        "cornerTopRightShape",
+        Ty::Text,
+        "Its top right corner's shape: `superellipse(<K>)`."
+    ),
+    p!(
+        "cornerBottomRightShape",
+        Ty::Text,
+        "Its bottom right corner's shape: `superellipse(<K>)`."
+    ),
+    p!(
+        "cornerBottomLeftShape",
+        Ty::Text,
+        "Its bottom left corner's shape: `superellipse(<K>)`."
+    ),
+    p!(
         "borderTopWidth",
         Ty::Num,
         "Its top border's width, CSS px: room inside its box, as padding is."
