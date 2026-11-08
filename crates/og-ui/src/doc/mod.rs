@@ -7,6 +7,7 @@
 pub mod build;
 pub mod catalogue;
 pub mod css;
+pub mod media;
 pub mod schema;
 pub mod selectors;
 mod spans;
@@ -245,11 +246,10 @@ impl PropSet {
     }
 }
 
-/// When an `at` block applies.
+/// The enclosing stylesheet query conditions, intersected when nested.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AtQuery {
-    pub breakpoints: Vec<crate::style::Breakpoint>,
-    pub orientation: Option<crate::element::Orientation>,
+    pub media: media::Query,
 }
 
 /// A state value: an animatable prop or a colour.

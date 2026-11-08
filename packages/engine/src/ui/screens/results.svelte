@@ -61,27 +61,27 @@
 
 <style>
 #Results { width: stretch; height: stretch; padding: 32px; justify-content: center; align-items: center; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Results { padding: 12px; }
 }
 #Panel { width: stretch; max-width: 960px; height: stretch; max-height: 900px; padding: 24px; gap: 16px; background: var(--panel); -og-frame: panel; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Panel { padding: 16px; gap: 12px; }
 }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Panel { flex-direction: row; padding: 12px; gap: 12px; }
 }
 #Page { width: stretch; height: stretch; gap: 16px; -og-scroll-fade: 40px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Page { gap: 12px; }
 }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Page { gap: 8px; }
 }
 #Head { width: stretch; gap: 16px; align-items: center; }
 #Text { width: stretch; gap: 4px; }
 #Title { font: var(--text-xl4); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Title { font: var(--text-xl2); }
 }
 #Title.outcome-lost { color: var(--danger); }
@@ -91,7 +91,7 @@
 #LevelValue { font: var(--text-lg); }
 #Xp { width: stretch; }
 #Grade { font: var(--text-display-lg); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Grade { font: var(--text-xl4); }
 }
 #Celebration { width: stretch; }
@@ -108,7 +108,7 @@
 #Graph { width: stretch; }
 #Scores { width: stretch; }
 #Footer { width: stretch; gap: 8px; justify-content: end; flex-wrap: wrap; }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Footer { flex-direction: column; width: fit-content; height: stretch; align-items: stretch; flex-wrap: nowrap; }
 }
 </style>

@@ -687,7 +687,7 @@ mod tests {
 button { opacity: 0.2; }
 #Choice { opacity: 0.4; }
 button.active { opacity: 1; }
-@media phone { #Root { padding: 12px; } }
+@media (width < 600px), (height < 600px) { #Root { padding: 12px; } }
 </style>"#,
         )
         .unwrap();

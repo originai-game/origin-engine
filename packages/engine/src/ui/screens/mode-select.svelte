@@ -35,20 +35,20 @@
 
 <style>
 #Screen { width: stretch; height: stretch; padding: 32px; gap: 20px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Screen { padding: 16px; gap: 12px; }
 }
 #Header { width: stretch; gap: 12px; align-items: center; }
 #Title { font: var(--text-xl2); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Title { font: var(--text-xl); }
 }
 #Scroll { width: stretch; height: stretch; }
 #Modes { width: stretch; gap: 16px; grid-template-columns: 1fr 1fr 1fr; }
-@media tablet {
+@media (600px <= width < 1024px) and (height >= 600px) {
 #Modes { grid-template-columns: 1fr 1fr; }
 }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 #Modes { grid-template-columns: 1fr; gap: 12px; }
 }
 #Mode { width: stretch; padding: 12px; gap: 8px; background: var(--panel-raised); -og-frame: card; }
@@ -67,7 +67,7 @@
 #Reason { font: var(--text-caption); color: var(--warn); }
 #Detail { width: stretch; }
 #Footer { width: stretch; gap: 12px; justify-content: end; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Play { width: stretch; }
 }
 </style>

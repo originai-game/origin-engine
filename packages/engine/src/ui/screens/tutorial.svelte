@@ -32,7 +32,7 @@
 #Tutorial { width: stretch; height: stretch; }
 #Highlight { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Card { position: absolute; inset-inline-start: bind(x); top: bind(y); width: stretch; max-width: 360px; padding: 16px; gap: 8px; -og-frame: tooltip; -og-enter: pop; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 #Card { inset-inline-start: 12px; inset-inline-end: 12px; top: bind(y); }
 }
 #Art { width: stretch; }
@@ -41,7 +41,7 @@
 #Hint { width: stretch; }
 #Foot { width: stretch; gap: 8px; align-items: center; }
 #Step { font: var(--text-caption); color: var(--ink-muted); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Skip, #Next { -og-control-size: medium; }
 }
 </style>

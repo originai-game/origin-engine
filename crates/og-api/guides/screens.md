@@ -92,7 +92,20 @@ local styles and `og style new` remain available.
   `:focus-visible`, `:focus-within`, `:disabled`, `:checked`, `:selected`,
   `:invalid`, and `:placeholder-shown`. Ancestor selectors read that
   ancestor's interaction identity, not the styled child's state.
-  Use named `@media` breakpoints.
+  Use CSS media conditions, for example
+  `@media (width < 600px), (height < 600px) { ... }`.
+  Supported features are `width`, `height`, `aspect-ratio`, `orientation`,
+  and `prefers-reduced-motion`. Use inclusive `min-`/`max-` bounds or
+  range comparisons, including `(600px <= width < 1024px)`.
+  Commas and `or` mean alternatives; `and` intersects; `not` negates.
+  Group mixed operators with parentheses. Nested `@media` rules intersect.
+  `screen` and `all` are the supported media types. Square viewports are
+  portrait. Lengths use the viewport's logical coordinates: `px`, absolute
+  CSS units, and `em`/`rem` at the engine's initial 16px font size, independent
+  of document styling. Unsupported features, zero-denominator ratios,
+  viewport units, and `calc()` fail cooking instead of silently matching.
+  Legacy names such as `@media phone` are not supported. Container queries
+  are separate from media queries and are not implemented by this contract.
 - Declare custom properties in any scoped rule, such as
   `.card { --spacing: 12px; gap: var(--spacing); }`. Declarations win by
   `!important`, specificity, then source order. Custom properties inherit

@@ -35,7 +35,7 @@
 
 <style>
 #GameOver { width: stretch; height: stretch; padding: 32px; justify-content: center; align-items: center; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #GameOver { padding: 16px; }
 }
 #Panel { width: stretch; max-width: 440px; gap: 16px; align-items: center; }
@@ -44,7 +44,7 @@
   from { scale: 1.3; -og-sound: error; }
   to { scale: 1; }
 }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Title { font: var(--text-xl3); }
 }
 #Score { gap: 16px; }

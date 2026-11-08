@@ -47,69 +47,69 @@
 <style>
 #Editor { width: stretch; height: stretch; }
 #Toolbar { width: stretch; padding: 8px; gap: 6px; align-items: center; background: var(--panel); -og-frame: panel; flex-wrap: wrap; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
 #Select.selection-off { opacity: 0.85; }
 #Select.selection-on { opacity: 1; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
 #Move.selection-off { opacity: 0.85; }
 #Move.selection-on { opacity: 1; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
 #Rotate.selection-off { opacity: 0.85; }
 #Rotate.selection-on { opacity: 1; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
 #Scale.selection-off { opacity: 0.85; }
 #Scale.selection-on { opacity: 1; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
 #Play.run-stopped { opacity: 1; }
 #Play.run-playing { opacity: 0.8; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
 #Body { width: stretch; height: stretch; grid-template-columns: 260px 1fr 320px; grid-template-rows: 1fr 200px; grid-template-areas: "tree view inspector" "tree catalogue inspector"; }
-@media tablet {
+@media (600px <= width < 1024px) and (height >= 600px) {
 #Body { grid-template-columns: 220px 1fr 280px; }
 }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 #Body { grid-template-columns: 1fr; grid-template-rows: 1fr auto 260px; grid-template-areas: "view" "tabs" "panel"; }
 }
 #TreePanel { width: stretch; height: stretch; padding: 8px; gap: 6px; background: var(--panel); -og-frame: panel; grid-area: tree; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 #TreePanel { grid-area: panel; }
 }
 #TreePanelTitle { font: var(--text-caption); color: var(--ink-muted); }
 #TreePanelHierarchy { width: stretch; height: stretch; }
 #View { width: stretch; height: stretch; grid-area: view; }
 #Tabs { width: stretch; gap: 6px; padding: 6px; grid-area: tabs; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 }
 #InspectorPanel { width: stretch; height: stretch; padding: 8px; gap: 6px; background: var(--panel); -og-frame: panel; grid-area: inspector; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 #InspectorPanel { grid-area: panel; }
 }
 #Selected { font: var(--text-lg); line-clamp: 1; text-overflow: ellipsis; }
 #Scroll { width: stretch; height: stretch; }
 #ScrollInspector { width: stretch; }
 #CataloguePanel { width: stretch; height: stretch; padding: 8px; gap: 6px; background: var(--panel); -og-frame: panel; grid-area: catalogue; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 #CataloguePanel { grid-area: panel; }
 }
 #CataloguePanelTitle { font: var(--text-caption); color: var(--ink-muted); }
 #CataloguePanelCatalogue { width: stretch; height: stretch; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 button { -og-control-size: medium; }
 #Tabs { display: initial; }
 #TreePanel, #InspectorPanel, #CataloguePanel { display: none; }

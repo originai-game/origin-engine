@@ -29,11 +29,11 @@
 <style>
 #Credits { width: stretch; height: stretch; background: var(--backdrop); }
 #Roll { position: absolute; inset-inline-start: 0; inset-inline-end: 0; top: 0; padding: 48px; gap: 40px; align-items: center; translate: 0 bind("-offset"); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Roll { padding: 24px; gap: 28px; }
 }
 #Logo { width: 360px; height: 140px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Logo { width: 240px; height: 94px; }
 }
 #Section { width: stretch; max-width: 640px; gap: 10px; align-items: center; }

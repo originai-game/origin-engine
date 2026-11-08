@@ -52,15 +52,15 @@
 
 <style>
 #Screen { width: stretch; height: stretch; padding: 32px; gap: 12px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Screen { padding: 16px; }
 }
 #Header { width: stretch; gap: 12px; align-items: center; flex-wrap: wrap; }
 #Title { font: var(--text-xl2); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Title { font: var(--text-xl); }
 }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Period { -og-control-size: medium; }
 }
 #Tabs { gap: 6px; }

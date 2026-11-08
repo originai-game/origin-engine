@@ -8,6 +8,7 @@ pub struct Cascade {
     pub computed: Arc<variables::Computed>,
     pub reads: BTreeSet<String>,
     pub local_names: BTreeSet<String>,
+    pub viewport_reads: crate::doc::media::Reads,
     /// Only evaluated lookups outside local declarations, including missing
     /// values and evaluated fallbacks. Inherited values are never re-expanded.
     pub inherited_reads: BTreeSet<String>,

@@ -33,7 +33,7 @@
 #Art { object-fit: cover; width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Scrim { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; background: #000000; opacity: 0.5; }
 #Foot { width: stretch; height: stretch; padding: 48px; gap: 12px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Foot { padding: 24px; }
 }
 #Tip { width: stretch; max-width: 720px; padding: 16px; gap: 6px; background: var(--panel); -og-frame: panel; }
@@ -41,7 +41,7 @@
 #Text { font: var(--text-reading); line-clamp: 4; }
 #Lore { width: stretch; }
 #Place { font: var(--text-xl2); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Place { font: var(--text-lg); }
 }
 #Progress { width: stretch; gap: 12px; align-items: center; }

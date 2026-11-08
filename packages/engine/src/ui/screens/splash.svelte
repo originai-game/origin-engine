@@ -25,12 +25,12 @@
 
 <style>
 #Splash { width: stretch; height: stretch; padding: 48px; gap: 24px; justify-content: center; align-items: center; background: var(--backdrop); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Splash { padding: 24px; }
 }
 #Mark { gap: 12px; align-items: center; -og-enter: fade; -og-exit: fade; }
 #Art { width: 360px; height: 160px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Art { width: 260px; height: 116px; }
 }
 #Name { font: var(--text-caption); color: var(--ink-muted); }

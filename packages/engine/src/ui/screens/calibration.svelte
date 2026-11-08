@@ -50,7 +50,7 @@
 
 <style>
 #Calibration { width: stretch; height: stretch; padding: 32px; justify-content: center; align-items: center; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Calibration { padding: 12px; }
 }
 #Panel { width: stretch; max-width: 640px; padding: 24px; gap: 16px; background: var(--panel); -og-frame: panel; }

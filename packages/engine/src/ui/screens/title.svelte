@@ -23,11 +23,11 @@
 #Art { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Background { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Foot { width: stretch; height: stretch; padding: 48px; gap: 16px; align-items: center; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Foot { padding: 24px; }
 }
 #Logo { width: 420px; height: 160px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Logo { width: 280px; height: 106px; }
 }
 #Prompt { font: var(--text-lg); text-align: center; animation: breathe 1800ms cubic-bezier(0.65, 0, 0.35, 1) forwards; }

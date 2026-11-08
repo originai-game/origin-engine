@@ -29,22 +29,22 @@
 
 <style>
 #Pause { width: stretch; height: stretch; padding: 32px; gap: 24px; justify-content: center; align-items: center; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Pause { padding: 16px; }
 }
 #Panel { width: stretch; max-width: 400px; padding: 24px; gap: 16px; background: var(--panel); -og-frame: panel; -og-enter: slide-up 24px var(--motion-enter); }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Panel { width: stretch; max-width: 640px; padding: 12px; gap: 8px; }
 }
 #Title { font: var(--text-xl2); }
 #Status { width: stretch; gap: 4px; }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Status { display: none; }
 }
 #Objective { color: var(--ink-muted); line-clamp: 2; }
 #Played { font: var(--text-caption); color: var(--ink-muted); }
 #Menu { width: stretch; gap: 8px; grid-template-columns: 1fr; }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Menu { grid-template-columns: 1fr 1fr; }
 }
 #Resume { width: stretch; }
@@ -54,7 +54,7 @@
 #Load { width: stretch; }
 #QuitToMenu { width: stretch; }
 #Quit { width: stretch; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Side { display: none; }
 }
 </style>

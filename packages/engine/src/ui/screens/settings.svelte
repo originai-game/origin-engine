@@ -20,13 +20,13 @@
 
 <style>
 #Screen { width: stretch; height: stretch; padding: 32px; gap: 16px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Screen { padding: 16px; gap: 12px; }
 }
 #Header { width: stretch; gap: 12px; align-items: center; }
 #Heading { width: stretch; gap: 2px; }
 #Title { font: var(--text-xl2); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Title { font: var(--text-xl); }
 }
 #Note { font: var(--text-caption); color: var(--ink-muted); line-clamp: 2; }

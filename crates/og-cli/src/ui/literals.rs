@@ -480,7 +480,7 @@ const s = "#notahex";
     /// zero radius reported.
     #[test]
     fn a_document_reports_literal_paint_and_radius_once() {
-        let text = "<meta name=\"component\" content=\"C\">\n<column><panel id=\"A\"/><panel id=\"B\"/></column>\n<style>\n#A { background: #102030; border-radius: 6px; }\n@media phone { #A { height: 32px; } }\n#B { background: var(--panel); border-radius: 0; }\n</style>";
+        let text = "<meta name=\"component\" content=\"C\">\n<column><panel id=\"A\"/><panel id=\"B\"/></column>\n<style>\n#A { background: #102030; border-radius: 6px; }\n@media (width < 600px), (height < 600px) { #A { height: 32px; } }\n#B { background: var(--panel); border-radius: 0; }\n</style>";
         let doc = UiDocument::parse("c.svelte", text).expect("parses");
         let found: Vec<(usize, &str)> = scan_doc("c.svelte", &doc)
             .iter()

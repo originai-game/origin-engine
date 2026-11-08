@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "UI document @media",
+      "change": "Parse CSS dimension, aspect-ratio, orientation and reduced-motion queries with boolean composition and nested intersections. Replace named engine breakpoints with standard conditions.",
+      "fix": "Recook documents. Replace @media phone with @media (width < 600px), (height < 600px); use explicit dimension/orientation conditions for other size classes. Unsupported features fail cooking."
+    }
+  ],
+  "fixed": ["Review missing-art fallback slots at natural wide, tall, full-bleed and icon sizes rather than square cells."]
+}

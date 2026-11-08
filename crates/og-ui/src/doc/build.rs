@@ -359,25 +359,21 @@ impl Ui {
         inherited: &super::variables::Computed,
     ) -> Resolved {
         let mut r = Resolved::default();
-        let bp = self.breakpoint();
         let vp = self.viewport();
-        let orientation = if vp.width >= vp.height {
-            crate::element::Orientation::Landscape
-        } else {
-            crate::element::Orientation::Portrait
+        let context = super::media::Context {
+            width: vp.width,
+            height: vp.height,
+            reduced_motion: self.theme().reduced_motion,
         };
+        let mut media_reads = super::media::Reads::default();
         let mut sets: Vec<&super::PropSet> = n.props.iter().collect();
         for (q, props) in &n.at {
-            let bp_ok = q.breakpoints.is_empty() || q.breakpoints.contains(&bp);
-            let or_ok = q.orientation.is_none_or(|o| o == orientation);
-            if bp_ok && or_ok {
+            if q.media.matches(context, &mut media_reads) {
                 sets.extend(props.iter());
             }
         }
         r.cascade = cascade::resolve(&n.rules, inherited, self.theme(), |rule| {
-            let q = &rule.query;
-            (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
-                && q.orientation.is_none_or(|o| o == orientation)
+            rule.query.media.matches(context, &mut media_reads)
                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
         });
         sets.retain(|prop| !r.cascade.unset.contains(&prop.spec));
@@ -411,8 +407,7 @@ impl Ui {
                 .span_rules
                 .iter()
                 .filter(|rule| {
-                    (rule.query.breakpoints.is_empty() || rule.query.breakpoints.contains(&bp))
-                        && rule.query.orientation.is_none_or(|o| o == orientation)
+                    rule.query.media.matches(context, &mut media_reads)
                         && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 })
                 .collect();
@@ -438,6 +433,7 @@ impl Ui {
                 r.cascade.diagnostics.extend(cascade.diagnostics);
             }
         }
+        r.cascade.viewport_reads = media_reads;
         r
     }
 

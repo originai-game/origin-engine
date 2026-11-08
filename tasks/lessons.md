@@ -59,3 +59,8 @@ Use populated screen fixtures, and label placeholder coverage separately. When
 a contact sheet suggests a defect, inspect the full-size frame and its draw
 commands before diagnosing it: the save/load Back label was present in both the
 capture and reference, despite appearing absent in the scaled contact sheet.
+
+Visual regression fixtures must reproduce the dimensions that exposed the bug.
+A square-cell sheet cannot verify a short-side constraint: render tall, wide,
+full-bleed and small-icon slots at their real aspect ratios, and keep labels
+outside the slots so they do not shift the mark being reviewed.

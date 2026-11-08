@@ -14,15 +14,15 @@
 <style>
 #RootEditor { width: stretch; height: stretch; }
 #Hint { position: absolute; top: 24px; -og-center-x: true; padding: 10px; -og-frame: hud; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Hint { top: 56px; }
 }
 #Text { text-align: center; line-clamp: 2; }
 #EditorEditor { position: absolute; bottom: 24px; -og-center-x: true; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 #EditorEditor { inset-inline-start: 8px; inset-inline-end: 8px; bottom: 40px; }
 }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #EditorEditor { inset-inline-start: 52px; inset-inline-end: 52px; bottom: 24px; }
 }
 </style>

@@ -81,6 +81,69 @@ fn tick(ui: &mut Ui, input: InputFrame) {
 }
 
 #[test]
+fn media_queries_follow_dimensions_preferences_and_nested_intersections() {
+    let doc = UiDocument::parse(
+        "media.svelte",
+        r#"
+<meta name="component" content="media">
+<column><panel id="Range"/><panel id="Ratio"/><panel id="Nested"/><panel id="Motion"/></column>
+<style>
+panel { width: 10px; height: 10px; }
+@MEDIA
+(300px <= width < 600px) and (min-height: 200px) { #Range { width: 31px; } }
+@media (aspect-ratio >= 3/2), (orientation: portrait) { #Ratio { width: 47px; } }
+@media (width >= 400px) { @media (height < 500px) { #Nested { width: 63px; } } }
+@media (prefers-reduced-motion: reduce) { #Motion { width: 79px; } }
+</style>"#,
+    )
+    .unwrap();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(doc);
+    for (w, h, reduced, expected) in [
+        (299.5, 240.0, false, [10.0, 10.0, 10.0, 10.0]),
+        (300.0, 240.0, false, [31.0, 10.0, 10.0, 10.0]),
+        (599.5, 300.0, true, [31.0, 47.0, 63.0, 79.0]),
+        (600.0, 500.0, false, [10.0, 10.0, 10.0, 10.0]),
+        (400.0, 400.0, false, [31.0, 47.0, 63.0, 10.0]),
+        (200.0, 600.0, true, [10.0, 47.0, 10.0, 79.0]),
+    ] {
+        let mut theme = *ui.theme();
+        theme.unit_pin = 1.0;
+        theme.reduced_motion = reduced;
+        ui.set_theme(theme);
+        ui.begin(InputFrame::default(), Viewport::new(w, h));
+        ui.component("Test", "media", &mut json!({}), &bind::NoEnv);
+        ui.end();
+        for (id, width) in ["Range", "Ratio", "Nested", "Motion"]
+            .into_iter()
+            .zip(expected)
+        {
+            let actual = ui
+                .probe_elements()
+                .into_iter()
+                .find(|e| e.id == id)
+                .unwrap();
+            assert_eq!(actual.width, width, "{id} at {w}x{h}, reduced={reduced}");
+        }
+    }
+}
+
+#[test]
+fn invalid_media_queries_report_document_location_and_fix() {
+    let errors = UiDocument::parse(
+        "invalid-media.svelte",
+        "<meta name='component' content='invalid'/><panel/>\n<style>\n@media (20px < width > 40px) { panel { width: 30px; } }\n</style>",
+    )
+    .unwrap_err()
+    .join("\n");
+    assert!(errors.contains("invalid-media.svelte:3:1"), "{errors}");
+    assert!(
+        errors.contains("chained ranges must point in the same direction"),
+        "{errors}"
+    );
+}
+
+#[test]
 fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
     struct Messages(std::collections::BTreeMap<String, String>, Value);
     impl bind::Env for Messages {

@@ -339,30 +339,15 @@ fn read_rules(text: &str, base: usize, query: AtQuery, out: &mut Vec<Rule>) -> R
             return Err((base + open, "close CSS rule with '}'".into()));
         }
         let body = &text[open + 1..at - 1];
-        if let Some(media) = selector.strip_prefix("@media ") {
-            let mut q = query.clone();
-            for name in media.split_whitespace() {
-                match name {
-                    "phone" => q.breakpoints.extend([
-                        crate::style::Breakpoint::PhonePortrait,
-                        crate::style::Breakpoint::PhoneLandscape,
-                    ]),
-                    "phonePortrait" => q.breakpoints.push(crate::style::Breakpoint::PhonePortrait),
-                    "phoneLandscape" => {
-                        q.breakpoints.push(crate::style::Breakpoint::PhoneLandscape)
-                    }
-                    "tablet" => q.breakpoints.push(crate::style::Breakpoint::Tablet),
-                    "desktop" => q.breakpoints.push(crate::style::Breakpoint::Desktop),
-                    "portrait" => q.orientation = Some(crate::element::Orientation::Portrait),
-                    "landscape" => q.orientation = Some(crate::element::Orientation::Landscape),
-                    _ => {
-                        return Err((
-                            base + start,
-                            "unsupported media query; use a declared breakpoint".into(),
-                        ));
-                    }
-                }
-            }
+        if let Some(media) = selector.get(6..).filter(|rest| {
+            selector[..6].eq_ignore_ascii_case("@media")
+                && (rest.starts_with(char::is_whitespace) || rest.starts_with('('))
+        }) {
+            let parsed =
+                super::media::Query::parse(media).map_err(|error| (base + start, error))?;
+            let q = AtQuery {
+                media: query.media.clone().and(parsed),
+            };
             read_rules(body, base + open + 1, q, out)?;
         } else {
             out.push(Rule {

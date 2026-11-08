@@ -210,48 +210,128 @@ fn core_documents_preserve_screen_pixels() {
 #[test]
 #[ignore = "requires GPU"]
 fn missing_art_slot_kinds_have_intentional_placeholders() {
-    let vp = Viewport::new(960.0, 1200.0);
+    use slot::SlotKind as K;
+    let mut cases = Vec::new();
+    for &kind in K::ALL {
+        let (width, height) = match kind {
+            K::KeyArt | K::MenuBackground => (640.0, 360.0),
+            K::Capsule => (150.0, 240.0),
+            K::CharacterSplash | K::FullBody => (135.0, 240.0),
+            K::VnSprite => (120.0, 240.0),
+            K::Banner => (400.0, 200.0),
+            K::PlayerBanner => (400.0, 100.0),
+            K::Logo => (240.0, 80.0),
+            K::AppIcon
+            | K::ItemIcon
+            | K::AbilityIcon
+            | K::Emblem
+            | K::Achievement
+            | K::Emote
+            | K::Currency
+            | K::MapGlyph
+            | K::TalentIcon
+            | K::IconSet => (40.0, 40.0),
+            _ => {
+                let ratio = kind.info().aspects.first().map_or(1.0, |a| a.ratio());
+                if ratio >= 1.0 {
+                    (200.0, 200.0 / ratio)
+                } else {
+                    (200.0 * ratio, 200.0)
+                }
+            }
+        };
+        cases.push((kind, width, height));
+        if matches!(kind, K::KeyArt | K::MenuBackground) {
+            cases.push((kind, 180.0, 390.0));
+        }
+    }
+    // Shelf-pack the actual slot rectangles, leaving label space outside them.
+    let (mut x, mut y, mut row_height) = (16.0f32, 16.0f32, 0.0f32);
+    let mut placements = Vec::new();
+    for (kind, width, height) in cases {
+        let cell_width = width.max(150.0);
+        if x + cell_width > 1384.0 {
+            x = 16.0;
+            y += row_height + 24.0;
+            row_height = 0.0;
+        }
+        placements.push((kind, width, height, x, y));
+        x += cell_width + 20.0;
+        row_height = row_height.max(height + 48.0);
+    }
+    let vp = Viewport::new(1400.0, y + row_height + 16.0);
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
     let mut ui = ui_with_font(font);
+    let mut theme = *ui.theme();
+    theme.unit_pin = 1.0;
+    ui.set_theme(theme);
+    ui.set_style_name("placeholder-review");
     ui.begin(InputFrame::default(), vp);
-    for (index, &kind) in slot::SlotKind::ALL.iter().enumerate() {
-        if index % 6 == 0 {
-            ui.open(
-                format!("Row{index}"),
-                Element {
-                    direction: Direction::Row,
-                    height: Size::Fixed(150.0),
-                    gap: 8.0,
-                    ..Element::default()
-                },
-            );
-        }
-        ui.open(
+    for (index, (kind, width, height, x, y)) in placements.iter().copied().enumerate() {
+        ui.open_with(
             format!("Cell{index}"),
             Element {
-                width: Size::Fixed(152.0),
-                height: Size::Fixed(140.0),
+                direction: Direction::Column,
+                width: Size::Fixed(width.max(150.0)),
+                height: Size::Fixed(height + 48.0),
                 ..Element::default()
             },
+            Props {
+                position: Position::Absolute,
+                insets: Edges {
+                    start: Some(x),
+                    top: Some(y),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+        ui.label(
+            "Label",
+            &format!("{}\n{width:.0} x {height:.0}", kind.name()),
+            LabelDesc::default(),
         );
         ui.art(
             "Art",
             &ArtDesc {
                 spec: slot::SlotSpec::new(kind.name(), kind),
-                width: Size::Fixed(152.0),
-                height: Size::Fixed(140.0),
+                width: Size::Fixed(width),
+                height: Size::Fixed(height),
                 texture: None,
                 size: None,
                 label: String::new(),
             },
         );
         ui.close();
-        if index % 6 == 5 || index + 1 == slot::SlotKind::ALL.len() {
-            ui.close();
-        }
     }
     ui.end();
+    for (index, (_, width, height, _, _)) in placements.iter().enumerate() {
+        let rect = ui.frame().element(&format!("Cell{index}/Art")).unwrap();
+        assert!(
+            (rect.width - width).abs() <= 1.0 && (rect.height - height).abs() <= 1.0,
+            "pixel-snapped slot {index}: {rect:?}, expected {width}x{height}"
+        );
+        assert!(rect.x + rect.width <= vp.width && rect.y + rect.height <= vp.height);
+        let (cx, cy) = rect.center();
+        let mark = ui
+            .frame()
+            .items
+            .iter()
+            .find_map(|item| match item.cmd {
+                DrawCmd::Quad { rect, radius, .. }
+                    if radius > 0.0
+                        && (rect.center().0 - cx).abs() <= 0.5
+                        && (rect.center().1 - cy).abs() <= 0.5 =>
+                {
+                    Some(rect)
+                }
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("no pixel-snapped centred disc in case {index}: {rect:?}"));
+        assert_eq!(mark.width, mark.height);
+        assert!(mark.width <= 32.0 && mark.width <= width.min(*height) * 0.36 + 0.01);
+    }
     let shot = shot(ui, scene, vp);
     let mut renderer = Renderer::new_blocking(&shot.desc).unwrap();
     renderer

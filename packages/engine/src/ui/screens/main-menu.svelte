@@ -35,41 +35,41 @@
 #Art { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Background { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #MenuMenu { width: fit-content; min-width: 420px; height: stretch; padding: 48px; gap: 12px; justify-content: center; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #MenuMenu { padding: 24px; width: stretch; min-width: 0; }
 }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #MenuMenu { padding: 12px; gap: 4px; }
 }
 #Logo { width: 320px; height: 120px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Logo { width: 240px; height: 90px; }
 }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Logo { display: none; }
 }
 #Continue { width: stretch; }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Continue { -og-control-size: medium; }
 }
 #SaveLine { font: var(--text-caption); color: var(--ink-muted); }
 #NewGame { width: stretch; }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #NewGame { -og-control-size: medium; }
 }
 #Modes { width: stretch; }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Modes { -og-control-size: medium; }
 }
 #Settings { width: stretch; }
-@media phoneLandscape {
+@media (height < 600px) and (orientation: landscape) {
 #Settings { -og-control-size: medium; }
 }
 #Credits { width: stretch; }
 #Quit { width: stretch; }
 #Extra { width: stretch; }
 #News { position: absolute; inset-inline-end: 32px; bottom: 32px; padding: 16px; gap: 4px; background: var(--panel-raised); -og-frame: card; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #News { display: none; }
 }
 #News { translate: 0 0; }

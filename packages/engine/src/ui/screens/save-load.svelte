@@ -48,20 +48,20 @@
 
 <style>
 #Screen { width: stretch; height: stretch; padding: 32px; gap: 16px; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Screen { padding: 16px; gap: 12px; }
 }
 #Header { width: stretch; gap: 12px; align-items: center; }
 #SaveTitle { font: var(--text-xl2); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #SaveTitle { font: var(--text-xl); }
 }
 #LoadTitle { font: var(--text-xl2); }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #LoadTitle { font: var(--text-xl); }
 }
 #Body { width: stretch; height: stretch; gap: 24px; grid-template-columns: 3fr 2fr; grid-template-rows: 1fr; }
-@media phonePortrait {
+@media (width < 600px) and (orientation: portrait) {
 #Body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; gap: 12px; }
 }
 #Slots { width: stretch; height: stretch; }
@@ -74,7 +74,7 @@
 #Slot:active { scale: 0.99; }
 #Slot:focus-visible { scale: 1.01; }
 #Thumb { width: 160px; aspect-ratio: 1.78; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 #Thumb { width: 96px; }
 }
 #Text { width: stretch; gap: 2px; }
@@ -86,7 +86,7 @@
 #Date { font: var(--text-caption); color: var(--ink-muted); }
 #Side { width: stretch; gap: 12px; }
 #Preview { width: stretch; }
-@media phonePortrait phoneLandscape {
+@media (width < 600px), (height < 600px) {
 }
 #Actions { width: stretch; gap: 8px; justify-content: end; }
 </style>
