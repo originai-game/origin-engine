@@ -181,8 +181,20 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
             og_ui::dress::PartRef::parse(sel, class).ok()
         }),
         aspect: f(d, "aspect", 0.0).max(0.0),
-        // CSS min-/max- bounds are a document's.
+        // CSS min-/max- bounds and flex and grid item fields are a
+        // document's.
         bounds: Default::default(),
+        reverse: false,
+        wrap_reverse: false,
+        align_logical: false,
+        align_content: None,
+        justify_items: None,
+        align_self: None,
+        justify_self: None,
+        gaps: [None; 2],
+        flex: None,
+        order: 0,
+        safe: 0,
     }
 }
 

@@ -216,6 +216,31 @@ fn insets_of(n: &[f32]) -> Insets {
 }
 
 /// A grid's tracks, areas and auto-placement.
+/// A `justify-content`/`align-content` word as laid out.
+fn align_of(a: &str) -> Align {
+    match a {
+        "center" => Align::Center,
+        "end" | "flexEnd" => Align::End,
+        "spaceBetween" => Align::SpaceBetween,
+        "spaceAround" => Align::SpaceAround,
+        "spaceEvenly" => Align::SpaceEvenly,
+        "stretch" => Align::Stretch,
+        _ => Align::Start,
+    }
+}
+
+/// An `align-items`/`-self`/`justify-items`/`-self` word as laid out.
+fn cross_of(c: &str) -> Cross {
+    match c {
+        "center" => Cross::Center,
+        "end" => Cross::End,
+        "stretch" => Cross::Stretch,
+        "baseline" => Cross::Baseline,
+        "lastBaseline" => Cross::LastBaseline,
+        _ => Cross::Start,
+    }
+}
+
 fn grid_of(r: &Resolved) -> GridSpec {
     let tracks = |name: &str| match r.get(name) {
         Some(V::Tracks(t)) => t.clone(),
@@ -234,6 +259,8 @@ fn grid_of(r: &Resolved) -> GridSpec {
             GridFlow::Row
         },
         dense: r.flag("dense"),
+        column_gap: r.num("columnGap"),
+        row_gap: r.num("rowGap"),
         ..GridSpec::default()
     }
 }
@@ -868,25 +895,20 @@ impl Ui {
             el.gap = g;
         }
         if let Some(a) = r.str("align") {
-            el.align = match a {
-                "center" => Align::Center,
-                "end" => Align::End,
-                "spaceBetween" => Align::SpaceBetween,
-                _ => Align::Start,
-            };
+            el.align = align_of(a);
+            el.align_logical = matches!(a, "start" | "end");
         }
         if let Some(c) = r.str("cross") {
-            el.cross = match c {
-                "center" => Cross::Center,
-                "end" => Cross::End,
-                "stretch" => Cross::Stretch,
-                "baseline" => Cross::Baseline,
-                _ => Cross::Start,
-            };
+            el.cross = cross_of(c);
         }
         if r.has("wrap") {
             el.wrap = r.flag("wrap");
         }
+        el.wrap_reverse = r.flag("wrapReverse");
+        el.align_content = r.str("alignContent").map(align_of);
+        el.justify_items = r.str("justifyItems").map(cross_of);
+        el.gaps = [r.num("columnGap"), r.num("rowGap")];
+        el.safe = u8::from(r.flag("safeJustify")) | u8::from(r.flag("safeAlign")) << 1;
         if let Some(c) = r.color("background") {
             el.background = Some(c);
         }
@@ -913,6 +935,25 @@ impl Ui {
         }
         if r.has("adjustable") {
             el.adjustable = r.flag("adjustable");
+        }
+        el
+    }
+
+    /// `el` with its CSS flex and grid item properties (any element can be
+    /// an item): its flex factors, `order`, and own alignments.
+    fn item_of(r: &Resolved, mut el: Element) -> Element {
+        el.flex = (r.has("flexGrow") || r.has("flexShrink") || r.has("flexBasis")).then(|| {
+            crate::layout::FlexItem {
+                grow: r.num("flexGrow").unwrap_or(0.0),
+                shrink: r.num("flexShrink").unwrap_or(1.0),
+                basis: r.size("flexBasis"),
+            }
+        });
+        el.order = r.num("order").unwrap_or(0.0) as i32;
+        el.align_self = r.str("alignSelf").map(cross_of);
+        el.justify_self = r.str("justifySelf").map(cross_of);
+        if r.has("safeAlign") && r.has("alignSelf") {
+            el.safe = (el.safe & !2) | u8::from(r.flag("safeAlign")) << 1;
         }
         el
     }

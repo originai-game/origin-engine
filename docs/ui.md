@@ -600,6 +600,29 @@ padding and border added outside them. `padding` takes its longhands
 `padding-block`, `padding-inline` and their `-start`/`-end`; a later
 shorthand resets the sides a longhand set.
 
+Flex boxes follow CSS Flexbox 1. `flex` and its longhands `flex-grow`,
+`flex-shrink` and `flex-basis` (`auto`, `content`, a size) size an item
+by the flex algorithm (§9.7): positive free space is shared by grow
+factor, an overflow is taken back by shrink factor times basis, and an
+item stops at its bounds, whose automatic minimum is its content's least
+size. An item without them keeps its kind: `width: stretch` grows to
+level with its siblings and shrinks, a fit-content item shrinks to its
+content, and a definite one neither. `flex-direction` takes
+`row-reverse` and `column-reverse`, `flex-wrap` takes `wrap-reverse`,
+and `flex-flow` is their shorthand; a column wraps into columns at its
+height. `justify-content` takes `flex-start`, `flex-end`, `start`, `end`,
+`left`, `right`, `center`, `space-between`, `space-around`,
+`space-evenly`, `stretch` and `normal`; `align-items` and an item's
+`align-self` take `flex-start`, `flex-end`, `start`, `end`, `self-start`,
+`self-end`, `center`, `stretch`, `normal`, `baseline`, `first baseline`
+and `last baseline`; each takes a `safe` or `unsafe` prefix, and a `safe`
+overflow stays at the start. `align-content` places a wrapping box's
+lines (`normal` stretches them, as CSS's does), `justify-items` and
+`justify-self` place grid items across their areas, and `place-content`,
+`place-items` and `place-self` set both axes. `order` reorders flex and
+grid items (their reading order stays the document's), and `row-gap`,
+`column-gap` and a two-value `gap` space rows and columns apart.
+
 Kits use `@origingame/engine`, `@origingame/engine/ui-extensions`, and the
 public helpers in `@origingame/engine/ui-parts/hud` and
 `@origingame/engine/ui-parts/screen`. Private source-path imports, unsafe

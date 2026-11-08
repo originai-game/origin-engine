@@ -30,9 +30,22 @@ What every kind takes: its box, layout, paint, motion and input.
 | `margin-bottom:` | `<n>px \| <n>em \| <n>% \| auto \| calc(…)` | Space outside its bottom edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). Adjacent block margins collapse. |
 | `margin-left:` | `<n>px \| <n>em \| <n>% \| auto \| calc(…)` | Space outside its left edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). |
 | `gap:` | `<n>px` | Space between its children, CSS px. |
-| `justify-content:` | `start \| center \| end \| space-between` | Where children sit along the main axis. |
-| `align-items:` | `start \| center \| end \| stretch \| baseline` | Where children sit across it. |
-| `flex-wrap:` | `wrap \| nowrap` | A row breaks its children into lines. |
+| `justify-content:` | `start \| center \| end \| space-between \| space-around \| space-evenly \| stretch \| flex-start \| flex-end` | Where children sit along the main axis (`start` and `end` are the writing mode's sides, `flexStart` and `flexEnd` the line's). |
+| `align-items:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where children sit across it. |
+| `flex-wrap:` | `wrap \| nowrap` | A row (or a column) breaks its children into lines. |
+| `wrap-reverse` | `bool` | Its lines stack from the far side (CSS `wrap-reverse`). |
+| `row-gap:` | `<n>px` | Space between its rows (a column's children, a row's lines), CSS px, over `gap`. |
+| `column-gap:` | `<n>px` | Space between its columns (a row's children, a column's lines), CSS px, over `gap`. |
+| `align-content:` | `start \| center \| end \| space-between \| space-around \| space-evenly \| stretch` | Where a wrapping container's lines sit across it, and how a grid's tracks sit down it (CSS `align-content`). |
+| `justify-items:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where a grid's items sit across their areas (CSS `justify-items`). |
+| `safe-justify` | `bool` | Its main-axis alignment keeps an overflow at the start (CSS `safe`). |
+| `safe-align` | `bool` | Its cross-axis alignment keeps an overflow at the start (CSS `safe`). |
+| `flex-grow:` | `<number>` | Its share of a flex line's free space (CSS `flex-grow`). |
+| `flex-shrink:` | `<number>` | How much it gives up when a flex line overflows (CSS `flex-shrink`). |
+| `flex-basis:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its size in a flex line before the free space is shared (CSS `flex-basis`). |
+| `order:` | `<number>` | Its place among its flex or grid siblings (CSS `order`). |
+| `align-self:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where it sits across its flex line or down its grid area, over its parent's (CSS `align-self`). |
+| `justify-self:` | `start \| center \| end \| stretch \| baseline \| last-baseline` | Where it sits across its grid area or its absolute box, over its parent's (CSS `justify-self`). |
 | `background:` | `var(--<role>) \| #rrggbb[aa]` | Its fill. |
 | `border-radius:` | `<n>px` | Its corner radius, CSS px. |
 | `border-top-width:` | `<n>px` | Its top border's width, CSS px: room inside its box, as padding is. |
@@ -169,7 +182,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `flex-direction:` | `row \| column` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
+| `flex-direction:` | `row \| column \| row-reverse \| column-reverse` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
 | `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 
 <a id="guide-components-3"></a>
@@ -181,7 +194,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `flex-direction:` | `row \| column` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
+| `flex-direction:` | `row \| column \| row-reverse \| column-reverse` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
 | `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 
 <a id="guide-components-4"></a>
@@ -601,9 +614,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `flex-direction:` | `row \| column` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
-| `colspan` | `number` | A table cell's columns (`<td colspan>`), 1 by default; CSS table layout reads it. |
-| `rowspan` | `number` | A table cell's rows (`<td rowspan>`), 1 by default, 0 to the end of its row group; CSS table layout reads it. |
+| `flex-direction:` | `row \| column \| row-reverse \| column-reverse` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
 | `display:` | `block \| flex \| grid` | A box's layout (CSS `display`): `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks (`grid-template-columns`…). |
 | `-og-marker-type:` | `none \| disc \| circle \| square \| decimal \| lower-alpha \| upper-alpha \| lower-roman \| upper-roman` | An `<li>`'s marker, from the inherited `list-style-type` (`<ul>`: disc, nested circle then square; `<ol>`: decimal). |
 | `-og-marker-position:` | `outside \| inside` | Where an `<li>`'s marker sits, from the inherited `list-style-position`: `outside` hangs it before the item's start edge (the default), `inside` lays the item out as a row after it. |

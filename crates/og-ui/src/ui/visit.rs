@@ -47,12 +47,19 @@ pub(crate) mod feat {
     pub const COUNT: usize = 18;
 }
 
+/// A row whose items (all, or those with an `align-self` of their own)
+/// align by a baseline.
+pub(crate) fn baseline_row(n: &Node) -> bool {
+    use crate::layout::Cross;
+    matches!(n.el.cross, Cross::Baseline | Cross::LastBaseline) || n.baseline_items
+}
+
 /// The features of node `n`.
 pub(crate) fn features(n: &Node) -> u32 {
     use crate::element::Position;
     let p = &n.props;
     let mut f = 0;
-    if n.el.cross == crate::layout::Cross::Baseline
+    if baseline_row(n)
         && n.el.direction == crate::layout::Direction::Row
         && p.layout == crate::element::LayoutMode::Flex
     {

@@ -441,6 +441,13 @@ pub enum Align {
     End,
     /// The free space split evenly between children.
     SpaceBetween,
+    /// Half a share of the free space at each end, a share between.
+    SpaceAround,
+    /// The free space split evenly before, between and after children.
+    SpaceEvenly,
+    /// CSS `stretch`: in a flex line as `Start`; a grid's auto tracks grow
+    /// into the free space, and lines of a multi-line container share it.
+    Stretch,
 }
 
 /// Where children sit across the main axis.
@@ -455,6 +462,28 @@ pub enum Cross {
     /// A row's children share their first text baseline (rows of mixed
     /// type sizes); a column treats it as `Start`.
     Baseline,
+    /// A row's children share their last text baseline.
+    LastBaseline,
+}
+
+/// A CSS flex item's factors (CSS Flexbox §7): it takes part in the line's
+/// free space as the flex algorithm (§9.7) resolves it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FlexItem {
+    pub grow: f32,
+    pub shrink: f32,
+    /// Its flex basis (`None`: `auto`, its width or height, else its content).
+    pub basis: Option<Size>,
+}
+
+impl Default for FlexItem {
+    fn default() -> FlexItem {
+        FlexItem {
+            grow: 0.0,
+            shrink: 1.0,
+            basis: None,
+        }
+    }
 }
 
 /// Horizontal alignment of text lines inside their element.
@@ -549,6 +578,35 @@ pub struct Element {
     /// margins collapse with each other and, where no padding separates
     /// them, with its own (CSS 2 §8.3.1).
     pub block: bool,
+    /// CSS `row-reverse`/`column-reverse`: its children run from the main
+    /// axis's end.
+    pub reverse: bool,
+    /// CSS `wrap-reverse`: its lines stack from the cross axis's end.
+    pub wrap_reverse: bool,
+    /// Its `align` was written `start`, `end`, `left` or `right` (the writing
+    /// mode's sides), not `flex-start`/`flex-end`: a reversed line keeps it
+    /// on that side.
+    pub align_logical: bool,
+    /// CSS `align-content` of a multi-line flex container (`None`: lines at
+    /// its start, each its own size).
+    pub align_content: Option<Align>,
+    /// CSS `justify-items` (a grid's items across their areas; `None`: by
+    /// `align`), and an item's `align-self` and `justify-self` over its
+    /// parent's.
+    pub justify_items: Option<Cross>,
+    pub align_self: Option<Cross>,
+    pub justify_self: Option<Cross>,
+    /// CSS `column-gap` and `row-gap` over `gap`.
+    pub gaps: [Option<f32>; 2],
+    /// Its CSS flex factors in a flex line (`None`: its `width`/`height`
+    /// kind sizes it).
+    pub flex: Option<FlexItem>,
+    /// CSS `order`: flex and grid items lay out by it, then as built.
+    pub order: i32,
+    /// CSS `safe` alignment: bit 0 its `justify-content`, bit 1 its
+    /// `align-items` (an item's `align-self`): overflow stays on the start
+    /// side.
+    pub safe: u8,
     /// Its CSS `min-`/`max-` bounds beyond those a `Fit` or `Grow` size
     /// holds, per axis (width, height), as (min, max): a length, a
     /// percentage or calc() of the size its parent offers, or a content
@@ -557,6 +615,19 @@ pub struct Element {
 }
 
 impl Element {
+    /// The gap between items along its main axis.
+    pub(crate) fn main_gap(&self) -> f32 {
+        let k = usize::from(self.direction == Direction::Column);
+        self.gaps[k].unwrap_or(self.gap)
+    }
+
+    /// The gap between its lines (a wrapping row's rows, a wrapping
+    /// column's columns).
+    pub(crate) fn line_gap(&self) -> f32 {
+        let k = usize::from(self.direction == Direction::Row);
+        self.gaps[k].unwrap_or(self.gap)
+    }
+
     pub fn row() -> Element {
         Element::default()
     }

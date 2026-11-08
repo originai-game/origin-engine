@@ -481,10 +481,20 @@ impl Ui {
                     ("button", _) => "row",
                     (kind, _) => kind,
                 };
-                el.direction = match r.str("direction").unwrap_or(initial) {
-                    "row" => Direction::Row,
+                let direction = r.str("direction").unwrap_or(initial);
+                el.direction = match direction {
+                    "row" | "rowReverse" => Direction::Row,
                     _ => Direction::Column,
                 };
+                el.reverse = direction.ends_with("Reverse");
+                // A flex box's lines share its free room across it unless
+                // told otherwise (`align-content: normal`, CSS Flexbox §8.4).
+                if base.kind == "box"
+                    && r.str("display") == Some("flex")
+                    && el.align_content.is_none()
+                {
+                    el.align_content = Some(crate::Align::Stretch);
+                }
                 // A `display: block` box flows its children as CSS blocks.
                 el.block = initial == "box"
                     && el.direction == Direction::Column
@@ -549,7 +559,7 @@ impl Ui {
         for w in warn {
             self.warnings.push(format!("line {}: {w}", n.line));
         }
-        let el = Self::sized(r, el);
+        let el = Self::sized(r, Self::item_of(r, el));
         self.nodes[i].el = el;
         self.nodes[i].decor = decor.map(Box::new);
         let mut props = Self::resolved_props(n, r);

@@ -108,6 +108,16 @@ pub const STYLE: &[(&str, &str)] = &[
     ("align", "justify-content"),
     ("cross", "align-items"),
     ("wrap", "flex-wrap"),
+    ("rowGap", "row-gap"),
+    ("columnGap", "column-gap"),
+    ("alignContent", "align-content"),
+    ("justifyItems", "justify-items"),
+    ("flexGrow", "flex-grow"),
+    ("flexShrink", "flex-shrink"),
+    ("flexBasis", "flex-basis"),
+    ("order", "order"),
+    ("alignSelf", "align-self"),
+    ("justifySelf", "justify-self"),
     ("direction", "flex-direction"),
     ("labelDirection", "flex-direction"),
     ("background", "background"),
@@ -242,6 +252,15 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "margin-block-start" => vec!["marginTop"],
         "margin-block-end" => vec!["marginBottom"],
         "padding" => vec!["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"],
+        "flex" => vec!["flexGrow", "flexShrink", "flexBasis"],
+        "flex-flow" => vec!["direction", "labelDirection", "wrap", "wrapReverse"],
+        "flex-wrap" => vec!["wrapReverse"],
+        "justify-content" => vec!["safeJustify"],
+        "align-items" | "align-self" => vec!["safeAlign"],
+        "gap" => vec!["rowGap", "columnGap"],
+        "place-content" => vec!["alignContent", "align", "safeJustify"],
+        "place-items" => vec!["cross", "justifyItems", "safeAlign"],
+        "place-self" => vec!["alignSelf", "justifySelf", "safeAlign"],
         "padding-block" => vec!["paddingTop", "paddingBottom"],
         "padding-inline" => vec!["paddingRight", "paddingLeft"],
         "padding-block-start" => vec!["paddingTop"],
@@ -276,7 +295,10 @@ fn conv(prop: &str) -> Conv {
         "width" | "height" | "minWidth" | "maxWidth" | "minHeight" | "maxHeight" => Conv::Size,
         "padding" => Conv::Insets,
         "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft" => Conv::Len,
-        "boxSizing" => Conv::Kebab,
+        "boxSizing" | "alignContent" | "justifyItems" | "alignSelf" | "justifySelf" => Conv::Kebab,
+        "flexGrow" | "flexShrink" | "order" => Conv::Num,
+        "flexBasis" => Conv::Size,
+        "rowGap" | "columnGap" => Conv::Len,
         p if p.starts_with("border") && p.ends_with("Width") => Conv::Len,
         p if p.starts_with("border") && p.ends_with("Color") => Conv::Paint,
         p if p.starts_with("border") && p.ends_with("Style") => Conv::Kebab,
@@ -451,9 +473,6 @@ fn neutral(key: &str) -> Option<&'static str> {
 /// CSS that is not part of the subset, and what to write instead.
 pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
     Some(match name {
-        "flex" | "flex-grow" | "flex-shrink" | "flex-basis" => {
-            "write `width: stretch` (or `height`) to take the room left"
-        }
         "float" | "clear" => "write `display` as the kind: a `row` or a `grid`",
         "left" => "write `inset-inline-start` (it mirrors right to left)",
         "right" => "write `inset-inline-end` (it mirrors right to left)",
@@ -1971,6 +1990,137 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 e("labelDirection", both),
             ])
         }
+        "flex-wrap" => {
+            let (wrap, reverse) = match want_ident(&one(&t, name)?, "nowrap, wrap or wrap-reverse")?
+            {
+                "nowrap" => (false, false),
+                "wrap" => (true, false),
+                "wrap-reverse" => (true, true),
+                w => {
+                    return Err(format!(
+                        "'{w}' is not a flex-wrap: nowrap, wrap, wrap-reverse"
+                    ));
+                }
+            };
+            Ok(vec![
+                e("wrap", vec![bool_word(wrap)]),
+                e("wrapReverse", vec![bool_word(reverse)]),
+            ])
+        }
+        "flex-flow" => {
+            // <flex-direction> || <flex-wrap> (CSS Flexbox §5.3).
+            let mut out = Vec::new();
+            for v in &t {
+                let w = want_ident(v, "a direction or a wrap")?;
+                match w {
+                    "row" | "row-reverse" | "column" | "column-reverse" => {
+                        out.extend(lower_decl("flex-direction", w, false)?)
+                    }
+                    "nowrap" | "wrap" | "wrap-reverse" => {
+                        out.extend(lower_decl("flex-wrap", w, false)?)
+                    }
+                    w => return Err(format!("'{w}' is not a flex-flow: a direction and a wrap")),
+                }
+            }
+            Ok(out)
+        }
+        "flex" => {
+            // none | auto | <grow> [<shrink>] || <basis> (CSS Flexbox §7.1);
+            // a number alone has a 0 basis, and `auto` a basis of auto.
+            let num = |v: &Tok| matches!(v, Tok::Num(_, u) if u.is_empty());
+            let (grow, shrink, basis): (Value, Value, Option<&Tok>) = match t.as_slice() {
+                [Tok::Ident(w)] if w == "none" => (number("0")?, number("0")?, None),
+                [Tok::Ident(w)] if w == "auto" => (number("1")?, number("1")?, None),
+                [Tok::Ident(w)] if w == "initial" => (number("0")?, number("1")?, None),
+                [g] if num(g) => (
+                    want_num(g)?,
+                    number("1")?,
+                    Some(&Tok::Num("0".into(), "px".into())),
+                ),
+                [g, s] if num(g) && num(s) => (
+                    want_num(g)?,
+                    want_num(s)?,
+                    Some(&Tok::Num("0".into(), "px".into())),
+                ),
+                [g, b] if num(g) => (want_num(g)?, number("1")?, Some(b)),
+                [b, g] if num(g) => (want_num(g)?, number("1")?, Some(b)),
+                [g, s, b] if num(g) && num(s) => (want_num(g)?, want_num(s)?, Some(b)),
+                [b, g, s] if num(g) && num(s) => (want_num(g)?, want_num(s)?, Some(b)),
+                [b] => (number("1")?, number("1")?, Some(b)),
+                _ => return Err("flex: none | auto | <grow> [<shrink>] [<basis>]".into()),
+            };
+            let mut out = vec![e("flexGrow", vec![grow]), e("flexShrink", vec![shrink])];
+            if let Some(b) = basis {
+                out.extend(lower_decl("flex-basis", &css_text(b), false)?);
+            }
+            Ok(out)
+        }
+        "flex-basis" => match one(&t, name)? {
+            Tok::Ident(w) if w == "auto" => Ok(Vec::new()),
+            Tok::Ident(w) if w == "content" => {
+                Ok(vec![e("flexBasis", vec![Value::Word("maxContent".into())])])
+            }
+            _ => {
+                let parts = lower_decl("width", value, false)?;
+                Ok(parts
+                    .into_iter()
+                    .map(|p| match p {
+                        Part::Size(_, SizeBit::Kind(v)) => e("flexBasis", v),
+                        p => p,
+                    })
+                    .collect())
+            }
+        },
+        "order" => match one(&t, name)? {
+            Tok::Num(n, u) if u.is_empty() && !n.contains('.') => {
+                Ok(vec![e("order", vec![number(&n)?])])
+            }
+            v => Err(format!("order takes an integer, not '{}'", describe(&v))),
+        },
+        "gap" => match t.as_slice() {
+            [g] => Ok(vec![e("gap", vec![want_len(g)?])]),
+            [r, c] => Ok(vec![
+                e("rowGap", vec![want_len(r)?]),
+                e("columnGap", vec![want_len(c)?]),
+            ]),
+            _ => Err("gap: <row-gap> [<column-gap>]".into()),
+        },
+        "row-gap" | "column-gap" => match one(&t, name)? {
+            Tok::Ident(w) if w == "normal" => Ok(Vec::new()),
+            v => Ok(vec![e(
+                if name == "row-gap" {
+                    "rowGap"
+                } else {
+                    "columnGap"
+                },
+                vec![want_len(&v)?],
+            )]),
+        },
+        "justify-content" | "align-content" | "align-items" | "align-self" | "justify-items"
+        | "justify-self" => alignment(name, &t),
+        "place-content" | "place-items" | "place-self" => {
+            // <align> [<justify>]: one value sets both (CSS Box Alignment §5.3, §6.3, §6.4).
+            let (align, justify) = match name {
+                "place-content" => ("align-content", "justify-content"),
+                "place-items" => ("align-items", "justify-items"),
+                _ => ("align-self", "justify-self"),
+            };
+            let split = t
+                .iter()
+                .enumerate()
+                .skip(1)
+                .find(|(k, v)| {
+                    !matches!(t[k - 1], Tok::Ident(ref w) if w == "safe" || w == "unsafe" || w == "first" || w == "last")
+                        && matches!(v, Tok::Ident(_))
+                })
+                .map(|(k, _)| k)
+                .unwrap_or(t.len());
+            let (a, j) = t.split_at(split);
+            let j = if j.is_empty() { a } else { j };
+            let mut out = alignment(align, a)?;
+            out.extend(alignment(justify, j)?);
+            Ok(out)
+        }
         "grid-auto-flow" => {
             let mut out = Vec::new();
             for v in &t {
@@ -2105,6 +2255,86 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
     }
 }
 
+fn bool_word(b: bool) -> Value {
+    Value::Word(if b { "true" } else { "false" }.into())
+}
+
+/// A token as CSS text (a lowered shorthand hands its part on).
+fn css_text(t: &Tok) -> String {
+    match t {
+        Tok::Func(f, args) => format!(
+            "{f}({})",
+            args.iter()
+                .map(|a| a.iter().map(css_text).collect::<Vec<_>>().join(" "))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        t => describe(t),
+    }
+}
+
+/// A CSS Box Alignment value as its prop's word (and its `safe` flag):
+/// `[safe | unsafe] <position>`, a distribution, `normal`, `stretch` or a
+/// baseline. `auto` on an item is the initial value (its parent's).
+fn alignment(name: &str, t: &[Tok]) -> Result<Vec<Part>, String> {
+    let e = |key: &str, values: Vec<Value>| Part::Entry(key.to_string(), values);
+    let words: Vec<&str> = t
+        .iter()
+        .map(|v| want_ident(v, "an alignment"))
+        .collect::<Result<_, _>>()?;
+    let (safe, words) = match words.as_slice() {
+        ["safe", rest @ ..] => (true, rest),
+        ["unsafe", rest @ ..] => (false, rest),
+        w => (false, w),
+    };
+    let content = name.ends_with("-content");
+    let justify = name.starts_with("justify");
+    let word = match (words, content) {
+        (["auto"], _) if name.ends_with("-self") => return Ok(Vec::new()),
+        (["normal"], true) if justify => "flexStart",
+        (["normal"], true) => "stretch",
+        (["normal" | "legacy"], false) => "stretch",
+        (["stretch"], _) => "stretch",
+        (["flex-start"], true) => "flexStart",
+        (["flex-end"], true) => "flexEnd",
+        (["start" | "left"], _) => "start",
+        (["end" | "right"], _) => "end",
+        (["flex-start" | "self-start"], false) => "start",
+        (["flex-end" | "self-end"], false) => "end",
+        (["center"], _) => "center",
+        (["space-between"], true) => "spaceBetween",
+        (["space-around"], true) => "spaceAround",
+        (["space-evenly"], true) => "spaceEvenly",
+        (["baseline"] | ["first", "baseline"], false) => "baseline",
+        (["last", "baseline"], false) => "lastBaseline",
+        _ => {
+            return Err(format!("'{}' is not a {name} value", words.join(" ")));
+        }
+    };
+    let prop = match name {
+        "justify-content" => "align",
+        "align-items" => "cross",
+        "align-content" => "alignContent",
+        "justify-items" => "justifyItems",
+        "align-self" => "alignSelf",
+        _ => "justifySelf",
+    };
+    // align-content takes no flex-relative words: its lines' start is
+    // the flex start.
+    let word = match (prop, word) {
+        ("alignContent", "flexStart") => "start",
+        ("alignContent", "flexEnd") => "end",
+        (_, w) => w,
+    };
+    let mut out = vec![e(prop, vec![Value::Word(word.into())])];
+    match name {
+        "justify-content" => out.push(e("safeJustify", vec![bool_word(safe)])),
+        "align-items" | "align-self" => out.push(e("safeAlign", vec![bool_word(safe)])),
+        _ => {}
+    }
+    Ok(out)
+}
+
 /// What a property name was meant to be, when it is a near miss.
 fn hint_for(name: &str) -> String {
     let c = camel(name);
@@ -2203,6 +2433,21 @@ impl Frame {
                 const SIDES: [&str; 4] =
                     ["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"];
                 // The shorthand resets the sides a longhand set before it.
+                if k == "gap"
+                    && self.entry.block.as_ref().is_some_and(|b| {
+                        b.entries
+                            .iter()
+                            .any(|e| e.key == "rowGap" || e.key == "columnGap")
+                    })
+                {
+                    let v = values.clone();
+                    for side in ["rowGap", "columnGap"] {
+                        let mut e = Entry::new(side);
+                        e.values = v.clone();
+                        e.line = line;
+                        self.push(e);
+                    }
+                }
                 let reset =
                     k == "padding"
                         && self.entry.block.as_ref().is_some_and(|b| {

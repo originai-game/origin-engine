@@ -71,3 +71,18 @@ A CI notification does not end an unfinished implementation request. Handle the
 notification, then continue the active work without requiring another prompt.
 Protect verified prerequisites in local logical commits; do not confuse their
 tests with the requested integrated rendering proof or land unfinished adapters.
+
+## 2026-11-08 — Never `git stash` in a lane
+
+Every worktree shares one stash (`refs/stash` lives in the common git
+dir). `git stash` on a clean lane saves nothing, and the `git stash pop`
+after it applies another lane's entry. To test a base revision, commit or
+check out a detached revision instead; never stash.
+
+## 2026-11-09 — Both generators after an IDL or schema change
+
+`og api gen --wiki` writes only the wiki and guides; the `.d.ts` and
+`api.schema.json` come from `og api gen`. Rebuild `og` first
+(`cargo build -p og-cli`), run both, and check every crate that builds an
+og-ui struct literal (`cargo check --workspace --all-targets`), not og-ui
+alone: og-runtime lists `Element`'s fields exhaustively.

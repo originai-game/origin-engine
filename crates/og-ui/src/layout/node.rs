@@ -435,8 +435,15 @@ pub(crate) struct Node {
     pub accent: Option<Srgba>,
     pub caret: Option<Srgba>,
     /// Its children out of the flow (absolute, anchored), in build order;
-    /// `children` holds the ones in the flow once the frame ends.
+    /// `children` holds the ones in the flow once the frame ends, in CSS
+    /// `order`.
     pub out: Vec<usize>,
+    /// One of its children in the flow aligns by its own baseline
+    /// (`align-self: baseline`).
+    pub baseline_items: bool,
+    /// Its content's least width and height, padding included, before its
+    /// own size applies (a flex item's automatic minimum, CSS Flexbox §4.5).
+    pub min_content: [f32; 2],
     /// A grid's resolved tracks and its children's cells.
     pub grid: Option<GridLayout>,
     /// Where it is drawn: its map from layout to screen (its transforms and
@@ -533,6 +540,8 @@ impl Node {
             parent,
             children: Vec::new(),
             built_children: Vec::new(),
+            baseline_items: false,
+            min_content: [0.0; 2],
             ordered_children: Vec::new(),
             gutter: 0.0,
             authored_box: None,

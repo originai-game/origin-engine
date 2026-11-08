@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "CSS Flexbox: flex, flex-grow, flex-shrink, flex-basis and flex-flow lay items out by the CSS flex algorithm; row-reverse, column-reverse and wrap-reverse, and wrapping columns; every justify-content, align-items and align-self keyword with safe and unsafe; align-content (normal stretching a wrapping box's lines), justify-items, justify-self and the place-* shorthands; order; row-gap, column-gap and a two-value gap. flex is no longer refused; width: stretch keeps working."
+    }
+  ]
+}

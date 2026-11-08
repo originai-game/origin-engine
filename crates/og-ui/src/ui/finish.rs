@@ -174,13 +174,24 @@ impl Ui {
                 .filter(|&c| !self.nodes[c].hidden && self.nodes[c].parent == i)
                 .collect();
             // Out of the flow (absolute, anchored): laid out against the box.
-            let (out, flow): (Vec<usize>, Vec<usize>) = kept
+            let (out, mut flow): (Vec<usize>, Vec<usize>) = kept
                 .iter()
                 .partition(|&&c| self.nodes[c].props.out_of_flow());
+            // Flex and grid items lay out in CSS `order`, then as built.
+            if flow.iter().any(|&c| self.nodes[c].el.order != 0) {
+                og_core::sort::sort_by_key(&mut flow, |&c| self.nodes[c].el.order);
+            }
+            let baseline_items = flow.iter().any(|&c| {
+                matches!(
+                    self.nodes[c].el.align_self,
+                    Some(crate::layout::Cross::Baseline | crate::layout::Cross::LastBaseline)
+                )
+            });
             let n = &mut self.nodes[i];
             n.ordered_children = kept;
             n.children = flow;
             n.out = out;
+            n.baseline_items = baseline_items;
         }
         for k in 0..self.emitted.len() {
             self.prepare_layout_node(self.emitted[k]);

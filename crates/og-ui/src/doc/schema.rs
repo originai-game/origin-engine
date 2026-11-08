@@ -395,18 +395,133 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!("gap", Ty::Num, "Space between its children, CSS px."),
     p!(
         "align",
-        Ty::Word(&["start", "center", "end", "spaceBetween"]),
-        "Where children sit along the main axis."
+        Ty::Word(&[
+            "start",
+            "center",
+            "end",
+            "spaceBetween",
+            "spaceAround",
+            "spaceEvenly",
+            "stretch",
+            "flexStart",
+            "flexEnd"
+        ]),
+        "Where children sit along the main axis (`start` and `end` are the writing mode's sides, `flexStart` and `flexEnd` the line's)."
     ),
     p!(
         "cross",
-        Ty::Word(&["start", "center", "end", "stretch", "baseline"]),
+        Ty::Word(&[
+            "start",
+            "center",
+            "end",
+            "stretch",
+            "baseline",
+            "lastBaseline"
+        ]),
         "Where children sit across it."
     ),
-    p!("wrap", Ty::Bool, "A row breaks its children into lines."),
+    p!(
+        "wrap",
+        Ty::Bool,
+        "A row (or a column) breaks its children into lines."
+    ),
+    p!(
+        "wrapReverse",
+        Ty::Bool,
+        "Its lines stack from the far side (CSS `wrap-reverse`)."
+    ),
+    p!(
+        "rowGap",
+        Ty::Num,
+        "Space between its rows (a column's children, a row's lines), CSS px, over `gap`."
+    ),
+    p!(
+        "columnGap",
+        Ty::Num,
+        "Space between its columns (a row's children, a column's lines), CSS px, over `gap`."
+    ),
+    p!(
+        "alignContent",
+        Ty::Word(&[
+            "start",
+            "center",
+            "end",
+            "spaceBetween",
+            "spaceAround",
+            "spaceEvenly",
+            "stretch"
+        ]),
+        "Where a wrapping container's lines sit across it, and how a grid's tracks sit down it (CSS `align-content`)."
+    ),
+    p!(
+        "justifyItems",
+        Ty::Word(&[
+            "start",
+            "center",
+            "end",
+            "stretch",
+            "baseline",
+            "lastBaseline"
+        ]),
+        "Where a grid's items sit across their areas (CSS `justify-items`)."
+    ),
+    p!(
+        "safeJustify",
+        Ty::Bool,
+        "Its main-axis alignment keeps an overflow at the start (CSS `safe`)."
+    ),
+    p!(
+        "safeAlign",
+        Ty::Bool,
+        "Its cross-axis alignment keeps an overflow at the start (CSS `safe`)."
+    ),
+    p!(
+        "flexGrow",
+        Ty::Num,
+        "Its share of a flex line's free space (CSS `flex-grow`)."
+    ),
+    p!(
+        "flexShrink",
+        Ty::Num,
+        "How much it gives up when a flex line overflows (CSS `flex-shrink`)."
+    ),
+    p!(
+        "flexBasis",
+        Ty::Size,
+        "Its size in a flex line before the free space is shared (CSS `flex-basis`)."
+    ),
+    p!(
+        "order",
+        Ty::Num,
+        "Its place among its flex or grid siblings (CSS `order`)."
+    ),
+    p!(
+        "alignSelf",
+        Ty::Word(&[
+            "start",
+            "center",
+            "end",
+            "stretch",
+            "baseline",
+            "lastBaseline"
+        ]),
+        "Where it sits across its flex line or down its grid area, over its parent's (CSS `align-self`)."
+    ),
+    p!(
+        "justifySelf",
+        Ty::Word(&[
+            "start",
+            "center",
+            "end",
+            "stretch",
+            "baseline",
+            "lastBaseline"
+        ]),
+        "Where it sits across its grid area or its absolute box, over its parent's (CSS `justify-self`)."
+    ),
     p!(
         "direction",
-        Ty::Word(&["row", "column"]),
+        Ty::Word(&["row", "column", "rowReverse", "columnReverse"]),
         ["row", "column", "box"],
         "Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content)."
     ),

@@ -1210,27 +1210,77 @@ impl Ui {
         }
     }
 
+    /// Where node `i`'s last line of text sits, if it or its last
+    /// descendant in the flow with text has one.
+    fn last_baseline(&self, i: usize) -> Option<f32> {
+        let n = &self.nodes[i];
+        match &n.content {
+            Content::Text(tc) => {
+                let line = n.lines.last()?;
+                let m = &self
+                    .fonts
+                    .for_styled(tc.font, tc.step.weight, false, &tc.text)
+                    .0
+                    .metrics;
+                let lh = tc.line_height();
+                let inner = n.rect.inset(&n.el.padding);
+                let block = lh * n.lines.len() as f32;
+                let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
+                let top = top + lh * (n.lines.len() - 1) as f32;
+                Some(m.baseline(&line.text, top, lh, tc.step.size))
+            }
+            Content::Rich(_) => {
+                let (last, before) = n.rich_lines.split_last()?;
+                let above: f32 = before.iter().map(|l| l.height).sum();
+                Some(n.rect.y + n.el.padding.top + above + last.baseline)
+            }
+            _ => n.children.iter().rev().find_map(|&c| self.last_baseline(c)),
+        }
+    }
+
     /// Rows with `Cross::Baseline`: each child moved down so their first
     /// baselines meet (per line of a wrapping row).
     pub(crate) fn align_baselines(&mut self, order: &[usize]) {
+        use crate::layout::Cross;
         for &i in order {
             let n = &self.nodes[i];
-            if n.el.cross != crate::layout::Cross::Baseline
+            if !crate::ui::visit::baseline_row(n)
                 || n.el.direction != crate::layout::Direction::Row
                 || n.props.layout != LayoutMode::Flex
                 || n.children.is_empty()
             {
                 continue;
             }
+            let parent = n.el.cross;
             let kids = n.children.clone();
             let lines = if n.el.wrap && !n.rows.is_empty() {
                 n.rows.clone()
             } else {
                 vec![(0, kids.len())]
             };
-            for (s, e) in lines {
-                let bs: Vec<Option<f32>> =
-                    kids[s..e].iter().map(|&c| self.first_baseline(c)).collect();
+            // A line's first-baseline items share their first baselines, and
+            // its last-baseline ones their last (CSS Box Alignment §9.3).
+            for (s, e, last) in lines
+                .into_iter()
+                .flat_map(|(s, e)| [(s, e, false), (s, e, true)])
+            {
+                let want = if last {
+                    Cross::LastBaseline
+                } else {
+                    Cross::Baseline
+                };
+                let bs: Vec<Option<f32>> = kids[s..e]
+                    .iter()
+                    .map(|&c| {
+                        if self.nodes[c].el.align_self.unwrap_or(parent) != want {
+                            None
+                        } else if last {
+                            self.last_baseline(c)
+                        } else {
+                            self.first_baseline(c)
+                        }
+                    })
+                    .collect();
                 let Some(max) = bs.iter().flatten().copied().reduce(f32::max) else {
                     continue;
                 };

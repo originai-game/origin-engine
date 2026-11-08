@@ -221,7 +221,7 @@ fn column_spacing(nodes: &[Node], i: usize) -> (f32, Vec<f32>, f32) {
     let mut before = Vec::with_capacity(kids.len());
     for (j, &c) in kids.iter().enumerate() {
         let k = &nodes[c];
-        let gap = if j > 0 { n.el.gap } else { 0.0 };
+        let gap = if j > 0 { n.el.main_gap() } else { 0.0 };
         if n.el.block {
             let set = joined(run, k.margin_sets[0]);
             let total = if outside { 0.0 } else { span(set) };
@@ -356,15 +356,16 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
             let kids = n.children.iter().map(|&c| &nodes[c]);
             match n.el.direction {
                 Direction::Row => {
+                    let gap = n.el.main_gap();
                     let pref = kids
                         .clone()
                         .map(|c| c.pref_w + side_margins(c))
                         .sum::<f32>()
-                        + gaps(n.el.gap, k);
+                        + gaps(gap, k);
                     let min = if n.el.wrap {
                         kids.map(|c| c.min_w + side_margins(c)).fold(0.0, f32::max)
                     } else {
-                        kids.map(|c| c.min_w + side_margins(c)).sum::<f32>() + gaps(n.el.gap, k)
+                        kids.map(|c| c.min_w + side_margins(c)).sum::<f32>() + gaps(gap, k)
                     };
                     (pref, min)
                 }
@@ -397,6 +398,7 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     let (p, m) = apply_size(n.el.width, pad + pref, pad + min);
     let (cp, cm) = (pad + pref, pad + min);
     let el = n.el;
+    nodes[i].min_content[0] = cm;
     nodes[i].pref_w = el.bounded(0, None, cp, cm, p);
     nodes[i].min_w = el.bounded(0, None, cp, cm, m);
 }
@@ -434,6 +436,161 @@ pub(super) fn clamp_to(n: &Node, axis: usize, basis: Option<f32>, v: f32) -> f32
     n.el.bounded(axis, basis, pref, min, v)
 }
 
+/// A flex item's inputs along the main axis (CSS Flexbox §9.2, §9.3 and
+/// §4.5): its flex base size, its hypothetical main size (the base held to
+/// its bounds), its min and max, and its factors. An item without CSS flex
+/// factors takes its house kind's: a stretch size grows and shrinks, a fit
+/// one shrinks, and a definite one neither.
+#[derive(Clone, Copy, Debug)]
+struct FlexInputs {
+    base: f32,
+    hypo: f32,
+    min: f32,
+    max: f32,
+    grow: f32,
+    shrink: f32,
+}
+
+fn flex_inputs(n: &Node, horizontal: bool, inner: f32) -> FlexInputs {
+    let axis = usize::from(!horizontal);
+    let (size, pref, min) = if horizontal {
+        (n.el.width, n.pref_w, n.min_w)
+    } else {
+        (n.el.height, n.pref_h, n.min_h)
+    };
+    let f = n.el.flex.unwrap_or(match size {
+        Size::Grow { .. } => FlexItem {
+            grow: 1.0,
+            ..FlexItem::default()
+        },
+        Size::Fit { .. } => FlexItem::default(),
+        _ => FlexItem {
+            shrink: 0.0,
+            ..FlexItem::default()
+        },
+    });
+    let specified = size.definite(pref, min, Some(inner));
+    let base = f
+        .basis
+        .and_then(|b| b.definite(pref, min, Some(inner)))
+        .or(specified)
+        .unwrap_or(pref);
+    let explicit = n.el.bounds[axis][0]
+        .and_then(|b| b.definite(pref, min, Some(inner)))
+        .or(match size {
+            Size::Fit { min: m, .. } | Size::Grow { min: m, .. } if m > 0.0 => Some(m),
+            _ => None,
+        });
+    // Its automatic minimum: its content's least size, at most its
+    // specified one; a scroll container's is 0.
+    let scrolls = if horizontal {
+        n.el.scroll_x
+    } else {
+        n.el.scroll
+    };
+    let content = n.min_content[axis];
+    let auto = if scrolls {
+        0.0
+    } else {
+        specified.map_or(min, |s| content.min(s))
+    };
+    let lo = explicit.unwrap_or(auto);
+    let hi = n.el.bounds[axis][1]
+        .and_then(|b| b.definite(pref, min, Some(inner)))
+        .or(match size {
+            Size::Fit { max, .. } | Size::Grow { max, .. } => Some(max),
+            _ => None,
+        })
+        .unwrap_or(f32::INFINITY)
+        .max(lo);
+    FlexInputs {
+        base,
+        hypo: base.clamp(lo, hi),
+        min: lo,
+        max: hi,
+        grow: f.grow.max(0.0),
+        shrink: f.shrink.max(0.0),
+    }
+}
+
+/// CSS Flexbox §9.7, resolving flexible lengths: one line's main sizes in
+/// `avail` (its room less gaps and margins), each item grown by its
+/// share of the positive free space or shrunk by its scaled share of the
+/// negative, the items its bounds clamp frozen and the rest resolved again.
+fn css_flex(items: &[FlexInputs], avail: f32) -> Vec<f32> {
+    let n = items.len();
+    let growing = items.iter().map(|it| it.hypo).sum::<f32>() < avail;
+    let factor = |it: &FlexInputs| if growing { it.grow } else { it.shrink };
+    let mut target: Vec<f32> = items.iter().map(|it| it.hypo).collect();
+    let mut frozen: Vec<bool> = items
+        .iter()
+        .map(|it| {
+            factor(it) == 0.0 || (growing && it.base > it.hypo) || (!growing && it.base < it.hypo)
+        })
+        .collect();
+    let room = |target: &[f32], frozen: &[bool]| {
+        avail
+            - (0..n)
+                .map(|k| if frozen[k] { target[k] } else { items[k].base })
+                .sum::<f32>()
+    };
+    let initial = room(&target, &frozen);
+    for _ in 0..=n {
+        if frozen.iter().all(|&f| f) {
+            break;
+        }
+        let open: Vec<usize> = (0..n).filter(|&k| !frozen[k]).collect();
+        let mut free = room(&target, &frozen);
+        let factors: f32 = open.iter().map(|&k| factor(&items[k])).sum();
+        if factors < 1.0 && (initial * factors).abs() < free.abs() {
+            free = initial * factors;
+        }
+        if growing {
+            for &k in &open {
+                let share = if factors > 0.0 {
+                    items[k].grow / factors
+                } else {
+                    0.0
+                };
+                target[k] = items[k].base + free * share;
+            }
+        } else {
+            let scaled: f32 = open.iter().map(|&k| items[k].shrink * items[k].base).sum();
+            for &k in &open {
+                let share = if scaled > 0.0 {
+                    items[k].shrink * items[k].base / scaled
+                } else {
+                    0.0
+                };
+                target[k] = items[k].base + free * share;
+            }
+        }
+        let mut total = 0.0;
+        let mut violation = vec![0.0f32; n];
+        for &k in &open {
+            let c = target[k].clamp(items[k].min, items[k].max);
+            violation[k] = c - target[k];
+            total += violation[k];
+            target[k] = c;
+        }
+        for &k in &open {
+            if total == 0.0
+                || (total > 0.0 && violation[k] > 0.0)
+                || (total < 0.0 && violation[k] < 0.0)
+            {
+                frozen[k] = true;
+            }
+        }
+    }
+    target
+}
+
+/// Whether a line of `kids` lays out by CSS Flexbox's algorithm: one of
+/// them declares flex factors.
+fn css_line(nodes: &[Node], kids: &[usize]) -> bool {
+    kids.iter().any(|&c| nodes[c].el.flex.is_some())
+}
+
 /// Main-axis sizes of a line of children: base, then grow or shrink.
 fn main_sizes(
     nodes: &[Node],
@@ -443,6 +600,13 @@ fn main_sizes(
     avail: f32,
     allow_shrink: bool,
 ) -> Vec<f32> {
+    if css_line(nodes, kids) {
+        let items: Vec<FlexInputs> = kids
+            .iter()
+            .map(|&c| flex_inputs(&nodes[c], horizontal, inner))
+            .collect();
+        return css_flex(&items, avail);
+    }
     let mut sizes = Vec::with_capacity(kids.len());
     let mut grow = Vec::with_capacity(kids.len());
     let mut shrink = Vec::with_capacity(kids.len());
@@ -578,7 +742,8 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                     Size::Grow { .. } | Size::Fit { .. } => fill,
                     _ => inner,
                 };
-                let w = cross_size(n, 0, basis, inner, el.cross == Cross::Stretch);
+                let stretch = !el.wrap && n.el.align_self.unwrap_or(el.cross) == Cross::Stretch;
+                let w = cross_size(n, 0, basis, inner, stretch);
                 // In a horizontal scroller a fitting child keeps its width.
                 let w = match n.el.width {
                     Size::Fit { .. } if el.scroll_x => w.max(n.pref_w),
@@ -593,7 +758,7 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                 .iter()
                 .map(|&c| nodes[c].el.margin[1].of(inner) + nodes[c].el.margin[3].of(inner))
                 .sum();
-            let avail = inner - gaps(el.gap, kids.len()) - sides;
+            let avail = inner - gaps(el.main_gap(), kids.len()) - sides;
             let sizes = main_sizes(nodes, &kids, true, inner, avail, !el.scroll_x);
             let free = avail - sizes.iter().sum::<f32>();
             for (&c, w) in kids.iter().zip(sizes) {
@@ -602,16 +767,24 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
             line_sides(nodes, &kids, inner, free);
         }
         Direction::Row => {
-            // Each child at its preferred width, capped at the row; then lines.
+            // Each child at its preferred width, capped at the row (its
+            // hypothetical size, by CSS flex), then lines.
+            let css = css_line(nodes, &kids);
+            let gap = el.main_gap();
             let mut base = Vec::with_capacity(kids.len());
             let mut sides = Vec::with_capacity(kids.len());
             for &c in &kids {
                 let n = &nodes[c];
-                let w =
-                    n.el.width
-                        .definite(n.pref_w, n.min_w, Some(inner))
-                        .unwrap_or_else(|| n.pref_w.min(inner).max(n.min_w));
-                base.push(clamp_to(n, 0, Some(inner), w));
+                let w = if css {
+                    flex_inputs(n, true, inner).hypo
+                } else {
+                    let w =
+                        n.el.width
+                            .definite(n.pref_w, n.min_w, Some(inner))
+                            .unwrap_or_else(|| n.pref_w.min(inner).max(n.min_w));
+                    clamp_to(n, 0, Some(inner), w)
+                };
+                base.push(w);
                 sides.push(n.el.margin[1].of(inner) + n.el.margin[3].of(inner));
             }
             let mut rows = Vec::new();
@@ -622,31 +795,40 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                 // Half a pixel of slack, as text wrapping has: a fit row
                 // snapped a fraction under its children's sum keeps them
                 // on one line, over by less than half a pixel.
-                if k > start && used + el.gap + b > inner + 0.5 {
+                if k > start && used + gap + b > inner + 0.5 {
                     rows.push((start, k));
                     start = k;
                     used = b;
                 } else {
-                    used += if k > start { el.gap + b } else { b };
+                    used += if k > start { gap + b } else { b };
                 }
             }
             rows.push((start, kids.len()));
             for &(s, e) in &rows {
                 let line = &kids[s..e];
-                let mut sizes = base[s..e].to_vec();
-                let grow: Vec<Option<f32>> = line
-                    .iter()
-                    .map(|&c| match nodes[c].el.width {
-                        Size::Grow { .. } => Some(nodes[c].el.width.bounds().1),
-                        _ => None,
-                    })
-                    .collect();
-                let none = vec![None; line.len()];
-                let avail = inner - gaps(el.gap, line.len()) - sides[s..e].iter().sum::<f32>();
-                flex(&mut sizes, &grow, &none, avail);
-                for (s, &c) in sizes.iter_mut().zip(line) {
-                    *s = clamp_to(&nodes[c], 0, Some(inner), *s);
-                }
+                let avail = inner - gaps(gap, line.len()) - sides[s..e].iter().sum::<f32>();
+                let sizes = if css {
+                    let items: Vec<FlexInputs> = line
+                        .iter()
+                        .map(|&c| flex_inputs(&nodes[c], true, inner))
+                        .collect();
+                    css_flex(&items, avail)
+                } else {
+                    let mut sizes = base[s..e].to_vec();
+                    let grow: Vec<Option<f32>> = line
+                        .iter()
+                        .map(|&c| match nodes[c].el.width {
+                            Size::Grow { .. } => Some(nodes[c].el.width.bounds().1),
+                            _ => None,
+                        })
+                        .collect();
+                    let none = vec![None; line.len()];
+                    flex(&mut sizes, &grow, &none, avail);
+                    for (s, &c) in sizes.iter_mut().zip(line) {
+                        *s = clamp_to(&nodes[c], 0, Some(inner), *s);
+                    }
+                    sizes
+                };
                 let free = avail - sizes.iter().sum::<f32>();
                 for (&c, w) in line.iter().zip(sizes) {
                     nodes[c].w = w;
@@ -730,18 +912,19 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
                             .fold(0.0, f32::max)
                     };
                     let rows = n.rows.len();
+                    let gap = n.el.line_gap();
                     let pref = n
                         .rows
                         .iter()
                         .map(|&(s, e)| line_h(s, e, &|c| c.pref_h))
                         .sum::<f32>()
-                        + gaps(n.el.gap, rows);
+                        + gaps(gap, rows);
                     let min = n
                         .rows
                         .iter()
                         .map(|&(s, e)| line_h(s, e, &|c| c.min_h))
                         .sum::<f32>()
-                        + gaps(n.el.gap, rows);
+                        + gaps(gap, rows);
                     (pref, min)
                 }
             }
@@ -761,6 +944,7 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
     let (p, m) = apply_size(n.el.height, pad + pref, pad + content_min);
     let (cp, cm) = (pad + pref, pad + content_min);
     let el = n.el;
+    nodes[i].min_content[1] = cm;
     nodes[i].content_h = pref;
     nodes[i].pref_h = el.bounded(1, None, cp, cm, p);
     nodes[i].min_h = el.bounded(1, None, cp, cm, m);
@@ -806,6 +990,34 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
         LayoutMode::Flex => {}
     }
     match el.direction {
+        Direction::Column if el.wrap => {
+            // CSS flex-wrap down a column: lines of the children that fit
+            // its height, each sized along it on its own.
+            let gap = el.main_gap();
+            let outer = |c: usize| nodes[c].pref_h + cross_margins(&nodes[c]);
+            let mut rows = Vec::new();
+            let (mut start, mut used) = (0, 0.0f32);
+            for (k, &kid) in kids.iter().enumerate() {
+                let b = outer(kid);
+                if k > start && used + gap + b > inner + 0.5 {
+                    rows.push((start, k));
+                    (start, used) = (k, b);
+                } else {
+                    used += if k > start { gap + b } else { b };
+                }
+            }
+            rows.push((start, kids.len()));
+            for &(s, e) in &rows {
+                let line = &kids[s..e];
+                let margins: f32 = line.iter().map(|&c| cross_margins(&nodes[c])).sum();
+                let avail = inner - gaps(gap, line.len()) - margins;
+                let sizes = main_sizes(nodes, line, false, inner, avail, !el.scroll);
+                for (&c, h) in line.iter().zip(sizes) {
+                    nodes[c].h = h;
+                }
+            }
+            nodes[i].rows = rows;
+        }
         Direction::Column => {
             let avail = inner - column_room(nodes, i);
             let sizes = main_sizes(nodes, &kids, false, inner, avail, !el.scroll);
@@ -816,16 +1028,11 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
         Direction::Row if !el.wrap => {
             for &c in &kids {
                 let n = &nodes[c];
-                let h = cross_size(
-                    n,
-                    1,
-                    (inner - cross_margins(n)).max(0.0),
-                    inner,
-                    el.cross == Cross::Stretch,
-                );
+                let stretch = n.el.align_self.unwrap_or(el.cross) == Cross::Stretch;
+                let h = cross_size(n, 1, (inner - cross_margins(n)).max(0.0), inner, stretch);
                 // A Fit child keeps its content height across a row.
                 let h = match n.el.height {
-                    Size::Fit { .. } if el.cross != Cross::Stretch => n.pref_h,
+                    Size::Fit { .. } if !stretch => n.pref_h,
                     _ => h,
                 };
                 nodes[c].h = h;
@@ -833,21 +1040,24 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
         }
         Direction::Row => {
             let rows = nodes[i].rows.clone();
+            let extra = line_extra(nodes, i, inner);
             for (s, e) in rows {
                 let line = &kids[s..e];
                 let line_h = line
                     .iter()
                     .map(|&c| nodes[c].pref_h + cross_margins(&nodes[c]))
-                    .fold(0.0, f32::max);
+                    .fold(0.0, f32::max)
+                    + extra;
                 for &c in line {
                     let n = &nodes[c];
                     let line_h = line_h - cross_margins(n);
+                    let stretch = n.el.align_self.unwrap_or(el.cross) == Cross::Stretch;
                     let h = match n.el.height {
                         Size::Grow { .. } => {
                             let (lo, hi) = n.el.height.bounds();
                             line_h.clamp(lo, hi)
                         }
-                        Size::Fit { .. } if el.cross == Cross::Stretch => line_h,
+                        Size::Fit { .. } if stretch => line_h,
                         Size::Fit { .. } => n.pref_h,
                         size => size
                             .definite(n.pref_h, n.min_h, Some(inner))
@@ -860,21 +1070,95 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
     }
 }
 
-fn main_offsets(align: Align, free: f32, k: usize) -> (f32, f32) {
+/// The room each line of a wrapping row gains from `align-content:
+/// stretch` (CSS Flexbox §9.4): the free space down `inner` its lines
+/// leave, shared evenly.
+fn line_extra(nodes: &[Node], i: usize, inner: f32) -> f32 {
+    let n = &nodes[i];
+    if n.el.align_content != Some(Align::Stretch) || n.rows.is_empty() {
+        return 0.0;
+    }
+    let used: f32 = n
+        .rows
+        .iter()
+        .map(|&(s, e)| {
+            n.children[s..e]
+                .iter()
+                .map(|&c| nodes[c].pref_h + cross_margins(&nodes[c]))
+                .fold(0.0, f32::max)
+        })
+        .sum::<f32>()
+        + gaps(n.el.line_gap(), n.rows.len());
+    ((inner - used) / n.rows.len() as f32).max(0.0)
+}
+
+/// Where `k` items (or lines) start along an axis with `free` room left,
+/// and the extra room between each pair (CSS Box Alignment §5.3). `safe`:
+/// an overflow stays at the start. The distributed values fall back to the
+/// start when nothing is free.
+fn main_offsets(align: Align, free: f32, k: usize, safe: bool) -> (f32, f32) {
+    if free < 0.0 && safe {
+        return (0.0, 0.0);
+    }
+    let k = k.max(1) as f32;
     match align {
-        Align::Start => (0.0, 0.0),
+        Align::Start | Align::Stretch => (0.0, 0.0),
         Align::Center => (free / 2.0, 0.0),
         Align::End => (free, 0.0),
-        Align::SpaceBetween if k > 1 && free > 0.0 => (0.0, free / (k - 1) as f32),
+        _ if free <= 0.0 => (0.0, 0.0),
+        Align::SpaceBetween if k > 1.0 => (0.0, free / (k - 1.0)),
         Align::SpaceBetween => (0.0, 0.0),
+        Align::SpaceAround => (free / (2.0 * k), free / k),
+        Align::SpaceEvenly => (free / (k + 1.0), free / (k + 1.0)),
     }
 }
 
-fn cross_offset(cross: Cross, room: f32, size: f32) -> f32 {
+fn cross_offset(cross: Cross, room: f32, size: f32, safe: bool) -> f32 {
+    if safe && room < size {
+        return 0.0;
+    }
     match cross {
-        Cross::Start | Cross::Stretch | Cross::Baseline => 0.0,
+        Cross::Start | Cross::Stretch | Cross::Baseline | Cross::LastBaseline => 0.0,
         Cross::Center => (room - size) / 2.0,
         Cross::End => room - size,
+    }
+}
+
+/// Its justify-content as laid out: a writing-mode `start`/`end` in a
+/// reversed line names the other flex side (CSS Box Alignment §6.1).
+fn line_align(el: &Element) -> Align {
+    match el.align {
+        Align::Start if el.reverse && el.align_logical => Align::End,
+        Align::End if el.reverse && el.align_logical => Align::Start,
+        a => a,
+    }
+}
+
+/// Node `i`'s children mirrored along its main axis (`row-reverse`,
+/// `column-reverse`) and its lines across it (`wrap-reverse`), inside its
+/// content box: each margin box flips, its own margins kept on their sides.
+fn mirror_lines(nodes: &mut [Node], i: usize, x0: f32, y0: f32, inner_w: f32, inner_h: f32) {
+    let el = nodes[i].el;
+    let row = el.direction == Direction::Row;
+    let (flip_x, flip_y) = if row {
+        (el.reverse, el.wrap_reverse && el.wrap)
+    } else {
+        (el.wrap_reverse && el.wrap, el.reverse)
+    };
+    if !flip_x && !flip_y {
+        return;
+    }
+    for c in nodes[i].children.clone() {
+        let k = &nodes[c];
+        if flip_x {
+            let [ml, mr] = k.margin_x;
+            nodes[c].x = 2.0 * x0 + inner_w - k.x - k.w - mr + ml;
+        }
+        let k = &nodes[c];
+        if flip_y {
+            let (mt, mb) = (span(k.margin_sets[0]), span(k.margin_sets[1]));
+            nodes[c].y = 2.0 * y0 + inner_h - k.y - k.h - mb + mt;
+        }
     }
 }
 
@@ -994,18 +1278,30 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
     let content_w = {
         let n = &nodes[i];
         let kids = &n.children;
+        let gap = n.el.main_gap();
         match n.el.direction {
+            Direction::Column if n.el.wrap && !n.rows.is_empty() => {
+                n.rows
+                    .iter()
+                    .map(|&(s, e)| {
+                        kids[s..e]
+                            .iter()
+                            .map(|&c| outer_w(&nodes[c]))
+                            .fold(0.0, f32::max)
+                    })
+                    .sum::<f32>()
+                    + gaps(n.el.line_gap(), n.rows.len())
+            }
             Direction::Column => kids.iter().map(|&c| outer_w(&nodes[c])).fold(0.0, f32::max),
             Direction::Row if n.el.wrap && !n.rows.is_empty() => n
                 .rows
                 .iter()
                 .map(|&(s, e)| {
-                    kids[s..e].iter().map(|&c| outer_w(&nodes[c])).sum::<f32>()
-                        + gaps(n.el.gap, e - s)
+                    kids[s..e].iter().map(|&c| outer_w(&nodes[c])).sum::<f32>() + gaps(gap, e - s)
                 })
                 .fold(0.0, f32::max),
             Direction::Row => {
-                kids.iter().map(|&c| outer_w(&nodes[c])).sum::<f32>() + gaps(n.el.gap, kids.len())
+                kids.iter().map(|&c| outer_w(&nodes[c])).sum::<f32>() + gaps(gap, kids.len())
             }
         }
     };
@@ -1028,45 +1324,106 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
         x0 -= sx.clamp(0.0, n.max_scroll_x());
     }
     let kids = n.children.clone();
-    let rows = if el.direction == Direction::Row && el.wrap && !n.rows.is_empty() {
+    let wrapped = el.wrap && !n.rows.is_empty();
+    let rows = if wrapped {
         n.rows.clone()
     } else {
         vec![(0, kids.len())]
     };
-    let mut line_y = 0.0;
-    for (s, e) in rows {
+    let (safe_main, safe_cross) = (el.safe & 1 != 0, el.safe & 2 != 0);
+    let align = line_align(&el);
+    // Each line's size across the axis, and where the lines start and
+    // what lies between them (`align-content`, CSS Flexbox §9.4).
+    let across = |c: usize, row: bool| {
+        if row {
+            nodes[c].h + cross_margins(&nodes[c])
+        } else {
+            outer_w(&nodes[c])
+        }
+    };
+    let row = el.direction == Direction::Row;
+    let extra = if row {
+        line_extra(nodes, i, inner_h)
+    } else {
+        0.0
+    };
+    let rooms: Vec<f32> = rows
+        .iter()
+        .map(|&(s, e)| match (wrapped, row) {
+            (false, true) => inner_h,
+            (false, false) => inner_w,
+            (true, _) => {
+                kids[s..e]
+                    .iter()
+                    .map(|&c| across(c, row))
+                    .fold(0.0, f32::max)
+                    + extra
+            }
+        })
+        .collect();
+    let (mut line_at, line_between) = match (wrapped, el.align_content) {
+        (true, Some(a)) => {
+            let room = if row { inner_h } else { inner_w };
+            let free = room - rooms.iter().sum::<f32>() - gaps(el.line_gap(), rooms.len());
+            main_offsets(a, free, rooms.len(), false)
+        }
+        _ => (0.0, 0.0),
+    };
+    for (line_k, (s, e)) in rows.into_iter().enumerate() {
         let line = &kids[s..e];
         let k = line.len();
+        let room = rooms[line_k];
         match el.direction {
             Direction::Row => {
+                let gap = el.main_gap();
                 let used: f32 =
-                    line.iter().map(|&c| outer_w(&nodes[c])).sum::<f32>() + gaps(el.gap, k);
+                    line.iter().map(|&c| outer_w(&nodes[c])).sum::<f32>() + gaps(gap, k);
                 let mut free = inner_w - used;
                 if el.scroll_x {
                     free = free.max(0.0);
                 }
-                let (start, between) = main_offsets(el.align, free, k);
-                let room = if el.wrap {
-                    line.iter()
-                        .map(|&c| nodes[c].h + cross_margins(&nodes[c]))
-                        .fold(0.0, f32::max)
-                } else {
-                    inner_h
-                };
+                let (start, between) = main_offsets(align, free, k, safe_main);
                 let mut x = x0 + start;
                 for &c in line {
                     let (w, h) = (nodes[c].w, nodes[c].h);
                     let (top, around) = (span(nodes[c].margin_sets[0]), cross_margins(&nodes[c]));
                     let [ml, mr] = nodes[c].margin_x;
+                    let cross = nodes[c].el.align_self.unwrap_or(el.cross);
+                    let safe = safe_cross || nodes[c].el.safe & 2 != 0;
                     nodes[c].x = x + ml;
                     nodes[c].y = y0
-                        + line_y
+                        + line_at
                         + top
                         + auto_offset(&nodes[c], 0, room - around - h)
-                            .unwrap_or_else(|| cross_offset(el.cross, room - around, h));
-                    x += ml + w + mr + el.gap + between;
+                            .unwrap_or_else(|| cross_offset(cross, room - around, h, safe));
+                    x += ml + w + mr + gap + between;
                 }
-                line_y += room + el.gap;
+                line_at += room + el.line_gap() + line_between;
+            }
+            Direction::Column if wrapped => {
+                // One column of a wrapping column: its items down it, each
+                // aligned across the column's width.
+                let gap = el.main_gap();
+                let used: f32 = line
+                    .iter()
+                    .map(|&c| nodes[c].h + cross_margins(&nodes[c]))
+                    .sum::<f32>()
+                    + gaps(gap, k);
+                let free = inner_h - used;
+                let (start, between) = main_offsets(align, free, k, safe_main);
+                let mut y = y0 + start;
+                for &c in line {
+                    let (w, h) = (nodes[c].w, nodes[c].h);
+                    let [ml, mr] = nodes[c].margin_x;
+                    let (top, bottom) =
+                        (span(nodes[c].margin_sets[0]), span(nodes[c].margin_sets[1]));
+                    let cross = nodes[c].el.align_self.unwrap_or(el.cross);
+                    let safe = safe_cross || nodes[c].el.safe & 2 != 0;
+                    nodes[c].y = y + top;
+                    nodes[c].x = x0 + line_at + ml + cross_offset(cross, room - ml - mr, w, safe);
+                    y += top + h + bottom + gap + between;
+                }
+                line_at += room + el.line_gap() + line_between;
             }
             Direction::Column => {
                 let (lead, spacing, trail) = column_spacing(nodes, i);
@@ -1099,7 +1456,7 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
                 let (start, between) = if autos > 0 {
                     (0.0, 0.0)
                 } else {
-                    main_offsets(el.align, free, k)
+                    main_offsets(align, free, k, safe_main)
                 };
                 let mut y = y0 + start + lead;
                 for (j, &c) in line.iter().enumerate() {
@@ -1114,19 +1471,22 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
                     let [ml, mr] = nodes[c].margin_x;
                     let room = inner_w.max(if el.scroll_x { ml + w + mr } else { 0.0 }) - ml - mr;
                     let sideways = nodes[c].el.margin[1].auto || nodes[c].el.margin[3].auto;
+                    let cross = nodes[c].el.align_self.unwrap_or(el.cross);
+                    let safe = safe_cross || nodes[c].el.safe & 2 != 0;
                     nodes[c].y = y + top;
                     nodes[c].x = x0
                         + ml
                         + if sideways {
                             0.0
                         } else {
-                            cross_offset(el.cross, room, w)
+                            cross_offset(cross, room, w, safe)
                         };
                     y += top + h + bottom + spacing.get(j).copied().unwrap_or(0.0) + between;
                 }
             }
         }
     }
+    mirror_lines(nodes, i, x0, y0, inner_w, inner_h);
 }
 
 /// Its width with its left and right margins as laid out.
@@ -1178,7 +1538,11 @@ fn place_in(bx: &Rect, w: f32, h: f32, ins: &Edges, align: Align, cross: Cross) 
         bx.right() - e - w
     } else {
         match align {
-            Align::Start | Align::SpaceBetween => bx.x,
+            Align::Start
+            | Align::SpaceBetween
+            | Align::SpaceAround
+            | Align::SpaceEvenly
+            | Align::Stretch => bx.x,
             Align::Center => bx.x + (bx.width - w) / 2.0,
             Align::End => bx.right() - w,
         }
@@ -1191,7 +1555,7 @@ fn place_in(bx: &Rect, w: f32, h: f32, ins: &Edges, align: Align, cross: Cross) 
         bx.bottom() - b - h
     } else {
         match cross {
-            Cross::Start | Cross::Stretch | Cross::Baseline => bx.y,
+            Cross::Start | Cross::Stretch | Cross::Baseline | Cross::LastBaseline => bx.y,
             Cross::Center => bx.y + (bx.height - h) / 2.0,
             Cross::End => bx.bottom() - h,
         }

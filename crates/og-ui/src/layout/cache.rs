@@ -493,6 +493,17 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.margin == b.margin
         && a.block == b.block
         && a.bounds == b.bounds
+        && a.reverse == b.reverse
+        && a.wrap_reverse == b.wrap_reverse
+        && a.align_logical == b.align_logical
+        && a.align_content == b.align_content
+        && a.justify_items == b.justify_items
+        && a.align_self == b.align_self
+        && a.justify_self == b.justify_self
+        && a.gaps == b.gaps
+        && a.flex == b.flex
+        && a.order == b.order
+        && a.safe == b.safe
 }
 
 /// The content layout measures is equal (an ink may differ).
