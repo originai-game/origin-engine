@@ -241,12 +241,18 @@ pub(super) fn apply(
                 }
                 let (spec, p) =
                     schema::prop(key).ok_or((rule.at, format!("unknown CSS target {}", e.key)))?;
-                if !p.applies(kind) {
+                // An element that is no box takes the outer display only:
+                // its inner layout is its tag's.
+                let inner = matches!(
+                    written(&e.values).as_str(),
+                    "block" | "inline" | "inlineBlock" | "flowRoot" | "listItem"
+                );
+                if !p.applies(kind) || (e.key == "display" && kind != "box" && !inner) {
                     return Err((
                         rule.at,
                         if e.key == "display" {
                             format!(
-                                "display: {} lays out a <div> (or another HTML block); a {kind}'s layout is its tag, so it takes only display: none",
+                                "display: {} lays out a <div> (or another HTML block); a {kind}'s layout is its tag, so it takes only none, block, inline, inline-block or flow-root",
                                 written(&e.values)
                             )
                         } else {

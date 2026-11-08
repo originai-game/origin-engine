@@ -27,7 +27,7 @@ pub(crate) use cache::{
 };
 pub(crate) use flex::on_screen;
 use flex::*;
-pub(crate) use grid::GridLayout;
+pub(crate) use grid::{GridLayout, Table, derive_table, shown_children};
 use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
 pub use node::FontRole;
 use node::truncate_lines;
@@ -612,6 +612,42 @@ pub struct Element {
     /// percentage or calc() of the size its parent offers, or a content
     /// size (`MinContent`, `MaxContent`). `None`: unbounded.
     pub bounds: [[Option<Size>; 2]; 2],
+    /// CSS outer display `inline` (`inline-block`, `inline-flex`…): in a
+    /// block that holds one, it and the texts beside it lie in lines.
+    pub inline: bool,
+    /// It establishes a block formatting context (`display: flow-root`):
+    /// its children's margins do not collapse through its edges.
+    pub bfc: bool,
+    /// CSS `display: contents`: it generates no box; its children lay out
+    /// in its parent's as its own would.
+    pub contents: bool,
+    /// Its part of a CSS table (`display: table`, `table-row`…).
+    pub table: TablePart,
+    /// CSS `text-align` of the lines it lays its inline-level children in.
+    pub line_align: Align,
+}
+
+/// What a box is to the CSS table layout (CSS 2 §17.2).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TablePart {
+    #[default]
+    None,
+    /// `display: table` (or `inline-table`): it lays its rows out.
+    Table,
+    /// `table-header-group`, `table-row-group`, `table-footer-group`.
+    Header,
+    Body,
+    Footer,
+    Row,
+    Cell,
+    /// `table-caption`: above the table (`below`: under it).
+    Caption {
+        below: bool,
+    },
+    /// `table-column` and `table-column-group`: no box; a column's width
+    /// is the least its column takes.
+    Column,
+    ColumnGroup,
 }
 
 impl Element {

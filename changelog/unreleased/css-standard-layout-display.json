@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "CSS Display: every display value, single and multi-keyword. inline, inline-block, inline-flex, inline-grid and inline-table lay an element out in its parent's lines (baseline-aligned, by text-align, vertical-align top, middle or bottom), each block-level sibling on a line of its own; flow-root keeps its children's margins inside; contents drops the box and hands its children to its parent's layout. display: table and its parts (row groups, rows, cells, captions with caption-side, columns) lay a table out by CSS 2 §17 and HTML's table model, reading colspan and rowspan. New vertical-align and caption-side properties. display on an element that is not a box now takes block, inline, inline-block and flow-root as well as none; flex, grid, table and contents stay a box's."
+    }
+  ]
+}

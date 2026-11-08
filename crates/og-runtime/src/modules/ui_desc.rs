@@ -195,6 +195,11 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         flex: None,
         order: 0,
         safe: 0,
+        inline: false,
+        bfc: false,
+        contents: false,
+        table: og_ui::TablePart::None,
+        line_align: Align::Start,
     }
 }
 

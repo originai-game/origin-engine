@@ -26,6 +26,13 @@
 //!   the `grid-template` areas or the `grid` auto-flow forms misread, a
 //!   subgrid sizing its own tracks, masonry placing in rows, or
 //!   `justify-items` ignored → `grid_lays_out_as_css_grid_does`
+//! - `display: contents` keeping its box (its children not the flex
+//!   container's items), inline-level boxes stacked as blocks (or a block
+//!   among them not on a line of its own), a multi-keyword display refused,
+//!   a flow-root letting its child's margin collapse through, a table's
+//!   colspan or rowspan placing a cell in the wrong slot, a spanning cell's
+//!   width not spread over its columns, a row box not over its row, or a
+//!   bottom caption on top → `display_lays_out_as_css_display_does`
 
 use crate::html_text::{Doc, both};
 
@@ -255,5 +262,69 @@ fn grid_lays_out_as_css_grid_does() {
         );
         assert_eq!(d.get("Mason").height, 30.0);
         assert_eq!(at("I1", "Items").0, 40.0);
+    });
+}
+
+#[test]
+fn display_lays_out_as_css_display_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Flex"><div id="Box"><div id="A"></div><div id="B"></div></div></div>
+  <div id="Line"><div id="I1"></div><div id="I2"></div><div id="Blk"></div><div id="I3"></div></div>
+  <div id="Fr"><div id="M"></div></div>
+  <div id="Tbl">
+    <div id="R1"><div id="C1" class="td" colspan="2"></div><div id="C2" class="td" rowspan="2"></div></div>
+    <div id="R2"><div id="D1" class="td"></div><div id="D2" class="td"></div></div>
+    <div id="Cap"></div>
+  </div>
+</div></div>
+<style>
+#Root { width: 300px; }
+#Flex { display: flex; }
+#Box { display: contents; background: #f00; }
+#A, #B { width: 40px; height: 4px; }
+#Line { width: 200px; }
+#I1, #I2, #I3 { display: inline-block; width: 50px; height: 10px; }
+#I2 { display: inline flow-root; }
+#Blk { height: 5px; }
+#Fr { display: flow-root; }
+#M { margin-top: 20px; height: 5px; }
+#Tbl { display: table; }
+#R1, #R2 { display: table-row; background: #00f; }
+.td { display: table-cell; }
+#C1 { width: 100px; height: 10px; }
+#C2 { width: 20px; height: 30px; }
+#D1 { width: 30px; height: 10px; }
+#D2 { width: 40px; height: 10px; }
+#Cap { display: table-caption; caption-side: bottom; height: 8px; }
+</style>"#;
+    both(text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        assert_eq!(
+            at("B", "Flex"),
+            (40.0, 0.0),
+            "contents' children are flex items"
+        );
+        assert_eq!(at("I2", "Line"), (50.0, 0.0));
+        assert_eq!(
+            (at("Blk", "Line"), d.get("Blk").width),
+            ((0.0, 10.0), 200.0)
+        );
+        assert_eq!(
+            at("I3", "Line"),
+            (0.0, 15.0),
+            "a block is a line of its own"
+        );
+        assert_eq!((at("M", "Fr").1, d.get("Fr").height), (20.0, 25.0));
+        // Columns 30 and 40 grow to hold the 100px spanning cell: 45, 55.
+        assert_eq!(at("C2", "Tbl"), (100.0, 0.0));
+        assert_eq!(wh(d, "C2"), (20.0, 30.0));
+        assert_eq!(at("D2", "Tbl"), (45.0, 15.0));
+        assert_eq!((at("R2", "Tbl"), wh(d, "R2")), ((0.0, 15.0), (120.0, 15.0)));
+        assert_eq!((at("Cap", "Tbl"), d.get("Cap").width), ((0.0, 30.0), 120.0));
+        assert_eq!(wh(d, "Tbl"), (120.0, 38.0), "a table shrinks to fit");
     });
 }

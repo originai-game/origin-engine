@@ -17,6 +17,39 @@ fn authored_box(nodes: &mut [Node], mutated: &mut Vec<usize>, i: usize) {
 impl Ui {
     /// Normalize freshly assigned presentation before measurement. Call once
     /// after replacing fields, not on already prepared scroll padding.
+    /// Node `i` lays its flow out in lines while one of it is inline-level
+    /// (CSS 2 §9.4.2): a block becomes a wrapping row whose lines align on
+    /// their baseline and by its `text-align`, a block-level child on a
+    /// line of its own; its authored layout comes back when none is.
+    fn line_box(&mut self, i: usize, flow: &[usize]) {
+        let wanted = {
+            let n = &self.nodes[i];
+            n.el.block
+                && n.props.layout == crate::LayoutMode::Flex
+                && matches!(n.content, Content::None)
+                && flow.iter().any(|&c| self.nodes[c].el.inline)
+        };
+        let n = &mut self.nodes[i];
+        let ours = n.el.direction == crate::Direction::Row && n.el.wrap;
+        match (wanted, n.line_box) {
+            (true, saved) if saved.is_none() || !ours => {
+                n.line_box = Some((n.el.direction, n.el.wrap, n.el.cross, n.el.align));
+                n.el.direction = crate::Direction::Row;
+                n.el.wrap = true;
+                n.el.cross = crate::Cross::Baseline;
+                n.el.align = n.el.line_align;
+            }
+            (false, Some((direction, wrap, cross, align))) => {
+                if ours {
+                    (n.el.direction, n.el.wrap, n.el.cross, n.el.align) =
+                        (direction, wrap, cross, align);
+                }
+                n.line_box = None;
+            }
+            _ => {}
+        }
+    }
+
     pub(crate) fn prepare_layout_node(&mut self, i: usize) {
         let node = &mut self.nodes[i];
         if let Content::Text(text) = &mut node.content
@@ -159,6 +192,23 @@ impl Ui {
                 .chain(self.kept.rederive.iter().copied())
                 .filter(|&i| i < self.nodes.len())
                 .collect();
+            // A box that hands its children on (`display: contents`, a
+            // table's rows and groups) derives with the box it hands them to.
+            let handed = |n: &crate::layout::Node| {
+                use crate::layout::TablePart as T;
+                n.el.contents
+                    || !matches!(n.el.table, T::None | T::Table | T::Cell | T::Caption { .. })
+            };
+            for k in 0..d.len() {
+                let mut at = d[k];
+                while at < self.nodes.len()
+                    && self.nodes[at].parent != NONE
+                    && (handed(&self.nodes[at]) || handed(&self.nodes[self.nodes[at].parent]))
+                {
+                    at = self.nodes[at].parent;
+                    d.push(at);
+                }
+            }
             d.sort_unstable();
             d.dedup();
             d
@@ -167,18 +217,58 @@ impl Ui {
             if self.nodes[i].hidden {
                 continue;
             }
-            let kept: Vec<usize> = self.nodes[i]
-                .built_children
-                .iter()
-                .copied()
-                .filter(|&c| !self.nodes[c].hidden && self.nodes[c].parent == i)
-                .collect();
+            use crate::layout::TablePart;
+            // Its children are laid out by another box: it has none.
+            let n = &self.nodes[i];
+            let in_table = |p: usize| {
+                p != NONE
+                    && (self.nodes[p].el.table == TablePart::Table
+                        || matches!(
+                            self.nodes[p].el.table,
+                            TablePart::Header | TablePart::Body | TablePart::Footer
+                        ) && self.nodes[p].parent != NONE
+                            && self.nodes[self.nodes[p].parent].el.table == TablePart::Table)
+            };
+            let handed = i != 0
+                && (n.el.contents
+                    || matches!(
+                        n.el.table,
+                        TablePart::Header
+                            | TablePart::Body
+                            | TablePart::Footer
+                            | TablePart::Row
+                            | TablePart::Column
+                            | TablePart::ColumnGroup
+                    ) && in_table(n.parent));
+            if handed {
+                let n = &mut self.nodes[i];
+                n.ordered_children.clear();
+                n.children.clear();
+                n.out.clear();
+                n.table = None;
+                continue;
+            }
+            let shown = crate::layout::shown_children(&self.nodes, i);
             // Out of the flow (absolute, anchored): laid out against the box.
-            let (out, mut flow): (Vec<usize>, Vec<usize>) = kept
+            let (out, inside): (Vec<usize>, Vec<usize>) = shown
                 .iter()
                 .partition(|&&c| self.nodes[c].props.out_of_flow());
+            // A table draws its rows and groups under their cells, places
+            // them itself, and lays out its captions and cells by slot.
+            let (kept, mut flow, table) = if self.nodes[i].el.table == TablePart::Table {
+                let (mut draw, flow, t) = crate::layout::derive_table(&self.nodes, &inside);
+                draw.extend(&out);
+                (draw, flow, Some(t))
+            } else {
+                (shown, inside, None)
+            };
+            for &c in &kept {
+                self.nodes[c].up = i;
+            }
+            // A block holding inline-level children lays them out in lines.
+            self.line_box(i, &flow);
             // Flex and grid items lay out in CSS `order`, then as built.
-            if flow.iter().any(|&c| self.nodes[c].el.order != 0) {
+            if table.is_none() && flow.iter().any(|&c| self.nodes[c].el.order != 0) {
                 og_core::sort::sort_by_key(&mut flow, |&c| self.nodes[c].el.order);
             }
             let baseline_items = flow.iter().any(|&c| {
@@ -192,6 +282,7 @@ impl Ui {
             n.children = flow;
             n.out = out;
             n.baseline_items = baseline_items;
+            n.table = table;
         }
         for k in 0..self.emitted.len() {
             self.prepare_layout_node(self.emitted[k]);

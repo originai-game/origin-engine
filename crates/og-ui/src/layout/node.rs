@@ -441,6 +441,15 @@ pub(crate) struct Node {
     /// One of its children in the flow aligns by its own baseline
     /// (`align-self: baseline`).
     pub baseline_items: bool,
+    /// The node it lays out in: its parent, else the box its parent's
+    /// `display: contents` (or a table's rows) hands it to.
+    pub up: usize,
+    /// A table's cells and the boxes of its rows, groups and columns.
+    pub table: Option<crate::layout::Table>,
+    /// It holds inline-level children and lays them out in lines (CSS 2
+    /// §9.4.2): its authored direction, wrap, cross and align, kept to put
+    /// back when it no longer does.
+    pub line_box: Option<(Direction, bool, Cross, Align)>,
     /// Its content's least width and height, padding included, before its
     /// own size applies (a flex item's automatic minimum, CSS Flexbox §4.5).
     pub min_content: [f32; 2],
@@ -543,6 +552,9 @@ impl Node {
             children: Vec::new(),
             built_children: Vec::new(),
             baseline_items: false,
+            up: parent,
+            table: None,
+            line_box: None,
             min_content: [0.0; 2],
             ordered_children: Vec::new(),
             gutter: 0.0,

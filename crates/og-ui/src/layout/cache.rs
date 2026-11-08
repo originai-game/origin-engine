@@ -504,6 +504,11 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.flex == b.flex
         && a.order == b.order
         && a.safe == b.safe
+        && a.inline == b.inline
+        && a.bfc == b.bfc
+        && a.contents == b.contents
+        && a.table == b.table
+        && a.line_align == b.line_align
 }
 
 /// The content layout measures is equal (an ink may differ).
@@ -660,12 +665,12 @@ pub(crate) fn layout(
         let i = order[k];
         let n = &nodes[i];
         let rect = Rect::new(n.x, n.y, n.w, n.h);
-        let (parent_clip, src) = if n.parent == NONE || i == root {
+        let (parent_clip, src) = if n.up == NONE || i == root {
             (clip, NONE)
         } else {
-            let p = &nodes[n.parent];
+            let p = &nodes[n.up];
             if p.el.scroll || p.el.scroll_x {
-                (p.laid_clip.intersect(&p.laid_rect), n.parent)
+                (p.laid_clip.intersect(&p.laid_rect), n.up)
             } else {
                 (p.laid_clip, p.clip_src)
             }
@@ -684,10 +689,10 @@ pub(crate) fn layout(
             kept.resized.push(i);
         }
         nodes[i].layout_size = [nodes[i].w, nodes[i].h];
-        nodes[i].layout_offset = if nodes[i].parent == NONE || i == root {
+        nodes[i].layout_offset = if nodes[i].up == NONE || i == root {
             [0.0; 2]
         } else {
-            let parent = &nodes[nodes[i].parent];
+            let parent = &nodes[nodes[i].up];
             [nodes[i].x - parent.x, nodes[i].y - parent.y]
         };
         nodes[i].layout_step = match &nodes[i].content {

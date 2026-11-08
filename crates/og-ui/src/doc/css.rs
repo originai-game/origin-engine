@@ -236,6 +236,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("uppercase", "text-transform"),
     ("secondaryTint", "-og-secondary-tint"),
     ("textAlign", "text-align"),
+    ("verticalAlign", "vertical-align"),
+    ("captionSide", "caption-side"),
     ("nowrap", "white-space"),
     ("maxLines", "line-clamp"),
     ("ellipsis", "text-overflow"),
@@ -364,8 +366,9 @@ fn conv(prop: &str) -> Conv {
             Conv::Paint
         }
         "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
-        | "textAlign" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
-        | "appearance" | "labelDirection" | "stepper" | "selectAppearance" => Conv::Kebab,
+        | "textAlign" | "verticalAlign" | "captionSide" | "fit" | "display" | "markerType"
+        | "markerPosition" | "userSelect" | "appearance" | "labelDirection" | "stepper"
+        | "selectAppearance" => Conv::Kebab,
         "countDuration" | "countDecimals" | "reveal" => Conv::Num,
         "spotlight" => Conv::Ident,
         "wrap" => Conv::Bool("wrap", "nowrap"),
@@ -1532,6 +1535,71 @@ fn grid_line(t: &[Tok]) -> Result<(Option<Value>, Option<Value>), String> {
     }
 }
 
+/// A `display` value as its prop word (CSS Display 3 §2): one keyword or
+/// the multi-keyword form `[block | inline | run-in] [flow | flow-root |
+/// flex | grid | table] [list-item]`.
+fn display_word(v: &str) -> Result<&'static str, String> {
+    let one = match v {
+        "block" | "run-in" => Some("block"),
+        "inline" => Some("inline"),
+        "inline-block" => Some("inlineBlock"),
+        "flow-root" => Some("flowRoot"),
+        "list-item" => Some("listItem"),
+        "flex" => Some("flex"),
+        "inline-flex" => Some("inlineFlex"),
+        "grid" => Some("grid"),
+        "inline-grid" => Some("inlineGrid"),
+        "table" => Some("table"),
+        "inline-table" => Some("inlineTable"),
+        "contents" => Some("contents"),
+        "table-row-group" => Some("tableRowGroup"),
+        "table-header-group" => Some("tableHeaderGroup"),
+        "table-footer-group" => Some("tableFooterGroup"),
+        "table-row" => Some("tableRow"),
+        "table-cell" => Some("tableCell"),
+        "table-caption" => Some("tableCaption"),
+        "table-column" => Some("tableColumn"),
+        "table-column-group" => Some("tableColumnGroup"),
+        _ => None,
+    };
+    if let Some(w) = one {
+        return Ok(w);
+    }
+    let how = || {
+        format!(
+            "'{v}' is not a display: block, inline, inline-block, flow-root, flex, grid, table, contents, none, list-item, a table part, or [block | inline] [flow | flow-root | flex | grid | table] [list-item]"
+        )
+    };
+    let (mut outer, mut inner, mut item) = (None, None, false);
+    for w in v.split_whitespace() {
+        match w {
+            "block" | "inline" | "run-in" if outer.is_none() => {
+                outer = Some(if w == "inline" { "inline" } else { "block" })
+            }
+            "flow" | "flow-root" | "flex" | "grid" | "table" if inner.is_none() => inner = Some(w),
+            "list-item" if !item => item = true,
+            _ => return Err(how()),
+        }
+    }
+    let inline = outer == Some("inline");
+    Ok(match (inline, inner.unwrap_or("flow"), item) {
+        (false, "flow", true) | (false, "flow-root", true) => "listItem",
+        (_, "flex" | "grid" | "table", true) => return Err(how()),
+        (true, _, true) => return Err(how()),
+        (false, "flow", false) => "block",
+        (true, "flow", false) => "inline",
+        (false, "flow-root", false) => "flowRoot",
+        (true, "flow-root", false) => "inlineBlock",
+        (false, "flex", false) => "flex",
+        (true, "flex", false) => "inlineFlex",
+        (false, "grid", false) => "grid",
+        (true, "grid", false) => "inlineGrid",
+        (false, "table", false) => "table",
+        (true, "table", false) => "inlineTable",
+        _ => return Err(how()),
+    })
+}
+
 /// The entries one element declaration (or state value when `state`)
 /// sets, in order. Sizes, grid lines and `grid-auto-flow` come back as
 /// parts the block joins ([`Joined`]).
@@ -1547,27 +1615,18 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         return Err(format!("{name} has no value"));
     }
     if name == "display" {
-        // A box's (`<div>`…) layout is its display; every other element's
-        // layout is its tag, so there display only shows or hides it.
-        let layout = match value.trim() {
+        let word = match value.trim() {
             "none" => {
                 return Ok(vec![e("visible", vec![Value::Word("false".into())])]);
             }
             "initial" => {
                 return Ok(vec![e("visible", vec![Value::Word("true".into())])]);
             }
-            "block" | "inline-block" | "flow-root" | "list-item" => "block",
-            "flex" | "inline-flex" => "flex",
-            "grid" | "inline-grid" => "grid",
-            other => {
-                return Err(format!(
-                    "display: {other} is not supported; a <div> takes block, flex or grid (or none), and other elements' layout is their tag"
-                ));
-            }
+            v => display_word(v)?,
         };
         return Ok(vec![
             e("visible", vec![Value::Word("true".into())]),
-            e("display", vec![Value::Word(layout.into())]),
+            e("display", vec![Value::Word(word.into())]),
         ]);
     }
     if name == "-og-control-size" {

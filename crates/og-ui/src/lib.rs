@@ -98,7 +98,7 @@ pub use juice::{
 pub use layers::{LayerInfo, LayerOp};
 pub use layout::{
     Align, Anchor, Calc, CalcOp, Cross, Direction, Element, FlexItem, FontRole, Insets, Length,
-    Margin, Rect, Size, TextAlign,
+    Margin, Rect, Size, TablePart, TextAlign,
 };
 pub use motion::{
     Choreo, Ease, EventKind, GestureInfo, Key, KeyEase, MotionDump, MotionToken, MotionTokens,

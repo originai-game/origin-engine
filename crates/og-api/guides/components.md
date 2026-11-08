@@ -164,6 +164,9 @@ What every kind takes: its box, layout, paint, motion and input.
 | `data-og-instant` | `bool` | Its first entrance is settled (`data-og-instant`): the screen a game opens on, which the web draws behind its play gate. Later entrances play. |
 | `-og-reduced-motion:` | `fade \| none \| keep` | Its reduced-motion fallback. |
 | `data-hold` | `number` | How long a press is held before `onhold` fires, in ms (`data-hold`; default 500). |
+| `display:` | `block \| inline \| inline-block \| flow-root \| list-item \| flex \| inline-flex \| grid \| inline-grid \| table \| inline-table \| contents \| table-row-group \| table-header-group \| table-footer-group \| table-row \| table-cell \| table-caption \| table-column \| table-column-group` | Its CSS `display`. On a box its layout: `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks, `table` (and its parts) as a table, `flowRoot` a block whose children's margins stay inside, `contents` no box at all (its children are its parent's). On any element `inline…` puts it in lines beside its inline-level siblings. |
+| `vertical-align:` | `baseline \| top \| middle \| bottom \| text-top \| text-bottom \| sub \| super` | CSS `vertical-align`: where an inline-level element sits in its line, and a table cell's content in its row (`middle` by default). |
+| `caption-side:` | `top \| bottom` | CSS `caption-side`: a table caption above (default) or below its table. |
 | `-og-emitter:` | `<n>px \| <n>%` | `-og-emitter: <rate> [square\|circle\|diamond] [<size>px] [<colour>…]`: particles a second from the element while it stands (`.rare { -og-emitter: 12 diamond 6px #ffd166 #fff; }`), drawn over it; `none` stops. Silent under reduced motion. |
 | `-og-meta:` | `<n>px \| <n>%` | `-og-meta: vignette [<colour>] \| tint <colour>`: a full-screen overlay drawn with the element, never taking input, its strength the element's `opacity` (`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`). |
 | `draggable` | `bool` | HTML `draggable`: a drag that starts on it moves it with the pointer and returns it home on release, firing `ondragstart`, `ondragend`, and `ondragover`/`ondrop` on the element it is over (any element with one of those handlers takes drops). |
@@ -601,7 +604,6 @@ Its own props, beside every element's:
 | `flex-direction:` | `row \| column \| row-reverse \| column-reverse` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
 | `colspan` | `number` | A table cell's columns (`<td colspan>`), 1 by default; CSS table layout reads it. |
 | `rowspan` | `number` | A table cell's rows (`<td rowspan>`), 1 by default, 0 to the end of its row group; CSS table layout reads it. |
-| `display:` | `block \| flex \| grid` | A box's layout (CSS `display`): `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks (`grid-template-columns`…). |
 | `-og-marker-type:` | `none \| disc \| circle \| square \| decimal \| lower-alpha \| upper-alpha \| lower-roman \| upper-roman` | An `<li>`'s marker, from the inherited `list-style-type` (`<ul>`: disc, nested circle then square; `<ol>`: decimal). |
 | `-og-marker-position:` | `outside \| inside` | Where an `<li>`'s marker sits, from the inherited `list-style-position`: `outside` hangs it before the item's start edge (the default), `inside` lays the item out as a row after it. |
 

@@ -129,7 +129,7 @@ fn span(m: MarginSet) -> f32 {
 /// The width node `i`'s margin percentages read: its parent's content
 /// width (CSS 2 §8.3: all four, even the vertical ones).
 pub(super) fn margin_basis(nodes: &[Node], i: usize) -> f32 {
-    let p = nodes[i].parent;
+    let p = nodes[i].up;
     if p == NONE || p >= nodes.len() {
         return 0.0;
     }
@@ -144,14 +144,19 @@ pub(super) fn margin_basis(nodes: &[Node], i: usize) -> f32 {
 /// margins, and those of its children, are one set (CSS 2 §8.3.1).
 fn collapse_margins(nodes: &mut [Node], i: usize) {
     let n = &nodes[i];
-    let p = n.parent;
+    let p = n.up;
     let in_block_flow = p != NONE
         && p < nodes.len()
         && nodes[p].el.block
+        && nodes[p].el.direction == Direction::Column
         && nodes[p].props.layout == LayoutMode::Flex
         && nodes[p].children.contains(&i);
+    // A flow-root (or a box laying out lines) starts a formatting
+    // context: no margin collapses through its edges (CSS 2 §8.3.1).
     let flows = in_block_flow
         && n.el.block
+        && !n.el.bfc
+        && n.el.direction == Direction::Column
         && n.props.layout == LayoutMode::Flex
         && matches!(n.content, Content::None)
         && !n.el.scroll
@@ -159,6 +164,7 @@ fn collapse_margins(nodes: &mut [Node], i: usize) {
     let auto_height = matches!(n.el.height, Size::Fit { min, .. } if min <= 0.0);
     let empty_text = matches!(&n.content, Content::Text(t) if t.text.is_empty());
     let through = in_block_flow
+        && !n.el.bfc
         && auto_height
         && n.el.padding.top == 0.0
         && n.el.padding.bottom == 0.0
@@ -355,6 +361,25 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
             let k = n.children.len();
             let kids = n.children.iter().map(|&c| &nodes[c]);
             match n.el.direction {
+                // Lines: its widest run of inline-level children, or its
+                // widest block-level one (each on a line of its own).
+                Direction::Row if n.line_box.is_some() => {
+                    let gap = n.el.main_gap();
+                    let (mut pref, mut run, mut count) = (0.0f32, 0.0f32, 0usize);
+                    for &c in &n.children {
+                        let k = &nodes[c];
+                        let w = k.pref_w + side_margins(k);
+                        if inline_level(k) {
+                            run += w + if count > 0 { gap } else { 0.0 };
+                            count += 1;
+                        } else {
+                            pref = pref.max(run).max(w);
+                            (run, count) = (0.0, 0);
+                        }
+                    }
+                    let min = kids.map(|c| c.min_w + side_margins(c)).fold(0.0, f32::max);
+                    (pref.max(run), min)
+                }
                 Direction::Row => {
                     let gap = n.el.main_gap();
                     let pref = kids
@@ -424,6 +449,16 @@ fn cross_size(n: &Node, axis: usize, inner: f32, basis: f32, stretch: bool) -> f
         _ => size.definite(pref, min, Some(basis)).unwrap_or(pref),
     };
     n.el.bounded(axis, Some(basis), pref, min, v)
+}
+
+/// Whether node `n` lies in a line beside its siblings (CSS 2 §9.2.2): a
+/// box displayed `inline-*`, a text or an image.
+pub(super) fn inline_level(n: &Node) -> bool {
+    n.el.inline
+        || matches!(
+            n.content,
+            Content::Text(_) | Content::Rich(_) | Content::Image { .. }
+        )
 }
 
 /// Node `c`'s size along `axis` held to its bounds against `basis`.
@@ -795,7 +830,11 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                 // Half a pixel of slack, as text wrapping has: a fit row
                 // snapped a fraction under its children's sum keeps them
                 // on one line, over by less than half a pixel.
-                if k > start && used + gap + b > inner + 0.5 {
+                // In lines, a block-level child is a line of its own.
+                let forced = nodes[i].line_box.is_some()
+                    && k > start
+                    && (!inline_level(&nodes[kids[k]]) || !inline_level(&nodes[kids[k - 1]]));
+                if k > start && (forced || used + gap + b > inner + 0.5) {
                     rows.push((start, k));
                     start = k;
                     used = b;
@@ -1259,6 +1298,7 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
                 extent = extent.max(a.x + a.width);
             }
             nodes[i].content_w = extent;
+            super::grid::place_table_parts(nodes, i, inner.x, inner.y);
         }
         return;
     }

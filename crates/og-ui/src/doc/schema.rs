@@ -1429,9 +1429,48 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!(
         "display",
-        Ty::Word(&["block", "flex", "grid"]),
-        ["box"],
-        "A box's layout (CSS `display`): `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks (`grid-template-columns`…)."
+        Ty::Word(&[
+            "block",
+            "inline",
+            "inlineBlock",
+            "flowRoot",
+            "listItem",
+            "flex",
+            "inlineFlex",
+            "grid",
+            "inlineGrid",
+            "table",
+            "inlineTable",
+            "contents",
+            "tableRowGroup",
+            "tableHeaderGroup",
+            "tableFooterGroup",
+            "tableRow",
+            "tableCell",
+            "tableCaption",
+            "tableColumn",
+            "tableColumnGroup"
+        ]),
+        "Its CSS `display`. On a box its layout: `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks, `table` (and its parts) as a table, `flowRoot` a block whose children's margins stay inside, `contents` no box at all (its children are its parent's). On any element `inline…` puts it in lines beside its inline-level siblings."
+    ),
+    p!(
+        "verticalAlign",
+        Ty::Word(&[
+            "baseline",
+            "top",
+            "middle",
+            "bottom",
+            "textTop",
+            "textBottom",
+            "sub",
+            "super"
+        ]),
+        "CSS `vertical-align`: where an inline-level element sits in its line, and a table cell's content in its row (`middle` by default)."
+    ),
+    p!(
+        "captionSide",
+        Ty::Word(&["top", "bottom"]),
+        "CSS `caption-side`: a table caption above (default) or below its table."
     ),
     p!(
         "markerType",

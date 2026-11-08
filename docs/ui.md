@@ -328,8 +328,43 @@ A box (`<div>` and the other block tags) lays out by its CSS `display`:
 `block`, the default, stacks its children top to bottom as a `<column>`
 does; `flex` lays them out as a `<row>` (`flex-direction: column` turns
 it); `grid` lays them out by CSS Grid, below;
-`none` hides it. Other elements' layout is their tag, so `display` on
-them takes only `none`. Text between a box's elements is an anonymous
+`none` hides it. `display` takes every CSS Display 3 value, single or
+multi-keyword (`inline flow-root` is `inline-block`). `flow-root` is a
+block whose children's margins stay inside it. `contents` generates no
+box: its children lay out as children of its parent (a flex or grid
+container's items), and its own background and border are not drawn.
+An element displayed `inline`, `inline-block`, `inline-flex`,
+`inline-grid` or `inline-table` is inline-level: a block holding one
+lays its children out in lines, the texts and images beside it
+inline-level too, each block-level child on a line of its own; the
+lines align on their baseline, by the block's `text-align`, and an
+inline-level child's `vertical-align` (`top`, `middle`, `bottom`)
+moves it in its line. An inline-level element is laid out whole (an
+atomic inline): an `inline` box's text does not break across the
+lines of its parent; inline markup inside a text (`<b>`, `<span>`,
+`<a>`) is runs of that text and flows across lines. Other elements'
+layout is their tag, so `display` on them takes only `none`, `block`,
+`inline`, `inline-block` and `flow-root`.
+
+`display: table` lays a box out as a CSS table (CSS 2 §17, with
+HTML's table processing model): its `table-row` children, those of its
+`table-header-group`, `table-row-group` and `table-footer-group`
+children (the first header group first, the first footer group last),
+and their `table-cell` children, each cell in the next free slot of
+its row, spanning its `colspan` columns and `rowspan` rows (`0`: to
+the end of its row group). Children that are no table part are put in
+anonymous rows and cells. Columns and rows are as wide and tall as
+their cells need, a spanning cell's need spread over its tracks; a
+table without a `width` shrinks to fit, and one with a `width` shares
+the extra room among its columns. A `table-caption` spans the table
+above it, or below it with `caption-side: bottom`. A `table-column`
+box's px `width` is its column's least width. Row, row group and
+column boxes are drawn over their slots under the cells, so their
+backgrounds show. A cell's content sits in the middle of its row
+unless its `vertical-align` is `top`, `bottom` or `baseline`. The
+`border-spacing` and `border-collapse` properties are not supported:
+cells are separate, `gap` spaces them, and a cell or row part outside
+a table lays out as a block. Text between a box's elements is an anonymous
 text element, as an HTML anonymous block box is; `i18n` on a box
 translates its one run of text.
 

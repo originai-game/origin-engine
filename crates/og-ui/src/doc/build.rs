@@ -221,7 +221,43 @@ fn insets_of(n: &[f32]) -> Insets {
     }
 }
 
-/// A grid's tracks, areas and auto-placement.
+/// The inner display of a `display` word: `flow`, `flex`, `grid` or `table`.
+pub(super) fn inner_display(d: Option<&str>) -> &'static str {
+    match d {
+        Some("flex" | "inlineFlex") => "flex",
+        Some("grid" | "inlineGrid") => "grid",
+        Some("table" | "inlineTable") => "table",
+        _ => "flow",
+    }
+}
+
+/// Whether a `display` word's outer display is `inline`.
+pub(super) fn outer_inline(d: Option<&str>) -> bool {
+    matches!(
+        d,
+        Some("inline" | "inlineBlock" | "inlineFlex" | "inlineGrid" | "inlineTable")
+    )
+}
+
+/// A box's table part from its `display` word.
+pub(super) fn table_part(d: Option<&str>, caption_side: Option<&str>) -> crate::TablePart {
+    use crate::TablePart as T;
+    match d {
+        Some("table" | "inlineTable") => T::Table,
+        Some("tableHeaderGroup") => T::Header,
+        Some("tableRowGroup") => T::Body,
+        Some("tableFooterGroup") => T::Footer,
+        Some("tableRow") => T::Row,
+        Some("tableCell") => T::Cell,
+        Some("tableCaption") => T::Caption {
+            below: caption_side == Some("bottom"),
+        },
+        Some("tableColumn") => T::Column,
+        Some("tableColumnGroup") => T::ColumnGroup,
+        _ => T::None,
+    }
+}
+
 /// A `justify-content`/`align-content` word as laid out.
 fn align_of(a: &str) -> Align {
     match a {
@@ -1221,8 +1257,13 @@ impl Ui {
         if let Some(v) = r.num("hitSlop") {
             p.hit_slop = v;
         }
-        // A `<div>` with `display: grid` lays out as a `<grid>` does.
-        let grid_box = n.kind == NodeKind::Element("box") && r.str("display") == Some("grid");
+        // A `<div>` with `display: grid` lays out as a `<grid>` does; a
+        // table lays its cells out in a grid of its own.
+        let grid_box =
+            n.kind == NodeKind::Element("box") && inner_display(r.str("display")) == "grid";
+        if n.kind == NodeKind::Element("box") && inner_display(r.str("display")) == "table" {
+            p.layout = LayoutMode::Grid;
+        }
         match n.kind {
             NodeKind::Element("stack") => p.layout = LayoutMode::Stack,
             NodeKind::Element("grid") => {
@@ -1239,8 +1280,23 @@ impl Ui {
         p.place = GridPlace {
             column: pair("cell").map_or(0, |c| c[0] as u16),
             row: pair("cell").map_or(0, |c| c[1] as u16),
-            column_span: pair("span").map_or(0, |c| c[0] as u16),
-            row_span: pair("span").map_or(0, |c| c[1] as u16),
+            // A table cell's `colspan` and `rowspan` (0: to its group's end).
+            column_span: r
+                .num("colspan")
+                .map(|v| v.clamp(1.0, 1000.0) as u16)
+                .or(pair("span").map(|c| c[0] as u16))
+                .unwrap_or(0),
+            row_span: r
+                .num("rowspan")
+                .map(|v| {
+                    if v < 1.0 {
+                        u16::MAX
+                    } else {
+                        v.min(65534.0) as u16
+                    }
+                })
+                .or(pair("span").map(|c| c[1] as u16))
+                .unwrap_or(0),
             area: r.str("area").unwrap_or_default().to_string(),
             lines: [["columnStart", "columnEnd"], ["rowStart", "rowEnd"]].map(|axis| {
                 axis.map(|k| {

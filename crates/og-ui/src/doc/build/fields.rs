@@ -506,8 +506,9 @@ impl Ui {
             el = Self::box_of(r, el, em);
             if !matches!(base.kind, "panel" | "scroll" | "list" | "cells") {
                 // A box is a column (CSS block), or a row as `display: flex`.
-                let initial = match (base.kind, r.str("display")) {
-                    ("box", Some("flex")) => "row",
+                let display = super::inner_display(r.str("display"));
+                let initial = match (base.kind, display) {
+                    ("box", "flex") => "row",
                     ("box", _) if r.str("markerPosition") == Some("inside") => "row",
                     // A button's content is a row in it.
                     ("button", _) => "row",
@@ -521,20 +522,46 @@ impl Ui {
                 el.reverse = direction.ends_with("Reverse");
                 // A flex box's lines share its free room across it unless
                 // told otherwise (`align-content: normal`, CSS Flexbox §8.4).
-                if base.kind == "box"
-                    && r.str("display") == Some("flex")
-                    && el.align_content.is_none()
-                {
+                if base.kind == "box" && display == "flex" && el.align_content.is_none() {
                     el.align_content = Some(crate::Align::Stretch);
                 }
                 // A `display: block` box flows its children as CSS blocks.
                 el.block = initial == "box"
                     && el.direction == Direction::Column
-                    && r.str("display") != Some("grid");
+                    && !matches!(display, "grid" | "table");
+                el.bfc = base.kind == "box" && r.str("display") == Some("flowRoot");
+                el.contents = base.kind == "box" && r.str("display") == Some("contents");
+                el.table = if base.kind == "box" {
+                    super::table_part(r.str("display"), r.str("captionSide"))
+                } else {
+                    crate::TablePart::None
+                };
+                // A table cell's content sits in the middle of its row
+                // unless `vertical-align` says otherwise (HTML's UA sheet).
+                if el.table == crate::TablePart::Cell && !r.has("align") {
+                    el.align = match r.str("verticalAlign") {
+                        Some("top" | "textTop") => crate::Align::Start,
+                        Some("bottom" | "textBottom") => crate::Align::End,
+                        Some("baseline" | "sub" | "super") => crate::Align::Start,
+                        _ => crate::Align::Center,
+                    };
+                }
+                // Its lines' `text-align` (they lie in lines when one of
+                // its children is inline-level).
+                el.line_align = match r.text.as_deref().and_then(|t| t.align.as_deref()) {
+                    Some("center") => crate::Align::Center,
+                    Some("end" | "right") => crate::Align::End,
+                    _ => crate::Align::Start,
+                };
                 // A block-level box in a block's flow fills its width
-                // (CSS 2 §10.3.3: `width: auto`).
+                // (CSS 2 §10.3.3: `width: auto`); an inline-level one and a
+                // table shrink to fit (§10.3.9, §17.5.2).
                 let parent = self.nodes[i].parent;
+                let fills = !super::outer_inline(r.str("display"))
+                    && !matches!(display, "table")
+                    && el.table == crate::TablePart::None;
                 if base.kind == "box"
+                    && fills
                     && !r.has("width")
                     && parent != crate::layout::NONE
                     && self.nodes[parent].el.block
@@ -585,6 +612,17 @@ impl Ui {
             if r.has("width") && !matches!(base.kind, "label" | "button" | "image" | "art") {
                 el.width = r.size("width").unwrap_or(el.width);
             }
+        }
+        // `display: inline-*` (any element): it lies in its parent's lines,
+        // and `vertical-align` places it there.
+        el.inline = super::outer_inline(r.str("display"));
+        if el.inline {
+            el.align_self = match r.str("verticalAlign") {
+                Some("top" | "textTop") => Some(crate::Cross::Start),
+                Some("middle") => Some(crate::Cross::Center),
+                Some("bottom" | "textBottom") => Some(crate::Cross::End),
+                _ => el.align_self,
+            };
         }
         let mut warn = Vec::new();
         let decor = self.box_decor(r, &mut el, base.kind, &base.textures, &mut warn);
