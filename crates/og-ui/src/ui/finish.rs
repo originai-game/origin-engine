@@ -910,6 +910,8 @@ impl Ui {
         }
         self.build_part_draws(&order);
         let trees = self.commands(&order);
+        let repainted = self.kept.repainted.take();
+        self.note_semantics(repainted.as_deref());
         self.record_matches(&order);
         let mut tail = Vec::new();
         if let Some(c) = self.cover {

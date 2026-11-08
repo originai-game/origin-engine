@@ -457,3 +457,74 @@ fn native_tree_is_incremental_and_actions_round_trip_on_the_tick() {
         "deleted ids reject delayed actions"
     );
 }
+
+/// A screen reader reads only what changed: an idle tick reads no record
+/// and sends nothing, and one bound label reads a handful of records and
+/// sends that label, however long the list beside it is. Fails if the
+/// bridge falls back to the whole tree on every change, or if a change is
+/// missed (`OG_UI_CHECK_BOUNDED=1` also compares every update with the
+/// whole tree).
+#[test]
+fn native_tree_reads_only_the_changed_nodes() {
+    use og_ui::reactive::{SourceId, wire};
+    use serde_json::{Value, json};
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(
+        UiDocument::parse(
+            "ui/hud.svelte",
+            r#"<meta name="component" content="hud">
+<column id="Hud">
+  <text id="Score">{$score}</text>
+  {#each $rows as row (row.id)}<button id="Row">{row.id}</button>{/each}
+</column>"#,
+        )
+        .unwrap(),
+    );
+    let apply = |ui: &mut Ui, command: Value| {
+        let reply =
+            wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
+        assert_eq!(reply[0]["ok"], true, "{reply}");
+    };
+    let rows: Vec<Value> = (0..300).map(|i| json!({ "id": format!("r{i}") })).collect();
+    let mut inputs = std::collections::BTreeMap::new();
+    let (score, list) = (
+        SourceId::new("test", "score"),
+        SourceId::new("test", "rows"),
+    );
+    apply(
+        &mut ui,
+        json!({"op": "signal", "source": score, "initial": "10"}),
+    );
+    apply(
+        &mut ui,
+        json!({"op": "collection", "source": list, "key": "id", "items": rows}),
+    );
+    inputs.insert("score".to_string(), score);
+    inputs.insert("rows".to_string(), list);
+    ui.mount_document(SourceId::new("test", "hud"), "hud", inputs, &bind::NoEnv)
+        .unwrap();
+    let step = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 900.0));
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+    };
+    step(&mut ui);
+    step(&mut ui);
+    let mut bridge = native_a11y::Bridge::default();
+    assert!(bridge.update(&ui, [1.0, 1.0]).is_some());
+    assert!(bridge.read() > 300, "the first update reads the whole tree");
+    step(&mut ui);
+    assert!(bridge.update(&ui, [1.0, 1.0]).is_none());
+    assert_eq!(bridge.read(), 0, "an idle tick reads nothing");
+    apply(
+        &mut ui,
+        json!({"op": "set", "source": SourceId::new("test", "score"), "value": "11"}),
+    );
+    step(&mut ui);
+    let update = bridge.update(&ui, [1.0, 1.0]).expect("the label changed");
+    let labels: Vec<_> = update.nodes.iter().map(|(_, n)| n.label()).collect();
+    assert_eq!(labels, [Some("11")], "only the label is sent");
+    assert!(bridge.read() < 8, "read {} records", bridge.read());
+    step(&mut ui);
+    assert!(bridge.update(&ui, [1.0, 1.0]).is_none());
+}

@@ -5,7 +5,7 @@
 use super::*;
 
 /// Whether `OG_UI_CHECK_BOUNDED` asks for the check.
-pub(super) fn checking() -> bool {
+pub(crate) fn checking() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("OG_UI_CHECK_BOUNDED").is_some_and(|v| v != "0"))
 }

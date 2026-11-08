@@ -41,6 +41,7 @@ impl Ui {
             glyphs_missed: Default::default(),
             kept_spans: Vec::new(),
             tree: Default::default(),
+            semantics: Default::default(),
             building: false,
             state: State::default(),
             frame: UiFrame::default(),

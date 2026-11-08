@@ -229,14 +229,7 @@ impl Ui {
         let mut tree_path: Vec<Option<String>> = vec![None; self.nodes.len()];
         for &i in order.iter().skip(1) {
             let n = &self.nodes[i];
-            let (role, name, description, value, states) = self.a11y_info(i);
-            if role.is_empty() {
-                if !self.offscreen(i) {
-                    self.link_nodes(i, String::new(), &mut tree);
-                }
-                continue;
-            }
-            let parent = {
+            let parent = || {
                 let mut up = if n.parent == NONE { n.anchor } else { n.parent };
                 loop {
                     if up == NONE || up == 0 {
@@ -245,42 +238,18 @@ impl Ui {
                     if let Some(p) = &tree_path[up] {
                         break p.clone();
                     }
-                    up = if self.nodes[up].parent == NONE {
-                        self.nodes[up].anchor
-                    } else {
-                        self.nodes[up].parent
-                    };
+                    up = self.a11y_up(up);
                 }
             };
-            let path = self.path_of(i);
-            tree_path[i] = Some(path.clone());
-            let r = &n.screen;
-            let range = crate::a11y::range_of(n);
-            let mut states = states;
-            let offscreen = self.offscreen(i);
-            if offscreen {
-                states.push("offscreen".to_owned());
-            }
-            tree.push((
-                n.key,
-                crate::a11y::A11yNode {
-                    path,
-                    parent,
-                    role: role.to_owned(),
-                    name,
-                    description,
-                    value,
-                    states,
-                    value_min: range.and_then(|r| r.min),
-                    value_max: range.and_then(|r| r.max),
-                    value_now: range.map(|r| r.now),
-                    x: r.x,
-                    y: r.y,
-                    width: r.width,
-                    height: r.height,
-                },
-            ));
-            if !offscreen {
+            let Some(node) = self.a11y_record(i, parent) else {
+                if !self.offscreen(i) {
+                    self.link_nodes(i, String::new(), &mut tree);
+                }
+                continue;
+            };
+            tree_path[i] = Some(node.path.clone());
+            tree.push((n.key, node));
+            if !self.offscreen(i) {
                 let parent = tree_path[i].clone().unwrap_or_default();
                 self.link_nodes(i, parent, &mut tree);
             }
@@ -304,6 +273,76 @@ impl Ui {
             nodes: tree.into_iter().map(|(_, n)| n).collect(),
             focus_order,
         }
+    }
+
+    /// The node above `i` in the accessibility tree's walk: its parent, or
+    /// for a layer the element it is placed against.
+    fn a11y_up(&self, i: usize) -> usize {
+        let n = &self.nodes[i];
+        if n.parent == NONE { n.anchor } else { n.parent }
+    }
+
+    /// Node `i`'s accessibility record under the node `parent` names, or
+    /// `None` when it has no role. Its focus states are `mark`'s.
+    fn a11y_record(
+        &self,
+        i: usize,
+        parent: impl FnOnce() -> String,
+    ) -> Option<crate::a11y::A11yNode> {
+        let n = &self.nodes[i];
+        let (role, name, description, value, mut states) = self.a11y_info(i);
+        if role.is_empty() {
+            return None;
+        }
+        let r = &n.screen;
+        let range = crate::a11y::range_of(n);
+        if self.offscreen(i) {
+            states.push("offscreen".to_owned());
+        }
+        Some(crate::a11y::A11yNode {
+            parent: parent(),
+            path: self.path_of(i),
+            role: role.to_owned(),
+            name,
+            description,
+            value,
+            states,
+            value_min: range.and_then(|r| r.min),
+            value_max: range.and_then(|r| r.max),
+            value_now: range.map(|r| r.now),
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height,
+        })
+    }
+
+    /// The accessibility record of the node `key` names on the last
+    /// frame's screen, as [`Ui::a11y`] lists it, made alone: what a screen
+    /// reader's bridge reads for a node that changed. `reach` is
+    /// [`Ui::a11y_reach`]'s.
+    pub(crate) fn a11y_node(&self, key: u64, reach: &[u64]) -> Option<crate::a11y::A11yNode> {
+        let i = self.tree.by_key.get(&key).copied()?;
+        if i == 0 {
+            return None;
+        }
+        let mut node = self.a11y_record(i, || {
+            let mut up = self.a11y_up(i);
+            while up != NONE && up != 0 {
+                if !self.a11y_info(up).0.is_empty() {
+                    return self.path_of(up);
+                }
+                up = self.a11y_up(up);
+            }
+            String::new()
+        })?;
+        self.mark(reach, key, &mut node.states);
+        Some(node)
+    }
+
+    /// The controls keys and pads reach (`focusable` in the tree).
+    pub(crate) fn a11y_reach(&self) -> Vec<u64> {
+        self.reach()
     }
 
     /// A rich text's links: nodes of their own under its node.

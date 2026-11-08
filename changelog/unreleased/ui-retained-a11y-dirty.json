@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.end",
+      "summary": "An active screen reader receives only the nodes that changed: the native bridge reads the accessibility records the frame logged as changed (written or repainted nodes, their ancestors and next sibling, focus, scroll offsets) instead of rebuilding the whole tree each tick, and the whole tree only when nodes entered or left it. An idle tick reads nothing. The main, banner, contentinfo, complementary and article roles now reach AccessKit."
+    }
+  ]
+}

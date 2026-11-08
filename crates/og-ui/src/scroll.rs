@@ -306,7 +306,10 @@ impl Ui {
         let n = if self.building {
             self.previous_nodes().find(|n| n.key == key && n.scrolls())
         } else {
-            self.nodes.iter().find(|n| n.key == key && n.scrolls())
+            self.tree
+                .find(key)
+                .map(|i| &self.nodes[i])
+                .filter(|n| n.key == key && n.scrolls())
         }?;
         let view_width = (n.w - n.el.padding.horizontal()).max(0.0);
         let view_height = (n.h - n.el.padding.vertical()).max(0.0);

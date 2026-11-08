@@ -160,7 +160,13 @@ impl Ui {
         let mut rings: Vec<(usize, Vec<(DrawCmd, Affine)>)> = Vec::new();
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
         self.kept_spans.clear();
-        let (same, clean, delta) = self.paint_reuse(order, &ghosts, &prev_kinds);
+        let Reuse {
+            same,
+            clean,
+            delta,
+            repainted,
+        } = self.paint_reuse(order, &ghosts, &prev_kinds);
+        self.kept.repainted = repainted;
         let mut reused_roots = true;
         let theme = self.theme;
         // An element's draw (crate::paint) in its layout box, at its
@@ -520,7 +526,7 @@ impl Ui {
         order: &[usize],
         ghosts: &[crate::motion::state::Ghost],
         prev_kinds: &std::collections::HashMap<usize, (&'static str, bool)>,
-    ) -> (Vec<bool>, Vec<bool>, Vec<(f32, f32)>) {
+    ) -> Reuse {
         let n = self.nodes.len();
         let mut same = vec![false; n];
         let mut clean = vec![false; n];
@@ -529,7 +535,12 @@ impl Ui {
         let mut delta = vec![(f32::NAN, f32::NAN); n];
         // The bounded frame's check paints its whole twin afresh.
         if self.kept.fresh || self.kept.whole || self.tree.all_restructured {
-            return (same, clean, delta);
+            return Reuse {
+                same,
+                clean,
+                delta,
+                repainted: None,
+            };
         }
         let mut written = vec![false; n];
         for &i in &self.emitted {
@@ -621,7 +632,18 @@ impl Ui {
                 j = self.nodes[j].parent;
             }
         }
-        (same, clean, delta)
+        // The nodes not written that draw otherwise than last frame.
+        let repainted = order
+            .iter()
+            .copied()
+            .filter(|&i| !same[i] && !written[i])
+            .collect();
+        Reuse {
+            same,
+            clean,
+            delta,
+            repainted: Some(repainted),
+        }
     }
 
     /// The nodes of a subtree copied moved by `(dx, dy)`: their signatures
@@ -1175,4 +1197,13 @@ pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
         other => return (other, m),
     };
     (c, Affine::IDENTITY)
+}
+
+/// What `Ui::paint_reuse` found, per node index.
+struct Reuse {
+    same: Vec<bool>,
+    clean: Vec<bool>,
+    delta: Vec<(f32, f32)>,
+    /// The nodes painted anew (`None`: the whole frame is).
+    repainted: Option<Vec<usize>>,
 }

@@ -272,6 +272,9 @@ pub(crate) struct LayoutCache {
     pub ranges: crate::id::KeyMap<(usize, usize, u32)>,
     /// Per slot: the key and signature it was last painted with.
     pub sigs: Vec<Option<(u64, DrawSig)>>,
+    /// The nodes not written this frame that paint otherwise than last
+    /// frame (`None`: every node painted afresh).
+    pub repainted: Option<Vec<usize>>,
     /// This frame copied every tree's commands whole from the last, and
     /// the trees' roots it drew.
     pub reused_all: bool,
