@@ -180,11 +180,15 @@ impl Renderer {
                 })?,
         };
         // A surface frame can be copied out where the device allows it
-        // (frame capture on the web host: `set_keep_frame`).
-        let copy = surface
-            .get_capabilities(&adapter)
-            .usages
-            .contains(wgpu::TextureUsages::COPY_SRC);
+        // (frame capture on the web host: `set_keep_frame`). A WebGPU
+        // canvas always allows COPY_SRC (GPUCanvasConfiguration.usage), but
+        // wgpu 30's web backend reports RENDER_ATTACHMENT alone and passes
+        // the configured usage through unchecked, so the web asks for it.
+        let copy = cfg!(target_arch = "wasm32")
+            || surface
+                .get_capabilities(&adapter)
+                .usages
+                .contains(wgpu::TextureUsages::COPY_SRC);
         let config = wgpu::SurfaceConfiguration {
             usage: if copy {
                 wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC

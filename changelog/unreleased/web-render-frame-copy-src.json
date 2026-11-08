@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og render (web) and the Worker's renderFrame","summary":"The web host's display-frame readback returned no bytes: wgpu's web backend lists only RENDER_ATTACHMENT among a canvas's usages, so the surface was configured without COPY_SRC and keeping frames was refused. The canvas is now configured with COPY_SRC, which WebGPU allows on every device."}
+  ]
+}

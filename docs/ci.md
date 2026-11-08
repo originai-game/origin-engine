@@ -256,7 +256,7 @@ split, and the lowest such crate is its cause.
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
 | `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`), without a second release build. | full |
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton. | full |
-| `browser` | Browser wire, player, export, device, unsupported-device and og.motion tick tests (`test:browser`). | full |
+| `browser` | Browser hello page (its display-frame readback included), wire, player, export, device, unsupported-device and og.motion tick tests (`test:browser`). | full |
 | `web-reference` | Native and web preparation, then headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3). Compare retained scenes under unchanged tolerances. | explicit |
 | `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | explicit |
 | perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. | explicit |
