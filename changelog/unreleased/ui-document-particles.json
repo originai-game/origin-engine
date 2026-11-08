@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: -og-burst, -og-emitter, -og-meta",
+      "summary": "-og-burst in a @keyframes step fires a burst from the element. -og-emitter emits particles while the element stands. -og-meta draws a vignette or tint overlay at the element's opacity. The engine keeps emitters and overlays registered every tick, so a retained element builds nothing. Reduced motion silences bursts and emitters."
+    }
+  ]
+}

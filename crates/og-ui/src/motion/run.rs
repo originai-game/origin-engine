@@ -466,6 +466,7 @@ impl Ui {
         // the nearest of them above).
         let mut flip_rel = std::collections::HashSet::new();
         let mut css_events: Vec<UiEvent> = Vec::new();
+        let mut css_bursts: Vec<BurstRun> = Vec::new();
         let mut starts: Vec<(u64, String)> = Vec::new();
         // The nodes that animate, and those a play drives, in preorder.
         let mut animating: Vec<usize> = match seeds.filter(|_| !whole) {
@@ -707,14 +708,28 @@ impl Ui {
                 }
                 if !(reduced && a.iterations.is_infinite()) {
                     for kind in a.passed(&frames, run.last_ms, sample.active_ms) {
-                        if let EventKind::Sound { name, pitch } = kind {
-                            css_events.push(UiEvent {
+                        match kind {
+                            EventKind::Sound { name, pitch } => css_events.push(UiEvent {
                                 kind: "sound".into(),
                                 name: name.clone(),
                                 target: self.path_of(i),
                                 pitch: *pitch,
                                 ..UiEvent::default()
-                            });
+                            }),
+                            // `-og-burst` in a keyframe: silenced under
+                            // reduced motion, presentation only.
+                            EventKind::Burst {
+                                count,
+                                radius,
+                                color,
+                            } if !reduced => css_bursts.push(BurstRun {
+                                key: self.nodes[i].key,
+                                since: now,
+                                count: *count,
+                                radius: *radius,
+                                color: *color,
+                            }),
+                            _ => {}
                         }
                     }
                 }
@@ -1059,6 +1074,7 @@ impl Ui {
         // A CSS animation no element ran this tick ended with its element
         // or its `animation-name`.
         m.css.retain(|r| r.stepped == now);
+        m.bursts.extend(css_bursts);
         for ev in &css_events {
             if let Some(s) = crate::style_file::UiSound::from_name(&ev.name) {
                 self.sound(s);

@@ -168,6 +168,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("enter", "-og-enter"),
     ("exit", "-og-exit"),
     ("cursor", "cursor"),
+    ("emitter", "-og-emitter"),
+    ("meta", "-og-meta"),
     ("userSelect", "user-select"),
     ("textPath", "-og-text-path"),
     ("textPathOffset", "-og-text-path-offset"),
@@ -257,7 +259,7 @@ fn conv(prop: &str) -> Conv {
         "font" => Conv::Var("font"),
         "anchorTo" => Conv::Str,
         "rive" => Conv::Rive,
-        "textPath" | "textPathOffset" => Conv::Raw,
+        "textPath" | "textPathOffset" | "emitter" | "meta" => Conv::Raw,
         "textPathSide" => Conv::Kebab,
         "area" | "cue" => Conv::Ident,
         "areas" | "overlaps" => Conv::Strs,
@@ -1570,6 +1572,16 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 vec![Value::String(value.trim().to_owned())],
             )])
         }
+        // Engine effects with no CSS standard (docs/ui.md): read by the
+        // document build, which names a bad value.
+        "-og-emitter" | "-og-meta" => Ok(vec![e(
+            if name == "-og-emitter" {
+                "emitter"
+            } else {
+                "meta"
+            },
+            vec![Value::String(value.trim().to_owned())],
+        )]),
         "-og-text-path-offset" => {
             crate::text_path::parse_offset(value)?;
             Ok(vec![e(

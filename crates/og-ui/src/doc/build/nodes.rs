@@ -410,6 +410,10 @@ impl Ui {
                 let at = self.parent();
                 self.play_rive(at, id, &path);
             }
+            if r.has("emitter") || r.has("meta") || self.world.kept_effects.contains_key(&key) {
+                let at = self.parent();
+                self.world_effects(b, n, &r, at, &path);
+            }
             if kind == "slot" {
                 let at = self.parent();
                 self.docs.slots.insert(path.clone(), at);
@@ -850,6 +854,12 @@ impl Ui {
             self.note_render_fields(key, fields);
             if styled.has("dataOgTouch") {
                 self.note_touch_button(&styled);
+            }
+            if styled.has("emitter")
+                || styled.has("meta")
+                || self.world.kept_effects.contains_key(&key)
+            {
+                self.world_effects(b, n, &styled, last, &path);
             }
         }
         self.note_built(built);

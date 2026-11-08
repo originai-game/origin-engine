@@ -170,6 +170,54 @@ impl Ui {
         let mut spawned = std::mem::take(&mut self.world.mass_spawned);
         spawned.retain(|k| self.world.mass_built.contains(k) || self.docs.retained.owns(*k));
         self.world.mass_spawned = spawned;
+        self.keep_effects();
+    }
+
+    /// A document element's `-og-emitter` and `-og-meta` (`None` both:
+    /// none): kept by its key and registered on node `i` every tick it
+    /// stands ([`Ui::keep_world_anchors`]).
+    pub(crate) fn document_effects(
+        &mut self,
+        i: usize,
+        emitter: Option<crate::particles::ParticlesDesc>,
+        meta: Option<MetaDesc>,
+    ) {
+        let key = self.nodes[i].key;
+        if emitter.is_none() && meta.is_none() {
+            self.world.kept_effects.remove(&key);
+        } else {
+            self.world.kept_effects.insert(key, (emitter, meta));
+        }
+    }
+
+    /// Registers the kept effects of the elements that stand this tick.
+    fn keep_effects(&mut self) {
+        let mut kept = std::mem::take(&mut self.world.kept_effects);
+        kept.retain(|key, (emitter, meta)| {
+            let Some(&i) = self.tree.by_key.get(key) else {
+                return self.docs.retained.owns(*key);
+            };
+            if let Some(d) = emitter {
+                self.world.emitters.push(crate::particles::EmitterEntry {
+                    node: i,
+                    key: crate::id::child_key(*key, "particles"),
+                    desc: d.clone(),
+                    at: None,
+                });
+            }
+            if let Some(m) = meta {
+                let intensity = self.nodes[i].props.opacity.clamp(0.0, 1.0);
+                self.world.metas.push((
+                    i,
+                    MetaDesc {
+                        intensity: m.intensity * intensity,
+                        ..m.clone()
+                    },
+                ));
+            }
+            true
+        });
+        self.world.kept_effects = kept;
     }
 
     /// A document's mass element `key` (owned by the element `owner`):

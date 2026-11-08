@@ -108,6 +108,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `customize-key` | `name` | With customize: its name in the saved HUD layout (default: its path). |
 | `data-og-instant` | `bool` | Its first entrance is settled (`data-og-instant`): the screen a game opens on, which the web draws behind its play gate. Later entrances play. |
 | `-og-reduced-motion:` | `fade \| none \| keep` | Its reduced-motion fallback. |
+| `-og-emitter:` | `<n>px \| <n>%` | `-og-emitter: <rate> [square\|circle\|diamond] [<size>px] [<colour>…]`: particles a second from the element while it stands (`.rare { -og-emitter: 12 diamond 6px #ffd166 #fff; }`), drawn over it; `none` stops. Silent under reduced motion. |
+| `-og-meta:` | `<n>px \| <n>%` | `-og-meta: vignette [<colour>] \| tint <colour>`: a full-screen overlay drawn with the element, never taking input, its strength the element's `opacity` (`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`). |
 | `draggable` | `bool` | HTML `draggable`: a drag that starts on it moves it with the pointer and returns it home on release, firing `ondragstart`, `ondragend`, and `ondragover`/`ondrop` on the element it is over (any element with one of those handlers takes drops). |
 | `data-drag-type` | `text` | What a draggable element is to drop targets (`data-drag-type="weapon"`), as a drag's data type is in HTML. |
 | `data-accept` | `text` | The drag types a drop target takes, space-separated (`data-accept="weapon shield"`; default any). |
@@ -495,6 +497,9 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
+| `mass` | `text` | `<anchor entity={h.entity} mass="damage" value={h.amount}>`: a mass element of the template `mass` instead of a box (thousands per frame, drawn on the GPU). With a CSS `animation`, each row spawns one that plays its `@keyframes` (translate, scale, opacity) over the animation's duration; without one it stays while its row does. `value` is the number shown, or with `max` a bar filled to value/max; `color` tints it. |
+| `mass-value` | `number` | A mass element's value: the number it shows, or its bar's fill with `max`. |
+| `mass-max` | `number` | A mass element's bar: drawn as a bar filled to value/max (an overhead health bar). |
 | `entity` | `number` | The entity it follows, by its bits (`entity={u.entity}`): its world pose as the host hands it in. |
 | `world-at` | `text` | `at="x y z"`: a world point it follows, without an entity. |
 | `world-offset` | `text` | `offset="0 2 0"`: added to the point, world units (over a head). |

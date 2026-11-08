@@ -145,7 +145,89 @@ pub(super) fn panel_desc(
     })
 }
 
+/// `-og-emitter: <rate> [square|circle|diamond] [<size>px] [<colour>…]`.
+fn emitter_desc(v: &str) -> Result<Option<crate::particles::ParticlesDesc>, String> {
+    use og_render::UiParticleShape;
+    if v.trim() == "none" {
+        return Ok(None);
+    }
+    let mut d = crate::particles::ParticlesDesc {
+        fade: true,
+        ..Default::default()
+    };
+    let mut rate = None;
+    for w in v.split_whitespace() {
+        match w {
+            "square" => d.shape = UiParticleShape::Square,
+            "circle" => d.shape = UiParticleShape::Circle,
+            "diamond" => d.shape = UiParticleShape::Diamond,
+            _ if rate.is_none() && w.parse::<f32>().is_ok() => rate = w.parse().ok(),
+            _ => {
+                if let Some(px) = w.strip_suffix("px").and_then(|n| n.parse::<f32>().ok()) {
+                    d.size = og_core::glam::Vec2::splat(px);
+                } else {
+                    d.colors.push(srgba(w)?);
+                }
+            }
+        }
+    }
+    d.rate = rate
+        .ok_or("-og-emitter takes a rate a second first: `-og-emitter: 12 diamond 6px #ffd166`")?;
+    Ok(Some(d))
+}
+
+/// `-og-meta: vignette [<colour>] | tint <colour> | none`.
+fn meta_desc(v: &str) -> Result<Option<crate::world::MetaDesc>, String> {
+    use crate::world::{MetaDesc, MetaKind};
+    let mut w = v.split_whitespace();
+    let kind = match (w.next(), w.next()) {
+        (Some("none"), None) | (None, _) => return Ok(None),
+        (Some("vignette"), c) => MetaKind::Vignette {
+            color: c
+                .map(srgba)
+                .transpose()?
+                .unwrap_or(crate::style::Srgba::rgb(160, 0, 0)),
+            inner: 0.55,
+            outer: 1.0,
+        },
+        (Some("tint"), Some(c)) => MetaKind::Tint { color: srgba(c)? },
+        _ => return Err("-og-meta is vignette [<colour>], tint <colour> or none".into()),
+    };
+    Ok(Some(MetaDesc {
+        kind,
+        ..MetaDesc::default()
+    }))
+}
+
+fn srgba(w: &str) -> Result<crate::style::Srgba, String> {
+    let c = crate::svg::color(w)?;
+    let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+    Ok(crate::style::Srgba {
+        rgb: [b(c[0]), b(c[1]), b(c[2])],
+        alpha: c[3],
+    })
+}
+
 impl Ui {
+    /// An element's `-og-emitter` and `-og-meta`, on node `i`.
+    pub(super) fn world_effects(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        i: usize,
+        path: &str,
+    ) {
+        let emitter = r.str("emitter").map(emitter_desc).transpose();
+        let meta = r.str("meta").map(meta_desc).transpose();
+        match (emitter, meta) {
+            (Ok(e), Ok(m)) => self.document_effects(i, e.flatten(), m.flatten()),
+            (Err(e), _) | (_, Err(e)) => self
+                .warnings
+                .push(format!("{}:{} ({path}): {e}", b.doc.source, n.line)),
+        }
+    }
+
     /// A `<panel world>`: its subtree drawn into the render target `src`
     /// names (shown by the game on a plane), and rays from the pointer
     /// that meet its quad reach its controls.
@@ -734,5 +816,90 @@ mod tests {
             tick(&mut ui);
         }
         assert_eq!(bars(&ui), 0);
+    }
+
+    /// `-og-emitter` and `-og-meta` stay registered on the ticks their
+    /// element is not built again, and leave with it; `-og-burst` in a
+    /// keyframe is a burst event.
+    ///
+    /// Ways it could fail: an emitter that stops on the first idle tick (it
+    /// was registered only while built), one that outlives its element, or
+    /// a burst dropped by the keyframe parser.
+    #[test]
+    fn css_emitters_and_metas_last_while_their_element_stands() {
+        let doc = r#"<meta name="component" content="fx">
+<div id="Root">
+  {#if $on}<div id="Gem"></div>{/if}
+  <div id="Hurt"></div>
+</div>
+<style>
+#Gem { width: 40px; height: 40px; -og-emitter: 30 diamond 6px #ffd166; animation: pop 1s; }
+#Hurt { -og-meta: vignette #aa0000; opacity: 0.5; }
+@keyframes pop { 50% { -og-burst: 24 48px #ffffff; } }
+</style>"#;
+        let mut ui = Ui::new(UiDesc::default());
+        let parsed = UiDocument::parse("fx.svelte", doc).unwrap();
+        let pop = &parsed.keyframes.iter().find(|(k, _)| k == "pop").unwrap().1;
+        assert!(matches!(
+            pop.events.as_slice(),
+            [(o, crate::motion::EventKind::Burst { count: 24, .. })] if *o == 0.5
+        ));
+        ui.define_document(parsed);
+        let on = SourceId::new("test", "on");
+        ui.reactive
+            .execute(Command::Signal {
+                source: on.clone(),
+                initial: json!(true),
+                readable: false,
+            })
+            .unwrap();
+        ui.mount_document(
+            SourceId::new("test", "fx"),
+            "fx",
+            BTreeMap::from([("on".to_string(), on.clone())]),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let tick = |ui: &mut Ui| {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end().stats
+        };
+        for _ in 0..3 {
+            tick(&mut ui);
+        }
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        let idle = tick(&mut ui);
+        assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+        let particles = |ui: &Ui| {
+            ui.world
+                .state
+                .particles
+                .values()
+                .map(|e| e.spawned)
+                .sum::<u32>()
+        };
+        let before = particles(&ui);
+        for _ in 0..10 {
+            tick(&mut ui);
+        }
+        assert!(particles(&ui) > before, "the emitter stopped while idle");
+        assert!(ui.world.kept_effects.len() == 2);
+        ui.reactive
+            .execute(Command::Set {
+                source: on,
+                value: json!(false),
+                force: false,
+            })
+            .unwrap();
+        for _ in 0..2 {
+            tick(&mut ui);
+        }
+        assert_eq!(
+            ui.world.kept_effects.len(),
+            1,
+            "the gem's emitter outlived it"
+        );
     }
 }

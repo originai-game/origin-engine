@@ -446,6 +446,45 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
         let mut values = String::new();
         for (name, value) in super::css::split_decls(body)? {
             match name.as_str() {
+                "-og-burst" => {
+                    // `-og-burst: <count> [<radius>px] [<colour>]`: rays and
+                    // sparks from the element when the iteration reaches it.
+                    let mut count = None;
+                    let mut radius = 0.0;
+                    let mut color = None;
+                    for w in value.split_whitespace() {
+                        if let Ok(n) = w.parse::<u32>()
+                            && count.is_none()
+                        {
+                            count = Some(n);
+                        } else if let Some(px) =
+                            w.strip_suffix("px").and_then(|n| n.parse::<f32>().ok())
+                        {
+                            radius = px;
+                        } else {
+                            let c = crate::svg::color(w).map_err(|_| {
+                                format!("-og-burst: `{w}` is a count, a radius in px or a colour")
+                            })?;
+                            let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+                            color = Some(crate::style::Srgba {
+                                rgb: [b(c[0]), b(c[1]), b(c[2])],
+                                alpha: c[3],
+                            });
+                        }
+                    }
+                    let count =
+                        count.ok_or("-og-burst takes a count: `-og-burst: 24 48px #ffd166`")?;
+                    for &offset in &offsets {
+                        out.events.push((
+                            offset,
+                            crate::motion::EventKind::Burst {
+                                count,
+                                radius,
+                                color,
+                            },
+                        ));
+                    }
+                }
                 "-og-sound" => {
                     if !super::syntax::identifier(&value) {
                         return Err("-og-sound names a style sound, for example error".into());

@@ -595,6 +595,9 @@ pub(crate) struct WorldUi {
     /// The one-shot mass elements already spawned, by key, while their
     /// row stands: a row spawns once.
     pub mass_spawned: std::collections::BTreeSet<u64>,
+    /// Documents' `-og-emitter` and `-og-meta` by element key, registered
+    /// every tick while their element stands (it is not built again).
+    pub kept_effects: BTreeMap<u64, (Option<crate::particles::ParticlesDesc>, Option<MetaDesc>)>,
     /// This tick's projected panels as seen ([`crate::UiFrame::grounds`]).
     pub grounds: Vec<GroundQuad>,
     /// Mounted documents' world panels by key, with the rect each was laid

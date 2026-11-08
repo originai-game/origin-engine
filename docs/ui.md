@@ -586,6 +586,20 @@ entity with nothing built. A patched value writes that row alone. `mass` is
 an attribute on the engine's `anchor`; no standard names a GPU-instanced
 element.
 
+Particles and overlays are CSS, under the engine prefix because no web
+standard has them. `-og-burst: 24 48px #ffd166` inside a `@keyframes`
+step fires rays and sparks from the element when an iteration reaches that
+offset. It sits beside `-og-sound`, as a keyframe event. `-og-emitter:
+12 diamond 6px #ffd166 #fff` (rate a second, shape, size, colours) emits
+particles while the element stands, and `none` stops it. `-og-meta:
+vignette #a00` or `tint <colour>` draws a full-screen overlay with the
+element that never takes input, its strength the element's `opacity`
+(`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`). The engine
+registers emitters and overlays every tick while their element stands, so
+a retained element keeps emitting with nothing built (0 bindings, 0
+reconciled). Reduced motion silences bursts and emitters. All of it is
+presentation, outside the world's hash.
+
 `<ground>` lays a box flat in the world: `<ground entity={u.entity}
 size="3 3" rotation="0 45 0"><svg viewBox="0 0 40 40">…</svg></ground>`.
 It is laid out at its CSS size and drawn by the UI itself onto the

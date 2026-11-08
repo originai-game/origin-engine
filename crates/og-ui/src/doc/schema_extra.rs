@@ -195,6 +195,20 @@ macro_rules! svg {
 
 pub const PROPS: &[PropSpec] = &[
     PropSpec {
+        name: "emitter",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "`-og-emitter: <rate> [square|circle|diamond] [<size>px] [<colour>…]`: particles a second from the element while it stands (`.rare { -og-emitter: 12 diamond 6px #ffd166 #fff; }`), drawn over it; `none` stops. Silent under reduced motion.",
+    },
+    PropSpec {
+        name: "meta",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "`-og-meta: vignette [<colour>] | tint <colour>`: a full-screen overlay drawn with the element, never taking input, its strength the element's `opacity` (`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`).",
+    },
+    PropSpec {
         name: "mass",
         ty: Ty::Text,
         on: On::Kinds(&["anchor"]),

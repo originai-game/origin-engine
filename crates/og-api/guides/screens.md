@@ -213,6 +213,10 @@ local styles and `og style new` remain available.
   value={h.amount}>` in a keyed each: with a CSS animation (`rise 1s`) each row
   spawns one number that plays `@keyframes rise`; with `max="100"` and no
   animation it is a bar that stays with its row.
+- Celebrate with CSS: `@keyframes land { 60% { -og-burst: 24 48px #ffd166;
+  -og-sound: success; } }`. Sparkle a rare item with `.rare { -og-emitter:
+  12 diamond 6px #ffd166; }`. Flash damage with `#Hurt { -og-meta: vignette
+  #a00; opacity: var(--hit); }`.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
   pointer clicks. The handler names a mounted game action, just like `onclick`.
