@@ -186,9 +186,7 @@ impl Ui {
         let out = self.scene_viewport(
             id,
             ViewportDesc {
-                texture: r
-                    .num("viewportSrc")
-                    .and_then(|h| b.env.texture(f64::from(h))),
+                texture: r.handle("viewportSrc").and_then(|h| b.env.texture(h)),
                 width: r.size("width").unwrap_or(Size::Fixed(320.0)),
                 height: r.size("height").unwrap_or(Size::Fixed(320.0)),
                 aspect: r.num("aspect").unwrap_or(0.0),

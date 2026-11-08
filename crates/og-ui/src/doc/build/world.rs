@@ -546,9 +546,7 @@ impl Ui {
             },
             self.em_of(r),
         );
-        let texture = r
-            .num("viewportSrc")
-            .and_then(|h| b.env.texture(f64::from(h)));
+        let texture = r.handle("viewportSrc").and_then(|h| b.env.texture(h));
         let ground = matches!(n.kind, NodeKind::Element("ground"));
         let desc = match panel_desc(r, el, if ground { None } else { texture }, ground) {
             Ok(d) => d,
