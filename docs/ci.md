@@ -167,7 +167,7 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 
 | Lane | Checks |
 |---|---|
-| `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside og-tests, generated API drift, non-engine package tests |
+| `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside og-tests, generated API drift, non-engine package tests, the lanes wasm type check |
 | `full` | quick plus og-tests, doctests, opt-in kit Rust targets, engine and extension Bun tests, bindgen-only wasm variants, fixtures, browser wire/player/export/unsupported/motion-tick tests |
 
 `scripts/check.sh` owns admission and checkout ownership.
@@ -251,6 +251,7 @@ split, and the lowest such crate is its cause.
 | `doc-tests` | `cargo test --workspace --doc` | full |
 | `drift` | The dev `og api check` checks generated declarations, wiki, schema and Rust glue against the IDL. | quick, full |
 | `bun-quick` | Non-engine package tests, without rebuilding native artifacts. | quick, full |
+| `wasm-lanes-check` | `scripts/wasm-lanes.sh check` of each `lanes` variant in `scripts/wasm-crates.txt` (wasm atomics, `target/wasm-mt`) whenever og-render, og-host-web or a crate they depend on changes. Under atomics wgpu's web types are not Send, which neither the native build nor the single-threaded wasm32 build sees. | quick, full |
 | `wasm-build` | Build `scripts/wasm-crates.txt` variants in `wasm-test` for the cross-host, publish and lanes tests. Normal variants share the wasm32 target; lanes variants share `target/wasm-mt`. Outputs go to `target/og-wasm/raw`. | full |
 | `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`, with glue in `bindgen`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |

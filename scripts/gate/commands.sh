@@ -118,6 +118,38 @@ require_wasm() {
   return 1
 }
 
+# The lanes variants (wasm atomics) type-checked: under atomics wgpu's web
+# types are not Send, which neither the native build nor the
+# single-threaded wasm32 one (where wgpu marks them Send) can see; a Send
+# bound on a pipeline cell once broke every lanes module while quick
+# passed. Runs whenever og-render, og-host-web or anything
+# they depend on changes; cargo check in scripts/wasm-lanes.sh's target
+# directory, beside wasm-build's lanes builds. Without sccache: a check
+# makes only metadata, which the shared store gains little from, and the
+# step then never waits on the shared server. Cold it takes about 3
+# minutes, after an og-render change 20 to 50 s a variant.
+step_wasm_lanes_check() {
+  skip_unchanged wasm-lanes-check "wasm-lanes-check" "$(rule_wasm)" && return $SKIP
+  local c v vname vfeat
+  export RUSTC_WRAPPER=
+  for c in $(og_wasm_lanes_crates); do
+    v="$(og_wasm_lanes_variants "$c")"
+    if [ -z "$v" ]; then
+      og_say "lanes check: $c (--features $c/publish)"
+      "$OG_ROOT/scripts/wasm-lanes.sh" check --profile "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" \
+        -p "$c" --features "$c/publish" --lib || return 1
+      continue
+    fi
+    while read -r vname vfeat; do
+      og_say "lanes check $vname: $c (--no-default-features --features $vfeat)"
+      "$OG_ROOT/scripts/wasm-lanes.sh" check --profile "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" \
+        -p "$c" --no-default-features --features "$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" --lib || return 1
+    done <<EOF_LANES
+$v
+EOF_LANES
+  done
+}
+
 step_wasm_build() {
   if outputs_exist "$OG_WASM_OUT/built.txt" \
       && [ "$(cat "$OG_WASM_OUT/profile" 2>/dev/null)" = "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" ] \

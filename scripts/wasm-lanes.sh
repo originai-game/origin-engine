@@ -6,6 +6,8 @@
 # physics the determinism step compares (docs/web-export.md §Lanes).
 #
 #   scripts/wasm-lanes.sh CARGO_BUILD_ARGS...   cargo build ARGS for wasm32 with atomics
+#   scripts/wasm-lanes.sh check CARGO_ARGS...   cargo check ARGS the same way (the quick
+#                                               gate's wasm-lanes-check step)
 #   scripts/wasm-lanes.sh --target-dir          print the target directory it builds in
 #
 # A lanes variant is a publish engine with wasm atomics (one per physics
@@ -30,6 +32,11 @@ if [ "${1:-}" = --target-dir ]; then
   printf '%s\n' "$dir"
   exit 0
 fi
+command=build
+if [ "${1:-}" = check ]; then
+  command=check
+  shift
+fi
 lanes_flags="-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--import-memory -C link-arg=--max-memory=4294967296 -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 # The caller's RUSTFLAGS stay, with the lanes flags after them. Cargo reads
 # CARGO_ENCODED_RUSTFLAGS before RUSTFLAGS, so one inherited from an outer
@@ -38,4 +45,4 @@ lanes_flags="-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory
 unset CARGO_ENCODED_RUSTFLAGS
 RUSTC_BOOTSTRAP=1 CARGO_TARGET_DIR="$dir" \
 RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }$lanes_flags" \
-  exec cargo build --target wasm32-unknown-unknown -Z build-std=panic_abort,std "$@"
+  exec cargo "$command" --target wasm32-unknown-unknown -Z build-std=panic_abort,std "$@"
