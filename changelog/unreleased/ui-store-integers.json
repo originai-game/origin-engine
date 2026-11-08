@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"UiWritable.set","summary":"A whole number written to a UI store reaches the document as an integer, so integer fields take it: `<text spans={$spans}>` no longer drops its text when a span's position or length comes from a script."}
+  ]
+}

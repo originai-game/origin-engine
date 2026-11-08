@@ -105,9 +105,22 @@ pub fn decode(bytes: &[u8]) -> Result<Value, String> {
                 2 => Value::Bool(true),
                 3 => {
                     let n = f64::from_le_bytes(self.take(8)?.try_into().expect("eight bytes"));
-                    Value::Number(
-                        serde_json::Number::from_f64(n).ok_or("UI patch number must be finite")?,
-                    )
+                    // A script has one number type; an integral one reads as
+                    // an integer, as its JSON does, so integer fields
+                    // (`TextSpan.position`, counts, indices) take it.
+                    const EXACT: f64 = 9_007_199_254_740_992.0;
+                    if n.fract() == 0.0 && n.abs() <= EXACT {
+                        if n < 0.0 {
+                            Value::Number((n as i64).into())
+                        } else {
+                            Value::Number((n as u64).into())
+                        }
+                    } else {
+                        Value::Number(
+                            serde_json::Number::from_f64(n)
+                                .ok_or("UI patch number must be finite")?,
+                        )
+                    }
                 }
                 4 => Value::String(self.text()?),
                 5 => {
@@ -149,9 +162,15 @@ mod tests {
     use super::*;
     #[test]
     fn binary_values_preserve_text_numbers_and_reject_truncation() {
-        let value = serde_json::json!({"id":"背包/⚔️", "values":[null, false, true, -1.25, 4294967297.0, ""]});
+        let value = serde_json::json!({"id":"背包/⚔️", "values":[null, false, true, -1.25, 4294967297_u64, -3, 0.5, ""]});
         let bytes = encode(&value).unwrap();
         assert_eq!(decode(&bytes).unwrap(), value);
+        // A script's whole numbers arrive as integers whichever way they
+        // were written, so a u32 field such as a span's position takes them.
+        let span = serde_json::json!({"name":"gold","position":2.0,"length":4.0,"properties":{}});
+        let span: crate::TextSpan =
+            serde_json::from_value(decode(&encode(&span).unwrap()).unwrap()).unwrap();
+        assert_eq!((span.position, span.length), (2, 4));
         for end in 0..bytes.len() {
             assert!(
                 decode(&bytes[..end]).is_err(),

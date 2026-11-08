@@ -34,6 +34,34 @@ test("named store mounts render and restore keyed documents on both hosts", () =
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test("a 1,000-row list holds focus by key to row 999 and back, reorders, removes, restores and binds rich text alike on both hosts", () => {
+  const root = mkdtempSync(join(tmpdir(), "og-ui-list-"));
+  try {
+    mkdirSync(join(root, "assets"));
+    writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "List"\nid "list"\nentry "main.ts"\n');
+    writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
+    writeFileSync(join(root, "assets/list.svelte"), `<meta name="component" content="list">
+<column>
+<text id="Rich" spans={$spans}>{$body}</text>
+<list id="Rows" row-height="24" width="320" height="200">
+{#each $rows as row (row.id)}<button id="Name" height="24">{row.label}</button>{/each}
+</list>
+</column>`);
+    cookProject(root, root);
+    const run = (host: string): unknown => {
+      const result = Bun.spawnSync(["bun", fileURLToPath(new URL("./support/ui-list-round.ts", import.meta.url)), host, root]);
+      if (result.exitCode !== 0) throw new Error(new TextDecoder().decode(result.stderr));
+      return JSON.parse(new TextDecoder().decode(result.stdout));
+    };
+    const node = run("node") as { bottom: string[]; heldAway: string; moved: string[]; removed: string[] };
+    expect(node.bottom).toContain("Item 999");
+    expect(node.heldAway).toBe("");
+    expect(node.moved.indexOf("Item 999")).toBeLessThan(node.moved.indexOf("Item 990"));
+    expect(node.removed).not.toContain("Item 995");
+    expect(run("web")).toEqual(node);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test("focus and hover stay outside simulation while recorded confirmation replays across hosts", () => {
   const root = mkdtempSync(join(tmpdir(), "og-ui-checkpoint-"));
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "UI checkpoint"\nid "ui-checkpoint"\nentry "main.ts"\n');
