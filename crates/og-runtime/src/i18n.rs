@@ -272,11 +272,23 @@ pub(crate) fn resolve_missing(
     out
 }
 
-/// Pack faces every engine's chain still waits for: the web Worker draws
+/// Pack faces and glyphs every engine's chain still waits for: the web Worker draws
 /// the first frame again until none is left, so a boot never shows a
 /// locale's text missing while its pack is fetched.
 pub fn fonts_pending() -> u32 {
-    STATES.with(|s| s.borrow().values().map(|st| st.pending.len() as u32).sum())
+    let (faces, engines): (u32, Vec<u32>) = STATES.with(|s| {
+        let s = s.borrow();
+        (
+            s.values().map(|st| st.pending.len() as u32).sum(),
+            s.keys().copied().collect(),
+        )
+    });
+    // And their glyphs still rendering: the first frame shows the text whole.
+    faces
+        + engines
+            .into_iter()
+            .map(super::glyphs::glyphs_pending)
+            .sum::<u32>()
 }
 
 pub fn og_i18n_load(world: u32, path: String) -> String {

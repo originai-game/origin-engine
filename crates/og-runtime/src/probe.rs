@@ -145,6 +145,7 @@ impl Capture for RuntimeCapture {
         let mut rs = self.render.try_borrow_mut().ok()?;
         // Captured frames show every wanted terrain tile, whatever the decode timing.
         rs.terrain.settle = true;
+        rs.glyphs_settle = true;
         extract(world, &mut rs);
         // Baked probes sample the bakes the frames loaded.
         super::probes::apply_bakes(&mut rs);

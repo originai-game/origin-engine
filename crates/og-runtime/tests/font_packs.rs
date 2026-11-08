@@ -39,9 +39,23 @@ const PACKS: [&str; 5] = [
 /// installed as `og font add` installs them; cooked once per process.
 fn project() -> &'static Path {
     static ROOT: OnceLock<PathBuf> = OnceLock::new();
-    ROOT.get_or_init(|| {
+    ROOT.get_or_init(|| cooked("og-runtime-font-packs", None))
+}
+
+/// The same project with every pack face cooked as an atlas font for
+/// `MIXED`'s characters: the baseline a run-time face is measured against.
+fn atlas_project() -> &'static Path {
+    static ROOT: OnceLock<PathBuf> = OnceLock::new();
+    ROOT.get_or_init(|| cooked("og-runtime-font-packs-atlas", Some(MIXED)))
+}
+
+/// The mixed-script label the frames draw.
+const MIXED: &str = "はじめる 骨 · ليلى 门 · Start";
+
+fn cooked(name: &str, atlas: Option<&str>) -> PathBuf {
+    {
         let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-            .join(format!("og-runtime-font-packs-{}", std::process::id()));
+            .join(format!("{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let fonts = root.join("assets/fonts");
         std::fs::create_dir_all(&fonts).unwrap();
@@ -64,11 +78,24 @@ fn project() -> &'static Path {
                 let e = e.unwrap();
                 std::fs::copy(e.path(), to.join(e.file_name())).unwrap();
             }
+            if let Some(text) = atlas {
+                for e in std::fs::read_dir(&to).unwrap() {
+                    let path = e.unwrap().path();
+                    if path.extension().is_some_and(|x| x == "ogt") {
+                        let chars = format!("{text} \u{3000}").replace('"', "");
+                        std::fs::write(
+                            path,
+                            format!("type import\nversion 1\n---\nfont {{\n  charset\n  chars {chars:?}\n  em_px 48\n  px_range 16\n}}\n"),
+                        )
+                        .unwrap();
+                    }
+                }
+            }
         }
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
-    })
+    }
 }
 
 struct Disk;
@@ -139,6 +166,10 @@ fn chain(engine: u32) -> Vec<String> {
 
 /// An engine showing `LABEL` in the Latin display face, in `locale`.
 fn start(locale: &str) -> (u32, impl Fn()) {
+    start_in(project(), locale)
+}
+
+fn start_in(root: &Path, locale: &str) -> (u32, impl Fn()) {
     set_hooks();
     let system = og_system_define_system(
         "Status".into(),
@@ -146,7 +177,7 @@ fn start(locale: &str) -> (u32, impl Fn()) {
         BUILD,
     );
     let game = og_game_game(Some(json!({ "seed": 1, "systems": [system] }).to_string()));
-    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let face = value(og_load_font(engine, "fonts/Display.ttf".into()));
     value(og_ui_configure(
@@ -250,10 +281,32 @@ fn a_game_with_no_locale_draws_in_the_latin_pack() {
     assert_eq!(chain(engine), vec!["latin"]);
 }
 
-/// og-render's headless renderer behind the engine: its last frame kept.
+/// What the backend saw of the last frame.
+#[derive(Default)]
+struct Seen {
+    frame: Option<og_render::RgbaImage>,
+    /// Milliseconds the backend spent waiting on the GPU (not the engine's CPU).
+    waited: f64,
+    /// The frame's GPU milliseconds, from timestamp queries (all passes).
+    gpu: f64,
+    /// The UI overlay pass's share of it.
+    gpu_ui: f64,
+}
+
+/// og-render's headless renderer behind the engine. Each frame waits for
+/// the GPU and reads its timestamps; `capture` reads the frame back.
 struct Offscreen {
     renderer: og_render::Renderer,
-    frame: Rc<RefCell<Option<og_render::RgbaImage>>>,
+    seen: Rc<RefCell<Seen>>,
+    read: bool,
+}
+
+fn now_ms() -> f64 {
+    static T0: OnceLock<std::time::Instant> = OnceLock::new();
+    T0.get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_secs_f64()
+        * 1e3
 }
 
 impl og_runtime::RenderBackend for Offscreen {
@@ -270,7 +323,22 @@ impl og_runtime::RenderBackend for Offscreen {
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
             .map_err(|e| e.to_string())?;
-        *self.frame.borrow_mut() = Some(self.renderer.read_offscreen().map_err(|e| e.to_string())?);
+        let t = std::time::Instant::now();
+        let frames = self.renderer.gpu_timings(true);
+        let mut seen = self.seen.borrow_mut();
+        if let Some(f) = frames.last() {
+            seen.gpu = f.passes.iter().map(|p| p.ms()).sum();
+            seen.gpu_ui = f
+                .passes
+                .iter()
+                .filter(|p| p.name.contains("overlay") || p.name.contains("ui"))
+                .map(|p| p.ms())
+                .sum();
+        }
+        if self.read {
+            seen.frame = Some(self.renderer.read_offscreen().map_err(|e| e.to_string())?);
+        }
+        seen.waited = t.elapsed().as_secs_f64() * 1e3;
         Ok(())
     }
     fn capture(
@@ -279,8 +347,152 @@ impl og_runtime::RenderBackend for Offscreen {
         _: u32,
         _: u32,
     ) -> Option<og_render::RgbaImage> {
-        self.frame.borrow().clone()
+        self.seen.borrow().frame.clone()
     }
+}
+
+/// One frame's cost: the engine's CPU milliseconds (the frame without the
+/// backend's wait on the GPU) and the GPU's.
+#[derive(Clone, Copy, Debug, Default)]
+struct Cost {
+    cpu: f64,
+    gpu: f64,
+    gpu_ui: f64,
+}
+
+fn median(mut v: Vec<f64>) -> f64 {
+    v.sort_by(f64::total_cmp);
+    v[v.len() / 2]
+}
+
+/// An engine in `ja-JP` on `root`, drawing to a `width`×`height` renderer.
+fn rig(
+    root: &Path,
+    width: u32,
+    height: u32,
+    read: bool,
+) -> (
+    u32,
+    impl Fn() -> Cost,
+    Rc<RefCell<Seen>>,
+    og_render::RenderInfo,
+) {
+    let (engine, step) = start_in(root, "ja-JP");
+    let seen = Rc::new(RefCell::new(Seen::default()));
+    let mut renderer = og_render::Renderer::new_blocking(&og_render::RenderDesc {
+        width,
+        height,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.set_clock(Some(now_ms));
+    let info = renderer.info().clone();
+    og_runtime::set_render_backend(
+        engine,
+        Some(Box::new(Offscreen {
+            renderer,
+            seen: seen.clone(),
+            read,
+        })),
+    )
+    .unwrap();
+    let s = seen.clone();
+    let frame = move || {
+        let t = std::time::Instant::now();
+        step();
+        let wall = t.elapsed().as_secs_f64() * 1e3;
+        let s = s.borrow();
+        Cost {
+            cpu: wall - s.waited,
+            gpu: s.gpu,
+            gpu_ui: s.gpu_ui,
+        }
+    };
+    (engine, frame, seen, info)
+}
+
+/// Steady (median of 30), the first frames that draw `MIXED` (loading
+/// arabic and chinese-simplified), and steady after (median of 30).
+fn costs(root: &Path) -> (Cost, Vec<Cost>, Cost, u32) {
+    let (engine, frame, _, _) = rig(root, 1280, 720, false);
+    let steady = |n: usize| {
+        let c: Vec<Cost> = (0..n).map(|_| frame()).collect();
+        Cost {
+            cpu: median(c.iter().map(|c| c.cpu).collect()),
+            gpu: median(c.iter().map(|c| c.gpu).collect()),
+            gpu_ui: median(c.iter().map(|c| c.gpu_ui).collect()),
+        }
+    };
+    show("はじめる 骨 · Start");
+    steady(10);
+    let before = steady(30);
+    show(MIXED);
+    // The packs load on the first frame, their glyphs are asked for on
+    // the second: the most still rendering when any of the frames returns.
+    let mut waited = 0;
+    let first: Vec<Cost> = (0..12)
+        .map(|_| {
+            let c = frame();
+            waited = waited.max(og_runtime::glyphs_pending(engine));
+            std::thread::sleep(std::time::Duration::from_millis(4));
+            c
+        })
+        .collect();
+    steady(10);
+    let after = steady(30);
+    (before, first, after, waited)
+}
+
+/// Frame cost of `MIXED` from run-time pack faces against the same packs
+/// cooked as atlas fonts for its characters, in one scene. Prints CPU and
+/// GPU milliseconds; asserts a run-time face's steady frame within noise of
+/// the atlas font's, and that the frames drawing a new script return
+/// while its glyphs still render (rendered on the frame, they hitched it:
+/// 203 ms).
+#[test]
+#[ignore = "requires GPU"]
+fn run_time_faces_cost_what_atlas_fonts_cost() {
+    let show_cost = |c: &Cost| {
+        format!(
+            "cpu {:.2} ms, gpu {:.3} ms (ui {:.3})",
+            c.cpu, c.gpu, c.gpu_ui
+        )
+    };
+    let mut runs = Vec::new();
+    for (name, root) in [("run-time", project()), ("atlas", atlas_project())] {
+        // Best of three, each a fresh engine: the machine's noise.
+        let mut best: Option<(Cost, Vec<Cost>, Cost, u32)> = None;
+        for _ in 0..3 {
+            let r = costs(root);
+            if best.as_ref().is_none_or(|b| r.2.cpu < b.2.cpu) {
+                best = Some(r);
+            }
+        }
+        let (before, first, after, waited) = best.unwrap();
+        if name == "run-time" {
+            assert!(waited > 0, "a frame waited for its new glyphs to render");
+        }
+        println!("{name}: steady before {}", show_cost(&before));
+        for (i, c) in first.iter().enumerate() {
+            println!("{name}: first-use frame {i} {}", show_cost(c));
+        }
+        println!("{name}: steady after {}", show_cost(&after));
+        runs.push((before, first, after, waited));
+    }
+    let (rt, at) = (&runs[0], &runs[1]);
+    assert!(
+        rt.2.cpu <= at.2.cpu * 1.25 + 0.3,
+        "run-time steady {:.2} ms against atlas {:.2} ms",
+        rt.2.cpu,
+        at.2.cpu
+    );
+    let worst = |r: &(Cost, Vec<Cost>, Cost, u32)| r.1.iter().map(|c| c.cpu).fold(0.0, f64::max);
+    println!(
+        "worst first-use frame: run-time {:.2} ms ({} glyphs rendered off it), atlas {:.2} ms",
+        worst(rt),
+        rt.3,
+        worst(at)
+    );
 }
 
 /// `crates/og-ui/references/metal/font-packs-{1280,390}.png`: a Japanese
@@ -289,53 +501,36 @@ impl og_runtime::RenderBackend for Offscreen {
 /// drawn), over the Latin display face, every pack glyph from its face's
 /// outlines at run time. Ways it could fail: boxes or blanks where a pack
 /// should have loaded; Arabic unjoined or in logical order; 骨 in its
-/// Chinese form in a Japanese game. Prints the cost of the frames that
-/// load two packs against steady ones (`OG_UI_CAPTURE=1` records).
+/// Chinese form in a Japanese game (`OG_UI_CAPTURE=1` records).
 #[test]
 #[ignore = "requires GPU"]
 fn mixed_script_text_draws_from_its_packs() {
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
-        let (engine, step) = start("ja-JP");
-        let frame = Rc::new(RefCell::new(None));
-        let renderer = og_render::Renderer::new_blocking(&og_render::RenderDesc {
-            width,
-            height,
-            ..Default::default()
-        })
-        .expect("a headless adapter");
-        let info = renderer.info().clone();
-        og_runtime::set_render_backend(
-            engine,
-            Some(Box::new(Offscreen {
-                renderer,
-                frame: frame.clone(),
-            })),
-        )
-        .unwrap();
-        let timed = |n: usize| {
-            let t = std::time::Instant::now();
-            for _ in 0..n {
-                step();
+        let (engine, frame, seen, info) = rig(project(), width, height, true);
+        show(MIXED);
+        // Glyphs render off the frame: draw until the chain holds the
+        // packs and three frames in a row wait for no glyph.
+        let mut quiet = 0;
+        for _ in 0..2000 {
+            frame();
+            quiet = if chain(engine).len() == 3 && og_runtime::glyphs_pending(engine) == 0 {
+                quiet + 1
+            } else {
+                0
+            };
+            if quiet == 3 {
+                break;
             }
-            t.elapsed().as_secs_f64() * 1e3 / n as f64
-        };
-        show("はじめる 骨");
-        timed(4);
-        let steady = timed(8);
-        show("はじめる 骨 · ليلى 门 · Start");
-        let loading = timed(2);
-        timed(4);
-        let after = timed(8);
-        println!(
-            "font-packs-{width}: frame {steady:.2} ms steady, {loading:.2} ms for each of the two frames loading arabic and chinese-simplified, {after:.2} ms steady after"
-        );
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        assert_eq!(quiet, 3, "the glyphs never arrived");
         let w = warnings(engine);
         assert!(w.iter().all(|w| !w.contains("lacks")), "{w:?}");
         assert_eq!(
             chain(engine),
             vec!["japanese", "arabic", "chinese-simplified"]
         );
-        let image = frame.borrow_mut().take().expect("a frame drawn");
+        let image = seen.borrow_mut().frame.take().expect("a frame drawn");
         let name = format!("font-packs-{width}.png");
         let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(&name);
         std::fs::write(&out, og_render::png_best(&image)).unwrap();

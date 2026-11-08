@@ -53,6 +53,7 @@ mod fx;
 mod garment;
 mod geometry;
 mod glyphs;
+pub use glyphs::glyphs_pending;
 mod i18n;
 #[cfg(not(feature = "publish"))]
 mod inspector;

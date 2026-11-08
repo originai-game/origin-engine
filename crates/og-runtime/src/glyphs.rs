@@ -10,9 +10,12 @@
 
 use super::extract::RenderState;
 use og_render::{ColorSpace, FontHandle, Glyph, GlyphKey, Mips, TextureData, TextureHandle};
+use og_ui::glyphs::GlyphImage;
 use og_ui::shape::FontFile;
 use std::collections::BTreeSet;
 use std::sync::Arc;
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::mpsc::{Receiver, Sender};
 
 /// The edge of a run-time page, in pixels.
 const PAGE: u32 = 512;
@@ -29,7 +32,19 @@ pub(crate) struct RuntimeFont {
     done: BTreeSet<GlyphKey>,
     /// The page being filled.
     page: Option<Page>,
+    /// Glyph batches rendering off the frame (natively, on a thread each):
+    /// how many are out, and where they arrive.
+    #[cfg(not(target_arch = "wasm32"))]
+    flight: (usize, Sender<Vec<GlyphImage>>, Receiver<Vec<GlyphImage>>),
+    /// Glyphs waiting their turn (the web: a few rendered each frame).
+    #[cfg(target_arch = "wasm32")]
+    queue: std::collections::VecDeque<GlyphKey>,
 }
+
+/// Glyphs the single-threaded web renders per frame and font: a frame
+/// keeps its budget while a new script's characters arrive over a few.
+#[cfg(target_arch = "wasm32")]
+const WEB_BUDGET: usize = 3;
 
 struct Page {
     font: FontHandle,
@@ -49,14 +64,93 @@ impl RuntimeFont {
             pixel,
             done: BTreeSet::new(),
             page: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            flight: {
+                let (tx, rx) = std::sync::mpsc::channel();
+                (0, tx, rx)
+            },
+            #[cfg(target_arch = "wasm32")]
+            queue: Default::default(),
         }
     }
+
+    /// Glyphs asked for and not yet drawable.
+    fn pending(&self) -> usize {
+        #[cfg(not(target_arch = "wasm32"))]
+        return self.flight.0;
+        #[cfg(target_arch = "wasm32")]
+        return self.queue.len();
+    }
+
+    /// Starts rendering `want` off the frame and answers the glyphs that
+    /// finished since the last call; with `settle`, every one asked for.
+    /// The distance fields are the costly part (milliseconds a glyph):
+    /// rendered on the frame, a new script's first frame hitched.
+    fn render(&mut self, want: Vec<GlyphKey>, settle: bool) -> Vec<GlyphImage> {
+        let (em, range, grid) = (self.em_px, self.px_range, self.pixel);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if !want.is_empty() {
+                let (file, tx) = (self.file.clone(), self.flight.1.clone());
+                self.flight.0 += 1;
+                std::thread::spawn(move || {
+                    let images = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        want.into_iter()
+                            .filter_map(|k| {
+                                og_ui::glyphs::render_glyph_on(file.bytes(), k, em, range, grid)
+                            })
+                            .collect()
+                    }))
+                    .unwrap_or_default();
+                    let _ = tx.send(images);
+                });
+            }
+            let mut out = Vec::new();
+            while self.flight.0 > 0 {
+                let batch = if settle {
+                    self.flight.2.recv().ok()
+                } else {
+                    self.flight.2.try_recv().ok()
+                };
+                let Some(batch) = batch else { break };
+                self.flight.0 -= 1;
+                out.extend(batch);
+            }
+            out
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.queue.extend(want);
+            let n = if settle {
+                self.queue.len()
+            } else {
+                WEB_BUDGET.min(self.queue.len())
+            };
+            let file = self.file.clone();
+            self.queue
+                .drain(..n)
+                .filter_map(|k| og_ui::glyphs::render_glyph_on(file.bytes(), k, em, range, grid))
+                .collect()
+        }
+    }
+}
+
+/// Glyphs an engine's run-time fonts were asked for that are still being
+/// rendered: they draw from a later frame.
+pub fn glyphs_pending(engine: u32) -> u32 {
+    crate::engine::engine(engine).map_or(0, |eng| {
+        eng.render.try_borrow().map_or(0, |rs| {
+            rs.runtime_fonts.values().map(|f| f.pending() as u32).sum()
+        })
+    })
 }
 
 /// Renders what each run-time font was asked for since the last frame.
 /// Returns how many glyphs were rendered.
 pub(crate) fn generate(rs: &mut RenderState) -> usize {
     let mut rendered = 0;
+    // A capture draws every glyph asked for (`RenderState::glyphs_settle`).
+    let settle = std::mem::take(&mut rs.glyphs_settle);
     let renders: Vec<usize> = rs.runtime_fonts.keys().copied().collect();
     for render in renders {
         let Some(pages) = rs.fonts.get(render).map(|p| p.pages.clone()) else {
@@ -80,20 +174,17 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
                     && !has(k)
             })
             .collect();
-        if want.is_empty() {
+        rf.done.extend(want.iter().copied());
+        let images = rf.render(want, settle);
+        if images.is_empty() {
             continue;
         }
         // Rendered glyphs and the page each landed on.
         let mut added: Vec<(Glyph, Option<FontHandle>)> = Vec::new();
         let mut new_pages: Vec<FontHandle> = Vec::new();
         let mut touched: BTreeSet<u32> = BTreeSet::new();
-        for c in want {
-            rf.done.insert(c);
-            let Some(img) =
-                og_ui::glyphs::render_glyph_on(rf.file.bytes(), c, rf.em_px, rf.px_range, rf.pixel)
-            else {
-                continue;
-            };
+        for img in images {
+            let c = img.key;
             rendered += 1;
             if img.width == 0 {
                 added.push((
@@ -452,6 +543,11 @@ mod tests {
         for &c in &wanted {
             file.advance(c);
         }
+        // The frame that asks for them does not wait for them; a capture
+        // (settle) waits for every one.
+        #[cfg(not(target_arch = "wasm32"))]
+        assert_eq!(generate(&mut rs), 0, "the frame waited for its glyphs");
+        rs.glyphs_settle = true;
         assert!(generate(&mut rs) > 0);
         let pages = rs.fonts[0].pages.clone();
         assert!(

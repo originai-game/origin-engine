@@ -379,6 +379,9 @@ pub(crate) struct RenderState {
     /// Each (font, character) a text drew, judged once a run: in the
     /// font, or warned of on the tick it was first drawn (`super::glyphs`).
     pub glyphs_judged: std::collections::BTreeSet<(FontHandle, char)>,
+    /// The next frame waits for every run-time glyph asked for (a capture
+    /// is the frame a build that rendered them on the frame draws).
+    pub glyphs_settle: bool,
     /// The inspector (development builds): its panel is drawn over the
     /// frame, above the game's UI.
     #[cfg(not(feature = "publish"))]
@@ -465,6 +468,7 @@ impl RenderState {
             runtime_fonts: IdMap::new(),
             notes: Vec::new(),
             glyphs_judged: Default::default(),
+            glyphs_settle: false,
             #[cfg(not(feature = "publish"))]
             inspector: None,
             feel: Default::default(),

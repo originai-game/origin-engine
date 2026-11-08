@@ -544,8 +544,17 @@ pack first) and draws it from the next frame; it is not warned of as
 missing. A character no pack covers is still named by the missing-glyph
 warning. The web boot leaves `.face.ogb` files out of its preload and the
 service worker caches them when fetched; the first frame waits for the
-locale's own pack (`og_web_fonts_pending`). On Metal a frame that loads two
-packs costs 13–24 ms against a 4–6 ms steady frame, once per pack.
+locale's own pack and its glyphs (`og_web_fonts_pending`).
+
+A run-time face renders each glyph's distance field once into a 512² page
+of its own and draws from it after, as an atlas font does: steady frames
+cost the same (Metal, debug build: 2.8 ms CPU and 0.29 ms GPU either
+way). The fields render off the frame: natively a thread per batch, on the
+single-threaded web three a frame per face. A glyph draws from the frame
+after it arrives; until then it is blank, never warned of. A probe
+capture waits for every glyph asked for, so captured frames do not
+depend on timing. Glyphs are presentation only: no world state, hash or
+replay reads them.
 
 ## 4. Shipped catalogue
 
