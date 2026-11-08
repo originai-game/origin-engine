@@ -12,7 +12,9 @@
 #   1. target/*/incremental is removed (regenerable; never the whole target/);
 #   2. `cargo sweep --time $OG_SWEEP_DAYS` (default 1) removes artifacts no
 #      build used in that many days, so warm builds stay warm.
-# A busy worktree is skipped and named. Lanes are never removed.
+# A busy worktree is skipped and named. A worktree whose rm or sweep fails
+# is named and the run goes on to the next; it then exits 1. Lanes are
+# never removed.
 set -eu -o pipefail
 main="$(git -C "$(dirname "$0")/.." worktree list --porcelain | awk '/^worktree / { print substr($0, 10); exit }')"
 days="${OG_SWEEP_DAYS:-1}"
@@ -48,7 +50,11 @@ fi
 command -v cargo-sweep >/dev/null || echo "clean-targets: cargo-sweep missing (cargo install cargo-sweep); only incremental dirs are removed" >&2
 echo "clean-targets: $(date) free before: $(df -h "$main" | awk 'NR==2 { print $4 }')"
 procs="$(ps -axo command= 2>/dev/null || true)"
-git -C "$main" worktree list --porcelain | awk '/^worktree / { print substr($0, 10) }' | while read -r d; do
+# A worktree that fails (an rm a build raced, a sweep that errored) is
+# named and skipped; the rest are still cleaned, and the run exits 1 at the
+# end so the log shows it.
+failed=()
+while read -r d; do
   t="$d/target"
   [ -d "$t" ] || continue
   if [ "$idle_only" = 1 ] && { [ ! -f "$(git -C "$d" rev-parse --absolute-git-dir)/lane-idle" ] || [ "$(git -C "$d" rev-parse --abbrev-ref HEAD)" != HEAD ]; }; then
@@ -57,12 +63,26 @@ git -C "$main" worktree list --porcelain | awk '/^worktree / { print substr($0, 
   if [ -d "$t/og-gate.lock" ] || printf '%s\n' "$procs" | grep -E 'cargo|rustc|check\.sh|build\.sh|nextest' | grep -qF "$d/"; then
     echo "  skip $d (building)"; continue
   fi
+  ok=1
   for inc in "$t"/*/incremental "$t"/*/*/incremental; do
-    [ -d "$inc" ] && rm -rf "$inc"
+    [ -d "$inc" ] || continue
+    if ! err="$(rm -rf "$inc" 2>&1)"; then
+      echo "  failed $d: could not remove ${inc#"$d/"}: $(printf '%s' "$err" | head -1)" >&2
+      ok=0
+    fi
   done
-  if command -v cargo-sweep >/dev/null; then
-    (cd "$d" && cargo sweep --time "$days" >/dev/null 2>&1) || echo "  sweep failed in $d" >&2
+  if command -v cargo-sweep >/dev/null && ! (cd "$d" && cargo sweep --time "$days" >/dev/null 2>&1); then
+    echo "  failed $d: cargo sweep" >&2
+    ok=0
   fi
-  echo "  cleaned $d ($(du -sh "$t" 2>/dev/null | cut -f1) left)"
-done
+  if [ "$ok" = 1 ]; then
+    echo "  cleaned $d ($(du -sh "$t" 2>/dev/null | cut -f1) left)"
+  else
+    failed+=("$d")
+  fi
+done < <(git -C "$main" worktree list --porcelain | awk '/^worktree / { print substr($0, 10) }')
 echo "clean-targets: free after: $(df -h "$main" | awk 'NR==2 { print $4 }')"
+if [ "${#failed[@]}" -gt 0 ]; then
+  echo "clean-targets: ${#failed[@]} worktree(s) failed: ${failed[*]}" >&2
+  exit 1
+fi
