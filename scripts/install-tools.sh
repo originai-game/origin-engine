@@ -7,8 +7,11 @@
 #   bun               the TypeScript packages' test runner, pinned by BUN_VERSION
 #   ShellCheck        the gate scripts' linter, pinned by SHELLCHECK_VERSION (an
 #                     older one, Ubuntu's 0.9, reports what 0.11 does not)
-#   sccache           the compiler cache .cargo/config.toml names, pinned by
-#                     SCCACHE_VERSION (first: the cargo installs below go through it)
+#   sccache           the compiler cache, pinned by SCCACHE_VERSION (first: the
+#                     cargo installs below go through it)
+#   og-sccache-wrap   the rustc wrapper .cargo/config.toml names
+#                     (crates/og-sccache-wrap): starts sccache's server without
+#                     a build's jobserver; built here from this checkout
 #   tsrs              `og check`'s type checker, pinned by TSRS_VERSION and the
 #                     SRI of its npm platform package; the package version
 #                     0.18.0-ts7.1.0-dev.20260929 is a binary that reports
@@ -71,6 +74,19 @@ else
   fi
   sccache --version
 fi
+
+# og-sccache-wrap, built from this checkout without itself (RUSTC_WRAPPER=)
+# every time (a std-only crate: seconds), and moved into place by a rename,
+# so a compile running the old one keeps it (docs/ci.md, The compiler cache).
+og_say "og-sccache-wrap: installing from crates/og-sccache-wrap"
+RUSTC_WRAPPER="" cargo install --locked --quiet --path "$(dirname "$0")/../crates/og-sccache-wrap" --root "$tmp/wrap"
+for exe in "$tmp/wrap/bin/og-sccache-wrap" "$tmp/wrap/bin/og-sccache-wrap.exe"; do
+  [ -f "$exe" ] || continue
+  name="$(basename "$exe")"
+  cp "$exe" "$BIN/.$name.new"
+  mv -f "$BIN/.$name.new" "$BIN/$name"
+done
+command -v og-sccache-wrap >/dev/null || { og_err "og-sccache-wrap: $BIN is not on PATH"; exit 1; }
 
 # wasm-bindgen-cli
 wb="$(og_lock_version wasm-bindgen)"

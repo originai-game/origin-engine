@@ -1,8 +1,11 @@
-# Share dependency compilation across the persistent lanes. Set
-# RUSTC_WRAPPER= for a command that must bypass sccache.
+# Share dependency compilation across the persistent lanes through
+# sccache, by og-sccache-wrap (crates/og-sccache-wrap, installed by
+# scripts/install-tools.sh): it starts sccache's shared server without the
+# jobserver of the build that needs it first. Set RUSTC_WRAPPER= for a
+# command that must bypass both.
 # Every target and profile uses rustc's LLVM backend.
 [build]
-rustc-wrapper = "sccache"
+rustc-wrapper = "og-sccache-wrap"
 rustflags = ["-Zthreads=4"]
 
 [target.'cfg(target_os = "linux")']

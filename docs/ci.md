@@ -64,7 +64,8 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | cargo-nextest | 0.9.148 here | not pinned |
 | ShellCheck (CI lints `scripts/*.sh` with it; Ubuntu's 0.9 reports what 0.11 does not) | 0.11.0 | `SHELLCHECK_VERSION` in `scripts/install-tools.sh` (Homebrew's on macOS) |
 | node (`determinism`'s wasm32 runs) | 24 in CI | `.github/actions/provision` |
-| sccache (the rustc wrapper, `.cargo/config.toml`; not used in CI) | 0.19.0 | `SCCACHE_VERSION` in `scripts/install-tools.sh` |
+| sccache (the compiler cache, run by og-sccache-wrap; not used in CI) | 0.19.0 | `SCCACHE_VERSION` in `scripts/install-tools.sh` |
+| og-sccache-wrap (the rustc wrapper `.cargo/config.toml` names) | this checkout's | `crates/og-sccache-wrap`, built and installed by `scripts/install-tools.sh` on every run |
 | mold (Linux native linker) | distribution package | `.agents/setup`, `scripts/install-tools.sh`; `.cargo/config.toml` selects it |
 | cargo-zigbuild, zig (`build.sh --linux-x64`) | 0.23.4, 0.17.0 here | not pinned; outside the gate |
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
@@ -380,6 +381,30 @@ macrunner against 38.9 s from the local disk (about 3.7 s per remote hit),
 so there is none. The persistent lanes on one machine share its cache: on
 macrunner `/Volumes/app/.sccache`, on studio-win `SCCACHE_DIR=E:\sccache`,
 on an orb `~/.cache/sccache`.
+
+One sccache server per host serves every lane, and it is started cleanly.
+sccache's client starts a server when none answers, and that server keeps
+the environment of the build that started it, including that cargo's
+jobserver (`CARGO_MAKEFLAGS`) and its per-run `TMPDIR`. On 2026-11-09 such a
+server stalled every lane on macrunner: it waited for tokens from one
+cargo whose jobs were all clients waiting on it. So `.cargo/config.toml`'s
+rustc wrapper is `og-sccache-wrap` (`crates/og-sccache-wrap`), not sccache.
+When no server answers on `SCCACHE_SERVER_PORT` (4226), it takes the lock
+`~/.cache/og-sccache/server.lock`, and if none answers yet it runs
+`sccache --start-server` without `CARGO_MAKEFLAGS`, `MAKEFLAGS` or `MFLAGS`,
+with `TMPDIR` `~/.cache/og-sccache/tmp` and `SCCACHE_ERROR_LOG`
+`~/.cache/og-sccache/server-error.log` (`SCCACHE_LOG=warn` unless set).
+Then it runs sccache with its arguments; the compile keeps the build's
+jobserver. It is an executable, not a script, because cargo on Windows
+runs only an `.exe` as the wrapper; studio-win uses the same.
+`scripts/install-tools.sh` builds it from the checkout without itself and
+installs it next to the other tools, so a host runs it once after a change
+to the crate. `crates/og-sccache-wrap/tests/start.rs` fails if the server is
+started with a jobserver. `RUSTC_WRAPPER=` (empty) bypasses the wrapper and
+sccache, as CI does. To restart a server, run `sccache --stop-server`; the
+next compile starts a clean one. A server you start by hand must also go
+without the jobserver: `env -u CARGO_MAKEFLAGS -u MAKEFLAGS -u MFLAGS
+sccache --start-server`.
 
 ## When to run what
 

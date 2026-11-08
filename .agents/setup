@@ -89,7 +89,7 @@ esac
 EOF
 fi
 # shellcheck disable=SC2016 # Expand CHROME in the new login shell, not setup.
-step bash -lc 'command -v cargo bun sccache wasm-bindgen node; test -x "$CHROME"'
+step bash -lc 'command -v cargo bun sccache og-sccache-wrap wasm-bindgen node; test -x "$CHROME"'
 
 # Prewarm (the owner, 2026-11-01): the snapshot carries target/ with what an
 # agent's loop builds (clippy over every target, the test binaries the gate's

@@ -1,0 +1,10 @@
+[package]
+name = "og-sccache-wrap"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+description = "The rustc wrapper .cargo/config.toml names: starts the shared sccache server without the jobserver of the cargo that happens to need it first, then runs sccache (docs/ci.md, The compiler cache)"
+
+[dependencies]
