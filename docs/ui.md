@@ -185,6 +185,30 @@ Beyond `onclick`, an element fires `onhold` once per press held for its
 long press, `ontoggle` when a `<details>` or popover opens or closes, and
 `onclose` when a `<dialog>` closes.
 
+#### Counters, typewriters, cyclers, spotlights and colour inputs
+
+A text with `count={$score}` counts to its value as it changes, over
+`-og-count-duration` ms (900 by default; `-og-count-decimals` digits). A
+text with `-og-reveal: <characters per second>` types its words out, again
+whenever they change, whole under reduced motion, and fires `onrevealed`
+once as the last character shows. A `<select>` with `-og-select: cycle` is
+previous, its option and next, wrapping past disabled options; one with no
+`<option>`s takes its bound `items`. An open `<dialog>` with
+`-og-spotlight: <id>` dims the page but for the element of that id, which
+it outlines, and shows its content as a callout against it; the shade takes
+presses, and `closedby="any"` closes it on one. `<input type="color"
+bind:value={$tint}>` is a swatch that opens a picker against it (a
+saturation and value square over the hue, a hue slider and the hex field)
+and writes `#rrggbb` back. Each keeps its progress in widget memory, so a
+snapshot restores it mid-count or mid-reveal.
+
+The settings screen (`settings.svelte`) builds its tree from data: `$pages`
+(a keyed collection of `{ id, name }`, a tab each), `$entries` (a keyed
+collection of `{ id, page, name, description, kind, value, … }`, kind
+`toggle`, `range`, `select` or `binding`, each value written back as the
+player changes it), `$page` and `$pending` (Apply and Revert take presses
+only then); with `$page` empty it shows its `tree` content alone.
+
 #### Tooltips and popovers
 
 `title="…"` on any element is its tooltip, shown after the pointer rests

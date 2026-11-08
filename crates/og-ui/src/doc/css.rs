@@ -163,6 +163,11 @@ pub const STYLE: &[(&str, &str)] = &[
     ("centerY", "-og-center-y"),
     ("anchorTo", "-og-anchor"),
     ("stepper", "-og-stepper"),
+    ("countDuration", "-og-count-duration"),
+    ("countDecimals", "-og-count-decimals"),
+    ("reveal", "-og-reveal"),
+    ("selectAppearance", "-og-select"),
+    ("spotlight", "-og-spotlight"),
     ("anchorAt", "-og-anchor-at"),
     ("anchorSelf", "-og-anchor-self"),
     ("hitSlop", "-og-hit-slop"),
@@ -262,7 +267,9 @@ fn conv(prop: &str) -> Conv {
         }
         "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
         | "textAlign" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
-        | "appearance" | "labelDirection" | "stepper" => Conv::Kebab,
+        | "appearance" | "labelDirection" | "stepper" | "selectAppearance" => Conv::Kebab,
+        "countDuration" | "countDecimals" | "reveal" => Conv::Num,
+        "spotlight" => Conv::Ident,
         "wrap" => Conv::Bool("wrap", "nowrap"),
         "centerX" | "centerY" | "onScene" => Conv::Bool("true", "false"),
         "uppercase" => Conv::Bool("uppercase", "none"),

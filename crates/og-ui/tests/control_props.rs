@@ -878,3 +878,168 @@ fn core_controls_choose_step_hold_and_report() {
     let events = d.click("More");
     assert!(events.iter().any(|e| e.name == "toggled"), "{events:?}");
 }
+
+/// The core controls written as text, selects and dialogs: `count` counts
+/// to its value, `-og-reveal` types its text out and fires `onrevealed`
+/// once, `-og-select: cycle` steps its options and writes the value back,
+/// `-og-spotlight` dims the page but for its target, and `<input
+/// type="color">` opens a picker whose hex writes `#rrggbb` back.
+///
+/// Ways it could fail: a count that jumps or never arrives, a reveal shown
+/// whole at once or firing every tick, a cycler that does not wrap or skips
+/// the bound value, a spotlight without its callout, or a colour input that
+/// writes a malformed value.
+#[test]
+fn counters_reveals_cyclers_spotlights_and_colours() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <p id="Score" count={$score}>0</p>
+  <p id="Line" class="typed" onrevealed={done}>Hello there</p>
+  <select id="Diff" class="cycle" bind:value={$diff}><option value="easy">Easy</option><option value="hard">Hard</option></select>
+  <button id="Target">Here</button>
+  <dialog id="Tour" bind:open={$tour} class="tour"><p id="Callout">Press here</p></dialog>
+  <input type="color" id="Tint" bind:value={$tint}>
+</div>
+<style>
+.typed { -og-reveal: 20; }
+.cycle { -og-select: cycle; }
+.tour { -og-spotlight: Target; }
+#Page { gap: 8px; padding: 8px; }
+</style>"#;
+    let stores = [
+        ("score", json!(0)),
+        ("diff", json!("easy")),
+        ("tint", json!("#3366cc")),
+        ("tour", json!(false)),
+    ];
+    let d = &mut Doc::new(text, &stores, true);
+    d.step(InputFrame::default());
+    assert!(
+        d.get("Line").text.len() < "Hello there".len(),
+        "typed out, not whole"
+    );
+    let mut revealed = 0;
+    for _ in 0..60 {
+        d.step(InputFrame::default());
+        revealed += d.events.iter().filter(|e| e.name == "done").count();
+        d.events.clear();
+    }
+    assert_eq!(d.get("Line").text, "Hello there");
+    assert_eq!(revealed, 1, "onrevealed fires once");
+    d.set("score", json!(100));
+    d.step(InputFrame::default());
+    let mid: f64 = d.get("Score").text.parse().unwrap_or(-1.0);
+    assert!((0.0..100.0).contains(&mid), "counting: {mid}");
+    for _ in 0..90 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(d.get("Score").text, "100");
+    d.click("Diff/Next");
+    assert_eq!(d.read("diff"), json!("hard"));
+    d.click("Diff/Next");
+    assert_eq!(d.read("diff"), json!("easy"), "wraps");
+    d.click("Tint");
+    let hex =
+        d.ui.probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/Hex"))
+            .expect("the picker opened");
+    assert_eq!(hex.text.to_lowercase(), "#3366cc");
+    // The spotlight's shade takes presses outside its hole.
+    d.set("tour", json!(true));
+    for _ in 0..5 {
+        d.step(InputFrame::default());
+    }
+    assert!(d.el("Callout").is_some(), "the spotlight's callout shows");
+    d.click("Diff/Next");
+    assert_eq!(
+        d.read("diff"),
+        json!("easy"),
+        "the page under the shade takes no press"
+    );
+}
+
+/// The settings screen's tree from data: pages as tabs, each entry's
+/// control writing its row's value back, Apply and Revert only while
+/// changes are pending.
+///
+/// Ways it could fail: every page's entries shown at once, a tab that does
+/// not switch the page, a control writing to the wrong row, or Apply taking
+/// a press with nothing pending.
+#[test]
+fn the_settings_tree_is_data() {
+    let text = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../packages/engine/src/ui/screens/settings.svelte"),
+    )
+    .unwrap()
+    .replace("<meta name=\"strings\" content=\"./settings.en.ogt\">", "");
+    let stores = [
+        ("note", json!("")),
+        (
+            "pages",
+            json!([{"id":"audio","name":"Audio"},{"id":"video","name":"Video"}]),
+        ),
+        (
+            "entries",
+            json!([
+                {"id":"music","page":"audio","name":"Music","kind":"range","value":0.5,"min":0,"max":1,"step":0.1},
+                {"id":"subs","page":"audio","name":"Subtitles","kind":"toggle","value":false},
+                {"id":"quality","page":"video","name":"Quality","kind":"select","value":"Low","options":["Low","High"]}
+            ]),
+        ),
+        ("page", json!("audio")),
+        ("pending", json!(false)),
+    ];
+    let d = &mut Doc::new(&text, &stores, true);
+    for _ in 0..5 {
+        d.step(InputFrame::default());
+    }
+    assert!(
+        d.el("Toggle").is_some() && d.el("Choice").is_none(),
+        "one page shown"
+    );
+    d.click("Toggle/Track");
+    let row = |d: &mut Doc, k: usize| d.read("entries")[k]["value"].clone();
+    assert_eq!(row(d, 1), json!(true));
+    assert_eq!(row(d, 0), json!(0.5), "its own row");
+    let events = d.click("Apply");
+    assert!(!events.iter().any(|e| e.name == "apply"), "nothing pending");
+    d.set("page", json!("video"));
+    assert_eq!(d.read("page"), json!("video"));
+    assert!(d.el("Choice").is_some() && d.el("Toggle").is_none());
+    d.click("Choice/Next");
+    assert_eq!(row(d, 2), json!("High"));
+}
+
+/// Rows a store hides and shows inside an unmarked list: the rows'
+/// `{#if}` content changes in the same refresh that removes their `<li>`.
+///
+/// The way it failed: the queued sibling change among a removed row's
+/// children named a parent no longer in the selector topology, and the
+/// whole build stopped ("missing instantiated parent").
+#[test]
+fn rows_leaving_with_their_changed_children_restyle_cleanly() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page"><ul id="L">{#each $rows as e (e.id)}{#if e.page == $page}<li>{#if e.kind == "r"}<p id="N">{e.name}</p><input type="range" id="R" bind:value={e.value}>{/if}{#if e.kind == "t"}<label>{e.name}<input type="checkbox" switch id="T" bind:checked={e.value}></label>{/if}</li>{/if}{/each}</ul></div>
+<style>#L { list-style: none; }</style>"#;
+    let stores = [
+        (
+            "rows",
+            json!([
+            {"id":"a","page":"1","name":"A","kind":"r","value":0.5},
+            {"id":"a2","page":"1","name":"A2","kind":"t","value":false},
+            {"id":"b","page":"2","name":"B","kind":"t","value":false}]),
+        ),
+        ("page", json!("1")),
+    ];
+    let d = &mut Doc::new(text, &stores, true);
+    d.set("page", json!("2"));
+    let shown: Vec<_> =
+        d.ui.probe_elements()
+            .into_iter()
+            .filter(|e| e.kind == "label" && e.text.starts_with('A') || e.text == "B")
+            .map(|e| e.text)
+            .collect();
+    assert_eq!(shown, ["B"]);
+}

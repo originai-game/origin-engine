@@ -56,6 +56,10 @@ pub fn tags(kind: &str) -> Vec<(String, String)> {
             ),
         ],
         "slider" => vec![void("input type=\"range\"")],
+        "color" => vec![(
+            "input".into(),
+            "<input type=\"color\" id=\"Name\" bind:value={$tint} />".into(),
+        )],
         "radio" => vec![(
             "input".into(),
             "<label><input type=\"radio\" value=\"easy\" bind:group={$level} /> Easy</label>".into(),

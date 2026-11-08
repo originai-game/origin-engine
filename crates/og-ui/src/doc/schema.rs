@@ -204,6 +204,11 @@ pub const CORE_KINDS: &[KindSpec] = &[
         doc: "A switch with a label (two-way `checked`).",
     },
     KindSpec {
+        name: "color",
+        container: false,
+        doc: "A colour input: a swatch that opens a picker (two-way `value`, `#rrggbb`).",
+    },
+    KindSpec {
         name: "radio",
         container: false,
         doc: "One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes.",
@@ -926,7 +931,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "disabled",
         Ty::Bool,
         [
-            "button", "slider", "toggle", "radio", "tabs", "field", "select", "details",
+            "button", "slider", "toggle", "radio", "color", "tabs", "field", "select", "details",
             "joystick", "dpad"
         ],
         "Takes no input."
@@ -1012,6 +1017,13 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "The store its group's choice is in (`bind:group`): it is checked while that holds its value, and a press writes its value."
     ),
     p!(
+        "colorValue",
+        Ty::Text,
+        ["color"],
+        two_way,
+        "Its colour as `#rrggbb` (HTML `value`; written back)."
+    ),
+    p!(
         "choice",
         Ty::Text,
         ["radio"],
@@ -1022,6 +1034,42 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Word(&["none", "buttons"]),
         ["field"],
         "A number input drawn as minus, its value and plus (`-og-stepper: buttons`)."
+    ),
+    p!(
+        "count",
+        Ty::Num,
+        ["label"],
+        "A number it counts to as it changes (`count={$score}`), over `-og-count-duration` ms."
+    ),
+    p!(
+        "countDuration",
+        Ty::Num,
+        ["label"],
+        "How long a change of its count takes, in ms (`-og-count-duration`; 0: 900)."
+    ),
+    p!(
+        "countDecimals",
+        Ty::Num,
+        ["label"],
+        "Digits its count shows after the point (`-og-count-decimals`)."
+    ),
+    p!(
+        "reveal",
+        Ty::Num,
+        ["label"],
+        "Types its text out at this many characters a second (`-og-reveal`); `onrevealed` fires when it is whole."
+    ),
+    p!(
+        "selectAppearance",
+        Ty::Word(&["dropdown", "cycle"]),
+        ["select"],
+        "cycle draws it as previous, its option and next (`-og-select`)."
+    ),
+    p!(
+        "spotlight",
+        Ty::Name,
+        ["dialog"],
+        "Open, it dims the page but for the element of this id, its content a callout against it (`-og-spotlight`)."
     ),
     p!(
         "dataHold",

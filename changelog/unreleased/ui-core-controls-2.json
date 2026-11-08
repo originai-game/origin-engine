@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "count={$n} counted text (-og-count-duration, -og-count-decimals); -og-reveal typewriter text with onrevealed; <select> with -og-select: cycle; <dialog> with -og-spotlight: <id>; <input type=\"color\"> with a picker writing #rrggbb back; the settings screen's tree from $pages and $entries collections."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "ui documents",
+      "summary": "A retained document no longer stops building when a store hides a list row in the same refresh as a change among that row's children; a <select> without <option>s keeps its bound items; screens that declare props may read the engine's $ui store."
+    }
+  ]
+}

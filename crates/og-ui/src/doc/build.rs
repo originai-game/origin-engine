@@ -1139,6 +1139,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 }
 
 pub mod cascade;
+mod color;
 mod containers;
 mod fields;
 pub(crate) mod gestures;
@@ -1149,6 +1150,7 @@ mod popover;
 mod retained;
 mod structure;
 pub(crate) mod svg;
+mod text_motion;
 mod touch;
 mod viewport;
 mod world;

@@ -27,7 +27,7 @@ make text bigger for accessibility	UiDesc | og.ui.configure
 ask are you sure you want to quit	og.ui.confirm
 short message popup that goes away on its own	og.ui.toast
 weapon wheel chosen with the right stick	og.ui.radialMenu
-on-screen virtual joystick for mobile	components §32
+on-screen virtual joystick for mobile	components §33
 subtitles and captions	og.ui.subtitles
 tooltp when hovering an item	og.ui.tooltip
 make the hand reach for the door handle	og.IkChain

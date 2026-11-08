@@ -696,8 +696,11 @@ impl Parser {
                 let strs = |v: Vec<String>| PropValue::Lit(Lit::Strs(v));
                 let items = options.iter().map(|o| o.label.clone()).collect();
                 let values = options.iter().map(|o| o.value.clone()).collect();
-                self.prop(i, tag, "items", strs(items), at, "")?;
-                self.prop(i, tag, "values", strs(values), at, "")?;
+                // Without `<option>`s its options are its bound `items`.
+                if !options.is_empty() {
+                    self.prop(i, tag, "items", strs(items), at, "")?;
+                    self.prop(i, tag, "values", strs(values), at, "")?;
+                }
                 if options.iter().any(|o| !o.group.is_empty()) {
                     let groups = options.iter().map(|o| o.group.clone()).collect();
                     self.prop(i, tag, "groups", strs(groups), at, "")?;
@@ -907,6 +910,7 @@ impl Parser {
                 Some("range") => "slider",
                 Some("checkbox") => "toggle",
                 Some("radio") => "radio",
+                Some("color") => "color",
                 _ => "field",
             },
             other => match super::extern_element::kind(other, self.parent_tag(parent)) {
@@ -1178,6 +1182,9 @@ impl Parser {
             }
             if name == "value" && internal == "select" {
                 name = "current".into();
+            }
+            if name == "value" && internal == "color" {
+                name = "colorValue".into();
             }
             if name == "value" && internal == "radio" {
                 name = "choice".into();

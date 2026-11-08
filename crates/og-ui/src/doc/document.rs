@@ -144,7 +144,9 @@ impl UiDocument {
                     let known = self.props.iter().any(|p| p.name == root)
                         || locals.iter().any(|l| l == root)
                         || root.starts_with(|c: char| c.is_ascii_uppercase())
-                        || root.starts_with('$');
+                        || root.starts_with('$')
+                        // The engine's `$ui` store (docs/ui.md §2), bound at every mount.
+                        || (root == "ui" && path.starts_with('$'));
                     if !known {
                         errors.push(format!("line {line}: '{path}' reads '{root}', which is not a prop of the document (props {{ … }}), a list item, or a resource (Capitalised)"));
                     }

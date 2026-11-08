@@ -4,3 +4,6 @@ version 1
 locale "en"
 string "screen.common.back" "Back"
 string "screen.settings.title" "Settings"
+string "screen.settings.defaults" "Defaults"
+string "screen.settings.revert" "Revert"
+string "screen.settings.apply" "Apply"

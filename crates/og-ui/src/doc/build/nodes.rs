@@ -323,11 +323,21 @@ impl Ui {
             bare: r.str("appearance") == Some("none"),
         };
         let mut opened: Option<bool> = None;
+        // A spotlight's callout layer, open (closed by `close`).
+        let mut spot = false;
         // A closed dialog or disclosure builds no content (HTML renders
         // none): opened, its controls are built fresh and take input.
         let mut shows_content = true;
         if container {
             match kind {
+                "dialog" if open_now(self) && r.str("spotlight").is_some() => {
+                    let target = r.str("spotlight").unwrap_or_default();
+                    let (shade, anchored) = self.open_spotlight(id.as_str(), target, &r);
+                    spot = anchored;
+                    if shade.clicked && r.str("closedby") == Some("any") {
+                        opened = Some(false);
+                    }
+                }
                 "dialog" => {
                     let open = open_now(self);
                     let out = self.open_dialog(id.as_str(), open, &dialog);
@@ -450,6 +460,9 @@ impl Ui {
                 b.inherited = inherited;
             }
             match kind {
+                "dialog" if spot => {
+                    self.close();
+                }
                 "dialog" => self.close_dialog(&dialog),
                 "details" => self.close_details(),
                 "button" => self.close_button(),
@@ -518,7 +531,12 @@ impl Ui {
                         )
                         .response;
                 } else {
-                    self.label(id.as_str(), &text, desc);
+                    if let Some(count) = styled.num("count") {
+                        self.count_text(id.as_str(), count, &desc, &styled);
+                    } else {
+                        let shown = self.reveal(key, &text, styled.num("reveal"));
+                        self.label(id.as_str(), shown, desc);
+                    }
                 }
             }
             "button" => {
@@ -593,6 +611,13 @@ impl Ui {
                         width: r.size("width"),
                     },
                 );
+            }
+            "select" if styled.str("selectAppearance") == Some("cycle") => {
+                let changed = self.cycler(b, n, id.as_str(), &r);
+                resp = crate::Response {
+                    changed,
+                    ..crate::Response::default()
+                };
             }
             "select" => {
                 let strs = |name: &str| match r.get(name) {
@@ -758,6 +783,9 @@ impl Ui {
                 if out.changed {
                     self.write_back(b, n, "checked", json!(out.on));
                 }
+            }
+            "color" => {
+                resp = self.color_input(b, n, id.as_str(), &r);
             }
             "radio" => {
                 let choice = r.str("choice").unwrap_or("on").to_string();
@@ -1304,7 +1332,7 @@ impl Ui {
                 When::LongPress => long,
                 When::Hold => held,
                 When::ContextMenu => context,
-                When::Toggle | When::Close => happened.contains(&t.when),
+                When::Toggle | When::Close | When::Revealed => happened.contains(&t.when),
                 When::Action(a) => self.docs.accepts && self.action_fired(a),
                 When::Change(e) => {
                     let v = b.eval(e);

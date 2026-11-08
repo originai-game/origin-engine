@@ -69,6 +69,11 @@ impl RetainedHost {
 
     fn sibling_change(&mut self, ui: &Ui, change: &SiblingChange) -> Result<(), String> {
         let parent = change.parent.as_ref();
+        // Its parent left later in the same refresh (an `{#if}` removed the
+        // row whose children changed): nothing under it is left to restyle.
+        if parent.is_some_and(|p| self.topology.node(p).is_none()) {
+            return Ok(());
+        }
         let mut docs: Vec<_> = parent
             .and_then(|p| self.document_of(p))
             .into_iter()

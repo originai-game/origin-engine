@@ -356,11 +356,11 @@ impl Ui {
     }
 
     /// A size that holds text, at the player's text scale.
-    fn by_text(&self, h: f32) -> f32 {
+    pub(crate) fn by_text(&self, h: f32) -> f32 {
         (h * self.theme.text_scale.max(1.0)).round()
     }
 
-    fn still(&self) -> bool {
+    pub(crate) fn still(&self) -> bool {
         self.theme.reduced_motion
     }
 
