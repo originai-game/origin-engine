@@ -25805,7 +25805,6 @@ export interface ScrollState {
 
 
 
-
 /**
  * A pad's virtual cursor (docs/ui.md §2.1). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second.
  *
@@ -39957,14 +39956,6 @@ export declare namespace og {
      * @param path Its full path.
      */
     function scrollState(path: string): ScrollState | null;
-    /**
-     * A badge: a small status tag in its tone.
-     *
-     * @param id Its id.
-     * @param text The label (a count, a word).
-     * @param tone Its tone.
-     */
-    function badge(id: string, text: string, tone: Tone): void;
     /**
      * A hairline in the border colour across its parent.
      *

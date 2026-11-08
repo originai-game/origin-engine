@@ -186,7 +186,7 @@ pub use modules::{
     THEME_COLORS, TYPE_STEPS, og_load_document, og_load_style, og_physics_overlap,
     og_physics_project_point, og_physics_raycast, og_physics_raycast_all, og_physics_set_mesh,
     og_physics_shape_cast, og_ui_a11y, og_ui_action, og_ui_action_bar, og_ui_action_held,
-    og_ui_animate, og_ui_back, og_ui_badge, og_ui_bounds, og_ui_burst, og_ui_clear, og_ui_close,
+    og_ui_animate, og_ui_back, og_ui_bounds, og_ui_burst, og_ui_clear, og_ui_close,
     og_ui_close_modal, og_ui_configure, og_ui_define_action, og_ui_define_timeline, og_ui_device,
     og_ui_dismiss_toast, og_ui_divider, og_ui_doc_events, og_ui_document_schema, og_ui_feedback,
     og_ui_file_picker, og_ui_focus, og_ui_force_state, og_ui_frame_cursor, og_ui_frame_direction,

@@ -2817,12 +2817,6 @@ pub fn og_ui_scroll_state(env: Env, path: String) -> String {
     <Host as UiApi>::og_ui_scroll_state(&Host, path)
 }
 
-#[napi(js_name = "og_ui_badge")]
-pub fn og_ui_badge(env: Env, id: String, text: String, tone: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_badge(&Host, id, text, tone)
-}
-
 #[napi(js_name = "og_ui_divider")]
 pub fn og_ui_divider(env: Env, id: String, vertical: bool) {
     let _env = crate::EnvScope::enter(&env);

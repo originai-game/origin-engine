@@ -45,8 +45,8 @@ use crate::{art, assets, extract, ui_draw};
 pub(crate) use game_widgets::a11y_json;
 use game_widgets::ui_of;
 pub use game_widgets::{
-    og_ui_a11y, og_ui_back, og_ui_badge, og_ui_bounds, og_ui_close_modal, og_ui_dismiss_toast,
-    og_ui_divider, og_ui_feedback, og_ui_focus, og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_reset,
+    og_ui_a11y, og_ui_back, og_ui_bounds, og_ui_close_modal, og_ui_dismiss_toast, og_ui_divider,
+    og_ui_feedback, og_ui_focus, og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_reset,
     og_ui_hud_select, og_ui_hud_step, og_ui_icon, og_ui_memory, og_ui_navigate, og_ui_open_anchor,
     og_ui_open_modal, og_ui_preview_viewport, og_ui_remember, og_ui_scroll_state,
     og_ui_set_haptics, og_ui_set_hud_edit, og_ui_set_hud_layout, og_ui_set_hud_player,

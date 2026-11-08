@@ -1402,9 +1402,6 @@ impl UiApi for WebHost {
     fn og_ui_scroll_state(&self, path: String) -> String {
         rt::og_ui_scroll_state(path)
     }
-    fn og_ui_badge(&self, id: String, text: String, tone: String) {
-        rt::og_ui_badge(id, text, tone)
-    }
     fn og_ui_divider(&self, id: String, vertical: bool) {
         rt::og_ui_divider(id, vertical)
     }

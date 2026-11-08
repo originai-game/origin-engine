@@ -76,11 +76,6 @@ pub fn og_ui_scroll_state(path: String) -> String {
     .to_string()
 }
 
-pub fn og_ui_badge(id: String, text: String, t: String) {
-    let tn = tone(&Value::String(t));
-    with_ui("og.ui.badge", |ui| ui.badge(id.as_str(), &text, tn));
-}
-
 pub fn og_ui_divider(id: String, vertical: bool) {
     with_ui("og.ui.divider", |ui| ui.divider(id.as_str(), vertical));
 }

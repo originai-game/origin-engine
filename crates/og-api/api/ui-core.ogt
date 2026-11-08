@@ -991,14 +991,6 @@ module ui {
     returns Option.ScrollState
   }
 
-  fn badge {
-    doc "A badge: a small status tag in its tone."
-    param id String "Its id."
-    param text String "The label (a count, a word)."
-    param tone Tone "Its tone."
-    returns Void
-  }
-
   fn divider {
     doc "A hairline in the border colour across its parent."
     param id String "Its id."

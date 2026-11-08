@@ -1057,8 +1057,6 @@ pub trait UiApi: Wire {
     fn og_ui_bounds(&self, path: String) -> String;
     /// `og.ui.scrollState`
     fn og_ui_scroll_state(&self, path: String) -> String;
-    /// `og.ui.badge`
-    fn og_ui_badge(&self, id: String, text: String, tone: String);
     /// `og.ui.divider`
     fn og_ui_divider(&self, id: String, vertical: bool);
     /// `og.ui.spacer`
@@ -1932,7 +1930,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_close_modal",
     "og_ui_bounds",
     "og_ui_scroll_state",
-    "og_ui_badge",
     "og_ui_divider",
     "og_ui_spacer",
     "og_ui_spinner",

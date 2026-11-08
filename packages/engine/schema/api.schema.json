@@ -12617,32 +12617,6 @@
           "publish": true
         },
         {
-          "name": "badge",
-          "doc": "A badge: a small status tag in its tone.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "text",
-              "type": "String",
-              "optional": false,
-              "doc": "The label (a count, a word)."
-            },
-            {
-              "name": "tone",
-              "type": "Tone",
-              "optional": false,
-              "doc": "Its tone."
-            }
-          ],
-          "returns": "Void",
-          "publish": true
-        },
-        {
           "name": "divider",
           "doc": "A hairline in the border colour across its parent.",
           "params": [

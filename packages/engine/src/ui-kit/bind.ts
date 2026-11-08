@@ -59,7 +59,6 @@ export const widgets = {
   closeModal: (): void => abi().og_ui_close_modal(),
   bounds: (path: string): Api.UiRect | null => parse(abi().og_ui_bounds(path)),
   scrollState: (path: string): Api.ScrollState | null => parse(abi().og_ui_scroll_state(path)),
-  badge: (id: string, text: string, tone: Api.Tone): void => abi().og_ui_badge(id, text, tone),
   divider: (id: string, vertical: boolean): void => abi().og_ui_divider(id, vertical),
   spacer: (id: string, size: Api.Size | null): void => abi().og_ui_spacer(id, JSON.stringify(size ?? null)),
   spinner: (id: string, size: number): void => abi().og_ui_spinner(id, size),

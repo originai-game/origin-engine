@@ -90,6 +90,12 @@
       "find": ["og.ui.accordion", "AccordionDesc", "AccordionResult", "AccordionSection"]
     },
     {
+      "member": "og.ui.badge",
+      "change": "The badge builder is removed: the tab bar and accordion were the last components that built one.",
+      "fix": "Write `<badge tone=\"primary\">3</badge>` in a document.",
+      "find": ["og.ui.badge("]
+    },
+    {
       "member": "@origingame/engine/ui-parts/screen inputField, dropdown, holdButton",
       "change": "The screen helpers no longer export the removed builders.",
       "fix": "Build those controls in the kit's screen document: `<input>`, `<select>`, `<button data-hold>`.",

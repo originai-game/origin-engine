@@ -943,8 +943,6 @@ export interface HostAbi<A, V> {
   og_ui_bounds(path: string): string;
   /** `og.ui.scrollState` */
   og_ui_scroll_state(path: string): string;
-  /** `og.ui.badge` */
-  og_ui_badge(id: string, text: string, tone: string): void;
   /** `og.ui.divider` */
   og_ui_divider(id: string, vertical: boolean): void;
   /** `og.ui.spacer` */
@@ -1761,7 +1759,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_close_modal",
   "og_ui_bounds",
   "og_ui_scroll_state",
-  "og_ui_badge",
   "og_ui_divider",
   "og_ui_spacer",
   "og_ui_spinner",

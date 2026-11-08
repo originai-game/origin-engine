@@ -2349,11 +2349,6 @@ pub fn og_ui_scroll_state(path: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_badge(id: String, text: String, tone: String) {
-    <Host as UiApi>::og_ui_badge(&Host, id, text, tone)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_divider(id: String, vertical: bool) {
     <Host as UiApi>::og_ui_divider(&Host, id, vertical)
 }
