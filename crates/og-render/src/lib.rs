@@ -632,8 +632,12 @@ pub struct Renderer {
     /// Lit pipelines, each made when a batch first needs it (or by
     /// [`Renderer::warm`]).
     /// The features this frame's lit passes draw with
-    /// (`pipeline_features::Features::of`).
+    /// (`pipeline_features::Features::of`; every one in a capture).
     frame_features: pipeline_features::Features,
+    /// Drawing a capture ([`Renderer::render_capture`]): its lit pipelines
+    /// are the full variants, waited for, so its bytes never depend on
+    /// which variants a compile worker has finished.
+    capturing: bool,
     pbr_pipelines: HashMap<PbrKey, pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
     shadow_pipelines: HashMap<ShadowKey, Deferred<ShadowSet>>,
     /// Prepass pipelines by (side, skinned).

@@ -217,10 +217,12 @@ impl Renderer {
             1
         };
         self.terrain.settled = true;
+        self.capturing = true;
         let mut stats = self.render(scene, target);
         for _ in 1..warmup {
             stats = self.render(scene, target);
         }
+        self.capturing = false;
         self.terrain.settled = false;
         self.put_frames(&kept);
         stats

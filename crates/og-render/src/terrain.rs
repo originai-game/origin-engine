@@ -1450,6 +1450,9 @@ pub(crate) struct TerrainRenderer {
     /// fades (a capture, `Renderer::render_capture`: tiles arrive by wall
     /// time, so a capture draws them settled).
     pub settled: bool,
+    /// The features the frame's terrain pipelines draw with (the
+    /// renderer's `frame_features`: every one in a capture).
+    pub features: crate::pipeline_features::Features,
     /// The layer-array variant (a terrain whose layers sample texture
     /// arrays, [`Terrain::layer_arrays`]): its group layout, with the
     /// albedo (5) and normal (9) maps as 2D arrays and no other layer

@@ -190,3 +190,48 @@ fn a_light_turned_on_mid_run_waits_for_no_compile() {
         );
     }
 }
+
+/// A capture never depends on which lit pipelines have compiled: a light
+/// added just before it is drawn (the capture waits for the full variants,
+/// where a display frame would draw without it), and its bytes are a
+/// fresh renderer's capture of the same scene.
+#[test]
+#[ignore = "requires GPU"]
+fn a_capture_draws_with_the_full_lit_pipelines() {
+    let desc = RenderDesc {
+        width: 320,
+        height: 180,
+        ..scenes::base_desc()
+    };
+    let mut scene = scenes::build("materials").expect("materials").scene;
+    scene.lights.clear();
+    scene.decals.clear();
+    let light = Light {
+        position: Vec3::new(0.0, 1.5, 1.0),
+        color: Vec3::new(1.0, 0.4, 0.2),
+        intensity: 40.0,
+        range: 12.0,
+        cast_shadows: false,
+        ..Default::default()
+    };
+    scene.lights.push(light);
+    let mut fresh = Renderer::new_blocking(&desc).expect("renderer");
+    fresh
+        .render_capture(&scene, &RenderTarget::Offscreen)
+        .expect("capture");
+    let expected = fresh.read_offscreen().expect("read");
+    // A renderer whose first frame had no light: its lit pipelines are the
+    // variants without the local lights' code, the full ones compiling.
+    scene.lights.clear();
+    let mut r = Renderer::new_blocking(&desc).expect("renderer");
+    r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    scene.lights.push(light);
+    r.render_capture(&scene, &RenderTarget::Offscreen)
+        .expect("capture");
+    let got = r.read_offscreen().expect("read");
+    assert!(
+        got.pixels == expected.pixels,
+        "the capture drew with the pipelines that happened to be ready (max diff {})",
+        max_diff(&got, &expected)
+    );
+}

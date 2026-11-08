@@ -64,7 +64,14 @@ impl Renderer {
         }
         // What this frame waits for compiles (FrameStats::compile_wait_us).
         crate::deferred::take_waited_us();
-        self.frame_features = crate::pipeline_features::Features::of(scene);
+        // A capture draws with the full variants (pipeline_features.rs):
+        // what a display frame draws with depends on what has compiled.
+        self.frame_features = if self.capturing {
+            crate::pipeline_features::Features::ALL
+        } else {
+            crate::pipeline_features::Features::of(scene)
+        };
+        self.terrain.features = self.frame_features;
         // Match the surface's two-frame latency. Wait for the oldest frame,
         // not the entire queue: motion and readbacks share this device.
         #[cfg(not(target_arch = "wasm32"))]

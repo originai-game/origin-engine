@@ -49,7 +49,7 @@ impl TerrainRenderer {
             };
             if let Some(passes) = passes {
                 passes.start(
-                    crate::pipeline_features::Features::of(scene),
+                    self.features,
                     prepass,
                     t.cast_shadows,
                     !scene.terrain_stamps.is_empty(),
@@ -376,6 +376,7 @@ impl TerrainRenderer {
             passes,
             decals,
             settled: false,
+            features: crate::pipeline_features::Features::ALL,
             arrays: None,
             holed: [None, None],
             array_stand_ins: None,
@@ -1371,7 +1372,7 @@ impl TerrainRenderer {
                     (None, Some((_, passes))) if arrayed => passes.clone(),
                     _ => self.passes.clone(),
                 },
-                features: crate::pipeline_features::Features::of(scene),
+                features: self.features,
                 levels: out,
                 cast_shadows: t.cast_shadows,
                 terrain: ti,

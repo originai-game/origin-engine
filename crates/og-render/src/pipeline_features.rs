@@ -21,6 +21,10 @@
 //! is submitted; from then on the full one draws. A feature that turns on
 //! before the full variant is ready never stalls a frame: the variant
 //! already made draws, without that feature, until the full one is ready.
+//! A capture (`Renderer::render_capture`) draws with the full variants,
+//! waiting for them: its bytes are a function of the world and the
+//! presentation state (docs/design.md §2.4), never of which variants have
+//! compiled, and the variants' binaries differ in their last bit.
 //! On the web every pipeline is the full one (the browser compiles them
 //! and the host's frame span waits for them asynchronously).
 
@@ -280,7 +284,9 @@ impl<C: Cell> Variants<C> {
     /// What a frame with `features` draws with: the full variant once it
     /// is made; else the variant made for the features, waited for if it is
     /// compiling. A feature it lacks is not drawn until the full one is
-    /// ready (that frame does not wait for it).
+    /// ready (that frame does not wait for it). With every feature (a
+    /// capture's, `Renderer::capturing`) it is the full variant, waited
+    /// for, so what it draws never depends on what has compiled.
     pub(crate) fn get(&self, features: Features) -> &C::Value {
         #[cfg(target_arch = "wasm32")]
         {
@@ -292,7 +298,7 @@ impl<C: Cell> Variants<C> {
             if let Some(v) = self.full.ready() {
                 return v;
             }
-            if self.wanted(features) == Features::ALL && self.lean.get().is_none() {
+            if self.wanted(features) == Features::ALL {
                 return self.full.get();
             }
             self.start(features);
