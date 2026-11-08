@@ -12,6 +12,50 @@ pub struct Context {
     /// The primary pointer is coarse (a touch screen): `pointer: coarse`
     /// and `hover: none`, else `pointer: fine` and `hover: hover`.
     pub coarse_pointer: bool,
+    /// The theme's scheme is dark (`prefers-color-scheme: dark`).
+    pub dark: bool,
+    /// The theme is its high-contrast variant (`prefers-contrast: more`).
+    pub high_contrast: bool,
+    /// `prefers-reduced-transparency: reduce`.
+    pub reduced_transparency: bool,
+    /// Device pixels per CSS pixel (`resolution`, in dppx).
+    pub resolution: f32,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self {
+            width: 0.0,
+            height: 0.0,
+            reduced_motion: false,
+            color_vision: og_render::ColorVision::Typical,
+            coarse_pointer: false,
+            dark: false,
+            high_contrast: false,
+            reduced_transparency: false,
+            resolution: 1.0,
+        }
+    }
+}
+
+/// How many independent inputs a media query reads ([`Reads::axes`]).
+pub const AXES: usize = 9;
+
+impl Context {
+    /// Which inputs differ from `old`, in [`Reads::axes`] order.
+    pub fn changes(&self, old: &Self) -> [bool; AXES] {
+        [
+            old.width != self.width,
+            old.height != self.height,
+            old.reduced_motion != self.reduced_motion,
+            old.color_vision != self.color_vision,
+            old.coarse_pointer != self.coarse_pointer,
+            old.dark != self.dark,
+            old.high_contrast != self.high_contrast,
+            old.reduced_transparency != self.reduced_transparency,
+            old.resolution != self.resolution,
+        ]
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -21,15 +65,51 @@ pub struct Reads {
     pub reduced_motion: bool,
     pub color_vision: bool,
     pub coarse_pointer: bool,
+    pub scheme: bool,
+    pub contrast: bool,
+    pub transparency: bool,
+    pub resolution: bool,
 }
 
 impl Reads {
     pub fn extend(&mut self, other: Self) {
-        self.width |= other.width;
-        self.height |= other.height;
-        self.reduced_motion |= other.reduced_motion;
-        self.color_vision |= other.color_vision;
-        self.coarse_pointer |= other.coarse_pointer;
+        for (axis, read) in other.axes().into_iter().enumerate() {
+            if read {
+                *self.axis(axis) = true;
+            }
+        }
+    }
+
+    /// The inputs read, in [`Context::changes`] order.
+    pub fn axes(self) -> [bool; AXES] {
+        [
+            self.width,
+            self.height,
+            self.reduced_motion,
+            self.color_vision,
+            self.coarse_pointer,
+            self.scheme,
+            self.contrast,
+            self.transparency,
+            self.resolution,
+        ]
+    }
+
+    fn axis(&mut self, axis: usize) -> &mut bool {
+        [
+            &mut self.width,
+            &mut self.height,
+            &mut self.reduced_motion,
+            &mut self.color_vision,
+            &mut self.coarse_pointer,
+            &mut self.scheme,
+            &mut self.contrast,
+            &mut self.transparency,
+            &mut self.resolution,
+        ]
+        .into_iter()
+        .nth(axis)
+        .unwrap()
     }
 }
 
@@ -84,6 +164,42 @@ pub enum Feature {
     /// `hover`/`any-hover` (`none`: true, `hover`: false); `None`, the
     /// boolean form, which every pointing device matches.
     Coarse(Option<bool>),
+    /// `prefers-color-scheme`: true for dark.
+    Dark(bool),
+    /// `prefers-contrast`: `more` (true), `no-preference` (false); `None`,
+    /// the boolean form, any preference.
+    Contrast(Option<bool>),
+    ReducedTransparency(bool),
+    /// `resolution` in dppx.
+    Resolution(Comparison, f64),
+    /// A feature whose value is fixed for every play surface (the surface
+    /// is an sRGB, standard-range, fast-updating, scripted, full-surface
+    /// display with no forced colours), already evaluated at parse.
+    Fixed(bool),
+    /// A container `style(--name)` (`None`: the property has a value) or
+    /// `style(--name: value)` query, against the query container's
+    /// computed custom property.
+    Style(String, Option<String>),
+    /// A container `scroll-state(<feature>: <value>)` query: some bit of
+    /// `bits` is set among the container's [`scroll`] flags of `group`;
+    /// `bits` 0 is the `none` value, no bit of the group.
+    ScrollState {
+        group: u16,
+        bits: u16,
+    },
+}
+
+/// The scroll-state flags a container publishes, one bit per edge in the
+/// order top, right, bottom, left (`x` axis bits 0 and 2, … for snapped).
+pub mod scroll {
+    pub const SCROLLABLE: u16 = 0xf;
+    pub const SNAPPED: u16 = 0x3 << 4;
+    pub const STUCK: u16 = 0xf << 6;
+    pub const SCROLLED: u16 = 0xf << 10;
+    pub const TOP: u16 = 1;
+    pub const RIGHT: u16 = 2;
+    pub const BOTTOM: u16 = 4;
+    pub const LEFT: u16 = 8;
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -103,6 +219,10 @@ pub enum Query {
 enum Scope {
     Media,
     Container,
+    /// Inside `style()`.
+    Style,
+    /// Inside `scroll-state()`.
+    ScrollState,
 }
 
 impl Query {
@@ -132,15 +252,41 @@ impl Query {
         }
     }
 
+    /// Evaluates the boolean structure with `leaf` answering each feature,
+    /// short-circuiting as CSS does.
+    pub fn test(&self, leaf: &mut dyn FnMut(&Feature) -> bool) -> bool {
+        match self {
+            Self::All => true,
+            Self::Not(q) => !q.test(leaf),
+            Self::And(q) => q.iter().all(|q| q.test(leaf)),
+            Self::Or(q) => q.iter().any(|q| q.test(leaf)),
+            Self::Feature(feature) => leaf(feature),
+        }
+    }
+
+    /// Every feature the query names, evaluated or not.
+    pub fn features(&self, out: &mut dyn FnMut(&Feature)) {
+        match self {
+            Self::All => {}
+            Self::Not(q) => q.features(out),
+            Self::And(qs) | Self::Or(qs) => qs.iter().for_each(|q| q.features(out)),
+            Self::Feature(f) => out(f),
+        }
+    }
+
     /// Records only evaluated predicates. Short-circuited branches gain their
     /// subscriptions on the evaluation that first reaches them.
     pub fn matches(&self, context: Context, reads: &mut Reads) -> bool {
-        match self {
-            Self::All => true,
-            Self::Not(q) => !q.matches(context, reads),
-            Self::And(q) => q.iter().all(|q| q.matches(context, reads)),
-            Self::Or(q) => q.iter().any(|q| q.matches(context, reads)),
-            Self::Feature(feature) => match *feature {
+        self.test(&mut |feature| context.feature(feature, reads))
+    }
+}
+
+impl Context {
+    /// One media or container size feature against this context.
+    pub fn feature(&self, feature: &Feature, reads: &mut Reads) -> bool {
+        let context = self;
+        {
+            match *feature {
                 Feature::Width(cmp, value) => {
                     reads.width = true;
                     cmp.test(context.width.into(), value)
@@ -170,6 +316,25 @@ impl Query {
                     reads.coarse_pointer = true;
                     value.is_none_or(|v| v == context.coarse_pointer)
                 }
+                Feature::Dark(value) => {
+                    reads.scheme = true;
+                    context.dark == value
+                }
+                Feature::Contrast(value) => {
+                    reads.contrast = true;
+                    value.map_or(context.high_contrast, |v| v == context.high_contrast)
+                }
+                Feature::ReducedTransparency(value) => {
+                    reads.transparency = true;
+                    context.reduced_transparency == value
+                }
+                Feature::Resolution(cmp, value) => {
+                    reads.resolution = true;
+                    cmp.test(context.resolution.into(), value)
+                }
+                Feature::Fixed(value) => value,
+                // Container-only features never parse in a media query.
+                Feature::Style(..) | Feature::ScrollState { .. } => false,
                 Feature::ColorVision(value) => {
                     reads.color_vision = true;
                     match value {
@@ -177,7 +342,7 @@ impl Query {
                         None => context.color_vision != og_render::ColorVision::Typical,
                     }
                 }
-            },
+            }
         }
     }
 }
@@ -245,7 +410,25 @@ fn condition(input: &mut Parser<'_>, allow_or: bool, scope: Scope) -> Result<Que
 }
 
 fn group(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
-    input.expect_parenthesis_block()?;
+    let scope = match input.next()?.clone() {
+        Token::ParenthesisBlock => scope,
+        Token::Function(name) if scope == Scope::Container => {
+            match name.to_ascii_lowercase().as_str() {
+                "style" => Scope::Style,
+                "scroll-state" => Scope::ScrollState,
+                _ => {
+                    return Err(ParseError::custom(format!(
+                        "unsupported container function {name}(); use style() or scroll-state()"
+                    )));
+                }
+            }
+        }
+        token => {
+            return Err(ParseError::custom(format!(
+                "expected a parenthesized condition, found {token:?}"
+            )));
+        }
+    };
     input.parse_nested_block(|input| {
         let state = input.state();
         let nested = matches!(input.next()?, Token::ParenthesisBlock) || {
@@ -253,11 +436,102 @@ fn group(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
             input.try_parse(|p| p.expect_ident_matching("not")).is_ok()
         };
         input.reset(&state);
-        if nested {
-            condition(input, true, scope)
-        } else {
-            feature(input, scope)
+        match scope {
+            _ if nested => condition(input, true, scope),
+            Scope::Style => style_feature(input),
+            Scope::ScrollState => scroll_feature(input),
+            _ => feature(input, scope),
         }
+    })
+}
+
+/// `--name` or `--name: <value>` inside `style()`. Values compare as their
+/// tokens with whitespace runs collapsed, as substituted custom properties
+/// do.
+fn style_feature(input: &mut Parser<'_>) -> Result<Query, Error> {
+    let name = input.expect_ident_cloned()?.to_string();
+    if !name.starts_with("--") {
+        return Err(ParseError::custom(format!(
+            "style({name}): style queries take custom properties (--name)"
+        )));
+    }
+    if input.is_exhausted() {
+        return Ok(Query::Feature(Feature::Style(name, None)));
+    }
+    input.expect_colon()?;
+    let start = input.position();
+    while input.next().is_ok() {}
+    let value = normalize(input.slice_from(start));
+    Ok(Query::Feature(Feature::Style(name, Some(value))))
+}
+
+/// A custom property value as style queries compare it.
+pub fn normalize(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// `scrollable`, `snapped`, `stuck` or `scrolled`, with or without a
+/// value, inside `scroll-state()`. Horizontal-tb, left-to-right writing:
+/// block-start is the top and inline-start the left.
+fn scroll_feature(input: &mut Parser<'_>) -> Result<Query, Error> {
+    use scroll::*;
+    let name = input.expect_ident_cloned()?.to_ascii_lowercase();
+    let group = match name.as_str() {
+        "scrollable" => SCROLLABLE,
+        "snapped" => SNAPPED,
+        "stuck" => STUCK,
+        "scrolled" => SCROLLED,
+        _ => {
+            return Err(ParseError::custom(format!(
+                "unsupported scroll-state feature {name}; use scrollable, snapped, stuck or scrolled"
+            )));
+        }
+    };
+    if input.is_exhausted() {
+        return Ok(Query::Feature(Feature::ScrollState { group, bits: group }));
+    }
+    input.expect_colon()?;
+    let word = input.expect_ident_cloned()?.to_ascii_lowercase();
+    let edges = if group == SNAPPED {
+        match word.as_str() {
+            "none" => Some(0),
+            "x" | "inline" => Some(1),
+            "y" | "block" => Some(2),
+            "both" => Some(3),
+            _ => None,
+        }
+    } else {
+        match word.as_str() {
+            "none" => Some(0),
+            "top" | "block-start" => Some(TOP),
+            "right" | "inline-end" => Some(RIGHT),
+            "bottom" | "block-end" => Some(BOTTOM),
+            "left" | "inline-start" => Some(LEFT),
+            "x" | "inline" if group != STUCK => Some(LEFT | RIGHT),
+            "y" | "block" if group != STUCK => Some(TOP | BOTTOM),
+            _ => None,
+        }
+    };
+    let Some(edges) = edges else {
+        return Err(ParseError::custom(format!(
+            "unsupported scroll-state({name}) value {word}"
+        )));
+    };
+    let bits = edges << group.trailing_zeros();
+    // `snapped: both` needs both axes; the others need any named edge.
+    Ok(if group == SNAPPED && edges == 3 {
+        Query::And(vec![
+            Query::Feature(Feature::ScrollState {
+                group,
+                bits: 1 << 4,
+            }),
+            Query::Feature(Feature::ScrollState {
+                group,
+                bits: 2 << 4,
+            }),
+        ])
+    } else {
+        Query::Feature(Feature::ScrollState { group, bits })
     })
 }
 
@@ -266,6 +540,8 @@ enum Value {
     Length(f64),
     Number(f64),
     Ratio(f64, f64),
+    /// A `<resolution>` in dppx.
+    Resolution(f64),
 }
 
 fn value(input: &mut Parser<'_>) -> Result<Value, Error> {
@@ -280,6 +556,9 @@ fn value(input: &mut Parser<'_>) -> Result<Value, Error> {
                 "q" => 96.0 / 101.6,
                 "pt" => 96.0 / 72.0,
                 "pc" => 16.0,
+                "dppx" | "x" => return Ok(Value::Resolution(value.into())),
+                "dpi" => return Ok(Value::Resolution(f64::from(value) / 96.0)),
+                "dpcm" => return Ok(Value::Resolution(f64::from(value) * 2.54 / 96.0)),
                 _ => {
                     return Err(ParseError::custom(format!(
                         "unsupported media length unit {unit}; use px, em, rem or an absolute length"
@@ -350,9 +629,16 @@ fn ranged(name: &str, cmp: Comparison, value: Value) -> Result<Query, Error> {
         }
         ("aspect-ratio", Value::Ratio(n, d)) => Feature::AspectRatio(cmp, n, d),
         ("aspect-ratio", Value::Number(n)) if n >= 0.0 => Feature::AspectRatio(cmp, n, 1.0),
+        ("resolution", Value::Resolution(n)) => Feature::Resolution(cmp, n),
+        // Fixed integer features: 8 bits per colour component, no palette,
+        // not monochrome, a bitmap display.
+        ("color" | "monochrome" | "color-index" | "grid", Value::Number(n)) if n.fract() == 0.0 => {
+            let actual = if name == "color" { 8.0 } else { 0.0 };
+            Feature::Fixed(cmp.test(actual, n))
+        }
         _ => {
             return Err(ParseError::custom(format!(
-                "unsupported media feature or value for {name}; width/height need a length, aspect-ratio a nonnegative ratio"
+                "unsupported media feature or value for {name}; width/height need a length, aspect-ratio a nonnegative ratio, resolution a resolution, color/monochrome/color-index/grid an integer"
             )));
         }
     };
@@ -393,6 +679,29 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                 "pointer" | "any-pointer" | "hover" | "any-hover" => {
                     Ok(Query::Feature(Feature::Coarse(None)))
                 }
+                "prefers-contrast" => Ok(Query::Feature(Feature::Contrast(None))),
+                "prefers-reduced-transparency" => {
+                    Ok(Query::Feature(Feature::ReducedTransparency(true)))
+                }
+                "resolution" => Ok(Query::Feature(Feature::Resolution(
+                    Comparison::Greater,
+                    0.0,
+                ))),
+                "color" | "color-gamut" | "update" | "scripting" | "display-mode" => {
+                    Ok(Query::Feature(Feature::Fixed(true)))
+                }
+                "prefers-color-scheme"
+                | "forced-colors"
+                | "monochrome"
+                | "color-index"
+                | "grid"
+                | "dynamic-range"
+                | "inverted-colors"
+                | "prefers-reduced-data" => {
+                    // `dynamic-range` always matches `standard`, but the
+                    // boolean form of the others is their `none`/0: false.
+                    Ok(Query::Feature(Feature::Fixed(name == "dynamic-range")))
+                }
                 _ => Err(ParseError::custom(format!(
                     "unsupported boolean media feature {name}"
                 ))),
@@ -424,6 +733,9 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                     }
                 };
                 return Ok(Query::Feature(Feature::Coarse(Some(coarse))));
+            }
+            if let Some(feature) = keyword_feature(&name, input)? {
+                return Ok(Query::Feature(feature));
             }
             if name == "orientation" || name == "prefers-reduced-motion" {
                 let word = input.expect_ident_cloned()?.to_ascii_lowercase();
@@ -472,6 +784,64 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
     Ok(a.and(ranged(&name, second, right)?))
 }
 
+/// The keyword-valued user preference and display features; `None` when
+/// `name` is not one of them (nothing is consumed then).
+fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>, Error> {
+    let values: &[&str] = match name {
+        "prefers-color-scheme" => &["light", "dark"],
+        "prefers-contrast" => &["no-preference", "more", "less", "custom"],
+        "prefers-reduced-transparency" => &["no-preference", "reduce"],
+        "forced-colors" => &["none", "active"],
+        "color-gamut" => &["srgb", "p3", "rec2020"],
+        "dynamic-range" | "video-dynamic-range" => &["standard", "high"],
+        "display-mode" => &[
+            "fullscreen",
+            "standalone",
+            "minimal-ui",
+            "browser",
+            "picture-in-picture",
+        ],
+        "update" => &["none", "slow", "fast"],
+        "scripting" => &["none", "initial-only", "enabled"],
+        "inverted-colors" => &["none", "inverted"],
+        "prefers-reduced-data" => &["no-preference", "reduce"],
+        _ => return Ok(None),
+    };
+    let word = input.expect_ident_cloned()?.to_ascii_lowercase();
+    if !values.contains(&word.as_str()) {
+        return Err(ParseError::custom(format!(
+            "unsupported {name} value {word}; use {}",
+            values.join(", ")
+        )));
+    }
+    let word = word.as_str();
+    Ok(Some(match name {
+        "prefers-color-scheme" => Feature::Dark(word == "dark"),
+        // The theme has standard and high contrast only: `less` and
+        // `custom` never match.
+        "prefers-contrast" => match word {
+            "more" => Feature::Contrast(Some(true)),
+            "no-preference" => Feature::Contrast(Some(false)),
+            _ => Feature::Fixed(false),
+        },
+        "prefers-reduced-transparency" => Feature::ReducedTransparency(word == "reduce"),
+        // The play surface: an sRGB standard-range swapchain that fills
+        // the display area with no browser chrome, updates every frame and
+        // runs scripts; no forced or inverted colours or data saving.
+        _ => Feature::Fixed(matches!(
+            (name, word),
+            ("forced-colors", "none")
+                | ("color-gamut", "srgb")
+                | ("dynamic-range" | "video-dynamic-range", "standard")
+                | ("display-mode", "fullscreen")
+                | ("update", "fast")
+                | ("scripting", "enabled")
+                | ("inverted-colors", "none")
+                | ("prefers-reduced-data", "no-preference")
+        )),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -484,6 +854,7 @@ mod tests {
             reduced_motion: false,
             color_vision: og_render::ColorVision::Typical,
             coarse_pointer: false,
+            ..Context::default()
         };
         for (source, expected) in [
             ("(600px >= width > 599.5px)", true),
@@ -521,6 +892,7 @@ mod tests {
                 reduced_motion: false,
                 color_vision: og_render::ColorVision::Typical,
                 coarse_pointer: false,
+                ..Context::default()
             },
             &mut reads
         ));
@@ -532,6 +904,7 @@ mod tests {
                 reduced_motion: true,
                 color_vision: false,
                 coarse_pointer: false,
+                ..Reads::default()
             }
         );
         let mut reads = Reads::default();
@@ -542,6 +915,7 @@ mod tests {
                 reduced_motion: false,
                 color_vision: og_render::ColorVision::Typical,
                 coarse_pointer: false,
+                ..Context::default()
             },
             &mut reads
         ));
@@ -553,6 +927,7 @@ mod tests {
                 reduced_motion: false,
                 color_vision: false,
                 coarse_pointer: false,
+                ..Reads::default()
             }
         );
     }
@@ -575,6 +950,7 @@ mod tests {
                 reduced_motion: false,
                 color_vision: og_render::ColorVision::Typical,
                 coarse_pointer: coarse,
+                ..Context::default()
             };
             let q = Query::parse(source).unwrap();
             assert_eq!(q.matches(context, &mut reads), expected, "{source}");
@@ -585,6 +961,64 @@ mod tests {
     }
 
     #[test]
+    fn preference_and_display_features_read_the_theme_and_surface() {
+        let context = Context {
+            width: 600.0,
+            height: 400.0,
+            dark: true,
+            high_contrast: true,
+            resolution: 2.0,
+            ..Context::default()
+        };
+        for (source, expected, read) in [
+            ("(prefers-color-scheme: dark)", true, Some(5)),
+            ("(prefers-color-scheme: light)", false, Some(5)),
+            ("(prefers-contrast)", true, Some(6)),
+            ("(prefers-contrast: more)", true, Some(6)),
+            ("(prefers-contrast: no-preference)", false, Some(6)),
+            ("(prefers-contrast: less)", false, None),
+            ("(prefers-reduced-transparency)", false, Some(7)),
+            (
+                "(prefers-reduced-transparency: no-preference)",
+                true,
+                Some(7),
+            ),
+            ("(min-resolution: 2dppx)", true, Some(8)),
+            ("(resolution > 192dpi)", false, Some(8)),
+            ("(1.5x < resolution)", true, Some(8)),
+            ("(forced-colors: none)", true, None),
+            ("(forced-colors)", false, None),
+            ("(color-gamut: srgb)", true, None),
+            ("(color-gamut: p3)", false, None),
+            ("(dynamic-range: high)", false, None),
+            ("(display-mode: fullscreen)", true, None),
+            ("(update: fast)", true, None),
+            ("(scripting: enabled)", true, None),
+            ("(min-color: 8)", true, None),
+            ("(monochrome)", false, None),
+        ] {
+            let mut reads = Reads::default();
+            let q = Query::parse(source).unwrap();
+            assert_eq!(q.matches(context, &mut reads), expected, "{source}");
+            let axes = reads.axes();
+            assert_eq!(
+                axes.iter().position(|&r| r),
+                read,
+                "{source} reads {axes:?}"
+            );
+        }
+        let light = Context {
+            dark: false,
+            ..context
+        };
+        assert_eq!(
+            light.changes(&context),
+            [false, false, false, false, false, true, false, false, false]
+        );
+        assert!(Query::parse_container("(prefers-color-scheme: dark)").is_err());
+    }
+
+    #[test]
     fn invalid_or_unsupported_queries_cannot_silently_match() {
         for source in [
             "",
@@ -592,7 +1026,9 @@ mod tests {
             "(width: 12)",
             "(width: 50vw)",
             "(width: calc(1px + 2px))",
-            "(color)",
+            "(color-gamut: cmyk)",
+            "(prefers-color-scheme: sepia)",
+            "(resolution: 2px)",
             "(orientation: diagonal)",
             "(width > 1px) or (height > 1px) and (width)",
             "(1px < width > 2px)",

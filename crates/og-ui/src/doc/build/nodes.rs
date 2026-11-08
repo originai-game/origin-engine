@@ -263,6 +263,9 @@ impl Ui {
         }
         self.docs.seen_now.insert(key);
         self.remember_queried(b, i, &path, key, &r);
+        self.docs
+            .scroll_now
+            .extend(r.cascade.scroll_reads.iter().copied());
         if let Some(container) = r.container {
             self.build_container(container);
         }

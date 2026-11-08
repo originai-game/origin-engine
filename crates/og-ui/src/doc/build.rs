@@ -520,6 +520,22 @@ impl Ui {
         }
     }
 
+    /// What document media queries read: the viewport and the theme.
+    pub(crate) fn media_context(&self) -> super::media::Context {
+        let (vp, theme) = (self.viewport(), self.theme());
+        super::media::Context {
+            width: vp.width,
+            height: vp.height,
+            reduced_motion: theme.reduced_motion,
+            color_vision: theme.color_vision,
+            coarse_pointer: vp.coarse_pointer,
+            dark: theme.scheme == crate::Scheme::Dark,
+            high_contrast: theme.contrast == crate::Contrast::High,
+            reduced_transparency: theme.reduced_transparency,
+            resolution: vp.dpr,
+        }
+    }
+
     /// Resolves a node's props: its lines, its matching `at` blocks, then
     /// the probe's edits of `path`.
     fn resolve(
@@ -533,13 +549,7 @@ impl Ui {
     ) -> Resolved {
         let mut r = Resolved::default();
         let vp = self.viewport();
-        let context = super::media::Context {
-            width: vp.width,
-            height: vp.height,
-            reduced_motion: self.theme().reduced_motion,
-            color_vision: self.theme().color_vision,
-            coarse_pointer: vp.coarse_pointer,
-        };
+        let context = self.media_context();
         let mut media_reads = super::media::Reads::default();
         let chain = super::container::chain(inherited);
         // Under a container, an immediate build records every input this
@@ -570,13 +580,18 @@ impl Ui {
                 .find(|(at, _)| *at == s as *const _ as usize)
                 .map_or_else(|| structure(s), |&(_, matched)| matched)
         };
-        let sizes = &self.docs.container_sizes;
-        let mut container_reads = BTreeSet::new();
+        let scroll = |key: u64| self.docs.scroll_states.get(&key).map_or(0, |s| s.1);
+        let probe = super::container::Probe {
+            sizes: &self.docs.container_sizes,
+            scroll: &scroll,
+            inherited,
+        };
+        let mut container_read = super::container::Read::default();
         let mut applies = |q: &super::AtQuery, reads: &mut super::media::Reads| {
             q.media.matches(context, reads)
                 && q.container
                     .iter()
-                    .all(|c| c.matches(&chain, sizes, &mut container_reads))
+                    .all(|c| c.matches(&chain, &probe, &mut container_read))
         };
         let mut sets: Vec<&super::PropSet> = n.props.iter().collect();
         for (q, props) in &n.at {
@@ -621,6 +636,7 @@ impl Ui {
                 vp.safe_area.bottom,
                 vp.safe_area.left,
             ],
+            containers: super::container::unit_basis(&chain, &self.docs.container_sizes),
             ..Default::default()
         };
         // An attribute attr() reads, as its text.
@@ -673,12 +689,15 @@ impl Ui {
                 .map(|(name, value, _)| format!("{name}: {value};"))
                 .collect();
         }
-        if let Some((kind, names)) =
+        if let Some((ty, names)) =
             super::container::declared(&r.cascade.container, &mut r.cascade.diagnostics)
         {
             let key = crate::id::key_of_path(path);
-            super::container::push(Arc::make_mut(&mut r.cascade.computed), key, kind, &names);
-            r.container = Some(key);
+            super::container::push(Arc::make_mut(&mut r.cascade.computed), key, ty, &names);
+            // Only size containers publish their box through settlement.
+            if ty.size != super::container::Kind::Normal {
+                r.container = Some(key);
+            }
         }
         r.space3d = crate::transform3d::resolve(&r.cascade.transform, &mut r.cascade.diagnostics)
             .map(Arc::new);
@@ -863,14 +882,25 @@ impl Ui {
             }
         }
         r.cascade.viewport_reads.extend(media_reads);
-        if !container_reads.is_empty() {
+        if !container_read.sizes.is_empty()
+            || !r.cascade.container_reads.is_empty()
+            || !container_read.scroll.is_empty()
+            || container_read
+                .inherited
+                .iter()
+                .any(|e| e.starts_with("@cq:"))
+        {
             // The chain is inherited state: a container appearing or leaving
             // above this element re-resolves it like a custom property would.
             r.cascade
                 .inherited_reads
                 .insert(super::container::CHAIN.to_string());
         }
-        r.cascade.container_reads = container_reads;
+        // `style()` reads its container's custom properties as inherited
+        // values: a change there re-resolves this element.
+        r.cascade.inherited_reads.extend(container_read.inherited);
+        r.cascade.container_reads.extend(container_read.sizes);
+        r.cascade.scroll_reads = container_read.scroll;
         if let NodeKind::Element(kind) = n.kind
             && svg::KINDS.contains(&kind)
         {

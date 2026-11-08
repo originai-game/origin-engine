@@ -137,7 +137,7 @@ pub struct RetainedHost {
     surface: [f32; 8],
     theme: Option<crate::Theme>,
     theme_epoch: u64,
-    media: [BTreeSet<MountedNode>; 5],
+    media: [BTreeSet<MountedNode>; crate::doc::media::AXES],
     materializing: Option<Materialization>,
     built_tick: Option<u64>,
     /// Elements whose render nodes must be written again this frame.
@@ -912,13 +912,9 @@ impl RetainedHost {
         {
             self.theme_epoch += 1;
         }
-        let viewport = crate::doc::media::Context {
-            width: ui.viewport.width,
-            height: ui.viewport.height,
-            reduced_motion: ui.theme().reduced_motion,
-            color_vision: ui.theme().color_vision,
-            coarse_pointer: ui.viewport.coarse_pointer,
-        };
+        let scrolled = std::mem::take(&mut ui.docs.scroll_changed);
+        self.rescroll(&scrolled);
+        let viewport = ui.media_context();
         let [small, large] = ui.viewport.extremes();
         let sa = ui.viewport.safe_area;
         let surface = [
@@ -926,16 +922,12 @@ impl RetainedHost {
         ];
         let moved = std::mem::replace(&mut self.surface, surface) != surface;
         if let Some(old) = self.viewport.replace(viewport) {
-            for (axis, changed) in [
-                old.width != viewport.width || moved,
-                old.height != viewport.height || moved,
-                old.reduced_motion != viewport.reduced_motion,
-                old.color_vision != viewport.color_vision,
-                old.coarse_pointer != viewport.coarse_pointer,
-            ]
-            .into_iter()
-            .enumerate()
-            {
+            let mut changes = viewport.changes(&old);
+            // The safe area and the small and large viewports read as the
+            // viewport's axes do.
+            changes[0] |= moved;
+            changes[1] |= moved;
+            for (axis, changed) in changes.into_iter().enumerate() {
                 if changed {
                     self.dirty.extend(self.media[axis].iter().cloned());
                 }
@@ -1259,16 +1251,7 @@ impl RetainedHost {
         let text = values.str("text").unwrap_or_default().to_owned();
         let previous = e.resolved.as_ref().map(|r| &r.values.cascade);
         let reads = values.cascade.viewport_reads;
-        for (axis, read) in [
-            reads.width,
-            reads.height,
-            reads.reduced_motion,
-            reads.color_vision,
-            reads.coarse_pointer,
-        ]
-        .into_iter()
-        .enumerate()
-        {
+        for (axis, read) in reads.axes().into_iter().enumerate() {
             if read {
                 self.media[axis].insert(identity.clone());
             } else {

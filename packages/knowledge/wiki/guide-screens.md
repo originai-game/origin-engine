@@ -126,8 +126,13 @@ local styles and `og style new` remain available.
   Use CSS media conditions, for example
   `@media (width < 600px), (height < 600px) { ... }`.
   Supported features are `width`, `height`, `aspect-ratio`, `orientation`,
-  `prefers-reduced-motion`, and `pointer`/`any-pointer` (`coarse`, `fine`)
-  and `hover`/`any-hover` (`hover`, `none`), which follow a touch screen. Use inclusive `min-`/`max-` bounds or
+  `resolution`, `prefers-reduced-motion`, `prefers-color-scheme`,
+  `prefers-contrast`, `prefers-reduced-transparency` (these follow the
+  theme), and `pointer`/`any-pointer` (`coarse`, `fine`)
+  and `hover`/`any-hover` (`hover`, `none`), which follow a touch screen.
+  `color-gamut`, `dynamic-range`, `display-mode`, `update`, `scripting`,
+  `forced-colors` and `color` answer for the play surface (`srgb`,
+  `standard`, `fullscreen`, `fast`, `enabled`, `none`, 8). Use inclusive `min-`/`max-` bounds or
   range comparisons, including `(600px <= width < 1024px)`.
   Commas and `or` mean alternatives; `and` intersects; `not` negates.
   Group mixed operators with parentheses. Nested `@media` rules intersect.
@@ -145,8 +150,11 @@ local styles and `og style new` remain available.
   `aspect-ratio` and `orientation`, and read the nearest matching ancestor
   container, never the element itself. They settle before the first frame
   paints and again on every resize. Do not let a query resize its own
-  container: that fails as a settlement cycle. Style queries, scroll-state
-  queries and container units such as `cqw` fail cooking.
+  container: that fails as a settlement cycle. `style(--tone: warm)` reads a
+  container's custom property (unnamed: the parent's).
+  `scroll-state(scrollable: top)`, `snapped`, `stuck` and `scrolled` need
+  `container-type: scroll-state`. Container units (`cqw`, `cqh`, `cqi`,
+  `cqb`, `cqmin`, `cqmax`) size against the nearest size container.
 - Declare custom properties in any scoped rule, such as
   `.card { --spacing: 12px; gap: var(--spacing); }`. Declarations win by
   `!important`, specificity, then source order. Custom properties inherit

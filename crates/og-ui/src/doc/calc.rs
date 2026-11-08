@@ -58,10 +58,11 @@ const ORDER: [&str; 6] = ["%", "px", "em", "ms", "deg", ""];
 /// large and dynamic forms of CSS Values 4 §6.1.2, one viewport here), the
 /// root's and the element's font's but `em` (which a margin keeps to the
 /// element's resolve, [`keeps_em`]).
-const ABSOLUTE: [&str; 35] = [
+const ABSOLUTE: [&str; 41] = [
     "vw", "vh", "vi", "vb", "vmin", "vmax", "svw", "svh", "svi", "svb", "svmin", "svmax", "lvw",
     "lvh", "lvi", "lvb", "lvmin", "lvmax", "dvw", "dvh", "dvi", "dvb", "dvmin", "dvmax", "rem",
-    "ch", "ex", "cap", "ic", "lh", "rlh", "rch", "rex", "rcap", "ric",
+    "ch", "ex", "cap", "ic", "lh", "rlh", "rch", "rex", "rcap", "ric", "cqw", "cqh", "cqi", "cqb",
+    "cqmin", "cqmax",
 ];
 
 const FUNCTIONS: [&str; 21] = [
@@ -114,6 +115,10 @@ pub(crate) struct Basis {
     pub ex: f32,
     /// The safe area's insets (top, right, bottom, left), for `env()`.
     pub safe: [f32; 4],
+    /// The nearest query container eligible on each axis (width, height)
+    /// and its settled content size (0 until measured); none, and the
+    /// container units fall back to the viewport's.
+    pub containers: [Option<(u64, f32)>; 2],
 }
 
 impl Basis {
@@ -133,11 +138,12 @@ impl Basis {
     }
 }
 
-/// Which viewport axes a value read through its units.
+/// Which viewport axes and query containers a value read through its units.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Read {
     pub width: bool,
     pub height: bool,
+    pub containers: [Option<u64>; 2],
 }
 
 /// Whether `text` has a number in a unit [`absolute`] resolves, or an
@@ -222,6 +228,29 @@ pub(crate) fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
             "rex" => (ex * root) as f64,
             "rcap" => (cap * root) as f64,
             "ric" => (ic * root) as f64,
+            "cqw" | "cqi" | "cqh" | "cqb" | "cqmin" | "cqmax" => {
+                let mut axis = |i: usize| match basis.containers[i] {
+                    Some((key, size)) => {
+                        read.containers[i] = Some(key);
+                        size as f64 / 100.0
+                    }
+                    None => {
+                        if i == 0 {
+                            read.width = true;
+                            w
+                        } else {
+                            read.height = true;
+                            h
+                        }
+                    }
+                };
+                match unit {
+                    "cqw" | "cqi" => axis(0),
+                    "cqh" | "cqb" => axis(1),
+                    "cqmin" => axis(0).min(axis(1)),
+                    _ => axis(0).max(axis(1)),
+                }
+            }
             _ => continue,
         };
         let n: f64 = text[start..end - unit.len()].parse().unwrap_or(0.0);
@@ -1013,7 +1042,8 @@ mod tests {
             read,
             Read {
                 width: true,
-                height: true
+                height: true,
+                ..Read::default()
             }
         );
         let (text, read) = absolute("-10vmin 1.5vmax #12vw0a 'a 3vw'", basis, "width");
@@ -1022,7 +1052,8 @@ mod tests {
             read,
             Read {
                 width: true,
-                height: true
+                height: true,
+                ..Read::default()
             }
         );
         let (text, read) = absolute(
@@ -1038,7 +1069,8 @@ mod tests {
             read,
             Read {
                 width: true,
-                height: false
+                height: false,
+                ..Read::default()
             }
         );
         assert!(has_absolute("1rem") && !has_absolute("1em 10px"));
@@ -1079,6 +1111,25 @@ mod tests {
         assert_eq!(text, "calc(44px + 8px) 0px 5px");
         assert!(read.width && read.height);
         assert!(per_element("width", "2em") && !per_element("margin-top", "2em"));
+        // Container units: an inline-size container answers the width axis
+        // only; the height falls back to the viewport's.
+        let (text, read) = absolute(
+            "10cqw 10cqi 10cqh 10cqmin 10cqmax",
+            Basis {
+                containers: [Some((7, 300.0)), None],
+                ..basis
+            },
+            "width",
+        );
+        assert_eq!(text, "30px 30px 72px 30px 72px");
+        assert_eq!(
+            read,
+            Read {
+                width: false,
+                height: true,
+                containers: [Some(7), None],
+            }
+        );
     }
 
     #[test]

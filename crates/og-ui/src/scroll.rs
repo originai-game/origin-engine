@@ -332,6 +332,92 @@ impl Ui {
         })
     }
 
+    /// Element `key`'s `scroll-state()` flags ([`crate::doc::media::scroll`])
+    /// as the last frame laid it out: the edges a scroll container can still
+    /// scroll toward, and the axes on which a snap area sits at its
+    /// scroller's snap position. `stuck` stays clear: no element is
+    /// sticky-positioned. `scrolled` is the document layer's.
+    pub(crate) fn scroll_flags_now(&self, key: u64) -> u16 {
+        use crate::doc::media::scroll::*;
+        let get = |i: usize| {
+            if self.building {
+                self.previous_node(i)
+            } else {
+                self.nodes.get(i)
+            }
+        };
+        // Kept (retained) nodes stay in the tree while a tick builds;
+        // rebuilt ones are among the retiring nodes.
+        let found = self
+            .tree
+            .find(key)
+            .and_then(get)
+            .filter(|n| n.key == key)
+            .or_else(|| {
+                self.building
+                    .then(|| self.previous_nodes().find(|n| n.key == key))
+                    .flatten()
+            });
+        let Some(n) = found else {
+            return 0;
+        };
+        let mut flags = 0;
+        let at = self.offset(key);
+        if n.el.scroll {
+            flags |= if at.y > 0.5 { TOP } else { 0 };
+            flags |= if at.y < n.max_scroll() - 0.5 {
+                BOTTOM
+            } else {
+                0
+            };
+        }
+        if n.el.scroll_x {
+            flags |= if at.x > 0.5 { LEFT } else { 0 };
+            flags |= if at.x < n.max_scroll_x() - 0.5 {
+                RIGHT
+            } else {
+                0
+            };
+        }
+        let align = n.el.snap_align;
+        let mut p = n.parent;
+        while align != 0 && p != crate::layout::NONE {
+            let Some(s) = get(p) else { break };
+            if !s.scrolls() {
+                p = s.parent;
+                continue;
+            }
+            let pad = s.el.padding;
+            let at = self.offset(s.key);
+            let max = [s.max_scroll_x(), s.max_scroll()];
+            let r = n.rect;
+            for axis in 0..2 {
+                let a = (align >> (2 * axis)) & 3;
+                if s.el.snap & (1 << axis) == 0 || a == 0 {
+                    continue;
+                }
+                let (lo, len, vlo, vlen) = if axis == 0 {
+                    let v = s.rect.width - pad.horizontal();
+                    (r.x, r.width, s.rect.x + pad.left, v.max(0.0))
+                } else {
+                    let v = s.rect.height - pad.vertical();
+                    (r.y, r.height, s.rect.y + pad.top, v.max(0.0))
+                };
+                let d = match a {
+                    1 => lo - vlo,
+                    2 => (lo + len / 2.0) - (vlo + vlen / 2.0),
+                    _ => (lo + len) - (vlo + vlen),
+                };
+                let now = at[axis];
+                if ((now + d).clamp(0.0, max[axis].max(0.0)) - now).abs() < 0.5 {
+                    flags |= 1 << (4 + axis);
+                }
+            }
+            break;
+        }
+        flags
+    }
+
     /// The offset of scroll container `key` (x, y).
     pub(crate) fn offset(&self, key: u64) -> Vec2 {
         Vec2::new(

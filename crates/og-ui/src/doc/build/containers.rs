@@ -62,6 +62,42 @@ impl Ui {
         }
     }
 
+    /// Samples the `scroll-state()` containers read last tick: a container
+    /// whose flags changed restyles its readers (mounted ones through
+    /// `scroll_changed`; immediate builds read the new flags as they build).
+    /// `scrolled` keeps each axis's most recent direction.
+    pub(super) fn sync_scroll_states(&mut self) {
+        use crate::doc::media::scroll::*;
+        let mut keys = std::mem::take(&mut self.docs.scroll_now);
+        keys.extend(self.docs.retained.scroll_reads());
+        let mut states = BTreeMap::new();
+        for key in keys {
+            let offset = self.offset(key);
+            let (old_offset, old) = self
+                .docs
+                .scroll_states
+                .get(&key)
+                .copied()
+                .unwrap_or((offset, 0));
+            let d = offset - old_offset;
+            let mut scrolled = old & SCROLLED;
+            if d.y != 0.0 {
+                scrolled &= !((TOP | BOTTOM) << 10);
+                scrolled |= if d.y < 0.0 { TOP } else { BOTTOM } << 10;
+            }
+            if d.x != 0.0 {
+                scrolled &= !((LEFT | RIGHT) << 10);
+                scrolled |= if d.x < 0.0 { LEFT } else { RIGHT } << 10;
+            }
+            let flags = self.scroll_flags_now(key) | scrolled;
+            if flags != old {
+                self.docs.scroll_changed.insert(key);
+            }
+            states.insert(key, (offset, flags));
+        }
+        self.docs.scroll_states = states;
+    }
+
     /// Unwatches and forgets containers no longer built or mounted.
     pub(super) fn watch_document_containers(&mut self, live: BTreeSet<u64>) {
         let gone: Vec<u64> = self.docs.containers.difference(&live).copied().collect();

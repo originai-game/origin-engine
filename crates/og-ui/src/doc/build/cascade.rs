@@ -30,6 +30,9 @@ pub struct Cascade {
     pub(crate) transform: Vec<(String, String)>,
     /// Query containers whose settled size the matched rules depend on.
     pub container_reads: BTreeSet<u64>,
+    /// Containers whose scroll state (`scroll-state()`) the matched rules
+    /// depend on.
+    pub scroll_reads: BTreeSet<u64>,
 }
 
 /// The CSS properties whose computed value an element inherits when it
@@ -361,6 +364,8 @@ pub(crate) fn values_with(
                     let (v, read) = crate::doc::calc::absolute(&v, basis, name);
                     out.viewport_reads.width |= read.width;
                     out.viewport_reads.height |= read.height;
+                    out.container_reads
+                        .extend(read.containers.into_iter().flatten());
                     v
                 }
                 _ => v,

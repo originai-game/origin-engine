@@ -154,6 +154,12 @@ pub struct DocHost {
     /// Query containers watched for settlement, and those built this tick.
     pub(crate) containers: BTreeSet<u64>,
     pub(crate) containers_now: BTreeSet<u64>,
+    /// `scroll-state()` containers read: their offset and flags
+    /// (`media::scroll`) at this tick's start, those immediate builds read
+    /// this tick, and those whose flags changed at its start.
+    pub(crate) scroll_states: BTreeMap<u64, (og_core::glam::Vec2, u16)>,
+    pub(crate) scroll_now: BTreeSet<u64>,
+    pub(crate) scroll_changed: BTreeSet<u64>,
     /// What structural selectors of every defined document read.
     pub(crate) structure: crate::doc::matching::Profile,
     /// The instantiated sibling levels of the screen being built.
@@ -676,5 +682,6 @@ impl Ui {
         let mut live = std::mem::take(&mut d.containers_now);
         live.extend(d.retained.containers());
         self.watch_document_containers(live);
+        self.sync_scroll_states();
     }
 }

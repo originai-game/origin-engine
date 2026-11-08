@@ -723,8 +723,8 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
         let e = err(&format!("  -og-frame: {bad}"));
         assert!(e.contains("takes one quoted id"), "{bad}: {e}");
     }
-    // Container queries outside size queries name what is unsupported.
-    assert!(err("  container-type: scroll-state").contains("scroll-state"));
+    // Container syntax outside the specs names what is wrong.
+    assert!(err("  container-type: size scroll-state size").contains("container-type"));
     let rule = |rule: &str| {
         let t = format!(
             "<meta name=\"screen\" content=\"s\"><column id=\"Root\"/><style>{rule}</style>"
@@ -733,8 +733,8 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
     };
     for (bad, needle) in [
         (
-            "@container style(--wide: 1) { #Root { gap: 4px; } }",
-            "@container",
+            "@container style(color: red) { #Root { gap: 4px; } }",
+            "custom properties",
         ),
         ("@container (width > 20cqw) { #Root { gap: 4px; } }", "cqw"),
         (

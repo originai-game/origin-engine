@@ -421,7 +421,13 @@ value, and the others refuse mixed units. A `var()` term (`calc(var(--w)
 * 100% - 20px)`) is substituted first, so a store bound with `style:--w`
 moves only its element; an element whose values read a viewport unit
 resolves again when the viewport resizes. `calc(10px + 20ms)` is an
-error.
+error. Container
+units (`cqw`, `cqh`, `cqi`, `cqb`, `cqmin`, `cqmax`) are 1 % of the nearest
+query container's settled content box on that axis: a size container
+(`size` or `inline-size`) for the width and inline axis, a `size` one for
+the height and block axis. With no such container they are the viewport
+units. An element using them resolves again when its container's box
+settles, as a container query's reader does.
 
 An item's number is its place among its `<li>` siblings, counted from the
 list's `start` (1, or the item count when `reversed`), or from the
@@ -1624,17 +1630,28 @@ blocks): `calc(100% - 12px)` works.
 
 Media rules use standard conditions, such as
 `@media (width < 600px), (height < 600px)`. Supported features are `width`,
-`height`, `aspect-ratio`, `orientation`, `prefers-reduced-motion` and
-`-og-color-vision` (below), with
-inclusive `min-`/`max-` bounds and range comparisons. Commas and `or` select
+`height`, `aspect-ratio`, `orientation`, `resolution` (`dppx`, `x`,
+`dpi`, `dpcm`: the viewport's device pixel ratio), `prefers-reduced-motion`,
+`prefers-color-scheme` (the theme's scheme), `prefers-contrast` (`more`
+when the theme is high contrast; `less` and `custom` never match),
+`prefers-reduced-transparency` (the theme's flag), `pointer`/`hover` and
+their `any-` forms, and `-og-color-vision` (below). Each element
+re-resolves only when an input it read changes. The play surface answers
+the display features as fixed values: `color-gamut: srgb`,
+`dynamic-range: standard`, `display-mode: fullscreen`, `update: fast`,
+`scripting: enabled`, `forced-colors: none`, `inverted-colors: none`,
+`prefers-reduced-data: no-preference`, `color: 8`, and 0 for `monochrome`,
+`color-index` and `grid`. The range features take inclusive
+`min-`/`max-` bounds and range comparisons. Commas and `or` select
 alternatives, `and` intersects, and `not` negates; mixed operators require
 parentheses. Nested media rules intersect. There is no named-breakpoint
 reader.
 
-Container queries follow CSS Containment Level 3 size queries.
-`container-type: size | inline-size` (with `container-name` and the
-`container: <names> / <type>` shorthand) makes an element a query container
-for its descendants. `@container [name] <condition>` takes the media range
+Container queries follow CSS Containment Level 3.
+`container-type: normal | [ size | inline-size ] || scroll-state || anchored`
+(with `container-name` and the `container: <names> / <type>` shorthand)
+makes an element a query container for its descendants. A named element is
+a style container whatever its type. `@container [name] <condition>` takes the media range
 grammar over `width`, `height`, `inline-size`, `block-size`, `aspect-ratio`
 and `orientation`; a block-axis condition needs a `size` container. Each
 condition reads the nearest eligible ancestor; with none, or before the first
@@ -1643,9 +1660,25 @@ settlement hook on the first frame and on every resize, before paint:
 elements that read a changed container resolve again from their evaluated
 inputs and replace their fields, including `display`, list and grid boxes and
 Rive frames. There is no size containment, so a query that keeps resizing its
-own container fails as a settlement cycle. Style and scroll-state queries,
-container units (`cqw` and the rest) and other features fail at cook with the
-feature named.
+own container fails as a settlement cycle.
+
+`style(--name: value)` and `style(--name)` (with `and`, `or` and `not`
+inside or around them) compare a container's computed custom property,
+written with its whitespace collapsed. An unnamed style query reads the
+parent element, because every element is a style container. A named one
+reads the named container's own value. A change re-resolves only the elements
+that read it. Style queries take custom properties only; `style(color: red)`
+fails at cook. `scroll-state(scrollable: top | right | bottom | left | x | y
+| block… | inline… | none)`, `scroll-state(snapped: x | y | block | inline
+| both | none)`, `scroll-state(stuck: …)` and `scroll-state(scrolled: …)`
+read the nearest `scroll-state` container, as the last frame laid it out.
+`scrollable` gives the edges it can still scroll toward. `snapped` gives the
+axes on which the container, as a snap area, sits at its scroller's snap
+position. `scrolled` gives the direction of its latest scroll on each axis.
+`stuck` matches only `none` until sticky positioning exists. A change restyles
+only its readers, on the next frame. `anchored` is accepted for anchor
+positioning's fallback queries. Other features fail at cook with the feature
+named.
 
 Safe-area values use the supported CSS `env(safe-area-inset-*)` spellings.
 Svelte `class:` directives select

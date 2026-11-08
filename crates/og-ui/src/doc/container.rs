@@ -1,5 +1,6 @@
-//! CSS Containment Level 3 size queries: `container-type`, `container-name`,
-//! the `container` shorthand and `@container` conditions.
+//! CSS Containment Level 3 container queries: `container-type`,
+//! `container-name`, the `container` shorthand and `@container` size,
+//! `style()` and `scroll-state()` conditions.
 //!
 //! A query container publishes its content box through the settlement hook
 //! (`Ui::watch_layout_container`); conditions read the last settled box of
@@ -26,12 +27,65 @@ pub enum Kind {
     Size,
 }
 
+/// A container's whole `container-type`: `normal | [ size | inline-size ]
+/// || scroll-state || anchored`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Type {
+    pub size: Kind,
+    pub scroll_state: bool,
+    /// An anchor-positioned element's fallback state (`anchored(fallback:
+    /// …)`), which anchor positioning publishes.
+    pub anchored: bool,
+}
+
 /// A query container among an element's ancestors.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Container {
     pub key: u64,
     pub kind: Kind,
+    pub scroll_state: bool,
     pub names: Vec<String>,
+}
+
+/// What a container condition is evaluated against besides the chain: the
+/// settled boxes, a container's scroll-state flags ([`scroll`]) and the
+/// element's inherited computed values (for `style()`).
+pub struct Probe<'a> {
+    pub sizes: &'a Sizes,
+    pub scroll: &'a dyn Fn(u64) -> u16,
+    pub inherited: &'a variables::Computed,
+}
+
+/// What evaluating a container condition read: the containers whose box
+/// or scroll state it depends on, and the inherited entries `style()` read.
+#[derive(Clone, Debug, Default)]
+pub struct Read {
+    pub sizes: BTreeSet<u64>,
+    pub scroll: BTreeSet<u64>,
+    pub inherited: BTreeSet<String>,
+}
+
+/// The containers container units resolve against: the nearest with a
+/// size type on the width axis and the nearest `size` one on the height
+/// axis, with their settled content size (0 until measured).
+pub(crate) fn unit_basis(chain: &[Container], sizes: &Sizes) -> [Option<(u64, f32)>; 2] {
+    let pick = |eligible: &dyn Fn(Kind) -> bool, axis: usize| {
+        let c = chain.iter().rev().find(|c| eligible(c.kind))?;
+        let size = sizes
+            .get(&c.key)
+            .map_or(0.0, |s| if axis == 0 { s.0 } else { s.1 });
+        Some((c.key, size))
+    };
+    [
+        pick(&|k| k != Kind::Normal, 0),
+        pick(&|k| k == Kind::Size, 1),
+    ]
+}
+
+/// The computed-value entry holding container `key`'s custom property
+/// `name` for its descendants' `style()` queries.
+pub(crate) fn style_entry(key: u64, name: &str) -> String {
+    format!("@cq:{key}:{name}")
 }
 
 /// One `@container [name] <condition>` prelude.
@@ -59,15 +113,36 @@ fn name_error(name: &str) -> Option<String> {
     .then(|| format!("container-name: `{name}` is reserved; choose another name"))
 }
 
-fn kind(value: &str) -> Result<Kind, String> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "normal" => Ok(Kind::Normal),
-        "size" => Ok(Kind::Size),
-        "inline-size" => Ok(Kind::InlineSize),
-        other => Err(format!(
-            "container-type: `{other}` is unsupported; write normal, size or inline-size"
-        )),
+fn kind(value: &str) -> Result<Type, String> {
+    let value = value.trim().to_ascii_lowercase();
+    let mut out = Type::default();
+    let words: Vec<&str> = value.split_whitespace().collect();
+    if words == ["normal"] {
+        return Ok(out);
     }
+    let error = || {
+        format!(
+            "container-type: `{value}` is invalid; write normal, or size or inline-size, scroll-state and anchored, each once"
+        )
+    };
+    for word in &words {
+        match *word {
+            "size" | "inline-size" if out.size == Kind::Normal => {
+                out.size = if *word == "size" {
+                    Kind::Size
+                } else {
+                    Kind::InlineSize
+                };
+            }
+            "scroll-state" if !out.scroll_state => out.scroll_state = true,
+            "anchored" if !out.anchored => out.anchored = true,
+            _ => return Err(error()),
+        }
+    }
+    if words.is_empty() {
+        return Err(error());
+    }
+    Ok(out)
 }
 
 fn names(value: &str) -> Result<Vec<String>, String> {
@@ -122,8 +197,8 @@ pub(crate) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
 pub(crate) fn declared(
     values: &[(String, String)],
     diagnostics: &mut Vec<String>,
-) -> Option<(Kind, Vec<String>)> {
-    let mut out = (Kind::Normal, Vec::new());
+) -> Option<(Type, Vec<String>)> {
+    let mut out = (Type::default(), Vec::new());
     for (name, value) in values {
         let parsed = match name.as_str() {
             "container-type" => kind(value).map(|k| out.0 = k),
@@ -133,7 +208,8 @@ pub(crate) fn declared(
             diagnostics.push(format!("{error} (invalid at computed-value time)"));
         }
     }
-    (out.0 != Kind::Normal).then_some(out)
+    // A named element is a style container whatever its type.
+    (out.0 != Type::default() || !out.1.is_empty()).then_some(out)
 }
 
 /// The ancestor containers carried by a computed map, innermost last.
@@ -145,26 +221,46 @@ pub(crate) fn chain(computed: &variables::Computed) -> Vec<Container> {
         .filter_map(|entry| {
             let mut parts = entry.splitn(3, ':');
             let key = parts.next()?.parse().ok()?;
-            let kind = match parts.next()? {
-                "s" => Kind::Size,
-                _ => Kind::InlineSize,
+            let flags = parts.next()?;
+            let kind = match flags.as_bytes().first() {
+                Some(b's') => Kind::Size,
+                Some(b'i') => Kind::InlineSize,
+                _ => Kind::Normal,
             };
+            let scroll_state = flags.contains('S');
             let names = parts
                 .next()
                 .unwrap_or_default()
                 .split_whitespace()
                 .map(str::to_string)
                 .collect();
-            Some(Container { key, kind, names })
+            Some(Container {
+                key,
+                kind,
+                scroll_state,
+                names,
+            })
         })
         .collect()
 }
 
-/// Adds the element's own container for its descendants.
-pub(crate) fn push(computed: &mut variables::Computed, key: u64, kind: Kind, names: &[String]) {
+/// Adds the element's own container for its descendants, with a copy of
+/// its custom properties for their `style()` queries.
+pub(crate) fn push(computed: &mut variables::Computed, key: u64, ty: Type, names: &[String]) {
+    let custom: Vec<(String, Option<String>)> = computed
+        .iter()
+        .filter(|(name, _)| name.starts_with("--"))
+        .map(|(name, value)| (style_entry(key, name), value.clone()))
+        .collect();
+    computed.extend(custom);
     let entry = format!(
-        "{key}:{}:{}",
-        if kind == Kind::Size { "s" } else { "i" },
+        "{key}:{}{}:{}",
+        match ty.size {
+            Kind::Size => "s",
+            Kind::InlineSize => "i",
+            Kind::Normal => "n",
+        },
+        if ty.scroll_state { "S" } else { "" },
         names.join(" ")
     );
     let chain = match computed.get(CHAIN) {
@@ -181,8 +277,11 @@ impl Condition {
             .split(|c: char| c.is_whitespace() || c == '(')
             .next()
             .unwrap_or_default();
-        let named =
-            !word.is_empty() && !["not", "and", "or"].contains(&word.to_ascii_lowercase().as_str());
+        // A word directly before `(` is a function: style(), scroll-state().
+        let function = prelude[word.len()..].starts_with('(');
+        let named = !word.is_empty()
+            && !function
+            && !["not", "and", "or"].contains(&word.to_ascii_lowercase().as_str());
         if named && let Some(error) = name_error(word) {
             return Err(format!("@container {error}"));
         }
@@ -209,45 +308,82 @@ impl Condition {
         })
     }
 
-    /// Whether the condition reads the block axis, which only `size`
-    /// containers answer.
-    fn block(&self) -> bool {
-        fn walk(q: &Query) -> bool {
-            match q {
-                Query::All => false,
-                Query::Not(q) => walk(q),
-                Query::And(qs) | Query::Or(qs) => qs.iter().any(walk),
-                Query::Feature(f) => !matches!(f, Feature::Width(..)),
-            }
-        }
-        walk(&self.query)
+    /// What the query container must be for this condition: size axes,
+    /// scroll state, or (style queries alone) any element.
+    fn needs(&self) -> (bool, bool, bool) {
+        let (mut inline, mut block, mut scroll) = (false, false, false);
+        self.query.features(&mut |f| match f {
+            Feature::Width(..) => inline = true,
+            Feature::ScrollState { .. } => scroll = true,
+            Feature::Style(..) => {}
+            _ => block = true,
+        });
+        (inline, block, scroll)
     }
 
     /// Evaluates against the nearest eligible ancestor in `chain`. No eligible
-    /// container, or one not measured yet, is unknown and so false; `reads`
-    /// gains the container whose size the answer depends on.
-    pub fn matches(&self, chain: &[Container], sizes: &Sizes, reads: &mut BTreeSet<u64>) -> bool {
-        let block = self.block();
-        let Some(container) = chain.iter().rev().find(|c| {
-            (!block || c.kind == Kind::Size)
-                && self.name.as_ref().is_none_or(|n| c.names.contains(n))
-        }) else {
-            return false;
+    /// container, or one not measured yet, is unknown and so false; `read`
+    /// gains what the answer depends on. An unnamed style-only condition
+    /// queries the parent element, every element being a style container.
+    pub fn matches(&self, chain: &[Container], probe: &Probe<'_>, read: &mut Read) -> bool {
+        let (inline, block, needs_scroll) = self.needs();
+        let parent = self.name.is_none() && !inline && !block && !needs_scroll;
+        let container = if parent {
+            None
+        } else {
+            let Some(c) = chain.iter().rev().find(|c| {
+                (!block || c.kind == Kind::Size)
+                    && (!inline || c.kind != Kind::Normal)
+                    && (!needs_scroll || c.scroll_state)
+                    && self.name.as_ref().is_none_or(|n| c.names.contains(n))
+            }) else {
+                return false;
+            };
+            Some(c)
         };
-        reads.insert(container.key);
-        let Some(&(width, height)) = sizes.get(&container.key) else {
-            return false;
+        let size = match container {
+            Some(c) if inline || block => {
+                read.sizes.insert(c.key);
+                let Some(&size) = probe.sizes.get(&c.key) else {
+                    return false;
+                };
+                Some(size)
+            }
+            _ => None,
         };
-        self.query.matches(
-            Context {
-                width,
-                height,
-                reduced_motion: false,
-                color_vision: og_render::ColorVision::Typical,
-                coarse_pointer: false,
-            },
-            &mut Reads::default(),
-        )
+        let flags = match container {
+            Some(c) if needs_scroll => {
+                read.scroll.insert(c.key);
+                (probe.scroll)(c.key)
+            }
+            _ => 0,
+        };
+        let (width, height) = size.unwrap_or_default();
+        let context = Context {
+            width,
+            height,
+            ..Context::default()
+        };
+        self.query.test(&mut |feature| match feature {
+            Feature::Style(name, value) => {
+                let entry = container.map_or_else(|| name.clone(), |c| style_entry(c.key, name));
+                let actual = probe.inherited.get(&entry).cloned().flatten();
+                read.inherited.insert(entry);
+                match (value, actual) {
+                    (_, None) => false,
+                    (None, Some(_)) => true,
+                    (Some(v), Some(a)) => super::media::normalize(&a) == *v,
+                }
+            }
+            &Feature::ScrollState { group, bits } => {
+                if bits == 0 {
+                    flags & group == 0
+                } else {
+                    flags & bits != 0
+                }
+            }
+            f => context.feature(f, &mut Reads::default()),
+        })
     }
 }
 
@@ -255,13 +391,36 @@ impl Condition {
 mod tests {
     use super::*;
 
+    fn probe<'a>(sizes: &'a Sizes, inherited: &'a variables::Computed) -> Probe<'a> {
+        Probe {
+            sizes,
+            scroll: &|key| if key == 5 { 0b0100 | (1 << 4) } else { 0 },
+            inherited,
+        }
+    }
+
     #[test]
     fn conditions_pick_the_nearest_eligible_named_container() {
         let mut computed = variables::Computed::new();
-        push(&mut computed, 7, Kind::Size, &["card".into()]);
-        push(&mut computed, 9, Kind::InlineSize, &[]);
+        computed.insert("--tone".into(), Some(" warm  red ".into()));
+        let scroller = Type {
+            scroll_state: true,
+            ..Type::default()
+        };
+        push(&mut computed, 5, scroller, &[]);
+        let size = Type {
+            size: Kind::Size,
+            ..Type::default()
+        };
+        push(&mut computed, 7, size, &["card".into()]);
+        computed.insert("--tone".into(), Some("cool".into()));
+        let inline = Type {
+            size: Kind::InlineSize,
+            ..Type::default()
+        };
+        push(&mut computed, 9, inline, &[]);
         let chain = chain(&computed);
-        assert_eq!(chain.len(), 2);
+        assert_eq!(chain.len(), 3);
         let sizes = Sizes::from([(7, (500.0, 120.0)), (9, (300.0, 40.0))]);
         for (prelude, expected, read) in [
             // Width only: the inner inline-size container answers.
@@ -275,22 +434,73 @@ mod tests {
             ("not (width < 300px)", true, 9),
             ("(orientation: landscape)", true, 7),
         ] {
-            let mut reads = BTreeSet::new();
+            let mut read_ = Read::default();
             let c = Condition::parse(prelude).unwrap();
-            assert_eq!(c.matches(&chain, &sizes, &mut reads), expected, "{prelude}");
-            assert_eq!(reads, BTreeSet::from([read]), "{prelude}");
+            let p = probe(&sizes, &computed);
+            assert_eq!(c.matches(&chain, &p, &mut read_), expected, "{prelude}");
+            assert_eq!(read_.sizes, BTreeSet::from([read]), "{prelude}");
         }
-        let mut reads = BTreeSet::new();
+        // Scroll state: only the scroll-state container answers; it can
+        // scroll down and is snapped on x.
+        for (prelude, expected) in [
+            ("scroll-state(scrollable: bottom)", true),
+            ("scroll-state(scrollable: top)", false),
+            ("scroll-state(scrollable: y)", true),
+            ("scroll-state(scrollable)", true),
+            ("scroll-state(snapped: x)", true),
+            ("scroll-state(snapped: both)", false),
+            ("scroll-state(stuck: none)", true),
+            ("not scroll-state(scrolled)", true),
+        ] {
+            let mut read_ = Read::default();
+            let c = Condition::parse(prelude).unwrap();
+            let p = probe(&sizes, &computed);
+            assert_eq!(c.matches(&chain, &p, &mut read_), expected, "{prelude}");
+            assert_eq!(read_.scroll, BTreeSet::from([5]), "{prelude}");
+        }
+        // Style: unnamed queries the parent's computed value; a named one
+        // the container's own, as it was where it was declared.
+        for (prelude, expected, entry) in [
+            ("style(--tone: cool)", true, "--tone".to_string()),
+            ("style(--tone)", true, "--tone".to_string()),
+            ("style(--missing)", false, "--missing".to_string()),
+            (
+                "card style(--tone: warm red)",
+                true,
+                style_entry(7, "--tone"),
+            ),
+            ("card style(--tone: cool)", false, style_entry(7, "--tone")),
+            (
+                "card style((--tone: warm red) and (not (--tone: x)))",
+                true,
+                style_entry(7, "--tone"),
+            ),
+        ] {
+            let mut read_ = Read::default();
+            let c = Condition::parse(prelude).unwrap();
+            let p = probe(&sizes, &computed);
+            assert_eq!(c.matches(&chain, &p, &mut read_), expected, "{prelude}");
+            assert_eq!(read_.inherited, BTreeSet::from([entry]), "{prelude}");
+        }
+        // Mixed: the nearest container that is both a size container and named.
+        let c = Condition::parse("card (width > 400px) and style(--tone: warm red)").unwrap();
+        assert!(c.matches(&chain, &probe(&sizes, &computed), &mut Read::default()));
+        let mut read_ = Read::default();
         let missing = Condition::parse("sidebar (width > 0px)").unwrap();
-        assert!(!missing.matches(&chain, &sizes, &mut reads));
-        assert!(reads.is_empty());
+        assert!(!missing.matches(&chain, &probe(&sizes, &computed), &mut read_));
+        assert!(read_.sizes.is_empty());
         // Not measured yet: unknown, false, but subscribed.
+        let empty = Sizes::new();
         assert!(!Condition::parse("(width > 0px)").unwrap().matches(
             &chain,
-            &Sizes::new(),
-            &mut reads
+            &probe(&empty, &computed),
+            &mut read_
         ));
-        assert_eq!(reads, BTreeSet::from([9]));
+        assert_eq!(read_.sizes, BTreeSet::from([9]));
+        assert_eq!(
+            unit_basis(&chain, &sizes),
+            [Some((9, 300.0)), Some((7, 120.0))]
+        );
     }
 
     #[test]
@@ -301,20 +511,38 @@ mod tests {
             ("none (width > 1px)", "reserved"),
             ("card", "needs a size condition"),
             ("(width > 10cqw)", "unsupported media length unit cqw"),
-            ("(scroll-state(stuck: top))", "invalid container query"),
+            (
+                "scroll-state(sticky: top)",
+                "unsupported scroll-state feature",
+            ),
+            (
+                "scroll-state(stuck: x)",
+                "unsupported scroll-state(stuck) value",
+            ),
+            ("style(color: red)", "custom properties"),
+            ("media(width > 1px)", "unsupported container function"),
         ] {
             let error = Condition::parse(prelude).unwrap_err();
             assert!(error.contains(needle), "{prelude}: {error}");
         }
         for (name, source, needle) in [
-            ("container-type", "scroll-state", "scroll-state"),
+            ("container-type", "size inline-size", "invalid"),
+            ("container-type", "scroll-state scroll-state", "invalid"),
             ("container-name", "none card", "reserved"),
-            ("container", "card / anchored", "anchored"),
+            ("container", "card / normal size", "invalid"),
         ] {
             let d = declaration(name, source.into(), false).unwrap();
             let error = expand(d).unwrap_err();
             assert!(error.contains(needle), "{name}: {error}");
         }
+        assert_eq!(
+            kind("anchored inline-size scroll-state").unwrap(),
+            Type {
+                size: Kind::InlineSize,
+                scroll_state: true,
+                anchored: true
+            }
+        );
         let expanded =
             expand(declaration("container", "card side / size".into(), false).unwrap()).unwrap();
         assert_eq!(

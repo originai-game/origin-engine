@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "Document @media takes prefers-color-scheme, prefers-contrast, prefers-reduced-transparency and resolution (from the theme and viewport) and answers forced-colors, color-gamut, dynamic-range, display-mode, update, scripting and color for the play surface. @container takes style() and scroll-state() queries, container-type takes scroll-state and anchored, and the cqw, cqh, cqi, cqb, cqmin and cqmax units size against the nearest container."
+    }
+  ]
+}
