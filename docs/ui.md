@@ -169,6 +169,24 @@ a chip `<button aria-pressed={…}>`, a labelled rule
 `<div role="separator">Or</div>`. They are applied with the element's
 other fields, so a bound one updates the tree when its element rebuilds.
 
+#### Tooltips and popovers
+
+`title="…"` on any element is its tooltip, shown after the pointer rests
+on it, and its description in the accessibility tree. An element with
+`popover` (HTML's `auto`, also bare; `manual`; `hint`) is not in the
+page: it takes no room there and shows, open, in a layer over it, placed
+under the control that opened it (above it where there is more room,
+kept on screen), its box and look from its CSS. A control's
+`popovertarget="id"` opens, closes or toggles it on a press
+(`popovertargetaction="show|hide|toggle"`, default toggle) and reports
+`expanded`. An `auto` popover closes on a press outside it or Back and
+closes the other `auto` ones as it opens; a `manual` one only when a
+control closes it. A `hint` is a rich tooltip: `interestfor="id"` on a
+control shows it while the pointer rests on the control (the tooltip's
+delay) or the control holds the keyboard focus, and while the pointer is
+over the hint itself. A popover is built every frame (the controls that
+open it are other elements); whether it is open is kept in snapshots.
+
 #### HTML blocks and lists
 
 A box (`<div>` and the other block tags) lays out by its CSS `display`:

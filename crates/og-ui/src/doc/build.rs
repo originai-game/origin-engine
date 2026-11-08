@@ -1145,6 +1145,7 @@ pub(crate) mod gestures;
 mod kbd;
 mod mount;
 mod nodes;
+mod popover;
 mod retained;
 mod structure;
 pub(crate) mod svg;

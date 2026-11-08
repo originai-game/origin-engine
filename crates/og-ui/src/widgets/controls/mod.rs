@@ -1006,7 +1006,7 @@ impl Ui {
     /// `content` and `build`. A focus scope: Back and a press outside it and
     /// its anchor dismiss it, and the focus goes back where it was when it
     /// closes. It fades and drops in as it opens.
-    fn floating(
+    pub(crate) fn floating(
         &mut self,
         id: &str,
         open: bool,

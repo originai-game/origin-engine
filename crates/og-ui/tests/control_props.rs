@@ -687,3 +687,93 @@ p::part(big) { font-size: 40px; line-height: 48px; letter-spacing: 0.1em; }
     );
     assert!(refused_bound.contains("literally"), "{refused_bound}");
 }
+
+/// `title` is a tooltip after a rest and the element's description; a
+/// `popovertarget` press toggles its popover over the page against the
+/// control, a press outside closes an auto one; an `interestfor` control
+/// shows its hint while hovered and hides it once the pointer leaves.
+///
+/// Ways it could fail: a popover laid out in its place (or drawn while
+/// closed), a toggle that only opens, light dismiss missing, a hint shown
+/// with no interest or kept after it, a title that never shows, or a
+/// mounted popover not rebuilt when another element opens it.
+#[test]
+fn titles_and_popovers_show_against_their_controls() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <button id="Help" title="Opens the help">?</button>
+  <button id="Open" popovertarget="Menu">Menu</button>
+  <div id="Menu" popover><button id="Item">One</button></div>
+  <button id="Tip" interestfor="Card">i</button>
+  <div id="Card" popover="hint"><p id="CardText">Details</p></div>
+  <p id="Far">far away</p>
+</div>
+<style>
+#Page { padding: 40px; gap: 40px; }
+</style>"#;
+    both(text, &[], |d| {
+        let hover = |d: &mut Doc, id: &str, ticks: usize| {
+            let e = d.get(id);
+            let at = Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0);
+            for _ in 0..ticks {
+                d.step(InputFrame {
+                    pointer: at,
+                    pointer_inside: true,
+                    ..InputFrame::default()
+                });
+            }
+        };
+        for _ in 0..5 {
+            d.step(InputFrame::default());
+        }
+        assert!(d.el("Item").is_none(), "a closed popover builds nothing");
+        assert!(d.el("CardText").is_none(), "no hint without interest");
+        let far = d.get("Far");
+        let open = d.get("Open");
+        assert!(
+            far.y < open.y + open.height + 200.0,
+            "closed popovers take no room in the page"
+        );
+        // title: after a rest, a tooltip; always its description.
+        assert_eq!(d.a11y("Help").description, "Opens the help");
+        hover(d, "Help", 90);
+        assert!(
+            d.ui.probe_elements()
+                .iter()
+                .any(|e| e.text == "Opens the help"),
+            "the title shows after a rest"
+        );
+        // popovertarget toggles; it is placed against its control.
+        d.click("Open");
+        let item = d.get("Item");
+        let open = d.get("Open");
+        assert!(
+            item.y >= open.y + open.height - 0.5 && (item.x - open.x).abs() < 40.0,
+            "under its control: {item:?} vs {open:?}"
+        );
+        assert_eq!(d.get("Far").y, far.y, "an open popover moves nothing");
+        assert!(
+            d.a11y("Open").states.iter().any(|s| s == "expanded"),
+            "the control is expanded"
+        );
+        d.click("Open");
+        assert!(d.el("Item").is_none(), "a second press closes it");
+        d.click("Open");
+        assert!(d.el("Item").is_some());
+        // An auto popover closes on a press outside.
+        d.click("Far");
+        assert!(d.el("Item").is_none(), "light dismiss closes it");
+        // interestfor: shown while hovered, gone once the pointer leaves.
+        hover(d, "Tip", 90);
+        let (tip, card) = (d.get("Tip"), d.get("CardText"));
+        assert!(
+            card.y > tip.y + tip.height - 0.5 || card.y + card.height < tip.y + 0.5,
+            "the hint sits off its control: {card:?} vs {tip:?}"
+        );
+        hover(d, "Far", 20);
+        assert!(
+            d.el("CardText").is_none(),
+            "the hint leaves with the interest"
+        );
+    });
+}

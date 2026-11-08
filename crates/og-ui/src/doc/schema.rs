@@ -694,6 +694,32 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Name,
         "With customize: its name in the saved HUD layout (default: its path)."
     ),
+    // Tooltips and popovers (docs/ui.md §2: HTML's).
+    p!(
+        "title",
+        Ty::Text,
+        "Its tooltip, shown after the pointer rests on it (HTML `title`); also its description for a screen reader."
+    ),
+    p!(
+        "popover",
+        Ty::Word(&["auto", "manual", "hint"]),
+        "Shown over the page against the control that opened it, not in its place (HTML `popover`): auto closes on a press outside or Back and closes other auto ones; manual only when a control closes it; hint is a rich tooltip an `interestfor` control shows."
+    ),
+    p!(
+        "popovertarget",
+        Ty::Name,
+        "The id of the popover a press on it opens, closes or toggles (HTML `popovertarget`)."
+    ),
+    p!(
+        "popovertargetaction",
+        Ty::Word(&["toggle", "show", "hide"]),
+        "What its press does to its popovertarget (default toggle)."
+    ),
+    p!(
+        "interestfor",
+        Ty::Name,
+        "The id of the popover shown while the pointer rests on it or it holds the keyboard focus (HTML `interestfor`)."
+    ),
     // ARIA (docs/ui.md §2: semantics through ARIA).
     p!(
         "role",

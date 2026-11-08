@@ -275,6 +275,9 @@ impl Ui {
                 build_children,
             );
         }
+        if r.has("popover") {
+            return self.build_popover(b, n, id.as_str(), &r, path, key, built, build_children);
+        }
         let t = self.theme;
         let text_of = |r: &Resolved, b: &Build<'_>| -> String {
             if let Some(k) = r.str("key")
@@ -461,6 +464,7 @@ impl Ui {
                 }
                 self.write_back(b, n, "open", json!(open));
             }
+            self.popover_invoker(b, &r, key, resp);
             self.fire(b, n, key, &path, resp);
             return Some(path);
         }
@@ -886,6 +890,7 @@ impl Ui {
                 self.world_effects(b, n, &styled, last, &path);
             }
         }
+        self.popover_invoker(b, &styled, key, resp);
         self.note_built(built);
         self.fire(b, n, key, &path, resp);
         Some(path)

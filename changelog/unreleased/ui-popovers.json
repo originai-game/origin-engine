@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "HTML tooltips and popovers: title on any element is its tooltip and description; popover (auto, manual, hint) shows an element in a layer against the control that opened it; popovertarget/popovertargetaction toggle it on a press, interestfor shows a hint while its control is hovered or focused."
+    }
+  ]
+}

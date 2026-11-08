@@ -1092,6 +1092,18 @@ impl Parser {
                 self.list_fors.push((i, a.value.clone(), a.at));
                 continue;
             }
+            // A bare `popover` is HTML's auto.
+            if a.name == "popover" && !a.bound && matches!(a.value.as_str(), "" | "true") {
+                self.prop(
+                    i,
+                    internal,
+                    "popover",
+                    PropValue::Lit(Lit::Str("auto".into())),
+                    a.at,
+                    "auto",
+                )?;
+                continue;
+            }
             // An input's type chose its kind; a checkbox's `switch` is how
             // it draws, and a toggle is a switch.
             if tag == "input" && internal != "field" && (a.name == "type" || a.name == "switch") {
