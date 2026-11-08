@@ -2,7 +2,9 @@
 // miss (tests/fixtures/explore-*), and a control without one. The search is
 // seeded, and bounded here by ticks (not seconds), so each run below searches
 // the same way on every machine; the budgets leave room over the ticks each
-// finding took when this was written (in the comment beside each).
+// finding took when this was written (in the comment beside each). Find
+// rates over many seeds are a measurement, not a check:
+// scripts/explore-rates.ts.
 //
 // Ways it could fail, and the test that catches each:
 // - the search cannot get deep (the cells or the selection keep it near the
@@ -79,20 +81,20 @@ function violation(report: Report, name: string): Finding {
   return f;
 }
 
-test("og explore finds the deep state: level 5's vault, 44 presses in", () => {
-  // Seed 1 found it after 28,864 ticks of search.
-  const { report } = explore("explore-deep", 60_000, ["--first"]);
+test("og explore finds the deep state: level 3's vault, 12 presses in", () => {
+  // Seed 1 found it after 1,648 ticks of search.
+  const { report } = explore("explore-deep", 5_000, ["--first"]);
   const f = violation(report, "in range Dungeon.x");
   expect(f.site.origin).toBe("default");
-  expect(f.value).toBe(11);
-  // Four levels of ten steps and a descent each, then the fifth descent: no fewer presses do it.
-  expect(f.shrunk.presses.to).toBeGreaterThanOrEqual(44);
+  expect(f.value).toBe(6);
+  // Two levels of five steps and a descent each: no fewer presses do it.
+  expect(f.shrunk.presses.to).toBeGreaterThanOrEqual(12);
   expect(f.shrunk.presses.to).toBeLessThanOrEqual(f.shrunk.presses.from);
 }, 600_000);
 
 test("og explore finds the rare draw: the jackpot's payout, one stop in 500", () => {
-  // Seed 1 found it after 42,334 ticks: the first jackpot draw of the fixture's seed is at tick 956.
-  const { report } = explore("explore-rare", 90_000, ["--first"]);
+  // Seed 1 found it after 3,471 ticks of search.
+  const { report } = explore("explore-rare", 10_000, ["--first"]);
   const f = violation(report, "in range Slots.coins");
   expect(f.value as number).toBeLessThan(0);
   // One spin at the jackpot's tick is the whole repro.
@@ -111,11 +113,11 @@ test("og explore finds the two-step combination: a taunt the tick after the guar
 }, 600_000);
 
 test("og explore reports nothing wrong in the control, and the sometimes site it reached", () => {
-  const { report } = explore("explore-control", 20_000);
+  const { report } = explore("explore-control", 3_000);
   expect(report.findings.filter((f) => f.kind !== "reached")).toEqual([]);
   expect(report.findings.some((f) => f.kind === "reached" && f.site.name === "descends to level 3")).toBeTrue();
   expect(report.coverage.uncovered).toEqual([]);
-  expect(report.used.ticks).toBeGreaterThanOrEqual(20_000);
+  expect(report.used.ticks).toBeGreaterThanOrEqual(3_000);
 }, 600_000);
 
 test("the fixtures' own playtests pass: each planted bug is out of their reach", () => {

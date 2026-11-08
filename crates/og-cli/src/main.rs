@@ -94,7 +94,8 @@ commands:
                       hash in a fresh og run and on the web host, and written as a repro and a bun:test
                       playtest beside report.json in --out (default <project>/og-out/explore); defaults
                       60 s, 200000 ticks, 256 MB of snapshots, 1 job, horizon 3600 ticks; --first
-                      stops at the first violation or error; the explore guide: og api show explore
+                      stops at the first violation or error and reports only those; the explore
+                      guide: og api show explore
   render [project] --commands \"t:action[:args];...\" | --timeline <name> [--fps F] [--from S] [--to S]
       [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS]
       [--jobs N] [--seed S] [--json] [--no-check]

@@ -113,7 +113,9 @@ workers), `--memory` (the archive's snapshots; the least promising cells
 go first), `--horizon` (the latest tick a burst starts at) and `--jobs`
 (worker processes, each its own engine and seed: N jobs search N ways at
 once). `--first` stops every worker at the first violation or error, for
-a check that only needs to know whether one exists.
+a check that only needs to know whether one exists; only violations and
+errors are then shrunk and reported as findings, the sites reached are in
+`coverage`.
 
 ## 6. Pitfalls
 

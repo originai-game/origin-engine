@@ -2,7 +2,7 @@
   "added": [
     {
       "member": "og explore",
-      "summary": "`og explore [project]` searches the game's states from snapshots (Go-Explore: an archive of cells from the reflected fields and the time, returns by restore, bursts of the game's actions, intents and waits) for invariant violations, systems that throw and the sometimes, reachable and each sites it reaches. Each finding is shrunk to the fewest presses, replayed from tick 0 to the same world hash in-process, in a fresh og run and on the web host, and written as a repro and a bun:test playtest beside report.json. Budgets: --seconds, --ticks, --memory, --horizon; --jobs N worker processes; --first stops at the first violation or error. The explore guide covers the workflow."
+      "summary": "`og explore [project]` searches the game's states from snapshots (Go-Explore: an archive of cells from the reflected fields and the time, returns by restore, bursts of the game's actions, intents and waits) for invariant violations, systems that throw and the sometimes, reachable and each sites it reaches. Each finding is shrunk to the fewest presses, replayed from tick 0 to the same world hash in-process, in a fresh og run and on the web host, and written as a repro and a bun:test playtest beside report.json. Budgets: --seconds, --ticks, --memory, --horizon; --jobs N worker processes; --first stops at the first violation or error and reports only those as findings. The explore guide covers the workflow."
     }
   ]
 }

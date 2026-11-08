@@ -813,7 +813,9 @@ const findings: unknown[] = [];
 const rank = (e: Event) => ({ error: 0, violated: 1, fired: 2 })[e.outcome];
 const kindOf = (e: Event) => ({ error: "error", violated: "violation", fired: "reached" })[e.outcome];
 let index = 0;
-for (const f of [...bySite.values()].sort((a, b) => (a.event.outcome === b.event.outcome ? a.event.tick - b.event.tick : rank(a.event) - rank(b.event)))) {
+// With --first only what stopped the search becomes a finding; the sites reached are in coverage.
+const toReport = [...bySite.values()].filter((f) => !stopAtFirst || f.event.outcome !== "fired");
+for (const f of toReport.sort((a, b) => (a.event.outcome === b.event.outcome ? a.event.tick - b.event.tick : rank(a.event) - rank(b.event)))) {
   index++;
   const id = `${kindOf(f.event)}-${index}`;
   const before = new Set(f.steps.map((s) => s.unit)).size;
