@@ -26,6 +26,7 @@ pub struct BindingContext {
     pub node: MountedNode,
     pub inputs: Arc<BTreeMap<String, SourceId>>,
     pub rows: Arc<BTreeMap<String, RowRef>>,
+    pub row_key: String,
     /// Current-document indices resolved through this instance's lexical ancestry.
     pub selector_nodes: Arc<BTreeMap<usize, MountedNode>>,
 }
@@ -381,6 +382,7 @@ mod tests {
                 mount: id("screen"),
                 key: 1,
             },
+            row_key: "a".into(),
             selector_nodes: Arc::default(),
             inputs: Arc::new(
                 ["editable", "external", "derived"]
@@ -486,6 +488,7 @@ mod tests {
                         mount: SourceId::new("inventory", "screen"),
                         key,
                     },
+                    row_key: key.to_string(),
                     selector_nodes: Arc::default(),
                     inputs: Arc::default(),
                     rows: Arc::new(BTreeMap::from([(
@@ -609,6 +612,7 @@ mod tests {
                     &mut session,
                     BindingContext {
                         node: node.clone(),
+                        row_key: String::new(),
                         inputs: Arc::default(),
                         rows: Arc::default(),
                         selector_nodes: Arc::default(),
@@ -684,6 +688,7 @@ mod tests {
                 &mut session,
                 BindingContext {
                     node: target,
+                    row_key: String::new(),
                     inputs: Arc::default(),
                     rows: Arc::default(),
                     selector_nodes: Arc::new(BTreeMap::from([(7, ancestor.clone())])),
@@ -715,6 +720,7 @@ mod tests {
             &mut session,
             BindingContext {
                 node: ancestors[0].clone(),
+                row_key: String::new(),
                 inputs: Arc::default(),
                 rows: Arc::default(),
                 selector_nodes: Arc::default(),
@@ -749,6 +755,7 @@ mod tests {
                 mount: SourceId::new("hud", "main"),
                 key: 1,
             },
+            row_key: String::new(),
             selector_nodes: Arc::default(),
             inputs: Arc::default(),
             rows: Arc::default(),

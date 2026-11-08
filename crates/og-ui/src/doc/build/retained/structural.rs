@@ -283,6 +283,7 @@ impl RetainedHost {
         };
         let mut context = each.context.clone();
         if let Some(key) = key {
+            context.row_key = key.into();
             Arc::make_mut(&mut context.rows).insert(
                 var.clone(),
                 RowRef {

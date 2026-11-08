@@ -166,6 +166,7 @@ impl RetainedHost {
                 },
                 inputs: Arc::new(registration.inputs.clone()),
                 rows: Arc::default(),
+                row_key: String::new(),
                 selector_nodes: Arc::default(),
             };
             match self.compile(
@@ -901,7 +902,7 @@ impl ElementInstance {
             vm: &Value::Null,
             env,
             locals: Vec::new(),
-            row_key: String::new(),
+            row_key: self.context.row_key.clone(),
             inherited,
             events: Vec::new(),
             writes: Vec::new(),
@@ -944,6 +945,7 @@ impl Ui {
             },
             inputs: Arc::new(inputs),
             rows: Arc::default(),
+            row_key: String::new(),
             selector_nodes: Arc::default(),
         };
         let root = host.compile(
@@ -1016,6 +1018,91 @@ mod tests {
     use super::*;
     use crate::reactive::session::Command;
     use crate::{InputFrame, UiDesc, Viewport};
+
+    #[test]
+    fn retained_actions_report_the_innermost_collection_key_after_restore() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "actions.svelte",
+                r#"
+            <meta name="component" content="actions">
+            <column>
+                {#each $outer as z (z.id)}
+                    <column id="Group">
+                        {#each $inner as a (a.id)}
+                            <button id="Inner" onclick={pick}>inner</button>
+                        {/each}
+                        <button id="Outer" onclick={pick}>outer</button>
+                    </column>
+                {/each}
+                <button id="Outside" onclick={pick}>outside</button>
+            </column>
+        "#,
+            )
+            .unwrap(),
+        );
+        let mut inputs = BTreeMap::new();
+        for (name, key) in [("outer", "group"), ("inner", "entry/#%")] {
+            let source = SourceId::new("test", name);
+            ui.reactive
+                .execute(Command::Collection {
+                    source: source.clone(),
+                    key: "id".into(),
+                    items: vec![json!({"id":key}).as_object().unwrap().clone()],
+                })
+                .unwrap();
+            inputs.insert(name.into(), source);
+        }
+        ui.mount_document(
+            SourceId::new("test", "actions"),
+            "actions",
+            inputs,
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let tick = |ui: &mut Ui, input| {
+            ui.begin(input, Viewport::new(400.0, 500.0));
+            ui.end();
+        };
+        tick(&mut ui, InputFrame::default());
+        let snapshot = ui.save_state();
+        for restored in [false, true] {
+            if restored {
+                ui.restore_state(&snapshot).unwrap();
+                tick(&mut ui, InputFrame::default());
+            }
+            for (label, expected) in [("inner", "entry/#%"), ("outer", "group"), ("outside", "")] {
+                let path = ui
+                    .probe_elements()
+                    .into_iter()
+                    .find(|node| node.text == label)
+                    .unwrap()
+                    .path;
+                ui.begin(InputFrame::default(), Viewport::new(400.0, 500.0));
+                ui.set_focus(&path);
+                ui.end();
+                assert_eq!(ui.focus_path(0), path);
+                ui.take_doc_events();
+                tick(
+                    &mut ui,
+                    InputFrame {
+                        keys: vec![crate::UiKey::Enter],
+                        keys_pressed: vec!["Enter"],
+                        ..Default::default()
+                    },
+                );
+                let events: Vec<_> = ui
+                    .take_doc_events()
+                    .into_iter()
+                    .filter(|event| event.name == "pick")
+                    .collect();
+                assert_eq!(events.len(), 1, "{label}, restored={restored}");
+                assert_eq!(events[0].row_key, expected);
+                assert_eq!(events[0].path, path);
+            }
+        }
+    }
 
     #[test]
     fn virtual_mounts_defer_offscreen_styles_and_keep_far_row_identity() {
