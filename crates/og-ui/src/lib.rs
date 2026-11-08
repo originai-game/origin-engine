@@ -96,8 +96,7 @@ pub use hud_layout::{HudEditInfo, HudEditorDesc, HudEditorResponse, HudPlacement
 pub use id::{Id, ui_id, ui_idi};
 pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
 pub use juice::{
-    BurstDesc, CounterDesc, ScreenTransition, ScreenTransitionDesc, ScreenWipe, ShakeDesc, Side,
-    format_count,
+    BurstDesc, CounterDesc, ScreenTransitionDesc, ScreenWipe, ShakeDesc, Side, format_count,
 };
 pub use layers::{LayerInfo, LayerOp};
 pub use layout::anchor;

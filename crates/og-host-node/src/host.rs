@@ -1366,9 +1366,6 @@ impl UiApi for NodeHost {
     fn og_ui_scroll_into_view(&self, path: String, center: bool) {
         rt::og_ui_scroll_into_view(path, center)
     }
-    fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String {
-        rt::og_ui_screen_transition(id, screen, desc)
-    }
     fn og_ui_open_anchor(&self, id: String, desc: Option<String>) {
         rt::og_ui_open_anchor(id, desc)
     }

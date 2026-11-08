@@ -140,11 +140,6 @@ module ui {
 | [`og.ui.memory`](ui/fn-memory.md) | function | `(id: string, initial: number): number` | A number the UI keeps for an id under the open element (a component's tab, a count-up's start tick), in snapshots like the rest of the UI state. |
 | [`og.ui.remember`](ui/fn-remember.md) | function | `(id: string, value: number): void` | Set a number memory (see memory). |
 | [`og.ui.tick`](ui/fn-tick.md) | function | `(): number` | Frames the UI has built: its clock, for animations by the tick. |
-| [`ScreenWipe`](ui/type-ScreenWipe.md) | enum |  | How a screen transition covers the old screen and reveals the new one. |
-| [`WipeSide`](ui/type-WipeSide.md) | enum |  | Where a wipe or a slide comes from. |
-| [`ScreenTransitionDesc`](ui/type-ScreenTransitionDesc.md) | desc struct |  | How a screen transition looks. |
-| [`ScreenTransitionResult`](ui/type-ScreenTransitionResult.md) | struct |  | Where a screen transition is this tick. |
-| [`og.ui.screenTransition`](ui/fn-screenTransition.md) | function | `(id: string, screen: string, desc?: ScreenTransitionDesc): ScreenTransitionResult` | A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). |
 | [`og.ui.previewViewport`](ui/fn-previewViewport.md) | function | `(world: World, viewport: Viewport \| null): void` | Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. |
 | [`FloatSide`](ui/type-FloatSide.md) | enum |  | Where a floating surface hangs off what it belongs to; start and end follow the writing direction. |
 | [`FloatAlign`](ui/type-FloatAlign.md) | enum |  | How a floating surface lines up with what it belongs to. |
@@ -364,7 +359,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 2506</sub>
+<sub>Module `ui` line 2458</sub>
 
 ```ogt
 column UiMaterial {
@@ -375,4 +370,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 2513</sub>
+<sub>Module `ui` line 2465</sub>

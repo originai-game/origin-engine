@@ -107,6 +107,18 @@
         "MetaDesc",
         "MetaKind"
       ]
+    },
+    {
+      "member": "og.ui.screenTransition, og.ui.ScreenTransitionDesc, og.ui.ScreenTransitionResult, og.ui.ScreenWipe, og.ui.WipeSide",
+      "change": "The screen transition builder is removed.",
+      "fix": "Make each game screen a `type screen` document and give it `@view-transition { navigation: auto; }` with `::view-transition-old(root) { animation: 400ms -og-iris; }` (or `-og-wipe-from-right`, `-og-dissolve`, `-og-slide-from-bottom`); `::view-transition { background-color: #102030; background-image: url(\"ui/covers/stars.png\"); }` sets the cover's colour or texture. Mounting and unmounting the screen plays it.",
+      "find": [
+        "og.ui.screenTransition(",
+        "ScreenTransitionDesc",
+        "ScreenTransitionResult",
+        "ScreenWipe",
+        "WipeSide"
+      ]
     }
   ]
 }

@@ -965,9 +965,6 @@ impl Ui {
         self.state
             .anims
             .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
-        self.state
-            .screens
-            .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
         let tree = &self.tree;
         self.docs
             .validity

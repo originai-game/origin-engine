@@ -749,21 +749,19 @@ icon, range 8. Every kit screen draws from it (a style pack keeps its own
 icons; the 32-cell PNG grid is the fallback when the set does not load);
 og-tests-cooked's `tests/materials_gfx.rs` renders them.
 
-## Juice and screen transitions (`src/juice.rs`)
+## Juice and screen covers (`src/juice.rs`)
 
 - `counter(id, value, CounterDesc)`: a label that counts (ease-out cubic,
   by the tick, f64) from what it shows to `value` whenever `value` changes;
   the first count starts at `from` (none: no count). Grouped with commas,
   decimals, prefix and suffix; a style's `motion.pop` bumps it on landing.
-- `screen_transition(id, wanted, ScreenTransitionDesc) -> ScreenTransition`:
-  call every tick with the screen the game wants and build `shown`. A change
-  starts a cover over the old screen (half the duration), switches `shown`
-  at full cover, and reveals the new one. `Fade`, `Wipe`, `Iris` (2 px
+- `cover(&ScreenTransitionDesc, amount, revealing)`: a full-frame cover at
+  `amount` this frame, for a caller that times it (a timeline's transition
+  track, a screen's `@view-transition`): `Fade`, `Wipe`, `Iris` (2 px
   bands), `Dissolve` (24 px cells in a fixed hash order) and `Slide`, in a
   colour or a texture region stretched over the surface, from any side; drawn
-  after every other command (over every layer) through the overlay pass. The
-  state (`shown`, `wanted`, the start tick) is in `Ui::save_state`. Under
-  `reduced_motion` every kind is a fade.
+  after every other command (over every layer) through the overlay pass.
+  Under `reduced_motion` every kind is a fade.
 
 ## UI sounds
 

@@ -1107,8 +1107,6 @@ pub trait UiApi: Wire {
     fn og_ui_remember(&self, id: String, value: f64);
     /// `og.ui.tick`
     fn og_ui_tick(&self) -> u32;
-    /// `og.ui.screenTransition`
-    fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String;
     /// `og.ui.previewViewport`
     fn og_ui_preview_viewport(&self, world: u32, viewport: String);
     /// `og.ui.props`
@@ -1943,7 +1941,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_memory",
     "og_ui_remember",
     "og_ui_tick",
-    "og_ui_screen_transition",
     "og_ui_preview_viewport",
     "og_ui_props",
     "og_ui_define_timeline",

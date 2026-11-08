@@ -90,8 +90,6 @@ export const widgets = {
   spawnMass: (template: number, instances: Api.MassInstance[]): void =>
     abi().og_ui_spawn_mass(template, JSON.stringify(instances)),
   massCount: (template: number): number => abi().og_ui_mass_count(template),
-  screenTransition: (id: string, screen: string, desc?: Api.ScreenTransitionDesc): Api.ScreenTransitionResult =>
-    parse(abi().og_ui_screen_transition(id, screen, json(desc))),
   previewViewport: (world: Api.World, viewport: Api.Viewport | null): void =>
     abi().og_ui_preview_viewport(worldId(world), JSON.stringify(viewport ?? null)),
   // The element model and motion (docs/ui.md §2, §3.1).

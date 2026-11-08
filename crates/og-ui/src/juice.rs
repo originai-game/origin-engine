@@ -100,29 +100,6 @@ pub struct ScreenTransitionDesc {
     pub from: Side,
 }
 
-/// Where a screen transition is this tick.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ScreenTransition {
-    /// The screen to build this tick: the old one until the cover is
-    /// complete, then the new one.
-    pub shown: String,
-    /// Covering (the old screen goes).
-    pub covering: bool,
-    /// Revealing (the new screen comes).
-    pub revealing: bool,
-    /// How much of the surface is covered (0–1).
-    pub cover: f32,
-}
-
-/// A transition's memory: the screen shown, the one asked for, and the
-/// tick the change started (0: settled).
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct ScreenState {
-    pub shown: String,
-    pub wanted: String,
-    pub since: u64,
-}
-
 /// What the frame's cover draws (after everything else).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Cover {
@@ -346,95 +323,8 @@ impl Ui {
         }
     }
 
-    /// Ticks of one half (cover, or reveal) of a screen transition: its
-    /// duration, else the style's screen duration, else `slow` × 2.
-    pub(crate) fn cover_half_ticks(&self, desc: &ScreenTransitionDesc) -> u64 {
-        let t = self.theme;
-        let ms = if desc.duration_ms > 0.0 {
-            desc.duration_ms
-        } else if t.art.motion.screen_ms > 0.0 {
-            t.art.motion.screen_ms
-        } else {
-            crate::theme::TIMING.screen_slows * t.durations_ms.slow
-        };
-        (self.ticks_for(ms) as u64).div_ceil(2).max(1)
-    }
-
-    /// A transition between game screens, drawn over the whole frame: pass
-    /// the screen the game wants every tick and build the one it answers.
-    /// When the wanted screen changes, the cover closes over the old screen
-    /// (half the duration), the answer switches, and the cover opens on the
-    /// new one. `reduced_motion` makes every kind a fade.
-    pub fn screen_transition(
-        &mut self,
-        id: impl Into<Id>,
-        wanted: &str,
-        desc: &ScreenTransitionDesc,
-    ) -> ScreenTransition {
-        let t = self.theme;
-        let id: Id = id.into();
-        let key = child_key(1, &format!("screen:{}", id.as_str()));
-        self.touched.insert(key);
-        let now = self.state.tick;
-        let half = self.cover_half_ticks(desc);
-        let st = self
-            .state
-            .screens
-            .entry(key)
-            .or_insert_with(|| ScreenState {
-                shown: wanted.to_owned(),
-                wanted: wanted.to_owned(),
-                since: 0,
-            });
-        if st.wanted != wanted {
-            st.wanted = wanted.to_owned();
-            if st.since == 0 {
-                st.since = now;
-            } else if now - st.since >= half {
-                // Revealing already: cover again from here.
-                st.since = now;
-            }
-        }
-        let mut answer = ScreenTransition {
-            shown: st.shown.clone(),
-            ..ScreenTransition::default()
-        };
-        if st.since != 0 {
-            let elapsed = now - st.since;
-            if elapsed + 1 < half {
-                answer.covering = true;
-                answer.cover = (elapsed + 1) as f32 / half as f32;
-            } else if elapsed + 1 < 2 * half {
-                st.shown = st.wanted.clone();
-                answer.shown = st.shown.clone();
-                answer.revealing = true;
-                answer.cover = 1.0 - (elapsed + 1 - half) as f32 / half as f32;
-            } else {
-                st.shown = st.wanted.clone();
-                st.since = 0;
-                answer.shown = st.shown.clone();
-            }
-        }
-        if answer.cover > 0.0 {
-            self.cover = Some(Cover {
-                kind: if t.reduced_motion {
-                    ScreenWipe::Fade
-                } else {
-                    desc.kind
-                },
-                from: desc.from,
-                e: smooth(answer.cover),
-                revealing: answer.revealing,
-                color: desc.color.unwrap_or(t.palette.backdrop),
-                texture: desc.texture,
-            });
-        }
-        answer
-    }
-
     /// Covers the whole frame by `amount` (0 clear to 1 covered) this frame,
-    /// drawn as [`Ui::screen_transition`]'s cover is, with no screen state:
-    /// for a caller that times the cover itself (a timeline's transition
+    /// with no screen state: for a caller that times the cover itself (a timeline's transition
     /// track, a function of its time). `revealing` draws the second half's
     /// shape (a wipe leaving past the far side). Reduced motion fades.
     pub fn cover(&mut self, desc: &ScreenTransitionDesc, amount: f32, revealing: bool) {

@@ -82,6 +82,15 @@ pub(crate) struct DocRecord {
 }
 
 /// The documents a UI knows and what their mounts keep between ticks.
+/// A view transition's covers still opening after their layer left: the
+/// covers, their colour and image, and the tick it left.
+pub(crate) type Revealing = (
+    Vec<crate::motion::css::CssAnimation>,
+    Option<crate::Srgba>,
+    Option<String>,
+    u64,
+);
+
 #[derive(Clone, Debug, Default)]
 pub struct DocHost {
     /// The records of the retained elements being emitted, innermost last.
@@ -149,12 +158,11 @@ pub struct DocHost {
     /// change. One never built is not built while hidden.
     pub(crate) keeps_hidden: bool,
     /// View-transition covers still opening after their layer left: the
-    /// covers, their colour and the tick it left.
-    pub(crate) revealing: Vec<(
-        Vec<crate::motion::css::CssAnimation>,
-        Option<crate::Srgba>,
-        u64,
-    )>,
+    /// covers, their colour and image and the tick it left.
+    pub(crate) revealing: Vec<Revealing>,
+    /// The textures documents name by asset path (a view transition's
+    /// cover image), by path.
+    pub(crate) textures: BTreeMap<String, og_render::TextureHandle>,
     /// The on-screen controls documents lay out (`<joystick action>`,
     /// `<dpad action>`, `<button data-og-touch>`), by render key, their
     /// rects filled from the frame's hits; `zones_changed`: og-input's
@@ -253,6 +261,12 @@ impl Ui {
     /// when it fits the new one, else starts it again.
     pub fn define_rive(&mut self, id: &str, artboard: Arc<crate::rive::Artboard>) {
         self.docs.rive.insert(id.to_owned(), artboard);
+    }
+
+    /// Binds the texture asset `path` a document names
+    /// ([`UiDocument::cover_image`]) to its loaded handle.
+    pub fn define_texture(&mut self, path: &str, texture: og_render::TextureHandle) {
+        self.docs.textures.insert(path.to_owned(), texture);
     }
 
     /// Binds the UI material asset `path` a document's `-og-material`

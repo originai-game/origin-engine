@@ -2967,12 +2967,6 @@ pub fn og_ui_tick(env: Env) -> u32 {
     <Host as UiApi>::og_ui_tick(&Host)
 }
 
-#[napi(js_name = "og_ui_screen_transition")]
-pub fn og_ui_screen_transition(env: Env, id: String, screen: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_screen_transition(&Host, id, screen, desc)
-}
-
 #[napi(js_name = "og_ui_preview_viewport")]
 pub fn og_ui_preview_viewport(env: Env, world: u32, viewport: String) {
     let _env = crate::EnvScope::enter(&env);

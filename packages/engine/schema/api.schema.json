@@ -11970,10 +11970,6 @@
         "HudEdit",
         "A11yNode",
         "A11yTree",
-        "ScreenWipe",
-        "WipeSide",
-        "ScreenTransitionDesc",
-        "ScreenTransitionResult",
         "FloatSide",
         "FloatAlign",
         "PopoverDesc",
@@ -12980,32 +12976,6 @@
           "doc": "Frames the UI has built: its clock, for animations by the tick.",
           "params": [],
           "returns": "u32",
-          "publish": true
-        },
-        {
-          "name": "screenTransition",
-          "doc": "A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.",
-          "params": [
-            {
-              "name": "id",
-              "type": "String",
-              "optional": false,
-              "doc": "Its id."
-            },
-            {
-              "name": "screen",
-              "type": "String",
-              "optional": false,
-              "doc": "The screen the game wants now."
-            },
-            {
-              "name": "desc",
-              "type": "ScreenTransitionDesc",
-              "optional": true,
-              "doc": "Kind, duration, colour or texture, side."
-            }
-          ],
-          "returns": "ScreenTransitionResult",
           "publish": true
         },
         {
@@ -47184,126 +47154,6 @@
         "nodes",
         "focusOrder",
         "focused"
-      ],
-      "additionalProperties": false
-    },
-    "ScreenWipe": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "How a screen transition covers the old screen and reveals the new one.",
-      "type": "string",
-      "enum": [
-        "fade",
-        "wipe",
-        "iris",
-        "dissolve",
-        "slide"
-      ],
-      "x-og-variants": {
-        "fade": "The cover fades in and out.",
-        "wipe": "An edge sweeps across.",
-        "iris": "A circle closes on the centre and opens again.",
-        "dissolve": "Cells appear in a fixed scattered order.",
-        "slide": "A sheet slides over and away."
-      }
-    },
-    "WipeSide": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "Where a wipe or a slide comes from.",
-      "type": "string",
-      "enum": [
-        "left",
-        "right",
-        "top",
-        "bottom"
-      ],
-      "x-og-variants": {
-        "left": "From the left.",
-        "right": "From the right.",
-        "top": "From the top.",
-        "bottom": "From the bottom."
-      }
-    },
-    "ScreenTransitionDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "How a screen transition looks.",
-      "type": "object",
-      "properties": {
-        "kind": {
-          "$ref": "#/$defs/ScreenWipe",
-          "description": "The movement.",
-          "default": "fade"
-        },
-        "durationMs": {
-          "type": "number",
-          "description": "Cover and reveal together; 0 is twice motion.duration.slow.",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "ms"
-        },
-        "color": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Paint"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The cover's colour (the texture's tint); null is backdrop.",
-          "default": null
-        },
-        "texture": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Texture"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A texture stretched over the surface as the cover; null is the flat colour.",
-          "default": null
-        },
-        "from": {
-          "$ref": "#/$defs/WipeSide",
-          "description": "Where a wipe or a slide comes from.",
-          "default": "left"
-        }
-      },
-      "additionalProperties": false
-    },
-    "ScreenTransitionResult": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "Where a screen transition is this tick.",
-      "type": "object",
-      "properties": {
-        "shown": {
-          "type": "string",
-          "description": "The screen to build this tick: the old one until the cover closes, then the new one."
-        },
-        "covering": {
-          "type": "boolean",
-          "description": "The cover is closing over the old screen."
-        },
-        "revealing": {
-          "type": "boolean",
-          "description": "The cover is opening on the new screen."
-        },
-        "cover": {
-          "type": "number",
-          "description": "How much of the surface is covered, 0 to 1.",
-          "x-og-unit": "ratio"
-        }
-      },
-      "required": [
-        "shown",
-        "covering",
-        "revealing",
-        "cover"
       ],
       "additionalProperties": false
     },

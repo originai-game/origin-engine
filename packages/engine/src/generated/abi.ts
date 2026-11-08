@@ -993,8 +993,6 @@ export interface HostAbi<A, V> {
   og_ui_remember(id: string, value: number): void;
   /** `og.ui.tick` */
   og_ui_tick(): number;
-  /** `og.ui.screenTransition` */
-  og_ui_screen_transition(id: string, screen: string, desc: string | undefined): string;
   /** `og.ui.previewViewport` */
   og_ui_preview_viewport(world: number, viewport: string): void;
   /** `og.ui.props` */
@@ -1772,7 +1770,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_memory",
   "og_ui_remember",
   "og_ui_tick",
-  "og_ui_screen_transition",
   "og_ui_preview_viewport",
   "og_ui_props",
   "og_ui_define_timeline",

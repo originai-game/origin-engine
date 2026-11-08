@@ -84,15 +84,9 @@ impl Ui {
             u64_(&mut b, t.leaving);
         }
         u32_(&mut b, s.next_toast);
-        u32_(&mut b, s.screens.len() as u32);
-        for (k, sc) in &s.screens {
-            u64_(&mut b, *k);
-            for text in [&sc.shown, &sc.wanted] {
-                u32_(&mut b, text.len() as u32);
-                b.extend_from_slice(text.as_bytes());
-            }
-            u64_(&mut b, sc.since);
-        }
+        // The screen transitions og.ui.screenTransition kept (none since it
+        // went: documents' view transitions are their layers').
+        u32_(&mut b, 0);
         u64_(&mut b, s.feedback_rng);
         b.extend_from_slice(&s.feedback_last);
         for v in s.voices {
@@ -656,19 +650,12 @@ impl Reader<'_> {
             });
         }
         s.next_toast = self.u32()?;
+        // An older state's screen transitions, dropped with their builder.
         for _ in 0..self.u32()? {
-            let k = self.u64()?;
-            let shown = self.string()?;
-            let wanted = self.string()?;
-            let since = self.u64()?;
-            s.screens.insert(
-                k,
-                crate::juice::ScreenState {
-                    shown,
-                    wanted,
-                    since,
-                },
-            );
+            self.u64()?;
+            self.string()?;
+            self.string()?;
+            self.u64()?;
         }
         if v9 {
             for name in V9_VOICES {

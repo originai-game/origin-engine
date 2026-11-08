@@ -375,8 +375,6 @@ pub(crate) struct State {
     pub anims: IdMap<u64, Anim>,
     pub toasts: Vec<Toast>,
     pub next_toast: u32,
-    /// Screen transitions by key.
-    pub screens: IdMap<u64, crate::juice::ScreenState>,
     /// The host's voice entity for each UI event's sound (bits; 0: none),
     /// by [`crate::tokens::SoundEvent`] index.
     pub voices: [u64; crate::tokens::SoundEvent::COUNT],

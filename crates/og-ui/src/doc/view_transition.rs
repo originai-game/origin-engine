@@ -22,7 +22,9 @@
 //! `-from-right`, `-from-top` or `-from-bottom`). On `old` a cover closes
 //! over the outgoing view, and the incoming view shows once it has closed;
 //! on `new` it opens on the incoming view. `::view-transition
-//! { background-color }` is the cover's colour.
+//! { background-color }` is the cover's colour, and `background-image:
+//! url("<texture asset>")` covers with that texture stretched over the
+//! frame, tinted by the colour (white without one).
 
 use super::syntax::Error;
 use super::*;
@@ -38,6 +40,9 @@ pub struct ViewTransition {
     pub new: Vec<CssAnimation>,
     /// The covers' colour (`None`: the style's backdrop).
     pub color: Option<Srgba>,
+    /// A texture asset the covers show, stretched over the frame
+    /// (`background-image: url("…")`), bound when the document loads.
+    pub image: Option<String>,
     /// The pseudo-element rules that apply (their types among the
     /// declared ones), in cascade order: what styles the named groups.
     pub rules: Vec<Rule>,
@@ -274,7 +279,10 @@ pub(super) fn apply(
         let mut longhands = Vec::new();
         for d in variables::declarations(body).map_err(|e| (at, e))? {
             let allowed = match part {
-                Part::Overlay => matches!(d.name.as_str(), "background" | "background-color"),
+                Part::Overlay => matches!(
+                    d.name.as_str(),
+                    "background" | "background-color" | "background-image"
+                ),
                 _ => d.name.starts_with("animation"),
             };
             if !allowed {
@@ -283,7 +291,9 @@ pub(super) fn apply(
                     format!(
                         "{selector} takes {}, not {}",
                         match part {
-                            Part::Overlay => "background-color (the cover's colour)",
+                            Part::Overlay => {
+                                "background-color (the cover's colour) and background-image (its texture)"
+                            }
                             _ => "animation",
                         },
                         d.name
@@ -291,7 +301,16 @@ pub(super) fn apply(
                 ));
             }
             if part == Part::Overlay {
-                longhands.push(("background-color".into(), d.source.trim().to_string()));
+                // `background` is a colour or an image, as written.
+                let value = d.source.trim().to_string();
+                let image = d.name == "background-image"
+                    || (d.name == "background" && value.starts_with("url("));
+                let name = if image {
+                    "background-image"
+                } else {
+                    "background-color"
+                };
+                longhands.push((name.into(), value));
                 continue;
             }
             for d in super::motion::expand(d, &keyframes).map_err(|e| (at, e))? {
@@ -323,12 +342,15 @@ pub(super) fn apply(
         ));
     }
     parts.sort_by_key(|(rank, _)| *rank);
-    let color = parts
-        .iter()
-        .filter(|(_, r)| r.part == Part::Overlay)
-        .flat_map(|(_, r)| r.longhands.last())
-        .next_back()
-        .map(|(_, v)| v.clone());
+    let last = |name: &str| {
+        parts
+            .iter()
+            .filter(|(_, r)| r.part == Part::Overlay)
+            .flat_map(|(_, r)| r.longhands.iter())
+            .rfind(|(n, _)| n == name)
+            .map(|(_, v)| v.clone())
+    };
+    let (color, image) = (last("background-color"), last("background-image"));
     let color = match color {
         Some(value) => Some(
             crate::style_file::parse_color(&value)
@@ -336,10 +358,16 @@ pub(super) fn apply(
         ),
         None => None,
     };
+    let image = match image {
+        Some(value) if value == "none" => None,
+        Some(value) => Some(cover_image(&value).map_err(|e| (rules[0].2, e))?),
+        None => None,
+    };
     let mut t = ViewTransition {
         old: Vec::new(),
         new: Vec::new(),
         color,
+        image,
         rules: parts
             .into_iter()
             .map(|(_, r)| r)
@@ -357,6 +385,21 @@ pub(super) fn apply(
     (t.old, t.new) = (root.old, root.new);
     doc.layer.transition = Some(t);
     Ok(())
+}
+
+/// `url("<texture asset>")`: the cover's texture by its path under `assets/`.
+fn cover_image(value: &str) -> Result<String, String> {
+    let path = value
+        .strip_prefix("url(")
+        .and_then(|v| v.strip_suffix(')'))
+        .map(|v| v.trim().trim_matches(['"', '\'']))
+        .filter(|p| !p.is_empty())
+        .ok_or_else(|| {
+            format!(
+                "::view-transition background-image: '{value}' is url(\"<texture asset>\") or none"
+            )
+        })?;
+    Ok(path.to_string())
 }
 
 impl ViewTransition {
@@ -524,7 +567,7 @@ mod tests {
              :root:active-view-transition-type(slide)::view-transition-old(root) { animation: 300ms -og-iris; }
              :active-view-transition-type(other)::view-transition-old(root) { animation: 1s -og-wipe; }
              ::view-transition-old(root) { animation: 900ms -og-dissolve; }
-             ::view-transition { background-color: #102030; }",
+             ::view-transition { background-color: #102030; background-image: url(\"ui/covers/stars.png\"); }",
         )
         .unwrap()
         .unwrap();
@@ -539,6 +582,7 @@ mod tests {
             ("-og-iris", 300.0)
         );
         assert_eq!(t.color.unwrap().rgb, [0x10, 0x20, 0x30]);
+        assert_eq!(t.image.as_deref(), Some("ui/covers/stars.png"));
         assert_eq!(
             cover("-og-wipe-from-right"),
             Some((ScreenWipe::Wipe, Side::Right))

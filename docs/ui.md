@@ -1211,7 +1211,10 @@ no keyframes that cover the whole frame: `-og-iris`, `-og-dissolve`,
 or `-from-bottom`. On `::view-transition-old(root)` a cover closes over the
 outgoing view, and the incoming view shows once it has closed. On
 `::view-transition-new(root)` it opens on the incoming view.
-`::view-transition { background-color }` is the covers' colour. Reduced
+`::view-transition { background-color }` is the covers' colour, and
+`background-image: url("ui/covers/stars.png")` covers with that texture
+stretched over the frame, tinted by the colour (white without one); the
+texture loads with the document. Reduced
 motion ends finite animations at once and makes covers fade. A component
 cannot declare a view transition.
 

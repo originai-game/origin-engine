@@ -38,7 +38,6 @@ use widgets::desc_of;
 pub(crate) use widgets::emit;
 pub use widgets::{
     og_ui_close, og_ui_image, og_ui_label, og_ui_open, og_ui_open_scroll, og_ui_rich_text,
-    og_ui_screen_transition,
 };
 mod game_widgets;
 use crate::{art, assets, extract, ui_draw};

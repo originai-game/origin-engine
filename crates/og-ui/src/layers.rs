@@ -303,22 +303,22 @@ impl Ui {
         let (covers, plays): (Vec<_>, Vec<_>) = vt.old.iter().cloned().partition(is_cover);
         if leaving {
             if t < ends(&vt.old) {
-                self.draw_covers(&covers, vt.color, t, false);
+                self.draw_covers(&covers, vt.color, vt.image.as_deref(), t, false);
                 return (true, plays);
             }
             self.docs.ops.push(LayerOp::Drop(serial));
             let opening: Vec<_> = vt.new.iter().filter(|a| is_cover(a)).cloned().collect();
             if !opening.is_empty() {
-                self.draw_covers(&opening, vt.color, 0.0, true);
+                self.draw_covers(&opening, vt.color, vt.image.as_deref(), 0.0, true);
                 self.docs
                     .revealing
-                    .push((opening, vt.color, self.state.tick));
+                    .push((opening, vt.color, vt.image.clone(), self.state.tick));
             }
             return (false, Vec::new());
         }
         let wait = ends(&covers);
         if t < wait {
-            self.draw_covers(&covers, vt.color, t, false);
+            self.draw_covers(&covers, vt.color, vt.image.as_deref(), t, false);
             return (false, Vec::new());
         }
         let t = t - wait;
@@ -327,17 +327,18 @@ impl Ui {
             return (true, Vec::new());
         }
         let (opening, plays): (Vec<_>, Vec<_>) = vt.new.iter().cloned().partition(is_cover);
-        self.draw_covers(&opening, vt.color, t, true);
+        self.draw_covers(&opening, vt.color, vt.image.as_deref(), t, true);
         (true, plays)
     }
 
     /// Draws the cover of the last of `covers` that has started at `t` ms:
-    /// closing (0 to 1 over its timing) or opening (1 to 0). False when none
-    /// is running.
+    /// closing (0 to 1 over its timing) or opening (1 to 0), in `color`, or
+    /// the texture asset `image` tinted by it. False when none is running.
     pub(crate) fn draw_covers(
         &mut self,
         covers: &[CssAnimation],
         color: Option<crate::Srgba>,
+        image: Option<&str>,
         t: f32,
         opening: bool,
     ) -> bool {
@@ -353,10 +354,16 @@ impl Ui {
             f32::from(u8::from(t >= a.delay_ms))
         };
         let p = a.ease.apply(p);
+        let texture = image.and_then(|p| self.docs.textures.get(p).copied());
         let desc = crate::ScreenTransitionDesc {
             kind,
             from,
-            color,
+            color: if texture.is_some() {
+                Some(color.unwrap_or(crate::Srgba::WHITE))
+            } else {
+                color
+            },
+            texture: texture.map(|t| (t, [0.0, 0.0, 1.0, 1.0])),
             ..Default::default()
         };
         self.cover(&desc, if opening { 1.0 - p } else { p }, opening);
@@ -557,10 +564,10 @@ impl Ui {
         self.docs.built_tick = tick;
         // The covers still opening over layers that have left.
         let mut revealing = std::mem::take(&mut self.docs.revealing);
-        revealing.retain(|(covers, color, start)| {
+        revealing.retain(|(covers, color, image, start)| {
             let t =
                 tick.saturating_sub(*start) as f32 * 1000.0 / self.ticks_per_second.max(1) as f32;
-            t < ends(covers) && self.draw_covers(covers, *color, t, true)
+            t < ends(covers) && self.draw_covers(covers, *color, image.as_deref(), t, true)
         });
         self.docs.revealing = revealing;
         for k in 0..self.docs.layers.layers.len() {
@@ -1103,6 +1110,29 @@ mod tests {
             "{seen:?}"
         );
         assert!(ui.document_mount_inputs().as_array().unwrap().is_empty());
+    }
+
+    /// `::view-transition { background-image: url("…") }`: the cover shows
+    /// the texture the path is bound to, tinted white with no colour.
+    ///
+    /// Ways it could fail: the image dropped by the parser, an unbound path
+    /// that draws a texture of nothing, the backdrop colour darkening it.
+    #[test]
+    fn a_view_transition_covers_with_its_texture() {
+        let page = format!(
+            "{PAUSE}<style>@view-transition {{ navigation: auto; }}\n::view-transition-old(root) {{ animation: 400ms linear -og-iris; }}\n::view-transition {{ background-image: url(\"ui/covers/stars.png\"); }}</style>"
+        );
+        let mut ui = ui_with(&[("hud.svelte", HUD), ("pause.svelte", &page)]);
+        let stars = og_render::TextureHandle::from_bits(9);
+        ui.define_texture("ui/covers/stars.png", stars);
+        mount(&mut ui, "hud", "hud");
+        step(&mut ui, InputFrame::default());
+        mount(&mut ui, "pause", "pause");
+        step(&mut ui, InputFrame::default());
+        step(&mut ui, InputFrame::default());
+        let c = ui.cover.expect("the cover closes");
+        assert_eq!(c.texture.map(|t| t.0), Some(stars));
+        assert_eq!(c.color, crate::Srgba::WHITE);
     }
 
     /// A cover named on `old` closes over the outgoing view, and the

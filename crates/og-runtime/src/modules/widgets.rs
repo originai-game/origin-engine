@@ -118,45 +118,6 @@ pub fn og_ui_image(id: String, desc: Option<String>) {
     });
 }
 
-pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let texture = d["texture"].as_f64().and_then(|h| {
-        let i = super::assets::index_of(h)?;
-        let target = BUILDING.with(Cell::get)?;
-        let eng = engine(target).ok()?;
-
-        eng.render.borrow().textures.get(i).copied()
-    });
-    let r = with_ui("og.ui.screenTransition", |ui| {
-        let t = *ui.theme();
-        let desc = og_ui::ScreenTransitionDesc {
-            kind: match d["kind"].as_str() {
-                Some("wipe") => og_ui::ScreenWipe::Wipe,
-                Some("iris") => og_ui::ScreenWipe::Iris,
-                Some("dissolve") => og_ui::ScreenWipe::Dissolve,
-                Some("slide") => og_ui::ScreenWipe::Slide,
-                _ => og_ui::ScreenWipe::Fade,
-            },
-            duration_ms: f(&d, "durationMs", 0.0),
-            color: paint(&t, &d["color"]),
-            texture: texture.map(|t| (t, [0.0, 0.0, 1.0, 1.0])),
-            from: match d["from"].as_str() {
-                Some("right") => og_ui::Side::Right,
-                Some("top") => og_ui::Side::Top,
-                Some("bottom") => og_ui::Side::Bottom,
-                _ => og_ui::Side::Left,
-            },
-        };
-        ui.screen_transition(id.as_str(), &screen, &desc)
-    })
-    .unwrap_or(og_ui::ScreenTransition {
-        shown: screen.clone(),
-        ..Default::default()
-    });
-    json!({ "shown": r.shown, "covering": r.covering, "revealing": r.revealing, "cover": r.cover })
-        .to_string()
-}
-
 // ── ui: drawing over the frame ──────────────────────────────────────────────
 
 /// Hands the UI's last frame to the render scene's overlay: screen-space

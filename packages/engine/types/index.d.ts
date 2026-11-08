@@ -25949,82 +25949,6 @@ export interface A11yTree {
 
 
 
-/**
- * How a screen transition covers the old screen and reveals the new one.
- * - `"fade"`: The cover fades in and out.
- * - `"wipe"`: An edge sweeps across.
- * - `"iris"`: A circle closes on the centre and opens again.
- * - `"dissolve"`: Cells appear in a fixed scattered order.
- * - `"slide"`: A sheet slides over and away.
- */
-export type ScreenWipe = "fade" | "wipe" | "iris" | "dissolve" | "slide";
-
-/**
- * Where a wipe or a slide comes from.
- * - `"left"`: From the left.
- * - `"right"`: From the right.
- * - `"top"`: From the top.
- * - `"bottom"`: From the bottom.
- */
-export type WipeSide = "left" | "right" | "top" | "bottom";
-
-/**
- * How a screen transition looks.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ScreenTransitionDesc {
-  /**
-   * The movement.
-   *
-   * @default "fade"
-   */
-  readonly kind?: ScreenWipe;
-  /**
-   * Cover and reveal together; 0 is twice motion.duration.slow.
-   *
-   * @default 0
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly durationMs?: number;
-  /**
-   * The cover's colour (the texture's tint); null is backdrop.
-   *
-   * @default null
-   */
-  readonly color?: Paint | null;
-  /**
-   * A texture stretched over the surface as the cover; null is the flat colour.
-   *
-   * @default null
-   */
-  readonly texture?: Texture | null;
-  /**
-   * Where a wipe or a slide comes from.
-   *
-   * @default "left"
-   */
-  readonly from?: WipeSide;
-}
-
-/** Where a screen transition is this tick. */
-export interface ScreenTransitionResult {
-  /** The screen to build this tick: the old one until the cover closes, then the new one. */
-  readonly shown: string;
-  /** The cover is closing over the old screen. */
-  readonly covering: boolean;
-  /** The cover is opening on the new screen. */
-  readonly revealing: boolean;
-  /**
-   * How much of the surface is covered, 0 to 1.
-   *
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly cover: number;
-}
-
-
 
 /**
  * Where a floating surface hangs off what it belongs to; start and end follow the writing direction.
@@ -39116,14 +39040,6 @@ export declare namespace og {
     function remember(id: string, value: number): void;
     /** Frames the UI has built: its clock, for animations by the tick. */
     function tick(): number;
-    /**
-     * A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.
-     *
-     * @param id Its id.
-     * @param screen The screen the game wants now.
-     * @param desc Kind, duration, colour or texture, side.
-     */
-    function screenTransition(id: string, screen: string, desc?: ScreenTransitionDesc): ScreenTransitionResult;
     /**
      * Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`).
      *

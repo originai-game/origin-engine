@@ -1215,54 +1215,6 @@ module ui {
     returns u32
   }
 
-  enum ScreenWipe {
-    doc "How a screen transition covers the old screen and reveals the new one."
-    variant fade "The cover fades in and out."
-    variant wipe "An edge sweeps across."
-    variant iris "A circle closes on the centre and opens again."
-    variant dissolve "Cells appear in a fixed scattered order."
-    variant slide "A sheet slides over and away."
-  }
-
-  enum WipeSide {
-    doc "Where a wipe or a slide comes from."
-    variant left "From the left."
-    variant right "From the right."
-    variant top "From the top."
-    variant bottom "From the bottom."
-  }
-
-  struct ScreenTransitionDesc {
-    doc "How a screen transition looks."
-    desc true
-    field kind ScreenWipe "The movement."
-    field durationMs f32 "Cover and reveal together; 0 is twice motion.duration.slow." {
-      unit ms
-      min 0
-    }
-    field color Option.Paint "The cover's colour (the texture's tint); null is backdrop."
-    field texture Option.Texture "A texture stretched over the surface as the cover; null is the flat colour."
-    field from WipeSide "Where a wipe or a slide comes from."
-  }
-
-  struct ScreenTransitionResult {
-    doc "Where a screen transition is this tick."
-    field shown String "The screen to build this tick: the old one until the cover closes, then the new one."
-    field covering bool "The cover is closing over the old screen."
-    field revealing bool "The cover is opening on the new screen."
-    field cover f32 "How much of the surface is covered, 0 to 1." {
-      unit ratio
-    }
-  }
-
-  fn screenTransition {
-    doc "A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade."
-    param id String "Its id."
-    param screen String "The screen the game wants now."
-    param desc ScreenTransitionDesc "Kind, duration, colour or texture, side."
-    returns ScreenTransitionResult
-  }
-
   fn previewViewport {
     doc "Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`)."
     param world World "The world."

@@ -312,6 +312,13 @@ impl UiDocument {
         out
     }
 
+    /// The texture asset its view transition's cover shows
+    /// (`::view-transition { background-image: url("…") }`): the host loads
+    /// it and binds it with [`crate::Ui::define_texture`].
+    pub fn cover_image(&self) -> Option<&str> {
+        self.layer.transition.as_ref()?.image.as_deref()
+    }
+
     /// Every path a node's bindings read (its own, not its children's).
     pub fn node_paths(&self, n: &DocNode, out: &mut Vec<String>) {
         let value = |v: &PropValue, out: &mut Vec<String>| match v {

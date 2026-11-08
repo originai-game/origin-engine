@@ -238,7 +238,8 @@ local styles and `og style new` remain available.
   change how. An element with `view-transition-name: hero` on both screens
   morphs from its old box to its new one; style it with
   `::view-transition-group(hero)` (or `(*)`, or `(.card)` for a
-  `view-transition-class`).
+  `view-transition-class`). `::view-transition { background-image:
+  url("ui/covers/stars.png"); }` covers with a texture instead of a colour.
 - Compose with components and snippets, not code callbacks:
   `<Card title={item.name}>{#snippet body()}<p>{item.desc}</p>{/snippet}</Card>`,
   rendered in `Card` with `{@render body?.()}`. Pass content to a mount by
