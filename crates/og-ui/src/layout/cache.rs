@@ -292,6 +292,9 @@ pub(crate) struct LayoutCache {
     /// A moved subtree's commands were moved out of last frame's list:
     /// its other places no longer hold what they held.
     pub shifted_out: bool,
+    /// Every range this frame copied from last frame's commands: where it
+    /// starts now, where it started, its length and how far it moved.
+    pub copied: Vec<(usize, usize, usize, (f32, f32))>,
     pub prev_cmds: Vec<(crate::DrawCmd, crate::element::Affine)>,
     pub prev_len: usize,
     /// What last frame's levelling decided (`None`: level afresh).

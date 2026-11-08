@@ -164,6 +164,7 @@ impl Ui {
         self.kept.aligned.clear();
         self.kept.aligned_kept = 0;
         self.kept.shifted_out = false;
+        self.kept.copied.clear();
         let mut cmds: Vec<(DrawCmd, Affine)> = Vec::with_capacity(last.len());
         let ghosts = std::mem::take(&mut self.state.motion.ghosts);
         let mut drawn = vec![false; ghosts.len()];
@@ -252,6 +253,7 @@ impl Ui {
                     cmds.extend_from_slice(&last[from..from + len]);
                 }
                 self.kept_spans.push(start..cmds.len());
+                self.kept.copied.push((start, from, len, (dx, dy)));
                 if !moved && from == start {
                     self.kept.aligned.push(start..cmds.len());
                     self.kept.aligned_kept += 1;

@@ -869,6 +869,245 @@ impl Levels {
         }
         true
     }
+
+    /// The next frame's items when its commands are last frame's moved,
+    /// dropped and joined by new ones ([`Spliced`], in submission order),
+    /// as [`assign_levels`] would level them. A command that moved with
+    /// the others by one offset (a scrolled row) keeps its level: what
+    /// overlapped among them still does, exactly, and so does what covers
+    /// all of them or none (`kept`). What is new, what was clipped
+    /// otherwise, what lies across the moved commands' edge and what a
+    /// dropped command overlapped are levelled again, with what follows
+    /// them. `None` for a frame with a layer or world panel, or whose
+    /// commands do not keep last frame's order: level it afresh.
+    pub(crate) fn splice(
+        &mut self,
+        old: Vec<DrawItem>,
+        next: Vec<Spliced>,
+        unit: f32,
+    ) -> Option<Vec<DrawItem>> {
+        // One entry per command: no layer or panel gathers several.
+        if self.keyed.len() != self.at.len() {
+            return None;
+        }
+        let gone = (Rect::default(), Batch::Ui(0, None));
+        let mut old: Vec<Option<DrawItem>> = old.into_iter().map(Some).collect();
+        let n = next.len();
+        let mut keyed = Vec::with_capacity(n);
+        let mut levels = Vec::with_capacity(n);
+        let mut at = Vec::with_capacity(n);
+        let mut out: Vec<Option<DrawItem>> = Vec::with_capacity(n);
+        // Per entry: last frame's, when its overlaps there hold here.
+        let mut kept: Vec<Option<u32>> = Vec::with_capacity(n);
+        let mut moved: Vec<bool> = Vec::with_capacity(n);
+        let mut carried = vec![u32::MAX; self.at.len()];
+        let mut last = None::<usize>;
+        let mut offset = None::<(f32, f32)>;
+        // The moved commands' extent, over where they were and are.
+        let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+        for (e, s) in next.into_iter().enumerate() {
+            if let Some(o) = s.from {
+                if last.is_some_and(|l| o <= l) || o >= self.at.len() {
+                    return None;
+                }
+                last = Some(o);
+            }
+            let Some((cmd, m)) = s.cmd else {
+                // Last frame's item as it stood.
+                let o = s.from?;
+                if s.delta != (0.0, 0.0) {
+                    return None;
+                }
+                keyed.push(self.keyed[o]);
+                levels.push(self.levels[o]);
+                at.push(if self.at[o] == u32::MAX {
+                    u32::MAX
+                } else {
+                    e as u32
+                });
+                out.push(self.items[o].and_then(|(i, _)| old[i as usize].take()));
+                kept.push(Some(o as u32));
+                moved.push(false);
+                carried[o] = e as u32;
+                continue;
+            };
+            let bracket = match &cmd {
+                DrawCmd::BeginLayer { .. } | DrawCmd::EndLayer { .. } => return None,
+                DrawCmd::World(w) => match &**w {
+                    WorldCmd::BeginPanel { .. } | WorldCmd::EndPanel => return None,
+                    WorldCmd::Mass { .. } => false,
+                    _ => true,
+                },
+                DrawCmd::PushClip { .. } | DrawCmd::PopClip => true,
+                _ => false,
+            };
+            let key = if bracket {
+                gone
+            } else {
+                (mapped_bounds(&cmd, &m), cmd.batch())
+            };
+            let shown = bracket || !key.0.is_empty() || unmeasured_text(&cmd);
+            let item = shown.then(|| {
+                zoom_items(
+                    vec![DrawItem {
+                        level: 0,
+                        cmd,
+                        transform: m,
+                    }],
+                    unit,
+                )
+                .pop()
+                .expect("one item")
+            });
+            // Moved as one with the others, exactly (`exact`).
+            let same = s.from.filter(|&o| {
+                let was = self.keyed[o];
+                (self.at[o] == u32::MAX) == bracket
+                    && was.1 == key.1
+                    && (bracket
+                        || (was.0.is_empty() && key.0.is_empty())
+                        || (s.delta == (0.0, 0.0) && was.0 == key.0)
+                        || (offset.is_none_or(|d| d == s.delta) && exact(&was.0, &key.0, s.delta)))
+            });
+            if let Some(o) = same {
+                carried[o] = e as u32;
+                let shifted = !bracket && s.delta != (0.0, 0.0) && !key.0.is_empty();
+                if shifted {
+                    offset = Some(s.delta);
+                    let was = self.keyed[o].0;
+                    for r in [was, key.0] {
+                        (x0, y0) = (x0.min(r.x), y0.min(r.y));
+                        (x1, y1) = (x1.max(r.right()), y1.max(r.bottom()));
+                    }
+                }
+                moved.push(shifted);
+                levels.push(self.levels[o]);
+            } else {
+                moved.push(false);
+                levels.push(None);
+            }
+            kept.push(same.map(|o| o as u32));
+            keyed.push(key);
+            at.push(if bracket { u32::MAX } else { e as u32 });
+            out.push(item);
+        }
+        let bounds: Vec<Rect> = keyed.iter().map(|(r, _)| *r).collect();
+        let grid = Grid::over(&bounds);
+        let mut cells: Vec<Vec<u32>> = vec![Vec::new(); grid.cols * grid.rows];
+        for (e, r) in bounds.iter().enumerate() {
+            if !r.is_empty() {
+                grid.file(&mut cells, r, e as u32);
+            }
+        }
+        let near = |grid: &Grid, cells: &[Vec<u32>], r: &Rect| {
+            let (cols, rows) = grid.span(r);
+            rows.flat_map(move |row| cols.clone().map(move |col| row * grid.cols + col))
+                .flat_map(|c| cells[c].iter().copied())
+                .collect::<Vec<u32>>()
+        };
+        let mut work = std::collections::BTreeSet::new();
+        // What is new or changed: levelled, and what follows it after.
+        for e in 0..n {
+            if kept[e].is_none() && !keyed[e].0.is_empty() {
+                work.insert(e);
+            }
+        }
+        // What a dropped or changed command overlapped, where it was.
+        for (o, &now) in carried.iter().enumerate() {
+            let r = self.keyed[o].0;
+            if now != u32::MAX && kept[now as usize].is_some() || r.is_empty() {
+                continue;
+            }
+            for q in near(&self.grid, &self.cells, &r) {
+                let q = q as usize;
+                if q > o && carried[q] != u32::MAX && self.keyed[q].0.overlaps(&r) {
+                    work.insert(carried[q] as usize);
+                }
+            }
+        }
+        // A kept command partly over the moved ones may overlap others of
+        // them than last frame; one over all or none of them overlaps the
+        // same ones.
+        if offset.is_some() {
+            for s in 0..n {
+                let r = keyed[s].0;
+                if moved[s] || kept[s].is_none() || r.is_empty() {
+                    continue;
+                }
+                let all = r.x <= x0 && r.y <= y0 && r.right() >= x1 && r.bottom() >= y1;
+                let none = r.right() <= x0 || x1 <= r.x || r.bottom() <= y0 || y1 <= r.y;
+                if all || none {
+                    continue;
+                }
+                work.insert(s);
+                for q in near(&grid, &cells, &r) {
+                    let q = q as usize;
+                    if q > s && moved[q] && keyed[q].0.overlaps(&r) {
+                        work.insert(q);
+                    }
+                }
+                let o = kept[s].expect("kept") as usize;
+                for q in near(&self.grid, &self.cells, &r) {
+                    let q = q as usize;
+                    let now = carried[q] as usize;
+                    if q > o && carried[q] != u32::MAX && moved[now] && self.keyed[q].0.overlaps(&r)
+                    {
+                        work.insert(now);
+                    }
+                }
+            }
+        }
+        while let Some(e) = work.pop_first() {
+            let level = Some(grid.level(&keyed, &levels, &cells, e));
+            if levels[e] == level && kept[e].is_some() {
+                continue;
+            }
+            levels[e] = level;
+            for q in near(&grid, &cells, &keyed[e].0) {
+                if q as usize > e && keyed[q as usize].0.overlaps(&keyed[e].0) {
+                    work.insert(q as usize);
+                }
+            }
+        }
+        let mut items = Vec::with_capacity(n);
+        let mut spans = Vec::with_capacity(n);
+        for (e, item) in out.into_iter().enumerate() {
+            spans.push(item.map(|mut item| {
+                item.level = levels[e].unwrap_or(0);
+                items.push(item);
+                (items.len() as u32 - 1, items.len() as u32 - 1)
+            }));
+        }
+        *self = Levels {
+            at,
+            keyed,
+            levels,
+            items: spans,
+            grid,
+            cells,
+        };
+        Some(items)
+    }
+}
+
+/// One command of the frame [`Levels::splice`] levels: last frame's
+/// command `from`, moved by `delta`, or a new one; `cmd`, baked, unless it
+/// is last frame's item as it stood.
+pub(crate) struct Spliced {
+    pub from: Option<usize>,
+    pub delta: (f32, f32),
+    pub cmd: Option<(DrawCmd, Affine)>,
+}
+
+/// `now` is `was` moved by `d`, and every sum of their edges and `d` is
+/// exact in `f32` (multiples of 1/256 px within 32,768): what overlapped
+/// before still overlaps, edge for edge, and nothing else does.
+fn exact(was: &Rect, now: &Rect, d: (f32, f32)) -> bool {
+    let fine = |v: f32| v.abs() < 32768.0 && (v * 256.0).fract() == 0.0;
+    [was.x, was.y, was.width, was.height, d.0, d.1]
+        .into_iter()
+        .all(fine)
+        && *now == Rect::new(was.x + d.0, was.y + d.1, was.width, was.height)
 }
 
 /// Per submitted command, its top level entry when [`collect`] makes it
@@ -1965,6 +2204,106 @@ mod levels {
             })
             .collect();
         assert_eq!(ys, [10.0, 30.0]);
+    }
+
+    /// A scroll that keeps the rows' levels and levels only what it brings
+    /// in, what it clips otherwise and what lies across the moved rows'
+    /// edge gives the items levelling the frame afresh gives: rows that
+    /// overlap their neighbours, an earlier header and a later scrollbar
+    /// across the list's edge, a backdrop under all of it and an overlay
+    /// over it, a header that goes and comes back, at offsets that move
+    /// exactly and fractions that round otherwise as they add up. A frame
+    /// that reorders last frame's commands is refused.
+    #[test]
+    fn splicing_a_scroll_matches_levelling_afresh() {
+        let clip = Rect::new(100.0, 50.0, 400.0, 300.0);
+        let row_quad = |rect: Rect| DrawCmd::Quad {
+            rect,
+            radius: 0.0,
+            color: [1.0; 4],
+            clip,
+        };
+        let row_image = |rect: Rect, slot: u32| DrawCmd::Image {
+            rect,
+            texture: og_render::TextureHandle::from_slot(slot),
+            uv: [0.0, 0.0, 1.0, 1.0],
+            color: [1.0; 4],
+            clip,
+        };
+        // Each command with what it is: 0 backdrop, 1 header, 2 + 2k + part
+        // row k's part, then the scrollbar and the overlay.
+        let frame = |off: f32| -> Vec<(u32, DrawCmd)> {
+            let mut out = vec![(0, quad(Rect::new(90.0, 40.0, 420.0, 320.0)))];
+            // The header goes once the list is scrolled far.
+            if off < 45.0 {
+                out.push((1, image(Rect::new(80.0, 30.0, 200.0, 45.0), 3)));
+            }
+            for k in 0..40u32 {
+                let y = 50.0 + k as f32 * 30.0 - off;
+                if y + 34.0 <= clip.y || y >= clip.bottom() {
+                    continue;
+                }
+                // A row's image ends where the next row begins.
+                out.push((2 + 2 * k, row_quad(Rect::new(100.0, y, 400.0, 30.0))));
+                let x = 110.0 + (k % 3) as f32 * 120.0;
+                out.push((
+                    3 + 2 * k,
+                    row_image(Rect::new(x, y + 10.0, 150.0, 20.0), k % 2),
+                ));
+            }
+            let thumb = 60.0 + off * 0.25;
+            out.push((1000, image(Rect::new(490.0, thumb, 8.0, 60.0), 5)));
+            out.push((1001, quad(Rect::new(300.0, 200.0, 40.0, 40.0))));
+            out
+        };
+        let mut was = frame(0.0);
+        let (mut items, mut levels) =
+            assign_levels_kept(plain(was.iter().map(|(_, c)| c.clone()).collect()));
+        let mut off = 0.0f32;
+        let steps = [
+            7.5, 30.0, 12.25, -9.75, 60.0, 0.0, -45.0, 0.5, 200.0, -100.0, -60.0, -60.0, 3.3, -9.7,
+        ];
+        // Fractions of a pixel that round as they add up.
+        let fractions = (0..60).map(|i| [0.1, 0.7, -0.3][i % 3] * (1.0 + i as f32 / 7.0));
+        for step in steps.into_iter().chain(fractions) {
+            let now = frame(off + step);
+            let next = now
+                .iter()
+                .map(|(id, c)| {
+                    let from = was.iter().position(|(w, _)| w == id);
+                    let row = (2..1000).contains(id);
+                    match from {
+                        Some(o) if !row && was[o].1 == *c => Spliced {
+                            from: Some(o),
+                            delta: (0.0, 0.0),
+                            cmd: None,
+                        },
+                        _ => Spliced {
+                            from,
+                            delta: if row { (0.0, -step) } else { (0.0, 0.0) },
+                            cmd: Some((c.clone(), Affine::IDENTITY)),
+                        },
+                    }
+                })
+                .collect();
+            items = levels
+                .splice(items, next, 1.0)
+                .unwrap_or_else(|| panic!("step {step} refused"));
+            let fresh = assign_levels(plain(now.iter().map(|(_, c)| c.clone()).collect()));
+            assert_eq!(items, fresh, "step {step}");
+            off += step;
+            was = now;
+        }
+        // The backdrop moved after the header: not last frame's order.
+        let mut next: Vec<Spliced> = (0..was.len())
+            .map(|o| Spliced {
+                from: Some(o),
+                delta: (0.0, 0.0),
+                cmd: None,
+            })
+            .collect();
+        next.swap(0, 1);
+        assert!(levels.splice(items, next, 1.0).is_none());
     }
 
     /// A layer levels its own commands from 0 and is one command of its

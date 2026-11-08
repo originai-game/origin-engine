@@ -846,6 +846,8 @@ impl Ui {
             (std::mem::take(&mut self.frame.items), Vec::new())
         } else if let Some(relevelled) = self.relevel(&trees, &tail) {
             relevelled
+        } else if let Some(spliced) = self.splice_levels(&trees, &tail) {
+            spliced
         } else {
             let mut cmds = trees.clone();
             cmds.extend(tail.iter().cloned());
@@ -981,6 +983,91 @@ impl Ui {
             assert!(
                 fresh == items,
                 "the frame's items levelled again differ from levelling it afresh"
+            );
+        }
+        Some((items, missing_glyphs))
+    }
+
+    /// Last frame's items with the commands this frame copied from last
+    /// frame's kept, moved with the copy ([`crate::draw::Levels::splice`]),
+    /// and only the others baked and levelled again: a scroll moves the
+    /// rows it keeps and levels the rows it brings in. `None` when nothing
+    /// was copied or the levels cannot follow.
+    fn splice_levels(
+        &mut self,
+        trees: &[(DrawCmd, Affine)],
+        tail: &[(DrawCmd, Affine)],
+    ) -> Option<(Vec<DrawItem>, MissingGlyphs)> {
+        if self.kept.copied.is_empty() || self.frame.unit != self.unit {
+            return None;
+        }
+        let levels = self.kept.levels.as_mut()?;
+        let mut from: Vec<Option<(usize, (f32, f32))>> = vec![None; trees.len()];
+        for &(start, was, len, delta) in &self.kept.copied {
+            for k in 0..len {
+                from[start + k] = Some((was + k, delta));
+            }
+        }
+        let same_tail = tail.len() == self.kept.last_tail.len();
+        let mut fresh = Vec::new();
+        let mut next = Vec::with_capacity(trees.len() + tail.len());
+        for (p, (c, m)) in trees.iter().enumerate() {
+            next.push(match from[p] {
+                Some((was, (0.0, 0.0))) => crate::draw::Spliced {
+                    from: Some(was),
+                    delta: (0.0, 0.0),
+                    cmd: None,
+                },
+                Some((was, delta)) => crate::draw::Spliced {
+                    from: Some(was),
+                    delta,
+                    cmd: Some(bake(c.clone(), *m)),
+                },
+                None => {
+                    let baked = bake(c.clone(), *m);
+                    fresh.push(baked.clone());
+                    crate::draw::Spliced {
+                        from: None,
+                        delta: (0.0, 0.0),
+                        cmd: Some(baked),
+                    }
+                }
+            });
+        }
+        for (k, c) in tail.iter().enumerate() {
+            next.push(if same_tail && *c == self.kept.last_tail[k] {
+                crate::draw::Spliced {
+                    from: Some(self.kept.prev_len + k),
+                    delta: (0.0, 0.0),
+                    cmd: None,
+                }
+            } else {
+                let baked = bake(c.0.clone(), c.1);
+                fresh.push(baked.clone());
+                crate::draw::Spliced {
+                    from: None,
+                    delta: (0.0, 0.0),
+                    cmd: Some(baked),
+                }
+            });
+        }
+        let old = std::mem::take(&mut self.frame.items);
+        let items = levels.splice(old, next, self.unit);
+        if items.is_none() {
+            self.kept.levels = None;
+        }
+        let items = items?;
+        self.kept_spans.clear();
+        let missing_glyphs = self.missing_glyphs(&fresh);
+        #[cfg(debug_assertions)]
+        if bounded::checking() {
+            let mut cmds: Vec<(DrawCmd, Affine)> = trees.to_vec();
+            cmds.extend(tail.iter().cloned());
+            let cmds: Vec<_> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
+            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), self.unit);
+            assert!(
+                fresh == items,
+                "the frame's items spliced from last frame's differ from levelling it afresh"
             );
         }
         Some((items, missing_glyphs))
