@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Crowd",
+      "summary": "Skinned meshes and crowds cost less on the GPU: a vertex reads only the joints that weigh on it, so a rigidly bound part reads one joint (and a baked clip's two frames of it) instead of four. 50,000 walkers draw in 16.4 ms a frame instead of 20.9 ms on an M4 Pro; the picture is unchanged."
+    }
+  ]
+}

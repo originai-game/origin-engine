@@ -299,10 +299,14 @@ fn skin_matrix(s: SkinIn, palette: vec4<f32>) -> mat4x4<f32> {
     return mat4x4<f32>(vec4<f32>(1.0, 0.0, 0.0, 0.0), vec4<f32>(0.0, 1.0, 0.0, 0.0), vec4<f32>(0.0, 0.0, 1.0, 0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0));
   }
   let w = s.weights / total;
-  return palette_joint(palette, s.joints.x) * w.x
-    + palette_joint(palette, s.joints.y) * w.y
-    + palette_joint(palette, s.joints.z) * w.z
-    + palette_joint(palette, s.joints.w) * w.w;
+  // A joint without weight adds nothing (x + 0·m is x, exactly): its two
+  // baked frames are not read. A rigid part (a crowd member's, a prop's)
+  // reads one joint, not four.
+  var m = palette_joint(palette, s.joints.x) * w.x;
+  if (w.y != 0.0) { m += palette_joint(palette, s.joints.y) * w.y; }
+  if (w.z != 0.0) { m += palette_joint(palette, s.joints.z) * w.z; }
+  if (w.w != 0.0) { m += palette_joint(palette, s.joints.w) * w.w; }
+  return m;
 }
 
 @vertex

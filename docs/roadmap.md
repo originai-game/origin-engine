@@ -83,7 +83,7 @@ Each must be met before 0.8.0.
 | FSR 3.1 | accumulation cheaper (seven dispatches, 12 bytes a pixel stored, history in 8 fetches, 2929a46): +0.65–1.04 ms over TAAU at 1080p in the thin scene (was +0.71–1.16), 0.90–1.23 ms under it on grass (M4 Pro); the rest is the six passes before the accumulation | at most TAAU + 0.5 ms on thin geometry at every scale, fsr::compare within 0.05 dB, grass not regressed (fused pre-passes, f16 where `shader-f16` exists) | rendering |
 | GI probes | main pass 3.70 ms; `both` 12.70 ms; screen GI 0.65 of the path-traced reference | ceiling 0.72–0.80, cheaper | rendering |
 | First frame | terrain 7–12 s on DX12; Pixel 14–17 s | the shader compile budget | rendering |
-| Crowds at 50k | 24.35 ms a frame | prepass and main pass reduced | rendering |
+| Crowds at 50k | 16.40 ms a frame median (was 20.88 on the same main, 24.35 at the last record; prepass 8.75 → 5.73 ms, main 8.68 → 7.39 ms, M4 Pro): skinning reads only weighted joints | prepass and main pass reduced | rendering |
 | Presentation checkpoints | og.motion poses differ from native in the last bits on the web; a web tick waits for a late batch | byte-identical on every host | checkpoints |
 | UI per-frame cost | idle 1.229 ms, one label 1.254 ms (median, 2560×1440); indicative idle now 0.303 ms, still scaling with node count; scroll-1000 0.53 ms against 0.29 immediate | follows the change, not the tree | retained UI |
 | Watercolour look | reads as oil | a watercolour primitive (Bousseau, MNPR) | with the art review, after the pilot opens |
