@@ -1,4 +1,5 @@
 use super::*;
+use crate::virtualize::Order;
 
 impl Ui {
     // ── lists and grids ────────────────────────────────────────────────────
@@ -56,10 +57,15 @@ impl Ui {
         keys: &[String],
         desc: ListDesc,
     ) -> ListRange {
-        self.open_list_inner(id.into(), desc, Some(keys))
+        self.open_list_inner(id.into(), desc, Some(Order::Untracked(keys)))
     }
 
-    fn open_list_inner(&mut self, id: Id, desc: ListDesc, keys: Option<&[String]>) -> ListRange {
+    pub(crate) fn open_list_inner(
+        &mut self,
+        id: Id,
+        desc: ListDesc,
+        keys: Option<Order<'_>>,
+    ) -> ListRange {
         let row = if desc.row_height > 0.0 {
             desc.row_height
         } else {
@@ -123,7 +129,7 @@ impl Ui {
     fn keyed_range(
         &mut self,
         container: u64,
-        keys: &[String],
+        keys: Order<'_>,
         columns: usize,
         estimate: f32,
         gap: f32,
@@ -165,7 +171,7 @@ impl Ui {
         self.state.scroll.insert(container, off);
         let range = v.range(off);
         let top = v.offset(range.first as usize) - gap;
-        let rest = if (range.last as usize) < keys.len() {
+        let rest = if (range.last as usize) < keys.keys().len() {
             v.total() - v.offset(range.last as usize)
         } else {
             -1.0
@@ -387,10 +393,15 @@ impl Ui {
         keys: &[String],
         desc: GridDesc,
     ) -> ListRange {
-        self.open_grid_inner(id.into(), desc, Some(keys))
+        self.open_grid_inner(id.into(), desc, Some(Order::Untracked(keys)))
     }
 
-    fn open_grid_inner(&mut self, id: Id, desc: GridDesc, keys: Option<&[String]>) -> ListRange {
+    pub(crate) fn open_grid_inner(
+        &mut self,
+        id: Id,
+        desc: GridDesc,
+        keys: Option<Order<'_>>,
+    ) -> ListRange {
         let t = self.theme;
         let floor = self.min_target();
         let asked = if desc.cell_width > 0.0 {

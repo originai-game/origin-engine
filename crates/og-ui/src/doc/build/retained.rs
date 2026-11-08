@@ -54,6 +54,7 @@ struct ElementInstance {
     cached: CachedInputs,
     resolved: Option<ResolvedNode>,
     style_dirty: bool,
+    theme_epoch: u64,
     children: Vec<Child>,
     bindings: Vec<BindingId>,
 }
@@ -69,9 +70,11 @@ pub struct RetainedHost {
     pub topology: Topology,
     bindings: Bindings,
     inputs: BTreeMap<BindingId, (MountedNode, Input)>,
+    pending_bindings: BTreeSet<BindingId>,
     elements: BTreeMap<MountedNode, ElementInstance>,
     roots: BTreeMap<SourceId, Child>,
     registrations: BTreeMap<SourceId, Registration>,
+    pending_mounts: BTreeSet<SourceId>,
     restoring: bool,
     each: BTreeMap<MountedNode, EachInstance>,
     branches: BTreeMap<MountedNode, BranchInstance>,
@@ -81,6 +84,8 @@ pub struct RetainedHost {
     by_key: BTreeMap<u64, MountedNode>,
     interaction: [u64; 4],
     viewport: Option<crate::doc::media::Context>,
+    theme: Option<crate::Theme>,
+    theme_epoch: u64,
     media: [BTreeSet<MountedNode>; 3],
     materializing: Option<Materialization>,
     built_tick: Option<u64>,
@@ -141,18 +146,13 @@ impl RetainedHost {
             }
         }
         out.restoring = !out.registrations.is_empty();
+        out.pending_mounts.extend(out.registrations.keys().cloned());
         Ok(out)
     }
 
     fn restore_instances(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
-        if !self.restoring {
-            return Ok(());
-        }
-        let registrations = self.registrations.clone();
-        for (mount, registration) in registrations {
-            if self.roots.contains_key(&mount) {
-                continue;
-            }
+        while let Some(mount) = self.pending_mounts.first().cloned() {
+            let registration = self.registrations[&mount].clone();
             let document = ui
                 .docs
                 .docs
@@ -177,19 +177,42 @@ impl RetainedHost {
                 env,
             ) {
                 Ok(root) => {
+                    self.pending_mounts.remove(&mount);
                     self.roots.insert(mount, root);
                 }
                 Err(error) => {
                     self.remove_mount(ui, &mount);
+                    self.pending_mounts.insert(mount.clone());
                     self.registrations.insert(mount, registration);
                     return Err(error);
                 }
             }
         }
-        self.topology.take_changes();
-        self.topology.take_fact_changes();
+        if self.restoring {
+            self.topology.take_changes();
+            self.topology.take_fact_changes();
+        }
         self.restoring = false;
         Ok(())
+    }
+
+    pub(super) fn document_replaced(&mut self, ui: &mut Ui, document: &str) {
+        let mounts: Vec<_> = self
+            .registrations
+            .iter()
+            .filter(|(_, registration)| registration.document == document)
+            .map(|(mount, _)| mount.clone())
+            .collect();
+        for mount in mounts {
+            self.rebuild_mount(ui, &mount);
+        }
+    }
+
+    fn rebuild_mount(&mut self, ui: &mut Ui, mount: &SourceId) {
+        let registration = self.registrations[mount].clone();
+        self.remove_mount(ui, mount);
+        self.pending_mounts.insert(mount.clone());
+        self.registrations.insert(mount.clone(), registration);
     }
 
     fn bind(
@@ -251,6 +274,7 @@ impl RetainedHost {
         for id in bindings {
             self.bindings.remove(&mut ui.reactive, id);
             self.inputs.remove(&id);
+            self.pending_bindings.remove(&id);
         }
         let roots: Vec<_> = self
             .topology
@@ -260,6 +284,9 @@ impl RetainedHost {
             .collect();
         for root in roots {
             self.topology.remove(&root).expect("live mount root");
+        }
+        for node in self.elements.keys().filter(|node| &node.mount == mount) {
+            ui.state.virtual_lists.remove(&node.key);
         }
         self.elements.retain(|node, _| &node.mount != mount);
         self.each.retain(|node, _| &node.mount != mount);
@@ -276,6 +303,7 @@ impl RetainedHost {
         }
         self.roots.remove(mount);
         self.registrations.remove(mount);
+        self.pending_mounts.remove(mount);
     }
 
     fn compile(
@@ -339,6 +367,7 @@ impl RetainedHost {
             cached: CachedInputs::default(),
             resolved: None,
             style_dirty: true,
+            theme_epoch: self.theme_epoch,
             children: Vec::new(),
             bindings: Vec::new(),
         };
@@ -521,6 +550,13 @@ impl RetainedHost {
         self.restore_instances(ui, env)?;
         self.refresh_collections(ui, env)?;
         self.sync_interaction(ui)?;
+        if self
+            .theme
+            .replace(*ui.theme())
+            .is_some_and(|old| old != *ui.theme())
+        {
+            self.theme_epoch += 1;
+        }
         let viewport = crate::doc::media::Context {
             width: ui.viewport.width,
             height: ui.viewport.height,
@@ -550,18 +586,29 @@ impl RetainedHost {
                     .is_some_and(|n| n.states.contains(&state))
             });
             self.evaluated += changes.evaluated;
-            if changes.evaluated == 0 {
+            self.pending_bindings.extend(changes.changed);
+            if changes.evaluated == 0 && self.pending_bindings.is_empty() {
                 break;
             }
-            for &id in &changes.changed {
+            let pending: Vec<_> = self.pending_bindings.iter().copied().collect();
+            for &id in &pending {
                 if let Some((node, Input::Structure)) = self.inputs.get(&id) {
                     let node = node.clone();
                     let enabled = truthy(self.bindings.value(id).map_err(Clone::clone)?);
-                    self.refresh_branch(ui, &node, enabled, env)?;
+                    if let Err(error) = self.refresh_branch(ui, &node, enabled, env) {
+                        self.rebuild_mount(ui, &node.mount);
+                        return Err(error);
+                    }
+                }
+            }
+            for &id in &pending {
+                if self.inputs.contains_key(&id) {
+                    self.bindings.value(id).map_err(Clone::clone)?;
                 }
             }
             let mut facts_changed = BTreeSet::new();
-            for id in changes.changed {
+            for id in pending {
+                self.pending_bindings.remove(&id);
                 let Some((node, input)) = self.inputs.get(&id) else {
                     continue;
                 };
@@ -662,7 +709,11 @@ impl RetainedHost {
     ) -> Result<(), String> {
         let parent = self.topology.parent(identity).cloned();
         if let Some(parent) = &parent
-            && (self.dirty.remove(parent) || self.elements[parent].resolved.is_none())
+            && (self.dirty.remove(parent)
+                || self.elements[parent].resolved.is_none()
+                || self.elements[parent].style_dirty
+                || self.elements[parent].theme_epoch != self.theme_epoch
+                || self.topology.style_is_stale(parent) == Some(true))
         {
             self.resolve(ui, parent, env)?;
         }
@@ -676,7 +727,21 @@ impl RetainedHost {
                 .computed
                 .clone()
         });
-        let e = &self.elements[identity];
+        let e = self.elements.get_mut(identity).unwrap();
+        for id in &e.bindings {
+            if let Some((_, Input::Property(property, Ty::Paint))) = self.inputs.get(id) {
+                e.cached
+                    .properties
+                    .iter_mut()
+                    .find(|(p, ty, _)| p == property && *ty == Ty::Paint)
+                    .unwrap()
+                    .2 = coerce(
+                    ui,
+                    Ty::Paint,
+                    self.bindings.value(*id).map_err(Clone::clone)?,
+                );
+            }
+        }
         let build = e.build(env, inherited);
         let mut probe = Built {
             path: e.path.clone(),
@@ -751,6 +816,7 @@ impl RetainedHost {
         };
         self.elements.get_mut(identity).unwrap().resolved = Some(resolved);
         self.elements.get_mut(identity).unwrap().style_dirty = false;
+        self.elements.get_mut(identity).unwrap().theme_epoch = self.theme_epoch;
         self.topology.set_text(identity, text)?;
         self.topology.style_resolved(identity)?;
         self.resolved += 1;
@@ -795,6 +861,7 @@ impl RetainedHost {
         )?;
         if self.dirty.remove(identity)
             || self.elements[identity].style_dirty
+            || self.elements[identity].theme_epoch != self.theme_epoch
             || self.topology.style_is_stale(identity) == Some(true)
         {
             self.resolve(ui, identity, env)?;
@@ -1046,6 +1113,19 @@ mod tests {
         tick(&mut ui, 100000.0, None);
         assert_eq!(ui.mounted_topology().child_at(Some(&list), 999), Some(&far));
         assert_eq!(ui.focused_key(), far.key);
+        assert_eq!(ui.focus_path(0), path);
+        ui.reactive
+            .execute(Command::Move {
+                source: source.clone(),
+                key: "r999".into(),
+                before: Some("r0".into()),
+            })
+            .unwrap();
+        tick(&mut ui, 0.0, None);
+        assert_eq!(ui.mounted_topology().child_at(Some(&list), 0), Some(&far));
+        assert_eq!(ui.focused_key(), far.key);
+        tick(&mut ui, -100000.0, None);
+        assert!(ui.probe_elements().iter().any(|n| n.text == "Row 999"));
         assert_eq!(ui.focus_path(0), path);
         ui.reactive
             .execute(Command::Remove {
@@ -1436,7 +1516,7 @@ mod tests {
         assert!(ui.docs.retained.topology.take_changes().is_empty());
         ui.reactive
             .execute(Command::Set {
-                source,
+                source: source.clone(),
                 value: json!("after restore"),
                 force: false,
             })
@@ -1448,5 +1528,170 @@ mod tests {
         );
         assert_eq!(ui.docs.retained.evaluated, 1);
         assert_eq!(ui.docs.retained.resolved, 1);
+        ui.define_document(UiDocument::parse("retained.svelte", r#"
+            <meta name="component" content="retained">
+            <column id="Root"><text id="Name">new {$label}</text><text id="Replacement">added</text></column>
+        "#).unwrap());
+        tick(&mut ui);
+        assert_eq!(ui.mounted_topology().child_at(Some(&root), 0), Some(&label));
+        assert_eq!(
+            ui.mounted_topology().node(&label).unwrap().direct_text,
+            "new after restore"
+        );
+        assert!(ui.probe_elements().iter().any(|n| n.id == "Replacement"));
+        assert!(!ui.probe_elements().iter().any(|n| n.id == "Other"));
+        ui.reactive
+            .execute(Command::Set {
+                source,
+                value: json!("reloaded"),
+                force: false,
+            })
+            .unwrap();
+        tick(&mut ui);
+        assert_eq!(
+            ui.mounted_topology().node(&label).unwrap().direct_text,
+            "new reloaded"
+        );
+    }
+
+    #[test]
+    fn a_retained_bound_palette_token_follows_theme_without_rereading_its_store() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "paint.svelte",
+                r#"
+            <meta name="component" content="paint">
+            <column><column id="Patch" width="40" height="30" background={$paint} /></column>
+        "#,
+            )
+            .unwrap(),
+        );
+        let source = SourceId::new("test", "paint");
+        ui.reactive
+            .execute(Command::Signal {
+                source: source.clone(),
+                initial: json!("panel"),
+                readable: false,
+            })
+            .unwrap();
+        ui.mount_document(
+            SourceId::new("test", "paint"),
+            "paint",
+            BTreeMap::from([("paint".into(), source)]),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        for color in [Srgba::rgb(210, 30, 40), Srgba::rgb(30, 200, 70)] {
+            let mut theme = *ui.theme();
+            theme.palette.panel = color;
+            ui.set_theme(theme);
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+            ui.end();
+            assert!(ui.frame().items.iter().any(|item| matches!(&item.cmd,
+                crate::DrawCmd::Quad { color: actual, .. } if *actual == color.linear()
+            )));
+            assert_eq!(ui.docs.retained.evaluated, 0);
+        }
+    }
+
+    #[test]
+    fn a_failed_refresh_keeps_other_pending_updates_and_can_rebuild_a_failed_branch() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "failure.svelte",
+                r#"
+            <meta name="component" content="failure">
+            <column>
+                <text id="Risk">{$bad ? $missing : "safe"}</text>
+                {#if $show}<text id="Later">{$later}</text>{/if}
+                <text id="Other">{$label}</text>
+            </column>
+        "#,
+            )
+            .unwrap(),
+        );
+        let source = |name| SourceId::new("test", name);
+        for (name, initial) in [
+            ("bad", json!(false)),
+            ("show", json!(false)),
+            ("label", json!("old")),
+        ] {
+            ui.reactive
+                .execute(Command::Signal {
+                    source: source(name),
+                    initial,
+                    readable: false,
+                })
+                .unwrap();
+        }
+        ui.mount_document(
+            source("failure"),
+            "failure",
+            ["bad", "show", "label", "later"]
+                .into_iter()
+                .map(|name| (name.to_owned(), source(name)))
+                .collect(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let tick = |ui: &mut Ui| {
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+            let result = ui.build_retained_documents(&crate::bind::NoEnv);
+            ui.end();
+            result
+        };
+        tick(&mut ui).unwrap();
+        for (name, value) in [("bad", json!(true)), ("label", json!("new"))] {
+            ui.reactive
+                .execute(Command::Set {
+                    source: source(name),
+                    value,
+                    force: false,
+                })
+                .unwrap();
+        }
+        assert!(tick(&mut ui).unwrap_err().contains("missing"));
+        assert!(tick(&mut ui).unwrap_err().contains("missing"));
+        ui.reactive
+            .execute(Command::Set {
+                source: source("bad"),
+                value: json!(false),
+                force: false,
+            })
+            .unwrap();
+        tick(&mut ui).unwrap();
+        assert!(
+            ui.probe_elements()
+                .iter()
+                .any(|node| node.id == "Other" && node.text == "new")
+        );
+        ui.reactive
+            .execute(Command::Set {
+                source: source("show"),
+                value: json!(true),
+                force: false,
+            })
+            .unwrap();
+        assert!(tick(&mut ui).unwrap_err().contains("later"));
+        ui.reactive
+            .execute(Command::Signal {
+                source: source("later"),
+                initial: json!("recovered"),
+                readable: false,
+            })
+            .unwrap();
+        tick(&mut ui).unwrap();
+        assert!(
+            ui.probe_elements()
+                .iter()
+                .any(|node| node.id == "Later" && node.text == "recovered")
+        );
+        assert!(
+            ui.probe_elements()
+                .iter()
+                .any(|node| node.id == "Other" && node.text == "new")
+        );
     }
 }

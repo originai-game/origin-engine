@@ -104,6 +104,9 @@ impl Ui {
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
         }
+        let mut retained = std::mem::take(&mut self.docs.retained);
+        retained.document_replaced(self, &doc.name);
+        self.docs.retained = retained;
         self.docs.docs.insert(doc.name.clone(), Arc::new(doc));
     }
 

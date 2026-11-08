@@ -20,10 +20,13 @@ impl RetainedHost {
         let each = &self.each[id];
         let count = each.order.len() as u32;
         let padding = r.nums("padding").map(insets_of).unwrap_or_default();
+        let order = Some(crate::virtualize::Order::Retained {
+            keys: &each.order,
+            revision: each.revision,
+        });
         let range = if grid {
-            ui.open_keyed_grid(
-                element.id.as_str(),
-                &each.order,
+            ui.open_grid_inner(
+                element.id.as_str().into(),
                 crate::widgets::GridDesc {
                     count,
                     cell_width: r.num("cellWidth").unwrap_or(0.0),
@@ -34,11 +37,11 @@ impl RetainedHost {
                     height: r.size("height"),
                     padding,
                 },
+                order,
             )
         } else {
-            ui.open_keyed_list(
-                element.id.as_str(),
-                &each.order,
+            ui.open_list_inner(
+                element.id.as_str().into(),
                 crate::widgets::ListDesc {
                     count,
                     row_height: r.num("rowHeight").unwrap_or(0.0),
@@ -47,6 +50,7 @@ impl RetainedHost {
                     height: r.size("height"),
                     padding,
                 },
+                order,
             )
         };
         let at = ui.parent();

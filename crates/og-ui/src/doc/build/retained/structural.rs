@@ -31,7 +31,7 @@ pub(super) struct EachInstance {
     context: BindingContext,
     pub parent: MountedNode,
     source: SourceId,
-    revision: u64,
+    pub revision: u64,
     pub order: Vec<String>,
     pub rows: BTreeMap<String, Vec<Child>>,
     pub empty: Vec<Child>,
@@ -419,6 +419,7 @@ impl RetainedHost {
                 }
                 self.bindings.remove(&mut ui.reactive, branch.binding);
                 self.inputs.remove(&branch.binding);
+                self.pending_bindings.remove(&branch.binding);
             }
             Child::Element(id) => {
                 let parent = self.topology.parent(&id).cloned();
@@ -429,9 +430,11 @@ impl RetainedHost {
                 for binding in element.bindings {
                     self.bindings.remove(&mut ui.reactive, binding);
                     self.inputs.remove(&binding);
+                    self.pending_bindings.remove(&binding);
                 }
                 self.topology.remove(&id).expect("mounted element topology");
                 self.by_key.remove(&id.key);
+                ui.state.virtual_lists.remove(&id.key);
                 self.dirty.remove(&id);
                 for readers in &mut self.media {
                     readers.remove(&id);
@@ -459,6 +462,7 @@ impl RetainedHost {
     }
 
     pub(super) fn refresh_collections(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
+        let mut error = None;
         for change in ui.reactive.sources.take_changes() {
             let SourceChange::Collection(edit) = change.change else {
                 continue;
@@ -481,18 +485,25 @@ impl RetainedHost {
                 .cloned()
                 .unwrap_or_default();
             for id in readers {
-                if self.each[&id].revision >= change.revision {
+                if self
+                    .each
+                    .get(&id)
+                    .is_none_or(|each| each.revision >= change.revision)
+                {
                     continue;
                 }
                 let start = self.each_start(&id);
                 let mut each = self.each.remove(&id).unwrap();
                 let result = self.edit_each(ui, &mut each, &edit, start, env);
                 each.revision = change.revision;
-                self.each.insert(id, each);
-                result?;
+                self.each.insert(id.clone(), each);
+                if let Err(reason) = result {
+                    self.rebuild_mount(ui, &id.mount);
+                    error.get_or_insert(reason);
+                }
             }
         }
-        Ok(())
+        error.map_or(Ok(()), Err)
     }
 
     fn edit_each(

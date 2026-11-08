@@ -5,9 +5,25 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+#[derive(Clone, Copy)]
+pub(crate) enum Order<'a> {
+    Untracked(&'a [String]),
+    Retained { keys: &'a [String], revision: u64 },
+}
+
+impl<'a> Order<'a> {
+    pub fn keys(self) -> &'a [String] {
+        match self {
+            Self::Untracked(keys) | Self::Retained { keys, .. } => keys,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Virtualizer {
     pub keys: Vec<String>,
+    #[serde(skip)]
+    order_revision: Option<u64>,
     measured: BTreeMap<String, f32>,
     invalidated: std::collections::BTreeSet<String>,
     starts: Vec<f32>,
@@ -82,7 +98,7 @@ impl Virtualizer {
     #[allow(clippy::too_many_arguments)]
     pub fn update(
         &mut self,
-        keys: &[String],
+        order: Order<'_>,
         measurements: &[(String, f32)],
         columns: usize,
         estimate: f32,
@@ -91,10 +107,17 @@ impl Virtualizer {
         viewport: f32,
         scroll: f32,
     ) -> f32 {
+        let keys = order.keys();
         let index = self.row_at(scroll) * self.columns.max(1);
         let inside = scroll - self.offset(index);
-        let anchor = self.keys.get(index).cloned();
-        let changed_order = self.keys != keys;
+        let changed_order = match order {
+            Order::Retained { revision, .. } if self.order_revision == Some(revision) => false,
+            _ => self.keys != keys,
+        };
+        self.order_revision = match order {
+            Order::Retained { revision, .. } => Some(revision),
+            Order::Untracked(_) => None,
+        };
         let changed_width = self.width != width;
         let mut changed = changed_order
             || changed_width
@@ -104,14 +127,21 @@ impl Virtualizer {
             || self.gap != gap;
         let present = changed_order.then(|| keys.iter().collect::<std::collections::BTreeSet<_>>());
         let contains = |k: &String| present.as_ref().is_none_or(|set| set.contains(k));
-        let surviving = anchor.filter(contains).or_else(|| {
+        let surviving = if changed_order {
             self.keys
-                .iter()
-                .skip(index)
-                .chain(self.keys.iter().take(index).rev())
-                .find(|k| contains(k))
-                .cloned()
-        });
+                .get(index)
+                .filter(|key| contains(key))
+                .or_else(|| {
+                    self.keys
+                        .iter()
+                        .skip(index)
+                        .chain(self.keys.iter().take(index).rev())
+                        .find(|key| contains(key))
+                })
+                .and_then(|key| keys.iter().position(|candidate| candidate == key))
+        } else {
+            Some(index)
+        };
         if changed_width {
             self.measured.clear();
         } else {
@@ -150,9 +180,7 @@ impl Virtualizer {
                     .push(self.starts.last().copied().unwrap() + height + gap);
             }
         }
-        let offset = surviving
-            .and_then(|k| self.keys.iter().position(|x| *x == k))
-            .map_or(scroll, |i| self.offset(i) + inside);
+        let offset = surviving.map_or(scroll, |i| self.offset(i) + inside);
         offset.clamp(0.0, (self.total() - viewport).max(0.0))
     }
 
