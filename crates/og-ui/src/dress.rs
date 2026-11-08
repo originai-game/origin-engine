@@ -1192,6 +1192,7 @@ impl Resolved {
                 None => crate::paint::Clip::None,
             },
             layer,
+            filters: Vec::new(),
             text: None,
             rive: None,
             outlines: Vec::new(),

@@ -277,6 +277,15 @@ fn fs_backdrop(in: UiOut) -> @location(0) vec4<f32> {
       let lod = clamp(log2(max(blur, 1.0)) - 1.0, 0.0, max(levels - 1.0, 0.0));
       let at = in.position.xy / frame.output.xy;
       rgb = textureSampleLevel(pyramid_tex, backdrop_sampler, at, lod).rgb;
+      let mi = s.kinds.y >> 8u;
+      if (mi > 0u) {
+        // CSS's backdrop-filter colour functions as one matrix over
+        // encoded values, its opacity over the unblurred backdrop.
+        let e = vec4<f32>(encode(max(rgb, vec3<f32>(0.0))), 1.0);
+        let o = clamp(vec3<f32>(dot(points[mi - 1u], e), dot(points[mi], e), dot(points[mi + 1u], e)), vec3<f32>(0.0), vec3<f32>(1.0));
+        let sharp = textureSampleLevel(pyramid_tex, backdrop_sampler, at, 0.0).rgb;
+        rgb = mix(sharp, decode(o), clamp(points[mi + 2u].x, 0.0, 1.0));
+      }
       if (srgb) {
         // CSS's backdrop-filter and its tint work on encoded values.
         rgb = encode(rgb);

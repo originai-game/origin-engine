@@ -267,6 +267,9 @@ pub struct GlassParts {
     pub css_mix: bool,
     /// The effect named its tint: a weight keeps it instead of its own.
     pub own_tint: bool,
+    /// A colour matrix over the blurred backdrop (CSS's `backdrop-filter`
+    /// colour functions, [`og_render::UiGlass::matrix`]).
+    pub matrix: Option<og_render::UiColorMatrix>,
 }
 
 impl GlassParts {
@@ -338,6 +341,9 @@ impl GlassParts {
         }
         glass.solid |= self.solid;
         glass.srgb_mix |= self.css_mix;
+        if self.matrix.is_some() {
+            glass.matrix = self.matrix;
+        }
         let mode = og_render::UiMode::Backdrop {
             blur,
             saturation,
@@ -595,6 +601,11 @@ pub struct ElementDraw {
     pub blend: Blend,
     pub clip: Clip,
     pub layer: Option<Layer>,
+    /// Layers under [`ElementDraw::layer`], the first innermost: each
+    /// composites what is inside it into the next (CSS's `filter`
+    /// functions in order). With no `layer`, the last one is the
+    /// composite that carries the opacity, blend and mask.
+    pub filters: Vec<Layer>,
     pub text: Option<TextEffects>,
     /// A Rive artboard playing in its box: its shapes, made where the
     /// element is placed, draw after its fills and before its strokes,
@@ -614,6 +625,35 @@ pub struct ElementDraw {
     /// instead of the whole box (an SVG `<image>`, a rect or ellipse
     /// clip); a rect's radii are then view-box units too.
     pub view_rect: Option<[f32; 4]>,
+}
+
+impl From<Material> for og_render::UiMaterial {
+    fn from(m: Material) -> og_render::UiMaterial {
+        match m {
+            Material::Plain => og_render::UiMaterial::Plain,
+            Material::Builtin(b) => og_render::UiMaterial::Builtin(b),
+            Material::Custom(h) => og_render::UiMaterial::Custom(h),
+        }
+    }
+}
+
+/// How far past what it draws a layer through `material` reaches: a
+/// blur's, outline's or ripple's radius and a drop shadow's blur and
+/// offset, with the Gaussian's tail.
+fn expand_of(
+    material: og_render::UiMaterial,
+    params: &[[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+) -> f32 {
+    let p = params[0];
+    match material {
+        og_render::UiMaterial::Builtin(Builtin::Blur | Builtin::Outline | Builtin::Ripple) => {
+            p[0].max(0.0) * 1.5
+        }
+        og_render::UiMaterial::Builtin(Builtin::DropShadow) => {
+            p[2].max(0.0) * 1.5 + p[0].abs().max(p[1].abs())
+        }
+        _ => 0.0,
+    }
 }
 
 /// A playing artboard as an element's draw. Two are equal when they play
@@ -647,6 +687,7 @@ impl Default for ElementDraw {
             blend: Blend::Normal,
             clip: Clip::None,
             layer: None,
+            filters: Vec::new(),
             text: None,
             rive: None,
             outlines: Vec::new(),
@@ -670,11 +711,23 @@ impl ElementDraw {
     /// Whether its subtree draws offscreen.
     fn layered(&self) -> bool {
         self.layer.is_some()
+            || !self.filters.is_empty()
             || matches!(self.clip, Clip::Mask(_))
             || self
                 .effects
                 .iter()
                 .any(|e| matches!(e, Effect::LayerBlur { .. }))
+    }
+
+    /// Its layers: the outer one (its own, else its last filter's), which
+    /// carries the composite, and the filters inside it, the first
+    /// innermost.
+    fn stages(&self) -> (Option<&Layer>, &[Layer]) {
+        match (&self.layer, self.filters.split_last()) {
+            (Some(l), _) => (Some(l), &self.filters),
+            (None, Some((last, rest))) => (Some(last), rest),
+            (None, None) => (None, &[]),
+        }
     }
 
     /// The view box's fit in `at`'s box: its scale and the box point
@@ -817,15 +870,9 @@ impl ElementDraw {
     pub(crate) fn enter(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
         if self.layered() {
-            let (material, params) = match &self.layer {
-                Some(l) => (
-                    match l.material {
-                        Material::Plain => og_render::UiMaterial::Plain,
-                        Material::Builtin(b) => og_render::UiMaterial::Builtin(b),
-                        Material::Custom(h) => og_render::UiMaterial::Custom(h),
-                    },
-                    l.params,
-                ),
+            let (outer, inner) = self.stages();
+            let (material, params) = match outer {
+                Some(l) => (l.material.into(), l.params),
                 None => match self.effects.iter().find_map(|e| match e {
                     Effect::LayerBlur { radius } => Some(*radius),
                     _ => None,
@@ -859,19 +906,24 @@ impl ElementDraw {
                     .map(|texture| og_render::UiMask::Image { texture, uv: *uv }),
                 _ => None,
             };
-            let blur = match material {
-                og_render::UiMaterial::Builtin(Builtin::Blur) => params[0][0],
-                og_render::UiMaterial::Builtin(Builtin::Outline) => params[0][0],
-                og_render::UiMaterial::Builtin(Builtin::Ripple) => params[0][0],
-                _ => 0.0,
-            };
             out.push(DrawCmd::BeginLayer {
                 material,
                 params,
                 mask,
-                expand: blur.max(0.0) * 1.5,
+                expand: expand_of(material, &params),
                 rect: Rect::default(),
             });
+            // The inner stages open inside it, the first innermost.
+            for l in inner.iter().rev() {
+                let material = l.material.into();
+                out.push(DrawCmd::BeginLayer {
+                    material,
+                    params: l.params,
+                    mask: None,
+                    expand: expand_of(material, &l.params),
+                    rect: Rect::default(),
+                });
+            }
         }
         // Inside a layer the composite carries the opacity and blend.
         let (opacity, blend) = if self.layered() {
@@ -1104,6 +1156,17 @@ impl ElementDraw {
     fn composite(&self, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
         if self.layered() {
+            // Each inner stage composites its whole layer into the next.
+            for _ in self.stages().1 {
+                out.push(DrawCmd::EndLayer {
+                    geometry: None,
+                    rect: at.rect,
+                    opacity: 1.0,
+                    blend: Blend::Normal,
+                    clip: at.clip,
+                    ground: None,
+                });
+            }
             // The composite covers the layer; a mask or a material clips
             // to the element's shape only when it clips.
             let shaped = matches!(self.clip, Clip::Shape);

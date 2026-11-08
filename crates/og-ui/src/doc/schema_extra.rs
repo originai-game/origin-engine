@@ -562,14 +562,14 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `backdrop-filter: blur(<n>px) [saturate(<n>)] [brightness(<n>)]`: what is under the element, blurred and adjusted (glass).",
+        doc: "CSS `backdrop-filter`: what is under the element blurred and its colour adjusted (glass), with `filter`'s functions; the colour functions fold into one matrix and `drop-shadow()` casts nothing on the opaque backdrop.",
     },
     PropSpec {
         name: "filter",
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `filter`: `blur()` blurs the element and its subtree; `hue-rotate()`, `saturate()`, `brightness()` and `grayscale()` adjust their colour.",
+        doc: "CSS `filter`: `blur()`, `brightness()`, `contrast()`, `drop-shadow()` (of the alpha, not the box), `grayscale()`, `hue-rotate()`, `invert()`, `opacity()`, `saturate()` and `sepia()` on the element and its subtree, applied in the order written (`filter: drop-shadow(0 4px 6px #0008) saturate(1.4)`).",
     },
     PropSpec {
         name: "mixBlendMode",

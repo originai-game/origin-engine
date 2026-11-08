@@ -139,10 +139,14 @@ impl Ui {
             }
         }
         let css = self.css_paint(r, current);
-        // A clip, mask, blend or material cuts or composites the
+        // A clip, mask, blend, filter or material cuts or composites the
         // background too: it is drawn with them.
         if css.as_ref().is_some_and(|c| {
-            c.clip.is_some() || c.mask.is_some() || c.blend.is_some() || c.layer.is_some()
+            c.clip.is_some()
+                || c.mask.is_some()
+                || c.blend.is_some()
+                || c.layer.is_some()
+                || !c.filters.is_empty()
         }) && d.background.is_none()
             && el.part.is_none()
             && el.frame.is_none()
@@ -205,18 +209,10 @@ impl Ui {
         if let Some(Ok(Some(e))) = r.str("backdropFilter").map(p::backdrop) {
             c.effects.push(e);
         }
-        if let Some(Ok((blur, adjust))) = r.str("filter").map(p::filter) {
-            if let Some(radius) = blur {
-                c.effects.push(crate::paint::Effect::LayerBlur { radius });
-            }
-            if let Some(a) = adjust {
-                let mut l = crate::paint::Layer {
-                    material: crate::paint::Material::Builtin(crate::paint::Builtin::ColorAdjust),
-                    params: Default::default(),
-                };
-                l.params[0] = a;
-                c.layer = Some(l);
-            }
+        if let Some(Ok(fns)) = r.str("filter").map(|v| p::filter_fns(v, "filter")) {
+            let theme = self.theme();
+            c.filters =
+                p::filter_layers(&fns, |c| c.map_or(current.linear(), |c| c.resolve(theme)));
         }
         c.blend = r.str("mixBlendMode").and_then(|v| p::blend(v).ok());
         if let Some(Ok(s)) = r

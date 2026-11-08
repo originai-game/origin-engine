@@ -71,7 +71,7 @@ const BLENDS: [UiBlend; 7] = [
     UiBlend::SoftLight,
     UiBlend::ColorDodge,
 ];
-const BUILTINS: [UiBuiltin; 10] = [
+const BUILTINS: [UiBuiltin; 12] = [
     UiBuiltin::None,
     UiBuiltin::Dissolve,
     UiBuiltin::Shine,
@@ -82,6 +82,8 @@ const BUILTINS: [UiBuiltin; 10] = [
     UiBuiltin::ColorAdjust,
     UiBuiltin::Outline,
     UiBuiltin::Blur,
+    UiBuiltin::ColorMatrix,
+    UiBuiltin::DropShadow,
 ];
 
 fn index_of<T: PartialEq>(all: &[T], v: &T) -> u8 {
@@ -617,14 +619,24 @@ fn reffects(r: &mut R) -> Option<UiTextEffects> {
 }
 
 /// A glass material's flags (solid 1, sRGB mix 2) and, when it limits its
-/// backdrop or lights its top edge, flag 4 and those two values: a save
-/// from before them reads unchanged.
+/// backdrop or lights its top edge, flag 4 and those two values, then with
+/// a colour matrix flag 8 and its rows and opacity: a save from before
+/// them reads unchanged.
 pub(crate) fn glass_flags(w: &mut W, g: &og_render::UiGlass) {
     let lit = g.backdrop_max != 0.0 || g.edge_top != 0.0;
-    w.u8(u8::from(g.solid) | u8::from(g.srgb_mix) << 1 | u8::from(lit) << 2);
+    w.u8(u8::from(g.solid)
+        | u8::from(g.srgb_mix) << 1
+        | u8::from(lit) << 2
+        | u8::from(g.matrix.is_some()) << 3);
     if lit {
         w.f32(g.backdrop_max);
         w.f32(g.edge_top);
+    }
+    if let Some(m) = &g.matrix {
+        for row in &m.rows {
+            f4(w, row);
+        }
+        w.f32(m.opacity);
     }
 }
 
@@ -635,6 +647,12 @@ pub(crate) fn rglass_flags(r: &mut R, g: &mut og_render::UiGlass) -> Option<()> 
     if flags & 4 != 0 {
         g.backdrop_max = r.f32()?;
         g.edge_top = r.f32()?;
+    }
+    if flags & 8 != 0 {
+        g.matrix = Some(og_render::UiColorMatrix {
+            rows: [rf4(r)?, rf4(r)?, rf4(r)?],
+            opacity: r.f32()?,
+        });
     }
     Some(())
 }
@@ -866,6 +884,7 @@ mod tests {
             srgb_mix: true,
             backdrop_max: 0.42,
             edge_top: 0.22,
+            matrix: None,
         };
         let rect = Rect::new(10.0, 20.0, 200.0, 100.0);
         let glass = |saturation, material| DrawCmd::Glass {
@@ -885,6 +904,14 @@ mod tests {
             brightness: 1.0,
             glass: UiGlass {
                 solid: true,
+                matrix: Some(og_render::UiColorMatrix {
+                    rows: [
+                        [0.5, 0.0, 0.0, 0.25],
+                        [0.0, 1.5, 0.0, 0.0],
+                        [0.1, 0.2, 0.3, 0.0],
+                    ],
+                    opacity: 0.75,
+                }),
                 ..material
             },
         };

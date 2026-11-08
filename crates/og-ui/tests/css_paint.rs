@@ -1,6 +1,8 @@
 //! CSS paint in documents (docs/ui.md, CSS paint): gradient backgrounds
 //! (linear, radial, conic, repeating), `mask-image`, `clip-path` shapes,
-//! `text-shadow`, `filter`, `mix-blend-mode` and `backdrop-filter`.
+//! `text-shadow`, `filter` chains (a drop shadow that follows a clipped
+//! star's alpha, colour functions in order, opacity and blur), and
+//! `backdrop-filter` colour functions over stripes.
 //! The frames match `references/metal/css-paint-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
@@ -31,6 +33,13 @@ const CARD: &str = r##"<meta name="component" content="paint">
     <div id="Fade"></div>
     <div id="Grey"></div>
   </div>
+  <div id="Row3">
+    <div id="Lift"><div id="Star"></div></div>
+    <div id="Chain"></div>
+    <div id="Negative"></div>
+    <div id="Ghost"></div>
+  </div>
+  <div id="Pane"><div id="Lens"></div></div>
   <p id="Glow">Shadowed text</p>
 </div>
 </column>
@@ -39,8 +48,8 @@ const CARD: &str = r##"<meta name="component" content="paint">
 #Card { padding: 24px; display: flex; flex-direction: column; gap: 16px;
   background: linear-gradient(160deg, #1f2a44, #0d1117 70%); border-radius: 16px; }
 #Title { margin: 0; }
-#Row, #Row2 { display: flex; flex-direction: row; gap: 16px; }
-#Sunset, #Orb, #Dial, #Stripes, #Gem, #Tag, #Fade, #Grey { width: 96px; height: 64px; }
+#Row, #Row2, #Row3 { display: flex; flex-direction: row; gap: 16px; }
+#Sunset, #Orb, #Dial, #Stripes, #Gem, #Tag, #Fade, #Grey, #Star, #Chain, #Negative, #Ghost { width: 96px; height: 64px; }
 #Sunset { background: linear-gradient(to top right, #ff7b72, #f0b429 50%, #58a6ff); border-radius: 8px; }
 #Orb { background: radial-gradient(circle at 30% 30%, #ffffff, #7ee787 40%, #0d1117); border-radius: 32px; }
 #Dial { background: conic-gradient(from 90deg, #f85149, #f0b429, #7ee787, #58a6ff, #f85149); border-radius: 32px; }
@@ -49,10 +58,20 @@ const CARD: &str = r##"<meta name="component" content="paint">
 #Tag { background: #f0b429; clip-path: path(evenodd, "M8 8 L88 8 L88 56 L8 56 Z M36 20 L60 20 L60 44 L36 44 Z"); }
 #Fade { background: #7ee787; mask-image: linear-gradient(to right, #000, transparent); }
 #Grey { background: linear-gradient(#ff7b72, #58a6ff); filter: grayscale(1); }
+#Lift { filter: drop-shadow(4px 6px 3px #000000cc) saturate(1.6); }
+#Star { background: linear-gradient(#f0b429, #ff7b72);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+#Chain { background: conic-gradient(#f85149, #f0b429, #7ee787, #58a6ff, #f85149); border-radius: 8px;
+  filter: sepia(0.8) contrast(1.4) hue-rotate(180deg); }
+#Negative { background: linear-gradient(to right, #ffffff, #58a6ff); filter: invert(1); }
+#Ghost { background: #7ee787; border-radius: 8px; filter: opacity(40%) blur(2px); }
+#Pane { width: 100%; height: 40px; display: flex; flex-direction: row;
+  background: repeating-linear-gradient(90deg, #f0b429 0px, #f0b429 10px, #1f6feb 10px, #1f6feb 20px); }
+#Lens { width: 50%; height: 100%; backdrop-filter: invert(1) grayscale(0.5); }
 #Glow { margin: 0; color: #ffffff; text-shadow: 0 2px 6px #58a6ff; }
 @media (max-width: 500px) {
-  #Row, #Row2 { gap: 8px; }
-  #Sunset, #Orb, #Dial, #Stripes, #Gem, #Tag, #Fade, #Grey { width: 72px; height: 56px; }
+  #Row, #Row2, #Row3 { gap: 8px; }
+  #Sunset, #Orb, #Dial, #Stripes, #Gem, #Tag, #Fade, #Grey, #Star, #Chain, #Negative, #Ghost { width: 72px; height: 56px; }
 }
 </style>"##;
 

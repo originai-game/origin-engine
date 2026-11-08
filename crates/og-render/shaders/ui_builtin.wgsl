@@ -154,6 +154,44 @@ fn material(m: MaterialInput, p: Params) -> vec4<f32> {
       let c = sum / wsum;
       return vec4<f32>(c.rgb / max(c.a, 1e-5), c.a);
     }
+    case 10u: {
+      // Colour matrix (CSS's filter functions): rows a, b, c over the
+      // straight sRGB-encoded colour and 1, clamped; alpha times d.x.
+      let c = layer(m.uv);
+      let e = vec4<f32>(encode(c.rgb), 1.0);
+      let o = clamp(vec3<f32>(dot(p.a, e), dot(p.b, e), dot(p.c, e)), vec3<f32>(0.0), vec3<f32>(1.0));
+      return vec4<f32>(decode(o), c.a * clamp(p.d.x, 0.0, 1.0));
+    }
+    case 11u: {
+      // Drop shadow (CSS's drop-shadow()): the layer's alpha moved by
+      // a.xy, blurred by a Gaussian of half a.z as the layer blur's taps
+      // are, in colour b, under the layer.
+      let c = layer(m.uv);
+      let at = m.uv - p.a.xy * texel;
+      let r = max(p.a.z, 0.0);
+      var sa = layer_premultiplied(at).a;
+      if (r >= 0.5) {
+        let sigma = 0.5 * r;
+        let step = r / 4.0;
+        let device = f32(textureDimensions(layer_tex, 0u).x) / max(layer_params.rect.z, 1.0);
+        let lod = log2(max(step * device, 1.0));
+        var sum = 0.0;
+        var wsum = 0.0;
+        for (var y = -4; y <= 4; y++) {
+          for (var x = -4; x <= 4; x++) {
+            let o = vec2<f32>(f32(x), f32(y)) * step;
+            let w = exp(-dot(o, o) / (2.0 * sigma * sigma));
+            sum += textureSampleLevel(layer_tex, layer_sampler, at + o * texel, lod).a * w;
+            wsum += w;
+          }
+        }
+        sa = sum / wsum;
+      }
+      sa = sa * p.b.a;
+      let a = c.a + sa * (1.0 - c.a);
+      let rgb = (c.rgb * c.a + p.b.rgb * sa * (1.0 - c.a)) / max(a, 1e-5);
+      return vec4<f32>(rgb, a);
+    }
     default: {
       return layer(m.uv);
     }

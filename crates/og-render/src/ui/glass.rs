@@ -154,6 +154,7 @@ impl UiGlassStyle {
             srgb_mix: true,
             backdrop_max,
             edge_top,
+            matrix: None,
         };
         let (blur, saturation, tint) = match self.fallback {
             // Dark glass saturates 120 %, not CSS's 200 %: over a game's

@@ -365,6 +365,46 @@ pub struct UiGlass {
     /// alpha over the outline's top 1 CSS px, fading down the sides and
     /// towards the corners; 0 is none.
     pub edge_top: f32,
+    /// A colour matrix over the blurred backdrop before its tint (CSS's
+    /// `backdrop-filter` colour functions), in sRGB-encoded values whatever
+    /// `srgb_mix` says; its opacity mixes the result over the unblurred
+    /// backdrop. `None` is none.
+    pub matrix: Option<UiColorMatrix>,
+}
+
+/// A colour matrix as CSS's filter functions compose (Filter Effects 1
+/// §13): over straight sRGB-encoded colour, `rgb' = rows · (r, g, b, 1)`
+/// clamped to 0..1, and alpha times `opacity`. The default is the
+/// identity.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct UiColorMatrix {
+    pub rows: [[f32; 4]; 3],
+    pub opacity: f32,
+}
+
+impl Default for UiColorMatrix {
+    fn default() -> UiColorMatrix {
+        UiColorMatrix {
+            rows: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+            ],
+            opacity: 1.0,
+        }
+    }
+}
+
+impl UiColorMatrix {
+    /// As a layer's parameters for [`UiBuiltin::ColorMatrix`].
+    pub fn params(&self) -> [[f32; 4]; UI_MATERIAL_PARAMS] {
+        [
+            self.rows[0],
+            self.rows[1],
+            self.rows[2],
+            [self.opacity, 0.0, 0.0, 0.0],
+        ]
+    }
 }
 
 /// One of [`UiGlass::shadows`]: a CSS `box-shadow` (offset, blur, spread,
@@ -491,6 +531,13 @@ pub enum UiBuiltin {
     Outline,
     /// [radius (CSS px)]: a layer blur.
     Blur,
+    /// [r row], [g row], [b row], [opacity, _, _, _]: a
+    /// [`UiColorMatrix`] ([`UiColorMatrix::params`]).
+    ColorMatrix,
+    /// [offset x, offset y (CSS px), blur (CSS, the Gaussian's standard
+    /// deviation half of it), _], [colour]: a shadow of the layer's alpha
+    /// under it (CSS's `drop-shadow()`).
+    DropShadow,
 }
 
 /// What a layer composites through.

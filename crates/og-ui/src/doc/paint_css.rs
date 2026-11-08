@@ -86,6 +86,8 @@ pub(crate) struct CssPaint {
     pub images: Vec<CssGradient>,
     pub mask: Option<CssGradient>,
     pub effects: Vec<Effect>,
+    /// `filter`'s layers, the first innermost.
+    pub filters: Vec<Layer>,
     pub blend: Option<Blend>,
     pub text_shadows: Vec<TextShadow>,
     pub clip: Option<CssClip>,
@@ -374,30 +376,252 @@ pub(crate) fn mask(text: &str) -> Result<Option<CssGradient>, String> {
     }
 }
 
-/// A list of filter functions with one numeric argument each.
-fn filter_fns(text: &str, what: &str) -> Result<Vec<(String, Tok)>, String> {
+/// One CSS filter function (Filter Effects 1 §13), in the order written.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum FilterFn {
+    /// `blur(<σ>)`, CSS px.
+    Blur(f32),
+    /// A colour function as its matrix.
+    Matrix(og_render::UiColorMatrix),
+    /// `drop-shadow([<colour>] <x> <y> [<blur>])`; no colour is
+    /// `currentColor`.
+    DropShadow {
+        offset: [f32; 2],
+        blur: f32,
+        color: Option<ColorRef>,
+    },
+}
+
+/// `filter` or `backdrop-filter` (`what`): its functions in order, or none.
+pub(crate) fn filter_fns(text: &str, what: &str) -> Result<Vec<FilterFn>, String> {
     let t = tokens(text)?;
     if matches!(t.as_slice(), [Tok::Ident(w)] if w == "none") {
         return Ok(Vec::new());
     }
     t.into_iter()
         .map(|t| match t {
-            Tok::Func(f, a) => match <[Vec<Tok>; 1]>::try_from(a) {
-                Ok([v]) if v.len() == 1 => Ok((f, v.into_iter().next().unwrap())),
-                _ => Err(format!("{f}() takes one value")),
-            },
+            Tok::Func(f, a) => {
+                let a: Vec<Tok> = a.into_iter().flatten().collect();
+                filter_fn(&f, &a).map_err(|e| format!("{f}(): {e}"))
+            }
             t => Err(format!("'{}' is not a {what} function", describe(&t))),
         })
         .collect()
 }
 
-/// `saturate(150%)`, `brightness(1.2)`: a factor.
-fn amount(t: &Tok) -> Result<f32, String> {
-    match number(t)? {
-        (v, "%") => Ok(v / 100.0),
-        (v, "") => Ok(v),
-        _ => Err(format!("'{}' is not an amount: <n> or <n>%", describe(t))),
+fn filter_fn(f: &str, a: &[Tok]) -> Result<FilterFn, String> {
+    use FilterFn::Matrix;
+    // An amount: a number or percentage, not negative; 1 when left out.
+    let amount = |most: f32| -> Result<f32, String> {
+        let v = match a {
+            [] => 1.0,
+            [t] => match number(t)? {
+                (v, "%") => v / 100.0,
+                (v, "") => v,
+                _ => return Err(format!("'{}' is not an amount: <n> or <n>%", describe(t))),
+            },
+            _ => return Err("one amount".into()),
+        };
+        if v < 0.0 {
+            return Err("an amount is not negative".into());
+        }
+        Ok(v.min(most))
+    };
+    let diag = |k: f32, o: f32| og_render::UiColorMatrix {
+        rows: [[k, 0.0, 0.0, o], [0.0, k, 0.0, o], [0.0, 0.0, k, o]],
+        opacity: 1.0,
+    };
+    // A 3×3 over the colour.
+    let m3 = |m: [[f32; 3]; 3]| og_render::UiColorMatrix {
+        rows: m.map(|r| [r[0], r[1], r[2], 0.0]),
+        opacity: 1.0,
+    };
+    Ok(match f {
+        "blur" => FilterFn::Blur(match a {
+            [] => 0.0,
+            [t] => px(t)?.max(0.0),
+            _ => return Err("one length".into()),
+        }),
+        "brightness" => Matrix(diag(amount(f32::MAX)?, 0.0)),
+        "contrast" => {
+            let k = amount(f32::MAX)?;
+            Matrix(diag(k, 0.5 - 0.5 * k))
+        }
+        "invert" => {
+            let k = amount(1.0)?;
+            Matrix(diag(1.0 - 2.0 * k, k))
+        }
+        "opacity" => Matrix(og_render::UiColorMatrix {
+            opacity: amount(1.0)?,
+            ..Default::default()
+        }),
+        "grayscale" => {
+            let k = 1.0 - amount(1.0)?;
+            Matrix(m3([
+                [
+                    0.2126 + 0.7874 * k,
+                    0.7152 - 0.7152 * k,
+                    0.0722 - 0.0722 * k,
+                ],
+                [
+                    0.2126 - 0.2126 * k,
+                    0.7152 + 0.2848 * k,
+                    0.0722 - 0.0722 * k,
+                ],
+                [
+                    0.2126 - 0.2126 * k,
+                    0.7152 - 0.7152 * k,
+                    0.0722 + 0.9278 * k,
+                ],
+            ]))
+        }
+        "sepia" => {
+            let k = 1.0 - amount(1.0)?;
+            Matrix(m3([
+                [0.393 + 0.607 * k, 0.769 - 0.769 * k, 0.189 - 0.189 * k],
+                [0.349 - 0.349 * k, 0.686 + 0.314 * k, 0.168 - 0.168 * k],
+                [0.272 - 0.272 * k, 0.534 - 0.534 * k, 0.131 + 0.869 * k],
+            ]))
+        }
+        "saturate" => {
+            let s = amount(f32::MAX)?;
+            Matrix(m3([
+                [0.213 + 0.787 * s, 0.715 - 0.715 * s, 0.072 - 0.072 * s],
+                [0.213 - 0.213 * s, 0.715 + 0.285 * s, 0.072 - 0.072 * s],
+                [0.213 - 0.213 * s, 0.715 - 0.715 * s, 0.072 + 0.928 * s],
+            ]))
+        }
+        "hue-rotate" => {
+            let h = match a {
+                [] => 0.0,
+                [t] => angle(t)?,
+                _ => return Err("one angle".into()),
+            };
+            let (sn, c) = og_core::math::sin_cos(h);
+            Matrix(m3([
+                [
+                    0.213 + c * 0.787 - sn * 0.213,
+                    0.715 - c * 0.715 - sn * 0.715,
+                    0.072 - c * 0.072 + sn * 0.928,
+                ],
+                [
+                    0.213 - c * 0.213 + sn * 0.143,
+                    0.715 + c * 0.285 + sn * 0.140,
+                    0.072 - c * 0.072 - sn * 0.283,
+                ],
+                [
+                    0.213 - c * 0.213 - sn * 0.787,
+                    0.715 - c * 0.715 + sn * 0.715,
+                    0.072 + c * 0.928 + sn * 0.072,
+                ],
+            ]))
+        }
+        "drop-shadow" => {
+            let mut lengths = Vec::new();
+            let mut color = None;
+            for t in a {
+                if matches!(t, Tok::Num(..)) {
+                    lengths.push(px(t)?);
+                } else if color.is_none() {
+                    color = Some(self::color(t)?);
+                } else {
+                    return Err("one colour".into());
+                }
+            }
+            match lengths.as_slice() {
+                [x, y, rest @ ..] if rest.len() <= 1 => FilterFn::DropShadow {
+                    offset: [*x, *y],
+                    blur: rest.first().copied().unwrap_or(0.0).max(0.0),
+                    color,
+                },
+                _ => return Err("[<colour>] <x> <y> [<blur>]".into()),
+            }
+        }
+        f => {
+            return Err(format!(
+                "not a filter: blur, brightness, contrast, drop-shadow, grayscale, hue-rotate, invert, opacity, saturate, sepia (writing {f})"
+            ));
+        }
+    })
+}
+
+/// `m` then `n`: one matrix, as if `n` read `m`'s result unclamped.
+fn then(m: &og_render::UiColorMatrix, n: &og_render::UiColorMatrix) -> og_render::UiColorMatrix {
+    let mut rows = [[0.0; 4]; 3];
+    for (i, row) in rows.iter_mut().enumerate() {
+        for (j, v) in row.iter_mut().enumerate() {
+            *v = (0..3).map(|k| n.rows[i][k] * m.rows[k][j]).sum::<f32>()
+                + if j == 3 { n.rows[i][3] } else { 0.0 };
+        }
     }
+    og_render::UiColorMatrix {
+        rows,
+        opacity: m.opacity * n.opacity,
+    }
+}
+
+/// Whether `m` keeps every colour in 0..1: then the clamp after it does
+/// nothing, and the next function folds into it exactly.
+fn contained(m: &og_render::UiColorMatrix) -> bool {
+    m.rows.iter().all(|r| {
+        let lo = r[3] + r[..3].iter().map(|v| v.min(0.0)).sum::<f32>();
+        let hi = r[3] + r[..3].iter().map(|v| v.max(0.0)).sum::<f32>();
+        lo >= -1e-5 && hi <= 1.0 + 1e-5
+    })
+}
+
+/// `filter`'s functions as layers, the first innermost: a blur, a drop
+/// shadow (its colour resolved by `color`), and each run of colour
+/// functions as one colour matrix, split where a function could leave
+/// 0..1 so the clamp CSS does after each one still falls between them.
+pub(crate) fn filter_layers(
+    fns: &[FilterFn],
+    color: impl Fn(Option<&ColorRef>) -> [f32; 4],
+) -> Vec<Layer> {
+    let layer = |b: Builtin, params| Layer {
+        material: Material::Builtin(b),
+        params,
+    };
+    let mut out = Vec::new();
+    let mut run: Option<og_render::UiColorMatrix> = None;
+    for f in fns {
+        if let FilterFn::Matrix(m) = f {
+            run = Some(match run.take() {
+                Some(r) if contained(&r) => then(&r, m),
+                Some(r) => {
+                    out.push(layer(Builtin::ColorMatrix, r.params()));
+                    *m
+                }
+                None => *m,
+            });
+            continue;
+        }
+        if let Some(r) = run.take() {
+            out.push(layer(Builtin::ColorMatrix, r.params()));
+        }
+        let mut p = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+        match f {
+            FilterFn::Blur(sigma) => {
+                // The layer blur's radius is twice its standard deviation.
+                p[0][0] = 2.0 * sigma;
+                out.push(layer(Builtin::Blur, p));
+            }
+            FilterFn::DropShadow {
+                offset,
+                blur,
+                color: c,
+            } => {
+                p[0] = [offset[0], offset[1], *blur, 0.0];
+                p[1] = color(c.as_ref());
+                out.push(layer(Builtin::DropShadow, p));
+            }
+            FilterFn::Matrix(_) => unreachable!("folded above"),
+        }
+    }
+    if let Some(r) = run {
+        out.push(layer(Builtin::ColorMatrix, r.params()));
+    }
+    out
 }
 
 fn px(t: &Tok) -> Result<f32, String> {
@@ -407,58 +631,33 @@ fn px(t: &Tok) -> Result<f32, String> {
     }
 }
 
-/// `backdrop-filter: blur(<px>) [saturate(<n>)] [brightness(<n>)]`.
+/// `backdrop-filter`: the backdrop blurred (blurs add as Gaussians do)
+/// and its colour functions folded into one matrix over it; a
+/// `drop-shadow()` has nothing to cast (the backdrop is opaque).
 pub(crate) fn backdrop(text: &str) -> Result<Option<Effect>, String> {
     let fns = filter_fns(text, "backdrop-filter")?;
     if fns.is_empty() {
         return Ok(None);
     }
-    let (mut blur, mut saturation, mut brightness) = (0.0, 1.0, 1.0);
-    for (f, v) in &fns {
-        match f.as_str() {
-            "blur" => blur = px(v)?,
-            "saturate" => saturation = amount(v)?,
-            "brightness" => brightness = amount(v)?,
-            f => {
-                return Err(format!(
-                    "{f}() is not a backdrop-filter here: blur, saturate, brightness"
-                ));
-            }
+    let mut var = 0.0f32;
+    let mut matrix: Option<og_render::UiColorMatrix> = None;
+    for f in &fns {
+        match f {
+            FilterFn::Blur(s) => var += s * s,
+            FilterFn::Matrix(m) => matrix = Some(matrix.map_or(*m, |r| then(&r, m))),
+            FilterFn::DropShadow { .. } => {}
         }
     }
     Ok(Some(Effect::Backdrop {
-        blur,
-        saturation,
-        brightness,
+        blur: var.sqrt(),
+        saturation: 1.0,
+        brightness: 1.0,
         tint: ColorRef::Literal(Srgba::TRANSPARENT),
-        glass: Default::default(),
+        glass: crate::paint::GlassParts {
+            matrix,
+            ..Default::default()
+        },
     }))
-}
-
-/// `filter`: `blur()` blurs the element and its subtree; `hue-rotate()`,
-/// `saturate()`, `brightness()` and `grayscale()` adjust its colour.
-pub(crate) fn filter(text: &str) -> Result<(Option<f32>, Option<[f32; 4]>), String> {
-    let mut blur = None;
-    let mut adjust: Option<[f32; 4]> = None;
-    for (f, v) in filter_fns(text, "filter")? {
-        let (k, x) = match f.as_str() {
-            "blur" => {
-                blur = Some(px(&v)?);
-                continue;
-            }
-            "hue-rotate" => (0, angle(&v)?),
-            "saturate" => (1, amount(&v)?),
-            "brightness" => (2, amount(&v)?),
-            "grayscale" => (3, amount(&v)?.clamp(0.0, 1.0)),
-            f => {
-                return Err(format!(
-                    "{f}() is not a filter here: blur, hue-rotate, saturate, brightness, grayscale"
-                ));
-            }
-        };
-        adjust.get_or_insert([0.0, 1.0, 1.0, 0.0])[k] = x;
-    }
-    Ok((blur, adjust))
 }
 
 /// `mix-blend-mode`.
@@ -1035,5 +1234,77 @@ mod tests {
             background("#fff").is_none(),
             "a plain colour lowers as before"
         );
+    }
+
+    /// A filter chain as layers, in order, each colour run one matrix that
+    /// gives what CSS gives. Ways it could fail: a matrix composed in the
+    /// wrong order (invert then contrast is not contrast then invert), a
+    /// run folded across a function that leaves 0..1 (brightness(2)'s
+    /// clamp lost before invert), a drop shadow put outside the colour
+    /// functions written after it, or CSS's blur (a standard deviation)
+    /// passed as the layer blur's radius.
+    #[test]
+    fn filter_functions_chain_in_order() {
+        let layers = |s: &str| {
+            filter_layers(&filter_fns(s, "filter").unwrap(), |c| {
+                c.map_or([0.0, 0.0, 0.0, 1.0], |_| [1.0, 0.0, 0.0, 1.0])
+            })
+        };
+        let kinds = |l: &[Layer]| -> Vec<Builtin> {
+            l.iter()
+                .map(|l| match l.material {
+                    Material::Builtin(b) => b,
+                    _ => Builtin::None,
+                })
+                .collect()
+        };
+        // What a matrix does to an sRGB colour, as the shader applies it.
+        let apply = |l: &Layer, c: [f32; 3]| -> [f32; 3] {
+            let p = l.params;
+            [0, 1, 2].map(|i| {
+                (p[i][0] * c[0] + p[i][1] * c[1] + p[i][2] * c[2] + p[i][3]).clamp(0.0, 1.0)
+            })
+        };
+        let close = |a: [f32; 3], b: [f32; 3]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-3);
+        // invert(1) then contrast(2): (1 - 0.2) · 2 - 0.5 = 1.1, clamped
+        // 1, and (1 - 0.6) · 2 - 0.5 = 0.3.
+        let l = layers("invert(1) contrast(2)");
+        assert_eq!(kinds(&l), [Builtin::ColorMatrix]);
+        assert!(
+            close(apply(&l[0], [0.2, 0.6, 0.5]), [1.0, 0.3, 0.5]),
+            "{:?}",
+            apply(&l[0], [0.2, 0.6, 0.5])
+        );
+        // brightness(2) leaves 0..1: CSS clamps 0.8 · 2 to 1 before the
+        // invert (0, not 1 - 1.6), so the two do not fold.
+        let l = layers("brightness(2) invert(1)");
+        assert_eq!(kinds(&l), [Builtin::ColorMatrix, Builtin::ColorMatrix]);
+        assert!(close(
+            apply(&l[1], apply(&l[0], [0.8, 0.1, 0.0])),
+            [0.0, 0.8, 1.0]
+        ));
+        // sepia(1) of white is Filter Effects' row sums.
+        let l = layers("sepia(1)");
+        assert!(
+            close(apply(&l[0], [1.0; 3]), [1.0, 1.0, 0.937]),
+            "{:?}",
+            apply(&l[0], [1.0; 3])
+        );
+        let l = layers("drop-shadow(red 2px 3px 4px) grayscale(1) blur(5px) opacity(50%)");
+        assert_eq!(
+            kinds(&l),
+            [
+                Builtin::DropShadow,
+                Builtin::ColorMatrix,
+                Builtin::Blur,
+                Builtin::ColorMatrix
+            ]
+        );
+        assert_eq!(l[0].params[0], [2.0, 3.0, 4.0, 0.0]);
+        assert_eq!(l[0].params[1], [1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(l[2].params[0][0], 10.0, "blur(5px) is σ 5: radius 10");
+        assert_eq!(l[3].params[3][0], 0.5);
+        assert!(filter_fns("grayscale(-1)", "filter").is_err());
+        assert!(filter_fns("url(#f)", "filter").is_err());
     }
 }

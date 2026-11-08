@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "UI documents: filter and backdrop-filter functions",
+      "summary": "filter takes contrast(), invert(), sepia(), opacity() and drop-shadow() beside blur(), brightness(), grayscale(), hue-rotate() and saturate(), applied in the order written; drop-shadow() follows the alpha of what is drawn, not the box. backdrop-filter takes the same set over the backdrop."
+    },
+    {
+      "member": "og-render: UiBuiltin.ColorMatrix, UiBuiltin.DropShadow, UiColorMatrix, UiGlass.matrix",
+      "summary": "Layer materials for a CSS colour matrix (over sRGB-encoded straight colour, clamped) and a drop shadow of the layer's alpha, and a colour matrix over a backdrop."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI documents: filter",
+      "summary": "blur() is CSS's standard deviation (it was taken as the layer blur's radius, half as soft), grayscale(), saturate(), brightness() and hue-rotate() use Filter Effects' matrices over sRGB-encoded colour (they mixed in linear light), and blur() with a colour function draws both (the colour function replaced the blur). backdrop-filter's saturate() and brightness() are the same matrices. Reference frames css-paint-1280 and css-paint-390 moved."
+    }
+  ]
+}

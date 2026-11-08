@@ -631,6 +631,19 @@ pub(crate) fn shape(
             composite = Some(*k);
         }
     }
+    if let UiMode::Backdrop {
+        glass: UiGlass {
+            matrix: Some(m), ..
+        },
+        ..
+    } = &s.mode
+    {
+        // A backdrop's colour matrix: four rows of the points table (a
+        // solid paint's word leaves the bits above 8 free).
+        let first = tables.points.len() as u32;
+        tables.points.extend(m.params());
+        g.kinds[1] |= (first + 1) << 8;
+    }
     let source = if let Some(k) = composite {
         ShapeSource::Composite(k)
     } else if let UiMode::Backdrop { glass, .. } = s.mode {

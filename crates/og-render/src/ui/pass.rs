@@ -80,11 +80,15 @@ struct LayerTarget {
     chain: Option<crate::mips::MipChain>,
 }
 
-/// Whether a layer's target carries mips: the blur reads them, each of its
+/// Whether a layer's target carries mips: the blur and the drop shadow
+/// read them, each of their
 /// taps prefiltered to its spacing (ui_builtin.wgsl), so no radius
 /// undersamples the layer.
 fn layer_mips(material: UiMaterial) -> bool {
-    material == UiMaterial::Builtin(UiBuiltin::Blur)
+    matches!(
+        material,
+        UiMaterial::Builtin(UiBuiltin::Blur | UiBuiltin::DropShadow)
+    )
 }
 
 /// What one frame bound: the group 0 of the output and of each layer,
@@ -1081,6 +1085,8 @@ fn builtin_code(b: UiBuiltin) -> f32 {
         UiBuiltin::ColorAdjust => 7.0,
         UiBuiltin::Outline => 8.0,
         UiBuiltin::Blur => 9.0,
+        UiBuiltin::ColorMatrix => 10.0,
+        UiBuiltin::DropShadow => 11.0,
     }
 }
 

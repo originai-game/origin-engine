@@ -344,10 +344,25 @@ fades the element and its subtree by the gradient's alpha. `clip-path`
 takes `inset(… [round r])`, `circle()`, `ellipse()`, `polygon([rule,]
 …)` and `path([rule,] "…")` and cuts the element, its background and its
 children by the shape's analytic coverage (the path clip of inline SVG),
-with either fill rule. `filter` takes `blur()` (the element and its
-subtree, a layer blur) and `hue-rotate()`, `saturate()`, `brightness()`
-and `grayscale()` (one colour-adjust layer). `backdrop-filter: blur()
-[saturate()] [brightness()]` is the glass backdrop. `mix-blend-mode`
+with either fill rule. `filter` takes Filter Effects 1's functions in the
+order written: `blur()` (a standard deviation, as CSS), `brightness()`,
+`contrast()`, `grayscale()`, `hue-rotate()`, `invert()`, `opacity()`,
+`saturate()`, `sepia()` and `drop-shadow([colour] x y [blur])`, whose
+shadow follows the alpha of what is drawn (a clipped star casts a star),
+not the box. Each function is a layer the next one reads, the first
+innermost: a blur and a drop shadow are og-render's layer blur and drop
+shadow, and a run of colour functions is one colour matrix over
+sRGB-encoded straight colour, split where a function can leave 0..1
+(`brightness(2)`), so the clamp CSS does after each one stays where CSS
+has it. The last layer carries the element's opacity, blend and mask; as
+in CSS, `clip-path` cuts after the filter, so a drop shadow on a clipped
+element is cut with it (put the filter on its parent). `backdrop-filter`
+takes the same functions over what is under the element (glass): blurs
+add as Gaussians do, the colour functions fold into one matrix over the
+blurred backdrop (its `opacity()` mixes over the unblurred one), and
+`drop-shadow()` casts nothing on the opaque backdrop. The backdrop is
+read from the blur pyramid, so a backdrop with no blur is as soft as
+its finest level. `mix-blend-mode`
 takes normal, multiply, screen, plus-lighter, overlay, soft-light and
 color-dodge. `text-shadow` takes a comma list of `x y [blur] [color]`.
 `-og-material: <name>(<params>…)` composites the element and its subtree

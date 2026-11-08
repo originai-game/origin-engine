@@ -112,6 +112,7 @@ impl BoxDecor {
                     .map(|g| Paint::Gradient(g.resolve(w, h))),
             );
             d.effects.extend(c.effects.iter().cloned());
+            d.filters.extend(c.filters.iter().cloned());
             if let Some(b) = c.blend {
                 d.blend = b;
             }

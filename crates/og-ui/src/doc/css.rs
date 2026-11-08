@@ -336,9 +336,8 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if prop == "backgroundImage" || prop == "maskImage" => {
             "linear-gradient(…) | radial-gradient(…) | conic-gradient(…) (repeating- too)".into()
         }
-        Conv::Raw if prop == "backdropFilter" => "blur(<n>px) [saturate(<n>)] [brightness(<n>)]".into(),
-        Conv::Raw if prop == "filter" => {
-            "blur(<n>px) hue-rotate(<angle>) saturate(<n>) brightness(<n>) grayscale(<n>) | none".into()
+        Conv::Raw if prop == "backdropFilter" || prop == "filter" => {
+            "blur(<n>px) brightness(<n>) contrast(<n>) drop-shadow([<colour>] <x> <y> [<blur>]) grayscale(<n>) hue-rotate(<angle>) invert(<n>) opacity(<n>) saturate(<n>) sepia(<n>) … | none".into()
         }
         Conv::Raw if prop == "mixBlendMode" => {
             "normal | multiply | screen | plus-lighter | overlay | soft-light | color-dodge".into()
@@ -1544,7 +1543,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             let prop = match name {
                 "mask-image" => p::mask(value).map(|_| "maskImage"),
                 "backdrop-filter" => p::backdrop(value).map(|_| "backdropFilter"),
-                "filter" => p::filter(value).map(|_| "filter"),
+                "filter" => p::filter_fns(value, "filter").map(|_| "filter"),
                 "mix-blend-mode" => p::blend(value).map(|_| "mixBlendMode"),
                 "text-shadow" => p::text_shadows(
                     value,
