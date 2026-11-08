@@ -257,6 +257,9 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
 // `wide` filters with the tent (over the receiver plane for an open
 // receiver; [`shadow_closed`]); the volumetric march takes the 2x2 PCF,
 // as it averages many samples anyway.
+// Whether a pipeline has the sun's soft shadows (pipeline_features.rs).
+override OG_PCSS: bool = true;
+
 fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -> f32 {
   let bias = frame.cascade_bias[c];
   let sin_l = sqrt(max(1.0 - n_dot_l * n_dot_l, 0.0));
@@ -267,25 +270,33 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
   // inFrustum does; the PCF taps clamp to the edge texel and would otherwise
   // extend whatever caster sits on the border across everything beyond it.
   if (sp.z > 1.0 || any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { return -1.0; }
-  if (frame.shadow.x > 0.0) {
-    return pcss(uv, c, sp.z - bias.y, bias, sin_l / max(n_dot_l, 0.05));
+  // Nested, so a pipeline without soft shadows folds the search away.
+  if (OG_PCSS) {
+    if (frame.shadow.x > 0.0) {
+      return pcss(uv, c, sp.z - bias.y, bias, sin_l / max(n_dot_l, 0.05));
+    }
   }
   if (!wide) { return pcf(cascade_map, uv, c, sp.z - bias.y, vec2<f32>(0.0)); }
-  // A closed receiver: a quarter texel past its own depth, flat.
-  if (shadow_closed) { return pcf_tent(cascade_map, uv, c, sp.z + 0.25 * bias.y, vec2<f32>(0.0)); }
-  // The receiver plane, a texel along each tangent (orthographic: exact).
-  let t = plane_tangents(n);
-  let sb = frame.cascade_view_proj[c] * vec4<f32>(offset + t[0] * bias.x, 1.0);
-  let sc = frame.cascade_view_proj[c] * vec4<f32>(offset + t[1] * bias.x, 1.0);
-  let size = vec2<f32>(textureDimensions(cascade_map));
-  let slope = receiver_slope(
-    vec3<f32>(uv, sp.z),
-    vec3<f32>(sb.x * 0.5 + 0.5, 0.5 - sb.y * 0.5, sb.z),
-    vec3<f32>(sc.x * 0.5 + 0.5, 0.5 - sc.y * 0.5, sc.z),
-    size,
-    n_dot_l,
-  );
-  return pcf_tent(cascade_map, uv, c, sp.z - bias.y, slope);
+  // A closed receiver: a quarter texel past its own depth, flat. Else
+  // along the receiver plane, a texel along each tangent (orthographic:
+  // exact). One tent filter for both (one copy of its code).
+  var depth = sp.z + 0.25 * bias.y;
+  var slope = vec2<f32>(0.0);
+  if (!shadow_closed) {
+    let t = plane_tangents(n);
+    let sb = frame.cascade_view_proj[c] * vec4<f32>(offset + t[0] * bias.x, 1.0);
+    let sc = frame.cascade_view_proj[c] * vec4<f32>(offset + t[1] * bias.x, 1.0);
+    let size = vec2<f32>(textureDimensions(cascade_map));
+    slope = receiver_slope(
+      vec3<f32>(uv, sp.z),
+      vec3<f32>(sb.x * 0.5 + 0.5, 0.5 - sb.y * 0.5, sb.z),
+      vec3<f32>(sc.x * 0.5 + 0.5, 0.5 - sc.y * 0.5, sc.z),
+      size,
+      n_dot_l,
+    );
+    depth = sp.z - bias.y;
+  }
+  return pcf_tent(cascade_map, uv, c, depth, slope);
 }
 
 // The cascades' shadow at p: across a cascade's blend band (cascade_bias.w
@@ -301,15 +312,22 @@ fn cascade_shadow(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
 fn cascade_shadow_lookup(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -> f32 {
   let c = cascade_index(p);
   if (c >= CASCADES) { return 1.0; }
-  var shadow = cascade_sample(c, p, n, n_dot_l, wide);
-  if (shadow < 0.0) { return 1.0; }
   let count = u32(frame.light_dir.w);
   let depth = dot(p - frame.view_pos.xyz, frame.view_forward.xyz);
   let band = frame.cascade_bias[c].w;
-  if (c + 1u < count && depth > band) {
-    var next = cascade_sample(c + 1u, p, n, n_dot_l, wide);
-    if (next < 0.0) { next = 1.0; }
-    shadow = mix(shadow, next, smoothstep(band, frame.cascade_bias[c].z, depth));
+  // This cascade and, across its blend band, the next, in one loop: one
+  // copy of the filter's code (DXC inlines every call).
+  let taps = select(1u, 2u, c + 1u < count && depth > band);
+  var shadow = 1.0;
+  for (var k = 0u; k < taps; k++) {
+    var s = cascade_sample(c + k, p, n, n_dot_l, wide);
+    if (k == 0u) {
+      if (s < 0.0) { return 1.0; }
+      shadow = s;
+    } else {
+      if (s < 0.0) { s = 1.0; }
+      shadow = mix(shadow, s, smoothstep(band, frame.cascade_bias[c].z, depth));
+    }
   }
   let last = frame.cascade_bias[count - 1u].z;
   return mix(shadow, 1.0, smoothstep(0.9 * last, last, depth));
@@ -630,7 +648,11 @@ fn wave_caustics(p: vec3<f32>, depth: f32) -> f32 {
 // Caustics under the frame's water: two scrolling cell patterns (bright
 // where the waves focus light), fading in below the surface; under a sea
 // (W2) its waves' own.
+// Whether a pipeline has the caustics' code (pipeline_features.rs).
+override OG_CAUSTICS: bool = true;
+
 fn caustics(p: vec3<f32>) -> f32 {
+  if (!OG_CAUSTICS) { return 0.0; }
   let c = frame.caustics;
   if (c.y <= 0.0) { return 0.0; }
   let area = frame.caustics_area;

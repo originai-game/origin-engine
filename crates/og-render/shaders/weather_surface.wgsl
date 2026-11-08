@@ -197,6 +197,9 @@ fn weather_splashes(p: vec2<f32>, t: f32, footprint: f32) -> vec2<f32> {
   return to / max(r, 1e-3) * crest * 0.15 * fade;
 }
 
+// Whether a pipeline has the weather's code (pipeline_features.rs).
+override OG_WEATHER: bool = true;
+
 // The weather on one surface: `geo` its geometric normal, `p_frame` its
 // point (frame coordinates), `cavity` how high it lies in its own relief
 // (0 a hollow, 1 a crest, 0.5 none known: a terrain's blended layer
@@ -207,6 +210,7 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   var o: Weathered;
   o.s = s_in;
   o.n = n_in;
+  if (!OG_WEATHER) { return o; }
   var w = frame.weather * amount;
   var dust = frame.weather_dust.w * amount;
   // A sea's surf (W1, shore_wetness) wets its shore whatever the sky does.

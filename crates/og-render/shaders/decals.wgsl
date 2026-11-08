@@ -47,12 +47,16 @@ fn decal_sample(rect: vec4<f32>, t: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> 
   return textureSampleLevel(decal_atlas, fx_sampler, uv, lod);
 }
 
+// Whether a pipeline has the decals' code (pipeline_features.rs).
+override OG_DECALS: bool = true;
+
 fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> DecalResult {
   var r: DecalResult;
   r.albedo = albedo;
   r.roughness = roughness;
   r.emissive = vec3<f32>(0.0);
   r.normal = vec4<f32>(n, 0.0);
+  if (!OG_DECALS) { return r; }
   let range = frame_decals(frag, p);
   let cells = CLUSTER_X * CLUSTER_Y * CLUSTER_Z;
   for (var k = 0u; k < range.y; k++) {

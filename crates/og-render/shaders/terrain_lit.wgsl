@@ -58,6 +58,8 @@ struct TerrainPoint {
   control: array<vec4<f32>, 4>,
   // The normal map's spread there (TerrainMaps.variance).
   variance: f32,
+  // The height there, when asked for (TerrainMaps.height).
+  height: f32,
 };
 
 // World normal `n` turned by a displaced surface's `slope` (its height's
@@ -73,12 +75,19 @@ fn terrain_tilt(point: TerrainPoint, n: vec3<f32>, slope: vec2<f32>) -> vec3<f32
 
 fn terrain_point(local: vec3<f32>) -> TerrainPoint {
   let s = (local.xz - terrain_min()) / terrain_cell();
-  let m = terrain_maps_at(s, dpdxFine(s), dpdyFine(s));
+  return terrain_point_from(resident_from(0u, s), s, false);
+}
+
+// `terrain_point` at field coordinates `s` from the resident tile `first`
+// already looked up there; `with_height` also reads the height.
+fn terrain_point_from(first: Resident, s: vec2<f32>, with_height: bool) -> TerrainPoint {
+  let m = terrain_maps_from(first, s, dpdxFine(s), dpdyFine(s), with_height);
   var o: TerrainPoint;
   o.local_normal = normalize(m.normal);
   o.normal = normalize(terrain.normal * o.local_normal);
   o.control = m.control;
   o.variance = m.variance;
+  o.height = m.height;
   return o;
 }
 
@@ -111,8 +120,14 @@ fn macro_tint(l: TerrainLayerGpu, p: vec3<f32>) -> vec3<f32> {
   if (l.look.w <= 0.0) { return vec3<f32>(1.0); }
   let m = clamp(l.look.w, 0.0, 1.0);
   let at = (p.xz + frame.origin.xz) * l.mapping.x;
-  let slow = value_noise(at / 16.0) * 0.65 + value_noise(at / 5.0 + vec2<f32>(17.3, 5.1)) * 0.35;
-  let hue = value_noise(at / 40.0 + vec2<f32>(3.1, 41.7));
+  // Three octaves in one loop (one copy of the noise's code): the slow
+  // drift's two, then the hue's.
+  let scale = array<f32, 3>(16.0, 5.0, 40.0);
+  let shift = array<vec2<f32>, 3>(vec2<f32>(0.0), vec2<f32>(17.3, 5.1), vec2<f32>(3.1, 41.7));
+  var v: array<f32, 3>;
+  for (var j = 0u; j < 3u; j++) { v[j] = value_noise(at / scale[j] + shift[j]); }
+  let slow = v[0] * 0.65 + v[1] * 0.35;
+  let hue = v[2];
   let bright = 1.0 + m * 0.6 * (slow - 0.5);
   let warm = mix(vec3<f32>(0.92, 1.0, 1.07), vec3<f32>(1.07, 1.0, 0.88), hue);
   return bright * mix(vec3<f32>(1.0), warm, m);
@@ -207,20 +222,27 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, 
   var tone_w = 0.0;
   for (var k = 0u; k < proj.count; k++) {
     let plane = proj.planes[k];
-    let t = plane_taps(l, plane, p, dpx, dpy);
-    var w = hex_weights(t);
-    if (has_albedo) {
-      var a = vec4<f32>(0.0);
-      if (at.wall < 1.0) {
-        let here = taps_albedo(i, t, coarse);
-        a = here.albedo * (1.0 - at.wall);
-        w = here.w;
+    // The taps here (the normal's too), then, for the albedo, on the
+    // unfolded wall, in one loop (one copy of the taps' code: DXC inlines
+    // every call).
+    var t: PlaneTaps;
+    var w = vec3<f32>(0.0);
+    var a = vec4<f32>(0.0);
+    for (var j = 0u; j < 2u; j++) {
+      let share = select(at.wall, 1.0 - at.wall, j == 0u);
+      if (j == 1u && (!has_albedo || share <= 0.0)) { break; }
+      let here = j == 0u;
+      let taps = plane_taps(l, plane, select(at.p, p, here), select(at.dpx, dpx, here), select(at.dpy, dpy, here));
+      if (here) {
+        t = taps;
+        w = hex_weights(t);
       }
-      if (at.wall > 0.0) {
-        a += taps_albedo(i, plane_taps(l, plane, at.p, at.dpx, at.dpy), coarse).albedo * at.wall;
-      }
-      albedo += a * proj.w[k];
+      if (!has_albedo || share <= 0.0) { continue; }
+      let r = taps_albedo(i, taps, coarse);
+      a += r.albedo * share;
+      if (here) { w = r.w; }
     }
+    if (has_albedo) { albedo += a * proj.w[k]; }
     if (has_normal) {
       let m = taps_normal(i, t, w);
       normal += plane_normal(proj.whiteout[k], plane, m.normal, n, l.mapping.z) * proj.w[k];
@@ -374,7 +396,12 @@ fn grass_layer_share(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>, layer: 
 // gaps between blades and the ground past them read as the same field
 // and there is no seam where the blades thin out to nothing; per clump
 // and dry drift as the blades are, paler where a gust presses it down.
+// Whether a pipeline has og.Grass's far colour on the ground
+// (pipeline_features.rs).
+override OG_GRASS: bool = true;
+
 fn grass_far(albedo: vec3<f32>, p: vec3<f32>, local: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>) -> vec3<f32> {
+  if (!OG_GRASS) { return albedo; }
   let g = terrain.grass;
   if (g.color.w < 0.0) { return albedo; }
   let amount = smoothstep(g.fade.x, g.fade.y, distance(p, frame.view_pos.xyz)) * g.fade.w * grass_layer_share(p, n, c, u32(g.color.w));
@@ -447,15 +474,27 @@ fn terrain_debug(in: TerrainOut, point: TerrainPoint) -> vec3<f32> {
   return mix(weights * mix(0.15, 1.0, clamp(min(edge.x, edge.y), 0.0, 1.0)), vec3<f32>(1.0), seam * 0.7);
 }
 
+// Whether a pipeline has the terrain's diagnostic views
+// (pipeline_features.rs).
+override OG_DEBUG: bool = true;
+
 @fragment
 fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
-  if (terrain_hole_at(in.local)) { discard; }
+  // One resident-tile lookup for the hole, the maps, the height and the
+  // horizon (each inlined its own before).
+  let s = (in.local.xz - terrain_min()) / terrain_cell();
+  let first = resident_from(0u, s);
+  if (terrain_hole_from(first)) { discard; }
   let p = in.world;
   let dpx = dpdxFine(p);
   let dpy = dpdyFine(p);
-  let point = terrain_point(in.local);
-  if (frame.light_color.w > 6.5) {
-    return vec4<f32>(terrain_debug(in, point), 1.0);
+  // The height (for a displaced ground's lift) in the maps' loop.
+  let point = terrain_point_from(first, s, terrain.displace.x > 0.0);
+  // Nested, so a pipeline without the views folds the branch away whole.
+  if (OG_DEBUG) {
+    if (frame.light_color.w > 6.5) {
+      return vec4<f32>(terrain_debug(in, point), 1.0);
+    }
   }
   let n_geo = point.normal;
   // The drawn triangle's own plane near the eye where the ground is
@@ -463,7 +502,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   var n_face = n_geo;
   var lift = 0.0;
   if (terrain.displace.x > 0.0) {
-    lift = (in.local.y - terrain_height_at(0u, (in.local.xz - terrain_min()) / terrain_cell())) * terrain.displace.y;
+    lift = (in.local.y - point.height) * terrain.displace.y;
     var facet = normalize(cross(dpx, dpy));
     facet = select(facet, -facet, dot(facet, n_geo) < 0.0);
     let reach = terrain.displace.x * length(terrain.model[0].xyz);
@@ -483,21 +522,21 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   // and an interpolated normal is neither (its faces turned to a low sun
   // shadowed themselves in squares of shadow texels).
   let n_shade = terrain_tilt(point, look.normal, in.relief.zw);
-  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_face, look.height);
+  return terrain_shade(in.clip.xy, p, first, 1.0, albedo, n_shade, roughness, n_geo, n_face, look.height);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of
 // its stamps): its layers' albedo, shading normal and roughness under
 // the sun's cascades, the local lights and image-based light, caustics
 // and fog, with the frame's diagnostic views.
-// `local`: the point of the ground whose horizon it reads (the terrain's
-// space); `ground`: how much of the fragment is that ground (1 for the
+// `reads`: the resident tile of the point of the ground whose horizon it
+// reads (`resident_from`); `ground`: how much of the fragment is that ground (1 for the
 // terrain; a stamp's blend share, its own face not being one); `n_geo`
 // the surface's normal for weathering, `n_shadow` the geometry's own for
 // the shadow lookup's offset (a stamp's blended foot takes the ground's
 // normal, but its wall still faces out: offset along the ground's, the
 // wall shadowed itself in a dark strip along its foot).
-fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>, n_shadow: vec3<f32>, height: f32) -> vec4<f32> {
+fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>, n_shadow: vec3<f32>, height: f32) -> vec4<f32> {
   var n = normalize(normal);
   var s: Surface;
   s.albedo = albedo;
@@ -535,7 +574,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, a
   // reads), and the sky its horizon hides.
   var sky = 1.0;
   if (terrain.params.w > 0.5) {
-    let h = terrain_horizon((local.xz - terrain_min()) / terrain_cell());
+    let h = terrain_horizon_from(reads);
     if (h.ok) {
       // World to the terrain's space: the inverse of its linear part, the
       // transpose of the normal matrix.
@@ -628,8 +667,11 @@ fn terrain_prepass_out(p: vec3<f32>, n: vec3<f32>, n_geo: vec3<f32>, layers: vec
 
 @fragment
 fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
-  if (terrain_hole_at(in.local)) { discard; }
-  let point = terrain_point(in.local);
+  // One resident-tile lookup for the hole and the maps, as fs.
+  let s = (in.local.xz - terrain_min()) / terrain_cell();
+  let first = resident_from(0u, s);
+  if (terrain_hole_from(first)) { discard; }
+  let point = terrain_point_from(first, s, false);
   // The layers' roughness as the lit pass shades it, for screen-space
   // reflections (a terrain is never metal): their weights alone.
   let layers = terrain_roughness(in.world, point.normal, point.control, dpdxFine(in.world), dpdyFine(in.world));
@@ -696,8 +738,8 @@ fn stamp_ground(p: vec3<f32>, n_mesh: vec3<f32>) -> StampGround {
   let n_local = (stamp.to_terrain * vec4<f32>(n_mesh, 0.0)).xyz;
   let out = n_local.xz / max(length(n_local), 1e-6) * 1.5 * terrain_cell();
   let s = (local.xz + out - terrain_min()) / terrain_cell();
-  let m = terrain_maps_at(s, dpdxFine(s), dpdyFine(s));
-  let above = (local.y - terrain_height_at(0u, s)) * stamp.params.y;
+  let m = terrain_maps_from(resident_from(0u, s), s, dpdxFine(s), dpdyFine(s), true);
+  let above = (local.y - m.height) * stamp.params.y;
   var o: StampGround;
   // Wholly the ground over the band's lowest third, so the mesh's foot is
   // the ground it meets; then the mesh's own look takes over.
@@ -718,7 +760,7 @@ fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
   let g = stamp_ground(p, normalize(in.normal));
   let look = terrain_look(p, g.normal, g.normal, 0.0, g.control, dpx, dpy);
   let albedo = mix(look.albedo, grass_far(look.albedo, p, g.local, g.normal, g.control), g.ground);
-  return terrain_shade(in.clip.xy, p, g.reads, g.ground, albedo, look.normal, look.roughness, g.normal, normalize(in.normal), look.height);
+  return terrain_shade(in.clip.xy, p, resident_from(0u, (g.reads.xz - terrain_min()) / terrain_cell()), g.ground, albedo, look.normal, look.roughness, g.normal, normalize(in.normal), look.height);
 }
 
 @fragment

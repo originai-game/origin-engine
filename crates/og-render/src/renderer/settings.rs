@@ -193,8 +193,14 @@ impl Renderer {
         {
             p.set_samples(samples);
         }
-        self.water.pipeline.set_samples(samples);
-        self.water.mesh_pipeline.set_samples(samples);
+        for lit in self
+            .water
+            .pipeline
+            .each()
+            .chain(self.water.mesh_pipeline.each())
+        {
+            lit.set_samples(samples);
+        }
         self.metaballs.set_samples(samples);
         self.fluid3d.set_samples(samples);
         self.lines.set_samples(samples);

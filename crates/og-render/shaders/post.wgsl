@@ -221,27 +221,42 @@ fn graded(uv: vec2<f32>) -> vec3<f32> {
 
 // Contrast-adaptive sharpening (PostEffects.sharpen, post.extra.w its strength) as three.js CAS passes run it after the
 // output pass: over the sRGB-encoded display colour, the centre pushed from its four neighbours by
-// -sqrt(min(mn, 2 - mx) / mx) / mix(8, 5, sharp), normalised.
-fn sharpened(uv: vec2<f32>) -> vec3<f32> {
+// -sqrt(min(mn, 2 - mx) / mx) / mix(8, 5, sharp), normalised; without `sharpen`, the centre as graded.
+fn sharpened(uv: vec2<f32>, sharpen: bool) -> vec3<f32> {
   let t = 1.0 / vec2<f32>(textureDimensions(source));
-  let center = graded(uv);
-  let a = srgb_encode(clamp(graded(uv + vec2<f32>(0.0, -t.y)), vec3<f32>(0.0), vec3<f32>(1.0)));
-  let b = srgb_encode(clamp(graded(uv + vec2<f32>(-t.x, 0.0)), vec3<f32>(0.0), vec3<f32>(1.0)));
-  let c = srgb_encode(clamp(center, vec3<f32>(0.0), vec3<f32>(1.0)));
-  let d = srgb_encode(clamp(graded(uv + vec2<f32>(t.x, 0.0)), vec3<f32>(0.0), vec3<f32>(1.0)));
-  let e = srgb_encode(clamp(graded(uv + vec2<f32>(0.0, t.y)), vec3<f32>(0.0), vec3<f32>(1.0)));
-  let mn = min(min(min(a, b), min(d, e)), c);
-  let mx = max(max(max(a, b), max(d, e)), c);
+  // The centre, then (sharpening) the taps above, left, right and below,
+  // in one loop: one copy of the grading's code (DXC inlines every call).
+  let taps = array<vec2<f32>, 5>(vec2<f32>(0.0), vec2<f32>(0.0, -1.0), vec2<f32>(-1.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0));
+  var center = vec3<f32>(0.0);
+  var c = vec3<f32>(0.0);
+  var mn = vec3<f32>(0.0);
+  var mx = vec3<f32>(0.0);
+  var around = vec3<f32>(0.0);
+  for (var k = 0u; k < 5u; k++) {
+    let g = graded(uv + taps[k] * t);
+    let e = srgb_encode(clamp(g, vec3<f32>(0.0), vec3<f32>(1.0)));
+    if (k == 0u) {
+      center = g;
+      if (!sharpen) { return g; }
+      c = e;
+      mn = e;
+      mx = e;
+    } else {
+      mn = min(mn, e);
+      mx = max(mx, e);
+      around += e;
+    }
+  }
   let amp = sqrt(clamp(min(mn, 2.0 - mx) / max(mx, vec3<f32>(1e-4)), vec3<f32>(0.0), vec3<f32>(1.0)));
   let w = amp * (-1.0 / mix(8.0, 5.0, post.extra.w));
   let highlights = select(vec3<f32>(0.0), max(center - 1.0, vec3<f32>(0.0)), post.hdr.x > 0.0);
-  return srgb_decode(clamp((c + (a + b + d + e) * w) / (1.0 + 4.0 * w), vec3<f32>(0.0), vec3<f32>(1.0))) + highlights;
+  return srgb_decode(clamp((c + around * w) / (1.0 + 4.0 * w), vec3<f32>(0.0), vec3<f32>(1.0))) + highlights;
 }
 
 // Display-linear colour (paper-white units in HDR): grading, vignette, sharpening, grain, flash.
 fn finished(uv: vec2<f32>, pos: vec2<f32>) -> vec3<f32> {
   var c: vec3<f32>;
-  if (post.extra.z > 0.5) { c = sharpened(uv); } else { c = graded(uv); }
+  c = sharpened(uv, post.extra.z > 0.5);
   if (post.grain.x > 0.0) {
     let cell = vec2<u32>(pos / max(post.grain.y, 1.0));
     let g = grain_hash(cell, u32(post.grain.z * 16777216.0)) - 0.5;

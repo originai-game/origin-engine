@@ -88,7 +88,10 @@ const CLUSTER_Z: u32 = {gz}u;
 // clusters (a reflection probe's capture, probes.rs), x NO_CLUSTER and y
 // every light of the frame. Read the k-th with `frame_light`.
 const NO_CLUSTER: u32 = 0xffffffffu;
+// Whether a pipeline has the local lights' code (pipeline_features.rs).
+override OG_LOCAL_LIGHTS: bool = true;
 fn frame_lights(frag: vec2<f32>, p: vec3<f32>) -> vec2<u32> {{
+  if (!OG_LOCAL_LIGHTS) {{ return vec2<u32>(0u); }}
   if (frame.params.z < 0.5) {{ return vec2<u32>(0u); }}
   if (frame.cluster.x > 0.0) {{
     let word = cluster_word(cluster_at(frag, p));

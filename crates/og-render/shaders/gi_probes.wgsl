@@ -7,7 +7,11 @@
 // The probe GI's harmonics at a lit fragment's `p` for normal `n`: one
 // gather, which the diffuse light (gi_ambient_from) and the reflections'
 // occlusion (gi_reflected_from) both read.
+// Whether a pipeline has the probe GI's gather (pipeline_features.rs).
+override OG_GI: bool = true;
+
 fn gi_sample_at(p: vec3<f32>, n: vec3<f32>) -> GiSample {
+  if (!OG_GI) { return GiSample(vec4<f32>(0.0), vec4<f32>(0.0), vec4<f32>(0.0), 0.0); }
   if (probe_data.v[GI_HEADER_AT].x < 0.5) { return GiSample(vec4<f32>(0.0), vec4<f32>(0.0), vec4<f32>(0.0), 0.0); }
   let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   return gi_gather(p, n, v, true);

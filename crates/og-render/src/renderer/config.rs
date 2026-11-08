@@ -547,6 +547,11 @@ pub enum RenderTarget<'a> {
 pub struct FrameStats {
     /// Draw calls across every pass (shadows, main, sky, sprites, post).
     pub draw_calls: u32,
+    /// Microseconds the frame spent on pipelines natively: making one it
+    /// met for the first time, or waiting for one compiling on a worker
+    /// thread (0 on the web, where the browser compiles them). A lit
+    /// feature turned on after the first frame never costs one.
+    pub compile_wait_us: u32,
     /// Tile quads drawn this frame (after culling) and the chunks they came from.
     pub tiles: u32,
     pub tile_chunks: u32,

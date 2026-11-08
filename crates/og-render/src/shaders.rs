@@ -260,6 +260,32 @@ pub fn shader_sources() -> Vec<ShaderSource> {
             constants: vec![("DISCARD".to_string(), 0.0)],
         });
     }
+    // Each module with lit features, as its variant without any
+    // (pipeline_features.rs): the code the overrides fold away must leave a
+    // module every backend takes.
+    let off: Vec<ShaderSource> = out
+        .iter()
+        .filter_map(|s| {
+            use crate::pipeline_features::Features;
+            let declared = Features::declared(&s.wgsl);
+            (declared != Features::NONE).then(|| ShaderSource {
+                label: format!("{} (features off)", s.label),
+                wgsl: s.wgsl.clone(),
+                constants: s
+                    .constants
+                    .iter()
+                    .cloned()
+                    .chain(
+                        Features::NONE
+                            .constants(declared)
+                            .into_iter()
+                            .map(|(k, v)| (k.to_string(), v)),
+                    )
+                    .collect(),
+            })
+        })
+        .collect();
+    out.extend(off);
     out
 }
 

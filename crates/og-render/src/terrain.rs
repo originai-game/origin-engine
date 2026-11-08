@@ -64,6 +64,7 @@ mod renderer;
 pub(crate) use renderer::*;
 
 use crate::deferred::{AsModule, Deferred};
+use crate::pipeline_features::{Features, Variants};
 use crate::scene::{TerrainHandle, TextureArrayHandle, TextureHandle};
 use crate::terrain_tiles::{
     ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,
@@ -848,6 +849,8 @@ pub(crate) struct TerrainDraw {
     /// Its pipelines (the layer-array variant's when its layers sample
     /// arrays).
     pub passes: TerrainPasses,
+    /// The features its lit passes draw with this frame (pipeline_features.rs).
+    pub features: Features,
     pub levels: Vec<LevelDraw>,
     pub cast_shadows: bool,
     /// Its index in [`crate::RenderScene::terrains`], and whether its group
@@ -1529,11 +1532,13 @@ pub(crate) struct TerrainPipelines<'a> {
 /// draw a mesh with the terrain's group and their own (group 2).
 #[derive(Clone)]
 pub(crate) struct TerrainPasses {
-    pub lit: Rc<crate::deferred::Sampled<wgpu::RenderPipeline>>,
-    pub prepass: Rc<Deferred<wgpu::RenderPipeline>>,
+    /// The lit and prepass pipelines for the frame's features
+    /// (pipeline_features.rs).
+    pub lit: Rc<Variants<crate::deferred::Sampled<wgpu::RenderPipeline>>>,
+    pub prepass: Rc<Variants<Deferred<wgpu::RenderPipeline>>>,
     pub shadow: Rc<Deferred<crate::ShadowSet>>,
-    pub stamp_lit: Rc<crate::deferred::Sampled<wgpu::RenderPipeline>>,
-    pub stamp_prepass: Rc<Deferred<wgpu::RenderPipeline>>,
+    pub stamp_lit: Rc<Variants<crate::deferred::Sampled<wgpu::RenderPipeline>>>,
+    pub stamp_prepass: Rc<Variants<Deferred<wgpu::RenderPipeline>>>,
     pub stamp_shadow: Rc<Deferred<crate::ShadowSet>>,
     /// The corner cache's writer (`terrain_corners.wgsl`).
     pub corners: Rc<Deferred<wgpu::ComputePipeline>>,
@@ -1544,23 +1549,24 @@ impl TerrainPasses {
     /// threads (deferred.rs): the corners' writer and the lit pass, the
     /// prepass and the shadows when the frame draws them, and the same
     /// for its stamps.
-    pub(crate) fn start(&self, prepass: bool, shadows: bool, stamps: bool) {
+    pub(crate) fn start(&self, features: Features, prepass: bool, shadows: bool, stamps: bool) {
         use crate::deferred::Start;
-        let mut items: Vec<&dyn Start> = vec![&*self.corners, &*self.lit];
+        self.lit.start(features);
         if prepass {
-            items.push(&*self.prepass);
+            self.prepass.start(features);
         }
+        if stamps {
+            self.stamp_lit.start(features);
+            if prepass {
+                self.stamp_prepass.start(features);
+            }
+        }
+        let mut items: Vec<&dyn Start> = vec![&*self.corners];
         if shadows {
             items.push(&*self.shadow);
         }
-        if stamps {
-            items.push(&*self.stamp_lit);
-            if prepass {
-                items.push(&*self.stamp_prepass);
-            }
-            if shadows {
-                items.push(&*self.stamp_shadow);
-            }
+        if stamps && shadows {
+            items.push(&*self.stamp_shadow);
         }
         crate::deferred::start_all(&items);
     }
@@ -1652,6 +1658,13 @@ fn terrain_passes(
     } else {
         &[("TERRAIN_HOLES", 0.0)]
     };
+    // The lit module's constants for a variant with `features`.
+    let declared = lit_module.declared;
+    let lit_constants = move |features: Features| {
+        let mut c = constants.to_vec();
+        c.extend(features.constants(declared));
+        c
+    };
     const STAMP_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
         &[Some(crate::VERTEX_LAYOUT)];
     let lit = |label: &'static str,
@@ -1660,25 +1673,29 @@ fn terrain_passes(
                fs: &'static str,
                buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
         let (device, layout, module) = (device.clone(), layout.clone(), lit_module.clone());
-        crate::deferred::Sampled::anywhere(samples, move |samples| {
-            crate::hdr_pipeline_with(
-                &device,
-                constants,
-                crate::HdrPipeline {
-                    alpha_to_coverage: false,
-                    label,
-                    layout: &layout,
-                    module: module.module(),
-                    vs,
-                    fs,
-                    buffers,
-                    cull: Some(wgpu::Face::Back),
-                    depth_write: true,
-                    depth_compare: wgpu::CompareFunction::Less,
-                    blend: None,
-                    samples,
-                },
-            )
+        Variants::new(declared, move |features| {
+            let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
+            let constants = lit_constants(features);
+            crate::deferred::Sampled::anywhere(samples, move |samples| {
+                crate::hdr_pipeline_with(
+                    &device,
+                    &constants,
+                    crate::HdrPipeline {
+                        alpha_to_coverage: false,
+                        label,
+                        layout: &layout,
+                        module: module.module(),
+                        vs,
+                        fs,
+                        buffers,
+                        cull: Some(wgpu::Face::Back),
+                        depth_write: true,
+                        depth_compare: wgpu::CompareFunction::Less,
+                        blend: None,
+                        samples,
+                    },
+                )
+            })
         })
     };
     let options = move || wgpu::PipelineCompilationOptions {
@@ -1708,35 +1725,43 @@ fn terrain_passes(
          fs: &'static str,
          buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
             let (device, layout, module) = (device.clone(), layout.clone(), lit_module.clone());
-            Deferred::anywhere(move || {
-                let module = module.module();
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some(label),
-                    layout: Some(&layout),
-                    vertex: wgpu::VertexState {
-                        module,
-                        entry_point: Some(vs),
-                        compilation_options: options(),
-                        buffers,
-                    },
-                    primitive: wgpu::PrimitiveState {
-                        cull_mode: Some(wgpu::Face::Back),
+            Variants::new(declared, move |features| {
+                let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
+                let constants = lit_constants(features);
+                Deferred::anywhere(move || {
+                    let module = module.module();
+                    let options = || wgpu::PipelineCompilationOptions {
+                        constants: &constants,
                         ..Default::default()
-                    },
-                    depth_stencil: depth(true),
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module,
-                        entry_point: Some(fs),
-                        compilation_options: options(),
-                        targets: &[
-                            target(crate::post::GBUFFER_FORMAT),
-                            target(crate::post::LINDEPTH_FORMAT),
-                            target(crate::post::OUTLINE_FORMAT),
-                        ],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                    };
+                    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                        label: Some(label),
+                        layout: Some(&layout),
+                        vertex: wgpu::VertexState {
+                            module,
+                            entry_point: Some(vs),
+                            compilation_options: options(),
+                            buffers,
+                        },
+                        primitive: wgpu::PrimitiveState {
+                            cull_mode: Some(wgpu::Face::Back),
+                            ..Default::default()
+                        },
+                        depth_stencil: depth(true),
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module,
+                            entry_point: Some(fs),
+                            compilation_options: options(),
+                            targets: &[
+                                target(crate::post::GBUFFER_FORMAT),
+                                target(crate::post::LINDEPTH_FORMAT),
+                                target(crate::post::OUTLINE_FORMAT),
+                            ],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    })
                 })
             })
         };

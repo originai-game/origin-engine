@@ -76,7 +76,14 @@ impl Renderer {
                 key,
                 self.samples,
             );
-            self.pbr_pipelines.insert(key, Deferred::new(|| p));
+            let declared = self.pbr_shader.declared;
+            self.pbr_pipelines.insert(
+                key,
+                crate::pipeline_features::Variants::new(declared, move |_| {
+                    let p = p.clone();
+                    Deferred::new(move || p)
+                }),
+            );
             return true;
         }
         let key = (Side::Front, false, false);

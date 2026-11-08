@@ -100,7 +100,8 @@ pub(crate) struct CullView<'a> {
 }
 
 pub(crate) struct ScatterCull {
-    pipeline: wgpu::ComputePipeline,
+    /// Compiled on the compile workers (deferred.rs) from its creation.
+    pipeline: crate::deferred::Deferred<wgpu::ComputePipeline>,
     shared_layout: wgpu::BindGroupLayout,
     pub chunk_layout: wgpu::BindGroupLayout,
     map_layout: wgpu::BindGroupLayout,
@@ -225,14 +226,21 @@ impl ScatterCull {
             bind_group_layouts: &[Some(&shared_layout), Some(&chunk_layout), Some(&map_layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("scatter cull"),
-            layout: Some(&layout),
-            module: &module,
-            entry_point: Some("cull"),
-            compilation_options: Default::default(),
-            cache: crate::pipeline_cache::of(device).as_ref(),
+        let pipeline = crate::deferred::Deferred::anywhere({
+            let device = device.clone();
+            move || {
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("scatter cull"),
+                    layout: Some(&layout),
+                    module: &module,
+                    entry_point: Some("cull"),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            }
         });
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::deferred::Start::start(&pipeline);
         let make = |label, size, usage| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),

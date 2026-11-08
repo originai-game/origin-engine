@@ -503,6 +503,7 @@ fn shadow_keep(sun: f32, mode: u32) -> f32 {
 // `receives`: the instance is darkened by the light's shadow map
 // (look_receives).
 fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, receives: bool) -> vec3<f32> {
+  if (!OG_LOCAL_LIGHTS) { return vec3<f32>(0.0); }
   // A rect light (area.wgsl): linearly transformed cosines, no shadow map.
   if (light.color_kind.w < -0.5) {
     let a = area_shade(light, s, p, n, v);

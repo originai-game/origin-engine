@@ -194,7 +194,10 @@ impl ProbeGrid {
 /// What projects the frame's captures onto the probes.
 pub(crate) struct GridProjector {
     layout: wgpu::BindGroupLayout,
-    pipeline: wgpu::ComputePipeline,
+    /// Compiled on the compile workers once the first frame is submitted
+    /// (natively; deferred.rs): only a realtime light volume uses it, so
+    /// no first frame waits for it.
+    pipeline: crate::deferred::Deferred<wgpu::ComputePipeline>,
     /// Each capture's [`GridCapture::at`] and intensity, 256 bytes apart.
     params: wgpu::Buffer,
 }
@@ -241,23 +244,30 @@ impl GridProjector {
                 ),
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("probe grid"),
-            source: wgpu::ShaderSource::Wgsl(PROBE_GRID_WGSL.into()),
-        });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("probe grid"),
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("probe grid"),
-            layout: Some(&pipeline_layout),
-            module: &module,
-            entry_point: Some("cs_project"),
-            compilation_options: Default::default(),
-            cache: None,
+        let pipeline = crate::deferred::Deferred::anywhere({
+            let device = device.clone();
+            move || {
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("probe grid"),
+                    source: wgpu::ShaderSource::Wgsl(PROBE_GRID_WGSL.into()),
+                });
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("probe grid"),
+                    layout: Some(&pipeline_layout),
+                    module: &module,
+                    entry_point: Some("cs_project"),
+                    compilation_options: Default::default(),
+                    cache: None,
+                })
+            }
         });
+        #[cfg(not(target_arch = "wasm32"))]
+        pipeline.start_at(crate::deferred::Priority::Background);
         let params = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("probe grid params"),
             size: PARAMS_STRIDE * MAX_GRID_CAPTURES as u64,
@@ -321,7 +331,7 @@ impl GridProjector {
             label: Some("probe grid"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.pipeline);
+        pass.set_pipeline(self.pipeline.get());
         pass.set_bind_group(0, &group, &[]);
         pass.dispatch_workgroups(1, 1, 1);
     }

@@ -20,15 +20,13 @@ impl TerrainRenderer {
     /// (the layer-array variant, made later, too).
     pub(crate) fn set_samples(&mut self, samples: u32) {
         self.samples = samples;
-        self.passes.lit.set_samples(samples);
-        self.passes.stamp_lit.set_samples(samples);
-        if let Some((_, passes)) = &self.arrays {
-            passes.lit.set_samples(samples);
-            passes.stamp_lit.set_samples(samples);
-        }
-        for passes in self.holed.iter().flatten() {
-            passes.lit.set_samples(samples);
-            passes.stamp_lit.set_samples(samples);
+        let all = std::iter::once(&self.passes)
+            .chain(self.arrays.as_ref().map(|(_, p)| p))
+            .chain(self.holed.iter().flatten());
+        for passes in all {
+            for lit in passes.lit.each().chain(passes.stamp_lit.each()) {
+                lit.set_samples(samples);
+            }
         }
     }
 
@@ -50,7 +48,12 @@ impl TerrainRenderer {
                 (false, false, _) => Some(&self.passes),
             };
             if let Some(passes) = passes {
-                passes.start(prepass, t.cast_shadows, !scene.terrain_stamps.is_empty());
+                passes.start(
+                    crate::pipeline_features::Features::of(scene),
+                    prepass,
+                    t.cast_shadows,
+                    !scene.terrain_stamps.is_empty(),
+                );
             }
         }
     }
@@ -58,7 +61,7 @@ impl TerrainRenderer {
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
         let p = &self.passes;
-        crate::deferred::warm_one(&[&*p.lit, &*p.prepass, &*p.shadow, &*p.corners])
+        crate::deferred::warm_one(&[p.lit.full(), p.prepass.full(), &*p.shadow, &*p.corners])
     }
 
     /// Drops every terrain's bind group (a layer texture was replaced):
@@ -1368,6 +1371,7 @@ impl TerrainRenderer {
                     (None, Some((_, passes))) if arrayed => passes.clone(),
                     _ => self.passes.clone(),
                 },
+                features: crate::pipeline_features::Features::of(scene),
                 levels: out,
                 cast_shadows: t.cast_shadows,
                 terrain: ti,
@@ -1659,8 +1663,8 @@ pub(crate) fn draw_levels(
         // Each terrain's own pipeline: the standard one, or the layer-array
         // variant's.
         pass.set_pipeline(match which {
-            TerrainPass::Lit => d.passes.lit.get(),
-            TerrainPass::Prepass => d.passes.prepass.get(),
+            TerrainPass::Lit => d.passes.lit.get(d.features),
+            TerrainPass::Prepass => d.passes.prepass.get(d.features),
             TerrainPass::Shadow(t) => d.passes.shadow.get().get(t),
         });
         pass.set_bind_group(2, &d.corners, &[]);
@@ -1695,8 +1699,8 @@ pub(crate) fn draw_levels(
             }
             if !bound {
                 pass.set_pipeline(match which {
-                    TerrainPass::Lit => d.passes.stamp_lit.get(),
-                    TerrainPass::Prepass => d.passes.stamp_prepass.get(),
+                    TerrainPass::Lit => d.passes.stamp_lit.get(d.features),
+                    TerrainPass::Prepass => d.passes.stamp_prepass.get(d.features),
                     TerrainPass::Shadow(t) => d.passes.stamp_shadow.get().get(t),
                 });
                 pass.set_bind_group(1, &d.group, &[0]);

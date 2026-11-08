@@ -18,7 +18,10 @@ fn write_corners(@builtin(global_invocation_id) id: vec3<u32>) {
   let c = grid_clamp(grid_corner(g));
   let s = c * level.camera.z / terrain_cell();
   let h = field_height(s);
-  let r = terrain_relief(c, s, h, level.center.z);
-  let total = h + r.d + terrain_snow_lift(s, level.center.z);
+  let fade = relief_fade(c, h);
+  var maps: TerrainMaps;
+  if (fade > 0.0 || terrain.displace.w > 0.0) { maps = corner_maps(s, level.center.z); }
+  let r = terrain_relief(c, h, level.center.z, fade, maps);
+  let total = h + r.d + terrain_snow_lift(maps);
   corners_out[u32(level.corners.z) + id.x] = vec4<u32>(bitcast<u32>(total), corner_pack(r.slope), corner_pack(r.bare), 0u);
 }

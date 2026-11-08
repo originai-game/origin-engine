@@ -20,6 +20,10 @@ override DISCARD: bool = true;
 // texture samples and the position's derivatives take the gradients the
 // rasteriser computed for the pixel (`analytic_*`, set by the resolve).
 override ANALYTIC: bool = false;
+
+// Whether a pipeline has MaterialStyle's made surfaces (clay, paper,
+// plastic: pipeline_features.rs).
+override OG_SURFACE: bool = true;
 // d(uv)/dx and d(uv)/dy, d(world)/dx and d(world)/dy, and d(local)/dx
 // and d(local)/dy (the material style's surface, set when it is on).
 var<private> analytic_uv: vec4<f32>;
@@ -260,65 +264,67 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let ms = frame.material_surface;
   var wrap = 0.0;
   var wrap_tint = vec3<f32>(1.0);
-  if (ms.x > 0.5 && (mode & 8u) == 0u) {
-    let kind = u32(ms.x + 0.5);
-    if (kind != 2u) {
-      // Clay and toys are painted or moulded, not photographed: the base
-      // texture's detail gives way to its local average (a coarse mip).
-      // (A bias of 6 is the gradients 2^6 times longer.)
-      var coarse_sample: vec4<f32>;
-      if (ANALYTIC) {
-        let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy) * 64.0;
-        let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw) * 64.0;
-        coarse_sample = textureSampleGrad(base_color_tex, material_sampler, base_uv, gx, gy);
-      } else {
-        coarse_sample = textureSampleBias(base_color_tex, material_sampler, base_uv, 6.0);
+  if (OG_SURFACE) {
+    if (ms.x > 0.5 && (mode & 8u) == 0u) {
+      let kind = u32(ms.x + 0.5);
+      if (kind != 2u) {
+        // Clay and toys are painted or moulded, not photographed: the base
+        // texture's detail gives way to its local average (a coarse mip).
+        // (A bias of 6 is the gradients 2^6 times longer.)
+        var coarse_sample: vec4<f32>;
+        if (ANALYTIC) {
+          let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy) * 64.0;
+          let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw) * 64.0;
+          coarse_sample = textureSampleGrad(base_color_tex, material_sampler, base_uv, gx, gy);
+        } else {
+          coarse_sample = textureSampleBias(base_color_tex, material_sampler, base_uv, 6.0);
+        }
+        let coarse = look_tint(material.base_color * coarse_sample * in.color, in.look).rgb;
+        s.albedo = mix(s.albedo, coarse, select(0.5, 0.7, kind == 3u) * ms.y);
       }
-      let coarse = look_tint(material.base_color * coarse_sample * in.color, in.look).rgb;
-      s.albedo = mix(s.albedo, coarse, select(0.5, 0.7, kind == 3u) * ms.y);
+      // The pattern fades where it spans fewer than about four pixels, so a
+      // far surface keeps its form instead of shimmering grain (the pixel's
+      // footprint in the mesh's own space, where the pattern lies).
+      var footprint: f32;
+      if (ANALYTIC) {
+        footprint = max(length(analytic_local_dx), length(analytic_local_dy));
+      } else {
+        footprint = max(length(dpdxFine(in.local_pos)), length(dpdyFine(in.local_pos)));
+      }
+      let fade = clamp((ms.z / max(footprint, 1e-6) - 3.0) / 6.0, 0.0, 1.0);
+      let made = material_surface(kind, ms.y, in.local_pos / ms.z, s, fade);
+      s = made.s;
+      wrap = made.wrap;
+      wrap_tint = made.tint;
+      // The height (metres) bends the normal by its screen-space surface
+      // gradient (Mikkelsen 2010): no tangents needed, so it holds on every
+      // generated, decimated or bevelled mesh.
+      let hm = made.height * ms.z;
+      let r1 = cross(dpy, n);
+      let r2 = cross(n, dpx);
+      let det = dot(dpx, r1);
+      // The height's screen derivatives: with ANALYTIC the pattern again
+      // at the next pixel right and down on the triangle's plane, as the
+      // hardware's quad takes them.
+      var dh: vec2<f32>;
+      if (ANALYTIC) {
+        let hx = material_surface(kind, ms.y, (in.local_pos + analytic_local_dx) / ms.z, s, fade).height * ms.z;
+        let hy = material_surface(kind, ms.y, (in.local_pos + analytic_local_dy) / ms.z, s, fade).height * ms.z;
+        dh = vec2<f32>(hx - hm, hy - hm);
+      } else {
+        dh = vec2<f32>(dpdxFine(hm), dpdyFine(hm));
+      }
+      let grad = sign(det) * (dh.x * r1 + dh.y * r2);
+      // det is n · (dpx × dpy): where the shading normal lies in the face (a
+      // smooth mesh's silhouette, a rim turning away) the frame is degenerate,
+      // abs(det) n - grad tends to zero and its normalize to NaN, which the
+      // frame's blurs spread into a black disc. The bump fades out as the
+      // normal turns into the face, and where nothing is left the normal stays.
+      let facing = abs(det) / max(length(cross(dpx, dpy)), 1e-20);
+      let bumped = abs(det) * n - grad * smoothstep(0.02, 0.1, facing);
+      n = select(n, normalize(bumped), dot(bumped, bumped) > 1e-30);
+      s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
     }
-    // The pattern fades where it spans fewer than about four pixels, so a
-    // far surface keeps its form instead of shimmering grain (the pixel's
-    // footprint in the mesh's own space, where the pattern lies).
-    var footprint: f32;
-    if (ANALYTIC) {
-      footprint = max(length(analytic_local_dx), length(analytic_local_dy));
-    } else {
-      footprint = max(length(dpdxFine(in.local_pos)), length(dpdyFine(in.local_pos)));
-    }
-    let fade = clamp((ms.z / max(footprint, 1e-6) - 3.0) / 6.0, 0.0, 1.0);
-    let made = material_surface(kind, ms.y, in.local_pos / ms.z, s, fade);
-    s = made.s;
-    wrap = made.wrap;
-    wrap_tint = made.tint;
-    // The height (metres) bends the normal by its screen-space surface
-    // gradient (Mikkelsen 2010): no tangents needed, so it holds on every
-    // generated, decimated or bevelled mesh.
-    let hm = made.height * ms.z;
-    let r1 = cross(dpy, n);
-    let r2 = cross(n, dpx);
-    let det = dot(dpx, r1);
-    // The height's screen derivatives: with ANALYTIC the pattern again
-    // at the next pixel right and down on the triangle's plane, as the
-    // hardware's quad takes them.
-    var dh: vec2<f32>;
-    if (ANALYTIC) {
-      let hx = material_surface(kind, ms.y, (in.local_pos + analytic_local_dx) / ms.z, s, fade).height * ms.z;
-      let hy = material_surface(kind, ms.y, (in.local_pos + analytic_local_dy) / ms.z, s, fade).height * ms.z;
-      dh = vec2<f32>(hx - hm, hy - hm);
-    } else {
-      dh = vec2<f32>(dpdxFine(hm), dpdyFine(hm));
-    }
-    let grad = sign(det) * (dh.x * r1 + dh.y * r2);
-    // det is n · (dpx × dpy): where the shading normal lies in the face (a
-    // smooth mesh's silhouette, a rim turning away) the frame is degenerate,
-    // abs(det) n - grad tends to zero and its normalize to NaN, which the
-    // frame's blurs spread into a black disc. The bump fades out as the
-    // normal turns into the face, and where nothing is left the normal stays.
-    let facing = abs(det) / max(length(cross(dpx, dpy)), 1e-20);
-    let bumped = abs(det) * n - grad * smoothstep(0.02, 0.1, facing);
-    n = select(n, normalize(bumped), dot(bumped, bumped) > 1e-30);
-    s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   }
   // Rain, streaks, puddles, snow and dust (weather_surface.wgsl): the
   // frame's uniforms, the material's weathering (uv[3].w) and its relief
@@ -425,8 +431,14 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     // reflection as its roughest, flat colour at f0, so the ramp's bands sit
     // on flat colour instead of the PBR gradient that washed them out.
     let up = vec3<f32>(0.0, 1.0, 0.0);
-    let flat_irradiance = 0.5 * (
-      ambient_irradiance(ambient_light_level(up, in.world_pos), in.world_pos, up) + ambient_irradiance(ambient_light_level(-up, in.world_pos), in.world_pos, -up));
+    // From above, then below, in one loop (one copy of the light
+    // volumes' code: DXC inlines every call).
+    var flat_sum = vec3<f32>(0.0);
+    for (var j = 0u; j < 2u; j++) {
+      let d = select(-up, up, j == 0u);
+      flat_sum += ambient_irradiance(ambient_light_level(d, in.world_pos), in.world_pos, d);
+    }
+    let flat_irradiance = 0.5 * flat_sum;
     let flat_hemi = 0.5 * (frame.hemi_sky.rgb + frame.hemi_ground.rgb) * frame.hemi_sky.w;
     let flat_diffuse = (flat_irradiance * frame.params.x + flat_hemi) * s.albedo;
     // A metal takes the flat ambient as a matte surface in f0 times its

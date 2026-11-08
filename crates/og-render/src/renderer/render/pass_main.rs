@@ -369,7 +369,9 @@ impl Renderer {
             pass.set_bind_group(0, frame_bind_group, &[]);
             // Each surface and the fluids with their reflection probe (probe_select.rs).
             let mut binder = probe_select::Binder::new(probe_binding);
-            stats.draw_calls += self.water.draw(&mut pass, water_draws, &mut binder);
+            stats.draw_calls +=
+                self.water
+                    .draw(&mut pass, water_draws, &mut binder, self.frame_features);
             if let Some(f) = fluid_frame {
                 if let Some((c, r)) = fluid_bounds {
                     binder.at(&mut pass, c, r);

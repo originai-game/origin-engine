@@ -373,6 +373,7 @@ impl VisBuffer {
                 false,
                 None,
                 Some(("vs_meshlet_resolve", "fs_prepass_meshlet_resolve", true)),
+                &[],
             ));
         }
         self.checks.push(Box::pin(validation.pop()));

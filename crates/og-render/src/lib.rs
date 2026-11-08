@@ -120,6 +120,7 @@ mod lines;
 pub mod lod;
 pub mod meshlet;
 mod meshlet_gpu;
+mod pipeline_features;
 mod probe_content;
 mod probe_grid;
 mod probe_select;
@@ -630,14 +631,19 @@ pub struct Renderer {
     shadow_shader: deferred::Module,
     /// Lit pipelines, each made when a batch first needs it (or by
     /// [`Renderer::warm`]).
-    pbr_pipelines: HashMap<PbrKey, Deferred<wgpu::RenderPipeline>>,
+    /// The features this frame's lit passes draw with
+    /// (`pipeline_features::Features::of`).
+    frame_features: pipeline_features::Features,
+    pbr_pipelines: HashMap<PbrKey, pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
     shadow_pipelines: HashMap<ShadowKey, Deferred<ShadowSet>>,
     /// Prepass pipelines by (side, skinned).
-    prepass_pipelines: HashMap<(Side, bool), Deferred<wgpu::RenderPipeline>>,
+    prepass_pipelines:
+        HashMap<(Side, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
     /// The lean lit pipelines of plain materials, made at first use.
-    lean_pipelines: HashMap<LeanKey, Deferred<wgpu::RenderPipeline>>,
+    lean_pipelines: HashMap<LeanKey, pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
     /// Their prepass pipelines by (side, derivatives, compact).
-    lean_prepass_pipelines: HashMap<(Side, bool, bool), Deferred<wgpu::RenderPipeline>>,
+    lean_prepass_pipelines:
+        HashMap<(Side, bool, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
     /// The shadow pipelines of compact casters (lean, from the compact
     /// vertices) by side.
     compact_shadow_pipelines: HashMap<Side, Deferred<ShadowSet>>,

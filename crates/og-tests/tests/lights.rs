@@ -142,3 +142,51 @@ fn past_max_lights_the_faint_far_ones_are_dropped() {
         "the faint lights replaced bright ones (max diff {d})"
     );
 }
+
+/// A light added to a running scene shades it without a frame waiting
+/// for a compile: the frames before it drew with the lit pipelines made
+/// without the local lights' code (og-render pipeline_features.rs), and
+/// the full ones compile in the background; until they are ready the
+/// light is not drawn, then the frame is the one a fresh renderer draws.
+#[test]
+#[ignore = "requires GPU"]
+fn a_light_turned_on_mid_run_waits_for_no_compile() {
+    let desc = RenderDesc {
+        width: 320,
+        height: 180,
+        ..scenes::base_desc()
+    };
+    let mut scene = scenes::build("materials").expect("materials").scene;
+    scene.lights.clear();
+    scene.decals.clear();
+    let light = Light {
+        position: Vec3::new(0.0, 1.5, 1.0),
+        color: Vec3::new(1.0, 0.4, 0.2),
+        intensity: 40.0,
+        range: 12.0,
+        cast_shadows: false,
+        ..Default::default()
+    };
+    // The frame a fresh renderer draws with the light.
+    scene.lights.push(light);
+    let (lit, _) = frame(&desc, &scene);
+    scene.lights.clear();
+    let mut r = Renderer::new_blocking(&desc).expect("renderer");
+    r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    scene.lights.push(light);
+    let t0 = std::time::Instant::now();
+    loop {
+        let stats = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+        assert_eq!(
+            stats.compile_wait_us, 0,
+            "a frame after the light was added waited for a compile"
+        );
+        if max_diff(&r.read_offscreen().expect("capture"), &lit) <= 2 {
+            break;
+        }
+        assert!(
+            t0.elapsed().as_secs() < 30,
+            "the full lit pipelines never took over"
+        );
+    }
+}

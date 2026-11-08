@@ -324,9 +324,12 @@ impl Renderer {
                     pass = begin(encoder, false);
                     pass.set_bind_group(0, &face_groups[k], &[]);
                     if let Some(water) = water {
-                        stats.draw_calls +=
-                            self.water
-                                .draw(&mut pass, water, &mut probe_select::Binder::new(None));
+                        stats.draw_calls += self.water.draw(
+                            &mut pass,
+                            water,
+                            &mut probe_select::Binder::new(None),
+                            self.frame_features,
+                        );
                     }
                     if let Some(f) = fluid {
                         stats.draw_calls += self.fluid3d.draw(&mut pass, f);

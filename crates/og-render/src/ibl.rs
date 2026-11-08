@@ -253,7 +253,7 @@ impl IblGenerator {
         let make_pipeline = |entry: &'static str| {
             let (device, pipeline_layout, shader) =
                 (device.clone(), pipeline_layout.clone(), shader.clone());
-            Deferred::new(move || {
+            Deferred::anywhere(move || {
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some(entry),
                     layout: Some(&pipeline_layout),
@@ -297,6 +297,13 @@ impl IblGenerator {
             make_pipeline("fs_probe_copy"),
             make_pipeline("fs_equirect"),
         ];
+        // The environment's first bake's (sky to the LUT) compile side by
+        // side on the compile workers (deferred.rs) while the renderer
+        // sets up; the rest are made when first used.
+        #[cfg(not(target_arch = "wasm32"))]
+        for p in &pipelines[SKY..=LUT] {
+            crate::deferred::Start::start(p);
+        }
 
         let sky_mips = SKY_SIZE.ilog2() + 1;
         let sky = cube_texture(device, "sky", SKY_SIZE, sky_mips);

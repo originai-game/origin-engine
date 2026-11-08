@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Renderer",
+      "summary": "A scene's first frame waits much less for shaders on desktop. The lit, water and terrain pipelines are first made without the code for features the scene does not use (weather, local lights, decals, probe GI, caustics, soft shadows, sea, flow, ripples and others), and the complete pipelines compile in the background afterwards; a feature turned on later draws as soon as the complete pipeline is ready, and no frame waits for it. The shaders also inline far less (the sky's cloud marches, the sharpening taps and the terrain's lookups each run in one loop), and the environment and culling pipelines no longer compile one after another at startup. On DX12 with an empty driver cache the 2 km terrain scene's first frame takes 1.6 s instead of 4.7 s, and the materials scene's 1.1 s instead of 5.4 s; the picture is unchanged. The web is unchanged."
+    }
+  ]
+}

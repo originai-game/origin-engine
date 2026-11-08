@@ -76,6 +76,28 @@ struct WaterUniform {
 
 @group(1) @binding(0) var<uniform> water: WaterUniform;
 
+// Which kinds of surface a pipeline draws (pipeline_features.rs): a sea
+// (og_core's waves, its foam and spray), a flowing surface (a current, a
+// flow map or a river) and the ripples' height field. A kind's code sits
+// inside `if (OG_<kind>)`, so a pipeline made without it has that code
+// folded away before the backend inlines it.
+override OG_SEA: bool = true;
+override OG_FLOW: bool = true;
+override OG_RIPPLES: bool = true;
+
+fn is_sea() -> bool {
+  return OG_SEA && water.ocean.x > 0.5;
+}
+
+fn flows() -> bool {
+  return OG_FLOW && dot(water.normals.yz, water.normals.yz) >= 1e-12;
+}
+
+// The ripples' heights, read per pixel (WaterGpu.size.w 2).
+fn rippled() -> bool {
+  return OG_RIPPLES && water.size.w > 1.5;
+}
+
 // The light a sea's crests carry through them (rgb) and its strength (w): web-ocean's `sssCol`.
 const SEA_SSS: vec4<f32> = vec4<f32>(0.035, 0.12, 0.085, 2.6);
 // The sun's disc as a variance of slopes (its 0.27° radius, halved at reflection, squared): the glitter's least
@@ -678,7 +700,9 @@ fn vs(@builtin(vertex_index) vi: u32) -> WaterOut {
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(1.0, 0.0));
-  if (water.fft.x > 0.5) { return vs_sea(vi); }
+  if (OG_SEA) {
+    if (water.fft.x > 0.5) { return vs_sea(vi); }
+  }
   let c = corners[vi % 6u];
   let cell = vec2<f32>(f32(quad % segs), f32(quad / segs)) + c;
   let local = (cell / f32(segs) - 0.5) * water.size.xy;
@@ -1031,7 +1055,7 @@ fn ssr(origin: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
       // On a sea, a hit is where the refined ray meets what the screen holds: a ray that only passed behind a
       // floater's silhouette (the march's thickness is generous) mirrored its dark side into the near water.
       let held = textureLoad(scene_depth, vec2<i32>(hit.xy * water.screen.xy), 0).r;
-      if (water.ocean.x > 0.5 && view_depth(origin + r * hi) - held > 0.25 + 0.02 * hi) {
+      if (is_sea() && view_depth(origin + r * hi) - held > 0.25 + 0.02 * hi) {
         last = t;
         t = t * 1.25 + 0.15;
         continue;
@@ -1095,14 +1119,14 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // The pixel's footprint on the surface (m) the detail waves are filtered over; a sea fades its own below.
   let dlx = dpdxFine(in.local);
   let dly = dpdyFine(in.local);
-  let reach = select(max(length(dlx), length(dly)), 0.0, water.ocean.x > 0.5);
+  let reach = select(max(length(dlx), length(dly)), 0.0, is_sea());
   // Its area (m², the glints' cells: lake_glints).
   let foot_area = abs(dlx.x * dly.y - dlx.y * dly.x);
   var detail = wave_slope(in.local, t, reach);
   if (water.normals.w > 0.5) {
     detail = map_slope(in.world.xz, in.uv, t);
-  } else if (dot(water.normals.yz, water.normals.yz) >= 1e-12) {
-    detail = flowed_slope(in.local, in.uv, t, reach);
+  } else if (OG_FLOW) {
+    if (flows()) { detail = flowed_slope(in.local, in.uv, t, reach); }
   }
   var slope = detail.slope;
   let tangent_x = normalize((water.model * vec4<f32>(1.0, 0.0, 0.0, 0.0)).xyz);
@@ -1111,7 +1135,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   var base = in.normal;
   var sea_cov = vec3<f32>(0.0);
   var sea_f = SeaFoam(0.0, 0.0, 0.0, 0.0, 0.0);
-  if (water.ocean.x > 0.5) {
+  if (OG_SEA) {
+if (is_sea()) {
     var footprint = sea_footprint(in.world);
     // The pixel's footprint on the level surface, from where its view ray meets the level: smooth across the screen,
     // where the rest point's derivatives jump at every edge of the displaced triangles (and their mips drew the grid).
@@ -1138,15 +1163,18 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // stripes towards the horizon).
     slope *= 1.0 - smoothstep(0.785, 1.571, water.waves.x * 6.2831853 * 3.9 * footprint);
   }
+  }
   // With ripples (water_ripples.wgsl): their own slope per pixel bends the grid's normal (finer than its vertices;
   // zero on open water, so its glare stays the grid's), and their foam.
   var ripple_foam = 0.0;
-  if (water.size.w > 1.5 && water.ocean.x < 0.5) {
+  if (OG_RIPPLES) {
+if (rippled() && !is_sea()) {
     let e = water.look.z / max(water.look.w - 1.0, 1.0);
     let rx = field_at(in.local + vec2<f32>(e, 0.0)).g - field_at(in.local - vec2<f32>(e, 0.0)).g;
     let rz = field_at(in.local + vec2<f32>(0.0, e)).g - field_at(in.local - vec2<f32>(0.0, e)).g;
     base = normalize(base - tangent_x * (rx / (2.0 * e)) - tangent_z * (rz / (2.0 * e)));
     ripple_foam = field_at(in.local).b;
+  }
   }
   var n = normalize(base - tangent_x * slope.x - tangent_z * slope.y);
   let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
@@ -1154,8 +1182,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let below_view = dot(in.normal, v) < 0.0;
   // three.js Water / Water2 (below) never turn a ripple's normal to the eye: a wavelet facing away at a grazing view
   // reflects fully (theta = max(dot(V, N), 0), Fresnel 1), its body scatters nothing, the mirror bends by its own N.xz.
-  let three_water = water.under.w > 0.0 || (water.normals.w > 0.5 && dot(water.normals.yz, water.normals.yz) >= 1e-12);
-  if (water.ocean.x > 0.5) {
+  let three_water = water.under.w > 0.0 || (water.normals.w > 0.5 && flows());
+  if (is_sea()) {
     // A sea's swell turns its back slopes from the eye past a crest: a flipped normal mirrored the bright sky there
     // at Fresnel 1, a bright line along every crest's silhouette. Bend it to just face the eye instead (its
     // reflection then points down, into the sea: see below).
@@ -1181,7 +1209,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // Refraction: the scene behind, shifted by the detail normal, unless the
   // shifted sample is in front of the water.
   // three.js Water2 (a normal map with a flow): its look, term for term (see below). three.js Water (glint > 0): its body.
-  let water2 = water.normals.w > 0.5 && dot(water.normals.yz, water.normals.yz) >= 1e-12;
+  let water2 = water.normals.w > 0.5 && flows();
   let water_js = water.under.w > 0.0;
   var shift = (n - in.normal).xz * water.waves.w * water.screen.zw * 40.0 / max(here * 0.2, 1.0);
   if (water2) {
@@ -1215,7 +1243,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let daylight_k = min(dot(light_in, vec3<f32>(0.2126, 0.7152, 0.0722)) / 1.5, 1.0);
   let daylight = daylight_k * daylight_k;
   var deep = water.deep.rgb * mix(0.4, 1.0, sun) * daylight;
-  let sea = water.ocean.x > 0.5;
+  let sea = is_sea();
   // The sky's light on the sea from above and along its normal (web-ocean's skyUp and skyN).
   let amb_up = ambient_light_level(in.normal, in.world) * frame.params.x;
   let amb_n = ambient_light_level(n, in.world) * frame.params.x;
@@ -1226,7 +1254,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let deck = cloud_deck(vec3<f32>(0.0, 1.0, 0.0));
   let deck_up = select(deck, vec4<f32>(0.0), frame.clouds[4].w > 0.5);
   let sun_e = frame.light_color.rgb * sun;
-  if (sea) {
+  if (OG_SEA) {
+if (sea) {
     // web-ocean's body (`ocean.js` fs; the Sea of Thieves talk's subsurface term): light carried through the thin
     // upper part of a backlit crest, strongest looking towards the sun; and under foam the bubbles brighten and tint
     // the water beneath it.
@@ -1259,6 +1288,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let k_face = smoothstep(0.15, 0.7, crest) * face * exp(-dist / 400.0);
     deep += vec3<f32>(0.05, 0.2, 0.15) * deck.rgb * 2.2 * deck.a * k_face;
   }
+  }
   if (water_js) {
     // three.js Water's body, (sunColor · diffuse · 0.3 + scatter) · shadow: diffuse = max(L·N, 0) · sunColor · 0.5,
     // scatter = max(N·V, 0) · waterColor (the deep colour), sunColor = the light × glint / 2 (glint = spec 2 × sunColor
@@ -1277,7 +1307,9 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let body = o.scatter * sun_e * hg_water(dot(l, -v)) + o.scatter_sky * amb_up;
     color = below * o.through + body;
     // A sea's crests and foam scatter their light on top, as `deep` carries for the colour model.
-    if (sea) { color += (deep - water.deep.rgb * mix(0.4, 1.0, sun) * daylight) * o.opacity; }
+    if (OG_SEA) {
+if (sea) { color += (deep - water.deep.rgb * mix(0.4, 1.0, sun) * daylight) * o.opacity; }
+  }
   }
 
   // The sun's glitter on a sea, kept for the wet lace that lies over it (below).
@@ -1289,7 +1321,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // The detail's slopes a pixel leaves out (LEAN, wave_slope) blur the mirrored sky as a sea's facets blur it.
   var mip = max(sqrt(sqrt(detail.cov.x + detail.cov.y)) * frame.params.y, 0.5);
   var sig_v = 0.0;
-  if (sea) {
+  if (OG_SEA) {
+if (sea) {
     // web-ocean's tilt of the visible facets (`ocean.js` fs): at a grazing view the facets the eye sees lean towards
     // it (projected area and masking), so the reflector tilts up and mirrors higher sky. The Fresnel is Bruneton,
     // Neyret and Holzschuch's mean over a rough sea's facets (2010), which dims the grazing mirror as the slopes along
@@ -1305,6 +1338,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     fresnel = (f0 + (1.0 - f0) * sea_fresnel(saturate(dot(n, v)), sig_v)) * water.look.x;
     mip = max(sqrt(sqrt(sea_cov.x + sea_cov.y)) * frame.params.y, 0.5);
   }
+  }
   // The environment, or the reflection probe holding the surface (probes.rs), as bright as the sky is drawn: without the
   // twilight's adaptation (water.ao.w), which lifts the light on surfaces but not the sky they mirror. Under a cloud
   // deck the sky mirrored is the clouds' grey, as they light it (sky.wgsl).
@@ -1317,7 +1351,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   if (water.extra.y > 0.5) {
     // The mirrored scene, flipped left to right, shifted by the waves.
     var shift_r = (n - in.normal).xz * water.screen.zw * 60.0;
-    if (water.normals.w > 0.5 && dot(water.normals.yz, water.normals.yz) < 1e-12) {
+    if (water.normals.w > 0.5 && !flows()) {
       // three.js Water (the lake's normal map): the mirror bends by N.xz (0.001 + 1 / distance) x distortionScale 1.2, in uv.
       shift_r = (n - in.normal).xz * (0.001 + 1.0 / max(length(frame.view_pos.xyz - in.world), 0.1)) * 1.2;
     } else if (water2) {
@@ -1422,8 +1456,9 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let noise = foam_noise(in.local * 6.0 + vec2<f32>(t * 0.3, -t * 0.2));
   let crest = clamp((in.slope - 0.35) * 3.0, 0.0, 1.0);
   var band = edge * edge * (0.55 + 0.6 * noise);
-  let flowing = dot(water.normals.yz, water.normals.yz) >= 1e-12 && water.normals.w < 0.5 && water.ocean.x < 0.5;
-  if (flowing) {
+  let flowing = flows() && water.normals.w < 0.5 && !is_sea();
+  if (OG_FLOW) {
+if (flowing) {
     // A stream's foam comes and goes along its banks: patches carried down by the flow, more of it where the water
     // runs fast and shallow, none where it is still (a uniform band read as a seam).
     var f = water.normals.yz;
@@ -1443,6 +1478,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // bank), most a third of the band out where the water piles against it.
     let d = 1.0 - edge;
     band = smoothstep(0.02, 0.3, d) * (1.0 - smoothstep(0.3, 1.0, d)) * (0.3 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed);
+  }
   }
   // The ripples' foam: lumps with gaps between them, its cover growing with how much of it there is (a soft disc of
   // it read as a glow), drifting slowly.
@@ -1482,7 +1518,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let white_lit = clamp(wrap, 0.0, 1.0) * frame.light_color.rgb * sun * 0.31831 + vec3<f32>(frame.params.x * 0.6);
     color = mix(color, water.foam.rgb * white_lit * mix(0.85, 1.0, white_water), river_white);
   }
-  if (sea) {
+  if (OG_SEA) {
+if (sea) {
     // A sea's foam, whatever the shore foam's width, web-ocean's (`ocean.js` fs): a matte, diffuse layer over the
     // water, its albedo the foam colour varied by the bubbles inside it, lit by the sun (half of it: the lumpy foam
     // shadows itself at a grazing sun) and by the whole sky above, nearly grey (foam scatters every part of it).
@@ -1502,6 +1539,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // The lace is a film between bubbles, not a matte sheet: the water's glitter shows through some of it (more drew
     // each thread as a string of glints).
     color += glitter * sea_f.lace * 0.95 * 0.3;
+  }
   }
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }
@@ -1574,7 +1612,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   o.sheet = ii / SPRAY_SLOTS;
   let wind = water.sea_wind.z;
   let gust = smoothstep(10.0, 20.0, wind) * water.spray.x;
-  if (gust <= 0.0 || water.ocean.x < 0.5) { return o; }
+  if (gust <= 0.0 || !is_sea()) { return o; }
   let pop = ii / SPRAY_SLOTS;
   let slot = ii % SPRAY_SLOTS;
   if (f32(slot) >= water.spray.z) { return o; }

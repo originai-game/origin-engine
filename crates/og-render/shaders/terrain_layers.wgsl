@@ -244,14 +244,17 @@ fn plane_taps(l: TerrainLayerGpu, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy:
   t.n = 3u;
   let mf = hex_centre(hf.xy);
   let strength = clamp(l.look.x, 0.0, 1.0);
-  let a = hex_tap(id + vec2<f32>(s, s), base, u, mf, hf.zw, strength, gx, gy);
-  let b = hex_tap(id + vec2<f32>(s, 1.0 - s), base, u, mf, hf.zw, strength, gx, gy);
-  let c = hex_tap(id + vec2<f32>(1.0 - s, s), base, u, mf, hf.zw, strength, gx, gy);
-  t.uv = array<vec2<f32>, 3>(a.uv, b.uv, c.uv);
-  t.dx = array<vec2<f32>, 3>(a.dx, b.dx, c.dx);
-  t.dy = array<vec2<f32>, 3>(a.dy, b.dy, c.dy);
-  t.turn = array<vec2<f32>, 3>(a.turn, b.turn, c.turn);
-  t.seed = vec3<f32>(a.seed, b.seed, c.seed);
+  // The three hexagons in one loop: one copy of the tap's code (DXC
+  // inlines every call, so three calls compiled three copies).
+  let cells = array<vec2<f32>, 3>(vec2<f32>(s, s), vec2<f32>(s, 1.0 - s), vec2<f32>(1.0 - s, s));
+  for (var j = 0u; j < 3u; j++) {
+    let h = hex_tap(id + cells[j], base, u, mf, hf.zw, strength, gx, gy);
+    t.uv[j] = h.uv;
+    t.dx[j] = h.dx;
+    t.dy[j] = h.dy;
+    t.turn[j] = h.turn;
+    t.seed[j] = h.seed;
+  }
   return t;
 }
 

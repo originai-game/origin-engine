@@ -73,8 +73,8 @@ enum Make<T> {
 impl<T> Make<T> {
     fn make(self) -> T {
         match self {
-            Make::Here(make) => make(),
-            Make::Anywhere(make) => make(),
+            Make::Here(make) => timed(make),
+            Make::Anywhere(make) => timed(make),
             #[cfg(not(target_arch = "wasm32"))]
             Make::Started(worker) => joined(worker),
         }
@@ -83,61 +83,207 @@ impl<T> Make<T> {
 
 /// A value being made on a compile worker ([`spawn`]).
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) struct Pending<T>(std::sync::mpsc::Receiver<std::thread::Result<T>>);
+pub(crate) struct Pending<T>(
+    std::sync::mpsc::Receiver<std::thread::Result<T>>,
+    // A background job's ([`Queues::background`]).
+    Option<u64>,
+);
 
 /// A worker's value, waited for, its panic passed on.
 #[cfg(not(target_arch = "wasm32"))]
 fn joined<T>(pending: Pending<T>) -> T {
-    match pending.0.recv() {
+    if let Ok(answer) = pending.0.try_recv() {
+        return match answer {
+            Ok(value) => value,
+            Err(panic) => std::panic::resume_unwind(panic),
+        };
+    }
+    // A background compile waited for runs now, ahead of the others (they
+    // still wait for the frame: [`release_background`]).
+    if let Some(id) = pending.1 {
+        promote(id);
+    }
+    let t0 = std::time::Instant::now();
+    let answer = pending.0.recv();
+    WAITED_US.fetch_add(
+        t0.elapsed().as_micros() as u64,
+        std::sync::atomic::Ordering::Relaxed,
+    );
+    match answer {
         Ok(Ok(value)) => value,
         Ok(Err(panic)) => std::panic::resume_unwind(panic),
         Err(_) => unreachable!("a compile worker always answers"),
     }
 }
 
+/// `make()` on the renderer's thread, its time counted as waited
+/// ([`take_waited_us`]): what a frame spends making a pipeline it meets is
+/// time it does not draw.
+fn timed<T>(make: impl FnOnce() -> T) -> T {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let t0 = std::time::Instant::now();
+        let v = make();
+        WAITED_US.fetch_add(
+            t0.elapsed().as_micros() as u64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        v
+    }
+    #[cfg(target_arch = "wasm32")]
+    make()
+}
+
 /// A job for the compile workers.
 #[cfg(not(target_arch = "wasm32"))]
 type Job = Box<dyn FnOnce() + Send>;
 
-/// Runs `make` on the compile workers: one a core, started on first use
-/// and kept for the process, taking jobs in the order they were started
-/// (a frame starts its longest compiles first). A bounded pool, not a
-/// thread a pipeline: a scene's first frame can ask for dozens at once.
+/// Microseconds the renderer's thread has spent on pipelines: waiting for
+/// the compile workers, or making one itself ([`take_waited_us`]).
 #[cfg(not(target_arch = "wasm32"))]
-fn spawn<T: Send + 'static>(make: impl FnOnce() -> T + Send + 'static) -> Pending<T> {
-    static QUEUE: OnceLock<Mutex<std::sync::mpsc::Sender<Job>>> = OnceLock::new();
-    let queue = QUEUE.get_or_init(|| {
-        let (send, receive) = std::sync::mpsc::channel::<Job>();
-        let receive = Arc::new(Mutex::new(receive));
+static WAITED_US: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// The time the renderer's thread spent on compiles since the last call
+/// (`FrameStats::compile_wait_us`; 0 on the web, which waits for none).
+pub(crate) fn take_waited_us() -> u64 {
+    #[cfg(not(target_arch = "wasm32"))]
+    return WAITED_US.swap(0, std::sync::atomic::Ordering::Relaxed);
+    #[cfg(target_arch = "wasm32")]
+    0
+}
+
+/// When a started value compiles.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Priority {
+    /// For a frame that is waiting or will wait for it: before any
+    /// background work.
+    Frame,
+    /// Ahead of a need that may come (a pipeline variant with every
+    /// feature, [`crate::pipeline_features::Variants`]): held until the
+    /// frame that asked has been submitted ([`release_background`]), then
+    /// compiled while no frame's work is queued.
+    Background,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Default)]
+struct Queues {
+    frame: std::collections::VecDeque<Job>,
+    /// Released background jobs, each with its id (a wait for one moves
+    /// it to `frame`: [`promote`]).
+    background: std::collections::VecDeque<(u64, Job)>,
+    held: Vec<(u64, Job)>,
+    next: u64,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+struct Pool {
+    queues: Mutex<Queues>,
+    work: std::sync::Condvar,
+}
+
+/// The compile workers: one a core, started on first use and kept for the
+/// process. A bounded pool, not a thread a pipeline: a scene's first frame
+/// can ask for dozens at once.
+#[cfg(not(target_arch = "wasm32"))]
+fn pool() -> &'static Pool {
+    static POOL: OnceLock<&'static Pool> = OnceLock::new();
+    POOL.get_or_init(|| {
+        let pool: &'static Pool = Box::leak(Box::new(Pool {
+            queues: Mutex::new(Queues::default()),
+            work: std::sync::Condvar::new(),
+        }));
         let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
         for i in 0..workers {
-            let receive = receive.clone();
             std::thread::Builder::new()
                 .name(format!("og-render compile {i}"))
                 .spawn(move || {
                     loop {
-                        let job = receive.lock().unwrap_or_else(|e| e.into_inner()).recv();
-                        match job {
-                            Ok(job) => job(),
-                            Err(_) => break,
-                        }
+                        let job = {
+                            let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
+                            loop {
+                                if let Some(job) = q
+                                    .frame
+                                    .pop_front()
+                                    .or_else(|| q.background.pop_front().map(|(_, job)| job))
+                                {
+                                    break job;
+                                }
+                                q = pool.work.wait(q).unwrap_or_else(|e| e.into_inner());
+                            }
+                        };
+                        job();
                     }
                 })
                 .expect("a pipeline compile worker");
         }
-        Mutex::new(send)
-    });
+        pool
+    })
+}
+
+/// Lets the background compiles asked for so far start (the frame that
+/// asked for them has been submitted: [`Priority::Background`]).
+pub(crate) fn release_background() {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let pool = pool();
+        let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
+        if q.held.is_empty() {
+            return;
+        }
+        let held = std::mem::take(&mut q.held);
+        q.background.extend(held);
+        pool.work.notify_all();
+    }
+}
+
+/// Runs `make` on the compile workers, in the order started within its
+/// priority (a frame starts its longest compiles first).
+#[cfg(not(target_arch = "wasm32"))]
+fn spawn<T: Send + 'static>(
+    priority: Priority,
+    make: impl FnOnce() -> T + Send + 'static,
+) -> Pending<T> {
     let (answer, pending) = std::sync::mpsc::channel();
     let job: Job = Box::new(move || {
         let made = std::panic::catch_unwind(std::panic::AssertUnwindSafe(make));
         let _ = answer.send(made);
     });
-    queue
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .send(job)
-        .expect("the compile workers run for the process");
-    Pending(pending)
+    let pool = pool();
+    let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
+    match priority {
+        Priority::Frame => {
+            q.frame.push_back(job);
+            pool.work.notify_one();
+            Pending(pending, None)
+        }
+        Priority::Background => {
+            let id = q.next;
+            q.next += 1;
+            q.held.push((id, job));
+            Pending(pending, Some(id))
+        }
+    }
+}
+
+/// Moves the background job `id`, held or queued, to the front of the
+/// frame's queue (the renderer waits for it); a running or finished one is
+/// in neither.
+#[cfg(not(target_arch = "wasm32"))]
+fn promote(id: u64) {
+    let pool = pool();
+    let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
+    let job = if let Some(i) = q.held.iter().position(|(j, _)| *j == id) {
+        Some(q.held.remove(i).1)
+    } else {
+        let i = q.background.iter().position(|(j, _)| *j == id);
+        i.and_then(|i| q.background.remove(i)).map(|(_, job)| job)
+    };
+    if let Some(job) = job {
+        q.frame.push_front(job);
+        pool.work.notify_one();
+    }
 }
 
 /// A value made by its closure on first use (deref), at most once.
@@ -163,6 +309,30 @@ impl<T> Deferred<T> {
         }
     }
 
+    /// The value if it is made, or was started and has been made since,
+    /// without waiting.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    pub(crate) fn ready(&self) -> Option<&T> {
+        if let Some(v) = self.value.get() {
+            return Some(v);
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        match self.make.take() {
+            Some(Make::Started(worker)) => match worker.0.try_recv() {
+                Ok(Ok(value)) => return Some(self.value.get_or_init(|| value)),
+                Ok(Err(panic)) => std::panic::resume_unwind(panic),
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    self.make.set(Some(Make::Started(worker)));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    unreachable!("a compile worker always answers")
+                }
+            },
+            other => self.make.set(other),
+        }
+        None
+    }
+
     /// The value, made now if it was not yet (waited for, if started).
     pub(crate) fn get(&self) -> &T {
         self.value.get_or_init(|| {
@@ -186,13 +356,21 @@ pub(crate) trait Start {
     fn start(&self);
 }
 
+impl<T: Send + 'static> Deferred<T> {
+    /// [`Start::start`] at `priority`.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn start_at(&self, priority: Priority) {
+        match self.make.take() {
+            Some(Make::Anywhere(make)) => self.make.set(Some(Make::Started(spawn(priority, make)))),
+            other => self.make.set(other),
+        }
+    }
+}
+
 impl<T: Send + 'static> Start for Deferred<T> {
     #[cfg(not(target_arch = "wasm32"))]
     fn start(&self) {
-        match self.make.take() {
-            Some(Make::Anywhere(make)) => self.make.set(Some(Make::Started(spawn(make)))),
-            other => self.make.set(other),
-        }
+        self.start_at(Priority::Frame);
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -286,16 +464,41 @@ impl<T> Sampled<T> {
                 return joined(worker);
             }
             match &self.make {
-                SampledMake::Here(make) => make(self.samples.get()),
+                SampledMake::Here(make) => timed(|| make(self.samples.get())),
                 #[cfg(not(target_arch = "wasm32"))]
-                SampledMake::Anywhere(make) => make(self.samples.get()),
+                SampledMake::Anywhere(make) => timed(|| make(self.samples.get())),
             }
         })
+    }
+
+    /// The value at the current count if it is made, or was started and
+    /// has been made since, without waiting.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    pub(crate) fn ready(&self) -> Option<&T> {
+        let i = self.index();
+        if let Some(v) = self.made[i].get() {
+            return Some(v);
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(worker) = self.started[i].take() {
+            match worker.0.try_recv() {
+                Ok(Ok(value)) => return Some(self.made[i].get_or_init(|| value)),
+                Ok(Err(panic)) => std::panic::resume_unwind(panic),
+                Err(_) => self.started[i].set(Some(worker)),
+            }
+        }
+        None
     }
 
     /// Draw at `samples` per pixel from now on.
     pub(crate) fn set_samples(&self, samples: u32) {
         self.samples.set(samples);
+    }
+
+    /// The samples per pixel it draws at.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    pub(crate) fn samples(&self) -> u32 {
+        self.samples.get()
     }
 
     /// Whether the value at the current count has been made.
@@ -304,9 +507,10 @@ impl<T> Sampled<T> {
     }
 }
 
-impl<T: Send + 'static> Start for Sampled<T> {
+impl<T: Send + 'static> Sampled<T> {
+    /// [`Start::start`] at `priority`.
     #[cfg(not(target_arch = "wasm32"))]
-    fn start(&self) {
+    pub(crate) fn start_at(&self, priority: Priority) {
         let i = self.index();
         let SampledMake::Anywhere(make) = &self.make else {
             return;
@@ -318,9 +522,16 @@ impl<T: Send + 'static> Start for Sampled<T> {
             Some(worker) => self.started[i].set(Some(worker)),
             None => {
                 let (make, samples) = (make.clone(), self.samples.get());
-                self.started[i].set(Some(spawn(move || make(samples))));
+                self.started[i].set(Some(spawn(priority, move || make(samples))));
             }
         }
+    }
+}
+
+impl<T: Send + 'static> Start for Sampled<T> {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn start(&self) {
+        self.start_at(Priority::Frame);
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -347,6 +558,8 @@ impl<T> Warm for Sampled<T> {
 /// A shader module parsed when the first pipeline that uses it is made,
 /// on whichever thread that is ([`Deferred::anywhere`]).
 pub(crate) struct ModuleCell {
+    /// The optional features whose overrides its source declares.
+    pub(crate) declared: crate::pipeline_features::Features,
     value: OnceLock<wgpu::ShaderModule>,
     make: Mutex<Option<MakeAnywhere<wgpu::ShaderModule>>>,
 }
@@ -383,6 +596,7 @@ pub(crate) type Module = Arc<ModuleCell>;
 pub(crate) fn module(device: &wgpu::Device, label: &'static str, source: String) -> Module {
     let device = device.clone();
     Arc::new(ModuleCell {
+        declared: crate::pipeline_features::Features::declared(&source),
         value: OnceLock::new(),
         make: Mutex::new(Some(Box::new(move || {
             device.create_shader_module(wgpu::ShaderModuleDescriptor {

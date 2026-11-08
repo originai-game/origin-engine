@@ -285,6 +285,7 @@ fn light_cookie(light: LocalLight, d: vec3<f32>) -> vec3<f32> {
 // or spot by its falloff, cone, shadow and cookie, as pbr.wgsl's
 // local_light without the toon and receive switches.
 fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+  if (!OG_LOCAL_LIGHTS) { return vec3<f32>(0.0); }
   if (light.color_kind.w < -0.5) { return area_light(light, s, p, n, v); }
   let to_light = light.position_range.xyz - p;
   let d2 = max(dot(to_light, to_light), 1e-4);

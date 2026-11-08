@@ -62,6 +62,9 @@ impl Renderer {
         if let Some(stale) = scene.stale_handle() {
             return Err(RenderError::InvalidHandle(stale));
         }
+        // What this frame waits for compiles (FrameStats::compile_wait_us).
+        crate::deferred::take_waited_us();
+        self.frame_features = crate::pipeline_features::Features::of(scene);
         // Match the surface's two-frame latency. Wait for the oldest frame,
         // not the entire queue: motion and readbacks share this device.
         #[cfg(not(target_arch = "wasm32"))]
@@ -406,7 +409,7 @@ impl Renderer {
             }
         }
         self.post.start();
-        self.water.start(scene_water);
+        self.water.start(scene_water, self.frame_features);
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
@@ -1492,7 +1495,7 @@ impl Renderer {
         // The variants the prepare made (holes, layer arrays), and stamps.
         for d in &terrain_draws {
             d.passes
-                .start(prepass, d.cast_shadows, !d.stamps.is_empty());
+                .start(d.features, prepass, d.cast_shadows, !d.stamps.is_empty());
         }
         // Scattered copies: the chunks this frame needs built, what to draw.
         let mut scatter_batches = if !WORLD_3D {
@@ -4193,8 +4196,13 @@ impl Renderer {
                         .and_then(|a| a.prepass.get(&(b.side, true)));
                     hooked
                         .or(array)
-                        .or_else(|| self.prepass_pipelines.get(&(b.side, true)))
-                        .map_or(lit_skinned[0], |p| p.get())
+                        .map(|p| p.get())
+                        .or_else(|| {
+                            self.prepass_pipelines
+                                .get(&(b.side, true))
+                                .map(|p| p.get(self.frame_features))
+                        })
+                        .unwrap_or(lit_skinned[0])
                 })
                 .collect()
         } else {
@@ -5511,6 +5519,10 @@ impl Renderer {
         {
             cache.save();
         }
+        // The full lit variants this frame asked for compile now
+        // (pipeline_features.rs).
+        crate::deferred::release_background();
+        stats.compile_wait_us = crate::deferred::take_waited_us().min(u64::from(u32::MAX)) as u32;
         Ok(stats)
     }
 }

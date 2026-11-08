@@ -23,6 +23,7 @@
 //! through the sprite order as a strip: the surface line's columns over a
 //! body that darkens with depth and a bright lip along the top.
 
+use crate::pipeline_features::{Features, Variants};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use std::sync::Arc;
 
@@ -1014,11 +1015,14 @@ struct Slot {
 
 /// Draws [`Water`]: one pipeline, a uniform buffer and height texture per
 /// surface, kept across frames.
+/// A water surface's lit pipeline (the grid's or the mesh's).
+pub(crate) type Lit = Variants<crate::deferred::Sampled<wgpu::RenderPipeline>>;
+
 pub(crate) struct WaterRenderer {
     layout: wgpu::BindGroupLayout,
-    pub(crate) pipeline: crate::deferred::Sampled<wgpu::RenderPipeline>,
+    pub(crate) pipeline: Lit,
     /// For surfaces drawn over a mesh ([`Water::mesh`]).
-    pub(crate) mesh_pipeline: crate::deferred::Sampled<wgpu::RenderPipeline>,
+    pub(crate) mesh_pipeline: Lit,
     /// A sea's spray (W4: `vs_spray`, `fs_spray`), premultiplied over the
     /// water, tested against its depth and writing none.
     spray_pipeline: crate::deferred::Sampled<wgpu::RenderPipeline>,
@@ -1251,19 +1255,23 @@ pub(crate) struct WaterDraw {
 impl WaterRenderer {
     /// Starts compiling the pipelines `waters` draw with on worker threads
     /// (deferred.rs): the grid's or the mesh's, as each surface asks.
-    pub(crate) fn start(&self, waters: &[Water]) {
-        use crate::deferred::Start;
+    /// `features`: the frame's (pipeline_features.rs).
+    pub(crate) fn start(&self, waters: &[Water], features: Features) {
         if waters.iter().any(|w| w.mesh.is_some()) {
-            self.mesh_pipeline.start();
+            self.mesh_pipeline.start(features);
         }
         if waters.iter().any(|w| w.mesh.is_none()) {
-            self.pipeline.start();
+            self.pipeline.start(features);
         }
     }
 
     /// Makes its pipeline if no frame used it yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
-        crate::deferred::warm_one(&[&self.pipeline, &self.mesh_pipeline, &self.spray_pipeline])
+        crate::deferred::warm_one(&[
+            self.pipeline.full(),
+            self.mesh_pipeline.full(),
+            &self.spray_pipeline,
+        ])
     }
 
     pub(crate) fn new(
@@ -1369,26 +1377,46 @@ impl WaterRenderer {
             bind_group_layouts: &[Some(frame_layout), Some(&layout)],
             immediate_size: 0,
         });
-        let mesh_pipeline = crate::deferred_hdr(
-            device,
-            &pl,
-            module.clone(),
-            samples,
-            move |layout, module| crate::HdrPipeline {
-                alpha_to_coverage: false,
-                label: "water mesh",
-                layout,
-                module,
-                vs: "vs_mesh",
-                fs: "fs",
-                buffers: &[Some(crate::POSITION_NORMAL_UV_LAYOUT)],
-                cull: None,
-                depth_write: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                blend: None,
-                samples,
-            },
+        // The surface's lit pipelines, as the variant for a frame's features
+        // and the full one (pipeline_features.rs).
+        let lit =
+            |label: &'static str,
+             vs: &'static str,
+             buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
+                let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
+                let declared = module.declared;
+                Variants::new(declared, move |features| {
+                    let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
+                    let constants = features.constants(declared);
+                    crate::deferred::Sampled::anywhere(samples, move |samples| {
+                        use crate::deferred::AsModule;
+                        crate::hdr_pipeline_with(
+                            &device,
+                            &constants,
+                            crate::HdrPipeline {
+                                alpha_to_coverage: false,
+                                label,
+                                layout: &pl,
+                                module: module.module(),
+                                vs,
+                                fs: "fs",
+                                buffers,
+                                cull: None,
+                                depth_write: true,
+                                depth_compare: wgpu::CompareFunction::Less,
+                                blend: None,
+                                samples,
+                            },
+                        )
+                    })
+                })
+            };
+        let mesh_pipeline = lit(
+            "water mesh",
+            "vs_mesh",
+            &[Some(crate::POSITION_NORMAL_UV_LAYOUT)],
         );
+        let pipeline = lit("water", "vs", &[]);
         let ao_depth_pipelines = {
             let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
             crate::deferred::Deferred::new(move || {
@@ -1477,22 +1505,6 @@ impl WaterRenderer {
                 samples,
             },
         );
-        let pipeline = crate::deferred_hdr(device, &pl, module, samples, move |layout, module| {
-            crate::HdrPipeline {
-                alpha_to_coverage: false,
-                label: "water",
-                layout,
-                module,
-                vs: "vs",
-                fs: "fs",
-                buffers: &[],
-                cull: None,
-                depth_write: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                blend: None,
-                samples,
-            }
-        });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("water"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -2310,19 +2322,21 @@ impl WaterRenderer {
         pass: &mut wgpu::RenderPass,
         draws: &[WaterDraw],
         probes: &mut crate::probe_select::Binder,
+        // The frame's features (pipeline_features.rs).
+        features: Features,
     ) -> u32 {
         for d in draws {
             probes.at(pass, d.bounds.0, d.bounds.1);
             pass.set_bind_group(1, &d.group, &[]);
             match &d.mesh {
                 Some((vertices, indices, count)) => {
-                    pass.set_pipeline(&self.mesh_pipeline);
+                    pass.set_pipeline(self.mesh_pipeline.get(features));
                     pass.set_vertex_buffer(0, vertices.slice(..));
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..*count, 0, 0..1);
                 }
                 None => {
-                    pass.set_pipeline(&self.pipeline);
+                    pass.set_pipeline(self.pipeline.get(features));
                     pass.draw(0..d.vertices, 0..1);
                 }
             }

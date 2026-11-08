@@ -1004,6 +1004,7 @@ impl MeshletGpu {
                         false,
                         None,
                         Some(("vs_prepass_meshlet", "fs_prepass", false)),
+                        &[],
                     )
                 });
             }

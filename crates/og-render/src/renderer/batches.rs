@@ -1,6 +1,9 @@
 //! Batch construction, culling and pipeline selection.
 
 use super::*;
+use crate::pipeline_features::{Features, Variants};
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::Arc;
 
 impl Renderer {
     /// Sorts the instances into (mesh, material) batches
@@ -397,7 +400,8 @@ impl Renderer {
         physical: bool,
     ) -> &wgpu::RenderPipeline {
         if b.lean && !skinned {
-            return &self.lean_pipelines[&(b.side, b.effects, b.derivatives, b.compact)];
+            return self.lean_pipelines[&(b.side, b.effects, b.derivatives, b.compact)]
+                .get(self.frame_features);
         }
         let key = (b.side, b.blend, skinned, b.effects);
         if b.array && !physical {
@@ -409,7 +413,7 @@ impl Renderer {
             (false, Some(sh)) => {
                 &self.cache.hook_pipelines[&(sh, b.side, b.blend, b.effects, skinned)]
             }
-            (false, None) => &self.pbr_pipelines[&key],
+            (false, None) => self.pbr_pipelines[&key].get(self.frame_features),
         }
     }
 
@@ -439,7 +443,7 @@ impl Renderer {
             return self
                 .lean_prepass_pipelines
                 .get(&(b.side, b.derivatives, b.compact))
-                .map(|p| p.get());
+                .map(|p| p.get(self.frame_features));
         }
         if b.array {
             return self
@@ -450,7 +454,7 @@ impl Renderer {
         }
         self.prepass_pipelines
             .get(&(b.side, skinned))
-            .map(|p| p.get())
+            .map(|p| p.get(self.frame_features))
     }
 
     /// Makes the lit, shadow and prepass pipelines this frame's batches need.
@@ -460,8 +464,23 @@ impl Renderer {
     }
 
     fn ensure_pipelines_now(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
-        for (slot, job) in self.pipeline_jobs(batches, skinned, prepass) {
+        let (features, declared) = (self.frame_features, self.pbr_shader.declared);
+        for (slot, work) in self.pipeline_jobs(batches, skinned, prepass) {
             use Made::{Pipeline as P, Shadows as S};
+            let job = match work {
+                Work::Once(job) => job,
+                Work::Variants(job) => {
+                    let v = variants(declared, features, job);
+                    match slot {
+                        Slot::Lean(k) => self.lean_pipelines.insert(k, v),
+                        Slot::LeanPrepass(k) => self.lean_prepass_pipelines.insert(k, v),
+                        Slot::Pbr(k) => self.pbr_pipelines.insert(k, v),
+                        Slot::Prepass(k) => self.prepass_pipelines.insert(k, v),
+                        _ => unreachable!("only the built-in lit and prepass slots vary"),
+                    };
+                    continue;
+                }
+            };
             // Natively each compiles on the compile workers (deferred.rs)
             // and the pass that first sets it waits for it; on the web it
             // is made here, inside the host's frame span.
@@ -533,19 +552,7 @@ impl Renderer {
                 Slot::HookPrepass(k) => {
                     self.cache.hook_prepass_pipelines.insert(k, p);
                 }
-                Slot::Lean(k) => {
-                    self.lean_pipelines.insert(k, p);
-                }
-                Slot::LeanPrepass(k) => {
-                    self.lean_prepass_pipelines.insert(k, p);
-                }
-                Slot::Pbr(k) => {
-                    self.pbr_pipelines.insert(k, p);
-                }
-                Slot::Prepass(k) => {
-                    self.prepass_pipelines.insert(k, p);
-                }
-                _ => unreachable!("the shadow slots are matched above"),
+                _ => unreachable!("the shadow and varying slots are matched above"),
             }
         }
     }
@@ -558,17 +565,17 @@ impl Renderer {
         batches: &[Batch],
         skinned: &[Batch],
         prepass: bool,
-    ) -> Vec<(Slot, Job)> {
+    ) -> Vec<(Slot, Work)> {
         let device = &self.device;
         let samples = self.samples;
         let pbr = &(self.pbr_layout.clone(), self.pbr_skinned_layout.clone());
         let pbr_shader = &self.pbr_shader;
         let shadow_shader = &self.shadow_shader;
         let shadow_layouts = &self.shadow_layouts;
-        let mut jobs: Vec<(Slot, Job)> = Vec::new();
-        let mut add = |slot: Slot, held: bool, job: Job| {
+        let mut jobs: Vec<(Slot, Work)> = Vec::new();
+        let mut add = |slot: Slot, held: bool, work: Work| {
             if !held && !jobs.iter().any(|(s, _)| *s == slot) {
-                jobs.push((slot, job));
+                jobs.push((slot, work));
             }
         };
         let all = batches
@@ -597,7 +604,7 @@ impl Renderer {
                 add(
                     Slot::SurfacePrepass(key),
                     self.cache.surface_prepass_pipelines.contains_key(&key),
-                    Box::new(move || {
+                    Work::Once(Box::new(move || {
                         Made::Pipeline(surface_prepass_pipeline(
                             &device,
                             (&layouts.0, &layouts.1),
@@ -605,7 +612,7 @@ impl Renderer {
                             side,
                             array,
                         ))
-                    }),
+                    })),
                 );
             }
             if b.array {
@@ -617,7 +624,7 @@ impl Renderer {
                 add(
                     Slot::ArrayLit(key),
                     a.lit.contains_key(&key),
-                    Box::new(move || {
+                    Work::Once(Box::new(move || {
                         Made::Pipeline(pbr_pipeline(
                             &d,
                             (&layouts.0, &layouts.1),
@@ -625,7 +632,7 @@ impl Renderer {
                             key,
                             samples,
                         ))
-                    }),
+                    })),
                 );
                 let key = (b.side, is_skinned);
                 if prepass && !b.transparent {
@@ -634,7 +641,7 @@ impl Renderer {
                     add(
                         Slot::ArrayPrepass(key),
                         a.prepass.contains_key(&key),
-                        Box::new(move || {
+                        Work::Once(Box::new(move || {
                             Made::Pipeline(prepass_pipeline(
                                 &d,
                                 (&layouts.0, &layouts.1),
@@ -643,8 +650,9 @@ impl Renderer {
                                 is_skinned,
                                 None,
                                 None,
+                                &[],
                             ))
-                        }),
+                        })),
                     );
                 }
                 let key = (b.side, b.dissolve);
@@ -658,7 +666,7 @@ impl Renderer {
                     add(
                         Slot::ArrayShadow(key),
                         a.shadow.contains_key(&key),
-                        Box::new(move || {
+                        Work::Once(Box::new(move || {
                             Made::Shadows(shadow_pipeline(
                                 &d,
                                 &layouts,
@@ -667,7 +675,7 @@ impl Renderer {
                                 false,
                                 false,
                             ))
-                        }),
+                        })),
                     );
                 }
             }
@@ -684,7 +692,7 @@ impl Renderer {
                         add(
                             Slot::Physical(key),
                             physical.pipelines.contains_key(&key),
-                            Box::new(move || {
+                            Work::Once(Box::new(move || {
                                 Made::Pipeline(lit_pipeline(
                                     &d,
                                     (&layouts.0, &layouts.1),
@@ -692,8 +700,9 @@ impl Renderer {
                                     key,
                                     samples,
                                     true,
+                                    &[],
                                 ))
-                            }),
+                            })),
                         );
                     }
                     Some(sh) => {
@@ -701,7 +710,7 @@ impl Renderer {
                         add(
                             Slot::PhysicalHook((sh, key)),
                             self.cache.physical_hook_pipelines.contains_key(&(sh, key)),
-                            Box::new(move || {
+                            Work::Once(Box::new(move || {
                                 Made::Pipeline(lit_pipeline(
                                     &d,
                                     (&layouts.0, &layouts.1),
@@ -709,8 +718,9 @@ impl Renderer {
                                     key,
                                     samples,
                                     true,
+                                    &[],
                                 ))
-                            }),
+                            })),
                         );
                     }
                 }
@@ -723,7 +733,7 @@ impl Renderer {
                 add(
                     Slot::Hook(key),
                     self.cache.hook_pipelines.contains_key(&key),
-                    Box::new(move || {
+                    Work::Once(Box::new(move || {
                         Made::Pipeline(pbr_pipeline(
                             &d,
                             (&layouts.0, &layouts.1),
@@ -731,7 +741,7 @@ impl Renderer {
                             lit,
                             samples,
                         ))
-                    }),
+                    })),
                 );
                 // Shadows and the prepass see the material shader's offset.
                 let key = (sh, b.side, is_skinned);
@@ -744,9 +754,9 @@ impl Renderer {
                 add(
                     Slot::HookShadow(key),
                     self.cache.hook_shadow_pipelines.contains_key(&key),
-                    Box::new(move || {
+                    Work::Once(Box::new(move || {
                         Made::Shadows(shadow_pipeline(&d, &layouts, &module, shadow, true, false))
-                    }),
+                    })),
                 );
                 if prepass && !b.transparent {
                     let (d, layouts, module, side) = (
@@ -758,7 +768,7 @@ impl Renderer {
                     add(
                         Slot::HookPrepass(key),
                         self.cache.hook_prepass_pipelines.contains_key(&key),
-                        Box::new(move || {
+                        Work::Once(Box::new(move || {
                             Made::Pipeline(prepass_pipeline(
                                 &d,
                                 (&layouts.0, &layouts.1),
@@ -767,8 +777,9 @@ impl Renderer {
                                 is_skinned,
                                 None,
                                 None,
+                                &[],
                             ))
-                        }),
+                        })),
                     );
                 }
             }
@@ -781,9 +792,9 @@ impl Renderer {
                 add(
                     Slot::Lean(key),
                     self.lean_pipelines.contains_key(&key),
-                    Box::new(move || {
-                        Made::Pipeline(lean_pipeline(&d, &layout, &module, key, samples))
-                    }),
+                    Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
+                        Made::Pipeline(lean_pipeline(&d, &layout, &module, key, samples, off))
+                    })),
                 );
                 let key = (b.side, b.derivatives, b.compact);
                 if prepass {
@@ -792,7 +803,7 @@ impl Renderer {
                     add(
                         Slot::LeanPrepass(key),
                         self.lean_prepass_pipelines.contains_key(&key),
-                        Box::new(move || {
+                        Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
                             Made::Pipeline(prepass_pipeline(
                                 &d,
                                 (&layouts.0, &layouts.1),
@@ -801,8 +812,9 @@ impl Renderer {
                                 false,
                                 Some(lean),
                                 None,
+                                off,
                             ))
-                        }),
+                        })),
                     );
                 }
                 if b.compact {
@@ -815,7 +827,7 @@ impl Renderer {
                     add(
                         Slot::CompactShadow(side),
                         self.compact_shadow_pipelines.contains_key(&side),
-                        Box::new(move || {
+                        Work::Once(Box::new(move || {
                             Made::Shadows(shadow_pipeline(
                                 &d,
                                 &layouts,
@@ -824,7 +836,7 @@ impl Renderer {
                                 false,
                                 true,
                             ))
-                        }),
+                        })),
                     );
                 }
             }
@@ -834,15 +846,17 @@ impl Renderer {
                 add(
                     Slot::Pbr(key),
                     self.pbr_pipelines.contains_key(&key),
-                    Box::new(move || {
-                        Made::Pipeline(pbr_pipeline(
+                    Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
+                        Made::Pipeline(lit_pipeline(
                             &d,
                             (&layouts.0, &layouts.1),
                             &module,
                             key,
                             samples,
+                            false,
+                            off,
                         ))
-                    }),
+                    })),
                 );
             }
             let key = (b.side, is_skinned, b.dissolve);
@@ -854,9 +868,9 @@ impl Renderer {
             add(
                 Slot::Shadow(key),
                 self.shadow_pipelines.contains_key(&key),
-                Box::new(move || {
+                Work::Once(Box::new(move || {
                     Made::Shadows(shadow_pipeline(&d, &layouts, &module, key, false, false))
-                }),
+                })),
             );
             if prepass && !b.transparent && !(b.lean && !is_skinned) {
                 let key = (b.side, is_skinned);
@@ -864,7 +878,7 @@ impl Renderer {
                 add(
                     Slot::Prepass(key),
                     self.prepass_pipelines.contains_key(&key),
-                    Box::new(move || {
+                    Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
                         Made::Pipeline(prepass_pipeline(
                             &d,
                             (&layouts.0, &layouts.1),
@@ -873,8 +887,9 @@ impl Renderer {
                             key.1,
                             None,
                             None,
+                            off,
                         ))
-                    }),
+                    })),
                 );
             }
         }
@@ -1423,7 +1438,7 @@ enum Slot {
 }
 
 /// What a batch pipeline's job makes.
-enum Made {
+pub(crate) enum Made {
     Pipeline(wgpu::RenderPipeline),
     Shadows(ShadowSet),
 }
@@ -1434,6 +1449,30 @@ enum Made {
 type Job = Box<dyn FnOnce() -> Made + Send>;
 #[cfg(target_arch = "wasm32")]
 type Job = Box<dyn FnOnce() -> Made>;
+
+/// A built-in lit or prepass pipeline's making with the constants that
+/// leave features out (pipeline_features.rs).
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) type VariantJob = Arc<dyn Fn(&[(&'static str, f64)]) -> Made + Send + Sync>;
+#[cfg(target_arch = "wasm32")]
+pub(crate) type VariantJob = std::rc::Rc<dyn Fn(&[(&'static str, f64)]) -> Made>;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn variant_job(
+    job: impl Fn(&[(&'static str, f64)]) -> Made + Send + Sync + 'static,
+) -> VariantJob {
+    Arc::new(job)
+}
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn variant_job(job: impl Fn(&[(&'static str, f64)]) -> Made + 'static) -> VariantJob {
+    std::rc::Rc::new(job)
+}
+
+/// What [`Renderer::ensure_pipelines`] makes for a slot.
+enum Work {
+    Once(Job),
+    Variants(VariantJob),
+}
 
 /// A material shader's module, or the built-in one parsed on first use.
 enum Shader {
@@ -1449,6 +1488,27 @@ impl std::ops::Deref for Shader {
             Shader::Lazy(m) => m.get(),
         }
     }
+}
+
+/// A built-in lit or prepass pipeline in its variants (pipeline_features.rs):
+/// started for `features` on the compile workers natively, the full one
+/// made at once on the web.
+pub(crate) fn variants(
+    declared: Features,
+    features: Features,
+    job: VariantJob,
+) -> Variants<Deferred<wgpu::RenderPipeline>> {
+    let v = Variants::new(declared, move |f: Features| {
+        let job = job.clone();
+        Deferred::anywhere(move || match job(&f.constants(declared)) {
+            Made::Pipeline(p) => p,
+            Made::Shadows(_) => unreachable!("a lit slot's job makes a pipeline"),
+        })
+    });
+    v.start(features);
+    #[cfg(target_arch = "wasm32")]
+    v.get(features);
+    v
 }
 
 /// A batch pipeline made by `make`: started on the compile workers

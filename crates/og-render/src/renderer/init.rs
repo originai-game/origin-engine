@@ -1162,6 +1162,7 @@ impl Renderer {
             shadow_layouts,
             shadow_bind_layout,
             shadow_shader,
+            frame_features: crate::pipeline_features::Features::ALL,
             pbr_pipelines: HashMap::new(),
             shadow_pipelines: HashMap::new(),
             prepass_pipelines: HashMap::new(),

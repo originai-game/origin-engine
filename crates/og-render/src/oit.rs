@@ -549,7 +549,12 @@ pub(crate) struct OitState {
     pub frame_list_layout: Option<wgpu::BindGroupLayout>,
     pub arena: Option<Arena>,
     pub resolver: Resolver,
-    pub pipelines: std::collections::HashMap<(Source, Oit, u32), wgpu::RenderPipeline>,
+    /// Made on the compile workers natively, as the variant for a frame's
+    /// features and the full one (pipeline_features.rs).
+    pub pipelines: std::collections::HashMap<
+        (Source, Oit, u32),
+        crate::pipeline_features::Variants<crate::deferred::Deferred<wgpu::RenderPipeline>>,
+    >,
     layouts: std::collections::HashMap<(&'static str, bool), wgpu::PipelineLayout>,
 }
 

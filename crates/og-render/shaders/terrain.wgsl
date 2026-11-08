@@ -201,14 +201,29 @@ fn resident_from(base: u32, s: vec2<f32>) -> Resident {
 
 // The height (in the terrain's space) at field coordinates `s`, read at
 // pyramid level `base` or the finest resident level above it.
+// The tile and, while it fades in, its parent are read in one loop: one
+// copy of the lookup's code (DXC inlines every call).
 fn terrain_height_at(base: u32, s: vec2<f32>) -> f32 {
+  return terrain_height_from(resident_from(base, s), s);
+}
+
+// `terrain_height_at` from the resident tile `first` already looked up
+// there (a fragment shares one lookup between its reads).
+fn terrain_height_from(first: Resident, s: vec2<f32>) -> f32 {
   let top = u32(terrain.tiles.z) - 1u;
-  let o = resident_from(base, s);
-  if (o.r.slot < 0.0) { return 0.0; }
-  var h = slot_height(o.r, o.u);
-  if (o.r.fade < 1.0 && o.lvl < top) {
-    let p = resident_from(o.lvl + 1u, s);
-    if (p.r.slot >= 0.0) { h = mix(slot_height(p.r, p.u), h, o.r.fade); }
+  var h = 0.0;
+  var fade = 1.0;
+  var start = 0u;
+  var o = first;
+  for (var k = 0u; k < 2u; k++) {
+    if (k == 1u) { o = resident_from(start, s); }
+    if (o.r.slot < 0.0) { break; }
+    let v = slot_height(o.r, o.u);
+    if (k == 1u) { h = mix(v, h, fade); break; }
+    h = v;
+    if (!(o.r.fade < 1.0 && o.lvl < top)) { break; }
+    fade = o.r.fade;
+    start = o.lvl + 1u;
   }
   return h;
 }
@@ -225,6 +240,8 @@ struct TerrainMaps {
   variance: f32,
   // The layers' channels, four to a page (1 without a control map, or past its pages).
   control: array<vec4<f32>, 4>,
+  // The height there (terrain_height_at), when asked for (else 0).
+  height: f32,
 };
 
 fn no_control() -> array<vec4<f32>, 4> {
@@ -245,6 +262,7 @@ fn tile_maps(lvl: u32, r: TileRef, u: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -
   m.normal = vec3<f32>(xz.x, sqrt(max(1.0 - dot(xz, xz), 0.0)), xz.y);
   m.variance = 1.0 / max(texel.b, 1e-3) - 1.0;
   m.control = no_control();
+  m.height = 0.0;
   if (terrain.params.y > 0.5) {
     let c = terrain.tiles.y;
     let ck = c / (t * step * (c + 2.0));
@@ -261,27 +279,46 @@ fn tile_maps(lvl: u32, r: TileRef, u: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -
 
 // The normal (terrain space) and control at field coordinates `s`, from
 // the finest resident tile there (mixed with its parent while it fades in).
+// The tile and, while it fades in, its parent are read in one loop, as
+// terrain_height_at.
 fn terrain_maps_at(s: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> TerrainMaps {
+  return terrain_maps_from(resident_from(0u, s), s, gx, gy, false);
+}
+
+// `terrain_maps_at` from the resident tile `first` already looked up there;
+// `with_height` also reads the height, in the same loop (the same tiles and
+// fade as terrain_height_from: one parent lookup for both).
+fn terrain_maps_from(first: Resident, s: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>, with_height: bool) -> TerrainMaps {
   let top = u32(terrain.tiles.z) - 1u;
-  let o = resident_from(0u, s);
-  if (o.r.slot < 0.0) {
-    var none: TerrainMaps;
-    none.normal = vec3<f32>(0.0, 1.0, 0.0);
-    none.variance = 0.0;
-    none.control = no_control();
-    return none;
-  }
-  var m = tile_maps(o.lvl, o.r, o.u, gx, gy);
-  if (o.r.fade < 1.0 && o.lvl < top) {
-    let p = resident_from(o.lvl + 1u, s);
-    if (p.r.slot >= 0.0) {
-      let q = tile_maps(p.lvl, p.r, p.u, gx, gy);
-      m.normal = mix(q.normal, m.normal, o.r.fade);
-      m.variance = mix(q.variance, m.variance, o.r.fade);
-      for (var p = 0u; p < 4u; p++) {
-        m.control[p] = mix(q.control[p], m.control[p], o.r.fade);
-      }
+  var m: TerrainMaps;
+  m.normal = vec3<f32>(0.0, 1.0, 0.0);
+  m.variance = 0.0;
+  m.control = no_control();
+  m.height = 0.0;
+  var fade = 1.0;
+  var start = 0u;
+  var o = first;
+  for (var k = 0u; k < 2u; k++) {
+    if (k == 1u) { o = resident_from(start, s); }
+    if (o.r.slot < 0.0) {
+      if (k == 0u) { return m; }
+      break;
     }
+    var q = tile_maps(o.lvl, o.r, o.u, gx, gy);
+    if (with_height) { q.height = slot_height(o.r, o.u); }
+    if (k == 1u) {
+      m.height = mix(q.height, m.height, fade);
+      m.normal = mix(q.normal, m.normal, fade);
+      m.variance = mix(q.variance, m.variance, fade);
+      for (var p = 0u; p < 4u; p++) {
+        m.control[p] = mix(q.control[p], m.control[p], fade);
+      }
+      break;
+    }
+    m = q;
+    if (!(o.r.fade < 1.0 && o.lvl < top)) { break; }
+    fade = o.r.fade;
+    start = o.lvl + 1u;
   }
   m.normal = normalize(m.normal);
   return m;
@@ -320,20 +357,25 @@ struct Horizon {
 
 // The horizon at field coordinates `s`, from the finest resident tile.
 fn terrain_horizon(s: vec2<f32>) -> Horizon {
+  return terrain_horizon_from(resident_from(0u, s));
+}
+
+// `terrain_horizon` from the resident tile `o` already looked up there.
+fn terrain_horizon_from(o: Resident) -> Horizon {
   var h: Horizon;
-  let o = resident_from(0u, s);
   if (o.r.slot < 0.0) { return h; }
   let t = terrain.tiles.x;
   let side = ceil(t / HORIZON_SPACING) + 1.0;
   let g = clamp((o.u - o.r.tile * t) / t * (side - 1.0), vec2<f32>(0.0), vec2<f32>(side - 1.0));
   let i = vec2<u32>(floor(g));
   let f = g - floor(g);
-  let a = horizon_texel(o.r, i);
-  let b = horizon_texel(o.r, i + vec2<u32>(1u, 0u));
-  let c = horizon_texel(o.r, i + vec2<u32>(0u, 1u));
-  let d = horizon_texel(o.r, i + vec2<u32>(1u, 1u));
+  // The four texels in one loop (one copy of the unpacking's code).
+  var t4: array<array<f32, 8>, 4>;
+  for (var j = 0u; j < 4u; j++) {
+    t4[j] = horizon_texel(o.r, i + vec2<u32>(j & 1u, j >> 1u));
+  }
   for (var k = 0u; k < 8u; k++) {
-    h.angles[k] = mix(mix(a[k], b[k], f.x), mix(c[k], d[k], f.x), f.y);
+    h.angles[k] = mix(mix(t4[0][k], t4[1][k], f.x), mix(t4[2][k], t4[3][k], f.x), f.y);
   }
   h.ok = true;
   return h;
@@ -377,7 +419,12 @@ override TERRAIN_HOLES: bool = true;
 // tile there.
 fn terrain_hole(s: vec2<f32>) -> bool {
   if (!TERRAIN_HOLES || terrain.params.z < 0.5) { return false; }
-  let o = resident_from(0u, s);
+  return terrain_hole_from(resident_from(0u, s));
+}
+
+// `terrain_hole` from the resident tile `o` already looked up there.
+fn terrain_hole_from(o: Resident) -> bool {
+  if (!TERRAIN_HOLES || terrain.params.z < 0.5) { return false; }
   if (o.r.slot < 0.0) { return false; }
   let t = terrain.tiles.x;
   let c = clamp(floor(o.u) - o.r.tile * t, vec2<f32>(0.0), vec2<f32>(t)) + 1.0;

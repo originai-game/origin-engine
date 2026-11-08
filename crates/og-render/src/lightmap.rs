@@ -782,7 +782,11 @@ impl Lightmaps {
         (side, effects): (Side, bool),
         samples: u32,
         mode: crate::oit::Oit,
+        // The features left out (pipeline_features.rs).
+        off: &[(&'static str, f64)],
     ) -> wgpu::RenderPipeline {
+        let mut constants = vec![("EFFECTS", effects as u32 as f64)];
+        constants.extend_from_slice(off);
         let vertices = if family == Family::Compact {
             crate::compact::LEAN_LAYOUT
         } else {
@@ -796,7 +800,7 @@ impl Lightmaps {
         let (vs, fs) = family.entries();
         crate::oit::pipeline(
             device,
-            &[("EFFECTS", effects as u32 as f64)],
+            &constants,
             crate::HdrPipeline {
                 alpha_to_coverage: false,
                 label: "lit lightmapped",

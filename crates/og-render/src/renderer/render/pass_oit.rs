@@ -3,6 +3,7 @@
 //! and resolve around them.
 
 use super::*;
+use crate::renderer::batches::{Made, variant_job, variants};
 use oit::{Oit, Source};
 
 /// A part of the main camera's transparent surfaces, in the order the
@@ -20,7 +21,10 @@ pub(super) enum BlendedPart {
 impl Renderer {
     /// An OIT pipeline made by [`Renderer::ensure_oit_pipelines`].
     pub(super) fn oit_pipeline(&self, source: Source, mode: Oit) -> Option<&wgpu::RenderPipeline> {
-        self.oit.pipelines.get(&(source, mode, self.samples))
+        self.oit
+            .pipelines
+            .get(&(source, mode, self.samples))
+            .map(|p| p.get(self.frame_features))
     }
 
     /// The OIT pipeline source of a blended batch, as `lit_pipeline_of`
@@ -113,26 +117,33 @@ impl Renderer {
                 continue;
             }
             let frame = &self.frame_layout;
-            let device = &self.device;
-            let pipeline = match source {
+            let device = self.device.clone();
+            // Each made by a job owning what it reads, on the compile
+            // workers natively; the built-in lit shader's in the variant for
+            // the frame's features and the full one (pipeline_features.rs).
+            let none = crate::pipeline_features::Features::NONE;
+            let (declared, job) = match source {
                 Source::Lit(module, side, skinned, effects) => {
                     use oit::LitModule;
                     let physical =
                         matches!(module, LitModule::Physical | LitModule::PhysicalShader(_));
-                    let (name, groups, shader): (
+                    let (name, groups, shader, declared): (
                         &'static str,
                         [&wgpu::BindGroupLayout; 2],
                         &wgpu::ShaderModule,
+                        _,
                     ) = match module {
                         LitModule::Standard => (
                             "pbr (oit)",
                             [&self.material_layout, &self.fx_layout],
                             self.pbr_shader.get(),
+                            self.pbr_shader.declared,
                         ),
                         LitModule::Shader(sh) => (
                             "pbr (oit)",
                             [&self.material_layout, &self.fx_layout],
                             &self.cache.shaders[sh],
+                            none,
                         ),
                         LitModule::Array => {
                             let a = self.array_maps.as_ref().expect("an array batch");
@@ -140,6 +151,7 @@ impl Renderer {
                                 "pbr array maps (oit)",
                                 [&a.layout, &self.fx_layout],
                                 &a.module,
+                                none,
                             )
                         }
                         LitModule::Physical | LitModule::PhysicalShader(_) => {
@@ -148,7 +160,12 @@ impl Renderer {
                                 LitModule::PhysicalShader(sh) => &self.cache.physical_shaders[&sh],
                                 _ => &p.module,
                             };
-                            ("physical (oit)", [&p.material_layout, &p.fx_layout], shader)
+                            (
+                                "physical (oit)",
+                                [&p.material_layout, &p.fx_layout],
+                                shader,
+                                none,
+                            )
                         }
                     };
                     let (name, rest): (&'static str, Vec<&wgpu::BindGroupLayout>) = if skinned {
@@ -161,55 +178,65 @@ impl Renderer {
                     } else {
                         (name, groups.to_vec())
                     };
-                    let layout = self.oit.layout(device, name, mode, frame, &rest).clone();
-                    let plain = [Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
-                    let skin = [
+                    let layout = self.oit.layout(&device, name, mode, frame, &rest).clone();
+                    let shader = shader.clone();
+                    const PLAIN: &[Option<wgpu::VertexBufferLayout<'static>>] =
+                        &[Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
+                    const SKIN: &[Option<wgpu::VertexBufferLayout<'static>>] = &[
                         Some(VERTEX_LAYOUT),
                         Some(skin::SKINNED_INSTANCE_LAYOUT),
                         Some(skin::SKIN_VERTEX_LAYOUT),
                     ];
-                    oit::pipeline(
-                        device,
-                        &[("EFFECTS", effects as u32 as f64)],
-                        HdrPipeline {
-                            alpha_to_coverage: false,
-                            label: name,
-                            layout: &layout,
-                            module: shader,
-                            vs: match (physical, skinned) {
-                                (false, false) => "vs",
-                                (false, true) => "vs_skinned",
-                                (true, false) => "vs_physical",
-                                (true, true) => "vs_physical_skinned",
+                    let job = variant_job(move |off| {
+                        let mut constants = vec![("EFFECTS", effects as u32 as f64)];
+                        constants.extend_from_slice(off);
+                        Made::Pipeline(oit::pipeline(
+                            &device,
+                            &constants,
+                            HdrPipeline {
+                                alpha_to_coverage: false,
+                                label: name,
+                                layout: &layout,
+                                module: &shader,
+                                vs: match (physical, skinned) {
+                                    (false, false) => "vs",
+                                    (false, true) => "vs_skinned",
+                                    (true, false) => "vs_physical",
+                                    (true, true) => "vs_physical_skinned",
+                                },
+                                fs: "fs",
+                                buffers: if skinned { SKIN } else { PLAIN },
+                                cull: cull_mode(side),
+                                depth_write: false,
+                                depth_compare: wgpu::CompareFunction::Less,
+                                blend: None,
+                                samples,
                             },
-                            fs: "fs",
-                            buffers: if skinned { &skin } else { &plain },
-                            cull: cull_mode(side),
-                            depth_write: false,
-                            depth_compare: wgpu::CompareFunction::Less,
-                            blend: None,
-                            samples,
-                        },
-                        mode,
-                    )
+                            mode,
+                        ))
+                    });
+                    (declared, job)
                 }
                 Source::Lightmap(family, side, effects) => {
                     use lightmap::Family;
                     let lightmap_fx = self.fx_lean_layout.as_ref().unwrap_or(&self.fx_layout);
-                    let (name, groups, shader): (
+                    let (name, groups, shader, declared): (
                         &'static str,
                         [&wgpu::BindGroupLayout; 2],
                         &wgpu::ShaderModule,
+                        _,
                     ) = match family {
                         Family::Standard | Family::Compact => (
                             "lightmapped (oit)",
                             [&self.material_layout, lightmap_fx],
                             self.pbr_shader.get(),
+                            self.pbr_shader.declared,
                         ),
                         Family::Shader(sh) => (
                             "lightmapped (oit)",
                             [&self.material_layout, lightmap_fx],
                             &self.cache.shaders[sh],
+                            none,
                         ),
                         Family::Array => {
                             let a = self.array_maps.as_ref().expect("an array batch");
@@ -217,6 +244,7 @@ impl Renderer {
                                 "lightmapped array maps (oit)",
                                 [&a.layout, lightmap_fx],
                                 &a.module,
+                                none,
                             )
                         }
                         Family::Physical | Family::PhysicalShader(_) => {
@@ -229,58 +257,68 @@ impl Renderer {
                                 "lightmapped physical (oit)",
                                 [&p.material_layout, &p.fx_layout],
                                 shader,
+                                none,
                             )
                         }
                     };
                     let pages = self.lightmaps.pages_layout();
                     let layout = self
                         .oit
-                        .layout(device, name, mode, frame, &[groups[0], groups[1], pages])
+                        .layout(&device, name, mode, frame, &[groups[0], groups[1], pages])
                         .clone();
-                    lightmap::Lightmaps::oit_pipeline(
-                        device,
-                        family,
-                        &layout,
-                        shader,
-                        (side, effects),
-                        samples,
-                        mode,
-                    )
+                    let shader = shader.clone();
+                    let job = variant_job(move |off| {
+                        Made::Pipeline(lightmap::Lightmaps::oit_pipeline(
+                            &device,
+                            family,
+                            &layout,
+                            &shader,
+                            (side, effects),
+                            samples,
+                            mode,
+                            off,
+                        ))
+                    });
+                    (declared, job)
                 }
                 Source::Sprite | Source::Msdf => {
                     let layout = self
                         .oit
                         .layout(
-                            device,
+                            &device,
                             "sprite (oit)",
                             mode,
                             frame,
                             &[&self.sprite_layout, &self.sprite_fx_layout],
                         )
                         .clone();
-                    oit::pipeline(
-                        device,
-                        &[],
-                        HdrPipeline {
-                            alpha_to_coverage: false,
-                            label: "billboard",
-                            layout: &layout,
-                            module: self.sprite_shader.get(),
-                            vs: "vs",
-                            fs: if source == Source::Msdf {
-                                "fs_msdf"
-                            } else {
-                                "fs"
+                    let shader = self.sprite_shader.get().clone();
+                    let job = variant_job(move |_| {
+                        Made::Pipeline(oit::pipeline(
+                            &device,
+                            &[],
+                            HdrPipeline {
+                                alpha_to_coverage: false,
+                                label: "billboard",
+                                layout: &layout,
+                                module: &shader,
+                                vs: "vs",
+                                fs: if source == Source::Msdf {
+                                    "fs_msdf"
+                                } else {
+                                    "fs"
+                                },
+                                buffers: SPRITE_BUFFERS,
+                                cull: None,
+                                depth_write: false,
+                                depth_compare: wgpu::CompareFunction::LessEqual,
+                                blend: None,
+                                samples,
                             },
-                            buffers: SPRITE_BUFFERS,
-                            cull: None,
-                            depth_write: false,
-                            depth_compare: wgpu::CompareFunction::LessEqual,
-                            blend: None,
-                            samples,
-                        },
-                        mode,
-                    )
+                            mode,
+                        ))
+                    });
+                    (none, job)
                 }
                 Source::Ribbon | Source::Strip => {
                     let strip = source == Source::Strip;
@@ -292,32 +330,36 @@ impl Renderer {
                     }
                     rest.push(&self.particles.effects.layout);
                     let name = if strip { "strip (oit)" } else { "ribbon (oit)" };
-                    let layout = self.oit.layout(device, name, mode, frame, &rest).clone();
-                    oit::pipeline(
-                        device,
-                        &[],
-                        HdrPipeline {
-                            alpha_to_coverage: false,
-                            label: name,
-                            layout: &layout,
-                            module: self.ribbon_shader.get(),
-                            vs: if strip { "vs_strip" } else { "vs" },
-                            fs: "fs",
-                            buffers: if strip { &[] } else { RIBBON_BUFFERS },
-                            cull: None,
-                            depth_write: false,
-                            depth_compare: wgpu::CompareFunction::LessEqual,
-                            blend: None,
-                            samples,
-                        },
-                        mode,
-                    )
+                    let layout = self.oit.layout(&device, name, mode, frame, &rest).clone();
+                    let shader = self.ribbon_shader.get().clone();
+                    let job = variant_job(move |_| {
+                        Made::Pipeline(oit::pipeline(
+                            &device,
+                            &[],
+                            HdrPipeline {
+                                alpha_to_coverage: false,
+                                label: name,
+                                layout: &layout,
+                                module: &shader,
+                                vs: if strip { "vs_strip" } else { "vs" },
+                                fs: "fs",
+                                buffers: if strip { &[] } else { RIBBON_BUFFERS },
+                                cull: None,
+                                depth_write: false,
+                                depth_compare: wgpu::CompareFunction::LessEqual,
+                                blend: None,
+                                samples,
+                            },
+                            mode,
+                        ))
+                    });
+                    (none, job)
                 }
                 Source::Particles => {
                     let layout = self
                         .oit
                         .layout(
-                            device,
+                            &device,
                             "particles (oit)",
                             mode,
                             frame,
@@ -328,27 +370,34 @@ impl Renderer {
                             ],
                         )
                         .clone();
-                    oit::pipeline(
-                        device,
-                        &[],
-                        HdrPipeline {
-                            alpha_to_coverage: false,
-                            label: "particles",
-                            layout: &layout,
-                            module: self.particles.draw_module.get(),
-                            vs: "vs",
-                            fs: "fs",
-                            buffers: &[Some(particles_gpu::PARTICLE_LAYOUT)],
-                            cull: None,
-                            depth_write: false,
-                            depth_compare: wgpu::CompareFunction::LessEqual,
-                            blend: None,
-                            samples,
-                        },
-                        mode,
-                    )
+                    let shader = self.particles.draw_module.get().clone();
+                    const PARTICLES: &[Option<wgpu::VertexBufferLayout<'static>>] =
+                        &[Some(particles_gpu::PARTICLE_LAYOUT)];
+                    let job = variant_job(move |_| {
+                        Made::Pipeline(oit::pipeline(
+                            &device,
+                            &[],
+                            HdrPipeline {
+                                alpha_to_coverage: false,
+                                label: "particles",
+                                layout: &layout,
+                                module: &shader,
+                                vs: "vs",
+                                fs: "fs",
+                                buffers: PARTICLES,
+                                cull: None,
+                                depth_write: false,
+                                depth_compare: wgpu::CompareFunction::LessEqual,
+                                blend: None,
+                                samples,
+                            },
+                            mode,
+                        ))
+                    });
+                    (none, job)
                 }
             };
+            let pipeline = variants(declared, self.frame_features, job);
             self.oit.pipelines.insert((source, mode, samples), pipeline);
         }
     }

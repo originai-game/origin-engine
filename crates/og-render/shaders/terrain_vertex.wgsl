@@ -96,13 +96,15 @@ fn grid_clamp(c: vec2<f32>) -> vec2<f32> {
 fn field_height(s: vec2<f32>) -> f32 {
   let i = floor(s);
   let f = s - i;
-  if (all(f < vec2<f32>(1e-4))) { return terrain_height_at(0u, s); }
-  let h = vec4<f32>(
-    terrain_height_at(0u, i),
-    terrain_height_at(0u, i + vec2<f32>(1.0, 0.0)),
-    terrain_height_at(0u, i + vec2<f32>(0.0, 1.0)),
-    terrain_height_at(0u, i + vec2<f32>(1.0, 1.0)),
-  );
+  // A sample's own height, or its cell's four corners', in one loop (one
+  // copy of the lookup's code: DXC inlines every call).
+  let on_sample = all(f < vec2<f32>(1e-4));
+  var h = vec4<f32>(0.0);
+  for (var j = 0u; j < select(4u, 1u, on_sample); j++) {
+    let at = select(i + vec2<f32>(f32(j & 1u), f32(j >> 1u)), s, on_sample);
+    h[j] = terrain_height_at(0u, at);
+  }
+  if (on_sample) { return h.x; }
   return split_height(h, f);
 }
 
@@ -126,11 +128,11 @@ fn split_height(h: vec4<f32>, f: vec2<f32>) -> f32 {
 // too and no crack opens. Only drawn: collision, og.terrain.sample, the
 // id pass, the clipmap's error measure and what stands on the ground
 // keep the field, so it stays centimetres.
-fn terrain_snow_lift(s: vec2<f32>, step: f32) -> f32 {
+// `maps`: the field's maps there, read over the level's spacing
+// (corner_maps).
+fn terrain_snow_lift(maps: TerrainMaps) -> f32 {
   let lift = terrain.displace.w;
   if (lift <= 0.0) { return 0.0; }
-  let spacing = step * level.camera.z;
-  let maps = terrain_maps_at(s, vec2<f32>(spacing / terrain_cell().x, 0.0), vec2<f32>(0.0, spacing / terrain_cell().y));
   let n = normalize(terrain.normal * maps.normal);
   return lift * smoothstep(0.6, 0.85, n.y) / max(terrain.displace.y, 1e-6);
 }
@@ -162,19 +164,31 @@ struct Relief {
   bare: vec2<f32>,
 };
 
-fn terrain_relief(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32) -> Relief {
-  var out: Relief;
+// How much of the relief a grid point `c` at height `h` takes with its
+// distance from the camera (0 without relief).
+fn relief_fade(c: vec2<f32>, h: f32) -> f32 {
   let reach = terrain.displace.x;
-  if (reach <= 0.0) { return out; }
+  if (reach <= 0.0) { return 0.0; }
   let unit = level.camera.z;
   let dist = length(vec3<f32>((c.x - level.camera.x) * unit, (h - level.camera.w) * terrain.displace.z, (c.y - level.camera.y) * unit));
-  let fade = 1.0 - smoothstep(0.6 * reach, reach, dist);
+  return 1.0 - smoothstep(0.6 * reach, reach, dist);
+}
+
+// The field's maps at field coordinates `s`, read over the level's
+// spacing `step` along x and z (the footprint the relief and the snow
+// take them over): one read for both.
+fn corner_maps(s: vec2<f32>, step: f32) -> TerrainMaps {
+  let spacing = step * level.camera.z;
+  return terrain_maps_at(s, vec2<f32>(spacing / terrain_cell().x, 0.0), vec2<f32>(0.0, spacing / terrain_cell().y));
+}
+
+// `fade`: relief_fade's; `maps`: corner_maps' (read where fade > 0).
+fn terrain_relief(c: vec2<f32>, h: f32, step: f32, fade: f32, maps: TerrainMaps) -> Relief {
+  var out: Relief;
   if (fade <= 0.0) { return out; }
-  // The level's spacing along x and z, in field coordinates and in metres.
+  let unit = level.camera.z;
+  // The level's spacing in metres.
   let spacing = step * unit;
-  let gx = vec2<f32>(spacing / terrain_cell().x, 0.0);
-  let gy = vec2<f32>(0.0, spacing / terrain_cell().y);
-  let maps = terrain_maps_at(s, gx, gy);
   let n = normalize(terrain.normal * maps.normal);
   let steep = smoothstep(0.5, 0.8, n.y);
   if (steep <= 0.0) { return out; }
@@ -191,13 +205,29 @@ fn terrain_relief(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32) -> Relief {
   // As the lit pass weighs them (a layer without a map stands at its
   // full height there), each moving the ground by its own height about
   // its middle (one without a map, not at all).
+  // A displacing layer with a normal map of its relief's slope also its
+  // height a spacing along x, then z (`along`): all in one loop (one copy
+  // of the layer's sampling code: DXC inlines every call).
   var heights = vec4<f32>(1.0);
   var relief = vec4<f32>(0.0);
+  var along_x = vec4<f32>(0.0);
+  var along_z = vec4<f32>(0.0);
   for (var k = 0u; k < 4u; k++) {
     if (k < pick.n && (pick.w[k] > 0.0 || k == 0u)) {
-      let lh = layer_height(pick.ids[k], p, n, dpx, dpy);
-      heights[k] = select(1.0, lh, lh >= 0.0);
-      relief[k] = select(0.0, lh - 0.5, lh >= 0.0);
+      let l = terrain.layers[pick.ids[k]];
+      let taps = select(1u, 3u, l.offset.w != 0.0 && (u32(l.mapping.w) & 1u) != 0u);
+      for (var j = 0u; j < taps; j++) {
+        let at = select(p, p + select(dpy, dpx, j == 1u), j > 0u);
+        let lh = layer_height(pick.ids[k], at, n, dpx, dpy);
+        if (j == 0u) {
+          heights[k] = select(1.0, lh, lh >= 0.0);
+          relief[k] = select(0.0, lh - 0.5, lh >= 0.0);
+        } else if (j == 1u) {
+          along_x[k] = lh;
+        } else {
+          along_z[k] = lh;
+        }
+      }
     }
   }
   let w = blend_weights(pick, heights);
@@ -208,8 +238,8 @@ fn terrain_relief(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32) -> Relief {
       let amount = l.offset.w * w[k] * scale;
       out.d += relief[k] * amount;
       if (amount != 0.0 && (u32(l.mapping.w) & 1u) != 0u) {
-        let sx = (layer_height(pick.ids[k], p + dpx, n, dpx, dpy) - 0.5 - relief[k]) * amount / spacing;
-        let sz = (layer_height(pick.ids[k], p + dpy, n, dpx, dpy) - 0.5 - relief[k]) * amount / spacing;
+        let sx = (along_x[k] - 0.5 - relief[k]) * amount / spacing;
+        let sz = (along_z[k] - 0.5 - relief[k]) * amount / spacing;
         out.slope += vec2<f32>(sx, sz);
         if ((u32(l.mapping.w) & 2u) == 0u) { out.bare += vec2<f32>(sx, sz); }
       }

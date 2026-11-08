@@ -238,28 +238,39 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
   let cover = cloud_deck(d).a;
   let lowest = clamp((c[0].z - viewer) / 24000.0, 0.002, 0.2);
-  if (cover > 0.0 && viewer <= c[0].z && d.y < lowest) {
-    let own = deck_along(background, d, lowest);
-    let ahead = frame.view_forward.xyz;
-    var grey = vec3<f32>(0.0);
-    for (var i = 0; i < 4; i++) {
-      let a = (f32(i) - 1.5) * 0.3;
-      let f = normalize(vec3<f32>(ahead.x, 0.0, ahead.z) + vec3<f32>(1e-6, 0.0, 0.0));
-      let turned = vec3<f32>(f.x * cos(a) - f.z * sin(a), 0.0, f.x * sin(a) + f.z * cos(a));
-      grey += deck_along(background, turned, lowest) * 0.25;
+  let low = cover > 0.0 && viewer <= c[0].z && d.y < lowest;
+  // Every march in one loop (one copy of the march's code: DXC inlines
+  // every call): under the deck's strip the deck along this column's
+  // azimuth (k 0) and the four fixed ones about the view (1 to 4), each
+  // at the lowest elevation, undithered; then the column's own (5), unless
+  // the deck covers it.
+  let ahead = frame.view_forward.xyz;
+  let f = normalize(vec3<f32>(ahead.x, 0.0, ahead.z) + vec3<f32>(1e-6, 0.0, 0.0));
+  var own = vec3<f32>(0.0);
+  var grey = vec3<f32>(0.0);
+  var column = background;
+  for (var k = 0u; k < 6u; k++) {
+    if (k < 5u && !low) { continue; }
+    if (k == 5u && low && cover >= 0.999) { break; }
+    var ray = d;
+    var at = pixel;
+    if (k < 5u) {
+      var az = d;
+      if (k > 0u) {
+        let a = (f32(k - 1u) - 1.5) * 0.3;
+        az = vec3<f32>(f.x * cos(a) - f.z * sin(a), 0.0, f.x * sin(a) + f.z * cos(a));
+      }
+      let flat_d = normalize(vec3<f32>(az.x, 0.0, az.z) + vec3<f32>(1e-6, 0.0, 0.0));
+      ray = flat_d * sqrt(1.0 - lowest * lowest) + vec3<f32>(0.0, lowest, 0.0);
+      at = vec2<f32>(-1.0);
     }
-    let deck = mix(own, grey, smoothstep(0.0, 0.5, (lowest - d.y) / lowest));
-    if (cover >= 0.999) { return deck; }
-    return mix(clouds_march(background, d, pixel), deck, cover);
+    let m = clouds_march(background, ray, at);
+    if (k == 0u) { own = m; } else if (k < 5u) { grey += m * 0.25; } else { column = m; }
   }
-  return clouds_march(background, d, pixel);
-}
-
-// The deck marched along `d`'s azimuth at elevation `e` (its sine), undithered.
-fn deck_along(background: vec3<f32>, d: vec3<f32>, e: f32) -> vec3<f32> {
-  let flat_d = normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(1e-6, 0.0, 0.0));
-  let up = flat_d * sqrt(1.0 - e * e) + vec3<f32>(0.0, e, 0.0);
-  return clouds_march(background, up, vec2<f32>(-1.0));
+  if (!low) { return column; }
+  let deck = mix(own, grey, smoothstep(0.0, 0.5, (lowest - d.y) / lowest));
+  if (cover >= 0.999) { return deck; }
+  return mix(column, deck, cover);
 }
 
 // A cloud is a finite-distance participating surface, not the sky at
@@ -432,12 +443,19 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
     end = inner.x;
   }
   let far = 60000.0;
-  let fallback = mix(far_clouds(color, d, start, end, o, to_light, light, physical, phase, sky_top, sky_side), deck, deck_cover);
-  if (start >= far) { return fallback; }
-  // What lies past the march's reach is the far layer, behind the march.
+  // The far layer over the whole path, the fallback past the march's
+  // reach; else what lies past the march's reach, behind the march. One
+  // loop (one copy of far_clouds' code: DXC inlines every call).
   let full = end;
   end = min(end, start + far * 0.5);
-  let behind_far = far_clouds(color, d, end, full, o, to_light, light, physical, phase, sky_top, sky_side);
+  var fallback = vec3<f32>(0.0);
+  var behind_far = vec3<f32>(0.0);
+  for (var j = 0u; j < 2u; j++) {
+    let layer = far_clouds(color, d, select(start, end, j == 1u), full, o, to_light, light, physical, phase, sky_top, sky_side);
+    if (j == 1u) { behind_far = layer; break; }
+    fallback = mix(layer, deck, deck_cover);
+    if (start >= far) { return fallback; }
+  }
   // Up to twice the steps towards the horizon, where the path is longest.
   let steps = u32(c[3].z * (2.0 - abs(d.y)));
   let dt = (end - start) / f32(steps);
