@@ -228,6 +228,11 @@ pub const KINDS: &[KindSpec] = &[
         doc: "A disclosure (two-way `open`): its `<summary>` row, its content shown only while open.",
     },
     KindSpec {
+        name: "box",
+        container: true,
+        doc: "A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker.",
+    },
+    KindSpec {
         name: "meter",
         container: false,
         doc: "A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in.",
@@ -303,7 +308,7 @@ pub const PROPS: &[PropSpec] = &[
     p!(
         "direction",
         Ty::Word(&["row", "column"]),
-        ["row", "column"],
+        ["row", "column", "box"],
         "Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content)."
     ),
     p!("background", Ty::Paint, "Its fill."),
@@ -712,6 +717,40 @@ pub const PROPS: &[PropSpec] = &[
         Ty::Paint,
         ["dialog"],
         "A modal's scrim fill (`dialog::backdrop { background: … }`); else the style's `scrim`."
+    ),
+    p!(
+        "display",
+        Ty::Word(&["block", "flex", "grid"]),
+        ["box"],
+        "A box's layout (CSS `display`): `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks (`grid-template-columns`…)."
+    ),
+    p!(
+        "markerType",
+        Ty::Word(&[
+            "none",
+            "disc",
+            "circle",
+            "square",
+            "decimal",
+            "lowerAlpha",
+            "upperAlpha",
+            "lowerRoman",
+            "upperRoman"
+        ]),
+        ["box"],
+        "An `<li>`'s marker, from the inherited `list-style-type` (`<ul>`: disc, nested circle then square; `<ol>`: decimal)."
+    ),
+    p!(
+        "markerPosition",
+        Ty::Word(&["outside", "inside"]),
+        ["box"],
+        "Where an `<li>`'s marker sits, from the inherited `list-style-position`: `outside` hangs it before the item's start edge (the default), `inside` lays the item out as a row after it."
+    ),
+    p!(
+        "href",
+        Ty::Text,
+        ["label"],
+        "An `<a>`'s destination: a click sends a `link` event named by it (as `onclick` fires)."
     ),
     p!(
         "modal",

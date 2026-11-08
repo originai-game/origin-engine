@@ -1,0 +1,34 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <p>, <span>, <h1>–<h6>, inline <b> <i> <u> <s> <br> <a>",
+      "summary": "HTML text tags map to the text element (<text> stays the core name); headings carry role heading with aria-level and HTML's type steps; inline formatting and <a href> style runs of one paragraph."
+    },
+    {
+      "member": "UI documents: <a href>",
+      "summary": "A link: a click sends a `link` event named by its href through the document's events (immediate and mounted), with a link node in the accessibility tree."
+    },
+    {
+      "member": "UI documents: <div>, <section>, <header>, <footer>, <nav>, <main>, <aside>, <article>",
+      "summary": "A generic box laid out by CSS display (block by default, flex, grid, none); landmarks take their roles (navigation, main, banner, contentinfo, complementary, article, region for a named section)."
+    },
+    {
+      "member": "UI documents: <ul>, <ol>, <li> and list-style",
+      "summary": "Non-virtual lists with CSS markers: list-style-type (none, disc, circle, square, decimal, lower/upper-alpha, lower/upper-roman), list-style-position, the list-style shorthand, <ol start reversed>, <li value>. Numbers come from the structural selectors' sibling index, so keyed reorders and inserts renumber."
+    },
+    {
+      "member": "UI documents: <input type=\"checkbox\">, <label for>",
+      "summary": "A plain checkbox is a toggle; <label for=id> joins a checkbox as its caption and names any other control. A label with neither a wrapped checkbox nor for is refused."
+    },
+    {
+      "member": "A11yNode.level",
+      "summary": "A heading's level, 1 to 6 (aria-level)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI documents: aria-label on fields and other controls",
+      "summary": "The name prop (aria-label) now names every element in the accessibility tree; fields ignored it."
+    }
+  ]
+}

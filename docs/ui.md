@@ -95,22 +95,59 @@ probe) are unchanged. The mapping:
 | `<textarea rows>` | field (multi-line) | the same constraints; `rows` lines shown |
 | `<input type="range">` | slider | `min`, `max`, `step` |
 | `<input type="checkbox" switch>` | toggle | `checked` |
+| `<input type="checkbox">` | toggle | `checked`; drawn as a switch (og-ui has one checkbox control) |
 | `<label><input type="checkbox"> Caption</label>` | toggle | the label's text is the caption; the two are one node |
+| `<label for="id">` | — | joins the control `id` names: a checkbox takes its text as its caption (one node, as the wrapping form); an input, textarea, select, range, meter or progress takes it as its accessible name and the label stays a text beside it |
 | `<hr>` | divider | |
 | `<img>` | image | `src`, `alt` |
-| `<text>` | label | HTML has no plain-text element; `<label>` is HTML's caption wrapper |
+| `<p>`, `<span>`, `<text>` | label | `<text>` is the core name; inline `<b>`/`<strong>`, `<i>`/`<em>`, `<u>`, `<s>`/`<del>`, `<br>`, a plain `<span>` and `<a href>` style runs of it |
+| `<h1>` … `<h6>` | label (heading) | role `heading` with `aria-level` 1–6; UA type steps `xl3`, `xl`, `lg`, `body`, `sm`, `xs` |
+| `<a href>` | label (a link) | a click sends a `link` event named by its href through the document's events, as `onclick` sends `emit`; accent ink and an underline |
+| `<div>`, `<section>`, `<header>`, `<footer>`, `<nav>`, `<main>`, `<aside>`, `<article>` | box | layout from CSS `display` (below); landmarks take their roles: `navigation`, `main`, `banner`, `contentinfo`, `complementary`, `article`, and `region` for a named `<section>` |
+| `<ul>`, `<ol>`, `<li>` | box (list, listitem) | not virtualised (that is `<list>`); markers from `list-style` (below); `<ol start reversed>`, `<li value>` |
 | `<button>`, `<progress>` | button, progress | already HTML |
 | `<select>` with `<option>` and `<optgroup>` | select | `value`, `placeholder`, `disabled`; options take `value`, `label`, `i18n`, `disabled`, `selected` |
 | `<dialog>` | dialog | `open`, `modal`, `aria-label` |
 | `<details>` with a first `<summary>` | details | `open`, `disabled` |
 | `<meter>` | meter | `value`, `min`, `max`, `low`, `high`, `optimum` |
 
-`<field>`, `<slider>`, `<toggle>`, `<divider>`, `<image>` and a bare
-`<label>` are refused. CSS type selectors match the written tag (`input`,
+`<field>`, `<slider>`, `<toggle>`, `<divider>`, `<image>` and a
+`<label>` that neither wraps a checkbox nor has `for` are refused. CSS type selectors match the written tag (`input`,
 `textarea`), so `input[type=range]` and `textarea` select as in HTML.
 Elements HTML has no name for (`column`, `row`, `stack`, `grid`, `panel`,
 `scroll`, the virtualised `list` and `cells`, `art`, `icon`, `tabs`,
 `badge`, `spacer`) keep their names.
+
+#### HTML blocks and lists
+
+A box (`<div>` and the other block tags) lays out by its CSS `display`:
+`block`, the default, stacks its children top to bottom as a `<column>`
+does; `flex` lays them out as a `<row>` (`flex-direction: column` turns
+it); `grid` takes `grid-template-columns` and the rest as a `<grid>`;
+`none` hides it. Other elements' layout is their tag, so `display` on
+them takes only `none`. Text between a box's elements is an anonymous
+text element, as an HTML anonymous block box is; `i18n` on a box
+translates its one run of text.
+
+HTML's user-agent rules come first in every document's cascade: `ul, ol`
+indent 40px, `<ul>` markers are `disc` (then `circle`, then `square` when
+nested), `<ol>` markers `decimal`, and headings take the type steps in the
+table above. `list-style-type` (`none`, `disc`, `circle`, `square`,
+`decimal`, `lower-alpha`, `upper-alpha`, `lower-roman`, `upper-roman`),
+`list-style-position` (`outside` by default, `inside`) and the
+`list-style` shorthand inherit, as in CSS; `list-style: none` removes the
+markers. An `outside` marker hangs half an em before the item's start
+edge and costs it no room; `inside` puts it first in the item's row. A
+disc, circle or square is drawn as a shape on the first line (no font has
+to carry it); a number is text with CSS's suffix (`3.`, `iv.`), decimal
+outside the alphabetic and roman ranges.
+
+An item's number is its place among its `<li>` siblings, counted from the
+list's `start` (1, or the item count when `reversed`), or from the
+nearest earlier `<li value>`. It comes from the sibling index the
+structural selectors keep for `:nth-child(n of li)`, so a keyed `{#each}`
+reorder or insert renumbers only the items whose place changed, in
+O(log n) per edit, with no pass of its own.
 
 Kits use `@origingame/engine`, `@origingame/engine/ui-extensions`, and the
 public helpers in `@origingame/engine/ui-parts/hud` and

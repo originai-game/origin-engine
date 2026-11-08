@@ -26385,7 +26385,7 @@ export interface A11yNode {
   /** The path of the nearest node above it in the tree; empty at the top. */
   readonly parent: string;
   /**
-   * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group.
+   * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group, list, listitem, and the landmarks navigation, main, banner, contentinfo, complementary, article, region.
    */
   readonly role: string;
   /**
@@ -26416,6 +26416,8 @@ export interface A11yNode {
    * A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range.
    */
   readonly valueNow: number | null;
+  /** A heading's level, 1 to 6 (aria-level; <h1> to <h6>); null for anything else. */
+  readonly level: number | null;
   /**
    * Left edge of the whole element.
    *

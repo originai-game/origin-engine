@@ -31,4 +31,4 @@ enum WaypointKind {
 }
 ```
 
-<sub>Module `ui` line 6588</sub>
+<sub>Module `ui` line 6589</sub>

@@ -520,6 +520,12 @@ impl RetainedHost {
                     .filter_map(|rule| rule.condition.as_ref()),
             )
             .chain(node.groups.iter().filter_map(|group| group.bind.as_ref()))
+            .chain(
+                node.inline
+                    .iter()
+                    .map(|run| &run.text)
+                    .filter(|text| !matches!(text, Expr::Lit(_))),
+            )
             .chain(node.triggers.iter().flat_map(|trigger| {
                 let when = match &trigger.when {
                     When::Change(expression) => Some(expression),
@@ -940,7 +946,7 @@ impl RetainedHost {
         };
         let topology = &self.topology;
         let mut work = crate::doc::matching::MatchWork::default();
-        let values = ui.resolve(
+        let mut values = ui.resolve(
             &build,
             &e.document.nodes[e.index],
             &e.path,
@@ -948,6 +954,13 @@ impl RetainedHost {
             &build.inherited,
             &mut |selector| {
                 crate::doc::matching::matches(topology, &e.document, selector, identity, &mut work)
+            },
+        );
+        values.ordinal = ui.ordinal_of(
+            &e.document.nodes[e.index],
+            &values,
+            |filter, item_values| {
+                crate::doc::lists::ordinal(topology, identity, filter, item_values)
             },
         );
         self.css.selectors += work.selectors;

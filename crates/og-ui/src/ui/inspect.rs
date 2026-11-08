@@ -310,6 +310,7 @@ impl Ui {
             value_min: range.and_then(|r| r.min),
             value_max: range.and_then(|r| r.max),
             value_now: range.map(|r| r.now),
+            level: n.a11y.level,
             x: r.x,
             y: r.y,
             width: r.width,

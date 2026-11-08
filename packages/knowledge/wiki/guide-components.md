@@ -176,9 +176,9 @@ Its own props, beside every element's:
 | `cell-columns` | `number` | Cells across (0: as many as fit). |
 
 <a id="guide-components-10"></a>
-### `components §10` `<text>` (`label`): A text
+### `components §10` `<text>`, `<p>`, `<span>`, `<h1>`, `<a>` (`label`): A text
 
-A text. A leaf; text-bearing controls accept text content: `<text id="Name">…</text>`.
+A text. A leaf; text-bearing controls accept text content: `<text id="Name">…</text>` or `<p id="Name">Read the <a href="rules">rules</a>.</p>` or `<span id="Name">…</span>` or `<h1 id="Name">…</h1> (to <h6>)` or `<a id="Name" href="shop">…</a>`.
 
 Its own props, beside every element's:
 
@@ -198,6 +198,7 @@ Its own props, beside every element's:
 | `text-overflow:` | `ellipsis \| clip` | Cut with … where it does not fit. |
 | `font-family:` | `var(--font-<name>)` | The font role. |
 | `heading` | `bool` | A heading (a style's flourish frames it). |
+| `href` | `text` | An `<a>`'s destination: a click sends a `link` event named by it (as `onclick` fires). |
 
 <a id="guide-components-11"></a>
 ### `components §11` `<button>` (`button`): A button with a label
@@ -427,7 +428,21 @@ Its own props, beside every element's:
 | `summary` | `text` | Its `<summary>`'s text; empty is `Details`. Written as the first child, `<summary>…</summary>`. |
 
 <a id="guide-components-26"></a>
-### `components §26` `<meter>` (`meter`): A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in
+### `components §26` `<div>`, `<nav>`, `<ul>`, `<ol>` (`box`): A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker
+
+A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker. A container with nested children: `<div id="Name">…</div>` or `<nav aria-label="Site">…</nav> (section, header, footer, main, aside, article)` or `<ul><li>…</li></ul>` or `<ol start="1"><li>…</li></ol>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `flex-direction:` | `row \| column` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
+| `display:` | `block \| flex \| grid` | A box's layout (CSS `display`): `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks (`grid-template-columns`…). |
+| `-og-marker-type:` | `none \| disc \| circle \| square \| decimal \| lower-alpha \| upper-alpha \| lower-roman \| upper-roman` | An `<li>`'s marker, from the inherited `list-style-type` (`<ul>`: disc, nested circle then square; `<ol>`: decimal). |
+| `-og-marker-position:` | `outside \| inside` | Where an `<li>`'s marker sits, from the inherited `list-style-position`: `outside` hangs it before the item's start edge (the default), `inside` lays the item out as a row after it. |
+
+<a id="guide-components-27"></a>
+### `components §27` `<meter>` (`meter`): A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in
 
 A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in. A leaf; text-bearing controls accept text content: `<meter id="Name" value={$hp} min="0" max="100" low="25" high="75" optimum="90" />`.
 

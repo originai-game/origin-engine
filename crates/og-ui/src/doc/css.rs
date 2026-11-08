@@ -95,6 +95,9 @@ pub const STYLE: &[(&str, &str)] = &[
     ("frame", "-og-frame"),
     ("rive", "-og-frame"),
     ("backdrop", "-og-backdrop"),
+    ("display", "display"),
+    ("markerType", "-og-marker-type"),
+    ("markerPosition", "-og-marker-position"),
     ("aspect", "aspect-ratio"),
     ("fade", "-og-scroll-fade"),
     ("fadeInto", "-og-scroll-fade-into"),
@@ -181,7 +184,7 @@ fn conv(prop: &str) -> Conv {
             Conv::Paint
         }
         "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
-        | "textAlign" | "fit" => Conv::Kebab,
+        | "textAlign" | "fit" | "display" | "markerType" | "markerPosition" => Conv::Kebab,
         "wrap" => Conv::Bool("wrap", "nowrap"),
         "centerX" | "centerY" | "onScene" => Conv::Bool("true", "false"),
         "uppercase" => Conv::Bool("uppercase", "none"),
@@ -286,7 +289,6 @@ fn neutral(key: &str) -> Option<&'static str> {
 /// CSS that is not part of the subset, and what to write instead.
 pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
     Some(match name {
-        "display" => "an element's display is its kind: `row Name {`, `column`, `stack` or `grid`",
         "flex" | "flex-grow" | "flex-shrink" | "flex-basis" => {
             "write `width: stretch` (or `height`) to take the room left"
         }
@@ -1120,16 +1122,28 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         return Err(format!("{name} has no value"));
     }
     if name == "display" {
-        let visible = match value.trim() {
-            "none" => false,
-            "initial" => true,
-            _ => {
-                return Err(
-                    "display takes none or initial; the element tag defines its layout".into(),
-                );
+        // A box's (`<div>`…) layout is its display; every other element's
+        // layout is its tag, so there display only shows or hides it.
+        let layout = match value.trim() {
+            "none" => {
+                return Ok(vec![e("visible", vec![Value::Word("false".into())])]);
+            }
+            "initial" => {
+                return Ok(vec![e("visible", vec![Value::Word("true".into())])]);
+            }
+            "block" | "inline-block" | "flow-root" | "list-item" => "block",
+            "flex" | "inline-flex" => "flex",
+            "grid" | "inline-grid" => "grid",
+            other => {
+                return Err(format!(
+                    "display: {other} is not supported; a <div> takes block, flex or grid (or none), and other elements' layout is their tag"
+                ));
             }
         };
-        return Ok(vec![e("visible", vec![Value::Word(visible.to_string())])]);
+        return Ok(vec![
+            e("visible", vec![Value::Word("true".into())]),
+            e("display", vec![Value::Word(layout.into())]),
+        ]);
     }
     if name == "-og-control-size" {
         return Ok(vec![e("size", vec![Value::Word(value.trim().into())])]);

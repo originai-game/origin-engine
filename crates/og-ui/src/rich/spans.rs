@@ -38,6 +38,10 @@ pub struct TextSpanStyle {
     pub strike: Option<bool>,
     pub outline: Option<(f32, ColorRef)>,
     pub motion: Option<SpanFx>,
+    /// A link's id (a document's inline `<a href>`): accent ink and an
+    /// underline unless declared, focusable, its click answered by
+    /// [`Ui::respond_links`].
+    pub link: Option<String>,
 }
 
 impl Ui {
@@ -62,8 +66,8 @@ impl Ui {
         }
     }
 
-    /// Replaces structured text in its existing render node. Structured
-    /// attributes have no links; this never dispatches a control response.
+    /// Replaces structured text in its existing render node. A style's
+    /// `link` makes its range a link; responses are [`Ui::respond_links`]'.
     pub(crate) fn apply_text_spans(
         &mut self,
         i: usize,
@@ -149,6 +153,13 @@ impl Ui {
                 if let Some(motion) = style.motion {
                     s.fx = motion;
                 }
+                if let Some(link) = &style.link {
+                    s.link = Some(link.clone());
+                    if style.color.is_none() {
+                        s.color = t.palette.highlight;
+                    }
+                    s.underline |= style.underline.is_none();
+                }
             }
             // Weight and bold share a CSS property; the last explicit one wins.
             s.weight = s.step.weight;
@@ -174,6 +185,18 @@ impl Ui {
             wrap: !desc.nowrap,
         });
         node.links.clear();
+        for r in &node_runs_links(&node.content) {
+            if !node.links.contains(r) {
+                node.links.push(r.clone());
+            }
+        }
+    }
+}
+
+fn node_runs_links(content: &Content) -> Vec<String> {
+    match content {
+        Content::Rich(rc) => rc.spans.iter().filter_map(|s| s.link.clone()).collect(),
+        _ => Vec::new(),
     }
 }
 

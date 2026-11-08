@@ -34,7 +34,19 @@ fn value(p: &PropSpec) -> String {
 pub fn tags(kind: &str) -> Vec<(String, String)> {
     let void = |tag: &str| (tag.to_string(), format!("<{tag} id=\"Name\" />"));
     match kind {
-        "label" => vec![("text".into(), "<text id=\"Name\">…</text>".into())],
+        "label" => vec![
+            ("text".into(), "<text id=\"Name\">…</text>".into()),
+            ("p".into(), "<p id=\"Name\">Read the <a href=\"rules\">rules</a>.</p>".into()),
+            ("span".into(), "<span id=\"Name\">…</span>".into()),
+            ("h1".into(), "<h1 id=\"Name\">…</h1> (to <h6>)".into()),
+            ("a".into(), "<a id=\"Name\" href=\"shop\">…</a>".into()),
+        ],
+        "box" => vec![
+            ("div".into(), "<div id=\"Name\">…</div>".into()),
+            ("nav".into(), "<nav aria-label=\"Site\">…</nav> (section, header, footer, main, aside, article)".into()),
+            ("ul".into(), "<ul><li>…</li></ul>".into()),
+            ("ol".into(), "<ol start=\"1\"><li>…</li></ol>".into()),
+        ],
         "image" => vec![void("img")],
         "field" => vec![
             void("input type=\"text\""),

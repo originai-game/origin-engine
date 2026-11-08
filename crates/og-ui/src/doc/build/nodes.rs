@@ -183,8 +183,11 @@ impl Ui {
         };
         let opened = self.enter_structure(b, i);
         let children = self.child_level(b, n);
-        let r = self.resolve(b, n, &path, &mut built, &b.inherited, &mut |s| {
+        let mut r = self.resolve(b, n, &path, &mut built, &b.inherited, &mut |s| {
             self.structure_matches(&doc, s)
+        });
+        r.ordinal = self.ordinal_of(n, &r, |filter, item_values| {
+            self.structure_ordinal(filter, item_values)
         });
         self.warnings.extend(
             r.cascade
@@ -364,6 +367,13 @@ impl Ui {
                 fields::RenderFields::capture(self, self.parent(), kind, resp, props, None);
             self.apply_document_fields(n, &r, &fields);
             self.note_render_fields(key, fields);
+            if kind == "box"
+                && let Some(marker) = r.str("markerType")
+                && let Some(text) = crate::doc::lists::marker(marker, r.ordinal.unwrap_or(1))
+            {
+                let inside = r.str("markerPosition") == Some("inside");
+                self.list_marker(&path, marker, &text, inside);
+            }
             if let Some(id) = r.str("rive") {
                 let at = self.parent();
                 self.play_rive(at, id, &path);
@@ -406,6 +416,9 @@ impl Ui {
             "label" => {
                 let text = text_of(&r, b);
                 let desc = r.label_desc(&t);
+                if !n.inline.is_empty() {
+                    self.inline_links(b, n, &r, &path, key);
+                }
                 if let Some(V::Spans(spans)) = r.get("spans") {
                     let spans = match spans {
                         Ok(spans) => spans,
@@ -764,6 +777,111 @@ impl Ui {
         self.note_built(built);
         self.fire(b, n, key, &path, resp);
         Some(path)
+    }
+
+    /// An `<li>`'s marker: hung before its start edge (`outside`, CSS's
+    /// default: anchored to the item, so it costs the item no room), or
+    /// first in its row (`inside`). A disc, circle or square is a shape on
+    /// the first line, as browsers paint it, so no font has to carry the
+    /// bullet; a number is text.
+    fn list_marker(&mut self, item: &str, kind: &str, text: &str, inside: bool) {
+        let t = self.theme;
+        let body = t.type_ramp.body;
+        // CSS's gap between marker and content: half an em.
+        let gap = (body.size * 0.5).round();
+        if crate::doc::lists::numbered(kind) {
+            let text = if inside {
+                format!("{text}\u{a0}")
+            } else {
+                text.to_string()
+            };
+            self.label("Marker", &text, crate::LabelDesc::default());
+        } else {
+            // Blink's bullet: a third of an em across, at least 3 px.
+            let d = (body.size / 3.0).round().max(3.0);
+            let ink = t.palette.ink;
+            self.open(
+                "Marker",
+                Element {
+                    width: Size::px(if inside { d + gap } else { d }),
+                    height: Size::px(body.line_height),
+                    cross: crate::layout::Cross::Center,
+                    ..Element::default()
+                },
+            );
+            self.open(
+                kind,
+                Element {
+                    width: Size::px(d),
+                    height: Size::px(d),
+                    background: (kind == "square").then_some(ink),
+                    ..Element::default()
+                },
+            );
+            if kind != "square" {
+                use crate::paint::{
+                    Cap, ColorRef, ElementDraw, Paint, ShapeKind, Stroke, StrokeAlign,
+                };
+                let paint = Paint::Solid(ColorRef::Literal(ink));
+                self.set_draw(ElementDraw {
+                    shape: ShapeKind::Ellipse,
+                    fills: if kind == "disc" {
+                        vec![paint.clone()]
+                    } else {
+                        Vec::new()
+                    },
+                    strokes: if kind == "circle" {
+                        vec![Stroke {
+                            width: 1.0,
+                            align: StrokeAlign::Inside,
+                            dash: [0.0; 2],
+                            dash_offset: 0.0,
+                            dash_cap: Cap::Butt,
+                            paint,
+                        }]
+                    } else {
+                        Vec::new()
+                    },
+                    ..Default::default()
+                });
+            }
+            self.close();
+            self.close();
+        }
+        if inside {
+            return;
+        }
+        let at = self.last_closed;
+        let props = &mut self.nodes[at].props;
+        props.position = crate::element::Position::Anchored;
+        props.anchor_to = item.to_string();
+        props.anchor_at = crate::layout::Anchor::TopLeft;
+        props.anchor_self = crate::layout::Anchor::TopRight;
+        props.insets.start = Some(-gap);
+        props.overlaps.push(item.to_string());
+    }
+
+    /// A text's inline `<a href>`s: a click sends a `link` event named by
+    /// its href, through the document's events as `onclick` does.
+    fn inline_links(&mut self, b: &mut Build<'_>, n: &DocNode, r: &Resolved, path: &str, key: u64) {
+        let ids: Vec<String> = n
+            .inline
+            .iter()
+            .filter_map(|run| run.link)
+            .map(super::inline_link)
+            .fold(Vec::new(), |mut v, l| {
+                if !v.contains(&l) {
+                    v.push(l);
+                }
+                v
+            });
+        if let Some(l) = self.respond_links(key, &ids).link {
+            let href = match l.strip_prefix("link").and_then(|k| k.parse::<usize>().ok()) {
+                Some(k) => n.links.get(k).cloned().unwrap_or_default(),
+                None => r.str("href").unwrap_or_default().to_string(),
+            };
+            b.event(path, "link", &href, Value::Null);
+        }
     }
 
     /// One item of a `for` outside a virtualised container.

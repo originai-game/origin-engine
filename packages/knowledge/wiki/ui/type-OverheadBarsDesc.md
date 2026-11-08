@@ -40,4 +40,4 @@ struct OverheadBarsDesc {
 }
 ```
 
-<sub>Module `ui` line 6478</sub>
+<sub>Module `ui` line 6479</sub>

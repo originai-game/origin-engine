@@ -11,6 +11,9 @@ struct Rule {
     at: usize,
     body_at: usize,
     order: usize,
+    /// HTML's user-agent stylesheet ([`super::lists::UA_CSS`]): cascades
+    /// before every author rule, whatever their specificity.
+    ua: bool,
 }
 
 pub(super) fn apply(
@@ -19,6 +22,13 @@ pub(super) fn apply(
     styles: &[(String, usize)],
 ) -> Result<(), Error> {
     let mut rules = Vec::new();
+    read_rules(super::lists::UA_CSS, 0, AtQuery::default(), &mut rules)?;
+    for rule in &mut rules {
+        // Its offsets are in the UA text, not the document's.
+        rule.ua = true;
+        rule.at = 0;
+        rule.body_at = 0;
+    }
     for (text, at) in styles {
         read_rules(text, *at, AtQuery::default(), &mut rules)?;
     }
@@ -57,7 +67,7 @@ pub(super) fn apply(
             parsed.push((selector, rule));
         }
     }
-    parsed.sort_by_key(|(selector, rule)| (selector.specificity(), rule.order));
+    parsed.sort_by_key(|(selector, rule)| (!rule.ua, selector.specificity(), rule.order));
     for (parsed, rule) in parsed {
         let structure = parsed
             .structural()
@@ -94,7 +104,16 @@ pub(super) fn apply(
         let known: Vec<String> = doc.keyframe_rules.iter().map(|(n, ..)| n.clone()).collect();
         let mut declarations = Vec::new();
         for declaration in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
-            for declaration in super::container::expand(declaration).map_err(|e| (rule.at, e))? {
+            for declaration in super::container::expand(declaration)
+                .and_then(|ds| {
+                    let mut out = Vec::new();
+                    for d in ds {
+                        out.extend(super::lists::expand(d)?);
+                    }
+                    Ok(out)
+                })
+                .map_err(|e| (rule.at, e))?
+            {
                 declarations.extend(
                     super::motion::expand(declaration, &|name| known.iter().any(|k| k == name))
                         .map_err(|e| (rule.at, e))?,
@@ -158,7 +177,14 @@ pub(super) fn apply(
                 if !p.applies(kind) {
                     return Err((
                         rule.at,
-                        format!("CSS property {} does not apply to {kind}", e.key),
+                        if e.key == "display" {
+                            format!(
+                                "display: {} lays out a <div> (or another HTML block); a {kind}'s layout is its tag, so it takes only display: none",
+                                written(&e.values)
+                            )
+                        } else {
+                            format!("CSS property {} does not apply to {kind}", e.key)
+                        },
                     ));
                 }
                 props.push(PropSet {
@@ -260,6 +286,7 @@ fn read_rules(text: &str, base: usize, query: AtQuery, out: &mut Vec<Rule>) -> R
                 at: base + start,
                 body_at: base + open + 1,
                 order: out.len(),
+                ua: false,
             });
         }
     }

@@ -56,6 +56,8 @@ struct Resolved {
     container: Option<u64>,
     /// An immediate build's inputs under a query container (settlement replay).
     replay: Option<Arc<containers::Replay>>,
+    /// A numbered `<li>`'s number ([`super::lists::ordinal`]).
+    ordinal: Option<i64>,
 }
 
 #[derive(Clone)]
@@ -204,6 +206,39 @@ fn insets_of(n: &[f32]) -> Insets {
             bottom: *b,
         },
         [] => Insets::default(),
+    }
+}
+
+/// A grid's tracks, areas and auto-placement.
+fn grid_of(r: &Resolved) -> GridSpec {
+    let tracks = |name: &str| match r.get(name) {
+        Some(V::Tracks(t)) => t.clone(),
+        _ => Vec::new(),
+    };
+    GridSpec {
+        columns: tracks("columns"),
+        rows: tracks("rows"),
+        areas: match r.get("areas") {
+            Some(V::Strs(s)) => s.clone(),
+            _ => Vec::new(),
+        },
+        flow: if r.str("flow") == Some("column") {
+            GridFlow::Column
+        } else {
+            GridFlow::Row
+        },
+        dense: r.flag("dense"),
+        ..GridSpec::default()
+    }
+}
+
+/// The link id of inline link `k` ([`super::InlineRun::link`]): `link` for
+/// an `<a>` element's own `href`, `link<k>` for its text's `<a>`s.
+fn inline_link(k: usize) -> String {
+    if k == usize::MAX {
+        "link".into()
+    } else {
+        format!("link{k}")
     }
 }
 
@@ -553,6 +588,48 @@ impl Ui {
                 r.cascade.diagnostics.extend(cascade.diagnostics);
             }
         }
+        if !n.inline.is_empty() {
+            // A text element's inline markup: one span per run, styled by
+            // its elements (a run of an `<a href>` is a link).
+            let mut spans = Vec::new();
+            let mut position = 0u32;
+            // A translated `<a i18n>` is one run: the string's text.
+            let translated = r
+                .str("key")
+                .and_then(|k| b.env.translate(k))
+                .filter(|_| n.inline.len() == 1);
+            for run in &n.inline {
+                let text = match &run.text {
+                    _ if translated.is_some() => translated.clone().unwrap_or_default(),
+                    crate::bind::Expr::Lit(v) => crate::bind::text(v),
+                    e => crate::bind::text(&b.eval(e)),
+                };
+                let length = text.chars().count() as u32;
+                let span = crate::TextSpan {
+                    name: "inline".into(),
+                    position,
+                    length,
+                    properties: Default::default(),
+                };
+                position += length;
+                let on = |b: bool| b.then_some(true);
+                r.span_styles.push((
+                    span.clone(),
+                    crate::TextSpanStyle {
+                        bold: on(run.bold),
+                        italic: on(run.italic),
+                        underline: on(run.underline),
+                        strike: on(run.strike),
+                        link: run.link.map(inline_link),
+                        ..Default::default()
+                    },
+                ));
+                spans.push(span);
+            }
+            if let Some((spec, _)) = schema::prop("spans") {
+                r.vals.push((spec, V::Spans(Ok(spans))));
+            }
+        }
         r.cascade.viewport_reads = media_reads;
         if !container_reads.is_empty() {
             // The chain is inherited state: a container appearing or leaving
@@ -706,29 +783,17 @@ impl Ui {
         if let Some(v) = r.num("hitSlop") {
             p.hit_slop = v;
         }
+        // A `<div>` with `display: grid` lays out as a `<grid>` does.
+        let grid_box = n.kind == NodeKind::Element("box") && r.str("display") == Some("grid");
         match n.kind {
             NodeKind::Element("stack") => p.layout = LayoutMode::Stack,
             NodeKind::Element("grid") => {
                 p.layout = LayoutMode::Grid;
-                let tracks = |name: &str| match r.get(name) {
-                    Some(V::Tracks(t)) => t.clone(),
-                    _ => Vec::new(),
-                };
-                p.grid = GridSpec {
-                    columns: tracks("columns"),
-                    rows: tracks("rows"),
-                    areas: match r.get("areas") {
-                        Some(V::Strs(s)) => s.clone(),
-                        _ => Vec::new(),
-                    },
-                    flow: if r.str("flow") == Some("column") {
-                        GridFlow::Column
-                    } else {
-                        GridFlow::Row
-                    },
-                    dense: r.flag("dense"),
-                    ..GridSpec::default()
-                };
+                p.grid = grid_of(r);
+            }
+            _ if grid_box => {
+                p.layout = LayoutMode::Grid;
+                p.grid = grid_of(r);
             }
             _ => {}
         }

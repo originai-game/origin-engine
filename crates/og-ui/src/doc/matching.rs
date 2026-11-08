@@ -211,6 +211,12 @@ pub struct Profile {
     pub states: BTreeSet<InteractionState>,
     /// Distinct `of S` filters, in first-seen order.
     pub filters: Vec<Vec<Selector>>,
+    /// List items whose marker may show a number (an `<ol>`, or a
+    /// `list-style` declaration): each reads its place among its `<li>`
+    /// siblings, as `:nth-child(n of li)` does.
+    pub ordinals: bool,
+    /// Some `<li>` sets `value`: an item's number may come from an earlier one's.
+    pub item_values: bool,
 }
 
 impl Profile {
@@ -304,6 +310,36 @@ impl Profile {
                 }
             }
         }
+        let tag = |t: &str| {
+            document
+                .nodes
+                .iter()
+                .any(|n| n.selector_tag.as_deref() == Some(t))
+        };
+        if tag("li") && (tag("ol") || document.text.contains("list-style")) {
+            profile.any = true;
+            profile.ordinals = true;
+            let items = super::lists::items();
+            if !profile.filters.contains(&items) {
+                profile.filters.push(items);
+            }
+            for name in ["value", "start", "reversed"] {
+                profile.attributes.insert(name.into());
+            }
+            let bound = |name: &str| {
+                document.nodes.iter().any(|n| {
+                    n.selector_attrs
+                        .iter()
+                        .any(|(a, e)| a == name && !matches!(e, crate::bind::Expr::Lit(_)))
+                })
+            };
+            // A list's bound `start` or `reversed` renumbers its items.
+            profile.ancestors |= bound("start") || bound("reversed");
+            profile.item_values = document.nodes.iter().any(|n| {
+                n.selector_tag.as_deref() == Some("li")
+                    && n.selector_attrs.iter().any(|(a, _)| a == "value")
+            });
+        }
         profile
     }
 
@@ -316,6 +352,8 @@ impl Profile {
         self.ends |= other.ends;
         self.empty |= other.empty;
         self.ancestors |= other.ancestors;
+        self.ordinals |= other.ordinals;
+        self.item_values |= other.item_values;
         self.attributes.extend(other.attributes.iter().cloned());
         self.states.extend(other.states.iter().copied());
         for filter in &other.filters {

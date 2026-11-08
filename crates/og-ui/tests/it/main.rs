@@ -22,6 +22,8 @@ mod gfx;
 mod glyphs;
 #[path = "../html_controls.rs"]
 mod html_controls;
+#[path = "../html_text.rs"]
+mod html_text;
 #[path = "../hud_layout.rs"]
 mod hud_layout;
 #[path = "../input_types.rs"]

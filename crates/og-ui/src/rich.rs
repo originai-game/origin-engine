@@ -647,8 +647,6 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let key = self.nodes[i].key;
-        let mut out = RichTextResponse::default();
         let mut links: Vec<String> = Vec::new();
         for s in &spans {
             if let Some(l) = &s.link
@@ -657,7 +655,22 @@ impl Ui {
                 links.push(l.clone());
             }
         }
-        for l in &links {
+        let out = self.respond_links(self.nodes[i].key, &links);
+        let n = &mut self.nodes[i];
+        n.probe_text = probe;
+        n.content = Content::Rich(RichContent {
+            spans,
+            align: desc.align,
+            wrap: !desc.nowrap,
+        });
+        n.links = links;
+        out
+    }
+
+    /// What the links of the rich node keyed `key` did this tick.
+    pub(crate) fn respond_links(&self, key: u64, links: &[String]) -> RichTextResponse {
+        let mut out = RichTextResponse::default();
+        for l in links {
             let r = self.respond(child_key(key, l));
             if r.clicked && out.link.is_none() {
                 out.link = Some(l.clone());
@@ -670,14 +683,6 @@ impl Ui {
             out.response.clicked |= r.clicked;
             out.response.focused |= r.focused;
         }
-        let n = &mut self.nodes[i];
-        n.probe_text = probe;
-        n.content = Content::Rich(RichContent {
-            spans,
-            align: desc.align,
-            wrap: !desc.nowrap,
-        });
-        n.links = links;
         out
     }
 

@@ -80,6 +80,8 @@ pub(crate) struct A11y {
     /// A range control's bounds and value as numbers (a slider's, a
     /// bounded stepper's, a meter's): `aria-valuemin`, `-max` and `-now`.
     pub range: Option<A11yRange>,
+    /// A heading's level, 1 to 6 (`aria-level`; `<h1>`…`<h6>`).
+    pub level: Option<u8>,
 }
 
 /// A range's bounds and value (an unbounded stepper has a value alone).
@@ -112,6 +114,8 @@ pub struct A11yNode {
     /// A range's value as a number (the value text says it as people read
     /// it); `None` for a control that is no range.
     pub value_now: Option<f32>,
+    /// A heading's level, 1 to 6; `None` for none.
+    pub level: Option<u8>,
     /// Its bounds in CSS pixels (the whole element, also where a scroll
     /// container cuts it; `offscreen` then says so).
     pub x: f32,
@@ -152,6 +156,7 @@ impl A11yTree {
             for v in [n.value_min, n.value_max, n.value_now] {
                 h.write_u64(v.map_or(u64::MAX, |v| u64::from(v.to_bits())));
             }
+            h.write_u64(n.level.map_or(0, u64::from));
             h.write_u64(n.states.len() as u64);
             for s in &n.states {
                 h.write_str(s);

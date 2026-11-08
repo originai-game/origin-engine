@@ -40,4 +40,4 @@ fn notifications {
 }
 ```
 
-<sub>Module `ui` line 5371</sub>
+<sub>Module `ui` line 5372</sub>

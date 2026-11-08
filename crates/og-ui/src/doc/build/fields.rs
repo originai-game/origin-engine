@@ -165,7 +165,13 @@ impl Ui {
         if schema::kind(base.kind).is_some_and(|kind| kind.container) {
             el = Self::box_of(r, el);
             if !matches!(base.kind, "panel" | "scroll" | "list" | "cells") {
-                el.direction = match r.str("direction").unwrap_or(base.kind) {
+                // A box is a column (CSS block), or a row as `display: flex`.
+                let initial = match (base.kind, r.str("display")) {
+                    ("box", Some("flex")) => "row",
+                    ("box", _) if r.str("markerPosition") == Some("inside") => "row",
+                    (kind, _) => kind,
+                };
+                el.direction = match r.str("direction").unwrap_or(initial) {
                     "row" => Direction::Row,
                     _ => Direction::Column,
                 };
@@ -218,6 +224,17 @@ impl Ui {
                     .cloned(),
             );
             self.nodes[i].props = props;
+        }
+        // The roles and levels HTML's tags give (landmarks, lists, headings).
+        if let Some(role) = n.role {
+            self.nodes[i].a11y.role = Some(role);
+        }
+        if n.level > 0 {
+            self.nodes[i].a11y.level = Some(n.level);
+        }
+        // `aria-label` (or a `<label for>`) names it over what it shows.
+        if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
+            self.nodes[i].a11y.name = Some(name.to_string());
         }
         if !self.building {
             self.apply_part_appearance(i);

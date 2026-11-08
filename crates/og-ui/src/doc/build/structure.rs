@@ -171,6 +171,34 @@ impl Ui {
         )
     }
 
+    /// The number of the `<li>` being built ([`crate::doc::lists::ordinal`]).
+    pub(super) fn structure_ordinal(&self, filter: &[Selector], item_values: bool) -> i64 {
+        let levels = &self.docs.levels;
+        match levels
+            .len()
+            .checked_sub(1)
+            .and_then(|top| Some((top, levels[top].current?)))
+        {
+            Some(at) => crate::doc::lists::ordinal(&Levels(levels), &at, filter, item_values),
+            None => 1,
+        }
+    }
+
+    /// A `<li>`'s number when its marker shows one: `count` reads it from
+    /// the tree being built (the retained topology or the sibling levels).
+    pub(super) fn ordinal_of(
+        &self,
+        n: &DocNode,
+        r: &Resolved,
+        count: impl FnOnce(&[Selector], bool) -> i64,
+    ) -> Option<i64> {
+        let profile = &self.docs.structure;
+        (profile.ordinals
+            && n.selector_tag.as_deref() == Some("li")
+            && r.str("markerType").is_some_and(crate::doc::lists::numbered))
+        .then(|| count(&crate::doc::lists::items(), profile.item_values))
+    }
+
     fn entry(&self, b: &Build<'_>, doc: &Arc<UiDocument>, i: usize) -> Entry {
         let n = &doc.nodes[i];
         let text = n

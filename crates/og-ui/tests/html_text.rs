@@ -1,0 +1,633 @@
+//! Ordinary HTML in a document (docs/ui.md §2): text, generic blocks and
+//! landmarks, lists with CSS markers, `<a href>` links, and checkboxes
+//! joined to their labels by `for`. Each is built both ways a document is:
+//! immediately (`Ui::component`, a viewmodel) and mounted (`mount_document`,
+//! named stores, retained).
+//!
+//! Ways these could fail, each covered below:
+//! - a text tag kept out of the text kind, a heading's level lost on its way
+//!   to the accessibility tree, or a type selector matching the internal kind
+//!   instead of the tag written → `text_tags_are_text_and_headings_have_levels`
+//! - a `<div>` that ignores `display` (or is a row by default), a landmark
+//!   without its role, an unnamed `<section>` announced as a region →
+//!   `blocks_lay_out_by_display_and_landmarks_have_roles`
+//! - list markers missing or wrong for a type, a nested `<ul>` not stepping
+//!   disc→circle→square, `start`, `reversed` or `<li value>` ignored, or a
+//!   keyed reorder or a middle insert leaving stale numbers →
+//!   `list_markers_follow_css_and_renumber_on_reorder`
+//! - an `<a href>` not answering a click with a `link` event of its href, or
+//!   an inline `<a>` claiming the whole paragraph →
+//!   `links_send_their_href`
+//! - a plain checkbox refused, `<label for>` not joining its checkbox (or
+//!   left drawn twice), a field not named by its label, a bare `<label>`
+//!   accepted → `checkboxes_and_labels_join_by_for`
+
+use crate::support;
+
+use og_core::glam::Vec2;
+use og_ui::reactive::{SourceId, wire};
+use og_ui::*;
+use serde_json::{Value, json};
+use std::collections::BTreeMap;
+use support::*;
+
+/// One document, built either way.
+struct Doc {
+    ui: Ui,
+    name: String,
+    /// Mounted with these stores; `None`: built immediately from `vm`.
+    mounted: bool,
+    vm: Value,
+    /// An immediate build's events, collected tick by tick.
+    events: Vec<DocEvent>,
+}
+
+impl Doc {
+    fn new(text: &str, stores: &[(&str, Value)], mounted: bool) -> Doc {
+        let mut ui = ui_with_font(test_font_metrics());
+        let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
+        let name = doc.name.clone();
+        ui.define_document(doc);
+        let mut d = Doc {
+            ui,
+            name,
+            mounted,
+            events: Vec::new(),
+            // An immediate build reads the stores as `$name` from its viewmodel.
+            vm: Value::Object(
+                stores
+                    .iter()
+                    .map(|(k, v)| (format!("${k}"), v.clone()))
+                    .collect(),
+            ),
+        };
+        if mounted {
+            let mut inputs = BTreeMap::new();
+            for (k, v) in stores {
+                let source = SourceId::new("test", k);
+                d.store(k, v.clone());
+                inputs.insert(k.to_string(), source);
+            }
+            d.ui.mount_document(
+                SourceId::new("test", "t"),
+                &d.name.clone(),
+                inputs,
+                &bind::NoEnv,
+            )
+            .unwrap_or_else(|e| panic!("mounts: {e}"));
+        }
+        d.step(InputFrame::default());
+        d
+    }
+
+    fn apply(&mut self, command: Value) {
+        let reply = wire::decode(
+            &self
+                .ui
+                .apply_reactive(&wire::encode(&json!([command])).unwrap()),
+        )
+        .unwrap();
+        assert_eq!(reply[0]["ok"], true, "{reply}");
+    }
+
+    /// A store: a list is a keyed collection (by `id`).
+    fn store(&mut self, name: &str, value: Value) {
+        let source = SourceId::new("test", name);
+        self.apply(match &value {
+            Value::Array(items) => {
+                json!({"op": "collection", "source": source, "key": "id", "items": items})
+            }
+            _ => json!({"op": "signal", "source": source, "initial": value}),
+        });
+    }
+
+    /// A keyed edit of list store `name`: `op` on a mounted collection,
+    /// the whole list `after` in an immediate viewmodel.
+    fn edit(&mut self, name: &str, mut op: Value, after: Value) {
+        if self.mounted {
+            op["source"] = json!(SourceId::new("test", name));
+            self.apply(op);
+        } else {
+            self.vm[format!("${name}")] = after;
+        }
+        self.step(InputFrame::default());
+        self.step(InputFrame::default());
+    }
+
+    fn step(&mut self, input: InputFrame) {
+        self.ui.begin(input, Viewport::new(800.0, 900.0));
+        if self.mounted {
+            self.ui
+                .build_retained_documents(&bind::NoEnv)
+                .expect("builds");
+        } else {
+            let name = self.name.clone();
+            let r = self.ui.component("T", &name, &mut self.vm, &bind::NoEnv);
+            self.events.extend(r.events);
+        }
+        self.ui.end();
+        self.events.extend(self.ui.take_doc_events());
+    }
+
+    fn el(&self, id: &str) -> Option<UiElement> {
+        self.ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.id == id || e.path.ends_with(&format!("/{id}")))
+    }
+
+    fn get(&self, id: &str) -> UiElement {
+        self.el(id)
+            .unwrap_or_else(|| panic!("no {id} (mounted: {})", self.mounted))
+    }
+
+    fn a11y(&self, path_end: &str) -> A11yNode {
+        self.ui
+            .a11y()
+            .nodes
+            .iter()
+            .find(|n| n.path.ends_with(&format!("/{path_end}")) || n.path == path_end)
+            .cloned()
+            .unwrap_or_else(|| panic!("no a11y node {path_end}"))
+    }
+
+    fn click_at(&mut self, at: Vec2) -> Vec<DocEvent> {
+        let mut events = std::mem::take(&mut self.events);
+        events.clear();
+        for (pressed, released) in [(true, false), (false, true)] {
+            self.step(InputFrame {
+                pointer: at,
+                pointer_inside: true,
+                down: pressed,
+                pressed,
+                released,
+                ..InputFrame::default()
+            });
+        }
+        for _ in 0..30 {
+            self.step(InputFrame::default());
+        }
+        events.append(&mut self.events);
+        events
+    }
+
+    fn click(&mut self, id: &str) -> Vec<DocEvent> {
+        let e = self.get(id);
+        self.click_at(Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0))
+    }
+
+    /// The markers drawn under `list`, top to bottom: a number's text, or
+    /// the shape a bullet is drawn as (`disc`, `circle`, `square`).
+    fn markers(&self, list: &str) -> Vec<String> {
+        let elements = self.ui.probe_elements();
+        let mut m: Vec<_> = elements
+            .iter()
+            .filter(|e| e.id == "Marker" && e.path.contains(&format!("/{list}/")))
+            .collect();
+        m.sort_by(|a, b| a.y.total_cmp(&b.y));
+        m.into_iter()
+            .map(|e| {
+                if !e.text.is_empty() {
+                    return e.text.clone();
+                }
+                elements
+                    .iter()
+                    .find(|c| c.path.starts_with(&format!("{}/", e.path)))
+                    .map_or_else(String::new, |c| c.id.clone())
+            })
+            .collect()
+    }
+}
+
+fn id_text(id: &str) -> &str {
+    match id {
+        "Title" => "Title",
+        "Sub" => "Sub",
+        "Para" => "Para",
+        "Note" => "Note",
+        _ => "Core",
+    }
+}
+
+fn both(text: &str, stores: &[(&str, Value)], check: impl Fn(&mut Doc)) {
+    for mounted in [false, true] {
+        check(&mut Doc::new(text, stores, mounted));
+    }
+}
+
+#[test]
+fn text_tags_are_text_and_headings_have_levels() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Page">
+  <h1 id="Title" i18n="t">Title</h1>
+  <h3 id="Sub" i18n="s">Sub</h3>
+  <p id="Para" i18n="p">Para</p>
+  <span id="Note" i18n="n">Note</span>
+  <text id="Core" i18n="c">Core</text>
+  <span id="Gone" i18n="g">Gone</span>
+</div></div>
+<style>
+p { padding: 0 0 0 30px; }
+span#Gone { display: none; }
+text { padding: 0 0 0 50px; }
+</style>"#;
+    both(text, &[], |d| {
+        for id in ["Title", "Sub", "Para", "Note", "Core"] {
+            assert_eq!(d.get(id).kind, "label", "{id}");
+            assert_eq!(d.get(id).text, id_text(id), "{id}");
+        }
+        assert_eq!(d.a11y("Title").role, "heading");
+        assert_eq!(d.a11y("Title").level, Some(1));
+        assert_eq!(d.a11y("Sub").level, Some(3));
+        assert_eq!(d.a11y("Para").role, "text");
+        assert_eq!(d.a11y("Para").level, None);
+        // HTML's UA steps: an h1 is taller than an h3, which is taller
+        // than a paragraph at the body step.
+        assert!(d.get("Title").height > d.get("Sub").height);
+        assert!(d.get("Sub").height >= d.get("Para").height);
+        // A type selector matches the tag written, not the kind: `p`
+        // pads only the paragraph, `text` only the core text.
+        let page = d.get("Page");
+        assert_eq!(d.get("Para").x - page.x, 0.0);
+        assert!(d.get("Para").width > d.get("Note").width);
+        assert!(d.el("Gone").is_none(), "span#Gone matches the written tag");
+        assert!(d.get("Core").width >= 50.0);
+    });
+}
+
+#[test]
+fn blocks_lay_out_by_display_and_landmarks_have_roles() {
+    let text = r#"<meta name="component" content="t">
+<div><main id="Main">
+  <header id="Head"><span id="H1" i18n="a">A</span><span id="H2" i18n="b">B</span></header>
+  <nav id="Nav" aria-label="Site"><span id="N1" i18n="a">A</span><span id="N2" i18n="b">B</span></nav>
+  <div id="Grid"><span id="G1" i18n="a">A</span><span id="G2" i18n="b">B</span><span id="G3" i18n="c">C</span></div>
+  <section id="Plain"><span i18n="a">A</span></section>
+  <section id="Named" aria-label="News"><span i18n="a">A</span></section>
+  <aside id="Side"><span i18n="a">A</span></aside>
+  <article id="Art"><span i18n="a">A</span></article>
+  <footer id="Foot"><span i18n="a">A</span></footer>
+  <div id="Hidden"><span i18n="a">A</span></div>
+</main></div>
+<style>
+nav { display: flex; gap: 10px; }
+#Grid { display: grid; grid-template-columns: 100px 100px; }
+div#Hidden { display: none; }
+</style>"#;
+    both(text, &[], |d| {
+        // Block by default: children top to bottom.
+        let (h1, h2) = (d.get("H1"), d.get("H2"));
+        assert!(
+            h2.y > h1.y && h2.x == h1.x,
+            "a header stacks: {h1:?} {h2:?}"
+        );
+        // display: flex is a row, through a type selector on the tag.
+        let (n1, n2) = (d.get("N1"), d.get("N2"));
+        assert_eq!(n2.y, n1.y);
+        assert_eq!(n2.x, n1.x + n1.width + 10.0);
+        // display: grid takes tracks.
+        let (g1, g2, g3) = (d.get("G1"), d.get("G2"), d.get("G3"));
+        assert_eq!((g2.x - g1.x, g2.y), (100.0, g1.y));
+        assert_eq!((g3.x, g3.y > g1.y), (g1.x, true));
+        assert!(d.el("Hidden").is_none());
+        for (id, role) in [
+            ("Main", "main"),
+            ("Head", "banner"),
+            ("Nav", "navigation"),
+            ("Named", "region"),
+            ("Side", "complementary"),
+            ("Art", "article"),
+            ("Foot", "contentinfo"),
+        ] {
+            assert_eq!(d.a11y(id).role, role, "{id}");
+        }
+        assert!(
+            !d.ui.a11y().nodes.iter().any(|n| n.path.ends_with("/Plain")),
+            "an unnamed section is no region"
+        );
+    });
+    let refused = UiDocument::parse(
+        "ui/t.svelte",
+        "<meta name=\"component\" content=\"t\"><column><button id=\"B\">x</button></column><style>button { display: flex; }</style>",
+    )
+    .unwrap_err()
+    .join("\n");
+    assert!(
+        refused.contains("display: flex lays out a <div>"),
+        "{refused}"
+    );
+    let internal = UiDocument::parse(
+        "ui/t.svelte",
+        "<meta name=\"component\" content=\"t\"><box></box>",
+    )
+    .unwrap_err()
+    .join("\n");
+    assert!(
+        internal.contains("<box> is not a core element; write <div>"),
+        "{internal}"
+    );
+}
+
+fn steps(ids: &[&str]) -> Value {
+    json!(ids.iter().map(|id| json!({ "id": id })).collect::<Vec<_>>())
+}
+
+#[test]
+fn list_markers_follow_css_and_renumber_on_reorder() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Page">
+  <ul id="Bullets"><li i18n="a">A</li><li>
+    <span i18n="b">B</span>
+    <ul id="Inner"><li i18n="c">C</li><li><ul id="Deep"><li i18n="d">D</li></ul></li></ul>
+  </li></ul>
+  <ol id="Steps">
+    {#each $steps as s (s.id)}<li>{s.id}</li>{/each}
+  </ol>
+  <ol id="Down" start="10" reversed><li i18n="a">A</li><li i18n="b">B</li><li i18n="c">C</li></ol>
+  <ol id="Valued"><li i18n="a">A</li><li value="7" i18n="b">B</li><li i18n="c">C</li></ol>
+  <ol id="Roman"><li i18n="a">A</li><li i18n="b">B</li><li i18n="c">C</li><li i18n="d">D</li></ol>
+  <ol id="Alpha"><li i18n="a">A</li><li i18n="b">B</li></ol>
+  <ul id="Bare"><li i18n="a">A</li></ul>
+  <ul id="In"><li id="InItem" i18n="a">A</li></ul>
+</div></div>
+<style>
+#Roman { list-style-type: upper-roman; }
+#Alpha { list-style: lower-alpha inside; }
+#Bare { list-style: none; }
+#In { list-style-position: inside; }
+</style>"#;
+    both(text, &[("steps", steps(&["x", "y", "z"]))], |d| {
+        assert_eq!(
+            d.markers("Bullets"),
+            ["disc", "disc", "circle", "circle", "square"]
+        );
+        assert_eq!(d.markers("Inner"), ["circle", "circle", "square"]);
+        assert_eq!(d.markers("Steps"), ["1.", "2.", "3."]);
+        assert_eq!(d.markers("Down"), ["10.", "9.", "8."]);
+        assert_eq!(d.markers("Valued"), ["1.", "7.", "8."]);
+        assert_eq!(d.markers("Roman"), ["I.", "II.", "III.", "IV."]);
+        assert_eq!(d.markers("Alpha"), ["a.\u{a0}", "b.\u{a0}"]);
+        assert!(d.markers("Bare").is_empty());
+        // Outside hangs before the item; inside sits in its row.
+        let item = d.get("Bullets").x;
+        let first =
+            d.ui.probe_elements()
+                .into_iter()
+                .find(|e| e.id == "Marker" && e.path.contains("/Bullets/"))
+                .unwrap();
+        assert!(
+            first.x + first.width <= item + 40.0 && first.x >= item,
+            "{first:?}"
+        );
+        let inside =
+            d.ui.probe_elements()
+                .into_iter()
+                .find(|e| e.id == "Marker" && e.path.contains("/InItem/"))
+                .unwrap();
+        assert!(inside.x >= d.get("InItem").x, "{inside:?}");
+        // A keyed reorder renumbers by place; a middle insert shifts the
+        // items after it. The numbers drawn follow the text they sit by.
+        let texts = |d: &Doc| -> Vec<String> {
+            let mut items: Vec<_> =
+                d.ui.probe_elements()
+                    .into_iter()
+                    .filter(|e| e.kind == "label" && e.id != "Marker" && e.path.contains("/Steps/"))
+                    .collect();
+            items.sort_by(|a, b| a.y.total_cmp(&b.y));
+            items.into_iter().map(|e| e.text).collect()
+        };
+        d.edit(
+            "steps",
+            json!({"op": "move", "key": "z", "before": "x"}),
+            steps(&["z", "x", "y"]),
+        );
+        assert_eq!(texts(d), ["z", "x", "y"]);
+        assert_eq!(d.markers("Steps"), ["1.", "2.", "3."]);
+        d.edit(
+            "steps",
+            json!({"op": "insert", "row": {"id": "w"}, "before": "x"}),
+            steps(&["z", "w", "x", "y"]),
+        );
+        assert_eq!(texts(d), ["z", "w", "x", "y"]);
+        assert_eq!(d.markers("Steps"), ["1.", "2.", "3.", "4."]);
+        assert_eq!(d.a11y("Steps").role, "list");
+    });
+    let refused = UiDocument::parse(
+        "ui/t.svelte",
+        "<meta name=\"component\" content=\"t\"><div><li>x</li></div>",
+    )
+    .unwrap_err()
+    .join("\n");
+    assert!(refused.contains("<li> belongs inside"), "{refused}");
+}
+
+#[test]
+fn links_send_their_href() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Page">
+  <a id="Shop" href="screen:shop">Open the shop</a>
+  <span id="Same">Open the shop</span>
+  <p id="Para">Read the <a href="rules">rules</a> and <b>enjoy</b>.</p>
+</div></div>
+<style>
+a { padding: 0 0 0 40px; }
+</style>"#;
+    both(text, &[], |d| {
+        let shop = d.get("Shop");
+        assert_eq!(shop.kind, "richtext");
+        assert_eq!(shop.text, "Open the shop");
+        // `a` pads the link, not the span of the same text.
+        let same = d.get("Same").width;
+        assert!(
+            (shop.width - same - 40.0).abs() < 1.0,
+            "{} vs {same}",
+            shop.width
+        );
+        let events = d.click("Shop");
+        assert!(
+            events
+                .iter()
+                .any(|e| e.kind == "link" && e.name == "screen:shop"),
+            "{events:?}"
+        );
+        let para = d.get("Para");
+        assert_eq!(para.text, "Read the rules and enjoy.");
+        // A press on "Read" (the paragraph's start) is no link.
+        let events = d.click_at(Vec2::new(para.x + 2.0, para.y + para.height / 2.0));
+        assert!(!events.iter().any(|e| e.kind == "link"), "{events:?}");
+        let link = d.a11y("Para/link0");
+        assert_eq!((link.role.as_str(), link.name.as_str()), ("link", "rules"));
+        let events = d.click_at(Vec2::new(
+            link.x + link.width / 2.0,
+            link.y + link.height / 2.0,
+        ));
+        assert!(
+            events.iter().any(|e| e.kind == "link" && e.name == "rules"),
+            "{events:?}"
+        );
+    });
+}
+
+#[test]
+fn checkboxes_and_labels_join_by_for() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Page">
+  <input type="checkbox" id="Mute" bind:checked={$mute}>
+  <label for="Mute" i18n="m">Mute music</label>
+  <label for="Nick" i18n="n">Nickname</label>
+  <input type="text" id="Nick" bind:value={$nick}>
+</div></div>
+<style>
+input[type="checkbox"] { width: 300px; }
+</style>"#;
+    both(text, &[("mute", json!(false)), ("nick", json!(""))], |d| {
+        let mute = d.a11y("Mute");
+        assert_eq!(
+            (mute.role.as_str(), mute.name.as_str()),
+            ("switch", "Mute music")
+        );
+        assert_eq!(d.get("Mute").width, 300.0, "input[type=checkbox] matches");
+        let captions =
+            d.ui.probe_elements()
+                .iter()
+                .filter(|e| e.kind == "label" && e.text == "Mute music")
+                .count();
+        assert_eq!(
+            captions, 1,
+            "the joined label is the switch's caption, drawn once"
+        );
+        assert_eq!(d.a11y("Nick").name, "Nickname");
+        // Its switch track takes the press (the box is wider than it).
+        let events = d.click("Mute/Track");
+        assert!(
+            events
+                .iter()
+                .any(|e| e.kind == "changed" && e.name == "checked" && e.value == json!(true)),
+            "{events:?}"
+        );
+        if d.mounted {
+            let reply = wire::decode(
+                &d.ui.apply_reactive(
+                    &wire::encode(&json!([{"op":"read","source":SourceId::new("test","mute")}]))
+                        .unwrap(),
+                ),
+            )
+            .unwrap();
+            assert_eq!(reply[0]["value"]["value"], json!(true), "{reply}");
+        }
+    });
+    for (doc, why) in [
+        (
+            "<label i18n=\"x\">x</label>",
+            "<label> is not a core element",
+        ),
+        (
+            "<label for=\"Nope\" i18n=\"x\">x</label>",
+            "for=\"Nope\" names no element",
+        ),
+    ] {
+        let e = UiDocument::parse(
+            "ui/t.svelte",
+            &format!("<meta name=\"component\" content=\"t\"><div>{doc}</div>"),
+        )
+        .unwrap_err()
+        .join("\n");
+        assert!(e.contains(why), "{e}");
+    }
+}
+
+const PAGE: &str = r#"<meta name="component" content="t">
+<main id="Page">
+  <header><h1 i18n="h1">Patch notes</h1><p i18n="intro">Season two brings new maps.</p></header>
+  <nav aria-label="Sections"><a href="maps" i18n="maps">Maps</a><a href="heroes" i18n="heroes">Heroes</a><a href="shop" i18n="shop">Shop</a></nav>
+  <section aria-label="Changes">
+    <h2 i18n="h2">Changes</h2>
+    <ul>
+      <li i18n="a">Faster matchmaking</li>
+      <li><span i18n="b">New modes</span>
+        <ul><li i18n="c">Duel</li><li><span i18n="d">Siege</span><ul><li i18n="e">Night</li></ul></li></ul>
+      </li>
+    </ul>
+    <h3 i18n="h3">Steps</h3>
+    <ol>{#each $steps as s (s.id)}<li>{s.id}</li>{/each}</ol>
+    <ol id="Roman"><li i18n="r1">Prologue</li><li i18n="r2">Ascent</li><li i18n="r3">Fall</li><li i18n="r4">Epilogue</li></ol>
+    <p>Read the <a href="rules">rules</a> and <b>enjoy</b> the <i>season</i>.</p>
+  </section>
+</main>
+<style>
+main { padding: 24px; gap: 12px; }
+nav { display: flex; gap: 16px; }
+#Roman { list-style-type: upper-roman; }
+</style>"#;
+
+#[test]
+#[ignore = "requires GPU"]
+fn html_text_matches_its_reference_frames() {
+    use og_render::*;
+    for (width, height) in [(1280u32, 720u32), (390, 844)] {
+        let mut scene = RenderScene::new();
+        let font = add_test_font(&mut scene);
+        let mut ui = ui_with_font(font);
+        ui.define_document(UiDocument::parse("ui/t.svelte", PAGE).unwrap());
+        let source = SourceId::new("test", "steps");
+        let reply = wire::decode(
+            &ui.apply_reactive(
+                &wire::encode(&json!([{"op": "collection", "source": source, "key": "id",
+                "items": steps(&["Download", "Install", "Play"])}]))
+                .unwrap(),
+            ),
+        )
+        .unwrap();
+        assert_eq!(reply[0]["ok"], true, "{reply}");
+        ui.mount_document(
+            SourceId::new("test", "t"),
+            "t",
+            BTreeMap::from([("steps".to_string(), source)]),
+            &bind::NoEnv,
+        )
+        .unwrap();
+        let vp = Viewport::new(width as f32, height as f32);
+        for _ in 0..3 {
+            ui.begin(InputFrame::default(), vp);
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
+            ui.end();
+        }
+        let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        scene.overlay = Some(overlay);
+        let bg = ui.theme().palette.backdrop.linear();
+        scene.environment.background =
+            Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
+        scene.post.tonemap = Tonemap::None;
+        let mut renderer = Renderer::new_blocking(&RenderDesc {
+            width,
+            height,
+            ..Default::default()
+        })
+        .expect("a headless adapter");
+        let stats = renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+        assert_eq!(stats.missing_glyphs, 0);
+        let image = renderer.read_offscreen().unwrap();
+        let name = format!("html-text-{width}.png");
+        image::save_buffer(
+            out_dir().join(&name),
+            &image.pixels,
+            width,
+            height,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("references/metal")
+            .join(&name);
+        if std::env::var_os("OG_UI_CAPTURE").is_some() {
+            record_reference(&own, width, height, &image.pixels);
+        }
+        let expected = image::open(&own)
+            .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", own.display()))
+            .to_rgba8();
+        let (rmse, _) = compare(&image.pixels, expected.as_raw(), renderer.info(), &own)
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        println!("{name}: RMSE {rmse:.6}");
+    }
+}

@@ -8,6 +8,7 @@ pub mod build;
 pub mod catalogue;
 pub mod container;
 pub mod css;
+pub(crate) mod lists;
 pub mod matching;
 pub mod media;
 pub(crate) mod motion;
@@ -386,6 +387,30 @@ pub struct DocNode {
     pub args: Vec<(String, PropValue, usize)>,
     pub children: Vec<usize>,
     pub parent: usize,
+    /// The role its HTML tag gives it beyond its kind's (`<nav>`:
+    /// navigation, `<li>`: listitem).
+    pub role: Option<&'static str>,
+    /// A heading's level, 1 to 6 (`<h1>`…`<h6>`); 0 for none.
+    pub level: u8,
+    /// A text element's inline content when it has any markup (`<b>`,
+    /// `<a href>`…): its runs, in order; empty for plain text (the `text`
+    /// prop alone).
+    pub inline: Vec<InlineRun>,
+    /// The literal `href`s of its inline `<a>`s, by [`InlineRun::link`].
+    pub links: Vec<String>,
+}
+
+/// One run of a text element's inline content.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InlineRun {
+    pub text: Expr,
+    pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
+    pub strike: bool,
+    /// Its link: an index into [`DocNode::links`], or `usize::MAX` for the
+    /// `<a>` element's own `href`.
+    pub link: Option<usize>,
 }
 
 /// A prop of the document's contract (`props { gold number "…" }`).

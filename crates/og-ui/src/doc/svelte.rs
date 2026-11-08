@@ -27,6 +27,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
             ids: BTreeSet::new(),
             selectors: Vec::new(),
             styles: Vec::new(),
+            label_fors: Vec::new(),
         };
         for node in &nodes {
             match node {
@@ -57,6 +58,7 @@ pub(super) fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>>
         if p.doc.root == NONE {
             return Err((0, "add one root UI element".into()));
         }
+        p.join_labels()?;
         super::stylesheet::apply(&mut p.doc, &p.selectors, &p.styles)?;
         let mut errors = Vec::new();
         p.doc.check(&mut errors);
@@ -108,13 +110,30 @@ fn renamed(tag: &str) -> Option<String> {
         "slider" => "<input type=\"range\">",
         "toggle" => "<input type=\"checkbox\" switch>",
         "divider" => "<hr>",
+        "box" => {
+            "<div> (or <section>, <header>, <footer>, <nav>, <main>, <aside>, <article>, <ul>, <ol>, <li>)"
+        }
         "image" => "<img>",
         "label" => {
-            "<label> around one <input type=\"checkbox\"> and its caption, or <text> for text"
+            "<label> around one <input type=\"checkbox\"> and its caption, <label for=\"id\"> naming a control, or <p> (or <text>) for text"
         }
         _ => return None,
     };
     Some(format!("<{tag}> is not a core element; write {html}"))
+}
+
+/// Inline content a text element reads as runs: words, expressions, the
+/// formatting elements, a plain `<span>` and a literal `<a href>`.
+fn inline(node: &Node) -> bool {
+    match node {
+        Node::Text(..) | Node::Expression(..) => true,
+        Node::Element { tag, attrs, .. } => match tag.as_str() {
+            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "br" | "span" => attrs.is_empty(),
+            "a" => attrs.iter().all(|a| a.name == "href" && !a.bound),
+            _ => false,
+        },
+        _ => false,
+    }
 }
 
 /// One `<option>` of a `<select>`.
@@ -302,6 +321,9 @@ struct Parser {
     ids: BTreeSet<String>,
     selectors: Vec<(usize, String, Vec<Attr>)>,
     styles: Vec<(String, usize)>,
+    /// `<label for>`s, joined to their controls once the tree is read:
+    /// (the label's node, the control's id, where `for` is written).
+    label_fors: Vec<(usize, String, usize)>,
 }
 impl Parser {
     fn line(&self, at: usize) -> usize {
@@ -481,6 +503,10 @@ impl Parser {
             args: Vec::new(),
             children: Vec::new(),
             parent,
+            role: None,
+            level: 0,
+            inline: Vec::new(),
+            links: Vec::new(),
         });
         index
     }
@@ -719,8 +745,23 @@ impl Parser {
                 return self.element("input", &merged, &caption, *inner_at, parent);
             }
         }
+        let label_for = match attrs.iter().find(|a| a.name == "for") {
+            Some(a) if tag == "label" => {
+                if a.bound || a.value.is_empty() {
+                    return Err((a.at, "for names a control by its literal id".into()));
+                }
+                Some(a)
+            }
+            _ => None,
+        };
+        if tag == "li" && !self.in_list(parent) {
+            return Err((at, "<li> belongs inside a <ul> or an <ol>".into()));
+        }
         let internal = match tag {
-            "text" => "label",
+            "text" | "p" | "span" | "a" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => "label",
+            "label" if label_for.is_some() => "label",
+            "div" | "section" | "header" | "footer" | "nav" | "main" | "aside" | "article"
+            | "ul" | "ol" | "li" => "box",
             "img" => "image",
             "hr" => "divider",
             "textarea" => "field",
@@ -748,6 +789,26 @@ impl Parser {
         };
         let i = self.push(kind, parent, at);
         self.doc.nodes[i].selector_tag = Some(tag.into());
+        if let Some(a) = label_for {
+            self.label_fors.push((i, a.value.clone(), a.at));
+        }
+        let named = attrs
+            .iter()
+            .any(|a| matches!(a.name.as_str(), "aria-label" | "name"));
+        // HTML's implicit roles (landmarks, lists); a section is a region
+        // only when named.
+        self.doc.nodes[i].role = match tag {
+            "nav" => Some("navigation"),
+            "main" => Some("main"),
+            "header" => Some("banner"),
+            "footer" => Some("contentinfo"),
+            "aside" => Some("complementary"),
+            "article" => Some("article"),
+            "section" if named => Some("region"),
+            "ul" | "ol" => Some("list"),
+            "li" => Some("listitem"),
+            _ => None,
+        };
         for attr in attrs.iter().filter(|a| !a.name.starts_with("on")) {
             let value = if attr.bound || attr.name.starts_with("class:") {
                 expression(&attr.value, attr.at)?
@@ -822,6 +883,24 @@ impl Parser {
             }
             if a.name.starts_with("style:") || a.name == "style" {
                 return Err((a.at, "declare layout and appearance in scoped <style>; style directives require a CSS token binding".into()));
+            }
+            // A block's key translates its anonymous text.
+            if internal == "box" && a.name == "i18n" {
+                continue;
+            }
+            // Read as selector facts: a label's control, a list's numbering.
+            if (label_for.is_some() && a.name == "for")
+                || (tag == "ol" && matches!(a.name.as_str(), "start" | "reversed"))
+                || (tag == "li" && a.name == "value")
+            {
+                if a.name != "for"
+                    && a.name != "reversed"
+                    && !a.bound
+                    && a.value.trim().parse::<i64>().is_err()
+                {
+                    return Err((a.at, format!("{} takes an integer", a.name)));
+                }
+                continue;
             }
             // An input's type chose its kind; a checkbox's `switch` is how
             // it draws, and a toggle is a switch.
@@ -929,10 +1008,73 @@ impl Parser {
                 "",
             )?;
         }
+        if let Some(level) = tag
+            .strip_prefix('h')
+            .and_then(|l| l.parse::<u8>().ok())
+            .filter(|l| (1..=6).contains(l))
+        {
+            self.prop(
+                i,
+                internal,
+                "heading",
+                PropValue::Lit(Lit::Bool(true)),
+                at,
+                "",
+            )?;
+            self.doc.nodes[i].level = level;
+        }
+        let translated = attrs.iter().any(|a| a.name == "i18n");
+        if internal == "box" {
+            // Text between a block's elements is an anonymous text
+            // element, its inline markup kept (HTML's anonymous block box).
+            let key = attrs.iter().find(|a| a.name == "i18n");
+            let mut texts = Vec::new();
+            let mut run = Vec::new();
+            for child in children {
+                if inline(child) {
+                    run.push(child.clone());
+                    continue;
+                }
+                texts.extend(self.anonymous_text(&mut run, i, translated)?);
+                let child = self.node(child, i)?;
+                self.doc.nodes[i].children.push(child);
+            }
+            texts.extend(self.anonymous_text(&mut run, i, translated)?);
+            if let Some(a) = key {
+                let [text] = texts[..] else {
+                    return Err((
+                        a.at,
+                        format!(
+                            "i18n on a <{tag}> translates its one run of text; put each run in its own <span i18n>"
+                        ),
+                    ));
+                };
+                let value = if a.bound {
+                    PropValue::Bind(expression(&a.value, a.at)?, None)
+                } else {
+                    PropValue::Lit(Lit::Str(a.value.clone()))
+                };
+                self.prop(text, "label", "key", value, a.at, &a.value)?;
+            }
+            return Ok(i);
+        }
+        if internal == "label"
+            && !component
+            && (tag == "a" || children.iter().any(|c| matches!(c, Node::Element { .. })))
+        {
+            if translated && children.iter().any(|c| matches!(c, Node::Element { .. })) {
+                return Err((
+                    at,
+                    "i18n replaces the whole text, so it takes no inline elements; put the markup in the string".into(),
+                ));
+            }
+            let own = (tag == "a").then_some(usize::MAX);
+            self.text_runs(i, children, own, at, translated)?;
+            return Ok(i);
+        }
         let mut text = Expr::Lit(serde_json::Value::String(String::new()));
         let mut has_text = false;
         let mut bound_text = false;
-        let translated = attrs.iter().any(|a| a.name == "i18n");
         let text_bearing = schema::prop("text").is_some_and(|(_, p)| p.applies(internal));
         for (index, child) in children.iter().enumerate() {
             let value = match child {
@@ -998,6 +1140,271 @@ impl Parser {
             self.prop(i, internal, "text", value, at, &source)?;
         }
         Ok(i)
+    }
+    /// Whether the element nearest above `parent` (through blocks) is a list.
+    fn in_list(&self, mut parent: usize) -> bool {
+        while parent != NONE {
+            let n = &self.doc.nodes[parent];
+            match n.kind {
+                NodeKind::Element(_) | NodeKind::Use(_) => {
+                    return matches!(n.selector_tag.as_deref(), Some("ul" | "ol"));
+                }
+                _ => parent = n.parent,
+            }
+        }
+        // A component whose root is an item is placed in its user's list.
+        true
+    }
+
+    /// An anonymous text element of `run`'s inline content under block
+    /// `parent`; nothing for whitespace alone.
+    fn anonymous_text(
+        &mut self,
+        run: &mut Vec<Node>,
+        parent: usize,
+        translated: bool,
+    ) -> Result<Option<usize>, Error> {
+        let nodes = std::mem::take(run);
+        if nodes
+            .iter()
+            .all(|n| matches!(n, Node::Text(t, _) if t.trim().is_empty()))
+        {
+            return Ok(None);
+        }
+        let at = match &nodes[0] {
+            Node::Text(_, at) | Node::Expression(_, at) | Node::Element { at, .. } => *at,
+            _ => 0,
+        };
+        let i = self.push(NodeKind::Element("label"), parent, at);
+        self.text_runs(i, &nodes, None, at, translated)?;
+        self.doc.nodes[parent].children.push(i);
+        Ok(Some(i))
+    }
+
+    /// Text element `i`'s content as inline runs: its `text` (the runs'
+    /// plain text), and the runs themselves when any is styled or a link.
+    fn text_runs(
+        &mut self,
+        i: usize,
+        nodes: &[Node],
+        link: Option<usize>,
+        at: usize,
+        translated: bool,
+    ) -> Result<(), Error> {
+        let mut runs = Vec::new();
+        let mut links = Vec::new();
+        let base = InlineRun {
+            text: Expr::Lit("".into()),
+            bold: false,
+            italic: false,
+            underline: false,
+            strike: false,
+            link,
+        };
+        self.runs(nodes, &base, &mut runs, &mut links, translated)?;
+        // No space at either end, as a CSS block trims its line.
+        if let Some(InlineRun {
+            text: Expr::Lit(serde_json::Value::String(t)),
+            ..
+        }) = runs.first_mut()
+        {
+            *t = t.trim_start_matches(' ').into();
+        }
+        if let Some(InlineRun {
+            text: Expr::Lit(serde_json::Value::String(t)),
+            ..
+        }) = runs.last_mut()
+        {
+            t.truncate(t.trim_end_matches(' ').len());
+        }
+        runs.retain(|r| r.text != Expr::Lit("".into()));
+        let bound = runs.iter().any(|r| !matches!(r.text, Expr::Lit(_)));
+        let plain = runs.iter().fold(Expr::Lit("".into()), |acc, r| {
+            Expr::Bin(
+                crate::bind::Op::Add,
+                Box::new(acc),
+                Box::new(r.text.clone()),
+            )
+        });
+        let value = if bound {
+            PropValue::Bind(plain, None)
+        } else {
+            let text: String = runs
+                .iter()
+                .map(|r| match &r.text {
+                    Expr::Lit(v) => crate::bind::text(v),
+                    _ => String::new(),
+                })
+                .collect();
+            PropValue::Lit(Lit::Str(text))
+        };
+        self.prop(i, "label", "text", value, at, "")?;
+        if runs
+            .iter()
+            .any(|r| r.bold || r.italic || r.underline || r.strike || r.link.is_some())
+        {
+            self.doc.nodes[i].inline = runs;
+            self.doc.nodes[i].links = links;
+        }
+        Ok(())
+    }
+
+    fn runs(
+        &mut self,
+        nodes: &[Node],
+        style: &InlineRun,
+        out: &mut Vec<InlineRun>,
+        links: &mut Vec<String>,
+        translated: bool,
+    ) -> Result<(), Error> {
+        let run = |text: Expr| InlineRun {
+            text,
+            ..style.clone()
+        };
+        for node in nodes {
+            match node {
+                Node::Text(value, at) => {
+                    if !translated && !value.trim().is_empty() {
+                        self.warn(*at);
+                    }
+                    let mut collapsed = String::new();
+                    for c in value.chars() {
+                        if c.is_ascii_whitespace() {
+                            if !collapsed.ends_with(' ') {
+                                collapsed.push(' ');
+                            }
+                        } else {
+                            collapsed.push(c);
+                        }
+                    }
+                    if !collapsed.is_empty() {
+                        out.push(run(Expr::Lit(collapsed.into())));
+                    }
+                }
+                Node::Expression(value, at) => out.push(run(expression(value, *at)?)),
+                Node::Element {
+                    tag,
+                    attrs,
+                    children,
+                    at,
+                    ..
+                } if inline(node) => {
+                    let mut inner = style.clone();
+                    match tag.as_str() {
+                        "b" | "strong" => inner.bold = true,
+                        "i" | "em" => inner.italic = true,
+                        "u" => inner.underline = true,
+                        "s" | "del" => inner.strike = true,
+                        "br" => {
+                            if !children.is_empty() {
+                                return Err((*at, "<br> is empty".into()));
+                            }
+                            out.push(run(Expr::Lit("\n".into())));
+                            continue;
+                        }
+                        "a" => {
+                            if style.link.is_some() {
+                                return Err((*at, "a link cannot hold another link".into()));
+                            }
+                            let Some(href) = attrs.iter().find(|a| a.name == "href") else {
+                                return Err((*at, "an inline <a> needs an href".into()));
+                            };
+                            links.push(href.value.clone());
+                            inner.link = Some(links.len() - 1);
+                        }
+                        _ => {}
+                    }
+                    self.runs(children, &inner, out, links, translated)?;
+                }
+                Node::Element { tag, at, .. } => {
+                    return Err((
+                        *at,
+                        format!(
+                            "<{tag}> cannot sit inside text: text holds words, {{expressions}} and the inline elements b, strong, i, em, u, s, del, br, a plain <span> and <a href>; put <{tag}> beside the text in a <div>"
+                        ),
+                    ));
+                }
+                Node::If { at, .. }
+                | Node::Each { at, .. }
+                | Node::Snippet { at, .. }
+                | Node::Render { at, .. } => {
+                    return Err((
+                        *at,
+                        "a block cannot sit inside text; put it beside the text in a <div>, or use {cond ? a : b}".into(),
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Joins each `<label for>` to the control its id names: a checkbox
+    /// takes the label's text as its caption and the label goes, as the
+    /// wrapping form does; any other control keeps the label beside it
+    /// and takes its text as its name.
+    fn join_labels(&mut self) -> Result<(), Error> {
+        for (label, id, at) in std::mem::take(&mut self.label_fors) {
+            let Some(target) = self
+                .doc
+                .nodes
+                .iter()
+                .position(|n| n.id == id && matches!(n.kind, NodeKind::Element(_)))
+            else {
+                return Err((
+                    at,
+                    format!("for=\"{id}\" names no element; give the control id=\"{id}\""),
+                ));
+            };
+            let text = self.doc.nodes[label]
+                .props
+                .iter()
+                .find(|p| p.name() == "text")
+                .cloned();
+            let NodeKind::Element(kind) = self.doc.nodes[target].kind else {
+                unreachable!("found an element");
+            };
+            match kind {
+                "toggle" => {
+                    if self.doc.nodes[target]
+                        .props
+                        .iter()
+                        .any(|p| p.name() == "text")
+                    {
+                        return Err((at, format!("#{id} has a caption already; write it once")));
+                    }
+                    self.doc.nodes[target].props.extend(text);
+                    let parent = self.doc.nodes[label].parent;
+                    if parent != NONE {
+                        self.doc.nodes[parent].children.retain(|&c| c != label);
+                    }
+                    self.selectors.retain(|(n, ..)| *n != label);
+                    // Left in no tree: an anonymous text so nothing reads it.
+                    self.doc.nodes[label].kind = NodeKind::If(Expr::Lit(false.into()));
+                    self.doc.nodes[label].props.clear();
+                    self.doc.nodes[label].children.clear();
+                }
+                "field" | "select" | "slider" | "meter" | "progress" | "tabs" => {
+                    if let Some(mut text) = text
+                        && !self.doc.nodes[target]
+                            .props
+                            .iter()
+                            .any(|p| p.name() == "name")
+                    {
+                        text.spec = schema::prop("name").expect("name is a prop").0;
+                        self.doc.nodes[target].props.push(text);
+                    }
+                }
+                other => {
+                    return Err((
+                        at,
+                        format!(
+                            "for=\"{id}\" names a {other}; a label names a form control (an <input>, <select>, <textarea>, <meter> or <progress>)"
+                        ),
+                    ));
+                }
+            }
+        }
+        Ok(())
     }
     fn prop(
         &mut self,
