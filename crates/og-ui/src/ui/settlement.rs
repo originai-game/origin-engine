@@ -366,6 +366,73 @@ mod tests {
     }
 
     #[test]
+    fn replacing_span_and_image_styles_matches_a_fresh_frame() {
+        let attributes = [crate::TextSpan {
+            name: "accent".into(),
+            position: 1,
+            length: 1,
+            properties: Default::default(),
+        }];
+        let rich = crate::RichTextDesc {
+            width: Size::Fixed(120.0),
+            ..Default::default()
+        };
+        let image = ImageDesc {
+            width: Size::Fixed(31.0),
+            height: Size::Fixed(17.0),
+            label: "Preview".into(),
+            ..Default::default()
+        };
+        let mut patched = Ui::default();
+        let mut direct = Ui::default();
+        for (ui, styled) in [(&mut patched, true), (&mut direct, false)] {
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+            ui.rich_text_spans("words", "A🙂B", &attributes, rich, |_| {
+                crate::TextSpanStyle {
+                    bold: styled.then_some(true),
+                    color: styled.then_some(crate::paint::ColorRef::Literal(Srgba::BLACK)),
+                    ..Default::default()
+                }
+            });
+            ui.image(
+                "preview",
+                ImageDesc {
+                    tint: styled.then_some(Srgba::BLACK),
+                    ..image.clone()
+                },
+            );
+        }
+        patched.watch_layout_container(patched.nodes[0].key);
+        patched
+            .end_with_layout_queries(|ui, _| {
+                let before = ui.save_state();
+                // A query becomes true, then false again during settlement.
+                // Replacement must remove overrides instead of accumulating them.
+                for active in [true, false] {
+                    ui.apply_text_spans(1, "A🙂B", &attributes, rich, |_| crate::TextSpanStyle {
+                        bold: active.then_some(true),
+                        color: active.then_some(crate::paint::ColorRef::Literal(Srgba::BLACK)),
+                        ..Default::default()
+                    });
+                    ui.apply_image(
+                        2,
+                        ImageDesc {
+                            tint: active.then_some(Srgba::BLACK),
+                            ..image.clone()
+                        },
+                    );
+                }
+                assert_eq!(ui.save_state(), before);
+                Ok(vec![1, 2])
+            })
+            .unwrap();
+        direct.end();
+        assert_eq!(patched.frame.elements, direct.frame.elements);
+        assert_eq!(patched.frame.items, direct.frame.items);
+        assert_eq!(patched.frame.a11y, direct.frame.a11y);
+    }
+
+    #[test]
     fn unchanged_geometry_never_invokes_the_resolver() {
         let mut ui = Ui::default();
         build(&mut ui, 400.0);

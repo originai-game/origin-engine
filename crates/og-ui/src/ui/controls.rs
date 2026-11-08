@@ -319,16 +319,17 @@ impl Ui {
     /// A texture region, or a solid rectangle without a texture; with
     /// `aspect`, a fitting side follows the other.
     pub fn image(&mut self, id: impl Into<Id>, desc: ImageDesc) {
-        let i = self.leaf(
-            "image",
-            id.into(),
-            Element {
-                width: desc.width,
-                height: desc.height,
-                aspect: desc.aspect.max(0.0),
-                ..Element::default()
-            },
-        );
+        let i = self.leaf("image", id.into(), Element::default());
+        self.apply_image(i, desc);
+    }
+
+    pub(crate) fn apply_image(&mut self, i: usize, desc: ImageDesc) {
+        self.nodes[i].el = Element {
+            width: desc.width,
+            height: desc.height,
+            aspect: desc.aspect.max(0.0),
+            ..Element::default()
+        };
         self.nodes[i].content = Content::Image {
             texture: desc.texture,
             uv: desc.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]),

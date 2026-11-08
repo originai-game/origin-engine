@@ -338,16 +338,18 @@ impl Ui {
     /// An icon of the atlas (`set_icons`) by name; a missing name draws an
     /// empty slot and warns.
     pub fn icon(&mut self, id: impl Into<Id>, name: &str, desc: IconDesc) {
+        let i = self.leaf("icon", id.into(), Element::default());
+        self.apply_icon(i, name, desc);
+    }
+
+    pub(crate) fn apply_icon(&mut self, i: usize, name: &str, desc: IconDesc) {
         let size = if desc.size > 0.0 { desc.size } else { 24.0 };
-        let i = self.leaf(
-            "icon",
-            id.into(),
-            Element {
-                width: Size::Fixed(size),
-                height: Size::Fixed(size),
-                ..Element::default()
-            },
-        );
+        self.nodes[i].el = Element {
+            width: Size::Fixed(size),
+            height: Size::Fixed(size),
+            ..Element::default()
+        };
+        self.nodes[i].shapes.clear();
         for (name, tint) in std::iter::once((name, desc.tint.unwrap_or(self.theme.palette.ink)))
             .chain(desc.secondary.as_deref().map(|name| {
                 (
@@ -374,6 +376,11 @@ impl Ui {
     /// style only. The mark never stretches with the slot. With a
     /// height left to fit it takes the slot's aspect.
     pub fn art(&mut self, id: impl Into<Id>, desc: &ArtDesc) {
+        let i = self.leaf("art", id.into(), Element::default());
+        self.apply_art(i, desc);
+    }
+
+    pub(crate) fn apply_art(&mut self, i: usize, desc: &ArtDesc) {
         use crate::paint::{ColorRef, Effect, ElementDraw, Paint, ShapeKind};
         use crate::slot::{Mask, SlotAspect, Treatment};
         let t = self.theme;
@@ -384,16 +391,13 @@ impl Ui {
             SlotAspect::Range(lo, _) => lo.ratio(),
             SlotAspect::Free => 0.0,
         };
-        let i = self.leaf(
-            "art",
-            id.into(),
-            Element {
-                width: desc.width,
-                height: desc.height,
-                aspect,
-                ..Element::default()
-            },
-        );
+        self.nodes[i].el = Element {
+            width: desc.width,
+            height: desc.height,
+            aspect,
+            ..Element::default()
+        };
+        self.nodes[i].shapes.clear();
         let token = |n: &str, a: f32| ColorRef::Token {
             name: n.to_string(),
             alpha: a,

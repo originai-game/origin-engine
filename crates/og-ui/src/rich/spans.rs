@@ -52,8 +52,26 @@ impl Ui {
         text: &str,
         attributes: &[TextSpan],
         desc: RichTextDesc,
-        mut resolve: impl FnMut(&TextSpan) -> TextSpanStyle,
+        resolve: impl FnMut(&TextSpan) -> TextSpanStyle,
     ) -> RichTextResponse {
+        let i = self.leaf("richtext", id.into(), Element::default());
+        self.apply_text_spans(i, text, attributes, desc, resolve);
+        RichTextResponse {
+            spans: attributes.to_vec(),
+            ..Default::default()
+        }
+    }
+
+    /// Replaces structured text in its existing render node. Structured
+    /// attributes have no links; this never dispatches a control response.
+    pub(crate) fn apply_text_spans(
+        &mut self,
+        i: usize,
+        text: &str,
+        attributes: &[TextSpan],
+        desc: RichTextDesc,
+        mut resolve: impl FnMut(&TextSpan) -> TextSpanStyle,
+    ) {
         let bytes: Vec<usize> = text
             .char_indices()
             .map(|(i, _)| i)
@@ -147,9 +165,15 @@ impl Ui {
             s.synth.bold &= s.bold;
             runs.push(s);
         }
-        let mut out = self.rich_runs(id.into(), text.to_owned(), runs, desc);
-        out.spans = attributes.to_vec();
-        out
+        let node = &mut self.nodes[i];
+        node.el.width = desc.width;
+        node.probe_text = text.to_owned();
+        node.content = Content::Rich(RichContent {
+            spans: runs,
+            align: desc.align,
+            wrap: !desc.nowrap,
+        });
+        node.links.clear();
     }
 }
 
