@@ -455,6 +455,14 @@ module ui {
       unit ratio
     }
     field reducedTransparency bool "Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
+    field colorVision ColorVision "The player's colour vision (a settings screen's colour-blind mode): the whole frame, the scene and the UI alike, is recoloured for it after every other effect (colorVisionFilter), and a document's CSS reads it as @media (-og-color-vision: protanopia) to add the cues it needs. none (the default) draws the frame as it is. Simulation uses Viénot 1999 for protanopia and deuteranopia and Brettel 1997 for tritanopia; correction is Fidaner 2005's daltonisation over them (docs/ui.md §3.2)."
+    field colorVisionFilter ColorVisionFilter "What colorVision does to the frame: correct (the default; the player's setting) or simulate (how a viewer with it sees the frame, for checking a screen)."
+    field colorVisionStrength f32 "The deficiency's severity, 0 to 1: 1 (the default) a dichromat's; less blends towards the frame as it is, for the commoner anomalous trichromacy." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+    }
     field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the style's."
     field fallbackIcons Option.IconAtlasDesc "The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. og.ui.icon, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none."
     field images List.UiInlineImage "Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours."
@@ -548,8 +556,11 @@ module ui {
     field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
     field textScale f32 "The player's text scale in effect (UiDesc.textScale, 1 to 1.5): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."
     field unit f32 "The og-ui unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what every length the UI reads and gives is in, og.ui.bounds and og.ui.viewport too. Only what leaves the UI for the page is CSS px: the probe's dump_ui and og.render's screen sprites; a game drawing its own screen sprites beside the UI multiplies by it."
+    field colorVision ColorVision "The player's colour vision in effect (UiDesc.colorVision)."
+    field colorVisionFilter ColorVisionFilter "Whether the frame is corrected or simulated for it."
+    field colorVisionStrength f32 "Its severity, 0 to 1."
     field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
-    field tokens Json "The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
+    field tokens Json "The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, `cues` (each colour token's cue besides its hue, by name: `{ icon: <index in the style's icons> }`, `{ pattern: <name> }` or `{ pips: <n> }`; docs/ui.md §3.2), and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
   }
 
   callback UiBuild {
@@ -759,6 +770,20 @@ module ui {
     variant tablet "The shorter side 600 or more, under 1024 wide."
     variant phoneLandscape "The shorter side under 600, wider than tall."
     variant phonePortrait "The shorter side under 600, taller than wide."
+  }
+
+  enum ColorVision {
+    doc "A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>))."
+    variant none "Typical colour vision: no filter."
+    variant protanopia "No red-sensitive cones: reds dark, red and green confused."
+    variant deuteranopia "No green-sensitive cones: red and green confused."
+    variant tritanopia "No blue-sensitive cones: blue and green, yellow and violet confused."
+  }
+
+  enum ColorVisionFilter {
+    doc "What UiDesc.colorVision does to the frame."
+    variant correct "Recolours the frame so what the deficiency confuses is told apart (daltonisation)."
+    variant simulate "Shows the frame as a viewer with the deficiency sees it."
   }
 
   enum Contrast {

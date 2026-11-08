@@ -32,4 +32,4 @@ struct DamageHitDesc {
 }
 ```
 
-<sub>Module `ui` line 6387</sub>
+<sub>Module `ui` line 6412</sub>

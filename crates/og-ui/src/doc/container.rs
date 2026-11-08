@@ -243,6 +243,7 @@ impl Condition {
                 width,
                 height,
                 reduced_motion: false,
+                color_vision: og_render::ColorVision::Typical,
             },
             &mut Reads::default(),
         )

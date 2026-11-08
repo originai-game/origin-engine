@@ -89,6 +89,8 @@ module ui {
 | [`Tone`](ui/type-Tone.md) | enum |  | A status tone of badges, toasts and map markers. |
 | [`MeterKind`](ui/type-MeterKind.md) | enum |  | What a meter measures, which sets its colour. |
 | [`Breakpoint`](ui/type-Breakpoint.md) | enum |  | The play surface's size class. |
+| [`ColorVision`](ui/type-ColorVision.md) | enum |  | A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>)). |
+| [`ColorVisionFilter`](ui/type-ColorVisionFilter.md) | enum |  | What UiDesc.colorVision does to the frame. |
 | [`Contrast`](ui/type-Contrast.md) | enum |  | The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour). |
 | [`NavIntent`](ui/type-NavIntent.md) | enum |  | A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give. |
 | [`UiRect`](ui/type-UiRect.md) | struct |  | A rectangle of the play surface. |
@@ -722,7 +724,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 6764</sub>
+<sub>Module `ui` line 6789</sub>
 
 ```ogt
 column UiMaterial {
@@ -733,4 +735,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 6771</sub>
+<sub>Module `ui` line 6796</sub>

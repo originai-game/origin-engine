@@ -1,0 +1,8 @@
+{
+  "added": [
+    {"member":"UiDesc.colorVision","summary":"Colour-blind modes as a player setting: protanopia, deuteranopia or tritanopia. The whole frame, scene and UI alike, is recoloured after every other effect: corrected by daltonisation (the default) or simulated for checking a screen (UiDesc.colorVisionFilter), at UiDesc.colorVisionStrength. Simulation is Viénot 1999 and Brettel 1997 from libDaltonLens; correction is Fidaner 2005."},
+    {"member":"UiTheme.colorVision","summary":"The colour vision setting in effect, with its filter and strength."},
+    {"member":"@media (-og-color-vision)","summary":"Document CSS reads the player's colour vision: `(-og-color-vision)` for any mode, `(-og-color-vision: deuteranopia)` for one; a retained mount restyles only the elements that read it when the setting changes."},
+    {"member":"-og-cue","summary":"An <icon> draws a colour token's icon cue (`-og-cue: danger`, a status, rarity, team or damage type), the icon the style pairs with that colour, so a state never rests on colour alone."}
+  ]
+}

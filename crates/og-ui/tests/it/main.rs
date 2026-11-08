@@ -8,6 +8,8 @@ mod gpu_tests;
 mod a11y;
 #[path = "../button_contrast.rs"]
 mod button_contrast;
+#[path = "../color_vision.rs"]
+mod color_vision;
 #[path = "../documents.rs"]
 mod documents;
 #[path = "../dressing.rs"]

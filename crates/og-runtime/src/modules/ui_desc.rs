@@ -424,6 +424,12 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
         "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
         "reducedMotion": theme.reduced_motion,
         "reducedTransparency": theme.reduced_transparency,
+        "colorVision": theme.color_vision.name(),
+        "colorVisionFilter": match theme.color_vision_filter {
+            og_render::ColorVisionFilter::Correct => "correct",
+            og_render::ColorVisionFilter::Simulate => "simulate",
+        },
+        "colorVisionStrength": theme.color_vision_strength,
         "textScale": theme.text_scale,
         "unit": theme.unit,
         "tokens": tokens_json(&theme.tokens),
@@ -524,6 +530,20 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
         .iter()
         .map(|&r| (r.name().to_string(), json!(hex(t.rarity(r).color))))
         .collect();
+    // What carries each colour token's meaning besides its hue (docs/ui.md
+    // §3.2): an icon (its index in the style's icons), a pattern or pips.
+    let cues: Map<String, Value> = colour_token_names()
+        .into_iter()
+        .filter_map(|name| {
+            let v = match t.colors.cue(&name)? {
+                Cue::None => return None,
+                Cue::Icon(i) => json!({ "icon": i }),
+                Cue::Pattern(p) => json!({ "pattern": p.name() }),
+                Cue::Pips(n) => json!({ "pips": n }),
+            };
+            Some((name, v))
+        })
+        .collect();
     let feedback: Map<String, Value> = SoundEvent::ALL
         .iter()
         .map(|&e| {
@@ -547,6 +567,7 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
         "staggerMs": t.motion.stagger_ms,
         "overshoot": t.motion.overshoot,
         "rarity": rarity,
+        "cues": cues,
         "team": swatches(&t.colors.team),
         "series": t.colors.series.iter().map(|c| hex(*c)).collect::<Vec<_>>(),
         "feedback": feedback,

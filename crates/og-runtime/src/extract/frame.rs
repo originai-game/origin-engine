@@ -47,6 +47,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.sprites.clear();
     scene.sprite_meshes.clear();
     scene.overlay = None;
+    scene.color_filter = None;
     scene.joint_palettes.clear();
     scene.skinned_instances.clear();
     scene.crowds.clear();

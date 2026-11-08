@@ -197,6 +197,10 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         add(label, wgsl);
     }
     add("glass", crate::glass::GLASS_WGSL.to_string());
+    add(
+        "color filter",
+        crate::color_vision::COLOR_FILTER_WGSL.to_string(),
+    );
     add("overlay", crate::overlay::overlay_source());
     // The UI pass (src/ui): its shapes, the built-in materials' composite
     // and a custom material's.

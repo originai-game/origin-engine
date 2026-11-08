@@ -49,7 +49,8 @@ impl Renderer {
         let glass_on = overlay_frame
             .as_ref()
             .is_some_and(overlay::OverlayFrame::reads_backdrop);
-        if glass_on
+        // A colour filter reads the whole frame from the same source.
+        if (glass_on || scene.color_filter.is_some())
             && self
                 .glass_targets
                 .as_ref()

@@ -119,17 +119,24 @@ impl Ui {
                     ..Default::default()
                 },
             ),
-            "icon" => self.apply_icon(
-                i,
-                r.str("icon").unwrap_or_default(),
-                crate::widgets::IconDesc {
-                    size: r.num("iconSize").unwrap_or(0.0),
-                    tint: r.color("color"),
-                    secondary: r.str("secondary").map(str::to_string),
-                    secondary_tint: r.color("secondaryTint"),
-                    label: r.str("name").map(str::to_string),
-                },
-            ),
+            "icon" => {
+                let name = match (r.str("icon"), r.str("cue")) {
+                    (Some(icon), _) => icon.to_string(),
+                    (None, Some(token)) => self.cue_icon(token).unwrap_or_default(),
+                    (None, None) => String::new(),
+                };
+                self.apply_icon(
+                    i,
+                    &name,
+                    crate::widgets::IconDesc {
+                        size: r.num("iconSize").unwrap_or(0.0),
+                        tint: r.color("color"),
+                        secondary: r.str("secondary").map(str::to_string),
+                        secondary_tint: r.color("secondaryTint"),
+                        label: r.str("name").map(str::to_string),
+                    },
+                )
+            }
             "art" => {
                 let path = base.art.clone().expect("art render fields");
                 let spec = crate::slot::SlotSpec::from_props(

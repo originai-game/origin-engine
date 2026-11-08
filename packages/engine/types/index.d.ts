@@ -24640,6 +24640,26 @@ export interface UiDesc {
    */
   readonly reducedTransparency?: boolean;
   /**
+   * The player's colour vision (a settings screen's colour-blind mode): the whole frame, the scene and the UI alike, is recoloured for it after every other effect (colorVisionFilter), and a document's CSS reads it as @media (-og-color-vision: protanopia) to add the cues it needs. none (the default) draws the frame as it is. Simulation uses Viénot 1999 for protanopia and deuteranopia and Brettel 1997 for tritanopia; correction is Fidaner 2005's daltonisation over them (docs/ui.md §3.2).
+   *
+   * @default "none"
+   */
+  readonly colorVision?: ColorVision;
+  /**
+   * What colorVision does to the frame: correct (the default; the player's setting) or simulate (how a viewer with it sees the frame, for checking a screen).
+   *
+   * @default "correct"
+   */
+  readonly colorVisionFilter?: ColorVisionFilter;
+  /**
+   * The deficiency's severity, 0 to 1: 1 (the default) a dichromat's; less blends towards the frame as it is, for the commoner anomalous trichromacy.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly colorVisionStrength?: number;
+  /**
    * The icon atlas og.ui.icon draws from; null takes the style's.
    *
    * @default null
@@ -24865,12 +24885,18 @@ export interface UiTheme {
    * The og-ui unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what every length the UI reads and gives is in, og.ui.bounds and og.ui.viewport too. Only what leaves the UI for the page is CSS px: the probe's dump_ui and og.render's screen sprites; a game drawing its own screen sprites beside the UI multiplies by it.
    */
   readonly unit: number;
+  /** The player's colour vision in effect (UiDesc.colorVision). */
+  readonly colorVision: ColorVision;
+  /** Whether the frame is corrected or simulated for it. */
+  readonly colorVisionFilter: ColorVisionFilter;
+  /** Its severity, 0 to 1. */
+  readonly colorVisionStrength: number;
   /**
    * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
    */
   readonly reducedTransparency: boolean;
   /**
-   * The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses).
+   * The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, `cues` (each colour token's cue besides its hue, by name: `{ icon: <index in the style's icons> }`, `{ pattern: <name> }` or `{ pips: <n> }`; docs/ui.md §3.2), and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses).
    */
   readonly tokens: unknown;
 }
@@ -25021,6 +25047,22 @@ export type MeterKind = "health" | "mana" | "xp" | "primary";
  * - `"phonePortrait"`: The shorter side under 600, taller than wide.
  */
 export type Breakpoint = "desktop" | "tablet" | "phoneLandscape" | "phonePortrait";
+
+/**
+ * A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>)).
+ * - `"none"`: Typical colour vision: no filter.
+ * - `"protanopia"`: No red-sensitive cones: reds dark, red and green confused.
+ * - `"deuteranopia"`: No green-sensitive cones: red and green confused.
+ * - `"tritanopia"`: No blue-sensitive cones: blue and green, yellow and violet confused.
+ */
+export type ColorVision = "none" | "protanopia" | "deuteranopia" | "tritanopia";
+
+/**
+ * What UiDesc.colorVision does to the frame.
+ * - `"correct"`: Recolours the frame so what the deficiency confuses is told apart (daltonisation).
+ * - `"simulate"`: Shows the frame as a viewer with the deficiency sees it.
+ */
+export type ColorVisionFilter = "correct" | "simulate";
 
 /**
  * The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour).

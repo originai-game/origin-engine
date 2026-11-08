@@ -28,4 +28,4 @@ fn hasIcon {
 }
 ```
 
-<sub>Module `ui` line 1162</sub>
+<sub>Module `ui` line 1187</sub>

@@ -409,6 +409,24 @@ impl TypeToken {
     }
 }
 
+impl ColorTokens {
+    /// The cue of colour token `name` (`danger`, `epic`, `team3`, `fire`;
+    /// [`colour_token_names`]), or `None` for no such token or a series.
+    pub fn cue(&self, name: &str) -> Option<Cue> {
+        if let Some(s) = Status::from_name(name) {
+            return Some(self.status[s.index()]);
+        }
+        if let Some(r) = Rarity::from_name(name) {
+            return Some(self.rarity[r.index()].cue);
+        }
+        if let Some(d) = DamageType::from_name(name) {
+            return Some(self.damage[d.index()].cue);
+        }
+        let k = name.strip_prefix("team")?.parse::<usize>().ok()?;
+        (1..=TEAMS).contains(&k).then(|| self.team[k - 1].cue)
+    }
+}
+
 /// The type scale: every [`TypeRole`] at every [`Breakpoint`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeScale {
@@ -668,4 +686,5 @@ fn round_to(v: f32, k: f32) -> f32 {
 mod convert;
 mod parse;
 pub use convert::*;
+pub use parse::colour_token_names;
 pub(crate) use parse::*;

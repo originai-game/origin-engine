@@ -265,6 +265,7 @@ Its own props, beside every element's:
 | `-og-secondary-tint:` | `var(--<role>) \| #rrggbb[aa]` | The second layer's ink; accent by default. |
 | `icon` | `name` | The icon's name in the style's set. |
 | `icon-size` | `number` | CSS px (24 by default). |
+| `-og-cue:` | `<name>` | A colour token whose cue it draws (`-og-cue: danger`, docs/ui.md §3.2): the style's icon for that status, rarity, team or damage type, so its meaning never rests on colour alone. Its `icon`, when set, wins. |
 
 <a id="guide-components-15"></a>
 ### `components §15` `<progress>` (`progress`): A progress bar

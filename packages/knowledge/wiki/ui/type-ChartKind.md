@@ -31,4 +31,4 @@ enum ChartKind {
 }
 ```
 
-<sub>Module `ui` line 2611</sub>
+<sub>Module `ui` line 2636</sub>

@@ -528,7 +528,8 @@ token-only rule (§3.1).
 
 Media rules use standard conditions, such as
 `@media (width < 600px), (height < 600px)`. Supported features are `width`,
-`height`, `aspect-ratio`, `orientation`, and `prefers-reduced-motion`, with
+`height`, `aspect-ratio`, `orientation`, `prefers-reduced-motion` and
+`-og-color-vision` (below), with
 inclusive `min-`/`max-` bounds and range comparisons. Commas and `or` select
 alternatives, `and` intersects, and `not` negates; mixed operators require
 parentheses. Nested media rules intersect. There is no named-breakpoint
@@ -610,6 +611,31 @@ Hover, pressed, focus-visible, selected, disabled, and selected+disabled
 are distinct requirements. A selected item can also have focus; selection
 must not hide the focus indicator. Disabled controls emit no activation
 intent. State information cannot depend on colour alone.
+
+Colour-blind modes are a player setting, `UiDesc.colorVision`: `protanopia`,
+`deuteranopia` or `tritanopia` (`none` by default). The whole frame, scene
+and UI alike, goes through one filter after every other effect
+(`crates/og-render/src/color_vision.rs`): correction by default,
+Fidaner's 2005 daltonisation, which moves what the viewer loses into the
+channels they still tell apart; or, with `colorVisionFilter: "simulate"`,
+how such a viewer sees the frame, for checking a screen. Simulation is
+Viénot 1999 for protanopia and deuteranopia and Brettel 1997 for
+tritanopia, as libDaltonLens publishes them (`third_party/daltonlens`).
+`colorVisionStrength` (0 to 1) blends towards the unfiltered frame for
+anomalous trichromacy. Typical vision costs nothing; a mode costs one
+full-screen pass over the frame, the glass path's source copy. The
+filter is presentation only: no world state or hash reads it.
+
+Colour is never the only signal at the token level either. Every status
+and rarity colour token pairs its colour with a cue, an icon, a pattern
+or pips, distinct within its group, and the style refuses to cook
+without one; team and damage colours may take one. A document draws a
+token's icon cue with `icon { -og-cue: danger; }`, the icon the style
+names for that token (an `icon` attribute wins). `@media
+(-og-color-vision)` matches any mode and `(-og-color-vision:
+deuteranopia)` one, so a pack can add cues, patterns or stronger
+contrast when the player needs them; a retained mount restyles only the
+elements that read the feature when the setting changes.
 
 Button glyphs and input prompts follow the active device and switch live:
 keyboard and mouse, Xbox, PlayStation, Switch, generic gamepad, and touch.
@@ -909,9 +935,8 @@ Variable-height virtualization and localized number/date formatting
 needed by kits are core prerequisites,
 not invitations to private kit workarounds. Per-frame UI cost and its
 performance tests are independent measured work; this document claims no
-unmeasured performance budget has passed. Colour-blind
-modes and live regions require explicit core delivery before
-authors can claim support. Author knowledge belongs in guides, not shipped
+unmeasured performance budget has passed. Live regions
+require explicit core delivery before authors can claim support. Author knowledge belongs in guides, not shipped
 skills. No kit silently implements those missing facilities itself.
 
 The [gate rules](ci.md) own test lanes, locks, and toolchain policy.

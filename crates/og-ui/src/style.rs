@@ -443,6 +443,16 @@ pub struct Theme {
     /// ([`Theme::to_reduced_transparency`]). A game reads it to flatten
     /// its own (IDL `UiTheme.reducedTransparency`).
     pub reduced_transparency: bool,
+    /// The player's colour vision setting (docs/ui.md §3.2, IDL
+    /// `UiDesc.colorVision`): the frame, scene and UI alike, goes through
+    /// [`og_render::ColorFilter`] for it, and document CSS reads it as
+    /// `@media (-og-color-vision: …)`.
+    pub color_vision: og_render::ColorVision,
+    /// Correct for `color_vision` (the player's setting) or simulate it
+    /// (checking a screen).
+    pub color_vision_filter: og_render::ColorVisionFilter,
+    /// The deficiency's severity, 0 to 1 (1: a dichromat's).
+    pub color_vision_strength: f32,
     /// The player's text scale (docs/ui.md §6.1), 1 to 2: every text size
     /// and leading grows by it (the type ramp here and each role's step,
     /// [`crate::Ui::type_step`]), and control, row and header heights by
@@ -525,6 +535,9 @@ impl Theme {
             outline: false,
             reduced_motion: false,
             reduced_transparency: false,
+            color_vision: og_render::ColorVision::Typical,
+            color_vision_filter: og_render::ColorVisionFilter::Correct,
+            color_vision_strength: 1.0,
             text_scale: 1.0,
             ramp_scale: 1.0,
             unit_pin: 0.0,
@@ -642,6 +655,16 @@ impl Theme {
         }
         t.reduced_transparency = true;
         t
+    }
+
+    /// The filter the frame goes through for the player's colour vision
+    /// (`RenderScene::color_filter`); `None` for typical vision.
+    pub fn color_filter(&self) -> Option<og_render::ColorFilter> {
+        og_render::ColorFilter::new(
+            self.color_vision,
+            self.color_vision_filter,
+            self.color_vision_strength,
+        )
     }
 
     /// The og-ui unit of a play surface (docs/ui.md §6.1): on a mouse or

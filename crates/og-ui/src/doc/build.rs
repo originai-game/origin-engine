@@ -449,6 +449,7 @@ impl Ui {
             width: vp.width,
             height: vp.height,
             reduced_motion: self.theme().reduced_motion,
+            color_vision: self.theme().color_vision,
         };
         let mut media_reads = super::media::Reads::default();
         let chain = super::container::chain(inherited);

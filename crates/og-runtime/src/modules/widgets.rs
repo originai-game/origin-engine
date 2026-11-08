@@ -312,6 +312,9 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
         return;
     };
     let ui = ui.lock();
+    // The player's colour vision filter over the whole frame (docs/ui.md
+    // §3.2), whether or not the UI draws anything this frame.
+    rs.scene.color_filter = ui.theme().color_filter();
     let frame = ui.frame();
     let world_frame = ui.world_frame();
     if frame.items.is_empty() && world_frame.batches.is_empty() {

@@ -482,6 +482,9 @@ pub struct Ui {
     /// Open focus scopes this frame, in build order.
     pub(crate) scopes: Vec<usize>,
     pub(crate) icons: IconAtlas,
+    /// The style's icon names, which its colour tokens' icon cues index
+    /// (`Ui::set_cue_icons`); empty: the atlas's own names.
+    pub(crate) cue_icons: Vec<String>,
     /// Text a control keeps between ticks while it is open (a dropdown's
     /// filter), by key: names of the frame's UI, dropped when it closes.
     pub(crate) kept_texts: crate::id::KeyMap<String>,

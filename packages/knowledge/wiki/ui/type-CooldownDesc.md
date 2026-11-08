@@ -29,4 +29,4 @@ struct CooldownDesc {
 }
 ```
 
-<sub>Module `ui` line 985</sub>
+<sub>Module `ui` line 1010</sub>

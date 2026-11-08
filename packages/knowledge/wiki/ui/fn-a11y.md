@@ -23,4 +23,4 @@ fn a11y {
 }
 ```
 
-<sub>Module `ui` line 1659</sub>
+<sub>Module `ui` line 1684</sub>

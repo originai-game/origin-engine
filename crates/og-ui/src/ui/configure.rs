@@ -58,6 +58,7 @@ impl Ui {
             request_focus: 0,
             scopes: Vec::new(),
             icons: IconAtlas::default(),
+            cue_icons: Vec::new(),
             kept_texts: Default::default(),
             images: Default::default(),
             toast_anchor: Anchor::Bottom,
@@ -103,6 +104,38 @@ impl Ui {
 
     pub fn icons(&self) -> &IconAtlas {
         &self.icons
+    }
+
+    /// The style's `icons` names, in its order: a colour token's icon cue
+    /// is an index into them (`crate::tokens::Cue::Icon`), whichever atlas
+    /// the game draws icons from. Empty takes the atlas's own names.
+    pub fn set_cue_icons(&mut self, names: Vec<String>) {
+        self.cue_icons = names;
+    }
+
+    /// The icon colour token `token`'s cue names (`-og-cue`, docs/ui.md
+    /// §3.2), or `None` (warned) when the token has no icon cue.
+    pub(crate) fn cue_icon(&mut self, token: &str) -> Option<String> {
+        use crate::tokens::Cue;
+        let cue = self.theme().tokens.colors.cue(token);
+        let names = if self.cue_icons.is_empty() {
+            &self.icons.names
+        } else {
+            &self.cue_icons
+        };
+        match cue {
+            Some(Cue::Icon(i)) => {
+                if let Some(n) = names.get(usize::from(i)) {
+                    return Some(n.clone());
+                }
+                self.warn(format!("-og-cue: {token}'s icon {i} is not in the style's icons"));
+            }
+            Some(other) => self.warn(format!(
+                "-og-cue: {token}'s cue is {other:?}, not an icon: give it `icon \"<name>\"` in the style's colors"
+            )),
+            None => self.warn(format!("-og-cue: '{token}' is not a colour token")),
+        }
+        None
     }
 
     /// The pictures rich text draws inline by name (`[img=<name>]`).

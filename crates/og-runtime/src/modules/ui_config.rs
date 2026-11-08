@@ -112,6 +112,17 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         }
         theme.reduced_motion = d["reducedMotion"].as_bool().unwrap_or(false);
         theme.reduced_transparency = d["reducedTransparency"].as_bool().unwrap_or(false);
+        theme.color_vision = d["colorVision"]
+            .as_str()
+            .and_then(og_render::ColorVision::from_name)
+            .unwrap_or_default();
+        theme.color_vision_filter = match d["colorVisionFilter"].as_str() {
+            Some("simulate") => og_render::ColorVisionFilter::Simulate,
+            _ => og_render::ColorVisionFilter::Correct,
+        };
+        theme.color_vision_strength = d["colorVisionStrength"]
+            .as_f64()
+            .map_or(1.0, |v| v.clamp(0.0, 1.0) as f32);
         theme.text_scale = d["textScale"].as_f64().map_or(1.0, |v| v as f32);
         theme.unit_pin = d["unitScale"].as_f64().map_or(0.0, |v| {
             if v > 0.0 {
@@ -337,6 +348,14 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             && fonts.chain.is_empty();
         ui.set_fonts(fonts);
         ui.set_icons(atlas);
+        // The style's own icon names: its colour tokens' icon cues index them.
+        ui.set_cue_icons(
+            style
+                .as_ref()
+                .and_then(|s| s.0.icons.as_ref())
+                .map(|i| i.3.clone())
+                .unwrap_or_default(),
+        );
         ui.set_images(images);
         ui.set_style_name(style.as_ref().map_or("", |s| s.0.name.as_str()));
         ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));

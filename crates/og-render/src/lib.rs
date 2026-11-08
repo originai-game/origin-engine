@@ -86,6 +86,8 @@ mod blue_noise;
 mod capture;
 mod clouds;
 mod clusters;
+mod color_vision;
+pub use color_vision::{ColorFilter, ColorVision, ColorVisionFilter};
 mod compact;
 mod crowd;
 mod crowd_gpu;

@@ -29,6 +29,10 @@ pub(crate) struct GlassPasses {
     layout: wgpu::BindGroupLayout,
     down: crate::deferred::Deferred<wgpu::RenderPipeline>,
     blit: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// The colour vision filter's blit (crate::color_vision).
+    filter: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// `FilterParams` (color_filter.wgsl).
+    filter_params: wgpu::Buffer,
     sampler: wgpu::Sampler,
     /// `[decode, 0, width, height]` for the first level: decode 1 when the
     /// source holds sRGB-encoded values (a non-sRGB output, which the
@@ -80,6 +84,8 @@ pub(crate) struct GlassTargets {
     /// The pyramid for the overlay's glass runs (the sprite layout).
     pub overlay_group: wgpu::BindGroup,
     blit_group: wgpu::BindGroup,
+    /// `source` through the colour filter's params.
+    filter_group: wgpu::BindGroup,
     down_groups: Vec<wgpu::BindGroup>,
 }
 
@@ -95,7 +101,7 @@ impl GlassTargets {
 impl GlassPasses {
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
-        crate::deferred::warm_one(&[&self.down, &self.blit])
+        crate::deferred::warm_one(&[&self.down, &self.blit, &self.filter])
     }
 
     pub fn new(
@@ -158,6 +164,26 @@ impl GlassPasses {
             output_format,
             None,
         );
+        let filter_module = crate::deferred::module(
+            device,
+            "color filter",
+            crate::color_vision::COLOR_FILTER_WGSL.into(),
+        );
+        let filter = crate::post::deferred_fullscreen(
+            device,
+            "color filter",
+            &filter_module,
+            "fs_filter",
+            &pl,
+            output_format,
+            None,
+        );
+        let filter_params = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("color filter"),
+            size: 112,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("glass"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -192,6 +218,8 @@ impl GlassPasses {
             layout,
             down,
             blit,
+            filter,
+            filter_params,
             sampler,
             uniform,
             off,
@@ -306,6 +334,7 @@ impl GlassPasses {
             })
         };
         let blit_group = group(&source_view, &self.off);
+        let filter_group = group(&source_view, &self.filter_params);
         let overlay_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("glass pyramid"),
             layout: sprite_layout,
@@ -355,20 +384,9 @@ impl GlassPasses {
             behind_view,
             overlay_group,
             blit_group,
+            filter_group,
             down_groups,
         }
-    }
-
-    /// Copies the source to the output and writes the pyramid's levels.
-    pub fn encode(
-        &self,
-        queue: &wgpu::Queue,
-        encoder: &mut crate::Encoder,
-        targets: &GlassTargets,
-        output: &wgpu::TextureView,
-        decode: bool,
-    ) -> u32 {
-        self.blit(encoder, targets, output) + self.pyramid(queue, encoder, targets, decode)
     }
 
     /// Copies the source as it is now into `behind` (what a blend that
@@ -400,6 +418,33 @@ impl GlassPasses {
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
             &self.blit,
             &targets.blit_group,
+        );
+        1
+    }
+
+    /// Copies the source to the output through colour filter `filter`
+    /// (`decode`: the source holds sRGB-encoded values).
+    pub fn filter(
+        &self,
+        queue: &wgpu::Queue,
+        encoder: &mut crate::Encoder,
+        targets: &GlassTargets,
+        output: &wgpu::TextureView,
+        filter: &crate::ColorFilter,
+        decode: bool,
+    ) -> u32 {
+        queue.write_buffer(
+            &self.filter_params,
+            0,
+            bytemuck::cast_slice(&filter.params(decode)),
+        );
+        fullscreen_pass(
+            encoder,
+            "color filter",
+            output,
+            wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+            &self.filter,
+            &targets.filter_group,
         );
         1
     }

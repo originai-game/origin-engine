@@ -7,6 +7,8 @@ pub struct Context {
     pub width: f32,
     pub height: f32,
     pub reduced_motion: bool,
+    /// The player's colour vision setting (`-og-color-vision`).
+    pub color_vision: og_render::ColorVision,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -14,6 +16,7 @@ pub struct Reads {
     pub width: bool,
     pub height: bool,
     pub reduced_motion: bool,
+    pub color_vision: bool,
 }
 
 impl Reads {
@@ -21,6 +24,7 @@ impl Reads {
         self.width |= other.width;
         self.height |= other.height;
         self.reduced_motion |= other.reduced_motion;
+        self.color_vision |= other.color_vision;
     }
 }
 
@@ -68,6 +72,9 @@ pub enum Feature {
     AspectRatio(Comparison, f64, f64),
     Portrait(bool),
     ReducedMotion(bool),
+    /// `(-og-color-vision: <mode>)`; `None`, the boolean form: any mode
+    /// but `none`.
+    ColorVision(Option<og_render::ColorVision>),
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -149,6 +156,13 @@ impl Query {
                 Feature::ReducedMotion(value) => {
                     reads.reduced_motion = true;
                     context.reduced_motion == value
+                }
+                Feature::ColorVision(value) => {
+                    reads.color_vision = true;
+                    match value {
+                        Some(v) => context.color_vision == v,
+                        None => context.color_vision != og_render::ColorVision::Typical,
+                    }
                 }
             },
         }
@@ -362,12 +376,23 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                 }
                 "orientation" => Ok(Query::All),
                 "prefers-reduced-motion" => Ok(Query::Feature(Feature::ReducedMotion(true))),
+                "-og-color-vision" => Ok(Query::Feature(Feature::ColorVision(None))),
                 _ => Err(ParseError::custom(format!(
                     "unsupported boolean media feature {name}"
                 ))),
             };
         }
         if input.try_parse(|p| p.expect_colon()).is_ok() {
+            if name == "-og-color-vision" {
+                let word = input.expect_ident_cloned()?.to_ascii_lowercase();
+                return og_render::ColorVision::from_name(&word)
+                    .map(|v| Query::Feature(Feature::ColorVision(Some(v))))
+                    .ok_or_else(|| {
+                        ParseError::custom(format!(
+                            "unsupported -og-color-vision value {word}; use none, protanopia, deuteranopia or tritanopia"
+                        ))
+                    });
+            }
             if name == "orientation" || name == "prefers-reduced-motion" {
                 let word = input.expect_ident_cloned()?.to_ascii_lowercase();
                 return match (name.as_str(), word.as_str()) {
@@ -425,6 +450,7 @@ mod tests {
             width: 600.0,
             height: 400.0,
             reduced_motion: false,
+            color_vision: og_render::ColorVision::Typical,
         };
         for (source, expected) in [
             ("(600px >= width > 599.5px)", true),
@@ -459,7 +485,8 @@ mod tests {
             Context {
                 width: 600.0,
                 height: 400.0,
-                reduced_motion: false
+                reduced_motion: false,
+                color_vision: og_render::ColorVision::Typical,
             },
             &mut reads
         ));
@@ -468,7 +495,8 @@ mod tests {
             Reads {
                 width: true,
                 height: false,
-                reduced_motion: true
+                reduced_motion: true,
+                color_vision: false,
             }
         );
         let mut reads = Reads::default();
@@ -476,7 +504,8 @@ mod tests {
             Context {
                 width: 400.0,
                 height: 300.0,
-                reduced_motion: false
+                reduced_motion: false,
+                color_vision: og_render::ColorVision::Typical,
             },
             &mut reads
         ));
@@ -485,7 +514,8 @@ mod tests {
             Reads {
                 width: true,
                 height: true,
-                reduced_motion: false
+                reduced_motion: false,
+                color_vision: false,
             }
         );
     }

@@ -247,6 +247,9 @@ pub struct RenderScene {
     pub skinned_instances: Vec<SkinnedInstance>,
     /// Screen-space sprites and text over the finished frame (`None`: none).
     pub overlay: Option<Overlay>,
+    /// The player's colour vision filter over the finished frame, scene and
+    /// overlay alike (`None`: none; crate::ColorFilter).
+    pub color_filter: Option<crate::ColorFilter>,
     /// Fog over the main pass (`None`: none).
     pub fog: Option<crate::Fog>,
     /// Clouds in the procedural sky (`clouds.rs`; `None`: none). Drawn

@@ -122,7 +122,7 @@ pub struct RetainedHost {
     viewport: Option<crate::doc::media::Context>,
     theme: Option<crate::Theme>,
     theme_epoch: u64,
-    media: [BTreeSet<MountedNode>; 3],
+    media: [BTreeSet<MountedNode>; 4],
     materializing: Option<Materialization>,
     built_tick: Option<u64>,
     /// Elements whose render nodes must be written again this frame.
@@ -703,12 +703,14 @@ impl RetainedHost {
             width: ui.viewport.width,
             height: ui.viewport.height,
             reduced_motion: ui.theme().reduced_motion,
+            color_vision: ui.theme().color_vision,
         };
         if let Some(old) = self.viewport.replace(viewport) {
             for (axis, changed) in [
                 old.width != viewport.width,
                 old.height != viewport.height,
                 old.reduced_motion != viewport.reduced_motion,
+                old.color_vision != viewport.color_vision,
             ]
             .into_iter()
             .enumerate()
@@ -975,9 +977,14 @@ impl RetainedHost {
         let text = values.str("text").unwrap_or_default().to_owned();
         let previous = e.resolved.as_ref().map(|r| &r.values.cascade);
         let reads = values.cascade.viewport_reads;
-        for (axis, read) in [reads.width, reads.height, reads.reduced_motion]
-            .into_iter()
-            .enumerate()
+        for (axis, read) in [
+            reads.width,
+            reads.height,
+            reads.reduced_motion,
+            reads.color_vision,
+        ]
+        .into_iter()
+        .enumerate()
         {
             if read {
                 self.media[axis].insert(identity.clone());

@@ -1174,3 +1174,21 @@ test("formats: round axis steps, true minus signs, signed deltas", () => {
   expect(formatDelta(-3, "grouped")).toBe("−3");
   expect(formatDelta(0, "grouped")).toBe("±0");
 });
+
+test("colorVision: the player's colour-blind mode reaches the theme, partial configure keeps it, null clears it", () => {
+  // Wrong: a setting read but not reported (a settings screen cannot show it), one lost when
+  // another field is configured, or a strength left unclamped.
+  const engine = run(() => og.ui.text("T", "Status"));
+  const theme = () => og.ui.theme(engine.world) as unknown as { colorVision: string; colorVisionFilter: string; colorVisionStrength: number };
+  expect(theme().colorVision).toBe("none");
+  og.ui.configure(engine.world, { colorVision: "deuteranopia", colorVisionStrength: 3 } as never);
+  engine.advance(2);
+  expect(theme()).toMatchObject({ colorVision: "deuteranopia", colorVisionFilter: "correct", colorVisionStrength: 1 });
+  og.ui.configure(engine.world, { textScale: 1.2 });
+  engine.advance(2);
+  expect(theme().colorVision).toBe("deuteranopia");
+  og.ui.configure(engine.world, { colorVision: null, colorVisionFilter: "simulate" } as never);
+  engine.advance(2);
+  expect(theme()).toMatchObject({ colorVision: "none", colorVisionFilter: "simulate" });
+  engine.destroy();
+});

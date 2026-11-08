@@ -155,6 +155,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("maxLines", "line-clamp"),
     ("ellipsis", "text-overflow"),
     ("tint", "-og-tint"),
+    ("cue", "-og-cue"),
     ("fit", "object-fit"),
 ];
 
@@ -206,7 +207,7 @@ fn conv(prop: &str) -> Conv {
         "font" => Conv::Var("font"),
         "anchorTo" => Conv::Str,
         "rive" => Conv::Rive,
-        "area" => Conv::Ident,
+        "area" | "cue" => Conv::Ident,
         "areas" | "overlaps" => Conv::Strs,
         "columns" | "rows" => Conv::Tracks,
         "motion" | "layoutMotion" => Conv::Transition,

@@ -470,6 +470,10 @@ impl Renderer {
             None => None,
         };
         let glass_on = self.prepare_frame_overlay(scene, &overlay_frame);
+        // The frame goes through the glass source when glass reads it or a
+        // colour filter recolours it on its way to the output.
+        let color_filter = scene.color_filter.filter(|_| self.glass_targets.is_some());
+        let routed = glass_on || color_filter.is_some();
         let line_frame = self.prepare_frame_lines(scene, &cam);
         let mut ribbon_frame = match &mut self.gpu_trails {
             Some(g) => g.build(
@@ -5184,7 +5188,7 @@ impl Renderer {
                     );
                 }
                 post_pass => {
-                    let post_output = match (&self.glass_targets, glass_on) {
+                    let post_output = match (&self.glass_targets, routed) {
                         (Some(g), true) => &g.source_view,
                         _ => output,
                     };
@@ -5231,7 +5235,17 @@ impl Renderer {
             .iter()
             .filter(|p| matches!(p.dest, views::Dest::Viewport(_)))
         {
-            let dest = overlay_view.unwrap_or(output);
+            // Into the glass source when the frame is routed through it,
+            // so the blit at the end keeps them.
+            let routed_view = self
+                .glass_targets
+                .as_ref()
+                .filter(|_| routed)
+                .and_then(|g| match overlay_view {
+                    None => Some(&g.source_view),
+                    Some(_) => g.source_linear_view.as_ref(),
+                });
+            let dest = routed_view.unwrap_or(overlay_view.unwrap_or(output));
             self.views.resolve(
                 &self.device,
                 &self.queue,
@@ -5268,7 +5282,7 @@ impl Renderer {
         let mut rebuilds = Vec::new();
         let mut copies = Vec::new();
         let mut layered = None;
-        if let (Some(g), true) = (&self.glass_targets, glass_on) {
+        if let (Some(g), true) = (&self.glass_targets, routed) {
             rebuilds = glass::rebuilds(
                 &runs
                     .iter()
@@ -5281,9 +5295,11 @@ impl Renderer {
                     .map(|r| r.source.needs_copy())
                     .collect::<Vec<_>>(),
             );
+            // A colour filter keeps the whole overlay in the source too.
             let over_content = rebuilds.first().is_some_and(|&i| i > 0)
                 || rebuilds.len() > 1
-                || !copies.is_empty();
+                || !copies.is_empty()
+                || color_filter.is_some();
             // The overlay draws into the source through the view it blends in.
             layered = match (over_content, overlay_view) {
                 (false, _) => None,
@@ -5291,9 +5307,18 @@ impl Renderer {
                 (true, Some(_)) => g.source_linear_view.as_ref(),
             };
             if layered.is_none() {
-                stats.draw_calls += self
-                    .glass
-                    .encode(&self.queue, &mut encoder, g, output, decode);
+                // The source as it is now to the output: filtered (only the
+                // scene, where the overlay has no view into the source),
+                // and the pyramid where glass reads it.
+                stats.draw_calls += match &color_filter {
+                    Some(f) => self
+                        .glass
+                        .filter(&self.queue, &mut encoder, g, output, f, decode),
+                    None => self.glass.blit(&mut encoder, g, output),
+                };
+                if glass_on {
+                    stats.draw_calls += self.glass.pyramid(&self.queue, &mut encoder, g, decode);
+                }
                 rebuilds.clear();
             }
         }
@@ -5374,7 +5399,12 @@ impl Renderer {
             }
         }
         if let (Some(g), Some(_)) = (&self.glass_targets, layered) {
-            stats.draw_calls += self.glass.blit(&mut encoder, g, output);
+            stats.draw_calls += match &color_filter {
+                Some(f) => self
+                    .glass
+                    .filter(&self.queue, &mut encoder, g, output, f, decode),
+                None => self.glass.blit(&mut encoder, g, output),
+            };
         }
         timings.end("overlay", overlay_at, &encoder, &stats);
         if let Some(hdr) = &self.hdr

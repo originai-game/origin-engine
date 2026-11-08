@@ -928,6 +928,12 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!("iconSize", Ty::Num, ["icon"], "CSS px (24 by default)."),
     p!(
+        "cue",
+        Ty::Name,
+        ["icon"],
+        "A colour token whose cue it draws (`-og-cue: danger`, docs/ui.md §3.2): the style's icon for that status, rarity, team or damage type, so its meaning never rests on colour alone. Its `icon`, when set, wins."
+    ),
+    p!(
         "kind",
         Ty::Name,
         ["art"],

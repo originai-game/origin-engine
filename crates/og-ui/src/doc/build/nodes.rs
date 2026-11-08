@@ -498,7 +498,11 @@ impl Ui {
                 );
             }
             "icon" => {
-                let name = r.str("icon").unwrap_or_default().to_string();
+                let name = match (r.str("icon"), r.str("cue")) {
+                    (Some(icon), _) => icon.to_string(),
+                    (None, Some(token)) => self.cue_icon(token).unwrap_or_default(),
+                    (None, None) => String::new(),
+                };
                 self.icon(
                     id.as_str(),
                     &name,

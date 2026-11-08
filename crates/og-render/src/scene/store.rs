@@ -128,6 +128,7 @@ impl RenderScene {
             joint_palettes: Vec::new(),
             skinned_instances: Vec::new(),
             overlay: None,
+            color_filter: None,
             fog: None,
             clouds: None,
             aurora: None,
