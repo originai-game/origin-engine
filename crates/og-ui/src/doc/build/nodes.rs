@@ -241,7 +241,9 @@ impl Ui {
             values: r,
             probe: mut built,
         } = resolved;
-        if r.has("visible") && !r.flag("visible") && r.cascade.container_reads.is_empty() {
+        let keeps = std::mem::take(&mut self.docs.keeps_hidden);
+        if r.has("visible") && !r.flag("visible") && r.cascade.container_reads.is_empty() && !keeps
+        {
             return None;
         }
         self.docs.seen_now.insert(key);

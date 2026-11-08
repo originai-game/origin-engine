@@ -134,6 +134,12 @@ pub struct RetainedHost {
     emit: BTreeSet<MountedNode>,
     /// Elements built every frame ([`ElementInstance::volatile`]).
     volatile: BTreeSet<MountedNode>,
+    /// The elements not built because they were hidden: shown again, the
+    /// nearest ancestor that holds its node builds them.
+    unbuilt_hidden: BTreeSet<MountedNode>,
+    /// The elements whose frame is a Rive artboard: their players go on
+    /// every tick ([`RetainedHost::advance_rive`]), without building them.
+    rive: BTreeSet<MountedNode>,
     /// The elements with a trigger on each action: built in a frame the
     /// action fires, not every frame.
     on_action: BTreeMap<String, BTreeSet<MountedNode>>,
@@ -1218,6 +1224,9 @@ impl RetainedHost {
         if in_place {
             ui.in_place = Some((identity.key, parent_slot));
         }
+        ui.docs.keeps_hidden = e
+            .slot
+            .is_some_and(|slot| ui.holds(slot, identity.key, parent_slot));
         ui.owning.push(Default::default());
         ui.docs.capture.push(Default::default());
         let resolved = e.resolved.as_ref().expect("resolved mount");
@@ -1269,9 +1278,18 @@ impl RetainedHost {
         for &key in &owned.memories {
             *self.memories.entry(key).or_default() += 1;
         }
-        let volatile = owned.moved
-            || resolved.values.str("rive").is_some()
-            || matches!(e.document.nodes[e.index].kind, NodeKind::Element("slot"));
+        if slot.is_none() && resolved.values.has("visible") && !resolved.values.flag("visible") {
+            self.unbuilt_hidden.insert(identity.clone());
+        } else {
+            self.unbuilt_hidden.remove(identity);
+        }
+        if resolved.values.str("rive").is_some() {
+            self.rive.insert(identity.clone());
+        } else {
+            self.rive.remove(identity);
+        }
+        let volatile =
+            owned.moved || matches!(e.document.nodes[e.index].kind, NodeKind::Element("slot"));
         if volatile {
             self.volatile.insert(identity.clone());
         } else {
@@ -1339,13 +1357,46 @@ impl RetainedHost {
                 at = self.topology.parent(&parent).cloned();
             }
         }
-        let elements = &self.elements;
-        self.emit.retain(|identity| {
-            elements.get(identity).is_some_and(|e| {
+        // One materialized but without a node (never built while hidden,
+        // now shown) is built by its nearest ancestor that holds its node.
+        let holds = |host: &Self, identity: &MountedNode| {
+            host.elements.get(identity).is_some_and(|e| {
                 e.slot
                     .is_some_and(|slot| ui.holds(slot, identity.key, e.parent_slot))
             })
-        });
+        };
+        let visible = |host: &Self, identity: &MountedNode| {
+            host.topology.node(identity).map(|n| n.materialization)
+                == Some(Materialization::Visible)
+        };
+        let unheld: Vec<MountedNode> = self
+            .emit
+            .iter()
+            .filter(|identity| !holds(self, identity))
+            .cloned()
+            .collect();
+        for identity in unheld {
+            self.emit.remove(&identity);
+            let shown = self.elements.get(&identity).is_some_and(|e| {
+                e.resolved
+                    .as_ref()
+                    .is_some_and(|r| !r.values.has("visible") || r.values.flag("visible"))
+            });
+            if !self.unbuilt_hidden.contains(&identity) || !shown || !visible(self, &identity) {
+                continue;
+            }
+            let mut at = self.topology.parent(&identity).cloned();
+            while let Some(parent) = at {
+                if holds(self, &parent) {
+                    self.emit.insert(parent);
+                    break;
+                }
+                if !visible(self, &parent) {
+                    break;
+                }
+                at = self.topology.parent(&parent).cloned();
+            }
+        }
         let mut pending: Vec<(usize, MountedNode)> = self
             .emit
             .iter()
@@ -1598,6 +1649,46 @@ impl RetainedHost {
         self.fired = fired.len();
     }
 
+    /// Goes on one tick with each Rive frame not built this frame: its
+    /// player advances and its draw is replaced on its node, which paints
+    /// again on its own; nothing is resolved or built.
+    fn advance_rive(&mut self, ui: &mut Ui) {
+        let elements = &self.elements;
+        self.rive.retain(|identity| elements.contains_key(identity));
+        self.unbuilt_hidden
+            .retain(|identity| elements.contains_key(identity));
+        for identity in &self.rive {
+            let e = &self.elements[identity];
+            let Some(slot) = e.slot else { continue };
+            if !ui.holds(slot, identity.key, e.parent_slot) {
+                continue;
+            }
+            let Some(resolved) = e.resolved.as_ref() else {
+                continue;
+            };
+            let Some(board) = resolved.values.str("rive") else {
+                continue;
+            };
+            let Some(index) = e
+                .record
+                .render_fields
+                .iter()
+                .find(|(k, _)| *k == resolved.key)
+                .map(|(_, fields)| fields.index)
+            else {
+                continue;
+            };
+            let built = ui
+                .state
+                .rive
+                .get(&ui.nodes[index].key)
+                .is_some_and(|s| s.built == ui.state.tick);
+            if !built && !ui.nodes[index].hidden {
+                ui.play_rive(index, board, &resolved.path);
+            }
+        }
+    }
+
     /// Builds the listeners of actions that triggers fired while this
     /// frame was built and that are not built yet, as every listener after
     /// the trigger in the frame reacts.
@@ -1801,6 +1892,9 @@ impl Ui {
                     .and_then(|()| host.emit_fired(self, env, &mut events, &mut writes))
             {
                 result = Err(error);
+            }
+            if result.is_ok() {
+                host.advance_rive(self);
             }
             host.input_events(self, env, &mut events);
             self.docs.retained = std::mem::take(&mut host);

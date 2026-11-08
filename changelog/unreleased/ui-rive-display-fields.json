@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"On a mounted document, an element hidden by a store (`hidden={$closed}`, `display: none` from a class) is shown again when the store changes back; before, it stayed gone. A hidden element that was built keeps its subtree, as the web keeps a hidden element's DOM, so hiding and showing it change one element. A Rive frame plays on without rebuilding its element every frame: an idle frame builds nothing."}
+  ]
+}

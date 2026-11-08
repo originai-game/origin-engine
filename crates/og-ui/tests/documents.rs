@@ -1228,3 +1228,94 @@ fn queried_controls_follow_their_new_box_in_the_frame_it_changes() {
     frame(&mut fresh, 700.0);
     assert_eq!(frame(&mut resized, 700.0), frame(&mut fresh, 700.0));
 }
+
+/// A Rive frame plays on without building its element, and an element
+/// hidden by a store is kept while hidden and shown again by changing its
+/// fields; one hidden from the start is built when first shown.
+///
+/// Ways it could fail: the Rive element rebuilt every frame (idle
+/// reconciles 1), its player not advanced when it is not built (the lid
+/// stops), a hidden element dropped and never shown again (its lines stay
+/// gone), its subtree rebuilt on show, the never-built element's show mark
+/// dropped because it holds no node.
+#[test]
+fn rive_frames_and_hidden_elements_change_fields_not_builds() {
+    let mount = |closed_at_start: bool| {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.define_rive("ui/chest.riv#Chest", chest());
+        let mut doc = String::from(
+            "<meta name=\"component\" content=\"loot\">\n<column id=\"Root\">\n<column id=\"Chest\"/>\n<column id=\"Menu\" hidden={$closed}>\n",
+        );
+        for i in 0..30 {
+            doc.push_str(&format!("<text id=\"L{i}\">Line {i}</text>\n"));
+        }
+        doc.push_str("</column>\n</column>\n<style>#Chest { width: 100px; height: 50px; -og-frame: rive(\"ui/chest.riv#Chest\"); }</style>");
+        ui.define_document(UiDocument::parse("loot.svelte", &doc).unwrap());
+        let closed = reactive::SourceId::new("test", "closed");
+        let mut inputs = std::collections::BTreeMap::new();
+        inputs.insert("closed".to_string(), closed.clone());
+        set(
+            &mut ui,
+            json!({"op": "signal", "source": closed, "initial": closed_at_start}),
+        );
+        ui.mount_document(
+            reactive::SourceId::new("test", "loot"),
+            "loot",
+            inputs,
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap();
+        ui
+    };
+    fn set(ui: &mut Ui, command: Value) {
+        reactive::wire::decode(
+            &ui.apply_reactive(&reactive::wire::encode(&json!([command])).unwrap()),
+        )
+        .unwrap();
+    }
+    let close = |ui: &mut Ui, on: bool| {
+        let closed = reactive::SourceId::new("test", "closed");
+        set(ui, json!({"op": "set", "source": closed, "value": on}));
+    };
+    // (reconciled, lines shown, lid x)
+    let frame = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), viewport());
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        let lines = ui
+            .probe_elements()
+            .iter()
+            .filter(|e| e.path.starts_with("test:loot/Menu/L"))
+            .count();
+        let lid = ui.frame().items.iter().find_map(|it| match &it.cmd {
+            DrawCmd::Shape { shape, .. }
+                if matches!(shape.geometry, og_render::UiGeometry::Path(_)) =>
+            {
+                Some(shape.center.x)
+            }
+            _ => None,
+        });
+        (ui.frame().stats.reconciled, lines, lid.unwrap_or(f32::NAN))
+    };
+    let mut ui = mount(false);
+    frame(&mut ui);
+    let shown = frame(&mut ui).1;
+    assert!(shown > 0);
+    let (reconciled, _, a) = frame(&mut ui);
+    let (_, _, b) = frame(&mut ui);
+    assert_eq!(reconciled, 0, "an idle frame builds nothing, Rive included");
+    assert!(b > a, "the lid moves on without a build: {a} → {b}");
+    close(&mut ui, true);
+    assert_eq!(frame(&mut ui).0..2, 1..2, "hiding changes the one element");
+    assert_eq!(frame(&mut ui).1, 0);
+    close(&mut ui, false);
+    assert_eq!(frame(&mut ui).0..2, 1..2, "showing changes the one element");
+    assert_eq!(frame(&mut ui).1, shown);
+
+    let mut ui = mount(true);
+    frame(&mut ui);
+    assert_eq!(frame(&mut ui).1, 0);
+    close(&mut ui, false);
+    assert_eq!(frame(&mut ui).1, shown, "built when first shown");
+}

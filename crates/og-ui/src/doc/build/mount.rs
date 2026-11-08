@@ -106,6 +106,11 @@ pub struct DocHost {
     pub(crate) accepts: bool,
     /// The serial of the layer being built (0 outside one): what its `pop` pops.
     pub(crate) building: u32,
+    /// The retained element being built holds its node: hidden
+    /// (`display: none`, `hidden`), it keeps the node and its subtree, as
+    /// the web keeps a hidden element's DOM, and showing it again is a field
+    /// change. One never built is not built while hidden.
+    pub(crate) keeps_hidden: bool,
     /// View-transition covers still opening after their layer left: the
     /// covers, their colour and the tick it left.
     pub(crate) revealing: Vec<(
