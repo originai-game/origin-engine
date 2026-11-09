@@ -290,6 +290,55 @@ pub(super) fn cross_room(n: &Node) -> f32 {
     cross_margins(n)
 }
 
+/// Greedy `lines` at `width` chosen again by `style` (CSS Text 4 §6.2):
+/// `balance` breaks at the narrowest width that keeps their count, so the
+/// lines come out as even as it allows; `pretty` breaks at the widest width
+/// that keeps the count and gives the last line two words or more, when the
+/// greedy last line is one word. `at` breaks at a width.
+fn rewrap(
+    lines: Vec<Line>,
+    style: WrapStyle,
+    width: f32,
+    at: impl Fn(f32) -> Vec<Line>,
+) -> Vec<Line> {
+    let n = lines.len();
+    let words = |l: &[Line]| l.last().map_or(0, |l| l.text.split_whitespace().count());
+    if style == WrapStyle::Pretty && words(&lines) > 1 {
+        return lines;
+    }
+    // The narrowest width keeping `n` lines, to half a CSS px.
+    let (mut lo, mut hi) = (0.0f32, width);
+    while hi - lo > 0.5 {
+        let mid = (lo + hi) / 2.0;
+        if at(mid).len() <= n {
+            hi = mid
+        } else {
+            lo = mid
+        }
+    }
+    if style == WrapStyle::Balance {
+        return at(hi);
+    }
+    // Pretty: the widest width from there that still ends in two words.
+    let ok = |w: f32| {
+        let l = at(w);
+        (l.len() == n && words(&l) > 1).then_some(l)
+    };
+    let Some(mut best) = ok(hi) else { return lines };
+    let (mut lo, mut top) = (hi, width);
+    while top - lo > 0.5 {
+        let mid = (lo + top) / 2.0;
+        match ok(mid) {
+            Some(l) => {
+                best = l;
+                lo = mid;
+            }
+            None => top = mid,
+        }
+    }
+    best
+}
+
 /// A text's preferred width (its widest line) and the least it can take:
 /// its ellipsis, its longest word when it wraps, else all of it.
 fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
@@ -297,8 +346,13 @@ fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
     let pref = widest_line(&t.text, m, t.step.size, t.tracking(), t.features());
     let min = if t.ellipsis {
         // It can shrink to its ellipsis.
-        m.measure_with(ellipsis_of(m), t.step.size, t.tracking(), t.features())
-            .min(pref)
+        m.measure_with(
+            t.cut.as_deref().unwrap_or_else(|| ellipsis_of(m)),
+            t.step.size,
+            t.tracking(),
+            t.features(),
+        )
+        .min(pref)
     } else if t.wrap {
         longest_word(&t.text, m, t.step.size, t.tracking(), t.features())
     } else {
@@ -730,6 +784,9 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
             .texts
             .lines(t, (t.wrap || t.ellipsis).then_some(width), || {
                 let m = t.metrics(fonts);
+                let at = |w: f32| {
+                    break_lines(&t.text, m, t.step.size, t.tracking(), t.features(), Some(w))
+                };
                 let mut lines = break_lines(
                     &t.text,
                     m,
@@ -738,6 +795,9 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                     t.features(),
                     t.wrap.then_some(width),
                 );
+                if t.wrap && lines.len() > 1 && t.wrap_style != WrapStyle::Auto {
+                    lines = rewrap(lines, t.wrap_style, width, at);
+                }
                 if t.ellipsis {
                     truncate_lines(&mut lines, t, m, width);
                 }

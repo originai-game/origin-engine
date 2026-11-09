@@ -1167,6 +1167,12 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Cut with … where it does not fit."
     ),
     p!(
+        "ellipsisText",
+        Ty::Text,
+        ["label"],
+        "What its cut ends in instead of … (`text-overflow: \"<string>\"`)."
+    ),
+    p!(
         "font",
         Ty::Word(&["body", "display", "mono", "rounded"]),
         ["label"],

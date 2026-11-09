@@ -244,6 +244,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("nowrap", "white-space"),
     ("maxLines", "line-clamp"),
     ("ellipsis", "text-overflow"),
+    ("ellipsisText", "text-overflow"),
     ("tint", "-og-tint"),
     ("cue", "-og-cue"),
     ("fit", "object-fit"),
@@ -347,7 +348,7 @@ fn conv(prop: &str) -> Conv {
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
         "boxShadow" | "uv" => Conv::Raw,
-        p if super::paint_css::C4_PROPS.contains(&p) => Conv::Raw,
+        p if super::paint_css::C4_PROPS.contains(&p) || p == "ellipsisText" => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"
         | "backgroundPosition"
@@ -1784,6 +1785,25 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 _ => super::build::gestures::detents(value, 100.0).map(|_| "sheetDetents"),
             }?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
+        }
+        // CSS UI 4 §5.2: clip, ellipsis or a string the cut ends in (one
+        // value: the end edge's).
+        "text-overflow" if !state => {
+            let (on, cut) = match one(&t, name)? {
+                Tok::Ident(w) if w == "clip" => (false, String::new()),
+                Tok::Ident(w) if w == "ellipsis" => (true, String::new()),
+                Tok::Str(s) => (true, s),
+                t => {
+                    return Err(format!(
+                        "text-overflow is clip, ellipsis or a string, not '{}'",
+                        describe(&t)
+                    ));
+                }
+            };
+            Ok(vec![
+                e("ellipsis", vec![Value::Word(on.to_string())]),
+                e("ellipsisText", vec![Value::String(cut)]),
+            ])
         }
         n if !state && let Some(parts) = super::paint_css::lower(n, value) => Ok(parts?
             .into_iter()

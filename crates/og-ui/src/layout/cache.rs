@@ -38,6 +38,8 @@ struct TextKey {
     wrap: bool,
     ellipsis: bool,
     max_lines: u32,
+    wrap_style: crate::layout::node::WrapStyle,
+    cut: Option<u64>,
     /// The width the lines break or cut at (`None`: only at `\n`).
     width: Option<u32>,
 }
@@ -54,6 +56,13 @@ impl TextKey {
             wrap: t.wrap,
             ellipsis: t.ellipsis,
             max_lines: t.max_lines,
+            wrap_style: t.wrap_style,
+            cut: t.cut.as_deref().map(|c| {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::hash::DefaultHasher::new();
+                c.hash(&mut h);
+                h.finish()
+            }),
             width: width.map(f32::to_bits),
         }
     }
@@ -523,6 +532,8 @@ pub(crate) fn content_layout_eq(a: &Content, b: &Content) -> bool {
                 && x.ellipsis == y.ellipsis
                 && x.max_lines == y.max_lines
                 && x.fit == y.fit
+                && x.wrap_style == y.wrap_style
+                && x.cut == y.cut
         }
         (Content::Image { .. }, Content::Image { .. }) => true,
         _ => a == b,

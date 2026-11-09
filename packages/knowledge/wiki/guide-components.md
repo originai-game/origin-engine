@@ -181,7 +181,29 @@ What every kind takes: its box, layout, paint, motion and input.
 | `background-size:` | `cover \| contain \| [<n>px \| <n>% \| auto]{1,2}, …` | CSS `background-size` of each image layer, a comma list repeated over the layers: `cover`, `contain`, or a width and height (`<n>px`, `<n>%` of the box, `auto` from the image's ratio). |
 | `background-position:` | `[left \| center \| right \| top \| bottom \| <n>px \| <n>%]{1,4}, …` | CSS `background-position` of each image layer, a comma list: one to four of `left`, `center`, `right`, `top`, `bottom`, `<n>px` and `<n>%` (`right 10px bottom 20%` from those edges). |
 | `background-repeat:` | `repeat-x \| repeat-y \| [repeat \| no-repeat \| space \| round]{1,2}, …` | CSS `background-repeat` of each image layer, a comma list: `repeat-x`, `repeat-y`, or one or two of `repeat`, `no-repeat`, `space` (whole images edge to edge) and `round` (rescaled to a whole number). |
-| `mask-image:` | `linear-gradient(…) \| radial-gradient(…) \| conic-gradient(…) (repeating- too)` | CSS `mask-image`: a gradient whose alpha fades the element and its subtree (`mask-image: linear-gradient(#000 70%, transparent)`). |
+| `mask-image:` | `linear-gradient(…) \| radial-gradient(…) \| conic-gradient(…) (repeating- too)` | CSS `mask-image` or the `mask` shorthand: layers of `url(…)` and gradients whose alpha (or luminance) cuts the element and its subtree, each sized, placed and combined as the `mask-*` longhands say (`mask-image: linear-gradient(#000 70%, transparent)`). |
+| `background-origin:` | `<n>px \| <n>%` | CSS `background-origin` of each image layer, a comma list: the box it is sized and placed in, `border-box`, `padding-box` (default) or `content-box`. |
+| `background-clip:` | `<n>px \| <n>%` | CSS `background-clip` of each layer, a comma list: where it is painted, `border-box` (default), `padding-box`, `content-box` or `text` (the element's glyphs); the last layer's cuts the colour. |
+| `background-attachment:` | `<n>px \| <n>%` | CSS `background-attachment` of each layer: `scroll` (default), `fixed` (placed in the viewport) or `local` (scrolls with a scroller's content). |
+| `background-blend-mode:` | `<n>px \| <n>%` | CSS `background-blend-mode` of each layer, a comma list of `mix-blend-mode`'s modes: how it blends with the layers and colour under it. |
+| `mask-size:` | `<n>px \| <n>%` | CSS `mask-size` of each mask layer, as `background-size`. |
+| `mask-position:` | `<n>px \| <n>%` | CSS `mask-position` of each mask layer, as `background-position`. |
+| `mask-repeat:` | `<n>px \| <n>%` | CSS `mask-repeat` of each mask layer, as `background-repeat`. |
+| `mask-origin:` | `<n>px \| <n>%` | CSS `mask-origin` of each mask layer: `border-box` (default), `padding-box` or `content-box`. |
+| `mask-clip:` | `<n>px \| <n>%` | CSS `mask-clip` of each mask layer: `border-box` (default), `padding-box`, `content-box` or `no-clip`. |
+| `mask-mode:` | `<n>px \| <n>%` | CSS `mask-mode` of each mask layer: `match-source` or `alpha` (its alpha), or `luminance`. |
+| `mask-composite:` | `<n>px \| <n>%` | CSS `mask-composite` of each mask layer with those under it: `add`, `subtract`, `intersect` or `exclude`. |
+| `border-image-source:` | `<n>px \| <n>%` | CSS `border-image-source`: `url(…)`, a gradient or `none`. |
+| `border-image-slice:` | `<n>px \| <n>%` | CSS `border-image-slice`: one to four numbers (image px) or percentages, and `fill`. |
+| `border-image-width:` | `<n>px` | CSS `border-image-width`: one to four of `<n>px`, `<n>%`, a number (times the border width) or `auto`. |
+| `border-image-outset:` | `<n>px \| <n>%` | CSS `border-image-outset`: one to four of `<n>px` or a number (times the border width). |
+| `border-image-repeat:` | `<n>px \| <n>%` | CSS `border-image-repeat`: one or two of `stretch`, `repeat`, `round`, `space`. |
+| `mask-border-source:` | `<n>px \| <n>%` | CSS `mask-border-source`: `url(…)`, a gradient or `none`. |
+| `mask-border-slice:` | `<n>px \| <n>%` | CSS `mask-border-slice`, as `border-image-slice`. |
+| `mask-border-width:` | `<n>px \| <n>%` | CSS `mask-border-width`, as `border-image-width`. |
+| `mask-border-outset:` | `<n>px \| <n>%` | CSS `mask-border-outset`, as `border-image-outset`. |
+| `mask-border-repeat:` | `<n>px \| <n>%` | CSS `mask-border-repeat`, as `border-image-repeat`. |
+| `mask-border-mode:` | `<n>px \| <n>%` | CSS `mask-border-mode`: `alpha` (default) or `luminance`. |
 | `backdrop-filter:` | `blur(<n>px) brightness(<n>) contrast(<n>) drop-shadow([<colour>] <x> <y> [<blur>]) grayscale(<n>) hue-rotate(<angle>) invert(<n>) opacity(<n>) saturate(<n>) sepia(<n>) … \| none` | CSS `backdrop-filter`: what is under the element blurred and its colour adjusted (glass), with `filter`'s functions; the colour functions fold into one matrix and `drop-shadow()` casts nothing on the opaque backdrop. |
 | `filter:` | `blur(<n>px) brightness(<n>) contrast(<n>) drop-shadow([<colour>] <x> <y> [<blur>]) grayscale(<n>) hue-rotate(<angle>) invert(<n>) opacity(<n>) saturate(<n>) sepia(<n>) … \| none` | CSS `filter`: `blur()`, `brightness()`, `contrast()`, `drop-shadow()` (of the alpha, not the box), `grayscale()`, `hue-rotate()`, `invert()`, `opacity()`, `saturate()` and `sepia()` on the element and its subtree, applied in the order written (`filter: drop-shadow(0 4px 6px #0008) saturate(1.4)`). |
 | `mix-blend-mode:` | `normal \| multiply \| screen \| plus-lighter \| overlay \| soft-light \| color-dodge` | CSS `mix-blend-mode`: normal, multiply, screen, plus-lighter, overlay, soft-light or color-dodge. |
@@ -313,7 +335,7 @@ Its own props, beside every element's:
 | `white-space:` | `nowrap \| normal` | One line. |
 | `line-clamp:` | `<number>` | The most lines it shows. |
 | `-og-fit-min:` | `var(--text-<name>)` | Shrinks by type steps to fit its width, down to this step. |
-| `text-overflow:` | `ellipsis \| clip` | Cut with … where it does not fit. |
+| `text-overflow:` | `ellipsis \| clip` | Cut with … where it does not fit. `ellipsisText`: What its cut ends in instead of … (`text-overflow: "<string>"`). |
 | `font-family:` | `var(--font-<name>)` | The font role. |
 | `heading` | `bool` | A heading (a style's flourish frames it). |
 | `count` | `number` | A number it counts to as it changes (`count={$score}`), over `-og-count-duration` ms. |

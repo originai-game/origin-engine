@@ -524,6 +524,8 @@ impl Ui {
             max_lines: 0,
             emphasis: 0.0,
             fit: Vec::new(),
+            wrap_style: Default::default(),
+            cut: None,
         }
     }
 }

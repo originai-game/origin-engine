@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS text-wrap: balance and pretty laid out",
+      "summary": "A wrapping label with text-wrap-style balance takes lines as even as its line count allows; pretty moves a word down so the last line is not one word alone. stable lays out as auto."
+    },
+    {
+      "member": "UI: CSS text-overflow: <string>",
+      "summary": "A cut label ends in the given string instead of an ellipsis (the `ellipsisText` prop)."
+    }
+  ]
+}

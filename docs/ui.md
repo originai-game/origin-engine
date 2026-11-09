@@ -582,7 +582,11 @@ OpenType features, `font-feature-settings`, `font-variation-settings`,
 and `full-size-kana` (cased for the UI's locale); `white-space` and its
 longhands `white-space-collapse` and `text-wrap-mode` process the text as
 CSS Text 4 §4 says (`pre`, `pre-wrap`, `pre-line`, `break-spaces`, tabs to
-`tab-size` stops); `text-wrap`, `hyphens: none` (soft hyphens dropped),
+`tab-size` stops); `text-wrap` (`text-wrap-style: balance` breaks a
+label's lines at the narrowest width that keeps their count, `pretty`
+at the widest that keeps it and leaves no one-word last line, `stable`
+as `auto`), `text-overflow` (`clip`, `ellipsis`, or a string the cut
+ends in), `hyphens: none` (soft hyphens dropped),
 `word-break` (`break-all`, `keep-all`), `overflow-wrap`, `text-indent`,
 `text-justify`, `text-align` (`left` and `right` are physical, `start` and
 `end` follow the direction, `justify` stretches every line but a

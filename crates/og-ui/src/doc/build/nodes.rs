@@ -658,7 +658,9 @@ impl Ui {
                         self.count_text(id.as_str(), count, &desc, &styled);
                     } else {
                         let shown = self.reveal(key, &text, styled.num("reveal"));
-                        self.label(id.as_str(), shown, desc);
+                        let i = self.leaf("label", id.as_str().into(), Default::default());
+                        self.apply_label(i, shown, desc);
+                        self.css_text_content(i, &styled);
                     }
                 }
             }

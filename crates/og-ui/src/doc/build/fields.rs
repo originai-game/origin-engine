@@ -406,6 +406,24 @@ impl Ui {
         (c != p::CssPaint::default()).then_some(c)
     }
 
+    /// A label's CSS `text-wrap-style` and `text-overflow: <string>`.
+    pub(super) fn css_text_content(&mut self, i: usize, r: &Resolved) {
+        use crate::layout::WrapStyle;
+        let style = match r.text.as_deref().and_then(|t| t.wrap_style.as_deref()) {
+            Some("balance") => WrapStyle::Balance,
+            Some("pretty") => WrapStyle::Pretty,
+            _ => WrapStyle::Auto,
+        };
+        let cut = r
+            .str("ellipsisText")
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned);
+        if let crate::layout::Content::Text(t) = &mut self.nodes[i].content {
+            t.wrap_style = style;
+            t.cut = cut;
+        }
+    }
+
     pub(super) fn apply_document_fields(&mut self, n: &DocNode, r: &Resolved, base: &RenderFields) {
         let i = base.index;
         self.nodes[i].el = base.element;
@@ -471,6 +489,7 @@ impl Ui {
                 } else {
                     let width = desc.width;
                     self.apply_label(i, &base.text, desc);
+                    self.css_text_content(i, r);
                     // Path text aligns along its path, not in its box: it
                     // keeps the box its path gives (a `circle()` centres in
                     // it), never the column's width a centred line takes.

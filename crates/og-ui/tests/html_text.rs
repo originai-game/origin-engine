@@ -72,7 +72,17 @@ pub(crate) struct Doc {
 
 impl Doc {
     pub(crate) fn new(text: &str, stores: &[(&str, Value)], mounted: bool) -> Doc {
-        let mut ui = ui_with_font(test_font_metrics());
+        Doc::with_font(text, stores, mounted, test_font_metrics())
+    }
+
+    /// [`Doc::new`] with `font` (one with a handle draws its text).
+    pub(crate) fn with_font(
+        text: &str,
+        stores: &[(&str, Value)],
+        mounted: bool,
+        font: UiFont,
+    ) -> Doc {
+        let mut ui = ui_with_font(font);
         let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
         let name = doc.name.clone();
         ui.define_document(doc);
@@ -1109,4 +1119,77 @@ fn a_video_drives_its_player_and_reads_it_back() {
         (vm["done"].clone(), vm["paused"].clone()),
         (json!(true), json!(true))
     );
+}
+
+/// `text-wrap: balance` and `pretty` (CSS Text 4 §6.2) and `text-overflow:
+/// <string>` (CSS UI 4 §5.2), as the lines drawn. Ways it could fail: the
+/// style not reaching the label in one build path, balance adding a line
+/// or leaving the greedy first line, pretty leaving a one-word last line
+/// or moving more words down than balance would, the string not used for
+/// the cut or "…" drawn as well.
+#[test]
+fn text_wrap_styles_and_overflow_strings_lay_out_as_css_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Page">
+  <p id="Auto" i18n="a">alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu</p>
+  <p id="Bal" i18n="b">alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu</p>
+  <p id="Pre" i18n="c">alpha beta gamma delta epsilon zeta eta theta</p>
+  <p id="Cut" i18n="d">alpha beta gamma delta epsilon zeta eta theta</p>
+</div></div>
+<style>
+p { margin: 0; }
+#Auto, #Bal, #Pre { width: 300px; }
+#Bal { text-wrap: balance; }
+#Pre { text-wrap: pretty; }
+#Cut { width: 120px; white-space: nowrap; overflow: hidden; text-overflow: " >>"; }
+</style>"#;
+    for mounted in [false, true] {
+        let d = &mut Doc::with_font(
+            text,
+            &[],
+            mounted,
+            add_test_font(&mut og_render::RenderScene::new()),
+        );
+        let lines = |id: &str| -> Vec<(String, f32)> {
+            let r = d.get(id);
+            let mut out: Vec<(f32, String, f32)> = d
+                .ui
+                .frame()
+                .items
+                .iter()
+                .filter_map(|it| match &it.cmd {
+                    DrawCmd::Text { text, bounds, .. }
+                        if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0))
+                            && (r.x - 0.5..r.x + r.width + 0.5).contains(&bounds.x) =>
+                    {
+                        Some((bounds.y, text.trim().to_owned(), bounds.width))
+                    }
+                    _ => None,
+                })
+                .collect();
+            out.sort_by(|a, b| a.0.total_cmp(&b.0));
+            out.into_iter().map(|(_, t, w)| (t, w)).collect()
+        };
+        let greedy = lines("Auto");
+        assert!(greedy.len() >= 2, "{greedy:?}");
+        let words = |l: &[(String, f32)]| l.last().unwrap().0.split_whitespace().count();
+        let bal = lines("Bal");
+        assert_eq!(bal.len(), greedy.len(), "{bal:?}");
+        let widest = |l: &[(String, f32)]| l.iter().map(|x| x.1).fold(0.0, f32::max);
+        let narrowest = |l: &[(String, f32)]| l.iter().map(|x| x.1).fold(f32::MAX, f32::min);
+        assert!(
+            widest(&bal) - narrowest(&bal) < widest(&greedy) - narrowest(&greedy),
+            "{bal:?} vs {greedy:?}"
+        );
+        // Greedy, at 300px, this leaves "theta" alone on the second line.
+        let pre = lines("Pre");
+        assert_eq!(pre.len(), 2, "{pre:?}");
+        assert!(words(&pre) >= 2, "{pre:?}");
+        let cut = lines("Cut");
+        assert_eq!(cut.len(), 1);
+        assert!(
+            cut[0].0.ends_with(">>") && !cut[0].0.contains('…'),
+            "{cut:?}"
+        );
+    }
 }

@@ -139,6 +139,21 @@ pub(crate) struct TextContent {
     /// text does not fit its width, largest first (layout sets `step` to the
     /// first that fits, else the last); empty: it keeps its step.
     pub fit: Vec<TypeStep>,
+    /// How its lines are chosen when it wraps (CSS `text-wrap-style`).
+    pub wrap_style: WrapStyle,
+    /// What its cut ends in instead of "…" (CSS `text-overflow: <string>`).
+    pub cut: Option<String>,
+}
+
+/// CSS `text-wrap-style` (CSS Text 4 §6.2): `stable` lays out as `auto`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum WrapStyle {
+    #[default]
+    Auto,
+    /// Lines as even as the line count allows.
+    Balance,
+    /// No last line of one word where a narrower break avoids it.
+    Pretty,
 }
 
 /// The OpenType features a text in `step` and `font` is set with: the
@@ -235,7 +250,7 @@ pub(super) fn truncate_lines(lines: &mut Vec<Line>, t: &TextContent, m: &FontMet
     if !cut && last.width <= width {
         return;
     }
-    let dots = ellipsis_of(m);
+    let dots = t.cut.as_deref().unwrap_or_else(|| ellipsis_of(m));
     let mut chars: Vec<char> = last.text.chars().collect();
     loop {
         let body: String = chars.iter().collect();

@@ -253,6 +253,8 @@ impl Ui {
             max_lines: 0,
             emphasis: 0.0,
             fit: Vec::new(),
+            wrap_style: Default::default(),
+            cut: None,
         });
         n.probe_text = text;
         // The landing pop: a bump of `pop` over `motion.duration.fast`.
