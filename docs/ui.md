@@ -2477,6 +2477,14 @@ additional parts with its own API, so packs can dress them without private
 imports. A missing custom dressing uses the readable core token fallback.
 It is not permission to leave a required state unfinished.
 
+A kit names every frame it draws as a part (`<column part="Inventory.frame">`)
+and gives it only a token background as the fallback. A kit's own `-og-frame`,
+`-og-slice` or `-og-stroke` on the element outranks the pack's dressing of
+that part, so a kit that paints its own frame leaves the pack nothing to
+dress. Rarity, selection and other states a pack dresses reach the part as
+qualifiers or classes, such as ``part={`Slot.frame[rarity=${item.rarity}]`}``
+or `class:selected`; the kit does not draw its own band or rim for them.
+
 Missing art uses a small mark fitted to the slot's shorter side and capped
 at 32 UI units, centred in a quiet token-defined well. It does not stretch
 into a large decorative frame. The `icon` and `placeholder` parts remain
