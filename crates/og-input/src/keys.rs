@@ -120,9 +120,24 @@ pub const KEY_SET_BITS: usize = 128;
 
 const _: () = assert!(KEY_CODES.len() <= KEY_SET_BITS);
 
-/// The bit of a `KeyboardEvent.code` in [`crate::Input`]'s key sets.
+/// The bit of a `KeyboardEvent.code` in [`crate::Input`]'s key sets: its
+/// place in [`KEY_CODES`], found by a binary search of the codes in name
+/// order (made once). og-ui asks for every code on every tick (the keys held
+/// and pressed that UI actions bind) and for the US layout's characters, and
+/// a scan of the table per code was most of reading a tick's input on the
+/// web (engine s111).
 pub fn key_index(code: &str) -> Option<usize> {
-    KEY_CODES.iter().position(|k| *k == code)
+    static BY_NAME: std::sync::OnceLock<Vec<(&'static str, u8)>> = std::sync::OnceLock::new();
+    let by_name = BY_NAME.get_or_init(|| {
+        let mut by_name: Vec<(&'static str, u8)> = (0u8..)
+            .zip(KEY_CODES.iter().copied())
+            .map(|(i, k)| (k, i))
+            .collect();
+        by_name.sort_unstable_by_key(|(k, _)| *k);
+        by_name
+    });
+    let at = by_name.binary_search_by(|(k, _)| (*k).cmp(code)).ok()?;
+    Some(usize::from(by_name[at].1))
 }
 
 /// The key a character is typed with on a US layout, and whether Shift is
@@ -176,4 +191,34 @@ pub fn key_for_char(c: char) -> Option<(String, bool)> {
         _ => return None,
     };
     Some((code.to_owned(), shift))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A name's bit is what a scan of the table answers: each code's place
+    /// (the codes are distinct), and none for a name the table does not
+    /// have, a code's prefix that is no code, a code with more after it,
+    /// another case, nothing.
+    #[test]
+    fn a_key_s_bit_is_its_place_in_the_table() {
+        let scan = |name: &str| KEY_CODES.iter().position(|k| *k == name);
+        let mut seen = std::collections::BTreeSet::new();
+        for (i, code) in KEY_CODES.iter().enumerate() {
+            assert!(seen.insert(*code), "{code} twice");
+            assert_eq!(key_index(code), Some(i), "{code}");
+            for name in [
+                &code[..code.len() - 1],
+                &format!("{code}x"),
+                &code.to_lowercase(),
+            ] {
+                assert_eq!(key_index(name), scan(name), "{name}");
+            }
+        }
+        for name in ["", "Key", "KEYA", "Digit10", "Numpad", "Zzz", "A", "\u{0}"] {
+            assert_eq!(key_index(name), None, "{name:?}");
+        }
+        assert_eq!(key_index("F1"), scan("F1"));
+    }
 }
