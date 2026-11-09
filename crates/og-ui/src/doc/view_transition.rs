@@ -17,6 +17,12 @@
 //! `(*)` and `(.class)` arguments (`view-transition-class`), cascaded by
 //! the spec's specificity: `*` under a name under a class.
 //!
+//! Groups nest (Level 2's nested groups): `view-transition-group` on a
+//! shared element (`normal`, `contain`, `nearest` or an ancestor's name)
+//! puts its group in an ancestor's `::view-transition-group-children`,
+//! which moves it with that group, relative to its padding box, and clips
+//! it there with `overflow`.
+//!
 //! The engine's full-frame covers are the only `-og-` part: the built-in
 //! keyframes `-og-iris`, `-og-dissolve`, `-og-wipe` and `-og-slide` (with
 //! `-from-right`, `-from-top` or `-from-bottom`). On `old` a cover closes
@@ -55,6 +61,7 @@ pub struct ViewTransition {
 pub enum Part {
     Overlay,
     Group,
+    GroupChildren,
     ImagePair,
     Old,
     New,
@@ -85,10 +92,12 @@ pub struct Rule {
     pub longhands: Vec<(String, String)>,
 }
 
-/// A named group's animations: the group's, its image pair's, and its
-/// old and new images'; and the axes (across, down) along which the group
-/// and the image pair clip what they hold to their box (`overflow` other
-/// than `visible`: by the UA's stylesheet neither does, and an image
+/// A named group's animations: the group's, its image pair's, its old
+/// and new images', and its children's (`::view-transition-group-children`,
+/// which holds its nested groups: only the author's, as nothing inherits
+/// into it); and the axes (across, down) along which the group, the image
+/// pair and the children clip what they hold to their box (`overflow`
+/// other than `visible`: by the UA's stylesheet none does, and an image
 /// taller than its group by its aspect overflows it).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GroupStyle {
@@ -96,8 +105,10 @@ pub struct GroupStyle {
     pub pair: Vec<CssAnimation>,
     pub old: Vec<CssAnimation>,
     pub new: Vec<CssAnimation>,
+    pub children: Vec<CssAnimation>,
     pub group_clip: [bool; 2],
     pub pair_clip: [bool; 2],
+    pub children_clip: [bool; 2],
 }
 
 /// `overflow`, `overflow-x` or `overflow-y` (and the logical
@@ -190,13 +201,18 @@ pub(super) fn selects(selector: &str) -> bool {
     selector.starts_with("@view-transition") || selector.contains("::view-transition")
 }
 
-/// `view-transition-name` and `view-transition-class` on an element, as
-/// the props `viewTransitionName` (empty: none) and `viewTransitionClass`.
+/// `view-transition-name`, `view-transition-class` and
+/// `view-transition-group` on an element, as the props
+/// `viewTransitionName` (empty: none), `viewTransitionClass` and
+/// `viewTransitionGroup` (empty: normal).
 pub(super) fn lower(
     name: &str,
     value: &str,
 ) -> Option<Result<Vec<super::tracks::Lowered>, String>> {
-    if !matches!(name, "view-transition-name" | "view-transition-class") || value.contains("bind(")
+    if !matches!(
+        name,
+        "view-transition-name" | "view-transition-class" | "view-transition-group"
+    ) || value.contains("bind(")
     {
         return None;
     }
@@ -232,6 +248,10 @@ pub(super) fn lower(
         ("view-transition-class", ws) if !ws.is_empty() && !ws.iter().any(|w| w == "none") => {
             Ok(vec![("viewTransitionClass", text(ws.join(" ")))])
         }
+        ("view-transition-group", [w]) if w == "normal" => {
+            Ok(vec![("viewTransitionGroup", text(String::new()))])
+        }
+        ("view-transition-group", [w]) => Ok(vec![("viewTransitionGroup", text(w.clone()))]),
         _ => Err(format!("{name} takes {}", form(name).unwrap_or_default())),
     })
 }
@@ -241,6 +261,7 @@ pub(super) fn form(prop: &str) -> Option<&'static str> {
     Some(match prop {
         "viewTransitionName" | "view-transition-name" => "none | auto | match-element | <name>",
         "viewTransitionClass" | "view-transition-class" => "none | <name>+",
+        "viewTransitionGroup" | "view-transition-group" => "normal | contain | nearest | <name>",
         _ => return None,
     })
 }
@@ -309,7 +330,7 @@ pub(super) fn apply(
         }
         let mut longhands = Vec::new();
         for d in variables::declarations(body).map_err(|e| (at, e))? {
-            let clips = matches!(part, Part::Group | Part::ImagePair)
+            let clips = matches!(part, Part::Group | Part::GroupChildren | Part::ImagePair)
                 && matches!(
                     d.name.as_str(),
                     "overflow" | "overflow-x" | "overflow-y" | "overflow-inline" | "overflow-block"
@@ -332,6 +353,9 @@ pub(super) fn apply(
                             }
                             Part::Group | Part::ImagePair => {
                                 "animation and overflow (a clip to its box)"
+                            }
+                            Part::GroupChildren => {
+                                "animation and overflow (a clip of its nested groups to its group's padding box)"
                             }
                             _ => "animation",
                         },
@@ -503,6 +527,7 @@ impl ViewTransition {
             w
         };
         let (old, new) = (image(Part::Old, FADE_OUT), image(Part::New, FADE_IN));
+        let children = of(Part::GroupChildren);
         let mut resolve = |winners: &[(String, String)]| {
             let (_, mut animations) = super::motion::resolve(winners, &self.document, diagnostics);
             for a in &mut animations {
@@ -519,8 +544,10 @@ impl ViewTransition {
             pair: resolve(&pair),
             old: resolve(&old),
             new: resolve(&new),
+            children: resolve(&children),
             group_clip: clip(Part::Group),
             pair_clip: clip(Part::ImagePair),
+            children_clip: clip(Part::GroupChildren),
         }
     }
 }
@@ -558,6 +585,7 @@ fn pseudo(selector: &str, types: &[String]) -> Result<Option<(Part, Select, bool
         .ok_or_else(|| format!("{element}: name its group, as (root), (*), (card) or (.card)"))?;
     let part = match name {
         "::view-transition-group" => Part::Group,
+        "::view-transition-group-children" => Part::GroupChildren,
         "::view-transition-image-pair" => Part::ImagePair,
         "::view-transition-old" => Part::Old,
         "::view-transition-new" => Part::New,
@@ -739,6 +767,30 @@ mod tests {
         assert_eq!((g.group_clip, g.pair_clip), ([false, true], [true, false]));
         let g = t.group("other", &[]);
         assert_eq!((g.group_clip, g.pair_clip), ([true, true], [false, false]));
+        // The children of a group take overflow and their own animations
+        // (nothing of the group's timing inherits into them).
+        let t = spec(
+            "@view-transition { navigation: auto; }
+             ::view-transition-group(*) { animation-duration: 1s; }
+             ::view-transition-group-children(hero) { overflow-y: clip; animation: 300ms rise; }",
+        )
+        .unwrap()
+        .unwrap();
+        let g = t.group("hero", &[]);
+        assert_eq!(g.children_clip, [false, true]);
+        assert_eq!(
+            g.children
+                .iter()
+                .map(|a| (a.name.as_str(), a.duration_ms))
+                .collect::<Vec<_>>(),
+            [("s/rise", 300.0)]
+        );
+        assert!(t.group("other", &[]).children.is_empty());
+        let error = spec(
+            "@view-transition { navigation: auto; } ::view-transition-group-children(*) { opacity: 0; }",
+        )
+        .unwrap_err();
+        assert!(error.contains("nested groups"), "{error}");
         let error = UiDocument::parse(
             "c.svelte",
             "<meta name=\"component\" content=\"c\"><column/><style>@view-transition { navigation: auto; }</style>",

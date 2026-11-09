@@ -1421,6 +1421,88 @@ mod tests {
         );
     }
 
+    /// `view-transition-group` nests a group in an ancestor's: the card's
+    /// group rides inside the box's `::view-transition-group-children`,
+    /// placed in the box's padding box as it moves, and the box's image
+    /// leaves the card out (its own group). Without nesting the card's
+    /// group is the screen's; `overflow` on the children clips them to
+    /// the box's padding box.
+    #[test]
+    fn view_transition_group_nests_a_group_in_its_ancestors() {
+        let page = |screen: &str, page: &str, side: f32, at: (f32, f32), rule: &str| {
+            format!(
+                r#"<meta name="screen" content="{screen}"><column id="Page"><column id="Box"><column id="Card"></column></column></column>
+<style>@view-transition {{ navigation: auto; }} #Page {{ padding: {page}; }}
+#Box {{ width: {side}px; height: {side}px; border: 10px solid #0000ff; view-transition-name: box; }}
+#Card {{ width: 100px; height: 50px; margin: {}px 0 0 {}px; background: #ff0000; view-transition-name: hero; }}
+::view-transition-group(box) {{ animation-duration: 400ms; animation-timing-function: linear; }}
+::view-transition-group(hero) {{ animation-duration: 1ms; }}
+{rule}</style>"#,
+                at.1, at.0
+            )
+        };
+        let halfway = |rule: &str| {
+            let list = page("list", "40px", 200.0, (20.0, 20.0), rule);
+            let detail = page("detail", "200px 0 0 300px", 240.0, (60.0, 100.0), rule);
+            let mut ui = ui_with(&[("list.svelte", &list), ("detail.svelte", &detail)]);
+            let step = |ui: &mut Ui| {
+                ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
+                ui.end();
+            };
+            ui.push_screen("list", Value::Null).unwrap();
+            for _ in 0..ui.ticks_for(300.0) + 2 {
+                step(&mut ui);
+            }
+            ui.replace_screen("detail", Value::Null).unwrap();
+            for _ in 0..=ui_ticks(400.0) / 2 {
+                step(&mut ui);
+            }
+            assert!(ui.frame.warnings.is_empty(), "{:?}", ui.frame.warnings);
+            let cuts: Vec<((f32, f32), (f32, f32))> = ui
+                .frame
+                .items
+                .iter()
+                .filter_map(|it| match it.cmd {
+                    crate::DrawCmd::PushClip { center, half, .. } => Some((center, half)),
+                    _ => None,
+                })
+                .collect();
+            (reds(&ui), cuts)
+        };
+        let near = |r: &crate::layout::Rect, x: f32, y: f32| {
+            (r.x - x).abs() < 1.0
+                && (r.y - y).abs() < 1.0
+                && (r.width - 100.0).abs() < 1.0
+                && (r.height - 50.0).abs() < 1.0
+        };
+        // The box halfway is (170, 120) 220 × 220, its padding box from
+        // (180, 130): nested, the card (done moving) is at its new place in
+        // it, (60, 100) in; flat, at its new place on the screen. Only the
+        // card's own group draws it: neither of the box's images does.
+        for (rule, x, y) in [
+            ("#Box { view-transition-group: contain; }", 240.0, 230.0),
+            ("#Card { view-transition-group: nearest; }", 240.0, 230.0),
+            ("#Card { view-transition-group: box; }", 240.0, 230.0),
+            ("#Card { view-transition-group: elsewhere; }", 370.0, 310.0),
+            ("", 370.0, 310.0),
+        ] {
+            let (reds, cuts) = halfway(rule);
+            assert!(reds.len() == 1 && near(&reds[0], x, y), "{rule}: {reds:?}");
+            assert!(cuts.is_empty(), "{rule}: {cuts:?}");
+        }
+        let (_, cuts) = halfway(
+            "#Box { view-transition-group: contain; } ::view-transition-group-children(box) { overflow: clip; }",
+        );
+        assert!(
+            cuts.len() == 1
+                && (cuts[0].0.0 - 280.0).abs() < 1.0
+                && (cuts[0].0.1 - 230.0).abs() < 1.0
+                && (cuts[0].1.0 - 100.0).abs() < 1.0
+                && (cuts[0].1.1 - 100.0).abs() < 1.0,
+            "{cuts:?}"
+        );
+    }
+
     fn ui_ticks(ms: f32) -> usize {
         Ui::new(UiDesc::default()).ticks_for(ms) as usize
     }

@@ -1304,6 +1304,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `view-transition-class`: the classes its view-transition group is styled by (`::view-transition-group(*.card)`), space-separated.",
     },
     PropSpec {
+        name: "viewTransitionGroup",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `view-transition-group`: where its view-transition group nests (empty: `normal`, in the nearest shared ancestor's that is not normal; `contain`: as normal, and its own nest in it; `nearest`: in the nearest shared ancestor's; a name: in that ancestor's). A nested group moves with its parent, inside its `::view-transition-group-children`.",
+    },
+    PropSpec {
         name: "anchorName",
         ty: Ty::Text,
         on: On::All,

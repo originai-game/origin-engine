@@ -1622,6 +1622,9 @@ impl Ui {
         if let Some(c) = r.str("viewTransitionClass") {
             p.view_transition_class = c.split_whitespace().map(str::to_string).collect();
         }
+        if let Some(g) = r.str("viewTransitionGroup") {
+            p.view_transition_group = g.to_string();
+        }
         if let Some(V::Transition(t)) = r.get("motion") {
             p.motion = Some(*t);
         }

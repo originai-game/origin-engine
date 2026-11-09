@@ -239,7 +239,11 @@ local styles and `og style new` remain available.
   change how. An element with `view-transition-name: hero` on both screens
   morphs from its old box to its new one; style it with
   `::view-transition-group(hero)` (or `(*)`, or `(.card)` for a
-  `view-transition-class`). `::view-transition { background-image:
+  `view-transition-class`). Nest a group in an ancestor's with
+  `view-transition-group: contain` on the ancestor (or `nearest`, or the
+  ancestor's name, on the element): it then moves with the ancestor, and
+  `::view-transition-group-children(card) { overflow: clip; }` keeps it
+  inside. `::view-transition { background-image:
   url("ui/covers/stars.png"); }` covers with a texture instead of a colour.
 - Compose with components and snippets, not code callbacks:
   `<Card title={item.name}>{#snippet body()}<p>{item.desc}</p>{/snippet}</Card>`,

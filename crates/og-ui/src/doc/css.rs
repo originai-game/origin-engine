@@ -227,6 +227,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("anchorName", "anchor-name"),
     ("viewTransitionName", "view-transition-name"),
     ("viewTransitionClass", "view-transition-class"),
+    ("viewTransitionGroup", "view-transition-group"),
     ("positionAnchor", "position-anchor"),
     ("positionArea", "position-area"),
     ("positionTry", "position-try-fallbacks"),
@@ -430,7 +431,7 @@ fn conv(prop: &str) -> Conv {
         "columnCount" | "columnWidth" | "columnSpan" | "columnFill" | "columnRuleWidth"
         | "columnRuleStyle" | "columnRuleColor" | "breakBefore" | "breakAfter" | "breakInside"
         | "float" | "clear" => Conv::Raw,
-        "viewTransitionName" | "viewTransitionClass" => Conv::Raw,
+        "viewTransitionName" | "viewTransitionClass" | "viewTransitionGroup" => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"
         | "backgroundPosition"

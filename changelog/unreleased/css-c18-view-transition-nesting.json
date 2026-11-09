@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "Nested view-transition groups (CSS View Transitions 2): view-transition-group (normal, contain, nearest or an ancestor's view-transition-name) puts a shared element's group in an ancestor's ::view-transition-group-children(), drawn over that group's image pair. A nested group moves from where it was in the old parent's padding box to where it is in the new one, and its parent's box, transform, opacity and overflow carry it. ::view-transition-group-children() takes overflow (a clip to the group's padding box) and its own animation (nothing inherits into it)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "A shared element's old and new images leave out the shared elements inside it, as the spec captures them: each of those is drawn only by its own group, and no longer twice."
+    }
+  ]
+}

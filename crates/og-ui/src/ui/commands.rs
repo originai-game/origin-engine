@@ -594,6 +594,7 @@ impl Ui {
         }
         self.state.motion.ghosts = ghosts;
         self.state.motion.frozen = frozen;
+        self.nest_named();
         // The same trees as last frame, each drawn whole as it was.
         let same_roots = self.orders.roots == self.kept.last_roots;
         self.kept.last_roots.clone_from(&self.orders.roots);
@@ -778,8 +779,11 @@ impl Ui {
                         key,
                         name,
                         classes: nj.props.view_transition_class.clone(),
+                        group: nj.props.view_transition_group.clone(),
+                        parent: None,
                         range: first..cmds.len(),
                         screen: nj.screen,
+                        inset: crate::view_transition::border_inset(nj),
                         inherited: if nj.parent == NONE {
                             1.0
                         } else {

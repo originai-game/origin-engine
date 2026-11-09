@@ -335,6 +335,7 @@ pub(crate) fn props(d: &Value) -> Props {
         // View transitions are a screen document's (its CSS).
         view_transition_name: String::new(),
         view_transition_class: Vec::new(),
+        view_transition_group: String::new(),
         drag: drag(&d["drag"]),
         pinch: d["pinch"].is_object().then(|| PinchSpec {
             min_scale: f(&d["pinch"], "minScale", 0.0),

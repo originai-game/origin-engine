@@ -1296,7 +1296,24 @@ overflows it. `overflow` (`clip`, `hidden`, `scroll` or `auto`; also
 `::view-transition-group()` or `::view-transition-image-pair()` clips what
 that pseudo-element holds to its box, along the axes it names, and turns
 with its transform. The pair's `overflow` is its own, not inherited from
-the group, and `-old` and `-new` refuse it. Reduced motion skips the shared elements unless the
+the group, and `-old` and `-new` refuse it. A shared element's images are
+its own drawing: the shared elements inside it are left out, since each is
+drawn by its own group. Groups nest as in Level 2: `view-transition-group`
+on a shared element is `normal` (the default: the group goes in the nearest
+shared ancestor's group whose value is not normal, else at the top),
+`contain` (the same, and its descendants nest in its group), `nearest` (the
+nearest shared ancestor's group) or an ancestor's name (that ancestor's
+group, else as normal). The old and new views resolve this separately, and
+the new view's parent wins (the spec leaves a mismatch open). A nested
+group is drawn in its parent's `::view-transition-group-children()`, over
+the parent's image pair. It moves from where it was in the old parent's
+padding box to where it is in the new one, so it rides along with its
+parent, and the parent's transform, opacity and group `overflow` apply to
+it. The image pair is then a layer of its own, so the pair's opacity does
+not reach the nested groups. `::view-transition-group-children()` sits over
+the parent's padding box. It takes `overflow`, which clips the nested
+groups there, and `animation` (only its own, because nothing inherits into
+it). Reduced motion skips the shared elements unless the
 style keeps motion. Capturing costs nothing until a transition starts: a
 frame records only where its named elements drew. A running transition is
 saved with the UI state.

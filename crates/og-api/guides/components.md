@@ -231,6 +231,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `left:` | `<n>px \| <n>%` | CSS `left` / `inset-inline-start` as written (see insetTop). |
 | `view-transition-name:` | `none \| auto \| match-element \| <name>` | CSS `view-transition-name`: the shared element's name in a view transition (empty: none; `auto` and `match-element` name it by its identity). Its old and new selves morph as one `::view-transition-group(name)`. |
 | `view-transition-class:` | `none \| <name>+` | CSS `view-transition-class`: the classes its view-transition group is styled by (`::view-transition-group(*.card)`), space-separated. |
+| `view-transition-group:` | `normal \| contain \| nearest \| <name>` | CSS `view-transition-group`: where its view-transition group nests (empty: `normal`, in the nearest shared ancestor's that is not normal; `contain`: as normal, and its own nest in it; `nearest`: in the nearest shared ancestor's; a name: in that ancestor's). A nested group moves with its parent, inside its `::view-transition-group-children`. |
 | `anchor-name:` | `<n>px \| <n>%` | CSS `anchor-name`: the dashed names (`--menu`) other elements anchor to it by. |
 | `position-anchor:` | `<n>px \| <n>%` | CSS `position-anchor`: its default anchor's dashed name (empty: its implicit anchor, a popover's invoker). |
 | `position-area:` | `<n>px \| <n>%` | CSS `position-area`: the cell or span of the 3×3 grid its anchor cuts its containing block into (`bottom center`, `span-right top`, `block-end`). |
