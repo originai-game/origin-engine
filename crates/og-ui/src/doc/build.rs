@@ -63,10 +63,15 @@ struct Resolved {
     smil: bool,
     /// Its `transform` and 3D properties ([`crate::transform3d`]).
     space3d: Option<Arc<crate::transform3d::Space3d>>,
-    /// `@starting-style` declarations that differ from its style.
-    starting: String,
+    /// Its `@starting-style` values that differ from its style, on the
+    /// build it first appears in (the before-change style of its
+    /// transitions, CSS Transitions 2 §3).
+    starting: Vec<(String, String, usize)>,
     /// Its generated content and pseudo-element styles.
     generated: Option<Arc<super::generated::Generated>>,
+    /// Its transitions and animations of computed values, for the motion
+    /// state ([`animate`]).
+    style: Option<Arc<animate::StyleCommit>>,
 }
 
 #[derive(Clone)]
@@ -343,44 +348,6 @@ fn anchor_of(s: &str) -> crate::layout::Anchor {
         "bottomRight" => BottomRight,
         _ => TopLeft,
     }
-}
-
-/// `@starting-style` as an entrance: each animatable value it sets that
-/// a CSS transition moves, starting there.
-fn starting_presence(r: &Resolved) -> Option<crate::motion::PresenceSpec> {
-    if r.starting.is_empty() {
-        return None;
-    }
-    let mut values = Vec::new();
-    let mut transition = None;
-    for entry in super::css::declarations(&r.starting, 0).ok()? {
-        let Some(prop) = crate::element::Prop::from_name(&entry.key) else {
-            continue;
-        };
-        let Some(t) = prop
-            .channels()
-            .iter()
-            .find_map(|&c| crate::motion::css::transition_for(&r.transitions, c))
-        else {
-            continue;
-        };
-        let Some(v) = entry
-            .values
-            .first()
-            .and_then(og_core::ogt::Value::as_number)
-            .map(og_core::ogt::Number::as_f32)
-        else {
-            continue;
-        };
-        transition.get_or_insert((t.transition, t.delay_ms));
-        values.push((prop, v));
-    }
-    let (transition, delay_ms) = transition?;
-    Some(crate::motion::PresenceSpec {
-        values,
-        transition,
-        delay_ms: delay_ms.max(0.0),
-    })
 }
 
 /// One mount's build: the document, its viewmodel and the item variables in scope.
@@ -702,10 +669,11 @@ impl Ui {
                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 && rule.structure.as_ref().is_none_or(|s| structure(s))
         };
-        r.cascade = cascade::resolve(&n.rules, &options, &mut rule_applies);
-        // `@starting-style`: the values this element's first style moves
-        // from, through its CSS transitions, as an entrance does.
-        if n.rules.iter().any(|rule| rule.starting) {
+        r.cascade = cascade::values_with(&n.rules, &options, &mut rule_applies);
+        // `@starting-style`: the before-change style of an element's first
+        // style, for its transitions.
+        let key = crate::id::key_of_path(path);
+        if !self.docs.seen.contains(&key) && n.rules.iter().any(|rule| rule.starting) {
             let start = cascade::values_with(
                 &n.rules,
                 &cascade::Options {
@@ -724,35 +692,19 @@ impl Ui {
                         .iter()
                         .any(|(n, v, _)| n == name && v == value)
                 })
-                .map(|(name, value, _)| format!("{name}: {value};"))
+                .cloned()
                 .collect();
         }
-        if let Some((ty, names)) =
-            super::container::declared(&r.cascade.container, &mut r.cascade.diagnostics)
-        {
-            let key = crate::id::key_of_path(path);
-            super::container::push(Arc::make_mut(&mut r.cascade.computed), key, ty, &names);
-            // Only size containers publish their box through settlement.
-            if ty.size != super::container::Kind::Normal {
-                r.container = Some(key);
-            }
-        }
-        r.space3d = crate::transform3d::resolve(&r.cascade.transform, &mut r.cascade.diagnostics)
-            .map(Arc::new);
-        if !r.cascade.generated.is_empty() {
-            let values = std::mem::take(&mut r.cascade.generated);
-            if let Some((_, q)) = values.iter().find(|(name, _)| name == "quotes") {
-                Arc::make_mut(&mut r.cascade.computed)
-                    .insert(generated::QUOTES.into(), Some(q.clone()));
-            }
-            r.generated = Some(Arc::new(super::generated::Generated::from_values(
-                &values,
-                &mut r.cascade.diagnostics,
-            )));
-            r.cascade.generated = values;
-        }
+        let motion: Vec<(String, String)> = r
+            .cascade
+            .values
+            .iter()
+            .filter(|(name, ..)| super::motion::longhand(name))
+            .map(|(name, value, _)| (name.clone(), value.clone()))
+            .collect();
+
         (r.transitions, r.animations) =
-            super::motion::resolve(&r.cascade.motion, &b.doc.name, &mut r.cascade.diagnostics);
+            super::motion::resolve(&motion, &b.doc.name, &mut r.cascade.diagnostics);
         // A conditional `@keyframes` defines its name while its conditions
         // hold; choosing another definition restarts the animation, as a
         // name change does.
@@ -776,6 +728,40 @@ impl Ui {
                     .map_or_else(|| format!("{name}@none"), |(.., key)| key.clone());
                 a.name = format!("{prefix}{key}");
             }
+        }
+        // Transitions and animations of computed values, over the winners.
+        r.style = self.animate_values(
+            key,
+            &mut r.cascade,
+            &r.starting,
+            &r.transitions,
+            &r.animations,
+            basis,
+        );
+        cascade::route(&mut r.cascade);
+        if let Some((ty, names)) =
+            super::container::declared(&r.cascade.container, &mut r.cascade.diagnostics)
+        {
+            let key = crate::id::key_of_path(path);
+            super::container::push(Arc::make_mut(&mut r.cascade.computed), key, ty, &names);
+            // Only size containers publish their box through settlement.
+            if ty.size != super::container::Kind::Normal {
+                r.container = Some(key);
+            }
+        }
+        r.space3d = crate::transform3d::resolve(&r.cascade.transform, &mut r.cascade.diagnostics)
+            .map(Arc::new);
+        if !r.cascade.generated.is_empty() {
+            let values = std::mem::take(&mut r.cascade.generated);
+            if let Some((_, q)) = values.iter().find(|(name, _)| name == "quotes") {
+                Arc::make_mut(&mut r.cascade.computed)
+                    .insert(generated::QUOTES.into(), Some(q.clone()));
+            }
+            r.generated = Some(Arc::new(super::generated::Generated::from_values(
+                &values,
+                &mut r.cascade.diagnostics,
+            )));
+            r.cascade.generated = values;
         }
         sets.retain(|prop| !r.cascade.unset.contains(&prop.spec));
         sets.extend(&r.cascade.props);
@@ -1316,15 +1302,39 @@ impl Ui {
         if let Some(V::Transition(t)) = r.get("motion") {
             p.motion = Some(*t);
         }
-        p.transitions = r.transitions.clone();
+        // Computed values transition in the build ([`animate`]).
+        p.transitions = r
+            .transitions
+            .iter()
+            .filter(|t| t.channels != 0)
+            .cloned()
+            .collect();
         p.animations = r.animations.clone();
         if let Some(V::Transition(t)) = r.get("layoutMotion") {
             p.layout_motion = Some(*t);
         }
         if let Some(V::Presence(e)) = r.get("enter") {
             p.enter = Some(e.clone());
-        } else if let Some(e) = starting_presence(r) {
-            p.enter = Some(e);
+        }
+        // `@starting-style` values the channels hold.
+        for (name, value, _) in &r.starting {
+            if super::motion::channels(name).is_none() {
+                continue;
+            }
+            for entry in super::css::declarations(&format!("{name}: {value};"), 0)
+                .into_iter()
+                .flatten()
+            {
+                if let Some(prop) = crate::element::Prop::from_name(&entry.key)
+                    && let Some(v) = entry
+                        .values
+                        .first()
+                        .and_then(og_core::ogt::Value::as_number)
+                        .map(og_core::ogt::Number::as_f32)
+                {
+                    p.starting.push((prop, v));
+                }
+            }
         }
         if let Some(V::Presence(e)) = r.get("exit") {
             p.exit = Some(e.clone());
@@ -1543,6 +1553,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
     })
 }
 
+mod animate;
 pub mod cascade;
 mod color;
 mod containers;

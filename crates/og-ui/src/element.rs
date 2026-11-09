@@ -1350,6 +1350,9 @@ pub struct Props {
     /// Moves from its last laid-out rectangle to its new one (FLIP).
     pub layout_motion: Option<Transition>,
     pub enter: Option<PresenceSpec>,
+    /// Its `@starting-style` values: where its first style's channels
+    /// start, moved by its CSS transitions.
+    pub starting: Values,
     /// Kept, inert and out of hit tests and the accessibility tree, while
     /// it plays after the element leaves the tree.
     pub exit: Option<PresenceSpec>,
@@ -1404,6 +1407,7 @@ impl Default for Props {
             animations: Vec::new(),
             layout_motion: None,
             enter: None,
+            starting: Vec::new(),
             exit: None,
             states: Vec::new(),
             state: Vec::new(),

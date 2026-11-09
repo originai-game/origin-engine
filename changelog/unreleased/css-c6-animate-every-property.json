@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Document CSS transition and @keyframes",
+      "summary": "Transitions and @keyframes animate every animatable property, interpolated by the CSS rules for its value types (lengths and calc(), colours through color-mix(), shadows, filters, transforms through decomposed matrices, gradients); discrete values flip halfway. Adds transition-behavior: allow-discrete, animation-composition (replace, add, accumulate, also per keyframe) and the reversing shortening of CSS Transitions. @starting-style is now the before-change style of an element's first style for every property a transition covers, not only the motion channels."
+    }
+  ]
+}

@@ -395,12 +395,19 @@ pub(crate) fn values_with(
     out
 }
 
-pub(crate) fn resolve(
-    rules: &[StyleRule],
-    o: &Options<'_>,
-    applies: impl FnMut(&StyleRule) -> bool,
-) -> Cascade {
-    let mut out = values_with(rules, o, applies);
+/// Whether document CSS takes `name: value` (a variable-free value).
+pub(crate) fn known(name: &str, value: &str) -> bool {
+    crate::doc::motion::longhand(name)
+        || crate::transform3d::LONGHANDS.contains(&name)
+        || crate::doc::container::longhand(name)
+        || crate::doc::extern_element::svg_longhand(name)
+        || crate::doc::generated::longhand(name)
+        || crate::doc::text_css::longhand(name)
+        || css::declarations(&format!("{name}: {value};"), 0).is_ok()
+}
+
+/// Sends each winning value to the part of the build that reads it.
+pub(crate) fn route(out: &mut Cascade) {
     let mut body = String::new();
     // The winners stay with the cascade: the UI debugger names each one's
     // line (`Ui::debug_element`).
@@ -470,10 +477,9 @@ pub(crate) fn resolve(
         }
         Err(error) => out.diagnostics.push(error),
     }
-    out
 }
 
-fn token(theme: &crate::Theme, name: &str) -> Option<String> {
+pub(crate) fn token(theme: &crate::Theme, name: &str) -> Option<String> {
     let bare = name.strip_prefix("--")?;
     if let Some(value) = theme.length(bare) {
         return Some(format!("{value}px"));

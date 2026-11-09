@@ -258,6 +258,9 @@ impl Ui {
             values: r,
             probe: mut built,
         } = resolved;
+        if let Some(commit) = &r.style {
+            self.commit_styles(commit);
+        }
         let keeps = std::mem::take(&mut self.docs.keeps_hidden);
         if r.has("visible") && !r.flag("visible") && r.cascade.container_reads.is_empty() && !keeps
         {

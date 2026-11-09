@@ -8,14 +8,17 @@ use super::StyleDeclaration;
 use super::variables::Value as Tokens;
 use crate::motion::css::{
     ALL_CHANNELS, CssAnimation, CssTransition, Direction, Keyframe, KeyframeTrack, Keyframes,
+    StyleKey, StyleTrack,
 };
+use crate::motion::interpolate::{self, Composite};
 use crate::motion::{Ease, MotionToken, SpringSpec, Transition};
 
-pub(crate) const TRANSITION: [&str; 4] = [
+pub(crate) const TRANSITION: [&str; 5] = [
     "transition-property",
     "transition-duration",
     "transition-timing-function",
     "transition-delay",
+    "transition-behavior",
 ];
 pub(crate) const ANIMATION: [&str; 8] = [
     "animation-name",
@@ -28,13 +31,17 @@ pub(crate) const ANIMATION: [&str; 8] = [
     "animation-play-state",
 ];
 
+/// Animation longhands the `animation` shorthand does not set.
+const ANIMATION_EXTRA: [&str; 1] = ["animation-composition"];
+
 /// Whether a declaration is a transition or animation longhand.
 pub(crate) fn longhand(name: &str) -> bool {
-    TRANSITION.contains(&name) || ANIMATION.contains(&name)
+    TRANSITION.contains(&name) || ANIMATION.contains(&name) || ANIMATION_EXTRA.contains(&name)
 }
 
-/// The channels a transitionable CSS property drives.
-fn channels(property: &str) -> Option<u32> {
+/// The channels of a property the element's channels hold; any other
+/// property animates by its computed value.
+pub(crate) fn channels(property: &str) -> Option<u32> {
     let range = |a: u32, b: u32| (a..=b).fold(0, |m, c| m | 1 << c);
     Some(match property {
         "all" => ALL_CHANNELS,
@@ -50,9 +57,6 @@ fn channels(property: &str) -> Option<u32> {
         _ => return None,
     })
 }
-
-const TRANSITIONABLE: &str =
-    "all, opacity, translate, scale, rotate, -og-skew, border-radius, background, color, z-index";
 
 /// Top-level comma items, each split into space-separated words, keeping
 /// function arguments together.
@@ -185,9 +189,11 @@ pub(crate) fn expand(
 }
 
 fn transition_item(words: &[String]) -> Result<Vec<String>, String> {
-    let (mut property, mut timing_word, mut times) = (None, None, Vec::new());
+    let (mut property, mut timing_word, mut times, mut behavior) = (None, None, Vec::new(), None);
     for w in words {
-        if time(w).is_some() && times.len() < 2 {
+        if matches!(w.as_str(), "normal" | "allow-discrete") && behavior.is_none() {
+            behavior = Some(w.clone());
+        } else if time(w).is_some() && times.len() < 2 {
             times.push(w.clone());
         } else if is_timing(w) && timing_word.is_none() {
             timing_word = Some(w.clone());
@@ -195,7 +201,7 @@ fn transition_item(words: &[String]) -> Result<Vec<String>, String> {
             property = Some(w.clone());
         } else {
             return Err(format!(
-                "transition: unexpected `{w}`; write <property> <duration> <timing-function> <delay>"
+                "transition: unexpected `{w}`; write <property> <duration> <timing-function> <delay> <behavior>"
             ));
         }
     }
@@ -204,6 +210,7 @@ fn transition_item(words: &[String]) -> Result<Vec<String>, String> {
         times.first().cloned().unwrap_or_else(|| "0s".into()),
         timing_word.unwrap_or_else(|| "ease".into()),
         times.get(1).cloned().unwrap_or_else(|| "0s".into()),
+        behavior.unwrap_or_else(|| "normal".into()),
     ])
 }
 
@@ -252,14 +259,16 @@ fn validate(name: &str, value: &str, keyframes: &dyn Fn(&str) -> bool) -> Result
     let list: Vec<String> = items(value).into_iter().map(|w| w.join(" ")).collect();
     for word in &list {
         let ok = match name {
+            // Any property name: one that does not animate is skipped
+            // (CSS Transitions 1 §2.1).
             "transition-property" => {
-                if word != "none" && channels(word).is_none() {
-                    return Err(format!(
-                        "transition-property: {word} cannot transition; transitionable properties are {TRANSITIONABLE}"
-                    ));
-                }
-                true
+                (word == "none" && list.len() == 1)
+                    || (word != "none"
+                        && !matches!(word.as_str(), "initial" | "inherit" | "unset" | "default")
+                        && super::syntax::identifier(word.trim_start_matches('-')))
             }
+            "transition-behavior" => matches!(word.as_str(), "normal" | "allow-discrete"),
+            "animation-composition" => Composite::from_css(word).is_some(),
             "transition-duration" | "animation-duration" => time(word).is_some_and(|t| t >= 0.0),
             "transition-delay" | "animation-delay" => time(word).is_some(),
             "transition-timing-function" | "animation-timing-function" => timing(word).is_some(),
@@ -308,6 +317,9 @@ fn hint(name: &str) -> &'static str {
         "animation-direction" => "write normal, reverse, alternate or alternate-reverse",
         "animation-fill-mode" => "write none, forwards, backwards or both",
         "animation-play-state" => "write running or paused",
+        "transition-property" => "write none, all or property names",
+        "transition-behavior" => "write normal or allow-discrete",
+        "animation-composition" => "write replace, add or accumulate",
         _ => "see the document CSS reference",
     }
 }
@@ -347,15 +359,16 @@ pub(crate) fn resolve(
     } else {
         Vec::new()
     };
-    let (durations, timings, delays) = (
+    let (durations, timings, delays, behaviors) = (
         get("transition-duration", "0s"),
         get("transition-timing-function", "ease"),
         get("transition-delay", "0s"),
+        get("transition-behavior", "normal"),
     );
     for (i, property) in properties.iter().enumerate() {
-        let Some(channels) = channels(property) else {
+        if property == "none" {
             continue;
-        };
+        }
         let duration_ms = time(&pick(&durations, i)).unwrap_or(0.0);
         let transition = match timing(&pick(&timings, i)).expect("validated timing") {
             Timing::Token(t) => Transition::Token(t),
@@ -364,9 +377,11 @@ pub(crate) fn resolve(
             Timing::Ease(ease) => Transition::Tween { duration_ms, ease },
         };
         transitions.push(CssTransition {
-            channels,
+            property: property.clone(),
+            channels: channels(property).unwrap_or(0),
             transition,
             delay_ms: time(&pick(&delays, i)).unwrap_or(0.0),
+            discrete: pick(&behaviors, i) == "allow-discrete",
         });
     }
     let mut animations = Vec::new();
@@ -379,6 +394,7 @@ pub(crate) fn resolve(
         get("animation-direction", "normal"),
         get("animation-fill-mode", "none"),
         get("animation-play-state", "running"),
+        get("animation-composition", "replace"),
     ];
     for (i, name) in names.iter().enumerate() {
         if name == "none" {
@@ -414,15 +430,18 @@ pub(crate) fn resolve(
             fill_backwards: matches!(fill.as_str(), "backwards" | "both"),
             fill_forwards: matches!(fill.as_str(), "forwards" | "both"),
             paused: at(6) == "paused",
+            composite: Composite::from_css(&at(7)).unwrap_or_default(),
         });
     }
     (transitions, animations)
 }
 
 /// One `@keyframes` body: `from`, `to` and percentage selector lists whose
-/// declarations animate scalar element values; `animation-timing-function`
-/// times the segment that starts at its keyframe; `-og-sound` plays a style
-/// sound when the iteration reaches it.
+/// declarations animate any animatable property (those the element's
+/// channels hold by channel, the rest by computed value);
+/// `animation-timing-function` times the segment that starts at its
+/// keyframe and `animation-composition` combines it with the underlying
+/// value; `-og-sound` plays a style sound when the iteration reaches it.
 pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String> {
     use crate::element::Prop;
     let mut out = Keyframes::default();
@@ -444,7 +463,8 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
             offsets.push(offset);
         }
         let mut ease = None;
-        let mut values = String::new();
+        let mut composite = None;
+        let mut values = Vec::new();
         for (name, value) in super::css::split_decls(body)? {
             match name.as_str() {
                 "-og-burst" => {
@@ -500,6 +520,14 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
                         ));
                     }
                 }
+                "animation-composition" => {
+                    composite = Some(Composite::from_css(&value).ok_or_else(|| {
+                        format!(
+                            "animation-composition: `{value}`; {}",
+                            hint("animation-composition")
+                        )
+                    })?);
+                }
                 "animation-timing-function" => {
                     ease = Some(Ease::from_css(&value).ok_or_else(|| {
                         format!(
@@ -507,49 +535,93 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
                         )
                     })?);
                 }
-                _ => values.push_str(&format!("{name}: {value};")),
+                _ => values.push((name, value)),
             }
         }
-        for entry in super::css::declarations(&values, 0)? {
-            let prop = Prop::from_name(&entry.key).ok_or_else(|| {
-                format!(
-                    "{} cannot be animated in @keyframes; animate opacity, scale, rotate, translate, -og-skew, border-radius or z-index",
-                    super::css::css_name(&entry.key).unwrap_or(&entry.key)
-                )
-            })?;
-            let value = entry
-                .values
-                .first()
-                .and_then(og_core::ogt::Value::as_number)
-                .map(og_core::ogt::Number::as_f32)
-                .filter(|v| v.is_finite())
-                .ok_or_else(|| format!("@keyframes {}: write a finite value", entry.key))?;
-            let index = out
-                .tracks
-                .iter()
-                .position(|t| t.prop == prop)
-                .unwrap_or_else(|| {
-                    out.tracks.push(KeyframeTrack {
-                        prop,
-                        keys: Vec::new(),
+        for (name, text) in values {
+            // A property the channels hold, with numbers: channel tracks.
+            let scalar: Option<Vec<(Prop, f32)>> = channels(&name)
+                .filter(|_| !text.contains("var("))
+                .and_then(|_| super::css::declarations(&format!("{name}: {text};"), 0).ok())
+                .and_then(|entries| {
+                    entries
+                        .into_iter()
+                        .map(|entry| {
+                            let prop = Prop::from_name(&entry.key)?;
+                            let value = entry
+                                .values
+                                .first()
+                                .and_then(og_core::ogt::Value::as_number)
+                                .map(og_core::ogt::Number::as_f32)
+                                .filter(|v| v.is_finite())?;
+                            Some((prop, value))
+                        })
+                        .collect()
+                });
+            let Some(scalar) = scalar else {
+                if !interpolate::animatable(&name) || name.starts_with("--") {
+                    return Err(format!("{name} cannot be animated in @keyframes"));
+                }
+                if !text.contains("var(") && !super::build::cascade::known(&name, &text) {
+                    return Err(format!(
+                        "@keyframes: `{name}: {text}` is not a declaration document CSS takes"
+                    ));
+                }
+                let index = out
+                    .styles
+                    .iter()
+                    .position(|t| t.property == name)
+                    .unwrap_or_else(|| {
+                        out.styles.push(StyleTrack {
+                            property: name.clone(),
+                            keys: Vec::new(),
+                        });
+                        out.styles.len() - 1
                     });
-                    out.tracks.len() - 1
-                });
-            for &offset in &offsets {
-                let keys = &mut out.tracks[index].keys;
-                keys.retain(|k| k.offset != offset);
-                keys.push(Keyframe {
-                    offset,
-                    value,
-                    ease,
-                });
+                for &offset in &offsets {
+                    let keys = &mut out.styles[index].keys;
+                    keys.retain(|k| k.offset != offset);
+                    keys.push(StyleKey {
+                        offset,
+                        value: text.clone(),
+                        ease,
+                        composite,
+                    });
+                }
+                continue;
+            };
+            for (prop, value) in scalar {
+                let index = out
+                    .tracks
+                    .iter()
+                    .position(|t| t.prop == prop)
+                    .unwrap_or_else(|| {
+                        out.tracks.push(KeyframeTrack {
+                            prop,
+                            keys: Vec::new(),
+                        });
+                        out.tracks.len() - 1
+                    });
+                for &offset in &offsets {
+                    let keys = &mut out.tracks[index].keys;
+                    keys.retain(|k| k.offset != offset);
+                    keys.push(Keyframe {
+                        offset,
+                        value,
+                        ease,
+                        composite,
+                    });
+                }
             }
         }
     }
     for track in &mut out.tracks {
         track.keys.sort_by(|a, b| a.offset.total_cmp(&b.offset));
     }
-    if out.tracks.is_empty() && out.events.is_empty() {
+    for track in &mut out.styles {
+        track.keys.sort_by(|a, b| a.offset.total_cmp(&b.offset));
+    }
+    if out.tracks.is_empty() && out.styles.is_empty() && out.events.is_empty() {
         return Err("@keyframes must animate a property or play a -og-sound".into());
     }
     Ok(out)
@@ -630,7 +702,11 @@ mod tests {
     fn out_of_scope_motion_fails_with_the_property_named() {
         let known = |n: &str| n == "spin";
         for (name, value, needle) in [
-            ("transition", "width 200ms", "transition-property: width"),
+            (
+                "transition-property",
+                "none, opacity",
+                "transition-property",
+            ),
             ("transition", "opacity var(--d)", "longhand"),
             ("animation", "fade 1s", "@keyframes fade"),
             ("animation-direction", "sideways", "animation-direction"),

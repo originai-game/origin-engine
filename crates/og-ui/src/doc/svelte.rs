@@ -3033,8 +3033,8 @@ button.active { opacity: 1; }
                 "CSS easing",
             ),
             (
-                "<text id='T'/><style>#T:hover { animation: fade 1s; } @keyframes fade { from { width: 10px; } }</style>",
-                "width cannot be animated in @keyframes",
+                "<text id='T'/><style>#T:hover { animation: fade 1s; } @keyframes fade { from { transition-duration: 1s; } }</style>",
+                "transition-duration cannot be animated in @keyframes",
             ),
         ] {
             let text = format!("<meta name='screen' content='test'>\n{body}");

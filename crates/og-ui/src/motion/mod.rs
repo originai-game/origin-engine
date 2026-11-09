@@ -10,6 +10,7 @@
 pub(crate) mod codec;
 pub mod css;
 pub(crate) mod gesture;
+pub(crate) mod interpolate;
 pub(crate) mod run;
 pub mod spring;
 pub(crate) mod state;

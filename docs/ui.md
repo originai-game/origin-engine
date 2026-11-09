@@ -1722,9 +1722,12 @@ the selector (`selector(:has(> a))`). `@scope (root) to (limit)` matches
 in the root's subtree above the limit; the root adds no specificity.
 `@import "x.css" [layer(name)] [supports(…)] [media];` comes before the
 rules; the cook reads the file from beside the document (and its own
-imports) into the document blob. `@starting-style` gives an element's
-first style the values its CSS transitions start from (the animatable
-properties `@keyframes` takes). `@property` registers a custom property's
+imports) into the document blob. `@starting-style` is the before-change
+style of an element's first style (CSS Transitions 2 §3): each property it
+sets that a transition covers, any animatable property, moves from it as
+from a style change; with `transition-behavior: allow-discrete`, a
+`display: none` or `visibility: hidden` start holds the shown value
+throughout. `@property` registers a custom property's
 syntax, inheritance and initial value; a value that does not match its
 syntax takes the initial value. `@font-face`, `@counter-style` and
 `@position-try` are read into the document's sheet (fonts, counters and
@@ -1836,10 +1839,36 @@ it stops. Motion runs on presentation ticks, never a clock, and is saved with
 the presentation state outside `world_hash`, so a restore continues exactly.
 Reduced motion shows a finite animation's end and stops endless ones;
 transitions use the element's reduced-motion fallback. Transitions and
-keyframes cover opacity, translate, scale, rotate, `-og-skew` and
-`border-radius`; transitions also cover background, color and z-index. Other
-properties, `var()` inside a shorthand, and unknown keyframes fail at cook
-with the property named.
+keyframes cover every animatable property. Opacity, translate, scale,
+rotate, `-og-skew`, `border-radius`, background, color and z-index move the
+element's channels in the motion step (springs and motion tokens keep their
+velocity when retargeted); every other property moves its computed value
+before the cascade routes it, so it animates through the same parsing as a
+declaration. Values interpolate by type (CSS Values 4 §3): numbers,
+lengths and percentages (mixed units as `calc()`), integers rounded,
+angles and times in any unit, colours as a premultiplied `color-mix()` (in
+sRGB when both are legacy colours, Oklab otherwise), functions and
+gradients component by component, shadow and filter lists padded with
+their identities, and transform lists function by function, through
+decomposed matrices (quaternions) where their primitives differ. Any other
+pair is discrete and flips halfway; `display`, `visibility`,
+`content-visibility` and `overlay` keep their shown value for the whole of
+a move to or from their hidden one. A transition starts from the value in
+flight, and one reversed towards where it began is shortened as CSS
+Transitions 1 §3 says. A discrete property transitions only with
+`transition-behavior: allow-discrete` (also an `allow-discrete` word in the
+`transition` shorthand). `animation-composition: replace | add |
+accumulate`, on an element or inside a keyframe, combines a keyframe with
+the underlying value (Web Animations 1 §5.4.4: lengths sum, scales multiply
+when added and accumulate one-based, transform lists concatenate when
+added, shadows and filters append when added and sum item by item when
+accumulated). A keyframe value may use `var()` and the element's units; a
+missing 0% or 100% keyframe takes the underlying value. A transition to or
+from a property that is not declared uses its initial value where CSS fixes
+one, otherwise it jumps. An element with a computed value in flight builds
+again each frame; once settled it costs nothing. `var()` inside a
+shorthand, a property that does not animate, and unknown keyframes fail at
+cook with the property named.
 `@keyframes` may be nested in `@media` and `@container`: the last
 definition of a name whose conditions currently hold defines it, and a
 switch between definitions restarts the animation as a name change does.

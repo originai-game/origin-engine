@@ -4,17 +4,32 @@
 //! restore lands on the same value and nothing reads a clock. Runs live in
 //! the motion state, outside `world_hash`.
 
+use super::interpolate::{self, Composite};
 use super::spring::{Ease, Transition};
 use super::timeline::EventKind;
 use crate::element::{CHANNELS, Prop};
 
-/// One `transition` entry: the channels it times, how, and after what delay.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// One `transition` entry: the property it times (`all` for every one),
+/// how, and after what delay. A property the element's channels hold
+/// moves its channels; any other moves its computed value
+/// ([`StyleRun`]).
+#[derive(Clone, Debug, PartialEq)]
 pub struct CssTransition {
+    pub property: String,
     /// Bit `c`: channel `c` ([`Prop::channels`]).
     pub channels: u32,
     pub transition: Transition,
     pub delay_ms: f32,
+    /// `transition-behavior: allow-discrete`: discrete values transition,
+    /// flipping halfway.
+    pub discrete: bool,
+}
+
+impl CssTransition {
+    /// Whether it times `property`'s computed value.
+    pub(crate) fn covers(&self, property: &str) -> bool {
+        self.property == property || self.property == "all"
+    }
 }
 
 /// The channels of every transitionable property (`all`).
@@ -55,6 +70,8 @@ pub struct CssAnimation {
     pub fill_backwards: bool,
     pub fill_forwards: bool,
     pub paused: bool,
+    /// `animation-composition`.
+    pub composite: Composite,
 }
 
 impl Default for CssAnimation {
@@ -69,6 +86,7 @@ impl Default for CssAnimation {
             fill_backwards: false,
             fill_forwards: false,
             paused: false,
+            composite: Composite::Replace,
         }
     }
 }
@@ -80,6 +98,8 @@ pub struct Keyframe {
     pub offset: f32,
     pub value: f32,
     pub ease: Option<Ease>,
+    /// Its `animation-composition` (`None`: the animation's).
+    pub composite: Option<Composite>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -89,10 +109,30 @@ pub struct KeyframeTrack {
     pub keys: Vec<Keyframe>,
 }
 
+/// A keyframe of a property animated by its computed value: the
+/// declaration's text, substituted and computed for each element.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StyleKey {
+    pub offset: f32,
+    pub value: String,
+    pub ease: Option<Ease>,
+    pub composite: Option<Composite>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StyleTrack {
+    pub property: String,
+    /// By offset; a missing 0% or 100% keyframe takes the underlying value.
+    pub keys: Vec<StyleKey>,
+}
+
 /// A parsed `@keyframes` rule.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Keyframes {
+    /// Properties the element's channels hold.
     pub tracks: Vec<KeyframeTrack>,
+    /// Every other animated property.
+    pub styles: Vec<StyleTrack>,
     /// Events at offsets (`-og-sound`), in each iteration.
     pub events: Vec<(f32, EventKind)>,
 }
@@ -126,6 +166,81 @@ impl CssAnimation {
         } else {
             self.duration_ms * self.iterations
         }
+    }
+
+    /// Whether it has stopped changing at `ticks` of running time.
+    pub(crate) fn settled(&self, ticks: u64, tps: u32, reduced: bool) -> bool {
+        let elapsed = ticks as f32 * 1000.0 / tps.max(1) as f32;
+        self.paused || reduced || elapsed - self.delay_ms >= self.active_total()
+    }
+
+    /// The computed values of `keyframes`' style tracks at `ticks` of
+    /// running time, each over `underlying` (the property's value below
+    /// this animation, `None` when it has none), with `compute` turning a
+    /// keyframe's declaration into the element's computed text.
+    pub(crate) fn sample_styles(
+        &self,
+        keyframes: &Keyframes,
+        ticks: u64,
+        tps: u32,
+        reduced: bool,
+        underlying: &dyn Fn(&str) -> Option<String>,
+        compute: &dyn Fn(&str, &str) -> Option<String>,
+    ) -> Vec<(String, String)> {
+        let elapsed = ticks as f32 * 1000.0 / tps.max(1) as f32;
+        let Some(t) = self.local_ms(elapsed - self.delay_ms, reduced) else {
+            return Vec::new();
+        };
+        let d = self.duration_ms;
+        let mut out = Vec::new();
+        for track in &keyframes.styles {
+            let property = track.property.as_str();
+            let under = underlying(property);
+            let mut keys: Vec<(f32, String, Option<Ease>)> = Vec::new();
+            if let Some(u) = &under
+                && track.keys.first().is_none_or(|k| k.offset > 0.0)
+            {
+                keys.push((0.0, u.clone(), None));
+            }
+            for k in &track.keys {
+                let Some(v) = compute(property, &k.value) else {
+                    continue;
+                };
+                let v = match (&under, k.composite.unwrap_or(self.composite)) {
+                    (Some(u), op) => interpolate::compose(property, u, &v, op),
+                    (None, _) => v,
+                };
+                keys.push((k.offset * d, v, k.ease));
+            }
+            if let Some(u) = &under
+                && track.keys.last().is_none_or(|k| k.offset < 1.0)
+            {
+                keys.push((d, u.clone(), None));
+            }
+            let Some(first) = keys.first() else {
+                continue;
+            };
+            let mut value = first.1.clone();
+            if t > first.0 {
+                value = keys[keys.len() - 1].1.clone();
+                for w in keys.windows(2) {
+                    let ((a_ms, a, ease), (b_ms, b, _)) = (&w[0], &w[1]);
+                    if t <= *b_ms {
+                        let span = (b_ms - a_ms).max(0.0);
+                        let k = if span > 0.0 {
+                            ((t - a_ms) / span).clamp(0.0, 1.0)
+                        } else {
+                            1.0
+                        };
+                        value =
+                            interpolate::mix(property, a, b, ease.unwrap_or(self.ease).apply(k));
+                        break;
+                    }
+                }
+            }
+            out.push((track.property.clone(), value));
+        }
+        out
     }
 
     /// The keyframe progress in ms (0..=duration) at active time `t`, or
@@ -197,13 +312,26 @@ impl CssAnimation {
     }
 
     fn track_at(&self, track: &KeyframeTrack, t: f32, base: f32) -> f32 {
+        let scales = matches!(track.prop, Prop::Scale | Prop::ScaleX | Prop::ScaleY);
         let d = self.duration_ms;
         // Keys in ms, with implicit 0% and 100% keyframes at the element's value.
         let mut keys: Vec<(f32, f32, Option<Ease>)> = Vec::with_capacity(track.keys.len() + 2);
         if track.keys.first().is_none_or(|k| k.offset > 0.0) {
             keys.push((0.0, base, None));
         }
-        keys.extend(track.keys.iter().map(|k| (k.offset * d, k.value, k.ease)));
+        let composite = |k: &Keyframe| match k.composite.unwrap_or(self.composite) {
+            Composite::Replace => k.value,
+            // Scales multiply when added and accumulate one-based.
+            Composite::Add if scales => base * k.value,
+            Composite::Accumulate if scales => base + k.value - 1.0,
+            _ => base + k.value,
+        };
+        keys.extend(
+            track
+                .keys
+                .iter()
+                .map(|k| (k.offset * d, composite(k), k.ease)),
+        );
         if track.keys.last().is_none_or(|k| k.offset < 1.0) {
             keys.push((d, base, None));
         }
@@ -264,6 +392,30 @@ pub(crate) fn transition_for(list: &[CssTransition], c: usize) -> Option<&CssTra
     list.iter().rev().find(|t| t.channels >> c & 1 == 1)
 }
 
+/// A running transition of a computed value (CSS Transitions 1 §3), in
+/// ticks so a restore lands on the same value.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct StyleRun {
+    pub property: String,
+    pub from: String,
+    pub to: String,
+    /// The tick it started (its delay counts from here).
+    pub start: u64,
+    pub delay_ms: f32,
+    pub duration_ms: f32,
+    /// Its reversing-adjusted start value and shortening factor.
+    pub reversing_from: String,
+    pub factor: f32,
+}
+
+/// An element's transitions of computed values: the after-change values of
+/// the properties they cover, and those running.
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct StyleState {
+    pub after: std::collections::BTreeMap<String, String>,
+    pub runs: Vec<StyleRun>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -278,9 +430,11 @@ mod tests {
                         offset,
                         value,
                         ease: None,
+                        composite: None,
                     })
                     .collect(),
             }],
+            styles: Vec::new(),
             events: Vec::new(),
         }
     }
@@ -656,6 +810,82 @@ mod document_tests {
             at(1000.0);
         }
         assert!(close(at(1000.0), 3.0), "held at 3");
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    }
+
+    #[test]
+    fn computed_values_transition_reverse_shortened_animate_and_compose() {
+        // 60 ticks a second: 100 ms is 6 ticks.
+        let mut ui = ui(
+            "#Card { width: 40px; height: 20px; transition: width 100ms linear; }
+             #Card.on { width: 100px; }
+             #Card.paused { animation: grow 100ms linear both, nudge 100ms linear both;
+                            animation-composition: replace, add; }
+             @keyframes grow { to { height: 50px; } }
+             @keyframes nudge { from { height: 10px; } to { height: 30px; } }",
+            false,
+        );
+        let size = |ui: &mut Ui, on: bool, paused: bool| {
+            tick(ui, &json!({"on": on, "paused": paused}));
+            let i = (0..ui.nodes.len())
+                .find(|&i| ui.path_of(i) == "m/Card")
+                .unwrap();
+            (ui.nodes[i].rect.width, ui.nodes[i].rect.height)
+        };
+        size(&mut ui, false, false);
+        for j in 0..3 {
+            let (w, _) = size(&mut ui, true, false);
+            assert!(close(w, 40.0 + 60.0 * j as f32 / 6.0), "width at {j}: {w}");
+        }
+        // Reversed two thirds of the way, at 80 px: back to 40 px in two
+        // thirds of the time (CSS Transitions 1 §3, the reversing
+        // shortening factor).
+        let (w, _) = size(&mut ui, true, false);
+        assert!(close(w, 70.0), "{w}");
+        for j in 0..6 {
+            let (w, _) = size(&mut ui, false, false);
+            assert!(
+                close(w, 80.0 - 40.0 * (j as f32 / 4.0).min(1.0)),
+                "back at {j}: {w}"
+            );
+        }
+        assert!(
+            ui.state.motion.styles.values().all(|s| s.runs.is_empty()),
+            "settled transitions are not kept"
+        );
+        // The keyframes animate height; `add` composes onto grow's value.
+        for j in 0..8 {
+            let (_, h) = size(&mut ui, false, true);
+            let k = (j as f32 / 6.0).min(1.0);
+            let grow = 20.0 + 30.0 * k;
+            // Layout snaps boxes to whole pixels.
+            assert!(
+                (h - (grow + 10.0 + 20.0 * k)).abs() <= 0.5,
+                "height at {j}: {h}"
+            );
+        }
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    }
+
+    #[test]
+    fn starting_style_is_the_first_styles_before_change_value() {
+        // 60 ticks a second: 100 ms is 6 ticks.
+        let mut ui = ui(
+            "#Card { width: 40px; height: 20px; opacity: 1; transition: opacity 100ms linear, width 100ms linear; }
+             @starting-style { #Card { opacity: 0; width: 10px; } }",
+            false,
+        );
+        let off = json!({"on": false, "paused": false});
+        for j in 0..9 {
+            let v = tick(&mut ui, &off);
+            let i = (0..ui.nodes.len())
+                .find(|&i| ui.path_of(i) == "m/Card")
+                .unwrap();
+            let k = (j as f32 / 6.0).min(1.0);
+            assert!(close(v[OPACITY], k), "opacity at {j}: {}", v[OPACITY]);
+            let w = ui.nodes[i].rect.width;
+            assert!((w - (10.0 + 30.0 * k)).abs() <= 0.5, "width at {j}: {w}");
+        }
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     }
 }

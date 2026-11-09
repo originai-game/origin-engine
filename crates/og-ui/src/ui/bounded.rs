@@ -72,7 +72,10 @@ pub(super) fn compare(ui: &Ui, twin: &Ui) {
         seen.sort_unstable();
         let mut flip: Vec<_> = m.flip.iter().map(|(k, r)| (*k, format!("{r:?}"))).collect();
         flip.sort_unstable();
-        format!("{groups:?}\n{set:?}\n{seen:?}\n{flip:?}\n{:?}", m.css)
+        format!(
+            "{groups:?}\n{set:?}\n{seen:?}\n{flip:?}\n{:?}\n{:?}",
+            m.css, m.styles
+        )
     };
     assert_eq!(sorted(mu), sorted(mt), "{}", at("motion state"));
     let mut order = preorder(&twin.nodes, 0);

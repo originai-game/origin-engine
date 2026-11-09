@@ -83,8 +83,10 @@ pub fn builtin_keyframes(name: &str) -> Option<crate::motion::css::Keyframes> {
                 offset,
                 value: 0.0,
                 ease: None,
+                composite: None,
             }],
         }],
+        styles: Vec::new(),
         events: Vec::new(),
     })
 }

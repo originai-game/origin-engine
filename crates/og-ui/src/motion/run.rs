@@ -660,6 +660,24 @@ impl Ui {
                             busy |= !ch.settled() || now < ch.since;
                             m.channels.insert(ck, ch);
                             touched.insert(ck);
+                        } else if let Some(&(_, v)) = css.and(
+                            self.nodes[i]
+                                .props
+                                .starting
+                                .iter()
+                                .rev()
+                                .find(|(p, _)| p.channels().contains(&c)),
+                        ) {
+                            // `@starting-style`: the first style's
+                            // before-change value, moved by its transition.
+                            let mut ch = Channel::at(v, now);
+                            let (kind, mode) = pack(&tr.unwrap_or(Transition::Instant), &tokens);
+                            ch.retarget(target[c], kind, mode, (now as i64 + delay).max(0) as u64);
+                            ch.stepped = now.saturating_sub(1);
+                            row[c] = ch.step(now, tps, stepped);
+                            busy |= !ch.settled() || now < ch.since;
+                            m.channels.insert(ck, ch);
+                            touched.insert(ck);
                         } else if tr.is_some() || moved_by[c].is_some() || !groups.is_empty() {
                             m.channels.insert(ck, Channel::at(target[c], now));
                             touched.insert(ck);
@@ -1074,6 +1092,8 @@ impl Ui {
         // A CSS animation no element ran this tick ended with its element
         // or its `animation-name`.
         m.css.retain(|r| r.stepped == now);
+        // Transitions of computed values outlive no element.
+        m.styles.retain(|k, _| self.tree.by_key.contains_key(k));
         m.bursts.extend(css_bursts);
         for ev in &css_events {
             if let Some(s) = crate::style_file::UiSound::from_name(&ev.name) {

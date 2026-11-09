@@ -314,6 +314,10 @@ impl Ui {
         if !s.motion.css.is_empty() {
             docs["cssAnimations"] = serde_json::to_value(&s.motion.css).expect("finite CSS runs");
         }
+        if !s.motion.styles.is_empty() {
+            docs["cssTransitions"] =
+                serde_json::to_value(&s.motion.styles).expect("finite CSS transitions");
+        }
         if !s.virtual_lists.is_empty() {
             docs["virtualLists"] = serde_json::to_value(&s.virtual_lists).expect("finite extents");
         }
@@ -355,6 +359,10 @@ impl Ui {
         if let Some(runs) = docs.get("cssAnimations") {
             s.motion.css = serde_json::from_value(runs.clone())
                 .map_err(|_| bad("malformed CSS animations".into()))?;
+        }
+        if let Some(runs) = docs.get("cssTransitions") {
+            s.motion.styles = serde_json::from_value(runs.clone())
+                .map_err(|_| bad("malformed CSS transitions".into()))?;
         }
         if let Some(lists) = docs.get("virtualLists") {
             s.virtual_lists = serde_json::from_value(lists.clone())

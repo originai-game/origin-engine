@@ -177,6 +177,9 @@ pub(crate) struct MotionState {
     pub bursts: Vec<BurstRun>,
     /// Running CSS animations (saved beside the layer stack).
     pub css: Vec<super::css::CssRun>,
+    /// Transitions of computed values, by element (saved beside the layer
+    /// stack).
+    pub styles: std::collections::BTreeMap<u64, super::css::StyleState>,
 }
 
 /// The key of channel `c` of element `key`.
