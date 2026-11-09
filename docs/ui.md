@@ -2654,7 +2654,7 @@ extensions are outside this rebuild.
 
 | Genre kit | Required presentation | Status |
 | --- | --- | --- |
-| `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map | Not yet built |
+| `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map | Built: `packages/engine/extensions/rpg`, frames with `fantasy` in `templates/styles/tests/fantasy` |
 | `shooter` | Aim, ammunition, damage-direction HUD, killfeed, loadout | Not yet built |
 | `strategy` | Selection and commands, production queue, waves, tower-upgrade inspection | Not yet built |
 | `racing` | Telemetry, laps and standings, race banner, garage selection, results document | Not yet built |
@@ -2675,8 +2675,8 @@ production, purchases, rewards, legal card targets, or note timing.
 | --- | --- | --- | --- |
 | `clean` | Clear numeric hierarchy, restrained menus, low-interference HUD | Forza Horizon 5, Portal 2 | Not yet built |
 | `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | Not yet built |
-| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Not yet built |
-| `pixel` | Consistent pixel grid, integer scaling, readable glyphs | Stardew Valley, Octopath Traveler | Not yet built |
+| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Built: `templates/styles/fantasy`, frames in `templates/styles/tests/fantasy` |
+| `pixel` | Consistent pixel grid, integer scaling, readable glyphs | Stardew Valley, Octopath Traveler | Phase 2 |
 | `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Not yet built |
 | `storybook` | Paper and illustrated edges, quiet ornament, readable text | Pentiment, Strange Horticulture | Not yet built |
 
