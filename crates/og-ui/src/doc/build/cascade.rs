@@ -88,9 +88,9 @@ pub(crate) fn inherited_property(name: &str) -> bool {
 /// The inherited properties an element reads as it is built rather than
 /// from the frame's orders: with nothing declared, each takes its
 /// parent's value through the cascade (CSS Scrollbars 1 §2:
-/// `scrollbar-color` inherits). A document declaring one carries its
+/// `scrollbar-color` inherits; CSS Images 3 §5.3: `image-rendering`). A document declaring one carries its
 /// values, as one writing `inherit` does.
-pub(crate) const CARRIED_BY_DEFAULT: &[&str] = &["scrollbar-color"];
+pub(crate) const CARRIED_BY_DEFAULT: &[&str] = &["scrollbar-color", "image-rendering"];
 
 /// The computed-map key that carries a property's value to the children
 /// that write `inherit` (or `unset` on an inherited property).

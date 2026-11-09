@@ -679,7 +679,11 @@ impl Ui {
                 // An art slot: its art fitted by its spec, or the style's
                 // placeholder for its kind (docs/ui.md §3.3).
                 self.art_spec(&path, &r);
-                let spec = self.last_art().clone();
+                let mut spec = self.last_art().clone();
+                let (at, nearest) = r.object_css();
+                if let Some([focal, _]) = at {
+                    spec.focal = focal;
+                }
                 texture = r.handle("texture").and_then(|h| b.env.texture(h));
                 self.art(
                     id.as_str(),
@@ -690,14 +694,17 @@ impl Ui {
                         width: r.size("width").unwrap_or_default(),
                         height: r.size("height").unwrap_or_default(),
                         label: r.str("name").unwrap_or_default().to_string(),
+                        offset: at.map_or([0.0; 2], |a| a[1]),
+                        nearest,
                     },
                 );
             }
             "image" => {
                 texture = r.handle("texture").and_then(|h| b.env.texture(h));
                 let tint = r.color("tint");
-                self.image(
-                    id.as_str(),
+                let i = self.leaf("image", id.as_str().into(), Default::default());
+                self.apply_image(
+                    i,
                     crate::ui::ImageDesc {
                         texture,
                         tint,
@@ -711,6 +718,7 @@ impl Ui {
                         ..Default::default()
                     },
                 );
+                self.object_fit(i, &r);
             }
             "icon" => {
                 let name = match (r.str("icon"), r.str("cue")) {

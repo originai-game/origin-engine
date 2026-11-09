@@ -516,6 +516,8 @@ pub fn blur_detail(radius: f32) -> RenderScene {
                     fit: UiFit::Fill,
                     focal: Vec2::splat(0.5),
                     luminance: false,
+                    offset: Default::default(),
+                    nearest: false,
                 }),
             )
         };

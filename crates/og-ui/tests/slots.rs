@@ -28,6 +28,8 @@ fn missing_art_marks_stay_small_and_square_in_every_slot_kind() {
                     texture: None,
                     size: None,
                     label: String::new(),
+                    offset: [0.0; 2],
+                    nearest: false,
                 },
             );
             ui.end();
@@ -173,6 +175,8 @@ fn the_art_brief_asks_for_the_slots_og_ui_declares() {
             Fit::Fill => "fill",
             Fit::NineSlice => "nineSlice",
             Fit::Tile => "tile",
+            Fit::None => "none",
+            Fit::ScaleDown => "scaleDown",
         };
         assert!(rest.contains(&format!("\"{fit}\"")), "{}: fit", k.name());
         match i.safe {

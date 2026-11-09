@@ -76,6 +76,8 @@ pub(crate) enum BgImage {
     Texture {
         texture: og_render::TextureHandle,
         uv: [f32; 4],
+        /// Sampled at the nearest texel (CSS `image-rendering`).
+        nearest: bool,
     },
 }
 
@@ -136,7 +138,11 @@ impl BgLayer {
                     ]))),
                 }
             }
-            BgImage::Texture { texture, uv } => Paint::Image(ImagePaint {
+            BgImage::Texture {
+                texture,
+                uv,
+                nearest,
+            } => Paint::Image(ImagePaint {
                 texture: *texture,
                 uv: *uv,
                 size: [0.0; 2],
@@ -150,6 +156,8 @@ impl BgLayer {
                     ]),
                 })),
                 focal: [0.5; 2],
+                offset: [0.0; 2],
+                nearest: *nearest,
             }),
         }
     }
@@ -295,16 +303,20 @@ impl LayerFrame {
                 size: [aw.max(1e-3), ah.max(1e-3)],
                 fit,
             },
-            BgImage::Texture { texture, uv } => {
-                crate::paint::Paint::Image(crate::paint::ImagePaint {
-                    texture: *texture,
-                    uv: *uv,
-                    size: [0.0; 2],
-                    tint: ColorRef::Literal(Srgba::WHITE),
-                    fit,
-                    focal: [0.5; 2],
-                })
-            }
+            BgImage::Texture {
+                texture,
+                uv,
+                nearest,
+            } => crate::paint::Paint::Image(crate::paint::ImagePaint {
+                texture: *texture,
+                uv: *uv,
+                size: [0.0; 2],
+                tint: ColorRef::Literal(Srgba::WHITE),
+                fit,
+                focal: [0.5; 2],
+                offset: [0.0; 2],
+                nearest: *nearest,
+            }),
         };
         let o = [-out[3], -out[0], -out[1], -out[2]];
         BoxLayer {
@@ -798,7 +810,7 @@ fn image(t: &Tok) -> Result<CssImage, String> {
 /// A `background-position` (one to four values, CSS Backgrounds 3
 /// §3.6): keywords, lengths and percentages, an edge keyword followed by
 /// its offset.
-fn bg_position(t: &[Tok]) -> Result<[BgPos; 2], String> {
+pub(crate) fn bg_position(t: &[Tok]) -> Result<[BgPos; 2], String> {
     let err = || {
         "a position is one to four of: left, center, right, top, bottom, <n>px, <n>%".to_string()
     };

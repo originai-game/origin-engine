@@ -434,6 +434,8 @@ fn missing_art_slot_kinds_have_intentional_placeholders() {
                 texture: None,
                 size: None,
                 label: String::new(),
+                offset: [0.0; 2],
+                nearest: false,
             },
         );
         ui.close();

@@ -378,6 +378,11 @@ pub struct ArtDesc {
     pub height: Size,
     /// What a screen reader calls it; empty is the slot's name.
     pub label: String,
+    /// CSS px added to where the spec's focal point places it (CSS
+    /// `object-position` lengths).
+    pub offset: [f32; 2],
+    /// Sampled at the nearest texel (CSS `image-rendering: pixelated`).
+    pub nearest: bool,
 }
 
 /// A marker on a mini-map, in the map's 0–1 coordinates.

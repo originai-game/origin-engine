@@ -443,7 +443,14 @@ impl Ui {
         let ph = spec.kind.placeholder();
         match desc.texture {
             Some(texture) => {
-                let size = desc.size.unwrap_or(match &spec.aspect {
+                // At its own size (none, scale-down) the texture's own
+                // pixels place it: the renderer reads them for a zero size.
+                let own = matches!(
+                    spec.fit,
+                    crate::slot::Fit::None | crate::slot::Fit::ScaleDown
+                );
+                let size = desc.size.filter(|_| !own).unwrap_or(match &spec.aspect {
+                    _ if own => [0.0; 2],
                     SlotAspect::One(a) => [f32::from(a.w), f32::from(a.h)],
                     _ => [1.0, 1.0],
                 });
@@ -455,9 +462,13 @@ impl Ui {
                     fit: match spec.fit {
                         crate::slot::Fit::Cover => crate::paint::Fit::Cover,
                         crate::slot::Fit::Contain => crate::paint::Fit::Contain,
+                        crate::slot::Fit::None => crate::paint::Fit::None,
+                        crate::slot::Fit::ScaleDown => crate::paint::Fit::ScaleDown,
                         _ => crate::paint::Fit::Fill,
                     },
                     focal: spec.focal,
+                    offset: desc.offset,
+                    nearest: desc.nearest,
                 }));
             }
             None => {

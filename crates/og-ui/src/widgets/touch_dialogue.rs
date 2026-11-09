@@ -145,6 +145,7 @@ impl Ui {
                         texture: Some(tex),
                         uv,
                         tint: Srgba::WHITE,
+                        object: Default::default(),
                     };
                 }
                 (None, Some(shape)) => ui.nodes[s].shapes.push(shape),

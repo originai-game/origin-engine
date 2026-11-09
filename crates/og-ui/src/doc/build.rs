@@ -125,6 +125,21 @@ impl Resolved {
             _ => None,
         }
     }
+    /// CSS `object-position` as its fractions and its px (`None`: not
+    /// declared), and whether `image-rendering` samples nearest; both
+    /// checked when the CSS was lowered.
+    fn object_css(&self) -> (Option<[[f32; 2]; 2]>, bool) {
+        use crate::doc::image_css as ic;
+        let at = self
+            .str("objectPosition")
+            .and_then(|v| ic::object_position(v).ok())
+            .map(|[x, y]| [[x.0, y.0], [x.1, y.1]]);
+        let nearest = self
+            .str("imageRendering")
+            .and_then(|v| ic::image_rendering(v).ok())
+            .unwrap_or(false);
+        (at, nearest)
+    }
     fn size(&self, name: &str) -> Option<Size> {
         match self.get(name)? {
             V::Size(s) => Some(*s),
@@ -1746,6 +1761,8 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
             crate::slot::Fit::Fill => "fill",
             crate::slot::Fit::NineSlice => "nineSlice",
             crate::slot::Fit::Tile => "tile",
+            crate::slot::Fit::None => "none",
+            crate::slot::Fit::ScaleDown => "scaleDown",
         },
         "transparent": i.transparent,
         "mask": match s.mask {

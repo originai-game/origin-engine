@@ -1705,6 +1705,8 @@ impl Ui {
                 }),
                 fit,
                 focal: [0.5, 0.5],
+                offset: [0.0; 2],
+                nearest: false,
             })],
             view_box: Some(vb),
             view_rect: Some(rect),

@@ -22,6 +22,7 @@ const FIT_NINE: u32 = 4u;
 const FIT_PATTERN: u32 = 5u;
 const FIT_BACKGROUND: u32 = 6u;
 const FIT_BORDER: u32 = 7u;
+const FIT_SCALE_DOWN: u32 = 8u;
 
 struct ImageUv {
   // Where to sample.
@@ -158,21 +159,29 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
   let fit = (s.kinds.y >> 4u) & 15u;
   let size = 2.0 * s.center_half.zw;
   let pos = p + s.center_half.zw;
-  let img = max(s.paint2.zw, vec2<f32>(1.0));
+  var img = max(s.paint2.zw, vec2<f32>(1.0));
+  if ((s.kinds.y & 15u) == PAINT_IMAGE && s.paint2.z <= 0.0) {
+    // No size given: the region's own pixels.
+    img = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
+  }
   var f = pos / max(size, vec2<f32>(1e-4));
   switch fit {
-    case 1u, 2u: {
-      // Cover crops, contain fits; the focal point places it.
-      let k = select(max(size.x / img.x, size.y / img.y), min(size.x / img.x, size.y / img.y), fit == FIT_CONTAIN);
+    case 1u, 2u, 8u: {
+      // Cover crops, contain fits (scale-down never above its own size);
+      // the focal point and offset place it.
+      var k = select(max(size.x / img.x, size.y / img.y), min(size.x / img.x, size.y / img.y), fit != FIT_COVER);
+      if (fit == FIT_SCALE_DOWN) {
+        k = min(k, 1.0);
+      }
       let drawn = img * k;
-      let origin = (size - drawn) * s.paint2.xy;
+      let origin = (size - drawn) * s.paint2.xy + s.paint3.xy;
       f = (pos - origin) / drawn;
-      if (fit == FIT_CONTAIN && (any(f < vec2<f32>(0.0)) || any(f > vec2<f32>(1.0)))) {
+      if (fit != FIT_COVER && (any(f < vec2<f32>(0.0)) || any(f > vec2<f32>(1.0)))) {
         out.mask = 0.0;
       }
     }
     case 3u: {
-      let origin = (size - img) * s.paint2.xy;
+      let origin = (size - img) * s.paint2.xy + s.paint3.xy;
       f = (pos - origin) / img;
       if (any(f < vec2<f32>(0.0)) || any(f > vec2<f32>(1.0))) {
         out.mask = 0.0;
@@ -326,7 +335,17 @@ fn shape_color(s: UiInstance, in: UiOut, im: ImageUv, gx: vec2<f32>, gy: vec2<f3
   var c = flat_paint(s, in.local, in.position.xy);
   let kind = s.kinds.y & 15u;
   if (kind == PAINT_IMAGE) {
-    let t = textureSampleGrad(sprite_tex, sprite_sampler, im.uv, gx, gy);
+    var t = vec4<f32>(0.0);
+    if (((s.kinds.y >> 17u) & 1u) == 1u) {
+      // CSS image-rendering pixelated or crisp-edges: the centre of the
+      // texel under it, from the top level, so the sampler's filter
+      // (linear or nearest) reads that one texel.
+      let dims = vec2<f32>(textureDimensions(sprite_tex, 0));
+      let texel = (floor(im.uv * dims) + vec2<f32>(0.5)) / dims;
+      t = textureSampleLevel(sprite_tex, sprite_sampler, texel, 0.0);
+    } else {
+      t = textureSampleGrad(sprite_tex, sprite_sampler, im.uv, gx, gy);
+    }
     c = t * s.color * vec4<f32>(1.0, 1.0, 1.0, im.mask);
   } else if (kind == PAINT_GRADIENT_IMAGE) {
     c = gradient_color(u32(s.extra.y), im.uv, s.paint2.zw, in.position.xy);

@@ -181,7 +181,7 @@ probe) are unchanged. The mapping:
 | `<label><input type="checkbox"> Caption</label>` | toggle | the label's text is the caption; the two are one node. The caption sits where it is written (after the switch here, before it in `<label>Caption <input …></label>`); `flex-direction: row-reverse` on the label swaps it. A `<small>` inside is its description line |
 | `<label for="id">` | — | joins the control `id` names: a checkbox takes its text as its caption (one node, as the wrapping form); an input, textarea, select, range, meter or progress takes it as its accessible name and the label stays a text beside it |
 | `<hr>` | divider | |
-| `<img>` | image | `src`, `alt`; CSS `object-view-box: inset(<t>% <r>% <b>% <l>%)` (percentages of the texture) or `-og-uv: u0 v0 u1 v1` shows a part of it |
+| `<img>` | image | `src`, `alt`; CSS `object-view-box: inset(<t>% <r>% <b>% <l>%)` (percentages of the texture) or `-og-uv: u0 v0 u1 v1` shows a part of it; `object-fit`, `object-position` and `image-rendering` (see Images below) |
 | `<p>`, `<span>`, `<small>`, `<text>` | label | `<text>` is the core name; inline `<b>`/`<strong>`, `<i>`/`<em>`, `<u>`, `<s>`/`<del>`, `<br>`, a plain `<span>` and `<a href>` style runs of it |
 | `<h1>` … `<h6>` | label (heading) | role `heading` with `aria-level` 1–6; UA type steps `xl3`, `xl`, `lg`, `body`, `sm`, `xs` |
 | `<a href>` | label (a link) | a click sends a `link` event named by its href through the document's events, as `onclick` sends `emit`; accent ink and an underline |
@@ -1587,6 +1587,24 @@ while a child saying `visible` is drawn and taken as usual. `collapse` is
 attribute stays: `visible false` removes the element from layout as
 `display: none` does. These are read from the frame's orders as
 `user-select` is, so a declared value costs nothing while idle.
+
+#### Images
+
+CSS `object-fit` on an `<img>` takes `fill` (the default: stretched to
+its box), `contain`, `cover`, `none` (at the texture region's own pixels)
+and `scale-down` (`contain`, never above its own size); on `<art>` it
+also keeps `nineSlice` and `tile`. `object-position` places what does not
+fill the box as `background-position` is written, one to four values with
+edge offsets (`right 10px bottom 25%`); its default is the centre, and on
+`<art>` it replaces the spec's focal point. The renderer reads the region's
+own size from the texture, so an image needs no size of its own.
+`image-rendering` inherits: `pixelated` and `crisp-edges` sample every
+image the element draws (its `<img>` or `<art>`, its background, border
+and mask images) at the nearest texel of the top level, so pixel art
+scaled up keeps square, sharp pixels; `auto`, `smooth` and `high-quality`
+keep the texture's own sampling (a `kind pixel` texture is nearest
+already). The legacy `optimizeSpeed` and `optimizeQuality` are `pixelated`
+and `smooth`. All three are read as the element is built.
 
 #### Text on a path
 

@@ -736,7 +736,37 @@ impl Ui {
                 }
             }
             Content::Rich(rc) => self.rich_commands(i, rc, cmds),
-            Content::Image { texture, uv, tint } => cmds.push(DrawCmd::Image {
+            Content::Image {
+                texture: Some(texture),
+                uv,
+                tint,
+                object,
+            } if *object != crate::layout::ObjectFit::default() => {
+                // Fitted and placed in its box by the renderer, which
+                // reads the region's own size (CSS object-fit, object-
+                // position, image-rendering).
+                let color = tint.fade(alpha).linear();
+                let mut shape =
+                    og_render::UiShape::rect([rect.x, rect.y, rect.width, rect.height], 0.0, color);
+                shape.paint = og_render::UiPaint::Image(og_render::UiImage {
+                    texture: *texture,
+                    uv: *uv,
+                    size: og_core::glam::Vec2::ZERO,
+                    tint: color,
+                    fit: object.fit,
+                    focal: object.focal.into(),
+                    offset: object.offset.into(),
+                    luminance: false,
+                    nearest: object.nearest,
+                });
+                cmds.push(DrawCmd::Shape {
+                    shape: Box::new(shape),
+                    clip,
+                });
+            }
+            Content::Image {
+                texture, uv, tint, ..
+            } => cmds.push(DrawCmd::Image {
                 rect,
                 texture: *texture,
                 uv: *uv,

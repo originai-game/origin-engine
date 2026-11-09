@@ -378,6 +378,7 @@ impl Ui {
             texture: desc.texture,
             uv: desc.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]),
             tint: desc.tint.unwrap_or(Srgba::WHITE),
+            object: Default::default(),
         };
         self.nodes[i].probe_text = desc.label;
     }

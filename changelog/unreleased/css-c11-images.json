@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS object-fit on <img>, object-position and image-rendering in documents",
+      "summary": "object-fit takes fill, contain, cover, none and scale-down on <img> (none and scale-down on <art> too); object-position places the image as background-position is written, edge offsets included, and replaces <art>'s focal point; image-rendering pixelated and crisp-edges (inherited) sample every image an element draws at the nearest texel."
+    },
+    {
+      "member": "og-render: UiImage offset and nearest, UiFit::ScaleDown",
+      "summary": "UiImage.offset adds CSS px to where focal places a cover, contain or none image, UiImage.nearest samples the nearest texel of the top level whatever the texture's filter, UiFit::ScaleDown contains without scaling up, and a zero UiImage.size reads the region's own pixels from the texture."
+    }
+  ]
+}

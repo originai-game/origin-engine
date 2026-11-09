@@ -300,6 +300,7 @@ impl Ui {
     ) -> Option<crate::doc::paint_css::CssPaint> {
         use crate::doc::paint_css as p;
         let mut c = p::CssPaint::default();
+        let nearest = r.object_css().1;
         // A layer's image: a gradient, a texture by its handle, else an
         // atlas icon by name, as `<image href>` resolves one.
         let mut image = |what: &str, i: p::CssImage| -> Option<p::BgImage> {
@@ -311,6 +312,7 @@ impl Ui {
                         Some((_, t)) => p::BgImage::Texture {
                             texture: *t,
                             uv: [0.0, 0.0, 1.0, 1.0],
+                            nearest,
                         },
                         None => {
                             warn.push(format!("{what}: url({u}) names no texture"));
@@ -318,9 +320,11 @@ impl Ui {
                         }
                     },
                     Err(_) => match self.icons().find(&u) {
-                        Some(crate::ui::IconCell::Image(texture, uv)) => {
-                            p::BgImage::Texture { texture, uv }
-                        }
+                        Some(crate::ui::IconCell::Image(texture, uv)) => p::BgImage::Texture {
+                            texture,
+                            uv,
+                            nearest,
+                        },
                         Some(_) => {
                             warn.push(format!(
                                 "{what}: url({u}) is a glyph icon, not an image: write <icon name=\"{u}\">"
@@ -448,6 +452,27 @@ impl Ui {
         }
     }
 
+    /// An `<image>`'s CSS `object-fit`, `object-position` and
+    /// `image-rendering`, checked when the CSS was lowered.
+    pub(super) fn object_fit(&mut self, i: usize, r: &Resolved) {
+        let (at, nearest) = r.object_css();
+        let fit = match r.str("fit") {
+            Some("contain") => og_render::UiFit::Contain,
+            Some("cover") => og_render::UiFit::Cover,
+            Some("none") => og_render::UiFit::None,
+            Some("scaleDown") => og_render::UiFit::ScaleDown,
+            _ => og_render::UiFit::Fill,
+        };
+        if let crate::layout::Content::Image { object, .. } = &mut self.nodes[i].content {
+            *object = crate::layout::ObjectFit {
+                fit,
+                focal: at.map_or([0.5; 2], |a| a[0]),
+                offset: at.map_or([0.0; 2], |a| a[1]),
+                nearest,
+            };
+        }
+    }
+
     pub(super) fn apply_document_fields(
         &mut self,
         doc: &crate::doc::UiDocument,
@@ -536,21 +561,24 @@ impl Ui {
                 base.amounts,
                 base.press,
             ),
-            "image" => self.apply_image(
-                i,
-                crate::ImageDesc {
-                    texture: base.texture,
-                    tint: r.color("tint"),
-                    width: r.size("width").unwrap_or_default(),
-                    height: r.size("height").unwrap_or_default(),
-                    aspect: r
-                        .nums("ratio")
-                        .filter(|n| n.len() == 2 && n[1] > 0.0)
-                        .map_or(r.num("aspect").unwrap_or(0.0), |n| n[0] / n[1]),
-                    label: base.text.clone(),
-                    uv: r.nums("uv").and_then(|n| <[f32; 4]>::try_from(n).ok()),
-                },
-            ),
+            "image" => {
+                self.apply_image(
+                    i,
+                    crate::ImageDesc {
+                        texture: base.texture,
+                        tint: r.color("tint"),
+                        width: r.size("width").unwrap_or_default(),
+                        height: r.size("height").unwrap_or_default(),
+                        aspect: r
+                            .nums("ratio")
+                            .filter(|n| n.len() == 2 && n[1] > 0.0)
+                            .map_or(r.num("aspect").unwrap_or(0.0), |n| n[0] / n[1]),
+                        label: base.text.clone(),
+                        uv: r.nums("uv").and_then(|n| <[f32; 4]>::try_from(n).ok()),
+                    },
+                );
+                self.object_fit(i, r);
+            }
             "icon" => {
                 let name = match (r.str("icon"), r.str("cue")) {
                     (Some(icon), _) => icon.to_string(),
@@ -571,11 +599,15 @@ impl Ui {
             }
             "art" => {
                 let path = base.art.clone().expect("art render fields");
-                let spec = crate::slot::SlotSpec::from_props(
+                let mut spec = crate::slot::SlotSpec::from_props(
                     &path,
                     |name| r.str(name).map(str::to_string),
                     |name| r.nums(name).map(<[f32]>::to_vec),
                 );
+                let (at, nearest) = r.object_css();
+                if let Some([focal, _]) = at {
+                    spec.focal = focal;
+                }
                 if let Some(slot) = self.art_slot_mut(&path) {
                     *slot = spec.clone();
                 }
@@ -588,6 +620,8 @@ impl Ui {
                         width: r.size("width").unwrap_or_default(),
                         height: r.size("height").unwrap_or_default(),
                         label: r.str("name").unwrap_or_default().to_string(),
+                        offset: at.map_or([0.0; 2], |a| a[1]),
+                        nearest,
                     },
                 );
             }

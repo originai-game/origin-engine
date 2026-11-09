@@ -419,6 +419,8 @@ impl Player {
                                     fit: og_render::UiFit::Fill,
                                     focal: Vec2::splat(0.5),
                                     luminance: false,
+                                    offset: Default::default(),
+                                    nearest: false,
                                 }),
                                 mode: UiMode::Fill,
                                 opacity: 1.0,

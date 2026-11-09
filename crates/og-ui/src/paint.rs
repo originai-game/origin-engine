@@ -142,6 +142,11 @@ pub struct ImagePaint {
     pub tint: ColorRef,
     pub fit: Fit,
     pub focal: [f32; 2],
+    /// CSS px added to where `focal` places it (`object-position`
+    /// lengths), and whether it is sampled at the nearest texel (CSS
+    /// `image-rendering: pixelated | crisp-edges`).
+    pub offset: [f32; 2],
+    pub nearest: bool,
 }
 
 /// One layer of fill or a stroke's paint.
@@ -193,7 +198,9 @@ impl Paint {
                 tint: im.tint.resolve(theme),
                 fit: im.fit,
                 focal: Vec2::from(im.focal),
+                offset: Vec2::from(im.offset),
                 luminance: false,
+                nearest: im.nearest,
             }),
             Paint::Vector { tint, .. } => og_render::UiPaint::Solid(tint.resolve(theme)),
             Paint::Atlas(a) => match theme.art.atlas {
@@ -204,7 +211,9 @@ impl Paint {
                     tint: a.tint.resolve(theme),
                     fit: a.fit,
                     focal: Vec2::from(a.focal),
+                    offset: Vec2::ZERO,
                     luminance: false,
+                    nearest: false,
                 }),
                 None => og_render::UiPaint::Solid([0.0; 4]),
             },

@@ -360,6 +360,7 @@ fn fit(w: &mut W, f: &UiFit) {
         UiFit::Cover => w.u8(1),
         UiFit::Contain => w.u8(2),
         UiFit::None => w.u8(3),
+        UiFit::ScaleDown => w.u8(9),
         UiFit::NineSlice {
             source,
             dest,
@@ -425,6 +426,7 @@ fn rfit(r: &mut R) -> Option<UiFit> {
         1 => UiFit::Cover,
         2 => UiFit::Contain,
         3 => UiFit::None,
+        9 => UiFit::ScaleDown,
         4 => UiFit::NineSlice {
             source: rf4(r)?,
             dest: rf4(r)?,
@@ -473,14 +475,24 @@ fn paint(w: &mut W, p: &UiPaint) {
             gradient(w, g);
         }
         UiPaint::Image(im) => {
-            // A luminance image is its own tag (2 stays what it was).
-            w.u8(if im.luminance { 4 } else { 2 });
+            // A luminance image is its own tag (2 stays what it was); one
+            // with an offset or sampled nearest is 6, with both after it.
+            let extra = im.offset != Vec2::ZERO || im.nearest;
+            w.u8(match (extra, im.luminance) {
+                (true, _) => 6,
+                (false, true) => 4,
+                (false, false) => 2,
+            });
             w.u32(im.texture.slot());
             f4(w, &im.uv);
             v2(w, im.size);
             f4(w, &im.tint);
             fit(w, &im.fit);
             v2(w, im.focal);
+            if extra {
+                v2(w, im.offset);
+                w.u8(u8::from(im.luminance) | u8::from(im.nearest) << 1);
+            }
         }
         UiPaint::Layer(k) => {
             w.u8(3);
@@ -501,20 +513,28 @@ fn rpaint(r: &mut R) -> Option<UiPaint> {
     Some(match tag {
         0 => UiPaint::Solid(rf4(r)?),
         1 => UiPaint::Gradient(rgradient(r)?),
-        2 | 4 => {
+        2 | 4 | 6 => {
             let texture = TextureHandle::from_slot(r.u32()?)?;
             let uv = rf4(r)?;
             let size = rv2(r)?;
             let tint = rf4(r)?;
             let fit = rfit(r)?;
+            let focal = rv2(r)?;
+            let (offset, flags) = if tag == 6 {
+                (rv2(r)?, r.u8()?)
+            } else {
+                (Vec2::ZERO, u8::from(tag == 4))
+            };
             UiPaint::Image(UiImage {
                 texture,
                 uv,
                 size,
                 tint,
                 fit,
-                focal: rv2(r)?,
-                luminance: tag == 4,
+                focal,
+                offset,
+                luminance: flags & 1 != 0,
+                nearest: flags & 2 != 0,
             })
         }
         3 => UiPaint::Layer(r.u32()?),

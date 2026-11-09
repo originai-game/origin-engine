@@ -637,13 +637,23 @@ pub(crate) fn shape(
             texture = Some(im.texture);
             g.color = im.tint;
             g.paint = im.uv;
-            g.paint2 = [
-                im.focal.x,
-                im.focal.y,
-                im.size.x.max(1.0),
-                im.size.y.max(1.0),
-            ];
-            g.kinds[1] = 2 | fit_word(&mut g, im.fit) | u32::from(im.luminance) << 16;
+            // A zero size is the region's own (ui.wgsl's `image_uv`).
+            let size = if im.size.x <= 0.0 || im.size.y <= 0.0 {
+                [0.0; 2]
+            } else {
+                [im.size.x.max(1.0), im.size.y.max(1.0)]
+            };
+            g.paint2 = [im.focal.x, im.focal.y, size[0], size[1]];
+            g.kinds[1] = 2
+                | fit_word(&mut g, im.fit)
+                | u32::from(im.luminance) << 16
+                | u32::from(im.nearest) << 17;
+            if matches!(
+                im.fit,
+                UiFit::Cover | UiFit::Contain | UiFit::None | UiFit::ScaleDown
+            ) {
+                g.paint3 = [im.offset.x, im.offset.y, 0.0, 0.0];
+            }
         }
         UiPaint::GradientImage(gi) => {
             // An image without texels: the uv is the fraction of the
@@ -733,6 +743,7 @@ fn fit_word(g: &mut UiGpu, fit: UiFit) -> u32 {
         UiFit::Cover => (1, 0, 0),
         UiFit::Contain => (2, 0, 0),
         UiFit::None => (3, 0, 0),
+        UiFit::ScaleDown => (8, 0, 0),
         UiFit::NineSlice {
             source,
             dest,

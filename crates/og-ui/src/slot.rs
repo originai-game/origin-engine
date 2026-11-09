@@ -137,6 +137,10 @@ pub enum Fit {
     NineSlice,
     /// Repeated at its own size.
     Tile,
+    /// At its own size, placed by the focal point (CSS `object-fit: none`).
+    None,
+    /// Contained, never above its own size (CSS `object-fit: scale-down`).
+    ScaleDown,
 }
 
 /// What the art is cut to.
@@ -524,6 +528,8 @@ impl SlotSpec {
                 "fill" => Fit::Fill,
                 "nineSlice" => Fit::NineSlice,
                 "tile" => Fit::Tile,
+                "none" => Fit::None,
+                "scaleDown" => Fit::ScaleDown,
                 _ => Fit::Cover,
             };
         }

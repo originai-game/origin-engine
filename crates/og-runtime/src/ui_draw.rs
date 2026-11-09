@@ -439,6 +439,8 @@ impl Reader<'_> {
                         _ => Fit::Fill,
                     },
                     focal: vec2(&v["focal"], [0.5, 0.5]),
+                    offset: [0.0; 2],
+                    nearest: false,
                 })
             }
             "vector" => Paint::Vector {

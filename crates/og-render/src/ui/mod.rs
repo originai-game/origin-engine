@@ -245,6 +245,9 @@ pub enum UiFit {
     Contain,
     /// At its own size (one image pixel per CSS px), placed by the focal point.
     None,
+    /// As `Contain`, but never scaled up: at its own size where that fits
+    /// (CSS `object-fit: scale-down`).
+    ScaleDown,
     /// Nine-slice: `source` the border in image pixels (left, top, right,
     /// bottom), `dest` the border drawn in CSS px; the edges and the centre
     /// fill by `edges`; `center` false leaves the centre empty.
@@ -341,7 +344,7 @@ pub enum UiRepeat {
 }
 
 /// An image paint: a region `uv` (u0 v0 u1 v1) of `texture`, `size` its
-/// pixels, tinted.
+/// pixels (zero: the region's own, read from the texture), tinted.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UiImage {
     pub texture: TextureHandle,
@@ -352,8 +355,16 @@ pub struct UiImage {
     /// Where cover crops and contain or none place the image, fractions of
     /// the free space (0.5, 0.5: centred).
     pub focal: Vec2,
+    /// CSS px added to where `focal` places it under cover, contain or
+    /// none (CSS `object-position` lengths: `right 10px` is focal 1 and
+    /// offset -10).
+    pub offset: Vec2,
     /// Its luminance is its alpha (a CSS `luminance` mask).
     pub luminance: bool,
+    /// Sampled at the nearest texel of its top level whatever the
+    /// texture's own filter (CSS `image-rendering: pixelated` and
+    /// `crisp-edges`): scaled up, its pixels stay square and sharp.
+    pub nearest: bool,
 }
 
 /// A gradient drawn as an image `size` CSS px (its concrete size, which

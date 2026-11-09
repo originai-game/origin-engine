@@ -92,6 +92,7 @@ impl Ui {
                 texture: Some(t),
                 uv: [0.0, 0.0, 1.0, 1.0],
                 tint: Srgba::WHITE,
+                object: Default::default(),
             };
         }
         self.nodes[i].probe_text = desc.label.clone();

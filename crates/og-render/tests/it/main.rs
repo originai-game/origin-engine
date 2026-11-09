@@ -21,5 +21,7 @@ mod sprite_hooks;
 mod surface;
 #[path = "../tier.rs"]
 mod tier;
+#[path = "../ui_image.rs"]
+mod ui_image;
 #[path = "../wgsl_rules.rs"]
 mod wgsl_rules;

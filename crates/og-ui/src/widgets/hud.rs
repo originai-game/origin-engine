@@ -454,6 +454,7 @@ impl Ui {
                 v0 + (v1 - v0) * fy1,
             ],
             tint: desc.tint.unwrap_or(Srgba::WHITE),
+            object: Default::default(),
         };
         // A picture named by its id (a map), its zoom as its value.
         n.a11y.role = Some("image");

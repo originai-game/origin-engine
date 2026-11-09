@@ -139,6 +139,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `cursor:` | `[url(<icon or texture>) [<x> <y>],]* auto \| default \| none \| context-menu \| help \| pointer \| progress \| wait \| cell \| crosshair \| text \| vertical-text \| alias \| copy \| move \| no-drop \| not-allowed \| grab \| grabbing \| all-scroll \| col-resize \| row-resize \| n-resize \| e-resize \| s-resize \| w-resize \| ne-resize \| nw-resize \| se-resize \| sw-resize \| ew-resize \| ns-resize \| nesw-resize \| nwse-resize \| zoom-in \| zoom-out` | CSS `cursor`: the pointer's shape over it and its subtree, any CSS keyword. `url(<icon or texture>) [<x> <y>]` images before it are accepted and kept; the keyword is what the host shows. |
 | `pointer-events:` | `auto \| none \| visiblePainted \| visibleFill \| visibleStroke \| visible \| painted \| fill \| stroke \| bounding-box \| all` | CSS `pointer-events`, inherited: none lets the pointer through to what is under it (keys and pads still reach it; a child saying auto still takes it). On SVG shapes the SVG values pick the fill, the stroke or the bounding box. |
 | `touch-action:` | `auto \| none \| [pan-x \| pan-left \| pan-right] \|\| [pan-y \| pan-up \| pan-down] \|\| pinch-zoom \| manipulation` | CSS `touch-action`: the pans (pan-x, pan-left…, pan-y…) and pinch-zoom a touch starting on it may make; none keeps the touch for its own handlers. The used value intersects its ancestors'. |
+| `image-rendering:` | `auto \| smooth \| high-quality \| pixelated \| crisp-edges` | CSS `image-rendering`, inherited: pixelated or crisp-edges samples every image it draws (its image, art, background and border image) at the nearest texel, so pixel art scaled up stays sharp; auto, smooth and high-quality keep the texture's own sampling. |
 | `visibility:` | `visible \| hidden \| collapse` | CSS `visibility`, inherited: hidden keeps its place but draws nothing and takes no pointer or focus, while a child saying visible is drawn; collapse also gives up a flex item's main size. |
 | `-og-text-path:` | `none \| path("<svg path data>") \| circle([<n>px])` | Its text set along a path (`-og-text-path`): `none`, `path("<svg path data>")` in px from its content box, or `circle([<n>px])` centred in it. |
 | `-og-text-path-offset:` | `<n>px \| <n>%` | Where its text's anchor (text-align) sits along its path: `<n>px` or `<n>%` of the path's length. |
@@ -409,6 +410,8 @@ Its own props, beside every element's:
 | `src` | `number` | A texture handle (og.load.texture), usually bound. |
 | `-og-tint:` | `var(--<role>) \| #rrggbb[aa]` | Multiplies the texture (or fills without one). |
 | `object-view-box:` | `inset(<t>% <r>% <b>% <l>%) \| -og-uv: <u0> <v0> <u1> <v1>` | The part of the texture it shows, u0 v0 u1 v1 with v down (`object-view-box: inset(…)` in percentages, or `-og-uv`). |
+| `object-fit:` | `cover \| contain \| fill \| none \| scale-down \| nine-slice \| tile` | CSS `object-fit`: how the image fills its box (fill, contain, cover, none, scale-down) or the art its slot (also nineSlice and tile). |
+| `object-position:` | `<position>: one to four of left, center, right, top, bottom, <n>px, <n>%` | CSS `object-position`: where contain, cover, none or scale-down place the image in its box, as background-position is written (50% 50% by default). |
 
 ## 14. `<art>` (`art`): An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one
 
@@ -424,7 +427,8 @@ Its own props, beside every element's:
 | `ratio` | `x y` | The slot's aspect, width and height in whole numbers. |
 | `focal` | `x y` | The point cropping keeps, 0–1. |
 | `safe` | `4 numbers` | Where text or controls lie over it: x0 y0 x1 y1, 0–1. |
-| `object-fit:` | `cover \| contain \| fill \| nine-slice \| tile` | How the art fills the slot. |
+| `object-fit:` | `cover \| contain \| fill \| none \| scale-down \| nine-slice \| tile` | CSS `object-fit`: how the image fills its box (fill, contain, cover, none, scale-down) or the art its slot (also nineSlice and tile). |
+| `object-position:` | `<position>: one to four of left, center, right, top, bottom, <n>px, <n>%` | CSS `object-position`: where contain, cover, none or scale-down place the image in its box, as background-position is written (50% 50% by default). |
 | `item-cells` | `x y` | An item icon's grid cells, columns and rows (1 1, 1 2, 2 3 or 2 4). |
 | `slice` | `insets` | A nine-slice's insets as fractions of the art: all, x y, or left top right bottom. |
 | `art-set` | `name` | The set it is generated with for a consistent look (the kind's name by default). |

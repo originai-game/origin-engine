@@ -262,6 +262,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("pointerEvents", "pointer-events"),
     ("touchAction", "touch-action"),
     ("visibility", "visibility"),
+    ("imageRendering", "image-rendering"),
+    ("objectPosition", "object-position"),
     ("emitter", "-og-emitter"),
     ("meta", "-og-meta"),
     ("userSelect", "user-select"),
@@ -388,6 +390,7 @@ fn conv(prop: &str) -> Conv {
     match prop {
         p if super::interact_css::form(p).is_some() => Conv::Raw,
         p if super::scroll_css::form(p).is_some() => Conv::Raw,
+        p if super::image_css::form(p).is_some() => Conv::Raw,
         "width" | "height" | "minWidth" | "maxWidth" | "minHeight" | "maxHeight" => Conv::Size,
         "padding" => Conv::Insets,
         "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft" => Conv::Len,
@@ -487,6 +490,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Margin => "<n>px | <n>em | <n>% | auto | calc(…)".into(),
         Conv::Raw if let Some(f) = super::interact_css::form(prop) => f.into(),
         Conv::Raw if let Some(f) = super::scroll_css::form(prop) => f.into(),
+        Conv::Raw if let Some(f) = super::image_css::form(prop) => f.into(),
         Conv::Raw if prop == "boxShadow" => {
             "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into()
         }
@@ -1842,6 +1846,10 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             .collect()),
         n if let Some(prop) = super::interact_css::prop_of(n) => {
             super::interact_css::check(n, value)?;
+            Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
+        }
+        n if let Some(prop) = super::image_css::prop_of(n) => {
+            super::image_css::check(n, value)?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }
         "scroll-snap-type" | "scroll-snap-align" | "-og-sheet-detents" => {

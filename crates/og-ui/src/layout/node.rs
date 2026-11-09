@@ -354,7 +354,33 @@ pub(crate) enum Content {
         texture: Option<TextureHandle>,
         uv: [f32; 4],
         tint: Srgba,
+        /// How it fills its box (CSS `object-fit`, `object-position`,
+        /// `image-rendering`); stretched by default.
+        object: ObjectFit,
     },
+}
+
+/// How an image element's texture fills its box: CSS `object-fit` (`fit`,
+/// with `None` for scale-down's own size resolved by the renderer),
+/// `object-position` (`focal`, the fraction of the free space, and
+/// `offset`, the px after it) and `image-rendering` (`nearest`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ObjectFit {
+    pub fit: og_render::UiFit,
+    pub focal: [f32; 2],
+    pub offset: [f32; 2],
+    pub nearest: bool,
+}
+
+impl Default for ObjectFit {
+    fn default() -> Self {
+        ObjectFit {
+            fit: og_render::UiFit::Fill,
+            focal: [0.5; 2],
+            offset: [0.0; 2],
+            nearest: false,
+        }
+    }
 }
 
 /// What a widget draws besides its background and content.

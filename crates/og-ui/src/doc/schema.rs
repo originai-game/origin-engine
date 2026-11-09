@@ -936,6 +936,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "CSS `touch-action`: the pans (pan-x, pan-left…, pan-y…) and pinch-zoom a touch starting on it may make; none keeps the touch for its own handlers. The used value intersects its ancestors'."
     ),
     p!(
+        "imageRendering",
+        Ty::Text,
+        "CSS `image-rendering`, inherited: pixelated or crisp-edges samples every image it draws (its image, art, background and border image) at the nearest texel, so pixel art scaled up stays sharp; auto, smooth and high-quality keep the texture's own sampling."
+    ),
+    p!(
         "visibility",
         Ty::Text,
         "CSS `visibility`, inherited: hidden keeps its place but draws nothing and takes no pointer or focus, while a child saying visible is drawn; collapse also gives up a flex item's main size."
@@ -1838,9 +1843,23 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!(
         "fit",
-        Ty::Word(&["cover", "contain", "fill", "nineSlice", "tile"]),
-        ["art"],
-        "How the art fills the slot."
+        Ty::Word(&[
+            "cover",
+            "contain",
+            "fill",
+            "none",
+            "scaleDown",
+            "nineSlice",
+            "tile"
+        ]),
+        ["image", "art"],
+        "CSS `object-fit`: how the image fills its box (fill, contain, cover, none, scale-down) or the art its slot (also nineSlice and tile)."
+    ),
+    p!(
+        "objectPosition",
+        Ty::Text,
+        ["image", "art"],
+        "CSS `object-position`: where contain, cover, none or scale-down place the image in its box, as background-position is written (50% 50% by default)."
     ),
     p!(
         "itemCells",
