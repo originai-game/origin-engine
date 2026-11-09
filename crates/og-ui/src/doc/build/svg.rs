@@ -1078,7 +1078,10 @@ fn painted(
                     .push(outline(points, closed, true, [0.0; 2], 0.0));
             }
         }
-        [d, g] => {
+        // Zero-length dashes (an empty `pathLength` meter's "0 1"): butt
+        // caps draw nothing; og-render reads a zero dash as solid.
+        [d, g] if *d <= 0.0 && *g > 0.0 && style.cap == crate::svg::Cap::Butt => {}
+        [d, g] if *d > 0.0 || *g <= 0.0 => {
             for (points, closed) in parts {
                 draw.outlines.push(outline(
                     points,
@@ -2404,6 +2407,39 @@ mod tests {
                 _ => None,
             })
             .collect()
+    }
+
+    /// An empty meter's `stroke-dasharray="0 1"` draws nothing with butt
+    /// caps, as a browser does; a round cap's zero dashes are dots. Fails
+    /// when the zero dash reaches og-render, which reads it as solid (the
+    /// radial meter's empty wheels drew full rings).
+    #[test]
+    fn zero_length_dashes_draw_no_ring() {
+        let ring = |cap: &str| {
+            let doc = format!(
+                r##"<meta name="component" content="z">
+<svg id="S" viewBox="0 0 40 40" style="width: 80px; height: 80px">
+  <circle cx="20" cy="20" r="18" fill="none" stroke="#f00" stroke-width="4"
+    stroke-linecap="{cap}" pathLength="1" stroke-dasharray="0 1"/>
+</svg>"##
+            );
+            let mut ui = Ui::new(UiDesc::default());
+            ui.define_document(UiDocument::parse("z.svelte", &doc).unwrap());
+            ui.mount_document(
+                SourceId::new("test", "z"),
+                "z",
+                BTreeMap::new(),
+                BTreeMap::new(),
+                &crate::bind::NoEnv,
+            )
+            .unwrap();
+            ui.begin(InputFrame::default(), Viewport::new(200.0, 200.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            strokes(&ui).len()
+        };
+        assert_eq!(ring("butt"), 0, "butt caps: nothing");
+        assert!(ring("round") > 0, "round caps: a dot");
     }
 
     #[test]
