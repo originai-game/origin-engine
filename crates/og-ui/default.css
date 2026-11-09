@@ -1,0 +1,594 @@
+/* Generated from packages/design/tokens.json by crates/og-ui/scripts/gen-theme.sh.
+* Do not edit: tests/theme.rs checks drift.
+* @layer og-default is the engine's lowest-priority author layer; packs
+* override it in later layers or with unlayered rules. All defaults,
+* including root tokens, belong to this layer. Dark is the initial scheme;
+* the host sets data-scheme=light on the root for the light palette.
+* Selectors use markup tags, host classes/attributes, ::part(name), states.
+* Engine extension: -og-material: glass <weight> <elevation> preserves
+* the renderer's luminance-limited backdrop, lit edge, CSS-space tint,
+* elevation and accessibility solid fallback. Standard backdrop-filter
+* cannot express that material; it supplies blur/saturation, not a second
+* backdrop. The material owns its tint, border and elevation shadows.
+* All --* values below are ordinary CSS variables, not engine hooks.
+* --well-rim is the generated 3:1 unchecked-mark rim in each scheme.
+* --motion-ui-easing samples the existing UI spring at 60 Hz; CSS
+* transitions restart from the current value, not the old spring velocity.
+* No default uses atlas border-image, procedural segments or ornaments.
+* Borders paint inside the existing part box (box-sizing: border-box);
+* focus uses an outside outline and never changes the part's geometry.
+*/
+@layer og-default {
+  :root {
+    --space-3xl: 48px;
+    --space-lg: 16px;
+    --space-md: 12px;
+    --space-sm: 8px;
+    --space-xl: 24px;
+    --space-xs: 4px;
+    --space-xxl: 32px;
+    --space-xxs: 2px;
+    --radius-block: 8px;
+    --radius-button: 6px;
+    --radius-capsule: 9999px;
+    --radius-card: 10px;
+    --radius-control: 4px;
+    --radius-field: 6px;
+    --radius-panel: 12px;
+    --radius-sheet: 16px;
+    --font-cjk-letter-spacing: 0em;
+    --font-cjk-line-height-2xl: 32px;
+    --font-cjk-line-height-3xl: 36px;
+    --font-cjk-line-height-4xl: 40px;
+    --font-cjk-line-height-5xl: 46px;
+    --font-cjk-line-height-6xl: 54px;
+    --font-cjk-line-height-7xl: 62px;
+    --font-cjk-line-height-8xl: 74px;
+    --font-cjk-line-height-display-2xl: 68px;
+    --font-cjk-line-height-display-lg: 50px;
+    --font-cjk-line-height-display-md: 44px;
+    --font-cjk-line-height-display-sm: 38px;
+    --font-cjk-line-height-display-xl: 60px;
+    --font-cjk-line-height-xl: 30px;
+    --font-display: "Inter Variable", "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --font-rounded: ui-rounded, "SF Pro Rounded", "Nunito Variable", "Nunito", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    --font-scale-2xl-letter-spacing: -0.015em;
+    --font-scale-2xl-line-height: 28px;
+    --font-scale-2xl-size: 22px;
+    --font-scale-3xl-letter-spacing: -0.02em;
+    --font-scale-3xl-line-height: 32px;
+    --font-scale-3xl-size: 26px;
+    --font-scale-4xl-letter-spacing: -0.022em;
+    --font-scale-4xl-line-height: 36px;
+    --font-scale-4xl-size: 30px;
+    --font-scale-5xl-letter-spacing: -0.025em;
+    --font-scale-5xl-line-height: 40px;
+    --font-scale-5xl-size: 36px;
+    --font-scale-6xl-letter-spacing: -0.03em;
+    --font-scale-6xl-line-height: 48px;
+    --font-scale-6xl-size: 44px;
+    --font-scale-7xl-letter-spacing: -0.032em;
+    --font-scale-7xl-line-height: 56px;
+    --font-scale-7xl-size: 52px;
+    --font-scale-8xl-letter-spacing: -0.035em;
+    --font-scale-8xl-line-height: 64px;
+    --font-scale-8xl-size: 64px;
+    --font-scale-base-line-height: 24px;
+    --font-scale-base-size: 16px;
+    --font-scale-body-line-height: 20px;
+    --font-scale-body-size: 14px;
+    --font-scale-caption-line-height: 18px;
+    --font-scale-caption-size: 13px;
+    --font-scale-display-2xl-letter-spacing: -0.025em;
+    --font-scale-display-2xl-line-height: 60px;
+    --font-scale-display-2xl-size: 56px;
+    --font-scale-display-lg-letter-spacing: -0.02em;
+    --font-scale-display-lg-line-height: 44px;
+    --font-scale-display-lg-size: 40px;
+    --font-scale-display-md-letter-spacing: -0.016em;
+    --font-scale-display-md-line-height: 38px;
+    --font-scale-display-md-size: 34px;
+    --font-scale-display-sm-letter-spacing: -0.012em;
+    --font-scale-display-sm-line-height: 32px;
+    --font-scale-display-sm-size: 28px;
+    --font-scale-display-xl-letter-spacing: -0.022em;
+    --font-scale-display-xl-line-height: 52px;
+    --font-scale-display-xl-size: 48px;
+    --font-scale-lg-line-height: 26px;
+    --font-scale-lg-size: 18px;
+    --font-scale-meta-line-height: 18px;
+    --font-scale-meta-size: 13px;
+    --font-scale-reading-line-height: 24px;
+    --font-scale-reading-size: 15px;
+    --font-scale-sm-line-height: 20px;
+    --font-scale-sm-size: 14px;
+    --font-scale-xl-letter-spacing: -0.01em;
+    --font-scale-xl-line-height: 28px;
+    --font-scale-xl-size: 20px;
+    --font-scale-xs-line-height: 16px;
+    --font-scale-xs-size: 12px;
+    --density-comfortable-control-lg: 40px;
+    --density-comfortable-control-md: 36px;
+    --density-comfortable-control-sm: 32px;
+    --density-comfortable-gutter: 24px;
+    --density-comfortable-header: 56px;
+    --density-comfortable-row: 44px;
+    --density-comfortable-section: 40px;
+    --density-compact-control-lg: 36px;
+    --density-compact-control-md: 32px;
+    --density-compact-control-sm: 28px;
+    --density-compact-gutter: 16px;
+    --density-compact-header: 48px;
+    --density-compact-row: 36px;
+    --density-compact-section: 24px;
+    --density-pad-control-lg: 52px;
+    --density-pad-control-md: 48px;
+    --density-pad-control-sm: 40px;
+    --density-pad-gutter: 32px;
+    --density-pad-header: 64px;
+    --density-pad-row: 52px;
+    --density-pad-section: 40px;
+    --density-touch-control-lg: 48px;
+    --density-touch-control-md: 44px;
+    --density-touch-control-sm: 44px;
+    --density-touch-header: 52px;
+    --density-touch-row: 48px;
+    --motion-duration-base: 240ms;
+    --motion-duration-bounce: 640ms;
+    --motion-duration-fast: 180ms;
+    --motion-duration-instant: 120ms;
+    --motion-duration-slow: 400ms;
+    --motion-duration-spring: 520ms;
+    --motion-easing-bounce: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
+    --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1);
+    --motion-easing-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --motion-easing-snappy: linear(0, 0.016, 0.063 4.1%, 0.25 8.7%, 0.684 17.5%, 0.86 22.6%, 0.967 28%, 1.03 34%, 1.05 39.6%, 1.045 46.2%, 1.017 58.5%, 0.997 75.2%, 1);
+    --motion-easing-spring: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001);
+    --motion-spring-default-damping: 1;
+    --motion-spring-default-response: 350ms;
+    --motion-spring-momentum-damping: 0.8;
+    --motion-spring-momentum-response: 400ms;
+    --motion-spring-sheet-damping: 0.85;
+    --motion-spring-sheet-response: 300ms;
+    --motion-timing-cascade-cap: 400ms;
+    --motion-timing-cascade-easing: out;
+    --motion-timing-cascade-step: 40ms;
+    --motion-timing-enter-duration: base;
+    --motion-timing-enter-easing: out;
+    --motion-timing-exit-duration: fast;
+    --motion-timing-exit-easing: exit;
+    --motion-timing-hover-magnet: 0.5;
+    --motion-timing-hover-spring: default;
+    --motion-timing-press-damping: 0.55;
+    --motion-timing-press-duration: instant;
+    --motion-timing-screen-slow: 2;
+    --motion-timing-toast-enter: base;
+    --motion-timing-toast-exit: fast;
+    --motion-timing-toast-hold: 3200ms;
+    --motion-timing-toast-hold-danger: 6000ms;
+    --vars-material-blur: 22px;
+    --vars-material-blur-lens: 8px;
+    --vars-material-blur-thick: 32px;
+    --vars-material-blur-thin: 10px;
+    --vars-material-saturate: 200%;
+    --vars-press-scale: 0.96;
+    --vars-scrim-blur: 8px;
+    --motion-ui-duration: 516.6667ms;
+    --motion-ui-easing: linear(0, 0.06323142, 0.17927124, 0.30909258, 0.4333, 0.5434077, 0.63678026, 0.7137428, 0.77596456, 0.8255847, 0.8647624, 0.89546657, 0.91939527, 0.93796384, 0.95232564, 0.96340525, 0.9719357, 0.9784932, 0.9835279, 0.98738974, 0.99034965, 0.9926169, 0.99435276, 0.9956813, 0.9966977, 0.99747527, 0.9980699, 0.9985246, 0.9988723, 0.999138, 0.9993412, 1);
+    --color-accent: #e8e8ed;
+    --color-accent-active: #c7c7cc;
+    --color-accent-fg: #111113;
+    --color-accent-hover: #ffffff;
+    --color-accent-ink: #f5f5f7;
+    --color-accent-soft: rgb(255 255 255 / 0.12);
+    --color-bg: #000000;
+    --color-bg-subtle: #111113;
+    --color-border: #38383a;
+    --color-border-strong: #545458;
+    --color-danger: #ff8a82;
+    --color-fg: #f5f5f7;
+    --color-fg-inverse: #18181a;
+    --color-fg-muted: #c8c8cd;
+    --color-fg-subtle: #9e9ea3;
+    --color-fill: rgb(120 120 128 / 0.24);
+    --color-fill-strong: rgb(120 120 128 / 0.36);
+    --color-focus: #f5f5f7;
+    --color-gold: #ffd60a;
+    --color-health: #30d158;
+    --color-hud: rgb(22 22 24 / 0.8);
+    --color-info: #5cc8ff;
+    --color-knob: #f5f5f7;
+    --color-mana: #409cff;
+    --color-material-control: rgb(255 255 255 / 0.13);
+    --color-material-control-hover: rgb(255 255 255 / 0.07);
+    --color-material-edge: rgb(255 255 255 / 0.08);
+    --color-material-regular: rgb(30 30 34 / 0.64);
+    --color-material-thick: rgb(28 28 30 / 0.78);
+    --color-material-thin: rgb(44 44 48 / 0.28);
+    --color-scrim: rgb(0 0 0 / 0.42);
+    --color-shadow: #000000;
+    --color-sheen: rgb(255 255 255 / 0.12);
+    --color-stage: #000000;
+    --color-stage-border: #2c2c2e;
+    --color-stage-danger: #ff6b5e;
+    --color-stage-fg: #f5f5f7;
+    --color-stage-muted: #a1a1a6;
+    --color-stage-raised: #1c1c1e;
+    --color-stage-surface: #141416;
+    --color-success: #3dd68c;
+    --color-surface: #1c1c1e;
+    --color-surface-hover: #3a3a3c;
+    --color-surface-raised: #2c2c2e;
+    --color-thumb: #636366;
+    --color-warn: #ff8a3d;
+    --color-xp: #bf5af2;
+    --backdrop: rgb(0 0 0 / 1);
+    --well: rgb(17 17 19 / 1);
+    --panel: rgb(28 28 30 / 1);
+    --panel-hover: rgb(58 58 60 / 1);
+    --panel-raised: rgb(44 44 46 / 1);
+    --line: rgb(56 56 58 / 1);
+    --line-strong: rgb(84 84 88 / 1);
+    --ink: rgb(245 245 247 / 1);
+    --ink-muted: rgb(200 200 205 / 1);
+    --ink-faint: rgb(158 158 163 / 1);
+    --ink-inverse: rgb(24 24 26 / 1);
+    --control: rgb(120 120 128 / 0.115);
+    --control-strong: rgb(120 120 128 / 0.195);
+    --primary: rgb(232 232 237 / 1);
+    --primary-hover: rgb(255 255 255 / 1);
+    --primary-active: rgb(199 199 204 / 1);
+    --on-primary: rgb(17 17 19 / 1);
+    --primary-soft: rgb(255 255 255 / 0.028);
+    --highlight: rgb(245 245 247 / 1);
+    --selection: rgb(84 84 88 / 1);
+    --on-selection: rgb(245 245 247 / 1);
+    --accent: rgb(245 245 247 / 1);
+    --scene-ink: rgb(245 245 247 / 1);
+    --scene-plate: rgb(44 44 46 / 1);
+    --scene-shadow: rgb(0 0 0 / 1);
+    --focus: rgb(245 245 247 / 1);
+    --knob: rgb(245 245 247 / 1);
+    --hud: rgb(22 22 24 / 0.8);
+    --scrim: rgb(0 0 0 / 0.687);
+    --shadow: rgb(0 0 0 / 1);
+    --sheen: rgb(255 255 255 / 0.12);
+    --success: rgb(61 214 140 / 1);
+    --warn: rgb(255 138 61 / 1);
+    --danger: rgb(255 138 130 / 1);
+    --info: rgb(92 200 255 / 1);
+    --health: rgb(48 209 88 / 1);
+    --mana: rgb(64 156 255 / 1);
+    --xp: rgb(191 90 242 / 1);
+    --gold: rgb(255 214 10 / 1);
+    --well-rim: rgb(117 117 120 / 1);
+    --glass-saturation: 120%;
+    --shadow-30: rgb(0 0 0 / 0.3);
+    --shadow-35: rgb(0 0 0 / 0.35);
+    --shadow-45: rgb(0 0 0 / 0.45);
+    --sheen-50: rgb(255 255 255 / 0.06);
+    --sheen-60: rgb(255 255 255 / 0.072000004);
+    --line-70: rgb(56 56 58 / 0.7);
+    --danger-45: rgb(255 138 130 / 0.45);
+    --elevation-raised: 0 1px 3px 0 #0000004d;
+    --elevation-floating: 0 4px 12px 0 #00000059;
+  }
+  :root[data-scheme=light] {
+    --color-accent: #1c1c1e;
+    --color-accent-active: #000000;
+    --color-accent-fg: #fafafa;
+    --color-accent-hover: #3a3a3c;
+    --color-accent-ink: #18181a;
+    --color-accent-soft: rgb(0 0 0 / 0.06);
+    --color-bg: #f2f2f7;
+    --color-bg-subtle: #e9e9ee;
+    --color-border: #dcdce1;
+    --color-border-strong: #c4c4c9;
+    --color-danger: #b20011;
+    --color-fg: #18181a;
+    --color-fg-inverse: #fafafa;
+    --color-fg-muted: #46464c;
+    --color-fg-subtle: #636369;
+    --color-fill: rgb(120 120 128 / 0.12);
+    --color-fill-strong: rgb(120 120 128 / 0.2);
+    --color-focus: #3a3a3c;
+    --color-gold: #8a5a00;
+    --color-health: #1b7a38;
+    --color-hud: rgb(250 250 252 / 0.86);
+    --color-info: #0062c4;
+    --color-knob: #ffffff;
+    --color-mana: #0062c4;
+    --color-material-control: rgb(120 120 128 / 0.16);
+    --color-material-control-hover: rgb(120 120 128 / 0.09);
+    --color-material-edge: rgb(0 0 0 / 0.07);
+    --color-material-regular: rgb(250 250 252 / 0.58);
+    --color-material-thick: rgb(246 246 248 / 0.8);
+    --color-material-thin: rgb(255 255 255 / 0.36);
+    --color-scrim: rgb(0 0 0 / 0.22);
+    --color-shadow: #000000;
+    --color-sheen: rgb(255 255 255 / 0.5);
+    --color-stage: #000000;
+    --color-stage-border: #2c2c2e;
+    --color-stage-danger: #ff6b5e;
+    --color-stage-fg: #f5f5f7;
+    --color-stage-muted: #a1a1a6;
+    --color-stage-raised: #1c1c1e;
+    --color-stage-surface: #141416;
+    --color-success: #1a7a37;
+    --color-surface: #ffffff;
+    --color-surface-hover: #e5e5ea;
+    --color-surface-raised: #ffffff;
+    --color-thumb: #ffffff;
+    --color-warn: #c2410c;
+    --color-xp: #7d3fc4;
+    --backdrop: rgb(242 242 247 / 1);
+    --well: rgb(233 233 238 / 1);
+    --panel: rgb(255 255 255 / 1);
+    --panel-hover: rgb(229 229 234 / 1);
+    --panel-raised: rgb(255 255 255 / 1);
+    --line: rgb(220 220 225 / 1);
+    --line-strong: rgb(196 196 201 / 1);
+    --ink: rgb(24 24 26 / 1);
+    --ink-muted: rgb(70 70 76 / 1);
+    --ink-faint: rgb(99 99 105 / 1);
+    --ink-inverse: rgb(250 250 250 / 1);
+    --control: rgb(120 120 128 / 0.169);
+    --control-strong: rgb(120 120 128 / 0.271);
+    --primary: rgb(28 28 30 / 1);
+    --primary-hover: rgb(58 58 60 / 1);
+    --primary-active: rgb(0 0 0 / 1);
+    --on-primary: rgb(250 250 250 / 1);
+    --primary-soft: rgb(0 0 0 / 0.131);
+    --highlight: rgb(24 24 26 / 1);
+    --selection: rgb(196 196 201 / 1);
+    --on-selection: rgb(24 24 26 / 1);
+    --accent: rgb(24 24 26 / 1);
+    --scene-ink: rgb(24 24 26 / 1);
+    --scene-plate: rgb(255 255 255 / 1);
+    --scene-shadow: rgb(0 0 0 / 1);
+    --focus: rgb(58 58 60 / 1);
+    --knob: rgb(255 255 255 / 1);
+    --hud: rgb(250 250 252 / 0.86);
+    --scrim: rgb(0 0 0 / 0.416);
+    --shadow: rgb(0 0 0 / 1);
+    --sheen: rgb(255 255 255 / 0.5);
+    --success: rgb(26 122 55 / 1);
+    --warn: rgb(194 65 12 / 1);
+    --danger: rgb(178 0 17 / 1);
+    --info: rgb(0 98 196 / 1);
+    --health: rgb(27 122 56 / 1);
+    --mana: rgb(0 98 196 / 1);
+    --xp: rgb(125 63 196 / 1);
+    --gold: rgb(138 90 0 / 1);
+    --well-rim: rgb(148 148 152 / 1);
+    --glass-saturation: 200%;
+    --shadow-30: rgb(0 0 0 / 0.3);
+    --shadow-35: rgb(0 0 0 / 0.35);
+    --shadow-45: rgb(0 0 0 / 0.45);
+    --sheen-50: rgb(255 255 255 / 0.25);
+    --sheen-60: rgb(255 255 255 / 0.3);
+    --line-70: rgb(220 220 225 / 0.7);
+    --danger-45: rgb(178 0 17 / 0.45);
+    --elevation-raised: 0 1px 3px 0 #0000004d;
+    --elevation-floating: 0 4px 12px 0 #00000059;
+  }
+
+  /* Hover/press values are supplied by the widget, blended by the cascade. */
+  button::part(base), input[type=checkbox]::part(row), input[type=radio]::part(option),
+  select::part(option), stepper::part(button), details::part(summary),
+  keyboard::part(key), keyboard::part(candidate), input::part(frame),
+  textarea::part(frame), select::part(trigger), input[type=checkbox]::part(box),
+  input[type=radio]::part(ring), input[type=radio]::part(card), slot::part(frame),
+  chip::part(base), tabs::part(tab), input[type=range]::part(knob),
+  input[type=checkbox][switch]::part(track), input[type=checkbox][switch]::part(knob) {
+    transition: background var(--motion-ui-duration) var(--motion-ui-easing),
+      border-color var(--motion-ui-duration) var(--motion-ui-easing),
+      box-shadow var(--motion-ui-duration) var(--motion-ui-easing),
+      color var(--motion-ui-duration) var(--motion-ui-easing),
+      opacity var(--motion-ui-duration) var(--motion-ui-easing);
+  }
+  /* Panel / Dialog / Card / Tooltip */
+  panel::part(frame), sheet::part(frame), radial::part(frame),
+  menu::part(frame), popover::part(frame), tooltip::part(frame),
+  chart::part(tooltip), card::part(frame), dialog::part(panel),
+  details::part(root), details::part(content), scroll::part(frame),
+  select::part(list), input[type=range]::part(bubble) {
+    box-sizing: border-box;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+  }
+  select::part(list), input[type=range]::part(bubble) {
+    box-shadow: var(--elevation-floating);
+  }
+  /* Hud */
+  hud::part(frame), actionbar::part(hint), minimap::part(frame),
+  joystick::part(base), dpad::part(base), actionbutton::part(face) {
+    border: 1px solid var(--line-70);
+    border-radius: var(--radius-button);
+  }
+  /* Button: untouched token defaults also serve secondary controls. */
+  button::part(base), input[type=checkbox]::part(row),
+  input[type=radio]::part(option), select::part(option),
+  stepper::part(button), details::part(summary),
+  keyboard::part(key), keyboard::part(candidate) {
+    box-sizing: border-box;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-button);
+    box-shadow: inset 0 1px 0 0 var(--sheen-60);
+  }
+  stepper::part(button):active, details::part(summary):active,
+  keyboard::part(key):active, keyboard::part(candidate):active {
+    box-shadow: inset 0 1px 3px 0 var(--shadow-45);
+  }
+  stepper::part(button):disabled, details::part(summary):disabled,
+  keyboard::part(key):disabled, keyboard::part(candidate):disabled {
+    border: none; box-shadow: none;
+  }
+  /* Field: text boxes, checkbox marks and radio wells. */
+  input::part(frame), textarea::part(frame), select::part(trigger),
+  stepper::part(frame), stepper::part(value), input[type=checkbox]::part(box),
+  input[type=radio]::part(box), input[type=radio]::part(ring) {
+    box-sizing: border-box;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-button);
+    box-shadow: inset 0 1px 3px 0 var(--shadow-30);
+  }
+  input[type=checkbox]::part(box), input[type=radio]::part(box), input[type=radio]::part(ring) {
+    border: 1px solid var(--well-rim);
+  }
+  input[type=checkbox]::part(box):checked,
+  input[type=checkbox][aria-checked=mixed]::part(box),
+  input[type=radio]::part(box):checked, input[type=radio]::part(ring):checked {
+    border: none; box-shadow: none;
+  }
+  input[type=checkbox][aria-invalid=true]::part(box),
+  input[type=radio][aria-invalid=true]::part(box),
+  select[aria-invalid=true]::part(trigger),
+  stepper[aria-invalid=true]::part(frame), stepper[aria-invalid=true]::part(value) {
+    border: 1.5px solid var(--danger);
+  }
+  /* Slot / Avatar / Chip / Badge / Tab / Bar */
+  slot::part(frame) {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    box-shadow: inset 0 1px 3px 0 var(--shadow-30);
+  }
+  avatar::part(frame) { border: 1.5px solid var(--line-strong); border-radius: var(--radius-control); }
+  chip::part(base), input[type=range]::part(knob), input[type=checkbox][switch]::part(track),
+  input[type=checkbox][switch]::part(knob) {
+    border: 1px solid var(--line); border-radius: var(--radius-button);
+  }
+  chip[aria-selected=true]::part(base) { border: none; }
+  badge::part(base), tabs::part(tab), tabs::part(track), tabs::part(indicator) {
+    border: none; border-radius: var(--radius-button);
+  }
+  input[type=radio]::part(card) {
+    border: 1px solid var(--line); border-radius: var(--radius-panel);
+    box-shadow: var(--elevation-raised);
+  }
+  input[type=radio]::part(card):active, input[type=radio]::part(card):disabled { box-shadow: none; }
+  input[type=radio]::part(ring), input[type=radio]::part(dot),
+  input[type=range]::part(knob), input[type=range]::part(core),
+  input[type=checkbox][switch]::part(track), input[type=checkbox][switch]::part(knob) {
+    border-radius: 9999px;
+  }
+  meter::part(track), meter::part(fill), progress::part(track), progress::part(fill), input[type=range]::part(track),
+  input[type=range]::part(fill), input[type=range]::part(tick) {
+    border: none; border-radius: var(--radius-capsule);
+    box-shadow: inset 0 1px 2px 0 var(--shadow-35);
+  }
+  meter::part(fill), progress::part(fill), input[type=range]::part(fill) { box-shadow: inset 0 1px 0 0 var(--sheen-50); }
+  /* node_draw focus rings: outside the part, gap only for navigation. */
+  button::part(focus):focus-visible, input::part(focus):focus-visible,
+  textarea::part(focus):focus-visible, select::part(focus):focus-visible,
+  tabs::part(focus):focus-visible, slot::part(focus):focus-visible,
+  stepper::part(focus):focus-visible, details::part(focus):focus-visible,
+  keyboard::part(focus):focus-visible {
+    outline: 2px solid var(--focus); outline-offset: var(--space-xxs);
+  }
+  input::part(focus):focus-visible, textarea::part(focus):focus-visible { outline-offset: 0; }
+  input[type=range]::part(focus):focus-visible, input[type=checkbox]::part(focus):focus-visible,
+  input[type=radio]::part(focus):focus-visible { outline-offset: var(--space-xxs); }
+  button[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
+  button[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
+  button[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
+  button[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  input[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
+  input[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
+  input[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
+  input[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  textarea[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
+  textarea[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
+  textarea[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
+  textarea[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  select[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
+  select[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
+  select[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
+  select[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  tabs[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
+  tabs[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
+  tabs[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
+  tabs[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  slot[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
+  slot[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
+  slot[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
+  slot[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  stepper[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
+  stepper[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
+  stepper[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
+  stepper[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  details[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
+  details[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
+  details[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
+  details[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  keyboard[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
+  keyboard[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
+  keyboard[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
+  keyboard[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  /* Panel::frame */
+  panel::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(32px) saturate(var(--glass-saturation)); -og-material: glass thick lift; }
+  /* Sheet::frame */
+  sheet::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(32px) saturate(var(--glass-saturation)); -og-material: glass thick lift; }
+  /* Radial::frame */
+  radial::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(32px) saturate(var(--glass-saturation)); -og-material: glass thick lift; }
+  /* Menu::frame */
+  menu::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(32px) saturate(var(--glass-saturation)); -og-material: glass thick float; }
+  /* Popover::frame */
+  popover::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(32px) saturate(var(--glass-saturation)); -og-material: glass thick float; }
+  /* Tooltip::frame */
+  tooltip::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(32px) saturate(var(--glass-saturation)); -og-material: glass thick float; }
+  /* Chart::tooltip */
+  chart::part(tooltip) { background: none; border: none; box-shadow: none; backdrop-filter: blur(32px) saturate(var(--glass-saturation)); -og-material: glass thick float; }
+  /* Hud::frame */
+  hud::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(22px) saturate(var(--glass-saturation)); -og-material: glass regular float; }
+  /* Minimap::frame */
+  minimap::part(frame) { background: #16161899; border: 0.5px solid #ffffff14; box-shadow: 0 6px 16px 0 #00000073; }
+  /* ScrollArea::frame */
+  scroll::part(frame) { border: none; box-shadow: none; }
+  /* ActionBar::hint */
+  actionbar::part(hint) { background: none; border: none; box-shadow: none; backdrop-filter: blur(22px) saturate(var(--glass-saturation)); -og-material: glass regular float; }
+  /* Card::frame */
+  card::part(frame) { box-shadow: none; border-radius: var(--radius-card); }
+  /* Button::base */
+  button::part(base) { border: none; box-shadow: none; }
+  /* Button::base.ghost */
+  button.ghost::part(base) { border: 1px solid var(--line-strong); }
+  /* Field::frame */
+  input::part(frame), textarea::part(frame) { border: none; box-shadow: none; }
+  /* Field::frame.invalid */
+  input[aria-invalid=true]::part(frame), textarea[aria-invalid=true]::part(frame) { border: 1px solid var(--danger); }
+  /* Chip::base */
+  chip::part(base) { border: none; }
+  /* Slot::frame */
+  slot::part(frame) { border: none; box-shadow: none; }
+  /* Slot::frame:selected */
+  slot[aria-selected=true]::part(frame) { border: 1px solid #ffffff8c; box-shadow: 0 0 8px 0 #ffffff1f, 0 6px 14px 0 #00000066; }
+  /* Meter::track */
+  meter::part(track), progress::part(track) { box-shadow: none; }
+  /* Meter::fill */
+  meter::part(fill), progress::part(fill) { box-shadow: none; }
+  /* Slider::track */
+  input[type=range]::part(track) { background: #707075; box-shadow: none; }
+  /* Toggle::track */
+  input[type=checkbox][switch]::part(track) { box-shadow: none; }
+  /* Toggle::row */
+  input[type=checkbox][switch]::part(row) { border: none; box-shadow: none; }
+  /* Checkbox::row */
+  input[type=checkbox]::part(row) { border: none; box-shadow: none; }
+  /* Radio::option */
+  input[type=radio]::part(option) { border: none; box-shadow: none; }
+  /* Dropdown::trigger.open */
+  select[aria-expanded=true]::part(trigger) { border: 2px solid var(--focus); }
+  /* Dropdown::option */
+  select::part(option) { border: none; box-shadow: none; }
+  /* Radio::card */
+  input[type=radio]::part(card) { border: none; }
+  /* Radio::card:selected */
+  input[type=radio]::part(card):checked { background: var(--selection); }
+  /* Radio::chosen */
+  input[type=radio]::part(chosen) { border: none; }
+  /* Tabs::tab:selected */
+  tabs[aria-selected=true]::part(tab) { background: var(--selection); box-shadow: 0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26; }
+}

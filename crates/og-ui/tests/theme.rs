@@ -45,6 +45,64 @@ fn theme_rs_is_generated_from_the_design_tokens() {
     assert_eq!(og_ui::Theme::dark().radius, og_ui::theme::RADIUS);
 }
 
+#[test]
+fn default_css_is_generated_from_the_design_tokens() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let tokens = std::fs::read_to_string(root.join("../../packages/design/tokens.json"))
+        .expect("tokens.json");
+    let committed = std::fs::read_to_string(root.join("default.css")).expect("default.css");
+    let generated = theme_codegen::generate_css(&tokens).expect("the tokens generate CSS");
+    assert_eq!(
+        committed, generated,
+        "run crates/og-ui/scripts/gen-theme.sh (never edit default.css by hand)"
+    );
+    // Every existing dressing must have a migration entry, including its
+    // state/variant. This catches omissions when the legacy defaults change.
+    for line in og_ui::theme::DRESSINGS
+        .lines()
+        .filter(|line| line.ends_with(" {"))
+    {
+        let key = line.trim_end_matches(" {");
+        assert!(
+            generated.contains(&format!("/* {key} */")),
+            "missing CSS for {key}"
+        );
+    }
+    // The generated public selectors must be accepted by the same parser
+    // packs use, with host facts before ::part and state after it.
+    use og_ui::doc::selectors::{Selector as CssSelector, Simple};
+    let comments = regex_lite::Regex::new(r"/\*[\s\S]*?\*/").unwrap();
+    let sheet = comments.replace_all(&generated, "");
+    let rules = regex_lite::Regex::new(r"([^{}]+)\{").unwrap();
+    for rule in rules.captures_iter(&sheet) {
+        let header = rule[1].trim();
+        if header.starts_with('@') || header.starts_with(":root") {
+            continue;
+        }
+        for selector in CssSelector::parse_list(header).expect("valid CSS selector") {
+            assert_eq!(selector.compounds.len(), 1, "{header}");
+            let simple = &selector.compounds[0].0;
+            assert!(matches!(&simple[0], Simple::Type(tag) if tag == &tag.to_lowercase()));
+            let part = simple
+                .iter()
+                .position(|s| matches!(s, Simple::Part(_)))
+                .expect("::part");
+            assert!(
+                simple[1..part]
+                    .iter()
+                    .all(|s| matches!(s, Simple::Class(_) | Simple::Attribute { .. })),
+                "{header}"
+            );
+            assert!(
+                simple[part + 1..]
+                    .iter()
+                    .all(|s| matches!(s, Simple::State(_))),
+                "{header}"
+            );
+        }
+    }
+}
+
 /// The tokens' material tints are the ones og-render's glass draws: a
 /// tint changed on one side only would hold the language's contrast pairs
 /// in the test and not on the screen.

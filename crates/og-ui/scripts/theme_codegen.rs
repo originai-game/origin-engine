@@ -7,6 +7,10 @@
 use serde_json::Value;
 use std::fmt::Write;
 
+#[path = "theme_css.rs"]
+mod theme_css;
+pub use theme_css::generate as generate_css;
+
 /// Each og-ui role and the token it is drawn from: `color` (the scheme's
 /// colour, `dark.color` over `color`) or `linear` (the fill restated for
 /// the UI pass's linear-light blending, `linear.dark.color` over
