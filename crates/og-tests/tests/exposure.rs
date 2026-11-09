@@ -51,8 +51,16 @@ fn mean_luma(img: &RgbaImage) -> f32 {
         / px.len() as f32
 }
 
+/// A renderer whose display frames compare byte for byte with another's:
+/// a capture first makes the full variant of every lit pipeline the scene
+/// meets (a display frame draws with a leaner one until it has compiled in
+/// the background, which may differ in its last bit: og_render's
+/// `settle_pipelines`), and leaves the display as if it had not been taken.
 fn renderer() -> Renderer {
-    Renderer::new_blocking(&scenes::base_desc()).expect("renderer")
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    r.render_capture(&scene(1.0), &RenderTarget::Offscreen)
+        .expect("capture");
+    r
 }
 
 #[test]

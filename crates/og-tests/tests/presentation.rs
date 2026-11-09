@@ -24,10 +24,23 @@ fn draw(renderer: &mut Renderer, scene: &RenderScene, frames: u32) -> RgbaImage 
     renderer.read_offscreen().expect("capture")
 }
 
+/// `renderer`, its display frames comparable byte for byte with another
+/// renderer's: a capture first makes the full variant of every lit pipeline
+/// the scene meets (a display frame draws with a leaner one until it has
+/// compiled in the background, which may differ in its last bit: og_render's
+/// `settle_pipelines`), and leaves the display as if it had not been taken.
+fn primed(mut renderer: Renderer, scene: &RenderScene) -> Renderer {
+    renderer
+        .render_capture(scene, &RenderTarget::Offscreen)
+        .expect("capture");
+    renderer
+}
+
 #[test]
+#[ignore = "requires GPU"]
 fn a_resident_renderer_restarts_without_previous_run_state() {
     let g = scenes::build("materials").expect("scene");
-    let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");
+    let mut renderer = primed(Renderer::new_blocking(&g.desc).expect("renderer"), &g.scene);
     let expected = draw(&mut renderer, &g.scene, g.frames);
     let device = renderer.device().clone();
     renderer.set_render_scale(0.5);
@@ -50,10 +63,16 @@ fn a_resident_renderer_restarts_without_previous_run_state() {
         width: g.desc.width / 2,
         ..g.desc
     };
-    let mut changed_run = again
-        .restart_blocking(&changed)
-        .expect("changed description");
-    let mut cold = Renderer::new_blocking(&changed).expect("cold changed description");
+    let mut changed_run = primed(
+        again
+            .restart_blocking(&changed)
+            .expect("changed description"),
+        &g.scene,
+    );
+    let mut cold = primed(
+        Renderer::new_blocking(&changed).expect("cold changed description"),
+        &g.scene,
+    );
     assert!(
         draw(&mut changed_run, &g.scene, g.frames).pixels
             == draw(&mut cold, &g.scene, g.frames).pixels,

@@ -43,12 +43,16 @@ fn cooked() -> CookedTexture {
         .expect("the texture loads")
 }
 
-fn draw(renderer: &mut Renderer, scene: &RenderScene, frames: u32) -> RgbaImage {
-    for _ in 0..frames.max(1) {
-        renderer
-            .render(scene, &RenderTarget::Offscreen)
-            .expect("frame");
-    }
+/// The capture of `scene`: its bytes are a function of the scene alone.
+/// A plain frame's are not: natively a lit pipeline draws with a variant
+/// for the frame's features until its full variant has compiled in the
+/// background (pipeline_features.rs), and the two differ in their last
+/// bit, so two renderers' frames match only when their compiles finished
+/// at the same frame.
+fn draw(renderer: &mut Renderer, scene: &RenderScene) -> RgbaImage {
+    renderer
+        .render_capture(scene, &RenderTarget::Offscreen)
+        .expect("frame");
     renderer.read_offscreen().expect("capture")
 }
 
@@ -70,7 +74,7 @@ fn a_device_with_other_encodings_draws_textures_transcoded_again_for_it() {
     let mut material = *scene.standard_material(m).expect("standard");
     material.map = t.slot();
     scene.set_standard_material(m, material);
-    draw(&mut renderer, &scene, 1);
+    draw(&mut renderer, &scene);
 
     renderer.lose_device();
     let mut again = renderer
@@ -95,14 +99,14 @@ fn a_device_with_other_encodings_draws_textures_transcoded_again_for_it() {
         panic!("transcoded again to an encoding the new device does not take");
     };
     scene.set_texture(t, data);
-    let after = draw(&mut again, &scene, g.frames);
+    let after = draw(&mut again, &scene);
 
     let desc = RenderDesc {
         texture_compression: TextureCompression::Off,
         ..g.desc
     };
     let mut fresh = Renderer::new_blocking(&desc).expect("renderer");
-    let expected = draw(&mut fresh, &scene, g.frames);
+    let expected = draw(&mut fresh, &scene);
     assert!(
         after.pixels == expected.pixels,
         "the recreated renderer's frame differs from a fresh renderer's with the same encodings"
