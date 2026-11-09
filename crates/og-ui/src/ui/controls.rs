@@ -51,6 +51,7 @@ impl Ui {
             fit,
             wrap_style: Default::default(),
             cut: None,
+            vertical: None,
         });
         // The probe and screen readers read the whole text, cut or not.
         n.probe_text = text.to_owned();

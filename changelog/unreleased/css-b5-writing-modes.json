@@ -1,0 +1,15 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS writing-mode, text-orientation and text-combine-upright",
+      "summary": "Document elements take `writing-mode` (`horizontal-tb`, `vertical-rl`, `vertical-lr`, `sideways-rl`, `sideways-lr`), `text-orientation` (`mixed`, `upright`, `sideways`) and `text-combine-upright` (`none`, `all`, `digits`), inherited. An element whose writing mode differs from its parent's lays out in a frame of its own, so block flow, flex, grid, tables, columns, floats and `clear`, insets, scrolling and the logical properties follow its axes; to its parent it is an orthogonal flow. Vertical text breaks and measures down its lines, stands CJK upright by the font's vertical metrics and forms and lays Latin sideways, and combines a short text into one em."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "UI: container queries and units through the container's writing mode",
+      "change": "`@container (inline-size \u2026)` and `(block-size \u2026)` and the `cqi`, `cqb`, `cqmin` and `cqmax` units read a container's axes as its own writing mode names them: in a vertical container `inline-size` and `cqi` are its height. `cqw` and `cqh` read the nearest container that contains that physical axis, and a vertical `inline-size` container no longer answers `width` conditions. Horizontal documents are unchanged.",
+      "fix": "A document that queries a vertical container's width writes `block-size` (and `cqb`), or gives the container `container-type: size`."
+    }
+  ]
+}

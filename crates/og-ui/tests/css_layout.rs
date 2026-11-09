@@ -52,6 +52,12 @@
 //!   not moved below), `clear` ignored, a float in a nested block not
 //!   reaching the boxes after it, a flow-root not holding its floats, or a
 //!   `<p>` only as wide as its text → `floats_lay_out_as_css_floats_do`
+//! - a vertical writing mode laid out in its parent's axes: blocks not
+//!   stacked from the right (`-rl`) or left (`-lr`), a flex row not running
+//!   down, a logical side on the horizontal side, an orthogonal child
+//!   filling its parent's inline axis, `sideways-lr` not starting at the
+//!   bottom, or floats and `clear` on the physical left and right →
+//!   `writing_modes_lay_out_as_css_writing_modes_does`
 //! - `inline-start` not following the containing block's direction, `left`
 //!   turned round under a right-to-left surface, or a box narrowed beside
 //!   floats not mirrored whole in a right-to-left block →
@@ -904,5 +910,92 @@ p { margin: 0; }
                 "rtl surface {rtl}"
             );
         }
+    });
+}
+
+#[test]
+fn writing_modes_lay_out_as_css_writing_modes_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="V"><div id="A"></div><div id="B"></div></div>
+  <div id="L"><div id="C"></div><div id="D"></div></div>
+  <div id="F"><div id="F1"></div><div id="F2"></div></div>
+  <div id="G"><div id="G1"></div></div>
+  <div id="H"><div id="Hc"><div id="Hk"></div></div></div>
+  <div id="S"><div id="S1"></div><div id="S2"></div></div>
+  <div id="Fl"><div id="Fa"></div><div id="Fb"></div><div id="Fc"></div></div>
+  <div id="Wl"><div id="Wf"></div><div id="I1"></div><div id="I2"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#V { writing-mode: vertical-rl; height: 200px; }
+#A { inline-size: 50px; block-size: 30px; }
+#B { width: 20px; }
+#L { writing-mode: vertical-lr; height: 100px; }
+#C { width: 10px; }
+#D { width: 15px; }
+#F { writing-mode: vertical-rl; display: flex; height: 120px; column-gap: 10px; align-items: stretch; }
+#F1 { height: 30px; width: 25px; }
+#F2 { height: 40px; }
+#G { writing-mode: vertical-rl; height: 100px; padding-inline-start: 5px; }
+#G1 { width: 10px; margin-block-start: 7px; }
+#H { writing-mode: vertical-rl; height: 100px; }
+#Hc { writing-mode: horizontal-tb; width: 60px; padding-top: 3px; }
+#Hk { height: 12px; }
+#S { writing-mode: sideways-lr; height: 90px; }
+#S1 { inline-size: 20px; block-size: 5px; }
+#S2 { inline-size: 30px; block-size: 5px; margin-inline-start: 4px; }
+#Fl { writing-mode: vertical-rl; height: 100px; }
+#Fa { float: left; width: 20px; height: 30px; }
+#Fb { float: right; width: 10px; height: 25px; }
+#Fc { clear: left; width: 5px; }
+#Wl { writing-mode: vertical-rl; height: 100px; }
+#Wf { float: left; width: 20px; height: 40px; }
+#I1, #I2 { display: inline-block; inline-size: 30px; block-size: 10px; }
+</style>"#;
+    let at = |d: &Doc, id: &str, of: &str| {
+        let (e, o) = (d.get(id), d.get(of));
+        (e.x - o.x, e.y - o.y)
+    };
+    both(text, &[], |d| {
+        // vertical-rl: blocks stack from the right and fill the height (the
+        // inline axis); the box is as wide as its blocks.
+        assert_eq!(wh(d, "V"), (50.0, 200.0));
+        assert_eq!((at(d, "A", "V"), wh(d, "A")), ((20.0, 0.0), (30.0, 50.0)));
+        assert_eq!((at(d, "B", "V"), wh(d, "B")), ((0.0, 0.0), (20.0, 200.0)));
+        // vertical-lr: from the left.
+        assert_eq!(
+            (at(d, "C", "L"), at(d, "D", "L")),
+            ((0.0, 0.0), (10.0, 0.0))
+        );
+        assert_eq!(wh(d, "L"), (25.0, 100.0));
+        // A flex row runs down the inline axis; its items stretch across.
+        assert_eq!(
+            (at(d, "F1", "F"), at(d, "F2", "F")),
+            ((0.0, 0.0), (0.0, 40.0))
+        );
+        assert_eq!(wh(d, "F2"), (25.0, 40.0));
+        // Logical sides: block-start is the right, inline-start the top.
+        assert_eq!(at(d, "G1", "G"), (0.0, 5.0));
+        assert_eq!(wh(d, "G"), (17.0, 100.0));
+        // A horizontal box in a vertical one is an orthogonal flow: its
+        // width is its own, its height its content's.
+        assert_eq!(wh(d, "Hc"), (60.0, 15.0));
+        assert_eq!(at(d, "Hk", "Hc"), (0.0, 3.0));
+        assert_eq!(wh(d, "Hk"), (60.0, 12.0));
+        assert_eq!(wh(d, "H"), (60.0, 100.0));
+        // sideways-lr: lines run up from the bottom, blocks from the left.
+        assert_eq!(at(d, "S1", "S"), (0.0, 70.0));
+        assert_eq!(at(d, "S2", "S"), (5.0, 56.0));
+        // Floats in vertical-rl: `left` is line-left (the top), `right`
+        // the bottom, both from the block-start (the right); `clear: left`
+        // puts a block past the left float.
+        assert_eq!(at(d, "Fa", "Fl"), (5.0, 0.0));
+        assert_eq!(at(d, "Fb", "Fl"), (15.0, 75.0));
+        assert_eq!(at(d, "Fc", "Fl"), (0.0, 0.0));
+        assert_eq!(wh(d, "Fl"), (25.0, 100.0));
+        // A vertical line of inline-blocks starts below the float on its
+        // line-left (the top) and runs down the room left.
+        assert_eq!((at(d, "I1", "Wl").1, at(d, "I2", "Wl").1), (40.0, 70.0));
     });
 }

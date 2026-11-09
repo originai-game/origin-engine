@@ -210,6 +210,10 @@ pub(crate) struct TextContent {
     pub wrap_style: WrapStyle,
     /// What its cut ends in instead of "…" (CSS `text-overflow: <string>`).
     pub cut: Option<String>,
+    /// Set in a vertical line (CSS `writing-mode`): its widths are its
+    /// advances down the line ([`crate::text::vertical`]). `None`:
+    /// horizontal.
+    pub vertical: Option<crate::layout::flow::VerticalText>,
 }
 
 /// CSS `text-wrap-style` (CSS Text 4 §6.2): `stable` lays out as `auto`.

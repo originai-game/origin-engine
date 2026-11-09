@@ -771,13 +771,26 @@ impl Ui {
                         && (p.props.layout == crate::LayoutMode::Stack
                             || p.el.direction == Direction::Column)
                 };
+                // It fills its parent's inline axis (the height in a vertical
+                // writing mode); a box whose writing mode crosses its
+                // parent's is an orthogonal flow, sized by its content and
+                // its own inline axis (CSS Writing Modes 4 §7.3).
+                let vertical = r.flow.mode.vertical();
+                let across = parent != crate::layout::NONE
+                    && self.nodes[parent].props.flow.mode.vertical() != vertical;
+                let axis = if vertical { "height" } else { "width" };
                 if base.kind == "box"
                     && fills
-                    && !r.has("width")
+                    && !across
+                    && !r.has(axis)
                     && parent != crate::layout::NONE
                     && (self.nodes[parent].el.block || host(&self.nodes[parent]))
                 {
-                    el.width = Size::grow();
+                    if vertical {
+                        el.height = Size::grow();
+                    } else {
+                        el.width = Size::grow();
+                    }
                 }
             }
         } else {
@@ -877,14 +890,23 @@ impl Ui {
                 ),
             };
             let parent = self.nodes[i].parent;
+            // Its inline axis: down a vertical line (CSS Writing Modes 4);
+            // across its parent's writing mode it is an orthogonal flow.
+            let vertical = r.flow.mode.vertical();
+            let axis = if vertical { "height" } else { "width" };
             if el.block
                 && el.float == crate::layout::FloatSide::None
-                && !r.has("width")
+                && !r.has(axis)
                 && !r.has("textPath")
                 && parent != crate::layout::NONE
                 && self.nodes[parent].el.block
+                && self.nodes[parent].props.flow.mode.vertical() == vertical
             {
-                el.width = Size::grow();
+                if vertical {
+                    el.height = Size::grow();
+                } else {
+                    el.width = Size::grow();
+                }
             }
         }
         if el.inline {
@@ -938,7 +960,19 @@ impl Ui {
         }
         let surface_rtl = self.direction == og_i18n::Direction::Rtl;
         let flow = r.own_flow();
-        el.flip = flow.rtl != surface_rtl;
+        // A vertical element's inline axis runs down: the surface's mirror
+        // turns its block axis round instead (`vertical-rl` lays out as
+        // `vertical-lr` before the mirror).
+        el.flip = if flow.mode.vertical() {
+            flow.rtl
+        } else {
+            flow.rtl != surface_rtl
+        };
+        el.vertical = flow.mode.vertical().then(|| {
+            flow.mode
+                .sides()
+                .map(|s| if surface_rtl && s % 2 == 1 { 4 - s } else { s })
+        });
         if surface_rtl {
             crate::layout::flow::mirror_el(&mut el);
         }
@@ -973,6 +1007,18 @@ impl Ui {
             self.nodes[i].props = props;
         }
         self.nodes[i].props.flow = flow;
+        // Rich text and text on a path set horizontal lines only: in a
+        // vertical element each is a horizontal box (an orthogonal flow).
+        let node = &mut self.nodes[i];
+        match &mut node.content {
+            crate::layout::Content::Text(t) if node.props.text_path.is_none() => {
+                t.vertical = flow.vertical_text(&t.text);
+            }
+            crate::layout::Content::Text(_) | crate::layout::Content::Rich(_) => {
+                node.el.vertical = None;
+            }
+            _ => {}
+        }
         // The roles and levels HTML's tags give (landmarks, lists, headings).
         if let Some(role) = n.role {
             self.nodes[i].a11y.role = Some(role);

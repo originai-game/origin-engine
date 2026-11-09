@@ -526,6 +526,7 @@ impl Ui {
             fit: Vec::new(),
             wrap_style: Default::default(),
             cut: None,
+            vertical: None,
         }
     }
 }

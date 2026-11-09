@@ -24,7 +24,11 @@
 //!   focused field with a mixed name;
 //! - `text-colr`: COLR v1 colour glyphs (gradients, a composite) on the
 //!   font's colour page, and glyphs in the text's colour (palette entry
-//!   0xFFFF) on its foreground page, under a green and a magenta label.
+//!   0xFFFF) on its foreground page, under a green and a magenta label;
+//! - `text-vertical`: CSS writing modes in a document: a `vertical-rl`
+//!   paragraph of Japanese with Latin lying sideways, its comma and full
+//!   stop set for a vertical line, wrapping into a second line to its left; the same `upright`; a `vertical-lr` box of two blocks; a
+//!   `sideways-lr` label reading up; and `text-combine-upright` digits.
 
 use super::scenes::mixed_runs_ui;
 use og_bundle::runtime::{Bundle, CookedFont};
@@ -51,12 +55,13 @@ pub const FONTS: [&str; 7] = [
 ];
 
 /// The cooked-font reference frames.
-pub const TEXT_SCENES: [&str; 5] = [
+pub const TEXT_SCENES: [&str; 6] = [
     "text-bidi",
     "text-kerning",
     "text-edit",
     "text-mixed-runs",
     "text-colr",
+    "text-vertical",
 ];
 
 /// The cooked [`FONTS`] of a bundle (the cook's manifest), each blob's
@@ -92,6 +97,7 @@ pub fn text_scene(name: &str, fonts: &[CookedFont]) -> Result<(RenderScene, Rend
         "text-edit" => edit_scene(fonts),
         "text-mixed-runs" => mixed_runs_scene(fonts),
         "text-colr" => colr_scene(fonts),
+        "text-vertical" => vertical_scene(fonts),
         _ => {
             return Err(format!(
                 "no cooked-font text frame {name} (there are {})",
@@ -781,4 +787,65 @@ fn edit_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
         ", long"
     );
     shot(&[&select, &compose, &area], scene)
+}
+
+/// `text-vertical`'s document.
+const VERTICAL: &str = r#"<meta name="component" content="vertical">
+<div id="Page">
+  <p id="Mixed">古い水車小屋、冒険 Level 2 古い小屋。</p>
+  <p id="Upright">冒険 HP</p>
+  <div id="Lr"><p id="Lr1">水車小屋</p><p id="Lr2">Level 3</p></div>
+  <p id="Side">Sideways up</p>
+  <div id="Combo"><p id="Day">冒険</p><p id="Num">12</p></div>
+</div>
+<style>
+#Page { display: flex; gap: 28px; padding: 28px; align-items: flex-start; }
+p { margin: 0; color: #f2ead8; font-size: 26px; }
+#Mixed { writing-mode: vertical-rl; height: 250px; padding: 10px; background: #3a2f4a; }
+#Upright { writing-mode: vertical-rl; text-orientation: upright; padding: 10px; background: #2f3f4a; }
+#Lr { writing-mode: vertical-lr; height: 200px; padding: 10px; background: #2f4a3a; }
+#Lr2 { color: #ffd27a; }
+#Side { writing-mode: sideways-lr; padding: 10px; background: #4a3a2f; }
+#Combo { writing-mode: vertical-rl; padding: 10px; background: #4a2f35; }
+#Num { text-combine-upright: all; color: #ffd27a; }
+</style>"#;
+
+fn vertical_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene, fonts);
+    let japanese = add(&mut scene, &fonts[5], true);
+    let mut ui = Ui::new(UiDesc {
+        fonts: Fonts {
+            body: f.display.clone(),
+            fallbacks: vec![japanese],
+            ..Fonts::default()
+        },
+        ..UiDesc::default()
+    });
+    ui.define_document(UiDocument::parse("ui/vertical.svelte", VERTICAL).expect("parses"));
+    ui.mount_document(
+        reactive::SourceId::new("test", "vertical"),
+        "vertical",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .expect("mounts");
+    let mut stats = None;
+    for _ in 0..4 {
+        ui.begin(InputFrame::default(), vp());
+        ui.build_retained_documents(&bind::NoEnv).expect("builds");
+        stats = Some(ui.end().stats);
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let stats = stats.expect("a frame");
+    assert_eq!(
+        (stats.bindings, stats.reconciled),
+        (0, 0),
+        "idle: {stats:?}"
+    );
+    // The paragraph is a column of lines: taller than wide, two lines.
+    let mixed = ui.element("Mixed").expect("the paragraph").clone();
+    assert!(mixed.height > mixed.width, "{mixed:?}");
+    shot(&[&ui], scene)
 }

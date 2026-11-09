@@ -452,6 +452,33 @@ an ancestor. Without one, or under `plaintext`, a paragraph takes the
 direction of its first strong character, as og-ui's own text does. The
 overrides lay its characters out in its direction, unreordered.
 
+`writing-mode` (`horizontal-tb`, `vertical-rl`, `vertical-lr`,
+`sideways-rl`, `sideways-lr`; SVG's `lr`, `rl`, `tb` and their `-tb`/`-rl`
+forms; inherited) turns an element's lines. In a vertical mode lines run
+down (up in `sideways-lr`) and stack from the right (`-rl`) or the left
+(`-lr`); a right-to-left direction starts them at the bottom (the top in
+`sideways-lr`). Each element whose writing mode differs from its parent's
+lays out in a frame of its own: its logical properties, block flow,
+margins, flex lines, grid tracks, tables, columns, floats (`left` is
+line-left: the top, or the bottom in `sideways-lr`), `clear`, insets and
+scrolling all follow its inline and block axes. To its parent it is an
+orthogonal flow (CSS Writing Modes 4 §7.3): its inline size fits the
+containing block's size on that axis, else the viewport's, and its block
+size is its content's; a block in a vertical writing mode fills its
+height. `text-orientation` sets a vertical line's glyphs: `mixed` stands
+CJK, kana, Hangul and symbols upright (Unicode's vertical orientation,
+UAX #50) and lays other scripts down turned clockwise, `upright` stands
+every character up, `sideways` (and the `sideways-*` modes) lays every one
+down, `sideways-lr` turned counter-clockwise. An upright character
+advances by its font's vertical metrics (`vmtx`, else one em) and takes
+its vertical form (`vert`) where the font's atlas has it; without one,
+brackets and dashes turn and the ideographic comma and full stop move to
+the em's upper right. `text-combine-upright: all` (and `digits <n>` for a
+text of up to n digits) sets an element's text side by side in one upright
+em, squeezed to fit. Inline-level boxes lie in vertical lines too; rich
+text and text on a path set horizontal lines only, so in a vertical
+element each is a horizontal box.
+
 CSS Anchor Positioning 1 places an absolute or fixed box against other
 boxes as this frame laid them out. `anchor-name: --a` names an anchor
 (the last in tree order wins, never one inside the positioned box);
@@ -662,10 +689,13 @@ moves only its element; an element whose values read a viewport unit
 resolves again when the viewport resizes. `calc(10px + 20ms)` is an
 error. Container
 units (`cqw`, `cqh`, `cqi`, `cqb`, `cqmin`, `cqmax`) are 1 % of the nearest
-query container's settled content box on that axis: a size container
-(`size` or `inline-size`) for the width and inline axis, a `size` one for
-the height and block axis. With no such container they are the viewport
-units. An element using them resolves again when its container's box
+query container's settled content box on that axis: `cqi` the nearest
+size container (`size` or `inline-size`) along its own inline axis, `cqb`
+the nearest `size` one along its block axis, each axis as the container's
+writing mode names it (its inline axis is its height in a vertical one);
+`cqw` and `cqh` the nearest container that contains its width or height.
+`cqmin` and `cqmax` take the smaller and larger of `cqi` and `cqb`. With no
+such container they are the viewport units. An element using them resolves again when its container's box
 settles, as a container query's reader does.
 
 An item's number is its place among its `<li>` siblings, counted from the
@@ -2208,7 +2238,9 @@ Container queries follow CSS Containment Level 3.
 makes an element a query container for its descendants. A named element is
 a style container whatever its type. `@container [name] <condition>` takes the media range
 grammar over `width`, `height`, `inline-size`, `block-size`, `aspect-ratio`
-and `orientation`; a block-axis condition needs a `size` container. Each
+and `orientation`; `inline-size` and `block-size` read the container's
+axes as its writing mode names them, and a condition on a container's
+block axis (a vertical container's `width`) needs a `size` container. Each
 condition reads the nearest eligible ancestor; with none, or before the first
 measurement, it is unknown and false. Conditions settle through the
 settlement hook on the first frame and on every resize, before paint:

@@ -351,6 +351,9 @@ impl Ui {
             Content::Text(tc) if let Some(tp) = &n.props.text_path => {
                 self.path_text_commands(i, tc, tp, rect, clip, cmds);
             }
+            Content::Text(tc) if let Some(v) = tc.vertical => {
+                self.vertical_text_commands(i, tc, v, rect, clip, cmds);
+            }
             Content::Text(tc) => {
                 let font = self
                     .fonts
@@ -1171,6 +1174,245 @@ impl Ui {
                         ..Default::default()
                     }),
                 });
+            }
+        }
+    }
+}
+
+impl Ui {
+    /// Text in vertical lines (CSS Writing Modes 4, [`crate::text::vertical`]):
+    /// its lines stack from its block-start side, each running down (up in
+    /// `sideways-lr`) in its runs: an upright cluster centred across the
+    /// line in its advance, in its font's vertical form (`vert`) where it
+    /// has one, else turned (brackets, dashes) or moved to the em's upper
+    /// right (the ideographic comma and full stop); a sideways run drawn as
+    /// a horizontal one turned a quarter clockwise (counter-clockwise in
+    /// `sideways-lr`), centred across the line; a combined text one em,
+    /// side by side, squeezed to fit.
+    fn vertical_text_commands(
+        &self,
+        i: usize,
+        tc: &crate::layout::TextContent,
+        v: crate::layout::flow::VerticalText,
+        rect: Rect,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        use crate::layout::flow::WritingMode;
+        use crate::shape::Features;
+        use crate::text::vertical::{Fallback, fallback, runs, upright_advance};
+        let n = &self.nodes[i];
+        let font = self
+            .fonts
+            .for_styled(tc.font, tc.step.weight, false, &tc.text)
+            .0;
+        if font.handle.is_none() {
+            return;
+        }
+        let m = &font.metrics;
+        let sk = n.scale;
+        let size = tc.step.size * sk;
+        let lh = tc.line_height() * sk;
+        let tracking = tc.tracking();
+        let features = tc.features();
+        let pad = n.el.padding;
+        let inner = Rect::new(
+            rect.x + pad.left * sk,
+            rect.y + pad.top * sk,
+            (rect.width - pad.horizontal() * sk).max(0.0),
+            (rect.height - pad.vertical() * sk).max(0.0),
+        );
+        let dpr = self.viewport.dpr();
+        let weight =
+            self.theme.art.text_weights[tc.font.effect_index()] * sk / dpr + tc.emphasis * size;
+        let color = n.sampled.ink.fade(n.alpha).linear();
+        let (rtl, para) = self.text_flow(i);
+        let (asc, desc) = m.extents(&tc.text);
+        // Half the em box's baseline offset: what centres a glyph about
+        // its line's middle.
+        let centre = (asc + desc) / 2.0 * size;
+        let up_line = v.mode == WritingMode::SidewaysLr;
+        // The inline start is the bottom in `sideways-lr`, and the other
+        // end right to left.
+        let from_bottom = rtl != up_line;
+        let block = lh * n.lines.len() as f32;
+        let off = ((inner.width - block) / 2.0).max(0.0);
+        let emit = |x: f32,
+                    baseline: f32,
+                    text: String,
+                    handle: Option<og_render::FontHandle>,
+                    placements: Vec<og_render::GlyphPlacement>,
+                    transform: [f32; 4],
+                    cmds: &mut Vec<DrawCmd>| {
+            let Some(handle) = handle.filter(|_| !text.is_empty()) else {
+                return;
+            };
+            let cmd = DrawCmd::Text {
+                x,
+                baseline,
+                size,
+                text,
+                color,
+                font: handle,
+                bounds: Rect::new(
+                    x - 2.0 * size,
+                    baseline - 2.0 * size,
+                    4.0 * size,
+                    4.0 * size,
+                ),
+                clip,
+                tracking,
+                weight,
+                glow: None,
+                placements,
+            };
+            if transform == [1.0, 0.0, 0.0, 1.0] {
+                cmds.push(cmd);
+            } else {
+                cmds.push(DrawCmd::StyledText {
+                    text: Box::new(cmd),
+                    effects: Box::new(og_render::UiTextEffects {
+                        transform,
+                        ..Default::default()
+                    }),
+                });
+            }
+        };
+        const TURN: [f32; 4] = [0.0, 1.0, -1.0, 0.0];
+        const TURN_BACK: [f32; 4] = [0.0, -1.0, 1.0, 0.0];
+        for (k, line) in n.lines.iter().enumerate() {
+            let col = if v.mode.block_rl() {
+                inner.right() - off - (k + 1) as f32 * lh
+            } else {
+                inner.x + off + k as f32 * lh
+            };
+            let mid = col + lh / 2.0;
+            let length = line.width * sk;
+            let free = inner.height - length;
+            let lead = match (tc.align, from_bottom) {
+                (TextAlign::Start | TextAlign::Justify, _) => 0.0,
+                (TextAlign::Center, _) => free / 2.0,
+                (TextAlign::End, _) => free,
+            };
+            // The top of a stretch `[at, at + len]` along the line.
+            let top = |at: f32, len: f32| {
+                if from_bottom {
+                    inner.bottom() - lead - at - len
+                } else {
+                    inner.y + lead + at
+                }
+            };
+            if v.combine {
+                // One upright em: the text side by side, squeezed to fit.
+                let w = m.measure_with(&line.text, size, tracking, features);
+                let squeeze = if w > size { size / w } else { 1.0 };
+                let y0 = top(0.0, size);
+                for pc in crate::text::pieces_with(font, &line.text, para, tracking, features) {
+                    let x = mid - w * squeeze / 2.0 + pc.dx * size * squeeze;
+                    let baseline = y0 + size / 2.0 + centre;
+                    emit(
+                        x,
+                        baseline,
+                        pc.text,
+                        pc.font,
+                        pc.placements,
+                        [squeeze, 0.0, 0.0, 1.0],
+                        cmds,
+                    );
+                }
+                continue;
+            }
+            let mut at = 0.0f32;
+            for (range, upright) in runs(&line.text, v) {
+                let run = &line.text[range];
+                if !upright {
+                    let len = m.measure_with(run, size, tracking, features);
+                    let y0 = top(at, len);
+                    for pc in crate::text::pieces_with(font, run, para, tracking, features) {
+                        let d = pc.dx * size;
+                        let (x, y, t) = if up_line {
+                            (mid + centre, y0 + len - d, TURN_BACK)
+                        } else {
+                            (mid - centre, y0 + d, TURN)
+                        };
+                        emit(x, y, pc.text, pc.font, pc.placements, t, cmds);
+                    }
+                    at += len;
+                    continue;
+                }
+                let forms = m
+                    .file
+                    .as_ref()
+                    .filter(|_| !m.is_mixed())
+                    .and_then(|f| f.vertical_forms(run, &|key| m.in_atlas_key(key)));
+                let chars: Vec<char> = run.chars().collect();
+                let bytes: Vec<usize> = run.char_indices().map(|(b, _)| b).collect();
+                for (a, b) in og_i18n::graphemes(run) {
+                    let cluster: String = chars[a..b].iter().collect();
+                    if cluster.trim().is_empty() {
+                        at += m.measure_with(&cluster, size, tracking, Features::NONE);
+                        continue;
+                    }
+                    let adv = (upright_advance(m, &cluster) + tracking) * size;
+                    let y0 = top(at, adv);
+                    at += adv;
+                    let wh = m.measure_with(&cluster, size, 0.0, Features::NONE);
+                    let form = forms.as_ref().and_then(|f| {
+                        f.iter()
+                            .find(|(c, _)| *c as usize == bytes[a])
+                            .and_then(|(_, g)| *g)
+                    });
+                    let (x, baseline) = (mid - wh / 2.0, y0 + adv / 2.0 + centre);
+                    if let Some(id) = form.filter(|_| b - a == 1) {
+                        let placement = og_render::GlyphPlacement {
+                            advance: wh / size.max(1e-3),
+                            x: 0.0,
+                            y: 0.0,
+                            glyph: Some(id),
+                        };
+                        emit(
+                            x,
+                            baseline,
+                            cluster,
+                            font.handle,
+                            vec![placement],
+                            [1.0, 0.0, 0.0, 1.0],
+                            cmds,
+                        );
+                        continue;
+                    }
+                    let base = chars[a];
+                    for pc in crate::text::pieces_with(font, &cluster, para, tracking, features) {
+                        let ox = pc.dx * size;
+                        match fallback(base) {
+                            Fallback::Turn => {
+                                // About the glyph's centre: its pen moves
+                                // so the turned centre lands on the em's.
+                                let (u, w) = (wh / 2.0, -centre);
+                                let p = (mid + w, y0 + adv / 2.0 - u + ox);
+                                emit(p.0, p.1, pc.text, pc.font, pc.placements, TURN, cmds);
+                            }
+                            Fallback::Corner => emit(
+                                x + ox + wh / 2.0,
+                                baseline - size / 2.0,
+                                pc.text,
+                                pc.font,
+                                pc.placements,
+                                [1.0, 0.0, 0.0, 1.0],
+                                cmds,
+                            ),
+                            Fallback::Plain => emit(
+                                x + ox,
+                                baseline,
+                                pc.text,
+                                pc.font,
+                                pc.placements,
+                                [1.0, 0.0, 0.0, 1.0],
+                                cmds,
+                            ),
+                        }
+                    }
+                }
             }
         }
     }

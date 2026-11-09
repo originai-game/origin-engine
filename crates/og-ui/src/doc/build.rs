@@ -818,7 +818,13 @@ impl Ui {
             super::container::declared(&r.cascade.container, &mut r.cascade.diagnostics)
         {
             let key = crate::id::key_of_path(path);
-            super::container::push(Arc::make_mut(&mut r.cascade.computed), key, ty, &names);
+            super::container::push(
+                Arc::make_mut(&mut r.cascade.computed),
+                key,
+                ty,
+                &names,
+                r.flow.mode.vertical(),
+            );
             // Only size containers publish their box through settlement.
             if ty.size != super::container::Kind::Normal {
                 r.container = Some(key);

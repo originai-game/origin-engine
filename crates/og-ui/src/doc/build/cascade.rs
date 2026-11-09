@@ -428,23 +428,21 @@ pub(crate) fn known(name: &str, value: &str) -> bool {
 /// The computed-map key an element's flow is carried to its children under.
 const FLOW: &str = " flow";
 
-/// An element's flow ([`crate::layout::Flow`]): its parent's direction
-/// (the surface's at a document's root), its `dir` attribute's, then its
-/// declared `direction` and `unicode-bidi`; carried to its children.
+/// An element's flow ([`crate::layout::Flow`]): its parent's (the
+/// surface's direction at a document's root), its `dir` attribute's
+/// direction, then its declared `direction`, `unicode-bidi`,
+/// `writing-mode`, `text-orientation` and `text-combine-upright`; carried
+/// to its children.
 pub(crate) fn flow(
     out: &mut Cascade,
     inherited: &variables::Computed,
     surface_rtl: bool,
     dir: Option<&str>,
 ) -> crate::layout::Flow {
-    use crate::layout::{Bidi, Flow};
+    use crate::layout::flow::{Bidi, Flow, TextOrientation, WritingMode, combine};
     out.inherited_reads.insert(FLOW.into());
     let mut flow = match inherited.get(FLOW).cloned().flatten() {
-        Some(v) => Flow {
-            rtl: v.starts_with("rtl"),
-            declared: v.ends_with("declared"),
-            ..Flow::default()
-        },
+        Some(v) => Flow::carried(&v),
         None => Flow {
             rtl: surface_rtl,
             ..Flow::default()
@@ -462,6 +460,10 @@ pub(crate) fn flow(
             _ => {}
         }
     }
+    let mut unknown = |name: &str, value: &str| {
+        out.diagnostics
+            .push(format!("{name}: unknown value {}", value.trim()))
+    };
     for (name, value, _) in &out.values {
         match name.as_str() {
             "direction" if matches!(value.trim(), "ltr" | "rtl") => {
@@ -473,22 +475,25 @@ pub(crate) fn flow(
                     flow.bidi = b;
                     flow.declared = true;
                 }
-                None => out
-                    .diagnostics
-                    .push(format!("unicode-bidi: unknown value {value}")),
+                None => unknown(name, value),
             },
-            "direction" => out
-                .diagnostics
-                .push(format!("direction: unknown value {value}")),
+            "writing-mode" => match WritingMode::parse(value) {
+                Some(m) => flow.mode = m,
+                None => unknown(name, value),
+            },
+            "text-orientation" => match TextOrientation::parse(value) {
+                Some(o) => flow.orient = o,
+                None => unknown(name, value),
+            },
+            "text-combine-upright" => match combine(value) {
+                Some(c) => flow.combine = c,
+                None => unknown(name, value),
+            },
+            "direction" => unknown(name, value),
             _ => {}
         }
     }
-    let carried = format!(
-        "{} {}",
-        if flow.rtl { "rtl" } else { "ltr" },
-        if flow.declared { "declared" } else { "" }
-    );
-    Arc::make_mut(&mut out.computed).insert(FLOW.into(), Some(carried));
+    Arc::make_mut(&mut out.computed).insert(FLOW.into(), Some(flow.carry()));
     flow
 }
 
@@ -517,7 +522,7 @@ pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
                 None => vec![(name.clone(), value.clone(), *line)],
             }
         })
-        .filter(|(name, ..)| !matches!(name.as_str(), "direction" | "unicode-bidi"))
+        .filter(|(name, ..)| !crate::layout::flow::longhand(name))
         .collect();
     for (name, value, line) in values {
         if crate::doc::motion::longhand(&name) {

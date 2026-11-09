@@ -41,6 +41,7 @@ struct TextKey {
     ellipsis: bool,
     max_lines: u32,
     wrap_style: crate::layout::node::WrapStyle,
+    vertical: Option<crate::layout::flow::VerticalText>,
     cut: Option<u64>,
     /// The width the lines break or cut at (`None`: only at `\n`).
     width: Option<u32>,
@@ -59,6 +60,7 @@ impl TextKey {
             ellipsis: t.ellipsis,
             max_lines: t.max_lines,
             wrap_style: t.wrap_style,
+            vertical: t.vertical,
             cut: t.cut.as_deref().map(|c| {
                 use std::hash::{Hash, Hasher};
                 let mut h = std::hash::DefaultHasher::new();
@@ -555,6 +557,7 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.contain == b.contain
         && a.float == b.float
         && a.clear == b.clear
+        && a.vertical == b.vertical
 }
 
 /// The content layout measures is equal (an ink may differ).
@@ -617,12 +620,31 @@ pub(crate) fn layout(
     // given another size, moved or clipped otherwise.
     let mut order = kept.walk(nodes, root);
     let mut opened: Vec<usize> = Vec::new();
+    // Vertical writing modes: each frame root is one box here, laid out
+    // in its own frame ([`super::writing`]).
+    let mut frames = super::writing::frames(nodes, root, &mut order, &|i| kept.is_clean(i));
+    let mut cx = super::writing::Cx {
+        measure,
+        scroll,
+        icb: [area.width, area.height],
+        laid: 0,
+    };
+    let skip = |f: &Option<super::writing::Frames>, i: usize| {
+        f.as_ref().is_some_and(|f| f.inside(i) || f.root(i))
+    };
     for &i in order.iter().rev() {
+        if let Some(f) = frames.as_mut()
+            && (f.inside(i) || super::writing::lay(nodes, f, i, &mut cx))
+        {
+            continue;
+        }
         if kept.is_clean(i) {
             continue;
         }
-        size_w(nodes, i, measure);
+        size_w(nodes, i, cx.measure);
     }
+    kept.laid_out += cx.laid;
+    let measure = cx.measure;
     let r = &nodes[root];
     let w = match r.el.width {
         Size::Fit { .. } => r.pref_w.min(area.width).max(r.min_w),
@@ -643,6 +665,10 @@ pub(crate) fn layout(
     let mut k = 0;
     while k < order.len() {
         let i = order[k];
+        if skip(&frames, i) {
+            k += 1;
+            continue;
+        }
         if same_w(nodes, kept, i) {
             // An auto-fit text keeps the step its lines were broken at.
             let step = nodes[i].layout_step;
@@ -662,7 +688,11 @@ pub(crate) fn layout(
     }
     let mut touched = Vec::new();
     for &i in order.iter().rev() {
-        if same_w(nodes, kept, i) {
+        if frames.as_ref().is_some_and(|f| f.root(i) && !f.inside(i)) {
+            super::writing::island_margins(nodes, i);
+            continue;
+        }
+        if skip(&frames, i) || same_w(nodes, kept, i) {
             continue;
         }
         inline_rows(nodes, i, measure);
@@ -696,7 +726,7 @@ pub(crate) fn layout(
     let mut k = 0;
     while k < order.len() {
         let i = order[k];
-        if !same_wh(nodes, kept, i) {
+        if !skip(&frames, i) && !same_wh(nodes, kept, i) {
             if !nodes[i].cv_skip {
                 distribute_h(nodes, i);
             }
@@ -704,11 +734,25 @@ pub(crate) fn layout(
         }
         k += 1;
     }
+    if let Some(f) = frames.as_mut() {
+        let mut cx = super::writing::Cx {
+            measure: &mut *measure,
+            scroll,
+            icb: [area.width, area.height],
+            laid: 0,
+        };
+        super::writing::refit(nodes, f, &mut order, &|n| n.layout_size, &mut cx);
+        kept.laid_out += cx.laid;
+    }
     nodes[root].x = area.x;
     nodes[root].y = area.y;
     let mut k = 0;
     while k < order.len() {
         let i = order[k];
+        if frames.as_ref().is_some_and(|f| f.inside(i) || f.laid(i)) {
+            k += 1;
+            continue;
+        }
         if nodes[i].cv_skip {
             // Its contents keep where they were: nothing reads them.
         } else if !nodes[i].scrolls() && same_wh(nodes, kept, i) {
@@ -725,6 +769,9 @@ pub(crate) fn layout(
             kept.open(nodes, &mut order, &mut opened, k);
         }
         k += 1;
+    }
+    if let Some(f) = &frames {
+        super::writing::settle(nodes, f);
     }
     nodes[root].clip = clip;
     let mut k = 0;

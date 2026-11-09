@@ -24,6 +24,7 @@ pub mod flow;
 mod grid;
 pub(crate) mod multicol;
 mod node;
+mod writing;
 
 pub(crate) use cache::{
     DrawSig, LayoutCache, Measure, Metrics, TextCache, content_layout_eq, draw_eq, el_layout_eq,
@@ -812,6 +813,13 @@ pub struct Element {
     /// CSS `clear`: bits [`float::LEFT`] and [`float::RIGHT`], the sides
     /// whose earlier floats it is placed below.
     pub clear: u8,
+    /// A vertical writing mode (CSS `writing-mode`): the side of its
+    /// layout space each side of its frame is (block-start, inline-end,
+    /// block-end, inline-start; 0 top … 3 left). It and the descendants
+    /// that share its writing mode lay out in that frame, the inline axis
+    /// across ([`writing`]). `None`: horizontal, the frame its layout
+    /// space.
+    pub vertical: Option<[u8; 4]>,
 }
 
 /// CSS `contain` (CSS Containment 2 §3), `content-visibility` (§4) and

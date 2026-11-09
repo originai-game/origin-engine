@@ -143,7 +143,7 @@ pub(super) fn margin_basis(nodes: &[Node], i: usize) -> f32 {
 /// no padding at that edge, and at the bottom no set height. An empty block
 /// in a block's flow collapses through itself: its own top and bottom
 /// margins, and those of its children, are one set (CSS 2 §8.3.1).
-fn collapse_margins(nodes: &mut [Node], i: usize) {
+pub(super) fn collapse_margins(nodes: &mut [Node], i: usize) {
     let n = &nodes[i];
     let p = n.up;
     let in_block_flow = p != NONE
@@ -340,22 +340,52 @@ fn rewrap(
     best
 }
 
+/// A text's extent along its line: across, or down a vertical one.
+fn text_measure(t: &TextContent, m: &FontMetrics, text: &str) -> f32 {
+    let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
+    match t.vertical {
+        Some(v) => crate::text::vertical::measure(m, text, size, tr, ft, v),
+        None => m.measure_with(text, size, tr, ft),
+    }
+}
+
+/// A text's widest line along its line.
+fn text_widest(t: &TextContent, m: &FontMetrics) -> f32 {
+    let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
+    match t.vertical {
+        Some(v) => crate::text::vertical::widest_line(&t.text, m, size, tr, ft, v),
+        None => widest_line(&t.text, m, size, tr, ft),
+    }
+}
+
+/// A text's longest unbreakable unit along its line.
+fn text_longest(t: &TextContent, m: &FontMetrics) -> f32 {
+    let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
+    match t.vertical {
+        Some(v) => crate::text::vertical::longest_word(&t.text, m, size, tr, ft, v),
+        None => longest_word(&t.text, m, size, tr, ft),
+    }
+}
+
+/// A text's lines at `width` along its line (`None`: only at `\n`).
+pub(super) fn text_lines(t: &TextContent, m: &FontMetrics, width: Option<f32>) -> Vec<Line> {
+    let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
+    match t.vertical {
+        Some(v) => crate::text::vertical::break_lines(&t.text, m, size, tr, ft, v, width),
+        None => break_lines(&t.text, m, size, tr, ft, width),
+    }
+}
+
 /// A text's preferred width (its widest line) and the least it can take:
 /// its ellipsis, its longest word when it wraps, else all of it.
 fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
     let m = t.metrics(fonts);
-    let pref = widest_line(&t.text, m, t.step.size, t.tracking(), t.features());
+    let pref = text_widest(t, m);
     let min = if t.ellipsis {
         // It can shrink to its ellipsis.
-        m.measure_with(
-            t.cut.as_deref().unwrap_or_else(|| ellipsis_of(m)),
-            t.step.size,
-            t.tracking(),
-            t.features(),
-        )
-        .min(pref)
+        text_measure(t, m, t.cut.as_deref().unwrap_or_else(|| ellipsis_of(m))).min(pref)
     } else if t.wrap {
-        longest_word(&t.text, m, t.step.size, t.tracking(), t.features())
+        text_longest(t, m)
     } else {
         pref
     };
@@ -366,13 +396,11 @@ fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
 /// no word wider and no more lines than its limit.
 fn fits(t: &TextContent, fonts: &dyn Metrics, width: f32) -> bool {
     let m = t.metrics(fonts);
-    let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     if !t.wrap {
-        return widest_line(&t.text, m, size, tr, ft) <= width;
+        return text_widest(t, m) <= width;
     }
-    longest_word(&t.text, m, size, tr, ft) <= width
-        && (t.max_lines == 0
-            || break_lines(&t.text, m, size, tr, ft, Some(width)).len() <= t.max_lines as usize)
+    text_longest(t, m) <= width
+        && (t.max_lines == 0 || text_lines(t, m, Some(width)).len() <= t.max_lines as usize)
 }
 
 pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
@@ -808,17 +836,8 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
             .texts
             .lines(t, (t.wrap || t.ellipsis).then_some(width), || {
                 let m = t.metrics(fonts);
-                let at = |w: f32| {
-                    break_lines(&t.text, m, t.step.size, t.tracking(), t.features(), Some(w))
-                };
-                let mut lines = break_lines(
-                    &t.text,
-                    m,
-                    t.step.size,
-                    t.tracking(),
-                    t.features(),
-                    t.wrap.then_some(width),
-                );
+                let at = |w: f32| text_lines(t, m, Some(w));
+                let mut lines = text_lines(t, m, t.wrap.then_some(width));
                 if t.wrap && lines.len() > 1 && t.wrap_style != WrapStyle::Auto {
                     lines = rewrap(lines, t.wrap_style, width, at);
                 }

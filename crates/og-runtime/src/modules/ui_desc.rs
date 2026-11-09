@@ -210,6 +210,7 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         resize: 0,
         float: og_ui::FloatSide::None,
         clear: 0,
+        vertical: None,
     }
 }
 

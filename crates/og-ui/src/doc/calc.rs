@@ -115,10 +115,11 @@ pub(crate) struct Basis {
     pub ex: f32,
     /// The safe area's insets (top, right, bottom, left), for `env()`.
     pub safe: [f32; 4],
-    /// The nearest query container eligible on each axis (width, height)
-    /// and its settled content size (0 until measured); none, and the
-    /// container units fall back to the viewport's.
-    pub containers: [Option<(u64, f32)>; 2],
+    /// The nearest query container eligible on each axis (width, height,
+    /// its own inline and block axes: `container::unit_basis`) and its
+    /// settled size along it (0 until measured); none, and the container
+    /// units fall back to the viewport's.
+    pub containers: [Option<(u64, f32)>; 4],
 }
 
 impl Basis {
@@ -143,7 +144,7 @@ impl Basis {
 pub(crate) struct Read {
     pub width: bool,
     pub height: bool,
-    pub containers: [Option<u64>; 2],
+    pub containers: [Option<u64>; 4],
 }
 
 /// Whether `text` has a number in a unit [`absolute`] resolves, or an
@@ -235,7 +236,7 @@ pub(crate) fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
                         size as f64 / 100.0
                     }
                     None => {
-                        if i == 0 {
+                        if i % 2 == 0 {
                             read.width = true;
                             w
                         } else {
@@ -245,10 +246,12 @@ pub(crate) fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
                     }
                 };
                 match unit {
-                    "cqw" | "cqi" => axis(0),
-                    "cqh" | "cqb" => axis(1),
-                    "cqmin" => axis(0).min(axis(1)),
-                    _ => axis(0).max(axis(1)),
+                    "cqw" => axis(0),
+                    "cqh" => axis(1),
+                    "cqi" => axis(2),
+                    "cqb" => axis(3),
+                    "cqmin" => axis(2).min(axis(3)),
+                    _ => axis(2).max(axis(3)),
                 }
             }
             _ => continue,
@@ -1123,7 +1126,7 @@ mod tests {
         let (text, read) = absolute(
             "10cqw 10cqi 10cqh 10cqmin 10cqmax",
             Basis {
-                containers: [Some((7, 300.0)), None],
+                containers: [Some((7, 300.0)), None, Some((7, 300.0)), None],
                 ..basis
             },
             "width",
@@ -1134,9 +1137,20 @@ mod tests {
             Read {
                 width: false,
                 height: true,
-                containers: [Some(7), None],
+                containers: [Some(7), None, Some(7), None],
             }
         );
+        // A vertical inline-size container: its inline axis is its height,
+        // so it answers `cqi` and `cqh`, and `cqw` reads the viewport.
+        let (text, _) = absolute(
+            "10cqi 10cqh 10cqb",
+            Basis {
+                containers: [None, Some((8, 200.0)), Some((8, 200.0)), None],
+                ..basis
+            },
+            "width",
+        );
+        assert_eq!(text, "20px 20px 72px");
     }
 
     #[test]

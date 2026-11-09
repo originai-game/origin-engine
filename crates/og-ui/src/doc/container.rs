@@ -43,6 +43,8 @@ pub struct Type {
 pub struct Container {
     pub key: u64,
     pub kind: Kind,
+    /// A vertical writing mode: its inline axis is its height.
+    pub vertical: bool,
     pub scroll_state: bool,
     pub names: Vec<String>,
 }
@@ -65,20 +67,27 @@ pub struct Read {
     pub inherited: BTreeSet<String>,
 }
 
-/// The containers container units resolve against: the nearest with a
-/// size type on the width axis and the nearest `size` one on the height
-/// axis, with their settled content size (0 until measured).
-pub(crate) fn unit_basis(chain: &[Container], sizes: &Sizes) -> [Option<(u64, f32)>; 2] {
-    let pick = |eligible: &dyn Fn(Kind) -> bool, axis: usize| {
-        let c = chain.iter().rev().find(|c| eligible(c.kind))?;
+/// The containers container units resolve against, with their settled
+/// content size along the axis (0 until measured): the nearest with size
+/// containment across (`cqw`), down (`cqh`), on its own inline axis
+/// (`cqi`, `inline-size` or `size`) and on its block axis (`cqb`, `size`).
+/// A container's inline axis is its height in a vertical writing mode.
+pub(crate) fn unit_basis(chain: &[Container], sizes: &Sizes) -> [Option<(u64, f32)>; 4] {
+    let pick = |eligible: &dyn Fn(&Container) -> bool, height: &dyn Fn(&Container) -> bool| {
+        let c = chain.iter().rev().find(|c| eligible(c))?;
         let size = sizes
             .get(&c.key)
-            .map_or(0.0, |s| if axis == 0 { s.0 } else { s.1 });
+            .map_or(0.0, |s| if height(c) { s.1 } else { s.0 });
         Some((c.key, size))
     };
+    // Containment on its inline axis: either size type.
+    let inline = |c: &Container| c.kind != Kind::Normal;
+    let both = |c: &Container| c.kind == Kind::Size;
     [
-        pick(&|k| k != Kind::Normal, 0),
-        pick(&|k| k == Kind::Size, 1),
+        pick(&|c| both(c) || (inline(c) && !c.vertical), &|_| false),
+        pick(&|c| both(c) || (inline(c) && c.vertical), &|_| true),
+        pick(&inline, &|c| c.vertical),
+        pick(&both, &|c| !c.vertical),
     ]
 }
 
@@ -86,6 +95,17 @@ pub(crate) fn unit_basis(chain: &[Container], sizes: &Sizes) -> [Option<(u64, f3
 /// `name` for its descendants' `style()` queries.
 pub(crate) fn style_entry(key: u64, name: &str) -> String {
     format!("@cq:{key}:{name}")
+}
+
+/// The size features a condition reads ([`Condition::needs`]).
+#[derive(Clone, Copy, Debug, Default)]
+struct Needs {
+    width: bool,
+    height: bool,
+    inline: bool,
+    /// Both axes (`aspect-ratio`, `orientation`, `block-size`).
+    both: bool,
+    scroll: bool,
 }
 
 /// One `@container [name] <condition>` prelude.
@@ -228,6 +248,7 @@ pub(crate) fn chain(computed: &variables::Computed) -> Vec<Container> {
                 _ => Kind::Normal,
             };
             let scroll_state = flags.contains('S');
+            let vertical = flags.contains('V');
             let names = parts
                 .next()
                 .unwrap_or_default()
@@ -237,6 +258,7 @@ pub(crate) fn chain(computed: &variables::Computed) -> Vec<Container> {
             Some(Container {
                 key,
                 kind,
+                vertical,
                 scroll_state,
                 names,
             })
@@ -245,8 +267,15 @@ pub(crate) fn chain(computed: &variables::Computed) -> Vec<Container> {
 }
 
 /// Adds the element's own container for its descendants, with a copy of
-/// its custom properties for their `style()` queries.
-pub(crate) fn push(computed: &mut variables::Computed, key: u64, ty: Type, names: &[String]) {
+/// its custom properties for their `style()` queries; `vertical`: its
+/// writing mode is vertical.
+pub(crate) fn push(
+    computed: &mut variables::Computed,
+    key: u64,
+    ty: Type,
+    names: &[String],
+    vertical: bool,
+) {
     let custom: Vec<(String, Option<String>)> = computed
         .iter()
         .filter(|(name, _)| name.starts_with("--"))
@@ -254,13 +283,14 @@ pub(crate) fn push(computed: &mut variables::Computed, key: u64, ty: Type, names
         .collect();
     computed.extend(custom);
     let entry = format!(
-        "{key}:{}{}:{}",
+        "{key}:{}{}{}:{}",
         match ty.size {
             Kind::Size => "s",
             Kind::InlineSize => "i",
             Kind::Normal => "n",
         },
         if ty.scroll_state { "S" } else { "" },
+        if vertical { "V" } else { "" },
         names.join(" ")
     );
     let chain = match computed.get(CHAIN) {
@@ -308,17 +338,20 @@ impl Condition {
         })
     }
 
-    /// What the query container must be for this condition: size axes,
-    /// scroll state, or (style queries alone) any element.
-    fn needs(&self) -> (bool, bool, bool) {
-        let (mut inline, mut block, mut scroll) = (false, false, false);
+    /// What the query container must be for this condition: the size
+    /// features it reads (width, height, inline size, both axes), scroll
+    /// state, or (style queries alone) any element.
+    fn needs(&self) -> Needs {
+        let mut n = Needs::default();
         self.query.features(&mut |f| match f {
-            Feature::Width(..) => inline = true,
-            Feature::ScrollState { .. } => scroll = true,
+            Feature::Width(..) => n.width = true,
+            Feature::Height(..) => n.height = true,
+            Feature::InlineSize(..) => n.inline = true,
+            Feature::ScrollState { .. } => n.scroll = true,
             Feature::Style(..) => {}
-            _ => block = true,
+            _ => n.both = true,
         });
-        (inline, block, scroll)
+        n
     }
 
     /// Evaluates against the nearest eligible ancestor in `chain`. No eligible
@@ -326,14 +359,21 @@ impl Condition {
     /// gains what the answer depends on. An unnamed style-only condition
     /// queries the parent element, every element being a style container.
     pub fn matches(&self, chain: &[Container], probe: &Probe<'_>, read: &mut Read) -> bool {
-        let (inline, block, needs_scroll) = self.needs();
-        let parent = self.name.is_none() && !inline && !block && !needs_scroll;
+        let needs = self.needs();
+        let sized = needs.width || needs.height || needs.inline || needs.both;
+        let (inline, block, needs_scroll) = (sized, sized, needs.scroll);
+        let parent = self.name.is_none() && !sized && !needs_scroll;
         let container = if parent {
             None
         } else {
             let Some(c) = chain.iter().rev().find(|c| {
-                (!block || c.kind == Kind::Size)
-                    && (!inline || c.kind != Kind::Normal)
+                // Its inline axis is its height in a vertical writing mode;
+                // a feature on its block axis needs `size`.
+                let block_axis =
+                    needs.both || (needs.width && c.vertical) || (needs.height && !c.vertical);
+                let inline_axis = needs.inline || needs.width || needs.height;
+                (!block_axis || c.kind == Kind::Size)
+                    && (!inline_axis || c.kind != Kind::Normal)
                     && (!needs_scroll || c.scroll_state)
                     && self.name.as_ref().is_none_or(|n| c.names.contains(n))
             }) else {
@@ -382,6 +422,16 @@ impl Condition {
                     flags & bits != 0
                 }
             }
+            // Its logical sizes through its writing mode.
+            &Feature::InlineSize(cmp, v) | &Feature::BlockSize(cmp, v)
+                if container.is_some_and(|c| c.vertical) =>
+            {
+                let f = match feature {
+                    Feature::InlineSize(..) => Feature::Height(cmp, v),
+                    _ => Feature::Width(cmp, v),
+                };
+                context.feature(&f, &mut Reads::default())
+            }
             f => context.feature(f, &mut Reads::default()),
         })
     }
@@ -407,18 +457,18 @@ mod tests {
             scroll_state: true,
             ..Type::default()
         };
-        push(&mut computed, 5, scroller, &[]);
+        push(&mut computed, 5, scroller, &[], false);
         let size = Type {
             size: Kind::Size,
             ..Type::default()
         };
-        push(&mut computed, 7, size, &["card".into()]);
+        push(&mut computed, 7, size, &["card".into()], false);
         computed.insert("--tone".into(), Some("cool".into()));
         let inline = Type {
             size: Kind::InlineSize,
             ..Type::default()
         };
-        push(&mut computed, 9, inline, &[]);
+        push(&mut computed, 9, inline, &[], false);
         let chain = chain(&computed);
         assert_eq!(chain.len(), 3);
         let sizes = Sizes::from([(7, (500.0, 120.0)), (9, (300.0, 40.0))]);
@@ -499,7 +549,39 @@ mod tests {
         assert_eq!(read_.sizes, BTreeSet::from([9]));
         assert_eq!(
             unit_basis(&chain, &sizes),
-            [Some((9, 300.0)), Some((7, 120.0))]
+            [
+                Some((9, 300.0)),
+                Some((7, 120.0)),
+                Some((9, 300.0)),
+                Some((7, 120.0))
+            ]
+        );
+        // A vertical inline-size container inside: its inline size is its
+        // height; its width is its block axis, which it does not contain.
+        let mut vertical = computed.clone();
+        push(&mut vertical, 11, inline, &[], true);
+        let chain = super::chain(&vertical);
+        let sizes = Sizes::from([(7, (500.0, 120.0)), (9, (300.0, 40.0)), (11, (60.0, 250.0))]);
+        for (prelude, expected, read) in [
+            ("(inline-size > 200px)", true, 11),
+            ("(height > 200px)", true, 11),
+            ("(width < 100px)", false, 9),
+            ("(block-size > 100px)", true, 7),
+        ] {
+            let mut read_ = Read::default();
+            let c = Condition::parse(prelude).unwrap();
+            let p = probe(&sizes, &vertical);
+            assert_eq!(c.matches(&chain, &p, &mut read_), expected, "{prelude}");
+            assert_eq!(read_.sizes, BTreeSet::from([read]), "{prelude}");
+        }
+        assert_eq!(
+            unit_basis(&chain, &sizes),
+            [
+                Some((9, 300.0)),
+                Some((11, 250.0)),
+                Some((11, 250.0)),
+                Some((7, 120.0))
+            ]
         );
     }
 

@@ -332,8 +332,14 @@ fn text(
         .fold(f32::NEG_INFINITY, f32::max);
     let fonts = cx.measure.fonts;
     let m = t.metrics(fonts);
-    let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
-    let at = |s: &str, w: f32| break_lines(s, m, size, tr, ft, t.wrap.then_some(w + 0.5));
+    // Down a vertical line, its lines measure their advances down it.
+    let at = |s: &str, w: f32| {
+        let part = TextContent {
+            text: s.to_string(),
+            ..t.clone()
+        };
+        super::flex::text_lines(&part, m, t.wrap.then_some(w + 0.5))
+    };
     let full = (tx1 - tx0).max(0.0);
     let (mut lines, mut shifts) = (Vec::new(), Vec::new());
     let mut narrowed = false;

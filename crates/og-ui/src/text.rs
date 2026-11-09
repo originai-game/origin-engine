@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "shaping")]
 pub(crate) mod paragraph;
+pub(crate) mod vertical;
 
 /// Advances, kerning and vertical extents of a font, in em.
 #[derive(Clone, Debug, PartialEq)]
@@ -1232,12 +1233,39 @@ pub(crate) fn break_lines(
             })
             .collect();
     }
+    let mut lines = greedy_lines(
+        text,
+        max_width,
+        &|t| m.measure_with(t, size, tracking, features),
+        &|a, b| m.kern(a, b) * size,
+    );
+    // A kerning font kerns across the units too, and a shaped run is shaped
+    // whole: each line's width is its whole text measured (what is drawn),
+    // not the sum of its units.
+    if m.kerns() || m.is_mixed() || needs_visual(text) {
+        for l in &mut lines {
+            l.width = m.measure_with(&l.text, size, tracking, features);
+        }
+    }
+    lines
+}
+
+/// Greedy line breaking at `max_width` (`None`: only at `\n`) by UAX #14
+/// opportunities, each unit `measure`d and `seam` (the kerning) between
+/// two that meet without a space. Spaces at a break are dropped; a unit
+/// wider than the line breaks between its grapheme clusters.
+pub(crate) fn greedy_lines(
+    text: &str,
+    max_width: Option<f32>,
+    measure: &dyn Fn(&str) -> f32,
+    seam: &dyn Fn(char, char) -> f32,
+) -> Vec<Line> {
     let mut lines = Vec::new();
     for paragraph in text.split('\n') {
         let Some(max) = max_width else {
             lines.push(Line {
                 text: paragraph.to_owned(),
-                width: m.measure_with(paragraph, size, tracking, features),
+                width: measure(paragraph),
             });
             continue;
         };
@@ -1249,17 +1277,17 @@ pub(crate) fn break_lines(
         for (unit, is_space) in tokens(paragraph) {
             if is_space {
                 spaces.push_str(unit);
-                spaces_w += m.measure_with(unit, size, tracking, features);
+                spaces_w += measure(unit);
                 continue;
             }
-            let w = m.measure_with(unit, size, tracking, features);
+            let w = measure(unit);
             // Atlas-only metrics kern at the seam, never reshape the growing
             // prefix for each unit. Cooked-file paragraphs take Parley above.
             let seam = if spaces.is_empty() {
                 line.chars()
                     .next_back()
                     .zip(unit.chars().next())
-                    .map_or(0.0, |(a, b)| m.kern(a, b) * size)
+                    .map_or(0.0, |(a, b)| seam(a, b))
             } else {
                 0.0
             };
@@ -1284,7 +1312,7 @@ pub(crate) fn break_lines(
                     .collect();
                 for (a, b) in og_i18n::graphemes(unit) {
                     let cluster = &unit[bytes[a]..bytes[b]];
-                    let cw = m.measure_with(cluster, size, tracking, features);
+                    let cw = measure(cluster);
                     if !line.is_empty() && width + cw > max {
                         lines.push(Line {
                             text: std::mem::take(&mut line),
@@ -1303,14 +1331,6 @@ pub(crate) fn break_lines(
         }
         if !line.is_empty() || !pushed_any {
             lines.push(Line { text: line, width });
-        }
-    }
-    // A kerning font kerns across the units too, and a shaped run is shaped
-    // whole: each line's width is its whole text measured (what is drawn),
-    // not the sum of its units.
-    if m.kerns() || m.is_mixed() || needs_visual(text) {
-        for l in &mut lines {
-            l.width = m.measure_with(&l.text, size, tracking, features);
         }
     }
     lines

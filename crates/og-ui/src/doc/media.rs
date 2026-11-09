@@ -154,6 +154,10 @@ impl Comparison {
 pub enum Feature {
     Width(Comparison, f64),
     Height(Comparison, f64),
+    /// A container's `inline-size` and `block-size`: its width or its
+    /// height as its own writing mode names them (CSS Containment 3 §6.1).
+    InlineSize(Comparison, f64),
+    BlockSize(Comparison, f64),
     AspectRatio(Comparison, f64, f64),
     Portrait(bool),
     ReducedMotion(bool),
@@ -292,6 +296,16 @@ impl Context {
                     cmp.test(context.width.into(), value)
                 }
                 Feature::Height(cmp, value) => {
+                    reads.height = true;
+                    cmp.test(context.height.into(), value)
+                }
+                // Horizontal writing: a container reads them through its
+                // own writing mode first (`container::Condition::matches`).
+                Feature::InlineSize(cmp, value) => {
+                    reads.width = true;
+                    cmp.test(context.width.into(), value)
+                }
+                Feature::BlockSize(cmp, value) => {
                     reads.height = true;
                     cmp.test(context.height.into(), value)
                 }
@@ -627,6 +641,16 @@ fn ranged(name: &str, cmp: Comparison, value: Value) -> Result<Query, Error> {
         {
             Feature::Height(cmp, n)
         }
+        (LOGICAL_INLINE, Value::Length(n) | Value::Number(n))
+            if matches!(value, Value::Length(_)) || n == 0.0 =>
+        {
+            Feature::InlineSize(cmp, n)
+        }
+        (LOGICAL_BLOCK, Value::Length(n) | Value::Number(n))
+            if matches!(value, Value::Length(_)) || n == 0.0 =>
+        {
+            Feature::BlockSize(cmp, n)
+        }
         ("aspect-ratio", Value::Ratio(n, d)) => Feature::AspectRatio(cmp, n, d),
         ("aspect-ratio", Value::Number(n)) if n >= 0.0 => Feature::AspectRatio(cmp, n, 1.0),
         ("resolution", Value::Resolution(n)) => Feature::Resolution(cmp, n),
@@ -645,8 +669,13 @@ fn ranged(name: &str, cmp: Comparison, value: Value) -> Result<Query, Error> {
     Ok(Query::Feature(feature))
 }
 
-/// The size feature a container condition names: horizontal writing only,
-/// so the inline axis is the width.
+/// A container condition's `inline-size` and `block-size` as parsed: names
+/// no identifier spells, so a media query never reaches them.
+const LOGICAL_INLINE: &str = "@inline-size";
+const LOGICAL_BLOCK: &str = "@block-size";
+
+/// The size feature a container condition names; `inline-size` and
+/// `block-size` stay logical until the container's writing mode reads them.
 fn logical(name: String, scope: Scope) -> Result<String, Error> {
     if scope == Scope::Media {
         return Ok(name);
@@ -657,8 +686,8 @@ fn logical(name: String, scope: Scope) -> Result<String, Error> {
         .unwrap_or(("", name.as_str()));
     match bare {
         "width" | "height" | "aspect-ratio" | "orientation" => Ok(name),
-        "inline-size" => Ok(format!("{prefix}width")),
-        "block-size" => Ok(format!("{prefix}height")),
+        "inline-size" => Ok(format!("{prefix}{LOGICAL_INLINE}")),
+        "block-size" => Ok(format!("{prefix}{LOGICAL_BLOCK}")),
         _ => Err(ParseError::custom(format!(
             "unsupported container feature {name}; container queries take width, height, inline-size, block-size, aspect-ratio and orientation"
         ))),
@@ -670,7 +699,7 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
         let name = logical(name.to_ascii_lowercase(), scope)?;
         if input.is_exhausted() {
             return match name.as_str() {
-                "width" | "height" | "aspect-ratio" => {
+                "width" | "height" | "aspect-ratio" | LOGICAL_INLINE | LOGICAL_BLOCK => {
                     ranged(&name, Comparison::Greater, Value::Number(0.0))
                 }
                 "orientation" => Ok(Query::All),

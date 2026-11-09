@@ -341,6 +341,55 @@ impl FontFile {
         a
     }
 
+    /// `c`'s advance down a vertical line, em: the font's `vmtx` (`None`
+    /// without one, or without `c`).
+    pub fn vertical_advance(&self, c: char) -> Option<f32> {
+        let face = ttf_parser::Face::parse(&self.ttf, 0).ok()?;
+        let g = face.glyph_index(c)?;
+        let a = face.glyph_ver_advance(g)?;
+        Some(a as f32 / face.units_per_em() as f32)
+    }
+
+    /// `run` shaped down a vertical line (HarfBuzz's top-to-bottom shaping,
+    /// with the font's `vert` and `vrt2` forms): each glyph's form, `None`
+    /// where it is the character's own, and `None` for the whole when this
+    /// build does not shape or the atlas lacks a form (`has`).
+    pub fn vertical_forms(
+        &self,
+        run: &str,
+        has: &dyn Fn(GlyphKey) -> bool,
+    ) -> Option<Vec<(u32, Option<u16>)>> {
+        #[cfg(feature = "shaping")]
+        {
+            let face = skrifa::FontRef::new(&self.ttf).ok()?;
+            let mut buf = harfrust::UnicodeBuffer::new();
+            buf.push_str(run);
+            buf.guess_segment_properties();
+            buf.set_direction(harfrust::Direction::TopToBottom);
+            let shaper = self.shaper.shaper(&face).build();
+            let out = shaper.shape(buf, harfrust::ShapeOptions::new());
+            let mut forms = Vec::with_capacity(out.len());
+            for g in out.glyph_infos() {
+                let c = run.get(g.cluster as usize..)?.chars().next()?;
+                let own = face.charmap().map(c).map(|i| i.to_u32()) == Some(g.glyph_id);
+                let id = u16::try_from(g.glyph_id).ok()?;
+                if own {
+                    forms.push((g.cluster, None));
+                } else if has(GlyphKey::Id(id)) {
+                    forms.push((g.cluster, Some(id)));
+                } else {
+                    return None;
+                }
+            }
+            Some(forms)
+        }
+        #[cfg(not(feature = "shaping"))]
+        {
+            let _ = (run, has);
+            None
+        }
+    }
+
     /// Whether the font file has `c` (without recording it).
     pub fn covers(&self, c: char) -> bool {
         self.runtime && self.lookup(GlyphKey::Char(c)).is_some()
