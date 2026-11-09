@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.physics.castRay, og.physics.castRayAll",
+      "summary": "A ray's answer is written as text directly instead of being built as a JSON object per hit and formatted. The text is byte-identical: the same keys in the same order, the same digits, null for a value that is not finite. A garden with about sixty casts a tick: 0.44 of castRay's 1.23 ms a tick on the web."
+    }
+  ]
+}

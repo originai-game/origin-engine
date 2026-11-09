@@ -496,19 +496,62 @@ pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
             filter: filter(&d["filter"])?,
         };
         let hit = query(world)?.raycast(&desc).map_err(err)?;
-        Ok(hit.map_or(Value::Null, |h| hit_json(&h)))
+        let mut text = String::with_capacity(160);
+        match hit {
+            Some(h) => hit_text(&h, &mut text),
+            None => text.push_str("null"),
+        }
+        Ok(text)
     })();
     match answer {
-        Ok(v) => ok(v),
+        Ok(text) => ok_text(&text),
         Err(e) => refuse(e),
     }
 }
 
-fn hit_json(h: &og_physics::RaycastHit) -> Value {
-    json!({
-        "entity": h.entity.to_bits(), "body": h.body.to_bits(), "distance": h.distance,
-        "point": v3(h.point), "normal": v3(h.normal),
-    })
+/// `ok(value)`'s text for a value already written as JSON text.
+fn ok_text(value: &str) -> String {
+    format!(r#"{{"ok":true,"value":{value}}}"#)
+}
+
+/// A hit as JSON text, written straight into `out` (s106): the same text as
+/// serde_json gives the `json!` object of its fields (keys in order, its
+/// shortest float digits, `null` for a value that is not finite) without
+/// building, formatting and dropping that object, which was most of a
+/// castRay's cost after the ray itself (0.44 of 1.23 ms a tick in a game
+/// that casts sixty a tick).
+fn hit_text(h: &og_physics::RaycastHit, out: &mut String) {
+    use std::fmt::Write;
+    let _ = write!(out, r#"{{"body":{},"distance":"#, h.body.to_bits());
+    float_text(h.distance, out);
+    let _ = write!(out, r#","entity":{},"normal":"#, h.entity.to_bits());
+    vec3_text(h.normal, out);
+    out.push_str(r#","point":"#);
+    vec3_text(h.point, out);
+    out.push('}');
+}
+
+/// [`v3`]'s object as JSON text.
+fn vec3_text(v: Vec3, out: &mut String) {
+    out.push_str(r#"{"x":"#);
+    float_text(v.x, out);
+    out.push_str(r#","y":"#);
+    float_text(v.y, out);
+    out.push_str(r#","z":"#);
+    float_text(v.z, out);
+    out.push('}');
+}
+
+/// An f32 as serde_json writes the value `json!` makes of it: its f64 in
+/// zmij's shortest digits (serde_json's own formatter), `null` when it is
+/// not finite.
+fn float_text(x: f32, out: &mut String) {
+    let x = f64::from(x);
+    if x.is_finite() {
+        out.push_str(zmij::Buffer::new().format_finite(x));
+    } else {
+        out.push_str("null");
+    }
 }
 
 pub fn og_physics_raycast_all(world: u32, desc: Option<String>) -> String {
@@ -524,10 +567,19 @@ pub fn og_physics_raycast_all(world: u32, desc: Option<String>) -> String {
         let hits = query(world)?
             .raycast_all(&og_physics::RaycastAllDesc { ray, max_hits })
             .map_err(err)?;
-        Ok(Value::Array(hits.iter().map(hit_json).collect()))
+        let mut text = String::with_capacity(2 + 160 * hits.len());
+        text.push('[');
+        for (i, h) in hits.iter().enumerate() {
+            if i > 0 {
+                text.push(',');
+            }
+            hit_text(h, &mut text);
+        }
+        text.push(']');
+        Ok(text)
     })();
     match answer {
-        Ok(v) => ok(v),
+        Ok(text) => ok_text(&text),
         Err(e) => refuse(e),
     }
 }
@@ -703,6 +755,64 @@ fn preview_of(engine_id: u32) -> Option<Viewport> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A raycast answer is the text serde_json gives the `json!` object of
+    /// the hit (s106 writes it directly): its keys in order, the f32s'
+    /// shortest f64 digits (not their own), `null` where one is not finite,
+    /// entity bits past 2^53 whole; the answer of no hit and of every hit too.
+    #[test]
+    fn a_raycast_answer_is_the_text_of_the_hits_json_object() {
+        let object = |h: &og_physics::RaycastHit| {
+            json!({
+                "entity": h.entity.to_bits(), "body": h.body.to_bits(), "distance": h.distance,
+                "point": v3(h.point), "normal": v3(h.normal),
+            })
+        };
+        let hit = |entity: u64, body: u64, distance: f32, point: [f32; 3], normal: [f32; 3]| {
+            og_physics::RaycastHit {
+                entity: Entity::from_bits(entity),
+                body: Entity::from_bits(body),
+                distance,
+                point: Vec3::from(point),
+                normal: Vec3::from(normal),
+            }
+        };
+        let hits = [
+            hit(5, 5, 0.1, [1.5, -2.25, 1e-7], [0.0, 1.0, -0.0]),
+            hit(
+                u64::MAX - 1,
+                (1 << 40) | 7,
+                123_456.79,
+                [f32::MIN_POSITIVE, 3.4e38, -1e-45],
+                [0.6, 0.8, 0.0],
+            ),
+            hit(
+                9,
+                3,
+                f32::MAX,
+                [f32::NAN, f32::INFINITY, f32::NEG_INFINITY],
+                [0.333_333_34, -0.5, 2.0 / 3.0],
+            ),
+        ];
+        for h in &hits {
+            let mut text = String::new();
+            hit_text(h, &mut text);
+            assert_eq!(text, object(h).to_string());
+        }
+        assert_eq!(ok_text("null"), ok(Value::Null));
+        let mut all = String::from("[");
+        for (i, h) in hits.iter().enumerate() {
+            if i > 0 {
+                all.push(',');
+            }
+            hit_text(h, &mut all);
+        }
+        all.push(']');
+        assert_eq!(
+            ok_text(&all),
+            ok(Value::Array(hits.iter().map(object).collect()))
+        );
+    }
 
     /// A native host sets no viewport: on macOS its text controls take the
     /// Mac's keys (Command for the shortcuts, Option for words), elsewhere
