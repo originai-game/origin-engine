@@ -791,3 +791,25 @@ fn keep_out(r: Rect, anchor: Anchor, c: Rect, gap: f32, bounds: Rect, others: &[
         _ => along,
     }
 }
+
+/// The element `path` names from node `from`: a full path, else a
+/// sibling's id (`Ui::node_at`).
+pub(crate) fn node_in(
+    tree: &tree::TreeIndex,
+    nodes: &[crate::layout::Node],
+    path: &str,
+    from: usize,
+) -> Option<usize> {
+    let full = crate::id::key_of_path(path);
+    let parent = nodes[from].parent;
+    let sibling = if parent == NONE {
+        0
+    } else {
+        path.split('/')
+            .fold(nodes[parent].key, crate::id::child_key)
+    };
+    tree.by_key
+        .get(&full)
+        .or_else(|| tree.by_key.get(&sibling))
+        .copied()
+}

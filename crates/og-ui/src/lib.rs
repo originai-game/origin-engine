@@ -97,6 +97,7 @@ pub use juice::{
     format_count,
 };
 pub use layers::{LayerInfo, LayerOp};
+pub use layout::anchor;
 pub use layout::{
     Align, Anchor, Calc, CalcOp, Cross, Direction, Element, FlexItem, FontRole, Insets, Length,
     Margin, Rect, Size, TablePart, TextAlign,

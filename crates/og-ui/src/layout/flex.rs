@@ -1,4 +1,5 @@
 use super::*;
+use crate::element::Position;
 
 /// Raises `items` (by index into `w`) towards a common level so their sum
 /// grows by `extra`, each capped at its own max: the smallest grow first.
@@ -1274,6 +1275,116 @@ fn mirror_lines(nodes: &mut [Node], i: usize, x0: f32, y0: f32, inner_w: f32, in
 }
 
 pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
+    place_children(nodes, i, scroll);
+    // Relative and sticky children (CSS Position 3 §3.3–3.4): moved from
+    // where the flow put them, their siblings unmoved. Each placement
+    // above starts them from the flow again, so this never adds up.
+    let kids = nodes[i].children.clone();
+    if !kids.iter().any(|&c| {
+        matches!(
+            nodes[c].props.position,
+            Position::Relative | Position::Sticky
+        )
+    }) {
+        return;
+    }
+    // Their containing block: its content box, scrolled with its content
+    // where it is the scroller.
+    let n = &nodes[i];
+    let (sx, sy) = match (n.el.scroll_x, n.el.scroll) {
+        (false, false) => (0.0, 0.0),
+        (x, y) => {
+            let (sx, sy) = scroll(n.key);
+            (
+                if x {
+                    sx.clamp(0.0, n.max_scroll_x())
+                } else {
+                    0.0
+                },
+                if y {
+                    sy.clamp(0.0, n.max_scroll())
+                } else {
+                    0.0
+                },
+            )
+        }
+    };
+    let (iw, ih) = (
+        (n.w - n.el.padding.horizontal()).max(0.0),
+        (n.h - n.el.padding.vertical()).max(0.0),
+    );
+    let cb = Rect::new(
+        n.x + n.el.padding.left - sx,
+        n.y + n.el.padding.top - sy,
+        if sx > 0.0 { iw.max(n.content_w) } else { iw },
+        if n.el.scroll { ih.max(n.content_h) } else { ih },
+    );
+    // The nearest scroller's scrollport, at or above the parent.
+    let mut at = i;
+    while at != NONE && !(nodes[at].el.scroll || nodes[at].el.scroll_x) {
+        at = nodes[at].up;
+    }
+    let port = (at != NONE).then(|| Rect::new(nodes[at].x, nodes[at].y, nodes[at].w, nodes[at].h));
+    for c in kids {
+        let ins = nodes[c].props.insets;
+        let (x, y, w, h) = (nodes[c].x, nodes[c].y, nodes[c].w, nodes[c].h);
+        let (dx, dy) = match nodes[c].props.position {
+            Position::Relative => (
+                ins.start.or(ins.end.map(|e| -e)).unwrap_or(0.0),
+                ins.top.or(ins.bottom.map(|b| -b)).unwrap_or(0.0),
+            ),
+            Position::Sticky => {
+                let Some(p) = port else { continue };
+                // Toward the scrollport's inset edge, never out of its
+                // containing block (§3.4).
+                let stick = |at: f32,
+                             len: f32,
+                             lo: Option<f32>,
+                             hi: Option<f32>,
+                             p0: f32,
+                             p1: f32,
+                             c0: f32,
+                             c1: f32| {
+                    let mut v = at;
+                    if let Some(lo) = lo {
+                        v = v.max(p0 + lo).min((c1 - len).max(at));
+                    }
+                    if let Some(hi) = hi {
+                        v = v.min(p1 - hi - len).max(c0.min(at));
+                    }
+                    v - at
+                };
+                (
+                    stick(x, w, ins.start, ins.end, p.x, p.right(), cb.x, cb.right()),
+                    stick(
+                        y,
+                        h,
+                        ins.top,
+                        ins.bottom,
+                        p.y,
+                        p.bottom(),
+                        cb.y,
+                        cb.bottom(),
+                    ),
+                )
+            }
+            _ => continue,
+        };
+        nodes[c].x += dx;
+        nodes[c].y += dy;
+    }
+}
+
+/// The insets an in-flow child is placed by in a stack or a grid cell:
+/// none for a relative or sticky one, which moves after.
+fn flow_insets(n: &Node) -> Edges {
+    match n.props.position {
+        Position::Relative | Position::Sticky => Edges::default(),
+        _ => n.props.insets,
+    }
+}
+
+fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
     // Out of the flow: placed by its insets in the parent's box (an
     // anchored one is moved onto its target once every layer is placed).
     let bx = Rect::new(nodes[i].x, nodes[i].y, nodes[i].w, nodes[i].h);
@@ -1333,7 +1444,7 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
             let mut extent = 0.0f32;
             for &c in &kids {
                 let (w, h) = (nodes[c].w, nodes[c].h);
-                let (x, y) = place_in(&inner, w, h, &nodes[c].props.insets, align, cross);
+                let (x, y) = place_in(&inner, w, h, &flow_insets(&nodes[c]), align, cross);
                 nodes[c].x = x;
                 nodes[c].y = y;
                 extent = extent.max(w);
@@ -1363,7 +1474,7 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
                     Cross::End => Align::End,
                     _ => Align::Start,
                 };
-                let (x, y) = place_in(&cell, w, h, &k.props.insets, justify, align);
+                let (x, y) = place_in(&cell, w, h, &flow_insets(k), justify, align);
                 let y = auto_offset(k, 0, cell.height - h).map_or(y, |o| cell.y + o);
                 nodes[c].x = x;
                 nodes[c].y = y;

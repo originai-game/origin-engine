@@ -61,6 +61,8 @@ const POSITIONS: &[(&str, &str)] = &[
     ("absolute", "absolute"),
     ("screen", "fixed"),
     ("anchored", "-og-anchored"),
+    ("relative", "relative"),
+    ("sticky", "sticky"),
 ];
 
 /// Every element prop written as a declaration: (prop, CSS property, how).
@@ -199,6 +201,18 @@ pub const STYLE: &[(&str, &str)] = &[
     ("spotlight", "-og-spotlight"),
     ("anchorAt", "-og-anchor-at"),
     ("anchorSelf", "-og-anchor-self"),
+    ("insetTop", "top"),
+    ("insetRight", "right"),
+    ("insetBottom", "bottom"),
+    ("insetLeft", "left"),
+    ("anchorName", "anchor-name"),
+    ("positionAnchor", "position-anchor"),
+    ("positionArea", "position-area"),
+    ("positionTry", "position-try-fallbacks"),
+    ("positionTryOrder", "position-try-order"),
+    ("positionVisibility", "position-visibility"),
+    ("anchorWidth", "width"),
+    ("anchorHeight", "height"),
     ("hitSlop", "-og-hit-slop"),
     ("columns", "grid-template-columns"),
     ("rows", "grid-template-rows"),
@@ -264,6 +278,14 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
     let both: Vec<&'static str> = match name {
         "margin" => vec!["marginTop", "marginRight", "marginBottom", "marginLeft"],
         "margin-block" => vec!["marginTop", "marginBottom"],
+        "inset" => vec!["insetTop", "insetRight", "insetBottom", "insetLeft"],
+        "inset-block" => vec!["insetTop", "insetBottom"],
+        "inset-inline" => vec!["insetLeft", "insetRight"],
+        "inset-block-start" => vec!["insetTop"],
+        "inset-block-end" => vec!["insetBottom"],
+        "inset-inline-start" => vec!["insetLeft"],
+        "inset-inline-end" => vec!["insetRight"],
+        "position-try" => vec!["positionTry", "positionTryOrder"],
         "margin-inline" => vec!["marginRight", "marginLeft"],
         "margin-inline-start" => vec!["marginLeft"],
         "margin-inline-end" => vec!["marginRight"],
@@ -347,6 +369,9 @@ fn conv(prop: &str) -> Conv {
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
         "boxShadow" | "uv" => Conv::Raw,
         p if super::paint_css::C4_PROPS.contains(&p) || p == "ellipsisText" => Conv::Raw,
+        "insetTop" | "insetRight" | "insetBottom" | "insetLeft" | "anchorName"
+        | "positionAnchor" | "positionArea" | "positionTry" | "positionTryOrder"
+        | "positionVisibility" | "anchorWidth" | "anchorHeight" => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"
         | "backgroundPosition"
@@ -539,12 +564,10 @@ fn neutral(key: &str) -> Option<&'static str> {
 /// CSS that is not part of the subset, and what to write instead.
 pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
     Some(match name {
-        "float" | "clear" => "write `display` as the kind: a `row` or a `grid`",
-        "left" => "write `inset-inline-start` (it mirrors right to left)",
-        "right" => "write `inset-inline-end` (it mirrors right to left)",
-        "inset-inline" | "inset" | "inset-block" => {
-            "write each side: `top`, `bottom`, `inset-inline-start`, `inset-inline-end`"
+        "float" | "clear" => {
+            "floats are not laid out yet: place it with `display: flex` or `grid`, or `position: absolute`"
         }
+        "visibility" => "write the attribute `visible false` (or `visible bind …`)",
         _ => return None,
     })
 }
@@ -1616,6 +1639,9 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
     if !value.contains("bind(")
         && let Some(parts) = super::tracks::lower(name, value)
     {
+        return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
+    }
+    if let Some(parts) = super::position_css::lower(name, value) {
         return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
     }
     let t = tokens(value)?;

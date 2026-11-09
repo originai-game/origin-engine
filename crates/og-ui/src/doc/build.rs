@@ -63,6 +63,8 @@ struct Resolved {
     smil: bool,
     /// Its `transform` and 3D properties ([`crate::transform3d`]).
     space3d: Option<Arc<crate::transform3d::Space3d>>,
+    /// The `@position-try` rules its `position-try-fallbacks` names.
+    position_tries: Vec<(String, crate::anchor::Placement)>,
     /// Its `@starting-style` values that differ from its style, on the
     /// build it first appears in (the before-change style of its
     /// transitions, CSS Transitions 2 §3).
@@ -1026,6 +1028,26 @@ impl Ui {
             );
             r.pseudo.push((which, at, Arc::new(p)));
         }
+        if let Some(t) = r.str("positionTry") {
+            let named: Vec<String> = t
+                .split([',', ' '])
+                .filter(|w| w.starts_with("--"))
+                .map(str::to_string)
+                .collect();
+            r.position_tries = b
+                .doc
+                .sheet
+                .position_tries
+                .iter()
+                .filter(|(n, _)| named.contains(n))
+                .map(|(n, decls)| {
+                    let p = crate::anchor::placement_of(
+                        decls.iter().map(|d| (d.name.as_str(), d.source.as_str())),
+                    );
+                    (n.clone(), p)
+                })
+                .collect();
+        }
         r
     }
 
@@ -1254,6 +1276,8 @@ impl Ui {
             Some("absolute") => Position::Absolute,
             Some("screen") => Position::Screen,
             Some("anchored") => Position::Anchored,
+            Some("relative") => Position::Relative,
+            Some("sticky") => Position::Sticky,
             _ => Position::Flow,
         };
         p.insets = Edges {
@@ -1267,6 +1291,66 @@ impl Ui {
         };
         if p.position == Position::Flow && p.insets.is_set() {
             p.position = Position::Absolute;
+        }
+        // The standard insets (`top`, `left`, `inset`, …): px ones are its
+        // edges; a percentage or `anchor()` resolves after layout.
+        let mut spec = crate::anchor::AnchorSpec::default();
+        let mut resolved_later = false;
+        for (k, name) in ["insetTop", "insetRight", "insetBottom", "insetLeft"]
+            .into_iter()
+            .enumerate()
+        {
+            let Some(v) = r.str(name).filter(|v| *v != "auto") else {
+                continue;
+            };
+            let Ok(inset) = crate::anchor::parse_inset(v) else {
+                continue;
+            };
+            if let crate::anchor::Inset::Px(px) = inset {
+                *[
+                    &mut p.insets.top,
+                    &mut p.insets.end,
+                    &mut p.insets.bottom,
+                    &mut p.insets.start,
+                ][k] = Some(px);
+            } else {
+                resolved_later = true;
+            }
+            spec.base.insets[k] = Some(inset);
+        }
+        if let Some(n) = r.str("anchorName").filter(|n| !n.is_empty()) {
+            p.anchor_names = n.split_whitespace().map(str::to_string).collect();
+        }
+        if let Some(a) = r.str("positionAnchor") {
+            spec.anchor = a.to_string();
+        }
+        if let Some(a) = r.str("positionArea") {
+            spec.base.area = crate::anchor::parse_area(a).ok().flatten();
+            resolved_later |= spec.base.area.is_some();
+        }
+        for (k, name) in ["anchorWidth", "anchorHeight"].into_iter().enumerate() {
+            if let Some(v) = r.str(name) {
+                spec.base.sizes[k] = crate::anchor::parse_size(v).ok();
+                resolved_later |= spec.base.sizes[k].is_some();
+            }
+        }
+        if let Some(t) = r.str("positionTry") {
+            spec.tries = crate::anchor::parse_tries(t).unwrap_or_default();
+        }
+        spec.order = match r.str("positionTryOrder") {
+            Some("most-width") => crate::anchor::TryOrder::MostWidth,
+            Some("most-height") => crate::anchor::TryOrder::MostHeight,
+            _ => crate::anchor::TryOrder::Normal,
+        };
+        spec.visibility = match r.str("positionVisibility") {
+            Some("always") => crate::anchor::Visibility::Always,
+            Some("no-overflow") => crate::anchor::Visibility::NoOverflow,
+            _ => crate::anchor::Visibility::AnchorsVisible,
+        };
+        spec.named = r.position_tries.clone();
+        resolved_later |= !spec.tries.is_empty();
+        if resolved_later && matches!(p.position, Position::Absolute | Position::Screen) {
+            p.anchor = Some(Box::new(spec));
         }
         if let Some(a) = r.str("anchorTo") {
             p.anchor_to = a.to_string();

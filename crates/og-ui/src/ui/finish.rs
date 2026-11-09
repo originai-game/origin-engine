@@ -560,7 +560,7 @@ impl Ui {
             for &f in &self.floating {
                 placed_order.extend(preorder(&self.nodes, f));
             }
-            for i in placed_order {
+            for &i in &placed_order {
                 if self.nodes[i].props.position != crate::element::Position::Screen {
                     continue;
                 }
@@ -579,6 +579,114 @@ impl Ui {
                     screen,
                     &mut self.kept,
                 );
+            }
+            // Anchor-positioned elements (CSS Anchor Positioning 1): placed
+            // against their anchors' boxes as laid out this frame, and laid
+            // out again where that moved or resized them.
+            self.kept.anchor_toggled.clear();
+            if placed_order
+                .iter()
+                .any(|&i| self.nodes[i].props.anchor.is_some())
+            {
+                let names: Vec<(usize, &[String])> = placed_order
+                    .iter()
+                    .filter(|&&i| !self.nodes[i].props.anchor_names.is_empty())
+                    .map(|&i| (i, self.nodes[i].props.anchor_names.as_slice()))
+                    .collect();
+                let named: Vec<(usize, String)> = names
+                    .iter()
+                    .flat_map(|(i, n)| n.iter().map(move |n| (*i, n.clone())))
+                    .collect();
+                for &i in &placed_order {
+                    let Some(spec) = self.nodes[i].props.anchor.clone() else {
+                        continue;
+                    };
+                    let box_of = |j: usize| {
+                        let n = &self.nodes[j];
+                        Rect::new(n.x, n.y, n.w, n.h)
+                    };
+                    // The last element in tree order by that name, not inside
+                    // it (§2.3); no name: its default anchor, else its
+                    // implicit one.
+                    let inside = |j: usize| {
+                        let mut at = j;
+                        while at != NONE {
+                            if at == i {
+                                return true;
+                            }
+                            at = self.nodes[at].parent;
+                        }
+                        false
+                    };
+                    let by_name = |name: &str| {
+                        named
+                            .iter()
+                            .rev()
+                            .find(|(j, n)| n == name && !inside(*j))
+                            .map(|(j, _)| *j)
+                    };
+                    let default = if spec.anchor.is_empty() {
+                        let to = &self.nodes[i].props.anchor_to;
+                        (!to.is_empty())
+                            .then(|| crate::ui::node_in(&self.tree, &self.nodes, to, i))
+                            .flatten()
+                    } else {
+                        by_name(&spec.anchor)
+                    };
+                    let anchor = |name: &str| {
+                        if name.is_empty() {
+                            default.map(box_of)
+                        } else {
+                            by_name(name).map(box_of)
+                        }
+                    };
+                    let n = &self.nodes[i];
+                    let cb = match n.props.position {
+                        crate::element::Position::Screen => screen,
+                        _ if n.up != NONE => box_of(n.up),
+                        _ => screen,
+                    };
+                    let authored = n
+                        .authored_box
+                        .map_or([n.el.width, n.el.height], |(w, h, _)| [w, h]);
+                    let frame = crate::anchor::Frame {
+                        cb,
+                        anchor: &anchor,
+                        size: authored,
+                        content: [(n.pref_w, n.min_w), (n.pref_h, n.min_h)],
+                    };
+                    let (r, mut placed) = crate::anchor::resolve(&spec, &frame);
+                    // `anchors-visible`: hidden while its default anchor is
+                    // clipped out of view or hidden.
+                    if spec.visibility == crate::anchor::Visibility::AnchorsVisible
+                        && let Some(a) = default
+                    {
+                        let a = &self.nodes[a];
+                        placed.hidden = a.hidden || !a.laid_clip.overlaps(&a.laid_rect);
+                    }
+                    if placed.hidden != self.nodes[i].anchor_placed.hidden {
+                        self.kept.anchor_toggled.push(i);
+                    }
+                    let here = box_of(i);
+                    self.nodes[i].anchor_placed = placed;
+                    if r == here {
+                        continue;
+                    }
+                    layout_inputs.remember(i, &self.nodes[i]);
+                    authored_box(&mut self.nodes, &mut self.layout_mutated, i);
+                    self.nodes[i].el.width = Size::Fixed(r.width);
+                    self.nodes[i].el.height = Size::Fixed(r.height);
+                    layout(
+                        &mut self.nodes,
+                        i,
+                        r,
+                        &mut measure,
+                        &offset,
+                        dpr,
+                        screen,
+                        &mut self.kept,
+                    );
+                }
             }
             match self.settle_layout_queries(&mut settlement, layout_inputs, &mut *resolve) {
                 Ok(true) => {}

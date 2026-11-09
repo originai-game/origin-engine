@@ -16,6 +16,7 @@
 //! 5. **Positions**: main-axis `Align`, cross-axis `Cross`, scroll offsets,
 //!    clip rectangles; rectangles snap to device pixels (`Viewport::dpr`).
 
+pub mod anchor;
 mod cache;
 mod flex;
 mod grid;

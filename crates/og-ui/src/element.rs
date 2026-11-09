@@ -387,6 +387,12 @@ pub enum Position {
     /// ([`Props::anchor_to`]), its own `anchor_self` point on the target's
     /// `anchor_at` point, moved by the start and top insets.
     Anchored,
+    /// In the flow, then moved by its insets (CSS `position: relative`):
+    /// its siblings keep the room it left.
+    Relative,
+    /// In the flow, held inside its nearest scroller's scrollport by its
+    /// insets while its parent's box is in view (CSS `position: sticky`).
+    Sticky,
 }
 
 /// Insets from the parent's edges (`None`: not set). `start` and `end`
@@ -1285,6 +1291,11 @@ pub struct Props {
     pub anchor_at: Anchor,
     /// Its own point that sits there.
     pub anchor_self: Anchor,
+    /// CSS `anchor-name`: the names (`--name`) it is an anchor by.
+    pub anchor_names: Vec<String>,
+    /// CSS anchor positioning, and insets as percentages (an absolute or
+    /// screen element; `None`: its insets are px).
+    pub anchor: Option<Box<crate::layout::anchor::AnchorSpec>>,
     /// Extra pointer reach around its box, CSS px.
     pub hit_slop: f32,
     pub layout: LayoutMode,
@@ -1379,6 +1390,8 @@ impl Default for Props {
             anchor_to: String::new(),
             anchor_at: Anchor::default(),
             anchor_self: Anchor::default(),
+            anchor_names: Vec::new(),
+            anchor: None,
             hit_slop: 0.0,
             layout: LayoutMode::Flex,
             grid: GridSpec::default(),
@@ -1420,7 +1433,10 @@ impl Default for Props {
 impl Props {
     /// Out of its parent's flow.
     pub fn out_of_flow(&self) -> bool {
-        self.position != Position::Flow
+        !matches!(
+            self.position,
+            Position::Flow | Position::Relative | Position::Sticky
+        )
     }
 
     /// Takes part in motion: something can animate it.
@@ -1668,19 +1684,7 @@ impl Ui {
 
     /// The node a path names: a full path, else one relative to `from`'s parent.
     pub(crate) fn node_at(&self, path: &str, from: usize) -> Option<usize> {
-        let full = crate::id::key_of_path(path);
-        let parent = self.nodes[from].parent;
-        let sibling = if parent == NONE {
-            0
-        } else {
-            path.split('/')
-                .fold(self.nodes[parent].key, crate::id::child_key)
-        };
-        self.tree
-            .by_key
-            .get(&full)
-            .or_else(|| self.tree.by_key.get(&sibling))
-            .copied()
+        crate::ui::node_in(&self.tree, &self.nodes, path, from)
     }
 
     /// Anchored elements onto their targets' rectangles.

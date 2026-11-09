@@ -35,6 +35,8 @@
 //!   bottom caption on top → `display_lays_out_as_css_display_does`
 
 use crate::html_text::{Doc, both};
+use og_core::glam::Vec2;
+use og_ui::InputFrame;
 
 fn wh(d: &Doc, id: &str) -> (f32, f32) {
     let e = d.get(id);
@@ -357,5 +359,89 @@ fn html_tables_lay_out_without_author_css() {
         assert_eq!((b.y, c.y > b.y), (c.y, false), "body cells share a row");
         assert!(c.x > b.x && a.y < b.y && a.width >= 60.0);
         assert!(cap.y < h1.y, "the caption is above the table");
+    });
+}
+
+#[test]
+fn positioning_places_as_css_positioning_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Col"><div id="Rel"></div><div id="Next"></div></div>
+  <div id="Stage">
+    <div id="Anc"></div>
+    <div id="Corner"></div>
+    <div id="Fill"></div>
+    <div id="Area"></div>
+    <div id="Edge"></div>
+    <div id="Flip"></div>
+    <div id="Named"></div>
+  </div>
+  <div id="Port"><div id="Head"></div><div id="Body"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Rel { position: relative; left: 10px; top: 5px; height: 20px; }
+#Next { height: 10px; }
+#Stage { position: relative; display: flow-root; width: 300px; height: 200px; }
+#Anc { anchor-name: --a; margin-left: 50px; margin-top: 150px; width: 40px; height: 20px; }
+#Corner { position: absolute; right: 10px; bottom: 25%; width: 30px; height: 10px; }
+#Fill { position: absolute; inset: 10px 20px; }
+#Area { position: absolute; position-anchor: --a; position-area: top span-right; width: 60px; height: 30px; }
+#Edge { position: absolute; left: anchor(--a right); top: calc(anchor(--a top) - 4px); width: anchor-size(--a width); height: 6px; }
+#Flip { position: absolute; position-anchor: --a; position-area: bottom; position-try-fallbacks: flip-block; width: 10px; height: 40px; }
+#Named { position: absolute; position-anchor: --a; top: anchor(bottom); left: anchor(left); position-try-fallbacks: --above; width: 10px; height: 40px; }
+@position-try --above { top: auto; bottom: anchor(top); }
+#Port { height: 50px; overflow-y: auto; scrollbar-width: none; }
+#Head { position: sticky; top: 0; height: 10px; }
+#Body { height: 100px; }
+</style>"#;
+    both(text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        assert_eq!(
+            at("Rel", "Col"),
+            (10.0, 5.0),
+            "relative moves by its insets"
+        );
+        assert_eq!(at("Next", "Col"), (0.0, 20.0), "its siblings keep its room");
+        assert_eq!(
+            at("Corner", "Stage"),
+            (260.0, 140.0),
+            "right and a % bottom"
+        );
+        assert_eq!(
+            (at("Fill", "Stage"), wh(d, "Fill")),
+            ((20.0, 10.0), (260.0, 180.0))
+        );
+        // The anchor is at (50, 150) 40×20; span-right starts at its left.
+        assert_eq!(at("Area", "Stage"), (50.0, 120.0), "position-area");
+        assert_eq!(
+            (at("Edge", "Stage"), wh(d, "Edge")),
+            ((90.0, 146.0), (40.0, 6.0))
+        );
+        // Below the anchor it would overflow the stage: flipped above it,
+        // centred across it (span-all's room is the anchor's column).
+        assert_eq!(at("Flip", "Stage"), (65.0, 110.0), "flip-block");
+        assert_eq!(at("Named", "Stage"), (50.0, 110.0), "@position-try");
+        let p = d.get("Port");
+        d.step(InputFrame {
+            wheel: Vec2::new(0.0, 30.0),
+            ..InputFrame::hover(p.x + 10.0, p.y + 10.0)
+        });
+        for _ in 0..40 {
+            d.step(InputFrame::hover(p.x + 10.0, p.y + 10.0));
+        }
+        let s = d.ui.scroll_state(&p.path).expect("a scroll container");
+        assert_eq!(s.offset_y, 30.0);
+        // Scrolled 30 its flow place is 20px above the view; sticky holds
+        // it whole at the view's top (bounds are the part that shows).
+        let h = d.get("Head");
+        assert_eq!(
+            (h.y - p.y, h.height, h.clipped),
+            (0.0, 10.0, false),
+            "sticky"
+        );
     });
 }

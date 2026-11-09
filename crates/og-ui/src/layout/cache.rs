@@ -313,6 +313,9 @@ pub(crate) struct LayoutCache {
     /// widgets' channels stepped since the pass last read them
     /// (`Ui::run_motion`, `Ui::animate_key`).
     pub motion_moving: Vec<usize>,
+    /// Anchor-positioned nodes `position-visibility` showed or hid this
+    /// frame (visited again).
+    pub anchor_toggled: Vec<usize>,
     pub motion_groups: crate::id::KeyMap<Vec<u64>>,
     pub widget_channels: Vec<u64>,
 }
@@ -544,6 +547,7 @@ pub(crate) fn content_layout_eq(a: &Content, b: &Content) -> bool {
 pub(crate) fn props_layout_eq(a: &crate::element::Props, b: &crate::element::Props) -> bool {
     a.position == b.position
         && a.insets == b.insets
+        && a.anchor == b.anchor
         && a.view_place == b.view_place
         && a.layout == b.layout
         && a.grid == b.grid

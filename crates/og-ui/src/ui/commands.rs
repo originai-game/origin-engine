@@ -102,9 +102,10 @@ impl Ui {
 
         let rtl = self.direction == og_i18n::Direction::Rtl;
         let n = &mut self.nodes[i];
-        n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0);
+        let shown = !n.anchor_placed.hidden;
+        n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0) * f32::from(u8::from(shown));
         n.scale = 1.0;
-        n.inert = inert || n.sampled.inert;
+        n.inert = inert || n.sampled.inert || !shown;
         let r = n.rect;
         let (cx, cy) = r.center();
         let mut local = Affine::IDENTITY;

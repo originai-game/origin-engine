@@ -11,8 +11,8 @@ What every kind takes: its box, layout, paint, motion and input.
 
 | Write | Value | What |
 |---|---|---|
-| `width:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its width (fit by default). |
-| `height:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its height (fit by default). |
+| `width:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its width (fit by default). `anchorWidth`: CSS `width: anchor-size(…)` as written. |
+| `height:` | `auto \| fit-content \| fit-content(<n>px) \| min-content \| max-content \| stretch \| <n>px \| <n>% \| calc(…) \| min(…) \| max(…) \| clamp(…) \| round(…) …` | Its height (fit by default). `anchorHeight`: CSS `height: anchor-size(…)` as written. |
 | `padding:` | `1 to 4 lengths (top right bottom left)` | Space inside its edges, CSS px. |
 | `padding-top:` | `<n>px` | Space inside its top edge, CSS px (over `padding`). |
 | `padding-right:` | `<n>px` | Space inside its right edge, CSS px (over `padding`). |
@@ -93,11 +93,11 @@ What every kind takes: its box, layout, paint, motion and input.
 | `transform-origin:` | `<x>% <y>%` | The transform's origin, fractions of its box. |
 | `opacity:` | `<number>` | 0 to 1, multiplied down the tree. |
 | `z-index:` | `<number>` | Drawing order among its siblings. |
-| `position:` | `static \| absolute \| fixed \| -og-anchored` | In the flow, placed by its insets in its parent, by its insets on the whole screen (full bleed, under the safe area), or against another element. |
+| `position:` | `static \| absolute \| fixed \| -og-anchored \| relative \| sticky` | In the flow, placed by its insets in its parent, by its insets on the whole screen (full bleed, under the safe area), or against another element. |
 | `inset-inline-start:` | `<n>px` | The inset from its parent's start edge (absolute). |
-| `top:` | `<n>px` | The inset from the top. |
+| `top:` | `<n>px` | The inset from the top. `insetTop`: CSS `top` / `inset-block-start` as written: px, `%` of the containing block, `anchor()` or `calc()` of one plus px. |
 | `inset-inline-end:` | `<n>px` | The inset from the end edge. |
-| `bottom:` | `<n>px` | The inset from the bottom. |
+| `bottom:` | `<n>px` | The inset from the bottom. `insetBottom`: CSS `bottom` / `inset-block-end` as written (see insetTop). |
 | `-og-center-x:` | `true \| false` | Centred across its parent. |
 | `-og-center-y:` | `true \| false` | Centred down its parent. |
 | `-og-anchor:` | `"<text>"` | The path of the element an anchored element sits against. |
@@ -210,6 +210,14 @@ What every kind takes: its box, layout, paint, motion and input.
 | `-og-material:` | `<material>(<n> …[, <colour>]) \| none` | `-og-material: <name>(<n> …[, <colour>])`: the element and its subtree composited through one of the engine's built-in materials (dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur), its parameters in the material's order. No CSS standard has shader materials. |
 | `scroll-snap-type:` | `none \| x \| y \| block \| inline \| both [mandatory \| proximity]` | CSS `scroll-snap-type: x \| y \| both [mandatory \| proximity]` on a scroll container: a drag, fling or wheel settles on the snap position of the area nearest where it would stop (`proximity`: only within a third of the view). |
 | `scroll-snap-align:` | `none \| start \| center \| end [<inline>]` | CSS `scroll-snap-align: start \| center \| end` (block, then inline) of an area inside a snapping scroll container: the edge or centre that lines up with its view's. |
+| `right:` | `<n>px \| <n>%` | CSS `right` / `inset-inline-end` as written (see insetTop). |
+| `left:` | `<n>px \| <n>%` | CSS `left` / `inset-inline-start` as written (see insetTop). |
+| `anchor-name:` | `<n>px \| <n>%` | CSS `anchor-name`: the dashed names (`--menu`) other elements anchor to it by. |
+| `position-anchor:` | `<n>px \| <n>%` | CSS `position-anchor`: its default anchor's dashed name (empty: its implicit anchor, a popover's invoker). |
+| `position-area:` | `<n>px \| <n>%` | CSS `position-area`: the cell or span of the 3×3 grid its anchor cuts its containing block into (`bottom center`, `span-right top`, `block-end`). |
+| `position-try-fallbacks:` | `<n>px \| <n>%` | CSS `position-try-fallbacks`: flips (`flip-block`, `flip-inline`, `flip-start`), `@position-try` names and position-areas tried in order while it overflows. |
+| `position-try-order:` | `<n>px \| <n>%` | CSS `position-try-order`: normal, most-width or most-height. |
+| `position-visibility:` | `<n>px \| <n>%` | CSS `position-visibility`: always, anchors-visible (the default) or no-overflow. |
 
 Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).
 

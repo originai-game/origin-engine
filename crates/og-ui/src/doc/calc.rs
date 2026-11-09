@@ -438,6 +438,13 @@ pub(crate) fn reduce(text: &str) -> Result<String, String> {
         let open = at + name.len();
         let close = closing(rest, open).ok_or_else(|| format!("{name}( is not closed"))?;
         let body = &rest[open + 1..close];
+        // `anchor()` and `anchor-size()` read other elements' boxes:
+        // layout resolves their math (CSS Anchor Positioning 1 §4).
+        if body.contains("anchor(") || body.contains("anchor-size(") {
+            out.push_str(&rest[at..=close]);
+            rest = &rest[close + 1..];
+            continue;
+        }
         let mut p = Parser {
             s: body.as_bytes(),
             i: 0,

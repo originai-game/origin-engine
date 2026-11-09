@@ -763,7 +763,9 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!("z", Ty::Num, "Drawing order among its siblings."),
     p!(
         "position",
-        Ty::Word(&["flow", "absolute", "screen", "anchored"]),
+        Ty::Word(&[
+            "flow", "absolute", "screen", "anchored", "relative", "sticky"
+        ]),
         "In the flow, placed by its insets in its parent, by its insets on the whole screen (full bleed, under the safe area), or against another element."
     ),
     p!(

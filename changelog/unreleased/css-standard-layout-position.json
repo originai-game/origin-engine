@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "CSS Position 3: position: relative and sticky; the physical insets left and right, the inset, inset-block and inset-inline shorthands and every logical inset, each in px, % of the containing block, auto or anchor(). CSS Anchor Positioning 1: anchor-name, position-anchor (else the implicit anchor), anchor() and anchor-size() (alone or in calc()), position-area, position-try-fallbacks with flips, @position-try rules and position-areas, position-try-order, the position-try shorthand, and position-visibility. The house -og-anchor, -og-anchor-at and -og-anchor-self stay valid."
+    }
+  ]
+}

@@ -547,6 +547,10 @@ pub(crate) struct Node {
     pub laid_xy: [f32; 2],
     pub laid_rect: Rect,
     pub laid_clip: Rect,
+    /// Where anchor positioning put it this frame (CSS Anchor
+    /// Positioning 1): the position option that won, the side of its
+    /// anchor it sits on, and whether `position-visibility` hides it.
+    pub anchor_placed: crate::anchor::Placed,
 }
 
 impl Node {
@@ -651,6 +655,7 @@ impl Node {
             laid_xy: [f32::NAN; 2],
             laid_rect: Rect::default(),
             laid_clip: Rect::default(),
+            anchor_placed: crate::anchor::Placed::default(),
         }
     }
 
@@ -666,6 +671,7 @@ impl Node {
         self.fit = previous.fit;
         self.laid_xy = previous.laid_xy;
         self.laid_rect = previous.laid_rect;
+        self.anchor_placed = previous.anchor_placed;
         self.laid_clip = previous.laid_clip;
         if !clean {
             return;

@@ -317,6 +317,7 @@ impl Ui {
             .iter()
             .chain(&o.wrote_last)
             .chain(&self.kept.motion_moving)
+            .chain(&self.kept.anchor_toggled)
             .chain(o.with(feat::GESTURE))
             .chain(o.with(feat::MATCH))
             .chain(o.with(feat::WORLD))

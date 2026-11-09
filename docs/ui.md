@@ -395,6 +395,42 @@ a table lays out as a block. Text between a box's elements is an anonymous
 text element, as an HTML anonymous block box is; `i18n` on a box
 translates its one run of text.
 
+`position` takes `static`, `relative`, `sticky`, `absolute` and `fixed`
+(CSS Position 3; `-og-anchored` is the house placement against
+`-og-anchor`). `relative` moves the box by its insets after its parent's
+layout, its siblings keeping its room; `sticky` keeps it in the flow and
+holds it inside its nearest scroller's view by its insets, never past its
+parent's content box. An absolute box is placed in its parent's box and
+a fixed one in the whole surface. The insets are `top`, `right`,
+`bottom`, `left`, the `inset`, `inset-block` and `inset-inline`
+shorthands and their logical longhands; each takes px, `%` of the
+containing block, `auto` or `anchor()`. A right-to-left layout is
+mirrored whole, `left` with it.
+
+CSS Anchor Positioning 1 places an absolute or fixed box against other
+boxes as this frame laid them out. `anchor-name: --a` names an anchor
+(the last in tree order wins, never one inside the positioned box);
+`position-anchor: --a` picks the default one, else its implicit anchor
+(a popover's invoker, `-og-anchor`'s target). An inset takes
+`anchor([--a] top | right | bottom | left | center | start | end | inside
+| outside | <n>%[, <fallback>])`, alone or in `calc()` plus or minus px;
+`width` and `height` take `anchor-size([--a] width | height | block |
+inline)`, times a number or plus px. `position-area` places the box in
+the cell or span of the 3×3 grid the default anchor's edges cut its
+containing block into (physical, logical and `span-*` keywords; a
+centre or span-all region aligns as `anchor-center`), sized to fit the
+area. `position-try-fallbacks` lists `flip-block`, `flip-inline`,
+`flip-start`, `@position-try --name` rules (their insets, sizes and
+`position-area` over the box's own, `auto` clearing one) and
+position-areas: the first option that does not overflow the containing
+block wins, else the box's own; `position-try-order` (`most-width`,
+`most-height`) and the `position-try` shorthand order them.
+`position-visibility: anchors-visible` (the default) hides the box while
+its default anchor is clipped out of view, `no-overflow` while no option
+fits. The option that won and the anchor side it sits on are kept per
+frame for a popover's arrow. `float` and `clear` are refused: floats are
+not laid out yet.
+
 HTML's user-agent rules come first in every document's cascade: `ul, ol`
 indent 40px, `<ul>` markers are `disc` (then `circle`, then `square` when
 nested), `<ol>` markers `decimal`, and headings take the type steps in the
