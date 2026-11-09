@@ -58,6 +58,10 @@
 //!   filling its parent's inline axis, `sideways-lr` not starting at the
 //!   bottom, or floats and `clear` on the physical left and right →
 //!   `writing_modes_lay_out_as_css_writing_modes_does`
+//! - a positioned box with an `auto` width filling its containing block
+//!   (not shrinking to fit), a definite width between two insets
+//!   stretched, or its margins (`auto` ones too) ignored →
+//!   `positioning_places_as_css_positioning_does`
 //! - `inline-start` not following the containing block's direction, `left`
 //!   turned round under a right-to-left surface, or a box narrowed beside
 //!   floats not mirrored whole in a right-to-left block →
@@ -404,7 +408,12 @@ fn positioning_places_as_css_positioning_does() {
     <div id="Edge"></div>
     <div id="Flip"></div>
     <div id="Named"></div>
+    <div id="Shrink"><span>alpha</span></div>
+    <div id="Wide"><p>one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen</p></div>
+    <div id="Mid"></div>
+    <div id="Margined"><span>beta</span></div>
   </div>
+  <div id="Hud"><span>one</span><span>two</span></div>
   <div id="Port"><div id="Head"></div><div id="Body"></div></div>
 </div></div>
 <style>
@@ -419,6 +428,11 @@ fn positioning_places_as_css_positioning_does() {
 #Edge { position: absolute; left: anchor(--a right); top: calc(anchor(--a top) - 4px); width: anchor-size(--a width); height: 6px; }
 #Flip { position: absolute; position-anchor: --a; position-area: bottom; position-try-fallbacks: flip-block; width: 10px; height: 40px; }
 #Named { position: absolute; position-anchor: --a; top: anchor(bottom); left: anchor(left); position-try-fallbacks: --above; width: 10px; height: 40px; }
+#Shrink { position: absolute; left: 10px; top: 10px; padding: 4px; }
+#Wide { position: absolute; right: 20px; top: 0; }
+#Mid { position: absolute; inset: 0 10px; width: 100px; height: 10px; margin: auto; }
+#Margined { position: absolute; right: 10px; bottom: 0; margin: 4px 6px; }
+#Hud { position: fixed; right: 16px; bottom: 16px; display: flex; gap: 8px; }
 @position-try --above { top: auto; bottom: anchor(top); }
 #Port { height: 50px; overflow-y: auto; scrollbar-width: none; }
 #Head { position: sticky; top: 0; height: 10px; }
@@ -454,6 +468,39 @@ fn positioning_places_as_css_positioning_does() {
         // centred across it (span-all's room is the anchor's column).
         assert_eq!(at("Flip", "Stage"), (65.0, 110.0), "flip-block");
         assert_eq!(at("Named", "Stage"), (50.0, 110.0), "@position-try");
+        // CSS 2.1 §10.3.7: an `auto` width shrinks to fit its content, at
+        // most the room its insets and margins leave; between two insets a
+        // definite size keeps its size and `auto` margins centre it.
+        let (sw, _) = wh(d, "Shrink");
+        assert!(sw > 8.0 && sw < 80.0, "shrinks to its text: {sw}");
+        assert_eq!(at("Shrink", "Stage"), (10.0, 10.0));
+        assert_eq!(
+            (at("Wide", "Stage").0, wh(d, "Wide").0),
+            (0.0, 280.0),
+            "a long text fills the room right: 20px leaves"
+        );
+        assert_eq!(
+            (at("Mid", "Stage"), wh(d, "Mid")),
+            ((100.0, 95.0), (100.0, 10.0)),
+            "margin: auto between both insets centres it"
+        );
+        let (mw, mh) = wh(d, "Margined");
+        assert_eq!(
+            at("Margined", "Stage"),
+            (300.0 - 10.0 - 6.0 - mw, 200.0 - 4.0 - mh),
+            "its margins hold it off the insets"
+        );
+        let hud = d.get("Hud");
+        assert!(
+            hud.width < 100.0,
+            "a fixed flex row fits its items: {}",
+            hud.width
+        );
+        assert_eq!(
+            (hud.x + hud.width, hud.y + hud.height),
+            (800.0 - 16.0, 900.0 - 16.0),
+            "fixed at the viewport's corner"
+        );
         let p = d.get("Port");
         d.step(InputFrame {
             wheel: Vec2::new(0.0, 30.0),

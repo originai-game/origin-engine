@@ -328,6 +328,7 @@ pub(super) fn flip_children(nodes: &mut [super::Node], i: usize, sx: f32) {
         inner
     };
     let x0 = n.x + n.el.padding.left - sx;
+    let basis = n.w;
     let free = |c: &super::Node| {
         !c.props.out_of_flow()
             || (c.props.insets.start.is_none()
@@ -349,7 +350,7 @@ pub(super) fn flip_children(nodes: &mut [super::Node], i: usize, sx: f32) {
             continue;
         }
         let [ml, mr] = if k.props.out_of_flow() {
-            [0.0; 2]
+            [k.el.margin[3].of(basis), k.el.margin[1].of(basis)]
         } else {
             k.margin_x
         };

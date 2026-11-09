@@ -42,7 +42,7 @@ const HUDS: Record<string, string[]> = {
 
 // The corners as a game's HUD document writes them: 16 px inside the insets.
 const STYLE = `<style>
-.readout { position: fixed; width: max-content; display: flex; gap: 8px; align-items: center; padding: 6px 8px; }
+.readout { position: fixed; display: flex; gap: 8px; align-items: center; padding: 6px 8px; }
 .value { width: 140px; }
 .topLeft { left: calc(env(safe-area-inset-left) + 16px); top: calc(env(safe-area-inset-top) + 16px); }
 .top { left: calc(50% - 100px); width: 200px; top: calc(env(safe-area-inset-top) + 16px); }

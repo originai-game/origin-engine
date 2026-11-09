@@ -805,14 +805,7 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
     // Out of the flow: sized against the parent's box.
     let outer = nodes[i].w;
     for c in nodes[i].out.clone() {
-        let w = out_size(
-            nodes[c].el.width,
-            nodes[c].pref_w,
-            outer,
-            nodes[c].props.insets.start,
-            nodes[c].props.insets.end,
-        );
-        nodes[c].w = clamp_to(&nodes[c], 0, Some(outer), w);
+        nodes[c].w = out_size(&nodes[c], 0, outer, outer);
     }
     let fonts = measure.fonts;
     // An auto-fit label: the largest of its steps its text fits at this width.
@@ -1186,14 +1179,7 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
     let inner = (nodes[i].h - el.padding.vertical()).max(0.0);
     let outer = nodes[i].h;
     for c in nodes[i].out.clone() {
-        let h = out_size(
-            nodes[c].el.height,
-            nodes[c].pref_h,
-            outer,
-            nodes[c].props.insets.top,
-            nodes[c].props.insets.bottom,
-        );
-        nodes[c].h = clamp_to(&nodes[c], 1, Some(outer), h);
+        nodes[c].h = out_size(&nodes[c], 1, outer, nodes[i].w);
     }
     for c in nodes[i].floats.clone() {
         let n = &nodes[c];
@@ -1668,14 +1654,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
             nodes[c].fit = [k, v.anchor_x, v.anchor_y, off];
             continue;
         }
-        let (x, y) = place_in(
-            &bx,
-            w,
-            h,
-            &nodes[c].props.insets,
-            Align::Start,
-            Cross::Start,
-        );
+        let (x, y) = place_out(&bx, &nodes[c], w, h);
         nodes[c].x = x;
         nodes[c].y = y;
     }
@@ -2018,12 +1997,9 @@ pub(super) fn auto_offset(n: &Node, edge: usize, free: f32) -> Option<f32> {
 /// Where an out-of-flow element placed on the screen ([`Position::Screen`])
 /// stands: its size and place by its insets in the whole surface `screen`.
 pub(crate) fn on_screen(n: &Node, screen: &Rect) -> Rect {
-    let ins = &n.props.insets;
-    let w = out_size(n.el.width, n.pref_w, screen.width, ins.start, ins.end);
-    let w = clamp_to(n, 0, Some(screen.width), w);
-    let h = out_size(n.el.height, n.pref_h, screen.height, ins.top, ins.bottom);
-    let h = clamp_to(n, 1, Some(screen.height), h);
-    let (x, y) = place_in(screen, w, h, ins, Align::Start, Cross::Start);
+    let w = out_size(n, 0, screen.width, screen.width);
+    let h = out_size(n, 1, screen.height, screen.width);
+    let (x, y) = place_out(screen, n, w, h);
     Rect::new(x, y, w, h)
 }
 
@@ -2065,23 +2041,74 @@ fn place_in(bx: &Rect, w: f32, h: f32, ins: &Edges, align: Align, cross: Cross) 
     (x, y)
 }
 
-/// An out-of-flow element's size along one axis of its parent's box
-/// (`outer`), between insets `a` and `b`.
-fn out_size(size: Size, pref: f32, outer: f32, a: Option<f32>, b: Option<f32>) -> f32 {
-    match (a, b, size) {
+/// An out-of-flow element's size along `axis` of its containing block
+/// `outer` long, its margins' percentages against `basis` (the block's
+/// width), as CSS 2.1 §10.3.7 and §10.6.4 size an absolutely positioned
+/// box: a definite size as written; `auto` between two set insets fills
+/// the room between them less its margins, and with an inset or none it
+/// shrinks to fit that room (its max-content, at most the room, at least
+/// its min-content). `stretch` fills the room either way.
+fn out_size(n: &Node, axis: usize, outer: f32, basis: f32) -> f32 {
+    let ins = &n.props.insets;
+    let (size, pref, min, a, b, [lead, trail]) = if axis == 0 {
+        (n.el.width, n.pref_w, n.min_w, ins.start, ins.end, [3, 1])
+    } else {
+        (n.el.height, n.pref_h, n.min_h, ins.top, ins.bottom, [0, 2])
+    };
+    let margins = n.el.margin[lead].of(basis) + n.el.margin[trail].of(basis);
+    let room = (outer - a.unwrap_or(0.0) - b.unwrap_or(0.0) - margins).max(0.0);
+    let (lo, hi) = size.bounds();
+    let v = match (a, b, size) {
         (_, _, Size::Fixed(v)) => v,
-        (Some(a), Some(b), _) => (outer - a - b).max(0.0),
         (_, _, Size::Percent(p)) => p * outer,
         (_, _, Size::Calc(c)) => c.of(outer),
-        (_, _, Size::Grow { .. }) => {
-            let (lo, hi) = size.bounds();
-            (outer - a.unwrap_or(0.0) - b.unwrap_or(0.0)).clamp(lo, hi)
-        }
-        (_, _, Size::Fit { .. }) => {
-            let (lo, hi) = size.bounds();
-            pref.clamp(lo, hi)
-        }
+        (Some(_), Some(_), Size::Fit { .. }) | (_, _, Size::Grow { .. }) => room.clamp(lo, hi),
+        (_, _, Size::Fit { .. }) => pref.min(room).max(min).clamp(lo, hi),
         // A content size is its preferred size, which layout already holds.
         (_, _, Size::MinContent | Size::MaxContent) => pref,
-    }
+    };
+    clamp_to(n, axis, Some(outer), v)
+}
+
+/// Where an out-of-flow `w`×`h` element stands in its containing block
+/// `bx` (CSS 2.1 §10.3.7 and §10.6.4, CSS Position 3 §4): its margin
+/// edge on each set inset; between two, `auto` margins share what is left
+/// (across, a start margin never goes under 0), and with none `auto` an
+/// over-constrained box keeps its start inset. With no inset on an axis it
+/// stands at the block's start, past its margin. Centring and fractional
+/// insets place it as [`place_in`] does.
+fn place_out(bx: &Rect, n: &Node, w: f32, h: f32) -> (f32, f32) {
+    let ins = &n.props.insets;
+    let (x, y) = place_in(bx, w, h, ins, Align::Start, Cross::Start);
+    let m = &n.el.margin;
+    let at = |lo: f32, len: f32, size: f32, a: Option<f32>, b: Option<f32>, edges: [usize; 2]| {
+        let [lead, trail] = edges.map(|e| m[e]);
+        let (ml, mr) = (lead.of(bx.width), trail.of(bx.width));
+        match (a, b) {
+            (Some(a), Some(b)) => {
+                let free = len - a - b - size - ml - mr;
+                lo + a
+                    + ml
+                    + match (lead.auto, trail.auto) {
+                        (true, true) if edges[0] == 3 => (free / 2.0).max(0.0),
+                        (true, true) => free / 2.0,
+                        (true, false) => free,
+                        _ => 0.0,
+                    }
+            }
+            (None, Some(b)) => lo + len - b - mr - size,
+            (a, None) => lo + a.unwrap_or(0.0) + ml,
+        }
+    };
+    let x = if ins.across.is_some() || ins.center_x {
+        x
+    } else {
+        at(bx.x, bx.width, w, ins.start, ins.end, [3, 1])
+    };
+    let y = if ins.center_y {
+        y
+    } else {
+        at(bx.y, bx.height, h, ins.top, ins.bottom, [0, 2])
+    };
+    (x, y)
 }

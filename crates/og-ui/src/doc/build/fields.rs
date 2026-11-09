@@ -755,11 +755,12 @@ impl Ui {
                     _ => crate::Align::Start,
                 };
                 // A block-level box in a block's flow fills its width
-                // (CSS 2 §10.3.3: `width: auto`); an inline-level one and a
-                // table shrink to fit (§10.3.9, §17.5.2).
+                // (CSS 2 §10.3.3: `width: auto`); an inline-level one, a table
+                // and a positioned box shrink to fit (§10.3.9, §17.5.2, §10.3.7).
                 let parent = self.nodes[i].parent;
                 let fills = !super::outer_inline(r.str("display"))
                     && super::floated(r).is_none()
+                    && !super::positioned(r)
                     && !matches!(display, "table")
                     && el.table == crate::TablePart::None;
                 // The document's root element is a block of the initial
@@ -896,6 +897,7 @@ impl Ui {
             let axis = if vertical { "height" } else { "width" };
             if el.block
                 && el.float == crate::layout::FloatSide::None
+                && !super::positioned(r)
                 && !r.has(axis)
                 && !r.has("textPath")
                 && parent != crate::layout::NONE

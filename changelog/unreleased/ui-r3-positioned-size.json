@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "UI document position: absolute | fixed",
+      "change": "An absolutely or fixed positioned box sizes and places as CSS 2.1 §10.3.7 and §10.6.4 say. With an auto width and one inset or none it shrinks to fit its content, at most the room its inset and margins leave, instead of filling its containing block. Between two insets a definite size or a max-width now holds, and auto margins centre it. Its margins now hold it off the insets it is placed by.",
+      "fix": "A positioned box that should span its containing block takes both insets (`left: 0; right: 0`, `inset: 0`) or `width: stretch`. Drop `width: max-content` workarounds on HUD corners: an auto width now fits its content."
+    }
+  ]
+}

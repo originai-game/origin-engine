@@ -282,6 +282,22 @@ pub(super) fn outer_inline(d: Option<&str>) -> bool {
     )
 }
 
+/// Taken out of the flow by its position (`absolute`, `fixed`, an anchor)
+/// or by an inset alone: its `auto` size shrinks to fit or fills between
+/// its insets (CSS 2.1 §10.3.7), never the flow's width.
+fn positioned(r: &Resolved) -> bool {
+    match r.str("position") {
+        Some("absolute" | "screen" | "anchored") => true,
+        Some("relative" | "sticky") => false,
+        _ => {
+            ["start", "top", "end", "bottom"].iter().any(|k| r.num(k).is_some())
+                || r.flag("centerX")
+                || r.flag("centerY")
+                || r.has("anchorTo")
+        }
+    }
+}
+
 /// Its CSS `float` side as written, when it floats.
 fn floated(r: &Resolved) -> Option<&str> {
     r.str("float").filter(|f| *f != "none")

@@ -443,7 +443,16 @@ a fixed one in the whole surface. The insets are `top`, `right`,
 `bottom`, `left`, the `inset`, `inset-block` and `inset-inline`
 shorthands and their logical longhands; each takes px, `%` of the
 containing block, `auto` or `anchor()`. `left` is the left in either
-direction (Direction and writing modes, below).
+direction (Direction and writing modes, below). An absolute or fixed box
+is sized and placed as CSS 2.1 §10.3.7 and §10.6.4 say: with an `auto`
+width (or height) between two set insets it fills the room between them
+less its margins; with one inset or none it shrinks to fit (its
+max-content, at most that room, at least its min-content), so a HUD
+corner is as wide as its readout. A definite size between two insets
+keeps its size and its bounds (`max-width`), and its `auto` margins share
+what is left, so `inset: 0; margin: auto` centres it (across, a start
+margin never goes below 0); with no `auto` margin an over-constrained box
+keeps its start inset. Its margins hold it off the insets it is placed by.
 
 Direction follows CSS Writing Modes 4. `direction` (`ltr`, `rtl`,
 inherited) and HTML's `dir` attribute (`ltr`, `rtl`, or `auto` for its
