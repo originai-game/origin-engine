@@ -298,13 +298,22 @@ step_size_gate() {
 # `og api check` regenerates every IDL output (crates/og-api/api/<module>.ogt -> .d.ts,
 # wiki, JSON schema, Rust glue) and fails when a committed copy differs. The
 # command counts as available when `og --help` lists an `api` subcommand.
+# It runs the og rust-build made, never `cargo run -p og-cli`: that resolves
+# the workspace's features for og-cli alone, so it rebuilt a second og and
+# swapped it in at target/debug/og while other steps ran the first, and a
+# failure of `og --help` read as og having no `api`.
 step_drift() {
-  local required help
+  local required help rc og="$OG_TARGET_DIR/debug/og"
   required="$(og_budget drift_check)" || return 1
   if skip_unchanged drift "drift" "$(rule_drift)"; then return $SKIP; fi
-  help="$(cargo run -q -p og-cli -- --help 2>&1)" || help=""
+  help="$("$og" --help 2>&1)"
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    og_err "$og --help exited $rc: $help"
+    return 1
+  fi
   if printf '%s\n' "$help" | grep -Eq '^[[:space:]]*api([[:space:]]|$)'; then
-    cargo run -q -p og-cli -- api check
+    "$og" api check
     return $?
   fi
   if [ "$required" = required ]; then
