@@ -872,6 +872,113 @@ p {{ margin: 0; }}
     });
 }
 
+/// A float among inline content is placed at the top of the line it comes
+/// on when it fits beside what that line already holds, else at the next
+/// line's; a block-level box among the lines spans the line box (its
+/// content, not its box, flows around the float), and one that starts a
+/// context of its own is fitted beside the float.
+#[test]
+fn floats_in_lines_sit_where_they_come() {
+    let boxes = |from: usize, to: usize| -> String {
+        (from..=to)
+            .map(|k| format!(r#"<span id="{k}" class="ib"></span>"#))
+            .collect()
+    };
+    let words = "one two three four five six seven eight nine ten eleven twelve";
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="A" class="lines">{}<div id="Fa" class="f"></div>{}</div>
+  <div id="B" class="lines">{}<div id="Fb" class="f"></div>{}</div>
+  <div id="C"><div id="Fc"></div><div id="Mix" class="lines"><span id="I1" class="ib"></span><div id="Blk"><p id="P">{words}</p></div><div id="Root2"></div></div></div>
+  <div id="Ref"><p id="RefP">{words}</p></div>
+  <div id="V" class="lines">{}<div id="Fv" class="f"></div>{}</div>
+</div></div>
+<style>
+#Root {{ width: 300px; }}
+p {{ margin: 0; }}
+.lines {{ font-size: 0; }}
+#V {{ display: flow-root; writing-mode: vertical-lr; height: 300px; }}
+#V .ib {{ width: 10px; height: 60px; }}
+#V .f {{ width: 30px; height: 50px; }}
+#A, #B, #C {{ display: flow-root; }}
+.ib {{ display: inline-block; width: 60px; height: 10px; }}
+.f {{ float: left; width: 50px; height: 30px; }}
+#Fc {{ float: left; width: 100px; height: 200px; }}
+#Root2 {{ display: flow-root; height: 10px; }}
+#Ref {{ width: 200px; }}
+#P, #RefP {{ font-size: 16px; }}
+</style>"#,
+        boxes(1, 6),
+        boxes(7, 8),
+        boxes(11, 15),
+        boxes(16, 17),
+        boxes(21, 26),
+        boxes(27, 28),
+    );
+    both(&text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        // Five boxes fill the first line; the float after the sixth comes
+        // on the second line and fits there, at its top: the second line
+        // is then shifted past it.
+        assert_eq!(at("1", "A"), (0.0, 0.0), "the first line clear of it");
+        assert_eq!(at("Fa", "A"), (0.0, 10.0));
+        assert_eq!(at("6", "A"), (50.0, 10.0));
+        assert_eq!(at("7", "A"), (110.0, 10.0));
+        // After a full line it does not fit: at the next line's top.
+        assert_eq!(at("Fb", "B"), (0.0, 10.0));
+        assert_eq!(at("15", "B"), (240.0, 0.0));
+        assert_eq!(at("16", "B"), (50.0, 10.0));
+        // The block among the lines spans them; its paragraph's lines are
+        // shortened beside the float, as at 200px.
+        assert_eq!(at("I1", "C"), (100.0, 0.0));
+        assert_eq!(at("Blk", "C").0, 0.0, "over the float, as CSS 2.1 §9.5");
+        assert_eq!(d.get("Blk").width, 300.0);
+        assert_eq!(d.get("P").height, d.get("RefP").height);
+        // A flow-root among them is fitted beside it.
+        assert_eq!(at("Root2", "C").0, 100.0);
+        assert_eq!(d.get("Root2").width, 200.0);
+        // Down vertical lines (line-left the top) the float comes on the
+        // second line too: a block offset of one line, at the line's top.
+        assert_eq!(at("Fv", "V"), (10.0, 0.0));
+    });
+}
+
+/// A shaped rich paragraph beside a float breaks at each line's own room
+/// from one shaping: a soft hyphen there shows its hyphen, and below the
+/// float the lines take the whole width.
+#[test]
+fn a_shaped_rich_paragraph_breaks_beside_a_float() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root"><div id="F"></div><p id="P">ab <b>extra&#173;ordinary</b> cd ef gh ij kl mn op qr st uv wx yz</p></div></div>
+<style>
+#Root { width: 220px; }
+p { margin: 0; }
+#F { float: left; width: 150px; height: 20px; }
+</style>"#;
+    let mut scene = og_render::RenderScene::new();
+    let mut font = crate::features::font("Inter-Display.ttf");
+    font.handle = crate::support::add_test_font(&mut scene).handle;
+    let mut d = Doc::with_font(text, &[], false, font);
+    d.step(InputFrame::default());
+    let texts: Vec<String> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                og_ui::DrawCmd::Text { text, .. } => Some(text.clone()),
+                _ => None,
+            })
+            .collect();
+    assert!(texts.iter().any(|t| t.ends_with('-')), "{texts:?}");
+    assert!(!texts.iter().any(|t| t.contains('\u{ad}')), "{texts:?}");
+    let all: String = texts.concat();
+    assert!(all.contains("yz") && all.contains("ab"), "{texts:?}");
+}
+
 #[test]
 fn floats_take_their_sides_from_the_direction() {
     let text = r#"<meta name="component" content="t">

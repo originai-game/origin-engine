@@ -14,11 +14,16 @@
 //! height holds its floats (§10.6.7).
 //!
 //! Every kind of line box is shortened: a plain text's, a rich text's
-//! (its spans broken one line at a time), and a block's lines of
-//! inline-level boxes (inline-block, images, inline flex or grid, texts),
-//! filled one at a time into the room beside the floats, a line no box
-//! fits moved down past them. A block-level box among such lines takes a
-//! line of its own, fitted to the room as well.
+//! (its paragraph shaped once and broken one line at a time), and a
+//! block's lines of inline-level boxes (inline-block, images, inline flex
+//! or grid, texts), filled one at a time into the room beside the floats,
+//! a line no box fits moved down past them. A float among those lines is
+//! placed at the top of the line it comes on, or of the next one when it
+//! does not fit there. A block-level box among them is a block of its own
+//! that spans the line box, its content around the floats (one that
+//! starts a context of its own is fitted beside them). All of it runs in
+//! the frame of the context's writing mode (`layout::writing`): `left` is
+//! line-left and `y` the block axis.
 
 use super::flex::{
     column_spacing, cross_offset, cross_room, cross_size, css_line, distribute_w, inline_level,
@@ -43,8 +48,9 @@ pub(crate) fn container(n: &Node) -> bool {
 }
 
 /// Node `i` lays out in its parent's formatting context: a block in a
-/// block's flow that starts none of its own (CSS 2 §9.4.1), whether its
-/// children lie in a block flow or in lines.
+/// block's flow, or among its lines (in an anonymous block of its own,
+/// CSS 2 §9.2.1.1), that starts none of its own (CSS 2 §9.4.1), whether
+/// its children lie in a block flow or in lines.
 fn joins(nodes: &[Node], i: usize) -> bool {
     let n = &nodes[i];
     let p = n.up;
@@ -52,7 +58,6 @@ fn joins(nodes: &[Node], i: usize) -> bool {
         && p < nodes.len()
         && container(n)
         && container(&nodes[p])
-        && nodes[p].line_box.is_none()
         && n.line_box.map_or(n.el.direction, |l| l.0) == Direction::Column
         && n.el.float == FloatSide::None
         && !n.props.out_of_flow()
@@ -164,11 +169,19 @@ fn walk(nodes: &mut [Node], c: usize, ox: f32, oy: f32, cx: &mut Context<'_, '_>
     let (x0, x1) = (ox, ox + inner);
     let floats = n.floats.clone();
     if n.line_box.is_some() {
-        // Its floats sit at its top, its lines beside them.
-        for f in floats {
-            place(nodes, f, x0, x1, oy, (ox, oy), cx);
-        }
-        lines(nodes, c, x0, x1, oy, cx);
+        // Each float where it is in the content: before which of the
+        // boxes in lines it comes.
+        let (kids, order) = (&n.children, &n.ordered_children);
+        let at = floats
+            .iter()
+            .map(|&f| {
+                let before = order.iter().position(|&k| k == f).map_or(0, |p| {
+                    order[..p].iter().filter(|k| kids.contains(k)).count()
+                });
+                (before, f)
+            })
+            .collect();
+        lines(nodes, c, x0, x1, oy, at, cx);
         return;
     }
     let kids = nodes[c].children.clone();
@@ -410,9 +423,9 @@ fn rich_wraps(n: &Node) -> bool {
 }
 
 /// Rich text `k` of container `c` with its border box's top at `top`, as
-/// [`text`] lays out a plain one: each line broken from the spans left at
-/// the room the floats beside it leave, one no word fits moved down past
-/// them.
+/// [`text`] lays out a plain one: its paragraph shaped once and broken one
+/// line at a time at the room the floats beside each line leave, one no
+/// word fits moved down past them.
 #[allow(clippy::too_many_arguments)]
 fn rich(
     nodes: &mut [Node],
@@ -431,13 +444,111 @@ fn rich(
     let pad = n.el.padding;
     let fill = (inner - ml - mr).max(0.0);
     let (tx0, tx1) = (x0 + ml + pad.left, x0 + ml + fill - pad.right);
-    let full = (tx1 - tx0).max(0.0);
     let lowest = cx
         .floats
         .iter()
         .map(|f| f.y + f.h)
         .fold(f32::NEG_INFINITY, f32::max);
     let fonts = cx.measure.fonts;
+    // The room beside a line at `y` as tall as `h`: its left, its width,
+    // and the highest bottom of the floats that narrow it.
+    let floats = &cx.floats;
+    let room_at = |y: f32, h: f32| {
+        if y >= lowest {
+            return (tx0, (tx1 - tx0).max(0.0), None);
+        }
+        let (l, r, next) = room(floats, y, y + h, tx0, tx1);
+        (l, (r - l).max(0.0), next)
+    };
+    let y = top + pad.top;
+    #[cfg(feature = "shaping")]
+    let broken = shaped_lines(rc, fonts, y, room_at)
+        .unwrap_or_else(|| span_lines(rc, fonts, y, lowest, room_at));
+    #[cfg(not(feature = "shaping"))]
+    let broken = span_lines(rc, fonts, y, lowest, room_at);
+    let (lines, shifts, narrowed, drop) = broken;
+    let shifts = shifts
+        .into_iter()
+        .map(|[l, d, w]| [l - tx0, d, w])
+        .collect();
+    if narrowed || drop > 0.0 {
+        nodes[k].w = fill;
+        nodes[k].margin_x = [ml, mr];
+        nodes[k].rich_lines = lines;
+        nodes[k].wrap_lines = shifts;
+        nodes[k].beside = true;
+        size_h(nodes, k);
+    } else if was || !nodes[k].wrap_lines.is_empty() {
+        // Clear of floats: its lines as its width breaks them.
+        nodes[k].wrap_lines.clear();
+        distribute_w(nodes, k, cx.measure);
+        size_h(nodes, k);
+    }
+}
+
+/// A rich text's lines beside floats from its top `y` (`room_at`: a
+/// line's left, width and the floats' next bottom): the lines, each one's
+/// left, drop and width, whether a float narrowed one, and the drop.
+type Broken = (Vec<RichLine>, Vec<[f32; 3]>, bool, f32);
+
+/// [`rich`]'s lines from its paragraph shaped once
+/// ([`crate::text::paragraph::Breaker`]): bidi and soft hyphens see the
+/// whole paragraph. `None` when it cannot be shaped.
+#[cfg(feature = "shaping")]
+fn shaped_lines(
+    rc: &RichContent,
+    fonts: &dyn Metrics,
+    mut y: f32,
+    room_at: impl Fn(f32, f32) -> (f32, f32, Option<f32>),
+) -> Option<Broken> {
+    let mut breaker = crate::text::paragraph::Breaker::new(rc, fonts)?;
+    let guess = rc.base.0.line_height;
+    let (mut lines, mut shifts) = (Vec::new(), Vec::new());
+    let (mut drop, mut narrowed) = (0.0f32, false);
+    loop {
+        // The room beside the line as tall as the line it holds.
+        let mut h = guess;
+        let (step, got, l, avail, next) = loop {
+            let (l, avail, next) = room_at(y, h);
+            let step = breaker.next(avail);
+            let got = breaker.lines(&step, fonts)?;
+            let height: f32 = got.iter().map(|l| l.height).sum();
+            if height <= h + 0.01 || next.is_none() {
+                break (step, got, l, avail, next);
+            }
+            h = height;
+        };
+        let width = got.iter().map(|l| l.width).fold(0.0, f32::max);
+        if let Some(b) = next
+            && width > avail + 0.5
+        {
+            drop += b - y;
+            y = b;
+            continue;
+        }
+        narrowed |= next.is_some();
+        for line in got {
+            y += line.height;
+            shifts.push([l, drop, avail]);
+            lines.push(line);
+        }
+        if breaker.take(&step) {
+            break;
+        }
+    }
+    Some((lines, shifts, narrowed, drop))
+}
+
+/// [`rich`]'s lines where its faces cannot be shaped (fixed or atlas-only
+/// metrics): each line broken from the spans left; below `lowest` (the
+/// floats' bottom) the rest at once.
+fn span_lines(
+    rc: &RichContent,
+    fonts: &dyn Metrics,
+    mut y: f32,
+    lowest: f32,
+    room_at: impl Fn(f32, f32) -> (f32, f32, Option<f32>),
+) -> Broken {
     let break_at = |rest: &[(usize, RichSpan)], w: f32| {
         let part = RichContent {
             spans: rest.iter().map(|s| s.1.clone()).collect(),
@@ -458,11 +569,12 @@ fn rich(
     let guess = rc.base.0.line_height;
     let mut rest: Vec<(usize, RichSpan)> = rc.spans.iter().cloned().enumerate().collect();
     let (mut lines, mut shifts) = (Vec::new(), Vec::new());
-    let (mut y, mut drop, mut narrowed) = (top + pad.top, 0.0f32, false);
+    let (mut drop, mut narrowed) = (0.0f32, false);
     while !rest.is_empty() {
         if y >= lowest {
+            let (l0, full, _) = room_at(y, guess);
             for l in break_at(&rest, full) {
-                shifts.push([0.0, drop, full]);
+                shifts.push([l0, drop, full]);
                 lines.push(renumber(&rest, l));
             }
             break;
@@ -470,8 +582,7 @@ fn rich(
         // The room beside the line as tall as the line it holds.
         let mut h = guess;
         let (line, l, avail, next) = loop {
-            let (l, r, next) = room(&cx.floats, y, y + h, tx0, tx1);
-            let avail = (r - l).max(0.0);
+            let (l, avail, next) = room_at(y, h);
             let line = break_at(&rest, avail)
                 .into_iter()
                 .next()
@@ -499,7 +610,7 @@ fn rich(
         }
         let lh = line.height;
         lines.push(renumber(&rest, line));
-        shifts.push([l - tx0, drop, avail]);
+        shifts.push([l, drop, avail]);
         let mut moved = false;
         let mut left = Vec::with_capacity(rest.len());
         for ((id, mut s), (chars, took)) in rest.into_iter().zip(used) {
@@ -547,33 +658,43 @@ fn rich(
             break;
         }
         if rest.is_empty() && newline {
-            shifts.push([0.0, drop, full]);
+            let (l, w, _) = room_at(y, guess);
+            shifts.push([l, drop, w]);
             lines.push(RichLine {
                 height: guess,
                 ..RichLine::default()
             });
         }
     }
-    if narrowed || drop > 0.0 {
-        nodes[k].w = fill;
-        nodes[k].margin_x = [ml, mr];
-        nodes[k].rich_lines = lines;
-        nodes[k].wrap_lines = shifts;
-        nodes[k].beside = true;
-        size_h(nodes, k);
-    } else if was || !nodes[k].wrap_lines.is_empty() {
-        // Clear of floats: its lines as its width breaks them.
-        nodes[k].wrap_lines.clear();
-        distribute_w(nodes, k, cx.measure);
-        size_h(nodes, k);
-    }
+    (lines, shifts, narrowed, drop)
+}
+
+/// A float's margin box's width.
+fn float_w(n: &Node) -> f32 {
+    n.w + n.margin_x[0] + n.margin_x[1]
 }
 
 /// Line-box container `c` with its content box from `x0` to `x1` and its
 /// top at `top`: its inline-level children filled into lines one at a
 /// time, each into the room the floats beside it leave (CSS 2 §9.5), one
-/// whose first box does not fit moved down past them.
-fn lines(nodes: &mut [Node], c: usize, x0: f32, x1: f32, top: f32, cx: &mut Context<'_, '_>) {
+/// whose first box does not fit moved down past them. Its floats
+/// (`floats`: each with the number of boxes before it) are placed where
+/// they come: at the top of the line they are on when they fit beside
+/// what it already holds, else at the next line's (§9.5.1 rules 6 and 8).
+/// A block-level box among the lines is a block of its own (CSS 2
+/// §9.2.1.1): it spans the line box and its content flows around the
+/// floats; one that starts a context of its own is fitted beside them.
+#[allow(clippy::too_many_arguments)]
+fn lines(
+    nodes: &mut [Node],
+    c: usize,
+    x0: f32,
+    x1: f32,
+    top: f32,
+    mut floats: std::collections::VecDeque<(usize, usize)>,
+    cx: &mut Context<'_, '_>,
+) {
+    let origin = (x0, top);
     let kids = nodes[c].children.clone();
     let inner = (x1 - x0).max(0.0);
     let el = nodes[c].el;
@@ -588,16 +709,101 @@ fn lines(nodes: &mut [Node], c: usize, x0: f32, x1: f32, top: f32, cx: &mut Cont
     let tall = |nodes: &[Node], k: usize| nodes[kids[k]].pref_h + cross_room(&nodes[kids[k]]);
     let (mut rows, mut shifts) = (Vec::new(), Vec::new());
     let (mut s, mut y, mut drop, mut narrowed) = (0, top, 0.0f32, false);
+    // Floats that did not fit on the line they came on: at the next one's top.
+    let mut later: Vec<usize> = Vec::new();
     while s < kids.len() {
-        // The room beside the line as tall as the boxes it holds.
+        for f in later.drain(..) {
+            place(nodes, f, x0, x1, y, origin, cx);
+        }
+        while let Some(&(b, f)) = floats.front()
+            && b <= s
+        {
+            floats.pop_front();
+            place(nodes, f, x0, x1, y, origin, cx);
+        }
+        if !inline_level(&nodes[kids[s]]) {
+            let k = kids[s];
+            // Below the earlier floats it clears.
+            let clear = (cleared(&cx.floats, nodes[k].el.clear) - y).max(0.0);
+            (drop, y) = (drop + clear, y + clear);
+            let w0 = nodes[k].w;
+            size_row(
+                nodes,
+                &kids[s..s + 1],
+                css,
+                &base[s..s + 1],
+                &sides[s..s + 1],
+                gap,
+                inner,
+                inner,
+            );
+            let was = nodes[k].beside;
+            nodes[k].beside = false;
+            let at = y + span(nodes[k].margin_sets[0]);
+            if joins(nodes, k) || wraps(&nodes[k]) || rich_wraps(&nodes[k]) {
+                if nodes[k].w != w0 {
+                    let w = nodes[k].w;
+                    relayout(nodes, k, w, cx);
+                }
+                let [ml, _] = nodes[k].margin_x;
+                let pad = nodes[k].el.padding;
+                if joins(nodes, k) {
+                    walk(nodes, k, x0 + ml + pad.left, at + pad.top, cx);
+                    size_h(nodes, k);
+                    nodes[k].beside = !cx.floats.is_empty();
+                } else {
+                    // `text` and `rich` lay it out at its margins in the line box.
+                    let margins = nodes[k].margin_x;
+                    if wraps(&nodes[k]) {
+                        text(nodes, k, x0, inner, at, cx, was);
+                    } else {
+                        rich(nodes, k, x0, inner, at, cx, was);
+                    }
+                    nodes[k].margin_x = margins;
+                }
+                narrowed |= nodes[k].beside;
+                rows.push((s, s + 1));
+                shifts.push([0.0, drop, inner]);
+                nodes[c].rows.clone_from(&rows);
+                inline_rows(nodes, c, cx.measure);
+                let lh = nodes[c]
+                    .inline_rows
+                    .get(rows.len() - 1)
+                    .copied()
+                    .flatten()
+                    .unwrap_or_else(|| tall(nodes, s));
+                y += lh + line_gap;
+                s += 1;
+                continue;
+            }
+            nodes[k].w = w0;
+        }
+        // The room beside the line as tall as the boxes it holds; a float
+        // that comes on it and fits beside what it holds so far is placed
+        // at its top, and the line filled again.
         let mut h = tall(nodes, s);
-        let (e, l, avail, next) = loop {
+        let (e, l, avail, next) = 'fit: loop {
             let (l, r, next) = room(&cx.floats, y, y + h, x0, x1);
             let avail = (r - l).max(0.0);
             let (mut e, mut used) = (s + 1, outer(s));
-            while e < kids.len() && !starts[e] && used + gap + outer(e) <= avail + 0.5 {
-                used += gap + outer(e);
-                e += 1;
+            loop {
+                if let Some(&(b, f)) = floats.front()
+                    && b == e
+                {
+                    floats.pop_front();
+                    if used + float_w(&nodes[f]) <= avail + 0.5 {
+                        place(nodes, f, x0, x1, y, origin, cx);
+                        continue 'fit;
+                    }
+                    later.push(f);
+                    continue;
+                }
+                if e < kids.len() && !starts[e] && used + gap + outer(e) <= avail + 0.5 {
+                    used += gap + outer(e);
+                    e += 1;
+                } else {
+                    break;
+                }
             }
             let held = (s..e).map(|k| tall(nodes, k)).fold(0.0, f32::max);
             if held <= h + 0.01 {
@@ -644,6 +850,19 @@ fn lines(nodes: &mut [Node], c: usize, x0: f32, x1: f32, top: f32, cx: &mut Cont
             .unwrap_or_else(|| (s..e).map(|k| tall(nodes, k)).fold(0.0, f32::max));
         y += lh + line_gap;
         s = e;
+    }
+    // What comes after the last box: at the last line's top when it fit
+    // there (placed above), else below it.
+    for f in later.into_iter().chain(floats.into_iter().map(|(_, f)| f)) {
+        place(
+            nodes,
+            f,
+            x0,
+            x1,
+            y - if rows.is_empty() { 0.0 } else { line_gap },
+            origin,
+            cx,
+        );
     }
     nodes[c].rows = rows;
     inline_rows(nodes, c, cx.measure);

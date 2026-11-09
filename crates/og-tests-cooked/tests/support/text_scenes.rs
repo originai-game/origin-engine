@@ -694,7 +694,7 @@ fn mixed_runs_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
             ..Element::column()
         },
         |ui| {
-            for (id, width) in [("Narrow", 90.0), ("Wide", 190.0)] {
+            for (id, width) in [("Narrow", 80.0), ("Wide", 190.0)] {
                 ui.rich_text(
                     id,
                     "[color=primary]extra\u{ad}[/color]ordinary [action=jump]",

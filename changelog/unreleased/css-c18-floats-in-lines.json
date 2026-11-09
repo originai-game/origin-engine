@@ -1,0 +1,17 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "A float among a block's inline content is placed at the top of the line it comes on when it fits beside what that line already holds, else at the next line's top (CSS 2.1 §9.5.1), instead of at the block's top. This holds in vertical writing modes as well."
+    },
+    {
+      "member": "UI document scoped CSS",
+      "summary": "A block-level box among inline lines beside a float is a block of its own (CSS 2 §9.2.1.1). It spans the line box, and its content flows around the float. One that starts a formatting context of its own is still fitted beside the float."
+    },
+    {
+      "member": "UI document scoped CSS",
+      "summary": "A rich-text paragraph beside a float is shaped once and broken against each line's room. Bidi and soft hyphens now see the whole paragraph, where before the paragraph was reshaped from the spans left on every line."
+    }
+  ]
+}

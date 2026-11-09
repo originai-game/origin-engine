@@ -519,13 +519,20 @@ belong to their block formatting context, so one in a plain block
 reaches the boxes after that block. Every line box beside a float is
 shortened to the room it leaves (CSS 2.1 §9.5), each broken at its own
 room, and a line whose first word or box does not fit moves down past
-the float: a text's lines, a rich text's (its spans, `::part` runs and
-inline elements broken one line at a time), and a block's lines of
-inline-level boxes (`inline-block`, images, `inline-flex` and
-`inline-grid` boxes, texts), filled box by box. A block that lays its
-children out in lines takes part in its parent's formatting context, so
-a float inside it reaches the lines and boxes after it; a block-level
-box among such lines takes a line of its own, fitted to the room. A box
+the float: a text's lines, a rich text's (its paragraph, with its spans,
+`::part` runs and inline elements, shaped once and broken one line at a
+time at each line's room, so bidi and soft hyphens see the whole
+paragraph), and a block's lines of inline-level boxes (`inline-block`,
+images, `inline-flex` and `inline-grid` boxes, texts), filled box by box.
+A block that lays its children out in lines takes part in its parent's
+formatting context, so a float inside it reaches the lines and boxes
+after it. A float among those lines is placed where it comes in the
+content: at the top of its line when it fits beside what that line
+already holds, else at the next line's top (§9.5.1). A block-level box
+among the lines is a block of its own (the anonymous blocks of CSS 2
+§9.2.1.1): it spans the line box over the float, and its content flows
+around the float as in §9.5. One that starts a context of its own is
+fitted beside the float like any other. A box
 that starts a formatting context of its own (`flow-root`, a flex or
 grid box, a table, a scroller, an image, a widget) does not overlap a
 float: one whose
