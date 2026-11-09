@@ -526,6 +526,7 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.order == b.order
         && a.safe == b.safe
         && a.inline == b.inline
+        && a.valign == b.valign
         && a.bfc == b.bfc
         && a.contents == b.contents
         && a.table == b.table

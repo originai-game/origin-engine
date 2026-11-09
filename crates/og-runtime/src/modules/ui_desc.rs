@@ -197,6 +197,7 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         order: 0,
         safe: 0,
         inline: false,
+        valign: og_ui::VerticalAlign::Baseline,
         bfc: false,
         contents: false,
         table: og_ui::TablePart::None,

@@ -54,6 +54,12 @@ pub struct TextSpanStyle {
     /// lines, style, colour, thickness and offset (the lines it sets win
     /// over `underline` and `strike`).
     pub decoration: Option<crate::doc::text_css::Decoration>,
+    /// CSS `vertical-align`: where it sits in its line against the
+    /// paragraph's text (`Baseline` when unset).
+    pub vertical_align: Option<crate::VerticalAlign>,
+    /// Its font size and line height as a fraction of what it would
+    /// otherwise take (HTML's `<sub>` and `<sup>`: CSS `font-size: smaller`).
+    pub size_scale: Option<f32>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<icon>` or `<kbd
@@ -149,6 +155,7 @@ impl Ui {
                 link: None,
                 fx: SpanFx::None,
                 decoration: None,
+                valign: crate::VerticalAlign::Baseline,
             };
             for (_, _, style) in ranges.iter().filter(|(a, b, _)| *a <= start && end <= *b) {
                 if let Some(c) = &style.color {
@@ -165,6 +172,14 @@ impl Ui {
                 }
                 if let Some(tracking) = style.tracking_em {
                     s.step.tracking_em = tracking;
+                }
+                if let Some(k) = style.size_scale {
+                    s.step.size *= k;
+                    s.step.line_height *= k;
+                    s.step.cjk_line_height *= k;
+                }
+                if let Some(v) = style.vertical_align {
+                    s.valign = v;
                 }
                 if let Some(atom) = &style.atom {
                     s.text.clear();
@@ -250,6 +265,7 @@ impl Ui {
         node.probe_text = text.to_owned();
         node.content = Content::Rich(RichContent {
             spans: runs,
+            base: (desc.step.unwrap_or(t.type_ramp.body), desc.font),
             align: desc.align,
             wrap: !desc.nowrap,
         });

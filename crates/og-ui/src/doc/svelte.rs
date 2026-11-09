@@ -225,7 +225,9 @@ fn inline(node: &Node) -> bool {
     match node {
         Node::Text(..) | Node::Expression(..) => true,
         Node::Element { tag, attrs, .. } => match tag.as_str() {
-            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "br" => attrs.is_empty(),
+            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "sub" | "sup" | "br" => {
+                attrs.is_empty()
+            }
             // A plain span, or one naming its part for `text::part(name)`.
             "span" => attrs.iter().all(|a| a.name == "part" && !a.bound),
             // SVG's run inside a `<text>`: its weight, style, decoration and fill.
@@ -2222,6 +2224,7 @@ impl Parser {
             link,
             part: None,
             atom: None,
+            valign: None,
         };
         self.runs(nodes, &base, &mut runs, &mut links, translated)?;
         // No space at either end, as a CSS block trims its line (an SVG
@@ -2276,6 +2279,7 @@ impl Parser {
                 || r.link.is_some()
                 || r.part.is_some()
                 || r.atom.is_some()
+                || r.valign.is_some()
         }) {
             self.doc.nodes[i].inline = runs;
             self.doc.nodes[i].links = links;
@@ -2336,6 +2340,8 @@ impl Parser {
                         "i" | "em" => inner.italic = true,
                         "u" => inner.underline = true,
                         "s" | "del" => inner.strike = true,
+                        "sub" => inner.valign = Some(crate::VerticalAlign::Sub),
+                        "sup" => inner.valign = Some(crate::VerticalAlign::Super),
                         "span" => {
                             if let Some(a) = attrs.iter().find(|a| a.name == "part") {
                                 if !super::syntax::identifier(&a.value) {

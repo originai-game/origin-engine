@@ -182,7 +182,7 @@ probe) are unchanged. The mapping:
 | `<label for="id">` | — | joins the control `id` names: a checkbox takes its text as its caption (one node, as the wrapping form); an input, textarea, select, range, meter or progress takes it as its accessible name and the label stays a text beside it |
 | `<hr>` | divider | |
 | `<img>` | image | `src`, `alt`; CSS `object-view-box: inset(<t>% <r>% <b>% <l>%)` (percentages of the texture) or `-og-uv: u0 v0 u1 v1` shows a part of it; `object-fit`, `object-position` and `image-rendering` (see Images below) |
-| `<p>`, `<span>`, `<small>`, `<text>` | label | `<text>` is the core name; inline `<b>`/`<strong>`, `<i>`/`<em>`, `<u>`, `<s>`/`<del>`, `<br>`, a plain `<span>` and `<a href>` style runs of it |
+| `<p>`, `<span>`, `<small>`, `<text>` | label | `<text>` is the core name; inline `<b>`/`<strong>`, `<i>`/`<em>`, `<u>`, `<s>`/`<del>`, `<sub>`/`<sup>`, `<br>`, a plain `<span>` and `<a href>` style runs of it |
 | `<h1>` … `<h6>` | label (heading) | role `heading` with `aria-level` 1–6; UA type steps `xl3`, `xl`, `lg`, `body`, `sm`, `xs` |
 | `<a href>` | label (a link) | a click sends a `link` event named by its href through the document's events, as `onclick` sends `emit`; accent ink and an underline |
 | `<div>`, `<section>`, `<header>`, `<footer>`, `<nav>`, `<main>`, `<aside>`, `<article>` | box | layout from CSS `display` (below); landmarks take their roles: `navigation`, `main`, `banner`, `contentinfo`, `complementary`, `article`, and `region` for a named `<section>` |
@@ -240,9 +240,22 @@ line: `<img src="coin" alt="">` (a picture the game registered,
 used last). Their attributes are literal. A `<span part="big">` names its
 run for `p::part(big) { … }` (any text element's `::part`), which takes
 `color`, `font`, `font-family`, `font-weight`, `font-style`,
-`text-decoration-line`, `-og-text-motion`, and the run's `font-size`
-(px), `line-height` (px, or a multiple of its font-size) and
-`letter-spacing` (em, or px of its font-size). A translated string
+`text-decoration-line`, `-og-text-motion`, `vertical-align`, and the
+run's `font-size` (px), `line-height` (px, or a multiple of its
+font-size) and `letter-spacing` (em, or px of its font-size).
+
+A run's `vertical-align` follows CSS 2.1 §10.8 and CSS Inline 3:
+`baseline`, `sub` (a fifth of the paragraph's font size down), `super`
+(a third up), `text-top` and `text-bottom` (on the paragraph font's
+ascent or descent), `middle` (its middle half the paragraph font's
+x-height over the baseline), a length (`4px`, `0.3em` of its own size)
+and a percentage of its own line height move it against the
+paragraph's baseline; `top` and `bottom` put it on the line box's top
+or bottom. Each run is measured with half its leading above and below
+it, and its line grows to hold it and the paragraph's own line (its
+strut); a line of baseline runs only keeps its height. `<sub>` and
+`<sup>` are runs with `vertical-align: sub` and `super`, their size the
+smaller one (÷ 1.2), as HTML's user-agent sheet makes them. A translated string
 (`i18n`) styles its runs with MessageFormat 2 markup: `{#b}…{/b}`
 (`strong`), `{#i}` (`em`), `{#u}`, `{#s}` (`del`) and `{#br/}`; `\{`
 escapes a brace.
@@ -365,8 +378,12 @@ An element displayed `inline`, `inline-block`, `inline-flex`,
 lays its children out in lines, the texts and images beside it
 inline-level too, each block-level child on a line of its own; the
 lines align on their baseline, by the block's `text-align`, and an
-inline-level child's `vertical-align` (`top`, `middle`, `bottom`)
-moves it in its line. An inline-level element is laid out whole (an
+inline-level child's `vertical-align` places it in its line: `top` and
+`bottom` on the line's top or bottom, the other values as a text run's
+(below) against the line's baseline and the block's first text, a box
+with no text taking its bottom edge as its baseline. Such a box is
+moved where it is drawn; its line keeps the height of its tallest
+child, so a box moved past the line's edge overflows it. An inline-level element is laid out whole (an
 atomic inline): an `inline` box's text does not break across the
 lines of its parent; inline markup inside a text (`<b>`, `<span>`,
 `<a>`) is runs of that text and flows across lines. Other elements'

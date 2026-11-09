@@ -130,6 +130,9 @@ pub struct FontFile {
     /// An emoji face: one whose characters have COLR colour glyphs.
     colour: bool,
     units_per_em: f32,
+    /// The height of its lowercase letters, em (OS/2 `sxHeight`; half an
+    /// em where the font gives none, as CSS Values 4 §6.1.1 assumes).
+    x_height: f32,
     #[cfg(feature = "shaping")]
     shaper: harfrust::ShaperData,
     #[cfg(feature = "shaping")]
@@ -170,10 +173,12 @@ impl FontFile {
 
     fn read(ttf: Arc<Vec<u8>>, runtime: bool) -> Option<Arc<FontFile>> {
         let face = skrifa::FontRef::new(&ttf).ok()?;
-        let units_per_em = f32::from(
-            face.metrics(Size::unscaled(), LocationRef::default())
-                .units_per_em,
-        );
+        let metrics = face.metrics(Size::unscaled(), LocationRef::default());
+        let units_per_em = f32::from(metrics.units_per_em);
+        let x_height = metrics
+            .x_height
+            .filter(|x| *x > 0.0)
+            .map_or(0.5, |x| x / units_per_em.max(1.0));
         #[cfg(feature = "shaping")]
         let shaper = harfrust::ShaperData::new(&face);
         let colour = {
@@ -187,6 +192,7 @@ impl FontFile {
             runtime,
             colour,
             units_per_em,
+            x_height,
             #[cfg(feature = "shaping")]
             shaper,
             #[cfg(feature = "shaping")]
@@ -201,6 +207,11 @@ impl FontFile {
     /// Emoji's space is 1.25 em), so they never stick to it in a mixed text.
     pub fn is_colour(&self) -> bool {
         self.colour
+    }
+
+    /// The height of its lowercase letters, em.
+    pub fn x_height(&self) -> f32 {
+        self.x_height
     }
 
     /// The font file's bytes.

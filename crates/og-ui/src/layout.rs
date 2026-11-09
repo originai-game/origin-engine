@@ -469,6 +469,152 @@ pub enum Cross {
     LastBaseline,
 }
 
+/// CSS `vertical-align` (CSS 2.1 §10.8.1, CSS Inline 3 §4): where an
+/// inline-level box sits in its line, against its parent's baseline or the
+/// line box.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum VerticalAlign {
+    #[default]
+    Baseline,
+    /// Its baseline a fifth of its parent's size below the parent's.
+    Sub,
+    /// Its baseline a third of its parent's size above the parent's.
+    Super,
+    /// Its top on the top of its parent's text (the font's ascent).
+    TextTop,
+    /// Its bottom on the bottom of its parent's text (the font's descent).
+    TextBottom,
+    /// Its middle half its parent's x-height above the parent's baseline.
+    Middle,
+    /// Its top on the line box's top.
+    Top,
+    /// Its bottom on the line box's bottom.
+    Bottom,
+    /// Its baseline raised this far, CSS px (negative: lowered).
+    Px(f32),
+    /// Raised this many of its own font size.
+    Em(f32),
+    /// Raised this fraction of its own line height (CSS's percentage).
+    Percent(f32),
+}
+
+/// The parent's text an inline box is aligned against: its font size,
+/// ascent and descent below the baseline, and x-height, CSS px.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Strut {
+    pub size: f32,
+    pub ascent: f32,
+    pub descent: f32,
+    pub x_height: f32,
+}
+
+/// Where a box sits in a line once its `vertical-align` is resolved.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum InlinePlace {
+    /// Its baseline this far above the parent's (CSS px).
+    Raised(f32),
+    Top,
+    Bottom,
+}
+
+impl VerticalAlign {
+    /// A CSS value (`text-top`, `-2px`, `0.3em`, `50%`) or the prop's word
+    /// (`textTop`); `None` for anything else.
+    pub(crate) fn parse(v: &str) -> Option<Self> {
+        let v = v.trim();
+        let num = |s: &str| s.trim().parse::<f32>().ok().filter(|x| x.is_finite());
+        Some(match v {
+            "baseline" => Self::Baseline,
+            "sub" => Self::Sub,
+            "super" => Self::Super,
+            "text-top" | "textTop" => Self::TextTop,
+            "text-bottom" | "textBottom" => Self::TextBottom,
+            "middle" => Self::Middle,
+            "top" => Self::Top,
+            "bottom" => Self::Bottom,
+            _ => {
+                if let Some(p) = v.strip_suffix('%') {
+                    Self::Percent(num(p)? / 100.0)
+                } else if let Some(em) = v.strip_suffix("em").filter(|e| !e.ends_with('r')) {
+                    Self::Em(num(em)?)
+                } else if let Some(px) = v.strip_suffix("px") {
+                    Self::Px(num(px)?)
+                } else if num(v) == Some(0.0) {
+                    Self::Px(0.0)
+                } else {
+                    return None;
+                }
+            }
+        })
+    }
+
+    /// Where a box of its own font `size` and line height `line`, reaching
+    /// `above` its baseline and `below` it (half its leading included, as
+    /// CSS 2.1 §10.8.1 measures an inline box), sits against `parent`.
+    pub(crate) fn place(
+        self,
+        parent: &Strut,
+        size: f32,
+        line: f32,
+        above: f32,
+        below: f32,
+    ) -> InlinePlace {
+        InlinePlace::Raised(match self {
+            Self::Baseline => 0.0,
+            Self::Sub => -parent.size / 5.0,
+            Self::Super => parent.size / 3.0,
+            Self::TextTop => parent.ascent - above,
+            Self::TextBottom => below - parent.descent,
+            Self::Middle => parent.x_height / 2.0 - (above - below) / 2.0,
+            Self::Top => return InlinePlace::Top,
+            Self::Bottom => return InlinePlace::Bottom,
+            Self::Px(px) => px,
+            Self::Em(em) => em * size,
+            Self::Percent(p) => p * line,
+        })
+    }
+}
+
+/// A line box (CSS 2.1 §10.8): `base` is how far its baseline-aligned
+/// content reaches above and below the baseline, `items` each other box's
+/// place and reach. Gives the line's height, its baseline from its top,
+/// and each item's baseline from its top. The line grows to hold every
+/// raised box; a box on its top or bottom taller than the line grows it
+/// away from that edge.
+pub(crate) fn line_box(
+    base: (f32, f32),
+    items: &[(InlinePlace, f32, f32)],
+) -> (f32, f32, Vec<f32>) {
+    let (mut top, mut bottom) = base;
+    for &(p, above, below) in items {
+        if let InlinePlace::Raised(r) = p {
+            top = top.max(r + above);
+            bottom = bottom.max(below - r);
+        }
+    }
+    let mut height = top + bottom;
+    for &(p, above, below) in items {
+        if p == InlinePlace::Top {
+            height = height.max(above + below);
+        }
+    }
+    for &(p, above, below) in items {
+        if p == InlinePlace::Bottom && above + below > height {
+            top += above + below - height;
+            height = above + below;
+        }
+    }
+    let at = items
+        .iter()
+        .map(|&(p, above, below)| match p {
+            InlinePlace::Raised(r) => top - r,
+            InlinePlace::Top => above,
+            InlinePlace::Bottom => height - below,
+        })
+        .collect();
+    (height, top, at)
+}
+
 /// A CSS flex item's factors (CSS Flexbox §7): it takes part in the line's
 /// free space as the flex algorithm (§9.7) resolves it.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -621,6 +767,10 @@ pub struct Element {
     /// CSS outer display `inline` (`inline-block`, `inline-flex`…): in a
     /// block that holds one, it and the texts beside it lie in lines.
     pub inline: bool,
+    /// Its CSS `vertical-align` in its parent's lines (an inline-level
+    /// box): `Top` and `Bottom` place it by `align_self` against the line,
+    /// the others against the line's baseline once it is laid out.
+    pub valign: VerticalAlign,
     /// It establishes a block formatting context (`display: flow-root`):
     /// its children's margins do not collapse through its edges.
     pub bfc: bool,

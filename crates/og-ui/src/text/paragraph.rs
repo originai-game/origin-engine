@@ -312,7 +312,7 @@ fn rich_at(
     width: Option<f32>,
     direction: Option<Direction>,
 ) -> Option<(Vec<crate::rich::RichLine>, (f32, f32))> {
-    use crate::rich::{Piece, RichLine, Segment, span_metrics, span_tracking, span_width};
+    use crate::rich::{Piece, RichLine, Segment, place_line, span_tracking, span_width};
     let mut text = String::new();
     let mut ranges = Vec::new();
     let mut boxes = Vec::new();
@@ -434,6 +434,7 @@ fn rich_at(
                         text: String::new(),
                         glyphs: None,
                         width: b.width,
+                        rise: 0.0,
                     }),
                     parley::PositionedLayoutItem::GlyphRun(glyph_run) => {
                         let brush = glyph_run.style().brush;
@@ -468,34 +469,32 @@ fn rich_at(
                             text: text[range].to_owned(),
                             glyphs: Some(glyphs),
                             width: glyph_run.advance(),
+                            rise: 0.0,
                         });
                     }
                 }
             }
-            let (mut height, mut ascent, mut descent) = (0.0f32, 0.0f32, 0.0f32);
             let mut pieces = Vec::new();
             let mut x = 0.0;
             for segment in &segments {
-                let (h, a, d) = span_metrics(&content.spans[segment.span], fonts);
-                height = height.max(h);
-                ascent = ascent.max(a);
-                descent = descent.min(d);
                 pieces.push(Piece {
                     span: segment.span,
                     text: segment.text.clone(),
                     x,
                     width: segment.width,
+                    rise: 0.0,
                 });
                 x += segment.width;
             }
-            if segments.is_empty() {
-                height = content.spans.first().map_or(0.0, |s| s.step.line_height);
+            let (height, baseline) = place_line(content, fonts, &mut pieces);
+            for (segment, piece) in segments.iter_mut().zip(&pieces) {
+                segment.rise = piece.rise;
             }
             lines.push(RichLine {
                 pieces,
                 width: x,
                 height,
-                baseline: (height - ascent + descent) / 2.0 + ascent,
+                baseline,
                 shaped: Some(segments),
             });
         }
@@ -632,6 +631,7 @@ fn rich_discretionary(
         .map(|(a, b, wrapped)| {
             let mut line = crate::rich::RichContent {
                 spans: Vec::new(),
+                base: content.base,
                 align: content.align,
                 wrap: content.wrap,
             };

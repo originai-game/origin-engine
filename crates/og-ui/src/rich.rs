@@ -3,7 +3,8 @@
 //! glyphs, links and per-glyph motion) from markup ([`crate::markup`]),
 //! laid out as one text: the lines break between the spans' words (a word
 //! split across two spans stays whole), each line as tall as its tallest
-//! span, every span on one shared baseline.
+//! span, the spans on one shared baseline unless a span's CSS
+//! `vertical-align` moves it (CSS 2.1 §10.8), the line then grown to hold it.
 //!
 //! Links are children of the paragraph for the probe and for input: each
 //! `[link=<id>]` is an element `<paragraph>/<id>` (kind `link`) with its
@@ -13,7 +14,9 @@
 
 use crate::id::child_key;
 
-use crate::layout::{Content, Element, FontRole, Metrics, Rect, Size, TextAlign};
+use crate::layout::{
+    Content, Element, FontRole, InlinePlace, Metrics, Rect, Size, Strut, TextAlign, VerticalAlign,
+};
 use crate::markup::{SpanFx, parse_markup};
 use crate::style::{Srgba, TypeStep};
 use crate::ui::{Response, Ui};
@@ -52,6 +55,8 @@ pub(crate) struct RichSpan {
     pub fx: SpanFx,
     /// Its CSS decoration's style, colour, thickness, offset and overline.
     pub decoration: Option<crate::doc::text_css::Decoration>,
+    /// Where it sits in its line against the paragraph's text.
+    pub valign: VerticalAlign,
 }
 
 /// An italic's slant: x moves by this much of the height above the baseline.
@@ -66,6 +71,9 @@ const CAP_PAD: f32 = 0.24;
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct RichContent {
     pub spans: Vec<RichSpan>,
+    /// The paragraph's own type step and font: the text a span's
+    /// `vertical-align` is measured against (its strut).
+    pub base: (TypeStep, FontRole),
     pub align: TextAlign,
     pub wrap: bool,
 }
@@ -77,6 +85,8 @@ pub(crate) struct Piece {
     pub text: String,
     pub x: f32,
     pub width: f32,
+    /// How far its span's baseline is raised above the line's.
+    pub rise: f32,
 }
 
 /// One laid-out line of a paragraph.
@@ -322,13 +332,41 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
                 text: u.text.clone(),
                 x,
                 width: u.width,
+                rise: 0.0,
             }),
         }
         x += u.width;
     }
+    let (h, baseline) = place_line(rc, fonts, &mut pieces);
+    RichLine {
+        width: x,
+        height: h,
+        baseline,
+        pieces,
+        shaped: None,
+    }
+}
+
+/// A line's height and baseline from its pieces' spans, and each piece's
+/// rise. The baseline-aligned spans share one baseline, their extents
+/// centred in the tallest line height. A span with another
+/// `vertical-align` sits against the paragraph's text (CSS 2.1 §10.8.1,
+/// half its leading above and below it) and the line grows to hold it and
+/// the paragraph's own line (its strut).
+pub(crate) fn place_line(
+    rc: &RichContent,
+    fonts: &dyn Metrics,
+    pieces: &mut [Piece],
+) -> (f32, f32) {
     let (mut h, mut a, mut d) = (0.0f32, 0.0f32, 0.0f32);
-    for p in &pieces {
-        let (lh, asc, desc) = span_metrics(&rc.spans[p.span], fonts);
+    let mut moved = false;
+    for p in pieces.iter() {
+        let s = &rc.spans[p.span];
+        if s.valign != VerticalAlign::Baseline {
+            moved = true;
+            continue;
+        }
+        let (lh, asc, desc) = span_metrics(s, fonts);
         h = h.max(lh);
         a = a.max(asc);
         d = d.min(desc);
@@ -339,13 +377,44 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
         h = s.step.line_height;
     }
     let baseline = (h - (a - d)) / 2.0 + a;
-    RichLine {
-        width: x,
-        height: h,
-        baseline,
-        pieces,
-        shaped: None,
+    if !moved {
+        return (h, baseline);
     }
+    let (step, font) = rc.base;
+    let m = fonts.metrics_styled(font, step.weight, false, "");
+    let strut = Strut {
+        size: step.size,
+        ascent: m.ascender * step.size,
+        descent: -m.descender * step.size,
+        x_height: m.x_height() * step.size,
+    };
+    let lead = (step.line_height - strut.ascent - strut.descent) / 2.0;
+    let base = (
+        baseline.max(strut.ascent + lead),
+        (h - baseline).max(strut.descent + lead),
+    );
+    let moving: Vec<usize> = (0..pieces.len())
+        .filter(|&k| rc.spans[pieces[k].span].valign != VerticalAlign::Baseline)
+        .collect();
+    let items: Vec<(InlinePlace, f32, f32)> = moving
+        .iter()
+        .map(|&k| {
+            let s = &rc.spans[pieces[k].span];
+            let (lh, asc, desc) = span_metrics(s, fonts);
+            let lead = (lh - (asc - desc)) / 2.0;
+            let (above, below) = (asc + lead, lead - desc);
+            (
+                s.valign.place(&strut, s.step.size, lh, above, below),
+                above,
+                below,
+            )
+        })
+        .collect();
+    let (height, top, at) = crate::layout::line_box(base, &items);
+    for (&k, at) in moving.iter().zip(at) {
+        pieces[k].rise = top - at;
+    }
+    (height, top)
 }
 
 /// A piece as drawn: its span, its text (logical), the visual glyphs of a
@@ -367,6 +436,8 @@ pub(crate) struct Segment {
     pub text: String,
     pub glyphs: Option<Vec<crate::text::VisualGlyph>>,
     pub width: f32,
+    /// Its piece's rise above the line's baseline.
+    pub rise: f32,
 }
 
 /// A rich line's segments in visual order. A line of left-to-right text in
@@ -416,6 +487,7 @@ fn visual_segments(
                 text: p.text.clone(),
                 glyphs: None,
                 width: p.width,
+                rise: p.rise,
             })
             .collect();
     }
@@ -455,6 +527,7 @@ fn visual_segments(
                     text: String::new(),
                     glyphs: None,
                     width: p.width,
+                    rise: p.rise,
                 });
                 continue;
             }
@@ -468,6 +541,7 @@ fn visual_segments(
                     text: piece_text.to_string(),
                     glyphs: None,
                     width: span_width(s, piece_text, fonts),
+                    rise: p.rise,
                 });
                 continue;
             }
@@ -481,6 +555,7 @@ fn visual_segments(
                 text: piece_text.to_string(),
                 glyphs: Some(glyphs),
                 width,
+                rise: p.rise,
             });
         }
     }
@@ -630,6 +705,7 @@ impl Ui {
                 link: s.link.clone(),
                 fx: s.fx,
                 decoration: None,
+                valign: VerticalAlign::Baseline,
             });
         }
         self.rich_runs(id.into(), probe, spans, desc)
@@ -663,6 +739,7 @@ impl Ui {
         n.probe_text = probe;
         n.content = Content::Rich(RichContent {
             spans,
+            base: (desc.step.unwrap_or(self.theme.type_ramp.body), desc.font),
             align: desc.align,
             wrap: !desc.nowrap,
         });
@@ -728,7 +805,7 @@ impl Ui {
                     text: seg.text,
                     glyphs: seg.glyphs,
                     rect: Rect::new(x, y, seg.width * sk, line.height * sk),
-                    baseline: y + line.baseline * sk,
+                    baseline: y + (line.baseline - seg.rise) * sk,
                 });
                 x += seg.width * sk;
             }

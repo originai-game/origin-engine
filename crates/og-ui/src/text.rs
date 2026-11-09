@@ -441,6 +441,12 @@ impl FontMetrics {
             })
     }
 
+    /// The height of its lowercase letters, em (half an em for a font
+    /// without its file).
+    pub fn x_height(&self) -> f32 {
+        self.file.as_ref().map_or(0.5, |f| f.x_height())
+    }
+
     /// The baseline of a line of `text` at `size` in a line box `line_h`
     /// tall whose top is `top`: its [`FontMetrics::extents`] centred in the
     /// box.

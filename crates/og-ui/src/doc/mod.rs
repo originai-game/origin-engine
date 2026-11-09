@@ -543,6 +543,9 @@ pub struct InlineRun {
     /// An inline `<img>`, `<icon>` or `<kbd data-action>`: its text is the
     /// placeholder U+FFFC.
     pub atom: Option<crate::rich::InlineAtom>,
+    /// HTML's `<sub>` or `<sup>`: its `vertical-align`, its size the
+    /// smaller one.
+    pub valign: Option<crate::VerticalAlign>,
 }
 
 /// A prop of the document's contract (`props { gold number "…" }`).

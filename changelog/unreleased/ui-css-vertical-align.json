@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS vertical-align laid out",
+      "summary": "A text run (`::part` or HTML's `<sub>`/`<sup>`) and an inline-level box take baseline, sub, super, text-top, text-bottom, middle, top, bottom, lengths and percentages (CSS 2.1 §10.8); a moved run grows its line. `<sub>` and `<sup>` are inline markup, a size smaller."
+    }
+  ]
+}

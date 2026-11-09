@@ -42,7 +42,8 @@ impl SpanRule {
             motion,
             size,
             line_height,
-            tracking_em
+            tracking_em,
+            vertical_align
         );
         if let Some(step) = &self.step {
             out.step = crate::style_file::ramp_step(&mut theme.type_ramp.clone(), step).copied();
@@ -111,6 +112,7 @@ pub(super) fn parse(selector: &str, body: &str) -> Result<SpanRule, String> {
                 | "font-size"
                 | "line-height"
                 | "letter-spacing"
+                | "vertical-align"
                 | "-og-text-motion"
                 | "color"
                 | "font"
@@ -205,6 +207,12 @@ fn apply_body(rule: &mut SpanRule, body: &str) -> Result<(), String> {
                     return Err("letter-spacing takes <n>em, <n>px or normal".into());
                 });
             }
+            "vertical-align" => {
+                rule.style.vertical_align = Some(
+                    crate::VerticalAlign::parse(&value)
+                        .ok_or("vertical-align takes baseline, sub, super, text-top, text-bottom, middle, top, bottom, <n>px, <n>em or <n>%")?,
+                );
+            }
             "-og-text-motion" => {
                 rule.style.motion = Some(match value.as_str() {
                     "none" => crate::markup::SpanFx::None,
@@ -246,7 +254,7 @@ fn apply_body(rule: &mut SpanRule, body: &str) -> Result<(), String> {
             }
             _ => {
                 return Err(format!(
-                    "{name} does not style a text span; use color, font, font-family, font-size, line-height, letter-spacing, font-weight, font-style, text-decoration-line or -og-text-motion"
+                    "{name} does not style a text span; use color, font, font-family, font-size, line-height, letter-spacing, font-weight, font-style, text-decoration-line, vertical-align or -og-text-motion"
                 ));
             }
         }

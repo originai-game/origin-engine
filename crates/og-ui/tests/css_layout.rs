@@ -39,6 +39,11 @@
 //!   `column-fill: auto` balancing, `break-before: column` ignored, or a
 //!   paragraph moved whole instead of broken between its lines →
 //!   `multi_column_lays_out_as_css_multicol_does`
+//! - `vertical-align` ignored or measured against the wrong box: a
+//!   `<sup>`/`<sub>` raised by its own smaller size, a raised span that
+//!   does not grow its line, a length or percentage on an inline-block not
+//!   taken from the line's baseline, `middle` centred in the line instead
+//!   of on the parent's x-height → `vertical_align_places_inline_boxes_as_css_does`
 
 use crate::html_text::{Doc, both};
 use og_core::glam::Vec2;
@@ -534,4 +539,93 @@ p { margin: 0; }
         let (p, tx) = (d.get("P"), d.get("Tx"));
         assert_eq!((p.width, p.height, tx.height), (80.0, 160.0, 160.0));
     });
+}
+
+#[test]
+fn vertical_align_places_inline_boxes_as_css_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <p id="Plain">x</p>
+  <p id="Sup">x<sup>2</sup></p>
+  <p id="Sub">x<sub>i</sub></p>
+  <p id="Part">x<span part="lift">y</span></p>
+  <div id="Line">ab<div id="Mid" class="ib"></div><div id="Up" class="ib"></div><div id="Pc" class="ib"></div><div id="Tp" class="ib"></div></div>
+</div></div>
+<style>
+#Root { width: 300px; }
+.ib { display: inline-block; width: 10px; height: 10px; }
+#Mid { vertical-align: middle; }
+#Up { vertical-align: 4px; }
+#Pc { vertical-align: -50%; }
+#Tp { vertical-align: top; }
+#Part::part(lift) { vertical-align: 6px; }
+</style>"#;
+    for mounted in [false, true] {
+        let mut scene = og_render::RenderScene::new();
+        let font = crate::support::add_test_font(&mut scene);
+        let d = Doc::with_font(text, &[], mounted, font);
+        let base = |t: &str| {
+            d.ui.frame()
+                .items
+                .iter()
+                .find_map(|i| match &i.cmd {
+                    og_ui::DrawCmd::Text {
+                        text,
+                        baseline,
+                        size,
+                        ..
+                    } if text == t => Some((*baseline, *size)),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("no text {t}"))
+        };
+        // Against the parent's size (14px), not the smaller sup's own.
+        assert_eq!(base("x").1, 14.0);
+        let rise = |t: &str, parent: &str| {
+            let p = d.get(parent);
+            let x =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .find_map(|i| match &i.cmd {
+                        og_ui::DrawCmd::Text { text, baseline, .. }
+                            if text == "x" && *baseline > p.y && *baseline < p.y + p.height =>
+                        {
+                            Some(*baseline)
+                        }
+                        _ => None,
+                    })
+                    .expect("its x");
+            x - base(t).0
+        };
+        assert!(
+            (rise("2", "Sup") - 14.0 / 3.0).abs() <= 0.5,
+            "super: a third up"
+        );
+        assert!(
+            (rise("i", "Sub") + 14.0 / 5.0).abs() <= 0.5,
+            "sub: a fifth down"
+        );
+        assert_eq!(rise("y", "Part"), 6.0, "::part's length");
+        assert!(base("2").1 < 14.0, "a sup is smaller");
+        let line = d.get("Plain").height;
+        assert!(d.get("Sup").height > line, "the line grows to hold the sup");
+        assert_eq!(d.get("Part").height, line + 6.0);
+        // Inline-blocks against the line's baseline: their bottom edge is
+        // their baseline, having no text.
+        let b = base("ab").0;
+        let bottom = |id: &str| d.get(id).y + d.get(id).height;
+        assert!((bottom("Up") - (b - 4.0)).abs() <= 0.5, "4px up");
+        assert!(
+            (bottom("Pc") - (b + line / 2.0)).abs() <= 0.5,
+            "-50% of the line height"
+        );
+        let mid = d.get("Mid").y + 5.0;
+        assert!(
+            (b - mid) > 0.15 * 14.0 && (b - mid) < 0.35 * 14.0,
+            "middle: half an x-height over the baseline ({})",
+            b - mid
+        );
+        assert_eq!(d.get("Tp").y, d.get("Line").y, "top: the line's top");
+    }
 }

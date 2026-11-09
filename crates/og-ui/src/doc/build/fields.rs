@@ -772,11 +772,20 @@ impl Ui {
         // and `vertical-align` places it there.
         el.inline = super::outer_inline(r.str("display"));
         if el.inline {
-            el.align_self = match r.str("verticalAlign") {
-                Some("top" | "textTop") => Some(crate::Cross::Start),
-                Some("middle") => Some(crate::Cross::Center),
-                Some("bottom" | "textBottom") => Some(crate::Cross::End),
-                _ => el.align_self,
+            // `top` and `bottom` against the line box; the others against
+            // the line's baseline (`Ui::align_baselines`).
+            el.valign = r
+                .text
+                .as_ref()
+                .and_then(|t| t.vertical_align.as_deref())
+                .or(r.str("verticalAlign"))
+                .and_then(crate::VerticalAlign::parse)
+                .unwrap_or_default();
+            el.align_self = match el.valign {
+                crate::VerticalAlign::Top => Some(crate::Cross::Start),
+                crate::VerticalAlign::Bottom => Some(crate::Cross::End),
+                crate::VerticalAlign::Baseline => el.align_self,
+                _ => Some(crate::Cross::Baseline),
             };
         }
         let mut warn = Vec::new();

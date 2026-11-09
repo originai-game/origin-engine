@@ -944,6 +944,12 @@ impl Ui {
                 }) {
                     style.color = Some(c);
                 }
+                // HTML's UA sheet: `sub, sup { vertical-align: sub | super;
+                // font-size: smaller }` (a size step of 1.2, as browsers take).
+                if let Some(v) = run.valign {
+                    style.vertical_align = style.vertical_align.or(Some(v));
+                    style.size_scale = Some(1.0 / 1.2);
+                }
                 style.link = run.link.map(inline_link).or(style.link);
                 style.atom = run.atom.clone();
                 r.span_styles.push((span.clone(), style));
