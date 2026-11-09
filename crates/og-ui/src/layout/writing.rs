@@ -106,6 +106,19 @@ fn turn_box(n: &mut Node, s: Sides, into: bool) {
     }
 }
 
+/// Applies a variant's patch (physical sides and axes) to node `n`, whose
+/// box is turned into its frame.
+pub(super) fn patch(n: &mut Node, p: &crate::element::Patch) {
+    match n.el.vertical {
+        Some(s) => {
+            turn_box(n, s, false);
+            apply_patch(n, p);
+            turn_box(n, s, true);
+        }
+        None => apply_patch(n, p),
+    }
+}
+
 /// Where an interval `[at, at + len]` along a frame axis lies along the
 /// space's axis it runs on: the axis (0 x, 1 y) and its start. The axis
 /// runs from side `from` of a box `size` wide (x, y).

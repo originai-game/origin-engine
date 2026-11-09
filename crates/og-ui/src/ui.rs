@@ -12,6 +12,7 @@ mod dressing;
 mod finish;
 mod inspect;
 mod node_draw;
+pub(crate) use node_draw::{VerticalRun, vertical_run};
 pub(crate) mod resize;
 pub(crate) mod select;
 pub(crate) mod settlement;

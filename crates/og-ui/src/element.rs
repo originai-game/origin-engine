@@ -1219,8 +1219,9 @@ pub struct Query {
     pub breakpoints: Vec<Breakpoint>,
     pub orientation: Option<Orientation>,
     /// The width range, CSS px (0: unbounded): of the viewport, or with
-    /// `container` of the element's own laid-out width (a container query:
-    /// the same card in a four-column shop and a one-column phone list).
+    /// `container` of the element's own laid-out inline size, its width
+    /// (its height in a vertical writing mode: a container query, the same
+    /// card in a four-column shop and a one-column phone list).
     pub min_width: f32,
     pub max_width: f32,
     pub container: bool,
@@ -1645,8 +1646,48 @@ impl Ui {
         }
     }
 
+    /// Where node `i`'s first (`last`) line of text has its central
+    /// baseline across a vertical line: the middle of its first (last)
+    /// column, physical x. A vertical line's dominant baseline is central
+    /// (CSS Writing Modes 4 §4.2); a horizontal text in it (an orthogonal
+    /// flow) has none.
+    fn central_baseline(&self, i: usize, last: bool) -> Option<f32> {
+        let n = &self.nodes[i];
+        match &n.content {
+            Content::Text(tc) => {
+                let v = tc.vertical?;
+                let k = if last {
+                    n.lines.len().checked_sub(1)?
+                } else {
+                    0
+                };
+                n.lines.first()?;
+                let lh = tc.line_height();
+                let inner = n.rect.inset(&n.el.padding);
+                let off = ((inner.width - lh * n.lines.len() as f32) / 2.0).max(0.0);
+                Some(if v.mode.block_rl() {
+                    inner.right() - off - (k as f32 + 0.5) * lh
+                } else {
+                    inner.x + off + (k as f32 + 0.5) * lh
+                })
+            }
+            Content::None if last => n
+                .children
+                .iter()
+                .rev()
+                .find_map(|&c| self.central_baseline(c, last)),
+            Content::None => n
+                .children
+                .iter()
+                .find_map(|&c| self.central_baseline(c, last)),
+            _ => None,
+        }
+    }
+
     /// Rows with `Cross::Baseline`: each child moved down so their first
-    /// baselines meet (per line of a wrapping row).
+    /// baselines meet (per line of a wrapping row). A vertical element's
+    /// rows are its lines down the page: their items move across, from
+    /// its block-start side, so their central baselines meet.
     pub(crate) fn align_baselines(&mut self, order: &[usize]) {
         use crate::layout::Cross;
         for &i in order {
@@ -1659,6 +1700,12 @@ impl Ui {
                 continue;
             }
             let parent = n.el.cross;
+            // Across a vertical line: +1 from a left block-start, -1 from
+            // a right one (`Element::vertical`'s sides).
+            let across =
+                n.el.vertical
+                    .filter(|s| s[0] % 2 == 1)
+                    .map(|s| if s[0] == 3 { 1.0 } else { -1.0 });
             let kids = n.children.clone();
             let lines = if n.el.wrap && !n.rows.is_empty() {
                 n.rows.clone()
@@ -1688,6 +1735,8 @@ impl Ui {
                     .map(|&c| {
                         if self.nodes[c].el.align_self.unwrap_or(parent) != want {
                             None
+                        } else if let Some(dir) = across {
+                            self.central_baseline(c, last).map(|x| dir * x)
                         } else if last {
                             self.last_baseline(c)
                         } else {
@@ -1705,7 +1754,10 @@ impl Ui {
                 // apart, sank 14 px a second).
                 for (&c, b) in kids[s..e].iter().zip(bs) {
                     if let Some(b) = b {
-                        self.shift_subtree(c, 0.0, max - b, false);
+                        match across {
+                            Some(dir) => self.shift_subtree(c, dir * (max - b), 0.0, false),
+                            None => self.shift_subtree(c, 0.0, max - b, false),
+                        }
                     }
                 }
             }

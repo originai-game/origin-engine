@@ -696,6 +696,7 @@ impl Ui {
                 vp.safe_area.left,
             ],
             containers: super::container::unit_basis(&chain, &self.docs.container_sizes),
+            vertical: cascade::root_vertical(inherited).unwrap_or(false),
             ..Default::default()
         };
         // An attribute attr() reads, as its text.
@@ -724,6 +725,23 @@ impl Ui {
                 && rule.structure.as_ref().is_none_or(|s| structure(s))
         };
         r.cascade = cascade::values_with(&n.rules, &options, &mut rule_applies);
+        // The root's own `vi` and `vb` follow the writing mode it declares.
+        let (basis, options) = if cascade::root_vertical(inherited).is_none()
+            && cascade::declares_vertical(&r.cascade.values)
+        {
+            let basis = super::calc::Basis {
+                vertical: true,
+                ..basis
+            };
+            let options = cascade::Options {
+                basis: Some(basis),
+                ..options
+            };
+            r.cascade = cascade::values_with(&n.rules, &options, &mut rule_applies);
+            (basis, options)
+        } else {
+            (basis, options)
+        };
         // `@starting-style`: the before-change style of an element's first
         // style, for its transitions.
         let key = crate::id::key_of_path(path);

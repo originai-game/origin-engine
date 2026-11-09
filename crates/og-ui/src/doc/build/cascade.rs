@@ -428,6 +428,27 @@ pub(crate) fn known(name: &str, value: &str) -> bool {
 /// The computed-map key an element's flow is carried to its children under.
 const FLOW: &str = " flow";
 
+/// The computed-map key under which a document's root element carries
+/// whether its writing mode is vertical (what `vi` and `vb` read).
+const ROOT_VERTICAL: &str = " root vertical";
+
+/// Whether the document root's writing mode is vertical, for an element
+/// below it; `None` at the root itself (its own decides).
+pub(crate) fn root_vertical(inherited: &variables::Computed) -> Option<bool> {
+    inherited.get(FLOW)?;
+    Some(matches!(inherited.get(ROOT_VERTICAL), Some(Some(v)) if v == "1"))
+}
+
+/// The writing mode `values` declare is vertical.
+pub(crate) fn declares_vertical(values: &[(String, String, usize)]) -> bool {
+    values
+        .iter()
+        .rev()
+        .find(|(name, ..)| name == "writing-mode")
+        .and_then(|(_, v, _)| crate::layout::flow::WritingMode::parse(v))
+        .is_some_and(|m| m.vertical())
+}
+
 /// An element's flow ([`crate::layout::Flow`]): its parent's (the
 /// surface's direction at a document's root), its `dir` attribute's
 /// direction, then its declared `direction`, `unicode-bidi`,
@@ -441,6 +462,7 @@ pub(crate) fn flow(
 ) -> crate::layout::Flow {
     use crate::layout::flow::{Bidi, Flow, TextOrientation, WritingMode, combine};
     out.inherited_reads.insert(FLOW.into());
+    let root = inherited.get(FLOW).is_none();
     let mut flow = match inherited.get(FLOW).cloned().flatten() {
         Some(v) => Flow::carried(&v),
         None => Flow {
@@ -493,7 +515,14 @@ pub(crate) fn flow(
             _ => {}
         }
     }
-    Arc::make_mut(&mut out.computed).insert(FLOW.into(), Some(flow.carry()));
+    let computed = Arc::make_mut(&mut out.computed);
+    computed.insert(FLOW.into(), Some(flow.carry()));
+    if root {
+        let v = if flow.mode.vertical() { "1" } else { "0" };
+        computed.insert(ROOT_VERTICAL.into(), Some(v.into()));
+    } else {
+        out.inherited_reads.insert(ROOT_VERTICAL.into());
+    }
     flow
 }
 

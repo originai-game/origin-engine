@@ -785,6 +785,9 @@ impl Ui {
             n.rect.width - pad.horizontal() * sk,
             n.rect.height - pad.vertical() * sk,
         );
+        if let Some(v) = self.rich_vertical(i) {
+            return self.vertical_rich_pieces(i, rc, v, inner);
+        }
         let rtl = self.direction == og_i18n::Direction::Rtl;
         let mut out = Vec::new();
         let mut line_y = inner.y;
@@ -891,6 +894,10 @@ impl Ui {
                     });
                 }
             }
+        }
+        if let Some(v) = self.rich_vertical(i) {
+            self.vertical_rich_commands(i, rc, v, cmds);
+            return;
         }
         for piece in self.rich_pieces(i) {
             let (k, text, r, baseline) = (piece.span, piece.text, piece.rect, piece.baseline);
@@ -1195,6 +1202,350 @@ impl Ui {
             }
             if s.strike {
                 rule(baseline - size * 0.3);
+            }
+        }
+    }
+}
+
+impl Ui {
+    /// A rich node's vertical setting, `None` when its lines run across.
+    pub(crate) fn rich_vertical(&self, i: usize) -> Option<crate::layout::flow::VerticalText> {
+        let n = &self.nodes[i];
+        n.el.vertical?;
+        n.props
+            .flow
+            .vertical_text("")
+            .map(|v| crate::layout::flow::VerticalText {
+                combine: false,
+                ..v
+            })
+    }
+
+    /// What one rich span's text is drawn with down a vertical line whose
+    /// column is `col` (`lh` wide, its middle `mid`).
+    #[allow(clippy::too_many_arguments)]
+    fn span_run<'a>(
+        &self,
+        i: usize,
+        s: &RichSpan,
+        font: &'a crate::UiFont,
+        text: &str,
+        size: f32,
+        v: crate::layout::flow::VerticalText,
+        (mid, col, lh): (f32, f32, f32),
+        draw: bool,
+    ) -> crate::ui::VerticalRun<'a> {
+        let (asc, desc) = font.metrics.extents(text);
+        let (rtl, para) = self.text_flow(i);
+        crate::ui::VerticalRun {
+            font,
+            size,
+            tracking: span_tracking(s, text),
+            features: crate::shape::Features::NONE,
+            para,
+            dir: if rtl {
+                og_i18n::Direction::Rtl
+            } else {
+                og_i18n::Direction::Ltr
+            },
+            up_line: v.mode == crate::layout::flow::WritingMode::SidewaysLr,
+            mid,
+            centre: (asc + desc) / 2.0 * size,
+            col,
+            lh,
+            space_extra: 0.0,
+            draw,
+        }
+    }
+
+    /// A vertical rich node's pieces (CSS Writing Modes 4): its lines, laid
+    /// out in its frame, stack from its block-start side as columns, each
+    /// running down (up in `sideways-lr`, from the bottom right to left);
+    /// each piece's rect is its stretch of its column, its `baseline` the
+    /// column's middle (the central baseline) moved by its rise.
+    fn vertical_rich_pieces(
+        &self,
+        i: usize,
+        rc: &RichContent,
+        v: crate::layout::flow::VerticalText,
+        inner: Rect,
+    ) -> Vec<DrawnPiece> {
+        let n = &self.nodes[i];
+        let sk = n.scale;
+        let up_line = v.mode == crate::layout::flow::WritingMode::SidewaysLr;
+        let from_bottom = self.text_flow(i).0 != up_line;
+        let mut out = Vec::new();
+        let mut line_at = 0.0;
+        for (k, line) in n.rich_lines.iter().enumerate() {
+            let segments = visual_segments(rc, &self.fonts, line, og_i18n::Direction::Ltr);
+            let [dx, dy, room] =
+                n.wrap_lines
+                    .get(k)
+                    .copied()
+                    .unwrap_or([0.0, 0.0, inner.height / sk.max(1e-6)]);
+            let across = line.height * sk;
+            let col = if v.mode.block_rl() {
+                inner.right() - (line_at + dy * sk) - across
+            } else {
+                inner.x + line_at + dy * sk
+            };
+            let mid = col + across / 2.0;
+            // Each segment's length down the line.
+            let lengths: Vec<f32> = segments
+                .iter()
+                .map(|seg| {
+                    let sp = &rc.spans[seg.span];
+                    if sp.atom.is_some() {
+                        return seg.width * sk;
+                    }
+                    let font = self
+                        .fonts
+                        .for_styled(sp.font, sp.weight, sp.italic, &seg.text)
+                        .0;
+                    let size = sp.step.size * sk;
+                    let r =
+                        self.span_run(i, sp, font, &seg.text, size, v, (mid, col, across), false);
+                    crate::text::vertical::runs(&seg.text, v).into_iter().fold(
+                        0.0,
+                        |at, (range, up)| {
+                            crate::ui::vertical_run(
+                                &r,
+                                &seg.text[range],
+                                up,
+                                at,
+                                &|a, _| a,
+                                &mut || 0.0,
+                                &mut |_, _, _| {},
+                                &mut |_, _, _, _, _, _, _| {},
+                            )
+                        },
+                    )
+                })
+                .collect();
+            let total: f32 = lengths.iter().sum();
+            let free = room * sk - total;
+            let lead = dx * sk
+                + match rc.align {
+                    TextAlign::Start | TextAlign::Justify => 0.0,
+                    TextAlign::Center => free / 2.0,
+                    TextAlign::End => free,
+                };
+            let mut at = 0.0;
+            for (seg, len) in segments.into_iter().zip(lengths) {
+                let y = if from_bottom {
+                    inner.bottom() - lead - at - len
+                } else {
+                    inner.y + lead + at
+                };
+                out.push(DrawnPiece {
+                    span: seg.span,
+                    text: seg.text,
+                    glyphs: seg.glyphs,
+                    rect: Rect::new(col, y, across, len),
+                    baseline: mid + seg.rise * sk,
+                });
+                at += len;
+            }
+            line_at += across;
+        }
+        out
+    }
+
+    /// A vertical rich node's commands: each piece's runs down its column
+    /// in its span's font, ink, weight and outline
+    /// ([`crate::ui::vertical_run`]), a picture or icon upright and
+    /// centred in its stretch, a key cap's plate along it, and a link's or
+    /// decoration's lines down it: under on the column's left (line-under),
+    /// over on its right, through its middle (CSS Text Decoration 4 §2.3).
+    fn vertical_rich_commands(
+        &self,
+        i: usize,
+        rc: &RichContent,
+        v: crate::layout::flow::VerticalText,
+        cmds: &mut Vec<crate::draw::DrawCmd>,
+    ) {
+        use crate::draw::DrawCmd;
+        let n = &self.nodes[i];
+        let p = &self.theme.palette;
+        let (alpha, dpr, clip) = (n.alpha, self.viewport.dpr(), n.clip);
+        let from_bottom =
+            self.text_flow(i).0 != (v.mode == crate::layout::flow::WritingMode::SidewaysLr);
+        for piece in self.rich_pieces(i) {
+            let s = &rc.spans[piece.span];
+            let r = piece.rect;
+            let mid = piece.baseline;
+            let em = s.step.size * n.scale;
+            let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
+            let hot = link_key.is_some_and(|lk| self.state.hot == lk);
+            let color = if hot { p.primary_hover } else { s.color };
+            let upright_box = |w: f32, h: f32| {
+                let h = h.min(r.height.max(1.0));
+                Rect::new(mid - w / 2.0, r.y + (r.height - h) / 2.0, w, h)
+            };
+            match &s.atom {
+                Some(Atom::Image(im)) => {
+                    cmds.push(DrawCmd::Image {
+                        rect: upright_box(em * im.aspect.max(0.05), em).snapped(dpr),
+                        texture: Some(im.texture),
+                        uv: im.uv,
+                        color: Srgba::WHITE.fade(alpha).linear(),
+                        clip,
+                    });
+                    continue;
+                }
+                Some(Atom::Icon(cell)) => {
+                    let b = upright_box(em, em);
+                    match *cell {
+                        crate::ui::IconCell::Glyph(font, ch) => cmds.push(DrawCmd::Text {
+                            x: b.x,
+                            baseline: b.y + em * 0.85,
+                            size: em,
+                            text: ch.to_string(),
+                            color: color.fade(alpha).linear(),
+                            font,
+                            bounds: b,
+                            clip,
+                            tracking: 0.0,
+                            weight: 0.0,
+                            glow: None,
+                            placements: Vec::new(),
+                        }),
+                        crate::ui::IconCell::Image(tex, uv) => cmds.push(DrawCmd::Image {
+                            rect: b.snapped(dpr),
+                            texture: Some(tex),
+                            uv,
+                            color: color.fade(alpha).linear(),
+                            clip,
+                        }),
+                    }
+                    continue;
+                }
+                Some(Atom::Cap(_)) => {
+                    let m = CAP_MARGIN * em;
+                    let plate = Rect::new(
+                        mid - em * 0.53,
+                        r.y + m,
+                        em * 1.06,
+                        (r.height - 2.0 * m).max(0.0),
+                    );
+                    cmds.push(DrawCmd::Quad {
+                        rect: plate.snapped(dpr),
+                        radius: em * 0.22,
+                        color: color.fade(alpha * 0.16).linear(),
+                        clip,
+                    });
+                }
+                None => {}
+            }
+            let (text, size, start) = match &s.atom {
+                Some(Atom::Cap(label)) => {
+                    (label.clone(), em * CAP_TEXT, (CAP_MARGIN + CAP_PAD) * em)
+                }
+                _ => (piece.text.clone(), em, 0.0),
+            };
+            let font = self.fonts.for_styled(s.font, s.weight, s.italic, &text).0;
+            if font.handle.is_none() {
+                continue;
+            }
+            let weight = if s.synth.bold { bold_weight(size) } else { 0.0 };
+            let run = self.span_run(i, s, font, &text, size, v, (mid, r.x, r.width), true);
+            let top = |at: f32, len: f32| {
+                if from_bottom {
+                    r.bottom() - at - len
+                } else {
+                    r.y + at
+                }
+            };
+            let first = cmds.len();
+            let mut at = start;
+            for (range, up) in crate::text::vertical::runs(&text, v) {
+                at = crate::ui::vertical_run(
+                    &run,
+                    &text[range],
+                    up,
+                    at,
+                    &top,
+                    &mut || 0.0,
+                    &mut |_, _, _| {},
+                    &mut |x, baseline, t, handle, placements, transform, bounds| {
+                        let Some(font) = handle.filter(|_| !t.is_empty()) else {
+                            return;
+                        };
+                        let cmd = DrawCmd::Text {
+                            x,
+                            baseline,
+                            size,
+                            text: t,
+                            color: color.fade(alpha).linear(),
+                            font,
+                            bounds,
+                            clip,
+                            tracking: run.tracking,
+                            weight,
+                            glow: None,
+                            placements,
+                        };
+                        cmds.push(if transform == [1.0, 0.0, 0.0, 1.0] {
+                            cmd
+                        } else {
+                            DrawCmd::StyledText {
+                                text: Box::new(cmd),
+                                effects: Box::new(og_render::UiTextEffects {
+                                    transform,
+                                    ..Default::default()
+                                }),
+                            }
+                        });
+                    },
+                );
+            }
+            // An outline from the distance field, as across.
+            if let Some((w, oc)) = s.outline {
+                let outline = Some(og_render::UiTextOutline {
+                    width: w * n.scale,
+                    color: oc.fade(alpha).linear(),
+                    align: og_render::UiAlign::Outside,
+                });
+                for c in &mut cmds[first..] {
+                    match c {
+                        DrawCmd::StyledText { effects, .. } => effects.outline = outline,
+                        DrawCmd::Text { .. } => {
+                            let text = std::mem::replace(c, DrawCmd::PopClip);
+                            *c = DrawCmd::StyledText {
+                                text: Box::new(text),
+                                effects: Box::new(og_render::UiTextEffects {
+                                    outline,
+                                    transform: [1.0, 0.0, 0.0, 1.0],
+                                    ..Default::default()
+                                }),
+                            };
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            let d = s.decoration.clone().unwrap_or_default();
+            let th = d
+                .thickness
+                .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.scale);
+            let ink = d.color.unwrap_or(color).fade(alpha).linear();
+            let mut rule = |x: f32| {
+                cmds.push(DrawCmd::Quad {
+                    rect: Rect::new(x - th / 2.0, r.y, th, r.height).snapped(dpr),
+                    radius: 0.0,
+                    color: ink,
+                    clip,
+                })
+            };
+            if link_key.is_some() || s.underline {
+                let off = d.offset.map_or(size * 0.12, |o| o * n.scale);
+                rule(mid - size * 0.5 - off);
+            }
+            if d.overline {
+                rule(mid + size * 0.6);
+            }
+            if s.strike {
+                rule(mid);
             }
         }
     }

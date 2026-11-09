@@ -50,6 +50,9 @@ pub(crate) struct TextLines {
     /// Each line: its first character's index, its characters, its pen's
     /// start, its box's top, and its glyphs' boxes.
     pub lines: Vec<TextLine>,
+    /// Vertical lines' column width: each line's `top` is its column's
+    /// left edge and its boxes run down from `x` (0), along y.
+    pub column: Option<f32>,
 }
 
 pub(crate) struct TextLine {
@@ -85,6 +88,16 @@ impl TextLines {
         let Some(first) = self.lines.first() else {
             return 0;
         };
+        if let Some(w) = self.column {
+            // The column nearest across, then down it.
+            let d = |l: &TextLine| (x - (l.top + w / 2.0)).abs();
+            let l = self
+                .lines
+                .iter()
+                .min_by(|a, b| d(a).total_cmp(&d(b)))
+                .unwrap_or(first);
+            return l.start + crate::edit::nearest(&l.boxes, &l.chars, y - l.x) as u32;
+        }
         let li = self.lines.iter().rposition(|l| y >= l.top).unwrap_or(0);
         let l = if y < first.top {
             first
@@ -103,6 +116,45 @@ impl Ui {
         let Content::Text(tc) = &n.content else {
             return None;
         };
+        if let Some(v) = tc.vertical {
+            // Down vertical lines: each cluster's stretch along y, a
+            // bottom-up one with its caret at its bottom.
+            let lines = self.vertical_lines(i, tc, v, n.rect, n.clip, None);
+            let up =
+                self.text_flow(i).0 != (v.mode == crate::layout::flow::WritingMode::SidewaysLr);
+            let mut start = 0u32;
+            let lines = lines
+                .into_iter()
+                .zip(&n.lines)
+                .map(|(l, line)| {
+                    let boxes = l
+                        .glyphs
+                        .iter()
+                        .flat_map(|(c, y0, y1)| {
+                            c.clone().map(move |k| crate::edit::GlyphBox {
+                                index: k,
+                                x0: *y0,
+                                x1: *y1,
+                                rtl: up,
+                            })
+                        })
+                        .collect();
+                    let l = TextLine {
+                        start,
+                        chars: line.text.chars().collect(),
+                        x: 0.0,
+                        top: l.col,
+                        boxes,
+                    };
+                    start += l.chars.len() as u32 + 1;
+                    l
+                })
+                .collect();
+            return Some(TextLines {
+                lines,
+                column: Some(tc.line_height() * n.scale),
+            });
+        }
         let font = self
             .fonts
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
@@ -150,7 +202,10 @@ impl Ui {
                     l
                 })
                 .collect();
-        Some(TextLines { lines })
+        Some(TextLines {
+            lines,
+            column: None,
+        })
     }
 
     /// The topmost selectable text under `p` drawn over `hot` (what a

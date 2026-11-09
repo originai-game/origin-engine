@@ -383,3 +383,47 @@ fn a_screen_placed_element_bleeds_under_the_safe_area() {
     assert_eq!(r("Loading/Scrim"), (0.0, 47.0, 390.0, 763.0));
     assert_eq!(r("Loading/Corner"), (340.0, 824.0, 50.0, 20.0));
 }
+
+/// A container variant reads its element's inline size: a vertical
+/// element's height. Its patch sets the physical sides.
+#[test]
+fn a_container_variant_follows_the_writing_mode() {
+    let build = |ui: &mut Ui, height: f32| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        let props = Props {
+            variants: vec![Variant {
+                when: Query {
+                    min_width: 200.0,
+                    container: true,
+                    ..Query::default()
+                },
+                set: Patch {
+                    padding: Some(Insets {
+                        top: 7.0,
+                        ..Insets::default()
+                    }),
+                    ..Patch::default()
+                },
+            }],
+            ..Props::default()
+        };
+        // vertical-rl: block-start the right, inline-start the top.
+        let el = Element {
+            width: Size::Fixed(250.0),
+            height: Size::Fixed(height),
+            vertical: Some([1, 2, 3, 0]),
+            ..Element::column()
+        };
+        ui.open_with("V", el, props);
+        image(ui, "Kid", Size::Fixed(10.0), Size::Fixed(20.0));
+        ui.close();
+        ui.end();
+    };
+    let mut ui = Ui::new(UiDesc::default());
+    build(&mut ui, 300.0);
+    let (v, kid) = (rect(&ui, "V"), rect(&ui, "V/Kid"));
+    assert_eq!(kid[1] - v[1], 7.0, "300px down: the padding on top");
+    build(&mut ui, 150.0);
+    let (v, kid) = (rect(&ui, "V"), rect(&ui, "V/Kid"));
+    assert_eq!(kid[1] - v[1], 0.0, "150px down: none, though 250px across");
+}

@@ -789,13 +789,15 @@ fn main_sizes(
 }
 
 pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
-    // A container query reads the element's own width, now known.
+    // A container query reads the element's own inline size, now known:
+    // its frame's width (a vertical element's height). Its patch sets the
+    // physical sides and axes.
     if nodes[i].props.variants.iter().any(|v| v.when.container) {
         let w = nodes[i].w;
         let variants = nodes[i].props.variants.clone();
         for v in variants.iter().filter(|v| v.when.container) {
             if width_in(w, &v.when) {
-                apply_patch(&mut nodes[i], &v.set);
+                super::writing::patch(&mut nodes[i], &v.set);
             }
         }
     }

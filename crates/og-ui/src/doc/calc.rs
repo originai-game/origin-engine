@@ -120,6 +120,9 @@ pub(crate) struct Basis {
     /// settled size along it (0 until measured); none, and the container
     /// units fall back to the viewport's.
     pub containers: [Option<(u64, f32)>; 4],
+    /// The root element's writing mode is vertical: `vi` and `vb` are the
+    /// viewport's height and width (CSS Values 4 §6.1.2).
+    pub vertical: bool,
 }
 
 impl Basis {
@@ -199,12 +202,19 @@ pub(crate) fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
             _ => (unit, [basis.width, basis.height]),
         };
         let (w, h) = (w as f64 / 100.0, h as f64 / 100.0);
+        let viewport = match (viewport, basis.vertical) {
+            ("vi", true) => "vh",
+            ("vb", true) => "vw",
+            ("vi", false) => "vw",
+            ("vb", false) => "vh",
+            (v, _) => v,
+        };
         let per = match viewport {
-            "vw" | "vi" => {
+            "vw" => {
                 read.width = true;
                 w
             }
-            "vh" | "vb" => {
+            "vh" => {
                 read.height = true;
                 h
             }
@@ -1056,6 +1066,16 @@ mod tests {
                 ..Read::default()
             }
         );
+        // `vi` and `vb` follow the root's writing mode.
+        let (text, _) = absolute("10vi 10vb 10svi", basis, "width");
+        assert_eq!(text, "128px 72px 128px");
+        let vertical = Basis {
+            vertical: true,
+            ..basis
+        };
+        let (text, read) = absolute("10vi 10vb", vertical, "width");
+        assert_eq!(text, "72px 128px");
+        assert_eq!((read.width, read.height), (true, true));
         let (text, read) = absolute("-10vmin 1.5vmax #12vw0a 'a 3vw'", basis, "width");
         assert_eq!(text, "-72px 19.2px #12vw0a 'a 3vw'");
         assert_eq!(

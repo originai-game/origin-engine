@@ -295,6 +295,91 @@ fn selection_ink_lines_and_shadows_cover_only_the_selected_run() {
     );
 }
 
+/// Vertical text takes the player's selection down its lines: a press
+/// picks the word under it along the column, the selection's fill runs
+/// down that column, and `::selection`'s ink covers only the word. A
+/// justified line reaches its box's end.
+#[test]
+fn a_vertical_text_selects_down_its_lines() {
+    let doc = r#"<meta name="component" content="sel">
+<div id="Doc"><p id="V">alpha beta gamma delta epsilon zeta</p><p id="J">alpha beta gamma delta epsilon zeta</p></div>
+<style>
+#Doc { user-select: text; padding: 16px; display: flex; gap: 40px; }
+p { writing-mode: vertical-rl; height: 200px; margin: 0; }
+#J { text-align: justify; }
+p::selection { color: #ff0000; }
+</style>"#;
+    let mut scene = og_render::RenderScene::new();
+    let mut rig = Rig::with(doc, desktop(), true, add_test_font(&mut scene));
+    let e = rig.el("V");
+    assert!(e.width > e.height / 10.0, "wraps into columns: {e:?}");
+    // Its first line is its rightmost column; a press a little down it
+    // takes the first word, one further down the second.
+    let at = |rig: &Rig, fy: f32| rig.point("V", 0.9, fy);
+    rig.presses(at(&rig, 0.02), 2);
+    assert_eq!(rig.selected(), "alpha");
+    rig.presses(at(&rig, 0.2), 2);
+    assert_eq!(rig.selected(), "beta");
+    let red = Srgba::rgb(255, 0, 0).linear();
+    let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02);
+    let (mut red_clips, mut fills) = (vec![], vec![]);
+    for item in &rig.ui.frame().items {
+        let cmd = match &item.cmd {
+            DrawCmd::StyledText { text, .. } => text.as_ref(),
+            c => c,
+        };
+        match cmd {
+            DrawCmd::Text { color, clip, .. } if near(*color, red) => red_clips.push(*clip),
+            DrawCmd::Quad { rect, .. }
+                if rect.x >= e.x - 1.0 && rect.right() <= e.x + e.width + 1.0 =>
+            {
+                fills.push(*rect)
+            }
+            _ => {}
+        }
+    }
+    // The fill: one band down the first column, the word's length.
+    assert_eq!(fills.len(), 1, "{fills:?}");
+    let f = fills[0];
+    assert!(
+        f.height > f.width && f.x > e.x + e.width / 2.0,
+        "{f:?} {e:?}"
+    );
+    assert!(
+        f.y > e.y + 5.0 && f.bottom() < e.y + e.height * 0.5,
+        "{f:?}"
+    );
+    // The word redrawn in red, cut to its stretch down the line.
+    assert!(!red_clips.is_empty(), "no selected ink");
+    for c in &red_clips {
+        assert!(
+            (c.y - f.y).abs() < 1.0 && (c.bottom() - f.bottom()).abs() < 1.0,
+            "{c:?} {f:?}"
+        );
+    }
+    // Justified, the first line's last word ends at the box's bottom.
+    let j = rig.el("J");
+    rig.presses(rig.point("J", 0.9, 0.5), 3);
+    let line_end = rig
+        .ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Quad { rect, .. }
+                if rect.x >= j.x - 1.0 && rect.right() <= j.x + j.width + 1.0 =>
+            {
+                Some(rect.bottom())
+            }
+            _ => None,
+        })
+        .fold(0.0, f32::max);
+    assert!(
+        (line_end - (j.y + j.height)).abs() < 1.5,
+        "{line_end} {j:?}"
+    );
+}
+
 #[test]
 fn a_long_touch_selects_a_word() {
     let vp = Viewport {

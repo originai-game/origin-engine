@@ -1179,6 +1179,15 @@ impl Ui {
     }
 }
 
+/// A vertical line where it is drawn ([`Ui::vertical_lines`]).
+pub(crate) struct VerticalLine {
+    /// Its column's left edge; the column is a line height wide.
+    pub col: f32,
+    /// Each cluster in logical order: its characters (indices in the line)
+    /// and its stretch down the line, physical (top, bottom).
+    pub glyphs: Vec<(std::ops::Range<usize>, f32, f32)>,
+}
+
 impl Ui {
     /// Text in vertical lines (CSS Writing Modes 4, [`crate::text::vertical`]):
     /// its lines stack from its block-start side, each running down (up in
@@ -1188,27 +1197,26 @@ impl Ui {
     /// right (the ideographic comma and full stop); a sideways run drawn as
     /// a horizontal one turned a quarter clockwise (counter-clockwise in
     /// `sideways-lr`), centred across the line; a combined text one em,
-    /// side by side, squeezed to fit.
-    fn vertical_text_commands(
+    /// side by side, squeezed to fit. A justified line but its paragraph's
+    /// last takes its free room at its spaces, else between its upright
+    /// clusters (CSS Text 3 §7.1, inter-character for CJK). With `cmds`,
+    /// each line's glyph commands, in the style's glow.
+    pub(crate) fn vertical_lines(
         &self,
         i: usize,
         tc: &crate::layout::TextContent,
         v: crate::layout::flow::VerticalText,
         rect: Rect,
         clip: Rect,
-        cmds: &mut Vec<DrawCmd>,
-    ) {
+        mut cmds: Option<&mut Vec<Vec<DrawCmd>>>,
+    ) -> Vec<VerticalLine> {
         use crate::layout::flow::WritingMode;
-        use crate::shape::Features;
-        use crate::text::vertical::{Fallback, fallback, runs, upright_advance};
+        use crate::text::vertical::runs;
         let n = &self.nodes[i];
         let font = self
             .fonts
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
             .0;
-        if font.handle.is_none() {
-            return;
-        }
         let m = &font.metrics;
         let sk = n.scale;
         let size = tc.step.size * sk;
@@ -1223,10 +1231,24 @@ impl Ui {
             (rect.height - pad.vertical() * sk).max(0.0),
         );
         let dpr = self.viewport.dpr();
-        let weight =
-            self.theme.art.text_weights[tc.font.effect_index()] * sk / dpr + tc.emphasis * size;
+        let t = &self.theme;
+        let role = tc.font.effect_index();
+        let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
         let color = n.sampled.ink.fade(n.alpha).linear();
+        // A style's text glow: the font's distance field, under the glyphs.
+        let glow = t.art.text_glows[role].map(|g| {
+            let c = g
+                .ink
+                .color(&t.palette)
+                .fade(g.alpha * n.sampled.ink.alpha * n.alpha);
+            (c.linear(), TEXT_GLOW_REACH * g.size * sk)
+        });
         let (rtl, para) = self.text_flow(i);
+        let dir = if rtl {
+            og_i18n::Direction::Rtl
+        } else {
+            og_i18n::Direction::Ltr
+        };
         let (asc, desc) = m.extents(&tc.text);
         // Half the em box's baseline offset: what centres a glyph about
         // its line's middle.
@@ -1243,6 +1265,7 @@ impl Ui {
                     handle: Option<og_render::FontHandle>,
                     placements: Vec<og_render::GlyphPlacement>,
                     transform: [f32; 4],
+                    bounds: Rect,
                     cmds: &mut Vec<DrawCmd>| {
             let Some(handle) = handle.filter(|_| !text.is_empty()) else {
                 return;
@@ -1254,16 +1277,11 @@ impl Ui {
                 text,
                 color,
                 font: handle,
-                bounds: Rect::new(
-                    x - 2.0 * size,
-                    baseline - 2.0 * size,
-                    4.0 * size,
-                    4.0 * size,
-                ),
+                bounds,
                 clip,
                 tracking,
                 weight,
-                glow: None,
+                glow,
                 placements,
             };
             if transform == [1.0, 0.0, 0.0, 1.0] {
@@ -1278,9 +1296,11 @@ impl Ui {
                 });
             }
         };
-        const TURN: [f32; 4] = [0.0, 1.0, -1.0, 0.0];
-        const TURN_BACK: [f32; 4] = [0.0, -1.0, 1.0, 0.0];
+        let drawn = font.handle.is_some();
+        let mut out = Vec::with_capacity(n.lines.len());
         for (k, line) in n.lines.iter().enumerate() {
+            let mut line_cmds = Vec::new();
+            let mut glyphs = Vec::new();
             let col = if v.mode.block_rl() {
                 inner.right() - off - (k + 1) as f32 * lh
             } else {
@@ -1289,10 +1309,10 @@ impl Ui {
             let mid = col + lh / 2.0;
             let length = line.width * sk;
             let free = inner.height - length;
-            let lead = match (tc.align, from_bottom) {
-                (TextAlign::Start | TextAlign::Justify, _) => 0.0,
-                (TextAlign::Center, _) => free / 2.0,
-                (TextAlign::End, _) => free,
+            let lead = match tc.align {
+                TextAlign::Start | TextAlign::Justify => 0.0,
+                TextAlign::Center => free / 2.0,
+                TextAlign::End => free,
             };
             // The top of a stretch `[at, at + len]` along the line.
             let top = |at: f32, len: f32| {
@@ -1302,120 +1322,570 @@ impl Ui {
                     inner.y + lead + at
                 }
             };
+            let chars_before = |b: usize| line.text[..b].chars().count();
+            let line_runs = runs(&line.text, v);
+            // Justified: its free room at its spaces, else after each
+            // upright cluster but the line's last.
+            let spaces = line.text.chars().filter(|c| *c == ' ').count();
+            let justify = tc.align == TextAlign::Justify
+                && !v.combine
+                && k + 1 < n.lines.len()
+                && free > 0.0
+                && !tc.text.contains(&format!("{}\n", line.text));
+            let uprights = if justify && spaces == 0 {
+                let all: usize = line_runs
+                    .iter()
+                    .filter(|(_, up)| *up)
+                    .map(|(r, _)| og_i18n::graphemes(&line.text[r.clone()]).len())
+                    .sum();
+                let last_up = line_runs.last().is_some_and(|(_, up)| *up);
+                all.saturating_sub(usize::from(last_up))
+            } else {
+                0
+            };
+            let gaps = if spaces > 0 { spaces } else { uprights };
+            let extra = if justify && gaps > 0 {
+                free / gaps as f32
+            } else {
+                0.0
+            };
             if v.combine {
                 // One upright em: the text side by side, squeezed to fit.
-                let w = m.measure_with(&line.text, size, tracking, features);
-                let squeeze = if w > size { size / w } else { 1.0 };
                 let y0 = top(0.0, size);
-                for pc in crate::text::pieces_with(font, &line.text, para, tracking, features) {
-                    let x = mid - w * squeeze / 2.0 + pc.dx * size * squeeze;
-                    let baseline = y0 + size / 2.0 + centre;
-                    emit(
-                        x,
-                        baseline,
-                        pc.text,
-                        pc.font,
-                        pc.placements,
-                        [squeeze, 0.0, 0.0, 1.0],
-                        cmds,
-                    );
+                glyphs.push((0..line.text.chars().count(), y0, y0 + size));
+                if drawn && cmds.is_some() {
+                    let w = m.measure_with(&line.text, size, tracking, features);
+                    let squeeze = if w > size { size / w } else { 1.0 };
+                    for pc in crate::text::pieces_with(font, &line.text, para, tracking, features) {
+                        let x = mid - w * squeeze / 2.0 + pc.dx * size * squeeze;
+                        let baseline = y0 + size / 2.0 + centre;
+                        emit(
+                            x,
+                            baseline,
+                            pc.text,
+                            pc.font,
+                            pc.placements,
+                            [squeeze, 0.0, 0.0, 1.0],
+                            Rect::new(col, y0, lh, size),
+                            &mut line_cmds,
+                        );
+                    }
+                }
+                out.push(VerticalLine { col, glyphs });
+                if let Some(c) = cmds.as_deref_mut() {
+                    c.push(line_cmds);
                 }
                 continue;
             }
             let mut at = 0.0f32;
-            for (range, upright) in runs(&line.text, v) {
-                let run = &line.text[range];
-                if !upright {
-                    let len = m.measure_with(run, size, tracking, features);
-                    let y0 = top(at, len);
-                    for pc in crate::text::pieces_with(font, run, para, tracking, features) {
-                        let d = pc.dx * size;
-                        let (x, y, t) = if up_line {
-                            (mid + centre, y0 + len - d, TURN_BACK)
-                        } else {
-                            (mid - centre, y0 + d, TURN)
-                        };
-                        emit(x, y, pc.text, pc.font, pc.placements, t, cmds);
-                    }
-                    at += len;
-                    continue;
+            let mut upright_left = uprights;
+            let mut gap = || {
+                if spaces == 0 && upright_left > 0 {
+                    upright_left -= 1;
+                    extra
+                } else {
+                    0.0
                 }
-                let forms = m
-                    .file
-                    .as_ref()
-                    .filter(|_| !m.is_mixed())
-                    .and_then(|f| f.vertical_forms(run, &|key| m.in_atlas_key(key)));
-                let chars: Vec<char> = run.chars().collect();
-                let bytes: Vec<usize> = run.char_indices().map(|(b, _)| b).collect();
-                for (a, b) in og_i18n::graphemes(run) {
-                    let cluster: String = chars[a..b].iter().collect();
-                    if cluster.trim().is_empty() {
-                        at += m.measure_with(&cluster, size, tracking, Features::NONE);
-                        continue;
-                    }
-                    let adv = (upright_advance(m, &cluster) + tracking) * size;
-                    let y0 = top(at, adv);
-                    at += adv;
-                    let wh = m.measure_with(&cluster, size, 0.0, Features::NONE);
-                    let form = forms.as_ref().and_then(|f| {
-                        f.iter()
-                            .find(|(c, _)| *c as usize == bytes[a])
-                            .and_then(|(_, g)| *g)
-                    });
-                    let (x, baseline) = (mid - wh / 2.0, y0 + adv / 2.0 + centre);
-                    if let Some(id) = form.filter(|_| b - a == 1) {
-                        let placement = og_render::GlyphPlacement {
-                            advance: wh / size.max(1e-3),
-                            x: 0.0,
-                            y: 0.0,
-                            glyph: Some(id),
-                        };
+            };
+            let space_extra = if spaces > 0 { extra } else { 0.0 };
+            let draw = drawn && cmds.is_some();
+            for (range, upright) in line_runs {
+                let base = chars_before(range.start);
+                let run = &line.text[range];
+                at = vertical_run(
+                    &VerticalRun {
+                        font,
+                        size,
+                        tracking,
+                        features,
+                        para,
+                        dir,
+                        up_line,
+                        mid,
+                        centre,
+                        col,
+                        lh,
+                        space_extra,
+                        draw,
+                    },
+                    run,
+                    upright,
+                    at,
+                    &top,
+                    &mut gap,
+                    &mut |chars, y0, y1| {
+                        glyphs.push((base + chars.start..base + chars.end, y0, y1))
+                    },
+                    &mut |x, baseline, text, handle, placements, transform, bounds| {
                         emit(
                             x,
                             baseline,
-                            cluster,
-                            font.handle,
-                            vec![placement],
-                            [1.0, 0.0, 0.0, 1.0],
+                            text,
+                            handle,
+                            placements,
+                            transform,
+                            bounds,
+                            &mut line_cmds,
+                        )
+                    },
+                );
+            }
+            out.push(VerticalLine { col, glyphs });
+            if let Some(c) = cmds.as_deref_mut() {
+                c.push(line_cmds);
+            }
+        }
+        out
+    }
+
+    /// Vertical text's commands ([`Ui::vertical_lines`]): the player's
+    /// selection under it, the style's drop, the glyphs, and the selected
+    /// glyphs again in `::selection`'s ink, shadows and lines, each line's
+    /// glyphs cut along the line where a selected run starts and ends.
+    fn vertical_text_commands(
+        &self,
+        i: usize,
+        tc: &crate::layout::TextContent,
+        v: crate::layout::flow::VerticalText,
+        rect: Rect,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        let n = &self.nodes[i];
+        let font = self
+            .fonts
+            .for_styled(tc.font, tc.step.weight, false, &tc.text)
+            .0;
+        if font.handle.is_none() {
+            return;
+        }
+        let m = &font.metrics;
+        let (sk, alpha, dpr) = (n.scale, n.alpha, self.viewport.dpr());
+        let size = tc.step.size * sk;
+        let lh = tc.line_height() * sk;
+        let mut drawn = Vec::new();
+        let lines = self.vertical_lines(i, tc, v, rect, clip, Some(&mut drawn));
+        let role = tc.font.effect_index();
+        // The style's drop, as a horizontal text's (`content_commands`).
+        let own = self.draw_of(i).is_some_and(|d| d.text.is_some());
+        let parent = n.parent;
+        let plated = m.pixel_grid() > 0
+            && (n.el.interactive
+                || (parent != NONE
+                    && (self.nodes[parent].el.interactive
+                        || self.draws.get(&parent).is_some_and(|d| !d.fills.is_empty()))));
+        let drop = self
+            .text_drop(role, size, m.pixel_grid())
+            .filter(|_| !own && !plated);
+        let selection = self
+            .docs
+            .selection
+            .get(&n.key)
+            .filter(|s| s.color.is_some() || s.decoration.is_some() || s.shadows.is_some());
+        // A copy of a line's glyphs moved, in another ink, cut to `band`.
+        let copy = |line: &[DrawCmd],
+                    (dx, dy): (f32, f32),
+                    ink: Option<Srgba>,
+                    band: Rect,
+                    glow: bool,
+                    cmds: &mut Vec<DrawCmd>| {
+            for cmd in line {
+                let mut cmd = cmd.clone();
+                let text = match &mut cmd {
+                    DrawCmd::StyledText { text, .. } => text.as_mut(),
+                    c => c,
+                };
+                if let DrawCmd::Text {
+                    x,
+                    baseline,
+                    color,
+                    clip,
+                    glow: g,
+                    bounds,
+                    ..
+                } = text
+                {
+                    *x += dx;
+                    *baseline += dy;
+                    bounds.x += dx;
+                    bounds.y += dy;
+                    if let Some(ink) = ink {
+                        *color = ink.fade(alpha).linear();
+                    }
+                    *clip = clip.intersect(&band);
+                    if !glow {
+                        *g = None;
+                    }
+                }
+                cmds.push(cmd);
+            }
+        };
+        let mut first = 0u32;
+        for (line, (glyphs, text)) in drawn.iter().zip(lines.iter().zip(&n.lines)) {
+            let count = text.text.chars().count() as u32;
+            // Its selected runs down the line, physical (top, bottom).
+            let mut runs: Vec<(f32, f32)> = Vec::new();
+            if let Some((a, b)) = n.selected {
+                let (a, b) = (
+                    a.saturating_sub(first) as usize,
+                    b.saturating_sub(first) as usize,
+                );
+                let mut picked: Vec<(f32, f32)> = glyphs
+                    .glyphs
+                    .iter()
+                    .filter(|(c, ..)| c.start >= a && c.start < b)
+                    .map(|&(_, y0, y1)| (y0, y1))
+                    .collect();
+                picked.sort_by(|p, q| p.0.total_cmp(&q.0));
+                for (y0, y1) in picked {
+                    match runs.last_mut() {
+                        Some(r) if y0 <= r.1 + 0.01 => r.1 = r.1.max(y1),
+                        _ => runs.push((y0, y1)),
+                    }
+                }
+            }
+            first += count + 1;
+            // The player's selection (`user-select`), under the text.
+            if !runs.is_empty() {
+                let fill = self
+                    .docs
+                    .selection
+                    .get(&n.key)
+                    .and_then(|s| s.background)
+                    .unwrap_or(self.theme.palette.control_strong);
+                let part = crate::dress::PartRef::of("TextEdit", "selection", None);
+                let dressing = self.dress.resolve(&part);
+                let across = size + self.theme.space.xxs * 2.0;
+                let x0 = glyphs.col + (lh - across) / 2.0;
+                for &(y0, y1) in &runs {
+                    let r = Rect::new(x0, y0, across, y1 - y0).snapped(dpr);
+                    if dressing.matched == 0 {
+                        cmds.push(DrawCmd::Quad {
+                            rect: r,
+                            radius: 0.0,
+                            color: fill.fade(alpha).linear(),
+                            clip,
+                        });
+                    } else {
+                        self.part_commands_at(
+                            &part,
+                            dressing.draw.subpart_rect(r, n.rect).snapped(dpr),
+                            Some(dressing.draw.subpart_color(fill, &self.theme)),
+                            0.0,
+                            alpha,
+                            clip,
                             cmds,
                         );
-                        continue;
                     }
-                    let base = chars[a];
-                    for pc in crate::text::pieces_with(font, &cluster, para, tracking, features) {
-                        let ox = pc.dx * size;
-                        match fallback(base) {
-                            Fallback::Turn => {
-                                // About the glyph's centre: its pen moves
-                                // so the turned centre lands on the em's.
-                                let (u, w) = (wh / 2.0, -centre);
-                                let p = (mid + w, y0 + adv / 2.0 - u + ox);
-                                emit(p.0, p.1, pc.text, pc.font, pc.placements, TURN, cmds);
+                }
+            }
+            // The unselected stretches when `::selection` redraws the
+            // selected ones, else the whole line.
+            let cut = selection.is_some() && !runs.is_empty();
+            let mut bands = Vec::new();
+            if cut {
+                let mut from = clip.y;
+                for &(y0, y1) in &runs {
+                    bands.push(Rect::new(clip.x, from, clip.width, (y0 - from).max(0.0)));
+                    from = y1;
+                }
+                bands.push(Rect::new(
+                    clip.x,
+                    from,
+                    clip.width,
+                    (clip.bottom() - from).max(0.0),
+                ));
+            } else {
+                bands.push(clip);
+            }
+            let dropped = |band: Rect, cmds: &mut Vec<DrawCmd>| {
+                if let Some((dx, dy, blur, sc)) = drop {
+                    let c = sc.fade(n.sampled.ink.alpha);
+                    copy(line, (dx, dy), Some(c), band, false, cmds);
+                    if blur > 0.0 {
+                        let d = blur / 2.0;
+                        copy(line, (dx + d, dy + d), Some(c.fade(0.5)), band, false, cmds);
+                    }
+                }
+            };
+            for &band in &bands {
+                dropped(band, cmds);
+                copy(line, (0.0, 0.0), None, band, true, cmds);
+            }
+            let Some(sel) = selection.filter(|_| cut) else {
+                continue;
+            };
+            let ink = sel
+                .color
+                .map_or(n.sampled.ink, |c| c.fade(n.sampled.ink.alpha));
+            for &(y0, y1) in &runs {
+                let band = Rect::new(clip.x, y0, clip.width, y1 - y0);
+                if sel.shadows.is_none() {
+                    dropped(band, cmds);
+                }
+                let start = cmds.len();
+                copy(line, (0.0, 0.0), Some(ink), band, true, cmds);
+                if let Some(shadows) = sel.shadows.as_ref().filter(|s| !s.is_empty()) {
+                    let shadows: Vec<og_render::UiTextShadow> = shadows
+                        .iter()
+                        .map(|(o, blur, color)| og_render::UiTextShadow {
+                            offset: og_core::glam::Vec2::new(o[0] * sk, o[1] * sk),
+                            blur: blur * sk,
+                            color: color.fade(alpha * n.sampled.ink.alpha).linear(),
+                        })
+                        .collect();
+                    for cmd in &mut cmds[start..] {
+                        match cmd {
+                            DrawCmd::StyledText { effects, .. } => {
+                                effects.shadows = shadows.clone();
                             }
-                            Fallback::Corner => emit(
-                                x + ox + wh / 2.0,
-                                baseline - size / 2.0,
-                                pc.text,
-                                pc.font,
-                                pc.placements,
-                                [1.0, 0.0, 0.0, 1.0],
-                                cmds,
-                            ),
-                            Fallback::Plain => emit(
-                                x + ox,
-                                baseline,
-                                pc.text,
-                                pc.font,
-                                pc.placements,
-                                [1.0, 0.0, 0.0, 1.0],
-                                cmds,
-                            ),
+                            c => {
+                                let t = std::mem::replace(c, DrawCmd::PopClip);
+                                *c = DrawCmd::StyledText {
+                                    text: Box::new(t),
+                                    effects: Box::new(og_render::UiTextEffects {
+                                        shadows: shadows.clone(),
+                                        transform: [1.0, 0.0, 0.0, 1.0],
+                                        ..Default::default()
+                                    }),
+                                };
+                            }
                         }
+                    }
+                }
+                // Lines down the column: over on its right (line-over),
+                // under on its left, through its middle (CSS Text
+                // Decoration 4 §2.3); a solid rule whatever the style.
+                if let Some(d) = &sel.decoration {
+                    let th = d.thickness.map_or((size * 0.07).max(1.0 / dpr), |t| t * sk);
+                    let lc = d.color.unwrap_or(ink).fade(alpha).linear();
+                    let mid = glyphs.col + lh / 2.0;
+                    let mut rule = |x: f32| {
+                        cmds.push(DrawCmd::Quad {
+                            rect: Rect::new(x - th / 2.0, y0, th, y1 - y0).snapped(dpr),
+                            radius: 0.0,
+                            color: lc,
+                            clip,
+                        });
+                    };
+                    if d.underline {
+                        rule(mid - size * 0.6);
+                    }
+                    if d.overline {
+                        rule(mid + size * 0.6);
+                    }
+                    if d.through {
+                        rule(mid);
                     }
                 }
             }
         }
     }
+}
+
+/// What one run of a vertical line is drawn with ([`vertical_run`]).
+pub(crate) struct VerticalRun<'a> {
+    pub font: &'a crate::ui::UiFont,
+    pub size: f32,
+    pub tracking: f32,
+    pub features: crate::shape::Features,
+    pub para: crate::text::Para,
+    pub dir: og_i18n::Direction,
+    /// The line runs up (`sideways-lr`).
+    pub up_line: bool,
+    /// The line's middle across, and the offset that centres a glyph's
+    /// em box about it.
+    pub mid: f32,
+    pub centre: f32,
+    /// The line's column (its left edge and width).
+    pub col: f32,
+    pub lh: f32,
+    /// Added to each space (a justified line's room).
+    pub space_extra: f32,
+    /// Emit glyphs (else only measure where each cluster lies).
+    pub draw: bool,
+}
+
+/// Takes a vertical run's glyph command: pen, baseline, text, font,
+/// placements, transform and bounds.
+pub(crate) type GlyphEmit<'a> = dyn FnMut(
+        f32,
+        f32,
+        String,
+        Option<og_render::FontHandle>,
+        Vec<og_render::GlyphPlacement>,
+        [f32; 4],
+        Rect,
+    ) + 'a;
+
+/// One run of a vertical line from `at` along it (`top(at, len)` the
+/// physical top of a stretch): an upright run cluster by cluster at its
+/// vertical advance, in its vertical form where the font has one, else
+/// turned or moved to the em's corner; a sideways run shaped as a
+/// horizontal one turned. `gap` is what follows each upright cluster;
+/// `glyph` takes each cluster's characters (in the run) and stretch,
+/// `emit` each glyph command (pen, baseline, text, font, placements,
+/// transform, bounds). Returns where the line goes on.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn vertical_run(
+    r: &VerticalRun<'_>,
+    run: &str,
+    upright: bool,
+    mut at: f32,
+    top: &dyn Fn(f32, f32) -> f32,
+    gap: &mut dyn FnMut() -> f32,
+    glyph: &mut dyn FnMut(std::ops::Range<usize>, f32, f32),
+    emit: &mut GlyphEmit<'_>,
+) -> f32 {
+    use crate::shape::Features;
+    use crate::text::vertical::{Fallback, fallback, upright_advance};
+    const TURN: [f32; 4] = [0.0, 1.0, -1.0, 0.0];
+    const TURN_BACK: [f32; 4] = [0.0, -1.0, 1.0, 0.0];
+    const STRAIGHT: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+    let (font, size, tracking, features) = (r.font, r.size, r.tracking, r.features);
+    let m = &font.metrics;
+    let (mid, centre, col, lh) = (r.mid, r.centre, r.col, r.lh);
+    let chars: Vec<char> = run.chars().collect();
+    if !upright {
+        let e = r.space_extra;
+        let spaced = chars.iter().filter(|c| **c == ' ').count() as f32;
+        let len = m.measure_with(run, size, tracking, features) + e * spaced;
+        let y0 = top(at, len);
+        // Its clusters down the line, each space widened.
+        let mut widened = 0.0;
+        for b in crate::edit::boxes(m, run, r.dir, size, tracking) {
+            let own = if chars.get(b.index) == Some(&' ') {
+                e
+            } else {
+                0.0
+            };
+            let (lo, hi) = (b.x0 + widened, b.x1 + widened + own);
+            widened += own;
+            let (a, z) = if r.up_line {
+                (y0 + len - hi, y0 + len - lo)
+            } else {
+                (y0 + lo, y0 + hi)
+            };
+            glyph(b.index..crate::edit::next_cluster(&chars, b.index), a, z);
+        }
+        if r.draw {
+            let pieces = if e > 0.0 {
+                crate::text::pieces_spaced(
+                    font,
+                    run,
+                    r.para,
+                    tracking,
+                    features,
+                    e / size.max(1e-3),
+                )
+            } else {
+                crate::text::pieces_with(font, run, r.para, tracking, features)
+            };
+            for pc in pieces {
+                let d = pc.dx * size;
+                let (x, y, t) = if r.up_line {
+                    (mid + centre, y0 + len - d, TURN_BACK)
+                } else {
+                    (mid - centre, y0 + d, TURN)
+                };
+                emit(
+                    x,
+                    y,
+                    pc.text,
+                    pc.font,
+                    pc.placements,
+                    t,
+                    Rect::new(col, y0, lh, len),
+                );
+            }
+        }
+        return at + len;
+    }
+    let forms = m
+        .file
+        .as_ref()
+        .filter(|_| !m.is_mixed() && r.draw)
+        .and_then(|f| f.vertical_forms(run, &|key| m.in_atlas_key(key)));
+    let bytes: Vec<usize> = run.char_indices().map(|(b, _)| b).collect();
+    for (a, b) in og_i18n::graphemes(run) {
+        let cluster: String = chars[a..b].iter().collect();
+        let after = gap();
+        if cluster.trim().is_empty() {
+            let e = if cluster.contains(' ') {
+                r.space_extra
+            } else {
+                0.0
+            };
+            let adv = m.measure_with(&cluster, size, tracking, Features::NONE) + e;
+            let y0 = top(at, adv);
+            glyph(a..b, y0, y0 + adv);
+            at += adv + after;
+            continue;
+        }
+        let adv = (upright_advance(m, &cluster) + tracking) * size;
+        let y0 = top(at, adv);
+        glyph(a..b, y0, y0 + adv);
+        at += adv + after;
+        if !r.draw {
+            continue;
+        }
+        let bounds = Rect::new(col, y0, lh, adv);
+        let wh = m.measure_with(&cluster, size, 0.0, Features::NONE);
+        let form = forms.as_ref().and_then(|f| {
+            f.iter()
+                .find(|(c, _)| *c as usize == bytes[a])
+                .and_then(|(_, g)| *g)
+        });
+        let (x, baseline) = (mid - wh / 2.0, y0 + adv / 2.0 + centre);
+        if let Some(id) = form.filter(|_| b - a == 1) {
+            let placement = og_render::GlyphPlacement {
+                advance: wh / size.max(1e-3),
+                x: 0.0,
+                y: 0.0,
+                glyph: Some(id),
+            };
+            emit(
+                x,
+                baseline,
+                cluster,
+                font.handle,
+                vec![placement],
+                STRAIGHT,
+                bounds,
+            );
+            continue;
+        }
+        for pc in crate::text::pieces_with(font, &cluster, r.para, tracking, features) {
+            let ox = pc.dx * size;
+            match fallback(chars[a]) {
+                Fallback::Turn => {
+                    // About the glyph's centre: its pen moves so the
+                    // turned centre lands on the em's.
+                    let p = (mid - centre, y0 + adv / 2.0 - wh / 2.0 + ox);
+                    emit(p.0, p.1, pc.text, pc.font, pc.placements, TURN, bounds);
+                }
+                Fallback::Corner => emit(
+                    x + ox + wh / 2.0,
+                    baseline - size / 2.0,
+                    pc.text,
+                    pc.font,
+                    pc.placements,
+                    STRAIGHT,
+                    bounds,
+                ),
+                Fallback::Plain => emit(
+                    x + ox,
+                    baseline,
+                    pc.text,
+                    pc.font,
+                    pc.placements,
+                    STRAIGHT,
+                    bounds,
+                ),
+            }
+        }
+    }
+    at
 }
 
 /// The x ranges, from the line's start, of the glyphs of `line` whose

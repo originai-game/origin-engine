@@ -1,0 +1,21 @@
+{
+  "added": [
+    {
+      "member": "UI: vertical text selection, effects and justify; rich text down vertical lines",
+      "summary": "Vertical text takes the player's selection (`user-select`), `::selection`'s color, decoration and shadows, the style's text glow and drop, and `text-align: justify` (at spaces, else between upright clusters). Rich text in a vertical writing mode runs down its columns with its spans' fonts, inks, outlines, pictures, icons and decorations, where it was a horizontal box."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI: inline-blocks in a vertical line",
+      "summary": "Inline-level boxes in a `vertical-rl` or `vertical-lr` line run down the line and sit on its central baseline; they were stacked on one spot at the line's end."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "UI: `vi` and `vb` follow the root's writing mode; container variants read the inline size",
+      "change": "`vi` and `vb` are the viewport's height and width when the document root's writing mode is vertical (CSS Values 4), not always its width and height. An immediate-mode `Props` variant with `Query::container` reads its element's inline size, a vertical element's height, and its patch keeps physical sides. Horizontal documents and elements are unchanged.",
+      "fix": "A vertical document that meant the viewport's width writes `vw` (or `vh` for its height); a container variant on a vertical element states its range against the element's height."
+    }
+  ]
+}

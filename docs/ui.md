@@ -481,9 +481,18 @@ its vertical form (`vert`) where the font's atlas has it; without one,
 brackets and dashes turn and the ideographic comma and full stop move to
 the em's upper right. `text-combine-upright: all` (and `digits <n>` for a
 text of up to n digits) sets an element's text side by side in one upright
-em, squeezed to fit. Inline-level boxes lie in vertical lines too; rich
-text and text on a path set horizontal lines only, so in a vertical
-element each is a horizontal box.
+em, squeezed to fit. Inline-level boxes lie in vertical lines too, each
+line's boxes centred on its central baseline. A justified vertical line
+but its paragraph's last takes its free room at its spaces, else between
+its upright clusters. Vertical text takes the player's selection down its
+lines (a press picks the character nearest along its column),
+`::selection`'s ink, shadows and lines (under on the column's left, over
+on its right), the style's text glow and drop. Rich text runs down its
+columns too, its spans in their fonts, inks, weights and outlines,
+pictures and icons upright, decorations along the column. Text on a path
+follows its path's physical geometry whatever the writing mode. A
+container variant of `Props` (`Query::container`) reads its element's
+inline size: a vertical element's height.
 
 CSS Anchor Positioning 1 places an absolute or fixed box against other
 boxes as this frame laid them out. `anchor-name: --a` names an anchor
@@ -658,7 +667,8 @@ join its neighbours' into one set, as CSS 2 §8.3.1 says.
 Lengths follow CSS Values 4. The physical units (`cm`, `mm`, `Q`, `in`,
 `pt`, `pc`) are px at 96px to the inch. The viewport units (`vw`, `vh`,
 `vi`, `vb`, `vmin`, `vmax`) and the dynamic forms (`dvh`…) read the
-play surface as it is now; the small forms (`svh`…) read it with the
+play surface as it is now (`vi` and `vb` along the document root's inline
+and block axes: its height and width when the root is vertical); the small forms (`svh`…) read it with the
 browser's own controls (address bar, toolbars) shown, and the large
 forms (`lvh`…) with them hidden (`Viewport.smallWidth` and the rest).
 The web shell measures both from the page's `100svh` and `100lvh`

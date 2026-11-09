@@ -893,6 +893,7 @@ fn floats_in_lines_sit_where_they_come() {
   <div id="C"><div id="Fc"></div><div id="Mix" class="lines"><span id="I1" class="ib"></span><div id="Blk"><p id="P">{words}</p></div><div id="Root2"></div></div></div>
   <div id="Ref"><p id="RefP">{words}</p></div>
   <div id="V" class="lines">{}<div id="Fv" class="f"></div>{}</div>
+  <div id="Il"><span id="J1" class="j"></span><span id="J2" class="j"></span><span id="J3" class="j"></span></div>
 </div></div>
 <style>
 #Root {{ width: 300px; }}
@@ -901,6 +902,9 @@ p {{ margin: 0; }}
 #V {{ display: flow-root; writing-mode: vertical-lr; height: 300px; }}
 #V .ib {{ width: 10px; height: 60px; }}
 #V .f {{ width: 30px; height: 50px; }}
+#Il {{ writing-mode: vertical-lr; height: 100px; font-size: 0; }}
+#Il .j {{ display: inline-block; width: 10px; height: 40px; }}
+#Il #J2 {{ width: 20px; }}
 #A, #B, #C {{ display: flow-root; }}
 .ib {{ display: inline-block; width: 60px; height: 10px; }}
 .f {{ float: left; width: 50px; height: 30px; }}
@@ -944,6 +948,41 @@ p {{ margin: 0; }}
         // Down vertical lines (line-left the top) the float comes on the
         // second line too: a block offset of one line, at the line's top.
         assert_eq!(at("Fv", "V"), (10.0, 0.0));
+        // Without a float, down the line from the top and the next line to
+        // the right; a line's boxes centred on its central baseline.
+        assert_eq!(at("J1", "Il"), (5.0, 0.0));
+        assert_eq!(at("J2", "Il"), (0.0, 40.0));
+        assert_eq!(at("J3", "Il"), (20.0, 0.0));
+    });
+}
+
+/// `vi` and `vb` are the viewport's size along the root element's inline
+/// and block axes (CSS Values 4 §6.1.2): its height and width when the
+/// root is vertical, whatever writing mode the element itself has.
+#[test]
+fn vi_and_vb_follow_the_roots_writing_mode() {
+    let doc = |root: &str| {
+        format!(
+            r#"<meta name="component" content="t">
+<div class="top"><div id="In"></div><div id="A"></div><div id="B"></div></div>
+<style>
+.top {{ writing-mode: {root}; }}
+#In {{ width: 10vi; height: 10vb; }}
+#A {{ writing-mode: horizontal-tb; width: 10vi; height: 10vb; }}
+#B {{ writing-mode: vertical-lr; width: 5vb; height: 5vi; }}
+</style>"#
+        )
+    };
+    // The viewport is 800 × 900.
+    both(&doc("horizontal-tb"), &[], |d| {
+        assert_eq!(wh(d, "In"), (80.0, 90.0));
+        assert_eq!(wh(d, "A"), (80.0, 90.0));
+        assert_eq!(wh(d, "B"), (45.0, 40.0));
+    });
+    both(&doc("vertical-rl"), &[], |d| {
+        assert_eq!(wh(d, "In"), (90.0, 80.0));
+        assert_eq!(wh(d, "A"), (90.0, 80.0));
+        assert_eq!(wh(d, "B"), (40.0, 45.0));
     });
 }
 
@@ -1105,4 +1144,98 @@ fn writing_modes_lay_out_as_css_writing_modes_does() {
         // line-left (the top) and runs down the room left.
         assert_eq!((at(d, "I1", "Wl").1, at(d, "I2", "Wl").1), (40.0, 70.0));
     });
+}
+
+/// A rich paragraph in a vertical element lays its lines down as columns
+/// (block-start the right in vertical-rl), its pieces down each column.
+#[test]
+fn a_rich_paragraph_runs_down_a_vertical_element() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="V"><p id="P">one <b>two</b> three four five six seven eight</p></div></div>
+<style>
+#V { writing-mode: vertical-rl; height: 120px; }
+p { margin: 0; }
+</style>"#;
+    let mut scene = og_render::RenderScene::new();
+    let mut font = crate::features::font("Inter-Display.ttf");
+    font.handle = crate::support::add_test_font(&mut scene).handle;
+    let mut d = Doc::with_font(text, &[], false, font);
+    d.step(InputFrame::default());
+    let p = d.get("P");
+    assert_eq!(p.kind, "richtext");
+    assert!(p.height <= 120.0 && p.width > 30.0, "columns: {p:?}");
+    let texts: Vec<(String, f32, f32)> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                og_ui::DrawCmd::StyledText { text, effects } => match text.as_ref() {
+                    og_ui::DrawCmd::Text {
+                        text, x, baseline, ..
+                    } if effects.transform[1] > 0.5 => Some((text.clone(), *x, *baseline)),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect();
+    // Latin lies sideways (turned clockwise), the first line rightmost.
+    let one = texts.iter().find(|t| t.0.contains("one")).expect("one");
+    let last = texts.iter().find(|t| t.0.contains("eight")).expect("eight");
+    assert!(one.1 > last.1, "{texts:?}");
+    assert!(
+        texts
+            .iter()
+            .all(|t| t.2 >= p.y - 1.0 && t.2 <= p.y + p.height),
+        "{texts:?}"
+    );
+}
+
+/// A right-to-left rich paragraph beside a float breaks at each line's
+/// room from one shaping and draws each line in visual order: its Hebrew
+/// runs reversed, the first lines clear of the float on the left.
+#[test]
+fn a_right_to_left_paragraph_breaks_beside_a_float() {
+    let words = "שלום עולם בדיקה קצרה מאוד שורה ראשונה שנייה שלישית";
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div><div id="Root"><div id="F"></div><p id="P" dir="rtl">{words} <b>סוף</b></p></div></div>
+<style>
+#Root {{ width: 240px; }}
+p {{ margin: 0; }}
+#F {{ float: left; width: 120px; height: 20px; }}
+</style>"#
+    );
+    let mut scene = og_render::RenderScene::new();
+    let mut font = crate::features::font("NotoSansHebrew-subset.ttf");
+    font.handle = crate::support::add_test_font(&mut scene).handle;
+    let mut d = Doc::with_font(&text, &[], false, font);
+    d.step(InputFrame::default());
+    let p = d.get("P");
+    let drawn: Vec<(String, og_ui::Rect)> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                og_ui::DrawCmd::Text { text, bounds, .. } => Some((text.clone(), *bounds)),
+                _ => None,
+            })
+            .collect();
+    assert!(drawn.len() > 2, "{drawn:?}");
+    let source = format!("{words} סוף");
+    for (t, b) in &drawn {
+        // Visual order: read right to left it is the source.
+        let logical: String = t.chars().rev().collect();
+        assert!(source.contains(logical.trim()), "{t:?} not in visual order");
+        // Beside the float (its first 20px), right of it.
+        if b.y < p.y + 20.0 - 1.0 {
+            assert!(b.x >= p.x + 120.0 - 0.5, "{t:?} at {b:?} over the float");
+        }
+    }
+    // Below the float a line takes the width the float left free.
+    assert!(
+        drawn
+            .iter()
+            .any(|(_, b)| b.y >= p.y + 20.0 && b.x < p.x + 120.0),
+        "{drawn:?}"
+    );
 }
