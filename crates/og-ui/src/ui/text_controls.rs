@@ -578,9 +578,9 @@ impl Ui {
         if mk.under {
             let selection = self
                 .docs
-                .selection_ink
+                .selection
                 .get(&self.nodes[i].key)
-                .copied()
+                .and_then(|s| s.background)
                 .unwrap_or(p.control_strong);
             span("selection", e.selection, cmds, cy, ch, selection);
             return;

@@ -395,6 +395,35 @@ impl Ui {
                         if n.selected.is_some() && field.is_none() {
                             self.select_marks(i, &line.text, first, (x, ly, lh), text_clip, cmds);
                         }
+                        // `::selection`'s ink, lines and shadows: the line's
+                        // selected glyphs drawn again, clipped to their runs.
+                        let selection = self.docs.selection.get(&n.key).filter(|s| {
+                            s.color.is_some() || s.decoration.is_some() || s.shadows.is_some()
+                        });
+                        let range = match &field {
+                            Some(e) if e.focused && !e.placeholder => Some((
+                                e.selection.0.min(e.selection.1),
+                                e.selection.0.max(e.selection.1),
+                            )),
+                            Some(_) => None,
+                            None => n.selected.map(|(a, b)| {
+                                (
+                                    a.saturating_sub(first) as usize,
+                                    b.saturating_sub(first) as usize,
+                                )
+                            }),
+                        };
+                        let runs = match (selection, range) {
+                            (Some(_), Some((a, b))) if a < b => selected_runs(
+                                m,
+                                &line.text,
+                                self.direction,
+                                size,
+                                tc.tracking(),
+                                (a, b),
+                            ),
+                            _ => Vec::new(),
+                        };
                         first += line.text.chars().count() as u32 + 1;
                         // Bidi runs in visual order, shaped runs shaped, one
                         // piece per font of a mixed text (crate::text).
@@ -437,32 +466,36 @@ impl Ui {
                             (c.linear(), TEXT_GLOW_REACH * g.size * sk)
                         });
                         let one = pieces.len() == 1;
-                        let text =
-                            |dx: f32, dy: f32, color: Srgba, glow, cmds: &mut Vec<DrawCmd>| {
-                                for pc in &pieces {
-                                    let Some(font) = pc.font else { continue };
-                                    let ox = pc.dx * size;
-                                    cmds.push(DrawCmd::Text {
-                                        x: snap(x + dx) + ox,
-                                        baseline: snap(baseline + dy),
-                                        size,
-                                        text: pc.text.clone(),
-                                        color: color.fade(alpha).linear(),
-                                        font,
-                                        bounds: Rect::new(
-                                            bounds.x + dx + ox,
-                                            bounds.y + dy,
-                                            if one { bounds.width } else { pc.width * size },
-                                            bounds.height,
-                                        ),
-                                        clip: text_clip,
-                                        tracking,
-                                        weight,
-                                        glow,
-                                        placements: pc.placements.clone(),
-                                    });
-                                }
-                            };
+                        let text = |dx: f32,
+                                    dy: f32,
+                                    color: Srgba,
+                                    glow,
+                                    text_clip: Rect,
+                                    cmds: &mut Vec<DrawCmd>| {
+                            for pc in &pieces {
+                                let Some(font) = pc.font else { continue };
+                                let ox = pc.dx * size;
+                                cmds.push(DrawCmd::Text {
+                                    x: snap(x + dx) + ox,
+                                    baseline: snap(baseline + dy),
+                                    size,
+                                    text: pc.text.clone(),
+                                    color: color.fade(alpha).linear(),
+                                    font,
+                                    bounds: Rect::new(
+                                        bounds.x + dx + ox,
+                                        bounds.y + dy,
+                                        if one { bounds.width } else { pc.width * size },
+                                        bounds.height,
+                                    ),
+                                    clip: text_clip,
+                                    tracking,
+                                    weight,
+                                    glow,
+                                    placements: pc.placements.clone(),
+                                });
+                            }
+                        };
                         // The style's drop for the role, unless the element
                         // draws its own text effects (a HUD outline and halo):
                         // those wrap every text command, so a style copy under
@@ -486,17 +519,99 @@ impl Ui {
                                             .draws
                                             .get(&parent)
                                             .is_some_and(|d| !d.fills.is_empty()))));
-                        if let Some((dx, dy, blur, sc)) = self
+                        let drop = self
                             .text_drop(role, size, m.pixel_grid())
-                            .filter(|_| !own && !plated)
-                        {
-                            let c = sc.fade(n.sampled.ink.alpha);
-                            text(dx, dy, c, None, cmds);
-                            if blur > 0.0 {
-                                text(dx + blur / 2.0, dy + blur / 2.0, c.fade(0.5), None, cmds);
+                            .filter(|_| !own && !plated);
+                        let dropped = |clip: Rect, cmds: &mut Vec<DrawCmd>| {
+                            if let Some((dx, dy, blur, sc)) = drop {
+                                let c = sc.fade(n.sampled.ink.alpha);
+                                text(dx, dy, c, None, clip, cmds);
+                                if blur > 0.0 {
+                                    let d = blur / 2.0;
+                                    text(dx + d, dy + d, c.fade(0.5), None, clip, cmds);
+                                }
+                            }
+                        };
+                        // The unselected stretches, then each selected run.
+                        let band = |x0: f32, x1: f32| {
+                            Rect::new(x0, text_clip.y, (x1 - x0).max(0.0), text_clip.height)
+                                .intersect(&text_clip)
+                        };
+                        let mut from = text_clip.x;
+                        for &(x0, x1) in &runs {
+                            let c = band(from, x + x0);
+                            dropped(c, cmds);
+                            text(0.0, 0.0, n.sampled.ink, glow, c, cmds);
+                            from = x + x1;
+                        }
+                        let rest = band(from, text_clip.right());
+                        dropped(rest, cmds);
+                        text(0.0, 0.0, n.sampled.ink, glow, rest, cmds);
+                        if let Some(sel) = selection.filter(|_| !runs.is_empty()) {
+                            let ink = sel
+                                .color
+                                .map_or(n.sampled.ink, |c| c.fade(n.sampled.ink.alpha));
+                            for &(x0, x1) in &runs {
+                                let c = band(x + x0, x + x1);
+                                let start = cmds.len();
+                                // Without its own `text-shadow`, the text's drop.
+                                if sel.shadows.is_none() {
+                                    dropped(c, cmds);
+                                }
+                                text(0.0, 0.0, ink, glow, c, cmds);
+                                if let Some(shadows) =
+                                    sel.shadows.as_ref().filter(|s| !s.is_empty())
+                                {
+                                    let shadows: Vec<og_render::UiTextShadow> = shadows
+                                        .iter()
+                                        .map(|(o, blur, color)| og_render::UiTextShadow {
+                                            offset: og_core::glam::Vec2::new(o[0] * sk, o[1] * sk),
+                                            blur: blur * sk,
+                                            color: color.fade(alpha * n.sampled.ink.alpha).linear(),
+                                        })
+                                        .collect();
+                                    for cmd in &mut cmds[start..] {
+                                        let t = std::mem::replace(cmd, DrawCmd::PopClip);
+                                        *cmd = DrawCmd::StyledText {
+                                            text: Box::new(t),
+                                            effects: Box::new(og_render::UiTextEffects {
+                                                shadows: shadows.clone(),
+                                                transform: [1.0, 0.0, 0.0, 1.0],
+                                                ..Default::default()
+                                            }),
+                                        };
+                                    }
+                                }
+                                if let Some(d) = &sel.decoration {
+                                    let th = d
+                                        .thickness
+                                        .map_or((size * 0.07).max(1.0 / dpr), |t| t * sk);
+                                    let lc = d.color.unwrap_or(ink).fade(alpha).linear();
+                                    let mut rule = |y: f32| {
+                                        crate::rich::decoration_line(
+                                            x + x0,
+                                            x1 - x0,
+                                            y,
+                                            th,
+                                            d.style,
+                                            lc,
+                                            text_clip,
+                                            dpr,
+                                            cmds,
+                                        )
+                                    };
+                                    if d.underline {
+                                        rule(baseline + size * 0.12);
+                                    }
+                                    if d.overline {
+                                        rule(baseline - size * 0.95);
+                                    }
+                                    if d.through {
+                                        rule(baseline - size * 0.3);
+                                    }
+                                }
                             }
                         }
-                        text(0.0, 0.0, n.sampled.ink, glow, cmds);
                         // Undressed flourishes frame titles at cap height.
                         // A dressing can opt smaller headings in as well.
                         if n.heading
@@ -977,4 +1092,27 @@ impl Ui {
             }
         }
     }
+}
+
+/// The x ranges, from the line's start, of the glyphs of `line` whose
+/// characters fall in `range` (line-relative), adjacent glyphs merged.
+fn selected_runs(
+    m: &crate::text::FontMetrics,
+    line: &str,
+    dir: og_i18n::Direction,
+    size: f32,
+    tracking: f32,
+    (a, b): (usize, usize),
+) -> Vec<(f32, f32)> {
+    let mut runs: Vec<(f32, f32)> = Vec::new();
+    for g in crate::edit::boxes(m, line, dir, size, tracking) {
+        if g.index < a || g.index >= b {
+            continue;
+        }
+        match runs.last_mut() {
+            Some(r) if (r.1 - g.x0).abs() < 0.01 => r.1 = g.x1,
+            _ => runs.push((g.x0, g.x1)),
+        }
+    }
+    runs
 }

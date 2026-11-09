@@ -369,7 +369,7 @@ const VARIANTS: &[(&str, &[&str])] = &[
 ];
 
 /// Comma-free items of a value, functions kept whole.
-fn split_top(v: &str) -> Vec<String> {
+pub(crate) fn split_top(v: &str) -> Vec<String> {
     let mut out = Vec::new();
     let (mut depth, mut cur) = (0, String::new());
     for c in v.chars() {

@@ -1096,7 +1096,7 @@ impl Ui {
                         ..crate::Response::default()
                     }
                 } else if r.flag("multiline") {
-                    self.docs.placeholder_ink = self.pseudo_ink(&styled, false);
+                    self.docs.placeholder_ink = self.pseudo_ink(&styled);
                     let out = self.text_area(
                         id.as_str(),
                         &mut s,
@@ -1116,7 +1116,7 @@ impl Ui {
                     self.docs.placeholder_ink = None;
                     out
                 } else {
-                    self.docs.placeholder_ink = self.pseudo_ink(&styled, false);
+                    self.docs.placeholder_ink = self.pseudo_ink(&styled);
                     let out = self.text_field(
                         id.as_str(),
                         &mut s,

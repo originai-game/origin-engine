@@ -266,21 +266,15 @@ impl Ui {
         n.lines.first().map(|l| l.text.chars().count())
     }
 
-    /// `::placeholder`'s color, or `::selection`'s background, as declared.
-    pub(super) fn pseudo_ink(&self, r: &Resolved, selection: bool) -> Option<Srgba> {
-        let g = r.generated.as_ref()?;
-        let body = if selection {
-            &g.selection
-        } else {
-            &g.placeholder
-        }
-        .as_ref()?;
+    /// `::placeholder`'s color as declared.
+    pub(super) fn pseudo_ink(&self, r: &Resolved) -> Option<Srgba> {
+        let body = r.generated.as_ref()?.placeholder.as_ref()?;
         let decls = crate::doc::css::split_decls(body).ok()?;
-        let want: &[&str] = if selection {
-            &["background-color", "background"]
-        } else {
-            &["color"]
-        };
+        self.declared_color(&decls, &["color"])
+    }
+
+    /// The last of `want` among `decls`, as a colour.
+    fn declared_color(&self, decls: &[(String, String)], want: &[&str]) -> Option<Srgba> {
         let (_, value) = decls
             .iter()
             .rev()
@@ -296,18 +290,55 @@ impl Ui {
         }
     }
 
-    /// Records a built element's `::selection` background for the draw.
+    /// Records a built element's `::selection` style for the draw.
     pub(super) fn note_selection(&mut self, key: u64, r: &Resolved) {
-        match self.pseudo_ink(r, true) {
-            Some(c) => {
-                self.docs.selection_ink.insert(key, c);
+        let style = r
+            .generated
+            .as_ref()
+            .and_then(|g| g.selection.as_ref())
+            .and_then(|body| self.selection_style(body));
+        match style {
+            Some(s) => {
+                if self.docs.selection.get(&key).is_none_or(|old| **old != s) {
+                    self.docs.selection.insert(key, Arc::new(s));
+                }
             }
             None => {
-                if !self.docs.selection_ink.is_empty() {
-                    self.docs.selection_ink.remove(&key);
+                if !self.docs.selection.is_empty() {
+                    self.docs.selection.remove(&key);
                 }
             }
         }
+    }
+
+    /// `::selection`'s background, color, decoration and shadows (CSS
+    /// Pseudo-Elements 4 §3.2); `None` when it declares none of them.
+    fn selection_style(&self, body: &str) -> Option<crate::doc::generated::Selection> {
+        let decls = crate::doc::css::split_decls(body).ok()?;
+        let color = self.declared_color(&decls, &["color"]);
+        let mut s = crate::doc::generated::Selection {
+            background: self.declared_color(&decls, &["background-color", "background"]),
+            color,
+            ..Default::default()
+        };
+        if let Some((_, v)) = decls.iter().rev().find(|(n, _)| n == "text-decoration")
+            && let Ok((mut d, c)) = crate::doc::generated::selection_decoration(v)
+        {
+            d.color = c.and_then(|c| self.declared_color(&[("color".into(), c)], &["color"]));
+            s.decoration = Some(d);
+        }
+        if let Some((_, v)) = decls.iter().rev().find(|(n, _)| n == "text-shadow") {
+            let current =
+                crate::paint::ColorRef::Literal(color.unwrap_or(self.theme().palette.ink));
+            let shadows = crate::doc::paint_css::text_shadows(v, current).unwrap_or_default();
+            s.shadows = Some(
+                shadows
+                    .iter()
+                    .filter_map(|t| Some((t.offset, t.blur, t.color.srgb(self.theme())?)))
+                    .collect(),
+            );
+        }
+        (s != Default::default()).then_some(s)
     }
 }
 

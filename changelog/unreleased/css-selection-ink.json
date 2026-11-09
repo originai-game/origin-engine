@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "::selection takes color, text-decoration and text-shadow beside background-color: selected text in labels and fields is drawn in the selection's ink, lines and shadows."
+    }
+  ]
+}

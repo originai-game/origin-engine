@@ -185,8 +185,8 @@ pub struct DocHost {
     pub(crate) uses_run: bool,
     /// The `::placeholder` color of the text control being built.
     pub(crate) placeholder_ink: Option<Srgba>,
-    /// `::selection` backgrounds by render key.
-    pub(crate) selection_ink: BTreeMap<u64, Srgba>,
+    /// `::selection` styles by render key.
+    pub(crate) selection: BTreeMap<u64, Arc<crate::doc::generated::Selection>>,
     /// What structural selectors of every defined document read.
     pub(crate) structure: crate::doc::matching::Profile,
     /// The instantiated sibling levels of the screen being built.

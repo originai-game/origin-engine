@@ -436,8 +436,12 @@ it differently, so an idle frame builds nothing. `::marker` takes `content`
 `::first-letter` styles the first letter, with the punctuation before it.
 `::first-line` styles the first line as the last layout broke it, so its
 element builds every frame. `::placeholder` takes `color`, and
-`::selection` takes `background-color`, the selection highlight. Selected
-text keeps its color. `::file-selector-button` is accepted and styles
+`::selection` takes `background-color` (the selection highlight), `color`,
+`text-decoration` and `text-shadow`. The selected glyphs of a label or a
+field are drawn again in the selection's ink, clipped to the selected runs,
+so a glyph split by the selection edge shows both inks, as in browsers.
+Lines and shadows draw only under the selected runs. Without a
+`text-shadow`, selected text keeps the text's own drop. `::file-selector-button` is accepted and styles
 nothing, because a document has no `<input type="file">`. The CSS 2
 spellings `:before`, `:after`, `:first-line` and `:first-letter` work too.
 

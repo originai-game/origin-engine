@@ -198,7 +198,8 @@ local styles and `og style new` remain available.
   `@counter-style` for your own styles. They take text properties only.
   `li::marker { content: …; color: … }` and `list-style-image: url(name)`
   restyle list markers. `::first-letter`, `::first-line`, `::placeholder
-  { color }` and `::selection { background-color }` style text.
+  { color }` and `::selection { background-color; color; text-decoration;
+  text-shadow }` style text.
 - Use `<meta name="screen" content="pause" data-layer="menu"
   data-focus="Menu/Resume" data-pause="true">` for a screen.
   Components use `name="component"`. Props use `name="prop:volume"`,

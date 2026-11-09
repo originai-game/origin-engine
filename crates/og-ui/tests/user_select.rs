@@ -16,6 +16,9 @@
 //! - the selection painted by repainting the screen (or not repainted
 //!   where it moved), or lost over a save and restore →
 //!   `a_selection_repaints_only_what_it_moved_and_survives_a_restore`
+//! - `::selection`'s color, decoration or shadow painting the whole line
+//!   (or not the selected glyphs) →
+//!   `selection_ink_lines_and_shadows_cover_only_the_selected_run`
 //! - its fill off the glyphs or over them →
 //!   `the_selection_matches_its_reference_frames` (GPU)
 
@@ -222,6 +225,74 @@ fn presses_select_words_lines_and_whole_elements_where_allowed() {
     assert_eq!(rig.ui.frame().cursor, Cursor::Text);
     rig.at(rig.point("Off", 0.5, 0.5), false, false, false);
     assert_eq!(rig.ui.frame().cursor, Cursor::Default);
+}
+
+#[test]
+fn selection_ink_lines_and_shadows_cover_only_the_selected_run() {
+    let doc = DOC.replace(
+        "</style>",
+        "p::selection { color: #ff0000; text-decoration: underline #00ff00; text-shadow: 2px 2px #0000ff; }\n</style>",
+    );
+    let mut scene = og_render::RenderScene::new();
+    let mut rig = Rig::with(&doc, desktop(), true, add_test_font(&mut scene));
+    rig.presses(rig.point("Second", 0.05, 0.5), 2);
+    assert_eq!(rig.selected(), "Second");
+    let e = rig.el("Second");
+    let red = Srgba::rgb(255, 0, 0).linear();
+    let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02);
+    let (mut red_clips, mut other_clips, mut lines, mut shadows) = (vec![], vec![], vec![], 0);
+    for item in &rig.ui.frame().items {
+        let (cmd, shadowed) = match &item.cmd {
+            DrawCmd::StyledText { text, effects } => (
+                text.as_ref(),
+                effects
+                    .shadows
+                    .iter()
+                    .any(|s| s.color[2] > 0.9 && s.offset.x > 1.0),
+            ),
+            c => (c, false),
+        };
+        match cmd {
+            DrawCmd::Text {
+                color,
+                clip,
+                bounds,
+                ..
+            } if bounds.y >= e.y - 1.0 && bounds.y < e.y + e.height => {
+                if near(*color, red) {
+                    red_clips.push(*clip);
+                    shadows += shadowed as usize;
+                } else {
+                    other_clips.push(*clip);
+                }
+            }
+            DrawCmd::Quad { rect, color, .. } if near(*color, Srgba::rgb(0, 255, 0).linear()) => {
+                lines.push(*rect)
+            }
+            _ => {}
+        }
+    }
+    // The selected word in red with its blue shadow, clipped to it.
+    assert!(!red_clips.is_empty(), "no selected ink");
+    assert!(shadows > 0, "no selection shadow");
+    for c in &red_clips {
+        assert!(
+            c.x >= e.x - 1.0 && c.right() < e.x + e.width * 0.6,
+            "{c:?} {e:?}"
+        );
+    }
+    // The rest of the line keeps its own ink, outside the selected run.
+    let run = red_clips[0];
+    assert!(
+        other_clips.iter().any(|c| c.x >= run.right() - 0.5),
+        "{other_clips:?}"
+    );
+    // One green underline under the word, not the line.
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert!(
+        (lines[0].x - run.x).abs() < 1.0 && lines[0].width < e.width * 0.6,
+        "{lines:?}"
+    );
 }
 
 #[test]

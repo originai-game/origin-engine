@@ -1115,7 +1115,7 @@ impl Ui {
 
 /// One decoration line of `style` from `x` across `width`, its top at `y`.
 #[allow(clippy::too_many_arguments)]
-fn decoration_line(
+pub(crate) fn decoration_line(
     x: f32,
     width: f32,
     y: f32,

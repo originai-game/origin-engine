@@ -57,7 +57,10 @@ pub fn allows(pseudo: &str, property: &str) -> bool {
         "marker" => text || property == "content",
         "first-letter" | "first-line" => text,
         "placeholder" => property == "color",
-        "selection" => matches!(property, "background-color" | "background"),
+        "selection" => matches!(
+            property,
+            "background-color" | "background" | "color" | "text-decoration" | "text-shadow"
+        ),
         // Its control does not exist (a file input needs a host picker), so
         // any property is accepted and styles nothing.
         _ => true,
@@ -98,6 +101,10 @@ pub fn check(name: &str, value: &str) -> Result<(), String> {
             parse_ops(property, value).map(|_| ())
         }
         _ if pseudo == Some("file-selector-button") => Ok(()),
+        "text-decoration" if pseudo == Some("selection") => selection_decoration(value).map(|_| ()),
+        "text-shadow" if pseudo == Some("selection") => {
+            super::paint_css::text_shadows(value, crate::paint::ColorRef::token("ink")).map(|_| ())
+        }
         // The text properties check as a span's do, when the element
         // resolves; colours check here.
         "color" | "background-color" | "background" => super::css::declarations(
@@ -114,6 +121,51 @@ pub fn check(name: &str, value: &str) -> Result<(), String> {
         .map(|_| ()),
         _ => Ok(()),
     }
+}
+
+/// `::selection`'s style as the draw paints it: the highlight under the
+/// selected text, and the selected glyphs' ink, decoration lines and
+/// shadows (`None`: the text's own).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Selection {
+    pub background: Option<crate::style::Srgba>,
+    pub color: Option<crate::style::Srgba>,
+    pub decoration: Option<super::text_css::Decoration>,
+    /// `(offset, blur, colour)` each; `Some(empty)` for `text-shadow: none`.
+    pub shadows: Option<Vec<([f32; 2], f32, crate::style::Srgba)>>,
+}
+
+/// `::selection`'s `text-decoration`: its lines, style and thickness, and
+/// its colour as written.
+pub fn selection_decoration(
+    value: &str,
+) -> Result<(super::text_css::Decoration, Option<String>), String> {
+    use super::text_css::DecorationStyle as S;
+    let mut d = super::text_css::Decoration::default();
+    let mut color = None;
+    for word in super::text_css::split_top(value) {
+        match word.to_ascii_lowercase().as_str() {
+            "none" => {}
+            "underline" => d.underline = true,
+            "overline" => d.overline = true,
+            "line-through" => d.through = true,
+            "solid" => d.style = S::Solid,
+            "double" => d.style = S::Double,
+            "dotted" => d.style = S::Dotted,
+            "dashed" => d.style = S::Dashed,
+            "wavy" => d.style = S::Wavy,
+            w => match w.strip_suffix("px").and_then(|n| n.parse::<f32>().ok()) {
+                Some(px) => d.thickness = Some(px),
+                None => {
+                    crate::css_color::parse_str(&word).map_err(|_| {
+                        format!("::selection text-decoration: '{word}' is not a value")
+                    })?;
+                    color = Some(word);
+                }
+            },
+        }
+    }
+    Ok((d, color))
 }
 
 /// One element's generated content as its cascade computed it.
