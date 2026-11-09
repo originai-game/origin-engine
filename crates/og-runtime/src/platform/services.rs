@@ -1,4 +1,4 @@
-//! The platform services of G3-6 (docs/platform-asks.md #18): purchases and
+//! The platform services of G3-6 (docs/platform-asks.md #19): purchases and
 //! entitlements, ads, achievements, the player, friends and invites, and
 //! share. Each is a call on og.platform's channel (a method name and its
 //! arguments; the host attaches the player's game-scoped credential and

@@ -1,4 +1,4 @@
-// og replay keeps the platform's journal (docs/platform-asks.md #18): a
+// og replay keeps the platform's journal (docs/platform-asks.md #19): a
 // purchase the recording's fake cancelled and a notice it sent are fed back
 // at their ticks on compare, which runs with no fake, so the replay hashes
 // as recorded; without the journal the default fake buys and sends nothing,

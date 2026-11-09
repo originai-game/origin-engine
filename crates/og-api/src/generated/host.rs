@@ -61,7 +61,7 @@ pub trait Lifecycle: Wire {
     fn og_platform_answer(&self, engine: u32, request: u32, answer: String) -> bool;
     /// Say what answers this engine's platform calls: JSON `{ host, capabilities }` (`player`, `local` or `none`; the methods it answers), as og.platform.info reports.
     fn og_platform_set_host(&self, engine: u32, info: String);
-    /// Unasked host input for og.platform (docs/platform-asks.md #18): JSON `{ kind, data, time? }`, kind `purchase` (a purchase settled: `{ purchase, product, quantity, state }`), `entitlements` (`{ entitlements }`, changed without a call) or `invite` (`{ invite, from, payload, time }`). Applied at the start of the next tick (og.PlatformNotice) and logged with the answers. False for a malformed notice or an unknown kind.
+    /// Unasked host input for og.platform (docs/platform-asks.md #19): JSON `{ kind, data, time? }`, kind `purchase` (a purchase settled: `{ purchase, product, quantity, state }`), `entitlements` (`{ entitlements }`, changed without a call) or `invite` (`{ invite, from, payload, time }`). Applied at the start of the next tick (og.PlatformNotice) and logged with the answers. False for a malformed notice or an unknown kind.
     fn og_platform_notify(&self, engine: u32, notice: String) -> bool;
     /// The room ops (IDL `platform` rooms, og.net's lockstep) made since the last call, oldest first, as JSON `[op]`: `{ op: "create", name, capacity }`, `{ op: "join", room, name }`, `{ op: "leave" }`, `{ op: "send", to?, channel?, data? | bytes? }` (bytes base64; a channel starting `og.` is the engine's own). The host carries each in order (docs/design.md §2.8).
     fn og_room_take(&self, engine: u32) -> String;

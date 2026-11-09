@@ -311,7 +311,7 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_platform_notify",
         &[("engine", "u32", "number"), ("notice", "String", "string")],
         "bool",
-        "Unasked host input for og.platform (docs/platform-asks.md #18): JSON `{ kind, data, time? }`, kind `purchase` (a purchase settled: `{ purchase, product, quantity, state }`), `entitlements` (`{ entitlements }`, changed without a call) or `invite` (`{ invite, from, payload, time }`). Applied at the start of the next tick (og.PlatformNotice) and logged with the answers. False for a malformed notice or an unknown kind.",
+        "Unasked host input for og.platform (docs/platform-asks.md #19): JSON `{ kind, data, time? }`, kind `purchase` (a purchase settled: `{ purchase, product, quantity, state }`), `entitlements` (`{ entitlements }`, changed without a call) or `invite` (`{ invite, from, payload, time }`). Applied at the start of the next tick (og.PlatformNotice) and logged with the answers. False for a malformed notice or an unknown kind.",
     ),
     (
         "og_room_take",

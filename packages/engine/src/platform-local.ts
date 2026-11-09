@@ -7,7 +7,7 @@
 // never sent anywhere; telemetry is kept as the last 200 events.
 //
 // Purchases, ads, achievements, the player, friends, invites and share
-// (docs/platform-asks.md #18) are the platform's. Natively, in playtests and
+// (docs/platform-asks.md #19) are the platform's. Natively, in playtests and
 // on a dev page without a Player, the local platform fakes them
 // deterministically (LocalFake): outcomes come from per-method queues, never
 // from chance, and what they leave behind (purchases, achievements) is kept
@@ -69,7 +69,7 @@ export interface PlatformHost {
 /** The store, leaderboards, telemetry, Origin Point and AI marks: what the local platform always answers. */
 export const LOCAL_CAPABILITIES = ["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "telemetry", "point", "ai.mark"] as const;
 
-/** Purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #18): the platform's, faked locally only with a LocalFake. */
+/** Purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19): the platform's, faked locally only with a LocalFake. */
 export const SERVICE_METHODS = [
   "purchase.products",
   "purchase.buy",
