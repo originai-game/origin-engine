@@ -479,6 +479,54 @@ Slot::frame[rarity=mythic] {
   -og-stroke: 1px #d6455a inside
   -og-effect: inner-shadow 0 0 12 0 #d6455a4d
 }
+# The rpg kit (packages/engine/extensions/rpg): its frames take the painted
+# cells above through the art requests; these are its states (the kit draws
+# rarity and selection itself, over the painted slot).
+Inventory::item:hover {
+  -og-effect: inner-shadow 0 0 10 0 #d9b45f33
+}
+Equipment::slot:hover {
+  -og-effect: inner-shadow 0 0 10 0 #d9b45f33
+}
+Inventory::category {
+  -og-ink: var(--ink-muted)
+}
+Journal::category {
+  -og-ink: var(--ink-muted)
+}
+Journal::quest:selected {
+  -og-fill: linear 90 #8f765033 #8f765000
+  -og-stroke: 1px var(--line-strong) inside
+}
+Journal::quest:hover {
+  -og-fill: linear 90 #8f765022 #8f765000
+}
+Dialogue::choice:hover {
+  -og-fill: linear 90 #8f765026 #8f765000
+}
+Dialogue::choice:selected {
+  -og-fill: linear 90 #8f765040 #8f765000
+  -og-stroke: 1px var(--line-strong) inside
+}
+Party::member:selected {
+  -og-fill: linear 90 #8f765033 #8f765000
+}
+Party::member.active {
+  -og-stroke: 1px var(--highlight) inside
+}
+TurnOrder::entry.current {
+  -og-stroke: 2px var(--highlight) inside
+  -og-effect: outer-glow 8 #d9b45f55
+}
+TurnOrder::entry.enemy {
+  -og-stroke: 1px #a8392a inside
+}
+TurnOrder::entry.ally {
+  -og-stroke: 1px #8f7650 inside
+}
+Map::marker:selected {
+  -og-effect: outer-glow 8 #e6c26a66
+}
 Card::frame {
   -og-slice: 161 1 96 96 20 20 20 20 authored
   -og-tone: 0.018 0.01 0.006 0.99
@@ -543,4 +591,68 @@ Button::base.primary:hover {
 Button::base.primary:active {
   -og-slice: 267 145 131 44 18 14 18 14 authored
   -og-tone: 0.1 0.006 0.002 0.99
+}
+Inventory::frame {
+  -og-slice: 1 1 158 96 24 24 24 24 authored
+  -og-tone: 0.014 0.008 0.005 0.99
+}
+Equipment::frame {
+  -og-slice: 1 1 158 96 24 24 24 24 authored
+  -og-tone: 0.014 0.008 0.005 0.99
+}
+Journal::frame {
+  -og-slice: 1 1 158 96 24 24 24 24 authored
+  -og-tone: 0.014 0.008 0.005 0.99
+}
+Dialogue::frame {
+  -og-slice: 1 1 158 96 24 24 24 24 authored
+  -og-tone: 0.014 0.008 0.005 0.99
+}
+Map::frame {
+  -og-slice: 1 1 158 96 24 24 24 24 authored
+  -og-tone: 0.014 0.008 0.005 0.99
+}
+Journal::entry {
+  -og-slice: 161 1 96 96 20 20 20 20 authored
+  -og-tone: 0.018 0.01 0.006 0.99
+}
+Equipment::portrait {
+  -og-slice: 161 1 96 96 20 20 20 20 authored
+  -og-tone: 0.018 0.01 0.006 0.99
+}
+Party::portrait {
+  -og-slice: 161 1 96 96 20 20 20 20 authored
+  -og-tone: 0.018 0.01 0.006 0.99
+}
+Dialogue::speaker {
+  -og-slice: 161 1 96 96 20 20 20 20 authored
+  -og-tone: 0.018 0.01 0.006 0.99
+}
+TurnOrder::entry {
+  -og-slice: 161 1 96 96 20 20 20 20 authored
+  -og-tone: 0.018 0.01 0.006 0.99
+}
+Inventory::item {
+  -og-slice: 259 1 64 64 16 16 16 16 authored
+  -og-tone: 0.006 0.004 0.002 0.99
+}
+Equipment::slot {
+  -og-slice: 259 1 64 64 16 16 16 16 authored
+  -og-tone: 0.006 0.004 0.002 0.99
+}
+Inventory::card {
+  -og-slice: 325 1 64 64 12 12 12 12 authored
+  -og-tone: 0.013 0.008 0.005 0.99
+}
+Map::place {
+  -og-slice: 325 1 64 64 12 12 12 12 authored
+  -og-tone: 0.013 0.008 0.005 0.99
+}
+Tracker::frame {
+  -og-slice: 144 191 80 40 14 12 14 12 authored
+  -og-tone: 0.014 0.008 0.004 0.99
+}
+TurnOrder::frame {
+  -og-slice: 144 191 80 40 14 12 14 12 authored
+  -og-tone: 0.014 0.008 0.004 0.99
 }

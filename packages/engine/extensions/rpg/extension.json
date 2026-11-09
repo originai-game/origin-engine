@@ -1,0 +1,7 @@
+{
+  "format": 1,
+  "kind": "kit",
+  "name": "rpg",
+  "version": "1.0.0",
+  "description": "RPG and open-world documents: inventory and equipment, journal and quest tracker, dialogue, party and turn order, and the world map"
+}

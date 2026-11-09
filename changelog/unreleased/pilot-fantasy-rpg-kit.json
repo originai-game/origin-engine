@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "kit:rpg",
+      "summary": "The rpg genre kit, for party RPGs and open-world games: RpgInventory, RpgEquipment, RpgJournal, RpgTracker, RpgDialogue, RpgParty, RpgTurnOrder, RpgWorldMap and RpgCompass. Each draws what the game passes as keyed collections and sends intents with row keys (choose, equip, track, travel…), from touch, keyboard and pad, with device prompts; it computes no rule. Install it with `og ui add rpg`; its parts are listed in its README and dressed by the fantasy pack."
+    }
+  ]
+}

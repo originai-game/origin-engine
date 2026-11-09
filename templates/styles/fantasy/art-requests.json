@@ -30,7 +30,12 @@
       "dress": [
         [
           "Panel.frame",
-          "Dialog.panel"
+          "Dialog.panel",
+          "Inventory.frame",
+          "Equipment.frame",
+          "Journal.frame",
+          "Dialogue.frame",
+          "Map.frame"
         ]
       ],
       "file": "art/panel.png",
@@ -40,7 +45,7 @@
         0.5
       ],
       "generated": true,
-      "hash": "d30a08e6d0f8c771",
+      "hash": "a9dbc25067721be5",
       "insets": [
         0.25,
         0.25,
@@ -72,7 +77,14 @@
       "aspect": "free",
       "cells": null,
       "dress": [
-        "Card.frame"
+        [
+          "Card.frame",
+          "Journal.entry",
+          "Equipment.portrait",
+          "Party.portrait",
+          "Dialogue.speaker",
+          "TurnOrder.entry"
+        ]
       ],
       "file": "art/card.png",
       "fit": "nineSlice",
@@ -81,7 +93,7 @@
         0.5
       ],
       "generated": true,
-      "hash": "71f7dee71b53a951",
+      "hash": "5bbe87755f96a06c",
       "insets": [
         0.208,
         0.208,
@@ -158,7 +170,11 @@
       "aspect": "free",
       "cells": null,
       "dress": [
-        "Slot.frame"
+        [
+          "Slot.frame",
+          "Inventory.item",
+          "Equipment.slot"
+        ]
       ],
       "file": "art/slot.png",
       "fit": "nineSlice",
@@ -167,7 +183,7 @@
         0.5
       ],
       "generated": true,
-      "hash": "afe17b7e19cf2261",
+      "hash": "32401861fc38d272",
       "insets": [
         0.25,
         0.25,
@@ -203,7 +219,9 @@
           "Tooltip.frame",
           "Popover.frame",
           "Menu.frame",
-          "Dropdown.list"
+          "Dropdown.list",
+          "Inventory.card",
+          "Map.place"
         ]
       ],
       "file": "art/tooltip.png",
@@ -213,7 +231,7 @@
         0.5
       ],
       "generated": true,
-      "hash": "c1972b77ad6c45b2",
+      "hash": "bf80ee058ad0f395",
       "insets": [
         0.188,
         0.25,
@@ -245,7 +263,11 @@
       "aspect": "free",
       "cells": null,
       "dress": [
-        "Hud.frame"
+        [
+          "Hud.frame",
+          "Tracker.frame",
+          "TurnOrder.frame"
+        ]
       ],
       "file": "art/hud.png",
       "fit": "nineSlice",
@@ -254,7 +276,7 @@
         0.5
       ],
       "generated": true,
-      "hash": "e837ce1d25b8d6dd",
+      "hash": "41f6992241db6666",
       "insets": [
         0.219,
         0.3,

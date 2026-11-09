@@ -1,0 +1,18 @@
+type project
+version 1
+---
+# The rpg kit's review sheet (docs/ui.md §6.2): `og ui sheet rpg` renders
+# each page at desktop and phone, 100 % and 150 %. inventory is the normal
+# page (bag and equipment); journal the stress page (journal and tracker,
+# dialogue, party and turn order, world map), dense and long-worded.
+name "RPG kit sheet"
+id "rpg-sheet"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "inventory-fantasy" "style:fantasy;page:inventory"
+  screen "journal-fantasy" "style:fantasy;page:journal"
+}

@@ -2,7 +2,7 @@
   "fantasy/card": {
     "model": "gpt-image-2.6-sunburst",
     "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA card frame, lighter than a window: a dark walnut plate with a thin brass rim and one fine engraved line inset from it; plain mitred corners with one small brass stud each. Interior calm, even and low contrast.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
-    "request": "71f7dee71b53a951",
+    "request": "5bbe87755f96a06c",
     "generation": "6f5af532-c8d8-49c9-bbc0-12dac84adb40",
     "date": "2026-11-09",
     "references": [],
@@ -11,7 +11,7 @@
   "fantasy/slot": {
     "model": "gpt-image-2.6-sunburst",
     "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nAn inventory item slot: a square recessed well, darker in the middle (#0d0a07) as if sunk into the leather, framed by a slim bevelled brass rim with small mitred corners. The well interior is plain and even, ready for an item icon.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
-    "request": "afe17b7e19cf2261",
+    "request": "32401861fc38d272",
     "generation": "954e4e7a-58fe-417a-aac1-e6d430860107",
     "date": "2026-11-09",
     "references": [],
@@ -29,7 +29,7 @@
   "fantasy/tooltip": {
     "model": "gpt-image-2.6-sunburst",
     "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA tooltip frame: a near-black plate (#15100c) with a thin brass rim and small cut corners, lighter in weight than a panel. Interior plain and even.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
-    "request": "c1972b77ad6c45b2",
+    "request": "bf80ee058ad0f395",
     "generation": "04fa844d-d60b-4733-ae01-a22fb6a20134",
     "date": "2026-11-09",
     "references": [],
@@ -38,7 +38,7 @@
   "fantasy/hud": {
     "model": "gpt-image-2.6-sunburst",
     "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA compact heads-up display plate, about 1.6 times as wide as tall: a dark smoked plate (#140f0b) with a thin brass rim and tiny cut corners; minimal and low-interference. Interior plain and even.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
-    "request": "e837ce1d25b8d6dd",
+    "request": "41f6992241db6666",
     "generation": "94401265-e016-470b-a839-34cd3e4c19f3",
     "date": "2026-11-09",
     "references": [],
@@ -65,7 +65,7 @@
   "fantasy/panel": {
     "model": "gpt-image-2.6-sunburst",
     "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA large rectangular window panel frame: a dark leather plate (#1c1611) inset in a slim burnished brass rim with a fine inner bead line; each corner carries a small filigree brass bracket with a tiny rivet. The plate interior is calm, low-contrast dark leather with no motifs, so dense text stays readable on it.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Aged burnished brass (#8f7650) with warm highlights (#d9b45f) and dark recesses, soft top-left key light, slight patina, no glow. Orthographic flat front view, centred, filling the canvas with a small even margin. Straight, uniform rim along every edge between the corners so the piece stretches as a nine-slice; ornament stays inside the four corners.\n\nUse case:\nNine-slice UI window frame for a game interface style pack.\n\nConstraints:\nTransparent background. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the object, no perspective.",
-    "request": "d30a08e6d0f8c771",
+    "request": "a9dbc25067721be5",
     "generation": "00319c24-de13-458f-b0fa-243ce3d28c51",
     "date": "2026-11-09",
     "references": [],
