@@ -1113,6 +1113,25 @@ impl Resolved {
         }
     }
 
+    /// Its CSS `text-align`, when one is set or inherited. CSS Text 3
+    /// §6.1: left and right are physical; start and end follow the
+    /// direction (the line drawer mirrors Start and End).
+    fn text_align(&self, rtl: bool) -> Option<TextAlign> {
+        let a = self
+            .text
+            .as_deref()
+            .and_then(|t| t.align.as_deref())
+            .or(self.str("textAlign"))?;
+        Some(match a {
+            "center" => TextAlign::Center,
+            "end" => TextAlign::End,
+            "left" if rtl => TextAlign::End,
+            "right" if !rtl => TextAlign::End,
+            "justify" | "justify-all" => TextAlign::Justify,
+            _ => TextAlign::Start,
+        })
+    }
+
     pub(super) fn label_desc(&self, theme: &crate::Theme, rtl: bool) -> LabelDesc {
         let step = self
             .str("step")
@@ -1122,19 +1141,7 @@ impl Resolved {
             Some(t) => Some(t.step(step.unwrap_or(theme.type_ramp.body))),
             None => step,
         };
-        // CSS Text 3 §6.1: left and right are physical; start and end follow
-        // the direction (the line drawer mirrors Start and End).
-        let align = match css
-            .and_then(|t| t.align.as_deref())
-            .or(self.str("textAlign"))
-        {
-            Some("center") => TextAlign::Center,
-            Some("end") => TextAlign::End,
-            Some("left") if rtl => TextAlign::End,
-            Some("right") if !rtl => TextAlign::End,
-            Some("justify" | "justify-all") => TextAlign::Justify,
-            _ => TextAlign::Start,
-        };
+        let align = self.text_align(rtl).unwrap_or_default();
         LabelDesc {
             step,
             color: self.color("color"),
@@ -1217,6 +1224,7 @@ impl Resolved {
             width: self.size("width"),
             autofocus: self.flag("autofocus"),
             square: self.flag("square"),
+            align: self.text_align(self.flow.rtl),
         }
     }
 }

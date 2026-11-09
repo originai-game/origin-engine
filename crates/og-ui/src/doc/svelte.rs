@@ -2837,7 +2837,8 @@ button.active { opacity: 1; }
         );
         assert!(value.props.iter().any(|p| p.name() == "stepBy"));
         let choice = doc.nodes.iter().find(|n| n.id == "Choice").unwrap();
-        assert_eq!(choice.rules.len(), 3);
+        // Its three author rules after HTML's `button { text-align: center }`.
+        assert_eq!(choice.rules.len(), 4);
         assert_eq!(
             choice.rules.last().unwrap().props[0].value,
             PropValue::Lit(Lit::Num(0.4)),

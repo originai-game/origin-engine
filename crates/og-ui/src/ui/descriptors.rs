@@ -1121,6 +1121,9 @@ pub struct ButtonDesc {
     /// A square of the control height with no side padding: an icon
     /// button, a one-glyph label (`+`). Overrides `width`.
     pub square: bool,
+    /// Where its label sits across it (CSS `text-align`); `None`: centred,
+    /// as HTML's user-agent sheet has a button.
+    pub align: Option<TextAlign>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

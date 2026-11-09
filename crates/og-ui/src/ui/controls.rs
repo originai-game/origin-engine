@@ -339,7 +339,7 @@ impl Ui {
             _ => (bg, fg),
         };
         let mut content = self.role_text(text, crate::tokens::TypeRole::Button, fg);
-        content.align = TextAlign::Center;
+        content.align = desc.align.unwrap_or(TextAlign::Center);
         let radius = crate::dress::corner_of(resolved.shape(&part, &t)).1;
         if let Some(top) = self.button_ink.last_mut().filter(|(at, _)| *at == i) {
             top.1 = fg;

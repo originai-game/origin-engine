@@ -366,7 +366,9 @@ tip). `contextmenu="id"` on an element opens popover `id` at the point of
 a secondary press or long press on it, that zero-size point its anchor:
 its corner sits at the point and it draws no arrow, as a desktop's and a
 game's context menus do. A `<menu>`'s buttons are menu items, each as
-wide as the menu. A control's
+wide as the menu with its label at the start. A `<button>` places its
+label by its `text-align`, centred by HTML's user-agent sheet (`button {
+text-align: center }`), so it does not inherit its parent's. A control's
 `popovertarget="id"` opens, closes or toggles it on a press
 (`popovertargetaction="show|hide|toggle"`, default toggle) and reports
 `expanded`. An `auto` popover closes on a press outside it or Back and

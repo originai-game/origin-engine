@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI document <button> text-align",
+      "summary": "A document <button> places its label by its CSS text-align instead of always centring it. HTML's user-agent rule `button { text-align: center }` keeps it centred by default, so it does not inherit its parent's alignment."
+    },
+    {
+      "member": "UI document <menu>",
+      "summary": "A <menu>'s buttons (its menu items, a context menu's rows) put their labels at the start, as a desktop's menus do."
+    }
+  ]
+}

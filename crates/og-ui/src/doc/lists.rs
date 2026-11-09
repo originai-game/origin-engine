@@ -17,9 +17,11 @@ use serde_json::Value;
 /// The user-agent rules HTML's stylesheet gives these elements (and the
 /// headings' type steps), cascaded before every author rule: list
 /// indents and markers, and the block margins (`margin: 0` resets them).
-/// A `<menu>` is a menu (its buttons are menu items): each item spans the
-/// menu, so its items are as wide as each other, as a desktop's and a
-/// game's menus are.
+/// A `<button>` centres its label, as HTML's sheet has it, so it does not
+/// inherit its parent's `text-align`. A `<menu>` is a menu (its buttons
+/// are menu items): each item spans the menu, so its items are as wide as
+/// each other, with their labels at the start, as a desktop's and a game's
+/// menus are.
 pub(super) const UA_CSS: &str = "
 ul, ol { padding: 0 0 0 40px; }
 ul { --og-list-style-type: disc; }
@@ -39,7 +41,8 @@ h4 { font: var(--text-body); margin-block: 1.33em; }
 h5 { font: var(--text-sm); margin-block: 1.67em; }
 h6 { font: var(--text-xs); margin-block: 2.33em; }
 small { font: var(--text-sm); }
-menu > button { width: stretch; }
+button { text-align: center; }
+menu > button { width: stretch; text-align: start; }
 table { display: table; }
 caption { display: table-caption; text-align: center; }
 thead { display: table-header-group; }

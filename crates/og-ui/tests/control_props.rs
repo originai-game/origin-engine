@@ -28,6 +28,9 @@
 //!   `an_image_shows_its_object_view_box`
 //! - `data-og-instant` not settling the first entrance, or settling a
 //!   later one → `data_og_instant_settles_only_the_first_entrance`
+//! - a button's `text-align` ignored (its label always centred), a button
+//!   inheriting its parent's `text-align` (HTML's sheet centres it), or a
+//!   `<menu>` item's label centred → `a_button_label_takes_text_align`
 
 use crate::html_text::{Doc, both};
 
@@ -1634,4 +1637,68 @@ fn details_name_is_an_exclusive_accordion() {
     d.click_at(Vec2::new(s.x + s.width / 2.0, s.y + s.height / 2.0));
     assert!(d.el("RulesBody").is_some() && d.el("ScoreBody").is_none());
     assert_eq!(d.read("rules"), json!(true));
+}
+
+/// Where each button's label starts across it, from its drawn text.
+fn label_x(d: &Doc, id: &str, text: &str) -> f32 {
+    let e = d.get(id);
+    let x =
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|it| match &it.cmd {
+                DrawCmd::Text { x, text: t, .. } if t == text => Some(*x),
+                DrawCmd::StyledText { text: inner, .. } => match &**inner {
+                    DrawCmd::Text { x, text: t, .. } if t == text => Some(*x),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("no text {text}"));
+    x - e.x
+}
+
+#[test]
+fn a_button_label_takes_text_align() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <button id="Mid">Mid</button>
+  <button id="Start">Start</button>
+  <div id="Right"><button id="Kept">Kept</button></div>
+  <menu id="Menu"><button id="Copy">Copy</button><button id="PasteAll">Paste all</button></menu>
+</div>
+<style>
+#Page { width: 400px; }
+button { width: 200px; }
+#Start { text-align: start; }
+#Right { text-align: right; }
+#Menu { width: 300px; padding: 0; margin: 0; }
+#Menu > button { width: stretch; }
+</style>"#;
+    for mounted in [false, true] {
+        let mut scene = og_render::RenderScene::new();
+        let d = &Doc::with_font(
+            text,
+            &[],
+            mounted,
+            crate::support::add_test_font(&mut scene),
+        );
+        let mid = label_x(d, "Mid", "Mid");
+        let start = label_x(d, "Start", "Start");
+        assert!(mid > 60.0, "centred by default: {mid}");
+        assert!(start < 30.0, "text-align: start: {start}");
+        assert!(
+            label_x(d, "Kept", "Kept") > 60.0,
+            "a button does not inherit its parent's text-align"
+        );
+        let (copy, paste) = (
+            label_x(d, "Copy", "Copy"),
+            label_x(d, "PasteAll", "Paste all"),
+        );
+        assert_eq!(d.get("Copy").width, 300.0);
+        assert!(
+            copy < 30.0 && copy == paste,
+            "menu items start their labels: {copy} {paste}"
+        );
+    }
 }
