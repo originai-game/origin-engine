@@ -663,6 +663,7 @@ impl Parser {
             links: Vec::new(),
             custom: Vec::new(),
             uses: Vec::new(),
+            pseudo: Vec::new(),
         });
         index
     }

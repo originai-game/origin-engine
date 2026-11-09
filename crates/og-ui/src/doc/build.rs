@@ -72,6 +72,9 @@ struct Resolved {
     /// Its transitions and animations of computed values, for the motion
     /// state ([`animate`]).
     style: Option<Arc<animate::StyleCommit>>,
+    /// Its box pseudo-elements ([`DocNode::pseudo`]), each resolved under
+    /// it: the name, its node and its values.
+    pseudo: Vec<(&'static str, usize, Arc<Resolved>)>,
 }
 
 #[derive(Clone)]
@@ -984,7 +987,44 @@ impl Ui {
         }
         if recording {
             let cached = b.recording.borrow_mut().take().unwrap_or_default();
-            r.replay = Some(Arc::new(containers::Replay { cached, decisions }));
+            r.replay = Some(Arc::new(containers::Replay {
+                cached,
+                decisions: decisions.clone(),
+            }));
+        }
+        // Its box pseudo-elements inherit from it and match as it does
+        // (their selectors' subject is this element); what they read
+        // beyond it is read through it.
+        for &(which, at) in &n.pseudo {
+            let inherited = r.cascade.computed.clone();
+            let p = self.resolve(
+                b,
+                &b.doc.nodes[at],
+                &format!("{path}/::{which}"),
+                &mut Built::default(),
+                &inherited,
+                structure,
+            );
+            let c = &mut r.cascade;
+            c.inherited_reads.extend(
+                p.cascade
+                    .inherited_reads
+                    .iter()
+                    .filter(|name| !c.local_names.contains(*name))
+                    .cloned(),
+            );
+            c.reads.extend(p.cascade.reads.iter().cloned());
+            c.viewport_reads.width |= p.cascade.viewport_reads.width;
+            c.viewport_reads.height |= p.cascade.viewport_reads.height;
+            c.container_reads.extend(&p.cascade.container_reads);
+            c.scroll_reads.extend(&p.cascade.scroll_reads);
+            c.diagnostics.extend(
+                p.cascade
+                    .diagnostics
+                    .iter()
+                    .map(|d| format!("::{which}: {d}")),
+            );
+            r.pseudo.push((which, at, Arc::new(p)));
         }
         r
     }

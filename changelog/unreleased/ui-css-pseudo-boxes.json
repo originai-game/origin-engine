@@ -1,0 +1,24 @@
+{
+  "added": [
+    {
+      "member": "UI documents: ::before and ::after boxes",
+      "summary": "On a box element, ::before and ::after are real boxes: display (inline by default), sizes, padding, borders, background, position, transforms, transitions and every other property a <div> takes apply to them, with the generated text inside. They cascade under their element's states, attributes and structural selectors, and never count as its children for :nth-child, :empty or sibling combinators. An idle frame still builds nothing. On a text element they stay styled runs of its text."
+    },
+    {
+      "member": "UI documents: ::backdrop and ::picker(select) take every box property",
+      "summary": "dialog::backdrop styles a modal's scrim and select::picker(select) its open list with the full box property set: background, opacity, backdrop-filter, filter, padding, borders, radius, box-shadow and the rest. ::picker(select)'s max-height bounds the rows before they scroll."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "UI documents: -og-backdrop and -og-picker-max-height",
+      "change": "The two properties that dialog::backdrop { background } and select::picker(select) { max-height } lowered to are gone, with the dialog's `backdrop` and the select's `pickerMaxHeight` document props. The pseudo-elements are now boxes of their own.",
+      "fix": "Write `dialog::backdrop { background: … }` and `select::picker(select) { max-height: … }`.",
+      "find": [
+        "-og-backdrop",
+        "-og-picker-max-height",
+        "pickerMaxHeight"
+      ]
+    }
+  ]
+}

@@ -346,7 +346,7 @@ impl Ui {
             modal: r.flag("modal"),
             name: r.str("name").unwrap_or_default().to_string(),
             width: r.size("width"),
-            backdrop: r.color("backdrop"),
+            backdrop: None,
             closedby: match r.str("closedby") {
                 Some("any") => crate::widgets::ClosedBy::Any,
                 Some("closerequest") => crate::widgets::ClosedBy::CloseRequest,
@@ -375,6 +375,13 @@ impl Ui {
                 "dialog" => {
                     let open = open_now(self);
                     let out = self.open_dialog(id.as_str(), open, &dialog);
+                    // `::backdrop` styles the scrim, the panel's parent.
+                    if dialog.modal
+                        && let Some(backdrop) = self.pseudo_node(b, &r, &path, "backdrop")
+                    {
+                        let scrim = self.nodes[self.parent()].parent;
+                        self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
+                    }
                     shows_content = out.visible;
                     if out.dismissed {
                         opened = Some(false);
@@ -532,9 +539,9 @@ impl Ui {
             self.note_built(built);
             if shows_content {
                 let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-                self.generated_box(b, n, &r, true);
+                self.generated_box(b, n, &r, &path, true);
                 build_children(self, b, None);
-                self.generated_box(b, n, &r, false);
+                self.generated_box(b, n, &r, &path, false);
                 b.inherited = inherited;
             }
             match kind {
@@ -781,6 +788,22 @@ impl Ui {
                     })
                     .collect();
                 let base = crate::widgets::DropdownDesc::default();
+                // `::picker(select)` styles the open list; its `max-height`
+                // bounds the rows before they scroll.
+                let picker = self
+                    .pseudo_node(b, &styled, &path, "picker")
+                    .map(|(at, mut p)| {
+                        let max = p.values.size("maxHeight");
+                        if let Some((spec, _)) = schema::prop("maxHeight") {
+                            p.values.vals.retain(|(s, _)| *s != spec);
+                        }
+                        (max, (at, p))
+                    });
+                let max_height = match picker.as_ref().and_then(|(max, _)| *max) {
+                    Some(Size::Fixed(px)) => px,
+                    _ => base.max_height,
+                };
+                let build: &Build<'_> = b;
                 let out = self.dropdown_marked(
                     id.as_str(),
                     &crate::widgets::DropdownDesc {
@@ -789,10 +812,15 @@ impl Ui {
                         placeholder: r.str("placeholder").unwrap_or_default().to_string(),
                         disabled: r.flag("disabled"),
                         width: r.size("width"),
-                        max_height: styled.num("pickerMaxHeight").unwrap_or(base.max_height),
+                        max_height,
                         ..base
                     },
                     r.flag("invalid"),
+                    &mut |ui, list| {
+                        if let Some((_, p)) = &picker {
+                            ui.style_pseudo_box(build, list, "picker", p);
+                        }
+                    },
                 );
                 resp = crate::Response {
                     changed: out.changed,

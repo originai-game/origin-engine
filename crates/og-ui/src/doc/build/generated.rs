@@ -67,9 +67,17 @@ impl Ui {
         Some(text)
     }
 
-    /// A box's `::before` or `::after`: its generated text as a label
-    /// child styled by the pseudo-element's text properties.
-    pub(super) fn generated_box(&mut self, b: &Build<'_>, n: &DocNode, r: &Resolved, before: bool) {
+    /// A box's `::before` or `::after`: its generated text, styled by the
+    /// pseudo-element's text properties, in the pseudo-element's own box
+    /// when it has one ([`crate::doc::DocNode::pseudo`]).
+    pub(super) fn generated_box(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        path: &str,
+        before: bool,
+    ) {
         let Some(g) = r.generated.clone() else {
             return;
         };
@@ -80,19 +88,75 @@ impl Ui {
             return;
         };
         let style = self.pseudo_style(&which.style, r);
-        let span = crate::TextSpan {
-            name: "generated".into(),
-            position: 0,
-            length: text.chars().count() as u32,
-            properties: Default::default(),
+        let name = if before { "::before" } else { "::after" };
+        let run = move |ui: &mut Ui| {
+            let span = crate::TextSpan {
+                name: "generated".into(),
+                position: 0,
+                length: text.chars().count() as u32,
+                properties: Default::default(),
+            };
+            ui.rich_text_spans(
+                name,
+                &text,
+                std::slice::from_ref(&span),
+                crate::RichTextDesc::default(),
+                |_| style.clone(),
+            );
         };
-        self.rich_text_spans(
-            if before { "::before" } else { "::after" },
-            &text,
-            std::slice::from_ref(&span),
-            crate::RichTextDesc::default(),
-            |_| style.clone(),
-        );
+        match self.pseudo_node(b, r, path, &name[2..]) {
+            Some((at, node)) => {
+                self.build_resolved_node(b, at, node, |ui, _, _| run(ui));
+            }
+            None => run(self),
+        }
+    }
+
+    /// Element `r`'s box pseudo-element `which`, resolved, as the build
+    /// takes it, with its node.
+    pub(super) fn pseudo_node(
+        &self,
+        b: &Build<'_>,
+        r: &Resolved,
+        path: &str,
+        which: &str,
+    ) -> Option<(usize, ResolvedNode)> {
+        let (_, at, values) = r.pseudo.iter().find(|(w, ..)| *w == which)?;
+        let path = format!("{path}/::{which}");
+        Some((
+            *at,
+            ResolvedNode {
+                id: format!("::{which}"),
+                key: crate::id::key_of_path(&path),
+                values: (**values).clone(),
+                probe: Built {
+                    path: path.clone(),
+                    doc: b.doc.name.clone(),
+                    node: *at,
+                    line: b.doc.nodes[*at].line,
+                    mount: b.mount.clone(),
+                    ..Built::default()
+                },
+                path,
+            },
+        ))
+    }
+
+    /// Styles node `i`, a box a control draws itself (a modal's scrim, a
+    /// select's open list), as its element's pseudo-element `node`: every
+    /// box property of the pseudo-element's rules over the control's own.
+    pub(super) fn style_pseudo_box(
+        &mut self,
+        b: &Build<'_>,
+        i: usize,
+        kind: &'static str,
+        (at, node): &(usize, ResolvedNode),
+    ) {
+        let n = &b.doc.nodes[*at];
+        let mut built = node.probe.clone();
+        let props = self.props_of(b, n, node.key, &node.values, &mut built);
+        let fields = fields::RenderFields::capture(self, i, kind, Default::default(), props, None);
+        self.apply_document_fields(n, &node.values, &fields);
     }
 
     /// A pseudo-element's text style from its declarations (`name:
@@ -373,6 +437,7 @@ mod tests {
   <h2 id="C">Rules</h2>
   <ol id="List"><li id="One">a</li><li id="Two">b</li></ol>
   <column id="Box"/>
+  <div id="Chip"><text id="Name">Ann</text></div>
   <text id="Quote">hi</text>
 </column>
 <style>
@@ -380,6 +445,8 @@ mod tests {
 h2:not(.skip)::before { counter-increment: sec; content: counter(sec, upper-roman) ". "; color: #ff0000; }
 li::marker { content: "(" counter(list-item) ") "; }
 #Box::after { content: "end"; }
+#Chip { display: flex; }
+#Chip::before { content: counter(sec); display: block; width: 30px; padding: 4px; background: #00ff00; }
 #Quote::before { content: open-quote; }
 #Quote::after { content: close-quote attr(id); }
 </style>"#,
@@ -422,6 +489,24 @@ li::marker { content: "(" counter(list-item) ") "; }
                 "{expected:?} in {texts:?}"
             );
         }
+        // A box pseudo-element is a box: its size, padding and fill, its
+        // text inside, and no sibling of the element's children.
+        let before = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("Chip/::before"))
+            .expect("the ::before box");
+        let elements = ui.probe_elements();
+        let name = elements.iter().find(|e| e.id == "Name").unwrap();
+        let text = elements
+            .iter()
+            .find(|e| e.path.ends_with("Chip/::before/::before"))
+            .expect("its text");
+        assert_eq!(
+            (before.width, name.x - before.x, text.x - before.x),
+            (30.0, 30.0, 4.0)
+        );
+        assert!(texts.iter().any(|t| t == "2"), "its text counts: {texts:?}");
         // The first idle frame rebuilds as any document's does; then the
         // held subtrees replay their counter events and nothing builds.
         frame(&mut ui);

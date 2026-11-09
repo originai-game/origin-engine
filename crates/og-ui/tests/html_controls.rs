@@ -21,9 +21,9 @@
 //! - a control dressed under another part name than docs/ui.md §2.4
 //!   lists, so a pack's `Component::part` rule never reaches it →
 //!   `each_control_is_dressed_by_its_named_parts`
-//! - `dialog::backdrop { background }` not reaching the scrim (or
-//!   reaching an in-place dialog's page), or a `::backdrop` rule taking a
-//!   property it cannot honour → `the_backdrop_pseudo_element_fills_the_scrim`
+//! - `dialog::backdrop`'s background or box properties not reaching the
+//!   scrim (or reaching an in-place dialog's page)
+//!   → `the_backdrop_pseudo_element_fills_the_scrim`
 //! - `<option>` or `<summary>` accepted out of place, or a select's
 //!   `{#each}` accepted though it cannot list → `misplaced_parts_are_refused`
 
@@ -615,7 +615,7 @@ fn the_backdrop_pseudo_element_fills_the_scrim() {
   <dialog id="Ask" modal bind:open={$ask} aria-label="Quit?"><button id="Yes">Yes</button></dialog>
 </column>
 <style>
-dialog::backdrop { background: #336699; }
+dialog::backdrop { background: #336699; padding-top: 200px; }
 dialog { width: 200px; }
 </style>"#;
     let mut ui = ui_with_font(test_font_metrics());
@@ -647,17 +647,22 @@ dialog { width: 200px; }
         200.0,
         "the dialog's own rule still applies"
     );
-    for (bad, why) in [
-        ("dialog::backdrop { opacity: 0.5; }", "takes background"),
-        ("dialog, dialog::backdrop { background: red; }", "apart"),
-    ] {
-        let doc = format!(
-            "<meta name=\"component\" content=\"form\">\n<column><dialog modal></dialog></column>\n<style>{bad}</style>"
-        );
-        let err = UiDocument::parse("ui/form.svelte", &doc)
-            .err()
-            .unwrap_or_else(|| panic!("{bad} parses"))
-            .join("\n");
-        assert!(err.contains(why), "{bad}: {err}");
-    }
+    // A box property of `::backdrop` lays out the scrim: its top padding
+    // moves the panel it centres down by half.
+    let panel = rig.el("Ask/Panel").unwrap();
+    let middle = rig.ui.viewport().height / 2.0;
+    assert!(
+        (panel.y + panel.height / 2.0 - middle - 100.0).abs() < 20.0,
+        "the scrim's padding-top centres the panel below the middle: {} vs {middle}",
+        panel.y + panel.height / 2.0
+    );
+    let bad = "dialog, dialog::backdrop { background: red; }";
+    let doc = format!(
+        "<meta name=\"component\" content=\"form\">\n<column><dialog modal></dialog></column>\n<style>{bad}</style>"
+    );
+    let err = UiDocument::parse("ui/form.svelte", &doc)
+        .err()
+        .unwrap_or_else(|| panic!("{bad} parses"))
+        .join("\n");
+    assert!(err.contains("apart"), "{bad}: {err}");
 }

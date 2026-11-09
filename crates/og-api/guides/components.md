@@ -651,7 +651,6 @@ Its own props, beside every element's:
 | `values` | `names` | A name per tab (a screen's mode) that `current` holds instead of `selected`'s index. |
 | `current` | `name` | The selected item's name from `values` (a `<select>`'s `value`); on tabs it takes over from `selected` when `values` is set. Two-way only with an explicit bind: attribute. |
 | `groups` | `names` | An `<option>`'s `<optgroup>` label, one per option (empty: none); options of one group follow each other. |
-| `-og-picker-max-height:` | `<n>px` | How tall its open list grows, CSS px, before it scrolls (`select::picker(select) { max-height }`). |
 | `disabled-items` | `names` | The `<option disabled>`s (and those of an `<optgroup disabled>`), by their zero-based index. |
 | `placeholder` | `text` | Shown while it is empty. |
 | `invalid` | `bool` | Its value is wrong (`aria-invalid`): the danger frame. |
@@ -666,7 +665,6 @@ Its own props, beside every element's:
 |---|---|---|
 | `-og-spotlight:` | `<name>` | Open, it dims the page but for the element of this id, its content a callout against it (`-og-spotlight`). |
 | `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
-| `-og-backdrop:` | `var(--<role>) \| #rrggbb[aa]` | A modal's scrim fill (`dialog::backdrop { background: … }`); else the style's `scrim`. |
 | `closedby` | `any \| closerequest \| none` | What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place. |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `modal` | `bool` | Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`). |

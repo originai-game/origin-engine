@@ -188,7 +188,7 @@ probe) are unchanged. The mapping:
 | `<div>`, `<section>`, `<header>`, `<footer>`, `<nav>`, `<main>`, `<aside>`, `<article>` | box | layout from CSS `display` (below); landmarks take their roles: `navigation`, `main`, `banner`, `contentinfo`, `complementary`, `article`, and `region` for a named `<section>` |
 | `<ul>`, `<ol>`, `<li>` | box (list, listitem) | not virtualised (that is `<list>`); markers from `list-style` (below); `<ol start reversed>`, `<li value>` |
 | `<button>`, `<progress>` | button, progress | already HTML; a `<button>` holding elements (`<icon/>`, text, `<badge>`) lays them out as a centred row inside its frame, states and press, and its text and icons without a colour of their own take its ink |
-| `<select>` with `<option>` and `<optgroup>` | select | `value`, `placeholder`, `disabled`, `aria-invalid`; options take `value`, `label`, `i18n`, `disabled`, `selected`; `select::picker(select) { max-height }` bounds the open list |
+| `<select>` with `<option>` and `<optgroup>` | select | `value`, `placeholder`, `disabled`, `aria-invalid`; options take `value`, `label`, `i18n`, `disabled`, `selected`; `select::picker(select)` styles the open list as a box and its `max-height` bounds the rows |
 | `<dialog>` | dialog | `open`, `modal`, `closedby`, `aria-label`; CSS `appearance: none` drops its frame |
 | `<details>` with a first `<summary>` | details | `open`, `disabled` |
 | `<meter>` | meter | `value`, `min`, `max`, `low`, `high`, `optimum` |
@@ -418,9 +418,19 @@ their own `counter-*` properties, `display: none` and the text properties
 a `::part` run takes (`color`, `font`, `font-family`, `font-size`,
 `font-weight`, `font-style`, `line-height`, `letter-spacing`,
 `text-decoration`, `-og-text-motion`). On a text element they join its text
-as styled runs. On any other element they are its first and last child, a
-text run. Box properties on them (background, padding, borders, sizes) fail
-at cook. `counter-reset`, `counter-increment`, `counter-set` and `quotes`
+as styled runs, and their other properties style nothing. On any other
+element each is a real box, its first or last child: every property a
+`<div>` takes (`display`, which is `inline` by default, sizes, padding,
+borders, background, position, transforms, transitions…) applies through
+the same pipeline, and the generated text is a run inside it. A
+pseudo-element is a synthetic node of its element, made at cook
+(`DocNode::pseudo`): its rules are its selector's declarations under the
+element's condition, matched against the element (states, attributes,
+`:nth-child`), so it is never one of the element's children to
+`:nth-child`, `:empty` or `+`. It resolves with its element, inherits from
+it and is retained with it: it adds no binding and no reconciled element
+of its own. The box exists only while `content` makes one (not `normal`,
+`none` or `display: none`). `counter-reset`, `counter-increment`, `counter-set` and `quotes`
 work on every element. Counters follow CSS scoping: an instance covers its
 element, the element's descendants and its following siblings. `list-item`
 is an item's number. Counter styles are the predefined ones (`decimal`,
@@ -1584,9 +1594,12 @@ to its first control and trapped, Escape, pad B or a press on the scrim
 closing it, and the focus returned to its opener. Like HTML's UA style
 (top layer, `position: fixed`, `margin: auto`), the scrim covers the
 viewport and the panel (`<id>/Panel`) is centred in it, whatever the page
-under it. `dialog::backdrop { background: … }` fills the scrim (default
-the style's `scrim`); a `::backdrop` rule takes only `background`, and
-cascades with states, variables and media as the dialog's own rules do.
+under it. `dialog::backdrop` is the scrim's box, the same synthetic node
+as a `::before`'s: its `background` fills it (default the style's
+`scrim`), and `opacity`, `backdrop-filter`, `filter`, padding (which moves
+where the panel centres), borders, radius, `box-shadow`, transitions and
+the rest of a box's properties draw it. It cascades with states,
+variables and media as the dialog's own rules do.
 To a style pack the scrim is the part `Dialog.backdrop`. Without `modal` it is `show()`: a panel in place
 (`Dialog.panel[open]`); the focus returns to what held it when it opened.
 Closing writes `open` false back. `modal` is written as a literal, never
@@ -1605,9 +1618,11 @@ so the document's CSS draws it.
 A `<small>` next to a select or an input with `aria-invalid` is its
 message: `aria-invalid` puts the danger frame on the control
 (`Dropdown.trigger[invalid]`, the field's), and the text is the
-document's. `select::picker(select) { max-height: 240px }` (CSS's
-customizable-select pseudo-element) bounds the open list, which then
-scrolls; it takes only `max-height`.
+document's. `select::picker(select)` (CSS's customizable-select
+pseudo-element) is the open list's box: background, padding, borders,
+radius, shadows, `backdrop-filter`, opacity and the rest of a box's
+properties style it over the `Dropdown.list` part, and `max-height: 240px`
+bounds its rows, which then scroll.
 
 `data-og-instant` on any element settles its first entrance: its
 `-og-enter` lands at once, as the screen a game opens on behind the web's

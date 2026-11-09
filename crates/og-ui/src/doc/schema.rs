@@ -1526,12 +1526,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "An `<option>`'s `<optgroup>` label, one per option (empty: none); options of one group follow each other."
     ),
     p!(
-        "pickerMaxHeight",
-        Ty::Num,
-        ["select"],
-        "How tall its open list grows, CSS px, before it scrolls (`select::picker(select) { max-height }`)."
-    ),
-    p!(
         "disabledItems",
         Ty::Names,
         ["select"],
@@ -1543,12 +1537,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         ["dialog", "details"],
         two_way,
         "Whether it is open (HTML `open`; closing writes false back)."
-    ),
-    p!(
-        "backdrop",
-        Ty::Paint,
-        ["dialog"],
-        "A modal's scrim fill (`dialog::backdrop { background: … }`); else the style's `scrim`."
     ),
     p!(
         "closedby",

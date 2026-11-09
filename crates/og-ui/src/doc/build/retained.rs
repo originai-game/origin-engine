@@ -616,9 +616,16 @@ impl RetainedHost {
             )?;
         }
         self.sync_facts(ui, &element, env)?;
+        // Its box pseudo-elements' rules match against it: their
+        // conditions are its inputs.
         let expressions = node
             .rules
             .iter()
+            .chain(
+                node.pseudo
+                    .iter()
+                    .flat_map(|&(_, at)| doc.nodes[at].rules.iter()),
+            )
             .filter_map(|rule| rule.condition.as_ref())
             .chain(
                 node.span_rules

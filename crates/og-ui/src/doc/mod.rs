@@ -514,6 +514,10 @@ pub struct DocNode {
     /// Its `use:name={params}` actions, in order: the game's handler of
     /// each hears it made, its params change and it go (docs/ui.md §2).
     pub uses: Vec<(String, Option<Expr>)>,
+    /// Its box pseudo-elements (`before`, `after`, `backdrop`, `picker`)
+    /// and the synthetic node of each: a `box` outside [`Self::children`]
+    /// whose rules are the pseudo-element's, matched against this element.
+    pub pseudo: Vec<(&'static str, usize)>,
 }
 
 /// One run of a text element's inline content.

@@ -166,7 +166,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("scrollbarWidth", "scrollbar-width"),
     ("frame", "-og-frame"),
     ("rive", "-og-frame"),
-    ("backdrop", "-og-backdrop"),
     ("display", "display"),
     ("markerType", "-og-marker-type"),
     ("markerPosition", "-og-marker-position"),
@@ -253,7 +252,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("appearance", "appearance"),
     ("fillOrigin", "-og-fill-origin"),
     ("minGap", "-og-min-gap"),
-    ("pickerMaxHeight", "-og-picker-max-height"),
 ];
 
 /// Reflected fields affected even when a winning declaration is invalid.
@@ -372,13 +370,10 @@ fn conv(prop: &str) -> Conv {
         | "cornerBottomRightShape"
         | "cornerBottomLeftShape" => Conv::Raw,
         "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
-        "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop"
-        | "pickerMaxHeight" => Conv::Len,
+        "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop" => Conv::Len,
         "aspect" | "opacity" | "z" | "scale" | "maxLines" | "fillOrigin" | "minGap" => Conv::Num,
         "rotate" => Conv::Angle,
-        "background" | "backdrop" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => {
-            Conv::Paint
-        }
+        "background" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
         | "textAlign" | "verticalAlign" | "captionSide" | "fit" | "display" | "markerType"
         | "markerPosition" | "userSelect" | "appearance" | "labelDirection" | "stepper"
@@ -1748,7 +1743,6 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             Ok(out)
         }
         "background" | "background-color" => Ok(vec![e("background", paint_vals(&t)?)]),
-        "-og-backdrop" if !state => Ok(vec![e("backdrop", paint_vals(&t)?)]),
         "color" => Ok(vec![e(
             if state { "ink" } else { "color" },
             paint_vals(&t)?,

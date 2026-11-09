@@ -22,8 +22,8 @@
 //!   default (HTML's `none`), `appearance: none` keeping the frame →
 //!   `dialogs_close_as_closedby_says`
 //! - `aria-invalid` not marking a select's trigger, `::picker(select)`'s
-//!   max-height not bounding the open list, or the pseudo-element taking a
-//!   property it cannot honour → `a_select_takes_aria_invalid_and_its_picker_height`
+//!   max-height not bounding the open list, or its box properties not
+//!   styling it → `a_select_takes_aria_invalid_and_its_picker_height`
 //! - `object-view-box: inset()` cropping the wrong sides of the texture →
 //!   `an_image_shows_its_object_view_box`
 //! - `data-og-instant` not settling the first entrance, or settling a
@@ -497,7 +497,7 @@ fn a_select_takes_aria_invalid_and_its_picker_height() {
 <style>
 #Page {{ display: flex; flex-direction: column; gap: 8px; padding: 20px; }}
 select {{ width: 260px; }}
-select::picker(select) {{ max-height: 150px; }}
+select::picker(select) {{ max-height: 150px; padding: 9px; }}
 </style>"#
     );
     both(&text, &[("bad", json!(true)), ("v", Value::Null)], |d| {
@@ -528,6 +528,14 @@ select::picker(select) {{ max-height: 150px; }}
             "the picker's max-height bounds it: {}",
             list.height
         );
+        // Its other box properties style the open list as a box's do.
+        let trigger = d.el("Bad/Trigger").expect("the trigger");
+        assert!(
+            (list.x - trigger.x - 9.0).abs() < 0.5,
+            "the picker's padding insets its rows: {} vs {}",
+            list.x,
+            trigger.x
+        );
         d.set("bad", json!(false));
         let parts: Vec<String> =
             d.ui.parts()
@@ -542,10 +550,6 @@ select::picker(select) {{ max-height: 150px; }}
             "unmarked once valid: {parts:?}"
         );
     });
-    let colour = refused(
-        r#"<meta name="component" content="t"><div><select><option>a</option></select></div><style>select::picker(select) { color: red; }</style>"#,
-    );
-    assert!(colour.contains("takes max-height"), "{colour}");
 }
 
 #[test]

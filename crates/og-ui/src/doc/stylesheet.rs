@@ -19,6 +19,11 @@ struct Rule {
     layer: Option<String>,
     /// Inside `@starting-style`.
     starting: bool,
+    /// The box pseudo-element it selects ([`BOXES`]): `body` is what its
+    /// originating element takes, `boxed` what the pseudo-element's own
+    /// node ([`DocNode::pseudo`]) does.
+    pseudo: Option<&'static str>,
+    boxed: String,
 }
 
 /// Where a rule is read: the conditions, layer, scope and nesting parent
@@ -154,7 +159,6 @@ pub(super) fn apply(
     super::view_transition::apply(doc, &transitions)?;
     rules.retain(|r| !super::view_transition::selects(&r.selector));
     for rule in &mut rules {
-        backdrop(rule)?;
         pseudo_element(rule)?;
     }
     let mut parsed = Vec::new();
@@ -204,10 +208,18 @@ pub(super) fn apply(
             continue;
         }
         let known: Vec<String> = doc.keyframe_rules.iter().map(|(n, ..)| n.clone()).collect();
-        let (declarations, body) =
-            lower(&rule.body, &|name| known.iter().any(|k| k == name)).map_err(|e| (rule.at, e))?;
-        let entries = css::declarations(&body, syntax::location(&doc.text, rule.at).0)
-            .map_err(|e| (rule.at, e))?;
+        let line = syntax::location(&doc.text, rule.at).0;
+        let lowered = |body: &str| -> Result<_, Error> {
+            let (declarations, body) =
+                lower(body, &|name| known.iter().any(|k| k == name)).map_err(|e| (rule.at, e))?;
+            let entries = css::declarations(&body, line).map_err(|e| (rule.at, e))?;
+            Ok((declarations, entries))
+        };
+        let own = lowered(&rule.body)?;
+        let boxed = match rule.pseudo {
+            Some(_) if !rule.boxed.is_empty() => Some(lowered(&rule.boxed)?),
+            _ => None,
+        };
         for (i, _, _) in elements {
             let condition = match &structure {
                 // The subject's static facts prune elements at cook; the whole
@@ -225,62 +237,42 @@ pub(super) fn apply(
                     None => continue,
                 },
             };
-            let kind = match doc.nodes[*i].kind {
-                NodeKind::Element(k) => k,
-                _ => "column",
-            };
-            let mut props = Vec::new();
-            for e in &entries {
-                // `flex-direction` is a box's layout and a checkbox's
-                // label's caption side: each element takes its own.
-                let key = e.key.as_str();
-                if (key == "direction" && kind == "toggle")
-                    || (key == "labelDirection" && kind != "toggle")
-                {
-                    continue;
-                }
-                let (spec, p) =
-                    schema::prop(key).ok_or((rule.at, format!("unknown CSS target {}", e.key)))?;
-                // An element that is no box takes the outer display only:
-                // its inner layout is its tag's.
-                let inner = matches!(
-                    written(&e.values).as_str(),
-                    "block" | "inline" | "inlineBlock" | "flowRoot" | "listItem"
-                );
-                if !p.applies(kind) || (e.key == "display" && kind != "box" && !inner) {
-                    return Err((
-                        rule.at,
-                        if e.key == "display" {
-                            format!(
-                                "display: {} lays out a <div> (or another HTML block); a {kind}'s layout is its tag, so it takes only none, block, inline, inline-block or flow-root",
-                                written(&e.values)
-                            )
-                        } else {
-                            format!("CSS property {} does not apply to {kind}", e.key)
-                        },
-                    ));
-                }
-                props.push(PropSet {
-                    spec,
-                    value: parse_value(p.ty, &e.values).map_err(|e| (rule.at, e))?,
-                    line: e.line,
-                    source: written(&e.values),
-                });
-            }
             let condition = match condition {
                 Expr::Lit(serde_json::Value::Bool(true)) => None,
                 c => Some(c),
             };
-            doc.nodes[*i].rules.push(StyleRule {
-                layer: if rule.ua { 0 } else { rank(&rule.layer) },
-                starting: rule.starting,
-                query: rule.query.clone(),
-                condition,
-                structure: structure.clone(),
-                props,
-                declarations: declarations.clone(),
-                line: syntax::location(&doc.text, rule.at).0,
-            });
+            let kind = match doc.nodes[*i].kind {
+                NodeKind::Element(k) => k,
+                _ => "column",
+            };
+            // The pseudo-element's box, when its element draws one: its
+            // node takes the box declarations under the element's condition.
+            let target = match (rule.pseudo, &boxed) {
+                (Some(pseudo), Some(_)) if holds(pseudo, kind, &doc.nodes[*i]) => {
+                    Some(pseudo_node(doc, *i, pseudo))
+                }
+                _ => None,
+            };
+            let mut parts = vec![(*i, kind, &own)];
+            if let (Some(node), Some(boxed)) = (target, &boxed) {
+                parts.push((node, "box", boxed));
+            }
+            for (node, kind, (declarations, entries)) in parts {
+                if rule.pseudo.is_some() && declarations.is_empty() {
+                    continue;
+                }
+                let props = rule_props(entries, kind).map_err(|e| (rule.at, e))?;
+                doc.nodes[node].rules.push(StyleRule {
+                    layer: if rule.ua { 0 } else { rank(&rule.layer) },
+                    starting: rule.starting,
+                    query: rule.query.clone(),
+                    condition: condition.clone(),
+                    structure: structure.clone(),
+                    props,
+                    declarations: declarations.clone(),
+                    line,
+                });
+            }
         }
     }
     Ok(())
@@ -706,6 +698,8 @@ impl Reader<'_> {
                     ua: false,
                     layer: context.layer.clone(),
                     starting: false,
+                    pseudo: None,
+                    boxed: String::new(),
                 });
                 Ok(())
             }
@@ -782,6 +776,8 @@ impl Reader<'_> {
                 ua: false,
                 layer: context.layer.clone(),
                 starting: context.starting,
+                pseudo: None,
+                boxed: String::new(),
             });
         }
         for item in nested {
@@ -1133,73 +1129,117 @@ fn matches(
     })
 }
 
-/// The pseudo-elements a control draws itself, and the declarations each
-/// takes as the control's own property: `dialog::backdrop { background }`
-/// (a modal's scrim) and `select::picker(select) { max-height }` (the
-/// open list, CSS's customizable select).
-const PSEUDO: &[(&str, &[(&str, &str)])] = &[
-    ("::backdrop", &[("background", "-og-backdrop")]),
-    (
-        "::picker(select)",
-        &[("max-height", "-og-picker-max-height")],
-    ),
+/// A rule's reflected values for an element of `kind`.
+fn rule_props(entries: &[og_core::ogt::Entry], kind: &str) -> Result<Vec<PropSet>, String> {
+    let mut props = Vec::new();
+    for e in entries {
+        // `flex-direction` is a box's layout and a checkbox's
+        // label's caption side: each element takes its own.
+        let key = e.key.as_str();
+        if (key == "direction" && kind == "toggle") || (key == "labelDirection" && kind != "toggle")
+        {
+            continue;
+        }
+        let (spec, p) = schema::prop(key).ok_or(format!("unknown CSS target {}", e.key))?;
+        // An element that is no box takes the outer display only:
+        // its inner layout is its tag's.
+        let inner = matches!(
+            written(&e.values).as_str(),
+            "block" | "inline" | "inlineBlock" | "flowRoot" | "listItem"
+        );
+        if !p.applies(kind) || (e.key == "display" && kind != "box" && !inner) {
+            return Err(if e.key == "display" {
+                format!(
+                    "display: {} lays out a <div> (or another HTML block); a {kind}'s layout is its tag, so it takes only none, block, inline, inline-block or flow-root",
+                    written(&e.values)
+                )
+            } else {
+                format!("CSS property {} does not apply to {kind}", e.key)
+            });
+        }
+        props.push(PropSet {
+            spec,
+            value: parse_value(p.ty, &e.values)?,
+            line: e.line,
+            source: written(&e.values),
+        });
+    }
+    Ok(props)
+}
+
+/// The pseudo-elements that are boxes of their own (CSS Pseudo-Elements 4
+/// §3, CSS Positioned Layout 4's `::backdrop`, the customizable select's
+/// `::picker(select)`), by their name in [`DocNode::pseudo`].
+const BOXES: [(&str, &str); 4] = [
+    ("::before", "before"),
+    ("::after", "after"),
+    ("::backdrop", "backdrop"),
+    ("::picker(select)", "picker"),
 ];
 
-/// A rule on a pseudo-element of [`PSEUDO`] becomes the element's own
-/// declarations, so it cascades (states, variables, media) as any does.
-fn backdrop(rule: &mut Rule) -> Result<(), (usize, String)> {
-    let selectors: Vec<&str> = rule.selector.split(',').map(str::trim).collect();
-    let Some(&(pseudo, takes)) = PSEUDO
-        .iter()
-        .find(|(p, _)| selectors.iter().any(|s| s.ends_with(p)))
-    else {
-        return Ok(());
+/// Whether `node`, an element of `kind`, draws `pseudo` as a box: a box
+/// element's `::before` and `::after` (a text element's join its text as
+/// runs), a dialog's `::backdrop`, a select's `::picker(select)`.
+fn holds(pseudo: &str, kind: &str, node: &DocNode) -> bool {
+    match pseudo {
+        "before" | "after" => {
+            schema::kind(kind).is_some_and(|k| k.container)
+                && (kind != "button" || !node.children.is_empty())
+        }
+        "backdrop" => kind == "dialog",
+        "picker" => kind == "select",
+        _ => false,
+    }
+}
+
+/// The synthetic node of element `i`'s `pseudo`, made on first use. A
+/// `::before` or `::after` is inline unless its rules say otherwise.
+fn pseudo_node(doc: &mut UiDocument, i: usize, pseudo: &'static str) -> usize {
+    if let Some(&(_, at)) = doc.nodes[i].pseudo.iter().find(|(p, _)| *p == pseudo) {
+        return at;
+    }
+    let at = doc.nodes.len();
+    let mut node = DocNode {
+        kind: NodeKind::Element("box"),
+        id: String::new(),
+        selector_tag: None,
+        selector_attrs: Vec::new(),
+        props: Vec::new(),
+        at: Vec::new(),
+        rules: Vec::new(),
+        span_rules: Vec::new(),
+        groups: Vec::new(),
+        triggers: Vec::new(),
+        args: Vec::new(),
+        children: Vec::new(),
+        parent: i,
+        role: None,
+        level: 0,
+        inline: Vec::new(),
+        links: Vec::new(),
+        custom: Vec::new(),
+        uses: Vec::new(),
+        pseudo: Vec::new(),
+        ..doc.nodes[i].clone()
     };
-    if !selectors.iter().all(|s| s.ends_with(pseudo)) {
-        return Err((
-            rule.at,
-            format!(
-                "{}: write {pseudo} rules apart from the element's own",
-                rule.selector
-            ),
-        ));
+    if matches!(pseudo, "before" | "after") {
+        let entries = css::declarations("display: inline;", node.line).expect("a display");
+        node.props = rule_props(&entries, "box").expect("a box display");
     }
-    let mut body = String::new();
-    for d in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
-        let Some((_, own)) = takes.iter().find(|(css, _)| *css == d.name) else {
-            return Err((
-                rule.at,
-                format!(
-                    "{pseudo} takes {}, not {}",
-                    takes
-                        .iter()
-                        .map(|(css, _)| *css)
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                    d.name
-                ),
-            ));
-        };
-        body.push_str(&format!(
-            "{own}: {}{};",
-            d.source,
-            if d.important { " !important" } else { "" }
-        ));
-    }
-    rule.selector = selectors
-        .iter()
-        .map(|s| s.trim_end_matches(pseudo))
-        .collect::<Vec<_>>()
-        .join(", ");
-    rule.body = body;
-    Ok(())
+    doc.nodes.push(node);
+    doc.nodes[i].pseudo.push((pseudo, at));
+    at
 }
 
 /// The element-backed pseudo-element a selector ends with
-/// ([`super::generated::PSEUDOS`]), and the selector without it. CSS 2's
-/// `:before`, `:after`, `:first-line` and `:first-letter` count too.
+/// ([`super::generated::PSEUDOS`], [`BOXES`]), and the selector without
+/// it. CSS 2's `:before`, `:after`, `:first-line` and `:first-letter`
+/// count too.
 fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str)> {
     let lower = selector.to_ascii_lowercase();
+    if let Some((written, name)) = BOXES[2..].iter().find(|(w, _)| lower.ends_with(w)) {
+        return Some((name, &selector[..selector.len() - written.len()]));
+    }
     super::generated::PSEUDOS.iter().find_map(|&p| {
         let double = format!("::{p}");
         if lower.ends_with(&double) {
@@ -1212,10 +1252,14 @@ fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str)> {
     })
 }
 
-/// A rule on an element-backed pseudo-element becomes its originating
-/// element's declarations, each named `::pseudo/property`: they cascade
-/// with the element's (states, layers, media, variables) and the build
-/// generates or styles the pseudo-element from the winners.
+/// A rule on an element-backed pseudo-element selects its originating
+/// element. The declarations generated content and text pseudo-elements
+/// read become the element's own, each named `-og-pe-<pseudo>__<property>`:
+/// they cascade with the element's (states, layers, media, variables) and
+/// the build generates or styles the pseudo-element from the winners. A
+/// box pseudo-element's other declarations (its box: display, size,
+/// padding, border, background, position, transforms…) go to its own node
+/// ([`Rule::boxed`]), cascading under the same selector.
 fn pseudo_element(rule: &mut Rule) -> Result<(), (usize, String)> {
     let selectors: Vec<&str> = rule.selector.split(',').map(str::trim).collect();
     let Some((pseudo, _)) = selectors.iter().find_map(|s| pseudo_suffix(s)) else {
@@ -1238,20 +1282,32 @@ fn pseudo_element(rule: &mut Rule) -> Result<(), (usize, String)> {
             }
         }
     }
-    let mut body = String::new();
+    let boxed = BOXES.iter().any(|(_, name)| *name == pseudo);
+    let (mut body, mut own) = (String::new(), String::new());
     for d in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
-        if !super::generated::allows(pseudo, &d.name) {
+        let important = if d.important { " !important" } else { "" };
+        let generated =
+            !matches!(pseudo, "backdrop" | "picker") && super::generated::allows(pseudo, &d.name);
+        if generated {
+            body.push_str(&format!(
+                "{}: {}{important};",
+                super::generated::encode(pseudo, &d.name),
+                d.source,
+            ));
+        } else if !boxed {
             return Err((rule.at, format!("::{pseudo} does not take {}", d.name)));
         }
-        body.push_str(&format!(
-            "{}: {}{};",
-            super::generated::encode(pseudo, &d.name),
-            d.source,
-            if d.important { " !important" } else { "" }
-        ));
+        // `display` lays out the box and hides the generated text.
+        if boxed && (!generated || d.name == "display") {
+            own.push_str(&format!("{}: {}{important};", d.name, d.source));
+        }
     }
     rule.selector = originating.join(", ");
     rule.body = body;
+    if boxed {
+        rule.pseudo = Some(pseudo);
+        rule.boxed = own;
+    }
     Ok(())
 }
 

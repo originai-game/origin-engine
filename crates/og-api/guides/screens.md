@@ -189,7 +189,11 @@ local styles and `og style new` remain available.
 - Generate text with `::before`/`::after { content: … }`: strings,
   `attr(name)`, `counter(name, style)`, `counters(name, ".")` and quotes,
   with `counter-reset`/`counter-increment`/`counter-set` on any element and
-  `@counter-style` for your own styles. They take text properties only.
+  `@counter-style` for your own styles. On a box element each is a box
+  of its own that takes every property a `<div>` does (`inline` by
+  default); on a text element it is a run of the text and takes text
+  properties. `dialog::backdrop` and `select::picker(select)` take a
+  box's properties too.
   `li::marker { content: …; color: … }` and `list-style-image: url(name)`
   restyle list markers. `::first-letter`, `::first-line`, `::placeholder
   { color }` and `::selection { background-color; color; text-decoration;

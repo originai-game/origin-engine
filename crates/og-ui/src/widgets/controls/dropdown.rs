@@ -261,16 +261,18 @@ impl Ui {
     /// listbox of options. Probe: `<id>/Trigger`,
     /// `<id>.list/List/Option#i`.
     pub fn dropdown(&mut self, id: impl Into<Id>, desc: &DropdownDesc) -> DropdownResult {
-        self.dropdown_marked(id, desc, !desc.error.is_empty())
+        self.dropdown_marked(id, desc, !desc.error.is_empty(), &mut |_, _| {})
     }
 
     /// [`Ui::dropdown`], its trigger marked invalid without an error line
-    /// (a document's `aria-invalid`, its message written beside it).
+    /// (a document's `aria-invalid`, its message written beside it), and
+    /// `list` styling its open list's node (a document's `::picker(select)`).
     pub(crate) fn dropdown_marked(
         &mut self,
         id: impl Into<Id>,
         desc: &DropdownDesc,
         invalid: bool,
+        list: &mut dyn FnMut(&mut Ui, usize),
     ) -> DropdownResult {
         let id = id.into();
         let key = id.as_str().to_owned();
@@ -411,6 +413,7 @@ impl Ui {
             };
             // Its rim and shadow are the part's (a floating surface's) dressing.
             let m = self.floating(&list_id, open, trig_node, content, |ui| {
+                list(ui, ui.parent());
                 if searchable {
                     // The filter's text lives in the UI's text memory while the list is open.
                     let mut typed = ui.take_text(&filter_key);
