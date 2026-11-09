@@ -28,14 +28,11 @@ pub use ui_desc::{
     og_ui_frame_theme, og_ui_frame_viewport, og_ui_has_icon, og_ui_scroll_into_view, og_ui_seconds,
     og_ui_set_focus, og_ui_theme, og_ui_viewport,
 };
-use ui_desc::{
-    align, cross, f, frame_part, insets, opt_f, paint, rect_json, response, size_or, tone, ui_rect,
-};
 pub(crate) use ui_desc::{anchor_of, step, texture_of, ui_engine, with_ui};
+use ui_desc::{f, insets, paint, rect_json, tone, ui_rect};
 mod widgets;
 use widgets::desc_of;
 pub(crate) use widgets::emit;
-pub use widgets::{og_ui_close, og_ui_label};
 mod game_widgets;
 use crate::{art, assets, extract, ui_draw};
 pub(crate) use game_widgets::a11y_json;
@@ -43,10 +40,9 @@ use game_widgets::ui_of;
 pub use game_widgets::{
     og_ui_a11y, og_ui_back, og_ui_bounds, og_ui_dismiss_toast, og_ui_feedback, og_ui_focus,
     og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_reset, og_ui_hud_select, og_ui_hud_step,
-    og_ui_navigate, og_ui_open_anchor, og_ui_preview_viewport, og_ui_scroll_state,
-    og_ui_set_haptics, og_ui_set_hud_edit, og_ui_set_hud_layout, og_ui_set_hud_player,
-    og_ui_set_navigation, og_ui_set_players, og_ui_set_virtual_cursor, og_ui_tick, og_ui_toast,
-    og_ui_virtual_cursor,
+    og_ui_navigate, og_ui_preview_viewport, og_ui_scroll_state, og_ui_set_haptics,
+    og_ui_set_hud_edit, og_ui_set_hud_layout, og_ui_set_hud_player, og_ui_set_navigation,
+    og_ui_set_players, og_ui_set_virtual_cursor, og_ui_tick, og_ui_toast, og_ui_virtual_cursor,
 };
 
 pub(crate) mod docs;
@@ -74,9 +70,8 @@ use og_physics::{
     ShapeCastDesc, ShapeDesc,
 };
 use og_ui::{
-    Align, Anchor, AnchorDesc, Cross, DensityMode, Direction, FontRole, Fonts, IconAtlas,
-    InputFrame, Insets, LabelDesc, Nav, Response, Scheme, SharedUi, Size, Srgba, StylePart,
-    TextAlign, Theme, ToastDesc, Tone, TypeStep, Ui, UiDesc, UiFont, Viewport,
+    Anchor, DensityMode, Fonts, IconAtlas, InputFrame, Insets, Nav, Scheme, SharedUi, Srgba, Theme,
+    ToastDesc, Tone, TypeStep, Ui, UiDesc, UiFont, Viewport,
 };
 use serde_json::{Map, Value, json};
 use std::cell::Cell;

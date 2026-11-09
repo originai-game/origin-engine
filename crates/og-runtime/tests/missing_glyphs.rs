@@ -18,7 +18,7 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_take_log, og_game_game,
     og_host_begin_bundle, og_load_font, og_render_floating_text, og_render_text,
-    og_system_define_system, og_ui_configure, og_ui_label, og_world_get_tick, set_hooks,
+    og_system_define_system, og_ui_configure, og_world_get_tick, set_hooks, shared_ui,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -87,7 +87,9 @@ impl Hooks for Disk {
             && call.id == BUILD
             && let Some(text) = LABEL.with(|l| l.borrow().clone())
         {
-            og_ui_label("Status".into(), text, None);
+            let ui = shared_ui(call.engine).expect("the engine's UI");
+            ui.lock()
+                .label("Status", &text, og_ui::LabelDesc::default());
             BUILT.with(|b| b.set((b.get().0, og_world_get_tick(b.get().0) as u64)));
         }
         Ok(String::new())

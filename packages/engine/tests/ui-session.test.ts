@@ -16,10 +16,12 @@ test.skipIf(process.platform === "win32")("UI checks share a host without sharin
   const root = join(dir, "game");
   mkdirSync(root);
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "UI Session"\nentry "main.ts"\nseed 83\n');
-  const source = `import {og,defineSystem} from "@origingame/engine";
+  // The menu's text passes og.i18n.t, which the pseudo cell lengthens.
+  mkdirSync(join(root, "assets"));
+  writeFileSync(join(root, "assets", "menu.svelte"), '<meta name="component" content="menu">\n<meta name="prop:play" content="string">\n<button id="Play">{$play}</button>\n');
+  const source = `import {og} from "@origingame/engine";
 let starts=0;
-const Menu=defineSystem("Menu",{},()=>{og.ui.label("Play","Play");});
-export default og.game({systems:[Menu],start(){if(++starts!==1)throw new Error("cell state leaked");console.log(JSON.stringify({uiHost:process.pid}));}});`;
+export default og.game({start(world){if(++starts!==1)throw new Error("cell state leaked");console.log(JSON.stringify({uiHost:process.pid}));const d=og.load.document(world,"menu.svelte");if(!d.ok)throw new Error(d.reason);og.ui.scope(world,"menu").writable("play","").set(og.i18n.t(world,"Play"));},ui(world){const s=og.ui.scope(world,"menu");const m=s.mount("menu","menu",{play:s.writable("play","")});if(!m.ok)throw new Error(m.reason);}});`;
   writeFileSync(join(root, "main.ts"), source);
   const env = { ...process.env, OG_ENGINE_PACKAGE: resolve(import.meta.dir!, ".."), OG_RENDERER: "none", OG_SESSION: "1" };
   let hostPid = 0;

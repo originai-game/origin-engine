@@ -15,7 +15,7 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_take_log, og_game_game,
     og_host_begin_bundle, og_i18n_locale, og_i18n_set_locale, og_load_font,
-    og_system_define_system, og_ui_configure, og_ui_label,
+    og_system_define_system, og_ui_configure, shared_ui,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -129,7 +129,17 @@ impl Hooks for Disk {
             && call.id == BUILD
             && let Some(text) = LABEL.with(|l| l.borrow().clone())
         {
-            og_ui_label("Status".into(), text, Some(r#"{"step":"xl4"}"#.into()));
+            let ui = shared_ui(call.engine).expect("the engine's UI");
+            let mut ui = ui.lock();
+            let step = Some(ui.theme().type_ramp.xl4);
+            ui.label(
+                "Status",
+                &text,
+                og_ui::LabelDesc {
+                    step,
+                    ..Default::default()
+                },
+            );
         }
         Ok(String::new())
     }

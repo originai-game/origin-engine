@@ -26,37 +26,23 @@ module ui {
 
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
-| [`Direction`](ui/type-Direction.md) | enum |  | Which way a container lays out its children. |
-| [`Align`](ui/type-Align.md) | enum |  | Where children sit along the main axis. |
-| [`Cross`](ui/type-Cross.md) | enum |  | Where children sit across the main axis. |
 | [`TextAlign`](ui/type-TextAlign.md) | enum |  | How the lines of a label align. |
-| [`FontRole`](ui/type-FontRole.md) | enum |  | Which configured font text uses; display and mono fall back to body, rounded to display, then body. |
 | [`Scheme`](ui/type-Scheme.md) | enum |  | The palette: games run on a stage, so dark is the default. |
 | [`DensityMode`](ui/type-DensityMode.md) | enum |  | Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise. |
 | [`ThemeColor`](ui/type-ThemeColor.md) | enum |  | A colour role of the UI style in effect (the game's style, or the default style before it picks one). |
 | [`TypeStepName`](ui/type-TypeStepName.md) | enum |  | A step of the style's type ramp. |
-| [`SizeRange`](ui/type-SizeRange.md) | struct |  | The bounds of a fit or grow size. |
-| [`FixedSize`](ui/type-FixedSize.md) | struct |  | A fixed size. |
-| [`PercentSize`](ui/type-PercentSize.md) | struct |  | A size relative to the parent. |
-| [`Size`](ui/type-Size.md) | union |  | A size along one axis. |
 | [`Insets`](ui/type-Insets.md) | struct |  | Padding or margins on four sides. |
 | [`Paint`](ui/type-Paint.md) | desc struct |  | A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. |
-| [`LabelDesc`](ui/type-LabelDesc.md) | desc struct |  | How a label draws its text. |
-| [`Response`](ui/type-Response.md) | struct |  | What happened to an element this tick. |
 | [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit. |
 | [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. |
 | [`UiSounds`](ui/type-UiSounds.md) | desc struct |  | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
-| [`StylePart`](ui/type-StylePart.md) | enum |  | An element class a style dresses with a nine-slice frame. |
 | [`TypeStep`](ui/type-TypeStep.md) | struct |  | One step of the type ramp. |
 | [`ControlSizes`](ui/type-ControlSizes.md) | struct |  | The control, row and header heights and the gutter of the density in effect. |
 | [`UiTheme`](ui/type-UiTheme.md) | struct |  | The style values the UI draws with, read-only. |
-| [`UiBuild`](ui/type-UiBuild.md) | callback |  | Builds a container's children: ui calls made inside it nest under the container. |
 | [`og.ui.configure`](ui/fn-configure.md) | function | `(world: World, desc?: UiDesc): Result<void>` | Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. |
 | [`og.ui.viewport`](ui/fn-viewport.md) | function | `(world: World): Viewport` | This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in og-ui units (CSS pixels over UiTheme.unit, docs/ui.md §6.1: 1 on touch and up to 720p, so … |
 | [`og.ui.theme`](ui/fn-theme.md) | function | `(world: World): UiTheme` | The style values the UI draws with. |
-| [`og.ui.close`](ui/fn-close.md) | function | `(): Response` | Close the open container. |
 | [`TextSpan`](ui/type-TextSpan.md) | struct |  | A named attribute range in plain text for a store and the Svelte text spans binding. |
-| [`og.ui.label`](ui/fn-label.md) | function | `(id: string, text: string, desc?: LabelDesc): void` | MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. |
 | [`Anchor`](ui/type-Anchor.md) | enum |  | A point of the safe area an anchored group sits at. |
 | [`Tone`](ui/type-Tone.md) | enum |  | A status tone of badges, toasts and map markers. |
 | [`Breakpoint`](ui/type-Breakpoint.md) | enum |  | The play surface's size class. |
@@ -67,7 +53,6 @@ module ui {
 | [`UiRect`](ui/type-UiRect.md) | struct |  | A rectangle of the play surface. |
 | [`IconAtlasDesc`](ui/type-IconAtlasDesc.md) | desc struct |  | The icon atlas: a texture of equal cells in a grid, named in reading order, or an icon set cooked like a font (font). |
 | [`UiInlineImage`](ui/type-UiInlineImage.md) | desc struct |  | A picture rich text draws inline by name ([img=<name>]). |
-| [`AnchorDesc`](ui/type-AnchorDesc.md) | desc struct |  | An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls). |
 | [`ToastDesc`](ui/type-ToastDesc.md) | desc struct |  | A toast's tone and time. |
 | [`UiPointer`](ui/type-UiPointer.md) | struct |  | The primary pointer as the UI reads it this tick. |
 | [`og.ui.framePointer`](ui/fn-framePointer.md) | function | `(): UiPointer` | The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangle… |
@@ -79,8 +64,6 @@ module ui {
 | [`og.ui.scrollIntoView`](ui/fn-scrollIntoView.md) | function | `(path: string, center: boolean): void` | Scroll the scroll container around a control (an interactive or focusable element, by its full path) so the control is in its view, by where both were in the last frame: by the least that shows it wh… |
 | [`og.ui.frameDirection`](ui/fn-frameDirection.md) | function | `(): string` | The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows an… |
 | [`og.ui.frameTheme`](ui/fn-frameTheme.md) | function | `(): UiTheme` | The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the components and patterns). |
-| [`og.ui.openAnchor`](ui/fn-openAnchor.md) | function | `(id: string, desc?: AnchorDesc): void` | Open an anchored group, closed by close(): og.ui.anchor without the callback. |
-| [`og.ui.anchor`](ui/fn-anchor.md) | function | `(id: string, desc: AnchorDesc, build: UiBuild): void` | An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls. |
 | [`og.ui.bounds`](ui/fn-bounds.md) | function | `(path: string): UiRect \| null` | Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it. |
 | [`ScrollState`](ui/type-ScrollState.md) | struct |  | A scroll container as the last frame laid it out (og.ui.scrollState). |
 | [`og.ui.scrollState`](ui/fn-scrollState.md) | function | `(path: string): ScrollState \| null` | A scroll container's offset, view and whole content, by its full path (as the probe's dump names it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolle… |
@@ -237,7 +220,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1477</sub>
+<sub>Module `ui` line 1295</sub>
 
 ```ogt
 column UiMaterial {
@@ -248,4 +231,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1484</sub>
+<sub>Module `ui` line 1302</sub>

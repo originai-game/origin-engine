@@ -107,8 +107,6 @@ function pseudoAbi(on: boolean): () => void {
     abi[name] = f(saved[name]!);
   };
   wrap("og_i18n_t", (o) => (...a) => pseudo(String(o(...a))));
-  // (id, text, desc): a label.
-  wrap("og_ui_label", (o) => (id, text, ...rest) => o(id, pseudo(String(text)), ...rest));
   return () => Object.assign(abi, saved);
 }
 

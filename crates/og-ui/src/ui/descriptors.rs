@@ -46,8 +46,9 @@ pub struct Viewport {
     pub mac_keys: bool,
     /// Where the host's own control covers the surface (the web shell's
     /// round Back, top left of a published page), in CSS pixels; empty is
-    /// none. Anchored groups keep out of it: a group it would overlap
-    /// moves along the edge it sits on, past it.
+    /// none. Documents' `env(safe-area-inset-*)` clear it
+    /// ([`Viewport::env_insets`]), and anchored groups keep out of it: a
+    /// group it would overlap moves along the edge it sits on, past it.
     pub covered: Rect,
 }
 
@@ -125,6 +126,41 @@ impl Viewport {
     /// The size class of this surface.
     pub fn breakpoint(&self) -> Breakpoint {
         Breakpoint::of(self.width, self.height)
+    }
+
+    /// What CSS `env(safe-area-inset-*)` reads: the safe area with the
+    /// host's covered region folded into the one edge whose inset clears
+    /// it for the least surface, as a phone folds its status bar into the
+    /// top inset in portrait and its notch into a side one in landscape.
+    /// The web shell's Back, top left, widens the left inset on a
+    /// landscape surface and deepens the top one on a portrait one, so a
+    /// HUD placed at the insets is clear of it at every corner.
+    pub fn env_insets(&self) -> Insets {
+        let mut s = self.safe_area;
+        let c = self.covered;
+        if c.width <= 0.0 || c.height <= 0.0 {
+            return s;
+        }
+        // Each edge's inset to clear it, and the surface that inset loses.
+        let needs = [
+            (c.x + c.width - s.left, self.height),
+            (self.width - c.x - s.right, self.height),
+            (c.y + c.height - s.top, self.width),
+            (self.height - c.y - s.bottom, self.width),
+        ];
+        let (k, (grow, _)) = needs
+            .into_iter()
+            .enumerate()
+            .min_by(|(_, (a, la)), (_, (b, lb))| (a.max(0.0) * la).total_cmp(&(b.max(0.0) * lb)))
+            .expect("four edges");
+        let grow = grow.max(0.0);
+        match k {
+            0 => s.left += grow,
+            1 => s.right += grow,
+            2 => s.top += grow,
+            _ => s.bottom += grow,
+        }
+        s
     }
 
     /// The safe area, in CSS pixels.

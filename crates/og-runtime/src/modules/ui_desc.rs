@@ -25,27 +25,6 @@ pub(super) fn insets(v: &Value) -> Insets {
     }
 }
 
-pub(super) fn size(v: &Value) -> Option<Size> {
-    let range = |v: &Value| (f(v, "min", 0.0), f(v, "max", f32::INFINITY));
-    Some(match v["kind"].as_str()? {
-        "fit" => {
-            let (min, max) = range(v);
-            Size::Fit { min, max }
-        }
-        "grow" => {
-            let (min, max) = range(v);
-            Size::Grow { min, max }
-        }
-        "fixed" => Size::Fixed(f(v, "px", 0.0)),
-        "percent" => Size::Percent(f(v, "fraction", 0.0)),
-        _ => return None,
-    })
-}
-
-pub(super) fn size_or(v: &Value, d: Size) -> Size {
-    size(v).unwrap_or(d)
-}
-
 /// A colour role by its name: a ThemeColor, or one the style declares.
 fn token(theme: &Theme, name: &str) -> Option<Srgba> {
     theme.color(name)
@@ -128,39 +107,6 @@ pub(super) fn paint(theme: &Theme, v: &Value) -> Option<Srgba> {
         }
     };
     Some(base.fade(alpha))
-}
-
-pub(super) fn frame_part(v: &Value) -> Option<StylePart> {
-    StylePart::from_name(v.as_str()?)
-}
-
-pub(super) fn align(v: &Value) -> Align {
-    match v.as_str() {
-        Some("center") => Align::Center,
-        Some("end") => Align::End,
-        Some("spaceBetween") => Align::SpaceBetween,
-        _ => Align::Start,
-    }
-}
-
-pub(super) fn cross(v: &Value) -> Cross {
-    match v.as_str() {
-        Some("center") => Cross::Center,
-        Some("end") => Cross::End,
-        Some("stretch") => Cross::Stretch,
-        Some("baseline") => Cross::Baseline,
-        _ => Cross::Start,
-    }
-}
-
-pub(super) fn response(r: Response) -> Value {
-    json!({
-        "hovered": r.hovered, "pressed": r.pressed, "clicked": r.clicked,
-        "changed": r.changed, "focused": r.focused, "submitted": r.submitted,
-        "dropped": r.dropped, "pad": r.pad, "player": r.player, "focusedBy": r.focused_by, "adjust": r.adjust, "adjustY": r.adjust_y, "ring": r.ring,
-        "tapped": r.tapped, "doubleTapped": r.double_tapped, "longPressed": r.long_pressed,
-        "longPress": r.long_press,
-    })
 }
 
 // ── ui: the calls ───────────────────────────────────────────────────────────
@@ -516,10 +462,6 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
         "series": t.colors.series.iter().map(|c| hex(*c)).collect::<Vec<_>>(),
         "feedback": feedback,
     })
-}
-
-pub(super) fn opt_f(v: &Value, k: &str) -> Option<f32> {
-    v[k].as_f64().map(|x| x as f32)
 }
 
 pub(super) fn tone(v: &Value) -> Tone {

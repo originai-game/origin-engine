@@ -961,7 +961,7 @@ impl RetainedHost {
         self.rescroll(&scrolled);
         let viewport = ui.media_context();
         let [small, large] = ui.viewport.extremes();
-        let sa = ui.viewport.safe_area;
+        let sa = ui.viewport.env_insets();
         let surface = [
             sa.top, sa.right, sa.bottom, sa.left, small[0], small[1], large[0], large[1],
         ];

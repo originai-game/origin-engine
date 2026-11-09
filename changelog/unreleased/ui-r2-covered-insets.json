@@ -1,0 +1,25 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI document scoped CSS env(safe-area-inset-*)",
+      "summary": "The safe-area insets now clear the host's covered region (Viewport.covered, a published page's Back): it is folded into the one edge whose inset clears it for the least surface, the left inset on a landscape or desktop surface and the top one on a portrait phone, so a HUD document placed at the insets never draws under Back. A change of the covered region re-resolves what reads them."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "og.ui.anchor, og.ui.openAnchor, og.ui.label, og.ui.close, og.ui.AnchorDesc, og.ui.LabelDesc, og.ui.Response, og.ui.UiBuild, og.ui.Size, og.ui.Direction, og.ui.Align, og.ui.Cross, og.ui.FontRole, og.ui.StylePart",
+      "change": "The last immediate-mode UI builders and the types only they used are removed: a HUD group is a document now that its CSS insets clear the host's controls.",
+      "fix": "Write the HUD as a component document mounted with og.ui.scope(world, id).mount(...) and its values in stores. Place each corner with `position: fixed; width: max-content` and insets read from env(): `left: calc(env(safe-area-inset-left) + 24px); top: calc(env(safe-area-inset-top) + 24px)` (right and bottom alike); a label is a `<span>` styled with `font: var(--text-display-sm)`, `font-family: var(--font-mono)` and `color: var(--ink-muted)`, the group's look `background: var(--panel); border-radius: var(--radius-panel); -og-frame: card`.",
+      "find": [
+        "og.ui.anchor",
+        "og.ui.openAnchor",
+        "og.ui.label",
+        "og.ui.close",
+        "AnchorDesc",
+        "LabelDesc",
+        "UiBuild"
+      ]
+    }
+  ]
+}

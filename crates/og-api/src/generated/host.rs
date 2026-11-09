@@ -1013,10 +1013,6 @@ pub trait UiApi: Wire {
     fn og_ui_viewport(&self, world: u32) -> String;
     /// `og.ui.theme`
     fn og_ui_theme(&self, world: u32) -> String;
-    /// `og.ui.close`
-    fn og_ui_close(&self) -> String;
-    /// `og.ui.label`
-    fn og_ui_label(&self, id: String, text: String, desc: Option<String>);
     /// `og.ui.framePointer`
     fn og_ui_frame_pointer(&self) -> String;
     /// `og.ui.frameCursor`
@@ -1035,8 +1031,6 @@ pub trait UiApi: Wire {
     fn og_ui_frame_direction(&self) -> String;
     /// `og.ui.frameTheme`
     fn og_ui_frame_theme(&self) -> String;
-    /// `og.ui.openAnchor`
-    fn og_ui_open_anchor(&self, id: String, desc: Option<String>);
     /// `og.ui.bounds`
     fn og_ui_bounds(&self, path: String) -> String;
     /// `og.ui.scrollState`
@@ -1862,8 +1856,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_configure",
     "og_ui_viewport",
     "og_ui_theme",
-    "og_ui_close",
-    "og_ui_label",
     "og_ui_frame_pointer",
     "og_ui_frame_cursor",
     "og_ui_frame_viewport",
@@ -1873,7 +1865,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_scroll_into_view",
     "og_ui_frame_direction",
     "og_ui_frame_theme",
-    "og_ui_open_anchor",
     "og_ui_bounds",
     "og_ui_scroll_state",
     "og_ui_toast",

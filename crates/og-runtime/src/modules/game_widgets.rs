@@ -1,35 +1,5 @@
 use super::*;
 
-pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.openAnchor", |ui| {
-        let t = *ui.theme();
-        let a = AnchorDesc {
-            anchor: anchor_of(&d["anchor"]).unwrap_or_default(),
-            margin: opt_f(&d, "margin"),
-            offset: (f(&d, "offsetX", 0.0), f(&d, "offsetY", 0.0)),
-            direction: match d["direction"].as_str() {
-                Some("column") => Direction::Column,
-                _ => Direction::Row,
-            },
-            gap: f(&d, "gap", 0.0),
-            padding: insets(&d["padding"]),
-            align: align(&d["align"]),
-            cross: cross(&d["cross"]),
-            background: paint(&t, &d["background"]),
-            radius: f(&d, "radius", 0.0),
-            width: size_or(&d["width"], Size::fit()),
-            height: size_or(&d["height"], Size::fit()),
-            over: d["over"].as_bool().unwrap_or(false),
-            tooltip: d["tooltip"].as_bool().unwrap_or(false),
-            avoid: d["avoid"].as_bool().unwrap_or(false),
-            frame: frame_part(&d["frame"]),
-            instant: d["instant"].as_bool().unwrap_or(false),
-        };
-        ui.open_anchor(id.as_str(), a)
-    });
-}
-
 pub fn og_ui_bounds(path: String) -> String {
     let b = with_ui("og.ui.bounds", |ui| {
         ui.element(&path)

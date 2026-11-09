@@ -2685,18 +2685,6 @@ pub fn og_ui_theme(env: Env, world: u32) -> String {
     <Host as UiApi>::og_ui_theme(&Host, world)
 }
 
-#[napi(js_name = "og_ui_close")]
-pub fn og_ui_close(env: Env) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_close(&Host)
-}
-
-#[napi(js_name = "og_ui_label")]
-pub fn og_ui_label(env: Env, id: String, text: String, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_label(&Host, id, text, desc)
-}
-
 #[napi(js_name = "og_ui_frame_pointer")]
 pub fn og_ui_frame_pointer(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2749,12 +2737,6 @@ pub fn og_ui_frame_direction(env: Env) -> String {
 pub fn og_ui_frame_theme(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_frame_theme(&Host)
-}
-
-#[napi(js_name = "og_ui_open_anchor")]
-pub fn og_ui_open_anchor(env: Env, id: String, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_open_anchor(&Host, id, desc)
 }
 
 #[napi(js_name = "og_ui_bounds")]

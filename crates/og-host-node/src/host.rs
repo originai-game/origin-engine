@@ -1317,12 +1317,6 @@ impl UiApi for NodeHost {
     fn og_ui_mass_count(&self, template: u32) -> u32 {
         rt::og_ui_mass_count(template)
     }
-    fn og_ui_close(&self) -> String {
-        rt::og_ui_close()
-    }
-    fn og_ui_label(&self, id: String, text: String, desc: Option<String>) {
-        rt::og_ui_label(id, text, desc)
-    }
     fn og_ui_frame_theme(&self) -> String {
         rt::og_ui_frame_theme()
     }
@@ -1350,9 +1344,6 @@ impl UiApi for NodeHost {
     }
     fn og_ui_scroll_into_view(&self, path: String, center: bool) {
         rt::og_ui_scroll_into_view(path, center)
-    }
-    fn og_ui_open_anchor(&self, id: String, desc: Option<String>) {
-        rt::og_ui_open_anchor(id, desc)
     }
     fn og_ui_bounds(&self, path: String) -> String {
         rt::og_ui_bounds(path)

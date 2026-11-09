@@ -378,6 +378,7 @@ export const NOT_FIELDS: Record<string, string> = {
   runs: "PlaytestDesc.runs (packages/engine/src/playtest.ts)",
   container: "the CSS container shorthand (document stylesheets)",
   transition: "the CSS transition shorthand (document stylesheets)",
+  gap: "the CSS gap property (document stylesheets)",
 };
 
 export function readApiNames(engine: string): ApiNames | undefined {

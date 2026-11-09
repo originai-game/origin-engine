@@ -24005,47 +24005,12 @@ export type DurationStyle = "clock" | "short";
 // Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
 
 /**
- * Which way a container lays out its children.
- * - `"row"`: Left to right.
- * - `"column"`: Top to bottom.
- */
-export type Direction = "row" | "column";
-
-/**
- * Where children sit along the main axis.
- * - `"start"`: At the start.
- * - `"center"`: Centred.
- * - `"end"`: At the end.
- * - `"spaceBetween"`: The free space split evenly between children.
- */
-export type Align = "start" | "center" | "end" | "spaceBetween";
-
-/**
- * Where children sit across the main axis.
- * - `"start"`: At the start.
- * - `"center"`: Centred.
- * - `"end"`: At the end.
- * - `"stretch"`: Stretched to the container's inner size.
- * - `"baseline"`: In a row, children share their first text baseline (rows of mixed type sizes); a column treats it as start.
- */
-export type Cross = "start" | "center" | "end" | "stretch" | "baseline";
-
-/**
  * How the lines of a label align.
  * - `"start"`: To the start (left).
  * - `"center"`: Centred.
  * - `"end"`: To the end (right).
  */
 export type TextAlign = "start" | "center" | "end";
-
-/**
- * Which configured font text uses; display and mono fall back to body, rounded to display, then body.
- * - `"body"`: The body font.
- * - `"display"`: The display font.
- * - `"mono"`: The monospaced font.
- * - `"rounded"`: The rounded font, for levels and scores.
- */
-export type FontRole = "body" | "display" | "mono" | "rounded";
 
 /**
  * The palette: games run on a stage, so dark is the default.
@@ -24134,53 +24099,6 @@ export type ThemeColor = "backdrop" | "well" | "panel" | "panelHover" | "panelRa
  */
 export type TypeStepName = "body" | "xs" | "meta" | "caption" | "sm" | "reading" | "base" | "lg" | "xl" | "xl2" | "xl3" | "xl4" | "xl5" | "xl6" | "xl7" | "xl8" | "displaySm" | "displayMd" | "displayLg" | "displayXl" | "displayXl2" | "hero";
 
-/** The bounds of a fit or grow size. */
-export interface SizeRange {
-  /**
-   * The smallest size.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly min?: number;
-  /**
-   * The largest size; absent is unbounded.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly max?: number;
-}
-
-/** A fixed size. */
-export interface FixedSize {
-  /**
-   * The size.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly px: number;
-}
-
-/** A size relative to the parent. */
-export interface PercentSize {
-  /**
-   * The fraction of the parent's inner size.
-   *
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly fraction: number;
-}
-
-/** A size along one axis. Absent (null) is fit: the content's size. */
-export type Size =
-  /** The content's size, within the range. */
-  | ({ readonly kind: "fit" } & SizeRange)
-  /** The content's size, then a share of the parent's free space, within the range. */
-  | ({ readonly kind: "grow" } & SizeRange)
-  /** Exactly this size. */
-  | ({ readonly kind: "fixed" } & FixedSize)
-  /** A fraction of the parent's inner size. */
-  | ({ readonly kind: "percent" } & PercentSize);
-
 /** Padding or margins on four sides. */
 export interface Insets {
   /**
@@ -24243,150 +24161,6 @@ export interface Paint {
 }
 
 /**
- * How a label draws its text.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface LabelDesc {
-  /**
-   * The type step; null is body.
-   *
-   * @default null
-   */
-  readonly step?: TypeStepName | null;
-  /**
-   * The ink; null is ink.
-   *
-   * @default null
-   */
-  readonly color?: Paint | null;
-  /**
-   * Text over the scene: uses sceneInk when color is null and draws the scheme's sceneShadow separation. A HUD plate uses background: { token: 'scenePlate' } on its container.
-   *
-   * @default false
-   */
-  readonly onScene?: boolean;
-  /**
-   * Uppercase in the UI's locale before it is measured (Turkish i to İ, Greek without its accents), as a type role with `case upper` is; the probe and screen readers keep the source text. Never uppercase in game code: String.toUpperCase knows no locale.
-   *
-   * @default false
-   */
-  readonly uppercase?: boolean;
-  /**
-   * How the lines align.
-   *
-   * @default "start"
-   */
-  readonly align?: TextAlign;
-  /**
-   * Keep to one line (breaking only at `\n`).
-   *
-   * @default false
-   */
-  readonly nowrap?: boolean;
-  /**
-   * Its width; null fits the text.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Which font.
-   *
-   * @default "body"
-   */
-  readonly font?: FontRole;
-  /**
-   * A heading: a style with a flourish frames it.
-   *
-   * @default false
-   */
-  readonly heading?: boolean;
-  /**
-   * Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text.
-   *
-   * @default false
-   */
-  readonly ellipsis?: boolean;
-  /**
-   * The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out.
-   *
-   * @default 0
-   */
-  readonly maxLines?: number;
-  /**
-   * Auto-fit: where the text does not fit its width (one line with nowrap, else its words and maxLines), it takes the ramp's smaller sizes, largest first, down to this step, keeping its own step's tracking and features; at the smallest, ellipsis cuts what still does not fit. Null keeps its step. A translation longer than the source (German on a button) shrinks instead of wrapping or overflowing.
-   *
-   * @default null
-   */
-  readonly fitMin?: TypeStepName | null;
-}
-
-/**
- * What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick.
- */
-export interface Response {
-  /** The pointer is over it and no other element holds the press. */
-  readonly hovered: boolean;
-  /** The press that started on it is still held. */
-  readonly pressed: boolean;
-  /** Pressed and released inside it. */
-  readonly clicked: boolean;
-  /** Its value changed (slider, toggle, text field). */
-  readonly changed: boolean;
-  /**
-   * It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on.
-   */
-  readonly focused: boolean;
-  /** Enter was pressed in it (text field). */
-  readonly submitted: boolean;
-  /**
-   * A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop).
-   */
-  readonly dropped: number | null;
-  /**
-   * The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer).
-   */
-  readonly pad: number | null;
-  /**
-   * The split screen region (its `player` attribute) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed.
-   */
-  readonly player: number | null;
-  /**
-   * Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads).
-   */
-  readonly focusedBy: number;
-  /**
-   * An adjustable element's (a slider's) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise.
-   */
-  readonly adjust: number;
-  /**
-   * An element claiming Up and Down (a vertical slider) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise.
-   */
-  readonly adjustY: number;
-  /**
-   * The focus ring is up on it: the focus is on it and keys or a pad put it there (a press of the pointer, or a focus returned by a closing dialog to a pointer's player, puts it away). With ElementDesc.ownRing the component draws its own ring and what keys show (a cursor's card lifted).
-   */
-  readonly ring: boolean;
-  /**
-   * Its tap was recognised this tick (its `tap` attribute): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it.
-   */
-  readonly tapped: boolean;
-  /** The second tap of its double tap landed this tick. */
-  readonly doubleTapped: boolean;
-  /**
-   * Its long press fired this tick; the press it took clicks and taps nothing when released.
-   */
-  readonly longPressed: boolean;
-  /**
-   * How far into its long press the held press is, 0 to 1 (0: none): a ring that fills while a touch is held.
-   *
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly longPress: number;
-}
-
-/**
  * The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit.
  */
 export interface Viewport {
@@ -24409,7 +24183,7 @@ export interface Viewport {
    */
   readonly dpr: number;
   /**
-   * The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them.
+   * The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them with the covered region folded in (covered).
    */
   readonly safeArea: Insets;
   /**
@@ -24455,7 +24229,7 @@ export interface Viewport {
    */
   readonly macKeys?: boolean;
   /**
-   * Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). Anchored groups keep out of it, moved along the edge they sit on (a top-left group to its right), so the HUD templates never draw under it; a game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back.
+   * Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). A document's CSS `env(safe-area-inset-*)` clears it: it is folded into the one edge's inset that costs the least surface (the left one on a landscape surface, the top one on a portrait one), so a HUD placed at the insets (`position: fixed; left: calc(env(safe-area-inset-left) + 16px)`) never draws under it. A game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back.
    */
   readonly covered?: UiRect;
   /** Its size class: phone portrait or landscape, tablet, desktop. */
@@ -24663,19 +24437,6 @@ export interface UiSounds {
   readonly error?: Sound | null;
 }
 
-/**
- * An element class a style dresses with a nine-slice frame.
- * - `"panel"`: Dialogs and screen panels.
- * - `"card"`: Cards.
- * - `"button"`: Buttons (with hover, pressed and disabled states).
- * - `"field"`: Text fields.
- * - `"slot"`: Inventory and grid cells.
- * - `"tooltip"`: Tooltips.
- * - `"hud"`: HUD elements over the game (counters, timers) and toasts.
- * - `"track"`: A progress bar's track.
- */
-export type StylePart = "panel" | "card" | "button" | "field" | "slot" | "tooltip" | "hud" | "track";
-
 /** One step of the type ramp. */
 export interface TypeStep {
   /**
@@ -24816,10 +24577,6 @@ export interface UiTheme {
   readonly tokens: unknown;
 }
 
-/** Builds a container's children: ui calls made inside it nest under the container. */
-export type UiBuild = () => void;
-
-
 
 
 
@@ -24838,7 +24595,6 @@ export interface TextSpan {
    */
   readonly properties: Readonly<Record<string, string | number | boolean>>;
 }
-
 
 /**
  * A point of the safe area an anchored group sits at.
@@ -25013,126 +24769,6 @@ export interface UiInlineImage {
 }
 
 /**
- * An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls).
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface AnchorDesc {
-  /**
-   * Where it sits.
-   *
-   * @default "topLeft"
-   */
-  readonly anchor?: Anchor;
-  /**
-   * The inset from the safe area's edges, the same on every edge: a margin wide enough to keep a top-left HUD over a centred portrait play field also pushes it that far down (use offsetX for the sideways shift, or a width); null is the density's gutter.
-   *
-   * @default null
-   */
-  readonly margin?: number | null;
-  /**
-   * Moves it right after placing.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly offsetX?: number;
-  /**
-   * Moves it down after placing.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly offsetY?: number;
-  /**
-   * Which way it lays out its children.
-   *
-   * @default "row"
-   */
-  readonly direction?: Direction;
-  /**
-   * Space between children.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gap?: number;
-  /**
-   * Space inside its edges.
-   *
-   * @default { left: 0, top: 0, right: 0, bottom: 0 }
-   */
-  readonly padding?: Insets;
-  /**
-   * Where children sit along the main axis.
-   *
-   * @default "start"
-   */
-  readonly align?: Align;
-  /**
-   * Where children sit across it.
-   *
-   * @default "start"
-   */
-  readonly cross?: Cross;
-  /**
-   * Its fill; null draws none.
-   *
-   * @default null
-   */
-  readonly background?: Paint | null;
-  /**
-   * Corner radius.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly radius?: number;
-  /**
-   * Its width; null fits the content.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height; null fits the content.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them.
-   *
-   * @default false
-   */
-  readonly over?: boolean;
-  /**
-   * Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (a tooltip card).
-   *
-   * @default false
-   */
-  readonly tooltip?: boolean;
-  /**
-   * Step clear of the other anchored groups and the host's control, to the nearest free place on the safe area: a popup placed at a point (a drift score over the car) that must not cover the map or the tower.
-   *
-   * @default false
-   */
-  readonly avoid?: boolean;
-  /**
-   * The style frame its background takes; null is the panel's.
-   *
-   * @default null
-   */
-  readonly frame?: StylePart | null;
-  /**
-   * Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap.
-   *
-   * @default false
-   */
-  readonly instant?: boolean;
-}
-
-/**
  * A toast's tone and time.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -25187,8 +24823,6 @@ export interface UiPointer {
   /** An Alt (Option) key is held. */
   readonly alt: boolean;
 }
-
-
 
 
 
@@ -35592,20 +35226,6 @@ export declare namespace og {
      */
     function theme(world: World): UiTheme;
     /**
-     * Close the open container.
-     *
-     * @returns Its response, for an interactive container; the zero response otherwise.
-     */
-    function close(): Response;
-    /**
-     * MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text.
-     *
-     * @param id Its id.
-     * @param text The text.
-     * @param desc Type step, ink, alignment, wrapping, width and font.
-     */
-    function label(id: string, text: string, desc?: LabelDesc): void;
-    /**
      * The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts.
      */
     function framePointer(): UiPointer;
@@ -35648,21 +35268,6 @@ export declare namespace og {
      * The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the components and patterns).
      */
     function frameTheme(): UiTheme;
-    /**
-     * Open an anchored group, closed by close(): og.ui.anchor without the callback.
-     *
-     * @param id Its id; the probe path is the id alone.
-     * @param desc Where it sits and how it lays out.
-     */
-    function openAnchor(id: string, desc?: AnchorDesc): void;
-    /**
-     * An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls.
-     *
-     * @param id Its id.
-     * @param desc Where it sits and how it lays out.
-     * @param build Makes its children.
-     */
-    function anchor(id: string, desc: AnchorDesc, build: UiBuild): void;
     /**
      * Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it.
      *

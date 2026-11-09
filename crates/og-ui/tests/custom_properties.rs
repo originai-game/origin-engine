@@ -10,6 +10,9 @@
 //!   values → `bound_custom_properties_feed_the_cascade`
 //! - calc() left unreduced (or reduced wrongly) where a rule reads a
 //!   variable, or a mixed-unit calc() accepted → `calc_reduces_once_its_variables_are_known`
+//! - env(safe-area-inset-*) blind to the host's covered control, folding it
+//!   into the wrong edge for the surface's shape, or not re-read when the
+//!   surface or the control changes → `safe_area_insets_clear_the_hosts_covered_control`
 
 use crate::html_text::{Doc, both};
 use og_ui::*;
@@ -133,4 +136,81 @@ fn calc_reduces_once_its_variables_are_known() {
     .unwrap_err()
     .join("\n");
     assert!(mixed.contains("calc() mixes % and ms"), "{mixed}");
+}
+
+#[test]
+fn safe_area_insets_clear_the_hosts_covered_control() {
+    // A HUD at the insets' corners, as a document places one: the page's
+    // Back (40 CSS px at 12, 12, top left) widens the left inset on a wide
+    // surface and deepens the top one on a tall one (a portrait phone's
+    // over its notch's 47), and a change of surface re-resolves it.
+    let text = r#"<meta name="component" content="t">
+<div><div id="Hud">
+  <div id="TL"></div><div id="BL"></div>
+</div></div>
+<style>
+#TL { position: fixed; left: env(safe-area-inset-left); top: env(safe-area-inset-top); width: 100px; height: 20px; }
+#BL { position: fixed; left: max(8px, env(safe-area-inset-left)); bottom: calc(env(safe-area-inset-bottom) + 4px); width: 100px; height: 20px; }
+</style>"#;
+    let back = Rect::new(12.0, 12.0, 40.0, 40.0);
+    both(text, &[], |d| {
+        assert_eq!(
+            (d.get("TL").x, d.get("TL").y),
+            (0.0, 0.0),
+            "no control: the corner"
+        );
+        d.viewport.covered = back;
+        d.step(InputFrame::default());
+        assert_eq!(
+            (d.get("TL").x, d.get("TL").y),
+            (0.0, 52.0),
+            "800 × 900: below it"
+        );
+        d.viewport = Viewport::new(1280.0, 720.0);
+        d.viewport.covered = back;
+        d.step(InputFrame::default());
+        assert_eq!(
+            (d.get("TL").x, d.get("TL").y),
+            (52.0, 0.0),
+            "a wide surface: beside it"
+        );
+        let mut phone = Viewport::new(390.0, 844.0);
+        phone.safe_area = Insets {
+            left: 0.0,
+            top: 47.0,
+            right: 0.0,
+            bottom: 34.0,
+        };
+        phone.covered = Rect::new(12.0, 59.0, 40.0, 40.0);
+        d.viewport = phone;
+        d.step(InputFrame::default());
+        assert_eq!(
+            (d.get("TL").x, d.get("TL").y),
+            (0.0, 99.0),
+            "portrait: below it"
+        );
+        assert_eq!(
+            (d.get("BL").x, d.get("BL").y),
+            (8.0, 844.0 - 34.0 - 4.0 - 20.0)
+        );
+        let mut landscape = Viewport::new(844.0, 390.0);
+        landscape.safe_area = Insets {
+            left: 47.0,
+            top: 0.0,
+            right: 47.0,
+            bottom: 21.0,
+        };
+        landscape.covered = Rect::new(59.0, 12.0, 40.0, 40.0);
+        d.viewport = landscape;
+        d.step(InputFrame::default());
+        assert_eq!(
+            (d.get("TL").x, d.get("TL").y),
+            (99.0, 0.0),
+            "landscape: beside it"
+        );
+        assert_eq!(d.get("BL").x, 99.0, "the whole edge, as a notch's inset");
+        d.viewport.covered = Rect::default();
+        d.step(InputFrame::default());
+        assert_eq!(d.get("TL").x, 47.0, "cleared: the notch's inset alone");
+    });
 }

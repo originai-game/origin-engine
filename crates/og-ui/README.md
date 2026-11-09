@@ -789,7 +789,10 @@ dialog backdrops cover the whole surface and pad their content by it.
 `Viewport::covered` is the host's own control over the surface (the web
 shell's Back, top left of a published page): an anchored group that would
 overlap it moves along its edge past it (a left group right of it, a right
-group left of it, a top or bottom centred group below or above it).
+group left of it, a top or bottom centred group below or above it), and a
+document's `env(safe-area-inset-*)` reads `Viewport::env_insets`, the safe
+area with the covered region folded into the one edge that clears it for
+the least surface.
 
 ## Theme variants
 
@@ -1145,9 +1148,8 @@ snapshot and restore).
 
 The IDL module `ui` (`crates/og-api/api/ui.ogt`, `og.ui` in
 `packages/engine/types/index.d.ts`, `packages/knowledge/wiki/ui.md`) carries
-every call above with the same names in lowerCamelCase: widgets return
-what happened to them (`og.ui.close().clicked`); containers have `open*`/`close` pairs and
-`host false` sugar taking a build callback (`row`, `column`, `anchor`); `toast`,
+the calls a game makes from TypeScript in lowerCamelCase; the tree itself
+is built from documents (docs/ui.md §2), never call by call; `toast`,
 `dismissToast`, `navigate` and `previewViewport` take the world and work
 between ticks; `frameTheme`, `frameViewport`, `hasIcon`,
 `seconds`, `tick` read the frame being built. The bindings are in

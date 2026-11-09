@@ -689,12 +689,10 @@ impl Ui {
             ch: ratio("0"),
             cap: face.ascender,
             ic: ratio("\u{6C34}"),
-            safe: [
-                vp.safe_area.top,
-                vp.safe_area.right,
-                vp.safe_area.bottom,
-                vp.safe_area.left,
-            ],
+            safe: {
+                let s = vp.env_insets();
+                [s.top, s.right, s.bottom, s.left]
+            },
             containers: super::container::unit_basis(&chain, &self.docs.container_sizes),
             vertical: cascade::root_vertical(inherited).unwrap_or(false),
             ..Default::default()

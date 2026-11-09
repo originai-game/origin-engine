@@ -4,39 +4,6 @@ pub(super) fn desc_of(desc: Option<String>) -> Value {
     parse(desc.as_deref()).unwrap_or(Value::Null)
 }
 
-pub fn og_ui_close() -> String {
-    response(with_ui("og.ui.close", |ui| ui.close()).unwrap_or_default()).to_string()
-}
-
-pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.label", |ui| {
-        let t = *ui.theme();
-        let l = LabelDesc {
-            step: d["step"].as_str().and_then(|s| step(&t, s)),
-            color: paint(&t, &d["color"]),
-            on_scene: d["onScene"].as_bool().unwrap_or(false),
-            uppercase: d["uppercase"].as_bool().unwrap_or(false),
-            align: match d["align"].as_str() {
-                Some("center") => TextAlign::Center,
-                Some("end") => TextAlign::End,
-                _ => TextAlign::Start,
-            },
-            nowrap: d["nowrap"].as_bool().unwrap_or(false),
-            width: size_or(&d["width"], Size::fit()),
-            font: d["font"]
-                .as_str()
-                .and_then(FontRole::from_name)
-                .unwrap_or(FontRole::Body),
-            heading: d["heading"].as_bool().unwrap_or(false),
-            ellipsis: d["ellipsis"].as_bool().unwrap_or(false),
-            max_lines: d["maxLines"].as_u64().unwrap_or(0) as u32,
-            fit_min: d["fitMin"].as_str().and_then(|s| step(&t, s)),
-        };
-        ui.label(id.as_str(), &text, l)
-    });
-}
-
 // ── ui: drawing over the frame ──────────────────────────────────────────────
 
 /// Hands the UI's last frame to the render scene's overlay: screen-space

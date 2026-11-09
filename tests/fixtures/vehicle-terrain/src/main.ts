@@ -66,6 +66,7 @@ function build(world: World): void {
     font: must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf")),
     monoFont: must(og.load.font(world, "fonts/PTMono-Regular.ttf")),
   });
+  must(og.load.document(world, "ui/hud.svelte"));
   const info = must(og.terrain.load(world, "terrain/hills.ogt"));
   const hills = must(world.spawn({ name: "hills" }));
   must(world.insert(hills, og.Terrain, { data: info.data }));
@@ -198,14 +199,10 @@ const Chase = defineSystem("Chase", { reads: [og.Transform], writes: [og.Camera]
   cam.quaternion = og.transform.lookAt(cam.position, { x: t.position.x, y: t.position.y + 1, z: t.position.z });
 });
 
-/** The HUD: the speed, bottom right. */
+/** The HUD (assets/ui/hud.svelte): the speed, bottom right, clear of the host's controls. */
 const Hud = defineSystem("Hud", { reads: [Drive] }, (_q, _t, world) => {
   const d = must(world.resource(Drive));
-  const theme = og.ui.theme(world);
-  og.ui.anchor("Speed", { anchor: "bottomRight", margin: 24, instant: true, direction: "column", padding: { left: 16, top: 10, right: 16, bottom: 10 }, gap: theme.space.md, background: { token: "panel" }, radius: theme.radius.panel, frame: "card" }, () => {
-    og.ui.label("Value", `${Math.round(d.kmh)}`, { step: "displaySm", font: "mono", nowrap: true });
-    og.ui.label("Unit", "km/h", { step: "meta", color: { token: "inkMuted" } });
-  });
+  must(og.ui.scope(world, "hud").writable("kmh", 0).set(Math.round(d.kmh)));
 });
 
 export default og.game({
@@ -215,6 +212,10 @@ export default og.game({
   resources: [Drive],
   systems: [Driver, Ground, Effects, Marks, Chase, Hud],
   start: build,
+  ui(world) {
+    const scope = og.ui.scope(world, "hud");
+    must(scope.mount("hud", "hud", { kmh: scope.writable("kmh", 0) }));
+  },
   facts: (world) => {
     const d = world.resource(Drive);
     if (!d.ok) return {};

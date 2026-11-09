@@ -2239,16 +2239,6 @@ pub fn og_ui_theme(world: u32) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_close() -> String {
-    <Host as UiApi>::og_ui_close(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
-    <Host as UiApi>::og_ui_label(&Host, id, text, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_frame_pointer() -> String {
     <Host as UiApi>::og_ui_frame_pointer(&Host)
 }
@@ -2291,11 +2281,6 @@ pub fn og_ui_frame_direction() -> String {
 #[wasm_bindgen]
 pub fn og_ui_frame_theme() -> String {
     <Host as UiApi>::og_ui_frame_theme(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
-    <Host as UiApi>::og_ui_open_anchor(&Host, id, desc)
 }
 
 #[wasm_bindgen]

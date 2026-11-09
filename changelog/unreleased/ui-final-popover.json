@@ -75,7 +75,7 @@
     {
       "member": "og.ui.richText, og.ui.image, og.ui.icon, og.ui.divider, og.ui.spacer, og.ui.RichTextDesc, og.ui.RichTextResult, og.ui.ImageDesc, og.ui.IconDesc",
       "change": "The content builders are removed.",
-      "fix": "In a document: `<p>` with inline `<b>`, `<span>` and `<a href>` (or `spans={$spans}`) for rich text, `<img src={$texture}>` for an image, `<icon icon=\"name\">` for an icon, `<hr>` for a divider and a `<div>` with a size or `gap` for a spacer. og.ui.label stays for an og.ui.anchor HUD group.",
+      "fix": "In a document: `<p>` with inline `<b>`, `<span>` and `<a href>` (or `spans={$spans}`) for rich text, `<img src={$texture}>` for an image, `<icon icon=\"name\">` for an icon, `<hr>` for a divider and a `<div>` with a size or `gap` for a spacer.",
       "find": [
         "og.ui.richText",
         "og.ui.image",

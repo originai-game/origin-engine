@@ -3,42 +3,11 @@ module ui {
   doc "The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick."
   doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it."
 
-  enum Direction {
-    doc "Which way a container lays out its children."
-    variant row "Left to right."
-    variant column "Top to bottom."
-  }
-
-  enum Align {
-    doc "Where children sit along the main axis."
-    variant start "At the start."
-    variant center "Centred."
-    variant end "At the end."
-    variant spaceBetween "The free space split evenly between children."
-  }
-
-  enum Cross {
-    doc "Where children sit across the main axis."
-    variant start "At the start."
-    variant center "Centred."
-    variant end "At the end."
-    variant stretch "Stretched to the container's inner size."
-    variant baseline "In a row, children share their first text baseline (rows of mixed type sizes); a column treats it as start."
-  }
-
   enum TextAlign {
     doc "How the lines of a label align."
     variant start "To the start (left)."
     variant center "Centred."
     variant end "To the end (right)."
-  }
-
-  enum FontRole {
-    doc "Which configured font text uses; display and mono fall back to body, rounded to display, then body."
-    variant body "The body font."
-    variant display "The display font."
-    variant mono "The monospaced font."
-    variant rounded "The rounded font, for levels and scores."
   }
 
   enum Scheme {
@@ -124,41 +93,6 @@ module ui {
     variant hero "The largest typography role, above display; displayXl2 is its legacy alias."
   }
 
-  struct SizeRange {
-    doc "The bounds of a fit or grow size."
-    field min f32 "The smallest size." {
-      optional true
-      unit cssPx
-    }
-    field max f32 "The largest size; absent is unbounded." {
-      optional true
-      unit cssPx
-    }
-  }
-
-  struct FixedSize {
-    doc "A fixed size."
-    field px f32 "The size." {
-      unit cssPx
-    }
-  }
-
-  struct PercentSize {
-    doc "A size relative to the parent."
-    field fraction f32 "The fraction of the parent's inner size." {
-      unit ratio
-    }
-  }
-
-  union Size {
-    doc "A size along one axis. Absent (null) is fit: the content's size."
-    tag kind
-    case fit SizeRange "The content's size, within the range."
-    case grow SizeRange "The content's size, then a share of the parent's free space, within the range."
-    case fixed FixedSize "Exactly this size."
-    case percent PercentSize "A fraction of the parent's inner size."
-  }
-
   struct Insets {
     doc "Padding or margins on four sides."
     field left f32 "The left side." {
@@ -188,46 +122,6 @@ module ui {
     }
   }
 
-  struct LabelDesc {
-    doc "How a label draws its text."
-    desc true
-    field step Option.TypeStepName "The type step; null is body."
-    field color Option.Paint "The ink; null is ink."
-    field onScene bool "Text over the scene: uses sceneInk when color is null and draws the scheme's sceneShadow separation. A HUD plate uses background: { token: 'scenePlate' } on its container."
-    field uppercase bool "Uppercase in the UI's locale before it is measured (Turkish i to İ, Greek without its accents), as a type role with `case upper` is; the probe and screen readers keep the source text. Never uppercase in game code: String.toUpperCase knows no locale."
-    field align TextAlign "How the lines align."
-    field nowrap bool "Keep to one line (breaking only at `\\n`)."
-    field width Option.Size "Its width; null fits the text."
-    field font FontRole "Which font."
-    field heading bool "A heading: a style with a flourish frames it."
-    field ellipsis bool "Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text."
-    field maxLines u32 "The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out."
-    field fitMin Option.TypeStepName "Auto-fit: where the text does not fit its width (one line with nowrap, else its words and maxLines), it takes the ramp's smaller sizes, largest first, down to this step, keeping its own step's tracking and features; at the smallest, ellipsis cuts what still does not fit. Null keeps its step. A translation longer than the source (German on a button) shrinks instead of wrapping or overflowing."
-  }
-
-  struct Response {
-    doc "What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick."
-    field hovered bool "The pointer is over it and no other element holds the press."
-    field pressed bool "The press that started on it is still held."
-    field clicked bool "Pressed and released inside it."
-    field changed bool "Its value changed (slider, toggle, text field)."
-    field focused bool "It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on."
-    field submitted bool "Enter was pressed in it (text field)."
-    field dropped Option.u32 "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
-    field pad Option.u32 "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
-    field player Option.u32 "The split screen region (its `player` attribute) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed."
-    field focusedBy u32 "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
-    field adjust i32 "An adjustable element's (a slider's) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
-    field adjustY i32 "An element claiming Up and Down (a vertical slider) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise."
-    field ring bool "The focus ring is up on it: the focus is on it and keys or a pad put it there (a press of the pointer, or a focus returned by a closing dialog to a pointer's player, puts it away). With ElementDesc.ownRing the component draws its own ring and what keys show (a cursor's card lifted)."
-    field tapped bool "Its tap was recognised this tick (its `tap` attribute): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it."
-    field doubleTapped bool "The second tap of its double tap landed this tick."
-    field longPressed bool "Its long press fired this tick; the press it took clicks and taps nothing when released."
-    field longPress f32 "How far into its long press the held press is, 0 to 1 (0: none): a ring that fills while a touch is held." {
-      unit ratio
-    }
-  }
-
   struct Viewport {
     doc "The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit."
     field width f32 "Its width." {
@@ -239,7 +133,7 @@ module ui {
     field dpr f32 "Device pixels per CSS pixel; rectangles snap to device pixels." {
       default 1
     }
-    field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them."
+    field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them with the covered region folded in (covered)."
     field smallWidth f32 "The surface's width with the browser's own controls (address bar, toolbars) shown, as CSS's small viewport: what svw, svi and svmin read; vw and dvw read width. Omitted or 0 is width (native hosts have no such controls)." {
       unit cssPx
       optional true
@@ -269,7 +163,7 @@ module ui {
     field macKeys bool "Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it from the browser's platform (Apple's); a native host sets it on macOS, so a script that holds Ctrl or Meta edits as a person on that OS would (og.ui.previewViewport pins either). Omitted is false." {
       optional true
     }
-    field covered UiRect "Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). Anchored groups keep out of it, moved along the edge they sit on (a top-left group to its right), so the HUD templates never draw under it; a game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back." {
+    field covered UiRect "Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). A document's CSS `env(safe-area-inset-*)` clears it: it is folded into the one edge's inset that costs the least surface (the left one on a landscape surface, the top one on a portrait one), so a HUD placed at the insets (`position: fixed; left: calc(env(safe-area-inset-left) + 16px)`) never draws under it. A game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back." {
       optional true
     }
     field breakpoint Breakpoint "Its size class: phone portrait or landscape, tablet, desktop."
@@ -334,18 +228,6 @@ module ui {
     field close Option.Sound "A dialog closes."
     field success Option.Sound "A success toast."
     field error Option.Sound "A refused press or a danger toast."
-  }
-
-  enum StylePart {
-    doc "An element class a style dresses with a nine-slice frame."
-    variant panel "Dialogs and screen panels."
-    variant card "Cards."
-    variant button "Buttons (with hover, pressed and disabled states)."
-    variant field "Text fields."
-    variant slot "Inventory and grid cells."
-    variant tooltip "Tooltips."
-    variant hud "HUD elements over the game (counters, timers) and toasts."
-    variant track "A progress bar's track."
   }
 
   struct TypeStep {
@@ -413,10 +295,6 @@ module ui {
     field tokens Json "The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, `cues` (each colour token's cue besides its hue, by name: `{ icon: <index in the style's icons> }`, `{ pattern: <name> }` or `{ pips: <n> }`; docs/ui.md §3.2), and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
   }
 
-  callback UiBuild {
-    doc "Builds a container's children: ui calls made inside it nest under the container."
-  }
-
   fn configure {
     doc "Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text."
     param world World "The world whose UI is configured."
@@ -436,25 +314,12 @@ module ui {
     returns UiTheme
   }
 
-  fn close {
-    doc "Close the open container."
-    returns Response "Its response, for an interactive container; the zero response otherwise."
-  }
-
   struct TextSpan {
     doc "A named attribute range in plain text for a store and the Svelte text spans binding. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Names select text::part(name) styles; text is never reinterpreted as markup."
     field name String "The style part name, for example emphasis or character."
     field position u32 "Start in Unicode scalar values; an astral character counts once."
     field length u32 "Number of Unicode scalars. Zero is a metadata marker."
     field properties Map.OneOf.String.OneOf.f64.bool "Typed attribute properties: only string, finite number or boolean, never nested data or null."
-  }
-
-  fn label {
-    doc "MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text."
-    param id String "Its id."
-    param text String "The text."
-    param desc LabelDesc "Type step, ink, alignment, wrapping, width and font."
-    returns Void
   }
 
   # ── the game widget set ─────────────────────────────────────────────────
@@ -566,37 +431,6 @@ module ui {
     }
   }
 
-  struct AnchorDesc {
-    doc "An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls)."
-    desc true
-    field anchor Anchor "Where it sits."
-    field margin Option.f32 "The inset from the safe area's edges, the same on every edge: a margin wide enough to keep a top-left HUD over a centred portrait play field also pushes it that far down (use offsetX for the sideways shift, or a width); null is the density's gutter."
-    field offsetX f32 "Moves it right after placing." {
-      unit cssPx
-    }
-    field offsetY f32 "Moves it down after placing." {
-      unit cssPx
-    }
-    field direction Direction "Which way it lays out its children."
-    field gap f32 "Space between children." {
-      unit cssPx
-    }
-    field padding Insets "Space inside its edges."
-    field align Align "Where children sit along the main axis."
-    field cross Cross "Where children sit across it."
-    field background Option.Paint "Its fill; null draws none."
-    field radius f32 "Corner radius." {
-      unit cssPx
-    }
-    field width Option.Size "Its width; null fits the content."
-    field height Option.Size "Its height; null fits the content."
-    field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
-    field tooltip bool "Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (a tooltip card)."
-    field avoid bool "Step clear of the other anchored groups and the host's control, to the nearest free place on the safe area: a popup placed at a point (a drift score over the car) that must not cover the map or the tower."
-    field frame Option.StylePart "The style frame its background takes; null is the panel's."
-    field instant bool "Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."
-  }
-
   struct ToastDesc {
     doc "A toast's tone and time."
     desc true
@@ -671,22 +505,6 @@ module ui {
   fn frameTheme {
     doc "The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the components and patterns)."
     returns UiTheme
-  }
-
-  fn openAnchor {
-    doc "Open an anchored group, closed by close(): og.ui.anchor without the callback."
-    param id String "Its id; the probe path is the id alone."
-    param desc AnchorDesc "Where it sits and how it lays out."
-    returns Void
-  }
-
-  fn anchor {
-    doc "An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls."
-    host false
-    param id String "Its id."
-    param desc AnchorDesc "Where it sits and how it lays out."
-    param build UiBuild "Makes its children."
-    returns Void
   }
 
   fn bounds {

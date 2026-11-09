@@ -2121,8 +2121,6 @@ export const ui = Object.freeze({
   frameDirection: (): "ltr" | "rtl" => abi().og_ui_frame_direction() as "ltr" | "rtl",
   frameCursor: (): Api.Cursor => abi().og_ui_frame_cursor() as Api.Cursor,
   scrollIntoView: (path: string, center: boolean): void => abi().og_ui_scroll_into_view(path, center),
-  close: () => parse(abi().og_ui_close()),
-  label: (id: string, text: string, desc?: unknown) => abi().og_ui_label(id, text, json(desc)),
   feedback: (event: string, rise: number) => abi().og_ui_feedback(event, rise),
   setHaptics: (intensity: number) => abi().og_ui_set_haptics(intensity),
 });

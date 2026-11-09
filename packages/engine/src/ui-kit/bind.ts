@@ -40,17 +40,6 @@ export const widgets = {
   frameGlyph: (action: string): Api.UiGlyph | null => parse(abi().og_ui_frame_glyph(action)),
   hasIcon: (name: string): boolean => abi().og_ui_has_icon(name),
   seconds: (): number => abi().og_ui_seconds(),
-  // An anchored HUD group: the one placement that keeps clear of the host's
-  // own controls (Viewport.covered), which documents do not do yet.
-  openAnchor: (id: string, desc?: Api.AnchorDesc): void => abi().og_ui_open_anchor(id, json(desc)),
-  anchor: (id: string, desc: Api.AnchorDesc, build: Api.UiBuild): void => {
-    abi().og_ui_open_anchor(id, json(desc));
-    try {
-      build();
-    } finally {
-      abi().og_ui_close();
-    }
-  },
   bounds: (path: string): Api.UiRect | null => parse(abi().og_ui_bounds(path)),
   scrollState: (path: string): Api.ScrollState | null => parse(abi().og_ui_scroll_state(path)),
   toast: (world: Api.World, text: string, desc?: Api.ToastDesc): number => abi().og_ui_toast(worldId(world), text, json(desc)),

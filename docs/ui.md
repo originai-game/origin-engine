@@ -682,9 +682,18 @@ advance (`ex` is 0.5em, as CSS's fallback has it). All of these become px
 when the element resolves, except a margin's `em`, which its box keeps.
 `env(safe-area-inset-top)` and the other safe-area insets (`max` ones
 too) read the viewport's safe area, which the web shell measures from
-the page's own `env()` and native hosts pass in; any other name takes
-its fallback. A change to the safe area or to the small or large
-viewport re-resolves the elements that read them.
+the page's own `env()` and native hosts pass in, with the host's covered
+region (`Viewport.covered`: a published page's round Back, top left)
+folded into the one edge whose inset clears it for the least surface, as
+a phone folds its status bar into the top inset in portrait and its notch
+into a side inset in landscape. On a landscape or desktop surface Back
+widens the left inset to its right edge; on a portrait one it deepens the
+top inset to its bottom. A HUD is a document placed at the insets, so
+it is clear of Back at every corner:
+`position: fixed; left: calc(env(safe-area-inset-left) + 16px); top:
+calc(env(safe-area-inset-top) + 16px); width: max-content`. Any other
+name takes its fallback. A change to the safe area, the covered region or
+the small or large viewport re-resolves the elements that read them.
 `attr(data-size px, 4px)` reads the element's attribute (CSS Values 5):
 untyped, it is a string; `number`, a unit keyword or `type(…)` make it a
 number, and a missing or non-numeric attribute takes the fallback. HTML's

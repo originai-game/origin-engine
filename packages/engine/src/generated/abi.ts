@@ -899,10 +899,6 @@ export interface HostAbi<A, V> {
   og_ui_viewport(world: number): string;
   /** `og.ui.theme` */
   og_ui_theme(world: number): string;
-  /** `og.ui.close` */
-  og_ui_close(): string;
-  /** `og.ui.label` */
-  og_ui_label(id: string, text: string, desc: string | undefined): void;
   /** `og.ui.framePointer` */
   og_ui_frame_pointer(): string;
   /** `og.ui.frameCursor` */
@@ -921,8 +917,6 @@ export interface HostAbi<A, V> {
   og_ui_frame_direction(): string;
   /** `og.ui.frameTheme` */
   og_ui_frame_theme(): string;
-  /** `og.ui.openAnchor` */
-  og_ui_open_anchor(id: string, desc: string | undefined): void;
   /** `og.ui.bounds` */
   og_ui_bounds(path: string): string;
   /** `og.ui.scrollState` */
@@ -1691,8 +1685,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_configure",
   "og_ui_viewport",
   "og_ui_theme",
-  "og_ui_close",
-  "og_ui_label",
   "og_ui_frame_pointer",
   "og_ui_frame_cursor",
   "og_ui_frame_viewport",
@@ -1702,7 +1694,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_scroll_into_view",
   "og_ui_frame_direction",
   "og_ui_frame_theme",
-  "og_ui_open_anchor",
   "og_ui_bounds",
   "og_ui_scroll_state",
   "og_ui_toast",

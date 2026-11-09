@@ -14,10 +14,9 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_camera_world_to_screen, og_engine_create, og_engine_frame,
     og_engine_write_resource, og_game_game, og_host_begin_bundle, og_system_define_system,
-    og_ui_close, og_ui_define_mass, og_ui_label, og_ui_mass_count, og_ui_spawn_mass,
-    og_world_spawn, set_hooks, shared_ui,
+    og_ui_define_mass, og_ui_mass_count, og_ui_spawn_mass, og_world_spawn, set_hooks, shared_ui,
 };
-use og_ui::{Anchor, AnchorInfo, WorldAnchorDesc, WorldTarget};
+use og_ui::{Anchor, AnchorInfo, LabelDesc, WorldAnchorDesc, WorldTarget};
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -63,9 +62,10 @@ impl Hooks for Host {
                 ..WorldAnchorDesc::default()
             };
             let ui = shared_ui(call.engine).expect("the engine's UI");
-            let info = ui.lock().open_world_anchor("Tag", desc);
-            og_ui_label("Name".into(), "Brenna".into(), None);
-            og_ui_close();
+            let mut ui = ui.lock();
+            let info = ui.open_world_anchor("Tag", desc);
+            ui.label("Name", "Brenna", LabelDesc::default());
+            ui.close();
             s.infos.borrow_mut().push(info);
         }
         Ok(String::new())
