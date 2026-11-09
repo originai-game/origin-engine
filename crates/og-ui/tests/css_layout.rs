@@ -63,7 +63,9 @@
 //!   stretched, or its margins (`auto` ones too) ignored →
 //!   `positioning_places_as_css_positioning_does`
 //! - `inline-start` not following the containing block's direction, `left`
-//!   turned round under a right-to-left surface, or a box narrowed beside
+//!   turned round under a right-to-left surface, a positioned box with no
+//!   horizontal inset not flipped with its margins on their sides
+//!   (`direction_lays_out_as_css_writing_modes_does`), or a box narrowed beside
 //!   floats not mirrored whole in a right-to-left block →
 //!   `floats_take_their_sides_from_the_direction`
 
@@ -732,7 +734,7 @@ fn direction_lays_out_as_css_writing_modes_does() {
   <div id="Row" dir="rtl"><div id="R1"></div><div id="R2"></div></div>
   <div id="Ltr"><div id="L1"></div></div>
   <div id="Log"><div id="G1"></div></div>
-  <div id="Abs"><div id="Ab"></div></div>
+  <div id="Abs"><div id="Ab"></div><div id="Am"></div></div>
   <div id="Back" dir="ltr"><div id="B1"></div></div>
 </div></div>
 <style>
@@ -746,6 +748,7 @@ fn direction_lays_out_as_css_writing_modes_does() {
 #G1 { width: 40px; height: 10px; margin-inline-end: 30px; }
 #Abs { position: relative; width: 300px; height: 20px; direction: rtl; }
 #Ab { position: absolute; left: 10px; width: 20px; height: 5px; }
+#Am { position: absolute; top: 0; width: 20px; height: 5px; margin-left: 3px; margin-right: 7px; }
 #Back { display: flex; }
 #B1 { width: 40px; height: 10px; }
 </style>"#;
@@ -777,6 +780,10 @@ fn direction_lays_out_as_css_writing_modes_does() {
             assert_eq!(at(d, "G1", "Log"), 260.0, "{s}");
             // `left` is the left, whatever the direction.
             assert_eq!(at(d, "Ab", "Abs"), 10.0, "{s}");
+            // With no horizontal inset a positioned box stands at the
+            // right-to-left block's start, the right, its margins kept on
+            // their physical sides: 300 - 7 - 20.
+            assert_eq!(at(d, "Am", "Abs"), 273.0, "{s}");
             // A left-to-right element in a right-to-left surface.
             assert_eq!(at(d, "B1", "Back"), 0.0, "{s}");
         }
