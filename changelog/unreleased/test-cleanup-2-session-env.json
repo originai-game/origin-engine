@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og session",
+      "summary": "A resident host is kept per worktree and environment. Commands in one worktree whose environments differ (OG_RENDERER, a terminal's variables) each start their own host, where before the second found the first's host, was refused and ran alone."
+    }
+  ]
+}

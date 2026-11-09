@@ -18,6 +18,11 @@ mod local {
     use std::path::PathBuf;
     use std::process::Stdio;
 
+    /// One host per worktree and environment. A host serves only commands
+    /// with its own environment (session.ts), so commands that differ in it
+    /// (a test's OG_RENDERER, a terminal's variables) each start their own
+    /// host instead of finding another's and running alone. The variables
+    /// the shell changes per command are left out, as session.ts does.
     pub(super) fn directory(project: &Path) -> PathBuf {
         let worktree = project
             .ancestors()
@@ -25,6 +30,10 @@ mod local {
             .unwrap_or(project);
         let mut hash = std::hash::DefaultHasher::new();
         worktree.hash(&mut hash);
+        std::env::vars_os()
+            .filter(|(key, _)| !["_", "SHLVL", "PWD", "OLDPWD"].iter().any(|k| key == k))
+            .collect::<BTreeMap<_, _>>()
+            .hash(&mut hash);
         std::env::var_os("HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|| project.to_path_buf())
