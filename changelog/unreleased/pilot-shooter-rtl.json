@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "shooter kit: CombatHud, Loadout; library StatBar",
+      "summary": "Right to left, the combat HUD's corners mirror (the feed and ammunition on the left, the vitals on the right), and StatBar's damage ghost and segment blocks run from the right with its fill. The loadout's scrollbar room stays on the right beside the bar, and a slot's Equipped tag wraps under its figures when a translation leaves no room."
+    }
+  ]
+}

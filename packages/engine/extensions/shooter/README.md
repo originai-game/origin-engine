@@ -78,6 +78,12 @@ as a game installs it.
   and holds while the game holds `hit`; an arc fades in and out over
   300 ms. Under reduced motion both only fade, and both settle: the frame's
   `dump_ui:motion` lists nothing moving once they have.
+- Locales: the sheet loads the kit's strings in Japanese, Simplified
+  Chinese and Arabic (`sheet/assets/strings/`), so `og ui review shooter
+  --locales game,pseudo,ja,ar` shows CJK and right to left. Right to left
+  the HUD's corners mirror (the feed and ammunition on the left, the vitals
+  on the right); the crosshair and the damage arcs keep their screen
+  directions. The slot list's scrollbar stays on the right, with its room.
 - The primary pack is `clean`. The contrast pack, `scifi`, is pending
   because scifi is unbuilt.
 
