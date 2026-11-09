@@ -1,0 +1,6 @@
+type look
+version 1
+---
+# Names the built-in clean style so the cook bundles it (@styles/clean/); the sheet loads it itself.
+name "shooter sheet clean"
+ui "clean"

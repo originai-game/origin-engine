@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "clean style pack",
+      "summary": "templates/styles/clean is a dark, restrained pack. Display and numeric text use Barlow Semi Condensed with tabular figures, radii are small, and the HUD sits on low-alpha plates. It dresses every core control part and the shooter kit's parts. It is in art review and not yet a creation choice."
+    },
+    {
+      "member": "shooter kit",
+      "summary": "packages/engine/extensions/shooter holds Crosshair, AmmoCounter, DamageDirection, Killfeed, Loadout (select, equip and back intents with row keys) and a CombatHud over core StatBar, as documents with a review sheet and behaviour tests. It is in art review."
+    }
+  ]
+}

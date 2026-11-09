@@ -1,0 +1,17 @@
+type project
+version 1
+---
+# The shooter kit's review sheet: `og ui sheet shooter` renders each page at
+# desktop and phone, 100 % and 150 % (docs/ui.md §6.2). The kit is installed
+# as a game installs it; each screen names its style and page.
+name "Shooter kit sheet"
+id "shooter-sheet"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "combat-clean" "style:clean;page:combat"
+  screen "loadout-clean" "style:clean;page:loadout"
+}

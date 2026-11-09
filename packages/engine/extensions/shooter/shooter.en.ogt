@@ -1,0 +1,22 @@
+type strings
+version 1
+---
+locale "en"
+string "shooter.crosshair.name" "Crosshair"
+string "shooter.ammo.name" "Ammunition"
+string "shooter.ammo.value" "{magazine} of {capacity}, {reserve} in reserve"
+string "shooter.ammo.auto" "Auto"
+string "shooter.ammo.burst" "Burst"
+string "shooter.ammo.single" "Single"
+string "shooter.ammo.reloading" "Reloading"
+string "shooter.ammo.empty" "Reload"
+string "shooter.damage.name" "Incoming damage"
+string "shooter.killfeed.name" "Eliminations"
+string "shooter.killfeed.headshot" "Headshot"
+string "shooter.killfeed.row" "{killer} eliminated {victim} with {weapon}"
+string "shooter.loadout.equipped" "Equipped"
+string "shooter.loadout.locked" "Locked"
+string "shooter.loadout.equip" "Equip"
+string "shooter.loadout.back" "Back"
+string "shooter.loadout.empty" "No items"
+string "shooter.hud.health" "Health"
