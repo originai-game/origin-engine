@@ -67,7 +67,9 @@ impl Renderer {
     /// which batches otherwise make when one first draws; true when this
     /// call made one.
     fn warm_plain_lit(&mut self) -> bool {
-        let key = (Side::Front, false, false, false);
+        // With the effect shader when the frame puts it on every batch:
+        // the variant without it would be made for nothing.
+        let key = (Side::Front, false, false, self.plain_effects);
         if !self.pbr_pipelines.contains_key(&key) {
             let p = pbr_pipeline(
                 &self.device,
@@ -243,5 +245,58 @@ impl Renderer {
         self.previous_time = None;
         self.previous_sway.clear();
         self.previous_wind = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        AmbientOcclusion, AoMethod, Camera, RenderDesc, RenderScene, RenderTarget, Renderer, Side,
+        StandardMaterial, shapes,
+    };
+    use glam::{Mat4, Vec3};
+
+    /// [`Renderer::warm`] makes the plain lit pipeline that a plain
+    /// material would draw with this frame: with screen-space AO every
+    /// batch takes the effect shader (`prepare_frame_pipelines`), so the
+    /// variant without it is never made.
+    #[test]
+    #[ignore = "requires GPU"]
+    fn warming_makes_the_plain_lit_variant_the_frame_draws() {
+        let desc = RenderDesc {
+            width: 64,
+            height: 64,
+            ..Default::default()
+        };
+        let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+        let mut scene = RenderScene::new();
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 0.0, 4.0),
+            target: Vec3::ZERO,
+            ..Default::default()
+        };
+        scene.post.ao = Some(AmbientOcclusion {
+            method: AoMethod::Screen,
+            ..Default::default()
+        });
+        let quad = scene.add_mesh(shapes::plane_xy(1.0, 1.0));
+        // The alpha cut keeps it off the lean pipelines: it draws a pbr one.
+        let material = scene.add_standard_material(StandardMaterial {
+            alphaTest: 0.5,
+            ..Default::default()
+        });
+        scene.add_instance(quad, material, Mat4::IDENTITY);
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        assert!(renderer.plain_effects, "the AO puts the effect shader on");
+        while renderer.warm() {}
+        let plain: Vec<bool> = renderer
+            .pbr_pipelines
+            .keys()
+            .filter(|&&(side, blend, skinned, _)| side == Side::Front && !blend && !skinned)
+            .map(|&(.., effects)| effects)
+            .collect();
+        assert_eq!(plain, [true], "the plain lit variants made");
     }
 }

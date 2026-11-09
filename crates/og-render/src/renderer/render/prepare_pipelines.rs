@@ -40,7 +40,8 @@ impl Renderer {
     ) -> (bool, bool, bool) {
         // Decals and screen-space AO (or GI) need the effect shader on every batch;
         // decals take screen derivatives (the lean pipelines keep the discard).
-        if ao || !scene.decals.is_empty() {
+        self.plain_effects = ao || !scene.decals.is_empty();
+        if self.plain_effects {
             let decals = !scene.decals.is_empty();
             for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {
                 b.effects = true;
