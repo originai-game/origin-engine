@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: pipeline warm-up",
+      "summary": "The warm-up makes the plain material's lit pipeline in the variant the frame draws: with the effect shader when screen-space AO or GI or decals are on. Before, it always made the variant without it, which such a scene never draws, while a plain material met later still compiled its own. Frames do not change. An empty shader cache: about 0.8 s less compile time before play."
+    }
+  ]
+}

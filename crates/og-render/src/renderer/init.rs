@@ -1165,6 +1165,7 @@ impl Renderer {
             frame_features: crate::pipeline_features::Features::ALL,
             capturing: false,
             pbr_pipelines: HashMap::new(),
+            plain_effects: false,
             shadow_pipelines: HashMap::new(),
             prepass_pipelines: HashMap::new(),
             lean_pipelines: HashMap::new(),

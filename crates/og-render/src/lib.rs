@@ -644,6 +644,10 @@ pub struct Renderer {
     /// which variants a compile worker has finished.
     capturing: bool,
     pbr_pipelines: HashMap<PbrKey, pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
+    /// Whether the last frame prepared drew every batch with the effect
+    /// shader (screen-space AO or GI, decals: `prepare_frame_pipelines`):
+    /// the variant [`Renderer::warm`] makes for plain materials.
+    plain_effects: bool,
     shadow_pipelines: HashMap<ShadowKey, Deferred<ShadowSet>>,
     /// Prepass pipelines by (side, skinned).
     prepass_pipelines:
