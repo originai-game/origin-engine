@@ -118,3 +118,8 @@ variants reach the cascade.
 The same rule applies to semantic tones: neutral, info, success, warning,
 danger and accent badges need different fills and inks from their own
 selectors, or a broken tone selector disappears in a uniform sample.
+
+A locale label on a review cell is not proof of localization. Load the
+sheet's translated string tables before its document, install the locale's
+font pack, and inspect translated glyphs and RTL geometry in the output.
+English fallback under a Chinese or Arabic cell label is missing coverage.

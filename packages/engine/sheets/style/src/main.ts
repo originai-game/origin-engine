@@ -49,6 +49,10 @@ export default og.game({
         "bomb", "crown", "flag", "apple", "leaf", "fire", "drop", "skull", "music", "person",
       ] },
     });
+    for (const locale of ["ja", "zh-CN", "ar"]) {
+      const strings = og.i18n.load(world, `ui/sheet.${locale}.ogt`);
+      if (!strings.ok) throw new Error(strings.reason);
+    }
     const loaded = og.load.document(world, "ui/sheet.svelte");
     if (!loaded.ok) throw new Error(loaded.reason);
   },

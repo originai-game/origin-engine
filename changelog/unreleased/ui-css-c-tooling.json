@@ -10,6 +10,10 @@
     {
       "member": "og ui sheet and og ui review",
       "summary": "Accept CSS pack directories or discovered names. Pack sheets cover the core controls at desktopHd and phonePortrait, 100% and 150% text, including overlapping scroll captures below the fold. Pack review adds locales. CSS source errors name their file and line; style check reports unresolved URLs and root-token contrast ratios without grading."
+    },
+    {
+      "member": "Core state sheet translations",
+      "summary": "The core sheet loads Japanese, Simplified Chinese and Arabic string tables before its document. Locale review renders translated text with the installed locale font packs and mirrors Arabic layout."
     }
   ]
 }
