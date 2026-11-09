@@ -1,0 +1,477 @@
+{
+  "atlas": [
+    512,
+    247
+  ],
+  "base": [
+    0,
+    0
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
+  "pending": [],
+  "resample": "smooth",
+  "slots": [
+    {
+      "derived": [],
+      "from": "art/panel.png",
+      "insets": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "00319c24-de13-458f-b0fa-243ce3d28c51",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA large rectangular window panel frame: a dark leather plate (#1c1611) inset in a slim burnished brass rim with a fine inner bead line; each corner carries a small filigree brass bracket with a tiny rivet. The plate interior is calm, low-contrast dark leather with no motifs, so dense text stays readable on it.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Aged burnished brass (#8f7650) with warm highlights (#d9b45f) and dark recesses, soft top-left key light, slight patina, no glow. Orthographic flat front view, centred, filling the canvas with a small even margin. Straight, uniform rim along every edge between the corners so the piece stretches as a nine-slice; ornament stays inside the four corners.\n\nUse case:\nNine-slice UI window frame for a game interface style pack.\n\nConstraints:\nTransparent background. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the object, no perspective.",
+        "references": [],
+        "request": "d30a08e6d0f8c771"
+      },
+      "size": [
+        158,
+        96
+      ],
+      "slot": "fantasy/panel",
+      "source": [
+        553,
+        336
+      ],
+      "to": [
+        "Panel.frame",
+        "Dialog.panel"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/card.png",
+      "insets": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "6f5af532-c8d8-49c9-bbc0-12dac84adb40",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA card frame, lighter than a window: a dark walnut plate with a thin brass rim and one fine engraved line inset from it; plain mitred corners with one small brass stud each. Interior calm, even and low contrast.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
+        "references": [],
+        "request": "71f7dee71b53a951"
+      },
+      "size": [
+        96,
+        96
+      ],
+      "slot": "fantasy/card",
+      "source": [
+        336,
+        336
+      ],
+      "to": [
+        "Card.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/field.png",
+      "insets": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "8c560fca-24b4-4cab-96bd-537e7661aa3a",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA wide text-entry field, about 2.4 times as wide as tall: a recessed dark plate (#110d0a) with an inner shadow along its top edge, framed by a thin plain brass rim with tiny squared corners. Interior plain and even.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
+        "references": [],
+        "request": "559d61967c2f228e"
+      },
+      "size": [
+        141,
+        40
+      ],
+      "slot": "fantasy/field",
+      "source": [
+        494,
+        140
+      ],
+      "to": [
+        "Field.frame",
+        "Dropdown.trigger",
+        "Stepper.value"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/slot.png",
+      "insets": [
+        16,
+        16,
+        16,
+        16
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "954e4e7a-58fe-417a-aac1-e6d430860107",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nAn inventory item slot: a square recessed well, darker in the middle (#0d0a07) as if sunk into the leather, framed by a slim bevelled brass rim with small mitred corners. The well interior is plain and even, ready for an item icon.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
+        "references": [],
+        "request": "afe17b7e19cf2261"
+      },
+      "size": [
+        64,
+        64
+      ],
+      "slot": "fantasy/slot",
+      "source": [
+        225,
+        224
+      ],
+      "to": [
+        "Slot.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/tooltip.png",
+      "insets": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "04fa844d-d60b-4733-ae01-a22fb6a20134",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA tooltip frame: a near-black plate (#15100c) with a thin brass rim and small cut corners, lighter in weight than a panel. Interior plain and even.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
+        "references": [],
+        "request": "c1972b77ad6c45b2"
+      },
+      "size": [
+        64,
+        64
+      ],
+      "slot": "fantasy/tooltip",
+      "source": [
+        224,
+        224
+      ],
+      "to": [
+        "Tooltip.frame",
+        "Popover.frame",
+        "Menu.frame",
+        "Dropdown.list"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/hud.png",
+      "insets": [
+        14,
+        12,
+        14,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "94401265-e016-470b-a839-34cd3e4c19f3",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA compact heads-up display plate, about 1.6 times as wide as tall: a dark smoked plate (#140f0b) with a thin brass rim and tiny cut corners; minimal and low-interference. Interior plain and even.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
+        "references": [],
+        "request": "e837ce1d25b8d6dd"
+      },
+      "size": [
+        80,
+        40
+      ],
+      "slot": "fantasy/hud",
+      "source": [
+        279,
+        140
+      ],
+      "to": [
+        "Hud.frame"
+      ]
+    },
+    {
+      "derived": [
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ],
+      "from": "art/button.png",
+      "insets": [
+        18,
+        14,
+        18,
+        14
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "41c8e3b9-5bb1-496e-94e8-060e99ca7998",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA rectangular secondary button, about 2.2 times as wide as tall: a raised dark walnut face (#2a2119) with a soft convex bevel, framed by a slim brass rim with small cut corners. Face plain and even so a label reads on it.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
+        "references": [],
+        "request": "a802d3e116c35657"
+      },
+      "size": [
+        131,
+        44
+      ],
+      "slot": "fantasy/button",
+      "source": [
+        459,
+        154
+      ],
+      "to": [
+        "Button.base[secondary]",
+        "Button.base[secondary][disabled]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]"
+      ]
+    },
+    {
+      "derived": [
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ],
+      "from": "art/button-primary.png",
+      "insets": [
+        18,
+        14,
+        18,
+        14
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "615847b3-abd2-4c59-b0dc-5d4d8af5c5da",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA rectangular primary call-to-action button, about 2.2 times as wide as tall: a raised deep crimson lacquered face (#8f2a1b, highlights #a8392a) with a soft convex bevel, framed by a brass rim slightly heavier than a secondary button, with small cut corners and a tiny brass cap at the middle of the left and right ends. Face plain and even so a pale label reads on it.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
+        "references": [],
+        "request": "1ae527b5508ba54b"
+      },
+      "size": [
+        131,
+        44
+      ],
+      "slot": "fantasy/button-primary",
+      "source": [
+        457,
+        154
+      ],
+      "to": [
+        "Button.base[primary]",
+        "Button.base[primary][disabled]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/corner.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "dc70a172-12a8-4a5b-b9d7-a8ad44d349ff",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI ornament on a transparent background.\n\nSubject:\nA single top-left corner ornament for a window frame: an L-shaped brass filigree bracket with a small leaf scroll and one rivet, its two arms running along the top and left edges of the canvas and meeting in the top-left corner.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Aged burnished brass (#8f7650) with warm highlights (#d9b45f) and dark recesses, soft top-left key light, slight patina, no glow. Orthographic flat front view, centred, filling the canvas with a small even margin. Square canvas; the ornament occupies the top-left corner and fades to nothing toward the bottom-right.\n\nUse case:\nCorner ornament sprite, mirrored by the engine for the other corners.\n\nConstraints:\nTransparent background. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the object, no perspective.",
+        "references": [],
+        "request": "26805298271809a7"
+      },
+      "size": [
+        32,
+        32
+      ],
+      "slot": "fantasy/corner",
+      "source": [
+        113,
+        112
+      ],
+      "to": [
+        "corner"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/divider.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "434495c0-4e6a-4a97-84a4-f0a2330e39d2",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI ornament on a transparent background.\n\nSubject:\nA long thin horizontal divider: a fine brass rule that tapers to points at both ends, with a small lozenge-shaped brass boss in the exact centre.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Aged burnished brass (#8f7650) with warm highlights (#d9b45f) and dark recesses, soft top-left key light, slight patina, no glow. Orthographic flat front view, centred, filling the canvas with a small even margin. Very wide and thin, about twelve times as wide as tall, perfectly horizontal and symmetric.\n\nUse case:\nSection divider sprite for a game interface.\n\nConstraints:\nTransparent background. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the object, no perspective.",
+        "references": [],
+        "request": "7c6b3849c43cf8ca"
+      },
+      "size": [
+        192,
+        13
+      ],
+      "slot": "fantasy/divider",
+      "source": [
+        822,
+        56
+      ],
+      "to": [
+        "divider"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/flourish.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "c6a8a1c6-abdf-469a-be00-27e08eb88574",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI ornament on a transparent background.\n\nSubject:\nA small symmetric heading flourish: two short brass scrolls curling outward from a central diamond, like a printer's ornament under a title.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Aged burnished brass (#8f7650) with warm highlights (#d9b45f) and dark recesses, soft top-left key light, slight patina, no glow. Orthographic flat front view, centred, filling the canvas with a small even margin. Wide, about two and a half times as wide as tall, perfectly symmetric left to right.\n\nUse case:\nHeading flourish sprite for a game interface.\n\nConstraints:\nTransparent background. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the object, no perspective.",
+        "references": [],
+        "request": "aad5aacfff4e3321"
+      },
+      "size": [
+        64,
+        16
+      ],
+      "slot": "fantasy/flourish",
+      "source": [
+        335,
+        84
+      ],
+      "to": [
+        "flourish"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/thumb.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "950fc6b3-cebd-440f-a796-f229f75e69fd",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA slider thumb: a round domed brass knob with a darker engraved ring and a small polished centre, seen straight on.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Aged burnished brass (#8f7650) with warm highlights (#d9b45f) and dark recesses, soft top-left key light, slight patina, no glow. Orthographic flat front view, centred, filling the canvas with a small even margin. Perfectly circular, centred.\n\nUse case:\nSlider knob sprite.\n\nConstraints:\nTransparent background. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the object, no perspective.",
+        "references": [],
+        "request": "40a07cc687dd5dcd"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "fantasy/thumb",
+      "source": [
+        84,
+        85
+      ],
+      "to": [
+        "Slider.knob"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "6ff754ef-b001-48b9-8963-0147613c8fbb",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA toggle switch knob in its ON state: a round domed burnished gold knob (#d9b45f) with a soft warm sheen and a fine engraved ring, seen straight on.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Aged burnished brass (#8f7650) with warm highlights (#d9b45f) and dark recesses, soft top-left key light, slight patina, no glow. Orthographic flat front view, centred, filling the canvas with a small even margin. Perfectly circular, centred.\n\nUse case:\nToggle knob sprite, on state.\n\nConstraints:\nTransparent background. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the object, no perspective.",
+        "references": [],
+        "request": "410180558a20093f"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "fantasy/knob",
+      "source": [
+        84,
+        85
+      ],
+      "to": [
+        "Toggle.knob[on]"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob-off.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-09",
+        "generation": "8130d052-e54f-4ee1-b8e3-c8aa74e439c9",
+        "model": "gpt-image-2.6-sunburst",
+        "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 6 texels per CSS px of its cell (no other edit).",
+        "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA toggle switch knob in its OFF state: a round domed dull pewter-and-dark-brass knob (#6b5d48) with a fine engraved ring, matte, no sheen, seen straight on.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Aged burnished brass (#8f7650) with warm highlights (#d9b45f) and dark recesses, soft top-left key light, slight patina, no glow. Orthographic flat front view, centred, filling the canvas with a small even margin. Perfectly circular, centred.\n\nUse case:\nToggle knob sprite, off state.\n\nConstraints:\nTransparent background. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the object, no perspective.",
+        "references": [],
+        "request": "d3002bd201fe6641"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "fantasy/knob-off",
+      "source": [
+        84,
+        85
+      ],
+      "to": [
+        "Toggle.knob[off]"
+      ]
+    }
+  ],
+  "stale": [],
+  "style": "fantasy"
+}

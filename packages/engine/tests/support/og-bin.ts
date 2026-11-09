@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 declare const Bun: {
-  spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stderr: Uint8Array };
+  spawnSync(cmd: string[], o?: { cwd?: string; env?: Record<string, string | undefined>; stdout?: string; stderr?: string }): { exitCode: number; stderr: Uint8Array };
 };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -33,4 +33,10 @@ export function ogBin(): string {
 export function cookProject(project: string, cwd: string): void {
   const r = Bun.spawnSync([ogBin(), "cook", project], { cwd, stdout: "ignore", stderr: "pipe" });
   if (r.exitCode !== 0) throw new Error(`cooking ${project}: ${new TextDecoder().decode(r.stderr)}`);
+}
+
+/** Runs the gate's og with `args` and extra `env`; its exit status and stderr. */
+export function runOg(args: string[], env: Record<string, string>): { status: number; stderr: string } {
+  const r = Bun.spawnSync([ogBin(), ...args], { env: { ...process.env, ...env }, stdout: "ignore", stderr: "pipe" });
+  return { status: r.exitCode, stderr: new TextDecoder().decode(r.stderr) };
 }

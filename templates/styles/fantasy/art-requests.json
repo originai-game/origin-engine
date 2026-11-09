@@ -1,0 +1,579 @@
+{
+  "choices": {
+    "finish": "bevel",
+    "motion": "heavy",
+    "ornament": "rich",
+    "scheme": "dark",
+    "seed": "#9b2f1f",
+    "shape": "cut"
+  },
+  "densities": [
+    1,
+    2,
+    3
+  ],
+  "look": "ornate fantasy",
+  "palette": {
+    "backdrop": "#18100f",
+    "highlight": "#e79487",
+    "ink": "#f9f3f2",
+    "line": "#504746",
+    "panel": "#2b2120",
+    "primary": "#9b2f1f"
+  },
+  "premise": "a party-based fantasy RPG with dense inventories, journals and dialogue",
+  "resample": "smooth",
+  "slots": [
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        [
+          "Panel.frame",
+          "Dialog.panel"
+        ]
+      ],
+      "file": "art/panel.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "d30a08e6d0f8c771",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/panel",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "set": "styleFrame",
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        "Card.frame"
+      ],
+      "file": "art/card.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "71f7dee71b53a951",
+      "insets": [
+        0.208,
+        0.208,
+        0.208,
+        0.208
+      ],
+      "kind": "styleFrame",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/card",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "set": "styleFrame",
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        [
+          "Field.frame",
+          "Dropdown.trigger",
+          "Stepper.value"
+        ]
+      ],
+      "file": "art/field.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "559d61967c2f228e",
+      "insets": [
+        0.125,
+        0.3,
+        0.125,
+        0.3
+      ],
+      "kind": "styleFrame",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/field",
+      "pixels": [
+        288,
+        120
+      ],
+      "safe": null,
+      "set": "styleFrame",
+      "size": [
+        96,
+        40
+      ],
+      "states": [
+        "normal"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        "Slot.frame"
+      ],
+      "file": "art/slot.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "afe17b7e19cf2261",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/slot",
+      "pixels": [
+        192,
+        192
+      ],
+      "safe": null,
+      "set": "styleFrame",
+      "size": [
+        64,
+        64
+      ],
+      "states": [
+        "normal"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        [
+          "Tooltip.frame",
+          "Popover.frame",
+          "Menu.frame",
+          "Dropdown.list"
+        ]
+      ],
+      "file": "art/tooltip.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "c1972b77ad6c45b2",
+      "insets": [
+        0.188,
+        0.25,
+        0.188,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/tooltip",
+      "pixels": [
+        192,
+        144
+      ],
+      "safe": null,
+      "set": "styleFrame",
+      "size": [
+        64,
+        48
+      ],
+      "states": [
+        "normal"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        "Hud.frame"
+      ],
+      "file": "art/hud.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "e837ce1d25b8d6dd",
+      "insets": [
+        0.219,
+        0.3,
+        0.219,
+        0.3
+      ],
+      "kind": "styleFrame",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/hud",
+      "pixels": [
+        192,
+        120
+      ],
+      "safe": null,
+      "set": "styleFrame",
+      "size": [
+        64,
+        40
+      ],
+      "states": [
+        "normal"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        [
+          "Button.base[secondary]",
+          "Button.base[secondary][disabled]"
+        ],
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "",
+        ""
+      ],
+      "file": "art/button.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "a802d3e116c35657",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
+      "kind": "styleButton",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/button",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "set": "styleButton",
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        [
+          "Button.base[primary]",
+          "Button.base[primary][disabled]"
+        ],
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "",
+        ""
+      ],
+      "file": "art/button-primary.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "1ae527b5508ba54b",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
+      "kind": "styleButton",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/button-primary",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "set": "styleButton",
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        "corner"
+      ],
+      "file": "art/corner.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "26805298271809a7",
+      "kind": "ornament",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/corner",
+      "pixels": [
+        96,
+        96
+      ],
+      "safe": null,
+      "set": "ornament",
+      "size": [
+        32,
+        32
+      ],
+      "states": [
+        "normal"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        "divider"
+      ],
+      "file": "art/divider.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "7c6b3849c43cf8ca",
+      "kind": "ornament",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/divider",
+      "pixels": [
+        576,
+        48
+      ],
+      "safe": null,
+      "set": "ornament",
+      "size": [
+        192,
+        16
+      ],
+      "states": [
+        "normal"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": "free",
+      "cells": null,
+      "dress": [
+        "flourish"
+      ],
+      "file": "art/flourish.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "hash": "aad5aacfff4e3321",
+      "kind": "ornament",
+      "legiblePx": 0,
+      "mask": "alpha",
+      "name": "fantasy/flourish",
+      "pixels": [
+        192,
+        72
+      ],
+      "safe": null,
+      "set": "ornament",
+      "size": [
+        64,
+        24
+      ],
+      "states": [
+        "normal"
+      ],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "aspect": [
+        1,
+        1
+      ],
+      "cells": null,
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "generated": true,
+      "kind": "iconSet",
+      "legiblePx": 24,
+      "mask": "alpha",
+      "name": "fantasy/icons",
+      "safe": null,
+      "set": "iconSet",
+      "states": [],
+      "tiling": false,
+      "transparent": true,
+      "treatments": []
+    },
+    {
+      "dress": [
+        "Slider.knob"
+      ],
+      "file": "art/thumb.png",
+      "hash": "40a07cc687dd5dcd",
+      "kind": "ornament",
+      "name": "fantasy/thumb",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[on]"
+      ],
+      "file": "art/knob.png",
+      "hash": "410180558a20093f",
+      "kind": "ornament",
+      "name": "fantasy/knob",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[off]"
+      ],
+      "file": "art/knob-off.png",
+      "hash": "d3002bd201fe6641",
+      "kind": "ornament",
+      "name": "fantasy/knob-off",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    }
+  ],
+  "style": "fantasy"
+}

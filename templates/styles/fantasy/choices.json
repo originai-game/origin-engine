@@ -1,0 +1,79 @@
+{
+  "name": "fantasy",
+  "look": "ornate fantasy",
+  "premise": "a party-based fantasy RPG with dense inventories, journals and dialogue",
+  "scheme": "dark",
+  "seed": [
+    "#8f2a1b",
+    1.0
+  ],
+  "ground": [
+    "#0f0b08",
+    1.0
+  ],
+  "ink": [
+    "#efe4cc",
+    1.0
+  ],
+  "accent": [
+    "#d9b45f",
+    1.0
+  ],
+  "onPrimary": null,
+  "shadow": null,
+  "shape": "cut",
+  "ornament": "rich",
+  "motion": "heavy",
+  "finish": "bevel",
+  "fonts": [
+    "@styles/shared/Newsreader-Medium.ttf",
+    "@styles/shared/Cinzel-Bold.ttf",
+    "@styles/shared/Spectral-SemiBold.ttf",
+    "@styles/cjk/NotoSansSC-Regular.ttf",
+    "@styles/cjk/NotoSansSC-Bold.ttf"
+  ],
+  "icons": "icons.png",
+  "body": 15.0,
+  "labelTracking": 0.0,
+  "displayTracking": null,
+  "sound": {
+    "tap": [
+      "click",
+      16,
+      1.1
+    ],
+    "confirm": [
+      "select",
+      17,
+      1.0
+    ],
+    "back": [
+      "back",
+      18,
+      1.0
+    ],
+    "open": [
+      "whoosh",
+      16,
+      1.1
+    ],
+    "error": [
+      "error",
+      13,
+      1.0
+    ],
+    "reward": [
+      "select",
+      19,
+      1.2
+    ],
+    "volume": 0.4,
+    "hover": false,
+    "spread": 0.03
+  },
+  "glitch": 0.0,
+  "danger": null,
+  "info": null,
+  "dressings": [],
+  "displayMin": null
+}

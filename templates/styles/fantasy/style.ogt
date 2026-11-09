@@ -1,0 +1,546 @@
+type style
+version 3
+---
+# fantasy (docs/ui.md §4): painted frames and materials with room for dense
+# content. Aged brass and lamp-black leather, parchment ink, a crimson
+# primary and gold for focus and selection. Started by og style new
+# (choices.json) and authored from there.
+atlas "atlas.png" 512 247 2 3
+name "fantasy"
+scheme dark
+palette {
+  --backdrop: #0f0b08
+  --well: #090705
+  --panel: #1c1611
+  --panel-hover: #2b2219
+  --panel-raised: #241c15
+  --line: #4a3c2b
+  --line-strong: #8f7650
+  --ink: #efe4cc
+  --ink-muted: #c8b89a
+  --ink-faint: #a39278
+  --ink-inverse: #1c1611
+  --control: #2a2119
+  --control-strong: #3a2e22
+  --primary: #8f2a1b
+  --primary-hover: #a8392a
+  --primary-active: #6c1e12
+  --on-primary: #f8ecd6
+  --primary-soft: #8f2a1b40
+  --highlight: #d9b45f
+  --selection: #3d2f1c
+  --on-selection: #f6e7c4
+  --accent: #d9b45f
+  --scene-ink: #f5ead3
+  --scene-plate: #140f0bea
+  --scene-shadow: #000000a0
+  --focus: #e6c26a
+  --knob: #cdb27a
+  --hud: #140f0bea
+  --scrim: #070504c4
+  --shadow: #000000a6
+  --sheen: #fff1d040
+  --success: #7fc48a
+  --warn: #e6b04f
+  --danger: #e0786a
+  --info: #86aee0
+  --health: #c23a2b
+  --mana: #3f6fd1
+  --xp: #b48be0
+  --gold: #e2b84f
+}
+colors {
+  --success: icon "check"
+  --warn: icon "bolt"
+  --danger: icon "close"
+  --info: pattern waves
+  --common: #9e9e9e pips 1
+  --uncommon: #3fbf4f pips 2
+  --rare: #2f7fef pips 3
+  --epic: #a841ef pips 4
+  --legendary: #ff8000 pips 5
+  --mythic: #e8364f pips 6
+  --team1: #3d7eff
+  --team2: #ff4747
+  --team3: #3fbf5f
+  --team4: #ffc61a
+  --team5: #a347ff
+  --team6: #ff8a1f
+  --team7: #1fc7c7
+  --team8: #ff5cb0
+  --physical: #b8b0a0
+  --fire: #ff6a2b
+  --ice: #62cfff
+  --lightning: #ffd83a
+  --poison: #7ed957
+  --holy: #ffe9a0
+  --shadow: #8a5cf6
+  --arcane: #ff4fd8
+  --series1: #4f7aa7
+  --series2: #f28e2b
+  --series3: #e15759
+  --series4: #76b7b2
+  --series5: #59a14f
+  --series6: #edc948
+  --series7: #b07aa1
+  --series8: #ff9da7
+}
+typography {
+  display 44 52 0.04 700 display {
+    phonePortrait 34 40
+    phoneLandscape 38 44
+  }
+  title 28 34 0.03 700 display {
+    phonePortrait 24 30
+    phoneLandscape 26 32
+  }
+  heading 19 25 0.02 700 display
+  body 15 22 0 400 body
+  label 13 18 0.02 600 body
+  caption 12 17 0 400 body
+  numeric 17 22 0 600 numeric
+}
+space {
+  --space-xxs: 2px
+  --space-xs: 4px
+  --space-sm: 8px
+  --space-md: 12px
+  --space-lg: 16px
+  --space-xl: 24px
+  --space-xxl: 32px
+  --space-xl3: 48px
+}
+size {
+  --size-xs: 16px
+  --size-sm: 24px
+  --size-md: 32px
+  --size-lg: 48px
+  --size-xl: 64px
+  --size-xxl: 96px
+  --size-touch: 44px
+}
+radius {
+  --radius-xs: 4px
+  --radius-sm: 6px
+  --radius-md: 10px
+  --radius-lg: 15px
+  --radius-xl: 20px
+  --radius-pill: 9999px
+}
+stroke {
+  --stroke-hairline: 1px
+  --stroke-thin: 1.5px
+  --stroke-regular: 2px
+  --stroke-thick: 3px
+  --stroke-focus: 2px
+}
+elevation {
+  raised {
+    shadow 0 2 0 0 "#00000036"
+  }
+  floating {
+    shadow 0 4 0 0 "#0000003e"
+  }
+  overlay {
+    shadow 0 6 0 0 "#00000045"
+  }
+  top {
+    shadow 0 6 0 0 "#0000004d"
+  }
+}
+shape {
+  panel bevel 10
+  dialog bevel 12
+  card bevel 8
+  tooltip bevel 4
+  button bevel 6
+  field bevel 4.8
+  chip bevel 6
+  badge bevel 6
+  tab bevel 4.8
+  slot bevel 6
+  bar bevel 2
+  hud bevel 6
+  avatar round pill
+}
+ramp {
+  body 15 21
+  meta 13 18
+  caption 13 18
+  reading 16 25
+  lg 19 26
+  xl 22 29
+  xl2 26 32
+  xl3 30 35
+  displaySm 32 36
+  displayMd 40 45
+  displayLg 50 55
+}
+fonts {
+  body "@styles/shared/Newsreader-Medium.ttf"
+  display "@styles/shared/Cinzel-Bold.ttf"
+  numeric "@styles/shared/Spectral-SemiBold.ttf"
+  cjk "@styles/cjk/NotoSansSC-Regular.ttf"
+  cjkDisplay "@styles/cjk/NotoSansSC-Bold.ttf"
+}
+icons "icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+textShadow display 2 2 0 "#000000c0"
+motion {
+  enter slideUp
+  toast slideUp
+  progress 520
+  shake 10
+  pop 0.03
+  spring ui 240 0
+  spring panel 500 0.03
+  spring emphasis 640 0.06
+  spring playful 700 0.1
+  ease standard 0.2 0 0 1
+  ease enter 0.23 1 0.32 1
+  ease exit 0.4 0 1 1
+  ease emphasis 0.34 1.4 0.64 1
+  ease widgetEnter 0.23 1 0.32 1
+  ease widgetExit 0.4 0 1 1
+  duration instant 130
+  duration fast 220
+  duration base 360
+  duration slow 520
+  duration spring 640
+  duration bounce 760
+  stagger 70
+  staggerCap 300
+  overshoot 0.02
+}
+sounds {
+  hover none haptic none
+  press "sfx-tap.ogt" "sfx-tap2.ogt" volume 0.32 0.4 pitch 0.97 1.03 haptic tick
+  focus none haptic none
+  select "sfx-tap.ogt" "sfx-tap2.ogt" volume 0.32 0.4 pitch 0.97 1.03 haptic tick
+  confirm "sfx-confirm.ogt" volume 0.34 0.4 pitch 0.985 1.015 haptic tap
+  cancel "sfx-back.ogt" volume 0.32 0.4 pitch 0.97 1.03 haptic tick
+  back "sfx-back.ogt" volume 0.32 0.4 pitch 0.97 1.03 haptic tick
+  open "sfx-open.ogt" volume 0.24 0.28 pitch 1.02 1.08 haptic none
+  close "sfx-open.ogt" volume 0.2 0.24 pitch 0.82 0.88 haptic none
+  tab "sfx-tap.ogt" "sfx-tap2.ogt" volume 0.28 0.36 pitch 1.12 1.18 haptic tick
+  toggleOn "sfx-confirm.ogt" volume 0.24 0.28 pitch 1.17 1.23 haptic tick
+  toggleOff "sfx-back.ogt" volume 0.24 0.28 pitch 1.07 1.13 haptic tick
+  sliderTick "sfx-tap.ogt" "sfx-tap2.ogt" volume 0.14 0.2 pitch 1.34 1.46 haptic tick
+  scrollTick none haptic none
+  typewriter "sfx-tap.ogt" "sfx-tap2.ogt" volume 0.08 0.12 pitch 1.51 1.69 haptic none
+  counterTick "sfx-tap.ogt" "sfx-tap2.ogt" volume 0.14 0.18 pitch 0.9 1.5 haptic none
+  notification "sfx-confirm.ogt" volume 0.28 0.32 pitch 1.27 1.33 haptic tap
+  warning "sfx-error.ogt" volume 0.24 0.28 pitch 1.22 1.28 haptic warning
+  error "sfx-error.ogt" volume 0.32 0.4 pitch 0.985 1.015 haptic error
+  success "sfx-reward.ogt" volume 0.32 0.4 pitch 1.085 1.115 haptic success
+  reward "sfx-reward.ogt" volume 0.36 0.4 pitch 0.985 1.015 haptic double
+  revealCommon "sfx-tap.ogt" "sfx-tap2.ogt" volume 0.24 0.28 pitch 0.87 0.93 haptic none
+  revealUncommon "sfx-confirm.ogt" volume 0.28 0.32 pitch 0.92 0.98 haptic tick
+  revealRare "sfx-confirm.ogt" volume 0.32 0.36 pitch 1.12 1.18 haptic tap
+  revealEpic "sfx-reward.ogt" volume 0.34 0.4 pitch 0.885 0.915 haptic double
+  revealLegendary "sfx-reward.ogt" volume 0.36 0.4 pitch 0.785 0.815 haptic thud
+  revealMythic "sfx-reward.ogt" volume 0.4 0.4 pitch 0.685 0.715 haptic thud
+}
+Button::base {
+  -og-press: 1 0.97 1
+  -og-hover: 0 1
+  -og-fill: linear 180 var(--control-strong) var(--control)
+  -og-stroke: 1px var(--line-strong) inside
+  -og-effect: inner-shadow 0 1 0 0 #fff1d01f
+}
+Button::base:active {
+  -og-effect: inner-shadow 0 2 3 0 #00000080
+}
+Button::base.quiet {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: none
+}
+Button::base.quiet:hover {
+  -og-fill: #d9b45f1f
+}
+Button::base.quiet:active {
+  -og-fill: #00000059
+}
+Button::base.ghost {
+  -og-fill: none
+  -og-stroke: 1px var(--line-strong) inside
+  -og-effect: none
+}
+Button::base.ghost:hover {
+  -og-fill: none
+  -og-stroke: 1px var(--highlight) inside
+}
+Button::base.danger {
+  -og-fill: linear 180 #3a1712 #2a110d
+  -og-stroke: 1px #a8392a inside
+}
+Button::text.danger {
+  -og-ink: #f0a597
+}
+Button::base.danger:hover {
+  -og-fill: linear 180 #4a1c15 #34140f
+}
+Panel::frame {
+  -og-slice: 1 1 158 96 24 24 24 24 authored
+  -og-tone: 0.014 0.008 0.005 0.99
+  -og-effect: drop-shadow 0 8 18 0 #00000099
+}
+Dialog::panel {
+  -og-slice: 1 1 158 96 24 24 24 24 authored
+  -og-tone: 0.014 0.008 0.005 0.99
+  -og-effect: drop-shadow 0 14 36 0 #000000c0
+  -og-ornament: corner
+}
+Popover::frame {
+  -og-slice: 325 1 64 64 12 12 12 12 authored
+  -og-tone: 0.013 0.008 0.005 0.99
+  -og-effect: drop-shadow 0 8 18 0 #000000a0
+}
+Menu::frame {
+  -og-slice: 325 1 64 64 12 12 12 12 authored
+  -og-tone: 0.013 0.008 0.005 0.99
+  -og-effect: drop-shadow 0 8 18 0 #000000a0
+}
+Dropdown::list {
+  -og-slice: 325 1 64 64 12 12 12 12 authored
+  -og-tone: 0.013 0.008 0.005 0.99
+  -og-effect: drop-shadow 0 8 18 0 #000000a0
+}
+Dropdown::trigger {
+  -og-slice: 1 191 141 40 12 12 12 12 authored
+  -og-tone: 0.013 0.008 0.004 0.99
+}
+Dropdown::trigger.open {
+  -og-stroke: 1px var(--focus) inside
+}
+Dropdown::option:hover {
+  -og-fill: var(--primary-soft)
+}
+Dropdown::option:selected {
+  -og-fill: var(--selection)
+}
+Field::frame {
+  -og-slice: 1 191 141 40 12 12 12 12 authored
+  -og-tone: 0.013 0.008 0.004 0.99
+  -og-effect: none
+}
+Field::frame.invalid {
+  -og-stroke: 1px var(--danger) inside
+}
+Stepper::value {
+  -og-slice: 1 191 141 40 12 12 12 12 authored
+  -og-tone: 0.013 0.008 0.004 0.99
+}
+Stepper::button {
+  -og-fill: linear 180 var(--control-strong) var(--control)
+  -og-stroke: 1px var(--line-strong) inside
+}
+Stepper::button:hover {
+  -og-stroke: 1px var(--highlight) inside
+}
+Checkbox::mark {
+  -og-fill: var(--well)
+  -og-stroke: 1px var(--line-strong) inside
+  -og-effect: inner-shadow 0 1 2 0 #000000a0
+}
+Checkbox::mark:checked {
+  -og-fill: linear 180 #e6c26a #b38c3e
+  -og-stroke: 1px #f3dc9a inside
+}
+Radio::dot {
+  -og-fill: var(--well)
+  -og-stroke: 1px var(--line-strong) inside
+  -og-effect: inner-shadow 0 1 2 0 #000000a0
+}
+Radio::dot:checked {
+  -og-stroke: 1px var(--highlight) inside
+}
+Radio::chosen {
+  -og-fill: radial var(--focus) #a3803b
+}
+Radio::card:selected {
+  -og-fill: var(--selection)
+  -og-stroke: 1px var(--highlight) inside
+}
+Checkbox::row:hover {
+  -og-fill: #d9b45f14
+}
+Checkbox::row:active {
+  -og-fill: #d9b45f24
+}
+Toggle::row:hover {
+  -og-fill: #d9b45f14
+}
+Toggle::row:active {
+  -og-fill: #d9b45f24
+}
+Radio::option:hover {
+  -og-fill: #d9b45f14
+}
+Radio::option:active {
+  -og-fill: #d9b45f24
+}
+Toggle::track {
+  -og-fill: var(--well)
+  -og-stroke: 1px var(--line-strong) inside
+  -og-effect: inner-shadow 0 1 3 0 #000000b0
+}
+Toggle::track:checked {
+  -og-fill: linear 180 #5a1a10 #8f2a1b
+  -og-stroke: 1px #c9a55a inside
+}
+Slider::track {
+  -og-fill: var(--well)
+  -og-stroke: 1px var(--line) inside
+  -og-effect: inner-shadow 0 1 2 0 #000000b0
+}
+Slider::fill {
+  -og-fill: linear 90 #6c1e12 #a8392a
+}
+Meter::track {
+  -og-fill: var(--well)
+  -og-stroke: 1px var(--line) inside
+  -og-effect: inner-shadow 0 1 2 0 #000000b0
+}
+Meter::fill {
+  -og-effect: inner-shadow 0 1 0 0 #ffffff33
+}
+Tabs::track {
+  -og-fill: var(--well)
+  -og-stroke: 1px var(--line) inside
+  -og-effect: inner-shadow 0 1 3 0 #000000a0
+}
+Tabs::indicator {
+  -og-fill: linear 180 #7d6340 #76603a
+  -og-stroke: 1px var(--highlight) inside
+  -og-effect: inner-shadow 0 -2 0 0 var(--focus)
+}
+Tabs::tab:hover {
+  -og-fill: #d9b45f1a
+}
+Tabs::tab:selected {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: none
+}
+Tabs::tab:selected.underline {
+  -og-fill: none
+  -og-stroke: none
+}
+Chip::base {
+  -og-fill: var(--control)
+  -og-stroke: 1px var(--line) inside
+}
+Chip::base:selected {
+  -og-fill: var(--selection)
+  -og-stroke: 1px var(--highlight) inside
+}
+Badge::base {
+  -og-stroke: 1px #00000066 inside
+}
+Details::root {
+  -og-fill: none
+  -og-stroke: none
+}
+Details::summary {
+  -og-fill: linear 180 var(--panel-raised) var(--panel)
+  -og-stroke: 1px var(--line) inside
+}
+Details::summary:hover {
+  -og-stroke: 1px var(--line-strong) inside
+}
+Toast::indicator {
+  -og-fill: var(--highlight)
+}
+Scroll::bar {
+  -og-fill: #8f765099
+}
+Slot::frame:selected {
+  -og-stroke: 2px var(--highlight) inside
+  -og-effect: outer-glow 6 #d9b45f40
+}
+Slot::frame[rarity=uncommon] {
+  -og-stroke: 1px #4f9a52 inside
+}
+Slot::frame[rarity=rare] {
+  -og-stroke: 1px #4f86d9 inside
+}
+Slot::frame[rarity=epic] {
+  -og-stroke: 1px #9a5fd6 inside
+  -og-effect: inner-shadow 0 0 10 0 #9a5fd640
+}
+Slot::frame[rarity=legendary] {
+  -og-stroke: 1px #d98a2b inside
+  -og-effect: inner-shadow 0 0 12 0 #d98a2b4d
+}
+Slot::frame[rarity=mythic] {
+  -og-stroke: 1px #d6455a inside
+  -og-effect: inner-shadow 0 0 12 0 #d6455a4d
+}
+Card::frame {
+  -og-slice: 161 1 96 96 20 20 20 20 authored
+  -og-tone: 0.018 0.01 0.006 0.99
+}
+Tooltip::frame {
+  -og-slice: 325 1 64 64 12 12 12 12 authored
+  -og-tone: 0.013 0.008 0.005 0.99
+}
+Hud::frame {
+  -og-slice: 144 191 80 40 14 12 14 12 authored
+  -og-tone: 0.014 0.008 0.004 0.99
+}
+Button::base.secondary {
+  -og-slice: 1 99 131 44 18 14 18 14 authored
+  -og-tone: 0.016 0.009 0.005 0.99
+}
+Button::base.secondary:hover {
+  -og-slice: 134 99 131 44 18 14 18 14 authored
+  -og-tone: 0.053 0.04 0.031 0.99
+}
+Button::base.secondary:active {
+  -og-slice: 267 99 131 44 18 14 18 14 authored
+  -og-tone: 0.011 0.007 0.004 0.99
+}
+Button::base.secondary:disabled {
+  -og-slice: 1 99 131 44 18 14 18 14 authored
+  -og-tone: 0.016 0.009 0.005 0.99
+  opacity: 0.45
+}
+Button::base.primary:disabled {
+  -og-slice: 1 145 131 44 18 14 18 14 authored
+  -og-tone: 0.161 0.009 0.002 0.99
+  opacity: 0.45
+}
+corner 226 191 32 32 32 32 authored
+divider 1 233 192 13 192 13 authored
+flourish 338 191 64 16 64 16 authored
+Slider::knob {
+  -og-slice: 260 191 24 24 1 1 1 1 authored
+  -og-tone: 0.186 0.101 0.026 0.99
+}
+Toggle::knob:checked {
+  -og-slice: 286 191 24 24 1 1 1 1 authored
+  -og-tone: 0.525 0.287 0.052 0.99
+}
+Toggle::knob.off {
+  -og-slice: 312 191 24 24 1 1 1 1 authored
+  -og-tone: 0.143 0.086 0.038 0.99
+}
+Slot::frame {
+  -og-slice: 259 1 64 64 16 16 16 16 authored
+  -og-tone: 0.006 0.004 0.002 0.99
+}
+Button::base.primary {
+  -og-slice: 1 145 131 44 18 14 18 14 authored
+  -og-tone: 0.161 0.009 0.002 0.99
+}
+Button::base.primary:hover {
+  -og-slice: 134 145 131 44 18 14 18 14 authored
+  -og-tone: 0.229 0.039 0.024 0.99
+}
+Button::base.primary:active {
+  -og-slice: 267 145 131 44 18 14 18 14 authored
+  -og-tone: 0.1 0.006 0.002 0.99
+}
