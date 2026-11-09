@@ -165,7 +165,12 @@ impl UiDocument {
                 && let PropValue::Lit(Lit::Str(name)) = &p.value
             {
                 used_parts.push(name.clone());
-                if !self.parts.contains(name) {
+                // A core frame (`Slot.frame[rarity=epic]`) is the engine's
+                // part, dressed by every style; the `parts` line lists the
+                // document's own.
+                let core = crate::dress::PartRef::parse(name, None)
+                    .is_ok_and(|p| crate::style_file::StylePart::from_part(&p).is_some());
+                if !core && !self.parts.contains(name) {
                     errors.push(format!(
                         "line {}: the part '{name}' is not in the document's `parts` line",
                         p.line

@@ -409,9 +409,12 @@ fn a_draw_strokes_over_its_elements_background() {
 /// A document element's `part` attribute is the part its style dresses
 /// (docs/ui.md §3.2), with its classes and ARIA states as qualifiers and a
 /// control's own states kept: a kit's `<button part="Loadout.item">` is
-/// `Loadout::item:hover` under the pointer. Wrong: the attribute reached no
-/// draw (a bare box, a `Button::base` button), a class or `aria-selected`
-/// never qualified it, or the control lost its hover and variant.
+/// `Loadout::item:hover` under the pointer. A core frame with a qualifier,
+/// literal or bound (`Slot.frame[rarity=epic]`), needs no `parts` entry and
+/// takes the style's rarity dressing. Wrong: the attribute reached no draw
+/// (a bare box, a `Button::base` button), a class or `aria-selected` never
+/// qualified it, the control lost its hover and variant, or a core frame
+/// was refused as a part the document does not list.
 #[test]
 fn a_document_part_takes_its_dressing_classes_and_states() {
     use og_ui::reactive::SourceId;
@@ -421,6 +424,8 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
         "Kit::item {\n  -og-fill: #00ffff\n}\n",
         "Kit::item:hover {\n  -og-fill: #ffffff\n}\n",
         "Kit::item:selected {\n  -og-fill: #ff8800\n}\n",
+        "Slot::frame[rarity=epic] {\n  -og-fill: #ff00ff\n}\n",
+        "Slot::frame[rarity=rare] {\n  -og-fill: #0000ff\n}\n",
     ));
     let doc = r#"<meta name="component" content="kit">
 <meta name="parts" content="Kit.box Kit.item">
@@ -429,10 +434,12 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
   <div id="Hot" part="Kit.box" class:hot={true}>b</div>
   <button id="Item" part="Kit.item">c</button>
   <button id="Picked" part="Kit.item" aria-selected={true}>d</button>
+  <div id="Epic" part="Slot.frame[rarity=epic]">e</div>
+  <div id="Rare" part={"Slot.frame[rarity=" + "rare" + "]"}>f</div>
 </div>
 <style>
 #Root { width: stretch; padding: 8px; gap: 8px; }
-#Box, #Hot { width: 100px; height: 30px; }
+#Box, #Hot, #Epic, #Rare { width: 100px; height: 30px; }
 </style>"#;
     ui.define_document(UiDocument::parse("ui/kit.svelte", doc).unwrap());
     ui.mount_document(
@@ -489,6 +496,10 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
     assert!(has(fill(&ui, "Item"), "#00ffff"));
     assert!(part(&ui, "Picked").contains("[selected]"));
     assert!(has(fill(&ui, "Picked"), "#ff8800"));
+    assert_eq!(part(&ui, "Epic"), "Slot.frame[rarity=epic]");
+    assert!(has(fill(&ui, "Epic"), "#ff00ff"), "{:?}", fill(&ui, "Epic"));
+    assert_eq!(part(&ui, "Rare"), "Slot.frame[rarity=rare]");
+    assert!(has(fill(&ui, "Rare"), "#0000ff"), "{:?}", fill(&ui, "Rare"));
     let e = ui
         .elements()
         .iter()
