@@ -512,8 +512,10 @@ columns too, its spans in their fonts, inks, weights and outlines,
 pictures and icons upright, decorations along the column; its lines
 break by what each unit takes down the column (upright clusters at their
 vertical advances, sideways runs at their widths), and it takes the
-player's selection, its fill and `::selection`'s color, as vertical text
-does. Text on a path keeps its path's physical box whatever the writing
+player's selection, its fill and `::selection`'s ink, shadows and lines,
+as vertical text does: its glyphs are cut at the selected stretch and
+drawn there in the selection's style, so a translucent `color` does not
+blend with the text's own. Text on a path keeps its path's physical box whatever the writing
 mode, but in a vertical element the path is a vertical line: each
 upright cluster stands on it one vertical advance long, its top back
 along the path, and a sideways run lies along it. A

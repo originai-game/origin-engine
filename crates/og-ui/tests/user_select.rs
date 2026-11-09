@@ -382,8 +382,9 @@ p::selection { color: #ff0000; }
 
 /// A vertical rich paragraph takes the player's selection as a plain one
 /// does: a double press picks the word under it down its column (across
-/// its spans), its fill runs down that column, `::selection`'s ink covers
-/// only that stretch, and the copy is the source text.
+/// its spans), its fill runs down that column, `::selection`'s ink, line
+/// and shadow cover only that stretch, the glyphs' own ink is cut there
+/// (not drawn under it), and the copy is the source text.
 #[test]
 fn a_vertical_rich_paragraph_selects_down_its_columns() {
     let doc = r#"<meta name="component" content="sel">
@@ -391,7 +392,7 @@ fn a_vertical_rich_paragraph_selects_down_its_columns() {
 <style>
 #Doc { user-select: text; padding: 16px; }
 p { writing-mode: vertical-rl; height: 200px; margin: 0; }
-p::selection { color: #ff0000; }
+p::selection { color: #ff0000; text-decoration: underline #00ff00; text-shadow: 2px 2px #0000ff; }
 </style>"#;
     let mut scene = og_render::RenderScene::new();
     let mut rig = Rig::with(doc, desktop(), true, add_test_font(&mut scene));
@@ -403,14 +404,28 @@ p::selection { color: #ff0000; }
     assert_eq!(rig.selected(), "beta");
     let red = Srgba::rgb(255, 0, 0).linear();
     let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02);
-    let (mut red_clips, mut fills) = (vec![], vec![]);
+    let green = Srgba::rgb(0, 255, 0).linear();
+    let (mut red_clips, mut other_clips, mut fills, mut lines, mut shadows) =
+        (vec![], vec![], vec![], vec![], 0);
     for item in &rig.ui.frame().items {
-        let cmd = match &item.cmd {
-            DrawCmd::StyledText { text, .. } => text.as_ref(),
-            c => c,
+        let (cmd, shadowed) = match &item.cmd {
+            DrawCmd::StyledText { text, effects } => (
+                text.as_ref(),
+                effects
+                    .shadows
+                    .iter()
+                    .any(|s| s.color[2] > 0.9 && s.offset.x > 1.0),
+            ),
+            c => (c, false),
         };
         match cmd {
-            DrawCmd::Text { color, clip, .. } if near(*color, red) => red_clips.push(*clip),
+            DrawCmd::Text { color, clip, .. } if near(*color, red) => {
+                red_clips.push(*clip);
+                shadows += shadowed as usize;
+            }
+            // Where its own ink shows: its glyphs' box within its clip.
+            DrawCmd::Text { clip, bounds, .. } => other_clips.push(bounds.intersect(clip)),
+            DrawCmd::Quad { rect, color, .. } if near(*color, green) => lines.push(*rect),
             DrawCmd::Quad { rect, .. }
                 if rect.x >= e.x - 1.0 && rect.right() <= e.x + e.width + 1.0 =>
             {
@@ -426,12 +441,27 @@ p::selection { color: #ff0000; }
         "{f:?} {e:?}"
     );
     assert!(!red_clips.is_empty(), "no selected ink");
+    assert!(shadows > 0, "no selection shadow");
     for c in &red_clips {
         assert!(
             c.y >= f.y - 1.0 && c.bottom() <= f.bottom() + 1.0,
             "{c:?} {f:?}"
         );
     }
+    // The glyphs' own ink stops at the stretch: a translucent ::selection
+    // colour would blend with it.
+    for c in &other_clips {
+        let inside = c.y.max(f.y) < c.bottom().min(f.bottom()) - 0.5
+            && c.x.max(f.x) < c.right().min(f.right());
+        assert!(!inside, "own ink under the selection: {c:?} {f:?}");
+    }
+    // One green line down the word, beside it.
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    let l = lines[0];
+    assert!(
+        l.height > l.width && l.y >= f.y - 1.0 && l.bottom() <= f.bottom() + 1.0,
+        "{l:?} {f:?}"
+    );
     // A drag from the first word down past the end copies the source.
     let from = rig.point("V", 0.9, 0.0);
     rig.at(from, true, true, false);

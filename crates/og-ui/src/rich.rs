@@ -1559,8 +1559,11 @@ impl Ui {
             .docs
             .selection
             .get(&n.key)
-            .filter(|_| !selected.is_empty())
-            .and_then(|s| s.color);
+            .filter(|s| {
+                !selected.is_empty()
+                    && (s.color.is_some() || s.decoration.is_some() || s.shadows.is_some())
+            })
+            .cloned();
         for piece in self.rich_pieces(i) {
             let s = &rc.spans[piece.span];
             let r = piece.rect;
@@ -1715,21 +1718,120 @@ impl Ui {
                     }
                 }
             }
-            // `::selection`'s ink: the selected glyphs drawn again over
-            // their stretches.
-            if let Some(ink) = selection {
-                let drawn = cmds.len();
-                for band in selected.iter().filter(|b| b.overlaps(&r)) {
-                    for k in first..drawn {
-                        let mut c = cmds[k].clone();
-                        let t = match &mut c {
-                            DrawCmd::StyledText { text, .. } => text.as_mut(),
+            // `::selection`'s ink, lines and shadows: the glyphs cut at
+            // the selected stretches down the column, and drawn again
+            // there in its style, as across.
+            let mut bands: Vec<Rect> = selected
+                .iter()
+                .filter(|b| b.overlaps(&r))
+                .copied()
+                .collect();
+            if let Some(sel) = selection.as_deref().filter(|_| !bands.is_empty()) {
+                bands.sort_by(|a, b| a.y.total_cmp(&b.y));
+                let drawn: Vec<DrawCmd> = cmds.drain(first..).collect();
+                // The unselected stretches: each glyph clipped between the bands.
+                for c in &drawn {
+                    let mut from = f32::NEG_INFINITY;
+                    for gap in bands
+                        .iter()
+                        .map(|b| (b.y, b.bottom()))
+                        .chain([(f32::INFINITY, f32::INFINITY)])
+                    {
+                        let mut piece = c.clone();
+                        let keep = match text_clip(&mut piece) {
+                            Some(cl) => {
+                                let (top, bottom) = (from.max(cl.y), gap.0.min(cl.bottom()));
+                                *cl = Rect::new(cl.x, top, cl.width, bottom - top);
+                                bottom > top
+                            }
+                            None => from == f32::NEG_INFINITY,
+                        };
+                        if keep {
+                            cmds.push(piece);
+                        }
+                        from = gap.1;
+                    }
+                }
+                let ink = sel.color.unwrap_or(color);
+                let shadows: Option<Vec<og_render::UiTextShadow>> =
+                    sel.shadows.as_ref().map(|list| {
+                        list.iter()
+                            .map(|(o, blur, c)| og_render::UiTextShadow {
+                                offset: og_core::glam::Vec2::new(o[0] * n.scale, o[1] * n.scale),
+                                blur: blur * n.scale,
+                                color: c.fade(alpha * s.color.alpha).linear(),
+                            })
+                            .collect()
+                    });
+                for band in &bands {
+                    for c in &drawn {
+                        let mut c = c.clone();
+                        let Some(cl) = text_clip(&mut c) else {
+                            continue;
+                        };
+                        *cl = cl.intersect(band);
+                        let c = match c {
+                            DrawCmd::StyledText {
+                                mut text,
+                                mut effects,
+                            } => {
+                                if let DrawCmd::Text { color, .. } = text.as_mut() {
+                                    *color = ink.fade(alpha * s.color.alpha).linear();
+                                }
+                                if let Some(sh) = &shadows {
+                                    effects.shadows = sh.clone();
+                                }
+                                DrawCmd::StyledText { text, effects }
+                            }
+                            DrawCmd::Text { .. } => {
+                                let mut c = c;
+                                if let DrawCmd::Text { color, .. } = &mut c {
+                                    *color = ink.fade(alpha * s.color.alpha).linear();
+                                }
+                                match &shadows {
+                                    Some(sh) => DrawCmd::StyledText {
+                                        text: Box::new(c),
+                                        effects: Box::new(og_render::UiTextEffects {
+                                            shadows: sh.clone(),
+                                            transform: [1.0, 0.0, 0.0, 1.0],
+                                            ..Default::default()
+                                        }),
+                                    },
+                                    None => c,
+                                }
+                            }
                             c => c,
                         };
-                        if let DrawCmd::Text { color, clip, .. } = t {
-                            *color = ink.fade(alpha * s.color.alpha).linear();
-                            *clip = clip.intersect(band);
-                            cmds.push(c);
+                        cmds.push(c);
+                    }
+                    // Its lines down the stretch, on the sides the span's take.
+                    if let Some(d) = &sel.decoration {
+                        let th = d
+                            .thickness
+                            .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.scale);
+                        let lc = d.color.unwrap_or(ink).fade(alpha).linear();
+                        let (y0, y1) = (band.y.max(r.y), band.bottom().min(r.bottom()));
+                        let mut rule = |x: f32| {
+                            vertical_decoration_line(
+                                x - th / 2.0,
+                                y0,
+                                (y1 - y0).max(0.0),
+                                th,
+                                d.style,
+                                lc,
+                                clip,
+                                dpr,
+                                cmds,
+                            )
+                        };
+                        if d.underline {
+                            rule(mid - size * 0.5 - d.offset.map_or(size * 0.12, |o| o * n.scale));
+                        }
+                        if d.overline {
+                            rule(mid + size * 0.6);
+                        }
+                        if d.through {
+                            rule(mid);
                         }
                     }
                 }
@@ -1757,6 +1859,42 @@ impl Ui {
             if s.strike {
                 rule(mid);
             }
+        }
+    }
+}
+
+/// A text command's clip, through its effects.
+fn text_clip(c: &mut crate::draw::DrawCmd) -> Option<&mut Rect> {
+    use crate::draw::DrawCmd;
+    match c {
+        DrawCmd::StyledText { text, .. } => match text.as_mut() {
+            DrawCmd::Text { clip, .. } => Some(clip),
+            _ => None,
+        },
+        DrawCmd::Text { clip, .. } => Some(clip),
+        _ => None,
+    }
+}
+
+/// One decoration line of `style` down a vertical line: from `y` for
+/// `length`, its left at `x` ([`decoration_line`] turned a quarter).
+#[allow(clippy::too_many_arguments)]
+fn vertical_decoration_line(
+    x: f32,
+    y: f32,
+    length: f32,
+    th: f32,
+    style: crate::doc::text_css::DecorationStyle,
+    color: [f32; 4],
+    clip: Rect,
+    dpr: f32,
+    cmds: &mut Vec<crate::draw::DrawCmd>,
+) {
+    let from = cmds.len();
+    decoration_line(y, length, x, th, style, color, clip, dpr, cmds);
+    for c in &mut cmds[from..] {
+        if let crate::draw::DrawCmd::Quad { rect, .. } = c {
+            *rect = Rect::new(rect.y, rect.x, rect.height, rect.width);
         }
     }
 }

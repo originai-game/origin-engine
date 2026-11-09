@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI document ::selection on vertical rich text",
+      "summary": "Vertical rich text draws ::selection's text-decoration and text-shadow over the selected stretch, not only its color, and cuts its own glyphs there instead of drawing the selected ones again on top, so a translucent selection color no longer blends with the text's ink."
+    }
+  ]
+}
