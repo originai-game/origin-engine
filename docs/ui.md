@@ -483,12 +483,19 @@ frame for a popover's arrow.
 box, as high as it fits: beside the earlier floats on that side, else
 below the first that leaves room, never above an earlier float. Floats
 belong to their block formatting context, so one in a plain block
-reaches the boxes after that block. The lines of a text beside a float
-are shortened to the room it leaves (each line broken at its own room;
-a line no word fits moves down past the float). A box that starts a
-formatting context of its own (`flow-root`, a flex or grid box, a
-table, a scroller, an image, a widget, rich text and a block laying out
-inline-level children in lines) does not overlap a float: one whose
+reaches the boxes after that block. Every line box beside a float is
+shortened to the room it leaves (CSS 2.1 §9.5), each broken at its own
+room, and a line whose first word or box does not fit moves down past
+the float: a text's lines, a rich text's (its spans, `::part` runs and
+inline elements broken one line at a time), and a block's lines of
+inline-level boxes (`inline-block`, images, `inline-flex` and
+`inline-grid` boxes, texts), filled box by box. A block that lays its
+children out in lines takes part in its parent's formatting context, so
+a float inside it reaches the lines and boxes after it; a block-level
+box among such lines takes a line of its own, fitted to the room. A box
+that starts a formatting context of its own (`flow-root`, a flex or
+grid box, a table, a scroller, an image, a widget) does not overlap a
+float: one whose
 width fills the line is narrowed to the room beside the floats, one
 whose width is fixed moves down until it fits. `clear` places a box
 below the earlier floats on its sides. A formatting context root (a
@@ -496,8 +503,7 @@ below the earlier floats on its sides. A formatting context root (a
 floats; a plain block is not, and its floats overflow it. A
 right-to-left containing block (its `direction`, or the surface's)
 puts `inline-start` floats on the right; `left` and `right` stay where
-they say. The lines of inline-level boxes and of rich text
-are laid out whole beside floats, not shortened line by line.
+they say.
 
 CSS Multi-column Layout 1 lays a block's flow in columns. `column-count`,
 `column-width` and the `columns` shorthand make it a multi-column

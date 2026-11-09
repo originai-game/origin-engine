@@ -787,12 +787,22 @@ impl Ui {
         );
         let rtl = self.direction == og_i18n::Direction::Rtl;
         let mut out = Vec::new();
-        let mut y = inner.y;
-        for line in &n.rich_lines {
+        let mut line_y = inner.y;
+        for (k, line) in n.rich_lines.iter().enumerate() {
             let segments = visual_segments(rc, &self.fonts, line, self.direction);
             let width: f32 = segments.iter().map(|s| s.width).sum();
-            let free = inner.width - width * sk;
-            let x0 = inner.x
+            // Its line box: the room floats leave it (`Node::wrap_lines`,
+            // its drop below the lines above), or its box.
+            let (bx, bw, dy) = match n.wrap_lines.get(k) {
+                Some(&[dx, dy, w]) if rtl => {
+                    (inner.x + inner.width - (dx + w) * sk, w * sk, dy * sk)
+                }
+                Some(&[dx, dy, w]) => (inner.x + dx * sk, w * sk, dy * sk),
+                None => (inner.x, inner.width, 0.0),
+            };
+            let y = line_y + dy;
+            let free = bw - width * sk;
+            let x0 = bx
                 + match (rc.align, rtl) {
                     (TextAlign::Start | TextAlign::Justify, false) | (TextAlign::End, true) => 0.0,
                     (TextAlign::Center, _) => free / 2.0,
@@ -809,7 +819,7 @@ impl Ui {
                 });
                 x += seg.width * sk;
             }
-            y += line.height * sk;
+            line_y += line.height * sk;
         }
         out
     }

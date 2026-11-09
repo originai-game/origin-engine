@@ -1,0 +1,16 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "Every line box wraps around floats (CSS 2.1 §9.5): the lines of a block's inline-level boxes (inline-block, images, inline-flex and inline-grid boxes, texts) are filled one at a time into the room beside the floats, and a rich text's lines (::part runs, mixed inline elements) are broken one at a time at that room; a line whose first box or word does not fit moves below the floats. A block laying its children out in lines now takes part in its parent's formatting context, so a float inside it reaches the boxes after it."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "UI document scoped CSS",
+      "change": "A block whose children lie in lines (it holds an inline-level box) beside a float is no longer narrowed whole as if it started its own formatting context: its lines are shortened one by one and those below the floats take the full width, and a float inside it now reaches the boxes after it.",
+      "fix": "Give the block display: flow-root to keep it narrowed whole beside the floats and holding its own floats."
+    }
+  ]
+}

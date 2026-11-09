@@ -1605,7 +1605,9 @@ impl Ui {
             }
             Content::Rich(_) => {
                 let l = n.rich_lines.first()?;
-                Some(n.rect.y + n.el.padding.top + l.baseline)
+                // A first line floats moved down (`Node::wrap_lines`).
+                let drop = n.wrap_lines.first().map_or(0.0, |w| w[1]);
+                Some(n.rect.y + n.el.padding.top + drop + l.baseline)
             }
             _ => n.children.iter().find_map(|&c| self.first_baseline(c)),
         }
@@ -1633,7 +1635,8 @@ impl Ui {
             Content::Rich(_) => {
                 let (last, before) = n.rich_lines.split_last()?;
                 let above: f32 = before.iter().map(|l| l.height).sum();
-                Some(n.rect.y + n.el.padding.top + above + last.baseline)
+                let drop = n.wrap_lines.last().map_or(0.0, |w| w[1]);
+                Some(n.rect.y + n.el.padding.top + above + drop + last.baseline)
             }
             _ => n.children.iter().rev().find_map(|&c| self.last_baseline(c)),
         }

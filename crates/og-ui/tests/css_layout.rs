@@ -806,6 +806,67 @@ p {{ margin: 0; }}
 }
 
 #[test]
+fn every_line_box_is_shortened_around_floats() {
+    let words = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu";
+    let boxes: String = (1..=9)
+        .map(|k| format!(r#"<span id="B{k}" class="ib"></span>"#))
+        .collect();
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Ctx"><div id="F"></div><div id="Line">{boxes}</div></div>
+  <div id="Ctx2"><div id="G"></div><div id="Drop"><span id="D1" class="ib"></span></div></div>
+  <div id="Ctx3"><div id="H"></div><p id="R">{words} <b>nu</b> xi</p></div>
+  <div id="Ref"><p id="RefR">{words} <b>nu</b> xi</p></div>
+</div></div>
+<style>
+#Root {{ width: 300px; }}
+p {{ margin: 0; }}
+.ib {{ display: inline-block; width: 60px; height: 10px; }}
+#Line {{ font-size: 0; }}
+#F {{ float: left; width: 100px; height: 15px; }}
+#G {{ float: right; width: 260px; height: 20px; }}
+#Drop {{ font-size: 0; }}
+#H {{ float: left; width: 100px; height: 30px; }}
+#Ref {{ width: 200px; }}
+</style>"#
+    );
+    both(&text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        // Lines of inline-blocks: 200px beside the float hold three, the
+        // line below it (from 20px) the whole 300px, five.
+        assert_eq!(at("B1", "Ctx"), (100.0, 0.0));
+        assert_eq!(at("B4", "Ctx"), (100.0, 10.0));
+        assert_eq!(
+            at("B7", "Ctx"),
+            (0.0, 20.0),
+            "below the float, the full line"
+        );
+        assert_eq!(at("B9", "Ctx"), (120.0, 20.0));
+        assert_eq!(d.get("Line").width, 300.0, "the block fills its line");
+        assert_eq!(d.get("Line").height, 30.0);
+        // A box the room beside the float cannot hold moves below it.
+        assert_eq!(at("D1", "Ctx2"), (0.0, 20.0));
+        // Rich text: its lines beside the float 200px, then 300px.
+        let (r, rr) = (d.get("R"), d.get("RefR"));
+        assert_eq!(
+            (r.kind.as_str(), rr.kind.as_str()),
+            ("richtext", "richtext")
+        );
+        assert_eq!(r.width, 300.0, "a <p> fills its line");
+        assert!(
+            r.height < rr.height,
+            "rich lines beside the float: {} against {} at 200px",
+            r.height,
+            rr.height
+        );
+    });
+}
+
+#[test]
 fn floats_take_their_sides_from_the_direction() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Root">
