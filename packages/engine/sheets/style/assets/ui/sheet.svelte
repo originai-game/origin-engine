@@ -1,6 +1,6 @@
 <meta name="component" content="styleSheet">
 <meta name="strings" content="./sheet.en.ogt">
-<meta name="prop:page" content="string" data-doc="The page shown: controls (buttons and toggles in every state), fields (tabs, text, select, stepper and range in every state) surfaces (type, frames and slots) or overlays (dialog, disclosures, meters and badges).">
+<meta name="prop:page" content="string" data-doc="The page shown: controls (buttons and toggles in every state), fields (tabs, text, select, stepper and range in every state), surfaces (type, frames and slots) or overlays (dialog, disclosures, meters and badges).">
 <meta name="fixture:default" content='{"page":"controls"}'>
 <meta name="fixture:fields" content='{"page":"fields"}'>
 <meta name="fixture:surfaces" content='{"page":"surfaces"}'>
@@ -8,13 +8,14 @@
 
 <!--
   A style pack's core-control state sheet (docs/ui.md §6.2), rendered with
-  the core default and with each pack by `og ui sheet <pack>`. Controls:
-  a row per button variant and toggle, a column per state. Fields: the
-  wide controls (tabs among them), a captioned box per state that wraps. Hover, pressed and
-  focus-visible are forced by src/main.ts (og.ui.forceState), so every
-  state is drawn at once; a dash marks a state the control does not have.
-  On a touch screen (`hover: none`) hover and focus go: a phone draws
-  neither, and each page fits 390 by 844 at 100 % text. Surfaces: the
+  the core default and with each pack by `og ui sheet <pack>`. Controls
+  (each button variant and toggle) and fields (tabs, text, select, stepper,
+  range): a row per control, a captioned box per state, seven abreast on a
+  desktop and two on a phone. Hover, pressed and focus-visible are forced
+  by src/main.ts (og.ui.forceState), so every state is drawn at once; a
+  dash marks a state the control does not have. On a touch screen
+  (`hover: none`) hover and focus go: a phone draws neither, and each page
+  fits 390 px wide at 100 % and 150 % text, scrolling down. Surfaces: the
   type, frames and slots the controls sit on. Overlays: a dialog,
   disclosures, meters, progress and badges.
 -->
@@ -151,98 +152,102 @@
   </scroll>
   {:else}
   <scroll id="StyleSheet">
-    <div id="Matrix" role="grid" aria-label={t("sheet.controls")}>
-      <div id="Head" class="line">
-        <span class="label"></span>
-        <span class="state rest">{t("sheet.state.rest")}</span>
-        <span class="state hover">{t("sheet.state.hover")}</span>
-        <span class="state pressed">{t("sheet.state.pressed")}</span>
-        <span class="state focus">{t("sheet.state.focus")}</span>
-        <span class="state selected">{t("sheet.state.selected")}</span>
-        <span class="state disabled">{t("sheet.state.disabled")}</span>
-        <span class="state selected-disabled">{t("sheet.state.selected-disabled")}</span>
+    <section id="primary" class="field-row" aria-label={t("sheet.row.primary")}>
+      <h3 class="label">{t("sheet.row.primary")}</h3>
+      <div id="primary-boxes" class="boxes">
+        <div id="primary-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><button id="primary-rest" class="cell rest" variant="primary">{t("sheet.action")}</button></div>
+        <div id="primary-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><button id="primary-hover" class="cell hover" variant="primary">{t("sheet.action")}</button></div>
+        <div id="primary-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><button id="primary-pressed" class="cell pressed" variant="primary">{t("sheet.action")}</button></div>
+        <div id="primary-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><button id="primary-focus" class="cell focus" variant="primary">{t("sheet.action")}</button></div>
+        <div id="primary-selected-box" class="box selected absent"><small class="state">{t("sheet.state.selected")}</small><div id="primary-selected" class="cell selected na"></div></div>
+        <div id="primary-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><button id="primary-disabled" class="cell disabled" variant="primary" disabled>{t("sheet.action")}</button></div>
+        <div id="primary-selected-disabled-box" class="box selected-disabled absent"><small class="state">{t("sheet.state.selected-disabled")}</small><div id="primary-selected-disabled" class="cell selected-disabled na"></div></div>
       </div>
-      <div id="primary" class="line" role="row" aria-label={t("sheet.row.primary")}>
-        <span class="label">{t("sheet.row.primary")}</span>
-        <button id="primary-rest" class="cell rest" variant="primary">{t("sheet.action")}</button>
-        <button id="primary-hover" class="cell hover" variant="primary">{t("sheet.action")}</button>
-        <button id="primary-pressed" class="cell pressed" variant="primary">{t("sheet.action")}</button>
-        <button id="primary-focus" class="cell focus" variant="primary">{t("sheet.action")}</button>
-        <div id="primary-selected" class="cell selected na"></div>
-        <button id="primary-disabled" class="cell disabled" variant="primary" disabled>{t("sheet.action")}</button>
-        <div id="primary-selected-disabled" class="cell selected-disabled na"></div>
+    </section>
+    <section id="secondary" class="field-row" aria-label={t("sheet.row.secondary")}>
+      <h3 class="label">{t("sheet.row.secondary")}</h3>
+      <div id="secondary-boxes" class="boxes">
+        <div id="secondary-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><button id="secondary-rest" class="cell rest" variant="secondary">{t("sheet.action")}</button></div>
+        <div id="secondary-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><button id="secondary-hover" class="cell hover" variant="secondary">{t("sheet.action")}</button></div>
+        <div id="secondary-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><button id="secondary-pressed" class="cell pressed" variant="secondary">{t("sheet.action")}</button></div>
+        <div id="secondary-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><button id="secondary-focus" class="cell focus" variant="secondary">{t("sheet.action")}</button></div>
+        <div id="secondary-selected-box" class="box selected absent"><small class="state">{t("sheet.state.selected")}</small><div id="secondary-selected" class="cell selected na"></div></div>
+        <div id="secondary-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><button id="secondary-disabled" class="cell disabled" variant="secondary" disabled>{t("sheet.action")}</button></div>
+        <div id="secondary-selected-disabled-box" class="box selected-disabled absent"><small class="state">{t("sheet.state.selected-disabled")}</small><div id="secondary-selected-disabled" class="cell selected-disabled na"></div></div>
       </div>
-      <div id="secondary" class="line" role="row" aria-label={t("sheet.row.secondary")}>
-        <span class="label">{t("sheet.row.secondary")}</span>
-        <button id="secondary-rest" class="cell rest" variant="secondary">{t("sheet.action")}</button>
-        <button id="secondary-hover" class="cell hover" variant="secondary">{t("sheet.action")}</button>
-        <button id="secondary-pressed" class="cell pressed" variant="secondary">{t("sheet.action")}</button>
-        <button id="secondary-focus" class="cell focus" variant="secondary">{t("sheet.action")}</button>
-        <div id="secondary-selected" class="cell selected na"></div>
-        <button id="secondary-disabled" class="cell disabled" variant="secondary" disabled>{t("sheet.action")}</button>
-        <div id="secondary-selected-disabled" class="cell selected-disabled na"></div>
+    </section>
+    <section id="quiet" class="field-row" aria-label={t("sheet.row.quiet")}>
+      <h3 class="label">{t("sheet.row.quiet")}</h3>
+      <div id="quiet-boxes" class="boxes">
+        <div id="quiet-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><button id="quiet-rest" class="cell rest" variant="quiet">{t("sheet.action")}</button></div>
+        <div id="quiet-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><button id="quiet-hover" class="cell hover" variant="quiet">{t("sheet.action")}</button></div>
+        <div id="quiet-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><button id="quiet-pressed" class="cell pressed" variant="quiet">{t("sheet.action")}</button></div>
+        <div id="quiet-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><button id="quiet-focus" class="cell focus" variant="quiet">{t("sheet.action")}</button></div>
+        <div id="quiet-selected-box" class="box selected absent"><small class="state">{t("sheet.state.selected")}</small><div id="quiet-selected" class="cell selected na"></div></div>
+        <div id="quiet-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><button id="quiet-disabled" class="cell disabled" variant="quiet" disabled>{t("sheet.action")}</button></div>
+        <div id="quiet-selected-disabled-box" class="box selected-disabled absent"><small class="state">{t("sheet.state.selected-disabled")}</small><div id="quiet-selected-disabled" class="cell selected-disabled na"></div></div>
       </div>
-      <div id="quiet" class="line" role="row" aria-label={t("sheet.row.quiet")}>
-        <span class="label">{t("sheet.row.quiet")}</span>
-        <button id="quiet-rest" class="cell rest" variant="quiet">{t("sheet.action")}</button>
-        <button id="quiet-hover" class="cell hover" variant="quiet">{t("sheet.action")}</button>
-        <button id="quiet-pressed" class="cell pressed" variant="quiet">{t("sheet.action")}</button>
-        <button id="quiet-focus" class="cell focus" variant="quiet">{t("sheet.action")}</button>
-        <div id="quiet-selected" class="cell selected na"></div>
-        <button id="quiet-disabled" class="cell disabled" variant="quiet" disabled>{t("sheet.action")}</button>
-        <div id="quiet-selected-disabled" class="cell selected-disabled na"></div>
+    </section>
+    <section id="ghost" class="field-row" aria-label={t("sheet.row.ghost")}>
+      <h3 class="label">{t("sheet.row.ghost")}</h3>
+      <div id="ghost-boxes" class="boxes">
+        <div id="ghost-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><button id="ghost-rest" class="cell rest" variant="ghost">{t("sheet.action")}</button></div>
+        <div id="ghost-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><button id="ghost-hover" class="cell hover" variant="ghost">{t("sheet.action")}</button></div>
+        <div id="ghost-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><button id="ghost-pressed" class="cell pressed" variant="ghost">{t("sheet.action")}</button></div>
+        <div id="ghost-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><button id="ghost-focus" class="cell focus" variant="ghost">{t("sheet.action")}</button></div>
+        <div id="ghost-selected-box" class="box selected absent"><small class="state">{t("sheet.state.selected")}</small><div id="ghost-selected" class="cell selected na"></div></div>
+        <div id="ghost-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><button id="ghost-disabled" class="cell disabled" variant="ghost" disabled>{t("sheet.action")}</button></div>
+        <div id="ghost-selected-disabled-box" class="box selected-disabled absent"><small class="state">{t("sheet.state.selected-disabled")}</small><div id="ghost-selected-disabled" class="cell selected-disabled na"></div></div>
       </div>
-      <div id="ghost" class="line" role="row" aria-label={t("sheet.row.ghost")}>
-        <span class="label">{t("sheet.row.ghost")}</span>
-        <button id="ghost-rest" class="cell rest" variant="ghost">{t("sheet.action")}</button>
-        <button id="ghost-hover" class="cell hover" variant="ghost">{t("sheet.action")}</button>
-        <button id="ghost-pressed" class="cell pressed" variant="ghost">{t("sheet.action")}</button>
-        <button id="ghost-focus" class="cell focus" variant="ghost">{t("sheet.action")}</button>
-        <div id="ghost-selected" class="cell selected na"></div>
-        <button id="ghost-disabled" class="cell disabled" variant="ghost" disabled>{t("sheet.action")}</button>
-        <div id="ghost-selected-disabled" class="cell selected-disabled na"></div>
+    </section>
+    <section id="danger" class="field-row" aria-label={t("sheet.row.danger")}>
+      <h3 class="label">{t("sheet.row.danger")}</h3>
+      <div id="danger-boxes" class="boxes">
+        <div id="danger-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><button id="danger-rest" class="cell rest" variant="danger">{t("sheet.action")}</button></div>
+        <div id="danger-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><button id="danger-hover" class="cell hover" variant="danger">{t("sheet.action")}</button></div>
+        <div id="danger-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><button id="danger-pressed" class="cell pressed" variant="danger">{t("sheet.action")}</button></div>
+        <div id="danger-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><button id="danger-focus" class="cell focus" variant="danger">{t("sheet.action")}</button></div>
+        <div id="danger-selected-box" class="box selected absent"><small class="state">{t("sheet.state.selected")}</small><div id="danger-selected" class="cell selected na"></div></div>
+        <div id="danger-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><button id="danger-disabled" class="cell disabled" variant="danger" disabled>{t("sheet.action")}</button></div>
+        <div id="danger-selected-disabled-box" class="box selected-disabled absent"><small class="state">{t("sheet.state.selected-disabled")}</small><div id="danger-selected-disabled" class="cell selected-disabled na"></div></div>
       </div>
-      <div id="danger" class="line" role="row" aria-label={t("sheet.row.danger")}>
-        <span class="label">{t("sheet.row.danger")}</span>
-        <button id="danger-rest" class="cell rest" variant="danger">{t("sheet.action")}</button>
-        <button id="danger-hover" class="cell hover" variant="danger">{t("sheet.action")}</button>
-        <button id="danger-pressed" class="cell pressed" variant="danger">{t("sheet.action")}</button>
-        <button id="danger-focus" class="cell focus" variant="danger">{t("sheet.action")}</button>
-        <div id="danger-selected" class="cell selected na"></div>
-        <button id="danger-disabled" class="cell disabled" variant="danger" disabled>{t("sheet.action")}</button>
-        <div id="danger-selected-disabled" class="cell selected-disabled na"></div>
+    </section>
+    <section id="checkbox" class="field-row" aria-label={t("sheet.row.checkbox")}>
+      <h3 class="label">{t("sheet.row.checkbox")}</h3>
+      <div id="checkbox-boxes" class="boxes">
+        <div id="checkbox-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><input id="checkbox-rest" class="cell rest" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><input id="checkbox-hover" class="cell hover" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><input id="checkbox-pressed" class="cell pressed" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><input id="checkbox-focus" class="cell focus" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><input id="checkbox-selected" class="cell selected" type="checkbox" checked aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><input id="checkbox-disabled" class="cell disabled" type="checkbox" disabled aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><input id="checkbox-selected-disabled" class="cell selected-disabled" type="checkbox" checked disabled aria-label={t("sheet.row.checkbox")} /></div>
       </div>
-      <div id="checkbox" class="line" role="row" aria-label={t("sheet.row.checkbox")}>
-        <span class="label">{t("sheet.row.checkbox")}</span>
-        <input id="checkbox-rest" class="cell rest" type="checkbox" aria-label={t("sheet.row.checkbox")} />
-        <input id="checkbox-hover" class="cell hover" type="checkbox" aria-label={t("sheet.row.checkbox")} />
-        <input id="checkbox-pressed" class="cell pressed" type="checkbox" aria-label={t("sheet.row.checkbox")} />
-        <input id="checkbox-focus" class="cell focus" type="checkbox" aria-label={t("sheet.row.checkbox")} />
-        <input id="checkbox-selected" class="cell selected" type="checkbox" checked aria-label={t("sheet.row.checkbox")} />
-        <input id="checkbox-disabled" class="cell disabled" type="checkbox" disabled aria-label={t("sheet.row.checkbox")} />
-        <input id="checkbox-selected-disabled" class="cell selected-disabled" type="checkbox" checked disabled aria-label={t("sheet.row.checkbox")} />
+    </section>
+    <section id="switch" class="field-row" aria-label={t("sheet.row.switch")}>
+      <h3 class="label">{t("sheet.row.switch")}</h3>
+      <div id="switch-boxes" class="boxes">
+        <div id="switch-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><input id="switch-rest" class="cell rest" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><input id="switch-hover" class="cell hover" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><input id="switch-pressed" class="cell pressed" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><input id="switch-focus" class="cell focus" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><input id="switch-selected" class="cell selected" type="checkbox" switch checked aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><input id="switch-disabled" class="cell disabled" type="checkbox" switch disabled aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><input id="switch-selected-disabled" class="cell selected-disabled" type="checkbox" switch checked disabled aria-label={t("sheet.row.switch")} /></div>
       </div>
-      <div id="switch" class="line" role="row" aria-label={t("sheet.row.switch")}>
-        <span class="label">{t("sheet.row.switch")}</span>
-        <input id="switch-rest" class="cell rest" type="checkbox" switch aria-label={t("sheet.row.switch")} />
-        <input id="switch-hover" class="cell hover" type="checkbox" switch aria-label={t("sheet.row.switch")} />
-        <input id="switch-pressed" class="cell pressed" type="checkbox" switch aria-label={t("sheet.row.switch")} />
-        <input id="switch-focus" class="cell focus" type="checkbox" switch aria-label={t("sheet.row.switch")} />
-        <input id="switch-selected" class="cell selected" type="checkbox" switch checked aria-label={t("sheet.row.switch")} />
-        <input id="switch-disabled" class="cell disabled" type="checkbox" switch disabled aria-label={t("sheet.row.switch")} />
-        <input id="switch-selected-disabled" class="cell selected-disabled" type="checkbox" switch checked disabled aria-label={t("sheet.row.switch")} />
+    </section>
+    <section id="radio" class="field-row" aria-label={t("sheet.row.radio")}>
+      <h3 class="label">{t("sheet.row.radio")}</h3>
+      <div id="radio-boxes" class="boxes">
+        <div id="radio-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><input id="radio-rest" class="cell rest" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><input id="radio-hover" class="cell hover" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><input id="radio-pressed" class="cell pressed" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><input id="radio-focus" class="cell focus" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><input id="radio-selected" class="cell selected" type="radio" value="a" checked aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><input id="radio-disabled" class="cell disabled" type="radio" value="a" disabled aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><input id="radio-selected-disabled" class="cell selected-disabled" type="radio" value="a" checked disabled aria-label={t("sheet.row.radio")} /></div>
       </div>
-      <div id="radio" class="line" role="row" aria-label={t("sheet.row.radio")}>
-        <span class="label">{t("sheet.row.radio")}</span>
-        <input id="radio-rest" class="cell rest" type="radio" value="a" aria-label={t("sheet.row.radio")} />
-        <input id="radio-hover" class="cell hover" type="radio" value="a" aria-label={t("sheet.row.radio")} />
-        <input id="radio-pressed" class="cell pressed" type="radio" value="a" aria-label={t("sheet.row.radio")} />
-        <input id="radio-focus" class="cell focus" type="radio" value="a" aria-label={t("sheet.row.radio")} />
-        <input id="radio-selected" class="cell selected" type="radio" value="a" checked aria-label={t("sheet.row.radio")} />
-        <input id="radio-disabled" class="cell disabled" type="radio" value="a" disabled aria-label={t("sheet.row.radio")} />
-        <input id="radio-selected-disabled" class="cell selected-disabled" type="radio" value="a" checked disabled aria-label={t("sheet.row.radio")} />
-      </div>
-    </div>
+    </section>
   </scroll>
   {/if}
 </div>
@@ -252,29 +257,28 @@
 #StyleSheet, #FieldSheet, #SurfaceSheet, #OverlaySheet { width: stretch; height: stretch; padding: var(--space-xl); }
 /* Headings in the pack's display face (the generic family picks the role). */
 #Display, #Heading { font-family: fantasy; }
-#Matrix { display: grid; width: stretch; gap: var(--space-sm); }
-.line { display: grid; grid-template-columns: 7rem repeat(7, minmax(0, 1fr)); gap: var(--space-md); align-items: center; width: stretch; }
 .label, .state { font: var(--text-caption); color: var(--ink-muted); margin: 0; }
-.line .state { text-align: center; }
-.cell { justify-self: center; }
-button.cell, tabs.cell { width: stretch; }
 .na { width: var(--space-lg); height: var(--stroke-regular); background: var(--line); }
 .stepper { -og-stepper: buttons; }
-#FieldSheet .field-row { gap: var(--space-xs); width: stretch; margin-bottom: var(--space-lg); }
+/* A row per control, a captioned box per state: seven abreast on a desktop,
+   two on a phone, so every state's caption and control keep their width at
+   150 % text and no word breaks. */
+.field-row { gap: var(--space-xs); width: stretch; margin-bottom: var(--space-sm); }
 .boxes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-md); width: stretch; }
-.box { gap: var(--space-xs); width: stretch; }
+.box { gap: var(--space-xs); width: stretch; min-width: 0; }
 .box .cell { width: stretch; justify-self: start; }
 .box .na { width: var(--space-lg); }
+/* A toggle keeps its own size: stretched, its track would run into the next box. */
+.box input[type=checkbox], .box input[type=radio] { width: auto; align-self: start; }
+.state { overflow-wrap: normal; word-break: normal; }
 /* A pressed range shows its value above the knob: room for it. */
 #range-boxes { margin-top: var(--space-lg); }
 @media (hover: none) {
   #StyleSheet, #FieldSheet { padding: var(--space-md); }
-  #Matrix { gap: var(--space-xs); }
-  .line { grid-template-columns: 4.75rem repeat(5, minmax(0, 1fr)); gap: var(--space-xs); }
   .hover, .focus { display: none; }
-  .boxes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm); }
+  .boxes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm) var(--space-md); }
   .box.absent { display: none; }
-  #FieldSheet .field-row { margin-bottom: var(--space-sm); }
+  .field-row { margin-bottom: var(--space-sm); }
 }
 
 .surfaces { display: grid; width: stretch; grid-template-columns: 1fr 1fr; gap: var(--space-xl); align-content: start; }

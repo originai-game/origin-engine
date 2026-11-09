@@ -11,11 +11,12 @@ import { og, defineSystem } from "@origingame/engine";
 type Forced = "hover" | "pressed" | "focus";
 const FORCED: ReadonlyArray<readonly [Forced, string]> = [["hover", "hover"], ["pressed", "pressed"], ["focus", "focused"]];
 /** Each row's cells (assets/ui/sheet.svelte) by page, as the probe paths name them. */
-const MATRIX = ["primary", "secondary", "quiet", "ghost", "danger", "checkbox", "switch", "radio"];
+const CONTROLS = ["primary", "secondary", "quiet", "ghost", "danger", "checkbox", "switch", "radio"];
 const FIELDS = ["tab", "field", "select", "stepper", "range"];
+const box = (page: string, row: string, c: Forced): [string, string, Forced] => [row, `${page}/${row}/${row}-boxes/${row}-${c}-box/${row}-${c}`, c];
 const cells = (): Array<[string, string, Forced]> => [
-  ...MATRIX.flatMap((row) => FORCED.map(([c]) => [row, `StyleSheet/Matrix/${row}/${row}-${c}`, c] as [string, string, Forced])),
-  ...FIELDS.flatMap((row) => FORCED.map(([c]) => [row, `FieldSheet/${row}/${row}-boxes/${row}-${c}-box/${row}-${c}`, c] as [string, string, Forced])),
+  ...CONTROLS.flatMap((row) => FORCED.map(([c]) => box("StyleSheet", row, c))),
+  ...FIELDS.flatMap((row) => FORCED.map(([c]) => box("FieldSheet", row, c))),
 ];
 /** Where a row's control takes the pointer and the focus, below its cell; the cell itself when absent. */
 const PARTS: Record<string, Partial<Record<Forced, readonly string[]>>> = {

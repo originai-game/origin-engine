@@ -7,7 +7,6 @@ string "sheet.body" "Body text sits on the panel at reading size, long enough to
 string "sheet.cancel" "Cancel"
 string "sheet.choose" "Choose"
 string "sheet.confirm" "Confirm"
-string "sheet.controls" "Controls in every state"
 string "sheet.details.body" "What a disclosure holds while it is open."
 string "sheet.details.closed" "Closed disclosure"
 string "sheet.details.open" "Open disclosure"
