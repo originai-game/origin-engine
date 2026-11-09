@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "cooked models: meshopt vertex decode",
+      "summary": "Decoding a cooked model's meshopt-compressed vertices is faster, most of all on the web: the delta decode takes its element width as a constant, so its loops unroll without a bounds check per byte. The bytes decoded do not change. 268 cooked cells of a 1072-cell garden decode in 0.71 of the time; the garden's web cell load spends about 1.8 s less decoding."
+    }
+  ]
+}
