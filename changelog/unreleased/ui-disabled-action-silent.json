@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "on<action> on a disabled control",
+      "summary": "A disabled control's input-action handler (`ondetails`, `onconfirm`, …) no longer fires: pressing X over a disabled Track button sent `track` although a tap sent nothing. A `<fieldset disabled>`'s controls are silent too."
+    }
+  ]
+}

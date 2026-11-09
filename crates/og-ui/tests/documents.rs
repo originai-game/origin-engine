@@ -1178,6 +1178,46 @@ fn action_listeners_build_only_when_their_action_fires() {
     assert_eq!(frame(&mut ui), (0, vec![]));
 }
 
+/// A disabled control's input action activates nothing, as its press does
+/// not (docs/ui.md §6.1: disabled emits no activation); an enabled one in
+/// the same layer still answers.
+#[test]
+fn a_disabled_controls_action_sends_nothing() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let doc = r#"<meta name="screen" content="pad" data-layer="menu">
+<meta name="action:confirm" content="Buy">
+<meta name="action:details" content="Sell">
+<column id="Pad">
+  <button id="Buy" disabled onconfirm={buy}>Buy</button>
+  <button id="Sell" ondetails={sell}>Sell</button>
+</column>
+"#;
+    ui.define_document(UiDocument::parse("pad.svelte", doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "pad"),
+        "pad",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let emitted = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), viewport());
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        ui.take_doc_events()
+            .into_iter()
+            .filter(|e| e.kind == "emit")
+            .map(|e| e.name)
+            .collect::<Vec<_>>()
+    };
+    emitted(&mut ui);
+    ui.fire_action("confirm");
+    assert_eq!(emitted(&mut ui), Vec::<String>::new());
+    ui.fire_action("details");
+    assert_eq!(emitted(&mut ui), vec!["sell".to_string()]);
+}
+
 /// A container query that resizes a slider and a disclosure: settlement
 /// replaces their fields, and what their widgets build inside (the knob at
 /// its value, the summary row) follows the new box in that frame, as a

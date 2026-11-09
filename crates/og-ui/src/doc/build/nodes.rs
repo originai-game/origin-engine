@@ -1872,6 +1872,10 @@ impl Ui {
                 When::Action(a) => {
                     self.docs.accepts
                         && self.action_fired(a)
+                        // A disabled control's shortcut activates nothing,
+                        // as its press does not (a `<fieldset disabled>`'s
+                        // controls included).
+                        && !self.tree.find(key).is_some_and(|i| self.nodes[i].disabled)
                         // An exclusive `<details name>`'s own action
                         // reaches every disclosure of its name.
                         && (a.starts_with('~') || self.focus_in_row(path, &b.row_key))
