@@ -36,6 +36,14 @@ h4 { font: var(--text-body); margin-block: 1.33em; }
 h5 { font: var(--text-sm); margin-block: 1.67em; }
 h6 { font: var(--text-xs); margin-block: 2.33em; }
 small { font: var(--text-sm); }
+table { display: table; }
+caption { display: table-caption; text-align: center; }
+thead { display: table-header-group; }
+tbody { display: table-row-group; }
+tfoot { display: table-footer-group; }
+tr { display: table-row; }
+td, th { display: table-cell; padding: 1px; }
+th { font-weight: bold; text-align: center; }
 ";
 
 const TYPES: [&str; 9] = [

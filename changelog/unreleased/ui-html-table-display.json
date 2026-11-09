@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: <table> UA styles",
+      "summary": "HTML's table elements take their display from the UA stylesheet (table, table-caption, table-header-group, table-row-group, table-footer-group, table-row, table-cell), so a plain <table> lays out as a table with no author CSS; cells get padding: 1px, <th> is bold and centred and the caption centred, as in HTML's UA stylesheet."
+    }
+  ]
+}

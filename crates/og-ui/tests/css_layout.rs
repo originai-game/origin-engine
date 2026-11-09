@@ -328,3 +328,34 @@ fn display_lays_out_as_css_display_does() {
         assert_eq!(wh(d, "Tbl"), (120.0, 38.0), "a table shrinks to fit");
     });
 }
+
+/// HTML's table elements are table parts by the UA stylesheet alone: no
+/// author `display`, and the cells sit side by side in their rows.
+#[test]
+fn html_tables_lay_out_without_author_css() {
+    let text = r#"<meta name="component" content="t">
+<div><table id="Tbl">
+  <caption id="Cap">Scores</caption>
+  <thead><tr><th id="H1">Name</th><th id="H2">Pts</th></tr></thead>
+  <tbody><tr><td id="A" colspan="2"></td></tr><tr><td id="B"></td><td id="C"></td></tr></tbody>
+</table></div>
+<style>
+#A { width: 60px; height: 10px; }
+#B, #C { width: 20px; height: 10px; }
+</style>"#;
+    both(text, &[], |d| {
+        let (h1, h2, b, c, a, cap) = (
+            d.get("H1"),
+            d.get("H2"),
+            d.get("B"),
+            d.get("C"),
+            d.get("A"),
+            d.get("Cap"),
+        );
+        assert_eq!(h1.y, h2.y, "header cells share a row");
+        assert!(h2.x > h1.x);
+        assert_eq!((b.y, c.y > b.y), (c.y, false), "body cells share a row");
+        assert!(c.x > b.x && a.y < b.y && a.width >= 60.0);
+        assert!(cap.y < h1.y, "the caption is above the table");
+    });
+}
