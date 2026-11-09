@@ -233,7 +233,7 @@ impl Ui {
         self.docs
             .keyframes
             .retain(|name, _| !name.starts_with(&prefix));
-        for (n, k) in &doc.keyframes {
+        for (n, k) in &doc.sheet.keyframes {
             self.docs
                 .keyframes
                 .insert(format!("{prefix}{n}"), Arc::new(k.clone()));

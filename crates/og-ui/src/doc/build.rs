@@ -858,6 +858,7 @@ impl Ui {
         // hold; choosing another definition restarts the animation, as a
         // name change does.
         if b.doc
+            .sheet
             .keyframe_rules
             .iter()
             .any(|(_, q, _)| *q != super::AtQuery::default())
@@ -869,6 +870,7 @@ impl Ui {
                 };
                 let key = b
                     .doc
+                    .sheet
                     .keyframe_rules
                     .iter()
                     .rev()
