@@ -130,6 +130,41 @@ pub(crate) struct BatchInfo {
     pub always_dynamic: bool,
 }
 
+/// The batches a [`Split`] draws over the cached layers, asked as a layer's
+/// lists ask, by a batch's first instance and count: a table over the first
+/// instances, so each ask is one load. A binary search of the dynamic
+/// batches' sorted firsts, per batch, layer and list, was most of the
+/// cascades' list building (engine s108). A batch without instances is never
+/// dynamic, nor is a first past the last dynamic batch's.
+#[derive(Debug)]
+pub(crate) struct DynamicFirsts(Vec<bool>);
+
+impl DynamicFirsts {
+    /// From each batch's `(first, count, dynamic)` ([`Split::dynamic`]).
+    pub(crate) fn new(
+        batches: impl IntoIterator<Item = (u32, u32, bool)> + Clone,
+    ) -> DynamicFirsts {
+        let dynamic = |(_, count, dynamic): &(u32, u32, bool)| *dynamic && *count > 0;
+        let len = batches
+            .clone()
+            .into_iter()
+            .filter(dynamic)
+            .map(|(first, _, _)| first as usize + 1)
+            .max()
+            .unwrap_or(0);
+        let mut at = vec![false; len];
+        for (first, _, _) in batches.into_iter().filter(dynamic) {
+            at[first as usize] = true;
+        }
+        DynamicFirsts(at)
+    }
+
+    /// Whether the batch of these instances is a dynamic one.
+    pub(crate) fn contains(&self, first: u32, count: u32) -> bool {
+        count > 0 && self.0.get(first as usize).copied().unwrap_or(false)
+    }
+}
+
 /// Whether an instance batch's vertices move without its transforms
 /// changing, so its shadow is never cached: a foliage mesh (its batch's
 /// [`crate::RenderScene::set_mesh_foliage`]; og.Model's sway) while the
@@ -663,6 +698,61 @@ mod tests {
         assert!(!deforms(false, true, false), "wind moves only foliage");
         assert!(deforms(false, false, true));
         assert!(!deforms(false, false, false));
+    }
+
+    /// A layer's lists ask the table what a binary search of the dynamic
+    /// batches' sorted firsts answered, for every batch and for firsts that
+    /// are no batch's (an empty batch at a dynamic one's first, past the
+    /// table's end).
+    #[test]
+    fn dynamic_firsts_answer_as_the_sorted_firsts_did() {
+        // (first, count, dynamic): runs of instances, empty batches among
+        // them, the last batch dynamic.
+        let batches: Vec<(u32, u32, bool)> = vec![
+            (0, 3, false),
+            (3, 2, true),
+            (5, 0, true),
+            (5, 4, false),
+            (9, 1, true),
+            (10, 0, false),
+            (10, 6, false),
+            (16, 2, true),
+            (18, 5, false),
+            (23, 1, true),
+        ];
+        let mut firsts: Vec<u32> = batches
+            .iter()
+            .filter(|(_, count, dynamic)| *dynamic && *count > 0)
+            .map(|(first, _, _)| *first)
+            .collect();
+        firsts.sort_unstable();
+        let before = |first: u32, count: u32| count > 0 && firsts.binary_search(&first).is_ok();
+        let table = DynamicFirsts::new(batches.iter().copied());
+        for &(first, count, _) in &batches {
+            assert_eq!(
+                table.contains(first, count),
+                before(first, count),
+                "batch at {first}, {count}"
+            );
+        }
+        for first in 0..40 {
+            for count in [0, 1, 7] {
+                assert_eq!(
+                    table.contains(first, count),
+                    before(first, count),
+                    "{first}, {count}"
+                );
+            }
+        }
+        assert!(table.contains(23, 1), "the last dynamic batch");
+        assert!(
+            !table.contains(3, 0),
+            "an empty batch at a dynamic one's first"
+        );
+        assert!(
+            !DynamicFirsts::new(std::iter::empty()).contains(0, 1),
+            "no dynamic batch"
+        );
     }
 
     /// An instance gone or not drawn takes its cached shadow with it; a

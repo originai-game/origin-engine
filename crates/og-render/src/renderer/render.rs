@@ -1668,17 +1668,13 @@ impl Renderer {
         // scattered copies (unculled), the clustered ones (their level
         // follows the camera), terrain levels in its volume (the clipmap
         // follows the camera) and grass (the first cascade).
-        let dynamic_firsts: Vec<u32> = {
-            let mut f: Vec<u32> = batches
+        let dynamic = crate::shadow_cache::DynamicFirsts::new(
+            batches
                 .iter()
                 .zip(&shadow_split.dynamic)
-                .filter(|(b, d)| **d && b.count > 0)
-                .map(|(b, _)| b.first)
-                .collect();
-            f.sort_unstable();
-            f
-        };
-        let is_dynamic = |b: &Batch| b.count > 0 && dynamic_firsts.binary_search(&b.first).is_ok();
+                .map(|(b, d)| (b.first, b.count, *d)),
+        );
+        let is_dynamic = |b: &Batch| dynamic.contains(b.first, b.count);
         let unculled_overlay = skinned_batches.iter().any(|b| b.cast && !b.transparent)
             || !scatter_batches.scatters.is_empty()
             || !scatter_batches.impostors.is_empty()

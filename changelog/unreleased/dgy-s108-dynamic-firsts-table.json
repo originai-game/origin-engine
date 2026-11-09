@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: cached static shadows",
+      "summary": "A cascade drawn over its cached static casters finds which batches are dynamic from a table built once a frame, one load per batch, instead of a binary search asked twice per batch and cascade. The same batches are drawn. Frames do not change. A garden of 1072 cells (about 3,500 batches), web, from a profile: 66.5 of the 111 ms per 10 s that the cascades' lists took."
+    }
+  ]
+}
