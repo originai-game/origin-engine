@@ -45,8 +45,10 @@
 </column>
 
 <style>
+:root { --surface-saturation: 120%; }
+@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #Editor { width: stretch; height: stretch; }
-#Toolbar { width: stretch; padding: 8px; gap: 6px; align-items: center; background: var(--panel); -og-frame: panel; flex-wrap: wrap; }
+#Toolbar { width: stretch; padding: 8px; gap: 6px; align-items: center;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; flex-wrap: wrap; }
 @media (width < 600px) and (orientation: portrait) {
 }
 #Select.selection-off { opacity: 0.85; }
@@ -80,11 +82,11 @@
 @media (width < 600px) and (orientation: portrait) {
 #Body { grid-template-columns: 1fr; grid-template-rows: 1fr auto 260px; grid-template-areas: "view" "tabs" "panel"; }
 }
-#TreePanel { width: stretch; height: stretch; padding: 8px; gap: 6px; background: var(--panel); -og-frame: panel; grid-area: tree; }
+#TreePanel { width: stretch; height: stretch; padding: 8px; gap: 6px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; grid-area: tree; }
 @media (width < 600px) and (orientation: portrait) {
 #TreePanel { grid-area: panel; }
 }
-#TreePanelTitle { font: var(--text-caption); color: var(--ink-muted); }
+#TreePanelTitle { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #TreePanelHierarchy { width: stretch; height: stretch; }
 #View { width: stretch; height: stretch; grid-area: view; }
 #Tabs { width: stretch; gap: 6px; padding: 6px; grid-area: tabs; }
@@ -96,18 +98,18 @@
 }
 @media (width < 600px) and (orientation: portrait) {
 }
-#InspectorPanel { width: stretch; height: stretch; padding: 8px; gap: 6px; background: var(--panel); -og-frame: panel; grid-area: inspector; }
+#InspectorPanel { width: stretch; height: stretch; padding: 8px; gap: 6px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; grid-area: inspector; }
 @media (width < 600px) and (orientation: portrait) {
 #InspectorPanel { grid-area: panel; }
 }
-#Selected { font: var(--text-lg); line-clamp: 1; text-overflow: ellipsis; }
+#Selected { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); line-clamp: 1; text-overflow: ellipsis; }
 #Scroll { width: stretch; height: stretch; }
 #ScrollInspector { width: stretch; }
-#CataloguePanel { width: stretch; height: stretch; padding: 8px; gap: 6px; background: var(--panel); -og-frame: panel; grid-area: catalogue; }
+#CataloguePanel { width: stretch; height: stretch; padding: 8px; gap: 6px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; grid-area: catalogue; }
 @media (width < 600px) and (orientation: portrait) {
 #CataloguePanel { grid-area: panel; }
 }
-#CataloguePanelTitle { font: var(--text-caption); color: var(--ink-muted); }
+#CataloguePanelTitle { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #CataloguePanelCatalogue { width: stretch; height: stretch; }
 @media (width < 600px) and (orientation: portrait) {
 button { -og-control-size: medium; }

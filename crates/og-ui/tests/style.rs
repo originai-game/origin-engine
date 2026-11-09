@@ -1,31 +1,9 @@
-//! Styles, motion and screen transitions, driven tick by tick.
-//!
-//! Ways these could fail, each covered below:
-//! - a glass part stays see-through when the page prefers reduced
-//!   transparency (`a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice`);
-//! - a style's slices never reach the frame (the background stays a plain
-//!   quad), or the nine pieces leave gaps or overlap the element's edges;
-//! - a frame a few px taller than its corners squeezes its art's whole
-//!   middle into its middle row, and the atlas's mips draw a light band
-//!   across both ends (`a_frame_smaller_than_its_art_…`);
-//! - the default theme starts emitting atlas pieces (it must stay the token
-//!   look; the reference frames in tests/gfx.rs and tests/kit_gfx.rs prove
-//!   the pixels);
-//! - a style file with a typo, a region outside its atlas or a glow without
-//!   a soft slice loads anyway instead of naming the line;
-//! - a screen transition switches the screen before the cover closes,
-//!   never switches, never ends, or draws movement under reduced motion;
-//! - a count-up runs on the wall clock, jumps, or differs after a restore;
-//! - a refused press does not shake, or UI events with a sound never reach
-//!   the host's queue;
-//! - a panel's staggered controls refuse presses until their own cascade
-//!   ends, long after the panel has arrived (a title screen that ignores
-//!   the first half second of taps), or take presses while the panel
-//!   itself is still popping in.
+//! Retained style metadata and tick-driven widget motion. Counters and
+//! hover springs replay after restoration; token aliases reject cycles.
+//! Part painting and CSS state transitions are tested in dressing.rs.
 
 use crate::support;
 
-use og_core::glam::Vec2;
 use og_render::{ColorSpace, Mips, RenderScene, TextureData, TextureHandle};
 use og_ui::*;
 use support::*;
@@ -178,12 +156,11 @@ fn tops(ui: &mut Ui, input: &InputFrame, n: usize) -> Vec<f32> {
 }
 
 #[test]
-fn the_hover_lift_and_the_press_move_on_springs() {
+fn the_hover_lift_moves_on_springs_and_replays() {
     // Ways it could fail: the lift jumps to its end in a tick (no motion),
     // eases on a curve that ignores the style's spring (no overshoot at a
     // low damping), never settles exactly, settles somewhere else, or
-    // differs after a restore; the press squash does not spring back past
-    // rest on release.
+    // differs after a restore.
     let springy = STYLE.replace("  pop 0.12\n", "  pop 0.12\n  hoverSpring 0.3 300\n");
     for (text, bounces) in [(STYLE.to_string(), false), (springy, true)] {
         let file = parse_style(&text).expect("the style parses");
@@ -224,95 +201,6 @@ fn the_hover_lift_and_the_press_move_on_springs() {
         let b = tops(&mut ui, &over, 12);
         assert_eq!(a, b, "the spring is UI state");
     }
-    // The press: held, the frame squashes towards sy 0.92; released, it
-    // springs back past its rest height before settling.
-    let file = parse_style(STYLE).unwrap();
-    let mut ui = ui_with_font(test_font_metrics());
-    let tex = atlas();
-    ui.set_theme(file.theme(Some(tex), [0; 6]));
-    for _ in 0..30 {
-        step(&mut ui, InputFrame::default(), false);
-    }
-    let (x, y) = ui.element("Go").unwrap().center();
-    // The button's frame: the nine pieces cut from the atlas's button
-    // region (u 0.25 to 0.5 of the test atlas); their extent is its height.
-    let frame_h = |ui: &Ui| {
-        let (mut top, mut bottom) = (f32::INFINITY, f32::NEG_INFINITY);
-        for item in &ui.frame().items {
-            if let DrawCmd::Image {
-                rect,
-                texture: Some(t),
-                uv,
-                ..
-            } = &item.cmd
-                && *t == tex
-                && uv[0] >= 0.25
-                && uv[2] <= 0.5
-            {
-                top = top.min(rect.y);
-                bottom = bottom.max(rect.bottom());
-            }
-        }
-        bottom - top
-    };
-    // Hovered until the lift has settled: the rest height under the pointer.
-    for _ in 0..120 {
-        step(&mut ui, InputFrame::hover(x, y), false);
-    }
-    let rest_h = frame_h(&ui);
-    step(&mut ui, press_at(x, y), false);
-    let first = frame_h(&ui);
-    let held = InputFrame {
-        pointer: Vec2::new(x, y),
-        pointer_inside: true,
-        down: true,
-        ..InputFrame::default()
-    };
-    let mut hs = vec![first];
-    for _ in 0..20 {
-        step(&mut ui, held.clone(), false);
-        hs.push(frame_h(&ui));
-    }
-    assert!(
-        first < rest_h && first > rest_h * 0.92 + 0.1,
-        "the press starts squashing at once: {rest_h} then {hs:?}"
-    );
-    let squashed = *hs.last().unwrap();
-    assert!(
-        (squashed - rest_h * 0.92).abs() < 0.2,
-        "and reaches sy 0.92 while held: {hs:?}"
-    );
-    let release = InputFrame {
-        pointer: Vec2::new(x, y),
-        pointer_inside: true,
-        released: true,
-        ..InputFrame::default()
-    };
-    step(&mut ui, release, false);
-    let mut back = vec![frame_h(&ui)];
-    for _ in 0..30 {
-        step(&mut ui, InputFrame::hover(x, y), false);
-        back.push(frame_h(&ui));
-    }
-    let tallest = back.iter().copied().fold(0.0, f32::max);
-    assert!(
-        tallest > rest_h + 0.1,
-        "released, it springs past its rest height: {rest_h} then {back:?}"
-    );
-    assert!(
-        (back[30] - rest_h).abs() < 0.01,
-        "and settles at rest: {back:?}"
-    );
-}
-
-fn press_at(x: f32, y: f32) -> InputFrame {
-    InputFrame {
-        pointer: Vec2::new(x, y),
-        pointer_inside: true,
-        down: true,
-        pressed: true,
-        ..InputFrame::default()
-    }
 }
 
 /// The test style with what `og style upgrade` must carry over besides:
@@ -328,32 +216,9 @@ fn v1_style() -> String {
 }
 
 #[test]
-fn css_tokens_work_in_paint_lengths_and_aliases_and_reject_cycles() {
+fn metadata_tokens_support_aliases_and_reject_cycles() {
     let base = upgrade_style(&v1_style()).unwrap();
     let theme = parse_style(&base).unwrap().theme;
-    let extra = "\nToken::base {\n  height: var(--size-sm)\n  translate: var(--space-xs) var(--space-sm)\n  -og-shape: round var(--radius-lg)\n  -og-stroke: var(--stroke-thick) var(--epic) inside\n  -og-effect: drop-shadow var(--space-xs) var(--space-sm) var(--size-sm) 0 var(--shadow)\n  box-shadow: 0 var(--space-xs) 0 0 var(--shadow)\n}\n";
-    let actual = parse_style(&(base.clone() + extra)).unwrap();
-    let mut literal = extra.to_string();
-    for name in [
-        "radius-lg",
-        "stroke-thick",
-        "space-xs",
-        "space-sm",
-        "size-sm",
-    ] {
-        literal = literal.replace(
-            &format!("var(--{name})"),
-            &format!("{}px", theme.length(name).unwrap()),
-        );
-    }
-    let expected = parse_style(&(base.clone() + &literal)).unwrap();
-    assert_eq!(actual.dressings, expected.dressings);
-    let missing = extra.replace("--space-xs", "--space-missing");
-    assert!(
-        parse_style(&(base.clone() + &missing))
-            .unwrap_err()
-            .contains("--space-missing")
-    );
     let start = base.find("--radius-sm:").unwrap();
     let end = start + base[start..].find('\n').unwrap();
     let mut cycle = base.clone();
@@ -366,161 +231,7 @@ fn css_tokens_work_in_paint_lengths_and_aliases_and_reject_cycles() {
     let mut alias = base;
     alias.replace_range(start..end, "--radius-sm: var(--space-lg)");
     assert_eq!(
-        parse_style(&alias).unwrap().theme.length("radius-sm"),
-        theme.length("space-lg")
+        parse_style(&alias).unwrap().theme.tokens.radius[tokens::RadiusStep::Sm.index()],
+        theme.tokens.space[tokens::SpaceStep::Lg.index()]
     );
-}
-
-/// A dressing's draw lines (docs/ui.md §3.3, §3.2): stops without an offset
-/// share the space between their neighbours, colours are tokens or
-/// literals, an atlas region is cut in the atlas's texels, a later block of
-/// one selector replaces the fills it sets and keeps the rest, and a line
-/// the grammar refuses names its own line.
-#[test]
-fn a_dressing_draws_with_the_ui_pass_types() {
-    use og_ui::dress::{DressMaterial, OrnamentKind};
-    use og_ui::paint::*;
-    let base = upgrade_style(&v1_style()).unwrap();
-    let extra = concat!(
-        "Meter::fill[rarity=epic] {\n",
-        "  -og-fill: var(--primary)\n",
-        "  -og-fill: conic 90 var(--primary) #ff000080 0.2 var(--danger) var(--line-strong) reflect\n",
-        "  -og-stroke: 2px linear 180 var(--primary) var(--danger) inside dash 6 3 offset 1 round\n",
-        "  -og-effect: drop-shadow 0 4 8 2 #000000\n",
-        "  -og-effect: backdrop 12 saturation 1.4 tint var(--panel) glass thick elevation lift edge 1 var(--line-strong)\n",
-        "  -og-material: hologram 0.5 2\n",
-        "  mix-blend-mode: screen\n",
-        "  -og-mask: radial #ffffffff #ffffff00\n",
-        "  -og-ornament: corner flourish\n",
-        "  -og-sound: press \"audio/tick.wav\"\n",
-        "}\n",
-        "Meter::fill[rarity=epic] {\n",
-        "  -og-fill: image 8 16 32 32 cover focal 0.25 0.75\n",
-        "}\n",
-    );
-    let file = parse_style(&(base.clone() + extra)).unwrap_or_else(|e| panic!("{e}"));
-    let d = file
-        .dressings
-        .iter()
-        .find(|d| d.selector.part == "fill" && !d.selector.attrs.is_empty())
-        .expect("the epic meter's dressing");
-    // The second block's fill replaced both of the first's.
-    let [Paint::Atlas(a)] = &d.draw.fills[..] else {
-        panic!("one atlas fill: {:?}", d.draw.fills);
-    };
-    assert_eq!(a.fit, Fit::Cover);
-    assert_eq!(a.focal, [0.25, 0.75]);
-    // The first block's other lines stay.
-    let [s] = &d.draw.strokes[..] else {
-        panic!("one stroke");
-    };
-    assert_eq!(
-        (s.width, s.align, s.dash, s.dash_offset, s.dash_cap),
-        (2.0, StrokeAlign::Inside, [6.0, 3.0], 1.0, Cap::Round)
-    );
-    let Paint::Gradient(g) = &s.paint else {
-        panic!("a gradient stroke");
-    };
-    // 180°: top to bottom.
-    assert_eq!((g.from, g.to), ([0.5, 0.0], [0.5, 1.0]));
-    assert_eq!(g.stops[1].color, ColorRef::token("danger"));
-    assert_eq!(d.draw.effects.len(), 2);
-    assert!(matches!(
-        &d.draw.effects[1],
-        Effect::Backdrop { blur, saturation, brightness, tint, glass }
-            if *blur == 12.0 && *saturation == 1.4 && *brightness == 1.0
-                && *tint == ColorRef::token("panel")
-                && *glass == GlassParts {
-                    weight: Some(og_render::UiGlassWeight::Thick),
-                    elevation: Some(og_render::UiElevation::Lift),
-                    edge: 1.0,
-                    edge_color: Some(ColorRef::token("lineStrong")),
-                    own_tint: true,
-                    ..GlassParts::default()
-                }
-    ));
-    let DressMaterial {
-        layer,
-        asset,
-        params,
-    } = d.draw.material.clone().unwrap();
-    assert_eq!(layer.material, Material::Builtin(Builtin::Hologram));
-    assert_eq!(
-        (layer.params[0], asset, params),
-        ([0.5, 2.0, 0.0, 0.0], None, 2)
-    );
-    assert_eq!(d.draw.blend, Some(Blend::Screen));
-    assert!(matches!(&d.draw.mask, Some(Mask::Gradient(g)) if g.kind == GradientKind::Radial));
-    assert_eq!(
-        d.draw.ornaments,
-        [OrnamentKind::Corner, OrnamentKind::Flourish]
-    );
-    assert_eq!(d.draw.sounds.len(), 1);
-
-    // Unset offsets between set ones: 0, 0.2, then 0.6 and 1 evenly.
-    let only_conic = concat!(
-        "Meter::fill[rarity=epic] {\n",
-        "  -og-fill: conic 90 var(--primary) alpha 0.25 #ff000080 alpha 0.5 0.2 var(--danger) var(--line-strong) reflect\n",
-        "}\n",
-    );
-    let file = parse_style(&(base.clone() + only_conic)).unwrap();
-    let d = file
-        .dressings
-        .iter()
-        .find(|d| !d.selector.attrs.is_empty())
-        .unwrap();
-    let [Paint::Gradient(g)] = &d.draw.fills[..] else {
-        panic!("a conic fill");
-    };
-    let offsets: Vec<f32> = g.stops.iter().map(|s| s.offset).collect();
-    assert_eq!(offsets.len(), 4);
-    for (got, want) in offsets.iter().zip([0.0, 0.2, 0.6, 1.0]) {
-        assert!((got - want).abs() < 1e-6, "{offsets:?}");
-    }
-    // CSS 90° (right) is the paint's angle 0 from +x.
-    assert!(g.to[0].abs() < 1e-6, "{:?}", g.to);
-    assert_eq!((g.kind, g.spread), (GradientKind::Conic, Spread::Reflect));
-    assert_eq!(
-        g.stops[0].color,
-        ColorRef::Token {
-            name: "primary".into(),
-            alpha: 0.25
-        }
-    );
-    let ColorRef::Literal(red) = g.stops[1].color else {
-        panic!("literal stop")
-    };
-    assert!((red.alpha - 128.0 / 255.0 * 0.5).abs() < 1e-6);
-
-    // Refused lines report themselves.
-    let lines = base.lines().count();
-    for (bad, why) in [
-        (
-            "-og-fill: linear 90 var(--primary)",
-            "2 to 8 gradient stops",
-        ),
-        ("-og-fill: not-a-colour", "not a paint"),
-        (
-            "-og-stroke: 2px linear 0 var(--primary) nope",
-            "not a palette colour",
-        ),
-        ("-og-stroke: 2px var(--primary) sideways", "'sideways'"),
-        ("-og-effect: sparkle 2", "not an effect"),
-        ("mix-blend-mode: sparkle", "not a blend mode"),
-        (
-            "-og-fill: linear 90 var(--primary) 0.8 var(--danger) 0.2",
-            "out of order",
-        ),
-        ("-og-fill: var(--primary) alpha 1.1", "alpha from 0 to 1"),
-        // Outside the dialect: what to write instead.
-        ("background: #ff0000", "-og-fill"),
-        ("slice 1 2 3 4 5", "-og-slice"),
-        ("-og-fill: #ff0000, #00ff00", "spaces, not commas"),
-        ("box-shadow: 0 2em 4px 0 #000000", "'2em'"),
-    ] {
-        let text = format!("{base}Meter::fill {{\n  {bad}\n}}\n");
-        let err = parse_style(&text).unwrap_err();
-        assert!(err.contains(why), "{bad}: {err}");
-        assert!(err.contains(&format!("line {}", lines + 2)), "{bad}: {err}");
-    }
 }

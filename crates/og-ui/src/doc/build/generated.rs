@@ -162,7 +162,15 @@ impl Ui {
         let n = &b.doc.nodes[*at];
         let mut built = node.probe.clone();
         let props = self.props_of(b, n, node.key, &node.values, &mut built);
-        let fields = fields::RenderFields::capture(self, i, kind, Default::default(), props, None);
+        let fields = fields::RenderFields::capture(
+            self,
+            self.nodes[i].key,
+            i,
+            kind,
+            Default::default(),
+            props,
+            None,
+        );
         self.apply_document_fields(&b.doc, n, &node.values, &fields);
     }
 

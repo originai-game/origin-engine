@@ -52,13 +52,13 @@
 #Screen { padding: 16px; gap: 12px; }
 }
 #Header { width: stretch; gap: 12px; align-items: center; }
-#SaveTitle { font: var(--text-xl2); }
+#SaveTitle { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 @media (width < 600px), (height < 600px) {
-#SaveTitle { font: var(--text-xl); }
+#SaveTitle { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
 }
-#LoadTitle { font: var(--text-xl2); }
+#LoadTitle { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 @media (width < 600px), (height < 600px) {
-#LoadTitle { font: var(--text-xl); }
+#LoadTitle { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
 }
 #Body { width: stretch; height: stretch; gap: 24px; grid-template-columns: 3fr 2fr; grid-template-rows: 1fr; }
 @media (width < 600px) and (orientation: portrait) {
@@ -66,7 +66,7 @@
 }
 #Slots { width: stretch; height: stretch; }
 #List { width: stretch; gap: 8px; }
-#Slot { width: stretch; padding: 10px; gap: 12px; align-items: center; background: var(--panel-raised); -og-frame: card; }
+#Slot { width: stretch; padding: 10px; gap: 12px; align-items: center; background: var(--panel-raised); border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; }
 #Slot.selection-off { opacity: 0.8; }
 #Slot.selection-on { opacity: 1; background: var(--primary-soft); }
 #Slot { scale: 1; }
@@ -78,12 +78,12 @@
 #Thumb { width: 96px; }
 }
 #Text { width: stretch; gap: 2px; }
-#Empty { font: var(--text-lg); }
-#Name { font: var(--text-lg); line-clamp: 1; text-overflow: ellipsis; }
+#Empty { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
+#Name { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); line-clamp: 1; text-overflow: ellipsis; }
 #Place { color: var(--ink-muted); line-clamp: 1; text-overflow: ellipsis; }
 #Meta { gap: 8px; }
-#Played { font: var(--text-caption); color: var(--ink-muted); }
-#Date { font: var(--text-caption); color: var(--ink-muted); }
+#Played { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
+#Date { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #Side { width: stretch; gap: 12px; }
 #Preview { width: stretch; }
 @media (width < 600px), (height < 600px) {

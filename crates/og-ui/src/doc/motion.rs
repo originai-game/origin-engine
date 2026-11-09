@@ -398,7 +398,10 @@ fn validate(name: &str, value: &str, keyframes: &dyn Fn(&str) -> bool) -> Result
                 (word == "none" && list.len() == 1)
                     || (word != "none"
                         && !matches!(word.as_str(), "initial" | "inherit" | "unset" | "default")
-                        && super::syntax::identifier(word.trim_start_matches('-')))
+                        && matches!(
+                            super::css::tokens(word).as_deref(),
+                            Ok([super::css::Tok::Ident(_)])
+                        ))
             }
             "transition-behavior" => matches!(word.as_str(), "normal" | "allow-discrete"),
             "animation-composition" => Composite::from_css(word).is_some(),
@@ -782,7 +785,7 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
                         })
                         .collect()
                 });
-            let Some(scalar) = scalar else {
+            {
                 if !interpolate::animatable(&name) || name.starts_with("--") {
                     return Err(format!("{name} cannot be animated in @keyframes"));
                 }
@@ -812,9 +815,8 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
                         composite,
                     });
                 }
-                continue;
-            };
-            for (prop, value) in scalar {
+            }
+            for (prop, value) in scalar.into_iter().flatten() {
                 let index = out
                     .tracks
                     .iter()

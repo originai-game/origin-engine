@@ -183,6 +183,10 @@ pub(crate) struct MotionState {
     /// Transitions of computed values, by element (saved beside the layer
     /// stack).
     pub styles: std::collections::BTreeMap<u64, super::css::StyleState>,
+    /// The same computed-value transitions for each exposed part, owned
+    /// by its host element so parts cannot overwrite the host's motion.
+    pub part_styles:
+        std::collections::BTreeMap<u64, std::collections::BTreeMap<String, super::css::StyleState>>,
 }
 
 /// The key of channel `c` of element `key`.

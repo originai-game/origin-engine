@@ -1,5 +1,4 @@
-//! The default document stylesheet. Independent of DressSet so removing
-//! the legacy runtime does not change this generator's output.
+//! The default CSS stylesheet generated from the design tokens.
 
 use super::{ROLES, colour, role_colour};
 use serde_json::Value;
@@ -7,8 +6,8 @@ use std::fmt::Write;
 
 /// Each legacy dressing and its single author-facing selector. Keep the
 /// mapping next to the declarations: it is also emitted for migration review.
-const DRESSINGS: &[(&str, &str, &str)] = &[
-    ("Panel::frame", "panel::part(frame)", GLASS_LIFT),
+const PART_RULES: &[(&str, &str, &str)] = &[
+    ("Panel::frame", "panel.glass::part(frame)", GLASS_LIFT),
     ("Sheet::frame", "sheet::part(frame)", GLASS_LIFT),
     ("Radial::frame", "radial::part(frame)", GLASS_LIFT),
     ("Menu::frame", "menu::part(frame)", GLASS_FLOAT),
@@ -29,7 +28,7 @@ const DRESSINGS: &[(&str, &str, &str)] = &[
     ("ActionBar::hint", "actionbar::part(hint)", GLASS_REGULAR),
     (
         "Card::frame",
-        "card::part(frame)",
+        "panel::part(frame)",
         "box-shadow: none; border-radius: var(--radius-card);",
     ),
     (
@@ -49,7 +48,7 @@ const DRESSINGS: &[(&str, &str, &str)] = &[
     ),
     (
         "Field::frame.invalid",
-        "input[aria-invalid=true]::part(frame), textarea[aria-invalid=true]::part(frame)",
+        "input::part(frame):invalid, textarea::part(frame):invalid",
         "border: 1px solid var(--danger);",
     ),
     ("Chip::base", "chip::part(base)", "border: none;"),
@@ -257,6 +256,101 @@ pub fn generate(text: &str) -> Result<String, String> {
     for group in ["space", "radius", "font", "density", "motion", "vars"] {
         variables(&mut out, group, &t[group]);
     }
+    out.push_str("    --font-body: var(--font-sans);\n    --space-xl3: var(--space-3xl);\n");
+    for (name, value) in [
+        ("size-xs", "16px"),
+        ("size-sm", "24px"),
+        ("size-md", "32px"),
+        ("size-lg", "48px"),
+        ("size-xl", "64px"),
+        ("size-xxl", "96px"),
+        ("size-touch", "44px"),
+        ("radius-xs", "var(--radius-control)"),
+        ("radius-sm", "var(--radius-button)"),
+        ("radius-md", "var(--radius-panel)"),
+        ("radius-lg", "calc(var(--radius-panel) * 1.5)"),
+        ("radius-xl", "calc(var(--radius-panel) * 2)"),
+        ("radius-pill", "var(--radius-capsule)"),
+        ("stroke-hairline", "1px"),
+        ("stroke-thin", "1.5px"),
+        ("stroke-regular", "2px"),
+        ("stroke-thick", "3px"),
+        ("stroke-focus", "2px"),
+        ("motion-enter", "var(--motion-duration-base) ease-out"),
+        ("motion-exit", "var(--motion-duration-fast) ease-in"),
+    ] {
+        writeln!(out, "    --{name}: {value};").unwrap();
+    }
+    for (field, _) in super::STEPS {
+        let (key, weight, _) = type_role(field);
+        let size = super::text(&t, &["font", "scale", key, "size"])?;
+        let height = super::text(&t, &["font", "scale", key, "lineHeight"])?;
+        let name = kebab(field);
+        writeln!(out, "    --type-{name}-size: {size};\n    --type-{name}-line-height: {height};\n    --type-{name}-weight: {weight};").unwrap();
+        let tracking = t["font"]["scale"][key]["letterSpacing"]
+            .as_str()
+            .unwrap_or("0em");
+        let cjk_tracking = super::text(&t, &["font", "cjk", "letterSpacing"])?;
+        let features = t["font"]["scale"][key]["fontFeatures"]
+            .as_array()
+            .map(|tags| {
+                tags.iter()
+                    .filter_map(Value::as_str)
+                    .map(|tag| format!("\"{tag}\""))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            })
+            .filter(|s| !s.is_empty())
+            .unwrap_or("normal".into());
+        writeln!(out, "    --type-{name}-tracking: {tracking};\n    --type-{name}-cjk-tracking: {cjk_tracking};\n    --type-{name}-features: {features};\n    --type-{name}-transform: none;").unwrap();
+        let cjk_height = super::unit(&t, &["font", "scale", key, "lineHeight"], "px")?
+            .max((super::unit(&t, &["font", "scale", key, "size"], "px")? * 1.45).round());
+        writeln!(out, "    --type-{name}-cjk-line-height: {cjk_height}px;").unwrap();
+        writeln!(
+            out,
+            "    --text-{name}: var(--type-{name}-weight) var(--type-{name}-size)/var(--type-{name}-line-height) var(--font-body);"
+        )
+        .unwrap();
+    }
+    for (role, step) in [
+        ("display", "display-lg"),
+        ("title", "display-sm"),
+        ("heading", "xl"),
+        ("label", "sm"),
+        ("numeric", "lg"),
+        ("button", "sm"),
+        ("hero", "display-xl2"),
+    ] {
+        for field in [
+            "size",
+            "line-height",
+            "weight",
+            "tracking",
+            "cjk-tracking",
+            "cjk-line-height",
+            "features",
+            "transform",
+        ] {
+            writeln!(
+                out,
+                "    --type-{role}-{field}: var(--type-{step}-{field});"
+            )
+            .unwrap();
+        }
+    }
+    for (role, font) in [
+        ("display", "display"),
+        ("title", "display"),
+        ("heading", "display"),
+        ("body", "body"),
+        ("label", "body"),
+        ("caption", "body"),
+        ("numeric", "mono"),
+        ("button", "body"),
+        ("hero", "display"),
+    ] {
+        writeln!(out, "    --type-{role}-font: var(--font-{font});").unwrap();
+    }
     // Preserve the default UI spring's uninterrupted samples using CSS
     // linear(), rather than replacing its response with an arbitrary ease.
     let spring = og_ui::motion::MotionTokens::default().ui.to_tween();
@@ -288,6 +382,40 @@ pub fn generate(text: &str) -> Result<String, String> {
     out.push_str("  }\n  :root[data-scheme=light] {\n");
     palette(&mut out, &t, false)?;
     out.push_str("  }\n");
+    for (query, landscape) in [
+        (
+            "((width < 600px) or (height < 600px)) and (orientation: portrait)",
+            false,
+        ),
+        (
+            "((width < 600px) or (height < 600px)) and (orientation: landscape)",
+            true,
+        ),
+    ] {
+        writeln!(out, "  @media {query} {{ :root {{").unwrap();
+        for (field, _) in super::STEPS {
+            let (key, _, phone) = type_role(field);
+            let factor = if landscape {
+                (1.0 + phone) / 2.0
+            } else {
+                phone
+            };
+            let size = (super::unit(&t, &["font", "scale", key, "size"], "px")? * factor)
+                .round()
+                .max(12.0);
+            let height = (super::unit(&t, &["font", "scale", key, "lineHeight"], "px")? * factor)
+                .round()
+                .max(16.0);
+            let name = kebab(field);
+            let cjk_height = height.max((size * 1.45).round());
+            writeln!(
+                out,
+                "    --type-{name}-size: {size}px; --type-{name}-line-height: {height}px; --type-{name}-cjk-line-height: {cjk_height}px;"
+            )
+            .unwrap();
+        }
+        out.push_str("  } }\n");
+    }
     // Check all role colours here too; malformed tokens must never produce
     // a partially valid stylesheet.
     for v in t["color"]
@@ -308,15 +436,28 @@ pub fn generate(text: &str) -> Result<String, String> {
             writeln!(out, "  {host}[data-player=\"{player}\"]::part(focus):focus-visible {{ outline: var(--space-xxs) solid var(--{color}); outline-offset: calc(var(--space-xxs) * {gap}); }}").unwrap();
         }
     }
-    for (old, selector, declarations) in DRESSINGS {
+    for (old, selector, declarations) in PART_RULES {
         writeln!(out, "  /* {old} */\n  {selector} {{ {declarations} }}").unwrap();
     }
     out.push_str("}\n");
     Ok(out)
 }
 
-// Effective token defaults, before DRESSINGS replaces individual lists.
-// Class membership comes from the widget's PartRef, not the markup name.
+fn type_role(field: &str) -> (&'static str, u16, f32) {
+    match field {
+        "xs" | "caption" | "meta" => ("caption", 400, 1.0),
+        "sm" => ("body", 600, 1.0),
+        "base" | "body" | "reading" => ("body", 400, 1.0),
+        "lg" => ("lg", 600, 1.0),
+        "xl" | "xl2" => ("xl", 600, 1.0),
+        "xl3" | "xl4" | "display_sm" | "display_md" => ("display-sm", 700, 0.875),
+        "xl5" | "xl6" | "display_lg" => ("display-lg", 700, 0.8),
+        "xl7" | "xl8" | "display_xl" | "display_xl2" => ("display-2xl", 700, 0.75),
+        _ => unreachable!("a known type step"),
+    }
+}
+
+// Default borders and effects, overridden by the more specific part rules.
 const FALLBACKS: &str = r#"
   /* Hover/press values are supplied by the widget, blended by the cascade. */
   button::part(base), input[type=checkbox]::part(row), input[type=radio]::part(option),
@@ -335,8 +476,8 @@ const FALLBACKS: &str = r#"
   /* Panel / Dialog / Card / Tooltip */
   panel::part(frame), sheet::part(frame), radial::part(frame),
   menu::part(frame), popover::part(frame), tooltip::part(frame),
-  chart::part(tooltip), card::part(frame), dialog::part(panel),
-  details::part(root), details::part(content), scroll::part(frame),
+  chart::part(tooltip), dialog::part(panel),
+  scroll::part(frame),
   select::part(list), input[type=range]::part(bubble) {
     box-sizing: border-box;
     border: 1px solid var(--line);
@@ -346,10 +487,13 @@ const FALLBACKS: &str = r#"
     box-shadow: var(--elevation-floating);
   }
   /* Hud */
-  hud::part(frame), actionbar::part(hint), minimap::part(frame),
-  joystick::part(base), dpad::part(base), actionbutton::part(face) {
+  hud::part(frame), actionbar::part(hint), minimap::part(frame) {
     border: 1px solid var(--line-70);
     border-radius: var(--radius-button);
+  }
+  joystick::part(base):disabled, dpad::part(base):disabled,
+  actionbutton::part(face):disabled {
+    opacity: 0.45;
   }
   /* Button: untouched token defaults also serve secondary controls. */
   button::part(base), input[type=checkbox]::part(row),

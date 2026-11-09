@@ -138,6 +138,17 @@ fn apply_body(
 ) -> Result<(), String> {
     for (name, value) in css::split_decls(body)? {
         match name.as_str() {
+            "font" if !value.trim().starts_with("var(") => {
+                let expanded = super::text_css::font(&value)?;
+                let body = expanded
+                    .into_iter()
+                    .filter(|(name, _)| {
+                        !matches!(name.as_str(), "font-stretch" | "font-variant-caps")
+                    })
+                    .map(|(name, value)| format!("{name}: {value};"))
+                    .collect::<String>();
+                apply_body(rule, &body, declared)?;
+            }
             "font-weight" => {
                 let weight = match value.as_str() {
                     "normal" => 400,
@@ -237,12 +248,11 @@ fn apply_body(
                     .and_then(|r| r.strip_suffix(')'))
                     .and_then(crate::FontRole::from_name)
                     .unwrap_or_default();
-                let first = names
-                    .split(',')
-                    .map(|n| n.trim().trim_matches('"'))
-                    .find(|n| *n != "none" && !n.is_empty() && declared(n));
+                let first = super::text_css::names_of(&names)
+                    .into_iter()
+                    .find(|n| declared(n));
                 rule.style.font = Some(match first {
-                    Some(name) => crate::FontRole::Family(crate::Family::new(name, role)),
+                    Some(name) => crate::FontRole::Family(crate::Family::new(&name, role)),
                     None => role,
                 });
             }
@@ -313,15 +323,8 @@ pub(crate) fn resolve(
             line: 0,
         })
         .collect();
-    let mut cascade = super::build::cascade::resolve_values(
-        &rules,
-        &[],
-        inherited,
-        theme,
-        None,
-        &|_| None,
-        |_| true,
-    );
+    let mut cascade =
+        super::build::cascade::resolve_values(&rules, &[], inherited, None, &|_| None, |_| true);
     let mut rule = SpanRule {
         name: span.name.clone(),
         attributes: Vec::new(),

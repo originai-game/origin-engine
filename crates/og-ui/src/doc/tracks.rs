@@ -113,14 +113,10 @@ fn args<'a>(w: &'a str, f: &str) -> Option<Vec<&'a str>> {
     Some(out)
 }
 
-/// A length in CSS px: a bare number (px), `<n><unit>` of an absolute
-/// unit, or a length token.
+/// A computed length in CSS px: a bare number or an absolute CSS unit.
 fn length(w: &str) -> Option<f32> {
     if let Ok(v) = w.parse::<f32>() {
         return Some(v);
-    }
-    if let Some(name) = w.strip_prefix("var(--").and_then(|r| r.strip_suffix(')')) {
-        return crate::Theme::default().length(name);
     }
     let split = w
         .find(|c: char| !(c.is_ascii_digit() || matches!(c, '.' | '-' | '+' | 'e')))

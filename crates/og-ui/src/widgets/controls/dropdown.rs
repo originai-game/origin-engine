@@ -152,7 +152,7 @@ impl Ui {
             padding: Insets::xy(0.0, t.space.xxs),
             radius: t.radius.control,
             background: Some(self.role("panelRaised").srgba()),
-            part: crate::dress::PartRef::parse("Dropdown.list", ElementClass::Tooltip).ok(),
+            part: crate::dress::PartRef::parse("select::part(list)", ElementClass::Tooltip).ok(),
             ..Element::default()
         };
         let mut chosen = None;
@@ -176,7 +176,7 @@ impl Ui {
                 let b = self.ctl(
                     crate::ui_idi("Option", i as u32),
                     Ctl {
-                        part: "Dropdown.option",
+                        part: "select::part(option)",
                         width: Some(Size::grow()),
                         height: Some(Size::px(row_h)),
                         padding: Insets::xy(t.space.md, 0.0),
@@ -320,7 +320,7 @@ impl Ui {
                 let trig = ui.ctl(
                     "Trigger",
                     Ctl {
-                        part: "Dropdown.trigger",
+                        part: "select::part(trigger)",
                         cls: ElementClass::Field,
                         flags: vec![open.then_some("open"), invalid.then_some("invalid")],
                         disabled,
@@ -408,7 +408,8 @@ impl Ui {
                 ),
                 radius: t.radius.control,
                 background: Some(raised.srgba()),
-                part: crate::dress::PartRef::parse("Dropdown.list", ElementClass::Tooltip).ok(),
+                part: crate::dress::PartRef::parse("select::part(list)", ElementClass::Tooltip)
+                    .ok(),
                 ..Element::default()
             };
             // Its rim and shadow are the part's (a floating surface's) dressing.
@@ -466,7 +467,7 @@ impl Ui {
                                             bottom: t.space.xxs,
                                         },
                                         part: crate::dress::PartRef::parse(
-                                            "Dropdown.group",
+                                            "select::part(group)",
                                             ElementClass::Panel,
                                         )
                                         .ok(),
@@ -491,7 +492,7 @@ impl Ui {
                         let b = ui.ctl(
                             crate::ui_idi("Option", i as u32),
                             Ctl {
-                                part: "Dropdown.option",
+                                part: "select::part(option)",
                                 flags: vec![on.then_some("selected")],
                                 disabled: off,
                                 width: Some(Size::grow()),

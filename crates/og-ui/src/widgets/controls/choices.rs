@@ -242,13 +242,7 @@ impl Ui {
         let off_fill = mix(self.role("controlStrong"), self.role("ink"), 0.12);
         let on_fill = self.role("primary");
         let knob_fill = self.role("knob");
-        // An undressed knob that all but vanishes into the track it is on (a
-        // neutral style's white on white) turns the inverse ink there, so it
-        // and its tick in the track's colour still read. A style that dresses
-        // the knob chose its look.
-        let knob_on = if !self.dress.dresses("Toggle", "knob")
-            && knob_fill.srgba().contrast(on_fill.srgba()) < 1.5
-        {
+        let knob_on = if knob_fill.srgba().contrast(on_fill.srgba()) < 1.5 {
             self.role("inkInverse")
         } else {
             knob_fill
@@ -270,7 +264,7 @@ impl Ui {
         let built = self.ctl(
             id,
             Ctl {
-                part: "Toggle.row",
+                part: "input[type=checkbox][switch]::part(row)",
                 disabled: desc.disabled,
                 flags: vec![Some(if on { "on" } else { "off" })],
                 width: desc.width,
@@ -294,13 +288,14 @@ impl Ui {
                 if desc.side == LabelSide::Start {
                     ui.labelled(&desc.label, &desc.description, desc.disabled);
                 }
-                let track = format!(
-                    "Toggle.track{}",
-                    flags(&[
+                let track = qualified_part(
+                    "input[type=checkbox][switch]::part(track)",
+                    &[
                         Some(if on { "on" } else { "off" }),
                         Some("round"),
-                        ix.flag()
-                    ])
+                        ix.flag(),
+                    ],
+                    ElementClass::Chip,
                 );
                 ui.open(
                     "Track",
@@ -310,11 +305,15 @@ impl Ui {
                         cross: Cross::Center,
                         radius: th / 2.0,
                         background: Some(if on { on_fill } else { off_fill }.srgba()),
-                        part: crate::dress::PartRef::parse(&track, ElementClass::Chip).ok(),
+                        part: Some(track),
                         ..Element::default()
                     },
                 );
-                let kpart = format!("Toggle.knob{}", flags(&[on.then_some("on"), Some("round")]));
+                let kpart = qualified_part(
+                    "input[type=checkbox][switch]::part(knob)",
+                    &[on.then_some("on"), Some("round")],
+                    ElementClass::Chip,
+                );
                 ui.open(
                     "Knob",
                     Element {
@@ -324,7 +323,7 @@ impl Ui {
                         align: Align::Center,
                         cross: Cross::Center,
                         background: Some(if on { knob_on } else { knob_fill }.srgba()),
-                        part: crate::dress::PartRef::parse(&kpart, ElementClass::Chip).ok(),
+                        part: Some(kpart),
                         ..Element::default()
                     },
                 );
@@ -450,7 +449,7 @@ impl Ui {
         let built = self.ctl(
             id,
             Ctl {
-                part: "Checkbox.row",
+                part: "input[type=checkbox]::part(row)",
                 disabled: desc.disabled,
                 flags: vec![
                     checked.then_some("checked"),
@@ -482,14 +481,15 @@ impl Ui {
                 if desc.side == LabelSide::Start {
                     ui.labelled(&desc.label, &desc.description, desc.disabled);
                 }
-                let part = format!(
-                    "Checkbox.box{}",
-                    flags(&[
+                let part = qualified_part(
+                    "input[type=checkbox]::part(box)",
+                    &[
                         checked.then_some("checked"),
                         mixed.then_some("mixed"),
                         invalid.then_some("invalid"),
-                        ix.flag()
-                    ])
+                        ix.flag(),
+                    ],
+                    ElementClass::Field,
                 );
                 ui.open(
                     "Box",
@@ -502,7 +502,7 @@ impl Ui {
                         background: Some(if on { on_fill } else { off_fill }.srgba()),
                         // A field: its rim (found at 3:1 while empty, danger
                         // when invalid, none once filled) is the part's dressing.
-                        part: crate::dress::PartRef::parse(&part, ElementClass::Field).ok(),
+                        part: Some(part),
                         ..Element::default()
                     },
                 );
@@ -513,8 +513,11 @@ impl Ui {
                         height: Size::px(bx),
                         align: Align::Center,
                         cross: Cross::Center,
-                        part: crate::dress::PartRef::parse("Checkbox.mark", ElementClass::Badge)
-                            .ok(),
+                        part: crate::dress::PartRef::parse(
+                            "input[type=checkbox]::part(mark)",
+                            ElementClass::Badge,
+                        )
+                        .ok(),
                         ..Element::default()
                     },
                 );
@@ -600,9 +603,10 @@ impl Ui {
             self.role("onPrimary"),
         );
         let still = self.still();
-        let part = format!(
-            "Radio.ring{}",
-            flags(&[selected.then_some("selected"), Some("round"), ix.flag()])
+        let part = qualified_part(
+            "input[type=radio]::part(ring)",
+            &[selected.then_some("checked"), Some("round"), ix.flag()],
+            ElementClass::Field,
         );
         self.open(
             "Ring",
@@ -614,7 +618,7 @@ impl Ui {
                 radius: size / 2.0,
                 background: Some(if selected { p } else { w }.srgba()),
                 // A field, as a checkbox's box: its rim is the part's dressing.
-                part: crate::dress::PartRef::parse(&part, ElementClass::Field).ok(),
+                part: Some(part),
                 ..Element::default()
             },
         );
@@ -625,7 +629,11 @@ impl Ui {
                 height: Size::px(dot),
                 radius: dot / 2.0,
                 background: Some(op.srgba()),
-                part: crate::dress::PartRef::parse("Radio.dot[round]", ElementClass::Badge).ok(),
+                part: crate::dress::PartRef::parse(
+                    "input[type=radio].round::part(dot)",
+                    ElementClass::Badge,
+                )
+                .ok(),
                 ..Element::default()
             },
         );
@@ -728,7 +736,11 @@ impl Ui {
             let built = self.ctl(
                 crate::ui_idi("Option", i as u32),
                 Ctl {
-                    part: if cards { "Radio.card" } else { "Radio.option" },
+                    part: if cards {
+                        "input[type=radio]::part(card)"
+                    } else {
+                        "input[type=radio]::part(option)"
+                    },
                     cls: if cards {
                         ElementClass::Card
                     } else {
@@ -784,7 +796,12 @@ impl Ui {
                     if cards {
                         ui.radio_ring(on, ix, size);
                         if on {
-                            ui.chosen_ring("Chosen", 2.0, "primary", "Radio.chosen");
+                            ui.chosen_ring(
+                                "Chosen",
+                                2.0,
+                                "primary",
+                                "input[type=radio]::part(chosen)",
+                            );
                         }
                     }
                 },
@@ -904,9 +921,10 @@ impl Ui {
                 ..crate::ui::ScrollDesc::default()
             },
         );
-        let track_part = format!(
-            "Tabs.track{}",
-            flags(&[desc.disabled.then_some("disabled")])
+        let track_part = qualified_part(
+            "tabs::part(track)",
+            &[desc.disabled.then_some("disabled")],
+            ElementClass::Tab,
         );
         self.open(
             "Track",
@@ -921,7 +939,7 @@ impl Ui {
                 cross: Cross::Stretch,
                 radius: t.radius.control + pad,
                 background: Some(well.srgba()),
-                part: crate::dress::PartRef::parse(&track_part, ElementClass::Tab).ok(),
+                part: Some(track_part),
                 ..Element::default()
             },
         );
@@ -933,7 +951,8 @@ impl Ui {
                     height: Size::px(sel.height),
                     radius: t.radius.control,
                     background: Some(raised.srgba()),
-                    part: crate::dress::PartRef::parse("Tabs.indicator", ElementClass::Tab).ok(),
+                    part: crate::dress::PartRef::parse("tabs::part(indicator)", ElementClass::Tab)
+                        .ok(),
                     ..Element::default()
                 },
             );
@@ -969,7 +988,7 @@ impl Ui {
             let built = self.ctl(
                 crate::ui_idi("Item", i as u32),
                 Ctl {
-                    part: "Tabs.tab",
+                    part: "tabs::part(tab)",
                     cls: ElementClass::Tab,
                     disabled: off,
                     flags: vec![on.then_some("selected")],

@@ -1,0 +1,19 @@
+{
+  "breaking": [
+    {
+      "member": "UI part styling",
+      "change": "Ui installs default.css and resolves parts through the document CSS cascade. DressSet, Dressing, the legacy Selector, set_dressings, theme_dressings, default_dressings, v1_dressings and style-file dress blocks are removed. Hover and press appearance uses CSS transitions; CSS keyframe animations and transitions replay with presentation state.",
+      "fix": "Write lowercase markup hosts, classes and attributes before ::part(name), with standard state pseudo-classes after it. Use background, border, color, box-shadow, border-image and transition instead of dressing declarations. Select HTML controls by their authored input type, select or textarea. The -og-material property supplies glass weight and elevation; unknown -og-* properties are errors."
+    },
+    {
+      "member": "Theme::length and CSS token lookup",
+      "change": "CSS var() resolves only through the cascade, without a Theme lookup fallback. Theme::length is removed. Theme palette, spacing, radius and typography mutations write root custom properties, and widgets read their resolved values. CSS font-family accepts ordered lists of quoted names, unquoted names and generic families.",
+      "fix": "Declare tokens on :root and use var(--name). Supply installed font families in fallback order. Retain CSS across UI reconstruction with inherit_part_css; it preserves root overrides at every breakpoint. The TypeScript og.ui theme API keeps its existing shape."
+    },
+    {
+      "member": "og style new",
+      "change": "Style generation emits metadata only; it no longer emits legacy appearance or dress blocks. The dressing form of -og-frame is removed; its unrelated rive(...) form remains.",
+      "fix": "Author appearance in CSS. Pure-CSS pack generation follows in phase C. Existing font, icon, sound and ornament metadata generation remains available between phases."
+    }
+  ]
+}

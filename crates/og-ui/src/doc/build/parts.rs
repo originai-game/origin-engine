@@ -1,15 +1,67 @@
 //! Exposed component parts use the document CSS cascade and box painter.
 use super::*;
 use crate::doc::matching::{Facts, own};
-use crate::doc::selectors::state;
+
+impl Resolved {
+    pub(crate) fn part_type(&self, theme: &crate::Theme, step: crate::TypeStep) -> crate::TypeStep {
+        super::super::text_css::inherit(super::super::text_css::Inputs {
+            local: &self.cascade.text,
+            computed: &mut (*self.cascade.computed).clone(),
+            reads: &mut Default::default(),
+            diagnostics: &mut Vec::new(),
+            theme,
+            current: self.color("color").unwrap_or(theme.palette.ink),
+            step,
+            declared: &|_| false,
+        })
+        .step(step)
+    }
+}
 
 impl Ui {
+    pub(crate) fn css_root_variables(&self) -> Arc<super::super::variables::Computed> {
+        let attributes = BTreeMap::from([(
+            "data-scheme".into(),
+            Value::String(if self.theme().scheme == crate::Scheme::Light {
+                "light".into()
+            } else {
+                "dark".into()
+            }),
+        )]);
+        let facts = Facts {
+            scope: "",
+            tag: "",
+            part: None,
+            root: true,
+            attributes: &attributes,
+            states: &Default::default(),
+            text: "",
+        };
+        let mut inline = self.root_tokens.clone();
+        inline.extend_from_slice(&self.root_type_tokens[self.breakpoint() as usize]);
+        cascade::values_with(
+            &self.part_rules,
+            &cascade::Options {
+                inline: &inline,
+                inherited: &Default::default(),
+                basis: None,
+                attr: &|_| None,
+                sheet: Some(&self.part_sheet),
+                starting: false,
+                carry: false,
+            },
+            |rule| self.part_matches(rule, &facts),
+        )
+        .computed
+    }
+
     /// Replace the global part stylesheet. Invalid CSS leaves the current
     /// sheet unchanged. This does not install a legacy dressing.
     pub fn set_part_css(&mut self, css: &str) -> Result<(), String> {
         let (rules, sheet) = crate::doc::stylesheet::part_rules(css)?;
         self.part_rules = rules;
         self.part_sheet = sheet;
+        self.read_theme_tokens();
         self.kept.epoch += 1;
         Ok(())
     }
@@ -18,6 +70,9 @@ impl Ui {
     pub fn inherit_part_css(&mut self, source: &Ui) {
         self.part_rules.clone_from(&source.part_rules);
         self.part_sheet.clone_from(&source.part_sheet);
+        self.root_tokens.clone_from(&source.root_tokens);
+        self.root_type_tokens.clone_from(&source.root_type_tokens);
+        self.read_theme_tokens();
         self.kept.epoch += 1;
     }
 
@@ -28,176 +83,202 @@ impl Ui {
         part: &crate::dress::PartRef,
         size: [f32; 2],
     ) -> Result<crate::paint::ElementDraw, Vec<String>> {
-        self.part_draw_values(&self.part_values(part), size, None)
+        self.part_draw_values(&self.part_values(part, None), size, None, None)
     }
 
-    pub(crate) fn part_values(&self, part: &crate::dress::PartRef) -> Resolved {
-        let mut attributes: BTreeMap<String, Value> = part
-            .attrs
-            .iter()
-            .filter(|(k, _)| !k.is_empty())
-            .map(|(k, v)| ((*k).into(), Value::String((*v).into())))
-            .collect();
-        // Internal widget identities are never selector aliases. A control
-        // exposes exactly its HTML host and that host's distinguishing attrs.
-        let tag = match part.component {
-            "Slider" => {
-                attributes.insert("type".into(), "range".into());
-                "input".into()
+    fn part_matches(&self, rule: &crate::doc::StyleRule, facts: &Facts<'_>) -> bool {
+        rule.query
+            .media
+            .matches(self.media_context(), &mut Default::default())
+            && rule.query.container.is_empty()
+            && rule
+                .structure
+                .as_ref()
+                .is_some_and(|s| s.compounds[0].0.iter().all(|simple| own(facts, simple)))
+    }
+
+    pub(crate) fn matching_part_rules(
+        &self,
+        part: &crate::dress::PartRef,
+    ) -> Vec<&crate::doc::StyleRule> {
+        part.with_facts(|facts| {
+            self.part_rules
+                .iter()
+                .filter(|rule| self.part_matches(rule, &facts))
+                .collect()
+        })
+    }
+
+    fn part_host(&self, key: u64) -> Option<&PartHost> {
+        let mut i = self
+            .tree
+            .find(key)
+            .or_else(|| self.nodes.iter().rposition(|n| n.key == key))?;
+        loop {
+            let node = &self.nodes[i];
+            if let Some(host) = &node.part_host {
+                return Some(host);
             }
-            "Checkbox" => {
-                attributes.insert("type".into(), "checkbox".into());
-                "input".into()
+            if node.parent == NONE {
+                return None;
             }
-            "Toggle" => {
-                attributes.insert("type".into(), "checkbox".into());
-                attributes.insert("switch".into(), true.into());
-                "input".into()
+            i = node.parent;
+        }
+    }
+
+    pub(crate) fn part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
+        let host = key.and_then(|k| self.part_host(k));
+        let document = host.and_then(|h| self.docs.docs.get(&h.document));
+        let mut rules = std::borrow::Cow::Borrowed(&self.part_rules);
+        let mut sheet = std::borrow::Cow::Borrowed(&self.part_sheet);
+        if let Some(doc) = document.filter(|d| !d.part_rules.is_empty()) {
+            let rules = rules.to_mut();
+            let sheet = sheet.to_mut();
+            for layer in &doc.sheet.layers {
+                if !sheet.layers.contains(layer) {
+                    sheet.layers.push(layer.clone());
+                }
             }
-            "Radio" => {
-                attributes.insert("type".into(), "radio".into());
-                "input".into()
+            for rule in &doc.part_rules {
+                let mut rule = rule.clone();
+                if rule.layer != u32::MAX && rule.layer > 0 {
+                    let name = &doc.sheet.layers[(rule.layer - 1) as usize];
+                    rule.layer = sheet.layers.iter().position(|n| n == name).unwrap() as u32 + 1;
+                }
+                rules.push(rule);
             }
-            "Dropdown" => "select".into(),
-            "Field" => "input".into(),
-            "TextEdit" => "textarea".into(),
-            tag => tag.to_ascii_lowercase(),
-        };
-        let mut states = BTreeSet::new();
-        let mut classes = attributes
-            .get("class")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string();
-        for flag in part.flags() {
-            let name = match flag {
-                "pressed" => "active",
-                "focused" => "focus-visible",
-                _ => flag,
+            rules.sort_by_key(|r| (r.layer, r.structure.as_ref().map(|s| s.specificity())));
+            for (name, property) in &doc.sheet.properties {
+                sheet.properties.retain(|(n, _)| n != name);
+                sheet.properties.push((name.clone(), property.clone()));
+            }
+            for (name, frames) in &doc.sheet.keyframes {
+                sheet.keyframes.retain(|(n, _)| n != name);
+                sheet.keyframes.push((name.clone(), frames.clone()));
+            }
+            sheet
+                .keyframe_rules
+                .extend(doc.sheet.keyframe_rules.clone());
+        }
+        part.with_facts(|facts| {
+            let mut attributes = facts.attributes.clone();
+            if let Some(host) = host {
+                let classes = format!(
+                    "{} {}",
+                    attributes
+                        .get("class")
+                        .map(crate::bind::text)
+                        .unwrap_or_default(),
+                    host.attributes
+                        .get("class")
+                        .map(crate::bind::text)
+                        .unwrap_or_default()
+                );
+                attributes.extend(host.attributes.clone());
+                attributes.insert("class".into(), classes.into());
+            }
+            let facts = Facts {
+                tag: host.map_or(facts.tag, |h| h.tag.as_str()),
+                attributes: &attributes,
+                ..facts
             };
-            if let Some(state) = state(name) {
-                states.insert(state);
-            } else {
-                if !classes.is_empty() {
-                    classes.push(' ');
-                }
-                classes.push_str(flag);
+            let empty = Default::default();
+            let vp = self.viewport();
+            let body = self.theme().type_ramp.body;
+            let options = cascade::Options {
+                inline: &[],
+                inherited: &empty,
+                basis: Some(crate::doc::calc::Basis {
+                    width: vp.width,
+                    height: vp.height,
+                    small: [vp.width, vp.height],
+                    large: [vp.width, vp.height],
+                    rem: body.size,
+                    rlh: body.line_height,
+                    ..Default::default()
+                }),
+                attr: &|_| None,
+                sheet: Some(&sheet),
+                starting: false,
+                carry: false,
+            };
+            let mut inherited = (*self.css_root_variables()).clone();
+            if let Some(host) = host {
+                inherited.extend((*host.computed).clone());
             }
-        }
-        if part.has("on") {
-            if attributes
-                .get("type")
-                .and_then(Value::as_str)
-                .is_some_and(|t| matches!(t, "checkbox" | "radio"))
+            let attr = |name: &str| facts.attributes.get(name).map(crate::bind::text);
+            let options = cascade::Options {
+                inherited: &inherited,
+                attr: &attr,
+                ..options
+            };
+            let mut values =
+                cascade::values_with(&rules, &options, |r| self.part_matches(r, &facts));
+            let motion = values
+                .values
+                .iter()
+                .filter(|(name, ..)| super::super::motion::longhand(name))
+                .map(|(name, value, _)| (name.clone(), value.clone()))
+                .collect::<Vec<_>>();
+            let (transitions, mut animations) =
+                super::super::motion::resolve(&motion, "", &mut values.diagnostics);
+            for animation in &mut animations {
+                let name = animation.name.trim_start_matches('/');
+                if let Some((_, _, key)) =
+                    sheet.keyframe_rules.iter().rev().find(|(n, query, _)| {
+                        n == name
+                            && query
+                                .media
+                                .matches(self.media_context(), &mut Default::default())
+                            && query.container.is_empty()
+                    })
+                {
+                    animation.name = key.clone();
+                }
+            }
+            let style = key.and_then(|key| {
+                self.animate_values(
+                    animate::StyleTarget::Part(key, part.part),
+                    &mut values,
+                    &[],
+                    &transitions,
+                    &animations,
+                    options.basis.expect("part CSS has viewport units"),
+                    Some(&sheet),
+                )
+            });
+            if let (Some(key), Some(commit)) = (key, &style) {
+                self.part_commits
+                    .borrow_mut()
+                    .insert((key, part.part), commit.clone());
+            }
+            cascade::route(&mut values, crate::layout::Flow::default());
+            let mut vals: Vec<_> = values
+                .props
+                .iter()
+                .filter_map(|p| match &p.value {
+                    PropValue::Lit(value) => lit(self, value).map(|v| (p.spec, v)),
+                    _ => None,
+                })
+                .collect();
+            if let Some((_, color)) = values.text.iter().find(|(name, _)| name == "color")
+                && let Ok(color) = crate::css_color::parse_str(color)
             {
-                states.insert(crate::bind::InteractionState::Checked);
-            } else {
-                attributes.insert("aria-pressed".into(), "true".into());
+                let (spec, _) = schema::prop("color").expect("color is a reflected property");
+                vals.push((
+                    spec,
+                    V::Color(color.resolve(&crate::css_color::Context::of(self.theme()))),
+                ));
             }
-        }
-        if part.has("selected") {
-            if matches!(
-                (part.component, part.part),
-                ("Tabs", "tab") | ("Radio", "card")
-            ) {
-                states.insert(crate::bind::InteractionState::Checked);
-            } else {
-                attributes.insert("aria-selected".into(), "true".into());
-            }
-        }
-        if !states.contains(&crate::bind::InteractionState::Disabled) {
-            states.insert(crate::bind::InteractionState::Enabled);
-        }
-        attributes.insert("class".into(), classes.into());
-        let facts = Facts {
-            scope: "",
-            tag: &tag,
-            part: Some(part.part),
-            root: false,
-            attributes: &attributes,
-            states: &states,
-            text: "",
-        };
-        let root_attributes = BTreeMap::from([(
-            "data-scheme".into(),
-            Value::String(
-                if self.theme().scheme == crate::Scheme::Light {
-                    "light"
-                } else {
-                    "dark"
-                }
-                .into(),
-            ),
-        )]);
-        let root = Facts {
-            tag: "",
-            part: None,
-            root: true,
-            attributes: &root_attributes,
-            ..facts
-        };
-        let context = self.media_context();
-        let matches = |rule: &crate::doc::StyleRule, facts: &Facts<'_>| {
-            rule.query.media.matches(context, &mut Default::default())
-                && rule.query.container.is_empty()
-                && rule
-                    .structure
-                    .as_ref()
-                    .is_some_and(|s| s.compounds[0].0.iter().all(|s| own(facts, s)))
-        };
-        let empty = Default::default();
-        let vp = self.viewport();
-        let body = self.theme().type_ramp.body;
-        let options = cascade::Options {
-            inline: &[],
-            inherited: &empty,
-            theme: self.theme(),
-            basis: Some(crate::doc::calc::Basis {
-                width: vp.width,
-                height: vp.height,
-                small: [vp.width, vp.height],
-                large: [vp.width, vp.height],
-                rem: body.size,
-                rlh: body.line_height,
+            Resolved {
+                vals,
+                cascade: values,
+                transitions,
+                animations,
+                style,
                 ..Default::default()
-            }),
-            attr: &|_| None,
-            sheet: Some(&self.part_sheet),
-            starting: false,
-            carry: false,
-        };
-        let root = cascade::values_with(&self.part_rules, &options, |r| matches(r, &root));
-        let attr = |name: &str| attributes.get(name).map(crate::bind::text);
-        let options = cascade::Options {
-            inherited: &root.computed,
-            attr: &attr,
-            ..options
-        };
-        let mut values = cascade::values_with(&self.part_rules, &options, |r| matches(r, &facts));
-        values.diagnostics.extend(root.diagnostics);
-        cascade::route(&mut values, crate::layout::Flow::default());
-        let mut vals: Vec<_> = values
-            .props
-            .iter()
-            .filter_map(|p| match &p.value {
-                PropValue::Lit(value) => lit(self, value).map(|v| (p.spec, v)),
-                _ => None,
-            })
-            .collect();
-        if let Some((_, color)) = values.text.iter().find(|(name, _)| name == "color")
-            && let Ok(color) = crate::css_color::parse_str(color)
-        {
-            let (spec, _) = schema::prop("color").expect("color is a reflected property");
-            vals.push((
-                spec,
-                V::Color(color.resolve(&crate::css_color::Context::of(self.theme()))),
-            ));
-        }
-        Resolved {
-            vals,
-            cascade: values,
-            ..Default::default()
-        }
+            }
+        })
     }
 
     pub(crate) fn part_draw_values(
@@ -205,6 +286,7 @@ impl Ui {
         r: &Resolved,
         size: [f32; 2],
         fill: Option<Srgba>,
+        base: Option<&crate::paint::ElementDraw>,
     ) -> Result<crate::paint::ElementDraw, Vec<String>> {
         let vp = self.viewport();
         let mut element = Element {
@@ -229,7 +311,7 @@ impl Ui {
         }
         decor.radius = r.num("radius");
         let mut draw = decor.over(
-            None,
+            base,
             crate::doc::paint_css::LayerFrame {
                 size,
                 viewport: [vp.width, vp.height],
@@ -241,5 +323,17 @@ impl Ui {
             draw.borders = Some(Box::new(decor));
         }
         Ok(draw)
+    }
+
+    pub(crate) fn part_cycle(&self, part: &crate::dress::PartRef, default_ms: f32) -> f32 {
+        let values = self.part_values(part, None);
+        let animation = values.animations.first();
+        let ms = animation.map_or(default_ms, |a| a.duration_ms);
+        if ms <= 0.0 {
+            return 0.0;
+        }
+        let period = u64::from(self.ticks_for(ms));
+        let phase = (self.state.tick % period) as f32 / period as f32;
+        animation.map_or(phase, |a| a.ease.apply(phase))
     }
 }

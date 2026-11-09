@@ -56,9 +56,9 @@
 #Screen { padding: 16px; }
 }
 #Header { width: stretch; gap: 12px; align-items: center; flex-wrap: wrap; }
-#Title { font: var(--text-xl2); }
+#Title { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 @media (width < 600px), (height < 600px) {
-#Title { font: var(--text-xl); }
+#Title { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
 }
 @media (width < 600px), (height < 600px) {
 #Period { -og-control-size: medium; }
@@ -70,10 +70,10 @@
 #Friends.selection-on { opacity: 1; }
 #League.selection-off { opacity: 0.85; }
 #League.selection-on { opacity: 1; }
-#LeagueBar { width: stretch; gap: 12px; padding: 10px; align-items: center; flex-wrap: wrap; background: var(--panel-raised); -og-frame: card; }
-#LeagueBarName { font: var(--text-lg); }
-#Lines { font: var(--text-caption); color: var(--ink-muted); }
-#Ends { font: var(--text-caption); }
+#LeagueBar { width: stretch; gap: 12px; padding: 10px; align-items: center; flex-wrap: wrap; background: var(--panel-raised); border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; }
+#LeagueBarName { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
+#Lines { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
+#Ends { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); }
 #Body { width: stretch; height: stretch; }
 #List { width: stretch; gap: 4px; }
 #Board { width: stretch; }
@@ -84,11 +84,11 @@
 #Row:hover { scale: 1.01; }
 #Row:active { scale: 0.99; }
 #Row:focus-visible { scale: 1.01; }
-#RowRank { min-width: 56px; white-space: nowrap; font: var(--text-lg); }
+#RowRank { min-width: 56px; white-space: nowrap; font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Avatar { width: 36px; height: 36px; }
 #RowName { width: stretch; line-clamp: 1; text-overflow: ellipsis; }
-#Me { width: stretch; padding: 10px; gap: 12px; align-items: center; background: var(--panel-raised); -og-frame: card; }
-#MeRank { min-width: 56px; white-space: nowrap; font: var(--text-lg); }
+#Me { width: stretch; padding: 10px; gap: 12px; align-items: center; background: var(--panel-raised); border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; }
+#MeRank { min-width: 56px; white-space: nowrap; font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #MeName { width: stretch; line-clamp: 1; text-overflow: ellipsis; }
-#MeScore { font: var(--text-lg); }
+#MeScore { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 </style>

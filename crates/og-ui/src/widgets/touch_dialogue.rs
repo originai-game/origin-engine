@@ -1,8 +1,5 @@
 use super::*;
 
-/// How opaque a disabled touch control draws (its look stays, dimmed).
-const DISABLED_OPACITY: f32 = 0.45;
-
 /// A touch control's disc (a stick's base, a d-pad's plate, a skill
 /// button's face), as the shipped mobile games draw them: one circle of
 /// the HUD ground, translucent so the scene shows through, a rim of the
@@ -315,9 +312,6 @@ impl Ui {
             color,
         };
         let n = &mut self.nodes[i];
-        if desc.disabled {
-            n.props.opacity = DISABLED_OPACITY;
-        }
         let (kx, ky) = (kx * travel, ky * travel);
         // The knob: a drop, a rim, its face in the knob's colour, a sheen.
         n.shapes.push(disc(
@@ -432,9 +426,6 @@ impl Ui {
         self.set_draw_dressable(touch_disc(tok("hud", 0.42), tok("lineStrong", 0.55), 2.0));
         self.nodes[pad].props.customize = desc.customize;
         self.nodes[pad].disabled = desc.disabled;
-        if desc.disabled {
-            self.nodes[pad].props.opacity = DISABLED_OPACITY;
-        }
         let key = self.nodes[pad].key;
         let mut out = DpadResponse::default();
         if let Some(finger) = self.touch_owner(key, desc.disabled)
@@ -711,9 +702,6 @@ impl Ui {
         self.draws.insert(i, face);
         self.dressable.insert(i);
         let n = &mut self.nodes[i];
-        if desc.disabled {
-            n.props.opacity = DISABLED_OPACITY;
-        }
         n.widget = Widget::Button {
             pressed: r.pressed,
             press: if r.pressed { 1.0 } else { 0.0 },

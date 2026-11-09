@@ -667,24 +667,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "CSS `scrollbar-width`: thin draws its scrollbars at half the width (a half-width grab strip); none hides them (it still scrolls)."
     ),
     p!(
-        "frame",
-        Ty::Word(&[
-            "panel",
-            "card",
-            "button",
-            "buttonHover",
-            "buttonPressed",
-            "buttonDisabled",
-            "field",
-            "slot",
-            "tooltip",
-            "hud",
-            "track",
-            "fill"
-        ]),
-        "The style frame its background takes."
-    ),
-    p!(
         "rive",
         Ty::Name,
         ["column", "row", "stack", "grid", "panel", "scroll", "slot"],
@@ -1987,7 +1969,6 @@ pub fn to_json() -> serde_json::Value {
         "kinds": KINDS.iter().map(|k| json!({ "name": k.name, "container": k.container, "doc": k.doc })).collect::<Vec<_>>(),
         "props": PROPS.iter().map(|p| {
             let mut v = json!({ "name": p.name, "type": p.ty.name(), "doc": p.doc, "twoWay": p.two_way });
-            v["dressing"] = json!(crate::dress::APPEARANCE_PROPS.contains(&p.name));
             if let Ty::Word(w) = p.ty {
                 v["values"] = json!(w);
             }

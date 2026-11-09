@@ -82,38 +82,13 @@ impl StylePart {
         1 << self.class().index()
     }
 
-    /// The part dressing (docs/ui.md §3.2) this version 1 class is:
-    /// `Panel.frame`, `Card.frame`, `Button.base` and its states
-    /// `[hover]`, `[pressed]`, `[disabled]`, `Field.frame`, `Slot.frame`,
-    /// `Tooltip.frame`, `Hud.frame`, `Meter.track`, `Meter.fill`.
-    pub fn selector(self) -> Selector {
-        let (component, part, state) = match self {
-            StylePart::Panel => ("Panel", "frame", None),
-            StylePart::Card => ("Card", "frame", None),
-            StylePart::Button => ("Button", "base", None),
-            StylePart::ButtonHover => ("Button", "base", Some("hover")),
-            StylePart::ButtonPressed => ("Button", "base", Some("pressed")),
-            StylePart::ButtonDisabled => ("Button", "base", Some("disabled")),
-            StylePart::Field => ("Field", "frame", None),
-            StylePart::Slot => ("Slot", "frame", None),
-            StylePart::Tooltip => ("Tooltip", "frame", None),
-            StylePart::Hud => ("Hud", "frame", None),
-            StylePart::Track => ("Meter", "track", None),
-            StylePart::Fill => ("Meter", "fill", None),
-        };
-        let mut s = Selector::of(component, part);
-        s.flags.extend(state.map(str::to_string));
-        s
-    }
-
-    /// The part a widget drawing this version 1 class is ([`Self::selector`]
-    /// as a [`crate::dress::PartRef`], with its element class and level).
+    /// The CSS host and part exposed by this native surface.
     pub fn part_ref(self) -> crate::dress::PartRef {
         use crate::dress::PartRef;
         use crate::tokens::{ElementClass as C, Level};
         let p = match self {
-            StylePart::Panel => PartRef::new("Panel", "frame", C::Panel),
-            StylePart::Card => PartRef::new("Card", "frame", C::Card).at_level(Level::Raised),
+            StylePart::Panel => PartRef::new("panel", "frame", C::Panel).flag("glass"),
+            StylePart::Card => PartRef::new("panel", "frame", C::Card).at_level(Level::Raised),
             StylePart::Button => PartRef::new("Button", "base", C::Button),
             StylePart::ButtonHover => PartRef::new("Button", "base", C::Button).flag("hover"),
             StylePart::ButtonPressed => PartRef::new("Button", "base", C::Button).flag("pressed"),
@@ -137,8 +112,8 @@ impl StylePart {
     pub fn from_part(p: &crate::dress::PartRef) -> Option<StylePart> {
         let state = |s| p.has(s);
         Some(match (p.component, p.part) {
-            ("Panel", "frame") => StylePart::Panel,
-            ("Card", "frame") => StylePart::Card,
+            ("panel", "frame") if state("glass") => StylePart::Panel,
+            ("panel", "frame") => StylePart::Card,
             ("Button", "base") if state("disabled") => StylePart::ButtonDisabled,
             ("Button", "base") if state("pressed") => StylePart::ButtonPressed,
             ("Button", "base") if state("hover") => StylePart::ButtonHover,
@@ -151,11 +126,6 @@ impl StylePart {
             ("Meter", "fill") => StylePart::Fill,
             _ => return None,
         })
-    }
-
-    /// The version 1 class a selector is exactly, if any.
-    pub fn from_selector(s: &Selector) -> Option<StylePart> {
-        StylePart::ALL.into_iter().find(|p| p.selector() == *s)
     }
 }
 

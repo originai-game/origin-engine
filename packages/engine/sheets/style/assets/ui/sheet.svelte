@@ -253,6 +253,8 @@
 </div>
 
 <style>
+:root { --surface-saturation: 120%; }
+@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #Page { width: stretch; height: stretch; background: var(--backdrop); }
 #StyleSheet, #FieldSheet, #SurfaceSheet, #OverlaySheet { width: stretch; height: stretch; padding: var(--space-xl); }
 /* Headings in the pack's display face (the generic family picks the role). */
@@ -290,14 +292,14 @@
 .wrap { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: center; }
 .keys { display: flex; gap: var(--space-sm); align-items: center; }
 .frame { width: 12rem; padding: var(--space-md); gap: var(--space-xs); }
-.card { -og-frame: card; background: var(--panel-raised); }
-.tip { -og-frame: tooltip; background: var(--panel-raised); }
-.hud { -og-frame: hud; background: var(--hud); display: flex; gap: var(--space-sm); align-items: center; width: auto; }
+.card { border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; background: var(--panel-raised); }
+.tip { border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick float;  }
+.hud { border-radius: var(--radius-button); backdrop-filter: blur(22px) saturate(var(--surface-saturation)); -og-material: glass regular float;  display: flex; gap: var(--space-sm); align-items: center; width: auto; }
 .title { margin: 0; }
 .slot { -og-frame: slot; width: var(--size-xl); height: var(--size-xl); background: var(--well); align-items: center; justify-content: center; }
 .locked { opacity: 0.5; }
 .count { position: absolute; right: var(--space-xxs); bottom: var(--space-xxs); }
-.accordion { width: stretch; padding: var(--space-sm); gap: var(--space-xs); background: var(--panel); -og-frame: panel; }
+.accordion { width: stretch; padding: var(--space-sm); gap: var(--space-xs);  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
 .actions { display: flex; gap: var(--space-sm); justify-content: end; }
 meter, progress { width: stretch; }
 .meters { display: grid; grid-template-columns: auto 1fr; gap: var(--space-sm) var(--space-md); align-items: center; width: stretch; }

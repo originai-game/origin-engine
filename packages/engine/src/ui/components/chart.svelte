@@ -37,7 +37,9 @@
 </div>
 
 <style>
-#Chart { width: 412px; padding: 14px; gap: 4px; border-radius: 10px; background: var(--panel); -og-frame: panel; }
+:root { --surface-saturation: 120%; }
+@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
+#Chart { width: 412px; padding: 14px; gap: 4px; border-radius: 10px;  backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
 #Title { font: var(--text-lg); color: var(--ink); }
 #Subtitle { font: var(--text-caption); color: var(--ink-muted); }
 #Body { display: flex; gap: 6px; height: 180px; margin-top: 8px; }

@@ -5,6 +5,7 @@ use super::*;
 #[derive(Clone, Debug)]
 pub(crate) struct RenderFields {
     pub(super) index: usize,
+    host_key: u64,
     kind: &'static str,
     element: Element,
     widget_props: Props,
@@ -25,6 +26,7 @@ pub(crate) struct RenderFields {
 impl RenderFields {
     pub(super) fn capture(
         ui: &Ui,
+        host_key: u64,
         index: usize,
         kind: &'static str,
         response: crate::Response,
@@ -34,6 +36,7 @@ impl RenderFields {
         let node = &ui.nodes[index];
         Self {
             index,
+            host_key,
             kind,
             element: node.el,
             widget_props: node.props.clone(),
@@ -284,8 +287,8 @@ impl Ui {
                 ..crate::css_color::Context::of(theme)
             },
         );
-        // A dressed part takes the style's corner unless CSS writes one.
-        if r.has("radius") && (el.part.is_some() || el.frame.is_some()) {
+        // Authored corners also apply to CSS material backgrounds.
+        if r.has("radius") {
             d.radius = Some(el.radius);
         }
         if d.css.is_some() {
@@ -548,6 +551,9 @@ impl Ui {
     ) {
         let i = base.index;
         self.nodes[i].el = base.element;
+        if let Some(host) = self.nodes.iter_mut().rfind(|n| n.key == base.host_key) {
+            host.part_host = r.part_host.clone();
+        }
         self.nodes[i].props = base.widget_props.clone();
         let css = r.text.as_deref();
         self.nodes[i].accent = css.and_then(|t| t.accent);
@@ -836,7 +842,6 @@ impl Ui {
                 "cross",
                 "background",
                 "radius",
-                "frame",
                 "aspect",
                 "interactive",
                 "focusable",
@@ -1201,6 +1206,7 @@ impl Resolved {
                 let role = self
                     .str("font")
                     .and_then(FontRole::from_name)
+                    .or_else(|| css.and_then(|t| t.font_role))
                     .unwrap_or_default();
                 // A named family a document declares, the role after it.
                 match css.and_then(|t| t.family.as_deref()) {

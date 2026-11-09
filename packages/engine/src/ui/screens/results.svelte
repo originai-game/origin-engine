@@ -60,11 +60,13 @@
 </column>
 
 <style>
+:root { --surface-saturation: 120%; }
+@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #Results { width: stretch; height: stretch; padding: 32px; justify-content: center; align-items: center; }
 @media (width < 600px), (height < 600px) {
 #Results { padding: 12px; }
 }
-#Panel { width: stretch; max-width: 960px; height: stretch; max-height: 900px; padding: 24px; gap: 16px; background: var(--panel); -og-frame: panel; }
+#Panel { width: stretch; max-width: 960px; height: stretch; max-height: 900px; padding: 24px; gap: 16px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
 @media (width < 600px), (height < 600px) {
 #Panel { padding: 16px; gap: 12px; }
 }
@@ -80,19 +82,19 @@
 }
 #Head { width: stretch; gap: 16px; align-items: center; }
 #Text { width: stretch; gap: 4px; }
-#Title { font: var(--text-xl4); }
+#Title { font: var(--text-xl4); letter-spacing: var(--type-xl4-tracking); }
 @media (width < 600px), (height < 600px) {
-#Title { font: var(--text-xl2); }
+#Title { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 }
 #Title.outcome-lost { color: var(--danger); }
 #Title.outcome-won { color: var(--gold); }
 #Gained { color: var(--xp); }
 #Level { width: stretch; gap: 12px; align-items: center; }
-#LevelValue { font: var(--text-lg); }
+#LevelValue { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Xp { width: stretch; }
-#Grade { font: var(--text-display-lg); }
+#Grade { font: var(--text-display-lg); letter-spacing: var(--type-display-lg-tracking); }
 @media (width < 600px), (height < 600px) {
-#Grade { font: var(--text-xl4); }
+#Grade { font: var(--text-xl4); letter-spacing: var(--type-xl4-tracking); }
 }
 #Celebration { width: stretch; }
 #Tabs { width: stretch; }
@@ -100,11 +102,11 @@
 #Stats { width: stretch; gap: 6px; }
 #Stat { width: stretch; gap: 8px; align-items: center; }
 #Name { color: var(--ink-muted); }
-#StatValue { font: var(--text-lg); }
+#StatValue { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Rewards { width: stretch; gap: 8px; flex-wrap: wrap; }
-#Reward { padding: 8px; gap: 4px; align-items: center; background: var(--panel-raised); -og-frame: card; }
+#Reward { padding: 8px; gap: 4px; align-items: center; background: var(--panel-raised); border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; }
 #Art { width: 56px; height: 56px; }
-#Amount { font: var(--text-caption); }
+#Amount { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); }
 #Graph { width: stretch; }
 #Scores { width: stretch; }
 #Footer { width: stretch; gap: 8px; justify-content: end; flex-wrap: wrap; }

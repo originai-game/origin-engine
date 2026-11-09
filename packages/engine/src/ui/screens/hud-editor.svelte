@@ -12,8 +12,11 @@
 </stack>
 
 <style>
+:root { --surface-saturation: 120%; }
+@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #RootEditor { width: stretch; height: stretch; }
-#Hint { position: absolute; top: 24px; -og-center-x: true; padding: 10px; -og-frame: hud; }
+#Hint { position: absolute; top: 24px; -og-center-x: true; padding: 10px; background: none; border: none; box-shadow: none; border-radius: var(--radius-button); backdrop-filter: blur(22px) saturate(var(--surface-saturation)); -og-material: glass regular float; }
+panel[id=Hint]::part(frame) { border: none; }
 @media (width < 600px), (height < 600px) {
 #Hint { top: 56px; }
 }

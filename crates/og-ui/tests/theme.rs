@@ -1,13 +1,13 @@
 //! The default style is the design language's: `src/theme.rs` is exactly
 //! what the generator writes from `packages/design/tokens.json` (a hand
 //! edit, a stale file or a token changed without regenerating fail here),
-//! its glass tints are og-render's presets, and its dressings parse and put
+//! its glass tints are og-render's presets, and its CSS parses and puts
 //! glass on floating chrome only.
 
 #[path = "../scripts/theme_codegen.rs"]
 mod theme_codegen;
 
-use og_ui::{Selector, Srgba};
+use og_ui::{Srgba, dress::PartRef};
 use std::path::PathBuf;
 
 fn tokens() -> serde_json::Value {
@@ -56,18 +56,6 @@ fn default_css_is_generated_from_the_design_tokens() {
         committed, generated,
         "run crates/og-ui/scripts/gen-theme.sh (never edit default.css by hand)"
     );
-    // Every existing dressing must have a migration entry, including its
-    // state/variant. This catches omissions when the legacy defaults change.
-    for line in og_ui::theme::DRESSINGS
-        .lines()
-        .filter(|line| line.ends_with(" {"))
-    {
-        let key = line.trim_end_matches(" {");
-        assert!(
-            generated.contains(&format!("/* {key} */")),
-            "missing CSS for {key}"
-        );
-    }
     // The generated public selectors must be accepted by the same parser
     // packs use, with host facts before ::part and state after it.
     use og_ui::doc::selectors::{Selector as CssSelector, Simple};
@@ -152,61 +140,69 @@ fn the_tokens_glass_tints_are_og_renders_presets() {
 /// popovers and tooltips thick, HUD capsules regular; cards and controls
 /// carry no backdrop, and controls no border.
 #[test]
-fn the_default_dressings_put_glass_on_floating_chrome_only() {
+fn the_default_css_puts_glass_on_floating_chrome_only() {
     use og_ui::paint::Effect;
-    let d = og_ui::default_dressings();
+    let ui = og_ui::Ui::new(Default::default());
     let glass = |sel: &str| -> Option<og_render::UiGlassWeight> {
-        let s = Selector::parse(sel).expect("a selector");
-        d.iter().find(|x| x.selector == s).and_then(|x| {
-            x.draw.effects.iter().find_map(|e| match e {
+        ui.resolve_part(&PartRef::parse(sel, None).unwrap(), [100.0, 40.0])
+            .unwrap()
+            .effects
+            .iter()
+            .find_map(|e| match e {
                 Effect::Backdrop { glass, .. } => glass.weight,
                 _ => None,
             })
-        })
     };
     use og_render::UiGlassWeight::{Regular, Thick};
     for s in [
-        "Panel.frame",
-        "Sheet.frame",
-        "Menu.frame",
-        "Popover.frame",
-        "Tooltip.frame",
+        "panel.glass::part(frame)",
+        "sheet::part(frame)",
+        "menu::part(frame)",
+        "popover::part(frame)",
+        "tooltip::part(frame)",
     ] {
         assert_eq!(glass(s), Some(Thick), "{s}");
     }
-    assert_eq!(glass("Hud.frame"), Some(Regular));
-    for s in ["Card.frame", "Button.base", "Field.frame", "Slot.frame"] {
+    assert_eq!(glass("hud::part(frame)"), Some(Regular));
+    for s in [
+        "panel::part(frame)",
+        "button::part(base)",
+        "input::part(frame)",
+        "slot::part(frame)",
+    ] {
         assert_eq!(glass(s), None, "{s}");
     }
     for s in [
-        "Button.base",
-        "Field.frame",
-        "Chip.base",
-        "Slot.frame",
-        "Toggle.row",
-        "Checkbox.row",
-        "Radio.option",
-        "Radio.card",
+        "button::part(base)",
+        "input::part(frame)",
+        "chip::part(base)",
+        "slot::part(frame)",
+        "input[type=checkbox][switch]::part(row)",
+        "input[type=checkbox]::part(row)",
+        "input[type=radio]::part(option)",
+        "input[type=radio]::part(card)",
     ] {
-        let x = d
-            .iter()
-            .find(|x| x.selector == Selector::parse(s).expect("a selector"))
-            .expect(s);
+        let x = ui
+            .resolve_part(&PartRef::parse(s, None).unwrap(), [100.0, 40.0])
+            .unwrap();
         assert!(
-            x.draw.strokes.is_empty() && x.draw.cleared & og_ui::dress::CLEAR_STROKES != 0,
+            x.strokes.is_empty()
+                && x.borders
+                    .as_ref()
+                    .is_none_or(|b| b.borders.iter().all(Option::is_none)),
             "{s} is borderless"
         );
     }
     // A row's lit top edge (the tokens' sheen on a button) read as an outline.
-    for s in ["Toggle.row", "Checkbox.row", "Radio.option"] {
-        let x = d
-            .iter()
-            .find(|x| x.selector == Selector::parse(s).expect("a selector"))
-            .expect(s);
-        assert!(
-            x.draw.effects.is_empty() && x.draw.cleared & og_ui::dress::CLEAR_EFFECTS != 0,
-            "{s} has no lit edge"
-        );
+    for s in [
+        "input[type=checkbox][switch]::part(row)",
+        "input[type=checkbox]::part(row)",
+        "input[type=radio]::part(option)",
+    ] {
+        let x = ui
+            .resolve_part(&PartRef::parse(s, None).unwrap(), [100.0, 40.0])
+            .unwrap();
+        assert!(x.effects.is_empty(), "{s} has no lit edge");
     }
 }
 
@@ -371,4 +367,71 @@ fn a_deeper_scrim_reads_deeper_and_stays_translucent() {
     assert!((scrim.deepen(1.0).alpha - scrim.alpha).abs() < 0.005);
     let high = og_ui::Theme::dark().to_high_contrast().palette.scrim.alpha;
     assert!(high > scrim.alpha && high < 0.95, "{high}");
+}
+
+#[test]
+fn css_tokens_and_theme_writes_share_the_same_values() {
+    use og_ui::*;
+    let mut theme = Theme::dark();
+    theme.unit_pin = 1.0;
+    theme.space.md = 23.0;
+    theme.palette.primary = Srgba {
+        rgb: [17, 83, 149],
+        alpha: 0.137,
+    };
+    for bp in Breakpoint::ALL {
+        theme.tokens.typography.steps[tokens::TypeRole::Body.index()][bp as usize].size = 21.0;
+    }
+    let mut ui = Ui::new(UiDesc {
+        theme,
+        ..Default::default()
+    });
+    ui.set_part_css(&format!(
+        "{DEFAULT_CSS}\n:root {{ --radius-button: 9px; --type-button-size: 19px; --type-button-font: 'Missing Face', monospace; }}"
+    ))
+    .unwrap();
+    let mut rebuilt = Ui::new(UiDesc {
+        theme: Theme {
+            unit_pin: 1.0,
+            ..Theme::dark()
+        },
+        ..Default::default()
+    });
+    rebuilt.inherit_part_css(&ui);
+    let mut ui = rebuilt;
+    ui.define_document(
+        UiDocument::parse(
+            "tokens.svelte",
+            r#"
+<meta name="component" content="tokens">
+<column><column id="Box"></column></column>
+<style>#Box { width: var(--type-body-size); height: var(--space-md); background: var(--primary); }</style>
+"#,
+        )
+        .unwrap(),
+    );
+    for (width, height) in [(1280.0, 720.0), (390.0, 844.0)] {
+        ui.begin(InputFrame::default(), Viewport::new(width, height));
+        ui.component("Test", "tokens", &mut serde_json::json!({}), &bind::NoEnv);
+        ui.end();
+        let box_ = ui.element("Box").unwrap();
+        assert_eq!((box_.width, box_.height), (21.0, 23.0));
+        let fill = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .find(|(r, _)| r.width == 21.0)
+            .unwrap()
+            .1;
+        assert_eq!(
+            fill,
+            theme.palette.primary.linear(),
+            "CSS keeps fractional alpha, not an 8-bit hex conversion"
+        );
+        assert_eq!(ui.theme().radius.control, 9.0);
+        assert_eq!(ui.type_step(tokens::TypeRole::Button).size, 19.0);
+        assert_eq!(ui.type_font(tokens::TypeRole::Button), FontRole::Mono);
+        assert_eq!(ui.type_step(tokens::TypeRole::Body).size, 21.0);
+    }
 }

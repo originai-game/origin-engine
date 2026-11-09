@@ -29,6 +29,8 @@
 </stack>
 
 <style>
+:root { --surface-saturation: 120%; }
+@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #Loading { width: stretch; height: stretch; }
 #Art { object-fit: cover; width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Scrim { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; background: #000000; opacity: 0.5; }
@@ -36,15 +38,15 @@
 @media (width < 600px), (height < 600px) {
 #Foot { padding: 24px; }
 }
-#Tip { width: stretch; max-width: 720px; padding: 16px; gap: 6px; background: var(--panel); -og-frame: panel; }
-#Eyebrow { font: var(--text-caption); color: var(--primary); }
-#Text { font: var(--text-reading); line-clamp: 4; }
+#Tip { width: stretch; max-width: 720px; padding: 16px; gap: 6px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
+#Eyebrow { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--primary); }
+#Text { font: var(--text-reading); letter-spacing: var(--type-reading-tracking); line-clamp: 4; }
 #Lore { width: stretch; }
-#Place { font: var(--text-xl2); }
+#Place { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 @media (width < 600px), (height < 600px) {
-#Place { font: var(--text-lg); }
+#Place { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 }
 #Progress { width: stretch; gap: 12px; align-items: center; }
 #Bar { width: stretch; height: 12px; }
-#Percent { font: var(--text-caption); color: var(--ink-muted); }
+#Percent { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 </style>

@@ -39,7 +39,7 @@ impl Ui {
             Element {
                 direction: Direction::Column,
                 width: desc.width.unwrap_or(Size::grow()),
-                part: crate::dress::PartRef::parse("Details.root", ElementClass::Panel).ok(),
+                part: crate::dress::PartRef::parse("details::part(root)", ElementClass::Panel).ok(),
                 ..Element::default()
             },
         );
@@ -54,7 +54,7 @@ impl Ui {
         let built = self.ctl(
             "Summary",
             Ctl {
-                part: "Details.summary",
+                part: "details::part(summary)",
                 cls: ElementClass::Button,
                 flags: vec![open.then_some("open")],
                 disabled: desc.disabled,
@@ -111,7 +111,8 @@ impl Ui {
                 width: Size::grow(),
                 padding: Insets::xy(t.space.sm, t.space.xs),
                 gap: t.space.sm,
-                part: crate::dress::PartRef::parse("Details.content", ElementClass::Panel).ok(),
+                part: crate::dress::PartRef::parse("details::part(content)", ElementClass::Panel)
+                    .ok(),
                 ..Element::default()
             },
         );

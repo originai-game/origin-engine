@@ -138,7 +138,6 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         icons: None,
         sounds: Default::default(),
         feedback_sounds: Default::default(),
-        dressings: Vec::new(),
         recolour: Vec::new(),
     };
     let mut size = (0.0f32, 0.0f32);
@@ -207,7 +206,6 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         }
         theme.roles = parse_roles(&p)?;
     }
-    let mut dressings: Vec<Dressing> = Vec::new();
     for e in &body.entries {
         let p = P { e };
         let needs_atlas = || {
@@ -230,7 +228,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             "sound",
             "durations",
         ];
-        const V2_ONLY: [&str; 10] = [
+        const V2_ONLY: [&str; 9] = [
             "colors",
             "roles",
             "typography",
@@ -240,7 +238,6 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             "elevation",
             "shape",
             "sounds",
-            "dress",
         ];
         if v2 && V1_ONLY.contains(&key) {
             return Err(p.err(match key {
@@ -656,155 +653,10 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 once(&p, &mut v.feedback, f)?;
                 file.feedback_sounds = ids;
             }
-            "dress" => {
-                let sel = Selector::parse(p.string(0)?).map_err(|m| p.err(&m))?;
-                if e.values.len() != 1 {
-                    return Err(p.err("takes one quoted selector, then a { } block"));
-                }
-                let block = p.block()?;
-                let i = match dressings.iter().position(|d| d.selector == sel) {
-                    Some(i) => i,
-                    None => {
-                        dressings.push(Dressing {
-                            selector: sel,
-                            frame: DressFrame::default(),
-                            draw: Default::default(),
-                            recolour: None,
-                            source: String::new(),
-                            lines: Vec::new(),
-                        });
-                        dressings.len() - 1
-                    }
-                };
-                let d = &mut dressings[i];
-                d.lines.push(e.line);
-                let atlas = crate::paint_entry::AtlasContext {
-                    size: file.atlas.as_ref().map(|_| size),
-                    scale,
-                    roles: theme.roles,
-                };
-                let mut seen = crate::dress::DrawSeen::default();
-                for c in &block.entries {
-                    let q = P { e: c };
-                    let bare = || {
-                        if c.values.is_empty() {
-                            Ok(true)
-                        } else {
-                            Err(q.err("takes no values"))
-                        }
-                    };
-                    match c.key.as_str() {
-                        "slice" if c.values.len() == 1 && q.word(0).is_ok_and(|w| w == "none") => {
-                            d.frame.slice = None;
-                            d.frame.unsliced = true;
-                        }
-                        "slice" => {
-                            needs_atlas()?;
-                            d.frame.slice = Some(slice_at(&q, 0, size, scale)?);
-                        }
-                        "tone" => {
-                            let t = tone_at(&q, 0)?;
-                            d.frame
-                                .slice
-                                .as_mut()
-                                .ok_or_else(|| {
-                                    q.err("sets a tone, but the dressing has no slice before it")
-                                })?
-                                .tone = t;
-                        }
-                        "shadow" => d.frame.shadow = Some(tokens::shadow_at(&q, 0)?),
-                        "glow" => d.frame.glow = Some(glow_at(&q, 0)?),
-                        "glass" => d.frame.glass = Some(glass_at(&q, 0)?),
-                        "corners" => d.frame.corners = bare()?,
-                        "crest" => d.frame.crest = bare()?,
-                        "edges" => d.frame.edges = bare()?,
-                        "tile" => d.frame.tile = bare()?,
-                        "shape" => {
-                            let radius = v.radius.as_ref().ok_or_else(|| {
-                                q.err("needs the `radius { … }` scale its corner names")
-                            })?;
-                            d.frame.shape = Some(tokens::shape_at(&q, 0, radius)?);
-                        }
-                        "press" => d.frame.press = Some(press_at(&q)?),
-                        "hover" => d.frame.hover = Some(hover_at(&q)?),
-                        "recolour"
-                            if c.values.len() == 1 && q.word(0).is_ok_and(|w| w == "none") =>
-                        {
-                            d.recolour = Some(Vec::new());
-                        }
-                        "recolour" => {
-                            needs_atlas()?;
-                            d.recolour
-                                .get_or_insert_with(Vec::new)
-                                .push(recolour_at(&q, &theme.palette)?);
-                        }
-                        k if DRAW_KEYS.contains(&k) => {
-                            if matches!(k, "ink" | "step")
-                                && crate::dress::BOX_PARTS.contains(&d.selector.part.as_str())
-                            {
-                                return Err(q.err(&format!(
-                                    "`{k}` dresses a text part ({}.text, {}.placeholder, or a kit's text element naming its part), not the box part .{}",
-                                    d.selector.component, d.selector.component, d.selector.part
-                                )));
-                            }
-                            d.draw.apply(c, &atlas, &mut seen)?
-                        }
-                        _ => {
-                            return Err(q.err(&format!(
-                                "is not a dressing setting: slice, tone, recolour, shadow, glow, glass, corners, crest, edges, tile, shape, press, hover, or (for the UI pass) {}",
-                                DRAW_KEYS.join(", ")
-                            )));
-                        }
-                    }
-                }
-            }
             k => return Err(format!("line {}: unknown style setting '{k}'", e.line)),
         }
     }
     if v2 {
-        // The dressings of the twelve version 1 parts are what the widgets draw.
-        let tile_parts =
-            dressings
-                .iter()
-                .fold(0u32, |m, d| match StylePart::from_selector(&d.selector) {
-                    Some(p) if d.frame.tile && p.class() == p => m | p.bit(),
-                    _ => m,
-                });
-        if tile_parts != 0 && theme.art.tile.is_none() {
-            return Err("a dressing says `tile`, but the style has no `tile` line".into());
-        }
-        if dressings.iter().any(|d| d.frame.crest) && theme.art.crest.is_none() {
-            return Err("a dressing says `crest`, but the style has no `crest` line".into());
-        }
-        if dressings.iter().any(|d| d.frame.edges) && theme.art.edge.is_none() {
-            return Err("a dressing says `edges`, but the style has no `edge` line".into());
-        }
-        if let Some(t) = theme.art.tile.as_mut() {
-            t.parts = tile_parts;
-        }
-        for d in &dressings {
-            let Some(part) = StylePart::from_selector(&d.selector) else {
-                continue;
-            };
-            let a = &mut theme.art;
-            let f = &d.frame;
-            if f.slice.is_some() {
-                a.slices[part.index()] = f.slice;
-            }
-            if part.class() == part {
-                let i = part.index();
-                a.shadows[i] = f.shadow.or(a.shadows[i]);
-                a.glows[i] = f.glow.or(a.glows[i]);
-                a.glass[i] = f.glass.or(a.glass[i]);
-                if f.corners {
-                    a.corner_parts |= part.bit();
-                }
-            }
-            if part == StylePart::Button {
-                a.press = f.press.or(a.press);
-                a.hover = f.hover.or(a.hover);
-            }
-        }
         let need = |what: &str| {
             format!(
                 "a version 2 style needs a `{what}` block (og style upgrade writes one from a version 1 style)"
@@ -892,9 +744,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
     if !has_radius {
         return Err("a style needs a `radius { small control bar panel }` block".into());
     }
-    if v2 {
-        file.dressings = dressings;
-    } else {
+    if !v2 {
         theme.tokens = StyleTokens::derive(&theme, &icon_names);
         theme.art.legacy = true;
         theme.art.v1_controls = true;
@@ -905,7 +755,6 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 f.count = 1;
             }
         }
-        file.dressings = v1_dressings(&theme.art);
     }
     // The motion code reads the style's motion tokens (docs/ui.md §3.1).
     theme.motion = crate::motion::MotionTokens::from_style(&theme.tokens);
@@ -913,22 +762,6 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         .tokens
         .typography
         .ramp(crate::Breakpoint::Desktop, 1.0);
-    for dressing in &mut file.dressings {
-        for (_, value) in &mut dressing.draw.appearance {
-            if let crate::doc::Lit::Lengths(ty, values) = value {
-                let resolved = crate::doc::resolve_lengths(values, &theme)?;
-                *value = crate::doc::parse_lit(*ty, &resolved)?;
-            }
-            if let crate::doc::Lit::Paint(crate::doc::Paint::Token(name)) = value
-                && theme.color(name).is_none()
-            {
-                return Err(format!(
-                    "unresolved colour token --{}",
-                    crate::doc::css::kebab(name)
-                ));
-            }
-        }
-    }
     file.theme = theme;
     Ok(file)
 }

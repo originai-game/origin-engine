@@ -566,7 +566,7 @@ select::picker(select) {{ max-height: 150px; padding: 9px; }}
         assert!(
             parts
                 .iter()
-                .any(|p| p.starts_with("Dropdown.trigger") && p.contains("invalid")),
+                .any(|p| p.starts_with("select::part(trigger)") && p.contains("invalid")),
             "aria-invalid marks the trigger: {parts:?}"
         );
         assert!(

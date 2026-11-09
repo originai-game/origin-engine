@@ -85,7 +85,6 @@ pub use doc::build::{DocEvent, DocResponse};
 pub use draw::{
     DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, LayerRole, MAX_LAYERS, drawn_lines,
 };
-pub use dress::{DressFrame, Dressing, Selector};
 pub mod text_path;
 pub mod transform3d;
 pub use element::{
@@ -125,8 +124,8 @@ pub use style::{
     Scheme, Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
 pub use style_file::{
-    Art, Slice, SliceFill, StyleFile, StylePart, UiSound, default_dressings, migrate_style,
-    parse_style, read_style_doc, upgrade_style, write_style_doc,
+    Art, Slice, SliceFill, StyleFile, StylePart, UiSound, migrate_style, parse_style,
+    read_style_doc, upgrade_style, write_style_doc,
 };
 pub use text::{
     FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces, pieces_with,

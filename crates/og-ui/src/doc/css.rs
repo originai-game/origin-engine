@@ -2,7 +2,7 @@
 //! [`STYLE`] maps reflected properties to their CSS spellings; [`decl_line`]
 //! writes probe edits using the same value conversions as the reader.
 
-use og_core::ogt::{self, Block, Entry, Line, Number, Value};
+use og_core::ogt::{self, Block, Entry, Number, Value};
 
 /// How a property's value is written.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -182,7 +182,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("overflowX", "overflow-x"),
     ("overflowY", "overflow-y"),
     ("scrollbarWidth", "scrollbar-width"),
-    ("frame", "-og-frame"),
     ("rive", "-og-frame"),
     ("display", "display"),
     ("markerType", "-og-marker-type"),
@@ -1202,27 +1201,46 @@ fn tokens_in(c: &[char], i: &mut usize, func: bool) -> Result<(Vec<Vec<Tok>>, bo
             // A math operator (CSS needs spaces around + and -).
             *i += 1;
             args.last_mut().unwrap().push(Tok::Ident(ch.to_string()));
-        } else if ch == '"' {
-            let start = *i;
+        } else if matches!(ch, '"' | '\'') {
+            let quote = ch;
+            let mut value = String::new();
             *i += 1;
-            while *i < c.len() && c[*i] != '"' {
+            while *i < c.len() && c[*i] != quote {
                 if c[*i] == '\\' {
                     *i += 1;
+                    let start = *i;
+                    while *i < c.len() && *i - start < 6 && c[*i].is_ascii_hexdigit() {
+                        *i += 1;
+                    }
+                    if *i > start {
+                        let hex: String = c[start..*i].iter().collect();
+                        let scalar = u32::from_str_radix(&hex, 16).unwrap();
+                        value.push(
+                            char::from_u32(scalar)
+                                .filter(|c| *c != '\0')
+                                .unwrap_or('\u{fffd}'),
+                        );
+                        if c.get(*i).is_some_and(|c| c.is_whitespace()) {
+                            *i += 1;
+                        }
+                        continue;
+                    }
+                    if c.get(*i).is_some_and(|c| matches!(c, '\n' | '\r')) {
+                        *i += 1;
+                        continue;
+                    }
+                } else if matches!(c[*i], '\n' | '\r') {
+                    return Err("a CSS string cannot contain an unescaped newline".into());
                 }
+                let Some(ch) = c.get(*i) else { break };
+                value.push(*ch);
                 *i += 1;
             }
             if *i >= c.len() {
                 return Err("a string is not closed".into());
             }
             *i += 1;
-            let lit: String = c[start..*i].iter().collect();
-            match ogt::parse_line(&format!("k {lit}"), 0) {
-                Ok(Line::Entry { entry, .. }) => match entry.values.as_slice() {
-                    [Value::String(s)] => args.last_mut().unwrap().push(Tok::Str(s.clone())),
-                    _ => return Err(format!("{lit} is not a string")),
-                },
-                _ => return Err(format!("{lit} is not a string")),
-            }
+            args.last_mut().unwrap().push(Tok::Str(value));
         } else if ch == '#' {
             let start = *i;
             *i += 1;
@@ -1295,10 +1313,7 @@ pub(crate) fn want_len(t: &Tok) -> Result<Value, String> {
     match t {
         Tok::Func(f, _) if f == "var" => {
             let name = kebab(&want_var(t, "")?);
-            if crate::Theme::default().length(&name).is_none() {
-                return Err(format!("unresolved length token --{name}"));
-            }
-            Ok(Value::String(format!("var(--{name})")))
+            Err(format!("unresolved CSS variable --{name}"))
         }
         Tok::Num(n, u)
             if u == "px"
@@ -1514,23 +1529,14 @@ fn want_var(t: &Tok, ns: &str) -> Result<String, String> {
     }
 }
 
-/// A colour declaration's values: a palette role (`token <role>`), a
-/// literal as `#rrggbbaa` (every CSS colour that depends on nothing reduces
-/// to one), or a colour that reads a role, `currentColor` or
-/// `light-dark()` as its CSS text, resolved when the element resolves
-/// ([`crate::css_color`]).
+/// Preserve CSS colour text until typed parsing; converting to hex here
+/// quantizes fractional alpha before the painter receives it.
 pub(crate) fn paint_vals(t: &[Tok]) -> Result<Vec<Value>, String> {
     match t {
-        [v @ Tok::Func(f, a)] if f == "var" && a.len() == 1 => Ok(vec![
-            Value::Word("token".into()),
-            Value::Word(want_var(v, "")?),
-        ]),
+        [Tok::Func(f, _)] if f == "var" => Err("unresolved CSS colour variable".into()),
         [t] => {
-            let c = crate::css_color::parse(t)?;
-            Ok(vec![Value::String(match c.literal() {
-                Some(s) => hex(s),
-                None => tok_text(t),
-            })])
+            crate::css_color::parse(t)?;
+            Ok(vec![Value::String(tok_text(t))])
         }
         _ => Err(
             "a colour: a named colour, #hex, rgb(), hsl(), oklch(), color-mix(), var(--role) …"
@@ -2438,8 +2444,8 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                         w => return Err(format!("{name} is {yes} or {no}, not '{w}'")),
                     }
                 }
-                Conv::Kebab => match one(&t, name)? {
-                    Tok::Func(f, a) if prop == "frame" && f == "rive" => {
+                Conv::Kebab | Conv::Rive => match one(&t, name)? {
+                    Tok::Func(f, a) if prop == "rive" && f == "rive" => {
                         // One argument: the artboard's id, relative to
                         // assets/ (`ui/chest.riv#Chest`, docs/ui.md §3.3).
                         let id = match a.as_slice() {
@@ -2462,6 +2468,9 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                             }
                             _ => return Err("-og-frame: rive(\"<file>.riv#<Artboard>\") takes one quoted id relative to assets/, such as rive(\"ui/chest.riv#Chest\")".into()),
                         }
+                    }
+                    _ if prop == "rive" => {
+                        return Err("-og-frame: rive(\"<file>.riv#<Artboard>\")".into());
                     }
                     v => vec![Value::Word(camel(want_ident(&v, "a word")?))],
                 },
@@ -2536,7 +2545,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     _ => return Err("transform-origin: <x>% <y>%".into()),
                 },
                 Conv::Margin => margin_vals(&one(&t, name)?)?,
-                Conv::Size | Conv::Insets | Conv::Joint | Conv::Rive | Conv::Raw => {
+                Conv::Size | Conv::Insets | Conv::Joint | Conv::Raw => {
                     unreachable!("handled above")
                 }
             };

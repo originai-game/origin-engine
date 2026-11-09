@@ -1,62 +1,11 @@
-//! The CSS dialect of styles (`version 3`, docs/ui.md §3): a part
-//! dressing is a selector block, its part a pseudo-element, its variants
-//! classes and its states pseudo-classes (`Button::base.primary:hover {`,
-//! `Slot::frame[rarity=epic] {`); the colour and length tokens are custom
-//! properties (`palette { --panel-raised: #211a15 }`, `space { --space-xs:
-//! 4px }`); what a dressing sets is declarations, CSS where CSS has the
-//! property (`box-shadow`, `mix-blend-mode`) and `-og-` extensions for the
-//! rest (`-og-slice`, `-og-fill`, `-og-stroke`, `-og-effect`,
-//! `-og-material`); the element properties a dressing overrides are the
-//! documents' own declarations (`opacity: 0.4`, `height: 7px`). The art
-//! geometry, fonts, icons, typography, elevation, shapes, motion and sounds
-//! keep their `.ogt` lines.
-//!
-//! [`read_style_doc`] reads any version into the `.ogt` entries the parser
-//! reads (each on its source line, so errors and a dressing's source lines
-//! name the version 3 file), [`write_style_doc`] writes entries as version
-//! 3 (what the tools that edit a style write), and [`migrate_style`]
-//! writes a version 2 text as version 3 line for line, comments kept,
-//! checking the two parse to the same style. One table, [`DRESS`], drives
-//! all three. The subset is strict: a property, selector or value it does
-//! not know is an error that names the form to write.
+//! Legacy style metadata reader and writer. Appearance belongs exclusively
+//! to CSS stylesheets; this format retains asset and token metadata until
+//! the CSS pack loader replaces it.
 
 use crate::doc::css::{
     Tok, camel, comment_of, describe, is_decl, kebab, quoted, split_decls, tokens, with_comment,
 };
-use crate::dress::{APPEARANCE_PROPS, Selector};
 use og_core::ogt::{self, Block, Document, Entry, Line, Number, Value};
-
-/// A dressing key, its declaration and the value positions written in px.
-pub const DRESS: &[(&str, &str, &[usize])] = &[
-    ("slice", "-og-slice", &[]),
-    ("tone", "-og-tone", &[]),
-    ("recolour", "-og-recolour", &[]),
-    ("shadow", "box-shadow", &[0, 1, 2, 3]),
-    ("glow", "-og-glow", &[]),
-    ("glass", "-og-glass", &[]),
-    ("corners", "-og-corners", &[]),
-    ("crest", "-og-crest", &[]),
-    ("edges", "-og-edges", &[]),
-    ("tile", "-og-tile", &[]),
-    ("shape", "-og-shape", &[]),
-    ("press", "-og-press", &[]),
-    ("hover", "-og-hover", &[]),
-    ("fill", "-og-fill", &[]),
-    ("stroke", "-og-stroke", &[0]),
-    ("effect", "-og-effect", &[]),
-    ("material", "-og-material", &[]),
-    ("ornament", "-og-ornament", &[]),
-    ("ornamentTint", "-og-ornament-tint", &[]),
-    ("blend", "mix-blend-mode", &[]),
-    ("mask", "-og-mask", &[]),
-    ("sound", "-og-sound", &[]),
-    ("segments", "-og-segments", &[]),
-    ("ink", "-og-ink", &[]),
-    ("step", "-og-step", &[]),
-];
-
-/// Dressing keys that take no value: written `-og-corners: true`.
-const BARE: &[&str] = &["corners", "crest", "edges", "tile"];
 
 /// The token blocks: their custom properties' prefix, and whether their
 /// values are lengths.
@@ -70,54 +19,21 @@ const TOKENS: &[(&str, &str, bool)] = &[
     ("stroke", "stroke-", true),
 ];
 
-/// Selector flags written as pseudo-classes, and their pseudo-class.
-const PSEUDO: &[(&str, &str)] = &[
-    ("hover", "hover"),
-    ("pressed", "active"),
-    ("focused", "focus-visible"),
-    ("disabled", "disabled"),
-    ("selected", "selected"),
-    ("on", "checked"),
-    ("expanded", "expanded"),
-];
-
-/// CSS a dressing does not take, and what to write.
-fn dress_hint(name: &str) -> &'static str {
-    match name {
-        "background" | "background-color" | "background-image" => {
-            "a part's paint is `-og-fill: <paint>` (fill layers stack in order)"
-        }
-        "border" | "border-width" | "border-color" | "outline" => {
-            "a part's outline is `-og-stroke: <width>px <paint> inside|outside`"
-        }
-        "border-radius" => "a part's corner is `-og-shape: round 4px` (or a radius name)",
-        "border-image" => "a part's nine-slice is `-og-slice: <x> <y> <w> <h> <insets>`",
-        "filter" | "backdrop-filter" => "effects are `-og-effect: drop-shadow …`, `outer-glow …`",
-        "transform" => "a part's press and hover are `-og-press` and `-og-hover`",
-        _ => "the dressing properties: docs/ui.md §3.2",
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Ctx {
     Top,
     /// A token block, by its prefix and whether its values are lengths.
     Token(&'static str, bool),
-    Dress,
-    /// A dressing's `appearance` block (version 2), written as declarations.
-    Appearance,
     /// `.ogt` lines.
     Ogt,
 }
 
 fn child_ctx(parent: Ctx, key: &str) -> Ctx {
     match parent {
-        Ctx::Top if key == "dress" => Ctx::Dress,
         Ctx::Top => TOKENS
             .iter()
             .find(|(k, _, _)| *k == key)
             .map_or(Ctx::Ogt, |(_, p, l)| Ctx::Token(p, *l)),
-        Ctx::Dress if key == "appearance" => Ctx::Appearance,
         _ => Ctx::Ogt,
     }
 }
@@ -151,21 +67,6 @@ fn values_css(vals: &[Value], px: &dyn Fn(usize) -> bool, role: &dyn Fn(&str) ->
         .join(" ")
 }
 
-/// `Button.base[primary][hover]` as `Button::base.primary:hover`.
-pub fn selector_css(sel: &Selector) -> String {
-    let mut out = format!("{}::{}", sel.component, sel.part);
-    for f in &sel.flags {
-        match PSEUDO.iter().find(|(s, _)| s == f) {
-            Some((_, p)) => out.push_str(&format!(":{p}")),
-            None => out.push_str(&format!(".{f}")),
-        }
-    }
-    for (k, v) in &sel.attrs {
-        out.push_str(&format!("[{k}={v}]"));
-    }
-    out
-}
-
 /// An `.ogt` line as the canonical writer writes it.
 fn ogt_line(e: &Entry) -> Result<String, String> {
     let mut s = e.key.clone();
@@ -179,61 +80,22 @@ fn ogt_line(e: &Entry) -> Result<String, String> {
     Ok(s)
 }
 
-/// Entry `e` in `ctx` as its version 3 line, without `{` (`""` for a line
-/// version 3 does not write: an `appearance` block's braces).
 fn entry_css(ctx: Ctx, e: &Entry, role: &dyn Fn(&str) -> bool) -> Result<String, String> {
-    let at = |m: String| format!("line {}: {m}", e.line);
-    let no_block = || {
-        if e.block.is_some() {
-            Err(at(format!("'{}' takes no block here", e.key)))
-        } else {
-            Ok(())
-        }
-    };
     match ctx {
-        Ctx::Top if e.key == "dress" => {
-            let s = e
-                .values
-                .first()
-                .and_then(Value::as_str)
-                .ok_or_else(|| at("a dress names its selector".into()))?;
-            Ok(selector_css(&Selector::parse(s).map_err(at)?))
-        }
+        Ctx::Top if e.key == "dress" => Err(format!(
+            "line {}: dress blocks were removed; use a CSS stylesheet",
+            e.line
+        )),
         Ctx::Top | Ctx::Ogt => ogt_line(e),
         Ctx::Token(prefix, len) => {
-            no_block()?;
+            if e.block.is_some() {
+                return Err(format!("line {}: '{}' takes no block here", e.line, e.key));
+            }
             Ok(format!(
                 "--{prefix}{}: {}",
                 kebab(&e.key),
                 values_css(&e.values, &|_| len, role)
             ))
-        }
-        Ctx::Dress if e.key == "appearance" => Ok(String::new()),
-        Ctx::Dress => {
-            no_block()?;
-            let (_, css, px) = DRESS
-                .iter()
-                .find(|(k, _, _)| *k == e.key)
-                .ok_or_else(|| at(format!("'{}' is not a dressing setting", e.key)))?;
-            if BARE.contains(&e.key.as_str()) && e.values.is_empty() {
-                return Ok(format!("{css}: true"));
-            }
-            // An effect's, material's or ornament's first word is its kind.
-            let kind = matches!(
-                e.key.as_str(),
-                "effect" | "material" | "ornament" | "mask" | "blend" | "segments"
-            );
-            let vals = e
-                .values
-                .iter()
-                .enumerate()
-                .map(|(i, v)| value_css(v, px.contains(&i), &|w| !(kind && i == 0) && role(w)));
-            Ok(format!("{css}: {}", vals.collect::<Vec<_>>().join(" ")))
-        }
-        Ctx::Appearance => {
-            no_block()?;
-            crate::doc::css::decl_line(&[(e.key.clone(), e.values.clone())], false, &|_| None)
-                .map_err(at)
         }
     }
 }
@@ -262,7 +124,6 @@ fn write_block(
         let child = child_ctx(ctx, &e.key);
         let pad = "  ".repeat(depth);
         match &e.block {
-            Some(inner) if child == Ctx::Appearance => write_block(out, inner, child, depth, role)?,
             Some(inner) => {
                 out.push_str(&format!("{pad}{line} {{\n"));
                 write_block(out, inner, child, depth + 1, role)?;
@@ -321,22 +182,14 @@ pub fn migrate_style(text: &str) -> Result<String, String> {
             Line::Blank => String::new(),
             Line::Close => {
                 stack.pop();
-                if ctx == Ctx::Appearance {
-                    String::new()
-                } else {
-                    "}".into()
-                }
+                "}".into()
             }
             Line::Entry { entry, opens } => {
                 let s = entry_css(ctx, &entry, &role)?;
                 if opens {
                     let c = child_ctx(ctx, &entry.key);
                     stack.push(c);
-                    if c == Ctx::Appearance {
-                        s
-                    } else {
-                        format!("{s} {{")
-                    }
+                    format!("{s} {{")
                 } else {
                     s
                 }
@@ -457,17 +310,10 @@ pub(super) fn resolve_tokens(doc: &mut Document) -> Result<(), String> {
     }
     fn walk(b: &mut Block, definitions: &BTreeMap<String, Value>) -> Result<(), String> {
         for e in &mut b.entries {
-            // Appearance uses the same symbolic literals as documents.
-            if e.key == "appearance" {
-                continue;
-            }
             for (index, v) in e.values.iter_mut().enumerate() {
                 let resolved = resolve(v, definitions, &mut Vec::new())
                     .map_err(|m| format!("line {}: {m}", e.line))?;
-                let paint = matches!(
-                    e.key.as_str(),
-                    "fill" | "stroke" | "effect" | "mask" | "ink" | "ornamentTint" | "glow"
-                ) || (e.key == "recolour" && index == 1);
+                let paint = e.key == "recolour" && index == 1;
                 *v = if paint && matches!(&resolved, Value::String(s) if is_hex(s)) {
                     match v {
                         Value::String(s) if s.starts_with("var(--") => {
@@ -488,107 +334,14 @@ pub(super) fn resolve_tokens(doc: &mut Document) -> Result<(), String> {
     walk(&mut doc.body, &definitions)
 }
 
-/// `Button::base.primary:hover[rarity=epic]` as `Button.base[primary][hover][rarity=epic]`.
-fn selector_ogt(text: &str) -> Result<String, String> {
-    let (component, rest) = text.split_once("::").ok_or_else(|| {
-        format!(
-            "'{text}' is not a part selector: Component::part, such as Button::base.primary:hover"
-        )
-    })?;
-    let end = rest.find(['.', ':', '[']).unwrap_or(rest.len());
-    let mut out = format!("{component}.{}", &rest[..end]);
-    let mut r = &rest[end..];
-    let word = |s: &str| s.find(['.', ':', '[']).unwrap_or(s.len());
-    while !r.is_empty() {
-        if let Some(s) = r.strip_prefix('.') {
-            let w = &s[..word(s)];
-            if let Some((_, p)) = PSEUDO.iter().find(|(f, _)| *f == w) {
-                return Err(format!("`.{w}` is a state: write `:{p}`"));
-            }
-            out.push_str(&format!("[{w}]"));
-            r = &s[w.len()..];
-        } else if let Some(s) = r.strip_prefix(':') {
-            let w = &s[..word(s)];
-            let flag = match PSEUDO.iter().find(|(_, p)| *p == w) {
-                Some((f, _)) => f,
-                None if w == "focus" => {
-                    return Err("`:focus` is `:focus-visible` (the focus the player moves)".into());
-                }
-                None => {
-                    return Err(format!(
-                        "`:{w}` is not a state of a part ({}); a variant is a class (`.primary`)",
-                        PSEUDO
-                            .iter()
-                            .map(|(_, p)| format!(":{p}"))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    ));
-                }
-            };
-            out.push_str(&format!("[{flag}]"));
-            r = &s[w.len()..];
-        } else if let Some(s) = r.strip_prefix('[') {
-            let e = s.find(']').ok_or("an unclosed [")?;
-            out.push_str(&format!("[{}]", &s[..e]));
-            r = &s[e + 1..];
-        } else {
-            return Err(format!("'{r}' is not part of a selector"));
-        }
-    }
-    Selector::parse(&out)?;
-    Ok(out)
-}
-
-/// The CSS names of the element properties a dressing overrides.
-fn appearance_css(name: &str) -> bool {
-    let base = name
-        .strip_prefix("min-")
-        .or(name.strip_prefix("max-"))
-        .unwrap_or(name);
-    APPEARANCE_PROPS
-        .iter()
-        .any(|p| crate::doc::css::css_name(p) == Some(base))
-}
-
 struct Frame {
     ctx: Ctx,
     entry: Entry,
-    /// A dressing's element-property declarations: their line numbers and
-    /// text, and where its `appearance` entry goes.
-    appearance: Vec<(usize, String)>,
-    appearance_at: Option<usize>,
 }
 
 impl Frame {
     fn new(ctx: Ctx, entry: Entry) -> Frame {
-        Frame {
-            ctx,
-            entry,
-            appearance: Vec::new(),
-            appearance_at: None,
-        }
-    }
-
-    /// The finished entry: its `appearance` declarations read as an
-    /// element's (the documents' dialect).
-    fn finish(mut self) -> Result<Entry, String> {
-        if let Some(at) = self.appearance_at {
-            let mut block = Block::new();
-            block.entries = crate::doc::css::declarations_at(
-                self.appearance
-                    .iter()
-                    .map(|(line, text)| (*line, text.as_str())),
-            )?;
-            let mut e = Entry::new("appearance");
-            e.line = self.appearance.first().map_or(0, |(n, _)| *n);
-            e.block = Some(block);
-            self.entry
-                .block
-                .get_or_insert_with(Block::new)
-                .entries
-                .insert(at, e);
-        }
-        Ok(self.entry)
+        Frame { ctx, entry }
     }
 }
 
@@ -615,198 +368,93 @@ fn css_comment(line: &str) -> (&str, Option<&str>) {
     (line.trim_end(), None)
 }
 
-/// A version 3 style's lines as `.ogt` entries.
 fn lower(text: &str) -> Result<Document, String> {
     let head = header(text)?;
-    let mut errors: Vec<String> = Vec::new();
     let mut root = Entry::new("");
     root.block = Some(Block::new());
     let mut stack = vec![Frame::new(Ctx::Top, root)];
-    let body = text
-        .split('\n')
+    for (i, raw) in text
+        .lines()
         .enumerate()
         .skip_while(|(_, l)| l.trim() != "---")
-        .skip(1);
-    for (i, raw) in body {
+        .skip(1)
+    {
         let n = i + 1;
-        let raw = raw.strip_suffix('\r').unwrap_or(raw);
-        let t = raw.trim();
-        let mut err = |m: String| errors.push(format!("line {n}: {m}"));
-        let ctx = stack.last().unwrap().ctx;
-        let push = |stack: &mut Vec<Frame>, e: Entry| {
+        let (code, _) = css_comment(raw.trim());
+        if code.is_empty() {
+            continue;
+        }
+        let error = |m: String| format!("line {n}: {m}");
+        if code == "}" {
+            if stack.len() == 1 {
+                return Err(error("'}' closes nothing".into()));
+            }
+            let frame = stack.pop().unwrap();
             stack
                 .last_mut()
                 .unwrap()
                 .entry
                 .block
                 .get_or_insert_with(Block::new)
-                .entries
-                .push(e);
-        };
-        let (code, _) = css_comment(t);
-        if code.is_empty() {
+                .push(frame.entry);
             continue;
         }
-        if code == "}" {
-            if stack.len() == 1 {
-                err("'}' closes nothing".into());
-                continue;
+        let ctx = stack.last().unwrap().ctx;
+        if let Ctx::Token(prefix, _) = ctx {
+            for (name, value) in split_decls(code).map_err(error)? {
+                let key = name
+                    .strip_prefix("--")
+                    .and_then(|r| r.strip_prefix(prefix))
+                    .filter(|s| !s.is_empty())
+                    .ok_or_else(|| {
+                        error(format!(
+                            "`{name}` is not a token of this block: write `--{prefix}<name>: …`"
+                        ))
+                    })?;
+                let mut entry = Entry::new(camel(key));
+                entry.line = n;
+                entry.values = ogt_values(&value).map_err(error)?;
+                stack
+                    .last_mut()
+                    .unwrap()
+                    .entry
+                    .block
+                    .get_or_insert_with(Block::new)
+                    .push(entry);
             }
-            let f = stack.pop().unwrap();
-            match f.finish() {
-                Ok(e) => push(&mut stack, e),
-                Err(m) => err(m),
+        } else {
+            if code.contains("::") || code.starts_with("dress ") {
+                return Err(error(
+                    "part rules belong in a CSS stylesheet, not style metadata".into(),
+                ));
             }
-            continue;
-        }
-        match ctx {
-            Ctx::Top
-                if code.contains("::") || code.starts_with(|c: char| c.is_ascii_uppercase()) =>
+            if is_decl(code) {
+                return Err(error("a declaration belongs in a token block".into()));
+            }
+            if let Line::Entry { entry, opens } =
+                ogt::parse_line(code, n).map_err(|e| e.to_string())?
             {
-                let Some(sel) = code.strip_suffix('{').map(str::trim) else {
-                    err("a selector opens its block: `Button::base:hover {`".into());
-                    continue;
-                };
-                match selector_ogt(sel) {
-                    Ok(s) => {
-                        let mut e = Entry::new("dress").with(Value::String(s));
-                        e.line = n;
-                        e.block = Some(Block::new());
-                        stack.push(Frame::new(Ctx::Dress, e));
-                    }
-                    Err(m) => {
-                        err(m);
-                        stack.push(Frame::new(Ctx::Ogt, Entry::new("_")));
-                    }
-                }
-            }
-            Ctx::Top | Ctx::Ogt if is_decl(code) => {
-                err(format!(
-                    "`{code}` is a declaration: it belongs in a selector or token block"
-                ));
-            }
-            Ctx::Top | Ctx::Ogt => match ogt::parse_line(code, n) {
-                Ok(Line::Entry { entry, opens }) => {
-                    if ctx == Ctx::Top && entry.key == "dress" {
-                        let hint = entry
-                            .values
-                            .first()
-                            .and_then(Value::as_str)
-                            .and_then(|s| Selector::parse(s).ok())
-                            .map(|s| format!("`{} {{`", selector_css(&s)))
-                            .unwrap_or_else(|| "`Component::part.variant:state {`".into());
-                        err(format!(
-                            "a dressing is a selector block in version 3: write {hint}"
-                        ));
-                    }
-                    if opens {
-                        let c = child_ctx(ctx, &entry.key);
-                        stack.push(Frame::new(
-                            if c == Ctx::Dress { Ctx::Ogt } else { c },
-                            entry,
-                        ));
-                    } else {
-                        push(&mut stack, entry);
-                    }
-                }
-                Ok(_) => {}
-                Err(e) => err(e.to_string()),
-            },
-            Ctx::Token(..) | Ctx::Dress if code.ends_with('{') => {
-                err(format!(
-                    "a {} block holds declarations, not blocks",
-                    if ctx == Ctx::Dress {
-                        "dressing"
-                    } else {
-                        "token"
-                    }
-                ));
-                stack.push(Frame::new(Ctx::Ogt, Entry::new("_")));
-            }
-            Ctx::Token(..) | Ctx::Dress | Ctx::Appearance => {
-                if !is_decl(code) {
-                    let w = code.split_whitespace().next().unwrap_or(code);
-                    let fix = match ctx {
-                        Ctx::Dress => DRESS
-                            .iter()
-                            .find(|(k, _, _)| *k == w)
-                            .map(|(_, c, _)| format!("write `{c}: …`"))
-                            .unwrap_or_else(|| {
-                                "a dressing holds `name: value` declarations".into()
-                            }),
-                        _ => format!("a token is a custom property: write `--{}: …`", kebab(w)),
-                    };
-                    err(format!("`{code}` is not a declaration: {fix}"));
-                    continue;
-                }
-                let decls = match split_decls(code) {
-                    Ok(d) => d,
-                    Err(m) => {
-                        err(m);
-                        continue;
-                    }
-                };
-                for (name, value) in decls {
-                    let key = match ctx {
-                        Ctx::Token(prefix, _) => {
-                            match name.strip_prefix("--").and_then(|r| r.strip_prefix(prefix)) {
-                                Some(k) if !k.is_empty() => camel(k),
-                                _ => {
-                                    err(format!(
-                                        "`{name}` is not a token of this block: write `--{prefix}<name>: …`"
-                                    ));
-                                    continue;
-                                }
-                            }
-                        }
-                        _ => match DRESS.iter().find(|(_, c, _)| *c == name) {
-                            Some((k, _, _)) => k.to_string(),
-                            None if appearance_css(&name) => {
-                                let f = stack.last_mut().unwrap();
-                                if f.appearance_at.is_none() {
-                                    f.appearance_at =
-                                        Some(f.entry.block.as_ref().map_or(0, |b| b.entries.len()));
-                                }
-                                f.appearance.push((n, format!("{name}: {value}")));
-                                continue;
-                            }
-                            None => {
-                                err(format!(
-                                    "`{name}` is not a dressing property ({})",
-                                    dress_hint(&name)
-                                ));
-                                continue;
-                            }
-                        },
-                    };
-                    let mut e = Entry::new(key.clone());
-                    e.line = n;
-                    match ogt_values(&value) {
-                        Ok(v)
-                            if BARE.contains(&key.as_str())
-                                && v == [Value::Word("true".into())] => {}
-                        Ok(v) => e.values = v,
-                        Err(m) => {
-                            err(format!("{name}: {m}"));
-                            continue;
-                        }
-                    }
-                    push(&mut stack, e);
+                if opens {
+                    stack.push(Frame::new(child_ctx(ctx, &entry.key), entry));
+                } else {
+                    stack
+                        .last_mut()
+                        .unwrap()
+                        .entry
+                        .block
+                        .get_or_insert_with(Block::new)
+                        .push(entry);
                 }
             }
         }
     }
-    if stack.len() > 1 {
-        errors.push("a block is not closed".into());
+    if stack.len() != 1 {
+        return Err("a block is not closed".into());
     }
-    if !errors.is_empty() {
-        return Err(errors.join("; "));
-    }
-    let root = stack.pop().unwrap().entry;
     Ok(Document {
         ty: head.ty,
         version: head.version,
-        body: root.block.unwrap_or_default(),
+        body: stack.pop().unwrap().entry.block.unwrap_or_default(),
     })
 }
 

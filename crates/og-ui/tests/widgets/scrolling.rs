@@ -193,8 +193,8 @@ fn scroll_views_scroll_both_ways_hand_off_fling_and_grab() {
         ui.frame()
             .items
             .iter()
-            .find_map(|i| match &i.cmd {
-                DrawCmd::Quad { rect, .. }
+            .find_map(|i| match i.cmd.filled() {
+                Some((rect, _))
                     if rect.y > r.y + r.height - 12.0
                         && rect.width > 20.0
                         && rect.height < 8.0

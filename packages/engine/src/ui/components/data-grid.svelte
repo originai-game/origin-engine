@@ -47,7 +47,9 @@
 </section>
 
 <style>
-#DataGrid { width: stretch; padding: 8px; border-radius: 10px; background: var(--panel); -og-frame: panel; }
+:root { --surface-saturation: 120%; }
+@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
+#DataGrid { width: stretch; padding: 8px; border-radius: 10px;  backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
 #Head, .cells { display: grid; grid-template-columns: var(--tracks); gap: 12px; width: stretch; }
 #Head { padding: 6px 12px; border-bottom: 1px solid var(--line); }
 .heading { font: var(--text-caption); color: var(--ink-muted); text-transform: uppercase; white-space: nowrap; }

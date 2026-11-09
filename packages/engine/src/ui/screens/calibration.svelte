@@ -49,11 +49,13 @@
 </column>
 
 <style>
+:root { --surface-saturation: 120%; }
+@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #Calibration { width: stretch; height: stretch; padding: 32px; justify-content: center; align-items: center; }
 @media (width < 600px), (height < 600px) {
 #Calibration { padding: 12px; }
 }
-#Panel { width: stretch; max-width: 640px; padding: 24px; gap: 16px; background: var(--panel); -og-frame: panel; }
+#Panel { width: stretch; max-width: 640px; padding: 24px; gap: 16px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
 #Steps { width: stretch; gap: 8px; }
 #Brightness.at-off { opacity: 0.5; }
 #Brightness.at-on { opacity: 1; }
@@ -68,7 +70,7 @@
 #OffsetStep { width: stretch; gap: 8px; }
 #OffsetHint { line-clamp: 3; }
 #Measure { width: stretch; gap: 12px; align-items: center; }
-#Taps { font: var(--text-caption); color: var(--ink-muted); }
+#Taps { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #Manual { width: stretch; gap: 12px; align-items: center; }
 #ManualValue { width: stretch; }
 #Ms { width: 72px; text-align: end; }

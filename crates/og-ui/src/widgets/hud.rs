@@ -121,34 +121,11 @@ impl Ui {
                 .flag_if(matches!(desc.kind, MeterKind::Health) && frac < 0.3, "low");
         let track_part =
             crate::dress::PartRef::new("Meter", "track", crate::tokens::ElementClass::Bar);
-        // A style's bar art whose centre it never measured (`tone`) cannot
-        // be read for the label's ink: such a meter draws flat, as it did
-        // before it had parts.
-        let unmeasured = |ui: &Ui, part: &crate::dress::PartRef| {
-            t.art.atlas.is_some()
-                && ui
-                    .dress
-                    .resolve(part)
-                    .frame
-                    .slice
-                    .is_some_and(|s| s.tone == crate::style_file::Slice::WHITE)
-        };
-        let flat_track = unmeasured(self, &track_part);
-        let flat_fill = unmeasured(self, &fill_part);
-        if flat_track {
-            self.nodes[i].el.part = None;
-        }
-        // Each ink against what its part draws (a style's art or paints).
         let (fill_ink, track_ink) = (
             ink(self.part_ground(&fill_part, color)),
             ink(self.part_ground(&track_part, p.control_strong)),
         );
         let n = &mut self.nodes[i];
-        let seg = |from: f32, to: f32, c: Srgba| Shape::Rect {
-            frame: Frame::left(from, to),
-            radius: t.radius.bar,
-            color: c,
-        };
         if ghost > main {
             let trail = if a.b < a.a || frac < ghost {
                 p.ink.fade(0.55)
@@ -164,11 +141,7 @@ impl Ui {
                 color: trail,
             });
         }
-        if main > 0.0 && flat_fill {
-            n.shapes.push(seg(0.0, main, color));
-        } else if main > 0.0 {
-            // The fill is a part of its own (`Meter.fill[kind=health]`), so a
-            // style dresses each kind; undressed it draws from the tokens.
+        if main > 0.0 {
             n.shapes.push(Shape::Part {
                 frame: Frame::left(0.0, main),
                 part: fill_part,

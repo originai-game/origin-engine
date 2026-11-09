@@ -1333,21 +1333,13 @@ impl Ui {
     }
 
     /// Whether the caret shows this tick: always under reduced motion, else
-    /// the dressed half period (530 ms by default), shown after an edit or
+    /// the 530 ms half period, shown after an edit or
     /// move and then hidden as long, by the tick.
     pub(crate) fn caret_shown(&self) -> bool {
         if self.theme.reduced_motion {
             return true;
         }
-        let part = crate::dress::PartRef::of("TextEdit", "caret", None);
-        let dressing = self.dress.resolve(&part);
-        let ms = match dressing.draw.appearance_value("motion") {
-            Some(crate::doc::Lit::Transition(t)) => t.duration_ms(&self.theme.motion),
-            _ => 530.0,
-        };
-        if ms == 0.0 {
-            return true;
-        }
+        let ms = 530.0;
         let half = ((self.ticks_per_second.max(1) as f32 * (ms / 1000.0)).round() as u64).max(1);
         (self.state.tick.saturating_sub(self.state.edit_tick) / half).is_multiple_of(2)
     }

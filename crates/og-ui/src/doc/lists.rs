@@ -34,9 +34,9 @@ li {
 }
 p, ul, ol { margin-block: 1em; }
 ul ul, ul ol, ol ul, ol ol { margin-block: 0; }
-h1 { font: var(--text-xl3); margin-block: 0.67em; }
-h2 { font: var(--text-xl); margin-block: 0.83em; }
-h3 { font: var(--text-lg); margin-block: 1em; }
+h1 { font: var(--text-xl3); letter-spacing: var(--type-xl3-tracking); margin-block: 0.67em; }
+h2 { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); margin-block: 0.83em; }
+h3 { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); margin-block: 1em; }
 h4 { font: var(--text-body); margin-block: 1.33em; }
 h5 { font: var(--text-sm); margin-block: 1.67em; }
 h6 { font: var(--text-xs); margin-block: 2.33em; }

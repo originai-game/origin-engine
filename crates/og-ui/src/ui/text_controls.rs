@@ -40,7 +40,7 @@ impl Ui {
         } else {
             t.space.md
         };
-        let base = self.field_component(desc.component.as_deref());
+        let base = self.field_component(desc.component.as_deref().unwrap_or("input"));
         // Its frame's states are known once it is laid; its text's step is
         // the same in every state (its height must not move as it focuses).
         let ink = self.field_ink(base, false, desc.invalid, false);
@@ -391,7 +391,7 @@ impl Ui {
         desc: &TextAreaDesc,
     ) -> Response {
         let t = self.theme;
-        let base = self.field_component(desc.component.as_deref());
+        let base = self.field_component(desc.component.as_deref().unwrap_or("textarea"));
         let ink = self.field_ink(base, false, desc.invalid, false);
         let step = ink.step;
         let rows = if desc.rows == 0 { 4 } else { desc.rows };
@@ -475,23 +475,15 @@ impl Ui {
         r
     }
 
-    /// The frame part a text control dresses as: its component's
-    /// (`Poem`, `Search[large]`; `None`: `Field`), qualifiers kept. A name
-    /// that is not a component warns and dresses as `Field`.
-    fn field_component(&mut self, component: Option<&str>) -> crate::dress::PartRef {
+    /// The text control's markup host, including classes and attributes.
+    fn field_component(&mut self, component: &str) -> crate::dress::PartRef {
         let class = crate::tokens::ElementClass::Field;
-        let field = crate::dress::PartRef::new("Field", "frame", class);
-        let Some(c) = component else {
-            return field;
-        };
-        let (head, quals) = c.split_at(c.find('[').unwrap_or(c.len()));
-        match crate::dress::PartRef::parse(&format!("{head}.frame{quals}"), class) {
-            Ok(p) if !head.contains('.') => p,
-            _ => {
-                self.warnings.push(format!(
-                    "text control: component '{c}' is not a PascalCase component with [qualifiers] (Poem, Search[large]); it dresses as Field"
-                ));
-                field
+        match crate::dress::PartRef::parse(&format!("{component}::part(frame)"), class) {
+            Ok(p) => p,
+            Err(error) => {
+                self.warnings
+                    .push(format!("text control host '{component}': {error}"));
+                crate::dress::PartRef::of("", "frame", None)
             }
         }
     }
@@ -513,23 +505,18 @@ impl Ui {
                 .flag_if(invalid, "invalid")
                 .flag_if(disabled, "disabled");
             p.part = part;
-            self.dress.resolve(&p).draw
+            self.part_values(&p, None)
         };
         let (text, hint) = (of("text"), of("placeholder"));
-        let step_of = |name: Option<&str>| {
-            let mut ramp = t.type_ramp;
-            name.and_then(|n| crate::style_file::ramp_step(&mut ramp, n).copied())
-        };
-        let step = step_of(text.step).unwrap_or(t.type_ramp.body);
+        let step = text.part_type(t, t.type_ramp.body);
         FieldInk {
             step,
-            placeholder_step: step_of(hint.step).unwrap_or(step),
-            ink: text.ink.and_then(|c| c.srgb(t)).unwrap_or(t.palette.ink),
-            placeholder: self.docs.placeholder_ink.unwrap_or_else(|| {
-                hint.ink
-                    .and_then(|c| c.srgb(t))
-                    .unwrap_or(t.palette.ink_faint)
-            }),
+            placeholder_step: hint.part_type(t, step),
+            ink: text.color("color").unwrap_or(t.palette.ink),
+            placeholder: self
+                .docs
+                .placeholder_ink
+                .unwrap_or_else(|| hint.color("color").unwrap_or(t.palette.ink_faint)),
         }
     }
 
@@ -602,28 +589,17 @@ impl Ui {
         let n = mk.text.chars().count();
         let mark = |name, rect: Rect, color: Srgba, cmds: &mut Vec<DrawCmd>| {
             let part = crate::dress::PartRef::of("TextEdit", name, None);
-            let dressing = self.dress.resolve(&part);
-            if dressing.matched == 0 {
-                cmds.push(DrawCmd::Quad {
-                    rect: rect.snapped(dpr),
-                    radius: 0.0,
-                    color: color.fade(mk.alpha).linear(),
-                    clip: mk.clip,
-                });
-            } else {
-                self.part_commands_at(
-                    &part,
-                    dressing
-                        .draw
-                        .subpart_rect(rect, self.nodes[i].rect)
-                        .snapped(dpr),
-                    Some(dressing.draw.subpart_color(color, &self.theme)),
-                    0.0,
-                    mk.alpha,
-                    mk.clip,
-                    cmds,
-                );
-            }
+            let values = self.part_values(&part, Some(self.nodes[i].key));
+            self.part_commands_at(
+                Some(self.nodes[i].key),
+                &part,
+                values.part_rect(rect, self.nodes[i].rect).snapped(dpr),
+                Some(values.color("color").unwrap_or(color)),
+                0.0,
+                mk.alpha,
+                mk.clip,
+                cmds,
+            );
         };
         let span =
             |name, range: (usize, usize), cmds: &mut Vec<DrawCmd>, y: f32, h: f32, color: Srgba| {

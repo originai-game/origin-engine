@@ -6,6 +6,7 @@ mod build;
 mod commands;
 mod configure;
 mod controls;
+mod css_tokens;
 mod debug;
 mod descriptors;
 mod dressing;
@@ -25,7 +26,6 @@ pub(crate) use commands::{bake, fade_cmd};
 pub(crate) use debug::DebugBindings;
 pub use debug::{UiDebugElement, UiDebugStyle, debug_overlay};
 pub use descriptors::*;
-use dressing::scaled_xy;
 use node_draw::part_rect;
 pub(crate) use text_controls::FieldInk;
 
@@ -40,7 +40,7 @@ use crate::layout::{
 use crate::motion::Fx;
 use crate::motion::{Timeline, UiEvent};
 use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
-use crate::style_file::{Ink, Ornament, Slice, SliceFill, StylePart};
+use crate::style_file::{Ink, Ornament, StylePart};
 use crate::text::{FontMetrics, UiFont};
 use og_core::IdMap;
 use og_core::glam::Vec2;
@@ -541,16 +541,24 @@ pub struct Ui {
     /// The haptic patterns played since the host last took them
     /// ([`Ui::take_haptics`]).
     pub(crate) haptic_out: Vec<crate::tokens::Haptic>,
-    /// The style's part dressings ([`Ui::set_dressings`]); without them, the
-    /// ones its theme's version 1 art makes.
-    pub(crate) dress: std::sync::Arc<crate::dress::DressSet>,
-    pub(crate) dress_set: bool,
     /// Global CSS part rules in cascade order and their at-rule descriptors.
     pub(crate) part_rules: Vec<crate::doc::StyleRule>,
     pub(crate) part_sheet: crate::doc::at_rules::Sheet,
+    pub(crate) root_tokens: Vec<(String, String)>,
+    pub(crate) root_type_tokens: [Vec<(String, String)>; 4],
+    /// Part samples read one before-change state throughout a frame. Commit
+    /// their next state together after rendering the owning nodes.
+    pub(crate) part_commits: std::cell::RefCell<
+        std::collections::BTreeMap<
+            (u64, &'static str),
+            std::sync::Arc<crate::doc::build::StyleCommit>,
+        >,
+    >,
     /// What each part of this frame draws through the UI pass, by node
     /// (made at `end` from its dressing, or the tokens).
     pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// Parts whose computed paint changed since the preceding frame.
+    pub(crate) part_changed: std::collections::HashSet<usize>,
     /// This frame's draws of elements with CSS box decorations: their
     /// draw or dressing with the decorations over it.
     pub(crate) decor_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
@@ -650,7 +658,6 @@ fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     if t.reduced_transparency || viewport.reduced_transparency {
         t = t.to_reduced_transparency();
     }
-    t.type_ramp = t.tokens.typography.ramp(viewport.breakpoint(), 1.0);
     t.ramp_scale = 1.0;
     t.to_text_scale()
 }

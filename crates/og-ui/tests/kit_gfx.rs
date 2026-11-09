@@ -192,11 +192,11 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
         let knob = f
             .items
             .iter()
-            .filter_map(|i| match &i.cmd {
-                DrawCmd::Quad { rect, radius, .. }
-                    if *radius >= rect.width / 2.0 - 0.5 && rect.width < base.width - 1.0 =>
+            .filter_map(|i| match round_fill(&i.cmd) {
+                Some((rect, radius))
+                    if radius >= rect.width / 2.0 - 0.5 && rect.width < base.width - 1.0 =>
                 {
-                    Some(*rect)
+                    Some(rect)
                 }
                 _ => None,
             })

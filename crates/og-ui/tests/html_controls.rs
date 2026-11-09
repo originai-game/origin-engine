@@ -477,9 +477,20 @@ fn misplaced_parts_are_refused() {
 #[test]
 fn each_control_is_dressed_by_its_named_parts() {
     let mut rig = rig();
+    rig.ui.set_part_css("details::part(summary) { background: #ff00ff; } select[aria-expanded=true]::part(trigger) { background: #00ffff; }").unwrap();
     rig.set("more", json!(true));
     rig.set("note", json!(true));
     rig.click("Pick/Trigger");
+    for color in [Srgba::rgb(255, 0, 255), Srgba::rgb(0, 255, 255)] {
+        assert!(
+            rig.ui
+                .frame()
+                .items
+                .iter()
+                .any(|item| { item.cmd.filled().is_some_and(|(_, fill)| near(fill, color)) }),
+            "nested parts retain their document host after the popup opens: {color:?}"
+        );
+    }
     let mut parts: std::collections::BTreeSet<String> = rig
         .ui
         .parts()
@@ -493,18 +504,18 @@ fn each_control_is_dressed_by_its_named_parts() {
     assert!(modal.el("Ask/Panel").is_some());
     parts.extend(modal.ui.parts().iter().flatten().map(|p| format!("{p}")));
     for want in [
-        "Dropdown.trigger[open]",
-        "Dropdown.list",
-        "Dropdown.group",
-        "Dropdown.option",
-        "Dropdown.option[disabled]",
-        "Details.root",
-        "Details.summary",
-        "Details.summary[open]",
-        "Details.content",
-        "Dialog.panel[open]",
-        "Dialog.backdrop",
-        "Meter.track",
+        "select[aria-expanded=true]::part(trigger):open",
+        "select::part(list)",
+        "select::part(group)",
+        "select::part(option)",
+        "select::part(option):disabled",
+        "details::part(root)",
+        "details::part(summary)",
+        "details::part(summary):open",
+        "details::part(content)",
+        "dialog::part(panel):open",
+        "dialog::part(backdrop)",
+        "meter::part(track)",
     ] {
         assert!(parts.contains(want), "{want} in {parts:?}");
     }

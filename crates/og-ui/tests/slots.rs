@@ -38,8 +38,8 @@ fn missing_art_marks_stay_small_and_square_in_every_slot_kind() {
                 .items
                 .iter()
                 .filter_map(|item| {
-                    if let DrawCmd::Quad { rect, radius, .. } = item.cmd {
-                        (radius > 0.0).then_some(rect)
+                    if let Some((rect, radius)) = crate::support::round_fill(&item.cmd) {
+                        (radius >= rect.width.min(rect.height) / 2.0).then_some(rect)
                     } else {
                         None
                     }

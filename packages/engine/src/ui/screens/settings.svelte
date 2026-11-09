@@ -66,11 +66,11 @@
 }
 #Header { width: stretch; gap: 12px; align-items: center; }
 #Heading { width: stretch; gap: 2px; }
-#Title { font: var(--text-xl2); }
+#Title { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 @media (width < 600px), (height < 600px) {
-#Title { font: var(--text-xl); }
+#Title { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
 }
-#Note { font: var(--text-caption); color: var(--ink-muted); line-clamp: 2; }
+#Note { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); line-clamp: 2; }
 #Tree { width: stretch; height: stretch; gap: 12px; }
 #Pages { display: flex; gap: 8px; flex-wrap: wrap; }
 #Entries { list-style: none; padding: 0; margin: 0; width: stretch; height: stretch; overflow-y: auto; }

@@ -379,7 +379,11 @@ impl Ui {
                     gap: t.space.sm,
                     radius: t.radius.panel,
                     background: Some(self.role("panelRaised").srgba()),
-                    part: crate::dress::PartRef::parse("Keyboard.panel", ElementClass::Panel).ok(),
+                    part: crate::dress::PartRef::parse(
+                        "keyboard::part(panel)",
+                        ElementClass::Panel,
+                    )
+                    .ok(),
                     ..Element::default()
                 },
             );
@@ -407,8 +411,11 @@ impl Ui {
                     cross: Cross::Center,
                     radius: t.radius.control,
                     background: Some(self.role("well").srgba()),
-                    part: crate::dress::PartRef::parse("Keyboard.preview", ElementClass::Field)
-                        .ok(),
+                    part: crate::dress::PartRef::parse(
+                        "keyboard::part(preview)",
+                        ElementClass::Field,
+                    )
+                    .ok(),
                     ..Element::default()
                 },
             );
@@ -506,7 +513,7 @@ impl Ui {
                         width: Size::grow(),
                         gap: t.space.xs,
                         part: crate::dress::PartRef::parse(
-                            "Keyboard.candidates",
+                            "keyboard::part(candidates)",
                             ElementClass::Panel,
                         )
                         .ok(),
@@ -517,7 +524,7 @@ impl Ui {
                     let b = self.ctl(
                         crate::ui_idi("Candidate", i as u32),
                         Ctl {
-                            part: "Keyboard.candidate",
+                            part: "keyboard::part(candidate)",
                             height: Some(Size::px(self.by_text(if touch { TOUCH } else { 36.0 }))),
                             padding: Insets::xy(t.space.md, 0.0),
                             fill: Some(if i == 0 {
@@ -577,7 +584,7 @@ impl Ui {
                     let b = self.ctl(
                         crate::ui_idi("Key", i as u32),
                         Ctl {
-                            part: "Keyboard.key",
+                            part: "keyboard::part(key)",
                             flags: vec![
                                 (k.wide() > 1.0).then_some("wide"),
                                 action.then_some("action"),

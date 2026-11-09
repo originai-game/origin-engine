@@ -1,10 +1,11 @@
-use crate::support::CORE_STYLE;
+use crate::support::metadata_style;
 use og_ui::*;
 
 #[test]
 fn an_ornament_atlas_needs_no_part_slices() {
     let file = parse_style(&format!(
-        "{CORE_STYLE}\natlas \"ornaments.png\" 64 32\ncorner 16 8 24 12 24 12\n"
+        "{}\natlas \"ornaments.png\" 64 32\ncorner 16 8 24 12 24 12\n",
+        metadata_style()
     ))
     .unwrap();
     assert_eq!(file.atlas.as_deref(), Some("ornaments.png"));
@@ -17,7 +18,7 @@ fn an_ornament_atlas_needs_no_part_slices() {
 
 #[test]
 fn a_styles_fonts_name_weights_italics_and_each_locales_companion() {
-    let text = CORE_STYLE;
+    let text = metadata_style();
     let fonts = r#"fonts {
   body 300 "Light.ttf"
   body 600 "SemiBold.ttf"
@@ -102,7 +103,7 @@ fn a_styles_fonts_name_weights_italics_and_each_locales_companion() {
 
 #[test]
 fn a_styles_motion_tokens_drive_the_motion_code() {
-    for text in [CORE_STYLE] {
+    for text in [metadata_style()] {
         let theme = parse_style(text).expect("it parses").theme;
         let tokens = &theme.tokens;
         for (name, got) in [
@@ -120,7 +121,30 @@ fn a_styles_motion_tokens_drive_the_motion_code() {
         }
         assert_eq!(theme.motion.stagger_ms, tokens.motion.stagger_ms);
     }
-    let stepped = CORE_STYLE.replace("ease enter 0.23 1 0.32 1", "ease enter steps 3");
+    let mut doc = read_style_doc(metadata_style()).unwrap();
+    let motion = doc
+        .body
+        .entries
+        .iter_mut()
+        .find(|e| e.key == "motion")
+        .unwrap()
+        .block
+        .as_mut()
+        .unwrap();
+    let ease = motion
+        .entries
+        .iter_mut()
+        .find(|e| {
+            e.key == "ease"
+                && e.values.first().and_then(og_core::ogt::Value::as_word) == Some("enter")
+        })
+        .unwrap();
+    ease.values = vec![
+        og_core::ogt::Value::Word("enter".into()),
+        og_core::ogt::Value::Word("steps".into()),
+        og_core::ogt::Value::Number(3u32.into()),
+    ];
+    let stepped = write_style_doc(&doc).unwrap();
     let theme = parse_style(&stepped).unwrap().theme;
     assert_eq!(
         theme.motion.enter_ease.apply(0.375),

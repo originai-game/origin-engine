@@ -114,7 +114,6 @@ pub(crate) fn resolve_values(
     rules: &[StyleRule],
     inline: &[(String, String)],
     inherited: &variables::Computed,
-    theme: &crate::Theme,
     basis: Option<crate::doc::calc::Basis>,
     attr: &dyn Fn(&str) -> Option<String>,
     applies: impl FnMut(&StyleRule) -> bool,
@@ -124,7 +123,6 @@ pub(crate) fn resolve_values(
         &Options {
             inline,
             inherited,
-            theme,
             basis,
             attr,
             sheet: None,
@@ -139,7 +137,6 @@ pub(crate) fn resolve_values(
 pub(crate) struct Options<'a> {
     pub inline: &'a [(String, String)],
     pub inherited: &'a variables::Computed,
-    pub theme: &'a crate::Theme,
     pub basis: Option<crate::doc::calc::Basis>,
     /// The element's attributes, for `attr()`.
     pub attr: &'a dyn Fn(&str) -> Option<String>,
@@ -157,7 +154,7 @@ pub(crate) fn values_with(
     o: &Options<'_>,
     mut applies: impl FnMut(&StyleRule) -> bool,
 ) -> Cascade {
-    let (inline, inherited, theme, basis, attr) = (o.inline, o.inherited, o.theme, o.basis, o.attr);
+    let (inline, inherited, basis, attr) = (o.inline, o.inherited, o.basis, o.attr);
     let mut out = Cascade::default();
     // Every applying declaration of each property: (priority, declaration,
     // line, layer). Normal declarations of a later layer win; important
@@ -260,7 +257,7 @@ pub(crate) fn values_with(
         &adjusted
     };
     let (mut computed, diagnostics, inherited_reads) =
-        variables::compute(inherited, &specified, &mut |name| token(theme, name));
+        variables::compute(inherited, &specified, &mut |_| None);
     for (name, p) in &registered {
         let value = computed.get(name.as_str()).cloned().flatten();
         let valid = value
@@ -305,22 +302,26 @@ pub(crate) fn values_with(
                 d.value
                     .substitute(&mut |n| match out.computed.get(n) {
                         Some(v) => v.clone(),
-                        None => token(theme, n),
+                        None => None,
                     })
                     .ok()
             })
-            .and_then(|v| {
-                let name = v
-                    .trim()
-                    .strip_prefix("var(--text-")?
-                    .strip_suffix(')')?
-                    .to_string();
-                let mut ramp = theme.type_ramp;
-                crate::style_file::ramp_step(&mut ramp, &css::camel(&name)).copied()
-            });
+            .and_then(|v| crate::doc::text_css::font(&v).ok());
         if let Some(step) = step {
-            basis.em = step.size;
-            basis.lh = step.line_height;
+            for (name, value) in step {
+                if matches!(name.as_str(), "font-size" | "line-height") {
+                    let (value, _) = crate::doc::calc::absolute(&value, basis, &name);
+                    if let Some(value) =
+                        value.strip_suffix("px").and_then(|v| v.trim().parse().ok())
+                    {
+                        if name == "font-size" {
+                            basis.em = value;
+                        } else {
+                            basis.lh = value;
+                        }
+                    }
+                }
+            }
         }
         basis
     });
@@ -356,7 +357,7 @@ pub(crate) fn values_with(
                 }
                 match out.computed.get(name) {
                     Some(value) => value.clone(),
-                    None => token(theme, name),
+                    None => None,
                 }
             }),
             (None, Winner::Unset) => unreachable!("unset is a keyword"),
@@ -559,7 +560,32 @@ pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
         })
         .filter(|(name, ..)| !crate::layout::flow::longhand(name))
         .collect();
+    let values = values
+        .into_iter()
+        .flat_map(|(name, value, line)| {
+            if name == "font" {
+                match crate::doc::text_css::font(&value) {
+                    Ok(values) => return values.into_iter().map(|(n, v)| (n, v, line)).collect(),
+                    Err(error) => {
+                        out.diagnostics.push(format!("line {line}: font: {error}"));
+                        return Vec::new();
+                    }
+                }
+            }
+            vec![(name, value, line)]
+        })
+        .collect::<Vec<_>>();
     for (name, value, line) in values {
+        if name == "font-family" {
+            match crate::doc::text_css::family_list(&value) {
+                Ok((_, role)) => {
+                    out.text.push((name, value));
+                    body.push_str(&format!("font-family: {role};"));
+                }
+                Err(error) => out.diagnostics.push(format!("line {line}: {error}")),
+            }
+            continue;
+        }
         if crate::doc::motion::longhand(&name) {
             out.motion.push((name, value));
             continue;
@@ -625,31 +651,4 @@ pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
         }
         Err(error) => out.diagnostics.push(error),
     }
-}
-
-pub(crate) fn token(theme: &crate::Theme, name: &str) -> Option<String> {
-    let bare = name.strip_prefix("--")?;
-    if let Some(value) = theme.length(bare) {
-        return Some(format!("{value}px"));
-    }
-    if theme.color(&css::camel(bare)).is_some() {
-        return Some(format!("var({name})"));
-    }
-    if let Some(step) = bare.strip_prefix("text-")
-        && crate::style_file::ramp_step(&mut theme.type_ramp.clone(), &css::camel(step)).is_some()
-    {
-        return Some(format!("var({name})"));
-    }
-    // Motion roles remain symbolic until the active style resolves them.
-    if let Some(role) = bare.strip_prefix("motion-")
-        && crate::motion::MotionToken::from_name(role).is_some()
-    {
-        return Some(format!("var({name})"));
-    }
-    if let Some(role) = bare.strip_prefix("font-")
-        && FontRole::from_name(role).is_some()
-    {
-        return Some(format!("var({name})"));
-    }
-    None
 }

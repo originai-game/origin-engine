@@ -43,12 +43,25 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
     let styles = scratch_root();
     let template = styles.join("fixture");
     std::fs::create_dir_all(&template).unwrap();
-    let style = include_str!("../../../og-ui/tests/fixtures/core-style.ogt").replace(
-        "fonts {\n}",
-        "fonts {\n  body \"Body.ttf\"\n  cjk \"@styles/cjk/NotoSansSC-Regular.ttf\"\n}",
-    );
+    let choices =
+        og_ui::style_gen::StyleChoices::for_look("fixture", "minimal modern", "eject test");
+    let generated = og_ui::style_gen::generate(&choices).unwrap();
+    let mut doc = og_ui::read_style_doc(&generated.text).unwrap();
+    doc.body.entries.retain(|entry| entry.key != "fonts");
+    for (name, text) in &generated.sounds {
+        std::fs::write(template.join(name), text).unwrap();
+    }
+    let style = og_ui::write_style_doc(&doc)
+        .unwrap()
+        .replace("@styles/shared/ink-icons.png", "icons.png")
+        + "fonts {\n  body \"Body.ttf\"\n  cjk \"@styles/cjk/NotoSansSC-Regular.ttf\"\n}\n";
     std::fs::write(template.join("style.ogt"), style).unwrap();
     std::fs::write(template.join("LICENSES.md"), "Fixture font: SIL OFL 1.1").unwrap();
+    std::fs::copy(
+        repo().join("templates/styles/shared/ink-icons.png"),
+        template.join("icons.png"),
+    )
+    .unwrap();
     std::fs::copy(
         repo().join("templates/styles/shared/InstrumentSans-Regular.ttf"),
         template.join("Body.ttf"),

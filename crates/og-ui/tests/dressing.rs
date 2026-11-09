@@ -1,23 +1,7 @@
-//! A style dresses widgets' parts (docs/ui.md §3.2), plays its feedback
-//! sets (§7.8) and moves every state on its motion tokens.
-//!
-//! Ways these could fail, each covered below:
-//! - the dressing written first wins over a more specific one written
-//!   after it, or a less specific one overrides what a more specific one
-//!   set (`Button.base` repainting `Button.base[primary][pressed]`);
-//! - a game's attribute never reaches the part (`Slot.frame[rarity=epic]`
-//!   dresses no cell, or every cell);
-//! - a part the style does not dress draws as a bare flat quad (no line,
-//!   no elevation) instead of from the tokens;
-//! - a hover jumps to its colour in one tick instead of moving on the
-//!   style's `ui` spring;
-//! - a ghost button at rest draws as a quiet one (no edge, so it does not
-//!   read as a button), or a square icon button keeps its label padding;
-//! - a set of sounds repeats one sound twice in a row, ignores its volume
-//!   or pitch range, differs after a restore, or the player's haptics
-//!   setting at 0 still plays the pattern;
-//! - a focus ring's cut (what is behind, between the ring and the
-//!   control) covers a drawn control's fills.
+//! CSS for exposed widget parts: authored hosts, scoped rules, text,
+//! fills, borders and glass. Transitions and keyframes must advance by
+//! ticks, retarget from the current value and replay after restoration.
+//! Unmatched parts have no class-dependent appearance fallback.
 
 use crate::support::*;
 use og_ui::*;
@@ -29,20 +13,22 @@ use og_ui::*;
 /// body step and ink, the placeholder inkFaint, inside a control's inset.
 #[test]
 fn a_tight_field_takes_its_components_text_parts() {
-    let style = CORE_STYLE;
-    let dress = r##"Poem::text {
-  -og-ink: #c0392b
-  -og-step: lg
+    let css = r##"input.poem::part(text) {
+  color: #c0392b;
+  font-size: 24px;
+  line-height: 32px;
 }
-Poem::placeholder {
-  -og-ink: #7f8c8d
+input.poem::part(placeholder) {
+  color: #7f8c8d;
 }
 "##;
-    let file = parse_style(&format!("{style}{dress}")).unwrap_or_else(|e| panic!("{e}"));
     let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
-    ui.set_theme(file.theme(None, [0; 6]));
-    ui.set_dressings(file.dressings.clone());
-    let lg = ui.theme().type_ramp.lg;
+    ui.set_part_css(css).unwrap();
+    let lg = TypeStep {
+        size: 24.0,
+        line_height: 32.0,
+        ..ui.theme().type_ramp.lg
+    };
     let body = ui.theme().type_ramp.body;
     let texts = |ui: &Ui| -> Vec<(String, f32, f32, [f32; 4])> {
         ui.frame()
@@ -81,7 +67,7 @@ Poem::placeholder {
                     width: Some(Size::Fixed(320.0)),
                     bare: true,
                     tight: true,
-                    component: Some("Poem".into()),
+                    component: Some("input.poem".into()),
                     ..FieldDesc::default()
                 },
             );
@@ -131,11 +117,10 @@ Poem::placeholder {
         "{:?}",
         line.3
     );
-    let e = parse_style(&format!(
-        "{style}Poem::frame {{\n  -og-ink: var(--primary)\n}}\n"
-    ))
-    .unwrap_err();
-    assert!(e.contains("text part"), "{e}");
+    let e = ui
+        .set_part_css("input.poem::part(frame) { -og-ink: red; }")
+        .unwrap_err();
+    assert!(e.contains("-og-ink"), "{e}");
     // On a touch screen a tight field is still a finger's target.
     let touch = Viewport {
         coarse_pointer: true,
@@ -177,9 +162,9 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
     for authored in [false, true] {
         let mut ui = dressed(if authored {
             concat!(
-                "Scroll::bar[axis=horizontal] {\n -og-fill: #ff00ff\n height: 7px\n}\n",
-                "Scroll::bar[axis=vertical] {\n -og-fill: #00ffff\n width: 9px\n}\n",
-                "Heading::flourish {\n width: 12px\n height: 5px\n color: #ff00ff\n opacity: 0.4\n}\n",
+                "scroll[axis=horizontal]::part(bar) { background: #ff00ff; height: 7px; }\n",
+                "scroll[axis=vertical]::part(bar) { background: #00ffff; width: 9px; }\n",
+                "heading::part(flourish) { width: 12px; height: 5px; color: #ff00ff; opacity: 0.4; }\n",
             )
         } else {
             ""
@@ -284,8 +269,8 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
 #[test]
 fn a_disabled_touch_controls_opacity_is_authored_by_its_state_dressing() {
     let mut ui = dressed(concat!(
-        "ActionButton::face {\n opacity: 0.8\n}\n",
-        "ActionButton::face:disabled {\n opacity: 0.2\n}\n",
+        "actionbutton::part(face) { opacity: 0.8; }\n",
+        "actionbutton::part(face):disabled { opacity: 0.2; }\n",
     ));
     for disabled in [false, true, false] {
         ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
@@ -317,7 +302,7 @@ fn a_disabled_touch_controls_opacity_is_authored_by_its_state_dressing() {
 /// disabled secondary button the rule does not name keeps its fill.
 #[test]
 fn fill_none_clears_a_controls_own_fill() {
-    let mut ui = dressed("Button::base.quiet:disabled {\n -og-fill: none\n}\n");
+    let mut ui = dressed("button.quiet::part(base):disabled { background: none; }\n");
     ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
     for (id, variant) in [
         ("Quiet", ButtonVariant::Quiet),
@@ -419,23 +404,23 @@ fn a_draw_strokes_over_its_elements_background() {
 fn a_document_part_takes_its_dressing_classes_and_states() {
     use og_ui::reactive::SourceId;
     let mut ui = dressed(concat!(
-        "Kit::box {\n  -og-fill: #00ff00\n}\n",
-        "Kit::box.hot {\n  -og-fill: #ffff00\n}\n",
-        "Kit::item {\n  -og-fill: #00ffff\n}\n",
-        "Kit::item:hover {\n  -og-fill: #ffffff\n}\n",
-        "Kit::item:selected {\n  -og-fill: #ff8800\n}\n",
-        "Slot::frame[rarity=epic] {\n  -og-fill: #ff00ff\n}\n",
-        "Slot::frame[rarity=rare] {\n  -og-fill: #0000ff\n}\n",
+        "div::part(box) { background: #00ff00; }\n",
+        "div.hot::part(box) { background: #ffff00; }\n",
+        "button::part(item) { background: #00ffff; }\n",
+        "button::part(item):hover { background: #ffffff; }\n",
+        "button[aria-selected=true]::part(item) { background: #ff8800; }\n",
+        "div[data-rarity=epic]::part(frame) { background: #ff00ff; }\n",
+        "div[data-rarity=rare]::part(frame) { background: #0000ff; }\n",
     ));
     let doc = r#"<meta name="component" content="kit">
-<meta name="parts" content="Kit.box Kit.item">
+<meta name="parts" content="box item frame">
 <div id="Root">
-  <div id="Box" part="Kit.box">a</div>
-  <div id="Hot" part="Kit.box" class:hot={true}>b</div>
-  <button id="Item" part="Kit.item">c</button>
-  <button id="Picked" part="Kit.item" aria-selected={true}>d</button>
-  <div id="Epic" part="Slot.frame[rarity=epic]">e</div>
-  <div id="Rare" part={"Slot.frame[rarity=" + "rare" + "]"}>f</div>
+  <div id="Box" part="box">a</div>
+  <div id="Hot" part="box" class:hot={true}>b</div>
+  <button id="Item" part="item">c</button>
+  <button id="Picked" part="item" aria-selected={true}>d</button>
+  <div id="Epic" part="frame" data-rarity="epic">e</div>
+  <div id="Rare" part="frame" data-rarity={"rare"}>f</div>
 </div>
 <style>
 #Root { width: stretch; padding: 8px; gap: 8px; }
@@ -484,21 +469,21 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
         let c = og_ui::style_file::parse_color(hex).unwrap();
         fills.iter().any(|f| near(*f, c))
     };
-    assert_eq!(part(&ui, "Box"), "Kit.box");
+    assert!(part(&ui, "Box").ends_with("::part(box)"));
     assert!(has(fill(&ui, "Box"), "#00ff00"), "{:?}", fill(&ui, "Box"));
-    assert!(part(&ui, "Hot").contains("[hot]"), "{}", part(&ui, "Hot"));
+    assert!(part(&ui, "Hot").contains(".hot"), "{}", part(&ui, "Hot"));
     assert!(has(fill(&ui, "Hot"), "#ffff00"));
     let item = part(&ui, "Item");
     assert!(
-        item.starts_with("Kit.item[secondary]"),
+        item.starts_with("button.secondary") && item.ends_with("::part(item)"),
         "the control's variant stays: {item}"
     );
     assert!(has(fill(&ui, "Item"), "#00ffff"));
-    assert!(part(&ui, "Picked").contains("[selected]"));
+    assert!(part(&ui, "Picked").contains("[aria-selected=true]"));
     assert!(has(fill(&ui, "Picked"), "#ff8800"));
-    assert_eq!(part(&ui, "Epic"), "Slot.frame[rarity=epic]");
+    assert!(part(&ui, "Epic").contains("[data-rarity=epic]"));
     assert!(has(fill(&ui, "Epic"), "#ff00ff"), "{:?}", fill(&ui, "Epic"));
-    assert_eq!(part(&ui, "Rare"), "Slot.frame[rarity=rare]");
+    assert!(part(&ui, "Rare").contains("[data-rarity=rare]"));
     assert!(has(fill(&ui, "Rare"), "#0000ff"), "{:?}", fill(&ui, "Rare"));
     let e = ui
         .elements()
@@ -510,7 +495,7 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
         step(&mut ui, Some((e.x + e.width / 2.0, e.y + e.height / 2.0)));
     }
     assert!(
-        part(&ui, "Item").contains("[hover]"),
+        part(&ui, "Item").contains(":hover"),
         "{}",
         part(&ui, "Item")
     );
@@ -527,21 +512,16 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
 fn a_kit_text_part_takes_its_ink_and_step() {
     use og_ui::reactive::SourceId;
     let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
-    let file = parse_style(&format!(
-        "{CORE_STYLE}{}",
-        concat!(
-            "Kit::name {\n  -og-ink: #c0392b\n  -og-step: lg\n}\n",
-            "Kit::name.ally {\n  -og-ink: #2e86de\n}\n",
-        )
+    ui.set_part_css(concat!(
+        "span::part(name) { color: #c0392b; font-size: 24px; }\n",
+        "span.ally::part(name) { color: #2e86de; }\n",
     ))
-    .unwrap_or_else(|e| panic!("{e}"));
-    ui.set_theme(file.theme(None, [0; 6]));
-    ui.set_dressings(file.dressings.clone());
+    .unwrap();
     let doc = r#"<meta name="component" content="kit">
-<meta name="parts" content="Kit.name">
+<meta name="parts" content="name">
 <div id="Root">
-  <span id="Foe" part="Kit.name">Foe</span>
-  <span id="Ally" part="Kit.name" class:ally={true}>Ally</span>
+  <span id="Foe" part="name">Foe</span>
+  <span id="Ally" part="name" class:ally={true}>Ally</span>
   <span id="Free">Free</span>
 </div>"#;
     ui.define_document(UiDocument::parse("ui/kit.svelte", doc).unwrap());
@@ -571,7 +551,7 @@ fn a_kit_text_part_takes_its_ink_and_step() {
             .unwrap_or_else(|| panic!("no text {want}"))
     };
     let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
-    let (lg, body) = (ui.theme().type_ramp.lg.size, ui.theme().type_ramp.body.size);
+    let (lg, body) = (24.0, ui.theme().type_ramp.body.size);
     let foe = text("Foe");
     assert!(near(foe.1, colour("#c0392b")), "{:?}", foe.1);
     assert_eq!(foe.0, lg, "the part's step");
@@ -681,6 +661,137 @@ fn css_parts_share_the_css_cascade_and_markup_hosts() {
 }
 
 #[test]
+fn part_transitions_retarget_and_restore_the_rendered_value() {
+    use og_ui::dress::PartRef;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css("button::part(base) { opacity: 0.2; background: #000; transition: opacity 200ms linear, background 200ms linear; } button::part(base):hover { opacity: 1; background: #fff; }").unwrap();
+    let step = |ui: &mut Ui, hovered| {
+        ui.begin(InputFrame::default(), Viewport::new(100.0, 100.0));
+        ui.column(
+            "owner",
+            Element {
+                width: Size::px(80.0),
+                height: Size::px(40.0),
+                part: Some(PartRef::of("Button", "base", None).flag_if(hovered, "hover")),
+                ..Element::column()
+            },
+            |_| {},
+        );
+        ui.end();
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        ui.frame()
+            .items
+            .iter()
+            .find_map(|item| item.cmd.filled().map(|(_, color)| color))
+            .expect("the part's painted box")
+    };
+    assert_eq!(step(&mut ui, false)[3], 0.2);
+    assert_eq!(step(&mut ui, true)[3], 0.2);
+    for _ in 0..5 {
+        step(&mut ui, true);
+    }
+    let half = step(&mut ui, true);
+    assert!((half[3] - 0.6).abs() < 0.001, "{half:?}");
+    assert!(half[0] > 0.0 && half[0] < 1.0, "{half:?}");
+    let saved = ui.save_state();
+    let rest = (0..4).map(|_| step(&mut ui, false)).collect::<Vec<_>>();
+    ui.restore_state(&saved).unwrap();
+    for expected in rest {
+        assert_eq!(step(&mut ui, false), expected);
+    }
+}
+
+#[test]
+fn document_part_css_is_scoped_and_inherits_authored_host_facts() {
+    use og_ui::reactive::SourceId;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css("button::part(base) { background: blue; }")
+        .unwrap();
+    for (name, css) in [
+        (
+            "styled",
+            "button { --paint: #ff00ff; } button.primary[data-a=a][data-b=b][data-c=c][data-d=d]::part(base) { background: var(--paint); }",
+        ),
+        ("plain", ""),
+    ] {
+        let text = format!(
+            r#"<meta name="component" content="{name}"><button id="Go" class="primary" data-a="a" data-b="b" data-c="c" data-d="d">Go</button><style>{css}</style>"#
+        );
+        ui.define_document(UiDocument::parse(&format!("{name}.svelte"), &text).unwrap());
+        ui.mount_document(
+            SourceId::new("test", name),
+            name,
+            Default::default(),
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap();
+    }
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        let fills: Vec<_> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .map(|(_, c)| c)
+            .collect();
+        assert!(
+            fills.iter().any(|c| near(*c, Srgba::rgb(255, 0, 255))),
+            "{fills:?}"
+        );
+        assert!(
+            fills.iter().any(|c| near(*c, Srgba::rgb(0, 0, 255))),
+            "{fills:?}"
+        );
+    }
+}
+
+#[test]
+fn part_keyframes_keep_delay_direction_and_replay() {
+    use og_ui::dress::PartRef;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css("button::part(base) { background: red; animation: pulse 200ms 100ms linear 2 alternate both; } @keyframes pulse { from { opacity: 0.2; } to { opacity: 0.8; } }").unwrap();
+    let step = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), Viewport::new(100.0, 100.0));
+        ui.column(
+            "owner",
+            Element {
+                width: Size::px(80.0),
+                height: Size::px(40.0),
+                part: Some(PartRef::of("Button", "base", None)),
+                ..Element::column()
+            },
+            |_| {},
+        );
+        ui.end();
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        ui.frame()
+            .items
+            .iter()
+            .find_map(|i| i.cmd.filled().map(|(_, c)| c[3]))
+            .unwrap()
+    };
+    let samples: Vec<_> = (0..19).map(|_| step(&mut ui)).collect();
+    for (tick, expected) in [(0, 0.2), (5, 0.2), (12, 0.5), (18, 0.8)] {
+        assert!((samples[tick] - expected).abs() < 0.001, "{samples:?}");
+    }
+    let saved = ui.save_state();
+    let back: Vec<_> = (0..13).map(|_| step(&mut ui)).collect();
+    assert!(
+        (back[5] - 0.5).abs() < 0.001 && (back[11] - 0.2).abs() < 0.001,
+        "{back:?}"
+    );
+    ui.restore_state(&saved).unwrap();
+    for expected in back {
+        assert_eq!(step(&mut ui), expected);
+    }
+}
+
+#[test]
 fn default_css_glass_uses_css_filters_and_material_fallbacks() {
     use og_ui::dress::PartRef;
     use og_ui::paint::Effect;
@@ -698,7 +809,7 @@ fn default_css_glass_uses_css_filters_and_material_fallbacks() {
         assert!(error.contains("ui/typo.svelte:3:"), "{error}");
         assert!(error.contains("-og-materail"), "{error}");
     }
-    let part = PartRef::of("Panel", "frame", None);
+    let part = PartRef::parse("panel.glass::part(frame)", None).unwrap();
     let default = ui.resolve_part(&part, [120.0, 80.0]).unwrap();
     assert!(default.fills.is_empty());
     assert!(matches!(
@@ -736,7 +847,7 @@ fn default_css_glass_uses_css_filters_and_material_fallbacks() {
     for row in matrix.rows {
         assert_eq!(row, [0.213, 0.715, 0.072, 0.0]);
     }
-    let mut reduced = ui.theme().clone();
+    let mut reduced = *ui.theme();
     reduced.reduced_transparency = true;
     let (mode, tint) = glass.resolve(*blur, *saturation, *brightness, [0.0; 4], false, &reduced);
     assert!(matches!(mode, og_render::UiMode::Backdrop { blur: 0.0, glass, .. } if glass.solid));

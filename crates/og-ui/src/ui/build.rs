@@ -582,18 +582,10 @@ impl Ui {
                 ..Element::default()
             },
         );
-        // The label in the one of fg and inkInverse that reads on the frame
-        // as drawn (its art's tone): a light pack's painted bubble is often
-        // dark (kawaii's navy, cartoon's chocolate), as a button's label is.
         let p = t.palette;
         let ground = self
-            .dress
-            .resolve(&StylePart::Tooltip.part_ref())
-            .frame
-            .slice
-            .filter(|_| t.art.atlas.is_some())
-            .and_then(|s| s.drawn(p.panel_raised))
-            .map_or(p.panel_raised, |c| c.over(p.backdrop));
+            .part_ground(&StylePart::Tooltip.part_ref(), p.panel_raised)
+            .over(p.backdrop);
         let ink = if p.ink_inverse.contrast(ground) > p.ink.contrast(ground) {
             p.ink_inverse
         } else {

@@ -540,23 +540,20 @@ fn length_tokens_follow_the_active_style_in_layout_and_states() {
         }
         symbolic.set_theme(theme);
         let mut literal = source.to_string();
-        for name in [
-            "space-xs",
-            "space-sm",
-            "space-md",
-            "size-xs",
-            "size-sm",
-            "size-md",
-            "size-lg",
-            "size-xl",
-            "radius-sm",
-            "radius-lg",
-            "radius-xl",
+        for (name, value) in [
+            ("space-xs", 4.0),
+            ("space-sm", 8.0),
+            ("space-md", 12.0),
+            ("size-xs", 16.0),
+            ("size-sm", 24.0),
+            ("size-md", 32.0),
+            ("size-lg", 48.0),
+            ("size-xl", 64.0),
+            ("radius-sm", 6.0),
+            ("radius-lg", 18.0),
+            ("radius-xl", 24.0),
         ] {
-            literal = literal.replace(
-                &format!("var(--{name})"),
-                &format!("{}px", theme.length(name).unwrap()),
-            );
+            literal = literal.replace(&format!("var(--{name})"), &format!("{}px", value * factor));
         }
         let mut expected = ui_with_font(test_font_metrics());
         expected.set_theme(theme);

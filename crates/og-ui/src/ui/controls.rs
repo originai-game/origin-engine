@@ -284,70 +284,11 @@ impl Ui {
         .flag_if(self.narrow_button(key, width), "narrow");
         part.hover = amounts.0;
         part.press = amounts.1;
-        let resolved = self.dress.resolve(&part);
-        let slice = resolved.frame.slice.filter(|_| t.art.atlas.is_some());
-        // A style's tinted button art darkens (or fades) the fill: the label
-        // reads at 7:1 on the fill as drawn (the packs' bar, which keeps 4.5:1
-        // in the frame once MSDF strokes thin it), so a game's own primary colour over a
-        // dark neon body keeps a light label instead of the flat token's ink.
-        // A fill in the middle of the scale (a game's crimson) that neither
-        // end of the scale reads 7:1 on moves away from the better ink, as
-        // little as it takes, so the colour stays the game's. A dressing
-        // that paints its own fills (a gradient) is read the same way, by
-        // the mean of its paints.
-        let painted = slice.is_none() && !resolved.draw.fills.is_empty();
-        let (bg, fg) = match (bg, slice) {
-            // Only art whose centre the style measured (`tone`): untoned
-            // art is the style's to judge.
-            (Some(fill), Some(s))
-                if s.tone != Slice::WHITE
-                    && !desc.disabled
-                    && desc.variant != ButtonVariant::Danger =>
-            {
-                let behind = self.behind(i);
-                let drawn = |c: Srgba| s.drawn(c).unwrap_or(c).over_linear(behind);
-                let bar = crate::style::BUTTON_READABLE;
-                match fg.readable_on(drawn(fill), bar) {
-                    Some(ink) => (Some(fill), ink),
-                    None => {
-                        let ground = drawn(fill);
-                        let ink = if p.ink.contrast(ground) >= p.ink_inverse.contrast(ground) {
-                            p.ink
-                        } else {
-                            p.ink_inverse
-                        };
-                        let away = if ink.luminance() > ground.luminance() {
-                            Srgba::BLACK
-                        } else {
-                            Srgba::WHITE
-                        };
-                        let moved = (1..=20)
-                            .map(|n| fill.mix(away, n as f32 * 0.05))
-                            .find(|c| ink.contrast(drawn(*c)) >= bar)
-                            .unwrap_or(away);
-                        (Some(moved), ink)
-                    }
-                }
-            }
-            (fill, None) if painted && !desc.disabled => {
-                let behind = self.behind(i);
-                let d = resolved.element_draw(&part, &t, fill);
-                let ground = crate::dress::ground_of(&d, &t, behind);
-                let bar = crate::style::BUTTON_READABLE;
-                let ink = fg
-                    .readable_on(ground, bar)
-                    .or_else(|| {
-                        let other = if fg == p.ink { p.ink_inverse } else { p.ink };
-                        other.readable_on(ground, bar)
-                    })
-                    .unwrap_or(fg);
-                (fill, ink)
-            }
-            _ => (bg, fg),
-        };
+        let resolved = self.part_values(&part, Some(key));
+        let fg = resolved.color("color").unwrap_or(fg);
         let mut content = self.role_text(text, crate::tokens::TypeRole::Button, fg);
         content.align = desc.align.unwrap_or(TextAlign::Center);
-        let radius = crate::dress::corner_of(resolved.shape(&part, &t)).1;
+        let radius = resolved.num("radius").unwrap_or(0.0);
         if let Some(top) = self.button_ink.last_mut().filter(|(at, _)| *at == i) {
             top.1 = fg;
         }

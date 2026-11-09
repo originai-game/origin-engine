@@ -218,7 +218,7 @@ impl Ui {
                 height: Size::px(g.rail),
                 radius: g.rail / 2.0,
                 background: Some(rail.srgba()),
-                part: part("Slider.track"),
+                part: part("input[type=range]::part(track)"),
                 ..Element::default()
             },
         );
@@ -229,7 +229,7 @@ impl Ui {
                 height: Size::grow(),
                 radius: g.rail / 2.0,
                 background: Some(fill.srgba()),
-                part: part("Slider.fill"),
+                part: part("input[type=range]::part(fill)"),
                 ..Element::default()
             },
         );
@@ -246,7 +246,11 @@ impl Ui {
         });
         for (i, tk) in ticks.iter().enumerate() {
             let passed = *tk >= from - 1e-6 && *tk <= to + 1e-6;
-            let p = format!("Slider.tick{}", flags(&[passed.then_some("passed")]));
+            let p = qualified_part(
+                "input[type=range]::part(tick)",
+                &[passed.then_some("passed")],
+                ElementClass::Bar,
+            );
             self.open(
                 crate::ui_idi("Tick", i as u32),
                 Element {
@@ -254,7 +258,7 @@ impl Ui {
                     height: Size::px(g.rail + 6.0),
                     radius: 1.0,
                     background: Some(if passed { on_primary } else { strong }.srgba()),
-                    part: part(&p),
+                    part: Some(p),
                     ..Element::default()
                 },
             );
@@ -314,7 +318,7 @@ impl Ui {
         self.ctl(
             name,
             Ctl {
-                part: "Slider.knob",
+                part: "input[type=range]::part(knob)",
                 cls: ElementClass::Chip,
                 flags: vec![
                     Some("round"),
@@ -371,8 +375,11 @@ impl Ui {
                             height: Size::px(c),
                             radius: c / 2.0,
                             background: Some(primary.srgba()),
-                            part: crate::dress::PartRef::parse("Slider.core", ElementClass::Badge)
-                                .ok(),
+                            part: crate::dress::PartRef::parse(
+                                "input[type=range]::part(core)",
+                                ElementClass::Badge,
+                            )
+                            .ok(),
                             ..Element::default()
                         },
                     );
@@ -396,7 +403,11 @@ impl Ui {
                 cross: Cross::Center,
                 radius: t.radius.control,
                 background: Some(ink.srgba()),
-                part: crate::dress::PartRef::parse("Slider.bubble", ElementClass::Tooltip).ok(),
+                part: crate::dress::PartRef::parse(
+                    "input[type=range]::part(bubble)",
+                    ElementClass::Tooltip,
+                )
+                .ok(),
                 ..Element::default()
             },
         );
@@ -558,7 +569,7 @@ impl Ui {
             Ctl {
                 // The reach a finger and the pointer take; the bar it holds
                 // is `Slider.track`, as CSS names a range's.
-                part: "Slider.reach",
+                part: "input[type=range]::part(reach)",
                 cls: ElementClass::Badge,
                 disabled,
                 adjustable: true,
@@ -768,7 +779,7 @@ impl Ui {
         let built = self.ctl(
             "Track",
             Ctl {
-                part: "Slider.reach",
+                part: "input[type=range]::part(reach)",
                 cls: ElementClass::Badge,
                 disabled,
                 focusable: false,
@@ -990,7 +1001,11 @@ impl Ui {
             );
             self.spacer("Gap", Some(Size::grow()));
         }
-        let fpart = format!("Stepper.frame{}", flags(&[disabled.then_some("disabled")]));
+        let fpart = qualified_part(
+            "stepper::part(frame)",
+            &[disabled.then_some("disabled")],
+            ElementClass::Field,
+        );
         self.open(
             "Frame",
             Element {
@@ -999,7 +1014,7 @@ impl Ui {
                 cross: Cross::Stretch,
                 radius: t.radius.control,
                 background: Some(well.srgba()),
-                part: crate::dress::PartRef::parse(&fpart, ElementClass::Field).ok(),
+                part: Some(fpart),
                 ..Element::default()
             },
         );
@@ -1012,9 +1027,9 @@ impl Ui {
                     max.is_some_and(|hi| v >= hi)
                 };
             let part = if sign < 0 {
-                "Stepper.button[dec]"
+                "stepper.dec::part(button)"
             } else {
-                "Stepper.button[inc]"
+                "stepper.inc::part(button)"
             };
             let off = disabled || at_bound;
             let b = ui.ctl(
@@ -1064,7 +1079,7 @@ impl Ui {
         let val = self.ctl(
             "Value",
             Ctl {
-                part: "Stepper.value",
+                part: "stepper::part(value)",
                 cls: ElementClass::Field,
                 disabled,
                 adjustable: true,

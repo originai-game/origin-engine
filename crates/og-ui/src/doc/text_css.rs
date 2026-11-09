@@ -23,6 +23,7 @@ use crate::theme::TypeStep;
 
 /// The inherited properties, by their CSS names.
 pub(crate) const INHERITED: &[&str] = &[
+    "font-family",
     "font-size",
     "font-weight",
     "font-style",
@@ -107,7 +108,7 @@ fn declaration(name: &str, value: &str, important: bool) -> Result<StyleDeclarat
 /// Expands the shorthands this module owns into their longhands (each
 /// omitted part takes its initial value, as CSS's shorthands do) and
 /// checks a longhand written without `var()`; other declarations pass.
-/// `font: var(--text-<step>)` stays the house form (a type step).
+/// Font shorthands with variables expand after substitution in the cascade.
 pub(crate) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, String> {
     let name = match d.name.as_str() {
         "word-wrap" => "overflow-wrap",
@@ -124,19 +125,15 @@ pub(crate) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
             | "text-decoration"
             | "-webkit-text-stroke"
     );
-    if name == "font" && is_step(&d.source) {
+    if name == "font" && d.value.has_variables() {
         return Ok(vec![d]);
     }
     if name == "font-family" {
         let v = d.source.trim();
-        if d.value.has_variables() && !v.starts_with("var(--font-") || wide(v) {
-            return Ok(vec![d]);
+        if !d.value.has_variables() && !wide(v) {
+            family_list(v)?;
         }
-        let (names, role) = family_list(v)?;
-        return Ok(vec![
-            declaration(name, &role, d.important)?,
-            declaration("-og-font-name", &names, d.important)?,
-        ]);
+        return Ok(vec![d]);
     }
     if !shorthand {
         if longhand(name) && !d.value.has_variables() {
@@ -163,12 +160,6 @@ pub(crate) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
             declaration(&n, &v, d.important)
         })
         .collect()
-}
-
-/// `var(--text-<step>)` (with any spacing).
-fn is_step(v: &str) -> bool {
-    let v = v.trim();
-    v.starts_with("var(--text-") && v.ends_with(')') && !v[4..].contains(['(', ' '])
 }
 
 fn shorthand_parts(name: &str, v: &str) -> Result<Vec<(String, String)>, String> {
@@ -414,7 +405,7 @@ pub(crate) fn split_top(v: &str) -> Vec<String> {
 /// CSS Fonts 4 §2.8: `[<style> || <small-caps> || <weight> || <stretch>]?
 /// <size> [/ <line-height>]? <family>#`, or a system font keyword (the
 /// style's body step).
-fn font(v: &str) -> Result<Vec<(String, String)>, String> {
+pub(crate) fn font(v: &str) -> Result<Vec<(String, String)>, String> {
     const HOW: &str = "font: [style] [small-caps] [weight] [stretch] <size>[/<line-height>] <family>, or var(--text-<step>)";
     let system = [
         "caption",
@@ -429,7 +420,7 @@ fn font(v: &str) -> Result<Vec<(String, String)>, String> {
     }
     let (head, family) = {
         // The family starts after the size: the first token that is a size.
-        let items = split_top(v);
+        let mut items = split_top(v);
         let at = items
             .iter()
             .position(|w| {
@@ -437,6 +428,17 @@ fn font(v: &str) -> Result<Vec<(String, String)>, String> {
                 is_size(s)
             })
             .ok_or(HOW)?;
+        if items.get(at + 1).is_some_and(|s| s.starts_with('/')) {
+            let slash = items.remove(at + 1);
+            items[at].push_str(&slash);
+        }
+        if items[at].ends_with('/') {
+            if at + 1 >= items.len() {
+                return Err(HOW.into());
+            }
+            let height = items.remove(at + 1);
+            items[at].push_str(&height);
+        }
         let family = items[at + 1..].join(" ");
         (items[..=at].to_vec(), family)
     };
@@ -472,9 +474,8 @@ fn font(v: &str) -> Result<Vec<(String, String)>, String> {
     if family.is_empty() {
         return Err(HOW.into());
     }
-    let (names, role) = family_list(&family)?;
-    out.push(("font-family".into(), role));
-    out.push(("-og-font-name".into(), names));
+    family_list(&family)?;
+    out.push(("font-family".into(), family));
     Ok(out)
 }
 
@@ -491,41 +492,56 @@ fn wide(v: &str) -> bool {
 /// none: a named family is drawn from a document's `@font-face` faces
 /// ([`crate::FontRole::Family`]), the role after it.
 pub(crate) fn family_list(v: &str) -> Result<(String, String), String> {
+    use super::css::Tok;
+    let tokens = super::css::tokens(&format!("families({v})"))?;
+    let [Tok::Func(_, items)] = tokens.as_slice() else {
+        return Err("font-family: expected a comma-separated family list".into());
+    };
     let mut names = Vec::new();
     let mut role = None;
-    for item in v.split(',') {
-        let item = item.trim();
-        let generic = match item {
-            "" => return Err("font-family: an empty family in the list".into()),
-            "monospace" | "ui-monospace" => Some("mono"),
-            "ui-rounded" => Some("rounded"),
-            "fantasy" | "cursive" => Some("display"),
-            "serif" | "sans-serif" | "system-ui" | "ui-serif" | "ui-sans-serif" | "math"
-            | "emoji" | "fangsong" => Some("body"),
-            t => t
-                .strip_prefix("var(--font-")
-                .and_then(|r| r.strip_suffix(')'))
-                .filter(|r| crate::FontRole::from_name(r).is_some()),
+    for tokens in items {
+        let (item, quoted) = match tokens.as_slice() {
+            [Tok::Str(name)] => (name.clone(), true),
+            [] => return Err("font-family: an empty family in the list".into()),
+            words if words.iter().all(|t| matches!(t, Tok::Ident(_))) => (
+                words
+                    .iter()
+                    .map(super::css::describe)
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                false,
+            ),
+            _ => {
+                return Err(
+                    "font-family: expected a quoted name, identifiers or a generic family".into(),
+                );
+            }
+        };
+        let lower = item.to_ascii_lowercase();
+        let generic = if quoted {
+            None
+        } else {
+            let item = lower.as_str();
+
+            match item {
+                "" => return Err("font-family: an empty family in the list".into()),
+                "monospace" | "ui-monospace" => Some("mono"),
+                "ui-rounded" => Some("rounded"),
+                "fantasy" | "cursive" => Some("display"),
+                "serif" | "sans-serif" | "system-ui" | "ui-serif" | "ui-sans-serif" | "math"
+                | "emoji" | "fangsong" => Some("body"),
+                _ => None,
+            }
         };
         if let Some(g) = generic {
             role.get_or_insert(g);
             continue;
         }
-        let name = if item.len() >= 2
-            && (item.starts_with('"') && item.ends_with('"')
-                || item.starts_with('\'') && item.ends_with('\''))
-        {
-            item[1..item.len() - 1].to_string()
-        } else if item.split_whitespace().all(super::syntax::identifier) {
-            // Unquoted: its identifiers joined by one space.
-            item.split_whitespace().collect::<Vec<_>>().join(" ")
-        } else {
-            return Err(format!(
-                "font-family: '{item}' is not a family name (quote it) or a generic family"
-            ));
-        };
-        if !names.contains(&name) {
-            names.push(name);
+        if !quoted && wide(&item) {
+            return Err("font-family: a CSS-wide keyword cannot occur in a family list".into());
+        }
+        if role.is_none() && !names.contains(&item) {
+            names.push(item);
         }
     }
     let names = if names.is_empty() {
@@ -533,7 +549,7 @@ pub(crate) fn family_list(v: &str) -> Result<(String, String), String> {
     } else {
         names
             .iter()
-            .map(|n| format!("\"{}\"", n.replace('"', "")))
+            .map(|n| format!("\"{}\"", n.replace('\\', "\\\\").replace('"', "\\\"")))
             .collect::<Vec<_>>()
             .join(", ")
     };
@@ -541,14 +557,20 @@ pub(crate) fn family_list(v: &str) -> Result<(String, String), String> {
 }
 
 /// The names of a computed `-og-font-name` list.
-fn names_of(v: &str) -> Vec<String> {
+pub(crate) fn names_of(v: &str) -> Vec<String> {
     if v == "none" {
         return Vec::new();
     }
-    v.split(',')
-        .map(|n| n.trim().trim_matches('"').to_string())
-        .filter(|n| !n.is_empty())
-        .collect()
+    match super::css::tokens(&format!("families({v})")).as_deref() {
+        Ok([super::css::Tok::Func(_, items)]) => items
+            .iter()
+            .filter_map(|tokens| match tokens.as_slice() {
+                [super::css::Tok::Str(name)] => Some(name.clone()),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 fn is_size(s: &str) -> bool {
@@ -913,6 +935,7 @@ pub struct TextCss {
     /// The first named family of `font-family` a document declares an
     /// `@font-face` for (CSS Fonts 4 §5: an unavailable family is skipped).
     pub family: Option<String>,
+    pub font_role: Option<crate::FontRole>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -1045,6 +1068,16 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
             .map(|c| c.resolve(&crate::css_color::Context::of(theme)))
     };
     let size = num(get("font-size"));
+    let family_list = get("font-family").and_then(|v| family_list(&v).ok());
+    let font_role = family_list.as_ref().and_then(|(_, role)| {
+        role.strip_prefix("var(--font-")
+            .and_then(|r| r.strip_suffix(')'))
+            .and_then(crate::FontRole::from_name)
+    });
+    let family = family_list
+        .map(|(names, _)| names)
+        .or_else(|| get("-og-font-name"))
+        .and_then(|names| names_of(&names).into_iter().find(|n| declared(n)));
     let mut t = TextCss {
         size,
         weight: num(get("font-weight")).map(|w| w.round().clamp(1.0, 1000.0) as u16),
@@ -1086,7 +1119,8 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         accent: color(get("accent-color")),
         fill: color(get("-webkit-text-fill-color")),
         paint_order: get("paint-order").filter(|v| v != "normal"),
-        family: get("-og-font-name").and_then(|v| names_of(&v).into_iter().find(|n| declared(n))),
+        family,
+        font_role,
         ..TextCss::default()
     };
     match get("font-style").as_deref() {
@@ -1617,7 +1651,7 @@ mod tests {
         assert!(font.contains(&("font-size".into(), "20px".into())));
         assert!(font.contains(&("line-height".into(), "1.5".into())));
         assert!(font.contains(&("font-weight".into(), "bold".into())));
-        assert!(font.contains(&("font-family".into(), "var(--font-mono)".into())));
+        assert!(font.contains(&("font-family".into(), "monospace".into())));
         assert_eq!(
             names(expand(d("font", "var(--text-caption)")).unwrap()).len(),
             1

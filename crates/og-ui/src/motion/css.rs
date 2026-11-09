@@ -28,7 +28,11 @@ pub struct CssTransition {
 impl CssTransition {
     /// Whether it times `property`'s computed value.
     pub(crate) fn covers(&self, property: &str) -> bool {
-        self.property == property || self.property == "all"
+        self.property == property
+            || self.property == "all"
+            || crate::doc::boxes::longhands(&self.property)
+                .iter()
+                .any(|p| crate::doc::css::css_name(p) == Some(property))
     }
 }
 
@@ -434,6 +438,8 @@ pub(crate) struct StyleRun {
 pub(crate) struct StyleState {
     pub after: std::collections::BTreeMap<String, String>,
     pub runs: Vec<StyleRun>,
+    #[serde(default)]
+    pub animations: Vec<CssRun>,
 }
 
 #[cfg(test)]

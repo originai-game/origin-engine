@@ -265,11 +265,9 @@ fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
     .expect("world");
     let mut probe = Probe::new(&mut world).expect("probe");
     let mut ui = ui_with_font(test_font_metrics());
-    let style_id = "styles/core-test/style.ogt";
-    let style_text = CORE_STYLE;
-    let mut style = parse_style(style_text).expect("core test style");
-    style.resolve(style_id, |_| true);
-    ui.set_dressings(style.dressings.clone());
+    let style_id = "<part-css>";
+    let style_text = "button::part(base) { background: #444; }\nbutton.primary::part(base) { background: #888; }";
+    ui.set_part_css(style_text).unwrap();
     ui.define_document(UiDocument::parse("ui/shop.svelte", SHOP).expect("shop"));
     ui.push_screen("shop", serde_json::json!({ "gold": 3 }))
         .expect("push");
@@ -299,8 +297,14 @@ fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
         .unwrap()
         + 1;
     assert_eq!(p["source"], format!("ui/shop.svelte:{line}"));
-    assert_eq!(p["part"], "Button::base.primary");
-    let line_of = |head: &str| style_text.lines().position(|l| l == head).unwrap() + 1;
+    assert_eq!(p["part"], "button.primary::part(base)");
+    let line_of = |head: &str| {
+        style_text
+            .lines()
+            .position(|l| l.starts_with(head))
+            .unwrap()
+            + 1
+    };
     let rules: Vec<(String, String)> = p["rules"]
         .as_array()
         .expect("rules")
@@ -316,12 +320,12 @@ fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
         rules,
         [
             (
-                "Button::base".to_string(),
-                format!("{style_id}:{}", line_of("Button::base {"))
+                "button::part(base)".to_string(),
+                format!("{style_id}:{}", line_of("button::part(base) {"))
             ),
             (
-                "Button::base.primary".to_string(),
-                format!("{style_id}:{}", line_of("Button::base.primary {"))
+                "button.primary::part(base)".to_string(),
+                format!("{style_id}:{}", line_of("button.primary::part(base) {"))
             ),
         ]
     );

@@ -110,12 +110,12 @@ impl Ui {
         let rules = at
             .and_then(|at| self.parts().get(at).cloned().flatten())
             .map(|part| {
-                ui.dress
-                    .matching(&part)
-                    .map(|d| UiDebugStyle {
-                        name: crate::style_file::css::selector_css(&d.selector),
+                ui.matching_part_rules(&part)
+                    .into_iter()
+                    .map(|rule| UiDebugStyle {
+                        name: rule.structure.as_ref().unwrap().source.clone(),
                         value: String::new(),
-                        source: d.written_at().to_string(),
+                        source: format!("<part-css>:{}", rule.line),
                     })
                     .collect()
             })

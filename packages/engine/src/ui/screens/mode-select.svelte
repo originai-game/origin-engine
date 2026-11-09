@@ -39,9 +39,9 @@
 #Screen { padding: 16px; gap: 12px; }
 }
 #Header { width: stretch; gap: 12px; align-items: center; }
-#Title { font: var(--text-xl2); }
+#Title { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 @media (width < 600px), (height < 600px) {
-#Title { font: var(--text-xl); }
+#Title { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
 }
 #Scroll { width: stretch; height: stretch; }
 #Modes { width: stretch; gap: 16px; grid-template-columns: 1fr 1fr 1fr; }
@@ -51,7 +51,7 @@
 @media (width < 600px) and (orientation: portrait) {
 #Modes { grid-template-columns: 1fr; gap: 12px; }
 }
-#Mode { width: stretch; padding: 12px; gap: 8px; background: var(--panel-raised); -og-frame: card; }
+#Mode { width: stretch; padding: 12px; gap: 8px; background: var(--panel-raised); border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; }
 #Mode.selection-off { opacity: 0.85; }
 #Mode.selection-on { opacity: 1; }
 #Mode.lock-open { scale: 1; }
@@ -62,9 +62,9 @@
 #Mode:focus-visible { translate: 0 -4px; }
 #Art { width: stretch; aspect-ratio: 1.78; }
 #Head { width: stretch; gap: 8px; align-items: center; }
-#Name { font: var(--text-lg); }
+#Name { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Line { color: var(--ink-muted); line-clamp: 2; }
-#Reason { font: var(--text-caption); color: var(--warn); }
+#Reason { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--warn); }
 #Detail { width: stretch; }
 #Footer { width: stretch; gap: 12px; justify-content: end; }
 @media (width < 600px), (height < 600px) {

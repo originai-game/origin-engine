@@ -602,6 +602,9 @@ impl Ui {
         self.orders.reuse = reuse;
         self.kept.reused_all = reused_roots && same_roots && !self.kept.fresh && !self.kept.whole;
         self.kept.prev_cmds = last;
+        for commit in self.part_commits.take().into_values() {
+            self.commit_styles(&commit);
+        }
         cmds
     }
 
@@ -846,12 +849,22 @@ impl Ui {
             .draws
             .keys()
             .chain(&self.tree.restructured)
+            .chain(&self.part_changed)
             .copied()
             .collect();
         let keyed = ghosts
             .iter()
             .map(|g| g.frozen.parent)
-            .chain(self.world.marks.keys().copied());
+            .chain(self.world.marks.keys().copied())
+            .chain(
+                self.state
+                    .motion
+                    .part_styles
+                    .iter()
+                    .filter_map(|(&key, styles)| {
+                        styles.values().any(|s| !s.runs.is_empty()).then_some(key)
+                    }),
+            );
         for key in keyed {
             if let Some(&i) = self.tree.by_key.get(&key) {
                 volatile.insert(i);
@@ -1241,25 +1254,17 @@ impl Ui {
                 return;
             }
             let part = crate::dress::PartRef::of("Scroll", "bar", None).attr("axis", axis);
-            let dressing = self.dress.resolve(&part);
-            if dressing.matched == 0 {
-                cmds.push(DrawCmd::Quad {
-                    rect: rect.snapped(dpr),
-                    radius: t.radius.bar,
-                    color: p.control_strong.linear(),
-                    clip,
-                });
-            } else {
-                self.part_commands_at(
-                    &part,
-                    dressing.draw.subpart_rect(rect, sn.rect).snapped(dpr),
-                    Some(dressing.draw.subpart_color(p.control_strong, t)),
-                    t.radius.bar,
-                    1.0,
-                    clip,
-                    cmds,
-                );
-            }
+            let values = self.part_values(&part, Some(sn.key));
+            self.part_commands_at(
+                Some(sn.key),
+                &part,
+                values.part_rect(rect, sn.rect).snapped(dpr),
+                Some(values.color("color").unwrap_or(p.control_strong)),
+                t.radius.bar,
+                1.0,
+                clip,
+                cmds,
+            );
         };
         let max_x = sn.max_scroll_x();
         if max_x > 0.0 {

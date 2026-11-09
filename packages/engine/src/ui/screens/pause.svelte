@@ -28,21 +28,23 @@
 </row>
 
 <style>
+:root { --surface-saturation: 120%; }
+@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #Pause { width: stretch; height: stretch; padding: 32px; gap: 24px; justify-content: center; align-items: center; }
 @media (width < 600px), (height < 600px) {
 #Pause { padding: 16px; }
 }
-#Panel { width: stretch; max-width: 400px; padding: 24px; gap: 16px; background: var(--panel); -og-frame: panel; -og-enter: slide-up 24px var(--motion-enter); }
+#Panel { width: stretch; max-width: 400px; padding: 24px; gap: 16px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; -og-enter: slide-up 24px var(--motion-enter); }
 @media (height < 600px) and (orientation: landscape) {
 #Panel { width: stretch; max-width: 640px; padding: 12px; gap: 8px; }
 }
-#Title { font: var(--text-xl2); }
+#Title { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 #Status { width: stretch; gap: 4px; }
 @media (height < 600px) and (orientation: landscape) {
 #Status { display: none; }
 }
 #Objective { color: var(--ink-muted); line-clamp: 2; }
-#Played { font: var(--text-caption); color: var(--ink-muted); }
+#Played { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #Menu { width: stretch; gap: 8px; grid-template-columns: 1fr; }
 @media (height < 600px) and (orientation: landscape) {
 #Menu { grid-template-columns: 1fr 1fr; }

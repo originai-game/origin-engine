@@ -31,66 +31,38 @@ impl Ui {
     /// can cover art.
     pub(super) fn focus_ring_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = &self.theme;
-        let p = &t.palette;
         let n = &self.nodes[i];
         let rect = n.rect;
-        // A ring sits outside its control, so a scroll that clips the
-        // control to its box cut the ring of a row as wide as the scroll
-        // to its top and bottom: the ring takes the scroll's clip widened
-        // by its reach, still inside what clips the scroll itself.
-        let pads = if n.pad_rings != 0 { 8.0 } else { 0.0 };
-        let reach = (t.space.xxs * pads)
-            .max(t.tokens.stroke(crate::tokens::StrokeWidth::Focus) + t.space.xxs);
-        let clip = match n.clip_src {
-            src if src != NONE && self.drawing.is_identity() => {
-                n.clip.outset(reach).intersect(&self.nodes[src].clip)
-            }
-            _ => n.clip,
-        };
-        let ring = |player: usize, gap: f32, width: f32, color: Srgba, outline: bool| {
-            use crate::paint::{Cap, ElementDraw, Paint, Placed, Stroke, StrokeAlign};
-            let mut part = n.el.part.unwrap_or_default();
+        let ring = |player: usize, outline: bool| {
+            use crate::paint::Placed;
+            let mut part =
+                n.el.part
+                    .or_else(|| n.el.frame.map(StylePart::part_ref))
+                    .unwrap_or_else(|| crate::dress::PartRef::of(self.kinds[i].0, "focus", None));
             part.part = "focus";
             part.class = None;
             part.level = None;
             part = part
-                .attr("player", ["0", "1", "2", "3"][player])
-                .flag_if(outline, "outline");
-            let dressing = self.dress.resolve(&part);
-            let mut draw = ElementDraw {
-                strokes: vec![Stroke {
-                    width,
-                    align: StrokeAlign::Outside,
-                    dash: [0.0; 2],
-                    dash_offset: 0.0,
-                    dash_cap: Cap::Butt,
-                    paint: Paint::Solid(color.into()),
-                }],
-                ..ElementDraw::default()
+                .attr("data-player", ["0", "1", "2", "3"][player])
+                .attr("data-outline", if outline { "true" } else { "false" })
+                .flag_if(!outline, "focused");
+            let values = self.part_values(&part, Some(n.key));
+            let Ok(draw) = self.part_draw_values(&values, [rect.width, rect.height], None, None)
+            else {
+                return Vec::new();
             };
             let mut at = Placed {
-                rect: rect.outset(gap),
-                radius: n.sampled.radius + gap,
-                clip,
+                rect: values.part_rect(rect, rect),
+                radius: values.num("radius").unwrap_or(n.sampled.radius),
+                clip: n.clip,
                 alpha: n.alpha,
             };
-            if dressing.matched == 0 {
-                return draw.strokes(t, &at);
-            }
-            let fallback = draw.strokes;
-            draw = dressing.element_draw(&part, t, None);
-            if dressing.draw.strokes.is_empty()
-                && dressing.draw.cleared & crate::dress::CLEAR_STROKES == 0
-            {
-                draw.strokes = fallback;
-                draw.strokes[0].paint = Paint::Solid(dressing.draw.subpart_color(color, t).into());
-            }
-            at.rect = dressing.draw.subpart_rect(at.rect, rect);
-            at.alpha *= dressing.draw.subpart_opacity();
-            // The authored ring's complete bounds, including its strokes,
-            // may extend beyond the legacy clip reach.
             if n.clip_src != NONE && self.drawing.is_identity() {
-                let width = draw.strokes.iter().map(|s| s.width).fold(0.0_f32, f32::max);
+                let outside = draw
+                    .borders
+                    .as_ref()
+                    .and_then(|b| b.outline)
+                    .map_or(0.0, |(line, offset)| (line.width + offset).max(0.0));
                 let reach = [
                     rect.x - at.rect.x,
                     rect.y - at.rect.y,
@@ -99,7 +71,7 @@ impl Ui {
                 ]
                 .into_iter()
                 .fold(0.0_f32, f32::max)
-                    + width;
+                    + outside;
                 at.clip = n.clip.outset(reach).intersect(&self.nodes[n.clip_src].clip);
             }
             let mut commands = draw.enter(t, &at);
@@ -109,11 +81,8 @@ impl Ui {
         };
         if n.pad_rings != 0 {
             // Pads 1 to 3 outside pad 0's ring, outermost first.
-            let w = t.space.xxs;
             for k in (0..3).rev().filter(|k| n.pad_rings & (1 << k) != 0) {
-                let at = w * (2.0 * k as f32 + 3.0);
-                let color = [p.info, p.success, p.warn][k];
-                cmds.extend(ring(k + 1, at, w, color, false));
+                cmds.extend(ring(k + 1, false));
             }
         }
         // A bare field (no frame of its own) leaves the ring to its frame.
@@ -125,24 +94,7 @@ impl Ui {
         };
         let outline = t.outline && (n.nav || n.focusable) && n.sampled.background.is_some();
         if field_ring || n.ring || outline {
-            // The style's focus stroke (`stroke { focus … }`): cartoon's
-            // 3 px ring stands clear of its 2 px outlines.
-            let w = if field_ring || n.ring {
-                t.tokens.stroke(crate::tokens::StrokeWidth::Focus)
-            } else {
-                1.0
-            };
-            let color = if field_ring || n.ring {
-                p.focus
-            } else {
-                p.line_strong
-            };
-            let gap = if field_ring || !n.ring {
-                0.0
-            } else {
-                t.space.xxs
-            };
-            cmds.extend(ring(0, gap, w, color, outline && !field_ring && !n.ring));
+            cmds.extend(ring(0, outline && !field_ring && !n.ring));
         }
     }
 
@@ -177,63 +129,17 @@ impl Ui {
             clip,
         };
         // A part the UI pass draws (`part_draws`) has its background there.
-        let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
-        let ornament_tint = part.and_then(|p| {
-            self.dress
-                .resolve(&p)
-                .draw
-                .ornament_tint
-                .as_ref()
-                .map(|c| c.resolve(t))
-        });
-        let atlas_dressed = part.and_then(|p| {
-            t.art.atlas?;
-            let r = self.dress.resolve(&p);
-            let s = r.frame.slice?;
-            Some((p, r.frame, s))
-        });
         if let Some(bg) = n
             .sampled
             .background
-            .filter(|_| !self.part_draws.contains_key(&i) || atlas_dressed.is_some())
+            .filter(|_| !self.part_draws.contains_key(&i))
         {
-            let (pressed, press) = match n.widget {
-                Widget::Button { pressed, press } => (pressed, press),
-                _ => (false, 0.0),
+            let r = if matches!(n.widget, Widget::Button { pressed: true, .. }) {
+                rect.scaled(t.press_scale)
+            } else {
+                rect
             };
-            match atlas_dressed {
-                Some((_, frame, slice)) => {
-                    let r = match (frame.press.or(t.art.press), pressed) {
-                        // The squash follows the spring, in and back out.
-                        (Some(pr), _) if press != 0.0 => scaled_xy(
-                            rect,
-                            1.0 + (pr.sx - 1.0) * press,
-                            1.0 + (pr.sy - 1.0) * press,
-                        ),
-                        (None, true) => rect.scaled(t.press_scale),
-                        _ => rect,
-                    };
-                    self.dress(
-                        &frame,
-                        ornament_tint,
-                        slice,
-                        r,
-                        n.sampled.radius,
-                        bg,
-                        alpha,
-                        clip,
-                        cmds,
-                    );
-                }
-                None => {
-                    let r = if pressed {
-                        rect.scaled(t.press_scale)
-                    } else {
-                        rect
-                    };
-                    cmds.push(quad(r, n.sampled.radius, bg));
-                }
-            }
+            cmds.push(quad(r, n.sampled.radius, bg));
         }
         // A multi-column container's rules, in the middle of its gaps.
         if let Some(m) = n.el.multicol
@@ -281,12 +187,9 @@ impl Ui {
         let alpha = n.alpha;
         let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
         let ornament_tint = part.and_then(|p| {
-            self.dress
-                .resolve(&p)
-                .draw
-                .ornament_tint
-                .as_ref()
-                .map(|c| c.resolve(t))
+            self.part_values(&p, Some(n.key))
+                .color("color")
+                .map(Srgba::linear)
         });
         if self.kinds[i].0 == "divider"
             && let Some(o) = t.art.divider.filter(|_| t.art.atlas.is_some())
@@ -306,42 +209,34 @@ impl Ui {
         use crate::dress::PartRef;
         use crate::tokens::ElementClass as C;
         let decoration =
-            |part: &PartRef, r: Rect| self.dress.resolve(part).draw.subpart_rect(r, rect);
-        let bar = |rect: Rect, value: f32, part: PartRef| {
-            let min = self
-                .dress
-                .resolve(&part)
-                .frame
-                .slice
-                .filter(|_| t.art.atlas.is_some())
-                .map_or(rect.height, |s| s.border[0] + s.border[2]);
-            let w = (rect.width * value).max(min.min(rect.width));
+            |part: &PartRef, r: Rect| self.part_values(part, Some(n.key)).part_rect(r, rect);
+        let bar = |rect: Rect, value: f32| {
+            let w = (rect.width * value).max(rect.height.min(rect.width));
             Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr)
         };
         if let Widget::Progress { value } = n.widget {
-            let track = PartRef::new("Meter", "track", C::Bar);
-            let fill = PartRef::new("Meter", "fill", C::Bar).attr("kind", "primary");
-            let fills = (p.control_strong, p.primary);
-            if !self.segment_commands(&track, &fill, rect, rect, value, fills, alpha, clip, cmds) {
+            let track = PartRef::new("progress", "track", C::Bar);
+            let fill = PartRef::new("progress", "fill", C::Bar).attr("kind", "primary");
+            self.part_commands(
+                Some(n.key),
+                &track,
+                decoration(&track, rect),
+                Some(p.control_strong),
+                alpha,
+                clip,
+                cmds,
+            );
+            if value > 0.0 {
+                let r = bar(rect, value);
                 self.part_commands(
-                    &track,
-                    decoration(&track, rect),
-                    Some(p.control_strong),
+                    Some(n.key),
+                    &fill,
+                    decoration(&fill, r),
+                    Some(p.primary),
                     alpha,
                     clip,
                     cmds,
                 );
-                if value > 0.0 {
-                    let r = bar(rect, value, fill);
-                    self.part_commands(
-                        &fill,
-                        decoration(&fill, r),
-                        Some(p.primary),
-                        alpha,
-                        clip,
-                        cmds,
-                    );
-                }
             }
         }
         if matches!(n.widget, Widget::TextArea { .. }) {
@@ -662,8 +557,7 @@ impl Ui {
                                 }
                             }
                         }
-                        // Undressed flourishes frame titles at cap height.
-                        // A dressing can opt smaller headings in as well.
+                        // Explicit CSS dimensions opt smaller headings in.
                         if n.heading
                             && k == 0
                             && let Some(o) = t.art.flourish.filter(|_| t.art.atlas.is_some())
@@ -681,30 +575,23 @@ impl Ui {
                             ] {
                                 let part = crate::dress::PartRef::of("Heading", "flourish", None)
                                     .attr("side", side);
-                                let dressing = self.dress.resolve(&part);
+                                let values = self.part_values(&part, Some(n.key));
                                 if !visible
-                                    || (tc.step.size < FLOURISH_MIN_TITLE && dressing.matched == 0)
+                                    || (tc.step.size < FLOURISH_MIN_TITLE
+                                        && values.size("width").is_none()
+                                        && values.size("height").is_none())
                                 {
                                     continue;
                                 }
-                                let draw = dressing.draw;
-                                let tint = if draw.appearance_value("color").is_some()
-                                    || draw.ink.is_some()
-                                {
-                                    Some(draw.subpart_color(Srgba::WHITE, t).linear())
-                                } else {
-                                    draw.ornament_tint
-                                        .as_ref()
-                                        .map(|c| c.resolve(t))
-                                        .or(ornament_tint)
-                                };
+                                let tint =
+                                    values.color("color").map(Srgba::linear).or(ornament_tint);
                                 self.ornament(
                                     o,
-                                    draw.subpart_rect(rect, n.rect),
+                                    values.part_rect(rect, n.rect),
                                     flip,
                                     false,
                                     tint,
-                                    alpha * draw.subpart_opacity(),
+                                    alpha * values.num("opacity").unwrap_or(1.0),
                                     clip,
                                     cmds,
                                 );
@@ -803,12 +690,18 @@ impl Ui {
             match shape {
                 Shape::Part { frame, part, fill } => {
                     let r = self
-                        .dress
-                        .resolve(part)
-                        .draw
-                        .subpart_rect(frame.resolve(&n.rect), n.rect);
+                        .part_values(part, Some(n.key))
+                        .part_rect(frame.resolve(&n.rect), n.rect);
                     if !r.is_empty() {
-                        self.part_commands(part, r.snapped(dpr), *fill, alpha, clip, cmds);
+                        self.part_commands(
+                            Some(n.key),
+                            part,
+                            r.snapped(dpr),
+                            *fill,
+                            alpha,
+                            clip,
+                            cmds,
+                        );
                     }
                 }
                 Shape::DressedRect {
@@ -816,14 +709,15 @@ impl Ui {
                     part,
                     radius,
                     color,
-                } if self.dress.resolve(part).matched > 0 => {
-                    let draw = self.dress.resolve(part).draw;
-                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
+                } => {
+                    let values = self.part_values(part, Some(n.key));
+                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
                     if !r.is_empty() {
                         self.part_commands_at(
+                            Some(n.key),
                             part,
                             r.snapped(dpr),
-                            Some(draw.subpart_color(*color, t)),
+                            Some(values.color("color").unwrap_or(*color)),
                             *radius,
                             alpha,
                             clip,
@@ -835,12 +729,6 @@ impl Ui {
                     frame,
                     radius,
                     color,
-                }
-                | Shape::DressedRect {
-                    frame,
-                    radius,
-                    color,
-                    ..
                 } => {
                     let r = frame.resolve(&n.rect);
                     if r.is_empty() {
@@ -859,10 +747,10 @@ impl Ui {
                     angle,
                     color,
                 } => {
-                    let draw = self.dress.resolve(part).draw;
-                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
-                    let color = draw.subpart_color(*color, t);
-                    let alpha = alpha * draw.subpart_opacity();
+                    let values = self.part_values(part, Some(n.key));
+                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let color = values.color("color").unwrap_or(*color);
+                    let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     cmds.push(DrawCmd::Bar {
                         center: r.center(),
                         w: r.width,
@@ -878,10 +766,10 @@ impl Ui {
                     angle,
                     color,
                 } => {
-                    let draw = self.dress.resolve(part).draw;
-                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
-                    let color = draw.subpart_color(*color, t);
-                    let alpha = alpha * draw.subpart_opacity();
+                    let values = self.part_values(part, Some(n.key));
+                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let color = values.color("color").unwrap_or(*color);
+                    let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     cmds.push(DrawCmd::Half {
                         center: r.center(),
                         radius: r.width.min(r.height) / 2.0,
@@ -899,10 +787,10 @@ impl Ui {
                     color,
                 } => {
                     use crate::paint::{Cap, ElementDraw, Paint, Placed, ShapeKind};
-                    let dress = self.dress.resolve(part).draw;
-                    let rect = dress.subpart_rect(frame.resolve(&n.rect), n.rect);
-                    let color = dress.subpart_color(*color, t);
-                    let alpha = alpha * dress.subpart_opacity();
+                    let values = self.part_values(part, Some(n.key));
+                    let rect = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let color = values.color("color").unwrap_or(*color);
+                    let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     let draw = ElementDraw {
                         shape: ShapeKind::Arc {
                             start: *start,
@@ -930,14 +818,15 @@ impl Ui {
                     uv,
                     color,
                 } => {
-                    let draw = self.dress.resolve(part).draw;
+                    let values = self.part_values(part, Some(n.key));
                     cmds.push(DrawCmd::Image {
-                        rect: draw.subpart_rect(frame.resolve(&n.rect), n.rect),
+                        rect: values.part_rect(frame.resolve(&n.rect), n.rect),
                         texture: Some(*texture),
                         uv: *uv,
-                        color: draw
-                            .subpart_color(*color, t)
-                            .fade(alpha * draw.subpart_opacity())
+                        color: values
+                            .color("color")
+                            .unwrap_or(*color)
+                            .fade(alpha * values.num("opacity").unwrap_or(1.0))
                             .linear(),
                         clip,
                     });
@@ -951,25 +840,17 @@ impl Ui {
                     font,
                     clip: within,
                 } => {
-                    let draw = self.dress.resolve(part).draw;
-                    let color = draw.subpart_color(*color, t);
-                    let alpha = alpha * draw.subpart_opacity();
-                    let mut ramp = t.type_ramp;
-                    let step = match draw.appearance_value("step") {
-                        Some(crate::doc::Lit::Str(name)) => {
-                            crate::style_file::ramp_step(&mut ramp, name)
-                                .map(|s| &*s)
-                                .unwrap_or(step)
-                        }
-                        _ => step,
-                    };
+                    let values = self.part_values(part, Some(n.key));
+                    let color = values.color("color").unwrap_or(*color);
+                    let alpha = alpha * values.num("opacity").unwrap_or(1.0);
+                    let step = &values.part_type(t, *step);
                     let clip = clip.intersect(&within.resolve(&n.rect));
                     let f = self.fonts.for_text(*font, text);
                     if f.handle.is_none() {
                         continue;
                     }
                     let m = &f.metrics;
-                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
+                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
                     // A pixel font on its grid (crate::layout::snap_pixel_text).
                     let size = m.pixel_size(step.size * n.scale);
                     let tracking = m.pixel_tracking(crate::layout::step_tracking(step, text));
@@ -1014,10 +895,10 @@ impl Ui {
                     ch,
                     color,
                 } => {
-                    let draw = self.dress.resolve(part).draw;
-                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
-                    let color = draw.subpart_color(*color, t);
-                    let alpha = alpha * draw.subpart_opacity();
+                    let values = self.part_values(part, Some(n.key));
+                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let color = values.color("color").unwrap_or(*color);
+                    let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     let size = r.width.min(r.height);
                     if size <= 0.0 {
                         continue;
@@ -1810,27 +1691,19 @@ impl Ui {
             .and_then(|s| s.background)
             .unwrap_or(self.theme.palette.control_strong);
         let part = crate::dress::PartRef::of("TextEdit", "selection", None);
-        let dressing = self.dress.resolve(&part);
+        let values = self.part_values(&part, Some(n.key));
         for r in rects {
             let r = r.snapped(dpr);
-            if dressing.matched == 0 {
-                cmds.push(DrawCmd::Quad {
-                    rect: r,
-                    radius: 0.0,
-                    color: fill.fade(alpha).linear(),
-                    clip,
-                });
-            } else {
-                self.part_commands_at(
-                    &part,
-                    dressing.draw.subpart_rect(r, n.rect).snapped(dpr),
-                    Some(dressing.draw.subpart_color(fill, &self.theme)),
-                    0.0,
-                    alpha,
-                    clip,
-                    cmds,
-                );
-            }
+            self.part_commands_at(
+                Some(n.key),
+                &part,
+                values.part_rect(r, n.rect).snapped(dpr),
+                Some(values.color("color").unwrap_or(fill)),
+                0.0,
+                alpha,
+                clip,
+                cmds,
+            );
         }
     }
 }

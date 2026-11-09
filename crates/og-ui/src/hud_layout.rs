@@ -465,25 +465,17 @@ impl Ui {
         let p = &self.theme.palette;
         let screen = Rect::new(0.0, 0.0, self.viewport.width, self.viewport.height);
         let mut quad = |part: crate::dress::PartRef, r: Rect, owner: Rect, color: Srgba| {
-            let dressing = self.dress.resolve(&part);
-            if dressing.matched == 0 {
-                cmds.push(DrawCmd::Quad {
-                    rect: r,
-                    radius: 0.0,
-                    color: color.linear(),
-                    clip: screen,
-                });
-            } else {
-                self.part_commands_at(
-                    &part,
-                    dressing.draw.subpart_rect(r, owner),
-                    Some(dressing.draw.subpart_color(color, &self.theme)),
-                    0.0,
-                    1.0,
-                    screen,
-                    cmds,
-                );
-            }
+            let values = self.part_values(&part, None);
+            self.part_commands_at(
+                None,
+                &part,
+                values.part_rect(r, owner),
+                Some(values.color("color").unwrap_or(color)),
+                0.0,
+                1.0,
+                screen,
+                cmds,
+            );
         };
         for t in &hud.targets {
             let selected = t.key == hud.selected;

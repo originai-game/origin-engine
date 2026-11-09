@@ -39,21 +39,21 @@
 #GameOver { padding: 16px; }
 }
 #Panel { width: stretch; max-width: 440px; gap: 16px; align-items: center; }
-#Title { font: var(--text-xl5); text-align: center; color: var(--danger); animation: land 300ms cubic-bezier(0.23,1,0.32,1) forwards; }
+#Title { font: var(--text-xl5); letter-spacing: var(--type-xl5-tracking); text-align: center; color: var(--danger); animation: land 300ms cubic-bezier(0.23,1,0.32,1) forwards; }
 @keyframes land {
   from { scale: 1.3; -og-sound: error; }
   to { scale: 1; }
 }
 @media (width < 600px), (height < 600px) {
-#Title { font: var(--text-xl3); }
+#Title { font: var(--text-xl3); letter-spacing: var(--type-xl3-tracking); }
 }
 #Score { gap: 16px; }
-#Value { font: var(--text-xl); }
+#Value { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
 #Best { color: var(--ink-muted); }
 #Stats { width: stretch; }
-#Offer { width: stretch; padding: 16px; gap: 8px; align-items: center; background: var(--panel-raised); -og-frame: card; }
-#Line { font: var(--text-lg); }
-#Left { font: var(--text-xl2); }
+#Offer { width: stretch; padding: 16px; gap: 8px; align-items: center; background: var(--panel-raised); border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; }
+#Line { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
+#Left { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 #OfferArt { width: stretch; }
 #Revive { width: stretch; }
 #Actions { width: stretch; gap: 8px; }

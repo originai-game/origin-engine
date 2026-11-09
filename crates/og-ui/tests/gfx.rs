@@ -453,9 +453,9 @@ fn missing_art_slot_kinds_have_intentional_placeholders() {
             .frame()
             .items
             .iter()
-            .find_map(|item| match item.cmd {
-                DrawCmd::Quad { rect, radius, .. }
-                    if radius > 0.0
+            .find_map(|item| match round_fill(&item.cmd) {
+                Some((rect, radius))
+                    if radius >= rect.width.min(rect.height) / 2.0
                         && (rect.center().0 - cx).abs() <= 0.5
                         && (rect.center().1 - cy).abs() <= 0.5 =>
                 {

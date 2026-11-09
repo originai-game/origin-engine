@@ -312,6 +312,10 @@ impl Ui {
             docs["cssTransitions"] =
                 serde_json::to_value(&s.motion.styles).expect("finite CSS transitions");
         }
+        if !s.motion.part_styles.is_empty() {
+            docs["cssPartTransitions"] =
+                serde_json::to_value(&s.motion.part_styles).expect("finite CSS part transitions");
+        }
         if let Some(v) = &s.view_transition {
             docs["viewTransition"] = v.save();
         }
@@ -363,6 +367,10 @@ impl Ui {
         if let Some(runs) = docs.get("cssTransitions") {
             s.motion.styles = serde_json::from_value(runs.clone())
                 .map_err(|_| bad("malformed CSS transitions".into()))?;
+        }
+        if let Some(runs) = docs.get("cssPartTransitions") {
+            s.motion.part_styles = serde_json::from_value(runs.clone())
+                .map_err(|_| bad("malformed CSS part transitions".into()))?;
         }
         if let Some(v) = docs.get("viewTransition") {
             s.view_transition = Some(

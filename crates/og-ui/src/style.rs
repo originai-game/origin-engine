@@ -11,11 +11,6 @@ pub use crate::theme::{
 /// drawn on (a badge, a meter's label): WCAG's 4.5:1 for body text.
 pub const READABLE: f32 = 4.5;
 
-/// The contrast a button's label holds on its fill as drawn: WCAG AAA's
-/// 7:1, the packs' bar (a small MSDF label over shaded art reads about a
-/// third lower in the frame).
-pub const BUTTON_READABLE: f32 = 7.0;
-
 impl Srgba {
     /// Linear RGBA (straight alpha), what og-render's sprites and text take.
     pub fn linear(self) -> [f32; 4] {
@@ -578,22 +573,6 @@ impl Theme {
                     None
                 }
             })
-    }
-
-    /// A CSS length token, in CSS pixels, from this active style.
-    pub fn length(&self, name: &str) -> Option<f32> {
-        use crate::tokens::{RadiusStep, SizeStep, SpaceStep, StrokeWidth};
-        if let Some(n) = name.strip_prefix("space-") {
-            SpaceStep::from_name(n).map(|s| self.tokens.space[s.index()])
-        } else if let Some(n) = name.strip_prefix("size-") {
-            SizeStep::from_name(n).map(|s| self.tokens.size[s.index()])
-        } else if let Some(n) = name.strip_prefix("radius-") {
-            RadiusStep::from_name(n).map(|s| self.tokens.radius[s.index()])
-        } else if let Some(n) = name.strip_prefix("stroke-") {
-            StrokeWidth::from_name(n).map(|s| self.tokens.stroke[s.index()])
-        } else {
-            None
-        }
     }
 
     /// The high-contrast variant of a scheme: `inkMuted` takes `ink`,

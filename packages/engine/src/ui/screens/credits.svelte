@@ -37,10 +37,10 @@
 #Logo { width: 240px; height: 94px; }
 }
 #Section { width: stretch; max-width: 640px; gap: 10px; align-items: center; }
-#Title { font: var(--text-caption); color: var(--ink-muted); text-align: center; }
+#Title { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); text-align: center; }
 #Person { align-items: center; gap: 2px; }
-#Name { font: var(--text-xl); text-align: center; }
-#Role { font: var(--text-caption); color: var(--ink-muted); }
+#Name { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); text-align: center; }
+#Role { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #End { width: stretch; max-width: 640px; }
 #Licences { width: stretch; max-width: 640px; }
 #Back { position: absolute; inset-inline-start: 16px; top: 16px; }

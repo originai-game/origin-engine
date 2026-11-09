@@ -27,11 +27,13 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-report");
     let _ = std::fs::remove_dir_all(&root);
     support::stage_template(&root.join("assets"));
-    std::fs::write(
-        root.join("assets/core-style.ogt"),
-        include_str!("../../og-ui/tests/fixtures/core-style.ogt"),
-    )
-    .unwrap();
+    let choices =
+        og_ui::style_gen::StyleChoices::for_look("core-test", "minimal modern", "report test");
+    let generated = og_ui::style_gen::generate(&choices).unwrap();
+    for (name, text) in &generated.sounds {
+        std::fs::write(root.join("assets").join(name), text).unwrap();
+    }
+    std::fs::write(root.join("assets/core-style.ogt"), generated.text).unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let cooked = root.join("cooked");

@@ -146,6 +146,7 @@ pub struct RetainedHost {
     /// (`env()`, `svh`, `lvh`).
     surface: [f32; 10],
     theme: Option<crate::Theme>,
+    presentation_epoch: u64,
     /// The surface's direction last build: a document's root takes it.
     direction: Option<og_i18n::Direction>,
     theme_epoch: u64,
@@ -222,7 +223,7 @@ struct Signature {
     direction: og_i18n::Direction,
     locale: String,
     style: String,
-    dress: usize,
+    style_epoch: u64,
     players: u32,
     nav_on: bool,
 }
@@ -950,6 +951,8 @@ impl RetainedHost {
         self.restore_instances(ui, env)?;
         self.refresh_collections(ui, env)?;
         self.sync_interaction(ui)?;
+        let presentation_changed =
+            std::mem::replace(&mut self.presentation_epoch, ui.kept.epoch) != ui.kept.epoch;
         if self
             .theme
             .replace(*ui.theme())
@@ -958,6 +961,7 @@ impl RetainedHost {
                 .direction
                 .replace(ui.direction)
                 .is_some_and(|old| old != ui.direction)
+            || presentation_changed
         {
             self.theme_epoch += 1;
         }
@@ -1912,7 +1916,7 @@ impl RetainedHost {
             direction: ui.direction,
             locale: ui.locale.clone(),
             style: ui.style_name.clone(),
-            dress: std::sync::Arc::as_ptr(&ui.dress) as usize,
+            style_epoch: ui.kept.epoch,
             players: ui.players,
             nav_on: ui.nav_on,
         };

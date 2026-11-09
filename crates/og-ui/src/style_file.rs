@@ -1,31 +1,7 @@
-//! UI styles: a game's whole look, one `.ogt` of `type style`. Its values
-//! (every palette role, the radii, the type ramp, durations) go into the
-//! [`Theme`] fields; its art is an [`Art`], which dresses the
-//! element classes ([`StylePart`]: panel, card, button and its states, field,
-//! slot, tooltip, hud, progress track and fill) in nine-slice frames from
-//! one atlas texture, adds ornaments (corners, divider, heading flourish), a
-//! tiled panel texture, drop shadows and glows per class, text shadows and
-//! glows per font role, a press squash and a hover lift, motion choices
-//! (entrances, stagger, count-ups, eased progress, refused-action shake,
-//! bursts) and UI sounds.
-//!
-//! A style is complete: it sets every palette role and every radius, so
-//! nothing of another look shows through it. There is no base to fall back
-//! on; before a game picks a style it has the engine's default style
-//! ([`crate::theme`], [`default_dressings`]). [`Art::default`] dresses nothing and
-//! moves nothing: every draw path checks for a slice, an ornament or a
-//! motion value first, so a style without art draws flat.
-//!
-//! Version 2 (docs/ui.md §3) adds the tokens of [`crate::tokens`] (carried
-//! in [`Theme::tokens`], not yet drawn from) and dresses parts by selector
-//! (`crate::dress`): its dressings of the twelve parts above fill the same
-//! [`Art`], so a style upgraded by [`upgrade_style`] draws as before.
-//!
-//! The grammar is [`parse_style`]'s; the runtime loads a style's atlas,
-//! fonts, icons and sounds through the bundle and hands the handles to
-//! [`StyleFile::theme`].
+//! Style asset metadata retained until the CSS pack loader replaces `.ogt`
+//! packs: fonts, icons, sounds, ornaments and layout tokens. Part appearance
+//! is CSS; this parser does not create or resolve appearance rules.
 
-use crate::dress::{DRAW_KEYS, DressFrame, Dressing, Selector};
 use crate::motion::TransitionKind;
 use crate::style::{Durations, Palette, Radius, Scheme, Srgba, Theme, TypeRamp, TypeStep};
 use crate::tokens::{
@@ -74,9 +50,6 @@ pub struct StyleFile {
     pub sounds: [Option<String>; 6],
     /// Each [`SoundEvent`]'s sound set, asset ids (empty: silent).
     pub feedback_sounds: [Vec<String>; SoundEvent::COUNT],
-    /// The part dressings (`crate::dress`), in file order; a version 1
-    /// style's are its twelve parts' ([`StylePart::selector`]).
-    pub dressings: Vec<Dressing>,
     /// `recolour "<from>" <role>` lines: the painted art follows the
     /// palette (docs/art.md §2.7). Every authored slice and ornament the
     /// style cuts takes these unless its dressing sets its own.
@@ -94,17 +67,6 @@ pub struct Recolour {
     pub role: String,
 }
 
-/// An atlas region (`[u0, v0, u1, v1]`) the cook recolours, with each
-/// accent's colour as painted and as the palette now has it.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct RecolourRegion {
-    pub uv: [f32; 4],
-    pub map: Vec<(Srgba, Srgba)>,
-    /// The dressing whose slice it is (`None`: an ornament), whose `tone`
-    /// the cook measures again after recolouring.
-    pub dressing: Option<Selector>,
-}
-
 impl StyleFile {
     /// Every asset id the file names (the cook checks they exist).
     pub fn references(&self) -> Vec<String> {
@@ -120,96 +82,7 @@ impl StyleFile {
                 out.push(s.clone());
             }
         }
-        for v in self.vector_assets() {
-            if !out.contains(&v) {
-                out.push(v);
-            }
-        }
-        for d in &self.dressings {
-            if let Some(material) = &d.draw.material
-                && let Some(path) = &material.asset
-                && !out.contains(path)
-            {
-                out.push(path.clone());
-            }
-        }
         out
-    }
-
-    /// The authored atlas regions whose painted accents follow the palette
-    /// (`recolour`): each authored dressing slice with its dressing's
-    /// lines (or the style's), each authored ornament with the style's,
-    /// leaving out every accent the palette still has as painted. Empty:
-    /// the atlas draws as it is.
-    pub fn recolour_regions(&self) -> Vec<RecolourRegion> {
-        let resolve = |lines: &[Recolour]| -> Vec<(Srgba, Srgba)> {
-            lines
-                .iter()
-                .filter_map(|r| {
-                    let to = self.theme.palette.get(&r.role)?;
-                    (tokens::hex(to) != tokens::hex(r.from)).then_some((r.from, to))
-                })
-                .collect()
-        };
-        let mut out: Vec<RecolourRegion> = Vec::new();
-        for d in &self.dressings {
-            let Some(s) = d.frame.slice.filter(|s| !s.tint) else {
-                continue;
-            };
-            let map = resolve(d.recolour.as_deref().unwrap_or(&self.recolour));
-            if !map.is_empty() {
-                out.push(RecolourRegion {
-                    uv: s.uv,
-                    map,
-                    dressing: Some(d.selector.clone()),
-                });
-            }
-        }
-        let map = resolve(&self.recolour);
-        if !map.is_empty() {
-            let a = &self.theme.art;
-            for o in [a.corner, a.divider, a.flourish, a.crest, a.edge]
-                .into_iter()
-                .flatten()
-                .filter(|o| o.ink == Ink::Authored)
-            {
-                out.push(RecolourRegion {
-                    uv: o.uv,
-                    map: map.clone(),
-                    dressing: None,
-                });
-            }
-        }
-        out
-    }
-
-    /// The vector assets its dressings fill with (`fill vector "<asset>"`),
-    /// each once, in file order.
-    pub fn vector_assets(&self) -> Vec<String> {
-        let mut out: Vec<String> = Vec::new();
-        for d in &self.dressings {
-            for (_, v) in &d.draw.vectors {
-                if !out.contains(v) {
-                    out.push(v.clone());
-                }
-            }
-        }
-        out
-    }
-
-    /// Binds its dressings' vector fills to the loaded vectors (`handle`
-    /// of an asset id; `None` leaves that fill unbound, drawing nothing):
-    /// the style's asset binding of docs/ui.md §3.3.
-    pub fn bind_vectors(&mut self, handle: impl Fn(&str) -> Option<crate::paint::UiVectorHandle>) {
-        for d in &mut self.dressings {
-            for (at, asset) in &d.draw.vectors {
-                if let (Some(h), Some(crate::paint::Paint::Vector { vector, .. })) =
-                    (handle(asset), d.draw.fills.get_mut(*at))
-                {
-                    *vector = h;
-                }
-            }
-        }
     }
 
     /// The theme with the loaded atlas and sounds: `sounds` the version 1
@@ -238,26 +111,6 @@ impl StyleFile {
         t
     }
 
-    /// The line that sets `part`'s tone (`og cook` appends what it
-    /// measured): `tone <part> …` in version 1, a dressing in version 2 and 3.
-    pub fn tone_text(&self, part: StylePart, t: [f32; 4]) -> String {
-        if self.version >= 2 {
-            return self.dress_tone_text(&part.selector(), t);
-        }
-        let v = format!("{:.3} {:.3} {:.3} {:.2}", t[0], t[1], t[2], t[3]);
-        format!("tone {} {v}", part.name())
-    }
-
-    /// The dressing that sets `sel`'s tone, in this file's version.
-    pub fn dress_tone_text(&self, sel: &Selector, t: [f32; 4]) -> String {
-        let v = format!("{:.3} {:.3} {:.3} {:.2}", t[0], t[1], t[2], t[3]);
-        if self.version >= 3 {
-            format!("{} {{\n  -og-tone: {v}\n}}", css::selector_css(sel))
-        } else {
-            format!("dress \"{sel}\" {{\n  tone {v}\n}}")
-        }
-    }
-
     /// Resolves the asset ids the file names against the style file's own
     /// id (`style_id`, such as `styles/fantasy/style.ogt`), so a pack copied
     /// to another directory keeps working: an id is first read relative to
@@ -266,9 +119,6 @@ impl StyleFile {
     /// `assets/`, when no asset `exists` there. The cook and the runtime
     /// resolve the same way, so what the cook checked is what loads.
     pub fn resolve(&mut self, style_id: &str, exists: impl Fn(&str) -> bool) {
-        for d in &mut self.dressings {
-            d.source = style_id.to_string();
-        }
         let at = |r: &mut String| *r = resolve_reference(style_id, r, &exists);
         if let Some(a) = self.atlas.as_mut() {
             at(a);
@@ -290,16 +140,6 @@ impl StyleFile {
         }
         for s in self.feedback_sounds.iter_mut().flatten() {
             at(s);
-        }
-        for d in &mut self.dressings {
-            for (_, v) in &mut d.draw.vectors {
-                at(v);
-            }
-            if let Some(material) = &mut d.draw.material
-                && let Some(path) = &mut material.asset
-            {
-                at(path);
-            }
         }
     }
 
@@ -721,87 +561,6 @@ fn part_at(p: &P, i: usize) -> Result<StylePart, String> {
     StylePart::from_name(w).ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))
 }
 
-/// The dressings a version 1 style's art makes: each of the twelve parts
-/// at its [`StylePart::selector`], its class's shadow, glow, glass, corners
-/// and tile on the class, the press and hover on `Button.base`.
-pub(crate) fn v1_dressings(art: &Art) -> Vec<Dressing> {
-    let mut out = Vec::new();
-    for part in StylePart::ALL {
-        let mut f = DressFrame {
-            slice: art.slices[part.index()],
-            ..DressFrame::default()
-        };
-        if part.class() == part {
-            let i = part.index();
-            f.shadow = art.shadows[i];
-            f.glow = art.glows[i];
-            f.glass = art.glass[i];
-            f.corners = art.corner_parts & part.bit() != 0;
-            f.tile = art.tile.is_some_and(|t| t.parts & part.bit() != 0);
-        }
-        if part == StylePart::Button {
-            f.press = art.press;
-            f.hover = art.hover;
-        }
-        if f != DressFrame::default() {
-            out.push(Dressing {
-                selector: part.selector(),
-                frame: f,
-                draw: Default::default(),
-                recolour: None,
-                source: String::new(),
-                lines: Vec::new(),
-            });
-        }
-    }
-    out
-}
-
-/// The default style's part dressings ([`crate::theme::DRESSINGS`], the
-/// design language's: glass on floating chrome, borderless controls),
-/// parsed once: what a UI without a style is dressed with.
-pub fn default_dressings() -> Vec<Dressing> {
-    static PARSED: std::sync::OnceLock<Vec<Dressing>> = std::sync::OnceLock::new();
-    PARSED
-        .get_or_init(|| {
-            use std::fmt::Write;
-            // A complete style around them: the dark palette and radii as a
-            // version 1 file, upgraded, then the dressings.
-            let p = &crate::theme::DARK;
-            let r = &crate::theme::RADIUS;
-            let mut v1 = String::from(
-                "type style\nversion 1\n---\nname \"default\"\nscheme dark\npalette {\n",
-            );
-            for name in Palette::NAMES {
-                let c = p.get(name).unwrap_or(Srgba::BLACK);
-                let a = (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
-                let [x, y, z] = c.rgb;
-                let _ = writeln!(v1, "  {name} \"#{x:02x}{y:02x}{z:02x}{a:02x}\"");
-            }
-            let _ = write!(
-                v1,
-                "}}\nradius {{\n  small {}\n  control {}\n  bar {}\n  panel {}\n}}\n",
-                r.small, r.control, r.bar, r.panel
-            );
-            let v2 = upgrade_style(&v1).expect("the default style upgrades");
-            parse_style(&(v2 + crate::theme::DRESSINGS))
-                .expect("the default style's dressings parse")
-                .dressings
-        })
-        .clone()
-}
-
-/// The dressings a theme draws with until a style sets its own: a
-/// version 1 style's art ([`v1_dressings`]), or the default style's for a
-/// theme with none.
-pub(crate) fn theme_dressings(art: &Art) -> Vec<Dressing> {
-    if *art == Art::default() {
-        default_dressings()
-    } else {
-        v1_dressings(art)
-    }
-}
-
 /// `og style upgrade`: a version 1 style written as version 2. Every
 /// value version 1 set keeps its value (the palette, the ramp, the fonts,
 /// the art and its motion, so the style draws the same); the radii become
@@ -891,48 +650,6 @@ pub(crate) fn upgrade_style_v2(text: &str) -> Result<String, String> {
     motion.extend(motion_tokens);
     out.push(Entry::new("motion").with_block(og_core::ogt::Block { entries: motion }));
     out.push(sounds_block);
-    for d in &old.dressings {
-        let part = StylePart::from_selector(&d.selector).expect("a version 1 part");
-        let mut entries: Vec<Entry> = Vec::new();
-        let rest = |e: &Entry| {
-            let mut n = e.clone();
-            n.values.remove(0);
-            n.line = 0;
-            n
-        };
-        let of = |e: &Entry, class: bool| {
-            e.values
-                .first()
-                .and_then(Value::as_word)
-                .and_then(StylePart::from_name)
-                .is_some_and(|p| if class { p.class() == part } else { p == part })
-        };
-        for k in ["slice", "tone"] {
-            entries.extend(body.get_all(k).filter(|e| of(e, false)).map(rest));
-        }
-        if part.class() == part {
-            for k in ["shadow", "glow", "glass"] {
-                entries.extend(body.get_all(k).filter(|e| of(e, true)).map(rest));
-            }
-            if d.frame.corners {
-                entries.push(Entry::new("corners"));
-            }
-            if d.frame.tile {
-                entries.push(Entry::new("tile"));
-            }
-        }
-        if part == StylePart::Button {
-            copy_into(&mut entries, &body, "press");
-            copy_into(&mut entries, &body, "hover");
-        }
-        if !entries.is_empty() {
-            out.push(
-                Entry::new("dress")
-                    .with(Value::String(d.selector.to_string()))
-                    .with_block(og_core::ogt::Block { entries }),
-            );
-        }
-    }
     doc.version = 2;
     doc.body = out;
     let text2 = doc.to_text().map_err(|e| e.to_string())?.replacen(
@@ -947,21 +664,9 @@ pub(crate) fn upgrade_style_v2(text: &str) -> Result<String, String> {
     let mut b = *b;
     b.art.v1_controls = a.art.v1_controls;
     let b = &b;
-    if (
-        a.palette,
-        a.space,
-        a.radius,
-        a.type_ramp,
-        a.durations_ms,
-        a.art,
-    ) != (
-        b.palette,
-        b.space,
-        b.radius,
-        b.type_ramp,
-        b.durations_ms,
-        b.art,
-    ) || old.sounds != new.sounds
+    if (a.palette, a.space, a.radius, a.type_ramp, a.durations_ms)
+        != (b.palette, b.space, b.radius, b.type_ramp, b.durations_ms)
+        || old.sounds != new.sounds
         || old.fonts != new.fonts
     {
         return Err(
@@ -970,14 +675,6 @@ pub(crate) fn upgrade_style_v2(text: &str) -> Result<String, String> {
         );
     }
     Ok(text2)
-}
-
-fn copy_into(out: &mut Vec<Entry>, body: &og_core::ogt::Block, key: &str) {
-    for e in body.get_all(key) {
-        let mut n = e.clone();
-        n.line = 0;
-        out.push(n);
-    }
 }
 
 mod art;

@@ -33,8 +33,8 @@
 @media (width < 600px), (height < 600px) {
 #Art { width: 260px; height: 116px; }
 }
-#Name { font: var(--text-caption); color: var(--ink-muted); }
+#Name { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #Boot { width: stretch; max-width: 360px; gap: 8px; align-items: center; }
 #Bar { width: stretch; }
-#Status { font: var(--text-caption); color: var(--ink-muted); line-clamp: 1; text-overflow: ellipsis; }
+#Status { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); line-clamp: 1; text-overflow: ellipsis; }
 </style>

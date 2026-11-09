@@ -11,13 +11,21 @@ use og_ui::*;
 pub use scenes::*;
 use std::path::{Path, PathBuf};
 
-pub const CORE_STYLE: &str = include_str!("../fixtures/core-style.ogt");
+pub fn metadata_style() -> &'static str {
+    static TEXT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        let choices =
+            og_ui::style_gen::StyleChoices::for_look("test", "minimal modern", "metadata test");
+        og_ui::style_gen::generate(&choices)
+            .expect("metadata generation")
+            .text
+    });
+    &TEXT
+}
 
-pub fn dressed(dress: &str) -> Ui {
-    let file = parse_style(&format!("{CORE_STYLE}{dress}")).expect("core test style");
+pub fn dressed(css: &str) -> Ui {
     let mut ui = ui_with_font(test_font_metrics());
-    ui.set_theme(file.theme(None, [0; 6]));
-    ui.set_dressings(file.dressings.clone());
+    ui.set_part_css(&format!("{DEFAULT_CSS}\n{css}"))
+        .expect("test CSS");
     ui
 }
 
@@ -33,6 +41,21 @@ pub fn fills_in(ui: &Ui, rect: Rect) -> Vec<[f32; 4]> {
         })
         .map(|(_, c)| c)
         .collect()
+}
+
+pub fn round_fill(cmd: &DrawCmd) -> Option<(Rect, f32)> {
+    let (rect, _) = cmd.filled()?;
+    let radius = match cmd {
+        DrawCmd::Quad { radius, .. } => *radius,
+        DrawCmd::Shape { shape, .. } => match shape.geometry {
+            og_render::UiGeometry::Rect { radii, .. } if radii.iter().all(|r| *r == radii[0]) => {
+                radii[0]
+            }
+            _ => return None,
+        },
+        _ => return None,
+    };
+    Some((rect, radius))
 }
 
 pub fn near(a: [f32; 4], b: Srgba) -> bool {

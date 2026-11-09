@@ -522,6 +522,9 @@ fn a_font_face_family_takes_its_faces_by_weight_and_range() {
   <p id="Named">Go</p>
   <p id="Skipped">Go</p>
   <p id="Short">Go</p>
+  <p id="Variable">Go</p>
+  <p id="GenericFirst">Go</p>
+  <p id="Comma">Go</p>
   <p id="Run">G<span part="w">o</span></p>
 </div>
 <style>
@@ -530,18 +533,29 @@ p { width: max-content; }
 #Named { font-family: "Wide Face", monospace; }
 #Skipped { font-family: Undeclared, monospace; }
 #Short { font: 16px Wide Face, serif; }
+#Variable { --families: Missing, Wide Face, monospace; font-family: var(--families); }
+#GenericFirst { font-family: monospace, "Wide Face"; }
+#Comma { font-family: 'Face, Wide', monospace; }
 #Run::part(w) { font-family: Undeclared, "Wide Face", monospace; }
 </style>"#;
     crate::html_text::both(text, &[], |d| {
         d.ui.set_fonts(Fonts {
             body: UiFont::unrendered(0.5),
             mono: Some(UiFont::unrendered(1.0)),
-            families: vec![FamilyFace {
-                family: "wide face".into(),
-                weight: (400, 400),
-                font: UiFont::unrendered(2.0),
-                ..FamilyFace::default()
-            }],
+            families: vec![
+                FamilyFace {
+                    family: "wide face".into(),
+                    weight: (400, 400),
+                    font: UiFont::unrendered(2.0),
+                    ..FamilyFace::default()
+                },
+                FamilyFace {
+                    family: "face, wide".into(),
+                    weight: (400, 400),
+                    font: UiFont::unrendered(3.0),
+                    ..FamilyFace::default()
+                },
+            ],
             ..Fonts::default()
         });
         d.step(InputFrame::default());
@@ -552,6 +566,9 @@ p { width: max-content; }
             "the declared family, else the monospace role"
         );
         assert_eq!(short.width, 2.0 * 2.0 * 16.0, "the font shorthand's family");
+        assert_eq!(d.get("Variable").width, named.width);
+        assert_eq!(d.get("GenericFirst").width, skipped.width);
+        assert_eq!(d.get("Comma").width, 1.5 * named.width);
         // A ::part run's list resolves as an element's: "o" in Wide Face
         // (2 em) after the body's "G" (half an em), not the monospace role.
         let em = named.width / 4.0;

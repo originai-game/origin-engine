@@ -1265,7 +1265,7 @@ pub const TEXT_PATH_DOC: &str = r#"<meta name="component" content="tp">
 <style>
 #Root { padding: 24px; gap: 16px; }
 #Badges { gap: 24px; flex-wrap: wrap; }
-#Arch { -og-text-path: path("M0 90 Q170 -20 340 90"); -og-text-path-offset: 50%; text-align: center; font: var(--text-xl); }
+#Arch { -og-text-path: path("M0 90 Q170 -20 340 90"); -og-text-path-offset: 50%; text-align: center; font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
 #Badge { width: 180px; height: 180px; }
 #Seal { width: 120px; height: 120px; border-radius: 60px; background: #7a2e22; translate: 30px 30px; }
 #Outer { -og-text-path: circle(82px); translate: 8px 8px; }

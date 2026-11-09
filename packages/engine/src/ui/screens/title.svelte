@@ -30,11 +30,11 @@
 @media (width < 600px), (height < 600px) {
 #Logo { width: 280px; height: 106px; }
 }
-#Prompt { font: var(--text-lg); text-align: center; animation: breathe 1800ms cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+#Prompt { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); text-align: center; animation: breathe 1800ms cubic-bezier(0.65, 0, 0.35, 1) forwards; }
 @keyframes breathe {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
 }
-#Legal { font: var(--text-caption); color: var(--ink-muted); text-align: center; }
-#Version { font: var(--text-caption); color: var(--ink-muted); position: absolute; inset-inline-end: 16px; bottom: 12px; }
+#Legal { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); text-align: center; }
+#Version { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); position: absolute; inset-inline-end: 16px; bottom: 12px; }
 </style>

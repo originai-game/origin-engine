@@ -146,7 +146,7 @@ fn part_selector(selector: &Selector) -> Result<(), String> {
         match simple {
             Simple::Class(_) | Simple::Attribute { .. } if !part => {}
             Simple::Part(_) if !part => part = true,
-            Simple::State(_) if part => {}
+            Simple::State(state) if part && *state != crate::bind::InteractionState::Selected => {}
             _ => return Err(bad()),
         }
     }
@@ -1190,6 +1190,7 @@ pub(super) fn lower(
             continue;
         }
         if name.starts_with("--")
+            || name == "font-family"
             || super::motion::longhand(name)
             || super::container::longhand(name)
             || super::extern_element::svg_longhand(name)

@@ -18,7 +18,7 @@
   padding: 10px 16px;
   background: var(--panel);
   border-radius: var(--radius-panel);
-  -og-frame: card;
+  outline: 1px solid var(--line); outline-offset: -1px;
 }
 #Value { font: var(--text-display-sm); font-family: var(--font-mono); white-space: nowrap; }
 #Unit { font: var(--text-meta); color: var(--ink-muted); }

@@ -31,7 +31,7 @@
 <style>
 #Carousel { width: 360px; gap: 10px; align-items: center; }
 #Viewport { display: flex; width: 360px; gap: 12px; overflow-x: scroll; scroll-snap-type: x mandatory; }
-.page { width: 320px; padding: 12px; gap: 6px; border-radius: 10px; background: var(--panel-raised); -og-frame: card; scroll-snap-align: center; }
+.page { width: 320px; padding: 12px; gap: 6px; border-radius: 10px; background: var(--panel-raised); outline: 1px solid var(--line); outline-offset: -1px; scroll-snap-align: center; }
 .art, .well { width: stretch; height: 140px; border-radius: 6px; }
 .well { background: linear-gradient(160deg, #4c8dff66, #0a0d14ff); }
 .title { font: var(--text-lg); color: var(--ink); }

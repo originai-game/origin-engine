@@ -11,10 +11,30 @@ use crate::motion::Transition;
 use crate::motion::css::{CssAnimation, CssTransition, StyleRun, StyleState};
 use crate::motion::interpolate;
 
+fn scalar_track(frames: &crate::motion::css::Keyframes, name: &str) -> bool {
+    crate::doc::motion::channels(name).is_some_and(|channels| {
+        frames.tracks.iter().any(|track| {
+            track
+                .prop
+                .channels()
+                .iter()
+                .any(|c| channels & (1 << c) != 0)
+        })
+    })
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum StyleTarget {
+    /// Element channels animate background, colour and opacity separately.
+    Element(u64),
+    /// Parts have no channels: every property uses computed-value motion.
+    Part(u64, &'static str),
+}
+
 /// What a resolve leaves the motion state, applied as the element builds.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct StyleCommit {
-    pub key: u64,
+    pub target: StyleTarget,
     /// `None`: it keeps no transition state.
     pub state: Option<StyleState>,
     /// A transition or animation still moves a value: build it next frame.
@@ -61,31 +81,56 @@ fn progress(
 impl Ui {
     /// Moves the computed values `cascade` won by the element's
     /// transitions and animations, returning what the motion state keeps.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn animate_values(
         &self,
-        key: u64,
+        target: StyleTarget,
         cascade: &mut cascade::Cascade,
         starting: &[(String, String, usize)],
         transitions: &[CssTransition],
         animations: &[CssAnimation],
         basis: crate::doc::calc::Basis,
+        sheet: Option<&crate::doc::at_rules::Sheet>,
     ) -> Option<Arc<StyleCommit>> {
-        let previous = self.state.motion.styles.get(&key);
+        let (key, part) = match target {
+            StyleTarget::Element(key) => (key, false),
+            StyleTarget::Part(key, _) => (key, true),
+        };
+        let previous = match target {
+            StyleTarget::Part(key, name) => self
+                .state
+                .motion
+                .part_styles
+                .get(&key)
+                .and_then(|s| s.get(name)),
+            _ => self.state.motion.styles.get(&key),
+        };
         let styled = |name: &str| {
-            crate::doc::motion::channels(name).is_none()
+            (part || crate::doc::motion::channels(name).is_none())
                 && interpolate::animatable(name)
                 && !name.starts_with("--")
         };
         let covered = |name: &str| transitions.iter().rev().find(|t| t.covers(name));
-        let has_styles = animations.iter().any(|a| {
-            self.docs
+        let keyframes = |name: &str| match sheet {
+            Some(sheet) => sheet
                 .keyframes
-                .get(&a.name)
-                .is_some_and(|k| !k.styles.is_empty())
+                .iter()
+                .find(|(n, _)| n == name.trim_start_matches('/'))
+                .map(|(_, k)| k),
+            None => self.docs.keyframes.get(name).map(Arc::as_ref),
+        };
+        let has_styles = animations.iter().any(|a| {
+            keyframes(&a.name).is_some_and(|k| {
+                k.styles.iter().any(|t| {
+                    interpolate::animatable(&t.property)
+                        && !t.property.starts_with("--")
+                        && (part || !scalar_track(k, &t.property))
+                })
+            })
         });
         let transitioned = transitions
             .iter()
-            .any(|t| t.channels == 0 || t.property == "all");
+            .any(|t| part || t.channels == 0 || t.property == "all");
         // The before-change style: last build's after-change values, or on
         // the first, `@starting-style`'s.
         let first =
@@ -96,6 +141,7 @@ impl Ui {
                     .map(|(n, v, _)| (n.clone(), v.clone()))
                     .collect(),
                 runs: Vec::new(),
+                animations: Vec::new(),
             });
         let previous = previous.or(first.as_ref());
         if previous.is_none() && !has_styles && !transitioned {
@@ -133,7 +179,7 @@ impl Ui {
                 .ok()?
                 .substitute(&mut |n| match computed.get(n) {
                     Some(v) => v.clone(),
-                    None => cascade::token(theme, n),
+                    None => None,
                 })
                 .ok()?;
             let v = if crate::doc::calc::per_element(name, &v) {
@@ -147,8 +193,9 @@ impl Ui {
                 Some(v)
             }
         };
+        let mut animation_runs = Vec::new();
         for (index, a) in animations.iter().enumerate() {
-            let Some(frames) = self.docs.keyframes.get(&a.name) else {
+            let Some(frames) = keyframes(&a.name) else {
                 continue;
             };
             if frames.styles.is_empty() {
@@ -161,13 +208,25 @@ impl Ui {
                     .iter()
                     .filter(|b| b.name == a.name)
                     .count() as u32;
-                let ticks = self
-                    .state
-                    .motion
-                    .css
+                let runs = if part {
+                    previous.map_or(&[][..], |p| p.animations.as_slice())
+                } else {
+                    &self.state.motion.css
+                };
+                let ticks = runs
                     .iter()
                     .find(|r| r.element == key && r.name == a.name && r.index == nth)
                     .map_or(0, |r| r.ticks + u64::from(r.stepped != now && !a.paused));
+                if part {
+                    animation_runs.push(crate::motion::css::CssRun {
+                        element: key,
+                        index: nth,
+                        name: a.name.clone(),
+                        ticks,
+                        stepped: now,
+                        last_ms: a.active_ms(ticks, tps),
+                    });
+                }
                 running |= !a.settled(ticks, tps, reduced);
                 a.sample_styles(
                     frames,
@@ -197,12 +256,17 @@ impl Ui {
                 )
             };
             for (name, value) in sampled {
-                set(&mut cascade.values, &name, value);
+                if part || !scalar_track(frames, &name) {
+                    set(&mut cascade.values, &name, value);
+                }
             }
         }
 
         // Transitions: from the before-change value to the after-change one.
-        let mut state = StyleState::default();
+        let mut state = StyleState {
+            animations: animation_runs,
+            ..Default::default()
+        };
         let mut names: BTreeSet<String> = cascade
             .values
             .iter()
@@ -305,9 +369,10 @@ impl Ui {
             }
         }
         running |= !state.runs.is_empty();
-        let keep = !state.after.is_empty() || !state.runs.is_empty();
+        let keep =
+            !state.after.is_empty() || !state.runs.is_empty() || !state.animations.is_empty();
         Some(Arc::new(StyleCommit {
-            key,
+            target,
             state: keep.then_some(state),
             running,
         }))
@@ -315,15 +380,28 @@ impl Ui {
 
     /// Keeps what [`Ui::animate_values`] found; a running element builds
     /// again next frame.
-    pub(super) fn commit_styles(&mut self, commit: &StyleCommit) {
-        match &commit.state {
-            Some(state) => {
-                if self.state.motion.styles.get(&commit.key) != Some(state) {
-                    self.state.motion.styles.insert(commit.key, state.clone());
+    pub(crate) fn commit_styles(&mut self, commit: &StyleCommit) {
+        match (commit.target, &commit.state) {
+            (StyleTarget::Part(key, name), Some(state)) => {
+                self.state
+                    .motion
+                    .part_styles
+                    .entry(key)
+                    .or_default()
+                    .insert(name.into(), state.clone());
+            }
+            (StyleTarget::Part(key, name), None) => {
+                if let Some(styles) = self.state.motion.part_styles.get_mut(&key) {
+                    styles.remove(name);
                 }
             }
-            None => {
-                self.state.motion.styles.remove(&commit.key);
+            (StyleTarget::Element(key), Some(state)) => {
+                if self.state.motion.styles.get(&key) != Some(state) {
+                    self.state.motion.styles.insert(key, state.clone());
+                }
+            }
+            (StyleTarget::Element(key), None) => {
+                self.state.motion.styles.remove(&key);
             }
         }
         if commit.running

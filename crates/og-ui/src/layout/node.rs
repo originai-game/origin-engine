@@ -495,6 +495,7 @@ pub(crate) struct Node {
     /// them for one frame (`Ui::layout_mutated`).
     pub authored_box: Option<(Size, Size, Insets)>,
     pub el: Element,
+    pub part_host: Option<std::sync::Arc<crate::doc::build::PartHost>>,
     pub content: Content,
     pub widget: Widget,
     /// The text the probe reports for it.
@@ -746,6 +747,7 @@ impl Node {
             gutter: 0.0,
             authored_box: None,
             el,
+            part_host: None,
             content: Content::None,
             widget: Widget::None,
             probe_text: String::new(),

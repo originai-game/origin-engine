@@ -138,13 +138,15 @@ fn spring(ms: f32, bounce: f32) -> Transition {
     Transition::Spring(crate::motion::SpringSpec::new(ms, bounce))
 }
 
-/// A selector's flags as `[a][b]`.
-fn flags(f: &[Option<&str>]) -> String {
-    f.iter()
-        .flatten()
-        .filter(|x| !x.is_empty())
-        .map(|x| format!("[{x}]"))
-        .collect()
+fn qualified_part(
+    selector: &str,
+    flags: &[Option<&str>],
+    class: ElementClass,
+) -> crate::dress::PartRef {
+    flags.iter().flatten().fold(
+        crate::dress::PartRef::parse(selector, class).expect("widget part selector"),
+        |part, flag| part.flag(crate::dress::intern(flag)),
+    )
 }
 
 /// A path's parent path (empty at the top).
@@ -510,7 +512,7 @@ impl Ui {
         let fills = [rest, tint(0.5), tint(1.0)];
         let mut fl = d.flags.clone();
         fl.push(ix.flag());
-        let part = format!("{}{}", d.part, flags(&fl));
+        let part = qualified_part(d.part, &fl, d.cls);
         let touch = self.touch_frame();
         let radius = d.radius.unwrap_or(self.theme.radius.control);
         self.open(
@@ -539,7 +541,7 @@ impl Ui {
                 // A transparent rest still has a fill for the states to move.
                 background: Some(rest.srgba()),
                 radius,
-                part: crate::dress::PartRef::parse(&part, d.cls).ok(),
+                part: Some(part),
                 ..Element::default()
             },
         );

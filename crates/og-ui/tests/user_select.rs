@@ -330,12 +330,14 @@ p::selection { color: #ff0000; }
         };
         match cmd {
             DrawCmd::Text { color, clip, .. } if near(*color, red) => red_clips.push(*clip),
-            DrawCmd::Quad { rect, .. }
-                if rect.x >= e.x - 1.0 && rect.right() <= e.x + e.width + 1.0 =>
-            {
-                fills.push(*rect)
+            _ => {
+                if let Some((rect, _)) = cmd.filled()
+                    && rect.x >= e.x - 1.0
+                    && rect.right() <= e.x + e.width + 1.0
+                {
+                    fills.push(rect);
+                }
             }
-            _ => {}
         }
     }
     // The fill: one band down the first column, the word's length.
@@ -365,10 +367,8 @@ p::selection { color: #ff0000; }
         .frame()
         .items
         .iter()
-        .filter_map(|it| match &it.cmd {
-            DrawCmd::Quad { rect, .. }
-                if rect.x >= j.x - 1.0 && rect.right() <= j.x + j.width + 1.0 =>
-            {
+        .filter_map(|it| match it.cmd.filled() {
+            Some((rect, _)) if rect.x >= j.x - 1.0 && rect.right() <= j.x + j.width + 1.0 => {
                 Some(rect.bottom())
             }
             _ => None,
@@ -426,12 +426,14 @@ p::selection { color: #ff0000; text-decoration: underline #00ff00; text-shadow: 
             // Where its own ink shows: its glyphs' box within its clip.
             DrawCmd::Text { clip, bounds, .. } => other_clips.push(bounds.intersect(clip)),
             DrawCmd::Quad { rect, color, .. } if near(*color, green) => lines.push(*rect),
-            DrawCmd::Quad { rect, .. }
-                if rect.x >= e.x - 1.0 && rect.right() <= e.x + e.width + 1.0 =>
-            {
-                fills.push(*rect)
+            _ => {
+                if let Some((rect, _)) = cmd.filled()
+                    && rect.x >= e.x - 1.0
+                    && rect.right() <= e.x + e.width + 1.0
+                {
+                    fills.push(rect);
+                }
             }
-            _ => {}
         }
     }
     assert_eq!(fills.len(), 1, "{fills:?}");

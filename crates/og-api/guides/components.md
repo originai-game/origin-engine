@@ -74,7 +74,6 @@ What every kind takes: its box, layout, paint, motion and input.
 | `overflow-x:` | `visible \| hidden \| clip \| scroll \| auto` | What its content past its left and right edges does: visible, hidden or clip (cut), scroll or auto (scrolls). |
 | `overflow-y:` | `visible \| hidden \| clip \| scroll \| auto` | What its content past its top and bottom edges does: visible, hidden or clip (cut), scroll or auto (scrolls). |
 | `scrollbar-width:` | `auto \| thin \| none` | CSS `scrollbar-width`: thin draws its scrollbars at half the width (a half-width grab strip); none hides them (it still scrolls). |
-| `-og-frame:` | `panel \| card \| button \| button-hover \| button-pressed \| button-disabled \| field \| slot \| tooltip \| hud \| track \| fill` | The style frame its background takes. |
 | `aspect-ratio:` | `<number>` | Width over height (0: none). |
 | `interactive` | `bool` | It reports clicks (`on click`). |
 | `focusable` | `bool` | With interactive: keys and pads reach it and press it. |

@@ -576,7 +576,7 @@ impl Ui {
                 radius: t.radius.small,
                 part: Some(
                     crate::dress::PartRef::new("Slot", "frame", crate::tokens::ElementClass::Slot)
-                        .flag_if(selected && !t.art.legacy, "selected"),
+                        .flag_if(selected, "selected"),
                 ),
                 ..Element::default()
             },
@@ -589,52 +589,14 @@ impl Ui {
         let p = &t.palette;
         let amounts = self.state_amounts(i, &r);
         let hover = p.panel_hover.fade(0.6).over(p.control.over(p.panel));
-        // A selected tile is lifted a step above a raised one: told apart
-        // by tone and lift, not only by its rim (docs/ui.md §6.3); a
-        // pack's is one step up, on `controlStrong`, with the accent
-        // hairline (dress::pack_grammar, the grammar of chips and tabs).
         let lifted = |k: f32| crate::ui::mix_srgba(p.selection, p.ink, k);
-        if t.art.legacy {
-            // A version 1 style's grammar, as its game shipped: the selected
-            // cell on `controlStrong` with a `primary` underline.
-            self.option_states(
-                i,
-                selected,
-                [p.control, p.control_strong],
-                [hover, p.control_strong],
-                [p.control_strong, p.control_strong],
-            );
-            if selected {
-                let w = t.space.xxs;
-                self.nodes[i].shapes.push(Shape::DressedRect {
-                    part: crate::dress::PartRef::of("Slot", "indicator", None).flag("selected"),
-                    frame: Frame {
-                        fw: 1.0,
-                        h: w,
-                        fy: 1.0,
-                        y: -w - t.space.xs,
-                        x: t.space.md,
-                        w: -2.0 * t.space.md,
-                        ..Frame::default()
-                    },
-                    radius: w,
-                    color: p.primary,
-                });
-            }
-        } else {
-            let step = if crate::dress::pack_grammar(&t) {
-                0.0
-            } else {
-                0.12
-            };
-            self.option_states(
-                i,
-                selected,
-                [p.control, lifted(step)],
-                [hover, lifted(step + 0.06)],
-                [p.control_strong, p.selection],
-            );
-        }
+        self.option_states(
+            i,
+            selected,
+            [p.control, lifted(0.12)],
+            [hover, lifted(0.18)],
+            [p.control_strong, p.selection],
+        );
         if let Some(part) = self.nodes[i].el.part.as_mut() {
             *part = part
                 .flag_if(r.pressed, "pressed")

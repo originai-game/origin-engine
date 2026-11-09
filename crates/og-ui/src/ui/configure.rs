@@ -1,8 +1,17 @@
 use super::*;
 
+static DEFAULT_PART_SHEET: std::sync::LazyLock<(
+    Vec<crate::doc::StyleRule>,
+    crate::doc::at_rules::Sheet,
+)> = std::sync::LazyLock::new(|| {
+    crate::doc::stylesheet::part_rules(crate::DEFAULT_CSS)
+        .expect("generated default CSS is checked by the theme drift test")
+});
+
 impl Ui {
     pub fn new(desc: UiDesc) -> Ui {
-        Ui {
+        let (part_rules, part_sheet) = DEFAULT_PART_SHEET.clone();
+        let mut ui = Ui {
             configured: desc.theme,
             theme: desc.theme,
             fonts: {
@@ -68,13 +77,13 @@ impl Ui {
             feedback: Vec::new(),
             haptics: 1.0,
             haptic_out: Vec::new(),
-            dress: std::sync::Arc::new(crate::dress::DressSet::new(
-                crate::style_file::theme_dressings(&desc.theme.art),
-            )),
-            dress_set: false,
-            part_rules: Vec::new(),
-            part_sheet: Default::default(),
+            part_rules,
+            part_sheet,
+            root_tokens: Vec::new(),
+            root_type_tokens: Default::default(),
+            part_commits: Default::default(),
             part_draws: Default::default(),
+            part_changed: Default::default(),
             decor_draws: Default::default(),
             clipboard: None,
             selected: Vec::new(),
@@ -102,7 +111,10 @@ impl Ui {
             reactive: Default::default(),
             actions: Default::default(),
             world: Default::default(),
-        }
+        };
+        ui.write_theme_tokens(desc.theme);
+        ui.read_theme_tokens();
+        ui
     }
 
     /// The icon atlas `icon` draws from.
@@ -352,38 +364,15 @@ impl Ui {
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
+        self.write_theme_tokens(theme);
         self.configured = theme;
         self.theme = effective_theme(theme, &self.viewport);
-        if !self.dress_set {
-            self.dress = std::sync::Arc::new(crate::dress::DressSet::new(
-                crate::style_file::theme_dressings(&theme.art),
-            ));
-        }
-    }
-
-    /// The style's part dressings (its [`crate::StyleFile::dressings`],
-    /// bound to its loaded assets): what every part of the UI is drawn
-    /// with where a dressing's selector matches it (docs/ui.md §3.2).
-    /// Until a game sets them the theme's version 1 art makes them, or for
-    /// a theme without art the default style's ([`crate::default_dressings`]).
-    pub fn set_dressings(&mut self, dressings: Vec<crate::dress::Dressing>) {
-        self.dress = std::sync::Arc::new(crate::dress::DressSet::new(dressings));
-        self.dress_set = true;
+        self.read_theme_tokens();
         self.kept.epoch += 1;
     }
 
-    /// The dressings in effect.
-    pub fn dressings(&self) -> &crate::dress::DressSet {
-        &self.dress
-    }
-
-    /// Gives the element open now (a grid's cell, a panel, a card) a
-    /// selector attribute its style dresses by: `ui.part_attr("rarity",
-    /// "epic")` in a bag's cell makes it `Slot.frame[rarity=epic]`. An
-    /// element without a part takes its version 1 frame's (a plain one, an
-    /// `Element.base`). Answers whether the style dresses the part by that
-    /// attribute (for any of its values), so a caller draws its own mark
-    /// only where the style tells the values apart with none.
+    /// Set a host attribute on the open element's part. Returns whether a
+    /// matching CSS rule tests that attribute.
     pub fn part_attr(&mut self, key: &str, value: &str) -> bool {
         let Some(&i) = self.stack.last() else {
             return false;
@@ -396,7 +385,13 @@ impl Ui {
         let tagged = part.attr(crate::dress::intern(key), crate::dress::intern(value));
         el.part = Some(tagged);
         el.frame = None;
-        self.dress.dresses_key(&tagged, key)
+        self.matching_part_rules(&tagged).iter().any(|rule| {
+            rule.structure.as_ref().is_some_and(|selector| {
+                selector.compounds.iter().flat_map(|compound| &compound.0).any(|simple| {
+                    matches!(simple, crate::doc::selectors::Simple::Attribute { name, .. } if name == key)
+                })
+            })
+        })
     }
 
     /// The player's haptic strength: 0 turns haptics off, 1 plays the
@@ -526,7 +521,9 @@ impl Ui {
             );
         }
         self.viewport = viewport;
-        self.theme = effective_theme(self.configured, &viewport).to_unit(unit);
+        self.theme = self.configured;
+        self.read_theme_tokens();
+        self.theme = effective_theme(self.theme, &viewport).to_unit(unit);
         // The style's atlas at the density this surface draws at.
         self.theme.art.atlas = self.configured.art.atlas_for(viewport.dpr());
         self.retire_nodes();

@@ -13,6 +13,7 @@ use super::schema::{self, PROPS, Ty};
 use super::{
     Act, DocNode, Lit, NodeKind, Paint, PropValue, StateValue, UiDocument, When, parse_probe_value,
 };
+use crate::Rect;
 use crate::bind::{Env, Scope, number, set_path, text, truthy};
 use crate::element::{Edges, GridFlow, GridPlace, GridSpec, LayoutMode, Position, Prop, Props};
 use crate::layout::{Align, Cross, Direction, Element, FontRole, Insets, NONE, Size, TextAlign};
@@ -76,7 +77,7 @@ pub(crate) struct Resolved {
     generated: Option<Arc<super::generated::Generated>>,
     /// Its transitions and animations of computed values, for the motion
     /// state ([`animate`]).
-    style: Option<Arc<animate::StyleCommit>>,
+    pub(crate) style: Option<Arc<animate::StyleCommit>>,
     /// Its box pseudo-elements ([`DocNode::pseudo`]), each resolved under
     /// it: the name, its node and its values.
     pseudo: Vec<(&'static str, usize, Arc<Resolved>)>,
@@ -87,6 +88,16 @@ pub(crate) struct Resolved {
     /// The part its `part` attribute names, with its classes and ARIA
     /// states as qualifiers ([`Ui::document_part`]).
     part: Option<crate::dress::PartRef>,
+    part_host: Option<Arc<PartHost>>,
+}
+
+/// Authored host facts shared by all parts of a document control.
+#[derive(Clone, Debug)]
+pub(crate) struct PartHost {
+    pub document: String,
+    pub tag: String,
+    pub attributes: BTreeMap<String, Value>,
+    pub computed: Arc<super::variables::Computed>,
 }
 
 #[derive(Clone)]
@@ -171,6 +182,24 @@ impl Resolved {
             _ => None,
         }
     }
+    pub(crate) fn part_rect(&self, rect: Rect, owner: Rect) -> Rect {
+        let extent = |name, current: f32, available: f32| match self.size(name) {
+            Some(Size::Fixed(n)) => n.max(0.0),
+            Some(Size::Percent(p)) => (available * p).max(0.0),
+            Some(Size::Calc(c)) => c.of(available).max(0.0),
+            Some(Size::Fit { min, max }) => current.clamp(min, max),
+            Some(Size::Grow { min, max }) => available.clamp(min, max),
+            _ => current,
+        };
+        let width = extent("width", rect.width, owner.width);
+        let height = extent("height", rect.height, owner.height);
+        Rect::new(
+            rect.x + (rect.width - width) / 2.0 + self.num("x").unwrap_or(0.0),
+            rect.y + (rect.height - height) / 2.0 + self.num("y").unwrap_or(0.0),
+            width,
+            height,
+        )
+    }
     fn nums(&self, name: &str) -> Option<&[f32]> {
         match self.get(name)? {
             V::Nums(n) => Some(n),
@@ -237,10 +266,6 @@ fn lit(ui: &Ui, l: &Lit) -> Option<V> {
     Some(match l {
         Lit::Num(n) => V::Num(f64::from(*n)),
         Lit::Nums(n) => V::Nums(n.clone()),
-        Lit::Lengths(ty, vals) => {
-            let vals = super::resolve_lengths(vals, ui.theme()).ok()?;
-            return lit(ui, &super::parse_lit(*ty, &vals).ok()?);
-        }
         Lit::Bool(b) => V::Bool(*b),
         Lit::Str(s) => V::Str(s.clone()),
         Lit::Size(s) => V::Size(*s),
@@ -526,26 +551,24 @@ impl Build<'_> {
 }
 
 impl Ui {
-    /// Whether a loaded document's `@font-face` declares family `name`
-    /// (a `font-family` list takes the first one that is).
+    /// Whether a family is installed, rather than merely declared in CSS.
     pub(crate) fn family_declared(&self, name: &str) -> bool {
-        self.docs.docs.values().any(|d| {
-            d.sheet
-                .font_faces
-                .iter()
-                .any(|f| f.family.eq_ignore_ascii_case(name))
-        })
+        self.fonts
+            .families
+            .iter()
+            .any(|f| f.family.eq_ignore_ascii_case(name))
     }
 
-    /// The part an element's `part` attribute names (docs/ui.md §3.2), as a
-    /// style's selector reads it: `part="Killfeed.row"` with `class:self`
-    /// is `Killfeed::row.self`, its `aria-selected` `:selected` and its
-    /// `aria-pressed` or `aria-checked` `:checked`. A control keeps its own
-    /// states and variant ([`Ui::apply`] merges them), so a kit's
-    /// `<button part="Loadout.item">` is `Loadout::item:hover` when hovered.
+    /// An exposed part belongs to the authored markup host. Classes and
+    /// attributes qualify that host; widget interaction states are merged
+    /// when the control is built.
     fn document_part(r: &Resolved, n: &DocNode, b: &Build<'_>) -> Option<crate::dress::PartRef> {
         use crate::dress::intern;
-        let mut part = crate::dress::PartRef::parse(r.str("part")?, None).ok()?;
+        let mut part = crate::dress::PartRef::of(
+            intern(n.selector_tag.as_deref()?),
+            intern(r.str("part")?),
+            None,
+        );
         for (name, e) in &n.selector_attrs {
             if name == "class" {
                 if let Value::String(s) = b.eval(e) {
@@ -557,6 +580,11 @@ impl Ui {
                 && truthy(&b.eval(e))
             {
                 part = part.flag(intern(c));
+            } else if !name.starts_with("class:") {
+                let value = b.eval(e);
+                if !value.is_null() && value != Value::Bool(false) {
+                    part = part.attr(intern(name), intern(&crate::bind::text(&value)));
+                }
             }
         }
         Some(
@@ -567,14 +595,6 @@ impl Ui {
 
     /// Apply a part's presentation with the same values documents use.
     pub(crate) fn apply_part_appearances(&mut self) {
-        if !self
-            .dress
-            .dressings()
-            .iter()
-            .any(|d| !d.draw.appearance.is_empty() || d.draw.ink.is_some() || d.draw.step.is_some())
-        {
-            return;
-        }
         for k in 0..self.emitted.len() {
             self.apply_part_appearance(self.emitted[k]);
         }
@@ -588,31 +608,18 @@ impl Ui {
         else {
             return;
         };
-        let draw = self.dress.resolve(&part).draw;
-        if draw.appearance.is_empty() && draw.ink.is_none() && draw.step.is_none() {
-            return;
-        }
-        let r = Resolved {
-            vals: draw
-                .appearance
-                .iter()
-                .filter_map(|(index, value)| lit(self, value).map(|v| (*index, v)))
-                .collect(),
-            ..Default::default()
+        let r = self.part_values(&part, Some(self.nodes[i].key));
+        let step = match &self.nodes[i].content {
+            crate::layout::Content::Text(text) => r.part_type(&self.theme, text.step),
+            _ => self.theme.type_ramp.body,
         };
-        let mut ramp = self.theme.type_ramp;
-        // A text part's `ink` and `step` (`-og-ink`, `-og-step`) dress its
-        // text where its appearance sets no `color` or `step` of its own.
-        let step = r
-            .str("step")
-            .or(draw.step)
-            .and_then(|name| crate::style_file::ramp_step(&mut ramp, name).copied());
-        let ink = r
-            .color("color")
-            .or_else(|| draw.ink.as_ref().and_then(|ink| ink.srgb(&self.theme)));
-        let em = step.map_or(self.theme.type_ramp.body.size, |s| s.size);
+        let ink = r.color("color");
+        let em = step.size;
         let n = &mut self.nodes[i];
         n.el = Self::box_of(&r, n.el, em);
+        if let Some(radius) = n.decor.as_ref().and_then(|d| d.radius) {
+            n.el.radius = radius;
+        }
         if let Some(x) = r.num("x") {
             n.props.transform.x = x;
         }
@@ -625,9 +632,6 @@ impl Ui {
         if let Some(y) = r.num("yShift") {
             n.props.transform.shift_y = y;
         }
-        if let Some(opacity) = r.num("opacity") {
-            n.props.opacity = opacity.clamp(0.0, 1.0);
-        }
         if let Some(V::Transition(t)) = r.get("motion") {
             n.props.motion = Some(*t);
         }
@@ -635,9 +639,7 @@ impl Ui {
             if let Some(color) = ink {
                 text.color = color;
             }
-            if let Some(step) = step {
-                text.step = step;
-            }
+            text.step = step;
         }
     }
 
@@ -668,6 +670,13 @@ impl Ui {
         inherited: &super::variables::Computed,
         structure: &mut dyn FnMut(&super::selectors::Selector) -> bool,
     ) -> Resolved {
+        let root_variables;
+        let inherited = if inherited.is_empty() {
+            root_variables = self.css_root_variables();
+            root_variables.as_ref()
+        } else {
+            inherited
+        };
         let mut r = Resolved::default();
         let vp = self.viewport();
         let context = self.media_context();
@@ -776,7 +785,6 @@ impl Ui {
         let options = cascade::Options {
             inline: &inline,
             inherited,
-            theme: self.theme(),
             basis: Some(basis),
             attr: &attr,
             sheet: Some(&b.doc.sheet),
@@ -882,12 +890,13 @@ impl Ui {
         }
         // Transitions and animations of computed values, over the winners.
         r.style = self.animate_values(
-            key,
+            animate::StyleTarget::Element(key),
             &mut r.cascade,
             &r.starting,
             &r.transitions,
             &r.animations,
             basis,
+            None,
         );
         let dir = attr("dir");
         r.flow = cascade::flow(
@@ -955,6 +964,14 @@ impl Ui {
             }
         }
         r.part = Self::document_part(&r, n, b);
+        r.part_host = n.selector_tag.as_ref().map(|tag| {
+            Arc::new(PartHost {
+                document: b.doc.name.clone(),
+                tag: tag.clone(),
+                attributes: structure::selector_facts(n, |e| b.eval(e)),
+                computed: r.cascade.computed.clone(),
+            })
+        });
         if let Some(V::Spans(Ok(spans))) = r.get("spans") {
             let rules: Vec<_> = n
                 .span_rules
@@ -1395,9 +1412,6 @@ impl Ui {
         }
         if let Some(x) = r.num("radius") {
             el.radius = x;
-        }
-        if let Some(f) = r.str("frame") {
-            el.frame = crate::style_file::StylePart::from_name(f);
         }
         if let Some(a) = r.num("aspect") {
             el.aspect = a;
@@ -1977,6 +1991,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 }
 
 mod animate;
+pub(crate) use animate::StyleCommit;
 pub mod cascade;
 mod color;
 mod containers;

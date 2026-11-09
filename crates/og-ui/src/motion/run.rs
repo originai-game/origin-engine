@@ -1133,6 +1133,8 @@ impl Ui {
             .retain(|k, _| tree.by_key.contains_key(k));
         // Transitions of computed values outlive no element.
         m.styles.retain(|k, _| self.tree.by_key.contains_key(k));
+        m.part_styles
+            .retain(|k, _| self.tree.by_key.contains_key(k));
         m.bursts.extend(css_bursts);
         for ev in &css_events {
             if let Some(s) = crate::style_file::UiSound::from_name(&ev.name) {

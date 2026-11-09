@@ -52,7 +52,7 @@
 @media (height < 600px) and (orientation: landscape) {
 #Continue { -og-control-size: medium; }
 }
-#SaveLine { font: var(--text-caption); color: var(--ink-muted); }
+#SaveLine { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #NewGame { width: stretch; }
 @media (height < 600px) and (orientation: landscape) {
 #NewGame { -og-control-size: medium; }
@@ -68,7 +68,7 @@
 #Credits { width: stretch; }
 #Quit { width: stretch; }
 #Extra { width: stretch; }
-#News { position: absolute; inset-inline-end: 32px; bottom: 32px; padding: 16px; gap: 4px; background: var(--panel-raised); -og-frame: card; }
+#News { position: absolute; inset-inline-end: 32px; bottom: 32px; padding: 16px; gap: 4px; background: var(--panel-raised); border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; }
 @media (width < 600px), (height < 600px) {
 #News { display: none; }
 }
@@ -76,7 +76,7 @@
 #News:hover { translate: 0 -2px; }
 #News:active { translate: 0 0; }
 #News:focus-visible { translate: 0 -2px; }
-#Eyebrow { font: var(--text-caption); color: var(--primary); }
-#Line { font: var(--text-lg); line-clamp: 2; }
-#Version { font: var(--text-caption); color: var(--ink-muted); position: absolute; inset-inline-start: 16px; bottom: 12px; }
+#Eyebrow { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--primary); }
+#Line { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); line-clamp: 2; }
+#Version { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); position: absolute; inset-inline-start: 16px; bottom: 12px; }
 </style>
