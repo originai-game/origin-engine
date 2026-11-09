@@ -2705,8 +2705,20 @@ pub fn og_engine_probe_hello(engine_probe: u32) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_engine_probe_capture(engine_probe: u32, width: Option<u32>, height: Option<u32>) -> String {
-    <Host as ProbeApi>::og_engine_probe_capture(&Host, engine_probe, width, height)
+pub fn og_engine_probe_capture(engine_probe: u32, width: Option<u32>, height: Option<u32>, fit: Option<u32>, region: Option<String>) -> String {
+    <Host as ProbeApi>::og_engine_probe_capture(&Host, engine_probe, width, height, fit, region)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_marks(engine_probe: u32, desc: Option<String>) -> String {
+    <Host as ProbeApi>::og_engine_probe_marks(&Host, engine_probe, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_timeline(engine_probe: u32) -> String {
+    <Host as ProbeApi>::og_engine_probe_timeline(&Host, engine_probe)
 }
 
 #[cfg(not(feature = "publish"))]

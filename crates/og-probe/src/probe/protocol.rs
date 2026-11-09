@@ -304,7 +304,7 @@ impl Probe {
 
     /// `input`: one event through the input layer's own path.
     pub fn input(&mut self, world: &mut World, event: &InjectedInput) -> bool {
-        self.deliver(world, event)
+        self.input_at(world, event, 0.0)
     }
 
     /// `input` with the event's time within the tick that reads it (IDL
@@ -314,6 +314,8 @@ impl Probe {
         self.stamp = at;
         let accepted = self.deliver(world, event);
         self.stamp = 0.0;
+        self.timeline
+            .input(world.time().tick, &event.to_json(), accepted);
         accepted
     }
 
@@ -505,14 +507,56 @@ impl Probe {
     // ---- the engine's wire members ----------------------------------------
 
     /// `capture`: the frame at the current tick; `None` without a renderer.
-    pub fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Value> {
+    pub fn capture(
+        &mut self,
+        world: &World,
+        width: u32,
+        height: u32,
+        fit: u32,
+        region: Option<[f32; 4]>,
+    ) -> Option<Value> {
         let frame = self.capture.as_mut()?.capture(world, width, height)?;
+        // The rendered size answers as is: no decode, no encode.
+        if region.is_none() && crate::frame::Rgba::fit_scale(frame.width, frame.height, fit) >= 1.0
+        {
+            return Some(json!({
+                "tick": world.time().tick,
+                "width": frame.width,
+                "height": frame.height,
+                "scale": self.surface_scale(world, frame.width),
+                "region": Value::Null,
+                "png": base64::encode(&frame.png),
+            }));
+        }
+        let image = crate::frame::decode_png(&frame.png).ok()?;
+        let mut scale = self.surface_scale(world, image.width);
+        let image = match region {
+            Some([x, y, w, h]) => {
+                let r =
+                    crate::frame::PixelRect::clipped(x, y, w, h, scale, image.width, image.height)?;
+                image.crop(r)
+            }
+            None => image,
+        };
+        let fitted = image.fit(fit);
+        scale *= fitted.width as f32 / image.width as f32;
         Some(json!({
             "tick": world.time().tick,
-            "width": frame.width,
-            "height": frame.height,
-            "png": base64::encode(&frame.png),
+            "width": fitted.width,
+            "height": fitted.height,
+            "scale": scale,
+            "region": region.map(|[x, y, w, h]| json!({ "x": x, "y": y, "width": w, "height": h })),
+            "png": base64::encode(&fitted.png()),
         }))
+    }
+
+    /// Frame pixels per CSS pixel of the play surface for a frame
+    /// `width` pixels wide: 1 without a UI module that knows the surface.
+    pub(crate) fn surface_scale(&self, world: &World, width: u32) -> f32 {
+        match self.ui.as_ref().and_then(|u| u.surface(world)) {
+            Some((w, _, _)) if w > 0.0 => width as f32 / w,
+            _ => 1.0,
+        }
     }
 
     fn save(&mut self, world: &World) -> Saved {

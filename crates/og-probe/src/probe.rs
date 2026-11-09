@@ -2,7 +2,13 @@
 //! command channel's execution, over a world the host owns and passes in.
 
 mod actions;
+#[cfg(not(feature = "publish"))]
+mod marks;
 mod protocol;
+mod timeline;
+
+#[cfg(not(feature = "publish"))]
+pub use marks::MarksDesc;
 
 use crate::assertions::Assertions;
 use crate::base64;
@@ -87,6 +93,8 @@ pub const MEMBERS: &[&str] = &[
     "assertion_events",
     "observe",
     "pick_ui",
+    "marks",
+    "timeline",
 ];
 
 /// The player-facing members a `publish` build keeps.
@@ -223,6 +231,8 @@ pub struct Probe {
     pub(crate) reader: Option<ReaderFn>,
     /// Expectations evaluated since the host last took them.
     pub(crate) expectations: Vec<ExpectResult>,
+    /// The run's events since `timeline` last read them ([`timeline::Recorder`]).
+    pub(crate) timeline: timeline::Recorder,
     /// The run's assertions: the game's, the default invariants' and the
     /// script's `invariant:` steps' (shared with the host, which records
     /// the game's calls while a system runs).
@@ -499,6 +509,7 @@ impl Probe {
             scene_writer: None,
             reader: None,
             expectations: Vec::new(),
+            timeline: timeline::Recorder::default(),
             assertions: Rc::default(),
             invariants: Vec::new(),
             quiet: false,
@@ -1136,6 +1147,11 @@ impl Probe {
         }
         #[cfg(not(feature = "publish"))]
         self.check_invariants(world, ran);
+        #[cfg(not(feature = "publish"))]
+        if let Some(ui) = self.ui.as_ref() {
+            let screens = ui.screens(world);
+            self.timeline.screens(world.time().tick, screens);
+        }
         Ok(())
     }
 
@@ -1184,6 +1200,7 @@ impl Probe {
 
     fn execute(&mut self, world: &mut World, step: CommandStep) {
         let tick = world.time().tick;
+        self.timeline.step(tick, &step);
         let result = self.action(world, &step);
         if let Err(reason) = result {
             self.note(

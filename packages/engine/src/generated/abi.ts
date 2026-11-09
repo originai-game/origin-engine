@@ -1082,7 +1082,11 @@ export interface HostAbi<A, V> {
   /** `EngineProbe.hello` */
   og_engine_probe_hello(engine_probe: number): string;
   /** `EngineProbe.capture` */
-  og_engine_probe_capture(engine_probe: number, width: number | undefined, height: number | undefined): string;
+  og_engine_probe_capture(engine_probe: number, width: number | undefined, height: number | undefined, fit: number | undefined, region: string | undefined): string;
+  /** `EngineProbe.marks` */
+  og_engine_probe_marks(engine_probe: number, desc: string | undefined): string;
+  /** `EngineProbe.timeline` */
+  og_engine_probe_timeline(engine_probe: number): string;
   /** `EngineProbe.sweep` */
   og_engine_probe_sweep(engine_probe: number, desc: string | undefined): string;
   /** `EngineProbe.reload` */
@@ -1777,6 +1781,8 @@ export const SYMBOLS: readonly string[] = [
   "og_runtime_probe_run",
   "og_engine_probe_hello",
   "og_engine_probe_capture",
+  "og_engine_probe_marks",
+  "og_engine_probe_timeline",
   "og_engine_probe_sweep",
   "og_engine_probe_reload",
   "og_engine_probe_snapshot",

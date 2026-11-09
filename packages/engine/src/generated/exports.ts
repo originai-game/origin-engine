@@ -193,6 +193,7 @@ export const PROBE_WIRE_VERSION: typeof Api.PROBE_WIRE_VERSION = 1;
 export const REPLAY_SEED_PARAM: typeof Api.REPLAY_SEED_PARAM = "replay-seed";
 export const PLAYTEST_MAX_TICKS: typeof Api.PLAYTEST_MAX_TICKS = 3600;
 export const PROBE_PROGRAM_MAX_OPERATIONS: typeof Api.PROBE_PROGRAM_MAX_OPERATIONS = 256;
+export const CAPTURE_FIT: typeof Api.CAPTURE_FIT = 1280;
 
 // terrain
 export const TerrainData = ((value = 0 as Api.TerrainData, options) => spec("TerrainData", value, options)) as typeof Api.TerrainData;

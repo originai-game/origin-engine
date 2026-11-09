@@ -117,7 +117,7 @@ const INSTALL_DISMISSED = "og-install-dismissed";
 const MEMBERS = [
   "hello", "tick", "state", "advance", "pause", "resume", "input", "accepted", "pick", "entity",
   "bounds", "patch", "run", "capture", "sweep", "reload", "snapshot", "restore", "dump", "commands",
-  "describe", "expect", "expectations",
+  "describe", "expect", "expectations", "marks", "timeline",
 ] as const;
 
 /** Positional protocol-5 arguments to JSON-RPC params, as og-probe reads them. */
@@ -138,7 +138,9 @@ export function probeParams(member: string, args: unknown[]): Record<string, unk
     case "run":
       return { program: args[0] };
     case "capture":
-      return { width: args[0] ?? 0, height: args[1] ?? 0 };
+      return { width: args[0] ?? 0, height: args[1] ?? 0, ...(args[2] === undefined ? {} : { fit: args[2] }), ...(args[3] == null ? {} : { region: args[3] }) };
+    case "marks":
+      return (args[0] as Record<string, unknown> | undefined) ?? {};
     case "commands":
       return { script: args[0] };
     case "expect":

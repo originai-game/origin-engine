@@ -52,7 +52,14 @@ module probe {
 | [`ProbeProgramResult`](probe/type-ProbeProgramResult.md) | struct |  | What a program observed: one answer per operation that ran. |
 | [`Hello`](probe/type-Hello.md) | struct |  | The wire's hello: who is speaking. |
 | [`BuildProfile`](probe/type-BuildProfile.md) | enum |  | The build configuration; publish builds keep only the player-facing probe members. |
+| [`CAPTURE_FIT`](#const-CAPTURE_FIT) | constant |  | The long side capture, marks and key frames fit an image to unless asked otherwise: a whole frame a model reads in few tokens; a detail is cut at full resolution as its own image (capture's region). |
 | [`Capture`](probe/type-Capture.md) | struct |  | A captured frame. |
+| [`MarkRect`](probe/type-MarkRect.md) | struct |  | A mark's box in the PNG's pixels. |
+| [`Mark`](probe/type-Mark.md) | struct |  | One numbered box of a marked capture (Set-of-Mark): what it is and where a person would change it. |
+| [`MarksDesc`](probe/type-MarksDesc.md) | desc struct |  | What marks draws: the capture's size and fit, which kinds it marks and how many. |
+| [`MarkedCapture`](probe/type-MarkedCapture.md) | struct |  | A capture with numbered boxes drawn over its UI elements and entities, and what each number is. |
+| [`RunEvent`](probe/type-RunEvent.md) | struct |  | One thing that happened in a run, at its tick. |
+| [`RunTimeline`](probe/type-RunTimeline.md) | struct |  | What happened since the last timeline call, in order. |
 | [`Heard`](probe/type-Heard.md) | struct |  | What the host's mixer rendered last: the audio up to the current tick. |
 | [`ProbeHeap`](probe/type-ProbeHeap.md) | struct |  | The engine's allocator, counted (both hosts install a counting global allocator). |
 | [`ProbeWorldMemory`](probe/type-ProbeWorldMemory.md) | struct |  | The world's size. |
@@ -102,6 +109,7 @@ module probe {
 | <a id="const-REPLAY_SEED_PARAM"></a>`REPLAY_SEED_PARAM` | `string` | `"replay-seed"` | The page query parameter that starts a deterministic replay from a uint32 seed. |
 | <a id="const-PLAYTEST_MAX_TICKS"></a>`PLAYTEST_MAX_TICKS` | `number` | `3600` | The longest playtest one request may advance, in fixed steps. |
 | <a id="const-PROBE_PROGRAM_MAX_OPERATIONS"></a>`PROBE_PROGRAM_MAX_OPERATIONS` | `number` | `256` | The most operations one probe program may carry. |
+| <a id="const-CAPTURE_FIT"></a>`CAPTURE_FIT` | `number` | `1280` | The long side capture, marks and key frames fit an image to unless asked otherwise: a whole frame a model reads in few tokens; a detail is cut at full resolution as its own image (capture's region). |
 
 ```ogt
 const PROBE_GLOBAL String "__runtime_probe__" "The global the page publishes the probe on."
@@ -138,3 +146,9 @@ const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe progra
 ```
 
 <sub>Module `probe` line 12</sub>
+
+```ogt
+const CAPTURE_FIT u32 1280 "The long side capture, marks and key frames fit an image to unless asked otherwise: a whole frame a model reads in few tokens; a detail is cut at full resolution as its own image (capture's region)."
+```
+
+<sub>Module `probe` line 173</sub>

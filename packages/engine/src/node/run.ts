@@ -286,7 +286,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     cleanup.push(() => engine.destroy());
     // The tick's capture as the failure capture's frame.rgba: width and height (u32 LE), then RGBA8 rows.
     const captureRgba = (): Uint8Array => {
-      const c = (engine.probe as unknown as { capture(w: number, h: number): { png: string } | null }).capture(0, 0);
+      const c = (engine.probe as unknown as { capture(w: number, h: number, fit: number): { png: string } | null }).capture(0, 0, 0);
       if (!c) return new Uint8Array();
       const img = decodePng(Uint8Array.from(atob(c.png), (ch) => ch.charCodeAt(0)));
       const out = new Uint8Array(8 + img.rgba.length);

@@ -170,12 +170,98 @@ module probe {
     variant publish "A published game: hello, tick, state, pick, entity, input and capture only."
   }
 
+  const CAPTURE_FIT u32 1280 "The long side capture, marks and key frames fit an image to unless asked otherwise: a whole frame a model reads in few tokens; a detail is cut at full resolution as its own image (capture's region)."
+
   struct Capture {
     doc "A captured frame."
     field tick u32 "The tick the frame shows."
     field width u32 "Width in pixels."
     field height u32 "Height in pixels."
+    field scale f32 "The PNG's pixels per CSS pixel of the play surface: a point of pick or touch_move_to is (x / scale, y / scale) of the image's pixel, offset by region's corner." {
+      default 1
+    }
+    field region Option.ScreenBox "The box of the play surface the PNG shows (CSS px); null for the whole frame."
     field png String "The PNG, base64."
+  }
+
+  struct MarkRect {
+    doc "A mark's box in the PNG's pixels."
+    field x u32 "Left edge." {
+      unit px
+    }
+    field y u32 "Top edge." {
+      unit px
+    }
+    field width u32 "Width." {
+      unit px
+    }
+    field height u32 "Height." {
+      unit px
+    }
+  }
+
+  struct Mark {
+    doc "One numbered box of a marked capture (Set-of-Mark): what it is and where a person would change it."
+    field n u32 "Its number on the image, from 1."
+    field kind String "`ui` for a UI element, `entity` for a scene entity."
+    field id String "The element's id, or the entity's probe id."
+    field path String "The element's full path (as dump_ui, pickUi and touch_move_to name it), or the entity's probe id."
+    field what String "The element's kind (`button`, `label`, a kit's own), or what draws the entity (describe's labels, comma-separated)."
+    field text String "The text the element shows, or the entity's name; empty for none."
+    field rect MarkRect "Its box on the image."
+    field point ScreenPoint "A point of the play surface on it, for pick, pickUi or touch_move_to: the element's centre, or a visible point of the entity (describe's point)."
+    field source Option.String "Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), or the scene line that declares the entity (`scenes/main.ogt:12`); null for code-built UI and spawned entities."
+    field part Option.String "The style part the element is drawn as (`Button.base[primary]`); null for an entity or an element no style dresses."
+    field rule Option.UiPickRule "The most specific style rule that dresses the element; null when none does."
+    field depth Option.f32 "The entity's distance from the camera to its nearest visible point; null for an element." {
+      unit m
+    }
+  }
+
+  struct MarksDesc {
+    doc "What marks draws: the capture's size and fit, which kinds it marks and how many."
+    desc true
+    field width u32 "Width in pixels; 0 is the render target's."
+    field height u32 "Height in pixels; 0 is the render target's."
+    field fit u32 "The longest side the PNG may have; 0 keeps the rendered size." {
+      default 1280
+    }
+    field ui bool "Mark the UI elements." {
+      default true
+    }
+    field entities bool "Mark the scene entities." {
+      default true
+    }
+    field max u32 "The most marks drawn; the rest are counted in omitted." {
+      default 64
+    }
+  }
+
+  struct MarkedCapture {
+    doc "A capture with numbered boxes drawn over its UI elements and entities, and what each number is."
+    field tick u32 "The tick the frame shows."
+    field width u32 "Width in pixels."
+    field height u32 "Height in pixels."
+    field scale f32 "The PNG's pixels per CSS pixel of the play surface."
+    field png String "The PNG with the marks drawn, base64."
+    field marks List.Mark "Each number on the image: the UI elements first in reading order (top to bottom, then left to right), then the entities nearest first."
+    field omitted u32 "Marks left out beyond max."
+  }
+
+  struct RunEvent {
+    doc "One thing that happened in a run, at its tick."
+    field tick u32 "The tick it happened at (og.Time.tick)."
+    field kind String "`input` (an event through the probe's input), `step` (a command channel step that ran), `screen` (the UI's screen stack changed), `assertion` (an assertion site's first firing, an each-bucket's first holding or a first violation) or `expect` (an expectation evaluated)."
+    field what String "A line a reader skims: `pointer down 320,180`, `tap:Play`, `title > shop`, `violation hp-positive`, `fail state:started==true`."
+    field detail Json "The whole of it: the input event, the step's action and args, the screens before and after, the assertion event, the ExpectResult."
+  }
+
+  struct RunTimeline {
+    doc "What happened since the last timeline call, in order."
+    field tick u32 "The tick now."
+    field screens List.String "The UI's screen stack now, bottom first; empty without screens."
+    field events List.RunEvent "The events, in the order they happened (at most 4,096 between calls)."
+    field dropped u32 "Events beyond 4,096 between calls, not kept."
   }
 
   struct Heard {
@@ -659,7 +745,9 @@ module probe {
       doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
       doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
       doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
-      aliases "screenshot, take a screenshot, grab the screen, frame capture"
+      doc "Fit rule: a PNG whose long side exceeds fit is downscaled to it with the aspect kept, each pixel the mean of the area it covers (CAPTURE_FIT, 1280, by default: the size a model reads a whole frame at); 0 keeps the rendered size, as a reference frame needs."
+      doc "Region: a box of the play surface (CSS px) cut from the rendered frame before fitting, so a detail comes at full resolution as its own image; scale and region map its pixels back to the surface."
+      aliases "screenshot, take a screenshot, grab the screen, frame capture, crop, zoom"
       publish true
       param width u32 "Width in pixels; 0 is the render target's." {
         default 0
@@ -667,7 +755,27 @@ module probe {
       param height u32 "Height in pixels; 0 is the render target's." {
         default 0
       }
-      returns Option.Capture "Null without a renderer."
+      param fit u32 "The longest side the PNG may have; 0 keeps the rendered size." {
+        default 1280
+      }
+      param region Option.ScreenBox "A box of the play surface to cut out (CSS px); null is the whole frame." {
+        optional true
+      }
+      returns Option.Capture "Null without a renderer, or for a region outside the surface."
+    }
+    fn marks {
+      doc "The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick or touch it at, and the document or scene line that made it, with the style part and rule of an element. A reviewer names a number; the map says where to change it."
+      doc "The elements are those pickUi answers (they show something or take input) inside the surface, an element and an ancestor of the same box (within a CSS pixel) marked once, as the one that takes input or else the topmost; a backdrop that covers the whole surface and takes no input is not boxed. The entities are describe's, the main camera's, nearest first. The image follows capture's size and fit rules; the marks are drawn at the fitted size, so the numbers stay legible."
+      doc "On the web it waits for its readback as capture does."
+      aliases "set of mark, set-of-mark, som, annotated screenshot, labelled screenshot, numbered boxes"
+      param desc MarksDesc "The size, the fit, what to mark and how many." {
+        flatten true
+      }
+      returns Option.MarkedCapture "Null without a renderer."
+    }
+    fn timeline {
+      doc "What happened in the run since the last call, each with its tick: inputs, command steps, screen changes, assertion firings and expectations. A tool that records or steps a run reads it to pick the frames where something happened (og render --keyframes) and to sync them to ticks."
+      returns RunTimeline
     }
     fn sweep {
       doc "A filmstrip over one tunable: per value, restore, patch, advance, capture."

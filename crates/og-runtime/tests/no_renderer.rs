@@ -279,8 +279,17 @@ fn without_a_renderer_the_run_is_the_same_and_its_frames_are_unchecked() {
         raw(og_engine_probe_hello(with.engine))["tier"],
         json!("test")
     );
-    assert_eq!(og_engine_probe_capture(without.engine, None, None), "null");
-    let frame = raw(og_engine_probe_capture(with.engine, Some(4), Some(4)));
+    assert_eq!(
+        og_engine_probe_capture(without.engine, None, None, None, None),
+        "null"
+    );
+    let frame = raw(og_engine_probe_capture(
+        with.engine,
+        Some(4),
+        Some(4),
+        None,
+        None,
+    ));
     assert_eq!(frame["width"], json!(4));
 }
 

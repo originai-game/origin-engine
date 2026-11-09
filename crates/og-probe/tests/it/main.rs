@@ -1,3 +1,5 @@
+#[path = "../captures.rs"]
+mod captures;
 #[path = "../commands.rs"]
 mod commands;
 #[path = "../conformance.rs"]

@@ -1607,8 +1607,16 @@ impl ProbeApi for WebHost {
         engine_probe: u32,
         width: Option<u32>,
         height: Option<u32>,
+        fit: Option<u32>,
+        region: Option<String>,
     ) -> String {
-        rt::og_engine_probe_capture(engine_probe, width, height)
+        rt::og_engine_probe_capture(engine_probe, width, height, fit, region)
+    }
+    fn og_engine_probe_marks(&self, engine_probe: u32, desc: Option<String>) -> String {
+        rt::og_engine_probe_marks(engine_probe, desc)
+    }
+    fn og_engine_probe_timeline(&self, engine_probe: u32) -> String {
+        rt::og_engine_probe_timeline(engine_probe)
     }
     fn og_engine_probe_sweep(&self, engine_probe: u32, desc: Option<String>) -> String {
         rt::og_engine_probe_sweep(engine_probe, desc)

@@ -167,6 +167,8 @@ pub struct Assertions {
     /// each site's first violation, in the order they happened, until read.
     events: Vec<Value>,
     events_dropped: u64,
+    /// The same stream for the probe's run timeline, read on its own.
+    timeline: Vec<Value>,
 }
 
 impl Assertions {
@@ -329,11 +331,20 @@ impl Assertions {
     }
 
     fn push_event(&mut self, e: Value) {
+        if self.timeline.len() < MAX_EVENTS {
+            self.timeline.push(e.clone());
+        }
         if self.events.len() < MAX_EVENTS {
             self.events.push(e);
         } else {
             self.events_dropped += 1;
         }
+    }
+
+    /// The stream's events since the run timeline last read them
+    /// (`Probe::timeline`), apart from `take_events`' reads.
+    pub(crate) fn take_timeline(&mut self) -> Vec<Value> {
+        std::mem::take(&mut self.timeline)
     }
 
     /// The stream since the last read (IDL `assert.AssertEvents`): every

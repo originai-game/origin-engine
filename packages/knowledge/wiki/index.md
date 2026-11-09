@@ -63,6 +63,7 @@ Workflow, thresholds and pitfalls no signature states, written by hand beside th
 | [`animation`](guide-animation.md) | Motion in an Origin Engine game. Clips and animation graphs, og.motion's generated humanoid motion and why it is presentation only, tweens and timelines, and the timings that make actions read. |
 | [`art-review`](guide-art-review.md) | Art judgment for an Origin Engine game. Choosing the style from the premise, requesting every asset through the art brief, the cook's conformance, and reviewing frames and models with measured thresholds. The engine measures; this guide says what is good enough. |
 | [`assets`](guide-assets.md) | `og assets` searches the cooked asset inventory for reusable assets, unused outputs, dependencies, and duplicate content. `og cook` writes the inventory to `cooked/.assets.ogt`. The sidecar is not part of a web export. |
+| [`captures`](guide-captures.md) | How to look at a running game in as few tokens as possible: frames fitted for a model, crops at full resolution, numbered boxes that point back to source (Set-of-Mark), the key frames of a run with a timeline synced to ticks, and perceptual diff heat maps with the worst regions enlarged. The engine reports measurements and regions; what matters is the reader's call. |
 | [`components`](guide-components.md) | Core elements and their reflected properties for scriptless Svelte documents. Unknown elements, properties, and values fail cooking. The `screens` guide describes contracts, bindings, styles, and content composition. |
 | [`determinism`](guide-determinism.md) | The engine's rules a game must keep, determinism first, and where they bite: the world and systems, physics, destruction, and lockstep multiplayer over a room. Read before writing simulation code. |
 | [`effect-packs`](guide-effect-packs.md) | Ready-made effects a game installs with `og vfx add <pack>`: converted Effekseer samples (`type vfx`, 3D) and pixel-art recipes (`type vfx2d`, 2D), each listed with its tags, keywords and effects. A bundled pack ships with the engine; a downloadable one comes with each release and `og vfx add` fetches it. Once installed, an effect spawns as `vfx/<pack>/<effect>` (`og api show vfx`; the `pixel-vfx` guide for `type vfx2d`); the pack format is docs/vfx-packs.md. |
@@ -92,6 +93,7 @@ Field units the docs and Tune use.
 | `hz` | ticks or cycles per second |
 | `ticks` | fixed simulation steps |
 | `cssPx` | CSS pixels of the play surface, origin at the top left |
+| `px` | pixels of an image, origin at its top left |
 | `ratio` | a fraction between 0 and 1 |
 | `bytes` | bytes |
 | `kg` | kilograms |

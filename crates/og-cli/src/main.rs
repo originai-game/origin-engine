@@ -27,6 +27,7 @@ mod doctor_project;
 mod explore;
 mod frame;
 mod i18n;
+mod keyframes;
 mod lockstep_lint;
 mod migrate;
 mod module_state;
@@ -98,10 +99,15 @@ commands:
                       guide: og api show explore
   render [project] --commands \"t:action[:args];...\" | --timeline <name> [--fps F] [--from S] [--to S]
       [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS]
-      [--jobs N] [--seed S] [--json] [--no-check]
+      [--keyframes [--keyframe-change F] [--keyframe-gap S]] [--jobs N] [--seed S] [--json] [--no-check]
                       render the script to frames, a video (ffmpeg: H.264 or VP9, the capture
                       mixer's audio with --audio), frames.json (tick, time, sha256 per frame) and a
-                      contact sheet; the fps divides the tick rate; --jobs splits the range
+                      contact sheet; the fps divides the tick rate; --jobs splits the range;
+                      --keyframes adds the frames where something happened (an input, a step, a
+                      screen change, an assertion or expectation, a mean FLIP of F, default 0.02,
+                      from the last key frame at least S seconds, default 0.5, after it) as
+                      keyframes/<index>.png at 1280, keyframes.png and timeline.json (the captures
+                      guide)
   compare <reference.png> <render.png> [--mask <mask.png>] [--align] [--key <ΔE00>] [--sheet <out.png>]
       [--flip <out.png>] [--ppd P] [--regions N] [--json]
                       a model review's numbers: silhouette IoU and ΔE00 per mask region (or over the

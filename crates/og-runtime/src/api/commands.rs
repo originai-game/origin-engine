@@ -179,13 +179,29 @@ pub fn og_engine_probe_hello(probe: u32) -> String {
     member(probe, "hello", json!({})).to_string()
 }
 
-pub fn og_engine_probe_capture(probe: u32, width: Option<u32>, height: Option<u32>) -> String {
-    member(
-        probe,
-        "capture",
-        json!({ "width": width.unwrap_or(0), "height": height.unwrap_or(0) }),
-    )
-    .to_string()
+pub fn og_engine_probe_capture(
+    probe: u32,
+    width: Option<u32>,
+    height: Option<u32>,
+    fit: Option<u32>,
+    region: Option<String>,
+) -> String {
+    let mut params = json!({ "width": width.unwrap_or(0), "height": height.unwrap_or(0) });
+    if let Some(fit) = fit {
+        params["fit"] = json!(fit);
+    }
+    if let Some(region) = parse(region.as_deref()).ok().filter(|r| !r.is_null()) {
+        params["region"] = region;
+    }
+    member(probe, "capture", params).to_string()
+}
+
+pub fn og_engine_probe_marks(probe: u32, desc: Option<String>) -> String {
+    member(probe, "marks", parse(desc.as_deref()).unwrap_or(json!({}))).to_string()
+}
+
+pub fn og_engine_probe_timeline(probe: u32) -> String {
+    member(probe, "timeline", json!({})).to_string()
 }
 
 pub fn og_engine_probe_sweep(probe: u32, desc: Option<String>) -> String {

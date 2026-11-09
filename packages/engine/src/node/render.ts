@@ -24,8 +24,8 @@
 //
 // Stdout carries records only: a little-endian u32 length, that many bytes
 // of JSON, then the JSON's `bytes` of payload. A frame is
-// `{kind:"frame", index, tick, time, width, height, sha256, bytes}` with its
-// RGBA8 rows; the last record is `{kind:"end", ...}`. Everything else
+// `{kind:"frame", index, tick, time, width, height, sha256, events, bytes}`
+// with its RGBA8 rows (events: the probe's timeline since the frame before); the last record is `{kind:"end", ...}`. Everything else
 // (the engine's log, warnings) goes to stderr. Outputs of the script's own
 // steps (screenshot, dump_*) are written under --out.
 
@@ -263,6 +263,8 @@ if (leader) {
   const from = tickOf(first!);
   // Warm-up frames on the frame grid before the range: drawn, not sent.
   for (let t = Math.max(tick(), warmTick(first!)); t < from && !quit; t += step) drawAt(t);
+  // What happened in the warm-up belongs to the frames before the range.
+  if (first! > 0) engine.probe.timeline();
   let sent = 0;
   for (let i = first!; i < first! + count! && !quit; i++) {
     const t = tickOf(i);
@@ -271,7 +273,9 @@ if (leader) {
     const rgba = extras.og_node_render_frame(engine.id);
     if (rgba.length !== size.width * size.height * 4) fail(`frame ${i} read back ${rgba.length} bytes, not ${size.width}x${size.height} RGBA`);
     const sha256 = createHash("sha256").update(rgba).digest("hex");
-    record({ kind: "frame", index: i, tick: t, time: t / rate, width: size.width, height: size.height, sha256 }, rgba);
+    // The run's events since the frame before (og render --keyframes).
+    const events = engine.probe.timeline().events;
+    record({ kind: "frame", index: i, tick: t, time: t / rate, width: size.width, height: size.height, sha256, events }, rgba);
     sent++;
   }
   // The audio runs to the range's end, the last frame's span included.

@@ -843,7 +843,7 @@ export function installImageDecoder(glue: Pick<WebExtras, "og_web_set_image_deco
 }
 
 /**
- * A `capture` or `sweep` answered null: on the web the readback finishes on
+ * A `capture`, `marks` or `sweep` answered null: on the web the readback finishes on
  * a later call, and a sweep goes on from the frames it has each time it is
  * asked again. (A sweep refused outright, an unknown entity, answers null
  * too: it is asked again until its budget runs out.)
@@ -854,7 +854,7 @@ function isPendingCapture(frame: string, answer: string): boolean {
   if (!answer.includes('"result":null')) return false;
   try {
     const request = JSON.parse(frame) as { method?: string };
-    if (request.method !== "capture" && request.method !== "sweep") return false;
+    if (request.method !== "capture" && request.method !== "marks" && request.method !== "sweep") return false;
     const response = JSON.parse(answer) as { result?: unknown; error?: unknown };
     return response.error === undefined && response.result === null;
   } catch {

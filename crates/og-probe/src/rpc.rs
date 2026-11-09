@@ -150,6 +150,31 @@ fn size(params: &Value) -> Result<(u32, u32), RpcError> {
     }
 }
 
+/// `fit`: the long side a capture is fitted to, CAPTURE_FIT when absent.
+fn fit(params: &Value) -> Result<u32, RpcError> {
+    match params.get("fit") {
+        None | Some(Value::Null) => Ok(crate::frame::MODEL_LONG_SIDE),
+        Some(v) => v
+            .as_u64()
+            .filter(|n| *n <= u64::from(MAX_CAPTURE_EDGE))
+            .map(|n| n as u32)
+            .ok_or_else(|| RpcError::invalid("fit must be an integer in [0, 4096]")),
+    }
+}
+
+/// A `{ x, y, width, height }` box of the play surface with a positive size.
+fn screen_box(v: &Value) -> Result<[f32; 4], RpcError> {
+    let n = |k: &str| v.get(k).and_then(Value::as_f64).filter(|n| n.is_finite());
+    match (n("x"), n("y"), n("width"), n("height")) {
+        (Some(x), Some(y), Some(w), Some(h)) if w > 0.0 && h > 0.0 => {
+            Ok([x as f32, y as f32, w as f32, h as f32])
+        }
+        _ => Err(RpcError::invalid(
+            "region must be { x, y, width, height } in CSS px, width and height above 0",
+        )),
+    }
+}
+
 fn or_null<T: Into<Value>>(value: Option<T>) -> Value {
     value.map_or(Value::Null, Into::into)
 }
@@ -266,8 +291,37 @@ impl Probe {
             }
             "capture" => {
                 let (width, height) = size(p)?;
-                or_null(self.capture(world, width, height))
+                let region = match p.get("region") {
+                    None | Some(Value::Null) => None,
+                    Some(r) => Some(screen_box(r)?),
+                };
+                or_null(self.capture(world, width, height, fit(p)?, region))
             }
+            #[cfg(not(feature = "publish"))]
+            "marks" => {
+                let (width, height) = size(p)?;
+                let flag = |k: &str| p.get(k).and_then(Value::as_bool).unwrap_or(true);
+                let max =
+                    match p.get("max") {
+                        None | Some(Value::Null) => 64,
+                        Some(v) => v.as_u64().filter(|n| *n <= 999).ok_or_else(|| {
+                            RpcError::invalid("max must be an integer in [0, 999]")
+                        })? as usize,
+                    };
+                or_null(self.marks(
+                    world,
+                    crate::probe::MarksDesc {
+                        width,
+                        height,
+                        fit: fit(p)?,
+                        ui: flag("ui"),
+                        entities: flag("entities"),
+                        max,
+                    },
+                ))
+            }
+            #[cfg(not(feature = "publish"))]
+            "timeline" => self.timeline(world),
             #[cfg(not(feature = "publish"))]
             "sweep" => {
                 let values = p

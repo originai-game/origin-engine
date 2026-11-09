@@ -31,19 +31,25 @@
 //! history, TAA and adapted exposure, has settled) and renders its frames;
 //! ffmpeg concatenates the parts. The leader also renders the audio.
 //!
+//! `--keyframes` also writes the frames where something happened, a sheet
+//! of them and `timeline.json` (`keyframes.rs`): each frame record carries
+//! the probe's timeline events since the frame before. `--keyframe-change`
+//! and `--keyframe-gap` set what counts as a visual change.
+//!
 //! `--timeline <name>` is `--commands "0:timeline:play:<name>"` (before any
 //! `--commands` given too) with the range `--to` defaulting to the
 //! timeline's `duration`: it works once timelines exist (stream S2,
 //! branch depth/timeline); until then the action is reported unknown.
 
 use crate::contact_sheet;
+use crate::keyframes::{self, KeyframeArgs, Picker};
 use crate::project::{self, Project};
 use serde_json::{Value, json};
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, ExitCode, Stdio};
 
-const USAGE: &str = "usage: og render [project] --commands \"t:action[:args];...\" | --timeline <name> [--fps F] [--from S] [--to S] [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS] [--jobs N] [--seed S] [--json] [--no-check]";
+const USAGE: &str = "usage: og render [project] --commands \"t:action[:args];...\" | --timeline <name> [--fps F] [--from S] [--to S] [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS] [--keyframes [--keyframe-change F] [--keyframe-gap S]] [--jobs N] [--seed S] [--json] [--no-check]";
 
 /// Frames each job of `--jobs` draws before its range, unsent.
 const WARMUP: u32 = 8;
@@ -74,6 +80,7 @@ pub struct RenderArgs {
     pub frames: Option<FrameFormat>,
     pub audio: bool,
     pub contact_sheet: Option<u32>,
+    pub keyframes: Option<KeyframeArgs>,
     pub jobs: u32,
     pub seed: Option<String>,
     pub json: bool,
@@ -93,6 +100,7 @@ pub fn parse(args: &[&str]) -> Result<RenderArgs, String> {
         frames: None,
         audio: false,
         contact_sheet: None,
+        keyframes: None,
         jobs: 1,
         seed: None,
         json: false,
@@ -145,6 +153,23 @@ pub fn parse(args: &[&str]) -> Result<RenderArgs, String> {
             }
             "--audio" => r.audio = true,
             "--contact-sheet" => r.contact_sheet = Some(count(value()?)?),
+            "--keyframes" => {
+                r.keyframes.get_or_insert_with(KeyframeArgs::default);
+            }
+            "--keyframe-change" => {
+                let v = value()?;
+                r.keyframes.get_or_insert_with(KeyframeArgs::default).change = v
+                    .parse::<f32>()
+                    .ok()
+                    .filter(|c| c.is_finite() && *c > 0.0 && *c <= 1.0)
+                    .ok_or_else(|| {
+                        format!("--keyframe-change takes a mean FLIP above 0 up to 1, such as 0.02, not `{v}`")
+                    })?;
+            }
+            "--keyframe-gap" => {
+                let v = value()?;
+                r.keyframes.get_or_insert_with(KeyframeArgs::default).gap = seconds(v)?;
+            }
             "--jobs" => r.jobs = count(value()?)?,
             "--seed" => r.seed = Some(value()?.to_string()),
             "--json" => r.json = true,
@@ -296,6 +321,7 @@ struct FrameMeta {
 struct JobOut {
     frames: Vec<FrameMeta>,
     thumbs: Vec<(usize, image::RgbaImage, String)>,
+    picker: Option<Picker>,
     end: Value,
 }
 
@@ -400,6 +426,7 @@ struct JobPlan {
     segment: Option<(PathBuf, PathBuf, Container)>,
     size: (u32, u32),
     fps: u32,
+    picker: Option<Picker>,
 }
 
 /// Runs one bun process of the render: its frames written, encoded and hashed.
@@ -417,6 +444,7 @@ fn run_job(mut p: JobPlan) -> Result<JobOut, String> {
     let mut out = JobOut {
         frames: Vec::new(),
         thumbs: Vec::new(),
+        picker: p.picker.take(),
         end: Value::Null,
     };
     let result = (|| -> Result<(), String> {
@@ -451,6 +479,17 @@ fn run_job(mut p: JobPlan) -> Result<JobOut, String> {
                         stdin
                             .write_all(&rgba)
                             .map_err(|e| format!("ffmpeg stopped taking frames: {e}"))?;
+                    }
+                    if let Some(picker) = out.picker.as_mut() {
+                        let events = head["events"].as_array().cloned().unwrap_or_default();
+                        // The tick rate from the frame's own tick and time; at
+                        // time 0 every event is at tick 0, whatever the rate.
+                        let rate = if meta.time > 0.0 {
+                            meta.tick as f64 / meta.time
+                        } else {
+                            1.0
+                        };
+                        picker.frame((index, meta.tick, meta.time), w, h, &rgba, &events, rate)?;
                     }
                     if p.picks.binary_search(&(index as usize)).is_ok() {
                         let label = contact_sheet::label(meta.time, meta.tick);
@@ -648,6 +687,7 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
             },
             size: a.size,
             fps: a.fps,
+            picker: a.keyframes.map(|k| Picker::new(k, &layout.dir)),
         }
     };
     // Job 0 starts at tick 0 and needs no snapshot: it runs beside the leader.
@@ -771,6 +811,36 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
         video_file = Some(path.clone());
     }
 
+    // The key frames and their timeline.
+    let mut timeline_file = None;
+    if a.keyframes.is_some() {
+        let mut kept = Vec::new();
+        let mut events = Vec::new();
+        let last = outs.len() - 1;
+        for (j, o) in outs.iter_mut().enumerate() {
+            if let Some(mut picker) = o.picker.take() {
+                if j == last {
+                    picker.end().map_err(fail)?;
+                }
+                kept.append(&mut picker.kept);
+                events.append(&mut picker.events);
+            }
+        }
+        let head = json!({
+            "rate": end["rate"],
+            "fps": a.fps,
+            "fromTick": end["fromTick"],
+            "ticksPerFrame": end["step"],
+            "frames": frames.len(),
+            "width": a.size.0,
+            "height": a.size.1,
+            "commands": script,
+            "framesJson": "frames.json",
+        });
+        let (path, _) = keyframes::write(&layout.dir, kept, events, head).map_err(fail)?;
+        timeline_file = Some(path);
+    }
+
     // The contact sheet.
     let mut sheet_file = None;
     if let Some(cols) = a.contact_sheet {
@@ -817,6 +887,7 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
         "audio": wav.as_ref().map(|w| json!({ "file": rel(w), "sha256": end["wavSha256"] })),
         "video": video_file.as_ref().map(|v| rel(v)),
         "contactSheet": sheet_file.as_ref().map(|s| rel(s)),
+        "timeline": timeline_file.as_ref().map(|t| rel(t)),
         "warnings": warnings,
     });
     let manifest_path = layout.file("frames.json");
@@ -839,6 +910,7 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
         "framesJson": manifest_path,
         "video": video_file,
         "contactSheet": sheet_file,
+        "timeline": timeline_file,
         "audio": wav,
         "ffmpeg": ff.as_ref().map(|f| f.1.clone()),
         "warnings": warnings,
@@ -861,6 +933,7 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
         for (what, path) in [
             ("video", &video_file),
             ("contact sheet", &sheet_file),
+            ("timeline", &timeline_file),
             ("audio", &wav),
         ] {
             if let Some(p) = path {

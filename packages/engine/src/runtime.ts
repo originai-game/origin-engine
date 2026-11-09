@@ -1842,7 +1842,10 @@ function makeProbe(id: number) {
     patch: (pid: string, parameter: string, value: unknown) => a().og_runtime_probe_patch(id, pid, parameter, JSON.stringify(value)),
     run: (program: unknown) => { const r = parse(a().og_runtime_probe_run(id, JSON.stringify(program))); epoch++; return r; },
     hello: () => parse(a().og_engine_probe_hello(id)),
-    capture: (width?: number, height?: number) => parse(a().og_engine_probe_capture(id, width, height)),
+    capture: (width?: number, height?: number, fit?: number, region?: unknown) =>
+      parse(a().og_engine_probe_capture(id, width, height, fit, json(region ?? undefined))),
+    marks: (desc?: unknown) => parse(a().og_engine_probe_marks(id, json(desc))),
+    timeline: () => parse(a().og_engine_probe_timeline(id)),
     sweep: (desc?: unknown) => parse(a().og_engine_probe_sweep(id, json(desc))),
     reload: () => parse(a().og_engine_probe_reload(id)),
     snapshot: () => parse(a().og_engine_probe_snapshot(id)),

@@ -13,6 +13,7 @@
     "hz": "ticks or cycles per second",
     "ticks": "fixed simulation steps",
     "cssPx": "CSS pixels of the play surface, origin at the top left",
+    "px": "pixels of an image, origin at its top left",
     "ratio": "a fraction between 0 and 1",
     "bytes": "bytes",
     "kg": "kilograms",
@@ -13652,6 +13653,12 @@
         "Hello",
         "BuildProfile",
         "Capture",
+        "MarkRect",
+        "Mark",
+        "MarksDesc",
+        "MarkedCapture",
+        "RunEvent",
+        "RunTimeline",
         "Heard",
         "ProbeHeap",
         "ProbeWorldMemory",
@@ -13725,6 +13732,12 @@
           "type": "u32",
           "value": 256,
           "doc": "The most operations one probe program may carry."
+        },
+        {
+          "name": "CAPTURE_FIT",
+          "type": "u32",
+          "value": 1280,
+          "doc": "The long side capture, marks and key frames fit an image to unless asked otherwise: a whole frame a model reads in few tokens; a detail is cut at full resolution as its own image (capture's region)."
         }
       ],
       "functions": [],
@@ -13912,7 +13925,7 @@
             },
             {
               "name": "capture",
-              "doc": "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).\nSize rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.\nOn the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).",
+              "doc": "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).\nSize rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.\nOn the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).\nFit rule: a PNG whose long side exceeds fit is downscaled to it with the aspect kept, each pixel the mean of the area it covers (CAPTURE_FIT, 1280, by default: the size a model reads a whole frame at); 0 keeps the rendered size, as a reference frame needs.\nRegion: a box of the play surface (CSS px) cut from the rendered frame before fitting, so a detail comes at full resolution as its own image; scale and region map its pixels back to the surface.",
               "params": [
                 {
                   "name": "width",
@@ -13927,11 +13940,47 @@
                   "optional": true,
                   "default": 0,
                   "doc": "Height in pixels; 0 is the render target's."
+                },
+                {
+                  "name": "fit",
+                  "type": "u32",
+                  "optional": true,
+                  "default": 1280,
+                  "doc": "The longest side the PNG may have; 0 keeps the rendered size."
+                },
+                {
+                  "name": "region",
+                  "type": "Option<ScreenBox>",
+                  "optional": true,
+                  "doc": "A box of the play surface to cut out (CSS px); null is the whole frame."
                 }
               ],
               "returns": "Option<Capture>",
-              "returnsDoc": "Null without a renderer.",
+              "returnsDoc": "Null without a renderer, or for a region outside the surface.",
               "publish": true
+            },
+            {
+              "name": "marks",
+              "doc": "The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick or touch it at, and the document or scene line that made it, with the style part and rule of an element. A reviewer names a number; the map says where to change it.\nThe elements are those pickUi answers (they show something or take input) inside the surface, an element and an ancestor of the same box (within a CSS pixel) marked once, as the one that takes input or else the topmost; a backdrop that covers the whole surface and takes no input is not boxed. The entities are describe's, the main camera's, nearest first. The image follows capture's size and fit rules; the marks are drawn at the fitted size, so the numbers stay legible.\nOn the web it waits for its readback as capture does.",
+              "params": [
+                {
+                  "name": "desc",
+                  "type": "MarksDesc",
+                  "optional": true,
+                  "flatten": true,
+                  "doc": "The size, the fit, what to mark and how many."
+                }
+              ],
+              "returns": "Option<MarkedCapture>",
+              "returnsDoc": "Null without a renderer.",
+              "publish": false
+            },
+            {
+              "name": "timeline",
+              "doc": "What happened in the run since the last call, each with its tick: inputs, command steps, screen changes, assertion firings and expectations. A tool that records or steps a run reads it to pick the frames where something happened (og render --keyframes) and to sync them to ticks.",
+              "params": [],
+              "returns": "RunTimeline",
+              "publish": false
             },
             {
               "name": "sweep",
@@ -48482,6 +48531,22 @@
           "maximum": 4294967295,
           "description": "Height in pixels."
         },
+        "scale": {
+          "type": "number",
+          "description": "The PNG's pixels per CSS pixel of the play surface: a point of pick or touch_move_to is (x / scale, y / scale) of the image's pixel, offset by region's corner.",
+          "default": 1
+        },
+        "region": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScreenBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The box of the play surface the PNG shows (CSS px); null for the whole frame."
+        },
         "png": {
           "type": "string",
           "description": "The PNG, base64."
@@ -48491,7 +48556,331 @@
         "tick",
         "width",
         "height",
+        "scale",
+        "region",
         "png"
+      ],
+      "additionalProperties": false
+    },
+    "MarkRect": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A mark's box in the PNG's pixels.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Left edge.",
+          "x-og-unit": "px"
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Top edge.",
+          "x-og-unit": "px"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Width.",
+          "x-og-unit": "px"
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height.",
+          "x-og-unit": "px"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "Mark": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One numbered box of a marked capture (Set-of-Mark): what it is and where a person would change it.",
+      "type": "object",
+      "properties": {
+        "n": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its number on the image, from 1."
+        },
+        "kind": {
+          "type": "string",
+          "description": "`ui` for a UI element, `entity` for a scene entity."
+        },
+        "id": {
+          "type": "string",
+          "description": "The element's id, or the entity's probe id."
+        },
+        "path": {
+          "type": "string",
+          "description": "The element's full path (as dump_ui, pickUi and touch_move_to name it), or the entity's probe id."
+        },
+        "what": {
+          "type": "string",
+          "description": "The element's kind (`button`, `label`, a kit's own), or what draws the entity (describe's labels, comma-separated)."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text the element shows, or the entity's name; empty for none."
+        },
+        "rect": {
+          "$ref": "#/$defs/MarkRect",
+          "description": "Its box on the image."
+        },
+        "point": {
+          "$ref": "#/$defs/ScreenPoint",
+          "description": "A point of the play surface on it, for pick, pickUi or touch_move_to: the element's centre, or a visible point of the entity (describe's point)."
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), or the scene line that declares the entity (`scenes/main.ogt:12`); null for code-built UI and spawned entities."
+        },
+        "part": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The style part the element is drawn as (`Button.base[primary]`); null for an entity or an element no style dresses."
+        },
+        "rule": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UiPickRule"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The most specific style rule that dresses the element; null when none does."
+        },
+        "depth": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The entity's distance from the camera to its nearest visible point; null for an element.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "n",
+        "kind",
+        "id",
+        "path",
+        "what",
+        "text",
+        "rect",
+        "point",
+        "source",
+        "part",
+        "rule",
+        "depth"
+      ],
+      "additionalProperties": false
+    },
+    "MarksDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "probe",
+      "description": "What marks draws: the capture's size and fit, which kinds it marks and how many.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Width in pixels; 0 is the render target's.",
+          "default": 0
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height in pixels; 0 is the render target's.",
+          "default": 0
+        },
+        "fit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The longest side the PNG may have; 0 keeps the rendered size.",
+          "default": 1280
+        },
+        "ui": {
+          "type": "boolean",
+          "description": "Mark the UI elements.",
+          "default": true
+        },
+        "entities": {
+          "type": "boolean",
+          "description": "Mark the scene entities.",
+          "default": true
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most marks drawn; the rest are counted in omitted.",
+          "default": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "MarkedCapture": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A capture with numbered boxes drawn over its UI elements and entities, and what each number is.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick the frame shows."
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Width in pixels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height in pixels."
+        },
+        "scale": {
+          "type": "number",
+          "description": "The PNG's pixels per CSS pixel of the play surface."
+        },
+        "png": {
+          "type": "string",
+          "description": "The PNG with the marks drawn, base64."
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Mark"
+          },
+          "description": "Each number on the image: the UI elements first in reading order (top to bottom, then left to right), then the entities nearest first."
+        },
+        "omitted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Marks left out beyond max."
+        }
+      },
+      "required": [
+        "tick",
+        "width",
+        "height",
+        "scale",
+        "png",
+        "marks",
+        "omitted"
+      ],
+      "additionalProperties": false
+    },
+    "RunEvent": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One thing that happened in a run, at its tick.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it happened at (og.Time.tick)."
+        },
+        "kind": {
+          "type": "string",
+          "description": "`input` (an event through the probe's input), `step` (a command channel step that ran), `screen` (the UI's screen stack changed), `assertion` (an assertion site's first firing, an each-bucket's first holding or a first violation) or `expect` (an expectation evaluated)."
+        },
+        "what": {
+          "type": "string",
+          "description": "A line a reader skims: `pointer down 320,180`, `tap:Play`, `title > shop`, `violation hp-positive`, `fail state:started==true`."
+        },
+        "detail": {
+          "description": "The whole of it: the input event, the step's action and args, the screens before and after, the assertion event, the ExpectResult."
+        }
+      },
+      "required": [
+        "tick",
+        "kind",
+        "what",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "RunTimeline": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "What happened since the last timeline call, in order.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick now."
+        },
+        "screens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The UI's screen stack now, bottom first; empty without screens."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "description": "The events, in the order they happened (at most 4,096 between calls)."
+        },
+        "dropped": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Events beyond 4,096 between calls, not kept."
+        }
+      },
+      "required": [
+        "tick",
+        "screens",
+        "events",
+        "dropped"
       ],
       "additionalProperties": false
     },

@@ -270,7 +270,8 @@ fn a_60_hz_tick_drawn_at_144_hz_is_blended_by_the_accumulator() {
     // The probe's capture draws the tick, whatever the last frame blended.
     let (w, behind) = frame(e, 1000.0 / 144.0);
     assert!(behind > 0.0);
-    let shot: Value = serde_json::from_str(&og_engine_probe_capture(e, Some(16), Some(9))).unwrap();
+    let shot: Value =
+        serde_json::from_str(&og_engine_probe_capture(e, Some(16), Some(9), None, None)).unwrap();
     assert_eq!(shot["tick"], json!(w), "{shot}");
     let last = f64::from(w - 1);
     close(

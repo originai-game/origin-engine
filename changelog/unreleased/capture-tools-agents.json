@@ -1,0 +1,32 @@
+{
+  "breaking": [
+    {
+      "member": "probe.EngineProbe.capture",
+      "change": "capture fits its PNG to a long side of 1280 (CAPTURE_FIT) by default, box-filtered, the size a model reads a whole frame at; a frame asked at a larger size, or a render target above 1280, now answers smaller. The answer also carries scale (PNG pixels per CSS pixel) and region.",
+      "fix": "Pass fit 0 to keep the rendered size: `probe.capture(w, h, 0)`, or `{ \"width\": w, \"height\": h, \"fit\": 0 }` over the wire.",
+      "find": ["capture("]
+    }
+  ],
+  "added": [
+    {
+      "member": "probe.EngineProbe.capture fit, region",
+      "summary": "capture takes fit (the longest side, 0 to keep it) and region (a box of the play surface in CSS px, cut at full resolution as its own image)."
+    },
+    {
+      "member": "probe.EngineProbe.marks",
+      "summary": "Set-of-Mark: the frame with a numbered box over each UI element and scene entity it shows, and a map from each number to its path, kind, text, box, a point to pick it at, the document or scene line that made it, and an element's style part and rule. Both hosts, og probe marks."
+    },
+    {
+      "member": "probe.EngineProbe.timeline",
+      "summary": "The run's events since the last read, each with its tick: inputs, command steps, screen changes (UiTree.screens), assertion events and expectations."
+    },
+    {
+      "member": "og render --keyframes, --keyframe-change, --keyframe-gap",
+      "summary": "og render keeps the frames where something happened (the start, the end, each probe timeline event, a mean FLIP change from the last key frame) as keyframes/<index>.png fitted to 1280, a labelled sheet keyframes.png and timeline.json synced to ticks."
+    },
+    {
+      "member": "captures guide",
+      "summary": "og api show captures: frames for a model, crops, marks, key frames and FLIP diffs."
+    }
+  ]
+}

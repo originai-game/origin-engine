@@ -26838,6 +26838,11 @@ export interface Hello {
  */
 export type BuildProfile = "dev" | "release" | "publish";
 
+/**
+ * The long side capture, marks and key frames fit an image to unless asked otherwise: a whole frame a model reads in few tokens; a detail is cut at full resolution as its own image (capture's region).
+ */
+export declare const CAPTURE_FIT: 1280;
+
 /** A captured frame. */
 export interface Capture {
   /** The tick the frame shows. */
@@ -26846,8 +26851,184 @@ export interface Capture {
   readonly width: number;
   /** Height in pixels. */
   readonly height: number;
+  /**
+   * The PNG's pixels per CSS pixel of the play surface: a point of pick or touch_move_to is (x / scale, y / scale) of the image's pixel, offset by region's corner.
+   *
+   * @default 1
+   */
+  readonly scale: number;
+  /** The box of the play surface the PNG shows (CSS px); null for the whole frame. */
+  readonly region: ScreenBox | null;
   /** The PNG, base64. */
   readonly png: string;
+}
+
+/** A mark's box in the PNG's pixels. */
+export interface MarkRect {
+  /**
+   * Left edge.
+   *
+   * @unit px (pixels of an image, origin at its top left)
+   */
+  readonly x: number;
+  /**
+   * Top edge.
+   *
+   * @unit px (pixels of an image, origin at its top left)
+   */
+  readonly y: number;
+  /**
+   * Width.
+   *
+   * @unit px (pixels of an image, origin at its top left)
+   */
+  readonly width: number;
+  /**
+   * Height.
+   *
+   * @unit px (pixels of an image, origin at its top left)
+   */
+  readonly height: number;
+}
+
+/**
+ * One numbered box of a marked capture (Set-of-Mark): what it is and where a person would change it.
+ */
+export interface Mark {
+  /** Its number on the image, from 1. */
+  readonly n: number;
+  /** `ui` for a UI element, `entity` for a scene entity. */
+  readonly kind: string;
+  /** The element's id, or the entity's probe id. */
+  readonly id: string;
+  /**
+   * The element's full path (as dump_ui, pickUi and touch_move_to name it), or the entity's probe id.
+   */
+  readonly path: string;
+  /**
+   * The element's kind (`button`, `label`, a kit's own), or what draws the entity (describe's labels, comma-separated).
+   */
+  readonly what: string;
+  /** The text the element shows, or the entity's name; empty for none. */
+  readonly text: string;
+  /** Its box on the image. */
+  readonly rect: MarkRect;
+  /**
+   * A point of the play surface on it, for pick, pickUi or touch_move_to: the element's centre, or a visible point of the entity (describe's point).
+   */
+  readonly point: ScreenPoint;
+  /**
+   * Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), or the scene line that declares the entity (`scenes/main.ogt:12`); null for code-built UI and spawned entities.
+   */
+  readonly source: string | null;
+  /**
+   * The style part the element is drawn as (`Button.base[primary]`); null for an entity or an element no style dresses.
+   */
+  readonly part: string | null;
+  /** The most specific style rule that dresses the element; null when none does. */
+  readonly rule: UiPickRule | null;
+  /**
+   * The entity's distance from the camera to its nearest visible point; null for an element.
+   *
+   * @unit m (metres)
+   */
+  readonly depth: number | null;
+}
+
+/**
+ * What marks draws: the capture's size and fit, which kinds it marks and how many.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MarksDesc {
+  /**
+   * Width in pixels; 0 is the render target's.
+   *
+   * @default 0
+   */
+  readonly width?: number;
+  /**
+   * Height in pixels; 0 is the render target's.
+   *
+   * @default 0
+   */
+  readonly height?: number;
+  /**
+   * The longest side the PNG may have; 0 keeps the rendered size.
+   *
+   * @default 1280
+   */
+  readonly fit?: number;
+  /**
+   * Mark the UI elements.
+   *
+   * @default true
+   */
+  readonly ui?: boolean;
+  /**
+   * Mark the scene entities.
+   *
+   * @default true
+   */
+  readonly entities?: boolean;
+  /**
+   * The most marks drawn; the rest are counted in omitted.
+   *
+   * @default 64
+   */
+  readonly max?: number;
+}
+
+/**
+ * A capture with numbered boxes drawn over its UI elements and entities, and what each number is.
+ */
+export interface MarkedCapture {
+  /** The tick the frame shows. */
+  readonly tick: number;
+  /** Width in pixels. */
+  readonly width: number;
+  /** Height in pixels. */
+  readonly height: number;
+  /** The PNG's pixels per CSS pixel of the play surface. */
+  readonly scale: number;
+  /** The PNG with the marks drawn, base64. */
+  readonly png: string;
+  /**
+   * Each number on the image: the UI elements first in reading order (top to bottom, then left to right), then the entities nearest first.
+   */
+  readonly marks: readonly Mark[];
+  /** Marks left out beyond max. */
+  readonly omitted: number;
+}
+
+/** One thing that happened in a run, at its tick. */
+export interface RunEvent {
+  /** The tick it happened at (og.Time.tick). */
+  readonly tick: number;
+  /**
+   * `input` (an event through the probe's input), `step` (a command channel step that ran), `screen` (the UI's screen stack changed), `assertion` (an assertion site's first firing, an each-bucket's first holding or a first violation) or `expect` (an expectation evaluated).
+   */
+  readonly kind: string;
+  /**
+   * A line a reader skims: `pointer down 320,180`, `tap:Play`, `title > shop`, `violation hp-positive`, `fail state:started==true`.
+   */
+  readonly what: string;
+  /**
+   * The whole of it: the input event, the step's action and args, the screens before and after, the assertion event, the ExpectResult.
+   */
+  readonly detail: unknown;
+}
+
+/** What happened since the last timeline call, in order. */
+export interface RunTimeline {
+  /** The tick now. */
+  readonly tick: number;
+  /** The UI's screen stack now, bottom first; empty without screens. */
+  readonly screens: readonly string[];
+  /** The events, in the order they happened (at most 4,096 between calls). */
+  readonly events: readonly RunEvent[];
+  /** Events beyond 4,096 between calls, not kept. */
+  readonly dropped: number;
 }
 
 /** What the host's mixer rendered last: the audio up to the current tick. */
@@ -27651,12 +27832,29 @@ export interface EngineProbe extends RuntimeProbe {
    * The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).
    * Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.
    * On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).
+   * Fit rule: a PNG whose long side exceeds fit is downscaled to it with the aspect kept, each pixel the mean of the area it covers (CAPTURE_FIT, 1280, by default: the size a model reads a whole frame at); 0 keeps the rendered size, as a reference frame needs.
+   * Region: a box of the play surface (CSS px) cut from the rendered frame before fitting, so a detail comes at full resolution as its own image; scale and region map its pixels back to the surface.
    *
    * @param width Width in pixels; 0 is the render target's. Default `0`.
    * @param height Height in pixels; 0 is the render target's. Default `0`.
+   * @param fit The longest side the PNG may have; 0 keeps the rendered size. Default `1280`.
+   * @param region A box of the play surface to cut out (CSS px); null is the whole frame.
+   * @returns Null without a renderer, or for a region outside the surface.
+   */
+  capture(width?: number, height?: number, fit?: number, region?: ScreenBox | null): Capture | null;
+  /**
+   * The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick or touch it at, and the document or scene line that made it, with the style part and rule of an element. A reviewer names a number; the map says where to change it.
+   * The elements are those pickUi answers (they show something or take input) inside the surface, an element and an ancestor of the same box (within a CSS pixel) marked once, as the one that takes input or else the topmost; a backdrop that covers the whole surface and takes no input is not boxed. The entities are describe's, the main camera's, nearest first. The image follows capture's size and fit rules; the marks are drawn at the fitted size, so the numbers stay legible.
+   * On the web it waits for its readback as capture does.
+   *
+   * @param desc The size, the fit, what to mark and how many.
    * @returns Null without a renderer.
    */
-  capture(width?: number, height?: number): Capture | null;
+  marks(desc?: MarksDesc): MarkedCapture | null;
+  /**
+   * What happened in the run since the last call, each with its tick: inputs, command steps, screen changes, assertion firings and expectations. A tool that records or steps a run reads it to pick the frames where something happened (og render --keyframes) and to sync them to ticks.
+   */
+  timeline(): RunTimeline;
   /**
    * A filmstrip over one tunable: per value, restore, patch, advance, capture.
    *

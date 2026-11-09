@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 648</sub>
+<sub>Module `probe` line 734</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>Module `probe` line 653</sub>
+<sub>Module `probe` line 739</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -54,18 +54,24 @@ Size rule: width and height are both 0 (or absent), which is the render target's
 
 On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).
 
-Also known as: screenshot, take a screenshot, grab the screen, frame capture
+Fit rule: a PNG whose long side exceeds fit is downscaled to it with the aspect kept, each pixel the mean of the area it covers (CAPTURE_FIT, 1280, by default: the size a model reads a whole frame at); 0 keeps the rendered size, as a reference frame needs.
+
+Region: a box of the play surface (CSS px) cut from the rendered frame before fitting, so a detail comes at full resolution as its own image; scale and region map its pixels back to the surface.
+
+Also known as: screenshot, take a screenshot, grab the screen, frame capture, crop, zoom
 
 ```ts
-EngineProbe.capture(width?: number, height?: number): Capture | null
+EngineProbe.capture(width?: number, height?: number, fit?: number, region?: ScreenBox | null): Capture | null
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `width` | `number` | yes | Width in pixels; 0 is the render target's. Default `0`. |
 | `height` | `number` | yes | Height in pixels; 0 is the render target's. Default `0`. |
+| `fit` | `number` | yes | The longest side the PNG may have; 0 keeps the rendered size. Default `1280`. |
+| `region` | `ScreenBox \| null` | yes | A box of the play surface to cut out (CSS px); null is the whole frame. |
 
-**Returns** `Capture | null`: Null without a renderer.
+**Returns** `Capture | null`: Null without a renderer, or for a region outside the surface.
 
 Binding symbol `og_engine_probe_capture` · publish builds: kept
 
@@ -74,7 +80,9 @@ fn capture {
   doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
   doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
   doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
-  aliases "screenshot, take a screenshot, grab the screen, frame capture"
+  doc "Fit rule: a PNG whose long side exceeds fit is downscaled to it with the aspect kept, each pixel the mean of the area it covers (CAPTURE_FIT, 1280, by default: the size a model reads a whole frame at); 0 keeps the rendered size, as a reference frame needs."
+  doc "Region: a box of the play surface (CSS px) cut from the rendered frame before fitting, so a detail comes at full resolution as its own image; scale and region map its pixels back to the surface."
+  aliases "screenshot, take a screenshot, grab the screen, frame capture, crop, zoom"
   publish true
   param width u32 "Width in pixels; 0 is the render target's." {
     default 0
@@ -82,11 +90,79 @@ fn capture {
   param height u32 "Height in pixels; 0 is the render target's." {
     default 0
   }
-  returns Option.Capture "Null without a renderer."
+  param fit u32 "The longest side the PNG may have; 0 keeps the rendered size." {
+    default 1280
+  }
+  param region Option.ScreenBox "A box of the play surface to cut out (CSS px); null is the whole frame." {
+    optional true
+  }
+  returns Option.Capture "Null without a renderer, or for a region outside the surface."
 }
 ```
 
-<sub>Module `probe` line 658</sub>
+<sub>Module `probe` line 744</sub>
+
+<a id="member-EngineProbe-marks"></a>
+
+#### `EngineProbe.marks`
+
+The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick or touch it at, and the document or scene line that made it, with the style part and rule of an element. A reviewer names a number; the map says where to change it.
+
+The elements are those pickUi answers (they show something or take input) inside the surface, an element and an ancestor of the same box (within a CSS pixel) marked once, as the one that takes input or else the topmost; a backdrop that covers the whole surface and takes no input is not boxed. The entities are describe's, the main camera's, nearest first. The image follows capture's size and fit rules; the marks are drawn at the fitted size, so the numbers stay legible.
+
+On the web it waits for its readback as capture does.
+
+Also known as: set of mark, set-of-mark, som, annotated screenshot, labelled screenshot, numbered boxes
+
+```ts
+EngineProbe.marks(desc?: MarksDesc): MarkedCapture | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `MarksDesc` | yes | The size, the fit, what to mark and how many. Its fields travel as the call's own parameters on the wire. |
+
+**Returns** `MarkedCapture | null`: Null without a renderer.
+
+Binding symbol `og_engine_probe_marks` · publish builds: dropped
+
+```ogt
+fn marks {
+  doc "The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick or touch it at, and the document or scene line that made it, with the style part and rule of an element. A reviewer names a number; the map says where to change it."
+  doc "The elements are those pickUi answers (they show something or take input) inside the surface, an element and an ancestor of the same box (within a CSS pixel) marked once, as the one that takes input or else the topmost; a backdrop that covers the whole surface and takes no input is not boxed. The entities are describe's, the main camera's, nearest first. The image follows capture's size and fit rules; the marks are drawn at the fitted size, so the numbers stay legible."
+  doc "On the web it waits for its readback as capture does."
+  aliases "set of mark, set-of-mark, som, annotated screenshot, labelled screenshot, numbered boxes"
+  param desc MarksDesc "The size, the fit, what to mark and how many." {
+    flatten true
+  }
+  returns Option.MarkedCapture "Null without a renderer."
+}
+```
+
+<sub>Module `probe` line 766</sub>
+
+<a id="member-EngineProbe-timeline"></a>
+
+#### `EngineProbe.timeline`
+
+What happened in the run since the last call, each with its tick: inputs, command steps, screen changes, assertion firings and expectations. A tool that records or steps a run reads it to pick the frames where something happened (og render --keyframes) and to sync them to ticks.
+
+```ts
+EngineProbe.timeline(): RunTimeline
+```
+
+**Returns** `RunTimeline`.
+
+Binding symbol `og_engine_probe_timeline` · publish builds: dropped
+
+```ogt
+fn timeline {
+  doc "What happened in the run since the last call, each with its tick: inputs, command steps, screen changes, assertion firings and expectations. A tool that records or steps a run reads it to pick the frames where something happened (og render --keyframes) and to sync them to ticks."
+  returns RunTimeline
+}
+```
+
+<sub>Module `probe` line 776</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -116,7 +192,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 672</sub>
+<sub>Module `probe` line 780</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -139,7 +215,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 679</sub>
+<sub>Module `probe` line 787</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -162,7 +238,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 683</sub>
+<sub>Module `probe` line 791</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -190,7 +266,7 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 687</sub>
+<sub>Module `probe` line 795</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -220,7 +296,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 692</sub>
+<sub>Module `probe` line 800</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -248,7 +324,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 699</sub>
+<sub>Module `probe` line 807</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -278,7 +354,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 704</sub>
+<sub>Module `probe` line 812</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -301,7 +377,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 711</sub>
+<sub>Module `probe` line 819</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -324,7 +400,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 715</sub>
+<sub>Module `probe` line 823</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -352,7 +428,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 719</sub>
+<sub>Module `probe` line 827</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -375,7 +451,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 724</sub>
+<sub>Module `probe` line 832</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -405,7 +481,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 728</sub>
+<sub>Module `probe` line 836</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -428,7 +504,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 735</sub>
+<sub>Module `probe` line 843</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -462,7 +538,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 739</sub>
+<sub>Module `probe` line 847</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -496,7 +572,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 749</sub>
+<sub>Module `probe` line 857</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -526,4 +602,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 759</sub>
+<sub>Module `probe` line 867</sub>

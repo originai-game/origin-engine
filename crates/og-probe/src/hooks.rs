@@ -383,6 +383,13 @@ pub trait UiTree {
     fn extra(&self, _world: &World) -> Option<Map<String, Value>> {
         None
     }
+
+    /// The screens shown now, bottom of the layer stack first: what the
+    /// run timeline compares after each tick (its `screen` events). Cheap,
+    /// as it is read every tick; empty when the UI has no screens.
+    fn screens(&self, _world: &World) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 /// A fixed UI tree: for tests, and for a host with no UI module yet.

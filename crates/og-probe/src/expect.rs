@@ -807,6 +807,7 @@ impl Probe {
             return r;
         }
         self.note(r.tick, r.status == Status::Fail, r.line());
+        self.timeline.expect(&r);
         self.expectations.push(r.clone());
         r
     }
@@ -854,10 +855,7 @@ impl Probe {
 
     /// Frame pixels per CSS pixel.
     fn css_scale(&self, world: &World, image: &Rgba) -> f32 {
-        match self.ui.as_ref().and_then(|u| u.surface(world)) {
-            Some((w, _, _)) if w > 0.0 => image.width as f32 / w,
-            _ => 1.0,
-        }
+        self.surface_scale(world, image.width)
     }
 
     /// Events of `name` counted since the script that asked began.

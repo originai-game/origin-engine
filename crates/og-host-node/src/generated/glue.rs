@@ -3243,9 +3243,23 @@ pub fn og_engine_probe_hello(env: Env, engine_probe: u32) -> String {
 }
 
 #[napi(js_name = "og_engine_probe_capture")]
-pub fn og_engine_probe_capture(env: Env, engine_probe: u32, width: Option<u32>, height: Option<u32>) -> String {
+pub fn og_engine_probe_capture(env: Env, engine_probe: u32, width: Option<u32>, height: Option<u32>, fit: Option<u32>, region: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as ProbeApi>::og_engine_probe_capture(&Host, engine_probe, width, height)
+    <Host as ProbeApi>::og_engine_probe_capture(&Host, engine_probe, width, height, fit, region)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_marks")]
+pub fn og_engine_probe_marks(env: Env, engine_probe: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_marks(&Host, engine_probe, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_timeline")]
+pub fn og_engine_probe_timeline(env: Env, engine_probe: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_timeline(&Host, engine_probe)
 }
 
 #[cfg(not(feature = "publish"))]

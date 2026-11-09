@@ -91,6 +91,17 @@ impl UiTree for UiProbe {
     fn style(&self, _world: &World) -> Option<String> {
         Some(self.0.lock().style_name().to_owned())
     }
+
+    fn screens(&self, _world: &World) -> Vec<String> {
+        self.0
+            .lock()
+            .docs
+            .layers
+            .layers
+            .iter()
+            .map(|l| l.screen.clone())
+            .collect()
+    }
 }
 
 impl Ui {
