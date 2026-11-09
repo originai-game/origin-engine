@@ -28,6 +28,10 @@ impl Ui {
         part: &crate::dress::PartRef,
         size: [f32; 2],
     ) -> Result<crate::paint::ElementDraw, Vec<String>> {
+        self.part_draw_values(&self.part_values(part), size, None)
+    }
+
+    pub(crate) fn part_values(&self, part: &crate::dress::PartRef) -> Resolved {
         let mut attributes: BTreeMap<String, Value> = part
             .attrs
             .iter()
@@ -189,19 +193,31 @@ impl Ui {
                 V::Color(color.resolve(&crate::css_color::Context::of(self.theme()))),
             ));
         }
-        let r = Resolved {
+        Resolved {
             vals,
             cascade: values,
             ..Default::default()
-        };
+        }
+    }
+
+    pub(crate) fn part_draw_values(
+        &self,
+        r: &Resolved,
+        size: [f32; 2],
+        fill: Option<Srgba>,
+    ) -> Result<crate::paint::ElementDraw, Vec<String>> {
+        let vp = self.viewport();
         let mut element = Element {
-            background: r.color("background").filter(|color| color.alpha > 0.0),
+            background: r
+                .color("background")
+                .or(fill)
+                .filter(|color| color.alpha > 0.0),
             radius: r.num("radius").unwrap_or(0.0),
             ..Element::default()
         };
         let mut warnings = r.cascade.diagnostics.clone();
         let mut decor = self
-            .box_decor(None, &r, &mut element, "box", &[], &mut warnings)
+            .box_decor(None, r, &mut element, "box", &[], &mut warnings)
             .unwrap_or_default();
         if !warnings.is_empty() {
             return Err(warnings);

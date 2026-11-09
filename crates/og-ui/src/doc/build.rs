@@ -44,7 +44,7 @@ enum V {
 
 /// An element's resolved props, by schema index.
 #[derive(Clone, Default)]
-struct Resolved {
+pub(crate) struct Resolved {
     vals: Vec<(usize, V)>,
     cascade: cascade::Cascade,
     span_styles: Vec<(crate::TextSpan, crate::TextSpanStyle)>,
@@ -117,10 +117,10 @@ impl Resolved {
             .find(|(s, _)| PROPS[*s].name == name)
             .map(|(_, v)| v)
     }
-    fn has(&self, name: &str) -> bool {
+    pub(crate) fn has(&self, name: &str) -> bool {
         self.get(name).is_some()
     }
-    fn num(&self, name: &str) -> Option<f32> {
+    pub(crate) fn num(&self, name: &str) -> Option<f32> {
         match self.get(name)? {
             V::Num(n) => Some(*n as f32),
             V::Bool(b) => Some(f32::from(u8::from(*b))),
@@ -137,7 +137,7 @@ impl Resolved {
     fn flag(&self, name: &str) -> bool {
         matches!(self.get(name), Some(V::Bool(true)))
     }
-    fn str(&self, name: &str) -> Option<&str> {
+    pub(crate) fn str(&self, name: &str) -> Option<&str> {
         match self.get(name)? {
             V::Str(s) => Some(s),
             _ => None,
@@ -158,14 +158,14 @@ impl Resolved {
             .unwrap_or(false);
         (at, nearest)
     }
-    fn size(&self, name: &str) -> Option<Size> {
+    pub(crate) fn size(&self, name: &str) -> Option<Size> {
         match self.get(name)? {
             V::Size(s) => Some(*s),
             V::Num(n) => Some(Size::Fixed(*n as f32)),
             _ => None,
         }
     }
-    fn color(&self, name: &str) -> Option<Srgba> {
+    pub(crate) fn color(&self, name: &str) -> Option<Srgba> {
         match self.get(name)? {
             V::Color(c) => Some(*c),
             _ => None,
