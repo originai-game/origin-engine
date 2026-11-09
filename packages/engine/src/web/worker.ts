@@ -250,7 +250,8 @@ interface WorkerScope {
   addEventListener?(type: string, fn: (e: { message?: string; error?: unknown; reason?: unknown; preventDefault?(): void }) => void): void;
   postMessage(message: unknown): void;
   requestAnimationFrame?(fn: (t: number) => void): number;
-  readonly location: { readonly href: string; readonly pathname: string };
+  /** A page's Worker's script URL; absent in bun's Worker, which hosts this module in the tests. */
+  readonly location?: { readonly href: string; readonly pathname: string };
 }
 
 declare const self: WorkerScope;
@@ -847,9 +848,11 @@ export function installImageDecoder(glue: Pick<WebExtras, "og_web_set_image_deco
 
 /** This Worker's bundle's map, served beside it in a dev build, for the spawns' lines; nothing when it is not there. */
 async function loadOwnSourceMap(): Promise<void> {
-  const bundle = self.location.href;
+  const at = self.location;
+  if (!at) return;
+  const bundle = at.href;
   try {
-    const r = await fetch(new URL(`${self.location.pathname.slice(self.location.pathname.lastIndexOf("/") + 1)}.map`, bundle));
+    const r = await fetch(new URL(`${at.pathname.slice(at.pathname.lastIndexOf("/") + 1)}.map`, bundle));
     if (r.ok) useSourceMap(bundle, new SourceMap(await r.text()));
   } catch {
     // No map: spawned entities have no source.
