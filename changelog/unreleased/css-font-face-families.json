@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "@font-face declares named font families: the cook bundles each url() source, and font-family (or the font shorthand) draws text in the first declared family, matched by font-style, font-weight range and unicode-range per CSS Fonts 4, falling back to the generic family's font role."
+    },
+    {
+      "member": "FontRole",
+      "summary": "FontRole::Family(Family) names a document's @font-face family with a fallback role; Fonts::families holds its faces (FamilyFace, FaceStyle) and FontMetrics::with_range limits a face to its unicode-range."
+    }
+  ]
+}

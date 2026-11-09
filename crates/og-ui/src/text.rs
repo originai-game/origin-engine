@@ -55,6 +55,9 @@ pub struct FontMetrics {
     /// 0 for an outline font. Text in it is set at whole multiples of the
     /// grid ([`FontMetrics::pixel_size`]).
     pixel: u32,
+    /// An `@font-face`'s `unicode-range` (inclusive code point ranges):
+    /// the face has only the characters in it ([`FontMetrics::with_range`]).
+    range: Option<Arc<[(u32, u32)]>>,
 }
 
 /// One glyph of a line as drawn, left to right.
@@ -155,6 +158,7 @@ impl FontMetrics {
             mixed: None,
             prefer: 0,
             pixel: 0,
+            range: None,
         }
     }
 
@@ -172,6 +176,7 @@ impl FontMetrics {
             mixed: None,
             prefer: 0,
             pixel: 0,
+            range: None,
         }
     }
 
@@ -181,6 +186,21 @@ impl FontMetrics {
     pub fn with_pixel(mut self, grid: u32) -> FontMetrics {
         self.pixel = grid;
         self
+    }
+
+    /// Only the characters in `ranges` (inclusive code points; empty: every
+    /// character): an `@font-face`'s `unicode-range`, so a text takes each
+    /// character from the face whose range has it (CSS Fonts 4 §4.5).
+    pub fn with_range(mut self, ranges: &[(u32, u32)]) -> FontMetrics {
+        self.range = (!ranges.is_empty()).then(|| ranges.into());
+        self
+    }
+
+    /// Whether `c` is in the face's `unicode-range`.
+    fn in_range(&self, c: char) -> bool {
+        self.range
+            .as_ref()
+            .is_none_or(|r| r.iter().any(|&(a, b)| (a..=b).contains(&u32::from(c))))
     }
 
     /// The pixel grid (`font { pixel <grid> }`); 0 for an outline font.
@@ -271,9 +291,10 @@ impl FontMetrics {
     }
 
     fn own_has(&self, c: char) -> bool {
-        self.fixed.is_some()
-            || self.atlas_advance(c).is_some()
-            || self.file.as_ref().is_some_and(|f| f.covers(c))
+        self.in_range(c)
+            && (self.fixed.is_some()
+                || self.atlas_advance(c).is_some()
+                || self.file.as_ref().is_some_and(|f| f.covers(c)))
     }
 
     /// Whether the cooked atlas itself has `c`.
@@ -284,6 +305,11 @@ impl FontMetrics {
     /// Whether the cooked atlas has the glyph `key` (a character's, or a
     /// shaped form's by id).
     pub fn in_atlas_key(&self, key: GlyphKey) -> bool {
+        if let GlyphKey::Char(c) = key
+            && !self.in_range(c)
+        {
+            return false;
+        }
         self.fixed.is_some() || self.atlas_advance(key).is_some()
     }
 

@@ -69,6 +69,9 @@ pub(crate) const INHERITED: &[&str] = &[
     "caret-color",
     "accent-color",
     "color-scheme",
+    // The named families of `font-family` (its generic family is the
+    // `font` role): a quoted, comma-separated list or `none`.
+    "-og-font-name",
 ];
 
 /// The text properties that do not inherit (CSS Text Decoration 3:
@@ -122,6 +125,17 @@ pub(crate) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
     );
     if name == "font" && is_step(&d.source) {
         return Ok(vec![d]);
+    }
+    if name == "font-family" {
+        let v = d.source.trim();
+        if d.value.has_variables() && !v.starts_with("var(--font-") || wide(v) {
+            return Ok(vec![d]);
+        }
+        let (names, role) = family_list(v)?;
+        return Ok(vec![
+            declaration(name, &role, d.important)?,
+            declaration("-og-font-name", &names, d.important)?,
+        ]);
     }
     if !shorthand {
         if longhand(name) && !d.value.has_variables() {
@@ -457,22 +471,83 @@ fn font(v: &str) -> Result<Vec<(String, String)>, String> {
     if family.is_empty() {
         return Err(HOW.into());
     }
-    // The family: a font role token, or a generic family (the style's
-    // body, display or mono role).
-    let first = family.split(',').next().unwrap_or("").trim();
-    let role = if first.starts_with("var(--font-") {
-        first.to_string()
-    } else {
-        let role = match first.trim_matches(['"', '\'']) {
-            "monospace" | "ui-monospace" => "mono",
-            "ui-rounded" => "rounded",
-            "fantasy" | "cursive" => "display",
-            _ => "body",
-        };
-        format!("var(--font-{role})")
-    };
+    let (names, role) = family_list(&family)?;
     out.push(("font-family".into(), role));
+    out.push(("-og-font-name".into(), names));
     Ok(out)
+}
+
+fn wide(v: &str) -> bool {
+    matches!(
+        v,
+        "inherit" | "initial" | "unset" | "revert" | "revert-layer"
+    )
+}
+
+/// A `font-family` list (CSS Fonts 4 §2.1) as its named families, quoted
+/// and comma-separated (`none` when it names none), and the role its first
+/// generic family (or `var(--font-<role>)` token) is, `body` when it names
+/// none: a named family is drawn from a document's `@font-face` faces
+/// ([`crate::FontRole::Family`]), the role after it.
+pub(crate) fn family_list(v: &str) -> Result<(String, String), String> {
+    let mut names = Vec::new();
+    let mut role = None;
+    for item in v.split(',') {
+        let item = item.trim();
+        let generic = match item {
+            "" => return Err("font-family: an empty family in the list".into()),
+            "monospace" | "ui-monospace" => Some("mono"),
+            "ui-rounded" => Some("rounded"),
+            "fantasy" | "cursive" => Some("display"),
+            "serif" | "sans-serif" | "system-ui" | "ui-serif" | "ui-sans-serif" | "math"
+            | "emoji" | "fangsong" => Some("body"),
+            t => t
+                .strip_prefix("var(--font-")
+                .and_then(|r| r.strip_suffix(')'))
+                .filter(|r| crate::FontRole::from_name(r).is_some()),
+        };
+        if let Some(g) = generic {
+            role.get_or_insert(g);
+            continue;
+        }
+        let name = if item.len() >= 2
+            && (item.starts_with('"') && item.ends_with('"')
+                || item.starts_with('\'') && item.ends_with('\''))
+        {
+            item[1..item.len() - 1].to_string()
+        } else if item.split_whitespace().all(super::syntax::identifier) {
+            // Unquoted: its identifiers joined by one space.
+            item.split_whitespace().collect::<Vec<_>>().join(" ")
+        } else {
+            return Err(format!(
+                "font-family: '{item}' is not a family name (quote it) or a generic family"
+            ));
+        };
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    let names = if names.is_empty() {
+        "none".to_string()
+    } else {
+        names
+            .iter()
+            .map(|n| format!("\"{}\"", n.replace('"', "")))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    Ok((names, format!("var(--font-{})", role.unwrap_or("body"))))
+}
+
+/// The names of a computed `-og-font-name` list.
+fn names_of(v: &str) -> Vec<String> {
+    if v == "none" {
+        return Vec::new();
+    }
+    v.split(',')
+        .map(|n| n.trim().trim_matches('"').to_string())
+        .filter(|n| !n.is_empty())
+        .collect()
 }
 
 fn is_size(s: &str) -> bool {
@@ -834,6 +909,9 @@ pub struct TextCss {
     /// The used colour scheme is dark (`None`: the style's).
     pub dark: Option<bool>,
     pub vertical_align: Option<String>,
+    /// The first named family of `font-family` a document declares an
+    /// `@font-face` for (CSS Fonts 4 §5: an unavailable family is skipped).
+    pub family: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -856,6 +934,8 @@ pub(crate) struct Inputs<'a> {
     pub current: Srgba,
     /// The type step the element's own `font` gives (or the body's).
     pub step: TypeStep,
+    /// Whether a document declares an `@font-face` for a family name.
+    pub declared: &'a dyn Fn(&str) -> bool,
 }
 
 /// Computes the element's inherited text values into its computed map
@@ -869,6 +949,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         theme,
         current,
         step,
+        declared,
     } = inp;
     // The parent's font size (px), what `em` and `%` here are against.
     let parent_num = |name: &str| {
@@ -1004,6 +1085,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         accent: color(get("accent-color")),
         fill: color(get("-webkit-text-fill-color")),
         paint_order: get("paint-order").filter(|v| v != "normal"),
+        family: get("-og-font-name").and_then(|v| names_of(&v).into_iter().find(|n| declared(n))),
         ..TextCss::default()
     };
     match get("font-style").as_deref() {

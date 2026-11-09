@@ -415,11 +415,12 @@ impl StyleTokens {
                 continue;
             }
             let base = at[Breakpoint::Desktop as usize];
-            let font = match base.font {
-                FontRole::Body => "body",
+            // A token's step names a role, never a document's family.
+            let font = match base.font.base() {
                 FontRole::Display => "display",
                 FontRole::Mono => "numeric",
                 FontRole::Rounded => "rounded",
+                _ => "body",
             };
             let overrides: Vec<Entry> = Breakpoint::ALL
                 .iter()

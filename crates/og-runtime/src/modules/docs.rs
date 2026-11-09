@@ -260,13 +260,62 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     {
         crate::lazy::ensure(eng, eng.world()?, crate::video::MEDIA_INTENT)?;
     }
+    let faces = family_faces(eng, &doc)?;
     let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
     let mut ui = ui.lock();
     for (r, _, artboard) in rive {
         ui.define_rive(&r, artboard);
     }
-    ui.define_document(doc);
+    define(&mut ui, doc, faces);
     Ok(name)
+}
+
+/// The faces a document's `@font-face` rules declare, each from its first
+/// `url()` source the bundle has (the cook bundled it as a font; a
+/// `local()` source names no font the engine has), limited to its
+/// `unicode-range`.
+fn family_faces(eng: &Engine, doc: &UiDocument) -> Result<Vec<og_ui::FamilyFace>, String> {
+    let mut out = Vec::new();
+    for face in &doc.sheet.font_faces {
+        let Some(src) = face
+            .src
+            .iter()
+            .find(|s| !s.starts_with("local:") && eng.assets.borrow().bundle_for(s).is_ok())
+        else {
+            continue;
+        };
+        let i = crate::assets::load_font(eng, src)
+            .map_err(|e| format!("{}: @font-face {}: {src}: {e}", doc.source, face.family))?;
+        let mut font = super::ui_config::ui_font(eng, crate::assets::handle(i) as f64)?;
+        font.metrics = font.metrics.with_range(&face.unicode_range);
+        let weight = |w: f32| w.round().clamp(1.0, 1000.0) as u16;
+        out.push(og_ui::FamilyFace {
+            family: face.family.clone(),
+            document: doc.name.clone(),
+            weight: (weight(face.weight.0), weight(face.weight.1)),
+            style: match face.style.as_str() {
+                "italic" => og_ui::FaceStyle::Italic,
+                "oblique" => og_ui::FaceStyle::Oblique,
+                _ => og_ui::FaceStyle::Normal,
+            },
+            font,
+            ..og_ui::FamilyFace::default()
+        });
+    }
+    Ok(out)
+}
+
+/// Defines `doc` in the UI with its named families' faces in place of the
+/// ones it declared before.
+fn define(ui: &mut og_ui::Ui, doc: UiDocument, faces: Vec<og_ui::FamilyFace>) {
+    let had = ui.fonts().families.iter().any(|f| f.document == doc.name);
+    if had || !faces.is_empty() {
+        let mut fonts = ui.fonts().clone();
+        fonts.families.retain(|f| f.document != doc.name);
+        fonts.families.extend(faces);
+        ui.set_fonts(fonts);
+    }
+    ui.define_document(doc);
 }
 
 /// `og.load.document`.
@@ -292,8 +341,10 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
         if now == l.hash && l.rive.iter().all(|(r, h)| hash_of(eng, r) == *h) {
             continue;
         }
-        match read_document(eng, &l.id).and_then(|doc| Ok((read_rive(eng, &doc)?, doc))) {
-            Ok((rive, doc)) => {
+        match read_document(eng, &l.id)
+            .and_then(|doc| Ok((read_rive(eng, &doc)?, family_faces(eng, &doc)?, doc)))
+        {
+            Ok((rive, faces, doc)) => {
                 let hashes: Vec<(String, u64)> =
                     rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
                 with(eng.id, |d| {
@@ -306,7 +357,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
                 for (r, _, artboard) in rive {
                     ui.define_rive(&r, artboard);
                 }
-                ui.define_document(doc);
+                define(&mut ui, doc, faces);
             }
             Err(e) => failed.push(format!("og dev: {e} (the old document stays)")),
         }

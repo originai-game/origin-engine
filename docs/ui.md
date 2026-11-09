@@ -1832,9 +1832,23 @@ from a style change; with `transition-behavior: allow-discrete`, a
 `display: none` or `visibility: hidden` start holds the shown value
 throughout. `@property` registers a custom property's
 syntax, inheritance and initial value; a value that does not match its
-syntax takes the initial value. `@font-face`, `@counter-style` and
-`@position-try` are read into the document's sheet (fonts, counters and
-anchor positioning use them). `inherit`, `initial`, `unset`, `revert` and
+syntax takes the initial value. `@font-face` declares a named family
+(CSS Fonts 4): the cook bundles each `url()` source (read relative to the
+document; it must be a font of the project, cooked with its own settings,
+and `local()` names no font since the engine has no system fonts), and the
+runtime registers the first source the bundle has under the family name
+when the document loads. `font-family: "Name", monospace` (or the `font`
+shorthand) draws the text in the first listed family a loaded document
+declares, its generic family (`monospace`, `ui-rounded`, `fantasy`/`cursive`,
+anything else body) the font role it falls back to. Of the family's faces
+the text takes those of the nearest `font-style` and then the nearest
+`font-weight` range (§5.2's order), and each character comes from the
+last-declared face of that set whose `unicode-range` has it, then the role's
+face, the CJK companion, the locale's and the game's fonts. A `::part` run's
+`font-family` takes its first named family. A weight or slant the family
+has no face for is synthesised as for a role. `@counter-style` and
+`@position-try` are read into the document's sheet (counters and anchor
+positioning use them). `inherit`, `initial`, `unset`, `revert` and
 `revert-layer` work on every property: `inherit` takes the parent's
 winning value, `revert` rolls back to the user-agent rules and
 `revert-layer` to the layers below the declaration's.

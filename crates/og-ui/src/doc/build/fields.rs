@@ -871,10 +871,17 @@ impl Resolved {
             align,
             nowrap: css.and_then(|t| t.nowrap).unwrap_or(self.flag("nowrap")),
             width: self.size("width").unwrap_or_default(),
-            font: self
-                .str("font")
-                .and_then(FontRole::from_name)
-                .unwrap_or_default(),
+            font: {
+                let role = self
+                    .str("font")
+                    .and_then(FontRole::from_name)
+                    .unwrap_or_default();
+                // A named family a document declares, the role after it.
+                match css.and_then(|t| t.family.as_deref()) {
+                    Some(name) => FontRole::Family(crate::Family::new(name, role)),
+                    None => role,
+                }
+            },
             heading: self.flag("heading"),
             ellipsis: self.flag("ellipsis"),
             max_lines: self.num("maxLines").unwrap_or(0.0) as u32,

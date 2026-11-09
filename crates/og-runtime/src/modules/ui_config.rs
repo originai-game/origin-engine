@@ -199,9 +199,9 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     })
                 })
                 .collect::<Result<Vec<_>, String>>()?,
-            // The locale's chain and forms (og.i18n) stay.
             chain: Vec::new(),
             cjk_locale: og_ui::CjkLocale::default(),
+            families: Vec::new(),
         };
         let ui = eng
             .state
@@ -333,10 +333,17 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 .as_ref()
                 .map_or_else(og_ui::default_dressings, |s| s.0.dressings.clone()),
         );
-        let (chain, cjk_locale) = (ui.fonts().chain.clone(), ui.fonts().cjk_locale);
+        // The locale's chain and forms (og.i18n) and the documents' named
+        // families (`@font-face`) stay.
+        let (chain, cjk_locale, families) = (
+            ui.fonts().chain.clone(),
+            ui.fonts().cjk_locale,
+            ui.fonts().families.clone(),
+        );
         let fonts = Fonts {
             chain,
             cjk_locale,
+            families,
             ..fonts
         };
         let fontless = fonts.body.handle.is_none()

@@ -983,6 +983,14 @@ impl Ui {
                 theme: &self.theme,
                 current,
                 step,
+                declared: &|name| {
+                    self.docs.docs.values().any(|d| {
+                        d.sheet
+                            .font_faces
+                            .iter()
+                            .any(|f| f.family.eq_ignore_ascii_case(name))
+                    })
+                },
             });
             cascade.text = local;
             r.text = (text != Default::default()).then(|| Arc::new(text));

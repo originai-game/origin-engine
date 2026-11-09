@@ -99,8 +99,8 @@ pub use juice::{
 pub use layers::{LayerInfo, LayerOp};
 pub use layout::anchor;
 pub use layout::{
-    Align, Anchor, Calc, CalcOp, Cross, Direction, Element, FlexItem, FontRole, Insets, Length,
-    Margin, Rect, Size, TablePart, TextAlign,
+    Align, Anchor, Calc, CalcOp, Cross, Direction, Element, Family, FlexItem, FontRole, Insets,
+    Length, Margin, Rect, Size, TablePart, TextAlign,
 };
 pub use motion::{
     Choreo, Ease, EventKind, GestureInfo, Key, KeyEase, MotionDump, MotionToken, MotionTokens,
@@ -129,10 +129,10 @@ pub use text_path::{PathShape, TextPath};
 pub use tokens::StyleTokens;
 pub use ui::{
     ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, ButtonDesc, ButtonVariant, CjkLocale,
-    ControlSize, FeedbackPlay, FieldDesc, FontFace, Fonts, HUD_MAX_ASPECT, IconAtlas, ImageDesc,
-    InlineImage, LabelDesc, PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, Synth,
-    TextAreaDesc, TextTarget, Ui, UiDebugElement, UiDebugStyle, UiDesc, UiFrame, Viewport,
-    debug_overlay,
+    ControlSize, FaceStyle, FamilyFace, FeedbackPlay, FieldDesc, FontFace, Fonts, HUD_MAX_ASPECT,
+    IconAtlas, ImageDesc, InlineImage, LabelDesc, PanelDesc, ProgressDesc, Response, ScrollAxes,
+    ScrollDesc, Synth, TextAreaDesc, TextTarget, Ui, UiDebugElement, UiDebugStyle, UiDesc, UiFrame,
+    Viewport, debug_overlay,
 };
 pub use vcursor::VirtualCursorDesc;
 pub use viewport::{ViewportDesc, ViewportResponse};

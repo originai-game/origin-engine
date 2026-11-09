@@ -1491,6 +1491,22 @@ pub fn cook_project_with_texture_cache(
                 }
                 if let Err(errors) = og_ui::UiDocument::parse_with_imports(&s.rel, &text, imports).and_then(|doc| {
                     doc.validate_tokens(&document_themes)?;
+                    // Each @font-face's fonts join the bundle with it (the first
+                    // url() the project has is the face's; local() names none).
+                    for face in &doc.sheet.font_faces {
+                        let urls: Vec<&String> = face.src.iter().filter(|s| !s.starts_with("local:")).collect();
+                        if !urls.iter().any(|u| known.contains(u.as_str())) {
+                            return Err(vec![format!(
+                                "{}: @font-face {}: no src is a font of the project ({}; a url() is read relative to the document)",
+                                s.rel,
+                                face.family,
+                                if urls.is_empty() { "it names only local() fonts, and the engine has no system fonts".to_string() } else { urls.iter().map(|u| u.as_str()).collect::<Vec<_>>().join(", ") }
+                            )]);
+                        }
+                        for u in urls {
+                            dependencies.push(format!("{u}={}", known.contains(u.as_str())));
+                        }
+                    }
                     for id in &doc.strings {
                         let table = sources.iter().find(|source| source.rel == *id && source.kind == Kind::Strings)
                             .ok_or_else(|| vec![format!("{}: missing string table {id}; add the table named by <meta name=\"strings\">", s.rel)])?;

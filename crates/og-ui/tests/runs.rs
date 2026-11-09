@@ -37,6 +37,12 @@
 //!   the style has the real one, a weight within 100 of a real face still
 //!   faked, or a Japanese or Korean text given the Simplified Chinese
 //!   companion → `a_weight_and_a_locale_pick_the_styles_real_faces`
+//! - a document's `@font-face` family matched by the nearest weight
+//!   instead of CSS Fonts 4's order (a lighter face over a heavier one up
+//!   to 500), a face drawing a character outside its `unicode-range`, an
+//!   undeclared family in a `font-family` list not skipped, or a family
+//!   with no face not falling back to its generic family's role →
+//!   `a_font_face_family_takes_its_faces_by_weight_and_range`
 
 use crate::support;
 
@@ -447,4 +453,101 @@ fn an_arabic_run_is_shaped_with_its_own_font() {
         .map(|g| g.key())
         .collect();
     assert_eq!(arabic.iter().map(|g| g.key()).collect::<Vec<_>>(), alone);
+}
+
+#[test]
+fn a_font_face_family_takes_its_faces_by_weight_and_range() {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene);
+    let face = |family: &str, weight: u16, font: &UiFont, range: &[(u32, u32)]| FamilyFace {
+        family: family.into(),
+        document: "t".into(),
+        weight: (weight, weight),
+        font: UiFont {
+            metrics: font.metrics.clone().with_range(range),
+            ..font.clone()
+        },
+        ..FamilyFace::default()
+    };
+    let mut fonts = Fonts {
+        body: f.latin.clone(),
+        families: vec![
+            face("Brand", 350, &f.arabic, &[]),
+            face("Brand", 500, &f.cjk, &[]),
+            // Declared first, so the later face wins where both have it.
+            face("Split", 400, &f.cjk, &[(0x4E00, 0x9FFF)]),
+            face("Split", 400, &f.latin, &[(0, 0x7F)]),
+        ],
+        ..Fonts::default()
+    };
+    fonts.link();
+    let family = |name| FontRole::Family(Family::new(name, FontRole::Body));
+    let at = |w| fonts.for_styled(family("brand"), w, false, "Go").0.handle;
+    assert_eq!(
+        at(400),
+        f.cjk.handle,
+        "from 400, a heavier face up to 500 before a nearer lighter one"
+    );
+    assert_eq!(at(300), f.arabic.handle, "below 400, lighter first");
+    assert_eq!(at(700), f.cjk.handle, "above 500, the heaviest below");
+    assert_eq!(
+        fonts.for_text(family("Nope"), "Go").handle,
+        f.latin.handle,
+        "a family with no face is its role"
+    );
+    // Each character from the face whose unicode-range has it.
+    let m = &fonts.for_text(family("Split"), "Go 原点").metrics;
+    let font = fonts.for_text(family("Split"), "Go 原点");
+    let drawn: Vec<(char, Option<og_render::FontHandle>)> = m
+        .visual("Go 原点", Direction::Ltr, 0.0)
+        .iter()
+        .map(|g| (g.ch, font.handle_of(g.font)))
+        .collect();
+    assert_eq!(
+        drawn,
+        [
+            ('G', f.latin.handle),
+            ('o', f.latin.handle),
+            (' ', f.latin.handle),
+            ('原', f.cjk.handle),
+            ('点', f.cjk.handle),
+        ]
+    );
+
+    // A document's font-family list: the first family it declares, the
+    // generic family's role after it.
+    let text = r#"<meta name="component" content="t">
+<div>
+  <p id="Named">Go</p>
+  <p id="Skipped">Go</p>
+  <p id="Short">Go</p>
+</div>
+<style>
+@font-face { font-family: "Wide Face"; src: url(fonts/wide.ttf); }
+p { width: max-content; }
+#Named { font-family: "Wide Face", monospace; }
+#Skipped { font-family: Undeclared, monospace; }
+#Short { font: 16px Wide Face, serif; }
+</style>"#;
+    crate::html_text::both(text, &[], |d| {
+        d.ui.set_fonts(Fonts {
+            body: UiFont::unrendered(0.5),
+            mono: Some(UiFont::unrendered(1.0)),
+            families: vec![FamilyFace {
+                family: "wide face".into(),
+                weight: (400, 400),
+                font: UiFont::unrendered(2.0),
+                ..FamilyFace::default()
+            }],
+            ..Fonts::default()
+        });
+        d.step(InputFrame::default());
+        let (named, skipped, short) = (d.get("Named"), d.get("Skipped"), d.get("Short"));
+        assert_eq!(
+            named.width,
+            2.0 * skipped.width,
+            "the declared family, else the monospace role"
+        );
+        assert_eq!(short.width, 2.0 * 2.0 * 16.0, "the font shorthand's family");
+    });
 }

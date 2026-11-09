@@ -465,11 +465,12 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
 /// event's feedback set.
 fn tokens_json(t: &og_ui::StyleTokens) -> Value {
     use og_ui::tokens::*;
-    let font = |f: og_ui::FontRole| match f {
-        og_ui::FontRole::Body => "body",
+    // A token's type names a role, never a document's family.
+    let font = |f: og_ui::FontRole| match f.base() {
         og_ui::FontRole::Display => "display",
         og_ui::FontRole::Mono => "mono",
         og_ui::FontRole::Rounded => "rounded",
+        _ => "body",
     };
     let mut typography = Map::new();
     for &role in TypeRole::ALL {

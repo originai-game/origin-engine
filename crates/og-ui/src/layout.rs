@@ -30,12 +30,12 @@ pub(crate) use flex::on_screen;
 use flex::*;
 pub(crate) use grid::{GridLayout, Table, derive_table, shown_children};
 use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
-pub use node::FontRole;
 use node::truncate_lines;
 pub(crate) use node::{
     Content, EditView, NONE, Node, Shape, Stagger, TextContent, Widget, WrapStyle, ellipsis_of,
     snap_pixel_text, step_tracking, text_features,
 };
+pub use node::{Family, FontRole};
 
 use crate::FontMetrics;
 use crate::element::{Edges, GridFlow, LayoutMode, Patch, Query, Track};

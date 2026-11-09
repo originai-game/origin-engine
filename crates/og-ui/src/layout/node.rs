@@ -94,16 +94,83 @@ pub enum FontRole {
     /// Levels and scores (falls back
     /// to `Display`, then `Body`).
     Rounded,
+    /// A family a document's `@font-face` rules name (`font-family:
+    /// "Name", <generic>`): its faces matched by weight, style and
+    /// `unicode-range`, then its fallback role ([`crate::Fonts::families`]).
+    Family(Family),
+}
+
+/// A named font family as a text refers to it: the family's id and the
+/// role a text falls back to where the family has no face for a character
+/// (the list's generic family; body when it names none).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Family {
+    id: u32,
+    fallback: u8,
+}
+
+impl Family {
+    /// `name` (compared case-insensitively, as CSS family names are)
+    /// falling back to `fallback` (a role; a family's own fallback when
+    /// `fallback` is a family).
+    pub fn new(name: &str, fallback: FontRole) -> Family {
+        Family {
+            id: Family::id_of(name),
+            fallback: match fallback.base() {
+                FontRole::Display => 1,
+                FontRole::Mono => 2,
+                FontRole::Rounded => 3,
+                _ => 0,
+            },
+        }
+    }
+
+    /// The id of the family `name`: FNV-1a over its ASCII-lowercased bytes.
+    pub fn id_of(name: &str) -> u32 {
+        name.bytes().fold(0x811c_9dc5, |h, b| {
+            (h ^ u32::from(b.to_ascii_lowercase())).wrapping_mul(0x0100_0193)
+        })
+    }
+
+    pub fn id(self) -> u32 {
+        self.id
+    }
+
+    /// The four roles, in the order a family's fallback indexes them.
+    pub const ROLES: [FontRole; 4] = [
+        FontRole::Body,
+        FontRole::Display,
+        FontRole::Mono,
+        FontRole::Rounded,
+    ];
+
+    /// The role a character the family has no face for is drawn in.
+    pub fn fallback(self) -> FontRole {
+        Family::ROLES[self.fallback_index()]
+    }
+
+    /// [`Family::fallback`]'s index in [`Family::ROLES`].
+    pub fn fallback_index(self) -> usize {
+        usize::from(self.fallback)
+    }
 }
 
 impl FontRole {
     /// The role a style's text effects are keyed by (`body`, `display`,
     /// `numeric`): a rounded text takes the display role's.
     pub fn effect_index(self) -> usize {
-        match self {
-            FontRole::Body => 0,
+        match self.base() {
             FontRole::Display | FontRole::Rounded => 1,
             FontRole::Mono => 2,
+            _ => 0,
+        }
+    }
+
+    /// The role itself, or a family's fallback role.
+    pub fn base(self) -> FontRole {
+        match self {
+            FontRole::Family(f) => f.fallback(),
+            r => r,
         }
     }
 

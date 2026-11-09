@@ -215,6 +215,48 @@ pub struct Fonts {
     /// kana only in its own locale's forms, so Japanese never takes a
     /// Simplified Chinese face ([`Fonts::companion_styled`]).
     pub cjk_locale: CjkLocale,
+    /// The faces of the named families documents declare (`@font-face`),
+    /// in declaration order: a text of [`FontRole::Family`] takes the
+    /// family's face its weight and style match (CSS Fonts 4 §5.2), each
+    /// character from the first face of that set, last declared first,
+    /// whose `unicode-range` has it, then from the family's fallback role
+    /// and the fonts after it ([`Fonts::for_styled`]).
+    pub families: Vec<FamilyFace>,
+}
+
+/// An `@font-face`'s `font-style`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum FaceStyle {
+    #[default]
+    Normal,
+    Italic,
+    Oblique,
+}
+
+/// One `@font-face` of a named family ([`Fonts::families`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct FamilyFace {
+    /// The family name as declared (matched case-insensitively).
+    pub family: String,
+    /// The document whose stylesheet declares it (its faces are replaced
+    /// when it is defined again).
+    pub document: String,
+    /// `font-weight` as an inclusive range (one weight is both ends).
+    pub weight: (u16, u16),
+    pub style: FaceStyle,
+    /// Its font, limited to its `unicode-range`
+    /// ([`crate::FontMetrics::with_range`]).
+    pub font: UiFont,
+    /// The font with the runs a text it draws only in part takes, for each
+    /// fallback role (body, display, mono, rounded): made by
+    /// [`Fonts::link`] (leave it empty).
+    pub linked: Vec<UiFont>,
+}
+
+impl FamilyFace {
+    fn is(&self, family: crate::Family) -> bool {
+        crate::Family::id_of(&self.family) == family.id()
+    }
 }
 
 /// Which national forms a CJK face draws Han in (`fonts { cjk ja "…" }`).
@@ -304,6 +346,10 @@ fn nearest<'a>(
 impl Fonts {
     pub fn get(&self, role: FontRole) -> &UiFont {
         match role {
+            FontRole::Family(f) => match self.family_set(f, 400, false).0.first() {
+                Some(face) => &face.font,
+                None => self.get(f.fallback()),
+            },
             FontRole::Body => &self.body,
             FontRole::Display => self.display.as_ref().unwrap_or(&self.body),
             FontRole::Mono => self.mono.as_ref().unwrap_or(&self.body),
@@ -329,7 +375,78 @@ impl Fonts {
     /// runtime true }`); else (no one font draws it all) the mixed font,
     /// so only the characters no font has are missing.
     pub fn for_text(&self, role: FontRole, text: &str) -> &UiFont {
+        if let FontRole::Family(_) = role {
+            return self.for_styled(role, 0, false, text).0;
+        }
         self.resolve(self.get(role), self.companion(role), text)
+    }
+
+    /// Whether the named family `name` has a face ([`Fonts::families`]).
+    pub fn has_family(&self, name: &str) -> bool {
+        let id = crate::Family::id_of(name);
+        self.families
+            .iter()
+            .any(|f| crate::Family::id_of(&f.family) == id)
+    }
+
+    /// The faces of `family` a text at `weight` (0: 400) and slant takes
+    /// (CSS Fonts 4 §5.2): of the faces of the nearest style (italic, then
+    /// oblique, then normal for an italic text; normal, oblique, italic
+    /// otherwise), those of the nearest weight range, last declared first;
+    /// with the weight they draw at and whether they slant.
+    fn family_set(
+        &self,
+        family: crate::Family,
+        weight: u16,
+        italic: bool,
+    ) -> (Vec<&FamilyFace>, u16, bool) {
+        let faces: Vec<&FamilyFace> = self.families.iter().filter(|f| f.is(family)).collect();
+        let order = if italic {
+            [FaceStyle::Italic, FaceStyle::Oblique, FaceStyle::Normal]
+        } else {
+            [FaceStyle::Normal, FaceStyle::Oblique, FaceStyle::Italic]
+        };
+        let Some(style) = order
+            .into_iter()
+            .find(|s| faces.iter().any(|f| f.style == *s))
+        else {
+            return (Vec::new(), 0, false);
+        };
+        let w = if weight == 0 { 400 } else { weight };
+        // Within the range first; then, from 400 to 500, the heavier ones up
+        // to 500 nearest first, the lighter ones nearest first, the ones
+        // heavier than 500; below 400 lighter then heavier; above 500
+        // heavier then lighter.
+        let key = |&(a, b): &(u16, u16)| -> (u8, u16) {
+            let middle = (400..=500).contains(&w);
+            if (a..=b).contains(&w) {
+                (0, 0)
+            } else if w < a {
+                let tier = match () {
+                    _ if middle && a <= 500 => 1,
+                    _ if middle => 3,
+                    _ if w < 400 => 2,
+                    _ => 1,
+                };
+                (tier, a - w)
+            } else {
+                (if w < 400 { 1 } else { 2 }, w - b)
+            }
+        };
+        let Some(range) = faces
+            .iter()
+            .filter(|f| f.style == style)
+            .map(|f| f.weight)
+            .min_by_key(key)
+        else {
+            return (Vec::new(), 0, false);
+        };
+        let set = faces
+            .into_iter()
+            .rev()
+            .filter(|f| f.style == style && f.weight == range)
+            .collect();
+        (set, w.clamp(range.0, range.1), style != FaceStyle::Normal)
     }
 
     /// [`Fonts::for_text`] at a weight (100 to 900; 0: the role's own face)
@@ -345,6 +462,30 @@ impl Fonts {
         italic: bool,
         text: &str,
     ) -> (&UiFont, Synth) {
+        if let FontRole::Family(family) = role {
+            let (set, got, slanted) = self.family_set(family, weight, italic);
+            let Some(first) = set.first() else {
+                return self.for_styled(family.fallback(), weight, italic, text);
+            };
+            let drawn = || text.chars().filter(|c| !c.is_whitespace());
+            // The face that sets the text whole, else the first that draws
+            // some of it (its runs take the rest).
+            let face = set
+                .iter()
+                .find(|f| drawn().all(|c| f.font.metrics.in_atlas(c)))
+                .or_else(|| set.iter().find(|f| drawn().any(|c| f.font.metrics.has(c))))
+                .unwrap_or(first);
+            let f = face
+                .linked
+                .get(family.fallback_index())
+                .unwrap_or(&face.font);
+            let synth = Synth {
+                bold: weight >= 600 && got + 100 < weight,
+                italic: italic && !slanted,
+            };
+            let companion = self.companion_styled(family.fallback(), weight);
+            return (self.resolve(f, companion, text), synth);
+        }
         let (f, got, slanted) = self.latin(role, weight, italic);
         let synth = Synth {
             bold: weight >= 600 && got + 100 < weight,
@@ -374,6 +515,7 @@ impl Fonts {
             FontRole::Rounded if self.rounded.is_some() => (FontRole::Rounded, None),
             FontRole::Rounded => self.slot(FontRole::Display),
             FontRole::Display | FontRole::Mono => (FontRole::Body, Some(0)),
+            FontRole::Family(f) => self.slot(f.fallback()),
         }
     }
 
@@ -528,6 +670,56 @@ impl Fonts {
                 std::sync::Arc::new(m)
             });
         }
+        // A family's face, for each fallback role: the other faces of its
+        // set (its weight range and style, last declared first, each drawing
+        // its own unicode-range), then the role's face nearest its weight,
+        // the role's companion, the others and the body face.
+        let linked: Vec<Vec<UiFont>> = self
+            .families
+            .iter()
+            .enumerate()
+            .map(|(i, face)| {
+                let set: Vec<UiFont> = self
+                    .families
+                    .iter()
+                    .enumerate()
+                    .rev()
+                    .filter(|&(j, f)| {
+                        j != i
+                            && f.family.eq_ignore_ascii_case(&face.family)
+                            && f.style == face.style
+                            && f.weight == face.weight
+                    })
+                    .map(|(_, f)| f.font.alone())
+                    .collect();
+                let w = 400u16.clamp(face.weight.0, face.weight.1);
+                let slanted = face.style != FaceStyle::Normal;
+                crate::Family::ROLES
+                    .iter()
+                    .map(|&role| {
+                        let own = self.latin(role, w, slanted).0.alone();
+                        let last = (own.handle != body.handle).then(|| body.clone());
+                        let all: Vec<UiFont> = set
+                            .iter()
+                            .cloned()
+                            .chain([own])
+                            .chain(self.companion_styled(role, w).map(UiFont::alone))
+                            .chain(others.iter().cloned())
+                            .chain(last)
+                            .collect();
+                        let mut m = face.font.alone();
+                        m.metrics.runs = Some(all.into());
+                        m.metrics.prefer = set.len();
+                        let mut f = face.font.alone();
+                        f.metrics.mixed = Some(std::sync::Arc::new(m));
+                        f
+                    })
+                    .collect()
+            })
+            .collect();
+        for (face, linked) in self.families.iter_mut().zip(linked) {
+            face.linked = linked;
+        }
     }
 
     /// The face drawn as `handle`: a role's, a companion, the locale's or
@@ -545,6 +737,7 @@ impl Fonts {
         .into_iter()
         .flatten()
         .chain(self.faces.iter().map(|f| &f.font))
+        .chain(self.families.iter().map(|f| &f.font))
         .chain(&self.chain)
         .chain(&self.fallbacks)
         .find(|f| f.handle == Some(handle))
@@ -596,9 +789,9 @@ impl Fonts {
                 nearest(set(display), weight).map(|(_, f)| f)
             }
         };
-        match role {
-            FontRole::Body | FontRole::Mono => pick(false),
+        match role.base() {
             FontRole::Display | FontRole::Rounded => pick(true).or_else(|| pick(false)),
+            _ => pick(false),
         }
     }
 }

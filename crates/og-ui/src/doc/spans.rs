@@ -214,7 +214,23 @@ fn apply_body(rule: &mut SpanRule, body: &str) -> Result<(), String> {
                     _ => return Err("-og-text-motion takes none, wave, shake or pulse".into()),
                 })
             }
-            "color" | "font" | "font-family" => {
+            "font-family" => {
+                // The first named family (a span's family is not checked
+                // against the documents' `@font-face` rules: one with no
+                // face is drawn in the role), the generic family's role.
+                let (names, role) = super::text_css::family_list(&value)?;
+                let role = role
+                    .strip_prefix("var(--font-")
+                    .and_then(|r| r.strip_suffix(')'))
+                    .and_then(crate::FontRole::from_name)
+                    .unwrap_or_default();
+                let first = names.split(',').next().map(|n| n.trim().trim_matches('"'));
+                rule.style.font = Some(match first.filter(|n| *n != "none") {
+                    Some(name) => crate::FontRole::Family(crate::Family::new(name, role)),
+                    None => role,
+                });
+            }
+            "color" | "font" => {
                 for entry in css::declarations(&format!("{name}: {value};"), 1)? {
                     let (_, spec) = schema::prop(&entry.key).ok_or("unknown span text property")?;
                     match (spec.ty, parse_lit(spec.ty, &entry.values)?) {
